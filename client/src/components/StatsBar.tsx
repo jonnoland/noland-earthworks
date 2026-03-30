@@ -1,0 +1,109 @@
+/*
+ * DESIGN: Heavy Equipment Grit — full-width dark amber-accented stats band
+ * Animated counters on scroll entry
+ */
+import { useEffect, useRef, useState } from "react";
+
+const stats = [
+  { value: 1, suffix: "+", label: "Year in Business" },
+  { value: 100, suffix: "%", label: "Customer Focused" },
+  { value: 17, suffix: "", label: "Counties Served" },
+  { value: 24, suffix: "hr", label: "Quote Turnaround" },
+];
+
+function useCountUp(target: number, duration = 1500, active: boolean) {
+  const [count, setCount] = useState(0);
+  useEffect(() => {
+    if (!active) return;
+    let start = 0;
+    const step = Math.ceil(target / (duration / 16));
+    const timer = setInterval(() => {
+      start += step;
+      if (start >= target) {
+        setCount(target);
+        clearInterval(timer);
+      } else {
+        setCount(start);
+      }
+    }, 16);
+    return () => clearInterval(timer);
+  }, [active, target, duration]);
+  return count;
+}
+
+function StatItem({ value, suffix, label, active }: { value: number; suffix: string; label: string; active: boolean }) {
+  const count = useCountUp(value, 1200, active);
+  return (
+    <div className="flex flex-col items-center text-center px-6 py-8">
+      <div
+        style={{
+          fontFamily: "'Oswald', sans-serif",
+          fontWeight: 700,
+          fontSize: "clamp(2.25rem, 5vw, 3.5rem)",
+          lineHeight: 1,
+          color: "#E07B2A",
+          letterSpacing: "0.02em",
+        }}
+      >
+        {count}{suffix}
+      </div>
+      <div
+        style={{
+          fontFamily: "'Lato', sans-serif",
+          fontWeight: 400,
+          fontSize: "0.8rem",
+          letterSpacing: "0.15em",
+          textTransform: "uppercase",
+          color: "rgba(240,237,230,0.6)",
+          marginTop: "0.5rem",
+        }}
+      >
+        {label}
+      </div>
+    </div>
+  );
+}
+
+export default function StatsBar() {
+  const ref = useRef<HTMLDivElement>(null);
+  const [active, setActive] = useState(false);
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      ([entry]) => { if (entry.isIntersecting) setActive(true); },
+      { threshold: 0.3 }
+    );
+    if (ref.current) observer.observe(ref.current);
+    return () => observer.disconnect();
+  }, []);
+
+  return (
+    <section
+      id="stats"
+      ref={ref}
+      style={{
+        backgroundColor: "#0F1A0F",
+        borderTop: "1px solid rgba(224,123,42,0.3)",
+        borderBottom: "1px solid rgba(224,123,42,0.3)",
+      }}
+    >
+      <div className="container">
+        <div
+          className="grid grid-cols-2 lg:grid-cols-4"
+          style={{}}
+        >
+          {stats.map((s, i) => (
+            <div
+              key={s.label}
+              style={{
+                borderRight: i < stats.length - 1 ? "1px solid rgba(255,255,255,0.08)" : "none",
+              }}
+            >
+              <StatItem {...s} active={active} />
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
