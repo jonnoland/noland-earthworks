@@ -1,6 +1,6 @@
 /*
  * DESIGN: Heavy Equipment Grit — full single-page layout
- * Sections: Navbar → Hero → Stats → Services → WhyUs → Testimonials → ServiceAreas → Contact → Footer
+ * Sections: Navbar → Hero → Stats → Services → WhyUs → Testimonials → ServiceAreas → Footer
  */
 import Navbar from "@/components/Navbar";
 import HeroSection from "@/components/HeroSection";

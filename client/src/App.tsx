@@ -11,8 +11,8 @@ import VegetationManagementPage from "./pages/VegetationManagement";
 import PropertyMaintenancePage from "./pages/PropertyMaintenance";
 import QuotePage from "./pages/Quote";
 import AboutPage from "./pages/About";
-
 function Router() {
+  // make sure to consider if you need authentication for certain routes
   return (
     <Switch>
       <Route path="/" component={Home} />

@@ -3,9 +3,10 @@
  * Hero banner → two-column layout: contact info left, full form right
  */
 import { useState } from "react";
-import { Phone, Mail, MapPin, Send, ArrowLeft, CheckCircle } from "lucide-react";
+import { Phone, Mail, MapPin, Send, ArrowLeft, CheckCircle, Loader2 } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
+import { trpc } from "@/lib/trpc";
 
 const inputStyle: React.CSSProperties = {
   width: "100%",
@@ -44,9 +45,32 @@ export default function QuotePage() {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
+  const [submitError, setSubmitError] = useState<string | null>(null);
+
+  const submitQuote = trpc.quote.submit.useMutation({
+    onSuccess: () => {
+      setSubmitted(true);
+      setSubmitError(null);
+    },
+    onError: (err) => {
+      setSubmitError(
+        err.message || "Something went wrong. Please try again or call us directly at 615-406-4819."
+      );
+    },
+  });
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    setSubmitted(true);
+    setSubmitError(null);
+    submitQuote.mutate({
+      name: form.name,
+      phone: form.phone,
+      email: form.email || "(not provided)",
+      service: form.service,
+      county: form.county || "(not specified)",
+      acreage: form.acreage,
+      message: form.message,
+    });
   };
 
   return (
@@ -500,13 +524,32 @@ export default function QuotePage() {
                     />
                   </div>
 
+                  {submitError && (
+                    <div
+                      style={{
+                        backgroundColor: "rgba(220,38,38,0.12)",
+                        border: "1px solid rgba(220,38,38,0.3)",
+                        color: "#fca5a5",
+                        fontFamily: "'Lato', sans-serif",
+                        fontSize: "0.875rem",
+                        padding: "0.75rem 1rem",
+                      }}
+                    >
+                      {submitError}
+                    </div>
+                  )}
+
                   <button
                     type="submit"
+                    disabled={submitQuote.isPending}
                     className="btn-amber w-full justify-center"
-                    style={{ fontSize: "1rem", padding: "0.875rem 2rem" }}
+                    style={{ fontSize: "1rem", padding: "0.875rem 2rem", opacity: submitQuote.isPending ? 0.7 : 1 }}
                   >
-                    <Send size={16} />
-                    Send Quote Request
+                    {submitQuote.isPending ? (
+                      <><Loader2 size={16} className="animate-spin" /> Sending...</>
+                    ) : (
+                      <><Send size={16} /> Send Quote Request</>
+                    )}
                   </button>
 
                   <p
