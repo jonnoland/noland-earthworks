@@ -232,7 +232,6 @@ export default function AboutPage() {
             <div className="grid grid-cols-2 gap-4">
               {[
                 { number: "17", label: "Counties Served", sub: "Across Middle Tennessee" },
-                { number: "500+", label: "Projects Completed", sub: "Residential & commercial" },
                 { number: "100%", label: "Veteran-Owned", sub: "U.S. military veteran founded" },
                 { number: "5★", label: "Customer Rating", sub: "Google & Facebook reviews" },
               ].map((s) => (

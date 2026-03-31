@@ -55,7 +55,7 @@ export default function Navbar() {
       }}
     >
       <div className="container">
-        <div className="flex items-center justify-between h-16 lg:h-20">
+        <div className="flex items-center justify-between h-24 lg:h-28">
 
           {/* Logo — plain <a> to avoid nested anchor */}
           <a
@@ -65,7 +65,7 @@ export default function Navbar() {
             <img
               src={LOGO_URL}
               alt="Noland Earthworks — Built on American Strength"
-              style={{ height: "52px", width: "auto", objectFit: "contain", filter: "brightness(1.05)" }}
+              style={{ height: "104px", width: "auto", objectFit: "contain", filter: "brightness(1.05)" }}
             />
           </a>
 
