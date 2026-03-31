@@ -1,0 +1,1 @@
+- [x] Replace footer text "NOLAND EARTHWORKS" + tagline with logo image

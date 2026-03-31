@@ -23,30 +23,11 @@ export default function Footer() {
           {/* Brand column */}
           <div>
             <div className="mb-4">
-              <div
-                style={{
-                  fontFamily: "'Oswald', sans-serif",
-                  fontWeight: 700,
-                  fontSize: "1.25rem",
-                  letterSpacing: "0.06em",
-                  textTransform: "uppercase",
-                  color: "#F0EDE6",
-                }}
-              >
-                Noland Earthworks
-              </div>
-              <div
-                style={{
-                  fontFamily: "'Lato', sans-serif",
-                  fontWeight: 400,
-                  fontSize: "0.65rem",
-                  letterSpacing: "0.2em",
-                  textTransform: "uppercase",
-                  color: "#E07B2A",
-                }}
-              >
-                Forestry Mulching &amp; Site Services
-              </div>
+              <img
+                src="https://d2xsxph8kpxj0f.cloudfront.net/310519663484957999/PymCzDCnSJzPjdkfwA7Jn6/noland-logo-transparent_783e5c7b.png"
+                alt="Noland Earthworks"
+                style={{ height: "90px", width: "auto", objectFit: "contain" }}
+              />
             </div>
             <p
               style={{
