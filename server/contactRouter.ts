@@ -87,7 +87,7 @@ export const contactRouter = router({
       try {
         const resend = new Resend(ENV.resendApiKey);
         const { error } = await resend.emails.send({
-          from: "Noland Earthworks <onboarding@resend.dev>",
+          from: "Noland Earthworks <noreply@nolandearthworks.com>",
           to: ["info@nolandearthworks.com"],
           replyTo: input.email,
           subject: `General Inquiry: ${input.subject} — from ${input.name}`,

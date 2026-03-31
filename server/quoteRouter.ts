@@ -98,7 +98,7 @@ export const quoteRouter = router({
       try {
         const resend = new Resend(ENV.resendApiKey);
         const { error } = await resend.emails.send({
-          from: "Noland Earthworks <onboarding@resend.dev>",
+          from: "Noland Earthworks <noreply@nolandearthworks.com>",
           to: ["quotes@nolandearthworks.com"],
           replyTo: input.email,
           subject: `New Quote Request — ${input.service} (${input.county} County)`,
