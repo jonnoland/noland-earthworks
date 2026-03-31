@@ -10,6 +10,7 @@ import ForestryMulchingPage from "./pages/ForestryMulching";
 import VegetationManagementPage from "./pages/VegetationManagement";
 import PropertyMaintenancePage from "./pages/PropertyMaintenance";
 import QuotePage from "./pages/Quote";
+import AboutPage from "./pages/About";
 
 function Router() {
   return (
@@ -20,6 +21,7 @@ function Router() {
       <Route path="/services/vegetation-management" component={VegetationManagementPage} />
       <Route path="/services/property-maintenance" component={PropertyMaintenancePage} />
       <Route path="/quote" component={QuotePage} />
+      <Route path="/about" component={AboutPage} />
       <Route path="/404" component={NotFound} />
       <Route component={NotFound} />
     </Switch>
