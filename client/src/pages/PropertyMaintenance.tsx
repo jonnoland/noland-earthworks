@@ -4,15 +4,6 @@ import ServicePageLayout, { ServicePageProps } from "@/components/ServicePageLay
 
 const HERO = "https://d2xsxph8kpxj0f.cloudfront.net/310519663484957999/PymCzDCnSJzPjdkfwA7Jn6/property-maintenance-3gu7BTR6P2RKi4ZuYCNLoN.webp";
 
-const PHOTOS = [
-  { src: "https://images.unsplash.com/photo-1558904541-efa843a96f01?w=800&q=80", caption: "Well-maintained rural property" },
-  { src: "https://images.unsplash.com/photo-1523348837708-15d4a09cfac2?w=800&q=80", caption: "Driveway clearing and access road maintenance" },
-  { src: "https://images.unsplash.com/photo-1416879595882-3373a0480b5b?w=800&q=80", caption: "Seasonal brush clearing around structures" },
-  { src: "https://images.unsplash.com/photo-1500382017468-9049fed747ef?w=800&q=80", caption: "Pasture and field maintenance" },
-  { src: "https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=800&q=80", caption: "Tree line management near property boundary" },
-  { src: "https://images.unsplash.com/photo-1518495973542-4542c06a5843?w=800&q=80", caption: "Storm debris cleanup and removal" },
-];
-
 const data: ServicePageProps = {
   slug: "property-maintenance",
   title: "Property Maintenance",
@@ -33,7 +24,6 @@ const data: ServicePageProps = {
     "Consistent crews who know your property",
     "Flexible scheduling to fit your needs",
   ],
-  photos: PHOTOS,
   faqs: [
     {
       question: "What's included in a property maintenance visit?",

@@ -4,15 +4,6 @@ import ServicePageLayout, { ServicePageProps } from "@/components/ServicePageLay
 
 const HERO = "https://d2xsxph8kpxj0f.cloudfront.net/310519663484957999/PymCzDCnSJzPjdkfwA7Jn6/forestry-mulching-HhrtysAJXn8CTRW2xzcGCC.webp";
 
-const PHOTOS = [
-  { src: "https://images.unsplash.com/photo-1448375240586-882707db888b?w=800&q=80", caption: "Dense woodland before forestry mulching" },
-  { src: "https://images.unsplash.com/photo-1509316785289-025f5b846b35?w=800&q=80", caption: "Mulching head processing brush and small trees" },
-  { src: "https://images.unsplash.com/photo-1473448912268-2022ce9509d8?w=800&q=80", caption: "Clean mulch layer left on-site as ground cover" },
-  { src: "https://images.unsplash.com/photo-1425913397330-cf8af2ff40a1?w=800&q=80", caption: "Open pasture reclaimed from overgrowth" },
-  { src: "https://images.unsplash.com/photo-1441974231531-c6227db76b6e?w=800&q=80", caption: "Selective mulching to preserve mature trees" },
-  { src: "https://images.unsplash.com/photo-1502082553048-f009c37129b9?w=800&q=80", caption: "Fire break creation through dense forest" },
-];
-
 const data: ServicePageProps = {
   slug: "forestry-mulching",
   title: "Forestry Mulching",
@@ -33,7 +24,6 @@ const data: ServicePageProps = {
     "Can selectively clear while preserving desired trees",
     "Ideal for fire break creation and wildfire risk reduction",
   ],
-  photos: PHOTOS,
   faqs: [
     {
       question: "How large of trees can a forestry mulcher handle?",

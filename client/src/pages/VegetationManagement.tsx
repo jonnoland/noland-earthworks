@@ -4,15 +4,6 @@ import ServicePageLayout, { ServicePageProps } from "@/components/ServicePageLay
 
 const HERO = "https://d2xsxph8kpxj0f.cloudfront.net/310519663484957999/PymCzDCnSJzPjdkfwA7Jn6/vegetation-management-hnEnCRefahdbJy4xpn6UnC.webp";
 
-const PHOTOS = [
-  { src: "https://images.unsplash.com/photo-1416879595882-3373a0480b5b?w=800&q=80", caption: "Overgrown fence line cleared and managed" },
-  { src: "https://images.unsplash.com/photo-1500382017468-9049fed747ef?w=800&q=80", caption: "Pasture reclaimed from invasive brush" },
-  { src: "https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=800&q=80", caption: "Right-of-way vegetation control" },
-  { src: "https://images.unsplash.com/photo-1518495973542-4542c06a5843?w=800&q=80", caption: "Selective clearing to preserve native trees" },
-  { src: "https://images.unsplash.com/photo-1504701954957-2010ec3bcec1?w=800&q=80", caption: "Utility corridor maintenance" },
-  { src: "https://images.unsplash.com/photo-1470770841072-f978cf4d019e?w=800&q=80", caption: "Pond bank and waterway vegetation control" },
-];
-
 const data: ServicePageProps = {
   slug: "vegetation-management",
   title: "Vegetation Management",
@@ -33,7 +24,6 @@ const data: ServicePageProps = {
     "Mechanical methods — no herbicides required",
     "Flexible scheduling: one-time or recurring maintenance",
   ],
-  photos: PHOTOS,
   faqs: [
     {
       question: "How often should vegetation management be done?",

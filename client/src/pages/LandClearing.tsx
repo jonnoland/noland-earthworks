@@ -4,15 +4,6 @@ import ServicePageLayout, { ServicePageProps } from "@/components/ServicePageLay
 
 const HERO = "https://d2xsxph8kpxj0f.cloudfront.net/310519663484957999/PymCzDCnSJzPjdkfwA7Jn6/land-clearing-iPC6VzRdyjJa4bVNXaWy5n.webp";
 
-const PHOTOS = [
-  { src: "https://images.unsplash.com/photo-1504307651254-35680f356dfd?w=800&q=80", caption: "Site preparation — residential lot clearing" },
-  { src: "https://images.unsplash.com/photo-1581094794329-c8112a89af12?w=800&q=80", caption: "Heavy equipment removing large trees" },
-  { src: "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=800&q=80", caption: "Brush and debris removal" },
-  { src: "https://images.unsplash.com/photo-1541888946425-d81bb19240f5?w=800&q=80", caption: "Cleared land ready for development" },
-  { src: "https://images.unsplash.com/photo-1578662996442-48f60103fc96?w=800&q=80", caption: "Commercial site clearing in progress" },
-  { src: "https://images.unsplash.com/photo-1504307651254-35680f356dfd?w=800&q=80&crop=entropy&fit=crop&h=600&w=800", caption: "Stump removal and grading" },
-];
-
 const data: ServicePageProps = {
   slug: "land-clearing",
   title: "Land Clearing",
@@ -33,7 +24,6 @@ const data: ServicePageProps = {
     "Free on-site estimate before any work begins",
     "10% discount for active military and veterans",
   ],
-  photos: PHOTOS,
   faqs: [
     {
       question: "How long does land clearing take?",

@@ -19,7 +19,6 @@ export interface ServicePageProps {
   overviewTitle: string;
   overviewBody: string[];
   benefits: string[];
-  photos: { src: string; caption: string }[];
   faqs: FaqItem[];
 }
 
@@ -102,12 +101,11 @@ function FaqAccordion({ faqs }: { faqs: FaqItem[] }) {
 export default function ServicePageLayout(props: ServicePageProps) {
   const {
     title, tagline, heroImage, overviewTitle, overviewBody,
-    benefits, photos, faqs,
+    benefits, faqs,
   } = props;
 
 
   const headerVis = useVisible(0.1);
-  const galleryVis = useVisible(0.1);
   const faqVis = useVisible(0.1);
 
   return (
@@ -263,74 +261,6 @@ export default function ServicePageLayout(props: ServicePageProps) {
                   </div>
                 ))}
               </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ── PHOTO GALLERY ── */}
-      <section style={{ paddingTop: "5rem", paddingBottom: "5rem" }}>
-        <div className="container">
-          <div
-            ref={galleryVis.ref}
-            style={{
-              opacity: galleryVis.visible ? 1 : 0,
-              transform: galleryVis.visible ? "translateY(0)" : "translateY(24px)",
-              transition: "opacity 0.5s ease, transform 0.5s ease",
-            }}
-          >
-            <div className="section-label mb-4">Project Photos</div>
-            <h2
-              style={{
-                fontFamily: "'Oswald', sans-serif",
-                fontWeight: 700,
-                fontSize: "clamp(1.75rem, 3vw, 2.5rem)",
-                letterSpacing: "0.04em",
-                textTransform: "uppercase",
-                color: "#F0EDE6",
-                marginBottom: "2rem",
-              }}
-            >
-              Our Work in Action
-            </h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {photos.map((photo, i) => (
-                <div
-                  key={i}
-                  className="relative overflow-hidden group"
-                  style={{
-                    aspectRatio: "4/3",
-                    opacity: galleryVis.visible ? 1 : 0,
-                    transform: galleryVis.visible ? "translateY(0)" : "translateY(24px)",
-                    transition: `opacity 0.5s ease ${i * 0.08}s, transform 0.5s ease ${i * 0.08}s`,
-                  }}
-                >
-                  <img
-                    src={photo.src}
-                    alt={photo.caption}
-                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                    loading="lazy"
-                  />
-                  <div
-                    className="absolute inset-0 flex items-end p-4 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
-                    style={{
-                      background: "linear-gradient(to top, rgba(10,10,10,0.85) 0%, transparent 60%)",
-                    }}
-                  >
-                    <span
-                      style={{
-                        fontFamily: "'Lato', sans-serif",
-                        fontWeight: 400,
-                        fontSize: "0.8rem",
-                        color: "rgba(240,237,230,0.9)",
-                        letterSpacing: "0.04em",
-                      }}
-                    >
-                      {photo.caption}
-                    </span>
-                  </div>
-                </div>
-              ))}
             </div>
           </div>
         </div>
