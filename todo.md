@@ -1,2 +1,4 @@
 - [x] Replace footer text "NOLAND EARTHWORKS" + tagline with logo image
 - [x] Add Related Services section to all four service detail pages
+- [x] Add unique SEO page titles to all pages
+- [x] Add floating scroll-to-top button

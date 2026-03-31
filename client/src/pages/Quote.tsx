@@ -7,6 +7,7 @@ import { Phone, Mail, MapPin, Send, ArrowLeft, CheckCircle, Loader2 } from "luci
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { trpc } from "@/lib/trpc";
+import { usePageTitle } from "@/hooks/usePageTitle";
 
 const inputStyle: React.CSSProperties = {
   width: "100%",
@@ -33,6 +34,7 @@ const labelStyle: React.CSSProperties = {
 };
 
 export default function QuotePage() {
+  usePageTitle("Request a Free Quote — Land Clearing & Forestry Mulching");
   const [submitted, setSubmitted] = useState(false);
   const [form, setForm] = useState({
     name: "", phone: "", email: "", service: "",

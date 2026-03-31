@@ -1,6 +1,7 @@
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import ServicePageLayout, { ServicePageProps } from "@/components/ServicePageLayout";
+import { usePageTitle } from "@/hooks/usePageTitle";
 
 const HERO = "https://d2xsxph8kpxj0f.cloudfront.net/310519663484957999/PymCzDCnSJzPjdkfwA7Jn6/property-maintenance-3gu7BTR6P2RKi4ZuYCNLoN.webp";
 const LAND_HERO = "https://d2xsxph8kpxj0f.cloudfront.net/310519663484957999/PymCzDCnSJzPjdkfwA7Jn6/land-clearing-iPC6VzRdyjJa4bVNXaWy5n.webp";
@@ -61,6 +62,7 @@ const data: ServicePageProps = {
 };
 
 export default function PropertyMaintenancePage() {
+  usePageTitle("Property Maintenance Services — Middle Tennessee");
   return (
     <>
       <Navbar />

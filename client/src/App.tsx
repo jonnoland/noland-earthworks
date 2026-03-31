@@ -4,6 +4,7 @@ import NotFound from "@/pages/NotFound";
 import { Route, Switch } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
+import ScrollToTop from "./components/ScrollToTop";
 import Home from "./pages/Home";
 import LandClearingPage from "./pages/LandClearing";
 import ForestryMulchingPage from "./pages/ForestryMulching";
@@ -35,6 +36,7 @@ function App() {
         <TooltipProvider>
           <Toaster />
           <Router />
+          <ScrollToTop />
         </TooltipProvider>
       </ThemeProvider>
     </ErrorBoundary>

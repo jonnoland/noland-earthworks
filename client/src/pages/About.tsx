@@ -7,6 +7,7 @@ import { ArrowLeft, Shield, Star, Wrench, Clock, Send, CheckCircle, Users, MapPi
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { trpc } from "@/lib/trpc";
+import { usePageTitle } from "@/hooks/usePageTitle";
 
 const LOGO_URL = "https://d2xsxph8kpxj0f.cloudfront.net/310519663484957999/PymCzDCnSJzPjdkfwA7Jn6/noland-logo-transparent_783e5c7b.png";
 
@@ -68,6 +69,7 @@ const values = [
 ];
 
 export default function AboutPage() {
+  usePageTitle("About Us — Veteran-Owned Land Clearing Company");
   const [submitted, setSubmitted] = useState(false);
   const [form, setForm] = useState({ name: "", email: "", phone: "", subject: "", message: "" });
 

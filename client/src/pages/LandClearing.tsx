@@ -1,6 +1,7 @@
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import ServicePageLayout, { ServicePageProps } from "@/components/ServicePageLayout";
+import { usePageTitle } from "@/hooks/usePageTitle";
 
 const FORESTRY_HERO = "https://d2xsxph8kpxj0f.cloudfront.net/310519663484957999/PymCzDCnSJzPjdkfwA7Jn6/forestry-mulching-HhrtysAJXn8CTRW2xzcGCC.webp";
 const VEGETATION_HERO = "https://d2xsxph8kpxj0f.cloudfront.net/310519663484957999/PymCzDCnSJzPjdkfwA7Jn6/vegetation-management-hnEnCRefahdbJy4xpn6UnC.webp";
@@ -62,6 +63,7 @@ const data: ServicePageProps = {
 };
 
 export default function LandClearingPage() {
+  usePageTitle("Land Clearing Services — Middle Tennessee");
   return (
     <>
       <Navbar />

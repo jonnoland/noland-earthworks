@@ -10,8 +10,10 @@ import WhyUsSection from "@/components/WhyUsSection";
 import TestimonialsSection from "@/components/TestimonialsSection";
 import ServiceAreasSection from "@/components/ServiceAreasSection";
 import Footer from "@/components/Footer";
+import { usePageTitle } from "@/hooks/usePageTitle";
 
 export default function Home() {
+  usePageTitle("Veteran-Owned Land Clearing & Forestry Mulching — Middle Tennessee");
   return (
     <div
       className="min-h-screen"
