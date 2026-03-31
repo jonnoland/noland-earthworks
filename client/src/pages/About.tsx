@@ -440,7 +440,7 @@ export default function AboutPage() {
               <div className="flex flex-col gap-4 mb-8">
                 {[
                   { label: "Phone", value: "615-406-4819", href: "tel:6154064819" },
-                  { label: "Email", value: "quotes@nolandearthworks.com", href: "mailto:quotes@nolandearthworks.com" },
+                  { label: "Email", value: "info@nolandearthworks.com", href: "mailto:info@nolandearthworks.com" },
                   { label: "Service Area", value: "Middle Tennessee — 17 Counties", href: "/services/land-clearing" },
                 ].map((c) => (
                   <a
