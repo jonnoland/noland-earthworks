@@ -15,6 +15,34 @@ function createPublicContext(): TrpcContext {
   };
 }
 
+describe("contact.submit", () => {
+  it("validates required fields — rejects empty name", async () => {
+    const caller = appRouter.createCaller(createPublicContext());
+    await expect(
+      caller.contact.submit({
+        name: "",
+        email: "test@example.com",
+        phone: "",
+        subject: "General Question",
+        message: "Hello there",
+      })
+    ).rejects.toThrow();
+  });
+
+  it("validates required fields — rejects missing message", async () => {
+    const caller = appRouter.createCaller(createPublicContext());
+    await expect(
+      caller.contact.submit({
+        name: "Test User",
+        email: "test@example.com",
+        phone: "",
+        subject: "General Question",
+        message: "",
+      })
+    ).rejects.toThrow();
+  });
+});
+
 describe("quote.submit", () => {
   it("validates required fields — rejects empty name", async () => {
     const caller = appRouter.createCaller(createPublicContext());

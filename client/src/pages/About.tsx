@@ -3,9 +3,10 @@
  * Hero banner → story section → core values → contact form for general inquiries
  */
 import { useState } from "react";
-import { ArrowLeft, Shield, Star, Wrench, Clock, Send, CheckCircle, Users, MapPin } from "lucide-react";
+import { ArrowLeft, Shield, Star, Wrench, Clock, Send, CheckCircle, Users, MapPin, Loader2 } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
+import { trpc } from "@/lib/trpc";
 
 const LOGO_URL = "https://d2xsxph8kpxj0f.cloudfront.net/310519663484957999/PymCzDCnSJzPjdkfwA7Jn6/noland-logo-transparent_783e5c7b.png";
 
@@ -74,9 +75,30 @@ export default function AboutPage() {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
+  const [submitError, setSubmitError] = useState<string | null>(null);
+
+  const submitContact = trpc.contact.submit.useMutation({
+    onSuccess: () => {
+      setSubmitted(true);
+      setSubmitError(null);
+    },
+    onError: (err) => {
+      setSubmitError(
+        err.message || "Something went wrong. Please try again or email us directly at info@nolandearthworks.com."
+      );
+    },
+  });
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    setSubmitted(true);
+    setSubmitError(null);
+    submitContact.mutate({
+      name: form.name,
+      email: form.email,
+      phone: form.phone,
+      subject: form.subject,
+      message: form.message,
+    });
   };
 
   const focusAmber = (e: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
@@ -649,13 +671,32 @@ export default function AboutPage() {
                     />
                   </div>
 
+                  {submitError && (
+                    <div
+                      style={{
+                        backgroundColor: "rgba(220,38,38,0.12)",
+                        border: "1px solid rgba(220,38,38,0.3)",
+                        color: "#fca5a5",
+                        fontFamily: "'Lato', sans-serif",
+                        fontSize: "0.875rem",
+                        padding: "0.75rem 1rem",
+                      }}
+                    >
+                      {submitError}
+                    </div>
+                  )}
+
                   <button
                     type="submit"
+                    disabled={submitContact.isPending}
                     className="btn-amber w-full justify-center"
-                    style={{ fontSize: "1rem", padding: "0.875rem 2rem" }}
+                    style={{ fontSize: "1rem", padding: "0.875rem 2rem", opacity: submitContact.isPending ? 0.7 : 1 }}
                   >
-                    <Send size={16} />
-                    Send Message
+                    {submitContact.isPending ? (
+                      <><Loader2 size={16} className="animate-spin" /> Sending...</>
+                    ) : (
+                      <><Send size={16} /> Send Message</>
+                    )}
                   </button>
 
                   <p
