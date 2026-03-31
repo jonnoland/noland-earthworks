@@ -1,6 +1,8 @@
 import { z } from "zod";
 import { publicProcedure, router } from "./_core/trpc";
 import { notifyOwner } from "./_core/notification";
+import { ENV } from "./_core/env";
+import { Resend } from "resend";
 
 const contactSchema = z.object({
   name: z.string().min(1, "Name is required").max(100),
@@ -12,20 +14,110 @@ const contactSchema = z.object({
 
 export type ContactInput = z.infer<typeof contactSchema>;
 
+function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+function buildEmailHtml(data: ContactInput): string {
+  return `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <style>
+    body { font-family: Arial, sans-serif; background: #f5f5f5; margin: 0; padding: 0; }
+    .wrapper { max-width: 600px; margin: 32px auto; background: #fff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+    .header { background: #1a1a1a; padding: 28px 32px; }
+    .header h1 { color: #E07B2A; font-size: 22px; margin: 0; letter-spacing: 1px; text-transform: uppercase; }
+    .header p { color: #aaa; margin: 6px 0 0; font-size: 13px; }
+    .body { padding: 28px 32px; }
+    .field { margin-bottom: 18px; }
+    .label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: #888; margin-bottom: 4px; }
+    .value { font-size: 15px; color: #222; background: #f9f9f9; padding: 10px 14px; border-radius: 5px; border-left: 3px solid #E07B2A; }
+    .footer { background: #f0ede6; padding: 16px 32px; font-size: 12px; color: #888; text-align: center; }
+    .footer a { color: #E07B2A; text-decoration: none; }
+  </style>
+</head>
+<body>
+  <div class="wrapper">
+    <div class="header">
+      <h1>General Inquiry</h1>
+      <p>Submitted via nolandearthworks.com/about</p>
+    </div>
+    <div class="body">
+      <div class="field">
+        <div class="label">Name</div>
+        <div class="value">${escapeHtml(data.name)}</div>
+      </div>
+      <div class="field">
+        <div class="label">Email</div>
+        <div class="value">${escapeHtml(data.email)}</div>
+      </div>
+      ${data.phone ? `
+      <div class="field">
+        <div class="label">Phone</div>
+        <div class="value">${escapeHtml(data.phone)}</div>
+      </div>` : ""}
+      <div class="field">
+        <div class="label">Subject</div>
+        <div class="value">${escapeHtml(data.subject)}</div>
+      </div>
+      <div class="field">
+        <div class="label">Message</div>
+        <div class="value" style="white-space:pre-wrap;">${escapeHtml(data.message)}</div>
+      </div>
+    </div>
+    <div class="footer">
+      Noland Earthworks, LLC &bull; <a href="tel:6154064819">(615) 406-4819</a> &bull; Middle Tennessee
+    </div>
+  </div>
+</body>
+</html>`.trim();
+}
+
 export const contactRouter = router({
   submit: publicProcedure.input(contactSchema).mutation(async ({ input }) => {
-    await notifyOwner({
-      title: `General Inquiry — ${input.name}: ${input.subject}`,
-      content: [
-        `Name: ${input.name}`,
-        `Email: ${input.email}`,
-        input.phone ? `Phone: ${input.phone}` : "",
-        `Subject: ${input.subject}`,
-        `\nMessage:\n${input.message}`,
-      ]
-        .filter(Boolean)
-        .join("\n"),
-    });
+    // 1. Send email via the pre-injected RESEND_API_KEY system secret
+    if (ENV.resendApiKey) {
+      try {
+        const resend = new Resend(ENV.resendApiKey);
+        const { error } = await resend.emails.send({
+          from: "Noland Earthworks <onboarding@resend.dev>",
+          to: ["info@nolandearthworks.com"],
+          replyTo: input.email,
+          subject: `General Inquiry: ${input.subject} — from ${input.name}`,
+          html: buildEmailHtml(input),
+        });
+        if (error) {
+          console.error("[Contact] Resend error:", error);
+        }
+      } catch (err) {
+        console.error("[Contact] Failed to send email:", err);
+      }
+    }
+
+    // 2. Always send in-app owner notification as backup
+    try {
+      await notifyOwner({
+        title: `General Inquiry — ${input.name}: ${input.subject}`,
+        content: [
+          `Name: ${input.name}`,
+          `Email: ${input.email}`,
+          input.phone ? `Phone: ${input.phone}` : "",
+          `Subject: ${input.subject}`,
+          `\nMessage:\n${input.message}`,
+        ]
+          .filter(Boolean)
+          .join("\n"),
+      });
+    } catch (err) {
+      console.warn("[Contact] Owner notification failed:", err);
+    }
 
     return { success: true };
   }),
