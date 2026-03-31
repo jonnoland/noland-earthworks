@@ -150,13 +150,13 @@ export default function Navbar() {
               <Phone size={14} style={{ color: "#E07B2A" }} />
               615-406-4819
             </a>
-            <button
-              onClick={() => scrollTo("#contact")}
+            <a
+              href="/quote"
               className="btn-amber"
-              style={{ padding: "0.5rem 1.25rem" }}
+              style={{ padding: "0.5rem 1.25rem", textDecoration: "none" }}
             >
               Get a Quote
-            </button>
+            </a>
           </div>
 
           {/* Mobile hamburger */}
@@ -239,12 +239,13 @@ export default function Navbar() {
                 <Phone size={14} style={{ color: "#E07B2A" }} />
                 615-406-4819
               </a>
-              <button
-                onClick={() => scrollTo("#contact")}
+              <a
+                href="/quote"
                 className="btn-amber w-full justify-center"
+                style={{ textDecoration: "none" }}
               >
                 Get a Free Quote
-              </button>
+              </a>
             </div>
           </div>
         </div>

@@ -114,24 +114,23 @@ export default function Footer() {
             </div>
             <div className="flex flex-col gap-2">
               {[
-                { label: "Services", href: "#services" },
-                { label: "Why Choose Us", href: "#why-us" },
-                { label: "Testimonials", href: "#testimonials" },
-                { label: "Service Areas", href: "#service-areas" },
-                { label: "Get a Quote", href: "#contact" },
+                { label: "Services", href: "/#services" },
+                { label: "Why Choose Us", href: "/#why-us" },
+                { label: "Testimonials", href: "/#testimonials" },
+                { label: "Service Areas", href: "/#service-areas" },
+                { label: "Get a Quote", href: "/quote" },
               ].map((l) => (
-                <button
+                <a
                   key={l.href}
-                  onClick={() => scrollTo(l.href)}
+                  href={l.href}
                   className="text-left transition-colors duration-200"
                   style={{
                     fontFamily: "'Lato', sans-serif",
                     fontWeight: 400,
                     fontSize: "0.875rem",
                     color: "rgba(240,237,230,0.55)",
-                    background: "none",
-                    border: "none",
-                    padding: 0,
+                    textDecoration: "none",
+                    display: "block",
                   }}
                   onMouseEnter={(e) => {
                     (e.currentTarget as HTMLElement).style.color = "#E07B2A";
@@ -141,7 +140,7 @@ export default function Footer() {
                   }}
                 >
                   {l.label}
-                </button>
+                </a>
               ))}
             </div>
           </div>
@@ -193,13 +192,13 @@ export default function Footer() {
               </a>
             </div>
 
-            <button
-              onClick={() => scrollTo("#contact")}
+            <a
+              href="/quote"
               className="btn-amber mt-6"
-              style={{ fontSize: "0.875rem", padding: "0.625rem 1.5rem" }}
+              style={{ fontSize: "0.875rem", padding: "0.625rem 1.5rem", textDecoration: "none" }}
             >
               Get a Free Quote
-            </button>
+            </a>
           </div>
         </div>
       </div>

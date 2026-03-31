@@ -96,13 +96,14 @@ export default function HeroSection() {
 
           {/* CTA buttons */}
           <div className="flex flex-wrap gap-4 mb-12">
-            <button
-              onClick={() => scrollTo("#contact")}
+            <a
+              href="/quote"
               className="btn-amber"
+              style={{ textDecoration: "none" }}
             >
               Schedule a Free Quote
               <ArrowRight size={16} />
-            </button>
+            </a>
             <button
               onClick={() => scrollTo("#services")}
               className="btn-ghost"

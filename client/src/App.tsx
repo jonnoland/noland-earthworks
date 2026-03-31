@@ -9,6 +9,7 @@ import LandClearingPage from "./pages/LandClearing";
 import ForestryMulchingPage from "./pages/ForestryMulching";
 import VegetationManagementPage from "./pages/VegetationManagement";
 import PropertyMaintenancePage from "./pages/PropertyMaintenance";
+import QuotePage from "./pages/Quote";
 
 function Router() {
   return (
@@ -18,6 +19,7 @@ function Router() {
       <Route path="/services/forestry-mulching" component={ForestryMulchingPage} />
       <Route path="/services/vegetation-management" component={VegetationManagementPage} />
       <Route path="/services/property-maintenance" component={PropertyMaintenancePage} />
+      <Route path="/quote" component={QuotePage} />
       <Route path="/404" component={NotFound} />
       <Route component={NotFound} />
     </Switch>

@@ -9,7 +9,6 @@ import ServicesSection from "@/components/ServicesSection";
 import WhyUsSection from "@/components/WhyUsSection";
 import TestimonialsSection from "@/components/TestimonialsSection";
 import ServiceAreasSection from "@/components/ServiceAreasSection";
-import ContactSection from "@/components/ContactSection";
 import Footer from "@/components/Footer";
 
 export default function Home() {
@@ -25,7 +24,6 @@ export default function Home() {
       <WhyUsSection />
       <TestimonialsSection />
       <ServiceAreasSection />
-      <ContactSection />
       <Footer />
     </div>
   );

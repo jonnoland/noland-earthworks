@@ -105,9 +105,6 @@ export default function ServicePageLayout(props: ServicePageProps) {
     benefits, photos, faqs,
   } = props;
 
-  const scrollToQuote = () => {
-    window.location.href = "/#contact";
-  };
 
   const headerVis = useVisible(0.1);
   const galleryVis = useVisible(0.1);
@@ -430,8 +427,8 @@ export default function ServicePageLayout(props: ServicePageProps) {
             >
               Call 615-406-4819
             </a>
-            <button
-              onClick={scrollToQuote}
+            <a
+              href="/quote"
               style={{
                 fontFamily: "'Oswald', sans-serif",
                 fontWeight: 600,
@@ -442,11 +439,12 @@ export default function ServicePageLayout(props: ServicePageProps) {
                 backgroundColor: "#0a0a0a",
                 border: "2px solid #0a0a0a",
                 padding: "0.75rem 1.75rem",
-                cursor: "pointer",
+                textDecoration: "none",
+                display: "inline-block",
               }}
             >
               Request a Quote
-            </button>
+            </a>
           </div>
         </div>
       </section>
