@@ -11,6 +11,13 @@ export interface FaqItem {
   answer: string;
 }
 
+export interface RelatedService {
+  title: string;
+  slug: string;
+  description: string;
+  heroImage: string;
+}
+
 export interface ServicePageProps {
   slug: string;
   title: string;
@@ -20,6 +27,7 @@ export interface ServicePageProps {
   overviewBody: string[];
   benefits: string[];
   faqs: FaqItem[];
+  relatedServices: RelatedService[];
 }
 
 function useVisible(threshold = 0.15) {
@@ -101,7 +109,7 @@ function FaqAccordion({ faqs }: { faqs: FaqItem[] }) {
 export default function ServicePageLayout(props: ServicePageProps) {
   const {
     title, tagline, heroImage, overviewTitle, overviewBody,
-    benefits, faqs,
+    benefits, faqs, relatedServices,
   } = props;
 
 
@@ -301,6 +309,107 @@ export default function ServicePageLayout(props: ServicePageProps) {
             <div className="max-w-3xl">
               <FaqAccordion faqs={faqs} />
             </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ── RELATED SERVICES ── */}
+      <section
+        style={{
+          backgroundColor: "#0a0a0a",
+          paddingTop: "5rem",
+          paddingBottom: "5rem",
+          borderTop: "1px solid rgba(224,123,42,0.15)",
+        }}
+      >
+        <div className="container">
+          <div className="section-label mb-4">Explore More</div>
+          <h2
+            style={{
+              fontFamily: "'Oswald', sans-serif",
+              fontWeight: 700,
+              fontSize: "clamp(1.75rem, 3vw, 2.25rem)",
+              letterSpacing: "0.04em",
+              textTransform: "uppercase",
+              color: "#F0EDE6",
+              marginBottom: "2rem",
+            }}
+          >
+            Related Services
+          </h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            {relatedServices.map((svc) => (
+              <a
+                key={svc.slug}
+                href={`/services/${svc.slug}`}
+                style={{ textDecoration: "none" }}
+                className="group block relative overflow-hidden"
+              >
+                <div
+                  className="relative"
+                  style={{ height: "200px", overflow: "hidden" }}
+                >
+                  <img
+                    src={svc.heroImage}
+                    alt={svc.title}
+                    style={{
+                      width: "100%",
+                      height: "100%",
+                      objectFit: "cover",
+                      transition: "transform 0.4s ease",
+                    }}
+                    className="group-hover:scale-105"
+                  />
+                  <div
+                    className="absolute inset-0"
+                    style={{
+                      background: "linear-gradient(to top, rgba(10,10,10,0.88) 0%, rgba(10,10,10,0.3) 60%, transparent 100%)",
+                    }}
+                  />
+                  <div
+                    className="absolute bottom-0 left-0 right-0 p-5"
+                  >
+                    <h3
+                      style={{
+                        fontFamily: "'Oswald', sans-serif",
+                        fontWeight: 700,
+                        fontSize: "1.2rem",
+                        letterSpacing: "0.05em",
+                        textTransform: "uppercase",
+                        color: "#F0EDE6",
+                        marginBottom: "0.25rem",
+                      }}
+                    >
+                      {svc.title}
+                    </h3>
+                    <p
+                      style={{
+                        fontFamily: "'Lato', sans-serif",
+                        fontWeight: 300,
+                        fontSize: "0.8rem",
+                        color: "rgba(240,237,230,0.65)",
+                        lineHeight: 1.5,
+                      }}
+                    >
+                      {svc.description}
+                    </p>
+                    <div
+                      className="flex items-center gap-1 mt-2"
+                      style={{
+                        fontFamily: "'Oswald', sans-serif",
+                        fontWeight: 600,
+                        fontSize: "0.75rem",
+                        letterSpacing: "0.1em",
+                        textTransform: "uppercase",
+                        color: "#E07B2A",
+                      }}
+                    >
+                      Learn More <ArrowRight size={12} />
+                    </div>
+                  </div>
+                </div>
+              </a>
+            ))}
           </div>
         </div>
       </section>

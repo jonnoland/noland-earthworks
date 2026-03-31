@@ -3,6 +3,9 @@ import Footer from "@/components/Footer";
 import ServicePageLayout, { ServicePageProps } from "@/components/ServicePageLayout";
 
 const HERO = "https://d2xsxph8kpxj0f.cloudfront.net/310519663484957999/PymCzDCnSJzPjdkfwA7Jn6/vegetation-management-hnEnCRefahdbJy4xpn6UnC.webp";
+const LAND_HERO = "https://d2xsxph8kpxj0f.cloudfront.net/310519663484957999/PymCzDCnSJzPjdkfwA7Jn6/land-clearing-iPC6VzRdyjJa4bVNXaWy5n.webp";
+const FORESTRY_HERO = "https://d2xsxph8kpxj0f.cloudfront.net/310519663484957999/PymCzDCnSJzPjdkfwA7Jn6/forestry-mulching-HhrtysAJXn8CTRW2xzcGCC.webp";
+const MAINTENANCE_HERO = "https://d2xsxph8kpxj0f.cloudfront.net/310519663484957999/PymCzDCnSJzPjdkfwA7Jn6/property-maintenance-3gu7BTR6P2RKi4ZuYCNLoN.webp";
 
 const data: ServicePageProps = {
   slug: "vegetation-management",
@@ -23,6 +26,11 @@ const data: ServicePageProps = {
     "Improves property aesthetics and curb appeal",
     "Mechanical methods — no herbicides required",
     "Flexible scheduling: one-time or recurring maintenance",
+  ],
+  relatedServices: [
+    { title: "Land Clearing", slug: "land-clearing", description: "Full site clearing of trees, stumps, brush, and debris.", heroImage: LAND_HERO },
+    { title: "Forestry Mulching", slug: "forestry-mulching", description: "Mulch trees, brush, and stumps in a single pass — no hauling required.", heroImage: FORESTRY_HERO },
+    { title: "Property Maintenance", slug: "property-maintenance", description: "Keep your land clean, safe, and well-maintained year-round.", heroImage: MAINTENANCE_HERO },
   ],
   faqs: [
     {
