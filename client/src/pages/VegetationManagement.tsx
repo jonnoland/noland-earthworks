@@ -33,48 +33,6 @@ const data: ServicePageProps = {
     "Mechanical methods — no herbicides required",
     "Flexible scheduling: one-time or recurring maintenance",
   ],
-  pricingNote: "Vegetation management pricing depends on the type of vegetation, frequency of service, acreage, and terrain. Below are typical starting ranges for Middle Tennessee properties.",
-  pricing: [
-    {
-      name: "One-Time Service",
-      price: "$350",
-      unit: "/ starting",
-      description: "Single visit to clear overgrown areas or establish a clean baseline.",
-      features: [
-        "Single service visit",
-        "Fence lines, pastures, ROW",
-        "Mechanical clearing",
-        "Debris mulched on-site",
-      ],
-    },
-    {
-      name: "Seasonal Program",
-      price: "$250",
-      unit: "/ visit",
-      description: "2–4 visits per year to keep vegetation under control year-round.",
-      features: [
-        "2–4 scheduled visits/year",
-        "Priority scheduling",
-        "Consistent crew",
-        "Progress documentation",
-        "Discounted vs. one-time rate",
-      ],
-      highlight: true,
-    },
-    {
-      name: "Commercial / ROW",
-      price: "Custom",
-      unit: "quote",
-      description: "Utility corridors, large commercial properties, or municipal contracts.",
-      features: [
-        "Utility & pipeline ROW",
-        "Large commercial sites",
-        "Municipal contracts",
-        "Compliance documentation",
-        "Volume pricing",
-      ],
-    },
-  ],
   photos: PHOTOS,
   faqs: [
     {

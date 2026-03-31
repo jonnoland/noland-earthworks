@@ -4,7 +4,6 @@ import ServicePageLayout, { ServicePageProps } from "@/components/ServicePageLay
 
 const HERO = "https://d2xsxph8kpxj0f.cloudfront.net/310519663484957999/PymCzDCnSJzPjdkfwA7Jn6/land-clearing-iPC6VzRdyjJa4bVNXaWy5n.webp";
 
-// Unsplash land clearing / excavation photos
 const PHOTOS = [
   { src: "https://images.unsplash.com/photo-1504307651254-35680f356dfd?w=800&q=80", caption: "Site preparation — residential lot clearing" },
   { src: "https://images.unsplash.com/photo-1581094794329-c8112a89af12?w=800&q=80", caption: "Heavy equipment removing large trees" },
@@ -33,48 +32,6 @@ const data: ServicePageProps = {
     "Licensed and fully insured for your protection",
     "Free on-site estimate before any work begins",
     "10% discount for active military and veterans",
-  ],
-  pricingNote: "Land clearing pricing depends on acreage, terrain, tree density, and access. The ranges below are typical starting points for Middle Tennessee properties. Contact us for an accurate on-site quote.",
-  pricing: [
-    {
-      name: "Small Lot",
-      price: "$500",
-      unit: "/ starting",
-      description: "Up to ½ acre — light brush, small trees, minimal debris.",
-      features: [
-        "Up to ½ acre",
-        "Light brush & small trees",
-        "Debris hauled or mulched",
-        "Site walk-through included",
-      ],
-    },
-    {
-      name: "Mid-Size Property",
-      price: "$1,200",
-      unit: "/ starting",
-      description: "½ to 2 acres — mixed vegetation, moderate tree density.",
-      features: [
-        "½ to 2 acres",
-        "Mixed trees & heavy brush",
-        "Stump grinding available",
-        "Debris hauled or mulched",
-        "Free detailed estimate",
-      ],
-      highlight: true,
-    },
-    {
-      name: "Large Acreage",
-      price: "Custom",
-      unit: "quote",
-      description: "2+ acres — commercial, agricultural, or high-density sites.",
-      features: [
-        "2+ acres",
-        "Commercial & agricultural",
-        "Multi-day projects welcome",
-        "Grading & leveling add-on",
-        "Volume discount available",
-      ],
-    },
   ],
   photos: PHOTOS,
   faqs: [

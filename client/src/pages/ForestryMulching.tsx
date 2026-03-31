@@ -33,48 +33,6 @@ const data: ServicePageProps = {
     "Can selectively clear while preserving desired trees",
     "Ideal for fire break creation and wildfire risk reduction",
   ],
-  pricingNote: "Forestry mulching is priced per acre based on vegetation density, terrain, and access. Light brush clears faster than dense timber. The ranges below reflect typical Middle Tennessee conditions.",
-  pricing: [
-    {
-      name: "Light Brush",
-      price: "$400",
-      unit: "/ acre",
-      description: "Thin brush, saplings, and light undergrowth up to 4\" diameter.",
-      features: [
-        "Vegetation up to 4\" diameter",
-        "Light to moderate density",
-        "Mulch left on-site",
-        "Fast single-pass operation",
-      ],
-    },
-    {
-      name: "Mixed Vegetation",
-      price: "$600",
-      unit: "/ acre",
-      description: "Mixed brush and trees up to 8\" diameter — most common scenario.",
-      features: [
-        "Trees up to 8\" diameter",
-        "Mixed brush & hardwoods",
-        "Mulch left on-site",
-        "Selective clearing available",
-        "Free on-site estimate",
-      ],
-      highlight: true,
-    },
-    {
-      name: "Heavy Timber",
-      price: "Custom",
-      unit: "quote",
-      description: "Dense timber, large-diameter trees, or difficult terrain.",
-      features: [
-        "Trees 8\"+ diameter",
-        "Dense hardwood stands",
-        "Steep or challenging terrain",
-        "Multi-pass if needed",
-        "Volume pricing available",
-      ],
-    },
-  ],
   photos: PHOTOS,
   faqs: [
     {

@@ -1,19 +1,10 @@
 /*
  * DESIGN: Heavy Equipment Grit — shared layout for all service detail pages
- * Hero banner → overview → pricing table → photo gallery → FAQ accordion → CTA
+ * Hero banner → overview → photo gallery → FAQ accordion → CTA
  */
 import { useState, useEffect, useRef } from "react";
 import { ArrowLeft, ChevronDown, ChevronUp, ArrowRight, Check } from "lucide-react";
 // Using plain <a> tags to avoid nested anchor issues (wouter Link renders as <a>)
-
-export interface PricingTier {
-  name: string;
-  price: string;
-  unit: string;
-  description: string;
-  features: string[];
-  highlight?: boolean;
-}
 
 export interface FaqItem {
   question: string;
@@ -28,8 +19,6 @@ export interface ServicePageProps {
   overviewTitle: string;
   overviewBody: string[];
   benefits: string[];
-  pricingNote: string;
-  pricing: PricingTier[];
   photos: { src: string; caption: string }[];
   faqs: FaqItem[];
 }
@@ -113,7 +102,7 @@ function FaqAccordion({ faqs }: { faqs: FaqItem[] }) {
 export default function ServicePageLayout(props: ServicePageProps) {
   const {
     title, tagline, heroImage, overviewTitle, overviewBody,
-    benefits, pricingNote, pricing, photos, faqs,
+    benefits, photos, faqs,
   } = props;
 
   const scrollToQuote = () => {
@@ -121,7 +110,6 @@ export default function ServicePageLayout(props: ServicePageProps) {
   };
 
   const headerVis = useVisible(0.1);
-  const pricingVis = useVisible(0.1);
   const galleryVis = useVisible(0.1);
   const faqVis = useVisible(0.1);
 
@@ -278,170 +266,6 @@ export default function ServicePageLayout(props: ServicePageProps) {
                   </div>
                 ))}
               </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ── PRICING ── */}
-      <section
-        style={{
-          backgroundColor: "#0F1A0F",
-          paddingTop: "5rem",
-          paddingBottom: "5rem",
-          borderTop: "1px solid rgba(224,123,42,0.15)",
-          borderBottom: "1px solid rgba(224,123,42,0.15)",
-        }}
-      >
-        <div className="container">
-          <div
-            ref={pricingVis.ref}
-            style={{
-              opacity: pricingVis.visible ? 1 : 0,
-              transform: pricingVis.visible ? "translateY(0)" : "translateY(24px)",
-              transition: "opacity 0.5s ease, transform 0.5s ease",
-            }}
-          >
-            <div className="section-label mb-4">Transparent Pricing</div>
-            <h2
-              style={{
-                fontFamily: "'Oswald', sans-serif",
-                fontWeight: 700,
-                fontSize: "clamp(1.75rem, 3vw, 2.5rem)",
-                letterSpacing: "0.04em",
-                textTransform: "uppercase",
-                color: "#F0EDE6",
-                marginBottom: "0.75rem",
-              }}
-            >
-              Pricing Guide
-            </h2>
-            <p
-              style={{
-                fontFamily: "'Lato', sans-serif",
-                fontWeight: 300,
-                fontSize: "0.9rem",
-                color: "rgba(240,237,230,0.55)",
-                marginBottom: "2.5rem",
-                maxWidth: "560px",
-              }}
-            >
-              {pricingNote}
-            </p>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {pricing.map((tier, i) => (
-                <div
-                  key={i}
-                  style={{
-                    backgroundColor: tier.highlight ? "rgba(224,123,42,0.08)" : "rgba(255,255,255,0.03)",
-                    border: tier.highlight ? "1px solid rgba(224,123,42,0.45)" : "1px solid rgba(255,255,255,0.07)",
-                    padding: "1.75rem",
-                    position: "relative",
-                    opacity: pricingVis.visible ? 1 : 0,
-                    transform: pricingVis.visible ? "translateY(0)" : "translateY(24px)",
-                    transition: `opacity 0.5s ease ${i * 0.1}s, transform 0.5s ease ${i * 0.1}s`,
-                  }}
-                >
-                  {tier.highlight && (
-                    <div
-                      style={{
-                        position: "absolute",
-                        top: "-1px",
-                        left: "0",
-                        right: "0",
-                        height: "3px",
-                        backgroundColor: "#E07B2A",
-                      }}
-                    />
-                  )}
-                  <div
-                    style={{
-                      fontFamily: "'Oswald', sans-serif",
-                      fontWeight: 600,
-                      fontSize: "0.75rem",
-                      letterSpacing: "0.18em",
-                      textTransform: "uppercase",
-                      color: "#E07B2A",
-                      marginBottom: "0.75rem",
-                    }}
-                  >
-                    {tier.name}
-                  </div>
-                  <div className="flex items-baseline gap-1 mb-1">
-                    <span
-                      style={{
-                        fontFamily: "'Oswald', sans-serif",
-                        fontWeight: 700,
-                        fontSize: "2.25rem",
-                        color: "#F0EDE6",
-                        lineHeight: 1,
-                      }}
-                    >
-                      {tier.price}
-                    </span>
-                    <span
-                      style={{
-                        fontFamily: "'Lato', sans-serif",
-                        fontWeight: 300,
-                        fontSize: "0.8rem",
-                        color: "rgba(240,237,230,0.5)",
-                      }}
-                    >
-                      {tier.unit}
-                    </span>
-                  </div>
-                  <p
-                    style={{
-                      fontFamily: "'Lato', sans-serif",
-                      fontWeight: 300,
-                      fontSize: "0.825rem",
-                      color: "rgba(240,237,230,0.55)",
-                      marginBottom: "1.25rem",
-                      lineHeight: 1.5,
-                    }}
-                  >
-                    {tier.description}
-                  </p>
-                  <div className="flex flex-col gap-2">
-                    {tier.features.map((f, fi) => (
-                      <div key={fi} className="flex items-start gap-2">
-                        <Check size={12} style={{ color: "#E07B2A", flexShrink: 0, marginTop: "3px" }} />
-                        <span
-                          style={{
-                            fontFamily: "'Lato', sans-serif",
-                            fontWeight: 400,
-                            fontSize: "0.825rem",
-                            color: "rgba(240,237,230,0.7)",
-                          }}
-                        >
-                          {f}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            <div className="mt-6 flex flex-wrap items-center gap-4">
-              <button
-                onClick={scrollToQuote}
-                className="btn-amber"
-              >
-                Get Your Free Quote <ArrowRight size={15} />
-              </button>
-              <p
-                style={{
-                  fontFamily: "'Lato', sans-serif",
-                  fontWeight: 300,
-                  fontSize: "0.8rem",
-                  color: "rgba(240,237,230,0.4)",
-                  fontStyle: "italic",
-                }}
-              >
-                * Prices are estimates. Final quote based on site visit.
-              </p>
             </div>
           </div>
         </div>

@@ -33,48 +33,6 @@ const data: ServicePageProps = {
     "Consistent crews who know your property",
     "Flexible scheduling to fit your needs",
   ],
-  pricingNote: "Property maintenance pricing is based on property size, service frequency, and the scope of work required. Below are typical starting ranges for common maintenance services.",
-  pricing: [
-    {
-      name: "Basic Maintenance",
-      price: "$300",
-      unit: "/ visit",
-      description: "Routine maintenance for smaller properties — brush, debris, and access.",
-      features: [
-        "Up to 1 acre maintained",
-        "Brush and debris clearing",
-        "Driveway access clearing",
-        "Seasonal scheduling",
-      ],
-    },
-    {
-      name: "Full Property Care",
-      price: "$500",
-      unit: "/ visit",
-      description: "Comprehensive maintenance for larger properties with multiple needs.",
-      features: [
-        "1–5 acres maintained",
-        "Fence line clearing",
-        "Pasture & field maintenance",
-        "Storm debris cleanup",
-        "Priority scheduling",
-      ],
-      highlight: true,
-    },
-    {
-      name: "Annual Program",
-      price: "Custom",
-      unit: "contract",
-      description: "Annual service agreement with scheduled visits and discounted rates.",
-      features: [
-        "Customized visit schedule",
-        "Dedicated crew",
-        "Emergency response included",
-        "Discounted annual rate",
-        "Progress reporting",
-      ],
-    },
-  ],
   photos: PHOTOS,
   faqs: [
     {
