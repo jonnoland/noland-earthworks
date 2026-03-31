@@ -51,11 +51,6 @@ export default function HeroSection() {
 
       <div className="container relative z-10 pt-24 pb-16">
         <div className="max-w-3xl">
-          {/* Section label */}
-          <div className="section-label mb-6">
-            Professional Forestry Mulching &amp; Site Services
-          </div>
-
           {/* Main headline */}
           <h1
             style={{
