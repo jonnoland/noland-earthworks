@@ -1,0 +1,116 @@
+import Navbar from "@/components/Navbar";
+import Footer from "@/components/Footer";
+import ServicePageLayout, { ServicePageProps } from "@/components/ServicePageLayout";
+
+const HERO = "https://d2xsxph8kpxj0f.cloudfront.net/310519663484957999/PymCzDCnSJzPjdkfwA7Jn6/land-clearing-iPC6VzRdyjJa4bVNXaWy5n.webp";
+
+// Unsplash land clearing / excavation photos
+const PHOTOS = [
+  { src: "https://images.unsplash.com/photo-1504307651254-35680f356dfd?w=800&q=80", caption: "Site preparation — residential lot clearing" },
+  { src: "https://images.unsplash.com/photo-1581094794329-c8112a89af12?w=800&q=80", caption: "Heavy equipment removing large trees" },
+  { src: "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=800&q=80", caption: "Brush and debris removal" },
+  { src: "https://images.unsplash.com/photo-1541888946425-d81bb19240f5?w=800&q=80", caption: "Cleared land ready for development" },
+  { src: "https://images.unsplash.com/photo-1578662996442-48f60103fc96?w=800&q=80", caption: "Commercial site clearing in progress" },
+  { src: "https://images.unsplash.com/photo-1504307651254-35680f356dfd?w=800&q=80&crop=entropy&fit=crop&h=600&w=800", caption: "Stump removal and grading" },
+];
+
+const data: ServicePageProps = {
+  slug: "land-clearing",
+  title: "Land Clearing",
+  tagline: "Professional land clearing for residential, commercial, and agricultural properties across Middle Tennessee.",
+  heroImage: HERO,
+  overviewTitle: "Complete Land Clearing Solutions",
+  overviewBody: [
+    "Noland Earthworks provides comprehensive land clearing services designed to prepare your property for its next chapter — whether that's a new home, commercial development, agricultural use, or simply reclaiming overgrown land.",
+    "Our experienced operators use modern, well-maintained equipment to safely and efficiently remove trees, stumps, brush, rocks, and debris. We work with you to understand your goals and deliver a clean, usable site that meets your specifications.",
+    "As a veteran-owned company, we bring the discipline, precision, and work ethic of military service to every job. We show up on time, communicate clearly, and don't leave until the work is done right.",
+  ],
+  benefits: [
+    "Full site clearing including trees, stumps, brush, and debris",
+    "Residential, commercial, and agricultural projects",
+    "Proper disposal or on-site mulching of cleared material",
+    "Grading and leveling available as an add-on",
+    "Licensed and fully insured for your protection",
+    "Free on-site estimate before any work begins",
+    "10% discount for active military and veterans",
+  ],
+  pricingNote: "Land clearing pricing depends on acreage, terrain, tree density, and access. The ranges below are typical starting points for Middle Tennessee properties. Contact us for an accurate on-site quote.",
+  pricing: [
+    {
+      name: "Small Lot",
+      price: "$500",
+      unit: "/ starting",
+      description: "Up to ½ acre — light brush, small trees, minimal debris.",
+      features: [
+        "Up to ½ acre",
+        "Light brush & small trees",
+        "Debris hauled or mulched",
+        "Site walk-through included",
+      ],
+    },
+    {
+      name: "Mid-Size Property",
+      price: "$1,200",
+      unit: "/ starting",
+      description: "½ to 2 acres — mixed vegetation, moderate tree density.",
+      features: [
+        "½ to 2 acres",
+        "Mixed trees & heavy brush",
+        "Stump grinding available",
+        "Debris hauled or mulched",
+        "Free detailed estimate",
+      ],
+      highlight: true,
+    },
+    {
+      name: "Large Acreage",
+      price: "Custom",
+      unit: "quote",
+      description: "2+ acres — commercial, agricultural, or high-density sites.",
+      features: [
+        "2+ acres",
+        "Commercial & agricultural",
+        "Multi-day projects welcome",
+        "Grading & leveling add-on",
+        "Volume discount available",
+      ],
+    },
+  ],
+  photos: PHOTOS,
+  faqs: [
+    {
+      question: "How long does land clearing take?",
+      answer: "Most residential lots (under 1 acre) can be cleared in a single day. Larger properties or those with dense tree cover may take 2–3 days. We'll give you a realistic timeline during the free estimate.",
+    },
+    {
+      question: "What happens to the trees and debris?",
+      answer: "We offer two options: we can haul everything off-site for disposal, or we can use our forestry mulcher to grind vegetation into mulch that stays on your property as ground cover. Mulching is often faster and more cost-effective.",
+    },
+    {
+      question: "Do you handle stump removal?",
+      answer: "Yes. Stump grinding is available as an add-on to any land clearing project. We can grind stumps below grade so the area can be graded, seeded, or built upon.",
+    },
+    {
+      question: "Do I need a permit for land clearing in Tennessee?",
+      answer: "Permit requirements vary by county and project scope. Some areas require erosion control permits for disturbed acreage. We can advise you on what's typically required in your county, but recommend checking with your local planning office.",
+    },
+    {
+      question: "Can you clear land near a pond, creek, or wetland?",
+      answer: "Yes, but work near waterways may require additional permits (TDEC, Army Corps). We're experienced working in sensitive areas and will flag any regulatory considerations during the site visit.",
+    },
+    {
+      question: "Do you offer a military discount?",
+      answer: "Absolutely. We offer a 10% discount for active duty military, veterans, and military families. Just mention it when you call or submit your quote request.",
+    },
+  ],
+};
+
+export default function LandClearingPage() {
+  return (
+    <>
+      <Navbar />
+      <ServicePageLayout {...data} />
+      <Footer />
+    </>
+  );
+}

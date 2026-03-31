@@ -13,32 +13,36 @@ const PROPERTY_MAINT = "https://d2xsxph8kpxj0f.cloudfront.net/310519663484957999
 const services = [
   {
     title: "Land Clearing",
+    href: "/services/land-clearing",
     description:
       "Professional land clearing services for residential and commercial properties. We safely remove trees, brush, stumps, and debris to prepare your land for development, agriculture, or landscaping.",
     image: LAND_CLEARING,
   },
   {
     title: "Forestry Mulching",
+    href: "/services/forestry-mulching",
     description:
       "Efficient forestry mulching that grinds trees and vegetation into mulch on-site. Perfect for land management, fire prevention, and creating usable space without the mess of traditional clearing.",
     image: FORESTRY_MULCHING,
   },
   {
     title: "Vegetation Management",
+    href: "/services/vegetation-management",
     description:
       "Strategic vegetation management to maintain property aesthetics, prevent overgrowth, and manage invasive species. Tailored solutions for your specific land management needs.",
     image: VEGETATION_MGMT,
   },
   {
     title: "Property Maintenance",
+    href: "/services/property-maintenance",
     description:
       "Ongoing property maintenance and land management services to keep your property looking its best year-round. Veteran-owned expertise you can trust.",
     image: PROPERTY_MAINT,
   },
 ];
 
-function ServiceCard({ title, description, image, index }: {
-  title: string; description: string; image: string; index: number;
+function ServiceCard({ title, description, image, href, index }: {
+  title: string; description: string; image: string; href: string; index: number;
 }) {
   const [hovered, setHovered] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -68,6 +72,13 @@ function ServiceCard({ title, description, image, index }: {
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
     >
+      {/* Clickable overlay */}
+      <a
+        href={href}
+        className="absolute inset-0 z-10"
+        aria-label={`Learn more about ${title}`}
+        style={{ display: "block" }}
+      />
       {/* Background image */}
       <div
         className="absolute inset-0 transition-transform duration-500"

@@ -1,0 +1,115 @@
+import Navbar from "@/components/Navbar";
+import Footer from "@/components/Footer";
+import ServicePageLayout, { ServicePageProps } from "@/components/ServicePageLayout";
+
+const HERO = "https://d2xsxph8kpxj0f.cloudfront.net/310519663484957999/PymCzDCnSJzPjdkfwA7Jn6/property-maintenance-3gu7BTR6P2RKi4ZuYCNLoN.webp";
+
+const PHOTOS = [
+  { src: "https://images.unsplash.com/photo-1558904541-efa843a96f01?w=800&q=80", caption: "Well-maintained rural property" },
+  { src: "https://images.unsplash.com/photo-1523348837708-15d4a09cfac2?w=800&q=80", caption: "Driveway clearing and access road maintenance" },
+  { src: "https://images.unsplash.com/photo-1416879595882-3373a0480b5b?w=800&q=80", caption: "Seasonal brush clearing around structures" },
+  { src: "https://images.unsplash.com/photo-1500382017468-9049fed747ef?w=800&q=80", caption: "Pasture and field maintenance" },
+  { src: "https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=800&q=80", caption: "Tree line management near property boundary" },
+  { src: "https://images.unsplash.com/photo-1518495973542-4542c06a5843?w=800&q=80", caption: "Storm debris cleanup and removal" },
+];
+
+const data: ServicePageProps = {
+  slug: "property-maintenance",
+  title: "Property Maintenance",
+  tagline: "Keep your land looking its best year-round with reliable, professional property maintenance from a veteran-owned team you can trust.",
+  heroImage: HERO,
+  overviewTitle: "Year-Round Land Stewardship",
+  overviewBody: [
+    "Your property is an investment — and like any investment, it requires consistent care to maintain its value and functionality. Noland Earthworks provides comprehensive property maintenance services that keep your land clean, accessible, and well-managed throughout the year.",
+    "From seasonal brush clearing and storm debris cleanup to driveway maintenance and fence line clearing, our team handles the tasks that keep your property safe, attractive, and functional. We work with residential landowners, farmers, ranchers, and commercial property managers.",
+    "We build long-term relationships with our clients, learning the unique characteristics of each property and providing consistent, reliable service you can count on season after season.",
+  ],
+  benefits: [
+    "Year-round maintenance programs available",
+    "Storm debris cleanup and emergency response",
+    "Driveway and access road clearing",
+    "Fence line maintenance and brush control",
+    "Seasonal pasture and field cleanup",
+    "Consistent crews who know your property",
+    "Flexible scheduling to fit your needs",
+  ],
+  pricingNote: "Property maintenance pricing is based on property size, service frequency, and the scope of work required. Below are typical starting ranges for common maintenance services.",
+  pricing: [
+    {
+      name: "Basic Maintenance",
+      price: "$300",
+      unit: "/ visit",
+      description: "Routine maintenance for smaller properties — brush, debris, and access.",
+      features: [
+        "Up to 1 acre maintained",
+        "Brush and debris clearing",
+        "Driveway access clearing",
+        "Seasonal scheduling",
+      ],
+    },
+    {
+      name: "Full Property Care",
+      price: "$500",
+      unit: "/ visit",
+      description: "Comprehensive maintenance for larger properties with multiple needs.",
+      features: [
+        "1–5 acres maintained",
+        "Fence line clearing",
+        "Pasture & field maintenance",
+        "Storm debris cleanup",
+        "Priority scheduling",
+      ],
+      highlight: true,
+    },
+    {
+      name: "Annual Program",
+      price: "Custom",
+      unit: "contract",
+      description: "Annual service agreement with scheduled visits and discounted rates.",
+      features: [
+        "Customized visit schedule",
+        "Dedicated crew",
+        "Emergency response included",
+        "Discounted annual rate",
+        "Progress reporting",
+      ],
+    },
+  ],
+  photos: PHOTOS,
+  faqs: [
+    {
+      question: "What's included in a property maintenance visit?",
+      answer: "It depends on your specific program, but a typical visit includes brush clearing, debris removal, fence line maintenance, driveway clearing, and any seasonal tasks (like storm cleanup or pasture prep). We customize each program to your property's needs.",
+    },
+    {
+      question: "How do I set up a recurring maintenance program?",
+      answer: "Start with a free site visit. We'll walk your property, discuss your goals and priorities, and propose a maintenance schedule and pricing. Most programs are set up on a seasonal or annual basis with visits scheduled in advance.",
+    },
+    {
+      question: "Do you handle storm damage cleanup?",
+      answer: "Yes. Storm debris cleanup is one of our most common emergency services. We can typically respond within 1–3 business days for urgent situations. Annual program clients receive priority emergency response.",
+    },
+    {
+      question: "Can you maintain my property while I'm away?",
+      answer: "Absolutely. Many of our clients are absentee landowners or seasonal residents. We'll maintain your property on a scheduled basis and can provide photo documentation after each visit so you always know the condition of your land.",
+    },
+    {
+      question: "Do you maintain commercial properties?",
+      answer: "Yes. We work with commercial property managers, HOAs, and businesses that need reliable land maintenance. We can accommodate larger properties and more frequent service schedules for commercial clients.",
+    },
+    {
+      question: "What areas do you serve for property maintenance?",
+      answer: "We serve 17 counties across Middle Tennessee, including Davidson, Williamson, Rutherford, Maury, Dickson, Cheatham, Robertson, Wilson, Sumner, and surrounding counties. Contact us to confirm availability in your specific area.",
+    },
+  ],
+};
+
+export default function PropertyMaintenancePage() {
+  return (
+    <>
+      <Navbar />
+      <ServicePageLayout {...data} />
+      <Footer />
+    </>
+  );
+}

@@ -1,13 +1,24 @@
 /*
- * DESIGN: Heavy Equipment Grit — sticky dark nav with amber CTA, Oswald font
- * Behavior: transparent on hero, solid on scroll; mobile hamburger menu
+ * DESIGN: Heavy Equipment Grit — sticky dark nav with real logo, amber CTA
+ * NOTE: Uses plain <a> tags (not wouter Link) to avoid nested anchor issues.
+ * wouter Link renders as <a> itself, so wrapping another <a> inside causes errors.
  */
 import { useState, useEffect } from "react";
-import { Menu, X, Phone } from "lucide-react";
+import { Menu, X, Phone, ChevronDown } from "lucide-react";
+
+const LOGO_URL = "https://d2xsxph8kpxj0f.cloudfront.net/310519663484957999/PymCzDCnSJzPjdkfwA7Jn6/noland-logo-transparent_783e5c7b.png";
+
+const serviceLinks = [
+  { label: "Land Clearing", href: "/services/land-clearing" },
+  { label: "Forestry Mulching", href: "/services/forestry-mulching" },
+  { label: "Vegetation Management", href: "/services/vegetation-management" },
+  { label: "Property Maintenance", href: "/services/property-maintenance" },
+];
 
 export default function Navbar() {
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [servicesOpen, setServicesOpen] = useState(false);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 60);
@@ -15,18 +26,23 @@ export default function Navbar() {
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
-  const links = [
-    { label: "Services", href: "#services" },
-    { label: "Why Us", href: "#why-us" },
-    { label: "Testimonials", href: "#testimonials" },
-    { label: "Service Areas", href: "#service-areas" },
-  ];
+  const isHome = () => window.location.pathname === "/";
 
-  const scrollTo = (href: string) => {
+  const scrollTo = (id: string) => {
     setMobileOpen(false);
-    const el = document.querySelector(href);
-    if (el) el.scrollIntoView({ behavior: "smooth" });
+    if (isHome()) {
+      const el = document.querySelector(id);
+      if (el) el.scrollIntoView({ behavior: "smooth" });
+    } else {
+      window.location.href = `/${id}`;
+    }
   };
+
+  const navLinks = [
+    { label: "Why Us", id: "#why-us" },
+    { label: "Testimonials", id: "#testimonials" },
+    { label: "Service Areas", id: "#service-areas" },
+  ];
 
   return (
     <header
@@ -40,46 +56,77 @@ export default function Navbar() {
     >
       <div className="container">
         <div className="flex items-center justify-between h-16 lg:h-20">
-          {/* Logo */}
+
+          {/* Logo — plain <a> to avoid nested anchor */}
           <a
-            href="#"
-            onClick={(e) => { e.preventDefault(); window.scrollTo({ top: 0, behavior: "smooth" }); }}
-            className="flex flex-col leading-none"
+            href="/"
+            style={{ textDecoration: "none", display: "flex", alignItems: "center" }}
           >
-            <span
-              style={{
-                fontFamily: "'Oswald', sans-serif",
-                fontWeight: 700,
-                fontSize: "1.25rem",
-                letterSpacing: "0.06em",
-                textTransform: "uppercase",
-                color: "#F0EDE6",
-              }}
-            >
-              Noland Earthworks
-            </span>
-            <span
-              style={{
-                fontFamily: "'Lato', sans-serif",
-                fontWeight: 400,
-                fontSize: "0.65rem",
-                letterSpacing: "0.2em",
-                textTransform: "uppercase",
-                color: "#E07B2A",
-              }}
-            >
-              Forestry Mulching &amp; Site Services
-            </span>
+            <img
+              src={LOGO_URL}
+              alt="Noland Earthworks — Built on American Strength"
+              style={{ height: "52px", width: "auto", objectFit: "contain", filter: "brightness(1.05)" }}
+            />
           </a>
 
           {/* Desktop nav */}
-          <nav className="hidden lg:flex items-center gap-8">
-            {links.map((l) => (
+          <nav className="hidden lg:flex items-center gap-6">
+            {/* Services dropdown */}
+            <div
+              className="relative"
+              onMouseEnter={() => setServicesOpen(true)}
+              onMouseLeave={() => setServicesOpen(false)}
+            >
               <button
-                key={l.href}
-                onClick={() => scrollTo(l.href)}
-                className="nav-link"
+                className="nav-link flex items-center gap-1"
+                onClick={() => setServicesOpen(!servicesOpen)}
               >
+                Services <ChevronDown size={13} style={{ opacity: 0.7 }} />
+              </button>
+              {servicesOpen && (
+                <div className="absolute top-full left-0 pt-2" style={{ minWidth: "220px", zIndex: 100 }}>
+                  <div
+                    style={{
+                      backgroundColor: "rgba(18,18,18,0.98)",
+                      border: "1px solid rgba(224,123,42,0.2)",
+                      backdropFilter: "blur(12px)",
+                      boxShadow: "0 8px 32px rgba(0,0,0,0.5)",
+                    }}
+                  >
+                    {serviceLinks.map((s) => (
+                      <a
+                        key={s.href}
+                        href={s.href}
+                        className="block px-4 py-3 transition-colors duration-150"
+                        style={{
+                          fontFamily: "'Oswald', sans-serif",
+                          fontWeight: 400,
+                          fontSize: "0.875rem",
+                          letterSpacing: "0.06em",
+                          textTransform: "uppercase",
+                          color: "rgba(240,237,230,0.75)",
+                          textDecoration: "none",
+                          borderBottom: "1px solid rgba(255,255,255,0.05)",
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.color = "#E07B2A";
+                          e.currentTarget.style.backgroundColor = "rgba(224,123,42,0.06)";
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.color = "rgba(240,237,230,0.75)";
+                          e.currentTarget.style.backgroundColor = "transparent";
+                        }}
+                      >
+                        {s.label}
+                      </a>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {navLinks.map((l) => (
+              <button key={l.id} onClick={() => scrollTo(l.id)} className="nav-link">
                 {l.label}
               </button>
             ))}
@@ -89,11 +136,15 @@ export default function Navbar() {
           <div className="hidden lg:flex items-center gap-4">
             <a
               href="tel:6154064819"
-              className="flex items-center gap-2 text-sm"
               style={{
                 fontFamily: "'Lato', sans-serif",
                 color: "rgba(240,237,230,0.75)",
                 letterSpacing: "0.04em",
+                textDecoration: "none",
+                display: "flex",
+                alignItems: "center",
+                gap: "0.5rem",
+                fontSize: "0.875rem",
               }}
             >
               <Phone size={14} style={{ color: "#E07B2A" }} />
@@ -101,7 +152,7 @@ export default function Navbar() {
             </a>
             <button
               onClick={() => scrollTo("#contact")}
-              className="btn-amber text-sm"
+              className="btn-amber"
               style={{ padding: "0.5rem 1.25rem" }}
             >
               Get a Quote
@@ -129,21 +180,61 @@ export default function Navbar() {
           }}
         >
           <div className="container py-4 flex flex-col gap-1">
-            {links.map((l) => (
+            <div
+              style={{
+                fontFamily: "'Oswald', sans-serif",
+                fontWeight: 600,
+                fontSize: "0.65rem",
+                letterSpacing: "0.2em",
+                textTransform: "uppercase",
+                color: "#E07B2A",
+                padding: "0.5rem 0.5rem 0.25rem",
+              }}
+            >
+              Services
+            </div>
+            {serviceLinks.map((s) => (
+              <a
+                key={s.href}
+                href={s.href}
+                className="block py-2 px-4"
+                style={{
+                  fontFamily: "'Oswald', sans-serif",
+                  fontWeight: 400,
+                  fontSize: "0.875rem",
+                  letterSpacing: "0.06em",
+                  textTransform: "uppercase",
+                  color: "rgba(240,237,230,0.75)",
+                  textDecoration: "none",
+                  borderBottom: "1px solid rgba(255,255,255,0.05)",
+                }}
+              >
+                {s.label}
+              </a>
+            ))}
+
+            {navLinks.map((l) => (
               <button
-                key={l.href}
-                onClick={() => scrollTo(l.href)}
-                className="text-left py-3 px-2 nav-link border-b"
-                style={{ borderColor: "rgba(255,255,255,0.06)" }}
+                key={l.id}
+                onClick={() => scrollTo(l.id)}
+                className="text-left py-3 px-2 nav-link"
+                style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}
               >
                 {l.label}
               </button>
             ))}
+
             <div className="pt-4 flex flex-col gap-3">
               <a
                 href="tel:6154064819"
-                className="flex items-center gap-2"
-                style={{ color: "rgba(240,237,230,0.75)", fontFamily: "'Lato', sans-serif" }}
+                style={{
+                  color: "rgba(240,237,230,0.75)",
+                  fontFamily: "'Lato', sans-serif",
+                  textDecoration: "none",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "0.5rem",
+                }}
               >
                 <Phone size={14} style={{ color: "#E07B2A" }} />
                 615-406-4819
