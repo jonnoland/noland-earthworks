@@ -13,52 +13,78 @@ const JOBBER_TOKEN_URL = "https://api.getjobber.com/api/oauth/token";
 
 // ─── Token helpers ────────────────────────────────────────────────────────────
 
+/**
+ * Decode the exp claim from a JWT without verifying the signature.
+ * Falls back to 55 minutes from now if decoding fails.
+ */
+function getExpiresAtFromJwt(jwt: string): Date {
+  try {
+    const payload = jwt.split(".")[1];
+    if (!payload) throw new Error("No payload");
+    const decoded = JSON.parse(Buffer.from(payload, "base64url").toString("utf8")) as { exp?: number };
+    if (decoded.exp && typeof decoded.exp === "number") {
+      return new Date(decoded.exp * 1000);
+    }
+  } catch {
+    // fall through
+  }
+  // Default: 55 minutes from now (Jobber tokens expire in 60 min)
+  return new Date(Date.now() + 55 * 60 * 1000);
+}
+
 export async function exchangeCodeForTokens(code: string): Promise<void> {
   const res = await fetch(JOBBER_TOKEN_URL, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({
       client_id: ENV.jobberClientId,
       client_secret: ENV.jobberClientSecret,
       grant_type: "authorization_code",
       code,
-    }),
+      redirect_uri: "https://www.nolandearthworks.com/api/jobber/callback",
+    }).toString(),
   });
   if (!res.ok) {
     const text = await res.text();
     throw new Error(`Jobber token exchange failed: ${res.status} ${text}`);
   }
-  const data = await res.json() as { access_token: string; refresh_token: string; expires_in: number };
-  await saveTokens(data.access_token, data.refresh_token, data.expires_in);
+  const data = await res.json() as { access_token: string; refresh_token: string; expires_in?: number };
+  const expiresAt = data.expires_in
+    ? new Date(Date.now() + data.expires_in * 1000)
+    : getExpiresAtFromJwt(data.access_token);
+  await saveTokens(data.access_token, data.refresh_token, expiresAt);
 }
 
 async function refreshAccessToken(refreshToken: string): Promise<{ accessToken: string; refreshToken: string }> {
   const res = await fetch(JOBBER_TOKEN_URL, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({
       client_id: ENV.jobberClientId,
       client_secret: ENV.jobberClientSecret,
       grant_type: "refresh_token",
       refresh_token: refreshToken,
-    }),
+    }).toString(),
   });
   if (!res.ok) {
     const text = await res.text();
     throw new Error(`Jobber token refresh failed: ${res.status} ${text}`);
   }
-  const data = await res.json() as { access_token: string; refresh_token: string; expires_in: number };
-  await saveTokens(data.access_token, data.refresh_token, data.expires_in);
+  const data = await res.json() as { access_token: string; refresh_token: string; expires_in?: number };
+  const expiresAt = data.expires_in
+    ? new Date(Date.now() + data.expires_in * 1000)
+    : getExpiresAtFromJwt(data.access_token);
+  await saveTokens(data.access_token, data.refresh_token, expiresAt);
   return { accessToken: data.access_token, refreshToken: data.refresh_token };
 }
 
-async function saveTokens(accessToken: string, refreshToken: string, expiresIn: number): Promise<void> {
-  const expiresAt = new Date(Date.now() + expiresIn * 1000);
+async function saveTokens(accessToken: string, refreshToken: string, expiresAt: Date): Promise<void> {
   // Upsert: delete all existing rows and insert fresh one (single-account setup)
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   await db.delete(jobberTokens);
   await db.insert(jobberTokens).values({ accessToken, refreshToken, expiresAt });
+  console.log(`[Jobber] Tokens saved, expires at: ${expiresAt.toISOString()}`);
 }
 
 async function getValidAccessToken(): Promise<string> {

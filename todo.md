@@ -9,3 +9,4 @@
 - [x] Add Jobber token auto-refresh logic
 - [x] On quote form submit: create Jobber client + request via GraphQL API
 - [x] Add admin page to trigger Jobber OAuth authorization flow
+- [x] Fix "Invalid time value" error in Jobber token storage (expiresAt date handling)
