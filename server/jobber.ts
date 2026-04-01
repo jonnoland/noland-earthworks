@@ -143,7 +143,23 @@ interface QuoteFormData {
   service: string;
   county: string;
   acreage?: string;
+  street?: string;
+  city?: string;
+  state?: string;
+  zip?: string;
   message?: string;
+}
+
+/** Build an AddressAttributes object if any address field is present. */
+function buildAddressAttributes(data: QuoteFormData): Record<string, string> | null {
+  const { street, city, state, zip } = data;
+  if (!street && !city && !zip) return null;
+  const addr: Record<string, string> = { country: "US" };
+  if (street) addr.street1 = street;
+  if (city) addr.city = city;
+  if (state) addr.province = state;
+  if (zip) addr.postalCode = zip;
+  return addr;
 }
 
 /**
@@ -223,6 +239,11 @@ export async function createJobberRequest(data: QuoteFormData): Promise<void> {
       phones: [{ description: "MAIN", primary: true, number: data.phone }],
     };
     if (lastName) clientInput.lastName = lastName;
+    // Attach property address if provided
+    const addrAttrs = buildAddressAttributes(data);
+    if (addrAttrs) {
+      clientInput.properties = [{ address: addrAttrs }];
+    }
 
     const clientData = await jobberGraphQL(clientMutation, { input: clientInput }) as {
       clientCreate: { client: { id: string } | null; userErrors: Array<{ message: string }> };
@@ -239,10 +260,14 @@ export async function createJobberRequest(data: QuoteFormData): Promise<void> {
 
   // 2. Build request title and description
   const title = `${data.service} — ${data.county} County`;
+  const addressLine = [data.street, [data.city, data.state, data.zip].filter(Boolean).join(" ")]
+    .filter(Boolean)
+    .join(", ");
   const descParts = [
     `Service: ${data.service}`,
     `County: ${data.county} County`,
     data.acreage ? `Acreage: ${data.acreage}` : "",
+    addressLine ? `Property Address: ${addressLine}` : "",
     data.message ? `\nProject Details:\n${data.message}` : "",
   ].filter(Boolean);
   const description = descParts.join("\n");

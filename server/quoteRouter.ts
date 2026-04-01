@@ -12,6 +12,11 @@ const quoteSchema = z.object({
   service: z.string().min(1, "Service is required").max(100),
   county: z.string().min(1, "County is required").max(100),
   acreage: z.string().max(50).optional().default(""),
+  // Property / service address
+  street: z.string().max(200).optional().default(""),
+  city: z.string().max(100).optional().default(""),
+  state: z.string().max(50).optional().default("TN"),
+  zip: z.string().max(20).optional().default(""),
   message: z.string().max(2000).optional().default(""),
 });
 
@@ -78,6 +83,14 @@ function buildEmailHtml(data: QuoteInput): string {
         <div class="label">Acreage</div>
         <div class="value">${escapeHtml(data.acreage)}</div>
       </div>` : ""}
+      ${(data.street || data.city) ? `
+      <div class="field">
+        <div class="label">Property Address</div>
+        <div class="value">${[
+          data.street,
+          [data.city, data.state, data.zip].filter(Boolean).join(" "),
+        ].filter(Boolean).map(escapeHtml).join("<br>")}</div>
+      </div>` : ""}
       ${data.message ? `
       <div class="field">
         <div class="label">Project Details</div>
@@ -124,6 +137,7 @@ export const quoteRouter = router({
           `Service: ${input.service}`,
           `County: ${input.county} County`,
           input.acreage ? `Acreage: ${input.acreage}` : "",
+          (input.street || input.city) ? `Address: ${[input.street, [input.city, input.state, input.zip].filter(Boolean).join(" ")].filter(Boolean).join(", ")}` : "",
           input.message ? `\nProject Details:\n${input.message}` : "",
         ]
           .filter(Boolean)

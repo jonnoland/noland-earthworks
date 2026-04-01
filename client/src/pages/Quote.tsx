@@ -38,7 +38,9 @@ export default function QuotePage() {
   const [submitted, setSubmitted] = useState(false);
   const [form, setForm] = useState({
     name: "", phone: "", email: "", service: "",
-    county: "", acreage: "", message: "",
+    county: "", acreage: "",
+    street: "", city: "", state: "TN", zip: "",
+    message: "",
   });
 
   const handleChange = (
@@ -71,6 +73,10 @@ export default function QuotePage() {
       service: form.service,
       county: form.county || "(not specified)",
       acreage: form.acreage,
+      street: form.street,
+      city: form.city,
+      state: form.state || "TN",
+      zip: form.zip,
       message: form.message,
     });
   };
@@ -511,6 +517,45 @@ export default function QuotePage() {
                       <option value="ten-plus" style={{ backgroundColor: "#1a1a1a" }}>10+ acres</option>
                       <option value="unsure" style={{ backgroundColor: "#1a1a1a" }}>Not sure</option>
                     </select>
+                  </div>
+
+                  {/* Property Address */}
+                  <div>
+                    <label style={labelStyle}>Property / Service Address <span style={{ color: "rgba(240,237,230,0.4)", fontSize: "0.7rem", letterSpacing: "0.08em" }}>(Optional)</span></label>
+                    <input
+                      name="street" type="text"
+                      placeholder="Street address"
+                      value={form.street} onChange={handleChange}
+                      style={{ ...inputStyle, marginBottom: "0.5rem" }}
+                      onFocus={(e) => (e.target.style.borderColor = "rgba(224,123,42,0.6)")}
+                      onBlur={(e) => (e.target.style.borderColor = "rgba(255,255,255,0.12)")}
+                    />
+                    <div className="grid grid-cols-3 gap-3">
+                      <input
+                        name="city" type="text"
+                        placeholder="City"
+                        value={form.city} onChange={handleChange}
+                        style={inputStyle}
+                        onFocus={(e) => (e.target.style.borderColor = "rgba(224,123,42,0.6)")}
+                        onBlur={(e) => (e.target.style.borderColor = "rgba(255,255,255,0.12)")}
+                      />
+                      <input
+                        name="state" type="text"
+                        placeholder="State"
+                        value={form.state} onChange={handleChange}
+                        style={inputStyle}
+                        onFocus={(e) => (e.target.style.borderColor = "rgba(224,123,42,0.6)")}
+                        onBlur={(e) => (e.target.style.borderColor = "rgba(255,255,255,0.12)")}
+                      />
+                      <input
+                        name="zip" type="text"
+                        placeholder="ZIP"
+                        value={form.zip} onChange={handleChange}
+                        style={inputStyle}
+                        onFocus={(e) => (e.target.style.borderColor = "rgba(224,123,42,0.6)")}
+                        onBlur={(e) => (e.target.style.borderColor = "rgba(255,255,255,0.12)")}
+                      />
+                    </div>
                   </div>
 
                   {/* Message */}
