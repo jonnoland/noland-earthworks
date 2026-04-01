@@ -420,6 +420,7 @@ export default function QuotePage() {
                       "multiple": "Multiple Services",
                     };
                     const acreageLabels: Record<string, string> = {
+                      "half-to-one": "½ – 1 acre",
                       "one-to-two": "1 – 2 acres",
                       "two-to-five": "2 – 5 acres",
                       "five-to-ten": "5 – 10 acres",
@@ -467,6 +468,10 @@ export default function QuotePage() {
                         }}
                       >
                         <div style={{ color: "rgba(240,237,230,0.5)", fontSize: "0.68rem", letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: "0.75rem", fontWeight: 600 }}>Request Summary</div>
+                        <div style={rowStyle}>
+                          <span style={labelStyle2}>Name</span>
+                          <span style={valueStyle}>{form.name}</span>
+                        </div>
                         <div style={rowStyle}>
                           <span style={labelStyle2}>Service</span>
                           <span style={valueStyle}>{serviceDisplay}</span>
