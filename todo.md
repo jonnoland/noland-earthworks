@@ -2,3 +2,4 @@
 - [x] Add Related Services section to all four service detail pages
 - [x] Add unique SEO page titles to all pages
 - [x] Add floating scroll-to-top button
+- [x] Hide "Made with Manus" badge
