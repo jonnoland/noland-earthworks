@@ -8,4 +8,6 @@ export const ENV = {
   forgeApiUrl: process.env.BUILT_IN_FORGE_API_URL ?? "",
   forgeApiKey: process.env.BUILT_IN_FORGE_API_KEY ?? "",
   resendApiKey: process.env.RESEND_API_KEY ?? "",
+  jobberClientId: process.env.JOBBER_CLIENT_ID ?? "",
+  jobberClientSecret: process.env.JOBBER_CLIENT_SECRET ?? "",
 };

@@ -26,3 +26,19 @@ export type User = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;
 
 // TODO: Add your tables here
+
+/**
+ * Stores Jobber OAuth tokens for the site owner's account.
+ * Only one row is expected (the owner's tokens).
+ */
+export const jobberTokens = mysqlTable("jobber_tokens", {
+  id: int("id").autoincrement().primaryKey(),
+  accessToken: text("accessToken").notNull(),
+  refreshToken: text("refreshToken").notNull(),
+  expiresAt: timestamp("expiresAt").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type JobberToken = typeof jobberTokens.$inferSelect;
+export type InsertJobberToken = typeof jobberTokens.$inferInsert;

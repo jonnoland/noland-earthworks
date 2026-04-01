@@ -3,6 +3,7 @@ import { publicProcedure, router } from "./_core/trpc";
 import { notifyOwner } from "./_core/notification";
 import { ENV } from "./_core/env";
 import { Resend } from "resend";
+import { createJobberRequest, isJobberConnected } from "./jobber";
 
 const quoteSchema = z.object({
   name: z.string().min(1, "Name is required").max(100),
@@ -130,6 +131,17 @@ export const quoteRouter = router({
       });
     } catch (err) {
       console.warn("[Quote] Owner notification failed:", err);
+    }
+
+    // 3. Send to Jobber if connected
+    try {
+      const jobberReady = await isJobberConnected();
+      if (jobberReady) {
+        await createJobberRequest(input);
+      }
+    } catch (err) {
+      console.error("[Quote] Jobber request creation failed:", err);
+      // Non-fatal: email + notification already sent
     }
 
     return { success: true };

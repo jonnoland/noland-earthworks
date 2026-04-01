@@ -3,3 +3,9 @@
 - [x] Add unique SEO page titles to all pages
 - [x] Add floating scroll-to-top button
 - [x] Hide "Made with Manus" badge
+- [x] Add Jobber OAuth credentials as secrets
+- [x] Build Jobber OAuth callback route to exchange code for tokens
+- [x] Store Jobber access/refresh tokens in database
+- [x] Add Jobber token auto-refresh logic
+- [x] On quote form submit: create Jobber client + request via GraphQL API
+- [x] Add admin page to trigger Jobber OAuth authorization flow
