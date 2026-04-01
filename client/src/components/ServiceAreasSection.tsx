@@ -1,8 +1,13 @@
 /*
- * DESIGN: Heavy Equipment Grit — dark section with county grid and embedded map
+ * DESIGN: Heavy Equipment Grit — dark section with county grid and interactive map
+ * Map shows amber-outlined polygon boundaries for all 17 served counties.
  */
 import { MapPin } from "lucide-react";
-import { useRef, useEffect, useState } from "react";
+import { useRef, useEffect, useState, useCallback } from "react";
+import { MapView } from "@/components/Map";
+
+const COUNTY_GEOJSON_URL =
+  "https://d2xsxph8kpxj0f.cloudfront.net/310519663484957999/PymCzDCnSJzPjdkfwA7Jn6/tn-served-counties_0839aca6.json";
 
 const counties = [
   "Lewis County", "Maury County", "Perry County", "Benton County",
@@ -12,9 +17,14 @@ const counties = [
   "Rutherford County", "Williamson County",
 ];
 
+// Center of the 17-county service area (roughly middle of the cluster)
+const MAP_CENTER = { lat: 36.18, lng: -87.35 };
+const MAP_ZOOM = 8;
+
 export default function ServiceAreasSection() {
   const ref = useRef<HTMLDivElement>(null);
   const [visible, setVisible] = useState(false);
+  const polygonsRef = useRef<google.maps.Polygon[]>([]);
 
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -23,6 +33,100 @@ export default function ServiceAreasSection() {
     );
     if (ref.current) observer.observe(ref.current);
     return () => observer.disconnect();
+  }, []);
+
+  const handleMapReady = useCallback((map: google.maps.Map) => {
+    // Apply dark map style to match site theme
+    map.setOptions({
+      styles: [
+        { elementType: "geometry", stylers: [{ color: "#1a1a1a" }] },
+        { elementType: "labels.text.fill", stylers: [{ color: "#8a8a8a" }] },
+        { elementType: "labels.text.stroke", stylers: [{ color: "#1a1a1a" }] },
+        { featureType: "administrative.country", elementType: "geometry.stroke", stylers: [{ color: "#4b6043" }] },
+        { featureType: "administrative.land_parcel", stylers: [{ visibility: "off" }] },
+        { featureType: "administrative.province", elementType: "geometry.stroke", stylers: [{ color: "#4b6043" }] },
+        { featureType: "landscape.man_made", elementType: "geometry.stroke", stylers: [{ color: "#3f4f3f" }] },
+        { featureType: "landscape.natural", elementType: "geometry", stylers: [{ color: "#1e2b1e" }] },
+        { featureType: "poi", elementType: "geometry", stylers: [{ color: "#283528" }] },
+        { featureType: "poi", elementType: "labels.text.fill", stylers: [{ color: "#6b9a76" }] },
+        { featureType: "poi.park", elementType: "geometry", stylers: [{ color: "#263c3f" }] },
+        { featureType: "poi.park", elementType: "labels.text.fill", stylers: [{ color: "#6b9a76" }] },
+        { featureType: "road", elementType: "geometry", stylers: [{ color: "#38414e" }] },
+        { featureType: "road", elementType: "geometry.stroke", stylers: [{ color: "#212a37" }] },
+        { featureType: "road", elementType: "labels.text.fill", stylers: [{ color: "#9ca5b3" }] },
+        { featureType: "road.highway", elementType: "geometry", stylers: [{ color: "#746855" }] },
+        { featureType: "road.highway", elementType: "geometry.stroke", stylers: [{ color: "#1f2835" }] },
+        { featureType: "road.highway", elementType: "labels.text.fill", stylers: [{ color: "#f3d19c" }] },
+        { featureType: "transit", elementType: "geometry", stylers: [{ color: "#2f3948" }] },
+        { featureType: "transit.station", elementType: "labels.text.fill", stylers: [{ color: "#d59563" }] },
+        { featureType: "water", elementType: "geometry", stylers: [{ color: "#17263c" }] },
+        { featureType: "water", elementType: "labels.text.fill", stylers: [{ color: "#515c6d" }] },
+        { featureType: "water", elementType: "labels.text.stroke", stylers: [{ color: "#17263c" }] },
+      ],
+    });
+
+    // Fetch and draw county polygons
+    fetch(COUNTY_GEOJSON_URL)
+      .then((r) => {
+        if (!r.ok) throw new Error(`GeoJSON fetch failed: ${r.status}`);
+        return r.json();
+      })
+      .then((geojson) => {
+        // Clear any existing polygons
+        polygonsRef.current.forEach((p) => p.setMap(null));
+        polygonsRef.current = [];
+
+        const features: GeoJSON.Feature[] = geojson.features ?? [];
+        console.log(`[ServiceAreas] Loaded ${features.length} county features`);
+
+        features.forEach((feature: GeoJSON.Feature) => {
+          const geom = feature.geometry;
+          if (!geom) return;
+
+          const toLatLng = (coord: number[]) => ({
+            lat: coord[1],
+            lng: coord[0],
+          });
+
+          const rings: google.maps.LatLngLiteral[][] = [];
+
+          if (geom.type === "Polygon") {
+            (geom as GeoJSON.Polygon).coordinates.forEach((ring) => {
+              rings.push(ring.map(toLatLng));
+            });
+          } else if (geom.type === "MultiPolygon") {
+            (geom as GeoJSON.MultiPolygon).coordinates.forEach((poly) => {
+              poly.forEach((ring) => rings.push(ring.map(toLatLng)));
+            });
+          }
+
+          if (rings.length === 0) return;
+
+          const polygon = new google.maps.Polygon({
+            paths: rings,
+            strokeColor: "#E07B2A",
+            strokeOpacity: 0.9,
+            strokeWeight: 2,
+            fillColor: "#E07B2A",
+            fillOpacity: 0.12,
+            map,
+          });
+
+          // Hover effect
+          polygon.addListener("mouseover", () => {
+            polygon.setOptions({ fillOpacity: 0.28, strokeWeight: 3 });
+          });
+          polygon.addListener("mouseout", () => {
+            polygon.setOptions({ fillOpacity: 0.12, strokeWeight: 2 });
+          });
+
+          polygonsRef.current.push(polygon);
+        });
+        console.log(`[ServiceAreas] Drew ${polygonsRef.current.length} county polygons`);
+      })
+      .catch((err) => {
+        console.error("[ServiceAreas] Failed to load county GeoJSON:", err);
+      });
   }, []);
 
   return (
@@ -73,7 +177,14 @@ export default function ServiceAreasSection() {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start" style={{ opacity: visible ? 1 : 0, transform: visible ? 'translateY(0)' : 'translateY(24px)', transition: 'opacity 0.5s ease 0.2s, transform 0.5s ease 0.2s' }}>
+        <div
+          className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start"
+          style={{
+            opacity: visible ? 1 : 0,
+            transform: visible ? "translateY(0)" : "translateY(24px)",
+            transition: "opacity 0.5s ease 0.2s, transform 0.5s ease 0.2s",
+          }}
+        >
           {/* County list */}
           <div>
             <div
@@ -133,7 +244,7 @@ export default function ServiceAreasSection() {
             </p>
           </div>
 
-          {/* Map embed */}
+          {/* Interactive map with county outlines */}
           <div
             style={{
               border: "1px solid rgba(224,123,42,0.2)",
@@ -141,15 +252,11 @@ export default function ServiceAreasSection() {
               height: "400px",
             }}
           >
-            <iframe
-              title="Noland Earthworks Service Area — Middle Tennessee"
-              src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d1640000!2d-87.0!3d35.8!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x8864ec3213eb903d%3A0x7d3fb9d0a1e9daa0!2sMiddle%20Tennessee!5e0!3m2!1sen!2sus!4v1700000000000!5m2!1sen!2sus"
-              width="100%"
-              height="100%"
-              style={{ border: 0, filter: "invert(90%) hue-rotate(180deg)" }}
-              allowFullScreen
-              loading="lazy"
-              referrerPolicy="no-referrer-when-downgrade"
+            <MapView
+              className="w-full h-full"
+              initialCenter={MAP_CENTER}
+              initialZoom={MAP_ZOOM}
+              onMapReady={handleMapReady}
             />
           </div>
         </div>

@@ -18,3 +18,4 @@
 - [ ] Jobber: Add phone-based duplicate client detection as fallback when email is missing or not matched
 - [x] Add address fields (street, city, state, zip) to quote form UI, schema, email, and Jobber request
 - [x] Show submitted address in quote form confirmation message
+- [x] Draw county boundary outlines on the service areas map for each served county
