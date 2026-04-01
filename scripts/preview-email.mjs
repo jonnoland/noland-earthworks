@@ -1,28 +1,6 @@
-import { z } from "zod";
-import { publicProcedure, router } from "./_core/trpc";
-import { notifyOwner } from "./_core/notification";
-import { ENV } from "./_core/env";
-import { Resend } from "resend";
-import { createJobberRequest, isJobberConnected } from "./jobber";
+import { writeFileSync } from "fs";
 
-const quoteSchema = z.object({
-  name: z.string().min(1, "Name is required").max(100),
-  phone: z.string().min(7, "Phone is required").max(30),
-  email: z.string().email("Valid email is required").max(320),
-  service: z.string().min(1, "Service is required").max(100),
-  county: z.string().min(1, "County is required").max(100),
-  acreage: z.string().max(50).optional().default(""),
-  // Property / service address
-  street: z.string().max(200).optional().default(""),
-  city: z.string().max(100).optional().default(""),
-  state: z.string().max(50).optional().default("TN"),
-  zip: z.string().max(20).optional().default(""),
-  message: z.string().max(2000).optional().default(""),
-});
-
-export type QuoteInput = z.infer<typeof quoteSchema>;
-
-function escapeHtml(str: string): string {
+function escapeHtml(str) {
   return str
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
@@ -31,25 +9,26 @@ function escapeHtml(str: string): string {
     .replace(/'/g, "&#39;");
 }
 
-function buildEmailHtml(data: QuoteInput): string {
-  const logoUrl = "https://d2xsxph8kpxj0f.cloudfront.net/310519663484957999/PymCzDCnSJzPjdkfwA7Jn6/noland-logo-transparent_d2051edf.png";
-  const submittedAt = new Date().toLocaleString("en-US", {
-    timeZone: "America/Chicago",
-    weekday: "long",
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-    timeZoneName: "short",
-  });
+const data = {
+  name: "John Smith",
+  phone: "6155550123",
+  email: "john.smith@example.com",
+  service: "Forestry Mulching",
+  county: "Williamson County",
+  acreage: "5-10 acres",
+  street: "123 Oak Hollow Lane",
+  city: "Franklin",
+  state: "TN",
+  zip: "37064",
+  message: "We have about 8 acres of dense cedar and brush that needs to be cleared for a new pasture. The property has some rocky terrain on the east side.",
+};
 
-  const addressLines = [
-    data.street,
-    [data.city, data.state, data.zip].filter(Boolean).join(" "),
-  ].filter(Boolean);
+const logoUrl = "https://d2xsxph8kpxj0f.cloudfront.net/310519663484957999/PymCzDCnSJzPjdkfwA7Jn6/noland-logo-transparent_d2051edf.png";
+const submittedAt = "Wednesday, April 1, 2026 at 9:34 AM CDT";
 
-  const row = (label: string, value: string) => `
+const addressLines = [data.street, [data.city, data.state, data.zip].filter(Boolean).join(" ")].filter(Boolean);
+
+const row = (label, value) => `
     <tr>
       <td style="padding:10px 16px;border-bottom:1px solid #f0ede6;width:38%;">
         <span style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:#999;">${label}</span>
@@ -59,7 +38,7 @@ function buildEmailHtml(data: QuoteInput): string {
       </td>
     </tr>`;
 
-  return `
+const html = `
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -128,14 +107,13 @@ function buildEmailHtml(data: QuoteInput): string {
           <td style="padding:0 36px;">
             <table width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #f0ede6;border-radius:6px;overflow:hidden;">
               ${row("Service Requested", `<strong>${escapeHtml(data.service)}</strong>`)}
-              ${row("County", escapeHtml(data.county) + " County")}
+              ${row("County", escapeHtml(data.county))}
               ${data.acreage ? row("Acreage", escapeHtml(data.acreage)) : ""}
               ${addressLines.length ? row("Property Address", addressLines.map(escapeHtml).join("<br />")) : ""}
             </table>
           </td>
         </tr>
 
-        ${data.message ? `
         <!-- Section: Additional Notes -->
         <tr>
           <td style="padding:24px 36px 0;">
@@ -146,7 +124,7 @@ function buildEmailHtml(data: QuoteInput): string {
           <td style="padding:0 36px;">
             <div style="background:#f9f7f4;border:1px solid #f0ede6;border-radius:6px;padding:14px 16px;font-size:14px;color:#333;line-height:1.6;white-space:pre-wrap;">${escapeHtml(data.message)}</div>
           </td>
-        </tr>` : ""}
+        </tr>
 
         <!-- CTA -->
         <tr>
@@ -178,88 +156,6 @@ function buildEmailHtml(data: QuoteInput): string {
   </table>
 </body>
 </html>`.trim();
-}
 
-export const quoteRouter = router({
-  submit: publicProcedure.input(quoteSchema).mutation(async ({ input }) => {
-    // 1. Send email via the pre-injected RESEND_API_KEY system secret
-    if (ENV.resendApiKey) {
-      try {
-        const resend = new Resend(ENV.resendApiKey);
-        const { error } = await resend.emails.send({
-          from: "Noland Earthworks <noreply@nolandearthworks.com>",
-          to: ["quotes@nolandearthworks.com"],
-          replyTo: input.email,
-          subject: `New Quote Request — ${input.service} (${input.county} County)`,
-          html: buildEmailHtml(input),
-        });
-        if (error) {
-          console.error("[Quote] Resend error:", error);
-        }
-      } catch (err) {
-        console.error("[Quote] Failed to send email:", err);
-      }
-    }
-
-    // 2. Always send in-app owner notification as backup
-    try {
-      await notifyOwner({
-        title: `New Quote Request — ${input.name} (${input.service})`,
-        content: [
-          `Name: ${input.name}`,
-          `Phone: ${input.phone}`,
-          `Email: ${input.email}`,
-          `Service: ${input.service}`,
-          `County: ${input.county} County`,
-          input.acreage ? `Acreage: ${input.acreage}` : "",
-          (input.street || input.city) ? `Address: ${[input.street, [input.city, input.state, input.zip].filter(Boolean).join(" ")].filter(Boolean).join(", ")}` : "",
-          input.message ? `\nProject Details:\n${input.message}` : "",
-        ]
-          .filter(Boolean)
-          .join("\n"),
-      });
-    } catch (err) {
-      console.warn("[Quote] Owner notification failed:", err);
-    }
-
-    // 3. Send to Jobber if connected
-    try {
-      const jobberReady = await isJobberConnected();
-      if (jobberReady) {
-        await createJobberRequest(input);
-      }
-    } catch (err) {
-      console.error("[Quote] Jobber request creation failed:", err);
-      // Non-fatal: email + notification already sent.
-      // Notify owner so no lead is silently lost.
-      try {
-        const errMsg = err instanceof Error ? err.message : String(err);
-        await notifyOwner({
-          title: "⚠️ Jobber Sync Failed — Manual Entry Required",
-          content: [
-            `A quote was submitted but could NOT be automatically added to Jobber.`,
-            ``,
-            `Customer: ${input.name}`,
-            `Phone: ${input.phone}`,
-            `Email: ${input.email}`,
-            `Service: ${input.service}`,
-            `County: ${input.county}`,
-            input.acreage ? `Acreage: ${input.acreage}` : "",
-            input.message ? `Details: ${input.message}` : "",
-            ``,
-            `Error: ${errMsg}`,
-            ``,
-            `Please add this request to Jobber manually, or re-authorize at:`,
-            `https://www.nolandearthworks.com/api/jobber/authorize`,
-          ]
-            .filter(line => line !== undefined)
-            .join("\n"),
-        });
-      } catch (notifyErr) {
-        console.warn("[Quote] Jobber failure notification also failed:", notifyErr);
-      }
-    }
-
-    return { success: true };
-  }),
-});
+writeFileSync("/tmp/email-preview.html", html);
+console.log("Email preview written to /tmp/email-preview.html");
