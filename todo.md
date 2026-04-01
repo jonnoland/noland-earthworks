@@ -22,5 +22,8 @@
 - [x] Redesign quote request notification email with professional branded HTML template
 - [x] Send automated branded confirmation email to customer after quote form submission
 - [x] Fix quote confirmation screen: proper capitalization, spacing, human-readable values (service, county, acreage, address formatting)
-- [ ] Add requestor name as first row in quote confirmation summary card
-- [ ] Fix missing acreage label for "half-to-one" value in confirmation screen
+- [x] Add requestor name as first row in quote confirmation summary card
+- [x] Fix missing acreage label for "half-to-one" value in confirmation screen
+- [x] Draft Terms of Service, Privacy Policy, and Terms and Conditions for Noland Earthworks
+- [x] Build /terms-of-service, /privacy-policy, and /terms-and-conditions pages on the website
+- [x] Link all three legal pages from the footer

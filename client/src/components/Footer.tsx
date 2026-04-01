@@ -206,11 +206,15 @@ export default function Footer() {
           >
             © 2026 Noland Earthworks, LLC. All rights reserved. Licensed &amp; Insured.
           </p>
-          <div className="flex gap-4">
-            {["Terms of Service", "Privacy Policy"].map((l) => (
+          <div className="flex flex-wrap gap-4">
+            {[
+              { label: "Terms of Service", href: "/terms-of-service" },
+              { label: "Privacy Policy", href: "/privacy-policy" },
+              { label: "Terms & Conditions", href: "/terms-and-conditions" },
+            ].map((l) => (
               <a
-                key={l}
-                href="#"
+                key={l.href}
+                href={l.href}
                 style={{
                   fontFamily: "'Lato', sans-serif",
                   fontWeight: 400,
@@ -219,8 +223,10 @@ export default function Footer() {
                   textDecoration: "none",
                   letterSpacing: "0.04em",
                 }}
+                onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.color = "#E07B2A"; }}
+                onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.color = "rgba(240,237,230,0.35)"; }}
               >
-                {l}
+                {l.label}
               </a>
             ))}
           </div>
