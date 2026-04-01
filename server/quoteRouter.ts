@@ -180,6 +180,130 @@ function buildEmailHtml(data: QuoteInput): string {
 </html>`.trim();
 }
 
+function buildConfirmationEmailHtml(data: QuoteInput): string {
+  const logoUrl = "https://d2xsxph8kpxj0f.cloudfront.net/310519663484957999/PymCzDCnSJzPjdkfwA7Jn6/noland-logo-transparent_d2051edf.png";
+  const firstName = escapeHtml(data.name.split(" ")[0]);
+
+  const addressLines = [
+    data.street,
+    [data.city, data.state, data.zip].filter(Boolean).join(" "),
+  ].filter(Boolean);
+
+  const row = (label: string, value: string) => `
+    <tr>
+      <td style="padding:9px 16px;border-bottom:1px solid #f0ede6;width:38%;">
+        <span style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:#999;">${label}</span>
+      </td>
+      <td style="padding:9px 16px;border-bottom:1px solid #f0ede6;">
+        <span style="font-size:14px;color:#1a1a1a;">${value}</span>
+      </td>
+    </tr>`;
+
+  return `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>We Received Your Quote Request — Noland Earthworks</title>
+</head>
+<body style="margin:0;padding:0;background-color:#f4f1ec;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f1ec;padding:32px 16px;">
+    <tr><td align="center">
+
+      <table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background:#ffffff;border-radius:10px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,0.10);">
+
+        <!-- Top accent bar -->
+        <tr><td style="background:#E07B2A;height:5px;font-size:0;line-height:0;">&nbsp;</td></tr>
+
+        <!-- Header -->
+        <tr>
+          <td style="background:#1a1a1a;padding:28px 36px;">
+            <table width="100%" cellpadding="0" cellspacing="0">
+              <tr>
+                <td style="vertical-align:middle;">
+                  <img src="${logoUrl}" alt="Noland Earthworks" height="52" style="display:block;" />
+                </td>
+                <td align="right" style="vertical-align:middle;">
+                  <span style="display:inline-block;background:#E07B2A;color:#ffffff;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;padding:6px 14px;border-radius:4px;">Request Received</span>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+
+        <!-- Greeting -->
+        <tr>
+          <td style="padding:28px 36px 0;">
+            <h2 style="margin:0 0 10px;font-size:22px;color:#1a1a1a;">Thanks, ${firstName}!</h2>
+            <p style="margin:0;font-size:15px;color:#444;line-height:1.6;">We've received your quote request and will be in touch shortly. A member of our team typically responds within <strong>1 business day</strong>.</p>
+          </td>
+        </tr>
+
+        <!-- Divider -->
+        <tr><td style="padding:20px 36px 0;"><hr style="border:none;border-top:1px solid #f0ede6;margin:0;" /></td></tr>
+
+        <!-- Summary section header -->
+        <tr>
+          <td style="padding:20px 36px 0;">
+            <p style="margin:0 0 10px;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#E07B2A;border-bottom:2px solid #E07B2A;padding-bottom:6px;">Your Request Summary</p>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:0 36px;">
+            <table width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #f0ede6;border-radius:6px;overflow:hidden;">
+              ${row("Service", `<strong>${escapeHtml(data.service)}</strong>`)}
+              ${row("County", escapeHtml(data.county) + " County")}
+              ${data.acreage ? row("Acreage", escapeHtml(data.acreage)) : ""}
+              ${addressLines.length ? row("Property Address", addressLines.map(escapeHtml).join("<br />")) : ""}
+            </table>
+          </td>
+        </tr>
+
+        <!-- Questions callout -->
+        <tr>
+          <td style="padding:24px 36px;">
+            <table width="100%" cellpadding="0" cellspacing="0" style="background:#fdf6ee;border:1px solid #f0e4cc;border-radius:8px;">
+              <tr>
+                <td style="padding:18px 20px;">
+                  <p style="margin:0 0 6px;font-size:14px;font-weight:700;color:#7a4f1a;">Have questions in the meantime?</p>
+                  <p style="margin:0;font-size:13px;color:#7a4f1a;line-height:1.5;">Call or text us at <a href="tel:6154064819" style="color:#E07B2A;font-weight:600;text-decoration:none;">(615) 406-4819</a> or reply directly to this email.</p>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+
+        <!-- CTA -->
+        <tr>
+          <td style="padding:0 36px 28px;text-align:center;">
+            <a href="https://www.nolandearthworks.com" style="display:inline-block;background:#E07B2A;color:#ffffff;font-size:14px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;padding:14px 32px;border-radius:6px;text-decoration:none;">Visit Our Website &rarr;</a>
+          </td>
+        </tr>
+
+        <!-- Footer -->
+        <tr>
+          <td style="background:#1a1a1a;padding:18px 36px;text-align:center;">
+            <p style="margin:0;font-size:12px;color:#888;">
+              <strong style="color:#E07B2A;">Noland Earthworks, LLC</strong> &nbsp;&bull;&nbsp;
+              <a href="tel:6154064819" style="color:#aaa;text-decoration:none;">(615) 406-4819</a> &nbsp;&bull;&nbsp;
+              <a href="mailto:quotes@nolandearthworks.com" style="color:#aaa;text-decoration:none;">quotes@nolandearthworks.com</a>
+            </p>
+            <p style="margin:6px 0 0;font-size:11px;color:#555;">Veteran-Owned &amp; Operated &bull; Middle Tennessee</p>
+          </td>
+        </tr>
+
+        <!-- Bottom accent bar -->
+        <tr><td style="background:#E07B2A;height:4px;font-size:0;line-height:0;">&nbsp;</td></tr>
+
+      </table>
+
+    </td></tr>
+  </table>
+</body>
+</html>`.trim();
+}
+
 export const quoteRouter = router({
   submit: publicProcedure.input(quoteSchema).mutation(async ({ input }) => {
     // 1. Send email via the pre-injected RESEND_API_KEY system secret
@@ -201,7 +325,28 @@ export const quoteRouter = router({
       }
     }
 
-    // 2. Always send in-app owner notification as backup
+    // 2. Send confirmation email to the customer
+    if (ENV.resendApiKey) {
+      try {
+        const resend = new Resend(ENV.resendApiKey);
+        const { error } = await resend.emails.send({
+          from: "Noland Earthworks <noreply@nolandearthworks.com>",
+          to: [input.email],
+          replyTo: "quotes@nolandearthworks.com",
+          subject: `We received your quote request — Noland Earthworks`,
+          html: buildConfirmationEmailHtml(input),
+        });
+        if (error) {
+          console.error("[Quote] Customer confirmation email error:", error);
+        } else {
+          console.log(`[Quote] Confirmation email sent to ${input.email}`);
+        }
+      } catch (err) {
+        console.error("[Quote] Failed to send customer confirmation email:", err);
+      }
+    }
+
+    // 3. Always send in-app owner notification as backup
     try {
       await notifyOwner({
         title: `New Quote Request — ${input.name} (${input.service})`,
