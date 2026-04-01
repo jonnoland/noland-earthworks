@@ -401,14 +401,54 @@ export default function QuotePage() {
                       fontWeight: 300,
                       fontSize: "1rem",
                       color: "rgba(240,237,230,0.65)",
-                      maxWidth: "400px",
+                      maxWidth: "440px",
                       lineHeight: 1.7,
-                      marginBottom: "2rem",
+                      marginBottom: "1.5rem",
                     }}
                   >
-                    Thank you! We'll review your request and reach out within 24 hours
+                    Thank you, {form.name.split(" ")[0]}! We'll review your request and reach out within 24 hours
                     to schedule a free on-site estimate.
                   </p>
+
+                  {/* Submitted details summary */}
+                  <div
+                    style={{
+                      backgroundColor: "rgba(255,255,255,0.04)",
+                      border: "1px solid rgba(255,255,255,0.1)",
+                      borderRadius: "6px",
+                      padding: "1rem 1.25rem",
+                      textAlign: "left",
+                      width: "100%",
+                      maxWidth: "440px",
+                      marginBottom: "2rem",
+                      fontFamily: "'Lato', sans-serif",
+                      fontSize: "0.875rem",
+                      lineHeight: 1.8,
+                    }}
+                  >
+                    <div style={{ color: "rgba(240,237,230,0.4)", fontSize: "0.7rem", letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: "0.5rem" }}>Request Summary</div>
+                    <div style={{ color: "rgba(240,237,230,0.85)" }}>
+                      <span style={{ color: "rgba(240,237,230,0.45)" }}>Service: </span>{form.service}
+                    </div>
+                    <div style={{ color: "rgba(240,237,230,0.85)" }}>
+                      <span style={{ color: "rgba(240,237,230,0.45)" }}>County: </span>{form.county} County
+                    </div>
+                    {form.acreage && (
+                      <div style={{ color: "rgba(240,237,230,0.85)" }}>
+                        <span style={{ color: "rgba(240,237,230,0.45)" }}>Acreage: </span>{form.acreage}
+                      </div>
+                    )}
+                    {(form.street || form.city) && (
+                      <div style={{ color: "rgba(240,237,230,0.85)", marginTop: "0.25rem" }}>
+                        <span style={{ color: "rgba(240,237,230,0.45)" }}>Address: </span>
+                        {[form.street, [form.city, form.state, form.zip].filter(Boolean).join(" ")].filter(Boolean).join(", ")}
+                      </div>
+                    )}
+                    <div style={{ color: "rgba(240,237,230,0.85)", marginTop: "0.25rem" }}>
+                      <span style={{ color: "rgba(240,237,230,0.45)" }}>Contact: </span>{form.phone}{form.email && form.email !== "(not provided)" ? ` · ${form.email}` : ""}
+                    </div>
+                  </div>
+
                   <a
                     href="/"
                     className="btn-amber"

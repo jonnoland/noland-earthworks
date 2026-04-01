@@ -17,3 +17,4 @@
 - [x] Jobber: Notify owner via email when Jobber request creation fails silently
 - [ ] Jobber: Add phone-based duplicate client detection as fallback when email is missing or not matched
 - [x] Add address fields (street, city, state, zip) to quote form UI, schema, email, and Jobber request
+- [x] Show submitted address in quote form confirmation message
