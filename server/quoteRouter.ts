@@ -141,7 +141,34 @@ export const quoteRouter = router({
       }
     } catch (err) {
       console.error("[Quote] Jobber request creation failed:", err);
-      // Non-fatal: email + notification already sent
+      // Non-fatal: email + notification already sent.
+      // Notify owner so no lead is silently lost.
+      try {
+        const errMsg = err instanceof Error ? err.message : String(err);
+        await notifyOwner({
+          title: "⚠️ Jobber Sync Failed — Manual Entry Required",
+          content: [
+            `A quote was submitted but could NOT be automatically added to Jobber.`,
+            ``,
+            `Customer: ${input.name}`,
+            `Phone: ${input.phone}`,
+            `Email: ${input.email}`,
+            `Service: ${input.service}`,
+            `County: ${input.county}`,
+            input.acreage ? `Acreage: ${input.acreage}` : "",
+            input.message ? `Details: ${input.message}` : "",
+            ``,
+            `Error: ${errMsg}`,
+            ``,
+            `Please add this request to Jobber manually, or re-authorize at:`,
+            `https://www.nolandearthworks.com/api/jobber/authorize`,
+          ]
+            .filter(line => line !== undefined)
+            .join("\n"),
+        });
+      } catch (notifyErr) {
+        console.warn("[Quote] Jobber failure notification also failed:", notifyErr);
+      }
     }
 
     return { success: true };

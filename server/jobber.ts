@@ -146,44 +146,96 @@ interface QuoteFormData {
   message?: string;
 }
 
+/**
+ * Search for an existing Jobber client by email address.
+ * Returns the client ID if found, null otherwise.
+ */
+async function findClientByEmail(email: string): Promise<string | null> {
+  // Skip search for placeholder emails
+  if (!email || email === "(not provided)" || !email.includes("@")) return null;
+
+  const searchQuery = `
+    query FindClientByEmail($searchTerm: String!) {
+      clientEmails(searchTerm: $searchTerm, first: 1) {
+        nodes {
+          address
+          client {
+            id
+          }
+        }
+      }
+    }
+  `;
+  try {
+    const result = await jobberGraphQL(searchQuery, { searchTerm: email }) as {
+      clientEmails: { nodes: Array<{ address: string; client: { id: string } }> };
+    };
+    // Exact match only — avoid partial matches on similar addresses
+    const match = result.clientEmails.nodes.find(
+      n => n.address.toLowerCase() === email.toLowerCase()
+    );
+    return match?.client.id ?? null;
+  } catch {
+    // If search fails, fall through to create a new client
+    return null;
+  }
+}
+
+// Map website service names to Jobber line item names
+const SERVICE_LINE_ITEMS: Record<string, string> = {
+  "Land Clearing": "Land Clearing",
+  "Forestry Mulching": "Forestry Mulching",
+  "Vegetation Management": "Vegetation Management",
+  "Property Maintenance": "Property Maintenance",
+  "Multiple Services": "Multiple Services",
+};
+
 export async function createJobberRequest(data: QuoteFormData): Promise<void> {
   // Split name into first/last (best effort)
   const nameParts = data.name.trim().split(/\s+/);
   const firstName = nameParts[0] ?? data.name;
   const lastName = nameParts.slice(1).join(" ") || "";
 
-  // 1. Create the client
-  const clientMutation = `
-    mutation CreateClient($input: ClientCreateInput!) {
-      clientCreate(input: $input) {
-        client {
-          id
-        }
-        userErrors {
-          message
-          path
+  // 1. Search for existing client by email to avoid duplicates
+  let clientId = await findClientByEmail(data.email);
+
+  if (clientId) {
+    console.log(`[Jobber] Found existing client: ${clientId}`);
+  } else {
+    // Create a new client
+    const clientMutation = `
+      mutation CreateClient($input: ClientCreateInput!) {
+        clientCreate(input: $input) {
+          client {
+            id
+          }
+          userErrors {
+            message
+            path
+          }
         }
       }
+    `;
+
+    const clientInput: Record<string, unknown> = {
+      firstName,
+      emails: [{ description: "MAIN", primary: true, address: data.email }],
+      phones: [{ description: "MAIN", primary: true, number: data.phone }],
+    };
+    if (lastName) clientInput.lastName = lastName;
+
+    const clientData = await jobberGraphQL(clientMutation, { input: clientInput }) as {
+      clientCreate: { client: { id: string } | null; userErrors: Array<{ message: string }> };
+    };
+
+    if (!clientData.clientCreate.client) {
+      const errs = clientData.clientCreate.userErrors.map(e => e.message).join(", ");
+      throw new Error(`Jobber clientCreate failed: ${errs}`);
     }
-  `;
 
-  const clientInput: Record<string, unknown> = {
-    firstName,
-    emails: [{ description: "MAIN", primary: true, address: data.email }],
-    phones: [{ description: "MAIN", primary: true, number: data.phone }],
-  };
-  if (lastName) clientInput.lastName = lastName;
-
-  const clientData = await jobberGraphQL(clientMutation, { input: clientInput }) as {
-    clientCreate: { client: { id: string } | null; userErrors: Array<{ message: string }> };
-  };
-
-  if (!clientData.clientCreate.client) {
-    const errs = clientData.clientCreate.userErrors.map(e => e.message).join(", ");
-    throw new Error(`Jobber clientCreate failed: ${errs}`);
+    clientId = clientData.clientCreate.client.id;
+    console.log(`[Jobber] Created new client: ${clientId}`);
   }
-
-  const clientId = clientData.clientCreate.client.id;
 
   // 2. Build request title and description
   const title = `${data.service} — ${data.county} County`;
@@ -211,6 +263,18 @@ export async function createJobberRequest(data: QuoteFormData): Promise<void> {
     }
   `;
 
+  // 4. Build line items from the service type
+  const lineItemName = SERVICE_LINE_ITEMS[data.service] ?? data.service;
+  const lineItems = [
+    {
+      name: lineItemName,
+      description: data.acreage ? `Approximate acreage: ${data.acreage}` : undefined,
+      category: "SERVICE" as const,
+      saveToProductsAndServices: false,
+      quantity: 1,
+    },
+  ];
+
   const requestData = await jobberGraphQL(requestMutation, {
     input: {
       clientId,
@@ -218,6 +282,7 @@ export async function createJobberRequest(data: QuoteFormData): Promise<void> {
       assessment: {
         instructions: description,
       },
+      lineItems,
     },
   }) as {
     requestCreate: {

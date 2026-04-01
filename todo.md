@@ -11,3 +11,8 @@
 - [x] Add admin page to trigger Jobber OAuth authorization flow
 - [x] Fix "Invalid time value" error in Jobber token storage (expiresAt date handling)
 - [x] Fix Jobber GraphQL API version (2025-01-20) and RequestCreateInput field mapping (assessment.instructions)
+- [ ] Fix phone number validation on quote form (too_small error with min:7 rejecting valid numbers)
+- [x] Jobber: Search for existing client by email/phone before creating a duplicate
+- [x] Jobber: Map quote service types to Jobber line items on request creation
+- [x] Jobber: Notify owner via email when Jobber request creation fails silently
+- [ ] Jobber: Add phone-based duplicate client detection as fallback when email is missing or not matched
