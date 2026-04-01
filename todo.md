@@ -21,3 +21,4 @@
 - [x] Draw county boundary outlines on the service areas map for each served county
 - [x] Redesign quote request notification email with professional branded HTML template
 - [x] Send automated branded confirmation email to customer after quote form submission
+- [x] Fix quote confirmation screen: proper capitalization, spacing, human-readable values (service, county, acreage, address formatting)

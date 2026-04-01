@@ -386,14 +386,14 @@ export default function QuotePage() {
                     style={{
                       fontFamily: "'Oswald', sans-serif",
                       fontWeight: 700,
-                      fontSize: "2rem",
-                      letterSpacing: "0.04em",
-                      textTransform: "uppercase",
+                      fontSize: "1.75rem",
+                      letterSpacing: "0.02em",
+                      textTransform: "none",
                       color: "#F0EDE6",
                       marginBottom: "1rem",
                     }}
                   >
-                    Quote Request Received!
+                    Quote Request Received
                   </h2>
                   <p
                     style={{
@@ -411,43 +411,85 @@ export default function QuotePage() {
                   </p>
 
                   {/* Submitted details summary */}
-                  <div
-                    style={{
-                      backgroundColor: "rgba(255,255,255,0.04)",
-                      border: "1px solid rgba(255,255,255,0.1)",
-                      borderRadius: "6px",
-                      padding: "1rem 1.25rem",
-                      textAlign: "left",
-                      width: "100%",
-                      maxWidth: "440px",
-                      marginBottom: "2rem",
-                      fontFamily: "'Lato', sans-serif",
-                      fontSize: "0.875rem",
-                      lineHeight: 1.8,
-                    }}
-                  >
-                    <div style={{ color: "rgba(240,237,230,0.4)", fontSize: "0.7rem", letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: "0.5rem" }}>Request Summary</div>
-                    <div style={{ color: "rgba(240,237,230,0.85)" }}>
-                      <span style={{ color: "rgba(240,237,230,0.45)" }}>Service: </span>{form.service}
-                    </div>
-                    <div style={{ color: "rgba(240,237,230,0.85)" }}>
-                      <span style={{ color: "rgba(240,237,230,0.45)" }}>County: </span>{form.county} County
-                    </div>
-                    {form.acreage && (
-                      <div style={{ color: "rgba(240,237,230,0.85)" }}>
-                        <span style={{ color: "rgba(240,237,230,0.45)" }}>Acreage: </span>{form.acreage}
+                  {(() => {
+                    const serviceLabels: Record<string, string> = {
+                      "land-clearing": "Land Clearing",
+                      "forestry-mulching": "Forestry Mulching",
+                      "vegetation-management": "Vegetation Management",
+                      "property-maintenance": "Property Maintenance",
+                      "multiple": "Multiple Services",
+                    };
+                    const acreageLabels: Record<string, string> = {
+                      "one-to-two": "1 – 2 acres",
+                      "two-to-five": "2 – 5 acres",
+                      "five-to-ten": "5 – 10 acres",
+                      "ten-plus": "10+ acres",
+                      "unsure": "Not sure",
+                    };
+                    const countyDisplay = form.county
+                      ? form.county.charAt(0).toUpperCase() + form.county.slice(1) + " County"
+                      : "";
+                    const serviceDisplay = serviceLabels[form.service] || form.service;
+                    const acreageDisplay = acreageLabels[form.acreage] || form.acreage;
+                    const streetDisplay = form.street
+                      ? form.street.split(" ").map((w: string) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(" ")
+                      : "";
+                    const cityDisplay = form.city
+                      ? form.city.charAt(0).toUpperCase() + form.city.slice(1)
+                      : "";
+                    const addressLine = [streetDisplay, [cityDisplay, form.state?.toUpperCase(), form.zip].filter(Boolean).join(" ")].filter(Boolean).join(", ");
+
+                    const rowStyle: React.CSSProperties = {
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "flex-start",
+                      padding: "0.55rem 0",
+                      borderBottom: "1px solid rgba(255,255,255,0.07)",
+                      gap: "1rem",
+                    };
+                    const labelStyle2: React.CSSProperties = { color: "rgba(240,237,230,0.45)", minWidth: "90px", flexShrink: 0 };
+                    const valueStyle: React.CSSProperties = { color: "rgba(240,237,230,0.9)", textAlign: "right" };
+
+                    return (
+                      <div
+                        style={{
+                          backgroundColor: "rgba(255,255,255,0.04)",
+                          border: "1px solid rgba(255,255,255,0.1)",
+                          borderRadius: "8px",
+                          padding: "1rem 1.25rem",
+                          textAlign: "left",
+                          width: "100%",
+                          maxWidth: "440px",
+                          marginBottom: "2rem",
+                          fontFamily: "'Lato', sans-serif",
+                          fontSize: "0.875rem",
+                          lineHeight: 1.6,
+                        }}
+                      >
+                        <div style={{ color: "rgba(240,237,230,0.5)", fontSize: "0.68rem", letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: "0.75rem", fontWeight: 600 }}>Request Summary</div>
+                        <div style={rowStyle}>
+                          <span style={labelStyle2}>Service</span>
+                          <span style={valueStyle}>{serviceDisplay}</span>
+                        </div>
+                        <div style={rowStyle}>
+                          <span style={labelStyle2}>County</span>
+                          <span style={valueStyle}>{countyDisplay}</span>
+                        </div>
+                        {acreageDisplay && (
+                          <div style={rowStyle}>
+                            <span style={labelStyle2}>Acreage</span>
+                            <span style={valueStyle}>{acreageDisplay}</span>
+                          </div>
+                        )}
+                        {addressLine && (
+                          <div style={{ ...rowStyle, borderBottom: "none" }}>
+                            <span style={labelStyle2}>Address</span>
+                            <span style={{ ...valueStyle, maxWidth: "260px", wordBreak: "break-word" }}>{addressLine}</span>
+                          </div>
+                        )}
                       </div>
-                    )}
-                    {(form.street || form.city) && (
-                      <div style={{ color: "rgba(240,237,230,0.85)", marginTop: "0.25rem" }}>
-                        <span style={{ color: "rgba(240,237,230,0.45)" }}>Address: </span>
-                        {[form.street, [form.city, form.state, form.zip].filter(Boolean).join(" ")].filter(Boolean).join(", ")}
-                      </div>
-                    )}
-                    <div style={{ color: "rgba(240,237,230,0.85)", marginTop: "0.25rem" }}>
-                      <span style={{ color: "rgba(240,237,230,0.45)" }}>Contact: </span>{form.phone}{form.email && form.email !== "(not provided)" ? ` · ${form.email}` : ""}
-                    </div>
-                  </div>
+                    );
+                  })()}
 
                   <a
                     href="/"
