@@ -112,14 +112,14 @@ export async function isJobberConnected(): Promise<boolean> {
 
 // ─── GraphQL helper ───────────────────────────────────────────────────────────
 
-async function jobberGraphQL(query: string, variables?: Record<string, unknown>): Promise<unknown> {
+export async function jobberGraphQL(query: string, variables?: Record<string, unknown>): Promise<unknown> {
   const token = await getValidAccessToken();
   const res = await fetch(JOBBER_API_URL, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       "Authorization": `Bearer ${token}`,
-      "X-JOBBER-GRAPHQL-VERSION": "2024-11-15",
+      "X-JOBBER-GRAPHQL-VERSION": "2025-01-20",
     },
     body: JSON.stringify({ query, variables }),
   });
@@ -215,7 +215,9 @@ export async function createJobberRequest(data: QuoteFormData): Promise<void> {
     input: {
       clientId,
       title,
-      instructions: description,
+      assessment: {
+        instructions: description,
+      },
     },
   }) as {
     requestCreate: {

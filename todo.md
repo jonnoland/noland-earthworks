@@ -10,3 +10,4 @@
 - [x] On quote form submit: create Jobber client + request via GraphQL API
 - [x] Add admin page to trigger Jobber OAuth authorization flow
 - [x] Fix "Invalid time value" error in Jobber token storage (expiresAt date handling)
+- [x] Fix Jobber GraphQL API version (2025-01-20) and RequestCreateInput field mapping (assessment.instructions)

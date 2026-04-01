@@ -6,7 +6,7 @@
  */
 import type { Express } from "express";
 import { ENV } from "./_core/env";
-import { exchangeCodeForTokens, isJobberConnected } from "./jobber";
+import { exchangeCodeForTokens, isJobberConnected, jobberGraphQL } from "./jobber";
 
 const JOBBER_AUTH_URL = "https://api.getjobber.com/api/oauth/authorize";
 
@@ -40,6 +40,17 @@ export function registerJobberRoutes(app: Express) {
     } catch (err) {
       console.error("[Jobber] OAuth callback error:", err);
       res.status(500).send(`Failed to connect Jobber: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  });
+
+  // Temporary introspect endpoint — for dev use only
+  app.post("/api/jobber/introspect", async (req, res) => {
+    try {
+      const { query, variables } = req.body as { query: string; variables?: Record<string, unknown> };
+      const data = await jobberGraphQL(query, variables ?? {});
+      res.json({ data });
+    } catch (err) {
+      res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
     }
   });
 
