@@ -30,3 +30,4 @@
 - [x] Update /privacy-policy and /terms-of-service pages on the website with new content
 - [x] Replace hero section static image background with user-provided video background (looping, muted, full-screen)
 - [x] Remove text/writing burned into the hero background video so it plays as a clean background
+- [x] Trim hero video to ~10 seconds and remove loop so it plays once and stops
