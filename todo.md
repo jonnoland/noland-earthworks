@@ -34,3 +34,4 @@
 - [x] Add dynamic XML sitemap endpoint at /sitemap.xml with all pages
 - [x] Add/update robots.txt to reference sitemap URL
 - [x] Add Google Search Console verification meta tag to index.html
+- [x] Add Google Analytics GA4 (G-JG160VB05E) tracking script to index.html
