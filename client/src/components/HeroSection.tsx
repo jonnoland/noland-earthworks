@@ -4,7 +4,7 @@
  */
 import { ArrowRight, ChevronDown, FileText, MapPin, Star } from "lucide-react";
 
-const HERO_VIDEO = "https://d2xsxph8kpxj0f.cloudfront.net/310519663484957999/PymCzDCnSJzPjdkfwA7Jn6/hero-video-10s_ed3b0cfb.mp4";
+const HERO_VIDEO = "https://d2xsxph8kpxj0f.cloudfront.net/310519663484957999/PymCzDCnSJzPjdkfwA7Jn6/hero-image-video_4798dab9.mp4";
 
 export default function HeroSection() {
   const scrollTo = (href: string) => {
