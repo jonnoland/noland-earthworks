@@ -1,10 +1,10 @@
 /*
- * DESIGN: Heavy Equipment Grit — full-bleed hero with forestry mulcher image
+ * DESIGN: Heavy Equipment Grit — full-bleed hero with looping background video
  * Dark overlay, left-aligned headline in Oswald, amber CTA, badge row
  */
-import { ArrowRight, ChevronDown, Shield, FileText, MapPin, Star } from "lucide-react";
+import { ArrowRight, ChevronDown, FileText, MapPin, Star } from "lucide-react";
 
-const HERO_IMAGE = "https://d2xsxph8kpxj0f.cloudfront.net/310519663484957999/PymCzDCnSJzPjdkfwA7Jn6/hero-forestry-ej8gNQonKA7KJrnC9kaG2b.webp";
+const HERO_VIDEO = "https://d2xsxph8kpxj0f.cloudfront.net/310519663484957999/PymCzDCnSJzPjdkfwA7Jn6/hero-video_20077c85.mp4";
 
 export default function HeroSection() {
   const scrollTo = (href: string) => {
@@ -17,15 +17,16 @@ export default function HeroSection() {
       className="relative min-h-screen flex flex-col justify-center overflow-hidden"
       style={{ backgroundColor: "#0a0a0a" }}
     >
-      {/* Background image */}
-      <div
-        className="absolute inset-0"
-        style={{
-          backgroundImage: `url(${HERO_IMAGE})`,
-          backgroundSize: "cover",
-          backgroundPosition: "center 30%",
-          backgroundRepeat: "no-repeat",
-        }}
+      {/* Background video */}
+      <video
+        className="absolute inset-0 w-full h-full object-cover"
+        src={HERO_VIDEO}
+        autoPlay
+        muted
+        loop
+        playsInline
+        aria-hidden="true"
+        style={{ objectPosition: "center center" }}
       />
 
       {/* Gradient overlays */}
