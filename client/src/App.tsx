@@ -12,6 +12,8 @@ import VegetationManagementPage from "./pages/VegetationManagement";
 import PropertyMaintenancePage from "./pages/PropertyMaintenance";
 import QuotePage from "./pages/Quote";
 import AboutPage from "./pages/About";
+import TermsOfServicePage from "./pages/TermsOfService";
+import PrivacyPolicyPage from "./pages/PrivacyPolicy";
 function Router() {
   // make sure to consider if you need authentication for certain routes
   return (
@@ -23,6 +25,8 @@ function Router() {
       <Route path="/services/property-maintenance" component={PropertyMaintenancePage} />
       <Route path="/quote" component={QuotePage} />
       <Route path="/about" component={AboutPage} />
+      <Route path="/terms-of-service" component={TermsOfServicePage} />
+      <Route path="/privacy-policy" component={PrivacyPolicyPage} />
       <Route path="/404" component={NotFound} />
       <Route component={NotFound} />
     </Switch>

@@ -24,4 +24,7 @@
 - [x] Fix quote confirmation screen: proper capitalization, spacing, human-readable values (service, county, acreage, address formatting)
 - [x] Add requestor name as first row in quote confirmation summary card
 - [x] Fix missing acreage label for "half-to-one" value in confirmation screen
-- [ ] Permanently remove Made with Manus badge (re-verify VITE_HIDE_MANUS_BADGE secret is active)
+- [x] Permanently remove Made with Manus badge (re-verify VITE_HIDE_MANUS_BADGE secret is active)
+- [x] Rewrite Privacy Policy in the style of brushworksco.com
+- [x] Rewrite Terms of Service in the style of brushworksco.com
+- [x] Update /privacy-policy and /terms-of-service pages on the website with new content
