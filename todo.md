@@ -30,3 +30,6 @@
 - [x] Update /privacy-policy and /terms-of-service pages on the website with new content
 - [x] Replace hero section static image background with user-provided video background (looping, muted, full-screen)
 - [x] Replace hero image with a forestry mulching golden hour photo that better represents the brand
+- [x] Add JSON-LD LocalBusiness schema markup to site head (name, phone, address, service area, services)
+- [x] Add dynamic XML sitemap endpoint at /sitemap.xml with all pages
+- [x] Add/update robots.txt to reference sitemap URL
