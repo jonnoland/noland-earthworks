@@ -69,7 +69,7 @@ export default function HeroSection() {
             <br />
             <span style={{ color: "#E07B2A" }}>Land Services</span>
             <br />
-            For Middle Tennessee.
+            For Middle & West Tennessee.
           </h1>
 
           {/* Body copy */}

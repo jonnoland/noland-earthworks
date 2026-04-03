@@ -64,3 +64,4 @@
 - [x] Update service area to 35 counties within 85-mile radius of Vanleer TN (add: Carroll, Chester, Decatur, Gibson, Hardin, Henderson, Henry, Madison, Weakley; remove: Clay, DeKalb, Jackson, Macon, Putnam, Smith)
 - [x] Fix Google Maps error on county pages - replace direct API script with Manus proxy MapView
 - [x] Update all "20 counties" references to "35 counties" across the site
+- [x] Update hero headline to "Professional Land Services For Middle & West Tennessee"
