@@ -62,7 +62,7 @@ const data: ServicePageProps = {
 };
 
 export default function VegetationManagementPage() {
-  usePageTitle("Vegetation Management Services — Middle Tennessee");
+  usePageTitle("Vegetation Management Services — Middle & West Tennessee");
   return (
     <>
       <Navbar />

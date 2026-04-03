@@ -68,3 +68,6 @@
 - [x] Update page title tag to include 'Middle & West Tennessee' for SEO
 - [x] Change 'Serving Middle TN' badge to 'Serving Middle & West TN'
 - [x] Update About page subheading to reflect expanded service area
+- [x] Update meta keywords tag to include West Tennessee terms
+- [x] Change footer tagline to mention both Middle and West Tennessee
+- [x] Update all individual service page titles to include Middle & West Tennessee

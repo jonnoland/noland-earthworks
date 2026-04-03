@@ -62,7 +62,7 @@ const data: ServicePageProps = {
 };
 
 export default function ForestryMulchingPage() {
-  usePageTitle("Forestry Mulching Services — Middle Tennessee");
+  usePageTitle("Forestry Mulching Services — Middle & West Tennessee");
   return (
     <>
       <Navbar />

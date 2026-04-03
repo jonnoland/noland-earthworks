@@ -40,7 +40,7 @@ export default function Footer() {
               }}
             >
               Veteran-owned and operated land clearing and forestry mulching
-              services for Middle Tennessee. Licensed &amp; Insured.
+              services for Middle &amp; West Tennessee. Licensed &amp; Insured.
             </p>
             {/* Social links */}
             <div className="flex gap-3">

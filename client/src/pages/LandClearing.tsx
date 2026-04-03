@@ -63,7 +63,7 @@ const data: ServicePageProps = {
 };
 
 export default function LandClearingPage() {
-  usePageTitle("Land Clearing Services — Middle Tennessee");
+  usePageTitle("Land Clearing Services — Middle & West Tennessee");
   return (
     <>
       <Navbar />

@@ -62,7 +62,7 @@ const data: ServicePageProps = {
 };
 
 export default function PropertyMaintenancePage() {
-  usePageTitle("Property Maintenance Services — Middle Tennessee");
+  usePageTitle("Property Maintenance Services — Middle & West Tennessee");
   return (
     <>
       <Navbar />
