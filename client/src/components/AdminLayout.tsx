@@ -2,7 +2,7 @@
  * AdminLayout — OwnrOps-style dark sidebar layout for the admin console.
  * Only accessible to the site owner (enforced server-side via adminProcedure).
  */
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useLocation } from "wouter";
 import {
   Home,
@@ -62,6 +62,25 @@ export default function AdminLayout({ children, title }: AdminLayoutProps) {
   const logout = trpc.auth.logout.useMutation({
     onSuccess: () => { window.location.href = "/"; },
   });
+
+  // Auto-connect Jobber: if not connected, redirect to OAuth immediately
+  // Skip on /admin/settings to avoid redirect loops during the connect flow
+  const isSettingsPage = location === "/admin/settings";
+  const { data: connStatus } = trpc.jobber.connectionStatus.useQuery(undefined, {
+    enabled: !isSettingsPage,
+    retry: false,
+  });
+  const { data: authUrlData } = trpc.jobber.getAuthUrl.useQuery(undefined, {
+    enabled: !isSettingsPage && connStatus !== undefined && !connStatus?.connected,
+    retry: false,
+  });
+  useEffect(() => {
+    if (isSettingsPage) return;
+    if (connStatus && !connStatus.connected && authUrlData?.url) {
+      // Not connected — redirect to Jobber OAuth
+      window.location.href = authUrlData.url;
+    }
+  }, [connStatus, authUrlData, isSettingsPage]);
 
   const isActive = (path: string) => {
     if (path === "/admin") return location === "/admin";
