@@ -443,7 +443,7 @@ export default function CostCalculator() {
               {/* CTA */}
               <div style={{ display: "flex", flexDirection: "column", gap: "0.65rem" }}>
                 <a
-                  href="/quote"
+                  href={`/quote?service=${encodeURIComponent(state.service)}&acres=${state.acres}&density=${encodeURIComponent(state.density)}&terrain=${encodeURIComponent(state.terrain)}&access=${encodeURIComponent(state.access)}`}
                   className="btn-amber"
                   style={{
                     display: "flex",

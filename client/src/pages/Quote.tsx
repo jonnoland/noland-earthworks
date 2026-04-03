@@ -33,15 +33,63 @@ const labelStyle: React.CSSProperties = {
   marginBottom: "0.375rem",
 };
 
+// Map calculator's numeric acres to quote form's bucketed acreage option values
+function acresBucket(acres: number): string {
+  if (acres <= 0.5) return "half-to-one";
+  if (acres <= 1)   return "half-to-one";
+  if (acres <= 2)   return "one-to-two";
+  if (acres <= 5)   return "two-to-five";
+  if (acres <= 10)  return "five-to-ten";
+  return "ten-plus";
+}
+
+// Build a pre-fill note from density/terrain/access params
+function buildPrefillNote(density: string, terrain: string, access: string): string {
+  const densityMap: Record<string, string> = {
+    light: "light brush / saplings",
+    moderate: "moderate brush and mixed trees",
+    heavy: "heavy timber / dense cedar / mature hardwoods",
+  };
+  const terrainMap: Record<string, string> = {
+    flat: "flat / gently rolling terrain",
+    rolling: "moderate slope (10–25°)",
+    steep: "steep / wet / rocky terrain (25°+)",
+  };
+  const accessMap: Record<string, string> = {
+    easy: "easy access (wide gate, gravel drive)",
+    moderate: "moderate access",
+    difficult: "difficult access (narrow gate, soft ground)",
+  };
+  const parts: string[] = [];
+  if (densityMap[density]) parts.push(`Vegetation: ${densityMap[density]}`);
+  if (terrainMap[terrain]) parts.push(`Terrain: ${terrainMap[terrain]}`);
+  if (accessMap[access])   parts.push(`Site access: ${accessMap[access]}`);
+  return parts.length ? `From pricing calculator:\n${parts.join("\n")}` : "";
+}
+
 export default function QuotePage() {
   usePageTitle("Request a Free Quote — Land Clearing & Forestry Mulching");
   const [submitted, setSubmitted] = useState(false);
-  const [form, setForm] = useState({
-    name: "", phone: "", email: "", service: "",
-    county: "", acreage: "",
-    street: "", city: "", state: "TN", zip: "",
-    message: "",
-  });
+
+  // Read calculator pre-fill params from URL on first render
+  const initialForm = (() => {
+    const params = new URLSearchParams(window.location.search);
+    const service = params.get("service") || "";
+    const acres   = parseFloat(params.get("acres") || "0");
+    const density = params.get("density") || "";
+    const terrain = params.get("terrain") || "";
+    const access  = params.get("access")  || "";
+    const acreage = acres > 0 ? acresBucket(acres) : "";
+    const message = (density || terrain || access) ? buildPrefillNote(density, terrain, access) : "";
+    return {
+      name: "", phone: "", email: "",
+      service, county: "", acreage,
+      street: "", city: "", state: "TN", zip: "",
+      message,
+    };
+  })();
+
+  const [form, setForm] = useState(initialForm);
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>

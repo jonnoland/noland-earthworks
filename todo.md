@@ -93,3 +93,4 @@
 - [x] Move Estimate Tool calculator section to top of Pricing page (just below hero)
 - [x] Remove Get a Free Estimate and Call buttons from Pricing page hero section
 - [x] Add "Get a rough number in 30 seconds →" teaser link on homepage hero pointing to /pricing
+- [x] Pre-fill quote form from Pricing calculator selections via URL query params (service, acreage, density, terrain, access)
