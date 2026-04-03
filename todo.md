@@ -57,3 +57,4 @@
 - [x] Fix Google Maps error on county pages (duplicate script / API key issue)
 - [x] Update main page service area map to highlight all 20 counties
 - [x] Add address search bar to main page map with geocoding and service area check
+- [x] Add Google Places autocomplete suggestions to address search bar on main page map
