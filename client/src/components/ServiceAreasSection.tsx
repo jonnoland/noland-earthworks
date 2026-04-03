@@ -9,45 +9,48 @@ import { MapView } from "@/components/Map";
 import { Link } from "wouter";
 
 const COUNTY_GEOJSON_URL =
-  "https://d2xsxph8kpxj0f.cloudfront.net/310519663484957999/PymCzDCnSJzPjdkfwA7Jn6/tn-served-counties-32_686a0f57.json";
+  "https://d2xsxph8kpxj0f.cloudfront.net/310519663484957999/PymCzDCnSJzPjdkfwA7Jn6/tn-served-counties-35_bee5cb53.json";
 
 const counties: { name: string; slug?: string }[] = [
-  { name: "Davidson County", slug: "davidson-county" },
-  { name: "Williamson County", slug: "williamson-county" },
-  { name: "Rutherford County", slug: "rutherford-county" },
-  { name: "Wilson County", slug: "wilson-county" },
-  { name: "Sumner County", slug: "sumner-county" },
-  { name: "Robertson County", slug: "robertson-county" },
-  { name: "Cheatham County", slug: "cheatham-county" },
-  { name: "Dickson County", slug: "dickson-county" },
-  { name: "Maury County", slug: "maury-county" },
-  { name: "Montgomery County", slug: "montgomery-county" },
   { name: "Bedford County", slug: "bedford-county" },
-  { name: "Wayne County", slug: "wayne-county" },
-  { name: "Cannon County", slug: "cannon-county" },
-  { name: "Lewis County", slug: "lewis-county" },
-  { name: "Perry County", slug: "perry-county" },
   { name: "Benton County", slug: "benton-county" },
+  { name: "Cannon County", slug: "cannon-county" },
+  { name: "Carroll County", slug: "carroll-county" },
+  { name: "Cheatham County", slug: "cheatham-county" },
+  { name: "Chester County", slug: "chester-county" },
+  { name: "Davidson County", slug: "davidson-county" },
+  { name: "Decatur County", slug: "decatur-county" },
+  { name: "Dickson County", slug: "dickson-county" },
+  { name: "Gibson County", slug: "gibson-county" },
+  { name: "Giles County", slug: "giles-county" },
+  { name: "Hardin County", slug: "hardin-county" },
+  { name: "Henderson County", slug: "henderson-county" },
+  { name: "Henry County", slug: "henry-county" },
   { name: "Hickman County", slug: "hickman-county" },
   { name: "Houston County", slug: "houston-county" },
   { name: "Humphreys County", slug: "humphreys-county" },
-  { name: "Stewart County", slug: "stewart-county" },
-  { name: "Marshall County", slug: "marshall-county" },
-  { name: "Giles County", slug: "giles-county" },
-  { name: "Lincoln County", slug: "lincoln-county" },
-  { name: "Moore County", slug: "moore-county" },
   { name: "Lawrence County", slug: "lawrence-county" },
-  { name: "DeKalb County", slug: "dekalb-county" },
-  { name: "Smith County", slug: "smith-county" },
+  { name: "Lewis County", slug: "lewis-county" },
+  { name: "Lincoln County", slug: "lincoln-county" },
+  { name: "Madison County", slug: "madison-county" },
+  { name: "Marshall County", slug: "marshall-county" },
+  { name: "Maury County", slug: "maury-county" },
+  { name: "Montgomery County", slug: "montgomery-county" },
+  { name: "Moore County", slug: "moore-county" },
+  { name: "Perry County", slug: "perry-county" },
+  { name: "Robertson County", slug: "robertson-county" },
+  { name: "Rutherford County", slug: "rutherford-county" },
+  { name: "Stewart County", slug: "stewart-county" },
+  { name: "Sumner County", slug: "sumner-county" },
   { name: "Trousdale County", slug: "trousdale-county" },
-  { name: "Macon County", slug: "macon-county" },
-  { name: "Jackson County", slug: "jackson-county" },
-  { name: "Clay County", slug: "clay-county" },
-  { name: "Putnam County", slug: "putnam-county" },
+  { name: "Wayne County", slug: "wayne-county" },
+  { name: "Weakley County", slug: "weakley-county" },
+  { name: "Williamson County", slug: "williamson-county" },
+  { name: "Wilson County", slug: "wilson-county" },
 ];
 
-// Center of the 32-county service area (shifted slightly east to account for eastern counties)
-const MAP_CENTER = { lat: 35.95, lng: -86.8 };
+// Center of the 35-county service area (85-mile radius from Vanleer, TN)
+const MAP_CENTER = { lat: 35.85, lng: -87.5 };
 const MAP_ZOOM = 7;
 
 // Point-in-polygon ray casting algorithm

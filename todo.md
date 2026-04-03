@@ -61,3 +61,4 @@
 - [x] Add missing counties from map image: Marshall, Giles, Lincoln, Moore, Lawrence, DeKalb, Smith, Trousdale, Macon, Jackson, Clay, Putnam
 - [x] Update GeoJSON, sitemap, JSON-LD schema, and ServiceAreasSection for all new counties
 - [x] Create landing pages for all newly added counties
+- [x] Update service area to 35 counties within 85-mile radius of Vanleer TN (add: Carroll, Chester, Decatur, Gibson, Hardin, Henderson, Henry, Madison, Weakley; remove: Clay, DeKalb, Jackson, Macon, Putnam, Smith)

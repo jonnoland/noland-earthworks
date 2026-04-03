@@ -40,13 +40,16 @@ import {
   LincolnCountyPage,
   MooreCountyPage,
   LawrenceCountyPage,
-  DeKalbCountyPage,
-  SmithCountyPage,
   TrousdaleCountyPage,
-  MaconCountyPage,
-  JacksonCountyPage,
-  ClayCountyPage,
-  PutnamCountyPage,
+  CarrollCountyPage,
+  ChesterCountyPage,
+  DecaturCountyPage,
+  GibsonCountyPage,
+  HardinCountyPage,
+  HendersonCountyPage,
+  HenryCountyPage,
+  MadisonCountyPage,
+  WeakleyCountyPage,
 } from "./pages/CountyPages";
 
 function Router() {
@@ -92,13 +95,16 @@ function Router() {
       <Route path="/service-areas/lincoln-county" component={LincolnCountyPage} />
       <Route path="/service-areas/moore-county" component={MooreCountyPage} />
       <Route path="/service-areas/lawrence-county" component={LawrenceCountyPage} />
-      <Route path="/service-areas/dekalb-county" component={DeKalbCountyPage} />
-      <Route path="/service-areas/smith-county" component={SmithCountyPage} />
       <Route path="/service-areas/trousdale-county" component={TrousdaleCountyPage} />
-      <Route path="/service-areas/macon-county" component={MaconCountyPage} />
-      <Route path="/service-areas/jackson-county" component={JacksonCountyPage} />
-      <Route path="/service-areas/clay-county" component={ClayCountyPage} />
-      <Route path="/service-areas/putnam-county" component={PutnamCountyPage} />
+      <Route path="/service-areas/carroll-county" component={CarrollCountyPage} />
+      <Route path="/service-areas/chester-county" component={ChesterCountyPage} />
+      <Route path="/service-areas/decatur-county" component={DecaturCountyPage} />
+      <Route path="/service-areas/gibson-county" component={GibsonCountyPage} />
+      <Route path="/service-areas/hardin-county" component={HardinCountyPage} />
+      <Route path="/service-areas/henderson-county" component={HendersonCountyPage} />
+      <Route path="/service-areas/henry-county" component={HenryCountyPage} />
+      <Route path="/service-areas/madison-county" component={MadisonCountyPage} />
+      <Route path="/service-areas/weakley-county" component={WeakleyCountyPage} />
 
       <Route path="/404" component={NotFound} />
       <Route component={NotFound} />
