@@ -3,10 +3,10 @@
  * Pricing Guide page — transparent pricing ranges for Middle & West Tennessee
  * Based on Tennessee market research for land clearing / forestry mulching services
  */
-import { useState } from "react";
+import React, { useState } from "react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
-import { ChevronDown, ChevronUp, Phone, CheckCircle2, AlertCircle } from "lucide-react";
+import { ChevronDown, ChevronUp, Phone, CheckCircle2, AlertCircle, TreePine, Layers, Ruler, Mountain, Truck, Flame, MapPin } from "lucide-react";
 
 /* ─── Data ─────────────────────────────────────────────────────────────── */
 
@@ -131,42 +131,84 @@ const costFactors = [
     impact: "High",
     detail:
       "Larger jobs cost more in total but often less per acre due to equipment mobilization being spread across more work.",
+    icon: "Ruler",
+    expanded: {
+      headline: "More acres = lower cost per acre",
+      body: "Equipment mobilization — getting the machine to your property and back — is a fixed cost regardless of job size. On a 1-acre job that cost might represent $200–$350/acre of overhead. On a 10-acre job, that same mobilization cost spreads to $20–$35/acre. This is why larger jobs almost always come in at a better per-acre rate. If you're on the fence about clearing an adjacent parcel, doing it in the same visit is almost always the most cost-effective approach.",
+      example: "A 2-acre forestry mulch job at $1,200/acre = $2,400 total. The same property at 5 acres might price at $1,050/acre = $5,250 — saving $750 vs. two separate jobs.",
+    },
   },
   {
     factor: "Vegetation Density",
     impact: "High",
     detail:
       "Light brush clears 2–3× faster than heavy timber. Dense cedar or multi-stem hardwoods significantly increase time and cost.",
+    icon: "Layers",
+    expanded: {
+      headline: "The single biggest driver of job cost",
+      body: "A forestry mulcher can process light brush at 1–2 acres per hour. Heavy timber, thick cedar, or dense multi-stem growth slows that to 0.25–0.5 acres per hour — a 4–8× difference in machine time. When we walk your property before quoting, vegetation density is the first thing we assess. We look at canopy cover, stem count per acre, and average trunk diameter to determine which pricing tier applies.",
+      example: "A 3-acre parcel with light saplings and open canopy: $1,000–$1,500/acre. The same 3 acres with mature cedar thickets and multi-stem hardwoods: $2,500–$4,500/acre.",
+    },
   },
   {
     factor: "Tree Size & Species",
     impact: "High",
     detail:
       "Mature hardwoods (oak, hickory) and large pines take more time than saplings. Trees over 12″ diameter add cost.",
+    icon: "TreePine",
+    expanded: {
+      headline: "Hardwoods and large-diameter trees take more time",
+      body: "Forestry mulching machines are rated by the diameter of wood they can process efficiently. Most skid-steer mulchers handle up to 6–8″ diameter trees at full speed. Trees in the 8–14″ range require slower, more deliberate passes. Anything over 14″ may require multiple passes or a larger track machine. Species also matters: cedar and pine mulch quickly; dense hardwoods like oak and hickory take significantly longer. During your estimate, we'll note any large-diameter trees that may affect pricing.",
+      example: "A field of 4″ cedar saplings: standard rate. A mix of 10–14″ oak and hickory with dense understory: expect the heavy timber tier.",
+    },
   },
   {
     factor: "Terrain & Slope",
     impact: "Medium",
     detail:
       "Steep slopes, wet areas, or rocky ground slow equipment and may require different machinery.",
+    icon: "Mountain",
+    expanded: {
+      headline: "Slope and ground conditions affect equipment speed and safety",
+      body: "Tracked forestry mulchers handle slopes up to about 30–35 degrees safely. Beyond that, work slows considerably and operator safety becomes a factor. Wet or boggy ground can limit access entirely — we may need to wait for dry conditions or use different equipment. Rocky outcroppings and buried debris (old fence wire, concrete) also slow progress and can damage cutting heads. Middle Tennessee's rolling terrain is generally manageable, but we always note slope and soil conditions during the estimate walk.",
+      example: "Flat, dry ground: standard rate. A hillside parcel with 25° slopes and seasonal wet areas: expect a 15–25% terrain surcharge.",
+    },
   },
   {
     factor: "Site Access",
     impact: "Medium",
     detail:
       "Narrow gates, soft ground, or long travel distances from the road affect mobilization and equipment positioning.",
+    icon: "Truck",
+    expanded: {
+      headline: "Getting equipment on-site is part of the job",
+      body: "Our track machines are transported on a trailer that needs a gate or opening at least 10–12 feet wide. If your property has a narrow gate, a low-hanging power line at the entrance, or a long soft-ground driveway, that adds time and complexity to mobilization. We also factor in how far the work area is from where we can park the trailer. Properties with easy road access and a clear staging area are the most efficient — and the least expensive — to work on.",
+      example: "A property with a wide gravel driveway and easy gate access: standard mobilization. A property requiring a ¼-mile drive down a soft field road to reach the work area: additional mobilization time may be quoted.",
+    },
   },
   {
     factor: "Debris Disposal",
     impact: "Medium",
     detail:
       "Forestry mulching leaves mulch on-site (no haul cost). Land clearing with haul-away adds disposal fees.",
+    icon: "Flame",
+    expanded: {
+      headline: "How you handle the material changes the price significantly",
+      body: "Forestry mulching is the lowest-cost disposal method because there's nothing to haul — the machine grinds everything into a mulch layer that stays on-site. Traditional land clearing generates large volumes of brush, logs, and stumps that must be piled, burned (where permitted), or hauled to a disposal site. Haul-away requires additional equipment (skid steers, dump trucks) and tipping fees at the disposal site. If burning is an option on your property, it's typically the next most cost-effective method after mulching.",
+      example: "Forestry mulching a 3-acre parcel: no disposal cost — mulch stays on-site. Land clearing the same 3 acres with haul-away: add $500–$1,500 in disposal costs depending on debris volume.",
+    },
   },
   {
     factor: "Distance from Dickson, TN",
     impact: "Low",
     detail:
       "We serve 35 counties with no travel surcharge within our normal service area.",
+    icon: "MapPin",
+    expanded: {
+      headline: "Most of our service area has no travel surcharge",
+      body: "Our base of operations is in Dickson, TN. We serve 35 counties across Middle and West Tennessee — from Davidson and Williamson counties in the east to Shelby and Tipton in the west — with no additional travel fee. For properties outside our standard service area, we charge $3.50 per mile beyond the boundary. If you're unsure whether your property falls within our free service zone, just ask when you request your estimate.",
+      example: "A job in Humphreys County (within service area): no travel surcharge. A job in an outlying county 80 miles from Dickson: approximately $280 in travel fees added to the estimate.",
+    },
   },
 ];
 
@@ -268,6 +310,155 @@ function FAQItem({ q, a }: { q: string; a: string }) {
           {a}
         </p>
       )}
+    </div>
+  );
+}
+
+/* ─── CostFactorCard ────────────────────────────────────────────────── */
+
+const iconMap: Record<string, React.ComponentType<{ size?: number; style?: React.CSSProperties }>> = {
+  Ruler,
+  Layers,
+  TreePine,
+  Mountain,
+  Truck,
+  Flame,
+  MapPin,
+};
+
+function CostFactorCard({ row }: { row: typeof costFactors[number] }) {
+  const [open, setOpen] = useState(false);
+  const Icon = iconMap[row.icon] ?? MapPin;
+  const impactColors: Record<string, string> = {
+    High: "#dc2626",
+    Medium: "#E07B2A",
+    Low: "#4ade80",
+  };
+  const color = impactColors[row.impact] ?? "#F0EDE6";
+
+  return (
+    <div
+      style={{
+        backgroundColor: "#1a1a1a",
+        border: "1px solid rgba(255,255,255,0.07)",
+        borderRadius: "6px",
+        overflow: "hidden",
+        transition: "border-color 0.2s",
+      }}
+      onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.borderColor = "rgba(224,123,42,0.3)"; }}
+      onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.borderColor = "rgba(255,255,255,0.07)"; }}
+    >
+      {/* Card header */}
+      <div style={{ padding: "1.5rem 1.5rem 1.25rem" }}>
+        <div style={{ display: "flex", alignItems: "flex-start", gap: "1rem" }}>
+          <div
+            style={{
+              width: "2.5rem",
+              height: "2.5rem",
+              borderRadius: "6px",
+              backgroundColor: `${color}15`,
+              border: `1px solid ${color}30`,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              flexShrink: 0,
+            }}
+          >
+            <Icon size={16} style={{ color }} />
+          </div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", flexWrap: "wrap", marginBottom: "0.35rem" }}>
+              <h3
+                style={{
+                  fontFamily: "'Oswald', sans-serif",
+                  fontWeight: 600,
+                  fontSize: "1.05rem",
+                  color: "#F0EDE6",
+                  margin: 0,
+                }}
+              >
+                {row.factor}
+              </h3>
+              <ImpactBadge impact={row.impact} />
+            </div>
+            <p style={{ fontFamily: "'Lato', sans-serif", fontSize: "0.875rem", color: "rgba(240,237,230,0.6)", lineHeight: 1.6, margin: 0 }}>
+              {row.detail}
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Expanded detail */}
+      {open && (
+        <div
+          style={{
+            padding: "0 1.5rem 1.5rem",
+            borderTop: "1px solid rgba(255,255,255,0.05)",
+            paddingTop: "1.25rem",
+          }}
+        >
+          <p
+            style={{
+              fontFamily: "'Oswald', sans-serif",
+              fontWeight: 600,
+              fontSize: "0.85rem",
+              color: "#E07B2A",
+              letterSpacing: "0.04em",
+              marginBottom: "0.6rem",
+              textTransform: "uppercase",
+            }}
+          >
+            {row.expanded.headline}
+          </p>
+          <p style={{ fontFamily: "'Lato', sans-serif", fontSize: "0.9rem", color: "rgba(240,237,230,0.75)", lineHeight: 1.75, marginBottom: "1rem" }}>
+            {row.expanded.body}
+          </p>
+          <div
+            style={{
+              backgroundColor: "rgba(224,123,42,0.06)",
+              border: "1px solid rgba(224,123,42,0.15)",
+              borderRadius: "4px",
+              padding: "0.85rem 1rem",
+            }}
+          >
+            <p style={{ fontFamily: "'Lato', sans-serif", fontSize: "0.8rem", color: "rgba(240,237,230,0.6)", lineHeight: 1.65, margin: 0 }}>
+              <span style={{ fontWeight: 700, color: "#E07B2A", marginRight: "0.4rem" }}>Example:</span>
+              {row.expanded.example}
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Toggle button */}
+      <button
+        onClick={() => setOpen(!open)}
+        style={{
+          width: "100%",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: "0.4rem",
+          padding: "0.65rem",
+          background: "none",
+          border: "none",
+          borderTop: "1px solid rgba(255,255,255,0.05)",
+          cursor: "pointer",
+          fontFamily: "'Oswald', sans-serif",
+          fontWeight: 500,
+          fontSize: "0.7rem",
+          letterSpacing: "0.1em",
+          textTransform: "uppercase",
+          color: "rgba(224,123,42,0.7)",
+        }}
+        onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.color = "#E07B2A"; }}
+        onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.color = "rgba(224,123,42,0.7)"; }}
+      >
+        {open ? (
+          <><ChevronUp size={13} /> Less detail</>
+        ) : (
+          <><ChevronDown size={13} /> More detail</>
+        )}
+      </button>
     </div>
   );
 }
@@ -566,7 +757,7 @@ export default function PricingPage() {
         </div>
       </section>
 
-      {/* ── Cost factors table ── */}
+      {/* ── Cost factors — expanded cards ── */}
       <section
         style={{
           padding: "5rem 0",
@@ -576,7 +767,7 @@ export default function PricingPage() {
         }}
       >
         <div className="container">
-          <div style={{ textAlign: "center", marginBottom: "3rem" }}>
+          <div style={{ textAlign: "center", marginBottom: "3.5rem" }}>
             <h2
               style={{
                 fontFamily: "'Oswald', sans-serif",
@@ -588,101 +779,21 @@ export default function PricingPage() {
             >
               What Affects Your Price?
             </h2>
-            <p style={{ fontFamily: "'Lato', sans-serif", color: "rgba(240,237,230,0.6)", fontSize: "1rem", maxWidth: "540px", margin: "0 auto" }}>
-              These are the main factors our estimators evaluate when pricing a job.
+            <p style={{ fontFamily: "'Lato', sans-serif", color: "rgba(240,237,230,0.6)", fontSize: "1rem", maxWidth: "580px", margin: "0 auto" }}>
+              Seven factors determine the final cost of any land clearing or forestry mulching job. Here's exactly how each one works — and what it means for your estimate.
             </p>
           </div>
 
-          <div style={{ overflowX: "auto" }}>
-            <table
-              style={{
-                width: "100%",
-                borderCollapse: "collapse",
-                fontFamily: "'Lato', sans-serif",
-                fontSize: "0.9rem",
-              }}
-            >
-              <thead>
-                <tr
-                  style={{
-                    backgroundColor: "rgba(224,123,42,0.1)",
-                    borderBottom: "2px solid rgba(224,123,42,0.3)",
-                  }}
-                >
-                  <th
-                    style={{
-                      padding: "0.85rem 1.25rem",
-                      textAlign: "left",
-                      fontFamily: "'Oswald', sans-serif",
-                      fontWeight: 600,
-                      fontSize: "0.75rem",
-                      letterSpacing: "0.15em",
-                      textTransform: "uppercase",
-                      color: "#E07B2A",
-                    }}
-                  >
-                    Factor
-                  </th>
-                  <th
-                    style={{
-                      padding: "0.85rem 1.25rem",
-                      textAlign: "left",
-                      fontFamily: "'Oswald', sans-serif",
-                      fontWeight: 600,
-                      fontSize: "0.75rem",
-                      letterSpacing: "0.15em",
-                      textTransform: "uppercase",
-                      color: "#E07B2A",
-                    }}
-                  >
-                    Price Impact
-                  </th>
-                  <th
-                    style={{
-                      padding: "0.85rem 1.25rem",
-                      textAlign: "left",
-                      fontFamily: "'Oswald', sans-serif",
-                      fontWeight: 600,
-                      fontSize: "0.75rem",
-                      letterSpacing: "0.15em",
-                      textTransform: "uppercase",
-                      color: "#E07B2A",
-                    }}
-                  >
-                    Details
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {costFactors.map((row, i) => (
-                  <tr
-                    key={row.factor}
-                    style={{
-                      backgroundColor: i % 2 === 0 ? "rgba(255,255,255,0.02)" : "transparent",
-                      borderBottom: "1px solid rgba(255,255,255,0.05)",
-                    }}
-                  >
-                    <td
-                      style={{
-                        padding: "1rem 1.25rem",
-                        fontFamily: "'Oswald', sans-serif",
-                        fontWeight: 500,
-                        color: "#F0EDE6",
-                        whiteSpace: "nowrap",
-                      }}
-                    >
-                      {row.factor}
-                    </td>
-                    <td style={{ padding: "1rem 1.25rem", whiteSpace: "nowrap" }}>
-                      <ImpactBadge impact={row.impact} />
-                    </td>
-                    <td style={{ padding: "1rem 1.25rem", color: "rgba(240,237,230,0.65)", lineHeight: 1.6 }}>
-                      {row.detail}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fill, minmax(min(100%, 480px), 1fr))",
+              gap: "1.5rem",
+            }}
+          >
+            {costFactors.map((row) => (
+              <CostFactorCard key={row.factor} row={row} />
+            ))}
           </div>
         </div>
       </section>
