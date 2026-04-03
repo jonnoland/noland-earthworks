@@ -30,13 +30,7 @@ export function registerJobberRoutes(app: Express) {
     }
     try {
       await exchangeCodeForTokens(code);
-      res.send(`
-        <html><body style="font-family:sans-serif;text-align:center;padding:4rem;background:#121212;color:#F0EDE6;">
-          <h2 style="color:#E07B2A;">✓ Jobber Connected Successfully</h2>
-          <p>Quote form submissions will now automatically create requests in Jobber.</p>
-          <p><a href="/" style="color:#E07B2A;">Return to website</a></p>
-        </body></html>
-      `);
+      res.redirect("/admin/settings?jobber=connected");
     } catch (err) {
       console.error("[Jobber] OAuth callback error:", err);
       res.status(500).send(`Failed to connect Jobber: ${err instanceof Error ? err.message : String(err)}`);

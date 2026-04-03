@@ -15,6 +15,22 @@ import AboutPage from "./pages/About";
 import PricingPage from "./pages/Pricing";
 import TermsOfServicePage from "./pages/TermsOfService";
 import PrivacyPolicyPage from "./pages/PrivacyPolicy";
+import AdminHome from "./pages/admin/AdminHome";
+import AdminLeads from "./pages/admin/AdminLeads";
+import AdminQuotes from "./pages/admin/AdminQuotes";
+import AdminJobs from "./pages/admin/AdminJobs";
+import AdminClients from "./pages/admin/AdminClients";
+import AdminInvoices from "./pages/admin/AdminInvoices";
+import AdminSchedule from "./pages/admin/AdminSchedule";
+import AdminCrews from "./pages/admin/AdminCrews";
+import AdminTimesheets from "./pages/admin/AdminTimesheets";
+import AdminReviews from "./pages/admin/AdminReviews";
+import AdminConversations from "./pages/admin/AdminConversations";
+import AdminScoreboard from "./pages/admin/AdminScoreboard";
+import AdminReports from "./pages/admin/AdminReports";
+import AdminSettings from "./pages/admin/AdminSettings";
+import { useAuth } from "./_core/hooks/useAuth";
+import { getLoginUrl } from "./const";
 import {
   DavidsonCountyPage,
   WilliamsonCountyPage,
@@ -108,10 +124,56 @@ function Router() {
       <Route path="/service-areas/madison-county" component={MadisonCountyPage} />
       <Route path="/service-areas/weakley-county" component={WeakleyCountyPage} />
 
+      {/* Admin console — owner-only */}
+      <Route path="/admin" component={AdminGuard(AdminHome)} />
+      <Route path="/admin/leads" component={AdminGuard(AdminLeads)} />
+      <Route path="/admin/quotes" component={AdminGuard(AdminQuotes)} />
+      <Route path="/admin/jobs" component={AdminGuard(AdminJobs)} />
+      <Route path="/admin/clients" component={AdminGuard(AdminClients)} />
+      <Route path="/admin/invoices" component={AdminGuard(AdminInvoices)} />
+      <Route path="/admin/schedule" component={AdminGuard(AdminSchedule)} />
+      <Route path="/admin/crews" component={AdminGuard(AdminCrews)} />
+      <Route path="/admin/timesheets" component={AdminGuard(AdminTimesheets)} />
+      <Route path="/admin/reviews" component={AdminGuard(AdminReviews)} />
+      <Route path="/admin/conversations" component={AdminGuard(AdminConversations)} />
+      <Route path="/admin/scoreboard" component={AdminGuard(AdminScoreboard)} />
+      <Route path="/admin/reports" component={AdminGuard(AdminReports)} />
+      <Route path="/admin/settings" component={AdminGuard(AdminSettings)} />
+
       <Route path="/404" component={NotFound} />
       <Route component={NotFound} />
     </Switch>
   );
+}
+
+/** HOC that blocks non-owners from admin pages */
+function AdminGuard(Component: React.ComponentType) {
+  return function GuardedAdmin() {
+    const { user, loading } = useAuth();
+    if (loading) {
+      return (
+        <div style={{ minHeight: "100vh", background: "#0f1623", display: "flex", alignItems: "center", justifyContent: "center", color: "rgba(240,237,230,0.4)", fontSize: "14px" }}>
+          Checking access...
+        </div>
+      );
+    }
+    if (!user) {
+      window.location.href = getLoginUrl();
+      return null;
+    }
+    // Only the owner (role === 'admin') can access
+    if (user.role !== "admin") {
+      return (
+        <div style={{ minHeight: "100vh", background: "#0f1623", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "1rem" }}>
+          <div style={{ fontSize: "48px" }}>🔒</div>
+          <div style={{ color: "#F0EDE6", fontSize: "20px", fontWeight: 700 }}>Access Denied</div>
+          <div style={{ color: "rgba(240,237,230,0.45)", fontSize: "14px" }}>This page is restricted to the site owner.</div>
+          <a href="/" style={{ color: "#E07B2A", fontSize: "14px", textDecoration: "underline" }}>Return to site</a>
+        </div>
+      );
+    }
+    return <Component />;
+  };
 }
 
 function App() {

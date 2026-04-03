@@ -94,3 +94,23 @@
 - [x] Remove Get a Free Estimate and Call buttons from Pricing page hero section
 - [x] Add "Get a rough number in 30 seconds →" teaser link on homepage hero pointing to /pricing
 - [x] Pre-fill quote form from Pricing calculator selections via URL query params (service, acreage, density, terrain, access)
+- [x] Research Jobber API capabilities (GraphQL, OAuth, available endpoints)
+- [x] Set up Jobber OAuth 2.0 token exchange on server (connect/callback/refresh)
+- [x] Store Jobber access/refresh tokens securely in DB
+- [x] Build server-side Jobber API helper (GraphQL queries for all sections)
+- [x] Build /admin route gated to owner account only (role check)
+- [x] Build admin sidebar layout matching OwnrOps structure (14 nav items)
+- [x] Admin Home — this week's jobs, revenue summary, action items
+- [x] Admin Leads — lead pipeline with status tracking
+- [x] Admin Quotes — quote requests list with status (open/sent/accepted/declined)
+- [x] Admin Jobs — active and completed jobs list
+- [x] Admin Clients — client list with contact info
+- [x] Admin Invoices — invoice tracker (sent/paid/overdue)
+- [x] Admin Schedule — weekly job calendar
+- [x] Admin Crews — crew/employee tracker
+- [x] Admin Timesheets — hours tracking per crew member
+- [x] Admin Reviews — customer review tracker
+- [x] Admin Conversations — notes/messages log
+- [x] Admin Scoreboard — KPI metrics and performance charts
+- [x] Admin Reports — revenue and job reports with charts
+- [x] Admin Settings — admin configuration panel
