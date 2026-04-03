@@ -86,3 +86,4 @@
 - [x] Add Google review count (4.9 from 55+ Google Reviews) to Testimonials section header
 - [x] Build FAQSection component with 5 common questions and add to homepage
 - [x] Remove Google review count badge from Testimonials section header
+- [x] Build /pricing Pricing Guide page with Tennessee market rates and integrate into site nav

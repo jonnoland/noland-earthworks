@@ -12,6 +12,7 @@ import VegetationManagementPage from "./pages/VegetationManagement";
 import PropertyMaintenancePage from "./pages/PropertyMaintenance";
 import QuotePage from "./pages/Quote";
 import AboutPage from "./pages/About";
+import PricingPage from "./pages/Pricing";
 import TermsOfServicePage from "./pages/TermsOfService";
 import PrivacyPolicyPage from "./pages/PrivacyPolicy";
 import {
@@ -60,6 +61,7 @@ function Router() {
       <Route path="/" component={Home} />
       <Route path="/quote" component={QuotePage} />
       <Route path="/about" component={AboutPage} />
+      <Route path="/pricing" component={PricingPage} />
       <Route path="/terms-of-service" component={TermsOfServicePage} />
       <Route path="/privacy-policy" component={PrivacyPolicyPage} />
 

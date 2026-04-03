@@ -131,6 +131,13 @@ export default function Navbar() {
               </button>
             ))}
             <a
+              href="/pricing"
+              className="nav-link"
+              style={{ textDecoration: "none" }}
+            >
+              Pricing
+            </a>
+            <a
               href="/about"
               className="nav-link"
               style={{ textDecoration: "none" }}
@@ -230,6 +237,13 @@ export default function Navbar() {
                 {l.label}
               </button>
             ))}
+            <a
+              href="/pricing"
+              className="text-left py-3 px-2 nav-link block"
+              style={{ borderBottom: "1px solid rgba(255,255,255,0.06)", textDecoration: "none" }}
+            >
+              Pricing
+            </a>
             <a
               href="/about"
               className="text-left py-3 px-2 nav-link block"
