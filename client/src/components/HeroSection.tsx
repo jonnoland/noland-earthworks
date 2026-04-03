@@ -65,11 +65,11 @@ export default function HeroSection() {
               marginBottom: "1.5rem",
             }}
           >
-            Professional
+            Reclaim Your Land.
             <br />
-            <span style={{ color: "#E07B2A" }}>Land Services</span>
+            <span style={{ color: "#E07B2A" }}>One Day.</span>
             <br />
-            For Middle & West Tennessee.
+            Done Right.
           </h1>
 
           {/* Body copy */}
@@ -84,10 +84,7 @@ export default function HeroSection() {
               marginBottom: "2.5rem",
             }}
           >
-            Noland Earthworks is a veteran-owned and operated company specializing
-            in land clearing, forestry mulching, and vegetation management. We
-            deliver professional, reliable service with the work ethic and
-            integrity you deserve.
+            Veteran-owned and operated, serving Middle & West Tennessee. We clear overgrown land, mulch brush, and restore usable property — professionally, efficiently, and on your schedule.
           </p>
 
           {/* CTA buttons */}

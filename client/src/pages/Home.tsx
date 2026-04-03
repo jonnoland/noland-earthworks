@@ -5,7 +5,9 @@
 import Navbar from "@/components/Navbar";
 import HeroSection from "@/components/HeroSection";
 import StatsBar from "@/components/StatsBar";
+import ProblemSolutionSection from "@/components/ProblemSolutionSection";
 import ServicesSection from "@/components/ServicesSection";
+import HowItWorksSection from "@/components/HowItWorksSection";
 import WhyUsSection from "@/components/WhyUsSection";
 import TestimonialsSection from "@/components/TestimonialsSection";
 import ServiceAreasSection from "@/components/ServiceAreasSection";
@@ -23,7 +25,9 @@ export default function Home() {
       <Navbar />
       <HeroSection />
       <StatsBar />
+      <ProblemSolutionSection />
       <ServicesSection />
+      <HowItWorksSection />
       <WhyUsSection />
       <TestimonialsSection />
       <ServiceAreasSection />

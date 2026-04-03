@@ -80,3 +80,6 @@
 - [x] Add county name hover tooltip to the main page ServiceAreasSection map
 - [x] Make service area map interactive: clicking a county polygon navigates to its /service-areas/[slug] page
 - [x] Remove click-to-navigate interactivity from service area map county polygons
+- [x] Reframe hero headline to outcome-focused copy
+- [x] Build ProblemSolutionSection component and add to homepage
+- [x] Build HowItWorksSection (3-step process) component and add to homepage
