@@ -65,3 +65,6 @@
 - [x] Fix Google Maps error on county pages - replace direct API script with Manus proxy MapView
 - [x] Update all "20 counties" references to "35 counties" across the site
 - [x] Update hero headline to "Professional Land Services For Middle & West Tennessee"
+- [x] Update page title tag to include 'Middle & West Tennessee' for SEO
+- [x] Change 'Serving Middle TN' badge to 'Serving Middle & West TN'
+- [x] Update About page subheading to reflect expanded service area

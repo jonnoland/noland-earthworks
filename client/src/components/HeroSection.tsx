@@ -113,7 +113,7 @@ export default function HeroSection() {
             {[
               { icon: <Star size={16} />, label: "Veteran-Owned" },
               { icon: <FileText size={16} />, label: "Free Estimates" },
-              { icon: <MapPin size={16} />, label: "Serving Middle TN" },
+              { icon: <MapPin size={16} />, label: "Serving Middle & West TN" },
             ].map((b) => (
               <div
                 key={b.label}

@@ -13,7 +13,7 @@ import Footer from "@/components/Footer";
 import { usePageTitle } from "@/hooks/usePageTitle";
 
 export default function Home() {
-  usePageTitle("Veteran-Owned Land Clearing & Forestry Mulching — Middle Tennessee");
+  usePageTitle("Veteran-Owned Land Clearing & Forestry Mulching — Middle & West Tennessee");
   return (
     <div
       className="min-h-screen"

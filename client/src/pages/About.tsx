@@ -193,7 +193,7 @@ export default function AboutPage() {
               maxWidth: "560px",
             }}
           >
-            Built on American strength, driven by service, and rooted in Middle Tennessee.
+            Built on American strength, driven by service, and rooted in Middle & West Tennessee.
           </p>
         </div>
       </section>
