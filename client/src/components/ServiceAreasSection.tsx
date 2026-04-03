@@ -81,6 +81,7 @@ export default function ServiceAreasSection() {
   const geojsonRef = useRef<GeoJSON.FeatureCollection | null>(null);
   const markerRef = useRef<google.maps.Marker | null>(null);
   const mapRef = useRef<google.maps.Map | null>(null);
+  const infoWindowRef = useRef<google.maps.InfoWindow | null>(null);
   const autocompleteServiceRef = useRef<google.maps.places.AutocompleteService | null>(null);
   const autocompleteDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -149,6 +150,11 @@ export default function ServiceAreasSection() {
       ],
     });
 
+    // Create a shared InfoWindow for county name tooltips
+    infoWindowRef.current = new google.maps.InfoWindow({
+      disableAutoPan: true,
+    });
+
     // Fetch and draw county polygons
     fetch(COUNTY_GEOJSON_URL)
       .then((r) => {
@@ -164,6 +170,7 @@ export default function ServiceAreasSection() {
         features.forEach((feature: GeoJSON.Feature) => {
           const geom = feature.geometry;
           if (!geom) return;
+          const countyName = ((feature.properties as Record<string, string>)?.NAME ?? "") + " County";
           const toLatLng = (coord: number[]) => ({ lat: coord[1], lng: coord[0] });
           const rings: google.maps.LatLngLiteral[][] = [];
           if (geom.type === "Polygon") {
@@ -183,8 +190,25 @@ export default function ServiceAreasSection() {
             fillOpacity: 0.12,
             map,
           });
-          polygon.addListener("mouseover", () => polygon.setOptions({ fillOpacity: 0.28, strokeWeight: 3 }));
-          polygon.addListener("mouseout", () => polygon.setOptions({ fillOpacity: 0.12, strokeWeight: 2 }));
+          polygon.addListener("mouseover", (e: google.maps.MapMouseEvent) => {
+            polygon.setOptions({ fillOpacity: 0.28, strokeWeight: 3 });
+            if (infoWindowRef.current && e.latLng) {
+              infoWindowRef.current.setContent(
+                `<div style="font-family:sans-serif;font-size:13px;font-weight:600;color:#1a1a1a;padding:2px 4px;">${countyName}</div>`
+              );
+              infoWindowRef.current.setPosition(e.latLng);
+              infoWindowRef.current.open(map);
+            }
+          });
+          polygon.addListener("mousemove", (e: google.maps.MapMouseEvent) => {
+            if (infoWindowRef.current && e.latLng) {
+              infoWindowRef.current.setPosition(e.latLng);
+            }
+          });
+          polygon.addListener("mouseout", () => {
+            polygon.setOptions({ fillOpacity: 0.12, strokeWeight: 2 });
+            infoWindowRef.current?.close();
+          });
           polygonsRef.current.push(polygon);
         });
       })

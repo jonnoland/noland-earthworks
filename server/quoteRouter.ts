@@ -162,7 +162,7 @@ function buildEmailHtml(data: QuoteInput): string {
             <p style="margin:0;font-size:12px;color:#888;">
               <strong style="color:#E07B2A;">Noland Earthworks, LLC</strong> &nbsp;&bull;&nbsp;
               <a href="tel:6154064819" style="color:#aaa;text-decoration:none;">(615) 406-4819</a> &nbsp;&bull;&nbsp;
-              <a href="mailto:info@nolandearthworks.com" style="color:#aaa;text-decoration:none;">info@nolandearthworks.com</a>
+              <a href="mailto:quotes@nolandearthworks.com" style="color:#aaa;text-decoration:none;">quotes@nolandearthworks.com</a>
             </p>
             <p style="margin:6px 0 0;font-size:11px;color:#555;">Veteran-Owned &amp; Operated &bull; Middle Tennessee</p>
           </td>
@@ -287,7 +287,7 @@ function buildConfirmationEmailHtml(data: QuoteInput): string {
             <p style="margin:0;font-size:12px;color:#888;">
               <strong style="color:#E07B2A;">Noland Earthworks, LLC</strong> &nbsp;&bull;&nbsp;
               <a href="tel:6154064819" style="color:#aaa;text-decoration:none;">(615) 406-4819</a> &nbsp;&bull;&nbsp;
-              <a href="mailto:info@nolandearthworks.com" style="color:#aaa;text-decoration:none;">info@nolandearthworks.com</a>
+              <a href="mailto:quotes@nolandearthworks.com" style="color:#aaa;text-decoration:none;">quotes@nolandearthworks.com</a>
             </p>
             <p style="margin:6px 0 0;font-size:11px;color:#555;">Veteran-Owned &amp; Operated &bull; Middle Tennessee</p>
           </td>
@@ -312,7 +312,7 @@ export const quoteRouter = router({
         const resend = new Resend(ENV.resendApiKey);
         const { error } = await resend.emails.send({
           from: "Noland Earthworks <noreply@nolandearthworks.com>",
-          to: ["info@nolandearthworks.com"],
+          to: ["quotes@nolandearthworks.com"],
           replyTo: input.email,
           subject: `New Quote Request — ${input.service} (${input.county} County)`,
           html: buildEmailHtml(input),
@@ -332,7 +332,7 @@ export const quoteRouter = router({
         const { error } = await resend.emails.send({
           from: "Noland Earthworks <noreply@nolandearthworks.com>",
           to: [input.email],
-          replyTo: "info@nolandearthworks.com",
+          replyTo: "quotes@nolandearthworks.com",
           subject: `We received your quote request — Noland Earthworks`,
           html: buildConfirmationEmailHtml(input),
         });

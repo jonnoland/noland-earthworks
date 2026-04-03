@@ -187,9 +187,9 @@ export default function QuotePage() {
                   {
                     icon: <Mail size={20} />,
                     label: "Email Us",
-                    value: "info@nolandearthworks.com",
+                    value: "quotes@nolandearthworks.com",
                     sub: "We respond within 24 hours",
-                    href: "mailto:info@nolandearthworks.com",
+                    href: "mailto:quotes@nolandearthworks.com",
                   },
                   {
                     icon: <MapPin size={20} />,

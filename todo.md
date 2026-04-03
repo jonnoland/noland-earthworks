@@ -76,3 +76,5 @@
 - [x] Add dedicated counties section to homepage listing all 35 served counties
 - [x] Change contact email from quotes@nolandearthworks.com to info@nolandearthworks.com
 - [x] Merge ServiceAreasSection county grid with CountiesSection into one unified section
+- [x] Revert quote-related emails to quotes@nolandearthworks.com (Quote page, quoteRouter email sends/templates); keep info@ for general contact (Footer, ContactSection)
+- [x] Add county name hover tooltip to the main page ServiceAreasSection map
