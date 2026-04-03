@@ -581,6 +581,51 @@ export default function PricingPage() {
         </div>
       </div>
 
+      {/* ── Cost calculator ── */}
+      <section
+        style={{
+          padding: "5rem 0",
+          background: "linear-gradient(180deg, #121212 0%, #1a1208 100%)",
+          borderBottom: "1px solid rgba(255,255,255,0.05)",
+        }}
+      >
+        <div className="container">
+          <div style={{ textAlign: "center", marginBottom: "3rem" }}>
+            <div
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "0.5rem",
+                backgroundColor: "rgba(224,123,42,0.1)",
+                border: "1px solid rgba(224,123,42,0.25)",
+                borderRadius: "4px",
+                padding: "0.35rem 0.85rem",
+                marginBottom: "1rem",
+              }}
+            >
+              <span style={{ fontFamily: "'Oswald', sans-serif", fontSize: "0.7rem", fontWeight: 600, letterSpacing: "0.14em", textTransform: "uppercase", color: "#E07B2A" }}>
+                Estimate Tool
+              </span>
+            </div>
+            <h2
+              style={{
+                fontFamily: "'Oswald', sans-serif",
+                fontWeight: 700,
+                fontSize: "clamp(1.75rem, 3vw, 2.5rem)",
+                color: "#F0EDE6",
+                marginBottom: "0.75rem",
+              }}
+            >
+              Get a Rough Number
+            </h2>
+            <p style={{ fontFamily: "'Lato', sans-serif", color: "rgba(240,237,230,0.6)", fontSize: "1rem", maxWidth: "520px", margin: "0 auto" }}>
+              Plug in your property details and see a ballpark range in seconds. For a firm quote, we’ll walk your land — free.
+            </p>
+          </div>
+          <CostCalculator />
+        </div>
+      </section>
+
       {/* ── Service pricing cards ── */}
       <section style={{ padding: "5rem 0" }}>
         <div className="container">
@@ -796,52 +841,6 @@ export default function PricingPage() {
               <CostFactorCard key={row.factor} row={row} />
             ))}
           </div>
-        </div>
-      </section>
-
-      {/* ── Cost calculator ── */}
-      <section
-        style={{
-          padding: "5rem 0",
-          background: "linear-gradient(180deg, #121212 0%, #1a1208 100%)",
-          borderTop: "1px solid rgba(224,123,42,0.12)",
-          borderBottom: "1px solid rgba(255,255,255,0.05)",
-        }}
-      >
-        <div className="container">
-          <div style={{ textAlign: "center", marginBottom: "3rem" }}>
-            <div
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                gap: "0.5rem",
-                backgroundColor: "rgba(224,123,42,0.1)",
-                border: "1px solid rgba(224,123,42,0.25)",
-                borderRadius: "4px",
-                padding: "0.35rem 0.85rem",
-                marginBottom: "1rem",
-              }}
-            >
-              <span style={{ fontFamily: "'Oswald', sans-serif", fontSize: "0.7rem", fontWeight: 600, letterSpacing: "0.14em", textTransform: "uppercase", color: "#E07B2A" }}>
-                Estimate Tool
-              </span>
-            </div>
-            <h2
-              style={{
-                fontFamily: "'Oswald', sans-serif",
-                fontWeight: 700,
-                fontSize: "clamp(1.75rem, 3vw, 2.5rem)",
-                color: "#F0EDE6",
-                marginBottom: "0.75rem",
-              }}
-            >
-              Get a Rough Number
-            </h2>
-            <p style={{ fontFamily: "'Lato', sans-serif", color: "rgba(240,237,230,0.6)", fontSize: "1rem", maxWidth: "520px", margin: "0 auto" }}>
-              Plug in your property details and see a ballpark range in seconds. For a firm quote, we'll walk your land — free.
-            </p>
-          </div>
-          <CostCalculator />
         </div>
       </section>
 
