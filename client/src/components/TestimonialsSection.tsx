@@ -199,10 +199,53 @@ export default function TestimonialsSection() {
               letterSpacing: "0.04em",
               textTransform: "uppercase",
               color: "#F0EDE6",
+              marginBottom: "1rem",
             }}
           >
             What Our Clients Say
           </h2>
+          {/* Google review count badge */}
+          <div className="flex items-center gap-3 flex-wrap">
+            <div className="flex items-center gap-1">
+              {[...Array(5)].map((_, i) => (
+                <span key={i} style={{ color: "#E07B2A", fontSize: "1.125rem" }}>★</span>
+              ))}
+            </div>
+            <span
+              style={{
+                fontFamily: "'Lato', sans-serif",
+                fontWeight: 700,
+                fontSize: "1rem",
+                color: "#F0EDE6",
+              }}
+            >
+              4.9
+            </span>
+            <span
+              style={{
+                fontFamily: "'Lato', sans-serif",
+                fontSize: "0.9375rem",
+                color: "rgba(240,237,230,0.55)",
+              }}
+            >
+              from 55+ Google Reviews
+            </span>
+            <a
+              href="https://www.google.com/search?q=Noland+Earthworks+reviews"
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{
+                fontFamily: "'Lato', sans-serif",
+                fontSize: "0.8125rem",
+                fontWeight: 700,
+                color: "#4285F4",
+                textDecoration: "none",
+                letterSpacing: "0.04em",
+              }}
+            >
+              View on Google ↗
+            </a>
+          </div>
         </div>
 
         {/* Cards grid */}

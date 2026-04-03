@@ -83,3 +83,5 @@
 - [x] Reframe hero headline to outcome-focused copy
 - [x] Build ProblemSolutionSection component and add to homepage
 - [x] Build HowItWorksSection (3-step process) component and add to homepage
+- [x] Add Google review count (4.9 from 55+ Google Reviews) to Testimonials section header
+- [x] Build FAQSection component with 5 common questions and add to homepage

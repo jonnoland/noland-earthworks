@@ -10,6 +10,7 @@ import ServicesSection from "@/components/ServicesSection";
 import HowItWorksSection from "@/components/HowItWorksSection";
 import WhyUsSection from "@/components/WhyUsSection";
 import TestimonialsSection from "@/components/TestimonialsSection";
+import FAQSection from "@/components/FAQSection";
 import ServiceAreasSection from "@/components/ServiceAreasSection";
 import CountiesSection from "@/components/CountiesSection";
 import Footer from "@/components/Footer";
@@ -30,6 +31,7 @@ export default function Home() {
       <HowItWorksSection />
       <WhyUsSection />
       <TestimonialsSection />
+      <FAQSection />
       <ServiceAreasSection />
       <CountiesSection />
       <Footer />
