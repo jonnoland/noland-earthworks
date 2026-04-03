@@ -19,14 +19,17 @@ const counties: { name: string; slug?: string }[] = [
   { name: "Cheatham County", slug: "cheatham-county" },
   { name: "Dickson County", slug: "dickson-county" },
   { name: "Maury County", slug: "maury-county" },
-  { name: "Smith County", slug: "smith-county" },
-  { name: "Trousdale County", slug: "trousdale-county" },
-  { name: "Macon County", slug: "macon-county" },
+  { name: "Montgomery County", slug: "montgomery-county" },
+  { name: "Bedford County", slug: "bedford-county" },
+  { name: "Wayne County", slug: "wayne-county" },
+  { name: "Cannon County", slug: "cannon-county" },
   { name: "Lewis County" },
   { name: "Perry County" },
   { name: "Benton County" },
   { name: "Hickman County" },
   { name: "Houston County" },
+  { name: "Humphreys County" },
+  { name: "Stewart County" },
 ];
 
 // Center of the 17-county service area (roughly middle of the cluster)
@@ -184,7 +187,7 @@ export default function ServiceAreasSection() {
               color: "rgba(240,237,230,0.65)",
             }}
           >
-            Noland Earthworks proudly serves 17 counties across Middle Tennessee.
+            Noland Earthworks proudly serves 20 counties across Middle Tennessee.
             Check if we're available in your area.
           </p>
         </div>

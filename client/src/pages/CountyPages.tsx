@@ -241,70 +241,94 @@ const countyData: Record<string, CountyPageProps> = {
       ...COMMON_FAQS,
     ],
   },
-  "smith-county": {
-    county: "Smith County",
+  "wayne-county": {
+    county: "Wayne County",
     state: "Tennessee",
-    slug: "smith-county",
+    slug: "wayne-county",
     heroImage: LAND_HERO,
     intro: [
-      "Noland Earthworks serves Smith County, Tennessee with professional land clearing, forestry mulching, and vegetation management services. Carthage and the surrounding rural communities trust our veteran-owned team for efficient, reliable land services at competitive rates.",
-      "Smith County's rural character and wooded terrain make forestry mulching a particularly effective solution for land clearing projects. Our equipment handles dense brush, cedar, and hardwood growth in a single pass, minimizing soil disturbance and eliminating the need for separate hauling or burning operations.",
-      "We offer free on-site estimates throughout Smith County — call or submit a quote request online today.",
+      "Noland Earthworks provides land clearing and forestry mulching services throughout Wayne County, Tennessee. Waynesboro and the surrounding rural communities trust our veteran-owned team for efficient, reliable land services at competitive rates.",
+      "Wayne County's heavily wooded terrain and agricultural land make forestry mulching an ideal solution for property owners looking to clear land without the cost and disruption of traditional clearing methods. Our single-pass mulching process handles dense hardwood and brush growth efficiently, leaving a clean mulch layer that protects the soil.",
+      "We offer free on-site estimates throughout Wayne County — call or submit a quote request online today.",
     ],
     nearbyAreas: [
-      "Carthage", "Gordonsville", "Riddleton", "Dixon Springs",
-      "Elmwood", "Monoville", "Hickman", "South Carthage",
+      "Waynesboro", "Clifton", "Collinwood", "Lutts", "Cypress Inn",
+      "Iron City", "Leoma", "Newburg",
     ],
     faqs: [
       {
-        question: "Do you serve Carthage and Gordonsville?",
+        question: "Do you serve Waynesboro and Wayne County?",
         answer:
-          "Yes — Carthage and Gordonsville are both service areas in Smith County. We work throughout the county on projects of all sizes.",
+          "Yes — Waynesboro and all of Wayne County are in our service area. We work on residential, agricultural, and commercial land clearing projects throughout the county.",
       },
       ...COMMON_FAQS,
     ],
   },
-  "trousdale-county": {
-    county: "Trousdale County",
+  "cannon-county": {
+    county: "Cannon County",
     state: "Tennessee",
-    slug: "trousdale-county",
+    slug: "cannon-county",
     heroImage: HERO,
     intro: [
-      "Noland Earthworks provides land clearing and forestry mulching services throughout Trousdale County, Tennessee. Hartsville and the surrounding communities benefit from our professional land services, delivered by a veteran-owned team with a commitment to quality and integrity.",
-      "As Tennessee's smallest county by area, Trousdale County has a tight-knit community of property owners who value reliable, local service providers. Our team treats every project — large or small — with the same level of professionalism and attention to detail.",
-      "Contact us for a free estimate on your Trousdale County property.",
+      "Noland Earthworks serves Cannon County, Tennessee with professional forestry mulching, land clearing, and vegetation management services. Woodbury and the surrounding communities benefit from our veteran-owned land services, delivered with precision and reliability.",
+      "Cannon County's rural character and mix of hardwood forest and agricultural land make it a strong fit for our forestry mulching services. We help property owners clear overgrown land, reclaim pasture, manage invasive species, and prepare sites for construction or recreational use.",
+      "Contact us for a free estimate on your Cannon County property — we serve the entire county.",
     ],
     nearbyAreas: [
-      "Hartsville", "Bethpage", "Defeated", "Riddleton",
+      "Woodbury", "Auburntown", "Bradyville", "Gassaway",
+      "Readyville", "Short Mountain",
     ],
     faqs: [
       {
-        question: "Do you serve Hartsville and Trousdale County?",
+        question: "Do you serve Woodbury and Cannon County?",
         answer:
-          "Yes — we serve all of Trousdale County including Hartsville and surrounding communities. No project is too small — contact us for a free estimate.",
+          "Yes — Woodbury and all of Cannon County are in our service area. We provide free estimates and work on projects of all sizes throughout the county.",
       },
       ...COMMON_FAQS,
     ],
   },
-  "macon-county": {
-    county: "Macon County",
+  "bedford-county": {
+    county: "Bedford County",
     state: "Tennessee",
-    slug: "macon-county",
+    slug: "bedford-county",
     heroImage: LAND_HERO,
     intro: [
-      "Noland Earthworks serves Macon County, Tennessee with professional forestry mulching, land clearing, and vegetation management services. Lafayette and the surrounding rural communities trust our veteran-owned team for efficient, reliable land services.",
-      "Macon County's agricultural and rural character means many of our clients are farmers and rural landowners looking to reclaim overgrown pasture, clear fence lines, or manage invasive species. Our forestry mulching equipment is well-suited to the dense brush and cedar growth common in the area.",
-      "We offer free estimates throughout Macon County — contact us today to schedule your site visit.",
+      "Noland Earthworks provides land clearing and forestry mulching services throughout Bedford County, Tennessee. Shelbyville and the surrounding communities trust our veteran-owned team for efficient, professional land services at competitive rates.",
+      "Bedford County's mix of horse farms, agricultural land, and growing residential development creates strong demand for land clearing and site preparation. Our forestry mulching equipment handles the dense cedar and hardwood growth common in the area, clearing efficiently while preserving the natural landscape.",
+      "We offer free on-site estimates for all Bedford County projects — contact us today to schedule yours.",
     ],
     nearbyAreas: [
-      "Lafayette", "Red Boiling Springs", "Hartsville", "Westmoreland",
-      "Bloomington Springs", "Willette",
+      "Shelbyville", "Wartrace", "Bell Buckle", "Normandy",
+      "Unionville", "Flat Creek", "Rover",
     ],
     faqs: [
       {
-        question: "Do you serve Lafayette and Red Boiling Springs?",
+        question: "Do you serve Shelbyville and Bedford County?",
         answer:
-          "Yes — Lafayette and Red Boiling Springs are both service areas in Macon County. We serve all communities throughout the county.",
+          "Yes — Shelbyville and all of Bedford County are in our service area. We work on residential, agricultural, and commercial projects throughout the county.",
+      },
+      ...COMMON_FAQS,
+    ],
+  },
+  "montgomery-county": {
+    county: "Montgomery County",
+    state: "Tennessee",
+    slug: "montgomery-county",
+    heroImage: HERO,
+    intro: [
+      "Noland Earthworks serves Montgomery County, Tennessee with professional land clearing, forestry mulching, and vegetation management services. Clarksville and the surrounding communities benefit from our veteran-owned land services — delivered with the work ethic and integrity you deserve.",
+      "Montgomery County's rapid growth, driven by Fort Campbell and Clarksville's expanding suburbs, has created strong demand for land clearing and site preparation. We work with homeowners, developers, and farmers throughout the county to clear lots, prepare building sites, and manage overgrown vegetation.",
+      "Contact us for a free estimate on your Montgomery County property — we're proud to serve the military community and all residents of the Clarksville area.",
+    ],
+    nearbyAreas: [
+      "Clarksville", "Oak Grove", "Sango", "Cunningham",
+      "Palmyra", "Woodlawn", "Southside", "Fredonia",
+    ],
+    faqs: [
+      {
+        question: "Do you serve Clarksville and Montgomery County?",
+        answer:
+          "Yes — Clarksville and all of Montgomery County are in our service area. We're proud to serve the Fort Campbell military community and all property owners in the area.",
       },
       ...COMMON_FAQS,
     ],
@@ -362,15 +386,19 @@ export const MauryCountyPage = createCountyPage(
   "maury-county",
   "Land Clearing & Forestry Mulching in Maury County, TN | Noland Earthworks"
 );
-export const SmithCountyPage = createCountyPage(
-  "smith-county",
-  "Land Clearing & Forestry Mulching in Smith County, TN | Noland Earthworks"
+export const WayneCountyPage = createCountyPage(
+  "wayne-county",
+  "Land Clearing & Forestry Mulching in Wayne County, TN | Noland Earthworks"
 );
-export const TrousdaleCountyPage = createCountyPage(
-  "trousdale-county",
-  "Land Clearing & Forestry Mulching in Trousdale County, TN | Noland Earthworks"
+export const CannonCountyPage = createCountyPage(
+  "cannon-county",
+  "Land Clearing & Forestry Mulching in Cannon County, TN | Noland Earthworks"
 );
-export const MaconCountyPage = createCountyPage(
-  "macon-county",
-  "Land Clearing & Forestry Mulching in Macon County, TN | Noland Earthworks"
+export const BedfordCountyPage = createCountyPage(
+  "bedford-county",
+  "Land Clearing & Forestry Mulching in Bedford County, TN | Noland Earthworks"
+);
+export const MontgomeryCountyPage = createCountyPage(
+  "montgomery-county",
+  "Land Clearing & Forestry Mulching in Montgomery County, TN | Noland Earthworks"
 );

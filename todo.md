@@ -43,3 +43,9 @@
 - [x] Register all new routes in App.tsx
 - [x] Update sitemap.xml to include all new pages
 - [x] Update navbar Services dropdown with links to individual service pages
+- [x] Add county landing pages for Wayne, Cannon, Bedford, Montgomery counties
+- [x] Remove incorrect county pages: Smith, Trousdale, Macon
+- [x] Update ServiceAreasSection county list to match validated 20-county list
+- [x] Update JSON-LD schema service area to match validated 20-county list
+- [x] Update sitemap.xml to reflect correct county pages
+- [x] Update App.tsx routes to add new counties and remove incorrect ones

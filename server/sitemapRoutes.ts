@@ -23,9 +23,10 @@ const PAGES = [
   { path: "/service-areas/cheatham-county",           priority: "0.8", changefreq: "monthly" },
   { path: "/service-areas/dickson-county",            priority: "0.8", changefreq: "monthly" },
   { path: "/service-areas/maury-county",              priority: "0.8", changefreq: "monthly" },
-  { path: "/service-areas/smith-county",              priority: "0.8", changefreq: "monthly" },
-  { path: "/service-areas/trousdale-county",          priority: "0.8", changefreq: "monthly" },
-  { path: "/service-areas/macon-county",              priority: "0.8", changefreq: "monthly" },
+  { path: "/service-areas/wayne-county",             priority: "0.8", changefreq: "monthly" },
+  { path: "/service-areas/cannon-county",            priority: "0.8", changefreq: "monthly" },
+  { path: "/service-areas/bedford-county",           priority: "0.8", changefreq: "monthly" },
+  { path: "/service-areas/montgomery-county",        priority: "0.8", changefreq: "monthly" },
   // Legal
   { path: "/privacy-policy",                         priority: "0.3", changefreq: "yearly"  },
   { path: "/terms-of-service",                       priority: "0.3", changefreq: "yearly"  },

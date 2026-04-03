@@ -24,9 +24,10 @@ import {
   CheathamCountyPage,
   DicksonCountyPage,
   MauryCountyPage,
-  SmithCountyPage,
-  TrousdaleCountyPage,
-  MaconCountyPage,
+  WayneCountyPage,
+  CannonCountyPage,
+  BedfordCountyPage,
+  MontgomeryCountyPage,
 } from "./pages/CountyPages";
 
 function Router() {
@@ -56,9 +57,10 @@ function Router() {
       <Route path="/service-areas/cheatham-county" component={CheathamCountyPage} />
       <Route path="/service-areas/dickson-county" component={DicksonCountyPage} />
       <Route path="/service-areas/maury-county" component={MauryCountyPage} />
-      <Route path="/service-areas/smith-county" component={SmithCountyPage} />
-      <Route path="/service-areas/trousdale-county" component={TrousdaleCountyPage} />
-      <Route path="/service-areas/macon-county" component={MaconCountyPage} />
+      <Route path="/service-areas/wayne-county" component={WayneCountyPage} />
+      <Route path="/service-areas/cannon-county" component={CannonCountyPage} />
+      <Route path="/service-areas/bedford-county" component={BedfordCountyPage} />
+      <Route path="/service-areas/montgomery-county" component={MontgomeryCountyPage} />
 
       <Route path="/404" component={NotFound} />
       <Route component={NotFound} />
