@@ -53,3 +53,4 @@
 - [x] Register 7 new county routes in App.tsx
 - [x] Update ServiceAreasSection to link all 7 new county pages
 - [x] Update sitemap.xml with 7 new county pages
+- [x] Add dark-themed county boundary map to each county landing page

@@ -3,7 +3,8 @@
  * Hero → intro → services list → why choose us → service area map CTA → FAQ → CTA
  */
 import { ArrowRight, MapPin, Phone, Star, FileText, Shield } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, lazy, Suspense } from "react";
+const CountyMap = lazy(() => import("@/components/CountyMap"));
 
 export interface CountyPageProps {
   county: string;           // e.g. "Davidson County"
@@ -112,6 +113,7 @@ function FaqAccordion({ faqs }: { faqs: { question: string; answer: string }[] }
 export default function CountyPageLayout({
   county,
   state,
+  slug,
   heroImage,
   intro,
   nearbyAreas,
@@ -406,6 +408,54 @@ export default function CountyPageLayout({
               ))}
             </div>
           </div>
+        </div>
+      </section>
+
+      {/* Service Area Map */}
+      <section style={{ backgroundColor: "#121212" }} className="py-16 md:py-20">
+        <div className="container">
+          <h2
+            style={{
+              fontFamily: "'Oswald', sans-serif",
+              fontWeight: 700,
+              fontSize: "clamp(1.5rem, 3vw, 2.25rem)",
+              textTransform: "uppercase",
+              color: "#F0EDE6",
+              marginBottom: "0.5rem",
+              letterSpacing: "0.03em",
+            }}
+          >
+            Our Service Area in{" "}
+            <span style={{ color: "#E07B2A" }}>{county}</span>
+          </h2>
+          <p
+            style={{
+              fontFamily: "'Lato', sans-serif",
+              fontWeight: 300,
+              color: "rgba(240,237,230,0.6)",
+              marginBottom: "1.5rem",
+            }}
+          >
+            We serve all of {county}, {state} and the surrounding region.
+          </p>
+          <Suspense fallback={
+            <div
+              style={{
+                height: "420px",
+                backgroundColor: "#1a1a1a",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                color: "rgba(240,237,230,0.4)",
+                fontFamily: "'Lato', sans-serif",
+                fontSize: "0.9rem",
+              }}
+            >
+              Loading map...
+            </div>
+          }>
+            <CountyMap slug={slug} county={county} state={state} />
+          </Suspense>
         </div>
       </section>
 
