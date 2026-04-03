@@ -35,3 +35,11 @@
 - [x] Add/update robots.txt to reference sitemap URL
 - [x] Add Google Search Console verification meta tag to index.html
 - [x] Add Google Analytics GA4 (G-JG160VB05E) tracking script to index.html
+- [x] Create service page: /services/forestry-mulching
+- [x] Create service page: /services/land-clearing
+- [x] Create service page: /services/vegetation-management
+- [x] Create service page: /services/site-preparation
+- [x] Create county landing pages for all 12 Middle TN counties
+- [x] Register all new routes in App.tsx
+- [x] Update sitemap.xml to include all new pages
+- [x] Update navbar Services dropdown with links to individual service pages

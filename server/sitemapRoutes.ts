@@ -4,16 +4,31 @@ const BASE_URL = "https://www.nolandearthworks.com";
 
 // All public pages with their SEO priority and change frequency
 const PAGES = [
-  { path: "/",                         priority: "1.0", changefreq: "weekly"  },
-  { path: "/services/forestry-mulching", priority: "0.9", changefreq: "monthly" },
-  { path: "/services/land-clearing",    priority: "0.9", changefreq: "monthly" },
-  { path: "/services/vegetation-management", priority: "0.9", changefreq: "monthly" },
-  { path: "/services/site-preparation", priority: "0.9", changefreq: "monthly" },
-  { path: "/quote",                     priority: "0.8", changefreq: "monthly" },
-  { path: "/service-areas",             priority: "0.7", changefreq: "monthly" },
-  { path: "/about",                     priority: "0.6", changefreq: "monthly" },
-  { path: "/privacy-policy",            priority: "0.3", changefreq: "yearly"  },
-  { path: "/terms-of-service",          priority: "0.3", changefreq: "yearly"  },
+  { path: "/",                                        priority: "1.0", changefreq: "weekly"  },
+  // Service pages
+  { path: "/services/forestry-mulching",              priority: "0.9", changefreq: "monthly" },
+  { path: "/services/land-clearing",                  priority: "0.9", changefreq: "monthly" },
+  { path: "/services/vegetation-management",          priority: "0.9", changefreq: "monthly" },
+  { path: "/services/property-maintenance",           priority: "0.9", changefreq: "monthly" },
+  // Key pages
+  { path: "/quote",                                   priority: "0.8", changefreq: "monthly" },
+  { path: "/about",                                   priority: "0.6", changefreq: "monthly" },
+  // County landing pages
+  { path: "/service-areas/davidson-county",           priority: "0.8", changefreq: "monthly" },
+  { path: "/service-areas/williamson-county",         priority: "0.8", changefreq: "monthly" },
+  { path: "/service-areas/rutherford-county",         priority: "0.8", changefreq: "monthly" },
+  { path: "/service-areas/wilson-county",             priority: "0.8", changefreq: "monthly" },
+  { path: "/service-areas/sumner-county",             priority: "0.8", changefreq: "monthly" },
+  { path: "/service-areas/robertson-county",          priority: "0.8", changefreq: "monthly" },
+  { path: "/service-areas/cheatham-county",           priority: "0.8", changefreq: "monthly" },
+  { path: "/service-areas/dickson-county",            priority: "0.8", changefreq: "monthly" },
+  { path: "/service-areas/maury-county",              priority: "0.8", changefreq: "monthly" },
+  { path: "/service-areas/smith-county",              priority: "0.8", changefreq: "monthly" },
+  { path: "/service-areas/trousdale-county",          priority: "0.8", changefreq: "monthly" },
+  { path: "/service-areas/macon-county",              priority: "0.8", changefreq: "monthly" },
+  // Legal
+  { path: "/privacy-policy",                         priority: "0.3", changefreq: "yearly"  },
+  { path: "/terms-of-service",                       priority: "0.3", changefreq: "yearly"  },
 ];
 
 export function registerSitemapRoutes(app: Express) {

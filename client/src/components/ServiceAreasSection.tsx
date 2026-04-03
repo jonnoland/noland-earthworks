@@ -9,12 +9,24 @@ import { MapView } from "@/components/Map";
 const COUNTY_GEOJSON_URL =
   "https://d2xsxph8kpxj0f.cloudfront.net/310519663484957999/PymCzDCnSJzPjdkfwA7Jn6/tn-served-counties_0839aca6.json";
 
-const counties = [
-  "Lewis County", "Maury County", "Perry County", "Benton County",
-  "Sumner County", "Wilson County", "Dickson County", "Hickman County",
-  "Houston County", "Stewart County", "Cheatham County", "Davidson County",
-  "Humphreys County", "Robertson County", "Montgomery County",
-  "Rutherford County", "Williamson County",
+const counties: { name: string; slug?: string }[] = [
+  { name: "Davidson County", slug: "davidson-county" },
+  { name: "Williamson County", slug: "williamson-county" },
+  { name: "Rutherford County", slug: "rutherford-county" },
+  { name: "Wilson County", slug: "wilson-county" },
+  { name: "Sumner County", slug: "sumner-county" },
+  { name: "Robertson County", slug: "robertson-county" },
+  { name: "Cheatham County", slug: "cheatham-county" },
+  { name: "Dickson County", slug: "dickson-county" },
+  { name: "Maury County", slug: "maury-county" },
+  { name: "Smith County", slug: "smith-county" },
+  { name: "Trousdale County", slug: "trousdale-county" },
+  { name: "Macon County", slug: "macon-county" },
+  { name: "Lewis County" },
+  { name: "Perry County" },
+  { name: "Benton County" },
+  { name: "Hickman County" },
+  { name: "Houston County" },
 ];
 
 // Center of the 17-county service area (roughly middle of the cluster)
@@ -202,33 +214,52 @@ export default function ServiceAreasSection() {
               Counties Served
             </div>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-              {counties.map((county) => (
-                <div
-                  key={county}
-                  className="flex items-center gap-2 py-2 px-3"
-                  style={{
-                    backgroundColor: "rgba(255,255,255,0.03)",
-                    border: "1px solid rgba(255,255,255,0.06)",
-                    fontFamily: "'Lato', sans-serif",
-                    fontWeight: 400,
-                    fontSize: "0.8125rem",
-                    color: "rgba(240,237,230,0.75)",
-                    letterSpacing: "0.02em",
-                  }}
-                >
-                  <span
-                    style={{
-                      width: "6px",
-                      height: "6px",
-                      borderRadius: "50%",
-                      backgroundColor: "#E07B2A",
-                      flexShrink: 0,
-                      display: "block",
-                    }}
-                  />
-                  {county}
-                </div>
-              ))}
+              {counties.map((county) => {
+                const inner = (
+                  <>
+                    <span
+                      style={{
+                        width: "6px",
+                        height: "6px",
+                        borderRadius: "50%",
+                        backgroundColor: "#E07B2A",
+                        flexShrink: 0,
+                        display: "block",
+                      }}
+                    />
+                    {county.name}
+                  </>
+                );
+                const sharedStyle = {
+                  backgroundColor: "rgba(255,255,255,0.03)",
+                  border: "1px solid rgba(255,255,255,0.06)",
+                  fontFamily: "'Lato', sans-serif",
+                  fontWeight: 400,
+                  fontSize: "0.8125rem" as const,
+                  color: "rgba(240,237,230,0.75)",
+                  letterSpacing: "0.02em",
+                };
+                return county.slug ? (
+                  <a
+                    key={county.name}
+                    href={`/service-areas/${county.slug}`}
+                    className="flex items-center gap-2 py-2 px-3"
+                    style={{ ...sharedStyle, textDecoration: "none", transition: "border-color 0.2s" }}
+                    onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.borderColor = "rgba(224,123,42,0.4)")}
+                    onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.borderColor = "rgba(255,255,255,0.06)")}
+                  >
+                    {inner}
+                  </a>
+                ) : (
+                  <div
+                    key={county.name}
+                    className="flex items-center gap-2 py-2 px-3"
+                    style={sharedStyle}
+                  >
+                    {inner}
+                  </div>
+                );
+              })}
             </div>
             <p
               className="mt-4"
