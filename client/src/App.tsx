@@ -28,6 +28,13 @@ import {
   CannonCountyPage,
   BedfordCountyPage,
   MontgomeryCountyPage,
+  LewisCountyPage,
+  PerryCountyPage,
+  BentonCountyPage,
+  HickmanCountyPage,
+  HoustonCountyPage,
+  HumphreysCountyPage,
+  StewartCountyPage,
 } from "./pages/CountyPages";
 
 function Router() {
@@ -61,6 +68,13 @@ function Router() {
       <Route path="/service-areas/cannon-county" component={CannonCountyPage} />
       <Route path="/service-areas/bedford-county" component={BedfordCountyPage} />
       <Route path="/service-areas/montgomery-county" component={MontgomeryCountyPage} />
+      <Route path="/service-areas/lewis-county" component={LewisCountyPage} />
+      <Route path="/service-areas/perry-county" component={PerryCountyPage} />
+      <Route path="/service-areas/benton-county" component={BentonCountyPage} />
+      <Route path="/service-areas/hickman-county" component={HickmanCountyPage} />
+      <Route path="/service-areas/houston-county" component={HoustonCountyPage} />
+      <Route path="/service-areas/humphreys-county" component={HumphreysCountyPage} />
+      <Route path="/service-areas/stewart-county" component={StewartCountyPage} />
 
       <Route path="/404" component={NotFound} />
       <Route component={NotFound} />

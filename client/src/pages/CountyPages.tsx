@@ -333,6 +333,167 @@ const countyData: Record<string, CountyPageProps> = {
       ...COMMON_FAQS,
     ],
   },
+  "lewis-county": {
+    county: "Lewis County",
+    state: "Tennessee",
+    slug: "lewis-county",
+    heroImage: LAND_HERO,
+    intro: [
+      "Noland Earthworks provides professional land clearing and forestry mulching services throughout Lewis County, Tennessee. Hohenwald and the surrounding rural communities trust our veteran-owned team for efficient, reliable land services at competitive rates.",
+      "Lewis County's forested hills and agricultural land make it an ideal fit for our forestry mulching services. Whether you need to clear overgrown pasture, manage invasive species, or prepare a site for construction, our equipment handles the job in a single pass with minimal soil disturbance.",
+      "We offer free on-site estimates throughout Lewis County — call or submit a quote request online today.",
+    ],
+    nearbyAreas: [
+      "Hohenwald", "Gordonsburg", "Newburg", "Napier",
+      "Buffalo", "Summertown",
+    ],
+    faqs: [
+      {
+        question: "Do you serve Hohenwald and Lewis County?",
+        answer:
+          "Yes — Hohenwald and all of Lewis County are in our service area. We work on residential, agricultural, and commercial land clearing projects throughout the county.",
+      },
+      ...COMMON_FAQS,
+    ],
+  },
+  "perry-county": {
+    county: "Perry County",
+    state: "Tennessee",
+    slug: "perry-county",
+    heroImage: HERO,
+    intro: [
+      "Noland Earthworks serves Perry County, Tennessee with professional forestry mulching, land clearing, and vegetation management services. Linden and the surrounding rural communities benefit from our veteran-owned land services, delivered with precision and reliability.",
+      "Perry County's rugged terrain along the Buffalo River corridor and its heavily wooded hillsides make forestry mulching the most practical and cost-effective land clearing solution for most properties. Our equipment handles steep slopes and dense hardwood growth that traditional clearing methods struggle with.",
+      "Contact us for a free estimate on your Perry County property — we serve the entire county.",
+    ],
+    nearbyAreas: [
+      "Linden", "Lobelville", "Decaturville", "Parsons",
+      "Beardstown", "Flatwoods",
+    ],
+    faqs: [
+      {
+        question: "Do you serve Linden and Perry County?",
+        answer:
+          "Yes — Linden and all of Perry County are in our service area. We provide free estimates and work on projects of all sizes throughout the county.",
+      },
+      ...COMMON_FAQS,
+    ],
+  },
+  "benton-county": {
+    county: "Benton County",
+    state: "Tennessee",
+    slug: "benton-county",
+    heroImage: LAND_HERO,
+    intro: [
+      "Noland Earthworks provides land clearing and forestry mulching services throughout Benton County, Tennessee. Camden and the surrounding communities trust our veteran-owned team for efficient, professional land services at competitive rates.",
+      "Benton County's lakefront properties along Kentucky Lake and Barkley Lake, combined with its agricultural and rural land, create diverse land clearing needs. We work with lakefront property owners, farmers, and developers to clear land, manage vegetation, and prepare sites for a wide range of uses.",
+      "We offer free on-site estimates for all Benton County projects — contact us today to schedule yours.",
+    ],
+    nearbyAreas: [
+      "Camden", "Big Sandy", "Holladay", "Henrietta",
+      "Bruceton", "Trezevant",
+    ],
+    faqs: [
+      {
+        question: "Do you serve Camden and Benton County?",
+        answer:
+          "Yes — Camden and all of Benton County are in our service area. We work on residential, lakefront, agricultural, and commercial projects throughout the county.",
+      },
+      ...COMMON_FAQS,
+    ],
+  },
+  "hickman-county": {
+    county: "Hickman County",
+    state: "Tennessee",
+    slug: "hickman-county",
+    heroImage: HERO,
+    intro: [
+      "Noland Earthworks serves Hickman County, Tennessee with professional land clearing, forestry mulching, and vegetation management services. Centerville and the surrounding communities benefit from our veteran-owned land services — delivered with the work ethic and integrity you deserve.",
+      "Hickman County's rolling hills, cedar glades, and mixed hardwood forests are well-suited to our forestry mulching equipment. We help property owners clear overgrown land, reclaim pasture, manage invasive cedar, and prepare sites for residential or agricultural use.",
+      "Contact us for a free estimate on your Hickman County property — we're proud to serve the entire county.",
+    ],
+    nearbyAreas: [
+      "Centerville", "Bon Aqua", "Dickson", "Nunnelly",
+      "Lyles", "Primm Springs", "Pleasantville",
+    ],
+    faqs: [
+      {
+        question: "Do you serve Centerville and Hickman County?",
+        answer:
+          "Yes — Centerville and all of Hickman County are in our service area. We work on projects of all sizes throughout the county.",
+      },
+      ...COMMON_FAQS,
+    ],
+  },
+  "houston-county": {
+    county: "Houston County",
+    state: "Tennessee",
+    slug: "houston-county",
+    heroImage: LAND_HERO,
+    intro: [
+      "Noland Earthworks provides land clearing and forestry mulching services throughout Houston County, Tennessee. Erin and the surrounding rural communities trust our veteran-owned team for efficient, reliable land services at competitive rates.",
+      "Houston County's rural character, wooded terrain, and agricultural land make it a strong fit for our forestry mulching services. We help property owners clear overgrown lots, reclaim pasture, manage fence lines, and prepare sites for construction or recreational use.",
+      "We offer free on-site estimates throughout Houston County — call or submit a quote request online today.",
+    ],
+    nearbyAreas: [
+      "Erin", "Tennessee Ridge", "Vanleer", "Slayden",
+      "Dotsonville", "Cumberland City",
+    ],
+    faqs: [
+      {
+        question: "Do you serve Erin and Houston County?",
+        answer:
+          "Yes — Erin and all of Houston County are in our service area. We provide free estimates and work on projects of all sizes throughout the county.",
+      },
+      ...COMMON_FAQS,
+    ],
+  },
+  "humphreys-county": {
+    county: "Humphreys County",
+    state: "Tennessee",
+    slug: "humphreys-county",
+    heroImage: HERO,
+    intro: [
+      "Noland Earthworks serves Humphreys County, Tennessee with professional forestry mulching, land clearing, and vegetation management services. Waverly and the surrounding communities benefit from our veteran-owned land services, delivered with precision and reliability.",
+      "Humphreys County's mix of river bottomland along the Tennessee River, rolling hills, and agricultural land creates diverse land clearing needs. Our forestry mulching equipment is well-suited to the dense brush, willow, and hardwood growth common in the area.",
+      "Contact us for a free estimate on your Humphreys County property — we serve the entire county.",
+    ],
+    nearbyAreas: [
+      "Waverly", "McEwen", "New Johnsonville", "Waverly",
+      "Hurricane Mills", "Bakerville",
+    ],
+    faqs: [
+      {
+        question: "Do you serve Waverly and Humphreys County?",
+        answer:
+          "Yes — Waverly and all of Humphreys County are in our service area. We work on residential, agricultural, and commercial land clearing projects throughout the county.",
+      },
+      ...COMMON_FAQS,
+    ],
+  },
+  "stewart-county": {
+    county: "Stewart County",
+    state: "Tennessee",
+    slug: "stewart-county",
+    heroImage: LAND_HERO,
+    intro: [
+      "Noland Earthworks provides land clearing and forestry mulching services throughout Stewart County, Tennessee. Dover and the surrounding rural communities trust our veteran-owned team for efficient, reliable land services at competitive rates.",
+      "Stewart County's proximity to Land Between the Lakes and its heavily forested terrain make forestry mulching the most practical land clearing solution for most properties. We work with hunters, recreational landowners, farmers, and developers throughout the county.",
+      "We offer free on-site estimates throughout Stewart County — call or submit a quote request online today.",
+    ],
+    nearbyAreas: [
+      "Dover", "Cumberland City", "Indian Mound", "Big Rock",
+      "Bumpus Mills", "Erin",
+    ],
+    faqs: [
+      {
+        question: "Do you serve Dover and Stewart County?",
+        answer:
+          "Yes — Dover and all of Stewart County are in our service area. We work on residential, recreational, agricultural, and commercial land clearing projects throughout the county.",
+      },
+      ...COMMON_FAQS,
+    ],
+  },
 };
 
 // Factory function to create county page components
@@ -401,4 +562,32 @@ export const BedfordCountyPage = createCountyPage(
 export const MontgomeryCountyPage = createCountyPage(
   "montgomery-county",
   "Land Clearing & Forestry Mulching in Montgomery County, TN | Noland Earthworks"
+);
+export const LewisCountyPage = createCountyPage(
+  "lewis-county",
+  "Land Clearing & Forestry Mulching in Lewis County, TN | Noland Earthworks"
+);
+export const PerryCountyPage = createCountyPage(
+  "perry-county",
+  "Land Clearing & Forestry Mulching in Perry County, TN | Noland Earthworks"
+);
+export const BentonCountyPage = createCountyPage(
+  "benton-county",
+  "Land Clearing & Forestry Mulching in Benton County, TN | Noland Earthworks"
+);
+export const HickmanCountyPage = createCountyPage(
+  "hickman-county",
+  "Land Clearing & Forestry Mulching in Hickman County, TN | Noland Earthworks"
+);
+export const HoustonCountyPage = createCountyPage(
+  "houston-county",
+  "Land Clearing & Forestry Mulching in Houston County, TN | Noland Earthworks"
+);
+export const HumphreysCountyPage = createCountyPage(
+  "humphreys-county",
+  "Land Clearing & Forestry Mulching in Humphreys County, TN | Noland Earthworks"
+);
+export const StewartCountyPage = createCountyPage(
+  "stewart-county",
+  "Land Clearing & Forestry Mulching in Stewart County, TN | Noland Earthworks"
 );

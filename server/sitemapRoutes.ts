@@ -27,6 +27,13 @@ const PAGES = [
   { path: "/service-areas/cannon-county",            priority: "0.8", changefreq: "monthly" },
   { path: "/service-areas/bedford-county",           priority: "0.8", changefreq: "monthly" },
   { path: "/service-areas/montgomery-county",        priority: "0.8", changefreq: "monthly" },
+  { path: "/service-areas/lewis-county",             priority: "0.8", changefreq: "monthly" },
+  { path: "/service-areas/perry-county",             priority: "0.8", changefreq: "monthly" },
+  { path: "/service-areas/benton-county",            priority: "0.8", changefreq: "monthly" },
+  { path: "/service-areas/hickman-county",           priority: "0.8", changefreq: "monthly" },
+  { path: "/service-areas/houston-county",           priority: "0.8", changefreq: "monthly" },
+  { path: "/service-areas/humphreys-county",         priority: "0.8", changefreq: "monthly" },
+  { path: "/service-areas/stewart-county",           priority: "0.8", changefreq: "monthly" },
   // Legal
   { path: "/privacy-policy",                         priority: "0.3", changefreq: "yearly"  },
   { path: "/terms-of-service",                       priority: "0.3", changefreq: "yearly"  },

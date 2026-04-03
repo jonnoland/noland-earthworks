@@ -49,3 +49,7 @@
 - [x] Update JSON-LD schema service area to match validated 20-county list
 - [x] Update sitemap.xml to reflect correct county pages
 - [x] Update App.tsx routes to add new counties and remove incorrect ones
+- [x] Create county landing pages for Lewis, Perry, Benton, Hickman, Houston, Humphreys, Stewart counties
+- [x] Register 7 new county routes in App.tsx
+- [x] Update ServiceAreasSection to link all 7 new county pages
+- [x] Update sitemap.xml with 7 new county pages

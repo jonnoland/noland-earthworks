@@ -23,13 +23,13 @@ const counties: { name: string; slug?: string }[] = [
   { name: "Bedford County", slug: "bedford-county" },
   { name: "Wayne County", slug: "wayne-county" },
   { name: "Cannon County", slug: "cannon-county" },
-  { name: "Lewis County" },
-  { name: "Perry County" },
-  { name: "Benton County" },
-  { name: "Hickman County" },
-  { name: "Houston County" },
-  { name: "Humphreys County" },
-  { name: "Stewart County" },
+  { name: "Lewis County", slug: "lewis-county" },
+  { name: "Perry County", slug: "perry-county" },
+  { name: "Benton County", slug: "benton-county" },
+  { name: "Hickman County", slug: "hickman-county" },
+  { name: "Houston County", slug: "houston-county" },
+  { name: "Humphreys County", slug: "humphreys-county" },
+  { name: "Stewart County", slug: "stewart-county" },
 ];
 
 // Center of the 17-county service area (roughly middle of the cluster)
