@@ -118,7 +118,7 @@ export default function ContactSection() {
               {[
                 { icon: <Phone size={18} />, label: "Phone", value: "615-406-4819", href: "tel:6154064819" },
                 { icon: <Mail size={18} />, label: "Email", value: "quotes@nolandearthworks.com", href: "mailto:quotes@nolandearthworks.com" },
-                { icon: <MapPin size={18} />, label: "Service Area", value: "Middle Tennessee (17 Counties)", href: "#service-areas" },
+                { icon: <MapPin size={18} />, label: "Service Area", value: "Middle & West Tennessee (35 Counties)", href: "#service-areas" },
               ].map((c) => (
                 <a
                   key={c.label}

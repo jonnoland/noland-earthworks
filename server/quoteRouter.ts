@@ -7,7 +7,7 @@ import { createJobberRequest, isJobberConnected } from "./jobber";
 
 const quoteSchema = z.object({
   name: z.string().min(1, "Name is required").max(100),
-  phone: z.string().min(7, "Phone is required").max(30),
+  phone: z.string().min(1, "Phone is required").max(30).regex(/[0-9]/, "Phone must contain at least one digit"),
   email: z.string().email("Valid email is required").max(320),
   service: z.string().min(1, "Service is required").max(100),
   county: z.string().min(1, "County is required").max(100),

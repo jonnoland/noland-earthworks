@@ -1,6 +1,6 @@
 /*
  * DESIGN: Heavy Equipment Grit — dark section with county grid and interactive map
- * Map shows amber-outlined polygon boundaries for all 20 served counties.
+ * Map shows amber-outlined polygon boundaries for all 35 served counties.
  * Address search bar with Google Places autocomplete and service area check.
  */
 import { MapPin, Search, CheckCircle, XCircle, Loader2 } from "lucide-react";
@@ -9,7 +9,7 @@ import { MapView } from "@/components/Map";
 import { Link } from "wouter";
 
 const COUNTY_GEOJSON_URL =
-  "https://d2xsxph8kpxj0f.cloudfront.net/310519663484957999/PymCzDCnSJzPjdkfwA7Jn6/tn-served-counties-35_bee5cb53.json";
+  "https://d2xsxph8kpxj0f.cloudfront.net/310519663484957999/PymCzDCnSJzPjdkfwA7Jn6/tn-served-counties-35-v2_c7cfca3b.json";
 
 const counties: { name: string; slug?: string }[] = [
   { name: "Bedford County", slug: "bedford-county" },
@@ -387,7 +387,7 @@ export default function ServiceAreasSection() {
             Our Service Areas
           </h2>
           <p style={{ fontFamily: "'Lato', sans-serif", fontWeight: 300, fontSize: "1rem", color: "rgba(240,237,230,0.65)" }}>
-            Noland Earthworks proudly serves 20 counties across Middle Tennessee.
+            Noland Earthworks proudly serves 35 counties across Middle and West Tennessee.
             Enter your address below to check if we serve your area.
           </p>
         </div>

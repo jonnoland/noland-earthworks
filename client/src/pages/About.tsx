@@ -233,7 +233,7 @@ export default function AboutPage() {
               </h2>
               {[
                 "Noland Earthworks was founded by a U.S. military veteran who came home to Middle Tennessee with a simple mission: bring the same discipline, reliability, and work ethic from military service to the land clearing industry.",
-                "We started with a single machine and a commitment to doing the job right. Today, we serve 17 counties across Middle Tennessee, helping landowners, developers, farmers, and homebuilders transform overgrown, unmanageable land into clean, usable property.",
+                "We started with a single machine and a commitment to doing the job right. Today, we serve 35 counties across Middle and West Tennessee, helping landowners, developers, farmers, and homebuilders transform overgrown, unmanageable land into clean, usable property.",
                 "As a veteran-owned and operated business, we hold ourselves to a higher standard. We show up on time, communicate honestly, and stand behind every project we complete. That's not a marketing line — it's how we were trained.",
               ].map((p, i) => (
                 <p
@@ -255,7 +255,7 @@ export default function AboutPage() {
             {/* Stats panel */}
             <div className="grid grid-cols-2 gap-4">
               {[
-                { number: "17", label: "Counties Served", sub: "Across Middle Tennessee" },
+                { number: "35", label: "Counties Served", sub: "Across Middle & West Tennessee" },
                 { number: "100%", label: "Veteran-Owned", sub: "U.S. military veteran founded" },
                 { number: "5★", label: "Customer Rating", sub: "Google & Facebook reviews" },
               ].map((s) => (
@@ -465,7 +465,7 @@ export default function AboutPage() {
                 {[
                   { label: "Phone", value: "615-406-4819", href: "tel:6154064819" },
                   { label: "Email", value: "info@nolandearthworks.com", href: "mailto:info@nolandearthworks.com" },
-                  { label: "Service Area", value: "Middle Tennessee — 17 Counties", href: "/services/land-clearing" },
+                  { label: "Service Area", value: "Middle & West Tennessee — 35 Counties", href: "/services/land-clearing" },
                 ].map((c) => (
                   <a
                     key={c.label}

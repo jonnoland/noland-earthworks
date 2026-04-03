@@ -56,7 +56,7 @@ const data: ServicePageProps = {
     },
     {
       question: "What areas do you serve for property maintenance?",
-      answer: "We serve 17 counties across Middle Tennessee, including Davidson, Williamson, Rutherford, Maury, Dickson, Cheatham, Robertson, Wilson, Sumner, and surrounding counties. Contact us to confirm availability in your specific area.",
+      answer: "We serve 35 counties across Middle and West Tennessee, including Davidson, Williamson, Rutherford, Maury, Dickson, Cheatham, Robertson, Wilson, Sumner, and many more. Contact us to confirm availability in your specific area.",
     },
   ],
 };

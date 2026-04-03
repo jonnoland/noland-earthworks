@@ -194,8 +194,8 @@ export default function QuotePage() {
                   {
                     icon: <MapPin size={20} />,
                     label: "Service Area",
-                    value: "Middle Tennessee",
-                    sub: "17 counties — free on-site estimates",
+                    value: "Middle & West Tennessee",
+                    sub: "35 counties — free on-site estimates",
                     href: "/#service-areas",
                   },
                 ].map((c) => (
