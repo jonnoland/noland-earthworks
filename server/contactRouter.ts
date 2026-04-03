@@ -73,7 +73,7 @@ function buildEmailHtml(data: ContactInput): string {
       </div>
     </div>
     <div class="footer">
-      Noland Earthworks, LLC &bull; <a href="tel:6154064819">(615) 406-4819</a> &bull; Middle Tennessee
+      Noland Earthworks, LLC &bull; <a href="tel:6154064819">(615) 406-4819</a> &bull; Middle &amp; West Tennessee
     </div>
   </div>
 </body>
