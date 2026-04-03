@@ -190,11 +190,18 @@ export default function ServiceAreasSection() {
             fillOpacity: 0.12,
             map,
           });
+          // Look up the slug for this county
+          const countyEntry = counties.find(c => c.name === countyName);
+          const slug = countyEntry?.slug;
+
           polygon.addListener("mouseover", (e: google.maps.MapMouseEvent) => {
             polygon.setOptions({ fillOpacity: 0.28, strokeWeight: 3 });
+            map.setOptions({ draggableCursor: slug ? "pointer" : "default" });
             if (infoWindowRef.current && e.latLng) {
               infoWindowRef.current.setContent(
-                `<div style="font-family:sans-serif;font-size:13px;font-weight:600;color:#1a1a1a;padding:2px 4px;">${countyName}</div>`
+                `<div style="font-family:sans-serif;font-size:13px;font-weight:600;color:#1a1a1a;padding:2px 4px;line-height:1.4;">
+                  ${countyName}${slug ? `<br/><span style="font-size:11px;font-weight:400;color:#555;">Click to learn more →</span>` : ""}
+                </div>`
               );
               infoWindowRef.current.setPosition(e.latLng);
               infoWindowRef.current.open(map);
@@ -207,8 +214,14 @@ export default function ServiceAreasSection() {
           });
           polygon.addListener("mouseout", () => {
             polygon.setOptions({ fillOpacity: 0.12, strokeWeight: 2 });
+            map.setOptions({ draggableCursor: "" });
             infoWindowRef.current?.close();
           });
+          if (slug) {
+            polygon.addListener("click", () => {
+              window.location.href = `/service-areas/${slug}`;
+            });
+          }
           polygonsRef.current.push(polygon);
         });
       })

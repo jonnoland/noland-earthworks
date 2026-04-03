@@ -78,3 +78,4 @@
 - [x] Merge ServiceAreasSection county grid with CountiesSection into one unified section
 - [x] Revert quote-related emails to quotes@nolandearthworks.com (Quote page, quoteRouter email sends/templates); keep info@ for general contact (Footer, ContactSection)
 - [x] Add county name hover tooltip to the main page ServiceAreasSection map
+- [x] Make service area map interactive: clicking a county polygon navigates to its /service-areas/[slug] page
