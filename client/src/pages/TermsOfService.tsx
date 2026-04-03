@@ -117,7 +117,7 @@ export default function TermsOfService() {
           <p style={{ color: "rgba(240,237,230,0.8)", lineHeight: 1.8 }}>
             <strong style={{ color: "#F0EDE6" }}>Opt-Out:</strong> Reply <strong style={{ color: "#E07B2A" }}>STOP</strong> at any time.{" "}
             <strong style={{ color: "#F0EDE6" }}>For help:</strong> Reply <strong style={{ color: "#E07B2A" }}>HELP</strong> or contact us at{" "}
-            <a href="mailto:quotes@nolandearthworks.com" style={{ color: "#E07B2A" }}>quotes@nolandearthworks.com</a>.
+            <a href="mailto:info@nolandearthworks.com" style={{ color: "#E07B2A" }}>info@nolandearthworks.com</a>.
           </p>
         </Section>
 
@@ -137,7 +137,7 @@ export default function TermsOfService() {
 
         <Section number="8" title="Cancellations & Rescheduling">
           <ul style={{ color: "rgba(240,237,230,0.8)", lineHeight: 2, paddingLeft: "1.5rem" }}>
-            <li>Cancellations must be submitted in writing to <a href="mailto:quotes@nolandearthworks.com" style={{ color: "#E07B2A" }}>quotes@nolandearthworks.com</a>.</li>
+            <li>Cancellations must be submitted in writing to <a href="mailto:info@nolandearthworks.com" style={{ color: "#E07B2A" }}>info@nolandearthworks.com</a>.</li>
             <li>Deposits for projects over $5,000 are refundable if canceled 14 or more days prior.</li>
             <li>Smaller jobs may be rescheduled one time at no cost if done 72 or more hours in advance.</li>
           </ul>
@@ -171,7 +171,7 @@ export default function TermsOfService() {
             <strong style={{ color: "#F0EDE6" }}>Website:</strong>{" "}
             <a href="https://www.nolandearthworks.com" style={{ color: "#E07B2A" }}>https://www.nolandearthworks.com</a><br />
             <strong style={{ color: "#F0EDE6" }}>Email:</strong>{" "}
-            <a href="mailto:quotes@nolandearthworks.com" style={{ color: "#E07B2A" }}>quotes@nolandearthworks.com</a><br />
+            <a href="mailto:info@nolandearthworks.com" style={{ color: "#E07B2A" }}>info@nolandearthworks.com</a><br />
             <strong style={{ color: "#F0EDE6" }}>Phone:</strong>{" "}
             <a href="tel:+16154064819" style={{ color: "#E07B2A" }}>(615) 406-4819</a>
           </p>

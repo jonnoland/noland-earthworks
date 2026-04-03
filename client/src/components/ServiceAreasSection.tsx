@@ -601,79 +601,23 @@ export default function ServiceAreasSection() {
           </div>
         </div>
 
+        {/* Interactive map with county outlines — full width */}
         <div
-          className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start"
           style={{
             opacity: visible ? 1 : 0,
             transform: visible ? "translateY(0)" : "translateY(24px)",
             transition: "opacity 0.5s ease 0.2s, transform 0.5s ease 0.2s",
+            border: "1px solid rgba(224,123,42,0.2)",
+            overflow: "hidden",
+            height: "420px",
           }}
         >
-          {/* County list */}
-          <div>
-            <div
-              className="flex items-center gap-2 mb-4"
-              style={{
-                fontFamily: "'Oswald', sans-serif",
-                fontWeight: 600,
-                fontSize: "0.875rem",
-                letterSpacing: "0.12em",
-                textTransform: "uppercase",
-                color: "#E07B2A",
-              }}
-            >
-              <MapPin size={16} />
-              Counties Served
-            </div>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-              {counties.map((county) => {
-                const inner = (
-                  <>
-                    <span style={{ width: "6px", height: "6px", borderRadius: "50%", backgroundColor: "#E07B2A", flexShrink: 0, display: "block" }} />
-                    {county.name}
-                  </>
-                );
-                const sharedStyle = {
-                  backgroundColor: "rgba(255,255,255,0.03)",
-                  border: "1px solid rgba(255,255,255,0.06)",
-                  fontFamily: "'Lato', sans-serif",
-                  fontWeight: 400,
-                  fontSize: "0.8125rem" as const,
-                  color: "rgba(240,237,230,0.75)",
-                  letterSpacing: "0.02em",
-                };
-                return county.slug ? (
-                  <a
-                    key={county.name}
-                    href={`/service-areas/${county.slug}`}
-                    className="flex items-center gap-2 py-2 px-3"
-                    style={{ ...sharedStyle, textDecoration: "none", transition: "border-color 0.2s" }}
-                    onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.borderColor = "rgba(224,123,42,0.4)")}
-                    onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.borderColor = "rgba(255,255,255,0.06)")}
-                  >
-                    {inner}
-                  </a>
-                ) : (
-                  <div key={county.name} className="flex items-center gap-2 py-2 px-3" style={sharedStyle}>
-                    {inner}
-                  </div>
-                );
-              })}
-            </div>
-            <p className="mt-4" style={{ fontFamily: "'Lato', sans-serif", fontWeight: 300, fontSize: "0.875rem", color: "rgba(240,237,230,0.5)", fontStyle: "italic" }}>
-              Don't see your area? Contact us to discuss service availability.
-            </p>
-          </div>
-
-          {/* Interactive map with county outlines */}
-          <div style={{ border: "1px solid rgba(224,123,42,0.2)", overflow: "hidden", height: "400px" }}>
-            <MapView
-              className="w-full h-full"
-              initialCenter={MAP_CENTER}
-              initialZoom={MAP_ZOOM}
-              onMapReady={handleMapReady}
-            />
-          </div>
+          <MapView
+            className="w-full h-full"
+            initialCenter={MAP_CENTER}
+            initialZoom={MAP_ZOOM}
+            onMapReady={handleMapReady}
+          />
         </div>
       </div>
     </section>

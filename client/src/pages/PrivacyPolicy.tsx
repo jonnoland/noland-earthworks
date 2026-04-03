@@ -149,7 +149,7 @@ export default function PrivacyPolicy() {
             <strong style={{ color: "#F0EDE6" }}>Website:</strong>{" "}
             <a href="https://www.nolandearthworks.com" style={{ color: "#E07B2A" }}>https://www.nolandearthworks.com</a><br />
             <strong style={{ color: "#F0EDE6" }}>Email:</strong>{" "}
-            <a href="mailto:quotes@nolandearthworks.com" style={{ color: "#E07B2A" }}>quotes@nolandearthworks.com</a><br />
+            <a href="mailto:info@nolandearthworks.com" style={{ color: "#E07B2A" }}>info@nolandearthworks.com</a><br />
             <strong style={{ color: "#F0EDE6" }}>Phone:</strong>{" "}
             <a href="tel:+16154064819" style={{ color: "#E07B2A" }}>(615) 406-4819</a>
           </p>

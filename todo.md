@@ -74,3 +74,5 @@
 - [x] Update Land Clearing page tagline to say "Middle & West Tennessee"
 - [x] Add West Tennessee expansion mention to About section
 - [x] Add dedicated counties section to homepage listing all 35 served counties
+- [x] Change contact email from quotes@nolandearthworks.com to info@nolandearthworks.com
+- [x] Merge ServiceAreasSection county grid with CountiesSection into one unified section

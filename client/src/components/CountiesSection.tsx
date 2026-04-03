@@ -107,10 +107,9 @@ export default function CountiesSection() {
       ref={ref}
       id="counties"
       style={{
-        backgroundColor: "#0D0D0D",
-        borderTop: "1px solid rgba(255,255,255,0.05)",
+        backgroundColor: "#0F1A0F",
         borderBottom: "1px solid rgba(255,255,255,0.05)",
-        padding: "5rem 0",
+        padding: "4rem 0 5rem",
       }}
     >
       <div className="container">

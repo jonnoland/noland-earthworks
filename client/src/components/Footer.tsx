@@ -158,7 +158,7 @@ export default function Footer() {
                 615-406-4819
               </a>
               <a
-                href="mailto:quotes@nolandearthworks.com"
+                href="mailto:info@nolandearthworks.com"
                 className="flex items-center gap-3"
                 style={{
                   fontFamily: "'Lato', sans-serif",
@@ -170,7 +170,7 @@ export default function Footer() {
                 }}
               >
                 <Mail size={15} style={{ color: "#E07B2A", flexShrink: 0 }} />
-                quotes@nolandearthworks.com
+                info@nolandearthworks.com
               </a>
             </div>
 
