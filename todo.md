@@ -114,5 +114,5 @@
 - [x] Admin Scoreboard — KPI metrics and performance charts
 - [x] Admin Reports — revenue and job reports with charts
 - [x] Admin Settings — admin configuration panel
-- [ ] Enhance Admin Scoreboard with quote-to-job conversion rate tracking (funnel, rate metrics, monthly trend)
+- [x] Enhance Admin Scoreboard with quote-to-job conversion rate tracking (funnel, rate metrics, monthly trend)
 - [x] Auto-connect Jobber when admin console is opened (redirect to OAuth if not connected)
