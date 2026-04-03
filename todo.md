@@ -71,3 +71,6 @@
 - [x] Update meta keywords tag to include West Tennessee terms
 - [x] Change footer tagline to mention both Middle and West Tennessee
 - [x] Update all individual service page titles to include Middle & West Tennessee
+- [x] Update Land Clearing page tagline to say "Middle & West Tennessee"
+- [x] Add West Tennessee expansion mention to About section
+- [x] Add dedicated counties section to homepage listing all 35 served counties

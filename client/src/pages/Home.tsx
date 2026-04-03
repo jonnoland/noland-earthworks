@@ -9,6 +9,7 @@ import ServicesSection from "@/components/ServicesSection";
 import WhyUsSection from "@/components/WhyUsSection";
 import TestimonialsSection from "@/components/TestimonialsSection";
 import ServiceAreasSection from "@/components/ServiceAreasSection";
+import CountiesSection from "@/components/CountiesSection";
 import Footer from "@/components/Footer";
 import { usePageTitle } from "@/hooks/usePageTitle";
 
@@ -26,6 +27,7 @@ export default function Home() {
       <WhyUsSection />
       <TestimonialsSection />
       <ServiceAreasSection />
+      <CountiesSection />
       <Footer />
     </div>
   );

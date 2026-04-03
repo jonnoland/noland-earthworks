@@ -233,7 +233,7 @@ export default function AboutPage() {
               </h2>
               {[
                 "Noland Earthworks was founded by a U.S. military veteran who came home to Middle Tennessee with a simple mission: bring the same discipline, reliability, and work ethic from military service to the land clearing industry.",
-                "We started with a single machine and a commitment to doing the job right. Today, we serve 35 counties across Middle and West Tennessee, helping landowners, developers, farmers, and homebuilders transform overgrown, unmanageable land into clean, usable property.",
+                "We started with a single machine and a commitment to doing the job right. Today, we serve 35 counties across Middle and West Tennessee — from the Nashville metro east to the Cumberland Plateau, and west through the Jackson area all the way to the Mississippi River counties. Wherever you are in our service area, you get the same crew, the same standards, and the same results.",
                 "As a veteran-owned and operated business, we hold ourselves to a higher standard. We show up on time, communicate honestly, and stand behind every project we complete. That's not a marketing line — it's how we were trained.",
               ].map((p, i) => (
                 <p
