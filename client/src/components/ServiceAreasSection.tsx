@@ -7,7 +7,7 @@ import { useRef, useEffect, useState, useCallback } from "react";
 import { MapView } from "@/components/Map";
 
 const COUNTY_GEOJSON_URL =
-  "https://d2xsxph8kpxj0f.cloudfront.net/310519663484957999/PymCzDCnSJzPjdkfwA7Jn6/tn-served-counties_0839aca6.json";
+  "https://d2xsxph8kpxj0f.cloudfront.net/310519663484957999/PymCzDCnSJzPjdkfwA7Jn6/tn-served-counties-20_e001fd59.json";
 
 const counties: { name: string; slug?: string }[] = [
   { name: "Davidson County", slug: "davidson-county" },

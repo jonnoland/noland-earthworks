@@ -54,3 +54,5 @@
 - [x] Update ServiceAreasSection to link all 7 new county pages
 - [x] Update sitemap.xml with 7 new county pages
 - [x] Add dark-themed county boundary map to each county landing page
+- [x] Fix Google Maps error on county pages (duplicate script / API key issue)
+- [x] Update main page service area map to highlight all 20 counties
