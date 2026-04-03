@@ -120,3 +120,4 @@
 - [x] Create tRPC procedures: setLeadSource, getLeadSources, getLeadSourceBreakdown
 - [x] Update AdminLeads page with source tag dropdown on each lead row
 - [x] Build Lead Sources breakdown section (chart + table) in AdminLeads or new AdminSources page
+- [x] Auto-connect Jobber on Admin Settings page load (redirect to OAuth if not connected)

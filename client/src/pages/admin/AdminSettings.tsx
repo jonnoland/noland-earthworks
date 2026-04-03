@@ -1,19 +1,53 @@
+import { useEffect, useRef } from "react";
 import AdminLayout from "@/components/AdminLayout";
 import { trpc } from "@/lib/trpc";
-import { CheckCircle, XCircle, RefreshCw, ExternalLink } from "lucide-react";
+import { CheckCircle, XCircle, RefreshCw, ExternalLink, Loader2 } from "lucide-react";
 
 export default function AdminSettings() {
   const { data: statusData, isLoading, refetch } = trpc.jobber.connectionStatus.useQuery();
   const { data: authUrlData } = trpc.jobber.getAuthUrl.useQuery();
+  const redirected = useRef(false);
+
+  const isConnected = statusData?.connected;
+
+  // Auto-connect: once we know Jobber is not connected and have the auth URL, redirect immediately
+  useEffect(() => {
+    if (redirected.current) return;
+    if (isLoading) return;
+    if (isConnected) return;
+    if (!authUrlData?.url) return;
+    redirected.current = true;
+    window.location.href = authUrlData.url;
+  }, [isLoading, isConnected, authUrlData?.url]);
 
   const handleConnect = () => {
     if (authUrlData?.url) window.location.href = authUrlData.url;
   };
 
-  const isConnected = statusData?.connected;
+  // Show redirecting state while auto-connect is in progress
+  const isRedirecting = !isLoading && !isConnected && !!authUrlData?.url;
 
   return (
     <AdminLayout title="Settings">
+      {isRedirecting && (
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "0.75rem",
+            background: "rgba(224,123,42,0.1)",
+            border: "1px solid rgba(224,123,42,0.3)",
+            borderRadius: "8px",
+            padding: "0.85rem 1.25rem",
+            marginBottom: "1.25rem",
+            color: "#E07B2A",
+            fontSize: "14px",
+          }}
+        >
+          <Loader2 size={16} className="animate-spin" />
+          Redirecting to Jobber to connect your account…
+        </div>
+      )}
       <div style={{ marginBottom: "1.5rem" }}>
         <h2 style={{ fontSize: "20px", fontWeight: 700, color: "#F0EDE6" }}>Settings</h2>
         <p style={{ color: "rgba(240,237,230,0.45)", fontSize: "13px" }}>
