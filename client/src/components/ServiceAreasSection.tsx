@@ -9,7 +9,7 @@ import { MapView } from "@/components/Map";
 import { Link } from "wouter";
 
 const COUNTY_GEOJSON_URL =
-  "https://d2xsxph8kpxj0f.cloudfront.net/310519663484957999/PymCzDCnSJzPjdkfwA7Jn6/tn-served-counties-20_e001fd59.json";
+  "https://d2xsxph8kpxj0f.cloudfront.net/310519663484957999/PymCzDCnSJzPjdkfwA7Jn6/tn-served-counties-32_686a0f57.json";
 
 const counties: { name: string; slug?: string }[] = [
   { name: "Davidson County", slug: "davidson-county" },
@@ -32,11 +32,23 @@ const counties: { name: string; slug?: string }[] = [
   { name: "Houston County", slug: "houston-county" },
   { name: "Humphreys County", slug: "humphreys-county" },
   { name: "Stewart County", slug: "stewart-county" },
+  { name: "Marshall County", slug: "marshall-county" },
+  { name: "Giles County", slug: "giles-county" },
+  { name: "Lincoln County", slug: "lincoln-county" },
+  { name: "Moore County", slug: "moore-county" },
+  { name: "Lawrence County", slug: "lawrence-county" },
+  { name: "DeKalb County", slug: "dekalb-county" },
+  { name: "Smith County", slug: "smith-county" },
+  { name: "Trousdale County", slug: "trousdale-county" },
+  { name: "Macon County", slug: "macon-county" },
+  { name: "Jackson County", slug: "jackson-county" },
+  { name: "Clay County", slug: "clay-county" },
+  { name: "Putnam County", slug: "putnam-county" },
 ];
 
-// Center of the 20-county service area
-const MAP_CENTER = { lat: 36.18, lng: -87.35 };
-const MAP_ZOOM = 8;
+// Center of the 32-county service area (shifted slightly east to account for eastern counties)
+const MAP_CENTER = { lat: 35.95, lng: -86.8 };
+const MAP_ZOOM = 7;
 
 // Point-in-polygon ray casting algorithm
 function pointInPolygon(point: { lat: number; lng: number }, polygon: { lat: number; lng: number }[]): boolean {

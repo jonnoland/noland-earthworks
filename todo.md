@@ -58,3 +58,6 @@
 - [x] Update main page service area map to highlight all 20 counties
 - [x] Add address search bar to main page map with geocoding and service area check
 - [x] Add Google Places autocomplete suggestions to address search bar on main page map
+- [x] Add missing counties from map image: Marshall, Giles, Lincoln, Moore, Lawrence, DeKalb, Smith, Trousdale, Macon, Jackson, Clay, Putnam
+- [x] Update GeoJSON, sitemap, JSON-LD schema, and ServiceAreasSection for all new counties
+- [x] Create landing pages for all newly added counties
