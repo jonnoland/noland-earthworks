@@ -36,7 +36,7 @@ const services = [
         detail: "Mature hardwoods, thick cedar, heavy multi-stem growth",
       },
     ],
-    note: "Minimum job size: 1 acre or $1,200, whichever is greater.",
+    note: "Minimum job size: 1 acre or $1,800, whichever is greater.",
     href: "/services/forestry-mulching",
   },
   {
@@ -177,7 +177,7 @@ const faqs = [
   },
   {
     q: "Is there a minimum job size?",
-    a: "Yes — our minimum is 1 acre or $1,200, whichever is greater. This covers equipment mobilization and ensures we can do quality work on every job.",
+    a: "Yes — our minimum is 1 acre or $1,800, whichever is greater. This covers equipment mobilization and ensures we can do quality work on every job.",
   },
   {
     q: "Why is forestry mulching sometimes cheaper than land clearing?",
