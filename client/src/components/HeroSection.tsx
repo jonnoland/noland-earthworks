@@ -65,11 +65,11 @@ export default function HeroSection() {
               marginBottom: "1.5rem",
             }}
           >
-            Reclaim Your Land.
+            Your Land Has
             <br />
-            <span style={{ color: "#E07B2A" }}>One Day.</span>
+            Been Waiting.
             <br />
-            Done Right.
+            <span style={{ color: "#E07B2A" }}>Let's Bring It Back.</span>
           </h1>
 
           {/* Body copy */}
