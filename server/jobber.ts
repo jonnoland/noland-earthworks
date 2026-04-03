@@ -197,6 +197,53 @@ async function findClientByEmail(email: string): Promise<string | null> {
   }
 }
 
+/**
+ * Normalize a phone number to digits only for comparison.
+ * Strips spaces, dashes, parentheses, and leading US country code.
+ */
+function normalizePhone(phone: string): string {
+  const digits = phone.replace(/\D/g, "");
+  // Strip leading 1 (US country code) if 11 digits
+  return digits.length === 11 && digits.startsWith("1") ? digits.slice(1) : digits;
+}
+
+/**
+ * Search for an existing Jobber client by phone number.
+ * Used as a fallback when email lookup returns null.
+ * Returns the client ID if an exact normalized match is found, null otherwise.
+ */
+async function findClientByPhone(phone: string): Promise<string | null> {
+  if (!phone || phone === "(not provided)") return null;
+  const normalizedInput = normalizePhone(phone);
+  if (normalizedInput.length < 7) return null;
+
+  const searchQuery = `
+    query FindClientByPhone($searchTerm: String!) {
+      clientPhones(searchTerm: $searchTerm, first: 5) {
+        nodes {
+          number
+          client {
+            id
+          }
+        }
+      }
+    }
+  `;
+  try {
+    const result = await jobberGraphQL(searchQuery, { searchTerm: phone }) as {
+      clientPhones: { nodes: Array<{ number: string; client: { id: string } }> };
+    };
+    // Exact normalized match only — avoid false positives from partial matches
+    const match = result.clientPhones.nodes.find(
+      n => normalizePhone(n.number) === normalizedInput
+    );
+    return match?.client.id ?? null;
+  } catch {
+    // If search fails, fall through to create a new client
+    return null;
+  }
+}
+
 // Map website service names to Jobber line item names
 const SERVICE_LINE_ITEMS: Record<string, string> = {
   "Land Clearing": "Land Clearing",
@@ -212,12 +259,20 @@ export async function createJobberRequest(data: QuoteFormData): Promise<void> {
   const firstName = nameParts[0] ?? data.name;
   const lastName = nameParts.slice(1).join(" ") || "";
 
-  // 1. Search for existing client by email to avoid duplicates
+  // 1. Search for existing client by email, then phone, to avoid duplicates
   let clientId = await findClientByEmail(data.email);
 
   if (clientId) {
-    console.log(`[Jobber] Found existing client: ${clientId}`);
+    console.log(`[Jobber] Found existing client by email: ${clientId}`);
   } else {
+    // Fallback: try phone-based lookup
+    clientId = await findClientByPhone(data.phone);
+    if (clientId) {
+      console.log(`[Jobber] Found existing client by phone: ${clientId}`);
+    }
+  }
+
+  if (!clientId) {
     // Create a new client
     const clientMutation = `
       mutation CreateClient($input: ClientCreateInput!) {
