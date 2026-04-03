@@ -88,3 +88,4 @@
 - [x] Remove Google review count badge from Testimonials section header
 - [x] Build /pricing Pricing Guide page with Tennessee market rates and integrate into site nav
 - [x] Replace all remaining "Middle Tennessee" (standalone) with "Middle & West Tennessee" across About page, CountiesSection, email templates, and index.html
+- [x] Rebuild Pricing page to align with Jobber Products & Services list and Middle & West TN market rates
