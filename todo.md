@@ -89,3 +89,4 @@
 - [x] Build /pricing Pricing Guide page with Tennessee market rates and integrate into site nav
 - [x] Replace all remaining "Middle Tennessee" (standalone) with "Middle & West Tennessee" across About page, CountiesSection, email templates, and index.html
 - [x] Add expanded Cost Factors section to Pricing page with detailed explanations and visual cards
+- [x] Add interactive cost calculator widget to Pricing page (service type, acreage, density, terrain, access inputs → rough estimate range)
