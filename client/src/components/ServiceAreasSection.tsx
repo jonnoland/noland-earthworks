@@ -79,7 +79,7 @@ export default function ServiceAreasSection() {
   const [visible, setVisible] = useState(false);
   const polygonsRef = useRef<google.maps.Polygon[]>([]);
   const geojsonRef = useRef<GeoJSON.FeatureCollection | null>(null);
-  const markerRef = useRef<google.maps.marker.AdvancedMarkerElement | null>(null);
+  const markerRef = useRef<google.maps.Marker | null>(null);
   const mapRef = useRef<google.maps.Map | null>(null);
   const autocompleteServiceRef = useRef<google.maps.places.AutocompleteService | null>(null);
   const autocompleteDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -248,20 +248,21 @@ export default function ServiceAreasSection() {
           mapRef.current.setZoom(11);
         }
 
-        if (markerRef.current) markerRef.current.map = null;
+        if (markerRef.current) markerRef.current.setMap(null);
 
         if (mapRef.current) {
-          const pin = document.createElement("div");
-          pin.style.cssText = `
-            width: 32px; height: 32px; border-radius: 50% 50% 50% 0;
-            background: #E07B2A; transform: rotate(-45deg);
-            border: 3px solid #fff; box-shadow: 0 2px 8px rgba(0,0,0,0.5);
-          `;
-          markerRef.current = new google.maps.marker.AdvancedMarkerElement({
+          markerRef.current = new google.maps.Marker({
             map: mapRef.current,
             position: { lat, lng },
-            content: pin,
             title: results[0].formatted_address,
+            icon: {
+              path: google.maps.SymbolPath.CIRCLE,
+              scale: 12,
+              fillColor: "#E07B2A",
+              fillOpacity: 1,
+              strokeColor: "#ffffff",
+              strokeWeight: 2.5,
+            },
           });
         }
 

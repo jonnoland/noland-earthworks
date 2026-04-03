@@ -76,7 +76,7 @@
 
 /// <reference types="@types/google.maps" />
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { usePersistFn } from "@/hooks/usePersistFn";
 import { cn } from "@/lib/utils";
 
@@ -89,18 +89,45 @@ declare global {
 const API_KEY = import.meta.env.VITE_FRONTEND_FORGE_API_KEY;
 const FORGE_BASE_URL =
   import.meta.env.VITE_FRONTEND_FORGE_API_URL ||
-  "https://forge.butterfly-effect.dev";
+  "https://forge.manus.ai";
 const MAPS_PROXY_URL = `${FORGE_BASE_URL}/v1/maps/proxy`;
 
-// Singleton promise — ensures the Maps script is only injected once
+// Singleton promise — ensures the Maps script is only injected once per page lifetime.
+// IMPORTANT: Never reset this to null after it's set, even on error, to prevent
+// duplicate script injection which causes "This page can't load Google Maps correctly".
 let _mapsScriptPromise: Promise<void> | null = null;
 
 function loadMapScript() {
+  // Already loading or loaded — return the same promise
   if (_mapsScriptPromise) return _mapsScriptPromise;
 
-  // If Google Maps is already loaded (e.g. SSR hydration), resolve immediately
+  // If Google Maps is already loaded (e.g. SSR hydration or script already in DOM), resolve immediately
   if (typeof window !== "undefined" && window.google?.maps) {
     _mapsScriptPromise = Promise.resolve();
+    return _mapsScriptPromise;
+  }
+
+  // Check if a Maps script tag already exists in the DOM to avoid duplicate injection
+  const existingScript = document.querySelector(`script[src*="maps/api/js"]`);
+  if (existingScript) {
+    // Script already injected — wait for google.maps to become available
+    _mapsScriptPromise = new Promise<void>((resolve, reject) => {
+      const check = setInterval(() => {
+        if (window.google?.maps) {
+          clearInterval(check);
+          resolve();
+        }
+      }, 100);
+      // Timeout after 15 seconds
+      setTimeout(() => {
+        clearInterval(check);
+        if (window.google?.maps) {
+          resolve();
+        } else {
+          reject(new Error("Google Maps failed to initialize (timeout)"));
+        }
+      }, 15000);
+    });
     return _mapsScriptPromise;
   }
 
@@ -110,8 +137,10 @@ function loadMapScript() {
     script.async = true;
     script.crossOrigin = "anonymous";
     script.onload = () => resolve();
-    script.onerror = () => {
-      _mapsScriptPromise = null; // Allow retry on error
+    script.onerror = (err) => {
+      // Do NOT reset _mapsScriptPromise here — resetting it would allow a second
+      // script tag to be injected, causing the "can't load Google Maps correctly" error.
+      console.error("Google Maps script failed to load:", err);
       reject(new Error("Failed to load Google Maps script"));
     };
     document.head.appendChild(script);
@@ -135,13 +164,23 @@ export function MapView({
 }: MapViewProps) {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<google.maps.Map | null>(null);
+  const [mapError, setMapError] = useState(false);
 
   const init = usePersistFn(async () => {
-    await loadMapScript();
+    try {
+      await loadMapScript();
+    } catch (err) {
+      console.error("Could not load Google Maps:", err);
+      setMapError(true);
+      return;
+    }
     if (!mapContainer.current) {
       console.error("Map container not found");
       return;
     }
+    // Avoid re-initializing if map already exists on this container
+    if (map.current) return;
+
     map.current = new window.google.maps.Map(mapContainer.current, {
       zoom: initialZoom,
       center: initialCenter,
@@ -158,6 +197,26 @@ export function MapView({
   useEffect(() => {
     init();
   }, [init]);
+
+  if (mapError) {
+    return (
+      <div
+        className={cn(
+          "w-full h-[500px] flex items-center justify-center",
+          className
+        )}
+        style={{ background: "#1a1a1a", border: "1px solid rgba(224,123,42,0.2)" }}
+      >
+        <div style={{ textAlign: "center", color: "#a0a0a0" }}>
+          <div style={{ fontSize: "2rem", marginBottom: "0.5rem" }}>🗺️</div>
+          <div style={{ fontFamily: "'Oswald', sans-serif", color: "#E07B2A", marginBottom: "0.25rem" }}>
+            Map Unavailable
+          </div>
+          <div style={{ fontSize: "0.85rem" }}>Please call us at 615-406-4819 for service area information.</div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div ref={mapContainer} className={cn("w-full h-[500px]", className)} />

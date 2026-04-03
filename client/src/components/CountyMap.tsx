@@ -31,6 +31,22 @@ const COUNTY_CENTERS: Record<string, { lat: number; lng: number; zoom: number }>
   "houston-county":     { lat: 36.2870, lng: -87.6990, zoom: 10 },
   "humphreys-county":   { lat: 36.0780, lng: -87.7640, zoom: 10 },
   "stewart-county":     { lat: 36.5100, lng: -87.8380, zoom: 10 },
+  // Additional counties added in service area expansion
+  "marshall-county":    { lat: 35.4700, lng: -86.7820, zoom: 10 },
+  "giles-county":       { lat: 35.2040, lng: -87.0260, zoom: 10 },
+  "lincoln-county":     { lat: 35.1530, lng: -86.5790, zoom: 10 },
+  "moore-county":       { lat: 35.2870, lng: -86.3580, zoom: 11 },
+  "lawrence-county":    { lat: 35.2270, lng: -87.3560, zoom: 10 },
+  "trousdale-county":   { lat: 36.3930, lng: -86.1530, zoom: 11 },
+  "carroll-county":     { lat: 35.9680, lng: -88.4340, zoom: 10 },
+  "chester-county":     { lat: 35.4200, lng: -88.6130, zoom: 11 },
+  "decatur-county":     { lat: 35.5920, lng: -88.1130, zoom: 10 },
+  "gibson-county":      { lat: 35.9930, lng: -88.9330, zoom: 10 },
+  "hardin-county":      { lat: 35.2060, lng: -88.1900, zoom: 10 },
+  "henderson-county":   { lat: 35.6440, lng: -88.3990, zoom: 10 },
+  "henry-county":       { lat: 36.3280, lng: -88.2920, zoom: 10 },
+  "madison-county":     { lat: 35.6140, lng: -88.8340, zoom: 10 },
+  "weakley-county":     { lat: 36.2940, lng: -88.7120, zoom: 10 },
 };
 
 // Dark map style matching the site's #121212 theme with amber accents
@@ -163,22 +179,20 @@ export default function CountyMap({ slug, county, state }: CountyMapProps) {
 
           const result = results[0];
 
-          // Drop a branded marker at the county center
-          const markerEl = document.createElement("div");
-          markerEl.style.cssText = `
-            width: 36px;
-            height: 36px;
-            background: #E07B2A;
-            border-radius: 50% 50% 50% 0;
-            transform: rotate(-45deg);
-            border: 3px solid #fff;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.5);
-          `;
-          new window.google.maps.marker.AdvancedMarkerElement({
+          // Drop a branded marker at the county center using standard Marker
+          // (AdvancedMarkerElement requires a mapId which is not configured here)
+          const marker = new window.google.maps.Marker({
             map,
             position: result.geometry.location,
             title: `Noland Earthworks serves ${county}`,
-            content: markerEl,
+            icon: {
+              path: window.google.maps.SymbolPath.CIRCLE,
+              scale: 12,
+              fillColor: "#E07B2A",
+              fillOpacity: 1,
+              strokeColor: "#ffffff",
+              strokeWeight: 2.5,
+            },
           });
 
           // Draw county boundary polygon using viewport bounds as a rectangle overlay
@@ -224,6 +238,11 @@ export default function CountyMap({ slug, county, state }: CountyMapProps) {
 
           countyRect.addListener("click", (e: google.maps.MapMouseEvent) => {
             infoWindow.setPosition(e.latLng);
+            infoWindow.open(map);
+          });
+
+          marker.addListener("click", () => {
+            infoWindow.setPosition(result.geometry.location);
             infoWindow.open(map);
           });
         }
