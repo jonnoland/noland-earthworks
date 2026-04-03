@@ -15,6 +15,13 @@
       "when": 1775005596514,
       "tag": "0001_ambitious_mentallo",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1775250707456,
+      "tag": "0002_lying_mentallo",
+      "breakpoints": true
     }
   ]
 }

@@ -8,7 +8,8 @@ import { protectedProcedure, router } from "./_core/trpc";
 import { ENV } from "./_core/env";
 import { isJobberConnected, jobberGraphQL } from "./jobber";
 import { getDb } from "./db";
-import { jobberTokens } from "../drizzle/schema";
+import { jobberTokens, leadSourceTags } from "../drizzle/schema";
+import { sql } from "drizzle-orm";
 
 const JOBBER_AUTH_URL = "https://api.getjobber.com/api/oauth/authorize";
 
@@ -196,4 +197,62 @@ export const jobberRouter = router({
       `, { first: input.first ?? 100 }) as any;
       return data.visits;
     }),
+
+  // ─── Lead Source Tracking ─────────────────────────────────────────────────
+
+  /** Set or update the lead source for a Jobber request */
+  setLeadSource: adminProcedure
+    .input(z.object({
+      jobberRequestId: z.string(),
+      clientName: z.string().optional(),
+      source: z.enum([
+        "google_search", "google_maps", "facebook", "instagram",
+        "word_of_mouth", "yard_sign", "truck_wrap", "website",
+        "repeat_customer", "angi", "nextdoor", "other",
+      ]),
+      notes: z.string().optional(),
+    }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+      // Upsert: insert or update on duplicate jobberRequestId
+      await db
+        .insert(leadSourceTags)
+        .values({
+          jobberRequestId: input.jobberRequestId,
+          clientName: input.clientName ?? null,
+          source: input.source,
+          notes: input.notes ?? null,
+        })
+        .onDuplicateKeyUpdate({
+          set: {
+            source: input.source,
+            clientName: input.clientName ?? null,
+            notes: input.notes ?? null,
+          },
+        });
+      return { success: true };
+    }),
+
+  /** Get all lead source tags */
+  getLeadSources: adminProcedure.query(async () => {
+    const db = await getDb();
+    if (!db) return [];
+    return db.select().from(leadSourceTags).orderBy(leadSourceTags.createdAt);
+  }),
+
+  /** Get aggregated lead source breakdown (count per source) */
+  getLeadSourceBreakdown: adminProcedure.query(async () => {
+    const db = await getDb();
+    if (!db) return [];
+    const rows = await db
+      .select({
+        source: leadSourceTags.source,
+        count: sql<number>`count(*)`.mapWith(Number),
+      })
+      .from(leadSourceTags)
+      .groupBy(leadSourceTags.source)
+      .orderBy(sql`count(*) desc`);
+    return rows;
+  }),
 });

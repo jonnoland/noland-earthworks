@@ -116,3 +116,7 @@
 - [x] Admin Settings — admin configuration panel
 - [x] Enhance Admin Scoreboard with quote-to-job conversion rate tracking (funnel, rate metrics, monthly trend)
 - [x] Auto-connect Jobber when admin console is opened (redirect to OAuth if not connected)
+- [x] Add leadSourceTags table to schema (jobberRequestId, source, notes, createdAt) and push migration
+- [x] Create tRPC procedures: setLeadSource, getLeadSources, getLeadSourceBreakdown
+- [x] Update AdminLeads page with source tag dropdown on each lead row
+- [x] Build Lead Sources breakdown section (chart + table) in AdminLeads or new AdminSources page
