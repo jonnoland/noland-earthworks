@@ -91,3 +91,4 @@
 - [x] Add expanded Cost Factors section to Pricing page with detailed explanations and visual cards
 - [x] Add interactive cost calculator widget to Pricing page (service type, acreage, density, terrain, access inputs → rough estimate range)
 - [x] Move Estimate Tool calculator section to top of Pricing page (just below hero)
+- [x] Remove Get a Free Estimate and Call buttons from Pricing page hero section

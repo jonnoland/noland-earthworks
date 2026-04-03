@@ -523,35 +523,6 @@ export default function PricingPage() {
             >
               We believe in honest, upfront pricing. The ranges below are based on real Tennessee market rates for Middle &amp; West Tennessee properties. Every job is different — get a free on-site estimate for your exact parcel.
             </p>
-            <div style={{ display: "flex", gap: "1rem", flexWrap: "wrap" }}>
-              <a
-                href="/quote"
-                className="btn-amber"
-                style={{ textDecoration: "none", padding: "0.75rem 2rem" }}
-              >
-                Get a Free Estimate
-              </a>
-              <a
-                href="tel:6154064819"
-                style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: "0.5rem",
-                  padding: "0.75rem 1.5rem",
-                  border: "1px solid rgba(240,237,230,0.2)",
-                  borderRadius: "4px",
-                  color: "#F0EDE6",
-                  textDecoration: "none",
-                  fontFamily: "'Oswald', sans-serif",
-                  fontWeight: 500,
-                  letterSpacing: "0.06em",
-                  fontSize: "0.9rem",
-                }}
-              >
-                <Phone size={16} style={{ color: "#E07B2A" }} />
-                Call 615-406-4819
-              </a>
-            </div>
           </div>
         </div>
       </section>
