@@ -22,7 +22,7 @@ const services = [
     tiers: [
       {
         label: "Light Brush & Saplings",
-        range: "$800 – $1,500",
+        range: "$1,000 – $1,500",
         detail: "Thin understory, saplings under 4″ diameter, open canopy",
       },
       {
