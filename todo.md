@@ -56,3 +56,4 @@
 - [x] Add dark-themed county boundary map to each county landing page
 - [x] Fix Google Maps error on county pages (duplicate script / API key issue)
 - [x] Update main page service area map to highlight all 20 counties
+- [x] Add address search bar to main page map with geocoding and service area check

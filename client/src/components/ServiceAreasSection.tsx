@@ -1,10 +1,12 @@
 /*
  * DESIGN: Heavy Equipment Grit — dark section with county grid and interactive map
- * Map shows amber-outlined polygon boundaries for all 17 served counties.
+ * Map shows amber-outlined polygon boundaries for all 20 served counties.
+ * Address search bar geocodes user input and checks if they're in a service county.
  */
-import { MapPin } from "lucide-react";
+import { MapPin, Search, CheckCircle, XCircle, Loader2 } from "lucide-react";
 import { useRef, useEffect, useState, useCallback } from "react";
 import { MapView } from "@/components/Map";
+import { Link } from "wouter";
 
 const COUNTY_GEOJSON_URL =
   "https://d2xsxph8kpxj0f.cloudfront.net/310519663484957999/PymCzDCnSJzPjdkfwA7Jn6/tn-served-counties-20_e001fd59.json";
@@ -32,14 +34,39 @@ const counties: { name: string; slug?: string }[] = [
   { name: "Stewart County", slug: "stewart-county" },
 ];
 
-// Center of the 17-county service area (roughly middle of the cluster)
+// Center of the 20-county service area
 const MAP_CENTER = { lat: 36.18, lng: -87.35 };
 const MAP_ZOOM = 8;
+
+// Point-in-polygon ray casting algorithm
+function pointInPolygon(point: { lat: number; lng: number }, polygon: { lat: number; lng: number }[]): boolean {
+  let inside = false;
+  const x = point.lng;
+  const y = point.lat;
+  for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+    const xi = polygon[i].lng, yi = polygon[i].lat;
+    const xj = polygon[j].lng, yj = polygon[j].lat;
+    const intersect = ((yi > y) !== (yj > y)) && (x < ((xj - xi) * (y - yi)) / (yj - yi) + xi);
+    if (intersect) inside = !inside;
+  }
+  return inside;
+}
+
+type SearchStatus = "idle" | "searching" | "in-service" | "out-of-service" | "error";
 
 export default function ServiceAreasSection() {
   const ref = useRef<HTMLDivElement>(null);
   const [visible, setVisible] = useState(false);
   const polygonsRef = useRef<google.maps.Polygon[]>([]);
+  const geojsonRef = useRef<GeoJSON.FeatureCollection | null>(null);
+  const markerRef = useRef<google.maps.marker.AdvancedMarkerElement | null>(null);
+  const mapRef = useRef<google.maps.Map | null>(null);
+
+  // Search state
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchStatus, setSearchStatus] = useState<SearchStatus>("idle");
+  const [searchResult, setSearchResult] = useState<{ county: string; slug?: string } | null>(null);
+  const [searchError, setSearchError] = useState("");
 
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -51,8 +78,11 @@ export default function ServiceAreasSection() {
   }, []);
 
   const handleMapReady = useCallback((map: google.maps.Map) => {
+    mapRef.current = map;
+
     // Apply dark map style to match site theme
     map.setOptions({
+      mapId: "DEMO_MAP_ID",
       styles: [
         { elementType: "geometry", stylers: [{ color: "#1a1a1a" }] },
         { elementType: "labels.text.fill", stylers: [{ color: "#8a8a8a" }] },
@@ -80,28 +110,26 @@ export default function ServiceAreasSection() {
       ],
     });
 
-    // Fetch and draw county polygons
+    // Fetch and draw county polygons, store GeoJSON for point-in-polygon checks
     fetch(COUNTY_GEOJSON_URL)
       .then((r) => {
         if (!r.ok) throw new Error(`GeoJSON fetch failed: ${r.status}`);
         return r.json();
       })
-      .then((geojson) => {
+      .then((geojson: GeoJSON.FeatureCollection) => {
+        geojsonRef.current = geojson;
+
         // Clear any existing polygons
         polygonsRef.current.forEach((p) => p.setMap(null));
         polygonsRef.current = [];
 
         const features: GeoJSON.Feature[] = geojson.features ?? [];
-        console.log(`[ServiceAreas] Loaded ${features.length} county features`);
 
         features.forEach((feature: GeoJSON.Feature) => {
           const geom = feature.geometry;
           if (!geom) return;
 
-          const toLatLng = (coord: number[]) => ({
-            lat: coord[1],
-            lng: coord[0],
-          });
+          const toLatLng = (coord: number[]) => ({ lat: coord[1], lng: coord[0] });
 
           const rings: google.maps.LatLngLiteral[][] = [];
 
@@ -127,7 +155,6 @@ export default function ServiceAreasSection() {
             map,
           });
 
-          // Hover effect
           polygon.addListener("mouseover", () => {
             polygon.setOptions({ fillOpacity: 0.28, strokeWeight: 3 });
           });
@@ -137,12 +164,117 @@ export default function ServiceAreasSection() {
 
           polygonsRef.current.push(polygon);
         });
-        console.log(`[ServiceAreas] Drew ${polygonsRef.current.length} county polygons`);
       })
       .catch((err) => {
         console.error("[ServiceAreas] Failed to load county GeoJSON:", err);
       });
   }, []);
+
+  // Check if a lat/lng point is inside any served county polygon
+  const checkPointInServiceArea = useCallback((lat: number, lng: number): { county: string; slug?: string } | null => {
+    const geojson = geojsonRef.current;
+    if (!geojson) return null;
+
+    for (const feature of geojson.features) {
+      const geom = feature.geometry;
+      const countyName = (feature.properties as Record<string, string>)?.NAME ?? "";
+      const countyEntry = counties.find(c => c.name.replace(" County", "") === countyName);
+
+      const toLatLng = (coord: number[]) => ({ lat: coord[1], lng: coord[0] });
+      let rings: { lat: number; lng: number }[][] = [];
+
+      if (geom.type === "Polygon") {
+        rings = (geom as GeoJSON.Polygon).coordinates.map(ring => ring.map(toLatLng));
+      } else if (geom.type === "MultiPolygon") {
+        (geom as GeoJSON.MultiPolygon).coordinates.forEach(poly => {
+          poly.forEach(ring => rings.push(ring.map(toLatLng)));
+        });
+      }
+
+      // Check outer ring (first ring is outer boundary)
+      for (const ring of rings) {
+        if (pointInPolygon({ lat, lng }, ring)) {
+          return { county: countyName + " County", slug: countyEntry?.slug };
+        }
+      }
+    }
+    return null;
+  }, []);
+
+  const handleSearch = useCallback(async () => {
+    const query = searchQuery.trim();
+    if (!query) return;
+
+    setSearchStatus("searching");
+    setSearchResult(null);
+    setSearchError("");
+
+    try {
+      // Wait for Google Maps to be ready
+      if (!window.google?.maps) {
+        throw new Error("Map not ready yet. Please wait a moment and try again.");
+      }
+
+      const geocoder = new google.maps.Geocoder();
+      geocoder.geocode(
+        { address: query, componentRestrictions: { country: "US" } },
+        (results, status) => {
+          if (status !== "OK" || !results || results.length === 0) {
+            setSearchStatus("error");
+            setSearchError("Address not found. Please try a more specific address.");
+            return;
+          }
+
+          const location = results[0].geometry.location;
+          const lat = location.lat();
+          const lng = location.lng();
+
+          // Pan map to the searched location
+          if (mapRef.current) {
+            mapRef.current.panTo({ lat, lng });
+            mapRef.current.setZoom(11);
+          }
+
+          // Remove previous marker
+          if (markerRef.current) {
+            markerRef.current.map = null;
+          }
+
+          // Add a new marker at the searched location
+          if (mapRef.current) {
+            const pin = document.createElement("div");
+            pin.style.cssText = `
+              width: 32px; height: 32px; border-radius: 50% 50% 50% 0;
+              background: #E07B2A; transform: rotate(-45deg);
+              border: 3px solid #fff; box-shadow: 0 2px 8px rgba(0,0,0,0.5);
+            `;
+            markerRef.current = new google.maps.marker.AdvancedMarkerElement({
+              map: mapRef.current,
+              position: { lat, lng },
+              content: pin,
+              title: results[0].formatted_address,
+            });
+          }
+
+          // Check if the point is in a service county
+          const match = checkPointInServiceArea(lat, lng);
+          if (match) {
+            setSearchStatus("in-service");
+            setSearchResult(match);
+          } else {
+            setSearchStatus("out-of-service");
+          }
+        }
+      );
+    } catch (err) {
+      setSearchStatus("error");
+      setSearchError(err instanceof Error ? err.message : "Something went wrong. Please try again.");
+    }
+  }, [searchQuery, checkPointInServiceArea]);
+
+  const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter") handleSearch();
+  }, [handleSearch]);
 
   return (
     <section
@@ -188,8 +320,163 @@ export default function ServiceAreasSection() {
             }}
           >
             Noland Earthworks proudly serves 20 counties across Middle Tennessee.
-            Check if we're available in your area.
+            Enter your address below to check if we serve your area.
           </p>
+        </div>
+
+        {/* Address Search Bar */}
+        <div
+          style={{
+            opacity: visible ? 1 : 0,
+            transform: visible ? "translateY(0)" : "translateY(24px)",
+            transition: "opacity 0.5s ease 0.1s, transform 0.5s ease 0.1s",
+            marginBottom: "2rem",
+          }}
+        >
+          <div style={{ maxWidth: "600px" }}>
+            <div
+              style={{
+                display: "flex",
+                gap: "0",
+                border: "1px solid rgba(224,123,42,0.4)",
+                overflow: "hidden",
+                backgroundColor: "rgba(255,255,255,0.04)",
+              }}
+            >
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onKeyDown={handleKeyDown}
+                placeholder="Enter your address (e.g. 123 Main St, Franklin, TN)"
+                style={{
+                  flex: 1,
+                  padding: "0.875rem 1rem",
+                  background: "transparent",
+                  border: "none",
+                  outline: "none",
+                  fontFamily: "'Lato', sans-serif",
+                  fontSize: "0.9375rem",
+                  color: "#F0EDE6",
+                  minWidth: 0,
+                }}
+              />
+              <button
+                onClick={handleSearch}
+                disabled={searchStatus === "searching" || !searchQuery.trim()}
+                style={{
+                  padding: "0.875rem 1.25rem",
+                  backgroundColor: "#E07B2A",
+                  border: "none",
+                  cursor: searchStatus === "searching" || !searchQuery.trim() ? "not-allowed" : "pointer",
+                  opacity: !searchQuery.trim() ? 0.6 : 1,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "0.5rem",
+                  fontFamily: "'Oswald', sans-serif",
+                  fontWeight: 600,
+                  fontSize: "0.875rem",
+                  letterSpacing: "0.08em",
+                  textTransform: "uppercase" as const,
+                  color: "#fff",
+                  transition: "background-color 0.2s",
+                  flexShrink: 0,
+                }}
+                onMouseEnter={(e) => { if (searchQuery.trim()) (e.currentTarget as HTMLElement).style.backgroundColor = "#c96d1f"; }}
+                onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.backgroundColor = "#E07B2A"; }}
+              >
+                {searchStatus === "searching" ? (
+                  <Loader2 size={16} className="animate-spin" />
+                ) : (
+                  <Search size={16} />
+                )}
+                Check Area
+              </button>
+            </div>
+
+            {/* Search result feedback */}
+            {searchStatus === "in-service" && searchResult && (
+              <div
+                style={{
+                  marginTop: "0.75rem",
+                  padding: "0.875rem 1rem",
+                  backgroundColor: "rgba(34, 197, 94, 0.1)",
+                  border: "1px solid rgba(34, 197, 94, 0.3)",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "0.75rem",
+                }}
+              >
+                <CheckCircle size={20} style={{ color: "#22c55e", flexShrink: 0 }} />
+                <div>
+                  <p style={{ fontFamily: "'Lato', sans-serif", fontWeight: 600, fontSize: "0.9375rem", color: "#22c55e", margin: 0 }}>
+                    Great news — we serve your area!
+                  </p>
+                  <p style={{ fontFamily: "'Lato', sans-serif", fontWeight: 300, fontSize: "0.875rem", color: "rgba(240,237,230,0.7)", margin: "0.25rem 0 0" }}>
+                    Your address is in{" "}
+                    {searchResult.slug ? (
+                      <Link href={`/service-areas/${searchResult.slug}`} style={{ color: "#E07B2A", textDecoration: "underline" }}>
+                        {searchResult.county}
+                      </Link>
+                    ) : (
+                      <strong style={{ color: "#F0EDE6" }}>{searchResult.county}</strong>
+                    )}
+                    .{" "}
+                    <a href="/quote" style={{ color: "#E07B2A", textDecoration: "underline" }}>
+                      Get a free quote →
+                    </a>
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {searchStatus === "out-of-service" && (
+              <div
+                style={{
+                  marginTop: "0.75rem",
+                  padding: "0.875rem 1rem",
+                  backgroundColor: "rgba(239, 68, 68, 0.08)",
+                  border: "1px solid rgba(239, 68, 68, 0.25)",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "0.75rem",
+                }}
+              >
+                <XCircle size={20} style={{ color: "#ef4444", flexShrink: 0 }} />
+                <div>
+                  <p style={{ fontFamily: "'Lato', sans-serif", fontWeight: 600, fontSize: "0.9375rem", color: "#ef4444", margin: 0 }}>
+                    Outside our current service area
+                  </p>
+                  <p style={{ fontFamily: "'Lato', sans-serif", fontWeight: 300, fontSize: "0.875rem", color: "rgba(240,237,230,0.7)", margin: "0.25rem 0 0" }}>
+                    We don't currently serve that location, but{" "}
+                    <a href="/quote" style={{ color: "#E07B2A", textDecoration: "underline" }}>
+                      contact us
+                    </a>{" "}
+                    to discuss your project — we may be able to help.
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {searchStatus === "error" && (
+              <div
+                style={{
+                  marginTop: "0.75rem",
+                  padding: "0.875rem 1rem",
+                  backgroundColor: "rgba(239, 68, 68, 0.08)",
+                  border: "1px solid rgba(239, 68, 68, 0.25)",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "0.75rem",
+                }}
+              >
+                <XCircle size={20} style={{ color: "#ef4444", flexShrink: 0 }} />
+                <p style={{ fontFamily: "'Lato', sans-serif", fontWeight: 400, fontSize: "0.875rem", color: "rgba(240,237,230,0.7)", margin: 0 }}>
+                  {searchError}
+                </p>
+              </div>
+            )}
+          </div>
         </div>
 
         <div
