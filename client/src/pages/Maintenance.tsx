@@ -7,7 +7,7 @@ import Footer from "@/components/Footer";
 import { trpc } from "@/lib/trpc";
 import { Streamdown } from "streamdown";
 
-const FIELDFIX_URL = "https://fieldfixai-z4rezyau.manus.space/maintenance";
+const NOLANDFIX_URL = "https://fieldfixai-z4rezyau.manus.space/maintenance";
 
 const URGENCY_COLORS: Record<string, string> = {
   low: "#22c55e",
@@ -224,14 +224,14 @@ export default function Maintenance() {
           </div>
         )}
 
-        {/* FieldFix CTA */}
-        <a href={FIELDFIX_URL} target="_blank" rel="noopener noreferrer">
+        {/* NolandFix CTA */}
+        <a href={NOLANDFIX_URL} target="_blank" rel="noopener noreferrer">
           <Button
             size="lg"
             className="gap-2 text-base font-semibold px-8 py-6 rounded-xl"
             style={{ backgroundColor: "#D4A017", color: "#121212" }}
           >
-            Open FieldFix AI
+            Open NolandFix AI
             <ExternalLink className="w-5 h-5" />
           </Button>
         </a>
