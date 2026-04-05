@@ -123,3 +123,4 @@
 - [x] Auto-connect Jobber on Admin Settings page load (redirect to OAuth if not connected)
 - [ ] Diagnose and fix Jobber OAuth connection issue
 - [x] Create /maintenance page with FieldFix AI link button and register route in App.tsx
+- [x] Enhance AI Diagnostics card on /maintenance page with image upload button and LLM-powered analysis result
