@@ -121,3 +121,5 @@
 - [x] Update AdminLeads page with source tag dropdown on each lead row
 - [x] Build Lead Sources breakdown section (chart + table) in AdminLeads or new AdminSources page
 - [x] Auto-connect Jobber on Admin Settings page load (redirect to OAuth if not connected)
+- [ ] Diagnose and fix Jobber OAuth connection issue
+- [x] Create /maintenance page with FieldFix AI link button and register route in App.tsx

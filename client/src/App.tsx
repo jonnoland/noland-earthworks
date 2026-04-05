@@ -29,6 +29,7 @@ import AdminConversations from "./pages/admin/AdminConversations";
 import AdminScoreboard from "./pages/admin/AdminScoreboard";
 import AdminReports from "./pages/admin/AdminReports";
 import AdminSettings from "./pages/admin/AdminSettings";
+import MaintenancePage from "./pages/Maintenance";
 import { useAuth } from "./_core/hooks/useAuth";
 import { getLoginUrl } from "./const";
 import {
@@ -80,6 +81,7 @@ function Router() {
       <Route path="/pricing" component={PricingPage} />
       <Route path="/terms-of-service" component={TermsOfServicePage} />
       <Route path="/privacy-policy" component={PrivacyPolicyPage} />
+      <Route path="/maintenance" component={MaintenancePage} />
 
       {/* Service pages */}
       <Route path="/services/land-clearing" component={LandClearingPage} />
