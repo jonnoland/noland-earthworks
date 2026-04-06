@@ -341,7 +341,7 @@ export default function Pricing() {
                 type="text"
                 value={jobAddress}
                 onChange={e => setJobAddress(e.target.value)}
-                placeholder="e.g. 1234 Ranch Rd, Bastrop TX"
+                placeholder="e.g. 1234 Old Hickory Blvd, Nashville TN"
                 className="w-full bg-secondary/50 border border-border rounded-md px-3 py-2 text-xs text-foreground outline-none focus:border-primary/50 transition-colors placeholder:text-muted-foreground/40"
               />
             </div>
