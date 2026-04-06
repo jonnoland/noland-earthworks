@@ -1,4 +1,4 @@
-import { int, mysqlEnum, mysqlTable, text, timestamp, varchar } from "drizzle-orm/mysql-core";
+import { decimal, int, mysqlEnum, mysqlTable, text, timestamp, varchar } from "drizzle-orm/mysql-core";
 
 /**
  * Core user table backing auth flow.
@@ -76,3 +76,97 @@ export const leadSourceTags = mysqlTable("lead_source_tags", {
 
 export type LeadSourceTag = typeof leadSourceTags.$inferSelect;
 export type InsertLeadSourceTag = typeof leadSourceTags.$inferInsert;
+
+/**
+ * Jobs table — land clearing job records
+ */
+export const jobs = mysqlTable("jobs", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  title: varchar("title", { length: 255 }).notNull(),
+  client: varchar("client", { length: 255 }).notNull(),
+  address: varchar("address", { length: 500 }),
+  jobType: mysqlEnum("jobType", [
+    "land_clearing",
+    "forestry_mulching",
+    "brush_removal",
+    "stump_grinding",
+    "wildfire_mitigation",
+  ]).default("land_clearing").notNull(),
+  status: mysqlEnum("status", [
+    "estimate",
+    "scheduled",
+    "in_progress",
+    "completed",
+    "invoiced",
+    "paid",
+  ]).default("estimate").notNull(),
+  acres: decimal("acres", { precision: 8, scale: 2 }),
+  crewDays: decimal("crewDays", { precision: 8, scale: 2 }),
+  totalPrice: decimal("totalPrice", { precision: 10, scale: 2 }),
+  notes: text("notes"),
+  scheduledDate: timestamp("scheduledDate"),
+  completedDate: timestamp("completedDate"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type Job = typeof jobs.$inferSelect;
+export type InsertJob = typeof jobs.$inferInsert;
+
+/**
+ * Leads table — prospect pipeline
+ */
+export const opsLeads = mysqlTable("ops_leads", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  name: varchar("name", { length: 255 }).notNull(),
+  email: varchar("email", { length: 320 }),
+  phone: varchar("phone", { length: 50 }),
+  address: varchar("address", { length: 500 }),
+  source: mysqlEnum("source", [
+    "google",
+    "facebook",
+    "referral",
+    "website",
+    "direct",
+    "other",
+  ]).default("other").notNull(),
+  stage: mysqlEnum("stage", [
+    "new",
+    "contacted",
+    "estimate_sent",
+    "negotiating",
+    "won",
+    "lost",
+  ]).default("new").notNull(),
+  jobType: varchar("jobType", { length: 100 }),
+  estimatedValue: decimal("estimatedValue", { precision: 10, scale: 2 }),
+  notes: text("notes"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type OpsLead = typeof opsLeads.$inferSelect;
+export type InsertOpsLead = typeof opsLeads.$inferInsert;
+
+/**
+ * Schedule entries — crew calendar
+ */
+export const scheduleEntries = mysqlTable("schedule_entries", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  jobId: int("jobId"),
+  title: varchar("title", { length: 255 }).notNull(),
+  crewName: varchar("crewName", { length: 100 }).notNull(),
+  date: timestamp("date").notNull(),
+  startHour: int("startHour").default(7).notNull(),
+  endHour: int("endHour").default(17).notNull(),
+  color: varchar("color", { length: 20 }).default("orange"),
+  notes: text("notes"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type ScheduleEntry = typeof scheduleEntries.$inferSelect;
+export type InsertScheduleEntry = typeof scheduleEntries.$inferInsert;

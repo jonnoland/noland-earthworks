@@ -127,3 +127,10 @@
 - [x] Replace all "FieldFix AI" references with "NolandFix AI" across the site
 - [x] Remove /maintenance page, route, and any nav links
 - [x] Remove /admin pages, routes, and any nav links
+- [x] Add jobs, leads, scheduleEntries tables to drizzle schema and push migration
+- [x] Add DB helpers for jobs, leads, schedule to server/db.ts
+- [x] Add opsRouter (jobs, leads, schedule tRPC procedures) to server
+- [x] Copy DashboardLayout component from ownrops dashboard (as OpsDashboardLayout)
+- [x] Copy all 7 dashboard pages (Dashboard, Jobs, Leads, Pricing, Schedule, Reports, Settings) under /ops routes
+- [x] Wire /ops/* routes in App.tsx with owner-only guard
+- [x] Verify no TypeScript errors after integration

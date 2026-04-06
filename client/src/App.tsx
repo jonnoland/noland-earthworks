@@ -5,6 +5,14 @@ import { Route, Switch } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import ScrollToTop from "./components/ScrollToTop";
+import OwnerRoute from "./components/OwnerRoute";
+import OpsDashboard from "./pages/ops/Dashboard";
+import OpsJobs from "./pages/ops/Jobs";
+import OpsLeads from "./pages/ops/Leads";
+import OpsPricing from "./pages/ops/Pricing";
+import OpsSchedule from "./pages/ops/Schedule";
+import OpsReports from "./pages/ops/Reports";
+import OpsSettings from "./pages/ops/Settings";
 import Home from "./pages/Home";
 import LandClearingPage from "./pages/LandClearing";
 import ForestryMulchingPage from "./pages/ForestryMulching";
@@ -106,6 +114,29 @@ function Router() {
       <Route path="/service-areas/henry-county" component={HenryCountyPage} />
       <Route path="/service-areas/madison-county" component={MadisonCountyPage} />
       <Route path="/service-areas/weakley-county" component={WeakleyCountyPage} />
+
+      {/* Ops dashboard — owner only */}
+      <Route path="/ops">
+        <OwnerRoute><OpsDashboard /></OwnerRoute>
+      </Route>
+      <Route path="/ops/jobs">
+        <OwnerRoute><OpsJobs /></OwnerRoute>
+      </Route>
+      <Route path="/ops/leads">
+        <OwnerRoute><OpsLeads /></OwnerRoute>
+      </Route>
+      <Route path="/ops/pricing">
+        <OwnerRoute><OpsPricing /></OwnerRoute>
+      </Route>
+      <Route path="/ops/schedule">
+        <OwnerRoute><OpsSchedule /></OwnerRoute>
+      </Route>
+      <Route path="/ops/reports">
+        <OwnerRoute><OpsReports /></OwnerRoute>
+      </Route>
+      <Route path="/ops/settings">
+        <OwnerRoute><OpsSettings /></OwnerRoute>
+      </Route>
 
       <Route path="/404" component={NotFound} />
       <Route component={NotFound} />

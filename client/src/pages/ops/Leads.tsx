@@ -1,0 +1,314 @@
+/**
+ * Leads Page — Noland Earthworks
+ * Live data from tRPC: list, create, update stage, delete
+ */
+
+import DashboardLayout from "@/components/OpsDashboardLayout";
+import { trpc } from "@/lib/trpc";
+import { useState } from "react";
+import {
+  UserPlus, Plus, Search, Trash2, Edit3, ChevronDown,
+  Phone, Mail, MapPin, DollarSign, Loader2, X,
+} from "lucide-react";
+import { cn } from "@/lib/utils";
+import { toast } from "sonner";
+
+const STAGE_OPTIONS = ["new", "contacted", "estimate_sent", "negotiating", "won", "lost"] as const;
+const SOURCE_OPTIONS = ["google", "facebook", "referral", "website", "direct", "other"] as const;
+
+type LeadStage = typeof STAGE_OPTIONS[number];
+type LeadSource = typeof SOURCE_OPTIONS[number];
+
+const STAGE_LABELS: Record<string, string> = {
+  new: "New Lead", contacted: "Contacted", estimate_sent: "Estimate Sent", negotiating: "Negotiating", won: "Won", lost: "Lost",
+};
+
+const STAGE_COLORS: Record<string, string> = {
+  new: "bg-blue-500/15 text-blue-400 border-blue-500/30",
+  contacted: "bg-cyan-500/15 text-cyan-400 border-cyan-500/30",
+  estimate_sent: "bg-primary/15 text-primary border-primary/30",
+  negotiating: "bg-purple-500/15 text-purple-400 border-purple-500/30",
+  won: "bg-green-500/15 text-green-400 border-green-500/30",
+  lost: "bg-red-500/15 text-red-400 border-red-500/30",
+};
+
+interface LeadFormData {
+  name: string; phone: string; email: string; location: string; // maps to address in DB
+  source: LeadSource; stage: LeadStage; jobType: string;
+  estimatedValue: string; notes: string;
+}
+
+const emptyForm: LeadFormData = {
+  name: "", phone: "", email: "", location: "",
+  source: "google", stage: "new", jobType: "Land Clearing",
+  estimatedValue: "", notes: "",
+};
+
+export default function Leads() {
+  const [search, setSearch] = useState("");
+  const [filterStage, setFilterStage] = useState("all");
+  const [showModal, setShowModal] = useState(false);
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [form, setForm] = useState<LeadFormData>(emptyForm);
+
+  const utils = trpc.useUtils();
+  const { data: leads = [], isLoading } = trpc.ops.leads.list.useQuery();
+
+  const createLead = trpc.ops.leads.create.useMutation({
+    onSuccess: () => { utils.ops.leads.list.invalidate(); toast.success("Lead added"); closeModal(); },
+    onError: (e) => toast.error(e.message),
+  });
+  const updateLead = trpc.ops.leads.update.useMutation({
+    onSuccess: () => { utils.ops.leads.list.invalidate(); toast.success("Lead updated"); closeModal(); },
+    onError: (e) => toast.error(e.message),
+  });
+  const deleteLead = trpc.ops.leads.delete.useMutation({
+    onSuccess: () => { utils.ops.leads.list.invalidate(); toast.success("Lead deleted"); },
+    onError: (e) => toast.error(e.message),
+  });
+
+  const openCreate = () => { setForm(emptyForm); setEditingId(null); setShowModal(true); };
+  const openEdit = (lead: typeof leads[0]) => {
+    setForm({
+      name: lead.name, phone: lead.phone ?? "", email: lead.email ?? "",
+      location: lead.address ?? "", source: lead.source as LeadSource,
+      stage: lead.stage as LeadStage, jobType: lead.jobType ?? "Land Clearing",
+      estimatedValue: lead.estimatedValue ?? "", notes: lead.notes ?? "",
+    });
+    setEditingId(lead.id);
+    setShowModal(true);
+  };
+  const closeModal = () => { setShowModal(false); setEditingId(null); setForm(emptyForm); };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const { location, ...rest } = form;
+    const payload = { ...rest, address: location };
+    if (editingId !== null) updateLead.mutate({ id: editingId, ...payload });
+    else createLead.mutate(payload);
+  };
+
+  const filtered = leads.filter(l => {
+    const matchSearch = l.name.toLowerCase().includes(search.toLowerCase()) ||
+      (l.address ?? "").toLowerCase().includes(search.toLowerCase());
+    const matchStage = filterStage === "all" || l.stage === filterStage;
+    return matchSearch && matchStage;
+  });
+
+  const isPending = createLead.isPending || updateLead.isPending;
+  const totalPipelineValue = leads.filter(l => !["won", "lost"].includes(l.stage))
+    .reduce((s, l) => s + Number(l.estimatedValue ?? 0), 0);
+  const wonValue = leads.filter(l => l.stage === "won")
+    .reduce((s, l) => s + Number(l.estimatedValue ?? 0), 0);
+
+  return (
+    <DashboardLayout title="Leads" subtitle="Track your lead pipeline">
+      <div className="p-6 space-y-5">
+        {/* Stats row */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          {[
+            { label: "Total Leads", value: leads.length.toString() },
+            { label: "Open Pipeline", value: `$${totalPipelineValue.toLocaleString()}` },
+            { label: "Won This Period", value: `$${wonValue.toLocaleString()}` },
+            { label: "New This Week", value: leads.filter(l => l.stage === "new").length.toString() },
+          ].map((stat, i) => (
+            <div key={i} className="ops-card p-4">
+              <div className="text-lg font-bold text-foreground ops-metric-value">{stat.value}</div>
+              <div className="text-xs text-muted-foreground mt-0.5">{stat.label}</div>
+            </div>
+          ))}
+        </div>
+
+        {/* Header actions */}
+        <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
+          <div className="flex gap-3 flex-wrap">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+              <input type="text" placeholder="Search leads..." value={search}
+                onChange={e => setSearch(e.target.value)}
+                className="pl-9 pr-3 py-2 bg-secondary/50 border border-border rounded-md text-xs text-foreground outline-none focus:border-primary/50 w-52 placeholder:text-muted-foreground/40" />
+            </div>
+            <div className="relative">
+              <select value={filterStage} onChange={e => setFilterStage(e.target.value)}
+                className="appearance-none pl-3 pr-8 py-2 bg-secondary/50 border border-border rounded-md text-xs text-foreground outline-none focus:border-primary/50 cursor-pointer">
+                <option value="all">All Stages</option>
+                {STAGE_OPTIONS.map(s => (
+                  <option key={s} value={s}>{STAGE_LABELS[s]}</option>
+                ))}
+              </select>
+              <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 text-muted-foreground pointer-events-none" />
+            </div>
+          </div>
+          <button onClick={openCreate}
+            className="flex items-center gap-1.5 bg-primary hover:bg-primary/90 text-white text-xs font-semibold px-4 py-2 rounded-md transition-all">
+            <Plus className="w-3.5 h-3.5" />
+            New Lead
+          </button>
+        </div>
+
+        {/* Leads table */}
+        {isLoading ? (
+          <div className="flex items-center justify-center py-20">
+            <Loader2 className="w-6 h-6 animate-spin text-primary" />
+          </div>
+        ) : filtered.length === 0 ? (
+          <div className="ops-card p-12 text-center">
+            <UserPlus className="w-10 h-10 text-muted-foreground/30 mx-auto mb-3" />
+            <p className="text-sm font-semibold text-foreground mb-1">No leads found</p>
+            <p className="text-xs text-muted-foreground mb-4">
+              {search || filterStage !== "all" ? "Try adjusting your filters" : "Add your first lead to start tracking your pipeline"}
+            </p>
+            {!search && filterStage === "all" && (
+              <button onClick={openCreate} className="bg-primary hover:bg-primary/90 text-white text-xs font-semibold px-4 py-2 rounded-md transition-all">
+                + New Lead
+              </button>
+            )}
+          </div>
+        ) : (
+          <div className="ops-card overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="border-b border-border">
+                    <th className="text-left px-4 py-3 text-muted-foreground font-medium">Lead</th>
+                    <th className="text-left px-4 py-3 text-muted-foreground font-medium hidden sm:table-cell">Contact</th>
+                    <th className="text-left px-4 py-3 text-muted-foreground font-medium hidden md:table-cell">Location</th>
+                    <th className="text-left px-4 py-3 text-muted-foreground font-medium">Stage</th>
+                    <th className="text-left px-4 py-3 text-muted-foreground font-medium hidden lg:table-cell">Source</th>
+                    <th className="text-right px-4 py-3 text-muted-foreground font-medium">Value</th>
+                    <th className="text-right px-4 py-3 text-muted-foreground font-medium">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filtered.map((lead, i) => (
+                    <tr key={lead.id} className={cn("border-b border-border/50 hover:bg-secondary/20 transition-colors", i % 2 === 0 ? "" : "bg-secondary/5")}>
+                      <td className="px-4 py-3">
+                        <div className="font-semibold text-foreground">{lead.name}</div>
+                        {lead.notes && <div className="text-muted-foreground/60 text-[10px] mt-0.5 truncate max-w-[160px]">{lead.notes}</div>}
+                      </td>
+                      <td className="px-4 py-3 hidden sm:table-cell">
+                        <div className="space-y-0.5">
+                          {lead.phone && <div className="flex items-center gap-1 text-muted-foreground"><Phone className="w-2.5 h-2.5" />{lead.phone}</div>}
+                          {lead.email && <div className="flex items-center gap-1 text-muted-foreground"><Mail className="w-2.5 h-2.5" />{lead.email}</div>}
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 hidden md:table-cell">
+                        {lead.address && (
+                          <div className="flex items-center gap-1 text-muted-foreground">
+                            <MapPin className="w-2.5 h-2.5 shrink-0" />{lead.address}
+                          </div>
+                        )}
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className={cn("text-[10px] font-semibold px-2 py-0.5 rounded-full border", STAGE_COLORS[lead.stage])}>
+                          {STAGE_LABELS[lead.stage]}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 hidden lg:table-cell">
+                        <span className="text-muted-foreground capitalize">{lead.source}</span>
+                      </td>
+                      <td className="px-4 py-3 text-right">
+                        {lead.estimatedValue && (
+                          <span className="flex items-center justify-end gap-0.5 text-primary font-semibold">
+                            <DollarSign className="w-3 h-3" />{Number(lead.estimatedValue).toLocaleString()}
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 text-right">
+                        <div className="flex items-center justify-end gap-1">
+                          <button onClick={() => openEdit(lead)} className="p-1.5 rounded-md hover:bg-secondary/80 text-muted-foreground hover:text-foreground transition-colors">
+                            <Edit3 className="w-3.5 h-3.5" />
+                          </button>
+                          <button onClick={() => { if (confirm("Delete this lead?")) deleteLead.mutate({ id: lead.id }); }}
+                            className="p-1.5 rounded-md hover:bg-red-500/10 text-muted-foreground hover:text-red-400 transition-colors">
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Add/Edit Modal */}
+      {showModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div className="ops-card w-full max-w-lg p-6 shadow-2xl max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-5">
+              <h2 className="text-base font-bold text-foreground" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
+                {editingId ? "Edit Lead" : "New Lead"}
+              </h2>
+              <button onClick={closeModal} className="p-1.5 rounded-md hover:bg-secondary/80 text-muted-foreground"><X className="w-4 h-4" /></button>
+            </div>
+            <form onSubmit={handleSubmit} className="space-y-3">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="col-span-2">
+                  <label className="block text-xs font-medium text-muted-foreground mb-1">Name / Company *</label>
+                  <input required value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="e.g. Smith Ranch"
+                    className="w-full bg-secondary/50 border border-border rounded-md px-3 py-2 text-xs text-foreground outline-none focus:border-primary/50 placeholder:text-muted-foreground/40" />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-muted-foreground mb-1">Phone</label>
+                  <input value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))} placeholder="(512) 555-0100"
+                    className="w-full bg-secondary/50 border border-border rounded-md px-3 py-2 text-xs text-foreground outline-none focus:border-primary/50 placeholder:text-muted-foreground/40" />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-muted-foreground mb-1">Email</label>
+                  <input type="email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} placeholder="client@email.com"
+                    className="w-full bg-secondary/50 border border-border rounded-md px-3 py-2 text-xs text-foreground outline-none focus:border-primary/50 placeholder:text-muted-foreground/40" />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-muted-foreground mb-1">Location</label>
+                  <input value={form.location} onChange={e => setForm(f => ({ ...f, location: e.target.value }))} placeholder="City, TX"
+                    className="w-full bg-secondary/50 border border-border rounded-md px-3 py-2 text-xs text-foreground outline-none focus:border-primary/50 placeholder:text-muted-foreground/40" />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-muted-foreground mb-1">Job Type</label>
+                  <input value={form.jobType} onChange={e => setForm(f => ({ ...f, jobType: e.target.value }))} placeholder="Land Clearing"
+                    className="w-full bg-secondary/50 border border-border rounded-md px-3 py-2 text-xs text-foreground outline-none focus:border-primary/50 placeholder:text-muted-foreground/40" />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-muted-foreground mb-1">Stage</label>
+                  <select value={form.stage} onChange={e => setForm(f => ({ ...f, stage: e.target.value as LeadStage }))}
+                    className="w-full bg-secondary/50 border border-border rounded-md px-3 py-2 text-xs text-foreground outline-none focus:border-primary/50">
+                    {STAGE_OPTIONS.map(s => <option key={s} value={s}>{STAGE_LABELS[s]}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-muted-foreground mb-1">Source</label>
+                  <select value={form.source} onChange={e => setForm(f => ({ ...f, source: e.target.value as LeadSource }))}
+                    className="w-full bg-secondary/50 border border-border rounded-md px-3 py-2 text-xs text-foreground outline-none focus:border-primary/50">
+                    {SOURCE_OPTIONS.map(s => <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-muted-foreground mb-1">Est. Value ($)</label>
+                  <input type="number" step="100" value={form.estimatedValue} onChange={e => setForm(f => ({ ...f, estimatedValue: e.target.value }))} placeholder="0"
+                    className="w-full bg-secondary/50 border border-border rounded-md px-3 py-2 text-xs text-foreground outline-none focus:border-primary/50 placeholder:text-muted-foreground/40" />
+                </div>
+                <div className="col-span-2">
+                  <label className="block text-xs font-medium text-muted-foreground mb-1">Notes</label>
+                  <textarea value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} placeholder="Lead notes..." rows={2}
+                    className="w-full bg-secondary/50 border border-border rounded-md px-3 py-2 text-xs text-foreground outline-none focus:border-primary/50 resize-none placeholder:text-muted-foreground/40" />
+                </div>
+              </div>
+              <div className="flex gap-2 pt-2">
+                <button type="button" onClick={closeModal}
+                  className="flex-1 py-2 rounded-md text-xs font-semibold text-muted-foreground bg-secondary/50 hover:bg-secondary transition-colors">Cancel</button>
+                <button type="submit" disabled={isPending}
+                  className="flex-1 py-2 rounded-md text-xs font-semibold text-white bg-primary hover:bg-primary/90 transition-all disabled:opacity-50 flex items-center justify-center gap-1.5">
+                  {isPending && <Loader2 className="w-3 h-3 animate-spin" />}
+                  {editingId ? "Save Changes" : "Add Lead"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+    </DashboardLayout>
+  );
+}

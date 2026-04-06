@@ -1,0 +1,315 @@
+/**
+ * Schedule Page — Noland Earthworks
+ * Live data from tRPC: list, create, delete schedule entries
+ */
+
+import DashboardLayout from "@/components/OpsDashboardLayout";
+import { trpc } from "@/lib/trpc";
+import { useState, useMemo } from "react";
+import { ChevronLeft, ChevronRight, Plus, Trash2, Loader2, X, Calendar } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { toast } from "sonner";
+
+const CREW_COLORS = [
+  "bg-primary/20 border-primary/40 text-primary",
+  "bg-blue-500/20 border-blue-500/40 text-blue-400",
+  "bg-purple-500/20 border-purple-500/40 text-purple-400",
+  "bg-yellow-500/20 border-yellow-500/40 text-yellow-400",
+  "bg-green-500/20 border-green-500/40 text-green-400",
+  "bg-pink-500/20 border-pink-500/40 text-pink-400",
+];
+
+function getWeekStart(offset: number): Date {
+  const now = new Date();
+  const day = now.getDay();
+  const monday = new Date(now);
+  monday.setDate(now.getDate() - (day === 0 ? 6 : day - 1) + offset * 7);
+  monday.setHours(0, 0, 0, 0);
+  return monday;
+}
+
+function formatDateKey(d: Date): string {
+  return d.toISOString().split("T")[0];
+}
+
+function formatDayLabel(d: Date): string {
+  return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+}
+
+interface EntryFormData {
+  title: string;
+  crewName: string;
+  date: string;
+  startHour: number;
+  endHour: number;
+  notes: string;
+}
+
+const emptyForm: EntryFormData = {
+  title: "", crewName: "Crew A", date: "", startHour: 7, endHour: 17, notes: "",
+};
+
+export default function Schedule() {
+  const [weekOffset, setWeekOffset] = useState(0);
+  const [showModal, setShowModal] = useState(false);
+  const [form, setForm] = useState<EntryFormData>(emptyForm);
+
+  const utils = trpc.useUtils();
+  const { data: entries = [], isLoading } = trpc.ops.schedule.list.useQuery();
+
+  const createEntry = trpc.ops.schedule.create.useMutation({
+    onSuccess: () => { utils.ops.schedule.list.invalidate(); toast.success("Entry added"); closeModal(); },
+    onError: (e) => toast.error(e.message),
+  });
+  const deleteEntry = trpc.ops.schedule.delete.useMutation({
+    onSuccess: () => { utils.ops.schedule.list.invalidate(); toast.success("Entry removed"); },
+    onError: (e) => toast.error(e.message),
+  });
+
+  const closeModal = () => { setShowModal(false); setForm(emptyForm); };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    createEntry.mutate({
+      title: form.title,
+      crewName: form.crewName,
+      date: new Date(form.date + "T12:00:00"),
+      startHour: form.startHour,
+      endHour: form.endHour,
+      notes: form.notes || undefined,
+    });
+  };
+
+  // Build week days
+  const weekDays = useMemo(() => {
+    const start = getWeekStart(weekOffset);
+    return Array.from({ length: 6 }, (_, i) => {
+      const d = new Date(start);
+      d.setDate(start.getDate() + i);
+      return { date: d, key: formatDateKey(d), label: formatDayLabel(d), dayName: d.toLocaleDateString("en-US", { weekday: "short" }) };
+    });
+  }, [weekOffset]);
+
+  const weekLabel = `${weekDays[0].label} – ${weekDays[5].label}`;
+
+  // Get unique crew names from entries + defaults
+  const crewNames = useMemo(() => {
+    const fromEntries = Array.from(new Set(entries.map(e => e.crewName)));
+    const defaults = ["Crew A", "Crew B", "Crew C"];
+    const all = Array.from(new Set([...defaults, ...fromEntries]));
+    return all.sort();
+  }, [entries]);
+
+  // Map entries to date keys
+  const entryMap = useMemo(() => {
+    const map: Record<string, Record<string, typeof entries>> = {};
+    for (const crew of crewNames) {
+      map[crew] = {};
+      for (const day of weekDays) {
+        map[crew][day.key] = [];
+      }
+    }
+    for (const entry of entries) {
+      const key = formatDateKey(new Date(entry.date));
+      if (map[entry.crewName] && map[entry.crewName][key] !== undefined) {
+        map[entry.crewName][key].push(entry);
+      }
+    }
+    return map;
+  }, [entries, crewNames, weekDays]);
+
+  const getCrewColor = (crewName: string) => {
+    const idx = crewNames.indexOf(crewName) % CREW_COLORS.length;
+    return CREW_COLORS[idx];
+  };
+
+  const today = formatDateKey(new Date());
+
+  return (
+    <DashboardLayout title="Schedule" subtitle="Weekly crew calendar">
+      <div className="p-6 space-y-5">
+        {/* Week navigation */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <button onClick={() => setWeekOffset(w => w - 1)}
+              className="p-2 rounded-md hover:bg-secondary/80 text-muted-foreground hover:text-foreground transition-colors border border-border">
+              <ChevronLeft className="w-4 h-4" />
+            </button>
+            <span className="text-sm font-semibold text-foreground px-2" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
+              {weekLabel}
+            </span>
+            <button onClick={() => setWeekOffset(w => w + 1)}
+              className="p-2 rounded-md hover:bg-secondary/80 text-muted-foreground hover:text-foreground transition-colors border border-border">
+              <ChevronRight className="w-4 h-4" />
+            </button>
+            {weekOffset !== 0 && (
+              <button onClick={() => setWeekOffset(0)}
+                className="text-xs text-primary hover:text-primary/80 px-2 py-1 rounded-md hover:bg-primary/10 transition-colors">
+                Today
+              </button>
+            )}
+          </div>
+          <button onClick={() => { setForm({ ...emptyForm, date: weekDays[0].key }); setShowModal(true); }}
+            className="flex items-center gap-1.5 bg-primary hover:bg-primary/90 text-white text-xs font-semibold px-4 py-2 rounded-md transition-all">
+            <Plus className="w-3.5 h-3.5" />
+            Add Entry
+          </button>
+        </div>
+
+        {/* Calendar grid */}
+        {isLoading ? (
+          <div className="flex items-center justify-center py-20">
+            <Loader2 className="w-6 h-6 animate-spin text-primary" />
+          </div>
+        ) : (
+          <div className="ops-card overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[700px]">
+                <thead>
+                  <tr className="border-b border-border">
+                    <th className="text-left px-4 py-3 text-muted-foreground font-medium text-xs w-28">Crew</th>
+                    {weekDays.map(day => (
+                      <th key={day.key} className={cn(
+                        "text-center px-2 py-3 text-xs font-medium",
+                        day.key === today ? "text-primary" : "text-muted-foreground"
+                      )}>
+                        <div>{day.dayName}</div>
+                        <div className={cn("text-[10px] mt-0.5", day.key === today ? "text-primary font-bold" : "text-muted-foreground/60")}>
+                          {day.label}
+                        </div>
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {crewNames.map((crew, ci) => (
+                    <tr key={crew} className={cn("border-b border-border/50", ci % 2 === 0 ? "" : "bg-secondary/5")}>
+                      <td className="px-4 py-3">
+                        <span className={cn("text-[11px] font-semibold px-2 py-1 rounded-md border", getCrewColor(crew))}>
+                          {crew}
+                        </span>
+                      </td>
+                      {weekDays.map(day => {
+                        const dayEntries = entryMap[crew]?.[day.key] ?? [];
+                        return (
+                          <td key={day.key} className={cn(
+                            "px-2 py-2 align-top min-w-[110px]",
+                            day.key === today ? "bg-primary/5" : ""
+                          )}>
+                            {dayEntries.length === 0 ? (
+                              <button
+                                onClick={() => { setForm({ ...emptyForm, crewName: crew, date: day.key }); setShowModal(true); }}
+                                className="w-full h-12 rounded-md border border-dashed border-border/40 hover:border-primary/40 hover:bg-primary/5 transition-colors flex items-center justify-center group"
+                              >
+                                <Plus className="w-3 h-3 text-muted-foreground/30 group-hover:text-primary/50" />
+                              </button>
+                            ) : (
+                              <div className="space-y-1">
+                                {dayEntries.map(entry => (
+                                  <div key={entry.id} className={cn("rounded-md border px-2 py-1.5 text-[10px] group relative", getCrewColor(crew))}>
+                                    <div className="font-semibold truncate pr-4">{entry.title}</div>
+                                    <div className="opacity-70">{entry.startHour}:00 – {entry.endHour}:00</div>
+                                    <button
+                                      onClick={() => { if (confirm("Remove this entry?")) deleteEntry.mutate({ id: entry.id }); }}
+                                      className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity p-0.5 rounded hover:bg-black/20"
+                                    >
+                                      <X className="w-2.5 h-2.5" />
+                                    </button>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {/* Upcoming entries list */}
+        {entries.length > 0 && (
+          <div>
+            <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">All Scheduled Entries</h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              {entries.slice(0, 9).map(entry => (
+                <div key={entry.id} className="ops-card p-3 flex items-start justify-between gap-2">
+                  <div className="flex-1 min-w-0">
+                    <div className="text-xs font-semibold text-foreground truncate">{entry.title}</div>
+                    <div className="text-[10px] text-muted-foreground mt-0.5">
+                      {entry.crewName} · {new Date(entry.date).toLocaleDateString("en-US", { month: "short", day: "numeric" })} · {entry.startHour}:00–{entry.endHour}:00
+                    </div>
+                  </div>
+                  <button onClick={() => { if (confirm("Remove this entry?")) deleteEntry.mutate({ id: entry.id }); }}
+                    className="p-1 rounded-md hover:bg-red-500/10 text-muted-foreground hover:text-red-400 transition-colors shrink-0">
+                    <Trash2 className="w-3 h-3" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Add Entry Modal */}
+      {showModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div className="ops-card w-full max-w-md p-6 shadow-2xl">
+            <div className="flex items-center justify-between mb-5">
+              <h2 className="text-base font-bold text-foreground" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
+                Add Schedule Entry
+              </h2>
+              <button onClick={closeModal} className="p-1.5 rounded-md hover:bg-secondary/80 text-muted-foreground"><X className="w-4 h-4" /></button>
+            </div>
+            <form onSubmit={handleSubmit} className="space-y-3">
+              <div>
+                <label className="block text-xs font-medium text-muted-foreground mb-1">Title *</label>
+                <input required value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} placeholder="e.g. Bear Creek Day 1"
+                  className="w-full bg-secondary/50 border border-border rounded-md px-3 py-2 text-xs text-foreground outline-none focus:border-primary/50 placeholder:text-muted-foreground/40" />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-muted-foreground mb-1">Crew</label>
+                  <input value={form.crewName} onChange={e => setForm(f => ({ ...f, crewName: e.target.value }))} placeholder="Crew A"
+                    className="w-full bg-secondary/50 border border-border rounded-md px-3 py-2 text-xs text-foreground outline-none focus:border-primary/50 placeholder:text-muted-foreground/40" />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-muted-foreground mb-1">Date *</label>
+                  <input required type="date" value={form.date} onChange={e => setForm(f => ({ ...f, date: e.target.value }))}
+                    className="w-full bg-secondary/50 border border-border rounded-md px-3 py-2 text-xs text-foreground outline-none focus:border-primary/50" />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-muted-foreground mb-1">Start Hour</label>
+                  <input type="number" min={0} max={23} value={form.startHour} onChange={e => setForm(f => ({ ...f, startHour: Number(e.target.value) }))}
+                    className="w-full bg-secondary/50 border border-border rounded-md px-3 py-2 text-xs text-foreground outline-none focus:border-primary/50" />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-muted-foreground mb-1">End Hour</label>
+                  <input type="number" min={0} max={23} value={form.endHour} onChange={e => setForm(f => ({ ...f, endHour: Number(e.target.value) }))}
+                    className="w-full bg-secondary/50 border border-border rounded-md px-3 py-2 text-xs text-foreground outline-none focus:border-primary/50" />
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-muted-foreground mb-1">Notes</label>
+                <textarea value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} placeholder="Optional notes..." rows={2}
+                  className="w-full bg-secondary/50 border border-border rounded-md px-3 py-2 text-xs text-foreground outline-none focus:border-primary/50 resize-none placeholder:text-muted-foreground/40" />
+              </div>
+              <div className="flex gap-2 pt-2">
+                <button type="button" onClick={closeModal}
+                  className="flex-1 py-2 rounded-md text-xs font-semibold text-muted-foreground bg-secondary/50 hover:bg-secondary transition-colors">Cancel</button>
+                <button type="submit" disabled={createEntry.isPending}
+                  className="flex-1 py-2 rounded-md text-xs font-semibold text-white bg-primary hover:bg-primary/90 transition-all disabled:opacity-50 flex items-center justify-center gap-1.5">
+                  {createEntry.isPending && <Loader2 className="w-3 h-3 animate-spin" />}
+                  Add Entry
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+    </DashboardLayout>
+  );
+}

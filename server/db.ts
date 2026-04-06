@@ -1,6 +1,9 @@
-import { eq } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, users } from "../drizzle/schema";
+import {
+  InsertJob, InsertOpsLead, InsertScheduleEntry, InsertUser,
+  jobs, opsLeads, scheduleEntries, users
+} from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -89,4 +92,68 @@ export async function getUserByOpenId(openId: string) {
   return result.length > 0 ? result[0] : undefined;
 }
 
-// TODO: add feature queries here as your schema grows.
+// ─── Jobs ─────────────────────────────────────────────────────────────────────
+export async function getJobs(userId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(jobs).where(eq(jobs.userId, userId)).orderBy(desc(jobs.createdAt));
+}
+export async function createJob(data: InsertJob) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return db.insert(jobs).values(data);
+}
+export async function updateJob(id: number, userId: number, data: Partial<InsertJob>) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return db.update(jobs).set({ ...data, updatedAt: new Date() }).where(and(eq(jobs.id, id), eq(jobs.userId, userId)));
+}
+export async function deleteJob(id: number, userId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return db.delete(jobs).where(and(eq(jobs.id, id), eq(jobs.userId, userId)));
+}
+
+// ─── Leads ────────────────────────────────────────────────────────────────────
+export async function getOpsLeads(userId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(opsLeads).where(eq(opsLeads.userId, userId)).orderBy(desc(opsLeads.createdAt));
+}
+export async function createOpsLead(data: InsertOpsLead) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return db.insert(opsLeads).values(data);
+}
+export async function updateOpsLead(id: number, userId: number, data: Partial<InsertOpsLead>) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return db.update(opsLeads).set({ ...data, updatedAt: new Date() }).where(and(eq(opsLeads.id, id), eq(opsLeads.userId, userId)));
+}
+export async function deleteOpsLead(id: number, userId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return db.delete(opsLeads).where(and(eq(opsLeads.id, id), eq(opsLeads.userId, userId)));
+}
+
+// ─── Schedule ─────────────────────────────────────────────────────────────────
+export async function getScheduleEntries(userId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(scheduleEntries).where(eq(scheduleEntries.userId, userId)).orderBy(desc(scheduleEntries.date));
+}
+export async function createScheduleEntry(data: InsertScheduleEntry) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return db.insert(scheduleEntries).values(data);
+}
+export async function updateScheduleEntry(id: number, userId: number, data: Partial<InsertScheduleEntry>) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return db.update(scheduleEntries).set({ ...data, updatedAt: new Date() }).where(and(eq(scheduleEntries.id, id), eq(scheduleEntries.userId, userId)));
+}
+export async function deleteScheduleEntry(id: number, userId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return db.delete(scheduleEntries).where(and(eq(scheduleEntries.id, id), eq(scheduleEntries.userId, userId)));
+}
