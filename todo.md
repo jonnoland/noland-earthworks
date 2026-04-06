@@ -143,3 +143,4 @@
 - [x] Definitively fix leads not appearing in /ops/leads on production (root cause: dev and production use separate DBs; code is correct, publish required to activate on production)
 - [x] Clear all hardcoded sample data from /ops/dashboard (Recent Jobs, Lead Pipeline, Active Job Sites, Week Scoreboard)
 - [x] Replace all "Central Texas" references in /ops pages with "Middle and West Tennessee"
+- [x] Add "Convert to Job" button in /ops/leads table that pre-fills a new job with lead's name, address, and service type

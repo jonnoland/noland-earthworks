@@ -8,7 +8,7 @@ import { trpc } from "@/lib/trpc";
 import { useState } from "react";
 import {
   UserPlus, Plus, Search, Trash2, Edit3,
-  Phone, Mail, MapPin, DollarSign, Loader2, X,
+  Phone, Mail, MapPin, DollarSign, Loader2, X, Briefcase,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -44,15 +44,64 @@ const emptyForm: LeadFormData = {
   estimatedValue: "", notes: "",
 };
 
+const JOB_TYPE_OPTIONS = ["land_clearing", "forestry_mulching", "brush_removal", "stump_grinding", "wildfire_mitigation"] as const;
+type JobType = typeof JOB_TYPE_OPTIONS[number];
+type JobStatus = "estimate" | "scheduled" | "in_progress" | "completed" | "invoiced" | "paid";
+
+interface JobFormData {
+  title: string; client: string; address: string; jobType: JobType;
+  status: JobStatus; acres: string; crewDays: string; totalPrice: string; notes: string;
+}
+const emptyJobForm: JobFormData = {
+  title: "", client: "", address: "", jobType: "land_clearing",
+  status: "estimate", acres: "", crewDays: "", totalPrice: "", notes: "",
+};
+
 export default function Leads() {
   const [search, setSearch] = useState("");
   const [filterStage, setFilterStage] = useState("all");
   const [showModal, setShowModal] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [form, setForm] = useState<LeadFormData>(emptyForm);
+  const [showJobModal, setShowJobModal] = useState(false);
+  const [jobForm, setJobForm] = useState<JobFormData>(emptyJobForm);
 
   const utils = trpc.useUtils();
   const { data: leads = [], isLoading } = trpc.ops.leads.list.useQuery();
+
+  const createJob = trpc.ops.jobs.create.useMutation({
+    onSuccess: () => {
+      utils.ops.jobs.list.invalidate();
+      toast.success("Job created from lead!");
+      setShowJobModal(false);
+      setJobForm(emptyJobForm);
+    },
+    onError: (e) => toast.error(e.message),
+  });
+
+  const openConvertToJob = (lead: typeof leads[0]) => {
+    // Map lead jobType string to a valid JobType enum value
+    const jobTypeMap: Record<string, JobType> = {
+      "Land Clearing": "land_clearing",
+      "Forestry Mulching": "forestry_mulching",
+      "Brush Removal": "brush_removal",
+      "Stump Grinding": "stump_grinding",
+      "Wildfire Mitigation": "wildfire_mitigation",
+    };
+    const mappedJobType: JobType = (lead.jobType && jobTypeMap[lead.jobType]) ? jobTypeMap[lead.jobType] : "land_clearing";
+    setJobForm({
+      title: `${lead.name} — ${lead.jobType ?? "Land Clearing"}`,
+      client: lead.name,
+      address: lead.address ?? "",
+      jobType: mappedJobType,
+      status: "estimate",
+      acres: "",
+      crewDays: "",
+      totalPrice: lead.estimatedValue ?? "",
+      notes: lead.notes ?? "",
+    });
+    setShowJobModal(true);
+  };
 
   const createLead = trpc.ops.leads.create.useMutation({
     onSuccess: () => { utils.ops.leads.list.invalidate(); toast.success("Lead added"); closeModal(); },
@@ -247,6 +296,12 @@ export default function Leads() {
                       </td>
                       <td className="px-4 py-3 text-right">
                         <div className="flex items-center justify-end gap-1">
+                          <button
+                            onClick={() => openConvertToJob(lead)}
+                            title="Convert to Job"
+                            className="p-1.5 rounded-md hover:bg-primary/10 text-muted-foreground hover:text-primary transition-colors">
+                            <Briefcase className="w-3.5 h-3.5" />
+                          </button>
                           <button onClick={() => openEdit(lead)} className="p-1.5 rounded-md hover:bg-secondary/80 text-muted-foreground hover:text-foreground transition-colors">
                             <Edit3 className="w-3.5 h-3.5" />
                           </button>
@@ -334,6 +389,89 @@ export default function Leads() {
                   className="flex-1 py-2 rounded-md text-xs font-semibold text-white bg-primary hover:bg-primary/90 transition-all disabled:opacity-50 flex items-center justify-center gap-1.5">
                   {isPending && <Loader2 className="w-3 h-3 animate-spin" />}
                   {editingId ? "Save Changes" : "Add Lead"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+      {/* Convert to Job Modal */}
+      {showJobModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div className="ops-card w-full max-w-lg p-6 shadow-2xl max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-5">
+              <div>
+                <h2 className="text-base font-bold text-foreground" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>Convert to Job</h2>
+                <p className="text-xs text-muted-foreground mt-0.5">Pre-filled from lead — review and save</p>
+              </div>
+              <button onClick={() => setShowJobModal(false)} className="p-1.5 rounded-md hover:bg-secondary/80 text-muted-foreground"><X className="w-4 h-4" /></button>
+            </div>
+            <form onSubmit={e => { e.preventDefault(); createJob.mutate(jobForm); }} className="space-y-3">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="col-span-2">
+                  <label className="block text-xs font-medium text-muted-foreground mb-1">Job Title *</label>
+                  <input required value={jobForm.title} onChange={e => setJobForm(f => ({ ...f, title: e.target.value }))}
+                    className="w-full bg-secondary/50 border border-border rounded-md px-3 py-2 text-xs text-foreground outline-none focus:border-primary/50" />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-muted-foreground mb-1">Client *</label>
+                  <input required value={jobForm.client} onChange={e => setJobForm(f => ({ ...f, client: e.target.value }))}
+                    className="w-full bg-secondary/50 border border-border rounded-md px-3 py-2 text-xs text-foreground outline-none focus:border-primary/50" />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-muted-foreground mb-1">Job Type</label>
+                  <select value={jobForm.jobType} onChange={e => setJobForm(f => ({ ...f, jobType: e.target.value as JobType }))}
+                    className="w-full bg-secondary/50 border border-border rounded-md px-3 py-2 text-xs text-foreground outline-none focus:border-primary/50">
+                    {JOB_TYPE_OPTIONS.map(t => (
+                      <option key={t} value={t}>{t.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase())}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="col-span-2">
+                  <label className="block text-xs font-medium text-muted-foreground mb-1">Address</label>
+                  <input value={jobForm.address} onChange={e => setJobForm(f => ({ ...f, address: e.target.value }))}
+                    className="w-full bg-secondary/50 border border-border rounded-md px-3 py-2 text-xs text-foreground outline-none focus:border-primary/50" />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-muted-foreground mb-1">Status</label>
+                  <select value={jobForm.status} onChange={e => setJobForm(f => ({ ...f, status: e.target.value as JobStatus }))}
+                    className="w-full bg-secondary/50 border border-border rounded-md px-3 py-2 text-xs text-foreground outline-none focus:border-primary/50">
+                    {(["estimate","scheduled","in_progress","completed","invoiced","paid"] as JobStatus[]).map(s => (
+                      <option key={s} value={s}>{s.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase())}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-muted-foreground mb-1">Total Price ($)</label>
+                  <input type="number" step="100" value={jobForm.totalPrice} onChange={e => setJobForm(f => ({ ...f, totalPrice: e.target.value }))}
+                    placeholder="0"
+                    className="w-full bg-secondary/50 border border-border rounded-md px-3 py-2 text-xs text-foreground outline-none focus:border-primary/50 placeholder:text-muted-foreground/40" />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-muted-foreground mb-1">Acres</label>
+                  <input value={jobForm.acres} onChange={e => setJobForm(f => ({ ...f, acres: e.target.value }))}
+                    placeholder="e.g. 5"
+                    className="w-full bg-secondary/50 border border-border rounded-md px-3 py-2 text-xs text-foreground outline-none focus:border-primary/50 placeholder:text-muted-foreground/40" />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-muted-foreground mb-1">Crew Days</label>
+                  <input value={jobForm.crewDays} onChange={e => setJobForm(f => ({ ...f, crewDays: e.target.value }))}
+                    placeholder="e.g. 2"
+                    className="w-full bg-secondary/50 border border-border rounded-md px-3 py-2 text-xs text-foreground outline-none focus:border-primary/50 placeholder:text-muted-foreground/40" />
+                </div>
+                <div className="col-span-2">
+                  <label className="block text-xs font-medium text-muted-foreground mb-1">Notes</label>
+                  <textarea value={jobForm.notes} onChange={e => setJobForm(f => ({ ...f, notes: e.target.value }))} rows={2}
+                    className="w-full bg-secondary/50 border border-border rounded-md px-3 py-2 text-xs text-foreground outline-none focus:border-primary/50 resize-none" />
+                </div>
+              </div>
+              <div className="flex gap-2 pt-2">
+                <button type="button" onClick={() => setShowJobModal(false)}
+                  className="flex-1 py-2 rounded-md text-xs font-semibold text-muted-foreground bg-secondary/50 hover:bg-secondary transition-colors">Cancel</button>
+                <button type="submit" disabled={createJob.isPending}
+                  className="flex-1 py-2 rounded-md text-xs font-semibold text-white bg-primary hover:bg-primary/90 transition-all disabled:opacity-50 flex items-center justify-center gap-1.5">
+                  {createJob.isPending && <Loader2 className="w-3 h-3 animate-spin" />}
+                  Create Job
                 </button>
               </div>
             </form>
