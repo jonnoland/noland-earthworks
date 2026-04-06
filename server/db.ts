@@ -92,6 +92,16 @@ export async function getUserByOpenId(openId: string) {
   return result.length > 0 ? result[0] : undefined;
 }
 
+// ─── Owner helper ────────────────────────────────────────────────────────────
+/**
+ * Returns the owner's DB user row (needed to set userId on auto-created leads).
+ * Returns null if the owner hasn't logged in yet.
+ */
+export async function getOwnerUser() {
+  if (!ENV.ownerOpenId) return null;
+  return getUserByOpenId(ENV.ownerOpenId) ?? null;
+}
+
 // ─── Jobs ─────────────────────────────────────────────────────────────────────
 export async function getJobs(userId: number) {
   const db = await getDb();

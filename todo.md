@@ -134,3 +134,6 @@
 - [x] Copy all 7 dashboard pages (Dashboard, Jobs, Leads, Pricing, Schedule, Reports, Settings) under /ops routes
 - [x] Wire /ops/* routes in App.tsx with owner-only guard
 - [x] Verify no TypeScript errors after integration
+- [x] Auto-create ops lead when contact form is submitted (contactRouter)
+- [x] Auto-create ops lead when quote form is submitted (quoteRouter)
+- [x] Write tests for lead auto-creation on form submission

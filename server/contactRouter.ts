@@ -3,6 +3,7 @@ import { publicProcedure, router } from "./_core/trpc";
 import { notifyOwner } from "./_core/notification";
 import { ENV } from "./_core/env";
 import { Resend } from "resend";
+import { createOpsLead, getOwnerUser } from "./db";
 
 const contactSchema = z.object({
   name: z.string().min(1, "Name is required").max(100),
@@ -117,6 +118,27 @@ export const contactRouter = router({
       });
     } catch (err) {
       console.warn("[Contact] Owner notification failed:", err);
+    }
+
+    // 3. Auto-create a lead in the ops dashboard
+    try {
+      const owner = await getOwnerUser();
+      if (owner) {
+        await createOpsLead({
+          userId: owner.id,
+          name: input.name,
+          email: input.email || undefined,
+          phone: input.phone || undefined,
+          source: "website",
+          stage: "new",
+          notes: `Subject: ${input.subject}\n\n${input.message}`,
+        });
+        console.log(`[Contact] Lead created for ${input.name}`);
+      } else {
+        console.warn("[Contact] Owner not found in DB — lead not created (owner must log in once first)");
+      }
+    } catch (err) {
+      console.warn("[Contact] Failed to create ops lead:", err);
     }
 
     return { success: true };

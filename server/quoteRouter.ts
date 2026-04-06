@@ -4,6 +4,7 @@ import { notifyOwner } from "./_core/notification";
 import { ENV } from "./_core/env";
 import { Resend } from "resend";
 import { createJobberRequest, isJobberConnected } from "./jobber";
+import { createOpsLead, getOwnerUser } from "./db";
 
 const quoteSchema = z.object({
   name: z.string().min(1, "Name is required").max(100),
@@ -403,6 +404,47 @@ export const quoteRouter = router({
       } catch (notifyErr) {
         console.warn("[Quote] Jobber failure notification also failed:", notifyErr);
       }
+    }
+
+    // Auto-create a lead in the ops dashboard
+    try {
+      const owner = await getOwnerUser();
+      if (owner) {
+        // Map the free-text service to a jobType enum value
+        const serviceMap: Record<string, string> = {
+          "Land Clearing": "land_clearing",
+          "Forestry Mulching": "forestry_mulching",
+          "Brush Removal": "brush_removal",
+          "Stump Grinding": "stump_grinding",
+          "Wildfire Mitigation": "wildfire_mitigation",
+        };
+        const address = [input.street, input.city, input.state, input.zip]
+          .filter(Boolean)
+          .join(", ");
+        const notes = [
+          input.acreage ? `Acreage: ${input.acreage}` : "",
+          address ? `Address: ${address}` : "",
+          input.message ? `\nProject Details:\n${input.message}` : "",
+        ]
+          .filter(Boolean)
+          .join("\n");
+        await createOpsLead({
+          userId: owner.id,
+          name: input.name,
+          email: input.email,
+          phone: input.phone,
+          address: address || undefined,
+          source: "website",
+          stage: "new",
+          jobType: serviceMap[input.service] ?? input.service,
+          notes: notes || undefined,
+        });
+        console.log(`[Quote] Lead created for ${input.name}`);
+      } else {
+        console.warn("[Quote] Owner not found in DB — lead not created (owner must log in once first)");
+      }
+    } catch (err) {
+      console.warn("[Quote] Failed to create ops lead:", err);
     }
 
     return { success: true };
