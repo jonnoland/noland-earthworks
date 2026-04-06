@@ -41,14 +41,30 @@ async function startServer() {
   // Temporary diagnostic endpoint — remove after leads issue is resolved
   app.get("/api/diag/leads", async (_req, res) => {
     try {
-      const { getDb } = await import("../db");
+      const { getDb, getOwnerUser, createOpsLead } = await import("../db");
       const { ENV } = await import("./env");
       const db = await getDb();
       if (!db) { res.json({ error: "DB not available", DATABASE_URL: !!process.env.DATABASE_URL }); return; }
       const { opsLeads, users } = await import("../../drizzle/schema");
       const allUsers = await db.select().from(users);
       const allLeads = await db.select().from(opsLeads);
-      res.json({ ownerOpenId: ENV.ownerOpenId, users: allUsers.map(u => ({ id: u.id, openId: u.openId, name: u.name, role: u.role })), leadsCount: allLeads.length, leads: allLeads.map(l => ({ id: l.id, name: l.name, userId: l.userId, stage: l.stage, createdAt: l.createdAt })) });
+      // Also test getOwnerUser and a dry-run insert
+      let ownerResult: unknown = null;
+      let insertResult: unknown = null;
+      try {
+        const owner = await getOwnerUser();
+        ownerResult = owner ? { id: owner.id, openId: owner.openId, role: owner.role } : null;
+        if (owner) {
+          await createOpsLead({ name: 'DIAG TEST', userId: owner.id, source: 'other', stage: 'new' });
+          insertResult = { success: true };
+          // Clean up the test lead immediately
+          const { eq } = await import("drizzle-orm");
+          await db.delete(opsLeads).where(eq(opsLeads.name, 'DIAG TEST'));
+        }
+      } catch (e: unknown) {
+        insertResult = { error: String(e) };
+      }
+      res.json({ ownerOpenId: ENV.ownerOpenId, ownerResult, insertResult, users: allUsers.map(u => ({ id: u.id, openId: u.openId, name: u.name, role: u.role })), leadsCount: allLeads.length, leads: allLeads.map(l => ({ id: l.id, name: l.name, userId: l.userId, stage: l.stage, createdAt: l.createdAt })) });
     } catch (err: unknown) {
       res.json({ error: String(err) });
     }
