@@ -5,10 +5,11 @@
 
 import DashboardLayout from "@/components/OpsDashboardLayout";
 import { trpc } from "@/lib/trpc";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import {
   UserPlus, Plus, Search, Trash2, Edit3,
   Phone, Mail, MapPin, DollarSign, Loader2, X, Briefcase,
+  ArrowUpDown, ArrowUp, ArrowDown,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -61,6 +62,19 @@ const emptyJobForm: JobFormData = {
 export default function Leads() {
   const [search, setSearch] = useState("");
   const [filterStage, setFilterStage] = useState("all");
+  type SortField = "name" | "estimatedValue" | "createdAt" | "none";
+  type SortDir = "asc" | "desc";
+  const [sortField, setSortField] = useState<SortField>("none");
+  const [sortDir, setSortDir] = useState<SortDir>("desc");
+
+  const toggleSort = (field: SortField) => {
+    if (sortField === field) {
+      setSortDir(d => d === "asc" ? "desc" : "asc");
+    } else {
+      setSortField(field);
+      setSortDir("desc");
+    }
+  };
   const [showModal, setShowModal] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [form, setForm] = useState<LeadFormData>(emptyForm);
@@ -155,15 +169,25 @@ export default function Leads() {
     else createLead.mutate(payload);
   };
 
-  const filtered = leads.filter(l => {
-    const matchSearch = l.name.toLowerCase().includes(search.toLowerCase()) ||
-      (l.address ?? "").toLowerCase().includes(search.toLowerCase());
+  const filtered = useMemo(() => {
     const closedStages = ["won", "lost"];
-    const matchStage =
-      filterStage === "all" ||
-      (filterStage === "closed" ? closedStages.includes(l.stage) : l.stage === filterStage);
-    return matchSearch && matchStage;
-  });
+    const base = leads.filter(l => {
+      const matchSearch = l.name.toLowerCase().includes(search.toLowerCase()) ||
+        (l.address ?? "").toLowerCase().includes(search.toLowerCase());
+      const matchStage =
+        filterStage === "all" ||
+        (filterStage === "closed" ? closedStages.includes(l.stage) : l.stage === filterStage);
+      return matchSearch && matchStage;
+    });
+    if (sortField === "none") return base;
+    return [...base].sort((a, b) => {
+      let cmp = 0;
+      if (sortField === "name") cmp = a.name.localeCompare(b.name);
+      else if (sortField === "estimatedValue") cmp = Number(a.estimatedValue ?? 0) - Number(b.estimatedValue ?? 0);
+      else if (sortField === "createdAt") cmp = new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+      return sortDir === "asc" ? cmp : -cmp;
+    });
+  }, [leads, search, filterStage, sortField, sortDir]);
 
   const isPending = createLead.isPending || updateLead.isPending;
   const totalPipelineValue = leads.filter(l => !["won", "lost"].includes(l.stage))
@@ -196,6 +220,7 @@ export default function Leads() {
             { key: "all",       label: "All",       count: leads.length },
             { key: "new",       label: "New",       count: leads.filter(l => l.stage === "new").length },
             { key: "contacted", label: "Contacted", count: leads.filter(l => l.stage === "contacted").length },
+            { key: "converted", label: "Converted", count: leads.filter(l => l.stage === "converted").length },
             { key: "closed",    label: "Closed",    count: leads.filter(l => closedStages.includes(l.stage)).length },
           ];
           return (
@@ -217,6 +242,7 @@ export default function Leads() {
                     filterStage === tab.key
                       ? tab.key === "new" ? "bg-blue-500/20 text-blue-400"
                         : tab.key === "contacted" ? "bg-cyan-500/20 text-cyan-400"
+                        : tab.key === "converted" ? "bg-green-500/20 text-green-400"
                         : tab.key === "closed" ? "bg-muted text-muted-foreground"
                         : "bg-primary/20 text-primary"
                       : "bg-secondary text-muted-foreground"
@@ -268,12 +294,28 @@ export default function Leads() {
               <table className="w-full text-xs">
                 <thead>
                   <tr className="border-b border-border">
-                    <th className="text-left px-4 py-3 text-muted-foreground font-medium">Lead</th>
+                    <th className="text-left px-4 py-3 text-muted-foreground font-medium">
+                      <button onClick={() => toggleSort("name")} className="flex items-center gap-1 hover:text-foreground transition-colors">
+                        Lead
+                        {sortField === "name" ? (sortDir === "asc" ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />) : <ArrowUpDown className="w-3 h-3 opacity-40" />}
+                      </button>
+                    </th>
                     <th className="text-left px-4 py-3 text-muted-foreground font-medium hidden sm:table-cell">Contact</th>
                     <th className="text-left px-4 py-3 text-muted-foreground font-medium hidden md:table-cell">Location</th>
                     <th className="text-left px-4 py-3 text-muted-foreground font-medium">Status</th>
                     <th className="text-left px-4 py-3 text-muted-foreground font-medium hidden lg:table-cell">Source</th>
-                    <th className="text-right px-4 py-3 text-muted-foreground font-medium">Value</th>
+                    <th className="text-right px-4 py-3 text-muted-foreground font-medium">
+                      <button onClick={() => toggleSort("estimatedValue")} className="flex items-center gap-1 ml-auto hover:text-foreground transition-colors">
+                        Value
+                        {sortField === "estimatedValue" ? (sortDir === "asc" ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />) : <ArrowUpDown className="w-3 h-3 opacity-40" />}
+                      </button>
+                    </th>
+                    <th className="text-right px-4 py-3 text-muted-foreground font-medium">
+                      <button onClick={() => toggleSort("createdAt")} className="flex items-center gap-1 ml-auto hover:text-foreground transition-colors">
+                        Date
+                        {sortField === "createdAt" ? (sortDir === "asc" ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />) : <ArrowUpDown className="w-3 h-3 opacity-40" />}
+                      </button>
+                    </th>
                     <th className="text-right px-4 py-3 text-muted-foreground font-medium">Actions</th>
                   </tr>
                 </thead>
@@ -322,6 +364,9 @@ export default function Leads() {
                             <DollarSign className="w-3 h-3" />{Number(lead.estimatedValue).toLocaleString()}
                           </span>
                         )}
+                      </td>
+                      <td className="px-4 py-3 text-right text-muted-foreground hidden xl:table-cell">
+                        {lead.createdAt ? new Date(lead.createdAt).toLocaleDateString() : "—"}
                       </td>
                       <td className="px-4 py-3 text-right">
                         <div className="flex items-center justify-end gap-1">

@@ -146,3 +146,4 @@
 - [x] Add "Convert to Job" button in /ops/leads table that pre-fills a new job with lead's name, address, and service type
 - [x] Fix leads capture on production (root cause: OWNER_OPEN_ID not injected in production; fixed ownerProcedure to use role=admin fallback)
 - [x] Add Status column to /ops/leads table with New / Contacted / Converted inline selector
+- [x] Add status filter tabs (All/New/Contacted/Converted/Closed) and column sort controls (Name, Value, Date) to /ops/leads table
