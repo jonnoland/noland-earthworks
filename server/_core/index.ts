@@ -38,6 +38,22 @@ async function startServer() {
   registerOAuthRoutes(app);
   // Sitemap + robots.txt
   registerSitemapRoutes(app);
+  // Temporary diagnostic endpoint — remove after leads issue is resolved
+  app.get("/api/diag/leads", async (_req, res) => {
+    try {
+      const { getDb } = await import("../db");
+      const { ENV } = await import("./env");
+      const db = await getDb();
+      if (!db) { res.json({ error: "DB not available", DATABASE_URL: !!process.env.DATABASE_URL }); return; }
+      const { opsLeads, users } = await import("../../drizzle/schema");
+      const allUsers = await db.select().from(users);
+      const allLeads = await db.select().from(opsLeads);
+      res.json({ ownerOpenId: ENV.ownerOpenId, users: allUsers.map(u => ({ id: u.id, openId: u.openId, name: u.name, role: u.role })), leadsCount: allLeads.length, leads: allLeads.map(l => ({ id: l.id, name: l.name, userId: l.userId, stage: l.stage, createdAt: l.createdAt })) });
+    } catch (err: unknown) {
+      res.json({ error: String(err) });
+    }
+  });
+
   // tRPC API
   app.use(
     "/api/trpc",
