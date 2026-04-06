@@ -94,7 +94,7 @@ function generateEstimatePDF(params: {
     <div class="info-block">
       <div class="section-title">Prepared By</div>
       <p><strong>Noland Earthworks, LLC</strong></p>
-      <p>Evergreen, CO</p>
+      <p>Middle &amp; West Tennessee</p>
     </div>
   </div>
 
@@ -135,7 +135,7 @@ function generateEstimatePDF(params: {
   <div class="footer">
     <p><strong>Terms:</strong> 50% deposit required to schedule. Balance due upon completion.</p>
     <p style="margin-top:6px;"><strong>Note:</strong> This estimate is based on ${jobAcres} acres requiring ${crewDaysNeeded} crew-days. Final invoice may vary based on actual site conditions.</p>
-    <p style="margin-top:6px;">Questions? Contact us at <strong>quotes@bearclawland.com</strong></p>
+      <p style="margin-top:6px;">Questions? Contact us at <strong>quotes@nolandearthworks.com</strong> or call <strong>615-406-4819</strong></p>
   </div>
 </div>
 </body>
@@ -401,9 +401,10 @@ export default function Pricing() {
 
         {/* Pricing guide */}
         <div className="ops-card p-5">
-          <h3 className="text-sm font-semibold text-foreground mb-4" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
-            Pricing Benchmarks — Central Texas
+          <h3 className="text-sm font-semibold text-foreground mb-1" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
+            Pricing Benchmarks — Middle &amp; West Tennessee
           </h3>
+          <p className="text-[11px] text-muted-foreground mb-4">Per-acre rates based on local market data. Actual pricing varies by terrain, vegetation density, and access.</p>
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
@@ -416,10 +417,10 @@ export default function Pricing() {
               </thead>
               <tbody>
                 {[
-                  { type: "Land Clearing", low: "$400", mid: "$600", high: "$900" },
-                  { type: "Forestry Mulching", low: "$500", mid: "$750", high: "$1,100" },
-                  { type: "Brush Removal", low: "$300", mid: "$450", high: "$650" },
-                  { type: "Stump Grinding", low: "$150", mid: "$250", high: "$400" },
+                  { type: "Land Clearing", low: "$800", mid: "$1,500", high: "$3,000" },
+                  { type: "Forestry Mulching", low: "$1,000", mid: "$1,800", high: "$3,000" },
+                  { type: "Brush Removal", low: "$500", mid: "$900", high: "$1,500" },
+                  { type: "Stump Grinding", low: "$175", mid: "$300", high: "$500" },
                 ].map((row, i) => (
                   <tr key={i} className="border-b border-border/50 last:border-0">
                     <td className="py-2.5 pr-4 text-xs font-semibold text-foreground">{row.type}</td>

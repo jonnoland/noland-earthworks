@@ -95,11 +95,26 @@ export async function getUserByOpenId(openId: string) {
 // ─── Owner helper ────────────────────────────────────────────────────────────
 /**
  * Returns the owner's DB user row (needed to set userId on auto-created leads).
- * Returns null if the owner hasn't logged in yet.
+ * Auto-creates a minimal owner row if one doesn't exist yet, so leads are
+ * captured from the very first form submission even before the owner logs in.
  */
 export async function getOwnerUser() {
   if (!ENV.ownerOpenId) return null;
-  return getUserByOpenId(ENV.ownerOpenId) ?? null;
+  const existing = await getUserByOpenId(ENV.ownerOpenId);
+  if (existing) return existing;
+
+  // Owner hasn't logged in yet — seed a minimal row so leads can be stored.
+  try {
+    await upsertUser({
+      openId: ENV.ownerOpenId,
+      role: 'admin',
+      lastSignedIn: new Date(),
+    });
+    return getUserByOpenId(ENV.ownerOpenId) ?? null;
+  } catch (err) {
+    console.warn('[Database] Could not seed owner row:', err);
+    return null;
+  }
 }
 
 // ─── Jobs ─────────────────────────────────────────────────────────────────────

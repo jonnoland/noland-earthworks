@@ -138,3 +138,5 @@
 - [x] Auto-create ops lead when quote form is submitted (quoteRouter)
 - [x] Write tests for lead auto-creation on form submission
 - [x] Add status filter bar (All / New / Contacted / Closed) to /ops/leads table
+- [x] Update /ops/pricing Benchmarks region from "Central Texas" to "Middle and West Tennessee" with correct local rates
+- [x] Fix quote form submissions not appearing in /ops/leads (leads capture bug — getOwnerUser now auto-seeds owner row)

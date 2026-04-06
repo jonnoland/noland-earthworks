@@ -108,8 +108,10 @@ describe("contactRouter — lead capture", () => {
     expect(call.notes).toContain("I need 5 acres cleared.");
   });
 
-  it("does NOT create a lead when owner is not in DB yet", async () => {
-    mockGetOwnerUser.mockResolvedValue(null);
+  it("creates a lead even when owner row is auto-seeded (getOwnerUser returns row after seeding)", async () => {
+    // Simulate the auto-seed: first call returns null, second returns the seeded row
+    // But since getOwnerUser now handles seeding internally, the mock just returns the row
+    mockGetOwnerUser.mockResolvedValue(ownerRow);
 
     await contactCaller.submit({
       name: "Bob Smith",
@@ -118,7 +120,8 @@ describe("contactRouter — lead capture", () => {
       message: "Just a question.",
     });
 
-    expect(mockCreateOpsLead).not.toHaveBeenCalled();
+    expect(mockCreateOpsLead).toHaveBeenCalledOnce();
+    expect(mockCreateOpsLead.mock.calls[0][0].name).toBe("Bob Smith");
   });
 
   it("still returns success even if lead creation throws", async () => {
@@ -183,8 +186,8 @@ describe("quoteRouter — lead capture", () => {
     expect(mockCreateOpsLead.mock.calls[0][0].jobType).toBe("forestry_mulching");
   });
 
-  it("does NOT create a lead when owner is not in DB yet", async () => {
-    mockGetOwnerUser.mockResolvedValue(null);
+  it("creates a lead even when owner row is auto-seeded", async () => {
+    mockGetOwnerUser.mockResolvedValue(ownerRow);
 
     await quoteCaller.submit({
       name: "No Owner",
@@ -194,7 +197,8 @@ describe("quoteRouter — lead capture", () => {
       county: "Wilson",
     });
 
-    expect(mockCreateOpsLead).not.toHaveBeenCalled();
+    expect(mockCreateOpsLead).toHaveBeenCalledOnce();
+    expect(mockCreateOpsLead.mock.calls[0][0].name).toBe("No Owner");
   });
 
   it("still returns success even if lead creation throws", async () => {
