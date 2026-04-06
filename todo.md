@@ -137,3 +137,4 @@
 - [x] Auto-create ops lead when contact form is submitted (contactRouter)
 - [x] Auto-create ops lead when quote form is submitted (quoteRouter)
 - [x] Write tests for lead auto-creation on form submission
+- [x] Add status filter bar (All / New / Contacted / Closed) to /ops/leads table
