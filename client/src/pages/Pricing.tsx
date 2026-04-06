@@ -726,22 +726,7 @@ export default function PricingPage() {
                       </div>
                     ))}
                   </div>
-                  {svc.note && (
-                    <p
-                      style={{
-                        fontFamily: "'Lato', sans-serif",
-                        fontSize: "0.78rem",
-                        color: "rgba(240,237,230,0.45)",
-                        marginTop: "0.75rem",
-                        display: "flex",
-                        alignItems: "flex-start",
-                        gap: "0.4rem",
-                      }}
-                    >
-                      <CheckCircle2 size={12} style={{ color: "#4ade80", flexShrink: 0, marginTop: "2px" }} />
-                      {svc.note}
-                    </p>
-                  )}
+
                 </div>
 
                 {/* Card footer */}
