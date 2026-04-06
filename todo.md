@@ -121,7 +121,9 @@
 - [x] Update AdminLeads page with source tag dropdown on each lead row
 - [x] Build Lead Sources breakdown section (chart + table) in AdminLeads or new AdminSources page
 - [x] Auto-connect Jobber on Admin Settings page load (redirect to OAuth if not connected)
-- [ ] Diagnose and fix Jobber OAuth connection issue
+- [x] Diagnose and fix Jobber OAuth connection issue (removed admin/jobber entirely)
 - [x] Create /maintenance page with NolandFix AI link button and register route in App.tsx
 - [x] Enhance AI Diagnostics card on /maintenance page with image upload button and LLM-powered analysis result
 - [x] Replace all "FieldFix AI" references with "NolandFix AI" across the site
+- [x] Remove /maintenance page, route, and any nav links
+- [x] Remove /admin pages, routes, and any nav links
