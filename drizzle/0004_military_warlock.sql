@@ -1,0 +1,1 @@
+ALTER TABLE `ops_leads` MODIFY COLUMN `stage` enum('new','contacted','converted','estimate_sent','negotiating','won','lost') NOT NULL DEFAULT 'new';

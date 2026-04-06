@@ -135,6 +135,7 @@ export const opsLeads = mysqlTable("ops_leads", {
   stage: mysqlEnum("stage", [
     "new",
     "contacted",
+    "converted",
     "estimate_sent",
     "negotiating",
     "won",

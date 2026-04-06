@@ -13,19 +13,20 @@ import {
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
-const STAGE_OPTIONS = ["new", "contacted", "estimate_sent", "negotiating", "won", "lost"] as const;
+const STAGE_OPTIONS = ["new", "contacted", "converted", "estimate_sent", "negotiating", "won", "lost"] as const;
 const SOURCE_OPTIONS = ["google", "facebook", "referral", "website", "direct", "other"] as const;
 
 type LeadStage = typeof STAGE_OPTIONS[number];
 type LeadSource = typeof SOURCE_OPTIONS[number];
 
 const STAGE_LABELS: Record<string, string> = {
-  new: "New Lead", contacted: "Contacted", estimate_sent: "Estimate Sent", negotiating: "Negotiating", won: "Won", lost: "Lost",
+  new: "New", contacted: "Contacted", converted: "Converted", estimate_sent: "Estimate Sent", negotiating: "Negotiating", won: "Won", lost: "Lost",
 };
 
 const STAGE_COLORS: Record<string, string> = {
   new: "bg-blue-500/15 text-blue-400 border-blue-500/30",
   contacted: "bg-cyan-500/15 text-cyan-400 border-cyan-500/30",
+  converted: "bg-green-500/15 text-green-400 border-green-500/30",
   estimate_sent: "bg-primary/15 text-primary border-primary/30",
   negotiating: "bg-purple-500/15 text-purple-400 border-purple-500/30",
   won: "bg-green-500/15 text-green-400 border-green-500/30",
@@ -68,6 +69,23 @@ export default function Leads() {
 
   const utils = trpc.useUtils();
   const { data: leads = [], isLoading } = trpc.ops.leads.list.useQuery();
+
+  // Optimistic quick-update for inline status changes
+  const quickUpdateStage = trpc.ops.leads.update.useMutation({
+    onMutate: async ({ id, stage }) => {
+      await utils.ops.leads.list.cancel();
+      const prev = utils.ops.leads.list.getData();
+      utils.ops.leads.list.setData(undefined, old =>
+        old ? old.map(l => l.id === id ? { ...l, stage: stage ?? l.stage } : l) : old
+      );
+      return { prev };
+    },
+    onError: (_e, _v, ctx) => {
+      if (ctx?.prev) utils.ops.leads.list.setData(undefined, ctx.prev);
+      toast.error("Failed to update status");
+    },
+    onSettled: () => utils.ops.leads.list.invalidate(),
+  });
 
   const createJob = trpc.ops.jobs.create.useMutation({
     onSuccess: () => {
@@ -253,7 +271,7 @@ export default function Leads() {
                     <th className="text-left px-4 py-3 text-muted-foreground font-medium">Lead</th>
                     <th className="text-left px-4 py-3 text-muted-foreground font-medium hidden sm:table-cell">Contact</th>
                     <th className="text-left px-4 py-3 text-muted-foreground font-medium hidden md:table-cell">Location</th>
-                    <th className="text-left px-4 py-3 text-muted-foreground font-medium">Stage</th>
+                    <th className="text-left px-4 py-3 text-muted-foreground font-medium">Status</th>
                     <th className="text-left px-4 py-3 text-muted-foreground font-medium hidden lg:table-cell">Source</th>
                     <th className="text-right px-4 py-3 text-muted-foreground font-medium">Value</th>
                     <th className="text-right px-4 py-3 text-muted-foreground font-medium">Actions</th>
@@ -280,9 +298,20 @@ export default function Leads() {
                         )}
                       </td>
                       <td className="px-4 py-3">
-                        <span className={cn("text-[10px] font-semibold px-2 py-0.5 rounded-full border", STAGE_COLORS[lead.stage])}>
-                          {STAGE_LABELS[lead.stage]}
-                        </span>
+                        <select
+                          value={lead.stage}
+                          onChange={e => quickUpdateStage.mutate({ id: lead.id, stage: e.target.value as LeadStage })}
+                          className={cn(
+                            "text-[10px] font-semibold px-2 py-0.5 rounded-full border cursor-pointer outline-none bg-transparent appearance-none",
+                            STAGE_COLORS[lead.stage]
+                          )}
+                        >
+                          {STAGE_OPTIONS.map(s => (
+                            <option key={s} value={s} className="bg-background text-foreground text-xs">
+                              {STAGE_LABELS[s]}
+                            </option>
+                          ))}
+                        </select>
                       </td>
                       <td className="px-4 py-3 hidden lg:table-cell">
                         <span className="text-muted-foreground capitalize">{lead.source}</span>

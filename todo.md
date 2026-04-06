@@ -144,3 +144,5 @@
 - [x] Clear all hardcoded sample data from /ops/dashboard (Recent Jobs, Lead Pipeline, Active Job Sites, Week Scoreboard)
 - [x] Replace all "Central Texas" references in /ops pages with "Middle and West Tennessee"
 - [x] Add "Convert to Job" button in /ops/leads table that pre-fills a new job with lead's name, address, and service type
+- [x] Fix leads capture on production (root cause: OWNER_OPEN_ID not injected in production; fixed ownerProcedure to use role=admin fallback)
+- [x] Add Status column to /ops/leads table with New / Contacted / Converted inline selector
