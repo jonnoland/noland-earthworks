@@ -117,22 +117,22 @@ export default function HeroSection() {
               style={{
                 fontFamily: "'Lato', sans-serif",
                 fontSize: "0.875rem",
-                color: "rgba(240,237,230,0.55)",
+                color: "#E07B2A",
                 textDecoration: "none",
                 display: "inline-flex",
                 alignItems: "center",
                 gap: "0.35rem",
-                borderBottom: "1px solid rgba(240,237,230,0.2)",
+                borderBottom: "1px solid rgba(224,123,42,0.4)",
                 paddingBottom: "1px",
                 transition: "color 0.2s, border-color 0.2s",
               }}
               onMouseEnter={(e) => {
-                (e.currentTarget as HTMLAnchorElement).style.color = "#E07B2A";
-                (e.currentTarget as HTMLAnchorElement).style.borderBottomColor = "rgba(224,123,42,0.5)";
+                (e.currentTarget as HTMLAnchorElement).style.color = "#f59340";
+                (e.currentTarget as HTMLAnchorElement).style.borderBottomColor = "rgba(224,123,42,0.7)";
               }}
               onMouseLeave={(e) => {
-                (e.currentTarget as HTMLAnchorElement).style.color = "rgba(240,237,230,0.55)";
-                (e.currentTarget as HTMLAnchorElement).style.borderBottomColor = "rgba(240,237,230,0.2)";
+                (e.currentTarget as HTMLAnchorElement).style.color = "#E07B2A";
+                (e.currentTarget as HTMLAnchorElement).style.borderBottomColor = "rgba(224,123,42,0.4)";
               }}
             >
               Get a rough number in 30 seconds
