@@ -100,6 +100,21 @@ const countyData: Record<string, CountyPageProps> = {
         answer:
           "Yes — Murfreesboro and Smyrna are core service areas for us in Rutherford County. We also serve all surrounding communities throughout the county.",
       },
+      {
+        question: "Can you prepare a residential lot for new construction in the Murfreesboro area?",
+        answer:
+          "Yes — residential lot clearing for new construction is one of our most common projects in Rutherford County. We clear trees, stumps, brush, and undergrowth and leave a smooth, graded surface ready for your builder. Our forestry mulching process is faster and less disruptive than traditional clearing, which is a major advantage in Rutherford County's fast-moving real estate market.",
+      },
+      {
+        question: "Do you clear large agricultural tracts in the rural parts of Rutherford County?",
+        answer:
+          "Absolutely. The rural areas of Rutherford County — including Eagleville, Lascassas, and Rockvale — have significant demand for large-scale pasture reclamation and agricultural clearing. We work efficiently on multi-acre tracts and can clear overgrown fields, fence lines, and wooded areas to return land to productive agricultural use.",
+      },
+      {
+        question: "How does forestry mulching improve property value in Rutherford County?",
+        answer:
+          "Cleared, accessible land consistently appraises higher and sells faster than overgrown property. In Rutherford County's competitive real estate market, a professionally cleared lot signals to buyers and developers that the land is ready to use. Our process also eliminates the liability of dead trees and dense brush, which can be a concern for insurance and financing.",
+      },
       ...COMMON_FAQS,
     ],
   },
@@ -122,6 +137,21 @@ const countyData: Record<string, CountyPageProps> = {
         question: "Do you serve Lebanon and Mount Juliet?",
         answer:
           "Yes — Lebanon and Mount Juliet are both active service areas in Wilson County. We work throughout the county on projects of all sizes.",
+      },
+      {
+        question: "Can you clear land near the Cumberland River without causing erosion?",
+        answer:
+          "Absolutely. Forestry mulching is one of the best methods for properties near waterways like the Cumberland River. Rather than leaving bare soil exposed, our mulching process creates a protective ground cover that holds the soil in place, dramatically reducing the risk of erosion and sediment runoff into nearby creeks and streams.",
+      },
+      {
+        question: "My Wilson County lot has a lot of cedar trees — can you handle that?",
+        answer:
+          "Yes — cedar is one of the most common trees we clear in Wilson County, and our forestry mulchers are built for it. We can process cedar stands of any density in a single pass, grinding trees and stumps down to a mulch layer without the need for separate hauling or burning.",
+      },
+      {
+        question: "Do you work on new residential lots in Mt. Juliet and the Providence area?",
+        answer:
+          "Yes. New residential lot clearing is a core part of our work in Wilson County. Whether you're preparing a site for a new home build or clearing a wooded lot you've owned for years, we provide fast, clean results and can typically schedule an estimate within a week.",
       },
       ...COMMON_FAQS,
     ],
@@ -215,6 +245,21 @@ const countyData: Record<string, CountyPageProps> = {
         answer:
           "Yes — Dickson and White Bluff are both active service areas in Dickson County. We work throughout the county on all types of land clearing projects.",
       },
+      {
+        question: "Do you clear land near Montgomery Bell State Park?",
+        answer:
+          "Yes. We're very familiar with the terrain in and around the Montgomery Bell area. Properties near the park often feature dense mixed hardwood and cedar growth, and our forestry mulchers handle it efficiently. We're careful to work within any applicable buffer zones and can advise on best practices for clearing near protected or sensitive areas.",
+      },
+      {
+        question: "Can you do right-of-way clearing for utilities or driveways in Dickson County?",
+        answer:
+          "Absolutely — right-of-way clearing is one of our most common jobs in Dickson County. Whether you need a utility corridor cleared, a new driveway cut through wooded land, or an existing access road widened, we can handle it quickly and cleanly with our forestry mulching equipment.",
+      },
+      {
+        question: "How soon can you start a project in Dickson County?",
+        answer:
+          "Because Dickson County is our home base, we're often able to schedule estimates and start projects faster here than in more distant counties. In most cases, we can have someone out for a free estimate within a few days and begin work within 1–2 weeks, depending on current scheduling.",
+      },
       ...COMMON_FAQS,
     ],
   },
@@ -237,6 +282,21 @@ const countyData: Record<string, CountyPageProps> = {
         question: "Do you serve Columbia and Spring Hill in Maury County?",
         answer:
           "Yes — Columbia and the Maury County portion of Spring Hill are both service areas for us. We work throughout the county on residential and agricultural projects.",
+      },
+      {
+        question: "Can you clear hunting lanes and food plots on my Maury County property?",
+        answer:
+          "Yes — this is one of our most popular requests in Maury County. We can cut precise hunting lanes, open up food plot areas, and thin timber stands to improve wildlife habitat. Forestry mulching is ideal for this type of work because it leaves a clean, navigable ground surface without the mess of slash piles or burn debris.",
+      },
+      {
+        question: "Is forestry mulching safe for the soil on Maury County farmland?",
+        answer:
+          "Yes. Unlike bulldozing or traditional clearing, forestry mulching leaves the topsoil intact and deposits a layer of organic mulch that actually improves soil health over time. For Maury County's agricultural land, this means you can return the property to productive use — whether for crops, pasture, or livestock — much faster than with conventional clearing methods.",
+      },
+      {
+        question: "Do you create riding trails or equestrian paths in Maury County?",
+        answer:
+          "Absolutely. Maury County has a strong equestrian community, and we regularly clear riding trails and access paths for horse properties. Our mulchers create smooth, debris-free trails through wooded areas, and we can work around existing trees and terrain features to design a trail that fits your property.",
       },
       ...COMMON_FAQS,
     ],
@@ -329,6 +389,21 @@ const countyData: Record<string, CountyPageProps> = {
         question: "Do you serve Clarksville and Montgomery County?",
         answer:
           "Yes — Clarksville and all of Montgomery County are in our service area. We're proud to serve the Fort Campbell military community and all property owners in the area.",
+      },
+      {
+        question: "Do you work with active-duty military and veterans near Fort Campbell?",
+        answer:
+          "Yes, and it's something we take pride in. Noland Earthworks is a veteran-owned business, and we're honored to serve the Fort Campbell community. We understand the demands of military life and work around your schedule to get your property cleared efficiently and professionally.",
+      },
+      {
+        question: "Can you clear invasive species like kudzu or privet from my Montgomery County property?",
+        answer:
+          "Absolutely. Invasive vegetation is a major issue throughout Montgomery County, and forestry mulching is one of the most effective ways to address it. Our equipment grinds invasive shrubs, vines, and undergrowth down to the root zone in a single pass, and the resulting mulch layer helps suppress regrowth while protecting the soil.",
+      },
+      {
+        question: "Do you handle large rural properties and farms in the Clarksville area?",
+        answer:
+          "Yes — large acreage is our specialty. Whether you need fence lines cleared, overgrown pasture reclaimed, or a multi-acre woodland thinned for agricultural use, we have the equipment and crew to handle it efficiently. We provide free on-site estimates for all farm and rural property projects in Montgomery County.",
       },
       ...COMMON_FAQS,
     ],
