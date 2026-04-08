@@ -172,5 +172,5 @@
 - [x] Register all blog routes in App.tsx
 - [x] Auto-populate county AND city/state on quote form when navigating from a county page via URL params
 - [x] Change "Get a rough number in 30 seconds" text color to burnt orange (#E07B2A) in HeroSection
-- [ ] Add Google review CTA to homepage (after testimonials section)
-- [ ] Add Google review CTA to quote form confirmation screen
+- [x] Add Google review CTA to homepage (after testimonials section)
+- [x] Add Google review CTA to quote form confirmation screen

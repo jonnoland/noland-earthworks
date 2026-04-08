@@ -547,6 +547,57 @@ export default function QuotePage() {
                     );
                   })()}
 
+                  {/* Google Review CTA */}
+                  <div
+                    style={{
+                      marginBottom: "1.5rem",
+                      padding: "1.25rem 1.75rem",
+                      backgroundColor: "rgba(255,255,255,0.03)",
+                      border: "1px solid rgba(255,255,255,0.1)",
+                      borderRadius: "8px",
+                      maxWidth: "440px",
+                      width: "100%",
+                      textAlign: "center",
+                    }}
+                  >
+                    <p
+                      style={{
+                        fontFamily: "'Lato', sans-serif",
+                        fontWeight: 400,
+                        fontSize: "0.875rem",
+                        color: "rgba(240,237,230,0.6)",
+                        marginBottom: "0.85rem",
+                      }}
+                    >
+                      Been a customer before? A quick Google review helps others find us.
+                    </p>
+                    <a
+                      href="https://g.page/r/CcglMAMbtQInEBM/review"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: "0.5rem",
+                        backgroundColor: "transparent",
+                        color: "#E07B2A",
+                        border: "1px solid rgba(224,123,42,0.5)",
+                        fontFamily: "'Oswald', sans-serif",
+                        fontWeight: 600,
+                        fontSize: "0.8rem",
+                        letterSpacing: "0.06em",
+                        textTransform: "uppercase",
+                        padding: "0.6rem 1.25rem",
+                        textDecoration: "none",
+                      }}
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+                      </svg>
+                      Leave a Google Review
+                    </a>
+                  </div>
+
                   <a
                     href="/"
                     className="btn-amber"
