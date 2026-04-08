@@ -149,4 +149,6 @@
 - [x] Add status filter tabs (All/New/Contacted/Converted/Closed) and column sort controls (Name, Value, Date) to /ops/leads table
 - [x] Remove note lines (item 2) from under each service pricing list on /pricing page
 - [x] Remove "Year in Business" stat from StatsBar on homepage
-- [ ] Send owner notification email to quotes@nolandearthworks.com on every new quote submission
+- [x] Send owner notification email to quotes@nolandearthworks.com on every new quote submission
+- [x] Auto-set lead status to "Converted" when Convert to Job is clicked in /ops/leads
+- [ ] Delete test leads from production database (Email Test April 8, Test Lead April 6)

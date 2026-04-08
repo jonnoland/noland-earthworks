@@ -80,6 +80,7 @@ export default function Leads() {
   const [form, setForm] = useState<LeadFormData>(emptyForm);
   const [showJobModal, setShowJobModal] = useState(false);
   const [jobForm, setJobForm] = useState<JobFormData>(emptyJobForm);
+  const [convertingLeadId, setConvertingLeadId] = useState<number | null>(null);
 
   const utils = trpc.useUtils();
   const { data: leads = [], isLoading } = trpc.ops.leads.list.useQuery();
@@ -104,7 +105,12 @@ export default function Leads() {
   const createJob = trpc.ops.jobs.create.useMutation({
     onSuccess: () => {
       utils.ops.jobs.list.invalidate();
-      toast.success("Job created from lead!");
+      // Auto-advance the source lead to "Converted"
+      if (convertingLeadId !== null) {
+        quickUpdateStage.mutate({ id: convertingLeadId, stage: "converted" });
+        setConvertingLeadId(null);
+      }
+      toast.success("Job created — lead marked Converted!");
       setShowJobModal(false);
       setJobForm(emptyJobForm);
     },
@@ -132,6 +138,7 @@ export default function Leads() {
       totalPrice: lead.estimatedValue ?? "",
       notes: lead.notes ?? "",
     });
+    setConvertingLeadId(lead.id);
     setShowJobModal(true);
   };
 
@@ -478,7 +485,7 @@ export default function Leads() {
                 <h2 className="text-base font-bold text-foreground" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>Convert to Job</h2>
                 <p className="text-xs text-muted-foreground mt-0.5">Pre-filled from lead — review and save</p>
               </div>
-              <button onClick={() => setShowJobModal(false)} className="p-1.5 rounded-md hover:bg-secondary/80 text-muted-foreground"><X className="w-4 h-4" /></button>
+              <button onClick={() => { setShowJobModal(false); setConvertingLeadId(null); }} className="p-1.5 rounded-md hover:bg-secondary/80 text-muted-foreground"><X className="w-4 h-4" /></button>
             </div>
             <form onSubmit={e => { e.preventDefault(); createJob.mutate(jobForm); }} className="space-y-3">
               <div className="grid grid-cols-2 gap-3">
@@ -540,7 +547,7 @@ export default function Leads() {
                 </div>
               </div>
               <div className="flex gap-2 pt-2">
-                <button type="button" onClick={() => setShowJobModal(false)}
+                <button type="button" onClick={() => { setShowJobModal(false); setConvertingLeadId(null); }}
                   className="flex-1 py-2 rounded-md text-xs font-semibold text-muted-foreground bg-secondary/50 hover:bg-secondary transition-colors">Cancel</button>
                 <button type="submit" disabled={createJob.isPending}
                   className="flex-1 py-2 rounded-md text-xs font-semibold text-white bg-primary hover:bg-primary/90 transition-all disabled:opacity-50 flex items-center justify-center gap-1.5">

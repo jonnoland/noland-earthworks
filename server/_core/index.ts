@@ -38,6 +38,22 @@ async function startServer() {
   registerOAuthRoutes(app);
   // Sitemap + robots.txt
   registerSitemapRoutes(app);
+  // One-time cleanup endpoint — delete test leads by name
+  app.get("/api/diag/cleanup-test-leads", async (_req, res) => {
+    try {
+      const { getDb } = await import("../db");
+      const db = await getDb();
+      if (!db) { res.json({ error: "DB not available" }); return; }
+      const { opsLeads } = await import("../../drizzle/schema");
+      const { inArray } = await import("drizzle-orm");
+      const testNames = ["Test Lead April 6", "Email Test April 8"];
+      const result = await db.delete(opsLeads).where(inArray(opsLeads.name, testNames));
+      res.json({ deleted: true, affectedRows: (result as { affectedRows?: number }).affectedRows ?? "unknown" });
+    } catch (err: unknown) {
+      res.json({ error: String(err) });
+    }
+  });
+
   // Temporary diagnostic endpoint — remove after leads issue is resolved
   app.get("/api/diag/leads", async (_req, res) => {
     try {
