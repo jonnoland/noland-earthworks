@@ -330,7 +330,26 @@ export default function Leads() {
                   {filtered.map((lead, i) => (
                     <tr key={lead.id} className={cn("border-b border-border/50 hover:bg-secondary/20 transition-colors", i % 2 === 0 ? "" : "bg-secondary/5")}>
                       <td className="px-4 py-3">
-                        <div className="font-semibold text-foreground">{lead.name}</div>
+                        <div className="flex items-center gap-2">
+                          <span className="font-semibold text-foreground">{lead.name}</span>
+                          {(() => {
+                            const closedStages = ["won", "lost", "converted"];
+                            if (closedStages.includes(lead.stage)) return null;
+                            const lastUpdate = lead.updatedAt ? new Date(lead.updatedAt).getTime() : (lead.createdAt ? new Date(lead.createdAt).getTime() : null);
+                            if (!lastUpdate) return null;
+                            const daysSince = (Date.now() - lastUpdate) / (1000 * 60 * 60 * 24);
+                            if (daysSince < 7) return null;
+                            return (
+                              <span
+                                title={`No activity in ${Math.floor(daysSince)} days`}
+                                className="text-[9px] font-bold px-1.5 py-0.5 rounded-full border"
+                                style={{ backgroundColor: "rgba(245,158,11,0.15)", color: "#f59e0b", borderColor: "rgba(245,158,11,0.35)", whiteSpace: "nowrap" }}
+                              >
+                                {Math.floor(daysSince)}d stale
+                              </span>
+                            );
+                          })()}
+                        </div>
                         {lead.notes && <div className="text-muted-foreground/60 text-[10px] mt-0.5 truncate max-w-[160px]">{lead.notes}</div>}
                       </td>
                       <td className="px-4 py-3 hidden sm:table-cell">

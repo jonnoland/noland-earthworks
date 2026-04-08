@@ -174,3 +174,6 @@
 - [x] Change "Get a rough number in 30 seconds" text color to burnt orange (#E07B2A) in HeroSection
 - [x] Add Google review CTA to homepage (after testimonials section)
 - [x] Add Google review CTA to quote form confirmation screen
+- [x] Add Google review link to website footer (visible on every page)
+- [x] Add unique 150-char meta descriptions to all 12 county pages and 3 blog pages
+- [x] Add stale lead indicator (amber badge) to /ops/leads for leads not updated in 7+ days

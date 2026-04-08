@@ -5,6 +5,7 @@ export default function SignsVegetationManagement() {
     <BlogPostLayout
       title="5 Signs It's Time to Invest in Professional Vegetation Management"
       pageTitle="5 Signs You Need Professional Vegetation Management | Noland Earthworks"
+      metaDescription="Is your Tennessee property overgrown? Learn 5 clear signs it's time to hire a professional for vegetation management and land clearing before problems get worse."
       date="April 2026"
       readTime="5 min read"
       category="Property Tips"

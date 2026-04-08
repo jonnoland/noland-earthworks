@@ -181,6 +181,32 @@ export default function Footer() {
             >
               Get a Free Quote
             </a>
+
+            <a
+              href="https://g.page/r/CcglMAMbtQInEBM/review"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-2 mt-4"
+              style={{
+                fontFamily: "'Lato', sans-serif",
+                fontWeight: 400,
+                fontSize: "0.8rem",
+                color: "rgba(240,237,230,0.45)",
+                textDecoration: "none",
+                transition: "color 0.2s",
+              }}
+              onMouseEnter={(e) => {
+                (e.currentTarget as HTMLElement).style.color = "#E07B2A";
+              }}
+              onMouseLeave={(e) => {
+                (e.currentTarget as HTMLElement).style.color = "rgba(240,237,230,0.45)";
+              }}
+            >
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" style={{ color: "#E07B2A", flexShrink: 0 }}>
+                <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+              </svg>
+              Leave us a Google Review
+            </a>
           </div>
         </div>
       </div>

@@ -10,6 +10,7 @@ import { ArrowLeft, Calendar } from "lucide-react";
 export interface BlogPostProps {
   title: string;
   pageTitle: string;
+  metaDescription?: string;
   date: string;
   readTime: string;
   category: string;
@@ -19,12 +20,13 @@ export interface BlogPostProps {
 export default function BlogPostLayout({
   title,
   pageTitle,
+  metaDescription,
   date,
   readTime,
   category,
   children,
 }: BlogPostProps) {
-  usePageTitle(pageTitle);
+  usePageTitle(pageTitle, metaDescription);
 
   return (
     <div style={{ backgroundColor: "#121212", color: "#F0EDE6", minHeight: "100vh" }}>
