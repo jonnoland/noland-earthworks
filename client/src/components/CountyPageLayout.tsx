@@ -110,6 +110,13 @@ function FaqAccordion({ faqs }: { faqs: { question: string; answer: string }[] }
   );
 }
 
+function buildQuoteUrl(county: string, nearbyAreas: string[], state: string): string {
+  const countyParam = county.replace(/ County$/, "").toLowerCase();
+  const cityParam = encodeURIComponent(nearbyAreas[0] || "");
+  const stateParam = state === "Tennessee" ? "TN" : state;
+  return `/quote?county=${countyParam}&city=${cityParam}&state=${stateParam}`;
+}
+
 export default function CountyPageLayout({
   county,
   state,
@@ -119,6 +126,7 @@ export default function CountyPageLayout({
   nearbyAreas,
   faqs,
 }: CountyPageProps) {
+  const quoteUrl = buildQuoteUrl(county, nearbyAreas, state);
   const servicesRef = useVisible();
   const introRef = useVisible();
   const areasRef = useVisible();
@@ -198,7 +206,7 @@ export default function CountyPageLayout({
           </p>
           <div className="flex flex-wrap gap-4">
             <a
-              href="/quote"
+              href={quoteUrl}
               style={{
                 display: "inline-flex",
                 alignItems: "center",
@@ -454,7 +462,7 @@ export default function CountyPageLayout({
               Loading map...
             </div>
           }>
-            <CountyMap slug={slug} county={county} state={state} />
+            <CountyMap slug={slug} county={county} state={state} primaryCity={nearbyAreas[0]} />
           </Suspense>
         </div>
       </section>
@@ -558,7 +566,7 @@ export default function CountyPageLayout({
           </p>
           <div className="flex flex-wrap gap-4 justify-center">
             <a
-              href="/quote"
+              href={quoteUrl}
               style={{
                 display: "inline-flex",
                 alignItems: "center",

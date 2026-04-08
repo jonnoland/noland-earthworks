@@ -79,12 +79,15 @@ export default function QuotePage() {
     const density = params.get("density") || "";
     const terrain = params.get("terrain") || "";
     const access  = params.get("access")  || "";
+    const county   = params.get("county")  || "";
+    const city     = params.get("city")    || "";
+    const state    = params.get("state")   || "TN";
     const acreage = acres > 0 ? acresBucket(acres) : "";
     const message = (density || terrain || access) ? buildPrefillNote(density, terrain, access) : "";
     return {
       name: "", phone: "", email: "",
-      service, county: "", acreage,
-      street: "", city: "", state: "TN", zip: "",
+      service, county, acreage,
+      street: "", city, state, zip: "",
       message,
     };
   })();

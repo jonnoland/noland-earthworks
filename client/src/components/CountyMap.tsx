@@ -147,12 +147,13 @@ const DARK_MAP_STYLES: google.maps.MapTypeStyle[] = [
 ];
 
 interface CountyMapProps {
-  slug: string;   // e.g. "davidson-county"
-  county: string; // e.g. "Davidson County"
-  state: string;  // e.g. "Tennessee"
+  slug: string;        // e.g. "davidson-county"
+  county: string;      // e.g. "Davidson County"
+  state: string;       // e.g. "Tennessee"
+  primaryCity?: string; // e.g. "Nashville" — used to pre-fill city on quote form
 }
 
-export default function CountyMap({ slug, county, state }: CountyMapProps) {
+export default function CountyMap({ slug, county, state, primaryCity }: CountyMapProps) {
   const mapRef = useRef<google.maps.Map | null>(null);
 
   const handleMapReady = useCallback(
@@ -229,7 +230,7 @@ export default function CountyMap({ slug, county, state }: CountyMapProps) {
                 <div style="font-size:0.85rem;color:rgba(240,237,230,0.8);margin-bottom:8px;">
                   Serving all of ${county}
                 </div>
-                <a href="/quote" style="display:inline-block;background:#E07B2A;color:#fff;font-family:'Oswald',sans-serif;font-size:0.75rem;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;padding:6px 14px;text-decoration:none;">
+<a href="/quote?county=${county.replace(/ County$/, '').toLowerCase()}${primaryCity ? '&city=' + encodeURIComponent(primaryCity) : ''}&state=${state === 'Tennessee' ? 'TN' : state}" style="display:inline-block;background:#E07B2A;color:#fff;font-family:'Oswald',sans-serif;font-size:0.75rem;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;padding:6px 14px;text-decoration:none;">
                   Get a Free Quote
                 </a>
               </div>

@@ -170,3 +170,4 @@
 - [x] Create blog post page: /blog/signs-you-need-vegetation-management
 - [x] Add Blog link to main navigation (Navbar)
 - [x] Register all blog routes in App.tsx
+- [x] Auto-populate county AND city/state on quote form when navigating from a county page via URL params
