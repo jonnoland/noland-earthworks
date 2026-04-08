@@ -7,10 +7,13 @@ import { z } from "zod";
 import { protectedProcedure, router } from "./_core/trpc";
 import { ENV } from "./_core/env";
 import {
+  getDb,
   getJobs, createJob, updateJob, deleteJob,
   getOpsLeads, createOpsLead, updateOpsLead, deleteOpsLead,
   getScheduleEntries, createScheduleEntry, updateScheduleEntry, deleteScheduleEntry,
 } from "./db";
+import { opsLeads } from "../drizzle/schema";
+import { and, eq, like } from "drizzle-orm";
 
 /**
  * Owner-only guard — only the site owner can call these procedures.
@@ -58,7 +61,51 @@ const jobsRouter = router({
       scheduledDate: z.date().optional(),
       completedDate: z.date().optional(),
     }))
-    .mutation(({ ctx, input }) => { const { id, ...data } = input; return updateJob(id, ctx.user.id, data); }),
+    .mutation(async ({ ctx, input }) => {
+      const { id, ...data } = input;
+      const result = await updateJob(id, ctx.user.id, data);
+
+      // Auto-close matching lead as "Won" when a job is marked Paid
+      if (data.status === "paid") {
+        try {
+          // Fetch the updated job to get the client name
+          const jobRows = await getJobs(ctx.user.id);
+          const job = jobRows.find(j => j.id === id);
+          const clientName = data.client ?? job?.client;
+          if (clientName) {
+            const db = await getDb();
+            if (db) {
+              // Find a lead whose name matches the client name (exact or partial)
+              const matchingLeads = await db
+                .select()
+                .from(opsLeads)
+                .where(
+                  and(
+                    eq(opsLeads.userId, ctx.user.id),
+                    like(opsLeads.name, `%${clientName}%`)
+                  )
+                )
+                .limit(5);
+              // Update any matching leads that are not already Won or Lost
+              for (const lead of matchingLeads) {
+                if (lead.stage !== "won" && lead.stage !== "lost") {
+                  await db
+                    .update(opsLeads)
+                    .set({ stage: "won", updatedAt: new Date() })
+                    .where(and(eq(opsLeads.id, lead.id), eq(opsLeads.userId, ctx.user.id)));
+                  console.log(`[Jobs] Lead #${lead.id} (${lead.name}) auto-set to Won after job #${id} marked Paid`);
+                }
+              }
+            }
+          }
+        } catch (err) {
+          // Non-fatal: job update already succeeded
+          console.warn("[Jobs] Failed to auto-close lead on Paid:", err);
+        }
+      }
+
+      return result;
+    }),
   delete: ownerProcedure
     .input(z.object({ id: z.number() }))
     .mutation(({ ctx, input }) => deleteJob(input.id, ctx.user.id)),
