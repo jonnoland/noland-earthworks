@@ -164,3 +164,9 @@
 - [x] Add 2-3 county-specific FAQs to Maury County page
 - [x] Add 2-3 county-specific FAQs to Dickson County page
 - [x] Add 2-3 county-specific FAQs to Rutherford County page
+- [x] Create blog index page at /blog listing all 3 articles
+- [x] Create blog post page: /blog/cost-of-land-clearing-tennessee
+- [x] Create blog post page: /blog/forestry-mulching-vs-bulldozing
+- [x] Create blog post page: /blog/signs-you-need-vegetation-management
+- [x] Add Blog link to main navigation (Navbar)
+- [x] Register all blog routes in App.tsx

@@ -144,6 +144,13 @@ export default function Navbar() {
             >
               About Us
             </a>
+            <a
+              href="/blog"
+              className="nav-link"
+              style={{ textDecoration: "none" }}
+            >
+              Resources
+            </a>
           </nav>
 
           {/* Desktop CTA */}
@@ -250,6 +257,13 @@ export default function Navbar() {
               style={{ borderBottom: "1px solid rgba(255,255,255,0.06)", textDecoration: "none" }}
             >
               About Us
+            </a>
+            <a
+              href="/blog"
+              className="text-left py-3 px-2 nav-link block"
+              style={{ borderBottom: "1px solid rgba(255,255,255,0.06)", textDecoration: "none" }}
+            >
+              Resources
             </a>
 
             <div className="pt-4 flex flex-col gap-3">
