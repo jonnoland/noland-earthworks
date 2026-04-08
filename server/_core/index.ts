@@ -64,7 +64,7 @@ async function startServer() {
       } catch (e: unknown) {
         insertResult = { error: String(e) };
       }
-      res.json({ ownerOpenId: ENV.ownerOpenId, ownerResult, insertResult, users: allUsers.map(u => ({ id: u.id, openId: u.openId, name: u.name, role: u.role })), leadsCount: allLeads.length, leads: allLeads.map(l => ({ id: l.id, name: l.name, userId: l.userId, stage: l.stage, createdAt: l.createdAt })) });
+      res.json({ ownerOpenId: ENV.ownerOpenId, ownerResult, insertResult, resendApiKeySet: !!ENV.resendApiKey, users: allUsers.map(u => ({ id: u.id, openId: u.openId, name: u.name, role: u.role })), leadsCount: allLeads.length, leads: allLeads.map(l => ({ id: l.id, name: l.name, userId: l.userId, stage: l.stage, createdAt: l.createdAt })) });
     } catch (err: unknown) {
       res.json({ error: String(err) });
     }

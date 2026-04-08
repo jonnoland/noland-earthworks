@@ -149,3 +149,4 @@
 - [x] Add status filter tabs (All/New/Contacted/Converted/Closed) and column sort controls (Name, Value, Date) to /ops/leads table
 - [x] Remove note lines (item 2) from under each service pricing list on /pricing page
 - [x] Remove "Year in Business" stat from StatsBar on homepage
+- [ ] Send owner notification email to quotes@nolandearthworks.com on every new quote submission
