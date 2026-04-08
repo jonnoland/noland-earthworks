@@ -153,3 +153,4 @@
 - [x] Auto-set lead status to "Converted" when Convert to Job is clicked in /ops/leads
 - [x] Delete test leads from production database (Email Test April 8, Test Lead April 6)
 - [x] Auto-set lead status to "Won" when a job is marked as "Paid" in /ops/jobs (match by client name)
+- [x] HeroSection: add sr-only h1 for SEO, convert visible h1 to h2 preserving styling
