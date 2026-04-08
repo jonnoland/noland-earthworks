@@ -5,7 +5,6 @@
 import { useEffect, useRef, useState } from "react";
 
 const stats = [
-  { value: 1, suffix: "+", label: "Year in Business" },
   { value: 100, suffix: "%", label: "Customer Focused" },
   { value: 35, suffix: "", label: "Counties Served" },
   { value: 24, suffix: "hr", label: "Quote Turnaround" },
@@ -89,7 +88,7 @@ export default function StatsBar() {
     >
       <div className="container">
         <div
-          className="grid grid-cols-2 lg:grid-cols-4"
+          className="grid grid-cols-1 sm:grid-cols-3"
           style={{}}
         >
           {stats.map((s, i) => (
