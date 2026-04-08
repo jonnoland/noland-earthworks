@@ -154,3 +154,8 @@
 - [x] Delete test leads from production database (Email Test April 8, Test Lead April 6)
 - [x] Auto-set lead status to "Won" when a job is marked as "Paid" in /ops/jobs (match by client name)
 - [x] HeroSection: add sr-only h1 for SEO, convert visible h1 to h2 preserving styling
+- [x] Update Wilson County page with expanded SEO title and content
+- [x] Update Montgomery County page with expanded SEO title and content
+- [x] Update Maury County page with expanded SEO title and content
+- [x] Update Dickson County page with expanded SEO title and content
+- [x] Update Rutherford County page with expanded SEO title and content
