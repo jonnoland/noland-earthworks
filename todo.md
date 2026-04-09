@@ -216,3 +216,10 @@
 - [x] Add ROW-specific FAQ entry to the Pricing page FAQ section
 - [x] Add right-of-way-clearing pricing model to CostCalculator BASE_RATES
 - [x] Add right-of-way-clearing to CostCalculator service dropdown options
+
+## ROW County Page Paragraphs — April 2026
+
+- [x] Add ROW-specific paragraph + internal link to Dickson County page
+- [x] Add ROW-specific paragraph + internal link to Humphreys County page
+- [x] Add ROW-specific paragraph + internal link to Stewart County page
+- [x] Add ROW-specific paragraph + internal link to Perry County page
