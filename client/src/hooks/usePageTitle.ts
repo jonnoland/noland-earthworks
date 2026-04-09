@@ -3,7 +3,7 @@ import { useEffect } from "react";
 const SITE_NAME = "Noland Earthworks, LLC";
 const DEFAULT_DESCRIPTION =
   "Veteran-owned land clearing and forestry mulching services in Middle & West Tennessee. Free estimates. Licensed & insured. Call 615-406-4819.";
-const BASE_URL = "https://www.nolandearthworks.com";
+const BASE_URL = "https://nolandearthworks.com";
 
 /**
  * Manages document title, meta description, and canonical link tag.

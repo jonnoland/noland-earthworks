@@ -201,3 +201,11 @@
 - [x] Create robots.txt in client/public pointing to sitemap
 - [x] Add 5th blog article: "Site Preparation 101: What to Do Before You Build in Tennessee"
 - [x] Add ?service= URL param pre-fill CTAs on each service page so quote form auto-selects the service
+
+## Google Indexing Fixes — April 2026
+
+- [x] Fix duplicate canonical tag: remove static canonical from index.html (conflicts with dynamic usePageTitle hook)
+- [x] Fix www vs non-www canonical conflict on service/county pages (non-www canonical injected by Cloudflare or server)
+- [x] Add www redirect enforcement in Express server for non-www requests (Cloudflare handles this; canonicals now match non-www)
+- [x] Add missing pages to server-side sitemapRoutes.ts: right-of-way-clearing, blog posts, pricing, gallery
+- [x] Remove static client/public/sitemap.xml and robots.txt (server route handles both dynamically)

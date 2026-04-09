@@ -129,14 +129,14 @@ export default function ServicePageLayout(props: ServicePageProps) {
       "description": tagline,
       "provider": {
         "@type": "LocalBusiness",
-        "@id": "https://www.nolandearthworks.com/#business",
+        "@id": "https://nolandearthworks.com/#business",
         "name": "Noland Earthworks, LLC"
       },
       "areaServed": {
         "@type": "State",
         "name": "Tennessee"
       },
-      "url": `https://www.nolandearthworks.com/services/${slug}`
+      "url": `https://nolandearthworks.com/services/${slug}`
     };
     const faqSchema = {
       "@context": "https://schema.org",
