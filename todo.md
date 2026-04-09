@@ -223,3 +223,7 @@
 - [x] Add ROW-specific paragraph + internal link to Humphreys County page
 - [x] Add ROW-specific paragraph + internal link to Stewart County page
 - [x] Add ROW-specific paragraph + internal link to Perry County page
+
+## ROW Paragraphs — All Remaining Counties — April 2026
+
+- [x] Add ROW paragraph to all 35 active county pages (Davidson, Williamson, Rutherford, Wilson, Sumner, Robertson, Cheatham, Maury, Wayne, Cannon, Bedford, Montgomery, Lewis, Perry, Benton, Hickman, Houston, Humphreys, Stewart, Marshall, Giles, Lincoln, Moore, Lawrence, Carroll, Chester, Decatur, Gibson, Hardin, Henderson, Henry, Madison, Weakley, Trousdale, Dickson)
