@@ -66,7 +66,8 @@ const data: ServicePageProps = {
 export default function RightOfWayClearingPage() {
   usePageTitle(
     "Right-of-Way Clearing Services — Middle & West Tennessee | Noland Earthworks",
-    "Professional right-of-way clearing for driveways, utility easements, fence lines, and access roads across 35 counties in Middle & West Tennessee. Free estimates."
+    "Professional right-of-way clearing for driveways, utility easements, fence lines, and access roads across 35 counties in Middle & West Tennessee. Free estimates.",
+    "/services/right-of-way-clearing"
   );
   return (
     <>

@@ -227,3 +227,12 @@
 ## ROW Paragraphs — All Remaining Counties — April 2026
 
 - [x] Add ROW paragraph to all 35 active county pages (Davidson, Williamson, Rutherford, Wilson, Sumner, Robertson, Cheatham, Maury, Wayne, Cannon, Bedford, Montgomery, Lewis, Perry, Benton, Hickman, Houston, Humphreys, Stewart, Marshall, Giles, Lincoln, Moore, Lawrence, Carroll, Chester, Decatur, Gibson, Hardin, Henderson, Henry, Madison, Weakley, Trousdale, Dickson)
+
+## Prerendering / Bot Detection — April 2026
+
+- [x] Add server-side bot detection middleware (detect Googlebot, Bingbot, etc. by User-Agent)
+- [x] Implement prerendering using Puppeteer/headless Chrome on the server for bot requests
+- [x] Fix recursive prerender loop (X-Prerender-Internal header)
+- [x] Fix canonical tag missing from prerendered HTML (inject in middleware as fallback)
+- [x] Add canonicalPath to usePageTitle in all 5 service pages
+- [x] Verify prerendered HTML contains title, canonical, h1, and page content for key pages

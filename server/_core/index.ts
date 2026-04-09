@@ -8,6 +8,7 @@ import { registerSitemapRoutes } from "../sitemapRoutes";
 import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
+import { prerenderMiddleware } from "../prerender";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -38,6 +39,8 @@ async function startServer() {
   registerOAuthRoutes(app);
   // Sitemap + robots.txt
   registerSitemapRoutes(app);
+  // Bot prerendering — must come before Vite/static middleware
+  app.use(prerenderMiddleware);
   // One-time cleanup endpoint — delete test leads by name
   app.get("/api/diag/cleanup-test-leads", async (_req, res) => {
     try {
