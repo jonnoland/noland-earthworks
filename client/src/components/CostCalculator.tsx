@@ -30,6 +30,15 @@ const BASE_RATES: Record<string, Record<string, [number, number]>> = {
     moderate: [400, 900],
     heavy:    [900, 2000],
   },
+  "right-of-way-clearing": {
+    // Per-acre rates for ROW corridors (easements, access roads, pipeline ROW)
+    // Light = driveway/fence-line corridor, moderate growth
+    // Moderate = utility/pipeline easement, established brush
+    // Heavy = overgrown reclamation, mature trees encroaching
+    light:    [1200, 2800],
+    moderate: [1800, 3500],
+    heavy:    [2800, 5500],
+  },
 };
 
 // Multipliers applied on top of base rate
@@ -159,7 +168,7 @@ function SelectRow({
   );
 }
 
-function AcreSlider({ value, onChange }: { value: number; onChange: (v: number) => void }) {
+function AcreSlider({ value, onChange, isRow }: { value: number; onChange: (v: number) => void; isRow?: boolean }) {
   const steps = [0.5, 1, 1.5, 2, 3, 4, 5, 7, 10, 15, 20, 30, 50];
   const idx = steps.indexOf(value);
   return (
@@ -178,7 +187,7 @@ function AcreSlider({ value, onChange }: { value: number; onChange: (v: number) 
           marginBottom: "0.4rem",
         }}
       >
-        <span>Acreage</span>
+        <span>{isRow ? "Corridor Acreage" : "Acreage"}</span>
         <span style={{ color: "#E07B2A", fontSize: "1rem", fontWeight: 700 }}>
           {value} {value === 1 ? "acre" : "acres"}
         </span>
@@ -228,10 +237,11 @@ export default function CostCalculator() {
     setState((prev) => ({ ...prev, [key]: val }));
 
   const serviceOptions = [
-    { value: "forestry-mulching",     label: "Forestry Mulching" },
-    { value: "land-clearing",         label: "Land Clearing" },
-    { value: "vegetation-management", label: "Vegetation Management" },
-    { value: "property-maintenance",  label: "Property Maintenance" },
+    { value: "forestry-mulching",      label: "Forestry Mulching" },
+    { value: "land-clearing",          label: "Land Clearing" },
+    { value: "vegetation-management",  label: "Vegetation Management" },
+    { value: "right-of-way-clearing",  label: "Right-of-Way Clearing" },
+    { value: "property-maintenance",   label: "Property Maintenance" },
   ];
 
   const densityOptions = [
@@ -317,13 +327,19 @@ export default function CostCalculator() {
             onChange={set("service")}
             options={serviceOptions}
           />
-          <AcreSlider value={state.acres} onChange={(v) => set("acres")(v)} />
+          <AcreSlider value={state.acres} onChange={(v) => set("acres")(v)} isRow={state.service === "right-of-way-clearing"} />
           <SelectRow
-            label="Vegetation Density"
-            hint="The biggest cost driver — how thick and tall is the growth?"
+            label={state.service === "right-of-way-clearing" ? "Corridor Condition" : "Vegetation Density"}
+            hint={state.service === "right-of-way-clearing"
+              ? "Light = recently maintained or new corridor; Heavy = years of neglect, mature trees"
+              : "The biggest cost driver — how thick and tall is the growth?"}
             value={state.density}
             onChange={set("density")}
-            options={densityOptions}
+            options={state.service === "right-of-way-clearing" ? [
+              { value: "light",    label: "Light — recently cleared or maintained corridor" },
+              { value: "moderate", label: "Moderate — established brush, trees up to 8\u2033 diameter" },
+              { value: "heavy",    label: "Heavy — overgrown, mature trees encroaching, years of neglect" },
+            ] : densityOptions}
           />
           <SelectRow
             label="Terrain"

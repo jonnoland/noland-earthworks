@@ -99,6 +99,34 @@ const services = [
     href: "/services/vegetation-management",
   },
   {
+    id: "right-of-way-clearing",
+    name: "Right-of-Way Clearing",
+    tagline: "Access roads, utility corridors, and property boundaries",
+    icon: "🛤️",
+    description:
+      "Dedicated ROW clearing for private access roads, driveway corridors, fence lines, pipeline easements, and property boundary lines. We cut, mulch, and maintain the corridor width you need — leaving surrounding land undisturbed.",
+    priceUnit: "per linear foot or per acre",
+    tiers: [
+      {
+        label: "Driveway / Access Road Corridor",
+        range: "$2.00 – $5.00 / linear ft",
+        detail: "Single-pass clearing 10–20 ft wide along a private drive or access road, light-to-moderate brush",
+      },
+      {
+        label: "Easement / Pipeline ROW",
+        range: "$1,200 – $2,800 / acre",
+        detail: "Utility, pipeline, or fence-line easement, moderate growth, corridor 20–60 ft wide",
+      },
+      {
+        label: "Overgrown ROW Reclamation",
+        range: "$2,800 – $5,500+ / acre",
+        detail: "Heavily overgrown corridors with mature trees, multi-stem growth, or years of neglect",
+      },
+    ],
+    note: "Recurring annual maintenance contracts available — keep your corridor open year after year at a reduced rate.",
+    href: "/services/right-of-way-clearing",
+  },
+  {
     id: "property-maintenance",
     name: "Property Maintenance",
     tagline: "Keep your land looking its best year-round",
@@ -239,6 +267,14 @@ const faqs = [
   {
     q: "Do prices include stump removal?",
     a: "Forestry mulching grinds stumps flush with the ground in the same pass — included at no extra charge. For traditional land clearing, stump grinding is included in our estimates unless otherwise noted.",
+  },
+  {
+    q: "How is right-of-way clearing priced differently from general land clearing?",
+    a: "ROW clearing is priced by the linear foot for narrow corridors (driveways, fence lines) or by the acre for wider easements. Because ROW work is long and narrow, equipment must make more passes per acre than open-field clearing — which is why per-acre rates are sometimes slightly higher than general land clearing. We'll measure your corridor and quote whichever unit makes more sense for your project.",
+  },
+  {
+    q: "Do you offer recurring ROW maintenance contracts?",
+    a: "Yes. Many landowners, utility easement holders, and pipeline companies need their corridors cleared on an annual or bi-annual schedule. We offer maintenance contracts with preferred pricing for repeat customers — typically 10–20% below one-time rates. Ask about this when you request your estimate.",
   },
 ];
 

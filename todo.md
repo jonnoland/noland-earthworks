@@ -209,3 +209,10 @@
 - [x] Add www redirect enforcement in Express server for non-www requests (Cloudflare handles this; canonicals now match non-www)
 - [x] Add missing pages to server-side sitemapRoutes.ts: right-of-way-clearing, blog posts, pricing, gallery
 - [x] Remove static client/public/sitemap.xml and robots.txt (server route handles both dynamically)
+
+## Right-of-Way Clearing Pricing — April 2026
+
+- [x] Add Right-of-Way Clearing as a full service card (with 3 pricing tiers) to the Pricing page services array
+- [x] Add ROW-specific FAQ entry to the Pricing page FAQ section
+- [x] Add right-of-way-clearing pricing model to CostCalculator BASE_RATES
+- [x] Add right-of-way-clearing to CostCalculator service dropdown options
