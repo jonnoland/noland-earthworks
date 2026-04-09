@@ -41,6 +41,14 @@ export const BLOG_POSTS = [
     readTime: "5 min read",
     category: "Seasonal Tips",
   },
+  {
+    slug: "site-preparation-before-building-tennessee",
+    title: "Site Preparation 101: What to Do Before You Build in Tennessee",
+    meta: "Planning to build on Tennessee land? Learn the 5 site prep steps every landowner needs before construction starts — from clearing and grubbing to grading and erosion control.",
+    date: "April 2026",
+    readTime: "6 min read",
+    category: "Planning & Preparation",
+  },
 ];
 
 export default function Blog() {

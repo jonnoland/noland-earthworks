@@ -18,6 +18,7 @@ import LandClearingPage from "./pages/LandClearing";
 import ForestryMulchingPage from "./pages/ForestryMulching";
 import VegetationManagementPage from "./pages/VegetationManagement";
 import PropertyMaintenancePage from "./pages/PropertyMaintenance";
+import RightOfWayClearingPage from "./pages/RightOfWayClearing";
 import QuotePage from "./pages/Quote";
 import AboutPage from "./pages/About";
 import PricingPage from "./pages/Pricing";
@@ -28,6 +29,7 @@ import CostOfLandClearing from "./pages/blog/CostOfLandClearing";
 import ForestryMulchingVsBulldozing from "./pages/blog/ForestryMulchingVsBulldozing";
 import SignsVegetationManagement from "./pages/blog/SignsVegetationManagement";
 import BestTimeToClearLand from "./pages/blog/BestTimeToClearLand";
+import SitePreparationBeforeBuilding from "./pages/blog/SitePreparationBeforeBuilding";
 import GalleryPage from "./pages/Gallery";
 import {
   DavidsonCountyPage,
@@ -87,12 +89,14 @@ function Router() {
       <Route path="/blog/forestry-mulching-vs-bulldozing" component={ForestryMulchingVsBulldozing} />
       <Route path="/blog/signs-you-need-vegetation-management" component={SignsVegetationManagement} />
       <Route path="/blog/best-time-to-clear-land-tennessee" component={BestTimeToClearLand} />
+      <Route path="/blog/site-preparation-before-building-tennessee" component={SitePreparationBeforeBuilding} />
 
       {/* Service pages */}
       <Route path="/services/land-clearing" component={LandClearingPage} />
       <Route path="/services/forestry-mulching" component={ForestryMulchingPage} />
       <Route path="/services/vegetation-management" component={VegetationManagementPage} />
       <Route path="/services/property-maintenance" component={PropertyMaintenancePage} />
+      <Route path="/services/right-of-way-clearing" component={RightOfWayClearingPage} />
 
       {/* County landing pages */}
       <Route path="/service-areas/davidson-county" component={DavidsonCountyPage} />

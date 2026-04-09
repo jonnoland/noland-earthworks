@@ -12,6 +12,7 @@ const serviceLinks = [
   { label: "Land Clearing", href: "/services/land-clearing" },
   { label: "Forestry Mulching", href: "/services/forestry-mulching" },
   { label: "Vegetation Management", href: "/services/vegetation-management" },
+  { label: "Right-of-Way Clearing", href: "/services/right-of-way-clearing" },
   { label: "Property Maintenance", href: "/services/property-maintenance" },
 ];
 

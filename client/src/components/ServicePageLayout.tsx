@@ -108,10 +108,54 @@ function FaqAccordion({ faqs }: { faqs: FaqItem[] }) {
 
 export default function ServicePageLayout(props: ServicePageProps) {
   const {
-    title, tagline, heroImage, overviewTitle, overviewBody,
+    slug, title, tagline, heroImage, overviewTitle, overviewBody,
     benefits, faqs, relatedServices,
   } = props;
 
+  // Inject Service + FAQPage JSON-LD schema for Google rich results
+  useEffect(() => {
+    const id = `service-schema-${slug}`;
+    let el = document.getElementById(id) as HTMLScriptElement | null;
+    if (!el) {
+      el = document.createElement("script");
+      el.id = id;
+      el.type = "application/ld+json";
+      document.head.appendChild(el);
+    }
+    const serviceSchema = {
+      "@context": "https://schema.org",
+      "@type": "Service",
+      "name": title,
+      "description": tagline,
+      "provider": {
+        "@type": "LocalBusiness",
+        "@id": "https://www.nolandearthworks.com/#business",
+        "name": "Noland Earthworks, LLC"
+      },
+      "areaServed": {
+        "@type": "State",
+        "name": "Tennessee"
+      },
+      "url": `https://www.nolandearthworks.com/services/${slug}`
+    };
+    const faqSchema = {
+      "@context": "https://schema.org",
+      "@type": "FAQPage",
+      "mainEntity": faqs.map(faq => ({
+        "@type": "Question",
+        "name": faq.question,
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": faq.answer
+        }
+      }))
+    };
+    el.textContent = JSON.stringify([serviceSchema, faqSchema]);
+    return () => {
+      const existing = document.getElementById(id);
+      if (existing) existing.remove();
+    };
+  }, [slug, title, tagline, faqs]);
 
   const headerVis = useVisible(0.1);
   const faqVis = useVisible(0.1);
@@ -467,7 +511,7 @@ export default function ServicePageLayout(props: ServicePageProps) {
               Call 615-406-4819
             </a>
             <a
-              href="/quote"
+              href={`/quote?service=${slug}`}
               style={{
                 fontFamily: "'Oswald', sans-serif",
                 fontWeight: 600,

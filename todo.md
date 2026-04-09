@@ -192,3 +192,12 @@
 - [x] Add author byline to all 4 blog posts ("By the Noland Earthworks Team")
 - [x] Replace "100% Customer Focused" stat with "4.9★ Google Rating" in StatsBar
 - [x] Create /gallery before/after gallery page with job photos
+
+## SEO Improvements — April 2026
+
+- [x] Add dedicated Right-of-Way Clearing service page at /services/right-of-way-clearing
+- [x] Add Service JSON-LD schema (FAQ + Service type) to all 4 existing service pages via ServicePageLayout
+- [x] Create sitemap.xml in client/public with all 50+ URLs
+- [x] Create robots.txt in client/public pointing to sitemap
+- [x] Add 5th blog article: "Site Preparation 101: What to Do Before You Build in Tennessee"
+- [x] Add ?service= URL param pre-fill CTAs on each service page so quote form auto-selects the service
