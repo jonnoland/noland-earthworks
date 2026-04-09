@@ -62,7 +62,10 @@ const data: ServicePageProps = {
 };
 
 export default function VegetationManagementPage() {
-  usePageTitle("Vegetation Management Services — Middle & West Tennessee");
+  usePageTitle(
+    "Vegetation Management Services — Middle & West Tennessee | Noland Earthworks",
+    "Professional vegetation management and invasive species control across Middle & West Tennessee. Keep your property safe, accessible, and well-maintained. Free estimates."
+  );
   return (
     <>
       <Navbar />

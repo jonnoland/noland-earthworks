@@ -32,6 +32,14 @@ export const BLOG_POSTS = [
     readTime: "5 min read",
     category: "Property Tips",
   },
+  {
+    slug: "best-time-to-clear-land-tennessee",
+    title: "Best Time of Year to Clear Land in Middle Tennessee",
+    meta: "Wondering when to clear land in Tennessee? Learn the best season for forestry mulching and land clearing in Middle Tennessee to save money and get faster results.",
+    date: "April 2026",
+    readTime: "5 min read",
+    category: "Seasonal Tips",
+  },
 ];
 
 export default function Blog() {

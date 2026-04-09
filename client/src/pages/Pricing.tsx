@@ -7,6 +7,7 @@ import React, { useState } from "react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import CostCalculator from "@/components/CostCalculator";
+import { usePageTitle } from "@/hooks/usePageTitle";
 import { ChevronDown, ChevronUp, Phone, CheckCircle2, AlertCircle, TreePine, Layers, Ruler, Mountain, Truck, Flame, MapPin } from "lucide-react";
 
 /* ─── Data ─────────────────────────────────────────────────────────────── */
@@ -467,6 +468,10 @@ function CostFactorCard({ row }: { row: typeof costFactors[number] }) {
 /* ─── Page ───────────────────────────────────────────────────────────── */
 
 export default function PricingPage() {
+  usePageTitle(
+    "Land Clearing & Forestry Mulching Pricing Guide — Middle & West Tennessee | Noland Earthworks",
+    "Transparent pricing for land clearing and forestry mulching in Tennessee. Typical costs range $1,000–$4,500/acre. Use our free estimate calculator to get a rough number in 30 seconds."
+  );
   return (
     <div className="min-h-screen" style={{ backgroundColor: "#121212", color: "#F0EDE6" }}>
       <Navbar />

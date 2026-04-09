@@ -27,6 +27,7 @@ import BlogPage from "./pages/Blog";
 import CostOfLandClearing from "./pages/blog/CostOfLandClearing";
 import ForestryMulchingVsBulldozing from "./pages/blog/ForestryMulchingVsBulldozing";
 import SignsVegetationManagement from "./pages/blog/SignsVegetationManagement";
+import BestTimeToClearLand from "./pages/blog/BestTimeToClearLand";
 import {
   DavidsonCountyPage,
   WilliamsonCountyPage,
@@ -81,6 +82,7 @@ function Router() {
       <Route path="/blog/cost-of-land-clearing-tennessee" component={CostOfLandClearing} />
       <Route path="/blog/forestry-mulching-vs-bulldozing" component={ForestryMulchingVsBulldozing} />
       <Route path="/blog/signs-you-need-vegetation-management" component={SignsVegetationManagement} />
+      <Route path="/blog/best-time-to-clear-land-tennessee" component={BestTimeToClearLand} />
 
       {/* Service pages */}
       <Route path="/services/land-clearing" component={LandClearingPage} />

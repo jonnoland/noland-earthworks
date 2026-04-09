@@ -68,7 +68,10 @@ function buildPrefillNote(density: string, terrain: string, access: string): str
 }
 
 export default function QuotePage() {
-  usePageTitle("Request a Free Quote — Land Clearing & Forestry Mulching");
+  usePageTitle(
+    "Request a Free Quote — Land Clearing & Forestry Mulching | Noland Earthworks",
+    "Get a free, no-obligation quote for land clearing, forestry mulching, or vegetation management anywhere in Middle & West Tennessee. 24-hour response guaranteed."
+  );
   const [submitted, setSubmitted] = useState(false);
 
   // Read calculator pre-fill params from URL on first render

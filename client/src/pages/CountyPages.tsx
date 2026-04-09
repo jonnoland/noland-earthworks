@@ -39,6 +39,13 @@ const countyData: Record<string, CountyPageProps> = {
     state: "Tennessee",
     slug: "davidson-county",
     heroImage: HERO,
+    nearbyCounties: [
+      { name: "Williamson County", slug: "williamson-county" },
+      { name: "Wilson County", slug: "wilson-county" },
+      { name: "Sumner County", slug: "sumner-county" },
+      { name: "Robertson County", slug: "robertson-county" },
+      { name: "Cheatham County", slug: "cheatham-county" },
+    ],
     intro: [
       "Noland Earthworks provides professional land clearing and forestry mulching services throughout Davidson County, Tennessee. Whether you own a residential lot in the Nashville suburbs, a rural acreage in the county's outer areas, or a commercial development site, our veteran-owned team delivers efficient, reliable land services at competitive rates.",
       "Davidson County's rapid growth has created strong demand for land clearing and site preparation services. We work with homeowners, developers, farmers, and property managers to clear overgrown lots, prepare building sites, manage vegetation along fence lines and waterways, and restore neglected land to productive use.",
@@ -62,6 +69,13 @@ const countyData: Record<string, CountyPageProps> = {
     state: "Tennessee",
     slug: "williamson-county",
     heroImage: LAND_HERO,
+    nearbyCounties: [
+      { name: "Davidson County", slug: "davidson-county" },
+      { name: "Maury County", slug: "maury-county" },
+      { name: "Rutherford County", slug: "rutherford-county" },
+      { name: "Cheatham County", slug: "cheatham-county" },
+      { name: "Dickson County", slug: "dickson-county" },
+    ],
     intro: [
       "Noland Earthworks serves Williamson County, Tennessee with professional forestry mulching, land clearing, and vegetation management services. As one of the fastest-growing counties in the nation, Williamson County sees constant demand for land preparation — from new home construction in Franklin and Brentwood to rural acreage clearing in Fairview and College Grove.",
       "Our veteran-owned team understands the unique landscape of Williamson County — rolling hills, cedar glades, and dense hardwood forests that require experienced operators and the right equipment. We use modern forestry mulching machines that clear efficiently while protecting the topsoil and natural contours of your land.",
@@ -85,6 +99,13 @@ const countyData: Record<string, CountyPageProps> = {
     state: "Tennessee",
     slug: "rutherford-county",
     heroImage: HERO,
+    nearbyCounties: [
+      { name: "Davidson County", slug: "davidson-county" },
+      { name: "Williamson County", slug: "williamson-county" },
+      { name: "Wilson County", slug: "wilson-county" },
+      { name: "Cannon County", slug: "cannon-county" },
+      { name: "Bedford County", slug: "bedford-county" },
+    ],
     intro: [
       "Rutherford County's dynamic mix of booming suburban areas like Murfreesboro and expansive rural farmland requires a versatile approach to land management. Noland Earthworks delivers top-tier forestry mulching and land clearing services tailored to the specific needs of Rutherford County property owners.",
       "Our advanced mulching equipment efficiently processes heavy brush and trees, leaving a smooth, walkable surface that is immediately ready for use. This environmentally conscious method eliminates the need for burning and hauling, making it the perfect solution for both residential lot preparation and large-scale agricultural clearing.",
@@ -123,6 +144,13 @@ const countyData: Record<string, CountyPageProps> = {
     state: "Tennessee",
     slug: "wilson-county",
     heroImage: LAND_HERO,
+    nearbyCounties: [
+      { name: "Davidson County", slug: "davidson-county" },
+      { name: "Rutherford County", slug: "rutherford-county" },
+      { name: "Sumner County", slug: "sumner-county" },
+      { name: "Smith County", slug: "smith-county" },
+      { name: "DeKalb County", slug: "dekalb-county" },
+    ],
     intro: [
       "Wilson County is experiencing rapid growth, and whether you are developing a new residential lot in Mt. Juliet or managing agricultural land in Lebanon, Noland Earthworks provides the professional land clearing services you need.",
       "Our forestry mulching services are specifically tailored to the diverse terrain of Wilson County, offering an eco-friendly alternative to traditional bulldozing and burning. By turning brush, undergrowth, and small trees directly into nutrient-rich mulch, we help prevent soil erosion — a critical factor for properties near the Cumberland River or local creeks.",
@@ -161,6 +189,13 @@ const countyData: Record<string, CountyPageProps> = {
     state: "Tennessee",
     slug: "sumner-county",
     heroImage: HERO,
+    nearbyCounties: [
+      { name: "Davidson County", slug: "davidson-county" },
+      { name: "Wilson County", slug: "wilson-county" },
+      { name: "Robertson County", slug: "robertson-county" },
+      { name: "Trousdale County", slug: "trousdale-county" },
+      { name: "Smith County", slug: "smith-county" },
+    ],
     intro: [
       "Noland Earthworks provides land clearing and forestry mulching services throughout Sumner County, Tennessee. From Hendersonville's lakeside properties to the rural farmland around Gallatin and Portland, we help property owners clear and manage their land with professional-grade equipment and veteran work ethic.",
       "Sumner County's proximity to Nashville has driven strong residential growth, creating demand for lot clearing, site preparation, and vegetation management. Our team handles everything from small residential lots to large rural acreage, using forestry mulching to clear efficiently with minimal environmental impact.",
@@ -184,6 +219,12 @@ const countyData: Record<string, CountyPageProps> = {
     state: "Tennessee",
     slug: "robertson-county",
     heroImage: LAND_HERO,
+    nearbyCounties: [
+      { name: "Davidson County", slug: "davidson-county" },
+      { name: "Sumner County", slug: "sumner-county" },
+      { name: "Cheatham County", slug: "cheatham-county" },
+      { name: "Montgomery County", slug: "montgomery-county" },
+    ],
     intro: [
       "Noland Earthworks serves Robertson County, Tennessee with professional land clearing, forestry mulching, and vegetation management services. Springfield, White House, and the surrounding rural communities rely on our veteran-owned team for efficient, reliable land services.",
       "Robertson County's agricultural heritage means many of our clients are farmers reclaiming overgrown pasture, clearing fence lines, or managing invasive species on their property. Our forestry mulching equipment handles dense brush and small trees in a single pass, returning land to productive use quickly and cost-effectively.",
@@ -207,6 +248,12 @@ const countyData: Record<string, CountyPageProps> = {
     state: "Tennessee",
     slug: "cheatham-county",
     heroImage: HERO,
+    nearbyCounties: [
+      { name: "Davidson County", slug: "davidson-county" },
+      { name: "Dickson County", slug: "dickson-county" },
+      { name: "Robertson County", slug: "robertson-county" },
+      { name: "Williamson County", slug: "williamson-county" },
+    ],
     intro: [
       "Noland Earthworks provides land clearing and forestry mulching services throughout Cheatham County, Tennessee. Ashland City and the surrounding communities along the Cumberland River corridor benefit from our professional land services, delivered by a veteran-owned team with the work ethic and integrity you deserve.",
       "Cheatham County's wooded terrain and river bottomland make forestry mulching an ideal solution for many land clearing projects. Our equipment handles the dense hardwood and cedar growth common in the area, clearing efficiently while preserving the natural contours of the land.",
@@ -230,6 +277,13 @@ const countyData: Record<string, CountyPageProps> = {
     state: "Tennessee",
     slug: "dickson-county",
     heroImage: LAND_HERO,
+    nearbyCounties: [
+      { name: "Cheatham County", slug: "cheatham-county" },
+      { name: "Montgomery County", slug: "montgomery-county" },
+      { name: "Williamson County", slug: "williamson-county" },
+      { name: "Hickman County", slug: "hickman-county" },
+      { name: "Houston County", slug: "houston-county" },
+    ],
     intro: [
       "Located right in our backyard, Dickson County is a core service area for Noland Earthworks. We have extensive experience navigating the local terrain, from the dense forests near Montgomery Bell State Park to the developing residential areas around Dickson and White Bluff.",
       "Our forestry mulching services provide a fast, single-step process to clear underbrush, small trees, and invasive vegetation, turning them into a beneficial mulch layer. This method is not only cost-effective but also preserves the root systems of the mature trees you want to keep.",
@@ -268,6 +322,13 @@ const countyData: Record<string, CountyPageProps> = {
     state: "Tennessee",
     slug: "maury-county",
     heroImage: HERO,
+    nearbyCounties: [
+      { name: "Williamson County", slug: "williamson-county" },
+      { name: "Hickman County", slug: "hickman-county" },
+      { name: "Lewis County", slug: "lewis-county" },
+      { name: "Lawrence County", slug: "lawrence-county" },
+      { name: "Giles County", slug: "giles-county" },
+    ],
     intro: [
       "As Columbia and the surrounding areas of Maury County continue to expand, the demand for responsible land development has never been higher. Noland Earthworks is proud to offer premier forestry mulching and land clearing services throughout Maury County.",
       "Our approach is designed to maximize the usable space on your property while minimizing environmental impact. Forestry mulching is ideal for clearing hunting lanes, creating riding trails, or preparing a site for construction without the need for costly hauling or burning. We understand the unique soil and vegetation characteristics of the region, allowing us to provide targeted property maintenance and brush clearing solutions.",
@@ -375,6 +436,12 @@ const countyData: Record<string, CountyPageProps> = {
     state: "Tennessee",
     slug: "montgomery-county",
     heroImage: HERO,
+    nearbyCounties: [
+      { name: "Robertson County", slug: "robertson-county" },
+      { name: "Dickson County", slug: "dickson-county" },
+      { name: "Cheatham County", slug: "cheatham-county" },
+      { name: "Houston County", slug: "houston-county" },
+    ],
     intro: [
       "From Clarksville to the rural outskirts, Montgomery County property owners trust Noland Earthworks for efficient, high-quality land clearing and forestry mulching. The rolling hills and dense woodlands of Montgomery County require specialized equipment and expertise to clear safely without damaging the underlying topsoil.",
       "Our state-of-the-art forestry mulchers can quickly eliminate invasive species, clear overgrown brush, and prepare lots for new construction or agricultural use. Unlike traditional clearing methods that leave unsightly burn piles and disturbed earth, our process leaves behind a protective layer of mulch that suppresses weeds and retains soil moisture.",
@@ -1056,7 +1123,7 @@ const countyData: Record<string, CountyPageProps> = {
 // Factory function to create county page components
 function createCountyPage(slug: string, pageTitle: string, metaDesc?: string) {
   return function CountyPage() {
-    usePageTitle(pageTitle, metaDesc);
+    usePageTitle(pageTitle, metaDesc, `/service-areas/${slug}`);
     const data = countyData[slug];
     return (
       <>

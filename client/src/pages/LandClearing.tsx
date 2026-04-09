@@ -63,7 +63,10 @@ const data: ServicePageProps = {
 };
 
 export default function LandClearingPage() {
-  usePageTitle("Land Clearing Services — Middle & West Tennessee");
+  usePageTitle(
+    "Land Clearing Services — Middle & West Tennessee | Noland Earthworks",
+    "Expert land clearing services across Middle & West Tennessee. We remove trees, stumps, brush, and debris to prepare your property for building, farming, or recreation. Free estimates."
+  );
   return (
     <>
       <Navbar />

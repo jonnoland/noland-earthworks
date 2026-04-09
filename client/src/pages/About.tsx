@@ -69,7 +69,10 @@ const values = [
 ];
 
 export default function AboutPage() {
-  usePageTitle("About Us — Veteran-Owned Land Clearing Company");
+  usePageTitle(
+    "About Us — Veteran-Owned Land Clearing Company | Noland Earthworks",
+    "Learn about Noland Earthworks — a veteran-owned land clearing and forestry mulching company serving 35 counties across Middle & West Tennessee. Licensed, insured, and family-operated."
+  );
   const [submitted, setSubmitted] = useState(false);
   const [form, setForm] = useState({ name: "", email: "", phone: "", subject: "", message: "" });
 

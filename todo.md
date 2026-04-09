@@ -177,3 +177,11 @@
 - [x] Add Google review link to website footer (visible on every page)
 - [x] Add unique 150-char meta descriptions to all 12 county pages and 3 blog pages
 - [x] Add stale lead indicator (amber badge) to /ops/leads for leads not updated in 7+ days
+- [x] Add FAQ JSON-LD schema to all county pages (via CountyPageLayout)
+- [x] Add Article JSON-LD schema to all 3 blog post pages (via BlogPostLayout)
+- [x] Add unique meta descriptions to core pages: Homepage, Pricing, Services index, About, Quote
+- [x] Add individual meta descriptions to each of the 4 service detail pages
+- [x] Add "Nearby Service Areas" internal linking section to all county pages
+- [x] Add canonical <link> tags to all pages via usePageTitle hook
+- [x] Improve Core Web Vitals: hero image preload, Open Graph tags, Twitter Card tags
+- [x] Write and publish 4th blog article: "Best Time of Year to Clear Land in Middle Tennessee"

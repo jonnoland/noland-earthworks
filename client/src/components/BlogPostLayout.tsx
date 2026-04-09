@@ -2,6 +2,7 @@
  * Shared layout for individual blog post pages.
  * Renders hero, article body, and a CTA footer.
  */
+import { useEffect } from "react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { usePageTitle } from "@/hooks/usePageTitle";
@@ -11,9 +12,11 @@ export interface BlogPostProps {
   title: string;
   pageTitle: string;
   metaDescription?: string;
-  date: string;
+  date: string;           // e.g. "March 2025"
+  dateISO?: string;       // e.g. "2025-03-01" for schema
   readTime: string;
   category: string;
+  slug: string;           // e.g. "cost-of-land-clearing-tennessee"
   children: React.ReactNode;
 }
 
@@ -22,11 +25,55 @@ export default function BlogPostLayout({
   pageTitle,
   metaDescription,
   date,
+  dateISO,
   readTime,
   category,
+  slug,
   children,
 }: BlogPostProps) {
-  usePageTitle(pageTitle, metaDescription);
+  usePageTitle(pageTitle, metaDescription, `/blog/${slug}`);
+
+  // Inject Article JSON-LD schema for Google rich results
+  useEffect(() => {
+    const id = `article-schema-${slug}`;
+    let el = document.getElementById(id) as HTMLScriptElement | null;
+    if (!el) {
+      el = document.createElement("script");
+      el.id = id;
+      el.type = "application/ld+json";
+      document.head.appendChild(el);
+    }
+    el.textContent = JSON.stringify({
+      "@context": "https://schema.org",
+      "@type": "Article",
+      headline: title,
+      description: metaDescription ?? "",
+      datePublished: dateISO ?? "",
+      dateModified: dateISO ?? "",
+      author: {
+        "@type": "Organization",
+        name: "Noland Earthworks",
+        url: "https://www.nolandearthworks.com",
+      },
+      publisher: {
+        "@type": "Organization",
+        name: "Noland Earthworks",
+        url: "https://www.nolandearthworks.com",
+        logo: {
+          "@type": "ImageObject",
+          url: "https://www.nolandearthworks.com/logo.png",
+        },
+      },
+      mainEntityOfPage: {
+        "@type": "WebPage",
+        "@id": `https://www.nolandearthworks.com/blog/${slug}`,
+      },
+    });
+    return () => {
+      const existing = document.getElementById(id);
+      if (existing) existing.remove();
+    };
+  }, [slug, title, metaDescription, dateISO]);
 
   return (
     <div style={{ backgroundColor: "#121212", color: "#F0EDE6", minHeight: "100vh" }}>

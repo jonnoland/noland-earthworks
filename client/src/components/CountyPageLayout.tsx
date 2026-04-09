@@ -14,6 +14,7 @@ export interface CountyPageProps {
   intro: string[];          // 2-3 paragraphs
   nearbyAreas: string[];    // cities/towns in the county
   faqs: { question: string; answer: string }[];
+  nearbyCounties?: { name: string; slug: string }[]; // adjacent counties for internal linking
 }
 
 function useVisible(threshold = 0.15) {
@@ -125,9 +126,38 @@ export default function CountyPageLayout({
   intro,
   nearbyAreas,
   faqs,
+  nearbyCounties,
 }: CountyPageProps) {
   const quoteUrl = buildQuoteUrl(county, nearbyAreas, state);
   const servicesRef = useVisible();
+
+  // Inject FAQ JSON-LD schema for Google rich results
+  useEffect(() => {
+    const id = `faq-schema-${slug}`;
+    let el = document.getElementById(id) as HTMLScriptElement | null;
+    if (!el) {
+      el = document.createElement("script");
+      el.id = id;
+      el.type = "application/ld+json";
+      document.head.appendChild(el);
+    }
+    el.textContent = JSON.stringify({
+      "@context": "https://schema.org",
+      "@type": "FAQPage",
+      mainEntity: faqs.map(faq => ({
+        "@type": "Question",
+        name: faq.question,
+        acceptedAnswer: {
+          "@type": "Answer",
+          text: faq.answer,
+        },
+      })),
+    });
+    return () => {
+      const existing = document.getElementById(id);
+      if (existing) existing.remove();
+    };
+  }, [slug, faqs]);
   const introRef = useVisible();
   const areasRef = useVisible();
 
@@ -527,6 +557,54 @@ export default function CountyPageLayout({
           <FaqAccordion faqs={faqs} />
         </div>
       </section>
+
+      {/* Nearby Service Areas — internal linking for SEO */}
+      {nearbyCounties && nearbyCounties.length > 0 && (
+        <section className="container py-10 md:py-12">
+          <p
+            style={{
+              fontFamily: "'Lato', sans-serif",
+              fontWeight: 700,
+              fontSize: "0.75rem",
+              letterSpacing: "0.1em",
+              textTransform: "uppercase",
+              color: "rgba(240,237,230,0.45)",
+              marginBottom: "0.75rem",
+            }}
+          >
+            Nearby Service Areas
+          </p>
+          <div className="flex flex-wrap gap-3">
+            {nearbyCounties.map((c) => (
+              <a
+                key={c.slug}
+                href={`/service-areas/${c.slug}`}
+                style={{
+                  backgroundColor: "transparent",
+                  border: "1px solid rgba(224,123,42,0.25)",
+                  color: "rgba(240,237,230,0.7)",
+                  fontFamily: "'Lato', sans-serif",
+                  fontSize: "0.85rem",
+                  fontWeight: 400,
+                  padding: "0.35rem 0.9rem",
+                  textDecoration: "none",
+                  transition: "border-color 0.2s, color 0.2s",
+                }}
+                onMouseEnter={(e) => {
+                  (e.currentTarget as HTMLAnchorElement).style.borderColor = "#E07B2A";
+                  (e.currentTarget as HTMLAnchorElement).style.color = "#E07B2A";
+                }}
+                onMouseLeave={(e) => {
+                  (e.currentTarget as HTMLAnchorElement).style.borderColor = "rgba(224,123,42,0.25)";
+                  (e.currentTarget as HTMLAnchorElement).style.color = "rgba(240,237,230,0.7)";
+                }}
+              >
+                {c.name}
+              </a>
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* Bottom CTA */}
       <section
