@@ -5,6 +5,7 @@
 import { useEffect } from "react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
+import MobileCTABar from "@/components/MobileCTABar";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { ArrowLeft, Calendar } from "lucide-react";
 
@@ -147,10 +148,35 @@ export default function BlogPostLayout({
               letterSpacing: "0.02em",
               textTransform: "uppercase",
               color: "#F0EDE6",
+              marginBottom: "1.25rem",
             }}
           >
             {title}
           </h1>
+
+          {/* Author byline */}
+          <div className="flex items-center gap-3" style={{ marginTop: "0.5rem" }}>
+            <div
+              className="flex items-center justify-center w-9 h-9 flex-shrink-0"
+              style={{
+                backgroundColor: "#E07B2A",
+                fontFamily: "'Oswald', sans-serif",
+                fontWeight: 700,
+                fontSize: "0.9rem",
+                color: "#fff",
+              }}
+            >
+              N
+            </div>
+            <div>
+              <div style={{ fontFamily: "'Oswald', sans-serif", fontWeight: 600, fontSize: "0.85rem", letterSpacing: "0.04em", color: "#F0EDE6" }}>
+                Noland Earthworks Team
+              </div>
+              <div style={{ fontFamily: "'Lato', sans-serif", fontSize: "0.72rem", color: "rgba(240,237,230,0.45)", letterSpacing: "0.05em" }}>
+                Veteran-owned land clearing &amp; forestry mulching specialists, Middle Tennessee
+              </div>
+            </div>
+          </div>
         </div>
       </section>
 
@@ -201,6 +227,7 @@ export default function BlogPostLayout({
         </div>
       </section>
 
+      <MobileCTABar />
       <Footer />
     </div>
   );

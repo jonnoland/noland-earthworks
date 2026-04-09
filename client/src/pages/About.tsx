@@ -6,6 +6,7 @@ import { useState } from "react";
 import { ArrowLeft, Shield, Star, Wrench, Clock, Send, CheckCircle, Users, MapPin, Loader2 } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
+import MobileCTABar from "@/components/MobileCTABar";
 import { trpc } from "@/lib/trpc";
 import { usePageTitle } from "@/hooks/usePageTitle";
 
@@ -722,6 +723,7 @@ export default function AboutPage() {
         </div>
       </section>
 
+      <MobileCTABar />
       <Footer />
     </div>
   );

@@ -145,6 +145,13 @@ export default function Navbar() {
               About Us
             </a>
             <a
+              href="/gallery"
+              className="nav-link"
+              style={{ textDecoration: "none" }}
+            >
+              Gallery
+            </a>
+            <a
               href="/blog"
               className="nav-link"
               style={{ textDecoration: "none" }}
@@ -257,6 +264,13 @@ export default function Navbar() {
               style={{ borderBottom: "1px solid rgba(255,255,255,0.06)", textDecoration: "none" }}
             >
               About Us
+            </a>
+            <a
+              href="/gallery"
+              className="text-left py-3 px-2 nav-link block"
+              style={{ borderBottom: "1px solid rgba(255,255,255,0.06)", textDecoration: "none" }}
+            >
+              Gallery
             </a>
             <a
               href="/blog"

@@ -5,6 +5,7 @@
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import CountyPageLayout, { CountyPageProps } from "@/components/CountyPageLayout";
+import MobileCTABar from "@/components/MobileCTABar";
 import { usePageTitle } from "@/hooks/usePageTitle";
 
 const HERO = "https://d2xsxph8kpxj0f.cloudfront.net/310519663484957999/PymCzDCnSJzPjdkfwA7Jn6/hero-forestry-golden_b098141c.webp";
@@ -148,8 +149,8 @@ const countyData: Record<string, CountyPageProps> = {
       { name: "Davidson County", slug: "davidson-county" },
       { name: "Rutherford County", slug: "rutherford-county" },
       { name: "Sumner County", slug: "sumner-county" },
-      { name: "Smith County", slug: "smith-county" },
-      { name: "DeKalb County", slug: "dekalb-county" },
+      { name: "Trousdale County", slug: "trousdale-county" },
+      { name: "Macon County", slug: "macon-county" },
     ],
     intro: [
       "Wilson County is experiencing rapid growth, and whether you are developing a new residential lot in Mt. Juliet or managing agricultural land in Lebanon, Noland Earthworks provides the professional land clearing services you need.",
@@ -194,7 +195,7 @@ const countyData: Record<string, CountyPageProps> = {
       { name: "Wilson County", slug: "wilson-county" },
       { name: "Robertson County", slug: "robertson-county" },
       { name: "Trousdale County", slug: "trousdale-county" },
-      { name: "Smith County", slug: "smith-county" },
+      { name: "Macon County", slug: "macon-county" },
     ],
     intro: [
       "Noland Earthworks provides land clearing and forestry mulching services throughout Sumner County, Tennessee. From Hendersonville's lakeside properties to the rural farmland around Gallatin and Portland, we help property owners clear and manage their land with professional-grade equipment and veteran work ethic.",
@@ -1129,6 +1130,7 @@ function createCountyPage(slug: string, pageTitle: string, metaDesc?: string) {
       <>
         <Navbar />
         <CountyPageLayout {...data} />
+        <MobileCTABar />
         <Footer />
       </>
     );

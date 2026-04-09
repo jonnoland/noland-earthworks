@@ -6,6 +6,7 @@ import { useState } from "react";
 import { Phone, Mail, MapPin, Send, ArrowLeft, CheckCircle, Loader2 } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
+import MobileCTABar from "@/components/MobileCTABar";
 import { trpc } from "@/lib/trpc";
 import { usePageTitle } from "@/hooks/usePageTitle";
 
@@ -809,6 +810,7 @@ export default function QuotePage() {
         </div>
       </section>
 
+      <MobileCTABar />
       <Footer />
     </div>
   );

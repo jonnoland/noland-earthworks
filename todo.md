@@ -185,3 +185,10 @@
 - [x] Add canonical <link> tags to all pages via usePageTitle hook
 - [x] Improve Core Web Vitals: hero image preload, Open Graph tags, Twitter Card tags
 - [x] Write and publish 4th blog article: "Best Time of Year to Clear Land in Middle Tennessee"
+- [x] Add "From Our Blog" section to homepage (3-card row above footer)
+- [x] Fix nearbyCounties data: remove Smith County and DeKalb County (not in service area)
+- [x] Add sticky mobile CTA bar (Call + Get Quote) visible on all public pages
+- [x] Add customer names and locations to testimonials (e.g. "— John D., Lebanon TN")
+- [x] Add author byline to all 4 blog posts ("By the Noland Earthworks Team")
+- [x] Replace "100% Customer Focused" stat with "4.9★ Google Rating" in StatsBar
+- [x] Create /gallery before/after gallery page with job photos

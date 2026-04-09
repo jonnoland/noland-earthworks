@@ -5,9 +5,9 @@
 import { useEffect, useRef, useState } from "react";
 
 const stats = [
-  { value: 100, suffix: "%", label: "Customer Focused" },
-  { value: 35, suffix: "", label: "Counties Served" },
-  { value: 24, suffix: "hr", label: "Quote Turnaround" },
+  { value: 49, suffix: "", label: "Google Rating", prefix: "", display: "4.9★" },
+  { value: 35, suffix: "", label: "Counties Served", prefix: "", display: null },
+  { value: 24, suffix: "hr", label: "Quote Turnaround", prefix: "", display: null },
 ];
 
 function useCountUp(target: number, duration = 1500, active: boolean) {
@@ -30,7 +30,7 @@ function useCountUp(target: number, duration = 1500, active: boolean) {
   return count;
 }
 
-function StatItem({ value, suffix, label, active }: { value: number; suffix: string; label: string; active: boolean }) {
+function StatItem({ value, suffix, label, active, display }: { value: number; suffix: string; label: string; active: boolean; display?: string | null }) {
   const count = useCountUp(value, 1200, active);
   return (
     <div className="flex flex-col items-center text-center px-6 py-8">
@@ -44,7 +44,7 @@ function StatItem({ value, suffix, label, active }: { value: number; suffix: str
           letterSpacing: "0.02em",
         }}
       >
-        {count}{suffix}
+        {display ?? `${count}${suffix}`}
       </div>
       <div
         style={{

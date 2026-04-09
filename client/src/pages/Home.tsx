@@ -13,6 +13,8 @@ import TestimonialsSection from "@/components/TestimonialsSection";
 import FAQSection from "@/components/FAQSection";
 import ServiceAreasSection from "@/components/ServiceAreasSection";
 import CountiesSection from "@/components/CountiesSection";
+import BlogPreviewSection from "@/components/BlogPreviewSection";
+import MobileCTABar from "@/components/MobileCTABar";
 import Footer from "@/components/Footer";
 import { usePageTitle } from "@/hooks/usePageTitle";
 
@@ -37,6 +39,8 @@ export default function Home() {
       <FAQSection />
       <ServiceAreasSection />
       <CountiesSection />
+      <BlogPreviewSection />
+      <MobileCTABar />
       <Footer />
     </div>
   );

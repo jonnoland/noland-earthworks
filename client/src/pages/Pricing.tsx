@@ -6,6 +6,7 @@
 import React, { useState } from "react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
+import MobileCTABar from "@/components/MobileCTABar";
 import CostCalculator from "@/components/CostCalculator";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { ChevronDown, ChevronUp, Phone, CheckCircle2, AlertCircle, TreePine, Layers, Ruler, Mountain, Truck, Flame, MapPin } from "lucide-react";
@@ -1034,6 +1035,7 @@ export default function PricingPage() {
         </div>
       </section>
 
+      <MobileCTABar />
       <Footer />
     </div>
   );

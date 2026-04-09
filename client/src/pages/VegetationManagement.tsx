@@ -1,5 +1,6 @@
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
+import MobileCTABar from "@/components/MobileCTABar";
 import ServicePageLayout, { ServicePageProps } from "@/components/ServicePageLayout";
 import { usePageTitle } from "@/hooks/usePageTitle";
 
@@ -70,6 +71,7 @@ export default function VegetationManagementPage() {
     <>
       <Navbar />
       <ServicePageLayout {...data} />
+      <MobileCTABar />
       <Footer />
     </>
   );

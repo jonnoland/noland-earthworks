@@ -10,7 +10,7 @@ const testimonials = [
     quote:
       "Noland Earthworks cleared our overgrown land in a single day. Professional, efficient, and they left the property spotless. Highly recommend their forestry mulching service.",
     name: "James M.",
-    role: "Property Owner",
+    role: "Lebanon, TN",
     initial: "J",
   },
   {
@@ -18,7 +18,7 @@ const testimonials = [
     quote:
       "Working with a veteran-owned company that takes pride in their work makes all the difference. They completed our land preparation in one day, perfectly and within budget.",
     name: "Sarah K.",
-    role: "Real Estate Developer",
+    role: "Mt. Juliet, TN",
     initial: "S",
   },
   {
@@ -26,7 +26,7 @@ const testimonials = [
     quote:
       "Great service and fair pricing. They cleared my property and removed all the debris. The team was professional and courteous throughout the entire project.",
     name: "Tom R.",
-    role: "Homeowner",
+    role: "Dickson, TN",
     initial: "T",
   },
   {
@@ -34,7 +34,7 @@ const testimonials = [
     quote:
       "Excellent work on our commercial property. The team completed the clearing in a single day, was punctual, professional, and delivered exactly what we needed. Will definitely hire again!",
     name: "Michael D.",
-    role: "Commercial Property Manager",
+    role: "Clarksville, TN",
     initial: "M",
   },
   {
@@ -42,7 +42,7 @@ const testimonials = [
     quote:
       "Outstanding service! The crew cleared our property, was respectful, and completed the work ahead of schedule. Highly satisfied with the results.",
     name: "Jennifer L.",
-    role: "Homeowner",
+    role: "Columbia, TN",
     initial: "J",
   },
 ];

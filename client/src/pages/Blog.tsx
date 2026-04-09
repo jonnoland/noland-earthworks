@@ -4,6 +4,7 @@
  */
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
+import MobileCTABar from "@/components/MobileCTABar";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { ArrowRight, Calendar } from "lucide-react";
 
@@ -255,6 +256,7 @@ export default function Blog() {
         </div>
       </section>
 
+      <MobileCTABar />
       <Footer />
     </div>
   );

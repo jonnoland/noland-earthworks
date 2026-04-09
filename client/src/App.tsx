@@ -28,6 +28,7 @@ import CostOfLandClearing from "./pages/blog/CostOfLandClearing";
 import ForestryMulchingVsBulldozing from "./pages/blog/ForestryMulchingVsBulldozing";
 import SignsVegetationManagement from "./pages/blog/SignsVegetationManagement";
 import BestTimeToClearLand from "./pages/blog/BestTimeToClearLand";
+import GalleryPage from "./pages/Gallery";
 import {
   DavidsonCountyPage,
   WilliamsonCountyPage,
@@ -76,6 +77,9 @@ function Router() {
       <Route path="/pricing" component={PricingPage} />
       <Route path="/terms-of-service" component={TermsOfServicePage} />
       <Route path="/privacy-policy" component={PrivacyPolicyPage} />
+
+      {/* Gallery */}
+      <Route path="/gallery" component={GalleryPage} />
 
       {/* Blog / Resources */}
       <Route path="/blog" component={BlogPage} />
