@@ -132,9 +132,10 @@ async function renderPage(targetUrl: string): Promise<string> {
       "googletagmanager.com",
       "maps.googleapis.com",
       "manus-analytics.com",
-      "cloudfront.net",
       "fonts.googleapis.com",
       "fonts.gstatic.com",
+      // NOTE: cloudfront.net is intentionally NOT blocked — the app JS bundle
+      // and static assets are served from CloudFront in production.
     ];
     page.on("request", (req) => {
       const type = req.resourceType();
@@ -153,7 +154,7 @@ async function renderPage(targetUrl: string): Promise<string> {
     // Navigate and wait for the page to load
     await page.goto(targetUrl, {
       waitUntil: "load",
-      timeout: 30000,
+      timeout: 45000,
     });
 
     // Wait for React to mount — look for the root div to have children
