@@ -236,3 +236,6 @@
 - [x] Fix canonical tag missing from prerendered HTML (inject in middleware as fallback)
 - [x] Add canonicalPath to usePageTitle in all 5 service pages
 - [x] Verify prerendered HTML contains title, canonical, h1, and page content for key pages
+
+## LocalBusiness Schema Update — April 2026
+- [x] Replace LocalBusiness JSON-LD schema in index.html with updated data (name, address, telephone, description, geo, serviceArea, openingHours)
