@@ -239,3 +239,7 @@
 
 ## LocalBusiness Schema Update — April 2026
 - [x] Replace LocalBusiness JSON-LD schema in index.html with updated data (name, address, telephone, description, geo, serviceArea, openingHours)
+
+## NAP Block (Visible Address) — April 2026
+- [x] Add full NAP block (name, street address, city/state/zip, phone) to site footer as plain crawlable HTML text
+- [x] Add full NAP block plus service area note to the Contact/About page

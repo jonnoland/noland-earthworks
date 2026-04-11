@@ -506,6 +506,28 @@ export default function AboutPage() {
                 ))}
               </div>
 
+              {/* NAP block — plain text for search engine crawlers */}
+              <address
+                style={{
+                  fontFamily: "'Lato', sans-serif",
+                  fontStyle: "normal",
+                  fontSize: "0.875rem",
+                  lineHeight: 1.8,
+                  color: "rgba(240,237,230,0.55)",
+                  marginBottom: "2rem",
+                  paddingTop: "1.5rem",
+                  borderTop: "1px solid rgba(255,255,255,0.06)",
+                }}
+              >
+                <strong style={{ color: "rgba(240,237,230,0.8)", display: "block", marginBottom: "0.25rem", fontFamily: "'Oswald', sans-serif", letterSpacing: "0.05em", textTransform: "uppercase", fontSize: "0.8rem" }}>Noland Earthworks, LLC</strong>
+                93 Halliburton Road<br />
+                Vanleer, TN 37181<br />
+                <a href="tel:6154064819" style={{ color: "rgba(240,237,230,0.55)", textDecoration: "none" }}>Phone: 615-406-4819</a>
+                <span style={{ display: "block", marginTop: "0.5rem", fontSize: "0.8rem", color: "rgba(240,237,230,0.4)" }}>
+                  Serving 35 counties across Middle and West Tennessee
+                </span>
+              </address>
+
               {/* Need a quote CTA */}
               <div
                 className="p-4"

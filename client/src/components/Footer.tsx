@@ -174,6 +174,28 @@ export default function Footer() {
               </a>
             </div>
 
+            {/* NAP block — plain text for search engine crawlers */}
+            <address
+              style={{
+                fontFamily: "'Lato', sans-serif",
+                fontStyle: "normal",
+                fontSize: "0.8125rem",
+                lineHeight: 1.7,
+                color: "rgba(240,237,230,0.45)",
+                marginTop: "1.25rem",
+              }}
+            >
+              <strong style={{ color: "rgba(240,237,230,0.6)", display: "block", marginBottom: "0.2rem" }}>Noland Earthworks, LLC</strong>
+              93 Halliburton Road<br />
+              Vanleer, TN 37181<br />
+              <a
+                href="tel:6154064819"
+                style={{ color: "rgba(240,237,230,0.45)", textDecoration: "none" }}
+              >
+                Phone: 615-406-4819
+              </a>
+            </address>
+
             <a
               href="/quote"
               className="btn-amber mt-6"
