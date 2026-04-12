@@ -363,3 +363,15 @@
 ## Sidebar Logo URL Update — April 2026
 
 - [x] DashboardLayout.tsx: replace logo src with new PNG URL and update alt text
+
+## Jobber GraphQL Live Data Integration — April 2026
+
+- [x] Create /ops/clients page with live Jobber clients table (Name, Company, Email, Phone, City, Created)
+- [x] Create /ops/quotes page with live Jobber quotes table (Quote #, Title, Client, Total, Status, Date)
+- [x] Create /ops/invoices page with live Jobber invoices table (Invoice #, Client, Total, Outstanding, Status, Due Date)
+- [x] Add "From Jobber" requests section to /ops/leads page alongside existing local leads
+- [x] Add "Live from Jobber" jobs section to /ops/jobs page alongside local jobs
+- [x] Add Jobber visits section to /ops/schedule page alongside local schedule entries
+- [x] Remove placeholder: true from Clients, Quotes, Invoices nav items in DashboardLayout.tsx
+- [x] Add Jobber connection status bubble to DashboardLayout.tsx sidebar (green/red dot + account name or link to settings)
+- [x] Fix Jobber OAuth callback redirect from /admin/settings to /ops/settings in server/jobberRoutes.ts

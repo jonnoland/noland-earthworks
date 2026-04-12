@@ -9,6 +9,7 @@ import { useState } from "react";
 import {
   UserPlus, Plus, Search, Trash2, Edit3, ChevronDown,
   Phone, Mail, MapPin, DollarSign, Loader2, X,
+  RefreshCw, ExternalLink, AlertCircle, Inbox,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -43,6 +44,174 @@ const emptyForm: LeadFormData = {
   source: "google", stage: "new", jobType: "Land Clearing",
   estimatedValue: "", notes: "",
 };
+
+// ─── Jobber Requests Section ─────────────────────────────────────────────────
+
+function JobberRequestsSection() {
+  const { data, isLoading, error, refetch, isFetching } =
+    trpc.jobber.requests.useQuery({ first: 50 }, { retry: false });
+
+  const notConnected =
+    !isLoading &&
+    (error?.message?.includes("not connected") ||
+      error?.message?.includes("not authorized") ||
+      error?.message?.includes("token") ||
+      !data);
+
+  const nodes: Array<{
+    id: string;
+    title?: string | null;
+    requestStatus?: string | null;
+    source?: string | null;
+    createdAt?: string | null;
+    contactName?: string | null;
+    phone?: string | null;
+    email?: string | null;
+    client?: { id?: string; name?: string | null; companyName?: string | null } | null;
+    property?: { address?: { street1?: string | null; city?: string | null } | null } | null;
+  }> = (data as any)?.nodes ?? [];
+
+  const totalCount = (data as any)?.totalCount ?? nodes.length;
+
+  const REQUEST_STATUS_COLORS: Record<string, string> = {
+    NEW: "bg-blue-500/15 text-blue-400",
+    ASSESSMENT: "bg-yellow-500/15 text-yellow-400",
+    CONVERTED: "bg-green-500/15 text-green-400",
+    ARCHIVED: "bg-secondary/50 text-muted-foreground",
+  };
+
+  return (
+    <div className="px-6 pb-6">
+      <div className="border border-border rounded-lg overflow-hidden">
+        {/* Section header */}
+        <div className="flex items-center justify-between px-4 py-3 bg-secondary/10 border-b border-border">
+          <div className="flex items-center gap-2">
+            <Inbox className="w-4 h-4 text-primary" />
+            <span className="text-sm font-semibold text-foreground">From Jobber</span>
+            {!isLoading && !notConnected && (
+              <span className="text-[10px] bg-secondary/50 text-muted-foreground px-2 py-0.5 rounded-full">
+                {totalCount} requests
+              </span>
+            )}
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => refetch()}
+              disabled={isFetching}
+              className="p-1.5 rounded-md hover:bg-secondary/80 text-muted-foreground hover:text-foreground transition-colors"
+              aria-label="Refresh Jobber requests"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${isFetching ? "animate-spin" : ""}`} />
+            </button>
+            <a
+              href="https://app.getjobber.com/requests"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1 text-[10px] text-muted-foreground hover:text-primary transition-colors"
+            >
+              <ExternalLink className="w-3 h-3" />
+              Open in Jobber
+            </a>
+          </div>
+        </div>
+
+        {/* Loading */}
+        {isLoading && (
+          <div className="flex items-center justify-center py-8">
+            <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+          </div>
+        )}
+
+        {/* Not connected */}
+        {!isLoading && notConnected && (
+          <div className="flex flex-col items-center justify-center py-8 text-center gap-2">
+            <AlertCircle className="w-6 h-6 text-yellow-500/60" />
+            <p className="text-xs text-muted-foreground">
+              Connect Jobber in{" "}
+              <a href="/ops/settings" className="text-primary hover:underline">Settings</a>{" "}
+              to see live requests.
+            </p>
+          </div>
+        )}
+
+        {/* Requests list */}
+        {!isLoading && !notConnected && (
+          <>
+            {nodes.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-8 text-center gap-2">
+                <Inbox className="w-8 h-8 text-muted-foreground/30" />
+                <p className="text-xs text-muted-foreground">No requests found in Jobber.</p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs">
+                  <thead>
+                    <tr className="border-b border-border bg-secondary/10">
+                      <th className="text-left px-4 py-2.5 font-medium text-muted-foreground">Request</th>
+                      <th className="text-left px-4 py-2.5 font-medium text-muted-foreground hidden sm:table-cell">Client</th>
+                      <th className="text-left px-4 py-2.5 font-medium text-muted-foreground hidden md:table-cell">Contact</th>
+                      <th className="text-left px-4 py-2.5 font-medium text-muted-foreground">Status</th>
+                      <th className="text-left px-4 py-2.5 font-medium text-muted-foreground hidden lg:table-cell">Date</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {nodes.map((req, idx) => (
+                      <tr
+                        key={req.id}
+                        className={cn(
+                          "border-b border-border/50 last:border-0 hover:bg-secondary/20 transition-colors",
+                          idx % 2 === 0 ? "" : "bg-secondary/5"
+                        )}
+                      >
+                        <td className="px-4 py-3 font-medium text-foreground max-w-[180px] truncate">
+                          {req.title || "Untitled Request"}
+                        </td>
+                        <td className="px-4 py-3 text-muted-foreground hidden sm:table-cell">
+                          {req.client?.name || req.client?.companyName || req.contactName || "—"}
+                        </td>
+                        <td className="px-4 py-3 hidden md:table-cell">
+                          <div className="space-y-0.5">
+                            {req.phone && (
+                              <div className="flex items-center gap-1 text-muted-foreground">
+                                <Phone className="w-2.5 h-2.5" />{req.phone}
+                              </div>
+                            )}
+                            {req.email && (
+                              <div className="flex items-center gap-1 text-muted-foreground">
+                                <Mail className="w-2.5 h-2.5" />{req.email}
+                              </div>
+                            )}
+                          </div>
+                        </td>
+                        <td className="px-4 py-3">
+                          <span
+                            className={cn(
+                              "inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium",
+                              REQUEST_STATUS_COLORS[req.requestStatus ?? "NEW"] ?? "bg-secondary/50 text-muted-foreground"
+                            )}
+                          >
+                            {(req.requestStatus ?? "NEW").replace(/_/g, " ")}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-muted-foreground hidden lg:table-cell">
+                          {req.createdAt
+                            ? new Date(req.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
+                            : "—"}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function Leads() {
   const [search, setSearch] = useState("");
@@ -233,6 +402,9 @@ export default function Leads() {
           </div>
         )}
       </div>
+
+      {/* ── Jobber Requests Section ── */}
+      <JobberRequestsSection />
 
       {/* Add/Edit Modal */}
       {showModal && (

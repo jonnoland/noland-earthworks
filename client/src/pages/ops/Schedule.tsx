@@ -6,7 +6,7 @@
 import DashboardLayout from "@/components/DashboardLayout";
 import { trpc } from "@/lib/trpc";
 import { useState, useMemo } from "react";
-import { ChevronLeft, ChevronRight, Plus, Trash2, Loader2, X, Calendar } from "lucide-react";
+import { ChevronLeft, ChevronRight, Plus, Trash2, Loader2, X, Calendar, RefreshCw, ExternalLink, AlertCircle, CheckCircle2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
@@ -48,6 +48,150 @@ interface EntryFormData {
 const emptyForm: EntryFormData = {
   title: "", crewName: "Crew A", date: "", startHour: 7, endHour: 17, notes: "",
 };
+
+// ─── Jobber Visits Section ─────────────────────────────────────────────────────────────
+
+function JobberVisitsSection() {
+  const { data, isLoading, error, refetch, isFetching } =
+    trpc.jobber.visits.useQuery({ first: 50 }, { retry: false });
+
+  const notConnected =
+    !isLoading &&
+    (error?.message?.includes("not connected") ||
+      error?.message?.includes("not authorized") ||
+      error?.message?.includes("token") ||
+      !data);
+
+  const nodes: Array<{
+    id: string;
+    title?: string | null;
+    startAt?: string | null;
+    endAt?: string | null;
+    status?: string | null;
+    job?: {
+      id?: string;
+      jobNumber?: number | null;
+      title?: string | null;
+      client?: { name?: string | null } | null;
+    } | null;
+    assignedUsers?: { nodes?: Array<{ id: string; name?: string | null }> } | null;
+  }> = (data as any)?.nodes ?? [];
+
+  const totalCount = (data as any)?.totalCount ?? nodes.length;
+
+  const formatDateTime = (iso: string | null | undefined) =>
+    iso ? new Date(iso).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) : "—";
+
+  return (
+    <div className="px-6 pb-6">
+      <div className="border border-border rounded-lg overflow-hidden">
+        {/* Section header */}
+        <div className="flex items-center justify-between px-4 py-3 bg-secondary/10 border-b border-border">
+          <div className="flex items-center gap-2">
+            <Calendar className="w-4 h-4 text-primary" />
+            <span className="text-sm font-semibold text-foreground">Jobber Visits</span>
+            {!isLoading && !notConnected && (
+              <span className="text-[10px] bg-secondary/50 text-muted-foreground px-2 py-0.5 rounded-full">
+                {totalCount} visits
+              </span>
+            )}
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => refetch()}
+              disabled={isFetching}
+              className="p-1.5 rounded-md hover:bg-secondary/80 text-muted-foreground hover:text-foreground transition-colors"
+              aria-label="Refresh Jobber visits"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${isFetching ? "animate-spin" : ""}`} />
+            </button>
+            <a
+              href="https://app.getjobber.com/calendar"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1 text-[10px] text-muted-foreground hover:text-primary transition-colors"
+            >
+              <ExternalLink className="w-3 h-3" />
+              Open in Jobber
+            </a>
+          </div>
+        </div>
+
+        {/* Loading */}
+        {isLoading && (
+          <div className="flex items-center justify-center py-8">
+            <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+          </div>
+        )}
+
+        {/* Not connected */}
+        {!isLoading && notConnected && (
+          <div className="flex flex-col items-center justify-center py-8 text-center gap-2">
+            <AlertCircle className="w-6 h-6 text-yellow-500/60" />
+            <p className="text-xs text-muted-foreground">
+              Connect Jobber in{" "}
+              <a href="/ops/settings" className="text-primary hover:underline">Settings</a>{" "}
+              to see live visits.
+            </p>
+          </div>
+        )}
+
+        {/* Visits grid */}
+        {!isLoading && !notConnected && (
+          <>
+            {nodes.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-8 text-center gap-2">
+                <Calendar className="w-8 h-8 text-muted-foreground/30" />
+                <p className="text-xs text-muted-foreground">No visits found in Jobber.</p>
+              </div>
+            ) : (
+              <div className="p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                {nodes.map(visit => (
+                  <div
+                    key={visit.id}
+                    className={cn(
+                      "rounded-lg border p-3 flex flex-col gap-1.5",
+                      visit.status === "COMPLETE"
+                        ? "border-green-500/30 bg-green-500/5"
+                        : "border-border bg-card"
+                    )}
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <span className="text-xs font-semibold text-foreground truncate flex-1">
+                        {visit.title || visit.job?.title || "Visit"}
+                      </span>
+                      {visit.status === "COMPLETE" ? (
+                        <CheckCircle2 className="w-3.5 h-3.5 text-green-500 shrink-0" />
+                      ) : (
+                        <span className="text-[10px] bg-blue-500/15 text-blue-400 px-1.5 py-0.5 rounded-full shrink-0">
+                          Scheduled
+                        </span>
+                      )}
+                    </div>
+                    {visit.job?.client?.name && (
+                      <p className="text-[10px] text-muted-foreground">{visit.job.client.name}</p>
+                    )}
+                    <div className="text-[10px] text-muted-foreground space-y-0.5">
+                      <div>Start: {formatDateTime(visit.startAt)}</div>
+                      {visit.endAt && <div>End: {formatDateTime(visit.endAt)}</div>}
+                    </div>
+                    {visit.assignedUsers?.nodes && visit.assignedUsers.nodes.length > 0 && (
+                      <div className="text-[10px] text-muted-foreground">
+                        Assigned: {visit.assignedUsers.nodes.map(u => u.name).join(", ")}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function Schedule() {
   const [weekOffset, setWeekOffset] = useState(0);
@@ -253,6 +397,9 @@ export default function Schedule() {
           </div>
         )}
       </div>
+
+      {/* ── Jobber Visits Section ── */}
+      <JobberVisitsSection />
 
       {/* Add Entry Modal */}
       {showModal && (

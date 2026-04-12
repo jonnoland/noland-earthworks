@@ -5,6 +5,7 @@
  */
 
 import { useState } from "react";
+import { trpc } from "@/lib/trpc";
 import { Link, useLocation } from "wouter";
 import { toast } from "sonner";
 import {
@@ -32,6 +33,42 @@ import {
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/_core/hooks/useAuth";
 
+// ─── Jobber Status Bubble ─────────────────────────────────────────────────────
+
+function JobberStatusBubble({ collapsed }: { collapsed: boolean }) {
+  const { data, isLoading } = trpc.jobber.connectionStatus.useQuery(undefined, {
+    retry: false,
+    refetchInterval: 5 * 60 * 1000, // refresh every 5 minutes
+  });
+
+  const connected = !isLoading && (data as any)?.connected === true;
+  const accountName = (data as any)?.accountName as string | undefined;
+
+  return (
+    <Link href="/ops/settings">
+      <div
+        className={cn(
+          "flex items-center gap-2 px-3 py-2 rounded-lg text-xs transition-colors hover:bg-muted cursor-pointer",
+          collapsed ? "justify-center" : ""
+        )}
+        title={connected ? `Jobber: ${accountName ?? "Connected"}` : "Jobber: Not Connected"}
+      >
+        <span
+          className={cn(
+            "w-2 h-2 rounded-full shrink-0",
+            isLoading ? "bg-muted-foreground animate-pulse" : connected ? "bg-green-500" : "bg-red-500"
+          )}
+        />
+        {!collapsed && (
+          <span className="text-muted-foreground truncate">
+            {isLoading ? "Checking..." : connected ? (accountName ?? "Jobber") : "Jobber Disconnected"}
+          </span>
+        )}
+      </div>
+    </Link>
+  );
+}
+
 // ─── Navigation structure — mirrors OwnRops dashboard ────────────────────────
 
 const navItems = [
@@ -43,11 +80,11 @@ const navItems = [
 const navDivider1 = true;
 
 const navItems2 = [
-  { icon: Users,           label: "Clients",       href: "/ops/clients",       placeholder: true },
+  { icon: Users,           label: "Clients",       href: "/ops/clients" },
   { icon: Target,          label: "Leads",         href: "/ops/leads" },
-  { icon: FileText,        label: "Quotes",        href: "/ops/quotes",        placeholder: true },
+  { icon: FileText,        label: "Quotes",        href: "/ops/quotes" },
   { icon: Briefcase,       label: "Jobs",          href: "/ops/jobs" },
-  { icon: DollarSign,      label: "Invoices",      href: "/ops/invoices",      placeholder: true },
+  { icon: DollarSign,      label: "Invoices",      href: "/ops/invoices" },
   { icon: MessageSquare,   label: "Conversations", href: "/ops/conversations", placeholder: true },
   { icon: Star,            label: "Reviews",       href: "/ops/reviews",       placeholder: true },
 ];
@@ -168,6 +205,13 @@ export default function DashboardLayout({ children, title, subtitle }: Dashboard
           {navItems3.map(item => <NavLink key={item.href} item={item} />)}
         </div>
       </nav>
+
+      {/* Jobber status bubble */}
+      {!mobile && (
+        <div className="border-t border-border px-2 pt-2">
+          <JobberStatusBubble collapsed={collapsed} />
+        </div>
+      )}
 
       {/* Collapse toggle (desktop only) */}
       {!mobile && (

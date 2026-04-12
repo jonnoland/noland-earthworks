@@ -9,6 +9,7 @@ import { useState } from "react";
 import {
   Briefcase, Plus, Search, Trash2, Edit3, ChevronDown,
   MapPin, Clock, DollarSign, Loader2, X,
+  RefreshCw, ExternalLink, AlertCircle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -45,6 +46,174 @@ const emptyForm: JobFormData = {
   title: "", client: "", address: "", jobType: "land_clearing",
   status: "estimate", acres: "", crewDays: "", totalPrice: "", notes: "",
 };
+
+// ─── Jobber Jobs Section ─────────────────────────────────────────────────────────────
+
+const JOBBER_STATUS_COLORS: Record<string, string> = {
+  QUOTE: "bg-yellow-500/15 text-yellow-400 border-yellow-500/30",
+  ACTIVE: "bg-blue-500/15 text-blue-400 border-blue-500/30",
+  REQUIRES_INVOICING: "bg-purple-500/15 text-purple-400 border-purple-500/30",
+  COMPLETED: "bg-green-500/15 text-green-400 border-green-500/30",
+  ARCHIVED: "bg-secondary/50 text-muted-foreground border-border",
+};
+
+function JobberJobsSection() {
+  const { data, isLoading, error, refetch, isFetching } =
+    trpc.jobber.jobs.useQuery({ first: 50 }, { retry: false });
+
+  const notConnected =
+    !isLoading &&
+    (error?.message?.includes("not connected") ||
+      error?.message?.includes("not authorized") ||
+      error?.message?.includes("token") ||
+      !data);
+
+  const nodes: Array<{
+    id: string;
+    jobNumber?: number | null;
+    title?: string | null;
+    jobStatus?: string | null;
+    jobType?: string | null;
+    startAt?: string | null;
+    endAt?: string | null;
+    total?: number | null;
+    createdAt?: string | null;
+    client?: { id?: string; name?: string | null; companyName?: string | null } | null;
+    property?: { address?: { street1?: string | null; city?: string | null } | null } | null;
+  }> = (data as any)?.nodes ?? [];
+
+  const totalCount = (data as any)?.totalCount ?? nodes.length;
+
+  const formatMoney = (val: number | null | undefined) =>
+    val == null ? "—" : new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(val);
+
+  const formatDate = (iso: string | null | undefined) =>
+    iso ? new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "—";
+
+  return (
+    <div className="px-6 pb-6">
+      <div className="border border-border rounded-lg overflow-hidden">
+        {/* Section header */}
+        <div className="flex items-center justify-between px-4 py-3 bg-secondary/10 border-b border-border">
+          <div className="flex items-center gap-2">
+            <Briefcase className="w-4 h-4 text-primary" />
+            <span className="text-sm font-semibold text-foreground">Live from Jobber</span>
+            {!isLoading && !notConnected && (
+              <span className="text-[10px] bg-secondary/50 text-muted-foreground px-2 py-0.5 rounded-full">
+                {totalCount} jobs
+              </span>
+            )}
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => refetch()}
+              disabled={isFetching}
+              className="p-1.5 rounded-md hover:bg-secondary/80 text-muted-foreground hover:text-foreground transition-colors"
+              aria-label="Refresh Jobber jobs"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${isFetching ? "animate-spin" : ""}`} />
+            </button>
+            <a
+              href="https://app.getjobber.com/jobs"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1 text-[10px] text-muted-foreground hover:text-primary transition-colors"
+            >
+              <ExternalLink className="w-3 h-3" />
+              Open in Jobber
+            </a>
+          </div>
+        </div>
+
+        {/* Loading */}
+        {isLoading && (
+          <div className="flex items-center justify-center py-8">
+            <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+          </div>
+        )}
+
+        {/* Not connected */}
+        {!isLoading && notConnected && (
+          <div className="flex flex-col items-center justify-center py-8 text-center gap-2">
+            <AlertCircle className="w-6 h-6 text-yellow-500/60" />
+            <p className="text-xs text-muted-foreground">
+              Connect Jobber in{" "}
+              <a href="/ops/settings" className="text-primary hover:underline">Settings</a>{" "}
+              to see live jobs.
+            </p>
+          </div>
+        )}
+
+        {/* Jobs list */}
+        {!isLoading && !notConnected && (
+          <>
+            {nodes.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-8 text-center gap-2">
+                <Briefcase className="w-8 h-8 text-muted-foreground/30" />
+                <p className="text-xs text-muted-foreground">No jobs found in Jobber.</p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs">
+                  <thead>
+                    <tr className="border-b border-border bg-secondary/10">
+                      <th className="text-left px-4 py-2.5 font-medium text-muted-foreground">Job #</th>
+                      <th className="text-left px-4 py-2.5 font-medium text-muted-foreground">Title</th>
+                      <th className="text-left px-4 py-2.5 font-medium text-muted-foreground hidden sm:table-cell">Client</th>
+                      <th className="text-left px-4 py-2.5 font-medium text-muted-foreground">Status</th>
+                      <th className="text-left px-4 py-2.5 font-medium text-muted-foreground hidden md:table-cell">Start</th>
+                      <th className="text-right px-4 py-2.5 font-medium text-muted-foreground hidden lg:table-cell">Total</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {nodes.map((job, idx) => (
+                      <tr
+                        key={job.id}
+                        className={cn(
+                          "border-b border-border/50 last:border-0 hover:bg-secondary/20 transition-colors",
+                          idx % 2 === 0 ? "" : "bg-secondary/5"
+                        )}
+                      >
+                        <td className="px-4 py-3 font-mono text-muted-foreground">#{job.jobNumber ?? "—"}</td>
+                        <td className="px-4 py-3 font-medium text-foreground max-w-[180px] truncate">
+                          {job.title || "Untitled Job"}
+                        </td>
+                        <td className="px-4 py-3 text-muted-foreground hidden sm:table-cell">
+                          {job.client?.name || job.client?.companyName || "—"}
+                        </td>
+                        <td className="px-4 py-3">
+                          <span
+                            className={cn(
+                              "text-[10px] font-semibold px-2 py-0.5 rounded-full border",
+                              JOBBER_STATUS_COLORS[job.jobStatus ?? "ACTIVE"] ?? "bg-secondary/50 text-muted-foreground border-border"
+                            )}
+                          >
+                            {(job.jobStatus ?? "ACTIVE").replace(/_/g, " ")}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-muted-foreground hidden md:table-cell">
+                          {formatDate(job.startAt)}
+                        </td>
+                        <td className="px-4 py-3 text-right hidden lg:table-cell">
+                          <span className="flex items-center justify-end gap-0.5 text-primary font-semibold">
+                            <DollarSign className="w-3 h-3" />
+                            {formatMoney(job.total)}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function Jobs() {
   const [search, setSearch] = useState("");
@@ -203,6 +372,9 @@ export default function Jobs() {
           </div>
         )}
       </div>
+
+      {/* ── Jobber Jobs Section ── */}
+      <JobberJobsSection />
 
       {/* Add/Edit Modal */}
       {showModal && (
