@@ -9,6 +9,7 @@ import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
 import { prerenderMiddleware } from "../prerender";
+import { registerJobberRoutes } from "../jobberRoutes";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -37,6 +38,8 @@ async function startServer() {
   app.use(express.urlencoded({ limit: "50mb", extended: true }));
   // OAuth callback under /api/oauth/callback
   registerOAuthRoutes(app);
+  // Jobber OAuth routes: /api/jobber/authorize, /api/jobber/callback, /api/jobber/status
+  registerJobberRoutes(app);
   // Sitemap + robots.txt
   registerSitemapRoutes(app);
   // Bot prerendering — must come before Vite/static middleware

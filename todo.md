@@ -243,3 +243,6 @@
 ## NAP Block (Visible Address) — April 2026
 - [x] Add full NAP block (name, street address, city/state/zip, phone) to site footer as plain crawlable HTML text
 - [x] Add full NAP block plus service area note to the Contact/About page
+- [x] Fix Jobber integration: register jobberRoutes (OAuth callback) in server/_core/index.ts
+- [x] Fix Jobber integration: add jobberRouter to appRouter in server/routers.ts
+- [ ] Fix Jobber integration: expired token — re-authorize Jobber OAuth after fixes are deployed
