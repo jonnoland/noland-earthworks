@@ -301,6 +301,29 @@
     color: #E07B2A;
   }
 
+  /* Ops sidebar nav items */
+  .ops-sidebar-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.625rem 0.75rem;
+    border-radius: 0.5rem;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    transition: all 0.15s ease;
+    color: var(--muted-foreground);
+    text-decoration: none;
+    cursor: pointer;
+  }
+  .ops-sidebar-item:hover {
+    background: var(--sidebar-accent);
+    color: var(--foreground);
+  }
+  .ops-sidebar-item.active {
+    background: rgba(217, 119, 6, 0.1);
+    color: #d97706;
+  }
+
   /* Noise texture overlay */
   .noise-overlay::after {
     content: '';

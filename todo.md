@@ -349,3 +349,7 @@
 - [x] Apply Pricing.tsx from ownrops-dashboard (adapt layout import only)
 - [x] Apply Settings.tsx from ownrops-dashboard (merge Jobber panel with existing Quote Log tab)
 - [x] Skip server/routers.ts and server/db.ts overwrite (preserve ops router, quoteRouter, SMS, Jobber OAuth)
+
+## Sidebar Nav CSS Fix — April 2026
+
+- [x] Add .ops-sidebar-item CSS rules to client/src/index.css (flex, align-items, gap, active state)
