@@ -141,8 +141,8 @@ export default function DashboardLayout({ children, title, subtitle }: Dashboard
         <Link href="/">
           <div className="flex items-center overflow-hidden">
             <img
-              src="https://d2xsxph8kpxj0f.cloudfront.net/310519663484957999/S4PPJthPzHXph6Nqq4scSB/noland-earthworks-logo_3844d4ef.jpg"
-              alt="Noland Earthworks"
+              src="https://files.manuscdn.com/user_upload_by_module/session_file/310519663484957999/hfAVxdtCdkbXWoNa.png"
+              alt="Noland Earthworks — Built on American Strength"
               className="object-contain border-0 h-32 max-w-[560px]"
             />
           </div>
