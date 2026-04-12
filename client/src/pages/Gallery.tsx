@@ -238,7 +238,8 @@ function ProjectCard({ project }: { project: Project }) {
 export default function Gallery() {
   usePageTitle(
     "Before & After Gallery | Noland Earthworks",
-    "See real before and after photos of land clearing and forestry mulching projects across Middle Tennessee. Wilson, Dickson, Williamson, Maury, Rutherford, and Montgomery counties."
+    "See real before and after photos of land clearing and forestry mulching projects across Middle Tennessee. Wilson, Dickson, Williamson, Maury, Rutherford, and Montgomery counties.",
+    "/gallery"
   );
 
   const [activeService, setActiveService] = useState("All");

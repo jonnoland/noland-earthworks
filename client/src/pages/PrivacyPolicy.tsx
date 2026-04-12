@@ -3,7 +3,7 @@ import Footer from "@/components/Footer";
 import { usePageTitle } from "@/hooks/usePageTitle";
 
 export default function PrivacyPolicy() {
-  usePageTitle("Privacy Policy | Noland Earthworks, LLC");
+  usePageTitle("Privacy Policy", "Noland Earthworks, LLC privacy policy — how we collect, use, and protect your information.", "/privacy-policy");
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: "#121212", color: "#F0EDE6" }}>

@@ -507,7 +507,8 @@ function CostFactorCard({ row }: { row: typeof costFactors[number] }) {
 export default function PricingPage() {
   usePageTitle(
     "Land Clearing & Forestry Mulching Pricing Guide — Middle & West Tennessee | Noland Earthworks",
-    "Transparent pricing for land clearing and forestry mulching in Tennessee. Typical costs range $1,000–$4,500/acre. Use our free estimate calculator to get a rough number in 30 seconds."
+    "Transparent pricing for land clearing and forestry mulching in Tennessee. Typical costs range $1,000–$4,500/acre. Use our free estimate calculator to get a rough number in 30 seconds.",
+    "/pricing"
   );
   return (
     <div className="min-h-screen" style={{ backgroundColor: "#121212", color: "#F0EDE6" }}>

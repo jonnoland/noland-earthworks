@@ -3,7 +3,7 @@ import Footer from "@/components/Footer";
 import { usePageTitle } from "@/hooks/usePageTitle";
 
 export default function TermsOfService() {
-  usePageTitle("Terms of Service | Noland Earthworks, LLC");
+  usePageTitle("Terms of Service", "Noland Earthworks, LLC terms of service — the rules and conditions governing use of our website and services.", "/terms-of-service");
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: "#121212", color: "#F0EDE6" }}>

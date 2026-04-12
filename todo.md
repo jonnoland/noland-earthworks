@@ -273,3 +273,11 @@
 - [x] Auto-create ops lead record in quoteRouter.submit when quote is submitted
 - [x] Reduce Leads page poll interval from 30s to 15s
 - [x] Reduce Dashboard leads/jobs poll interval from 30s to 15s
+
+## SEO / Google Indexing Fixes — April 2026 (batch 2)
+
+- [x] Fix duplicate site name in page titles: pages pass "| Noland Earthworks" in title string but usePageTitle appends "| Noland Earthworks, LLC" — results in "... | Noland Earthworks | Noland Earthworks, LLC"
+- [x] Fix missing canonicalPath on About, Blog, Quote, Pricing, Gallery, Home pages
+- [x] Fix title format on PrivacyPolicy and TermsOfService — they include "| Noland Earthworks, LLC" in the string causing duplication
+- [x] Add page-specific Open Graph og:title, og:description, og:url meta tags per page (now injected dynamically by usePageTitle hook)
+- [x] Cloudflare email obfuscation: footer already uses plain mailto: link; obfuscation is applied by Cloudflare CDN layer — disable in Cloudflare dashboard under Scrape Shield > Email Address Obfuscation

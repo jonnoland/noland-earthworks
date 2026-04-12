@@ -21,7 +21,8 @@ import { usePageTitle } from "@/hooks/usePageTitle";
 export default function Home() {
   usePageTitle(
     "Veteran-Owned Land Clearing & Forestry Mulching — Middle & West Tennessee | Noland Earthworks",
-    "Noland Earthworks provides professional land clearing, forestry mulching, and vegetation management across Middle & West Tennessee. Veteran-owned. Free estimates. Call 615-406-4819."
+    "Noland Earthworks provides professional land clearing, forestry mulching, and vegetation management across Middle & West Tennessee. Veteran-owned. Free estimates. Call 615-406-4819.",
+    "/"
   );
   return (
     <div

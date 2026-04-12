@@ -54,7 +54,8 @@ export const BLOG_POSTS = [
 export default function Blog() {
   usePageTitle(
     "Land Clearing Resources & Blog | Noland Earthworks",
-    "Expert land clearing and forestry mulching guides for Tennessee property owners. Pricing, methods, and tips from Noland Earthworks — veteran-owned and operated."
+    "Expert land clearing and forestry mulching guides for Tennessee property owners. Pricing, methods, and tips from Noland Earthworks — veteran-owned and operated.",
+    "/blog"
   );
 
   return (
