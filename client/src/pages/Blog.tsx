@@ -6,7 +6,7 @@ import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import MobileCTABar from "@/components/MobileCTABar";
 import { usePageTitle } from "@/hooks/usePageTitle";
-import { ArrowRight, Calendar } from "lucide-react";
+import { ArrowRight, Calendar, RefreshCw } from "lucide-react";
 
 export const BLOG_POSTS = [
   {
@@ -14,6 +14,7 @@ export const BLOG_POSTS = [
     title: "How Much Does Land Clearing Cost in Tennessee? (2026 Guide)",
     meta: "Discover the true cost of land clearing and forestry mulching in Middle Tennessee. Learn what factors affect pricing per acre and how to get the best value.",
     date: "April 2026",
+    lastUpdated: "April 2026",
     readTime: "5 min read",
     category: "Pricing & Planning",
   },
@@ -22,6 +23,7 @@ export const BLOG_POSTS = [
     title: "Forestry Mulching vs. Bulldozing: Which is Better for Your Property?",
     meta: "Compare forestry mulching and traditional bulldozing for land clearing. Learn why mulching is faster, cheaper, and better for your Tennessee property's soil.",
     date: "April 2026",
+    lastUpdated: "April 2026",
     readTime: "5 min read",
     category: "Education",
   },
@@ -30,6 +32,7 @@ export const BLOG_POSTS = [
     title: "5 Signs It's Time to Invest in Professional Vegetation Management",
     meta: "Is your property overgrown? Discover the top 5 signs that it's time to hire a professional vegetation management service to restore your land.",
     date: "April 2026",
+    lastUpdated: "April 2026",
     readTime: "5 min read",
     category: "Property Tips",
   },
@@ -38,6 +41,7 @@ export const BLOG_POSTS = [
     title: "Best Time of Year to Clear Land in Middle Tennessee",
     meta: "Wondering when to clear land in Tennessee? Learn the best season for forestry mulching and land clearing in Middle Tennessee to save money and get faster results.",
     date: "April 2026",
+    lastUpdated: "April 2026",
     readTime: "5 min read",
     category: "Seasonal Tips",
   },
@@ -46,6 +50,7 @@ export const BLOG_POSTS = [
     title: "Site Preparation 101: What to Do Before You Build in Tennessee",
     meta: "Planning to build on Tennessee land? Learn the 5 site prep steps every landowner needs before construction starts — from clearing and grubbing to grading and erosion control.",
     date: "April 2026",
+    lastUpdated: "April 2026",
     readTime: "6 min read",
     category: "Planning & Preparation",
   },
@@ -190,7 +195,7 @@ export default function Blog() {
                   </p>
 
                   <div className="flex items-center justify-between pt-2" style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}>
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-3" style={{ flexWrap: "wrap" }}>
                       <span
                         style={{
                           fontFamily: "'Lato', sans-serif",
@@ -204,6 +209,24 @@ export default function Blog() {
                         <Calendar size={11} />
                         {post.date}
                       </span>
+                      {post.lastUpdated && post.lastUpdated !== post.date && (
+                        <>
+                          <span style={{ color: "rgba(240,237,230,0.2)", fontSize: "0.75rem" }}>·</span>
+                          <span
+                            style={{
+                              fontFamily: "'Lato', sans-serif",
+                              fontSize: "0.75rem",
+                              color: "rgba(224,123,42,0.85)",
+                              display: "flex",
+                              alignItems: "center",
+                              gap: "0.3rem",
+                            }}
+                          >
+                            <RefreshCw size={11} />
+                            Updated {post.lastUpdated}
+                          </span>
+                        </>
+                      )}
                       <span style={{ color: "rgba(240,237,230,0.2)", fontSize: "0.75rem" }}>·</span>
                       <span style={{ fontFamily: "'Lato', sans-serif", fontSize: "0.75rem", color: "rgba(240,237,230,0.4)" }}>
                         {post.readTime}

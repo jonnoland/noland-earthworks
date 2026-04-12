@@ -8,6 +8,8 @@ export default function SitePreparationBeforeBuilding() {
       metaDescription="Planning to build on Tennessee land? Learn the 5 site prep steps every landowner needs before construction starts — from clearing and grubbing to grading and erosion control."
       date="April 2026"
       dateISO="2026-04-09"
+      lastUpdated="April 2026"
+      lastUpdatedISO="2026-04-12"
       slug="site-preparation-before-building-tennessee"
       readTime="6 min read"
       category="Planning & Preparation"

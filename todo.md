@@ -281,3 +281,12 @@
 - [x] Fix title format on PrivacyPolicy and TermsOfService — they include "| Noland Earthworks, LLC" in the string causing duplication
 - [x] Add page-specific Open Graph og:title, og:description, og:url meta tags per page (now injected dynamically by usePageTitle hook)
 - [x] Cloudflare email obfuscation: footer already uses plain mailto: link; obfuscation is applied by Cloudflare CDN layer — disable in Cloudflare dashboard under Scrape Shield > Email Address Obfuscation
+
+## Blog "Last Updated" Timestamp — April 2026
+
+- [x] Add lastUpdated and lastUpdatedISO props to BlogPostLayout interface
+- [x] Display "Last updated: Month YYYY" badge in the hero meta row when lastUpdated differs from date
+- [x] Inject article:modified_time Open Graph meta tag via usePageTitle or directly in BlogPostLayout
+- [x] Update dateModified in Article JSON-LD schema to use lastUpdatedISO instead of dateISO
+- [x] Add lastUpdated/lastUpdatedISO to all 5 blog post files (set to April 12, 2026)
+- [x] Add lastUpdated date to Blog index page post cards

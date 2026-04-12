@@ -8,6 +8,8 @@ export default function SignsVegetationManagement() {
       metaDescription="Is your Tennessee property overgrown? Learn 5 clear signs it's time to hire a professional for vegetation management and land clearing before problems get worse."
       date="April 2026"
       dateISO="2026-04-01"
+      lastUpdated="April 2026"
+      lastUpdatedISO="2026-04-12"
       slug="signs-you-need-vegetation-management"
       readTime="5 min read"
       category="Property Tips"

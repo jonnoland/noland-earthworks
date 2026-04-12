@@ -7,17 +7,19 @@ import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import MobileCTABar from "@/components/MobileCTABar";
 import { usePageTitle } from "@/hooks/usePageTitle";
-import { ArrowLeft, Calendar } from "lucide-react";
+import { ArrowLeft, Calendar, RefreshCw } from "lucide-react";
 
 export interface BlogPostProps {
   title: string;
   pageTitle: string;
   metaDescription?: string;
-  date: string;           // e.g. "March 2025"
-  dateISO?: string;       // e.g. "2025-03-01" for schema
+  date: string;             // e.g. "March 2025" — original publish date
+  dateISO?: string;         // e.g. "2025-03-01" for schema
+  lastUpdated?: string;     // e.g. "April 2026" — shown when content was revised
+  lastUpdatedISO?: string;  // e.g. "2026-04-12" for schema / OG
   readTime: string;
   category: string;
-  slug: string;           // e.g. "cost-of-land-clearing-tennessee"
+  slug: string;             // e.g. "cost-of-land-clearing-tennessee"
   children: React.ReactNode;
 }
 
@@ -27,12 +29,44 @@ export default function BlogPostLayout({
   metaDescription,
   date,
   dateISO,
+  lastUpdated,
+  lastUpdatedISO,
   readTime,
   category,
   slug,
   children,
 }: BlogPostProps) {
   usePageTitle(pageTitle, metaDescription, `/blog/${slug}`);
+
+  // Inject article:modified_time Open Graph meta tag
+  useEffect(() => {
+    const modifiedDate = lastUpdatedISO ?? dateISO;
+    if (!modifiedDate) return;
+
+    const setMeta = (property: string, content: string) => {
+      let el = document.querySelector<HTMLMetaElement>(`meta[property="${property}"]`);
+      if (!el) {
+        el = document.createElement("meta");
+        el.setAttribute("property", property);
+        document.head.appendChild(el);
+      }
+      el.content = content;
+    };
+
+    setMeta("article:published_time", dateISO ?? modifiedDate);
+    setMeta("article:modified_time", modifiedDate);
+    setMeta("og:type", "article");
+
+    return () => {
+      // Reset to website on unmount
+      const ogType = document.querySelector<HTMLMetaElement>('meta[property="og:type"]');
+      if (ogType) ogType.content = "website";
+      const pubTime = document.querySelector<HTMLMetaElement>('meta[property="article:published_time"]');
+      if (pubTime) pubTime.remove();
+      const modTime = document.querySelector<HTMLMetaElement>('meta[property="article:modified_time"]');
+      if (modTime) modTime.remove();
+    };
+  }, [dateISO, lastUpdatedISO]);
 
   // Inject Article JSON-LD schema for Google rich results
   useEffect(() => {
@@ -50,7 +84,7 @@ export default function BlogPostLayout({
       headline: title,
       description: metaDescription ?? "",
       datePublished: dateISO ?? "",
-      dateModified: dateISO ?? "",
+      dateModified: lastUpdatedISO ?? dateISO ?? "",
       author: {
         "@type": "Organization",
         name: "Noland Earthworks",
@@ -74,7 +108,7 @@ export default function BlogPostLayout({
       const existing = document.getElementById(id);
       if (existing) existing.remove();
     };
-  }, [slug, title, metaDescription, dateISO]);
+  }, [slug, title, metaDescription, dateISO, lastUpdatedISO]);
 
   return (
     <div style={{ backgroundColor: "#121212", color: "#F0EDE6", minHeight: "100vh" }}>
@@ -116,7 +150,7 @@ export default function BlogPostLayout({
             <ArrowLeft size={13} /> Back to Resources
           </a>
 
-          <div className="flex items-center gap-3 mb-4">
+          <div className="flex items-center gap-3 mb-4" style={{ flexWrap: "wrap" }}>
             <span
               style={{
                 fontFamily: "'Lato', sans-serif",
@@ -132,11 +166,54 @@ export default function BlogPostLayout({
             >
               {category}
             </span>
-            <span style={{ fontFamily: "'Lato', sans-serif", fontSize: "0.75rem", color: "rgba(240,237,230,0.4)", display: "flex", alignItems: "center", gap: "0.3rem" }}>
-              <Calendar size={11} /> {date}
+
+            {/* Original publish date */}
+            <span
+              style={{
+                fontFamily: "'Lato', sans-serif",
+                fontSize: "0.75rem",
+                color: "rgba(240,237,230,0.4)",
+                display: "flex",
+                alignItems: "center",
+                gap: "0.3rem",
+              }}
+            >
+              <Calendar size={11} />
+              <time dateTime={dateISO}>{date}</time>
             </span>
+
+            {/* Last updated badge — only shown when content has been revised */}
+            {lastUpdated && lastUpdated !== date && (
+              <>
+                <span style={{ color: "rgba(240,237,230,0.2)" }}>·</span>
+                <span
+                  style={{
+                    fontFamily: "'Lato', sans-serif",
+                    fontSize: "0.75rem",
+                    color: "rgba(224,123,42,0.85)",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "0.3rem",
+                  }}
+                  title="This article has been reviewed and updated for accuracy"
+                >
+                  <RefreshCw size={11} />
+                  Updated{" "}
+                  <time dateTime={lastUpdatedISO}>{lastUpdated}</time>
+                </span>
+              </>
+            )}
+
             <span style={{ color: "rgba(240,237,230,0.2)" }}>·</span>
-            <span style={{ fontFamily: "'Lato', sans-serif", fontSize: "0.75rem", color: "rgba(240,237,230,0.4)" }}>{readTime}</span>
+            <span
+              style={{
+                fontFamily: "'Lato', sans-serif",
+                fontSize: "0.75rem",
+                color: "rgba(240,237,230,0.4)",
+              }}
+            >
+              {readTime}
+            </span>
           </div>
 
           <h1
@@ -169,10 +246,25 @@ export default function BlogPostLayout({
               N
             </div>
             <div>
-              <div style={{ fontFamily: "'Oswald', sans-serif", fontWeight: 600, fontSize: "0.85rem", letterSpacing: "0.04em", color: "#F0EDE6" }}>
+              <div
+                style={{
+                  fontFamily: "'Oswald', sans-serif",
+                  fontWeight: 600,
+                  fontSize: "0.85rem",
+                  letterSpacing: "0.04em",
+                  color: "#F0EDE6",
+                }}
+              >
                 Noland Earthworks Team
               </div>
-              <div style={{ fontFamily: "'Lato', sans-serif", fontSize: "0.72rem", color: "rgba(240,237,230,0.45)", letterSpacing: "0.05em" }}>
+              <div
+                style={{
+                  fontFamily: "'Lato', sans-serif",
+                  fontSize: "0.72rem",
+                  color: "rgba(240,237,230,0.45)",
+                  letterSpacing: "0.05em",
+                }}
+              >
                 Veteran-owned land clearing &amp; forestry mulching specialists, Middle Tennessee
               </div>
             </div>
@@ -182,15 +274,17 @@ export default function BlogPostLayout({
 
       {/* Article body */}
       <article className="container py-14" style={{ maxWidth: "820px" }}>
-        <div className="blog-content">
-          {children}
-        </div>
+        <div className="blog-content">{children}</div>
       </article>
 
       {/* CTA */}
       <section
         className="container pb-20"
-        style={{ borderTop: "1px solid rgba(240,237,230,0.08)", paddingTop: "3rem", maxWidth: "820px" }}
+        style={{
+          borderTop: "1px solid rgba(240,237,230,0.08)",
+          paddingTop: "3rem",
+          maxWidth: "820px",
+        }}
       >
         <div
           style={{
@@ -219,7 +313,8 @@ export default function BlogPostLayout({
               marginBottom: "1.25rem",
             }}
           >
-            Contact Noland Earthworks today for a free, no-obligation on-site estimate anywhere in Middle Tennessee.
+            Contact Noland Earthworks today for a free, no-obligation on-site estimate anywhere in
+            Middle Tennessee.
           </p>
           <a href="/quote" className="btn-amber" style={{ textDecoration: "none" }}>
             Get a Free Quote →

@@ -8,6 +8,8 @@ export default function CostOfLandClearing() {
       metaDescription="Land clearing in Tennessee costs $1,500–$4,000 per acre. Learn what drives pricing, how forestry mulching compares to bulldozing, and how to get an accurate estimate."
       date="April 2026"
       dateISO="2026-04-01"
+      lastUpdated="April 2026"
+      lastUpdatedISO="2026-04-12"
       slug="cost-of-land-clearing-tennessee"
       readTime="5 min read"
       category="Pricing & Planning"

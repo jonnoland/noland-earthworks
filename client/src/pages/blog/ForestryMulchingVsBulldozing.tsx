@@ -8,6 +8,8 @@ export default function ForestryMulchingVsBulldozing() {
       metaDescription="Forestry mulching vs. bulldozing: compare cost, soil impact, speed, and best use cases to decide which land clearing method is right for your Tennessee property."
       date="April 2026"
       dateISO="2026-04-01"
+      lastUpdated="April 2026"
+      lastUpdatedISO="2026-04-12"
       slug="forestry-mulching-vs-bulldozing"
       readTime="5 min read"
       category="Education"

@@ -8,6 +8,8 @@ export default function BestTimeToClearLand() {
       metaDescription="Wondering when to clear land in Tennessee? Learn the best season for forestry mulching and land clearing in Middle Tennessee to save money and get faster results."
       date="April 2026"
       dateISO="2026-04-08"
+      lastUpdated="April 2026"
+      lastUpdatedISO="2026-04-12"
       readTime="5 min read"
       category="Seasonal Tips"
       slug="best-time-to-clear-land-tennessee"
