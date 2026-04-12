@@ -23,6 +23,7 @@ const PAGES = [
   { path: "/blog/signs-you-need-vegetation-management",                 priority: "0.7", changefreq: "monthly" },
   { path: "/blog/best-time-to-clear-land-tennessee",                    priority: "0.7", changefreq: "monthly" },
   { path: "/blog/site-preparation-before-building-tennessee",           priority: "0.8", changefreq: "monthly" },
+  { path: "/blog/land-clearing-williamson-county",                       priority: "0.9", changefreq: "monthly" },
   // County landing pages
   { path: "/service-areas/davidson-county",                             priority: "0.8", changefreq: "monthly" },
   { path: "/service-areas/williamson-county",                           priority: "0.8", changefreq: "monthly" },

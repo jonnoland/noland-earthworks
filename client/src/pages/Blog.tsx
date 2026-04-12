@@ -54,6 +54,15 @@ export const BLOG_POSTS = [
     readTime: "6 min read",
     category: "Planning & Preparation",
   },
+  {
+    slug: "land-clearing-williamson-county",
+    title: "Land Clearing in Williamson County, TN: What Property Owners Need to Know",
+    meta: "Need land clearing in Williamson County, TN? Learn about forestry mulching, permit requirements, and local terrain — serving Franklin, Brentwood, Spring Hill, and all of Williamson County.",
+    date: "April 2026",
+    lastUpdated: "April 2026",
+    readTime: "6 min read",
+    category: "Local Service Areas",
+  },
 ];
 
 export default function Blog() {

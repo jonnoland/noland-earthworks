@@ -290,3 +290,12 @@
 - [x] Update dateModified in Article JSON-LD schema to use lastUpdatedISO instead of dateISO
 - [x] Add lastUpdated/lastUpdatedISO to all 5 blog post files (set to April 12, 2026)
 - [x] Add lastUpdated date to Blog index page post cards
+
+## Blog Post: Land Clearing in Williamson County — April 2026
+
+- [x] Research Williamson County local context, neighborhoods, and land clearing search terms
+- [x] Write full blog post content (1,200+ words) targeting local SEO keywords
+- [x] Create /client/src/pages/blog/LandClearingWilliamsonCounty.tsx
+- [x] Add post to BLOG_POSTS array in Blog.tsx
+- [x] Add route in App.tsx for /blog/land-clearing-williamson-county
+- [x] Add URL to sitemap.xml (priority 0.9 — higher than general blog posts)
