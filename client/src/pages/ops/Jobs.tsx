@@ -3,7 +3,7 @@
  * Live data from tRPC: list, create, update, delete
  */
 
-import DashboardLayout from "@/components/OpsDashboardLayout";
+import DashboardLayout from "@/components/DashboardLayout";
 import { trpc } from "@/lib/trpc";
 import { useState } from "react";
 import {

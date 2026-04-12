@@ -317,3 +317,35 @@
 - [x] Add post to BLOG_POSTS array in Blog.tsx
 - [x] Add route in App.tsx for /blog/land-clearing-rutherford-county
 - [x] Add URL to sitemap.xml (priority 0.9)
+
+## County Blog Post Cross-Links — April 2026
+
+- [ ] Add "Also Serving Nearby Counties" section to Williamson County post linking to Davidson and Rutherford
+- [ ] Add "Also Serving Nearby Counties" section to Davidson County post linking to Williamson and Rutherford
+- [ ] Add "Also Serving Nearby Counties" section to Rutherford County post linking to Williamson and Davidson
+
+## ownrops-dashboard Update — April 2026
+
+- [x] Copy Dashboard.tsx from ownrops-dashboard
+- [x] Copy DashboardLayout.tsx from ownrops-dashboard
+- [x] Copy DashboardLayoutSkeleton.tsx from ownrops-dashboard
+- [x] Copy Jobs.tsx from ownrops-dashboard
+- [x] Copy Leads.tsx from ownrops-dashboard
+- [x] Copy Pricing.tsx from ownrops-dashboard
+- [x] Copy Reports.tsx from ownrops-dashboard
+- [x] Copy Schedule.tsx from ownrops-dashboard
+- [x] Copy Settings.tsx from ownrops-dashboard
+- [x] Skip server/routers.ts and server/db.ts overwrite (preserve ops router, quoteRouter, SMS, Jobber OAuth)
+- [x] Run tests and fix any issues
+
+## ownrops-dashboard UI Update — April 2026
+
+- [x] Apply DashboardLayout.tsx from ownrops-dashboard (new nav structure, collapsible sidebar)
+- [x] Apply DashboardLayoutSkeleton.tsx from ownrops-dashboard
+- [x] Apply Dashboard.tsx from ownrops-dashboard (adapt to trpc.ops.* namespace, keep 15s polling)
+- [x] Apply Jobs.tsx from ownrops-dashboard (adapt layout import and trpc.ops.jobs.* namespace)
+- [x] Apply Leads.tsx from ownrops-dashboard (adapt layout import and trpc.ops.leads.* namespace)
+- [x] Apply Schedule.tsx from ownrops-dashboard (adapt layout import and trpc.ops.schedule.* namespace)
+- [x] Apply Pricing.tsx from ownrops-dashboard (adapt layout import only)
+- [x] Apply Settings.tsx from ownrops-dashboard (merge Jobber panel with existing Quote Log tab)
+- [x] Skip server/routers.ts and server/db.ts overwrite (preserve ops router, quoteRouter, SMS, Jobber OAuth)

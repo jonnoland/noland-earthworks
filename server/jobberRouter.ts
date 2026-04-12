@@ -25,13 +25,30 @@ export const jobberRouter = router({
   /** Returns whether Jobber is currently connected */
   connectionStatus: adminProcedure.query(async () => {
     const connected = await isJobberConnected();
-    const db = await getDb();
+
     let expiresAt: Date | null = null;
-    if (db && connected) {
-      const rows = await db.select().from(jobberTokens).limit(1);
-      expiresAt = rows[0]?.expiresAt ?? null;
-    }
-    return { connected, expiresAt };
+    let accountName: string | null = null;
+    let connectedAt: Date | null = null;
+    try {
+      const dbConn = await getDb();
+      if (dbConn) {
+        const rows = await dbConn.select().from(jobberTokens).limit(1);
+        if (rows.length > 0) {
+          expiresAt = rows[0]?.expiresAt ?? null;
+          accountName = (rows[0] as any).accountName ?? null;
+          connectedAt = (rows[0] as any).createdAt ?? null;
+        }
+      }
+    } catch { /* ignore */ }
+    return { connected, expiresAt, accountName, connectedAt };
+  }),
+
+  /** Disconnect Jobber by deleting stored tokens */
+  disconnect: adminProcedure.mutation(async () => {
+    const db = await getDb();
+    if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+    await db.delete(jobberTokens);
+    return { success: true };
   }),
 
   /** Returns the Jobber OAuth authorization URL */

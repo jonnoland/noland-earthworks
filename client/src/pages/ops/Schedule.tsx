@@ -3,7 +3,7 @@
  * Live data from tRPC: list, create, delete schedule entries
  */
 
-import DashboardLayout from "@/components/OpsDashboardLayout";
+import DashboardLayout from "@/components/DashboardLayout";
 import { trpc } from "@/lib/trpc";
 import { useState, useMemo } from "react";
 import { ChevronLeft, ChevronRight, Plus, Trash2, Loader2, X, Calendar } from "lucide-react";
