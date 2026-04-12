@@ -84,7 +84,7 @@ export default function Leads() {
 
   const utils = trpc.useUtils();
   const { data: leads = [], isLoading } = trpc.ops.leads.list.useQuery(undefined, {
-    refetchInterval: 30_000, // poll every 30 seconds so new quote submissions appear automatically
+    refetchInterval: 15_000, // poll every 15 seconds so new quote submissions appear quickly
   });
 
   // Optimistic quick-update for inline status changes

@@ -10,4 +10,8 @@ export const ENV = {
   resendApiKey: process.env.RESEND_API_KEY ?? "",
   jobberClientId: process.env.JOBBER_CLIENT_ID ?? "",
   jobberClientSecret: process.env.JOBBER_CLIENT_SECRET ?? "",
+  twilioAccountSid: process.env.TWILIO_ACCOUNT_SID ?? "",
+  twilioAuthToken: process.env.TWILIO_AUTH_TOKEN ?? "",
+  twilioFromNumber: process.env.TWILIO_FROM_NUMBER ?? "",
+  ownerPhone: process.env.OWNER_PHONE ?? "",
 };

@@ -6,6 +6,7 @@ import { Resend } from "resend";
 import { createJobberRequest, isJobberConnected } from "./jobber";
 import { createOpsLead, getOwnerUser, getDb } from "./db";
 import { quoteSubmissions } from "../drizzle/schema";
+import { sendOwnerSms } from "./sms";
 
 const quoteSchema = z.object({
   name: z.string().min(1, "Name is required").max(100),
@@ -367,6 +368,25 @@ export const quoteRouter = router({
       });
     } catch (err) {
       console.warn("[Quote] Owner notification failed:", err);
+    }
+
+    // 3b. Send SMS push notification to owner's phone
+    try {
+      const addressPart = [input.street, input.city].filter(Boolean).join(", ");
+      const smsBody = [
+        `🔔 New Quote — Noland Earthworks`,
+        `Name: ${input.name}`,
+        `Phone: ${input.phone}`,
+        `Service: ${input.service} | ${input.county} County`,
+        input.acreage ? `Acreage: ${input.acreage}` : "",
+        addressPart ? `Address: ${addressPart}` : "",
+        `View leads: https://www.nolandearthworks.com/ops/leads`,
+      ]
+        .filter(Boolean)
+        .join("\n");
+      await sendOwnerSms(smsBody);
+    } catch (err) {
+      console.warn("[Quote] SMS notification failed:", err);
     }
 
     // 3. Send to Jobber if connected — persist result to quote_submissions log

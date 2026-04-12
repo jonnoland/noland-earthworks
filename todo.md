@@ -264,3 +264,12 @@
 - [x] Add refetchInterval (30s) to ops.leads.list on the Leads page
 - [x] Show a "New Lead" toast notification on the Dashboard when lead count increases during polling
 - [x] Add a subtle "Live" pulse indicator on the Dashboard KPI cards
+
+## Enhancements — April 2026 (batch 2)
+- [x] Install twilio npm package
+- [x] Add TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_FROM_NUMBER, OWNER_PHONE secrets
+- [x] Create server/sms.ts helper to send SMS via Twilio
+- [x] Wire SMS notification in quoteRouter.submit — send text to owner when new quote arrives
+- [x] Auto-create ops lead record in quoteRouter.submit when quote is submitted
+- [x] Reduce Leads page poll interval from 30s to 15s
+- [x] Reduce Dashboard leads/jobs poll interval from 30s to 15s

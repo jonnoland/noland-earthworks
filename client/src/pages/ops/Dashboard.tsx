@@ -60,10 +60,10 @@ function KPICard({ title, value, change, changeLabel, icon: Icon, positive, dela
 
 export default function Dashboard() {
   const { data: jobs = [] } = trpc.ops.jobs.list.useQuery(undefined, {
-    refetchInterval: 30_000, // poll every 30 seconds
+    refetchInterval: 15_000, // poll every 15 seconds
   });
   const { data: leads = [], dataUpdatedAt } = trpc.ops.leads.list.useQuery(undefined, {
-    refetchInterval: 30_000, // poll every 30 seconds
+    refetchInterval: 15_000, // poll every 15 seconds
   });
 
   // Track lead count across refetches and fire a toast when a new lead arrives
