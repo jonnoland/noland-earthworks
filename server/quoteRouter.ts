@@ -426,7 +426,7 @@ export const quoteRouter = router({
             `Error: ${jobberError}`,
             ``,
             `Please add this request to Jobber manually, or re-authorize at:`,
-            `https://www.nolandearthworks.com/api/jobber/authorize`,
+            `https://nolandearthworks.com/api/jobber/authorize`,
           ]
             .filter(line => line !== undefined)
             .join("\n"),

@@ -53,11 +53,10 @@ export const jobberRouter = router({
 
   /** Returns the Jobber OAuth authorization URL */
   getAuthUrl: adminProcedure.query(() => {
-    const redirectUri = "https://www.nolandearthworks.com/api/jobber/callback";
     const params = new URLSearchParams({
       response_type: "code",
       client_id: ENV.jobberClientId,
-      redirect_uri: redirectUri,
+      redirect_uri: ENV.jobberRedirectUri,
       state: "admin-connect",
     });
     return { url: `${JOBBER_AUTH_URL}?${params.toString()}` };

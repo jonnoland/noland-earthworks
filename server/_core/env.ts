@@ -10,6 +10,9 @@ export const ENV = {
   resendApiKey: process.env.RESEND_API_KEY ?? "",
   jobberClientId: process.env.JOBBER_CLIENT_ID ?? "",
   jobberClientSecret: process.env.JOBBER_CLIENT_SECRET ?? "",
+  // Canonical Jobber OAuth redirect URI — must match exactly what is registered in the Jobber developer app.
+  // Defaults to the non-www production URL. Override via JOBBER_REDIRECT_URI secret if needed.
+  jobberRedirectUri: process.env.JOBBER_REDIRECT_URI ?? "https://nolandearthworks.com/api/jobber/callback",
   twilioAccountSid: process.env.TWILIO_ACCOUNT_SID ?? "",
   twilioAuthToken: process.env.TWILIO_AUTH_TOKEN ?? "",
   twilioFromNumber: process.env.TWILIO_FROM_NUMBER ?? "",

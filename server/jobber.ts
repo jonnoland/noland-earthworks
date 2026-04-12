@@ -41,7 +41,7 @@ export async function exchangeCodeForTokens(code: string): Promise<void> {
       client_secret: ENV.jobberClientSecret,
       grant_type: "authorization_code",
       code,
-      redirect_uri: "https://www.nolandearthworks.com/api/jobber/callback",
+      redirect_uri: ENV.jobberRedirectUri,
     }).toString(),
   });
   if (!res.ok) {

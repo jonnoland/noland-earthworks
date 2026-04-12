@@ -401,3 +401,11 @@
 - [x] Show confirmation modal with pre-filled job title, client name, and service before converting
 - [x] After conversion: invalidate leads + jobs queries, show success toast, lead card shows "Converted" badge
 - [x] Write vitest for convertLeadToJob procedure
+
+## Jobber OAuth redirect_uri Fix — April 2026
+
+- [x] Find all places redirect_uri is constructed in jobberRoutes.ts and jobber.ts
+- [x] Change redirect_uri to https://nolandearthworks.com/api/jobber/callback (no www) in authorize route
+- [x] Change redirect_uri to https://nolandearthworks.com/api/jobber/callback (no www) in token exchange (callback route)
+- [x] Add JOBBER_REDIRECT_URI to env.ts so it can be overridden via secret if needed
+- [x] Run all tests and confirm passing

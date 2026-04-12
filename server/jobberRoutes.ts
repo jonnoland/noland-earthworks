@@ -20,7 +20,7 @@ export function registerJobberRoutes(app: Express) {
   app.get("/api/jobber/authorize", (_req, res) => {
     const params = new URLSearchParams({
       client_id: ENV.jobberClientId,
-      redirect_uri: "https://www.nolandearthworks.com/api/jobber/callback",
+      redirect_uri: ENV.jobberRedirectUri,
       response_type: "code",
     });
     res.redirect(`${JOBBER_AUTH_URL}?${params.toString()}`);
