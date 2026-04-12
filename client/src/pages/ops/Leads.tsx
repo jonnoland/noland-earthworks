@@ -83,7 +83,9 @@ export default function Leads() {
   const [convertingLeadId, setConvertingLeadId] = useState<number | null>(null);
 
   const utils = trpc.useUtils();
-  const { data: leads = [], isLoading } = trpc.ops.leads.list.useQuery();
+  const { data: leads = [], isLoading } = trpc.ops.leads.list.useQuery(undefined, {
+    refetchInterval: 30_000, // poll every 30 seconds so new quote submissions appear automatically
+  });
 
   // Optimistic quick-update for inline status changes
   const quickUpdateStage = trpc.ops.leads.update.useMutation({

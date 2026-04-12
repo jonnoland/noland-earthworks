@@ -258,3 +258,9 @@
 - [x] Fix /ops login redirect: pass returnPath to getLoginUrl so OAuth callback redirects back to /ops after auth
 - [x] Fix OAuth callback to read returnPath from state and redirect there instead of hardcoded "/"
 - [x] Verify Jobber token is valid and connected (confirmed: Noland Earthworks account active)
+
+## Live Dashboard Polling — April 2026
+- [x] Add refetchInterval (30s) to ops.leads.list and ops.jobs.list queries on the Dashboard
+- [x] Add refetchInterval (30s) to ops.leads.list on the Leads page
+- [x] Show a "New Lead" toast notification on the Dashboard when lead count increases during polling
+- [x] Add a subtle "Live" pulse indicator on the Dashboard KPI cards

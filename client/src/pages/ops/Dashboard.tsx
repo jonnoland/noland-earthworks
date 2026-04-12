@@ -3,7 +3,7 @@
  * Main overview with KPI metrics, revenue chart, job pipeline, and activity feed
  */
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import DashboardLayout from "@/components/OpsDashboardLayout";
 import { trpc } from "@/lib/trpc";
 import {
@@ -59,8 +59,29 @@ function KPICard({ title, value, change, changeLabel, icon: Icon, positive, dela
 }
 
 export default function Dashboard() {
-  const { data: jobs = [] } = trpc.ops.jobs.list.useQuery();
-  const { data: leads = [] } = trpc.ops.leads.list.useQuery();
+  const { data: jobs = [] } = trpc.ops.jobs.list.useQuery(undefined, {
+    refetchInterval: 30_000, // poll every 30 seconds
+  });
+  const { data: leads = [], dataUpdatedAt } = trpc.ops.leads.list.useQuery(undefined, {
+    refetchInterval: 30_000, // poll every 30 seconds
+  });
+
+  // Track lead count across refetches and fire a toast when a new lead arrives
+  const prevLeadCount = useRef<number | null>(null);
+  useEffect(() => {
+    if (prevLeadCount.current === null) {
+      prevLeadCount.current = leads.length;
+      return;
+    }
+    if (leads.length > prevLeadCount.current) {
+      const diff = leads.length - prevLeadCount.current;
+      toast.success(`${diff} new lead${diff > 1 ? "s" : ""} just came in!`, {
+        description: "Check the Lead Pipeline for details.",
+        duration: 6000,
+      });
+    }
+    prevLeadCount.current = leads.length;
+  }, [dataUpdatedAt]); // fire only when data is refreshed, not on every render
 
   const liveKPIs = useMemo(() => {
     const totalRevenue = jobs.reduce((s, j) => s + Number(j.totalPrice ?? 0), 0);
