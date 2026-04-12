@@ -320,9 +320,9 @@
 
 ## County Blog Post Cross-Links — April 2026
 
-- [ ] Add "Also Serving Nearby Counties" section to Williamson County post linking to Davidson and Rutherford
-- [ ] Add "Also Serving Nearby Counties" section to Davidson County post linking to Williamson and Rutherford
-- [ ] Add "Also Serving Nearby Counties" section to Rutherford County post linking to Williamson and Davidson
+- [x] Add "Also Serving Nearby Counties" section to Williamson County post linking to Davidson and Rutherford
+- [x] Add "Also Serving Nearby Counties" section to Davidson County post linking to Williamson and Rutherford
+- [x] Add "Also Serving Nearby Counties" section to Rutherford County post linking to Williamson and Davidson
 
 ## ownrops-dashboard Update — April 2026
 

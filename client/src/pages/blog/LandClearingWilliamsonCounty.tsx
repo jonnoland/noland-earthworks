@@ -77,6 +77,18 @@ export default function LandClearingWilliamsonCounty() {
       <p>
         If you are ready to get started or simply want to discuss your project, contact us for a free, no-obligation on-site estimate. We will walk the property with you, assess the vegetation and terrain, and give you a straightforward quote with no surprises.
       </p>
+
+      <h2>Also Serving Nearby Counties</h2>
+      <p>
+        Noland Earthworks serves landowners across all of Middle and West Tennessee — not just Williamson County. If your property is located in a neighboring county, we cover those areas as well. Learn more about our services in the counties bordering Williamson:
+      </p>
+      <ul>
+        <li><a href="/blog/land-clearing-davidson-county"><strong>Land Clearing in Davidson County, TN</strong></a> — Serving Nashville, Antioch, Hermitage, Bellevue, Madison, and surrounding areas.</li>
+        <li><a href="/blog/land-clearing-rutherford-county"><strong>Land Clearing in Rutherford County, TN</strong></a> — Serving Murfreesboro, Smyrna, La Vergne, Eagleville, and surrounding areas.</li>
+      </ul>
+      <p>
+        Not sure which county your property falls in? <a href="/quote">Request a free estimate</a> and we will confirm your location and service area when we follow up.
+      </p>
     </BlogPostLayout>
   );
 }
