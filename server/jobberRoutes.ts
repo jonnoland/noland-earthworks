@@ -48,6 +48,16 @@ export function registerJobberRoutes(app: Express) {
     }
   });
 
+  // Temporary SMS env diagnostic — checks if Twilio vars are set in production
+  app.get("/api/sms/check", (_req, res) => {
+    res.json({
+      twilioAccountSid: !!ENV.twilioAccountSid,
+      twilioAuthToken: !!ENV.twilioAuthToken,
+      twilioFromNumber: ENV.twilioFromNumber || null,
+      ownerPhone: ENV.ownerPhone || null,
+    });
+  });
+
   // Status check endpoint
   app.get("/api/jobber/status", async (_req, res) => {
     try {
