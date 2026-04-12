@@ -253,7 +253,12 @@ const SERVICE_LINE_ITEMS: Record<string, string> = {
   "Multiple Services": "Multiple Services",
 };
 
-export async function createJobberRequest(data: QuoteFormData): Promise<void> {
+export interface JobberRequestResult {
+  requestId: string;
+  requestUrl: string;
+}
+
+export async function createJobberRequest(data: QuoteFormData): Promise<JobberRequestResult> {
   // Split name into first/last (best effort)
   const nameParts = data.name.trim().split(/\s+/);
   const firstName = nameParts[0] ?? data.name;
@@ -377,4 +382,8 @@ export async function createJobberRequest(data: QuoteFormData): Promise<void> {
   }
 
   console.log(`[Jobber] Created request: ${requestData.requestCreate.request.jobberWebUri}`);
+  return {
+    requestId: requestData.requestCreate.request.id,
+    requestUrl: requestData.requestCreate.request.jobberWebUri,
+  };
 }

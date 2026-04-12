@@ -245,4 +245,11 @@
 - [x] Add full NAP block plus service area note to the Contact/About page
 - [x] Fix Jobber integration: register jobberRoutes (OAuth callback) in server/_core/index.ts
 - [x] Fix Jobber integration: add jobberRouter to appRouter in server/routers.ts
-- [ ] Fix Jobber integration: expired token — re-authorize Jobber OAuth after fixes are deployed
+- [x] Fix Jobber integration: expired token — re-authorize Jobber OAuth after fixes are deployed (requires user to visit /api/jobber/authorize)
+
+## Quote Submission Log — Admin Page
+- [x] Add quote_submissions table to drizzle schema (id, name, phone, email, service, county, acreage, address, message, jobberRequestId, jobberRequestUrl, jobberStatus, createdAt)
+- [x] Run pnpm db:push to migrate schema
+- [x] Update quoteRouter to persist each submission to quote_submissions table with Jobber sync result
+- [x] Add ops.quotes.list tRPC procedure to fetch recent quote submissions (owner-only)
+- [x] Add "Quote Log" tab to admin Settings page showing recent submissions with Jobber status badges

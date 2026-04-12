@@ -1,0 +1,20 @@
+CREATE TABLE `quote_submissions` (
+	`id` int AUTO_INCREMENT NOT NULL,
+	`name` varchar(255) NOT NULL,
+	`phone` varchar(50) NOT NULL,
+	`email` varchar(320) NOT NULL,
+	`service` varchar(100) NOT NULL,
+	`county` varchar(100) NOT NULL,
+	`acreage` varchar(50),
+	`street` varchar(255),
+	`city` varchar(100),
+	`state` varchar(50),
+	`zip` varchar(20),
+	`message` text,
+	`jobberStatus` enum('synced','failed','skipped') NOT NULL DEFAULT 'skipped',
+	`jobberRequestId` varchar(256),
+	`jobberRequestUrl` varchar(512),
+	`jobberError` text,
+	`createdAt` timestamp NOT NULL DEFAULT (now()),
+	CONSTRAINT `quote_submissions_id` PRIMARY KEY(`id`)
+);

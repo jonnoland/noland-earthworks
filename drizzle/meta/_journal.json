@@ -36,6 +36,13 @@
       "when": 1775490825710,
       "tag": "0004_military_warlock",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "5",
+      "when": 1775955726156,
+      "tag": "0005_lush_proemial_gods",
+      "breakpoints": true
     }
   ]
 }

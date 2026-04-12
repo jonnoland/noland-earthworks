@@ -171,3 +171,33 @@ export const scheduleEntries = mysqlTable("schedule_entries", {
 
 export type ScheduleEntry = typeof scheduleEntries.$inferSelect;
 export type InsertScheduleEntry = typeof scheduleEntries.$inferInsert;
+
+/**
+ * Quote submissions log — every quote form submission is recorded here.
+ * Captures the full submission payload plus Jobber sync outcome.
+ */
+export const quoteSubmissions = mysqlTable("quote_submissions", {
+  id: int("id").autoincrement().primaryKey(),
+  /** Contact info */
+  name: varchar("name", { length: 255 }).notNull(),
+  phone: varchar("phone", { length: 50 }).notNull(),
+  email: varchar("email", { length: 320 }).notNull(),
+  /** Project details */
+  service: varchar("service", { length: 100 }).notNull(),
+  county: varchar("county", { length: 100 }).notNull(),
+  acreage: varchar("acreage", { length: 50 }),
+  street: varchar("street", { length: 255 }),
+  city: varchar("city", { length: 100 }),
+  state: varchar("state", { length: 50 }),
+  zip: varchar("zip", { length: 20 }),
+  message: text("message"),
+  /** Jobber sync outcome */
+  jobberStatus: mysqlEnum("jobberStatus", ["synced", "failed", "skipped"]).notNull().default("skipped"),
+  jobberRequestId: varchar("jobberRequestId", { length: 256 }),
+  jobberRequestUrl: varchar("jobberRequestUrl", { length: 512 }),
+  jobberError: text("jobberError"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type QuoteSubmission = typeof quoteSubmissions.$inferSelect;
+export type InsertQuoteSubmission = typeof quoteSubmissions.$inferInsert;

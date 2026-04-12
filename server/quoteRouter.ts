@@ -4,7 +4,8 @@ import { notifyOwner } from "./_core/notification";
 import { ENV } from "./_core/env";
 import { Resend } from "resend";
 import { createJobberRequest, isJobberConnected } from "./jobber";
-import { createOpsLead, getOwnerUser } from "./db";
+import { createOpsLead, getOwnerUser, getDb } from "./db";
+import { quoteSubmissions } from "../drizzle/schema";
 
 const quoteSchema = z.object({
   name: z.string().min(1, "Name is required").max(100),
@@ -368,18 +369,27 @@ export const quoteRouter = router({
       console.warn("[Quote] Owner notification failed:", err);
     }
 
-    // 3. Send to Jobber if connected
+    // 3. Send to Jobber if connected — persist result to quote_submissions log
+    let jobberStatus: "synced" | "failed" | "skipped" = "skipped";
+    let jobberRequestId: string | undefined;
+    let jobberRequestUrl: string | undefined;
+    let jobberError: string | undefined;
+
     try {
       const jobberReady = await isJobberConnected();
       if (jobberReady) {
-        await createJobberRequest(input);
+        const result = await createJobberRequest(input);
+        jobberStatus = "synced";
+        jobberRequestId = result.requestId;
+        jobberRequestUrl = result.requestUrl;
       }
     } catch (err) {
+      jobberStatus = "failed";
+      jobberError = err instanceof Error ? err.message : String(err);
       console.error("[Quote] Jobber request creation failed:", err);
       // Non-fatal: email + notification already sent.
       // Notify owner so no lead is silently lost.
       try {
-        const errMsg = err instanceof Error ? err.message : String(err);
         await notifyOwner({
           title: "⚠️ Jobber Sync Failed — Manual Entry Required",
           content: [
@@ -393,7 +403,7 @@ export const quoteRouter = router({
             input.acreage ? `Acreage: ${input.acreage}` : "",
             input.message ? `Details: ${input.message}` : "",
             ``,
-            `Error: ${errMsg}`,
+            `Error: ${jobberError}`,
             ``,
             `Please add this request to Jobber manually, or re-authorize at:`,
             `https://www.nolandearthworks.com/api/jobber/authorize`,
@@ -404,6 +414,33 @@ export const quoteRouter = router({
       } catch (notifyErr) {
         console.warn("[Quote] Jobber failure notification also failed:", notifyErr);
       }
+    }
+
+    // Persist submission to quote_submissions log
+    try {
+      const db = await getDb();
+      if (db) {
+        await db.insert(quoteSubmissions).values({
+          name: input.name,
+          phone: input.phone,
+          email: input.email,
+          service: input.service,
+          county: input.county,
+          acreage: input.acreage || null,
+          street: input.street || null,
+          city: input.city || null,
+          state: input.state || null,
+          zip: input.zip || null,
+          message: input.message || null,
+          jobberStatus,
+          jobberRequestId: jobberRequestId ?? null,
+          jobberRequestUrl: jobberRequestUrl ?? null,
+          jobberError: jobberError ?? null,
+        });
+        console.log(`[Quote] Submission logged for ${input.name} (Jobber: ${jobberStatus})`);
+      }
+    } catch (logErr) {
+      console.warn("[Quote] Failed to log submission:", logErr);
     }
 
     // Auto-create a lead in the ops dashboard

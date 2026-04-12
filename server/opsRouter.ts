@@ -12,8 +12,8 @@ import {
   getOpsLeads, createOpsLead, updateOpsLead, deleteOpsLead,
   getScheduleEntries, createScheduleEntry, updateScheduleEntry, deleteScheduleEntry,
 } from "./db";
-import { opsLeads } from "../drizzle/schema";
-import { and, eq, like } from "drizzle-orm";
+import { opsLeads, quoteSubmissions } from "../drizzle/schema";
+import { and, desc, eq, like } from "drizzle-orm";
 
 /**
  * Owner-only guard — only the site owner can call these procedures.
@@ -178,9 +178,26 @@ const scheduleRouter = router({
     .mutation(({ ctx, input }) => deleteScheduleEntry(input.id, ctx.user.id)),
 });
 
+// ─── Quote Submissions Log Router ────────────────────────────────────────────
+const quotesRouter = router({
+  /** Returns the most recent quote form submissions with Jobber sync status */
+  list: ownerProcedure
+    .input(z.object({ limit: z.number().min(1).max(200).default(50) }))
+    .query(async ({ input }) => {
+      const db = await getDb();
+      if (!db) return [];
+      return db
+        .select()
+        .from(quoteSubmissions)
+        .orderBy(desc(quoteSubmissions.createdAt))
+        .limit(input.limit);
+    }),
+});
+
 // ─── Combined Ops Router ──────────────────────────────────────────────────────
 export const opsRouter = router({
   jobs: jobsRouter,
   leads: leadsRouter,
   schedule: scheduleRouter,
+  quotes: quotesRouter,
 });
