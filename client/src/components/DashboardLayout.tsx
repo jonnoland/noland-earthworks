@@ -135,15 +135,15 @@ export default function DashboardLayout({ children, title, subtitle }: Dashboard
     <>
       {/* Logo */}
       <div className={cn(
-        "flex h-14 shrink-0 items-center overflow-hidden border-b border-sidebar-border",
+        "flex h-36 shrink-0 items-center overflow-hidden border-b border-sidebar-border",
         mobile ? "justify-between px-4" : collapsed ? "justify-center px-2" : "justify-center px-2"
       )}>
-        <Link href="/ops">
+        <Link href="/">
           <div className="flex items-center overflow-hidden">
             <img
               src="https://d2xsxph8kpxj0f.cloudfront.net/310519663484957999/S4PPJthPzHXph6Nqq4scSB/noland-earthworks-logo_3844d4ef.jpg"
               alt="Noland Earthworks"
-              className="object-contain border-0 h-8 max-w-[140px]"
+              className="object-contain border-0 h-32 max-w-[560px]"
             />
           </div>
         </Link>

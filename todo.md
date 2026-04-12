@@ -353,3 +353,9 @@
 ## Sidebar Nav CSS Fix — April 2026
 
 - [x] Add .ops-sidebar-item CSS rules to client/src/index.css (flex, align-items, gap, active state)
+
+## Sidebar Logo Update — April 2026
+
+- [x] DashboardLayout.tsx: change logo img from h-8 max-w-[140px] to h-32 max-w-[560px]
+- [x] DashboardLayout.tsx: change logo container from h-14 to h-36
+- [x] DashboardLayout.tsx: change logo Link href from "/dashboard" to "/"
