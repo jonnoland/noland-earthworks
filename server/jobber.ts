@@ -134,6 +134,98 @@ export async function jobberGraphQL(query: string, variables?: Record<string, un
   return json.data;
 }
 
+// ─── Background token refresh scheduler ─────────────────────────────────────
+
+/**
+ * How far in advance to proactively refresh the token.
+ * The reactive path in getValidAccessToken uses 5 min;
+ * the background scheduler uses a wider 10-minute window so it
+ * almost always fires before any request needs the token.
+ */
+const PROACTIVE_REFRESH_WINDOW_MS = 10 * 60 * 1000; // 10 minutes
+
+/**
+ * How often the background scheduler wakes up to check token health.
+ * Jobber tokens expire in ~60 minutes, so checking every 5 minutes
+ * gives plenty of lead time without hammering the DB.
+ */
+const SCHEDULER_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
+
+let schedulerTimer: ReturnType<typeof setInterval> | null = null;
+
+/**
+ * Attempt a proactive token refresh if the stored token is within
+ * PROACTIVE_REFRESH_WINDOW_MS of expiry. Safe to call at any time;
+ * logs but does not throw on failure so the scheduler never crashes.
+ */
+export async function proactiveTokenRefreshIfNeeded(): Promise<void> {
+  try {
+    const db = await getDb();
+    if (!db) return; // DB not ready yet — skip silently
+    const rows = await db
+      .select()
+      .from(jobberTokens)
+      .orderBy(desc(jobberTokens.updatedAt))
+      .limit(1);
+    if (rows.length === 0) return; // Not connected — nothing to refresh
+
+    const row = rows[0];
+    const msUntilExpiry = row.expiresAt.getTime() - Date.now();
+
+    if (msUntilExpiry > PROACTIVE_REFRESH_WINDOW_MS) {
+      // Token is healthy — no action needed
+      return;
+    }
+
+    if (msUntilExpiry <= 0) {
+      console.warn("[Jobber] Token already expired — attempting emergency refresh");
+    } else {
+      const minsLeft = Math.round(msUntilExpiry / 60_000);
+      console.log(`[Jobber] Token expires in ${minsLeft} min — proactively refreshing`);
+    }
+
+    await refreshAccessToken(row.refreshToken);
+    console.log("[Jobber] Proactive token refresh succeeded");
+  } catch (err) {
+    // Log but do not rethrow — a failed background refresh is not fatal;
+    // the reactive path in getValidAccessToken will retry on the next API call.
+    console.error("[Jobber] Proactive token refresh failed:", err instanceof Error ? err.message : String(err));
+  }
+}
+
+/**
+ * Start the background scheduler that checks token health every
+ * SCHEDULER_INTERVAL_MS. Idempotent — safe to call multiple times;
+ * only one interval will run at a time.
+ */
+export function startJobberTokenRefreshScheduler(): void {
+  if (schedulerTimer !== null) return; // Already running
+
+  // Run once immediately on startup to catch any token that expired
+  // while the server was offline.
+  proactiveTokenRefreshIfNeeded().catch(() => {/* already logged inside */});
+
+  schedulerTimer = setInterval(() => {
+    proactiveTokenRefreshIfNeeded().catch(() => {/* already logged inside */});
+  }, SCHEDULER_INTERVAL_MS);
+
+  // Allow Node to exit cleanly even if the interval is still running
+  if (schedulerTimer.unref) schedulerTimer.unref();
+
+  console.log(`[Jobber] Token refresh scheduler started (interval: ${SCHEDULER_INTERVAL_MS / 60_000} min)`);
+}
+
+/**
+ * Stop the background scheduler. Primarily used in tests to avoid
+ * open handles after the test suite finishes.
+ */
+export function stopJobberTokenRefreshScheduler(): void {
+  if (schedulerTimer !== null) {
+    clearInterval(schedulerTimer);
+    schedulerTimer = null;
+  }
+}
+
 // ─── Business logic ───────────────────────────────────────────────────────────
 
 interface QuoteFormData {

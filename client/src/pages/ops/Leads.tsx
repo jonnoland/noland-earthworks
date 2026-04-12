@@ -9,20 +9,41 @@ import { useState } from "react";
 import {
   UserPlus, Plus, Search, Trash2, Edit3, ChevronDown,
   Phone, Mail, MapPin, DollarSign, Loader2, X,
-  RefreshCw, ExternalLink, AlertCircle, Inbox,
+  RefreshCw, ExternalLink, AlertCircle, Inbox, Briefcase,
 } from "lucide-react";
+import { useLocation } from "wouter";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
 const STAGE_OPTIONS = ["new", "contacted", "estimate_sent", "negotiating", "won", "lost"] as const;
+const CONVERTED_STAGE = "converted";
 const SOURCE_OPTIONS = ["google", "facebook", "referral", "website", "direct", "other"] as const;
 
 type LeadStage = typeof STAGE_OPTIONS[number];
 type LeadSource = typeof SOURCE_OPTIONS[number];
 
 const STAGE_LABELS: Record<string, string> = {
-  new: "New Lead", contacted: "Contacted", estimate_sent: "Estimate Sent", negotiating: "Negotiating", won: "Won", lost: "Lost",
+  new: "New Lead", contacted: "Contacted", estimate_sent: "Estimate Sent", negotiating: "Negotiating",
+  won: "Won", lost: "Lost", converted: "Converted to Job",
 };
+
+const JOB_TYPE_OPTIONS = [
+  { value: "land_clearing", label: "Land Clearing" },
+  { value: "forestry_mulching", label: "Forestry Mulching" },
+  { value: "brush_removal", label: "Brush Removal" },
+  { value: "stump_grinding", label: "Stump Grinding" },
+  { value: "wildfire_mitigation", label: "Wildfire Mitigation" },
+] as const;
+
+type JobTypeValue = typeof JOB_TYPE_OPTIONS[number]["value"];
+
+interface ConvertForm {
+  title: string;
+  client: string;
+  address: string;
+  jobType: JobTypeValue;
+  notes: string;
+}
 
 const STAGE_COLORS: Record<string, string> = {
   new: "bg-blue-500/15 text-blue-400 border-blue-500/30",
@@ -31,6 +52,7 @@ const STAGE_COLORS: Record<string, string> = {
   negotiating: "bg-purple-500/15 text-purple-400 border-purple-500/30",
   won: "bg-green-500/15 text-green-400 border-green-500/30",
   lost: "bg-red-500/15 text-red-400 border-red-500/30",
+  converted: "bg-amber-500/15 text-amber-400 border-amber-500/30",
 };
 
 interface LeadFormData {
@@ -214,11 +236,16 @@ function JobberRequestsSection() {
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function Leads() {
+  const [, navigate] = useLocation();
   const [search, setSearch] = useState("");
   const [filterStage, setFilterStage] = useState("all");
   const [showModal, setShowModal] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [form, setForm] = useState<LeadFormData>(emptyForm);
+
+  // Convert-to-job modal state
+  const [convertingLead, setConvertingLead] = useState<typeof leads[0] | null>(null);
+  const [convertForm, setConvertForm] = useState<ConvertForm>({ title: "", client: "", address: "", jobType: "land_clearing", notes: "" });
 
   const utils = trpc.useUtils();
   const { data: leads = [], isLoading } = trpc.ops.leads.list.useQuery();
@@ -235,6 +262,35 @@ export default function Leads() {
     onSuccess: () => { utils.ops.leads.list.invalidate(); toast.success("Lead deleted"); },
     onError: (e) => toast.error(e.message),
   });
+
+  const convertToJob = trpc.ops.leads.convertToJob.useMutation({
+    onSuccess: (data) => {
+      utils.ops.leads.list.invalidate();
+      utils.ops.jobs.list.invalidate();
+      setConvertingLead(null);
+      toast.success("Lead converted to job");
+      navigate("/ops/jobs");
+    },
+    onError: (e) => toast.error(e.message),
+  });
+
+  const openConvert = (lead: typeof leads[0]) => {
+    const jobTypeMap: Record<string, JobTypeValue> = {
+      "Land Clearing": "land_clearing", "land_clearing": "land_clearing",
+      "Forestry Mulching": "forestry_mulching", "forestry_mulching": "forestry_mulching",
+      "Brush Removal": "brush_removal", "brush_removal": "brush_removal",
+      "Stump Grinding": "stump_grinding", "stump_grinding": "stump_grinding",
+      "Wildfire Mitigation": "wildfire_mitigation", "wildfire_mitigation": "wildfire_mitigation",
+    };
+    setConvertForm({
+      title: `${lead.name} — ${lead.jobType ?? "Land Clearing"}`,
+      client: lead.name,
+      address: lead.address ?? "",
+      jobType: (lead.jobType ? jobTypeMap[lead.jobType] : undefined) ?? "land_clearing",
+      notes: lead.notes ?? "",
+    });
+    setConvertingLead(lead);
+  };
 
   const openCreate = () => { setForm(emptyForm); setEditingId(null); setShowModal(true); };
   const openEdit = (lead: typeof leads[0]) => {
@@ -385,6 +441,15 @@ export default function Leads() {
                       </td>
                       <td className="px-4 py-3 text-right">
                         <div className="flex items-center justify-end gap-1">
+                          {lead.stage !== CONVERTED_STAGE && lead.stage !== "won" && lead.stage !== "lost" && (
+                            <button
+                              onClick={() => openConvert(lead)}
+                              title="Convert to Job"
+                              className="p-1.5 rounded-md hover:bg-amber-500/10 text-muted-foreground hover:text-amber-400 transition-colors"
+                            >
+                              <Briefcase className="w-3.5 h-3.5" />
+                            </button>
+                          )}
                           <button onClick={() => openEdit(lead)} className="p-1.5 rounded-md hover:bg-secondary/80 text-muted-foreground hover:text-foreground transition-colors">
                             <Edit3 className="w-3.5 h-3.5" />
                           </button>
@@ -405,6 +470,107 @@ export default function Leads() {
 
       {/* ── Jobber Requests Section ── */}
       <JobberRequestsSection />
+
+      {/* Convert to Job Modal */}
+      {convertingLead && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div className="ops-card w-full max-w-md p-6 shadow-2xl">
+            <div className="flex items-center justify-between mb-1">
+              <h2 className="text-base font-bold text-foreground" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
+                Convert to Job
+              </h2>
+              <button onClick={() => setConvertingLead(null)} className="p-1.5 rounded-md hover:bg-secondary/80 text-muted-foreground">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <p className="text-xs text-muted-foreground mb-4">
+              A new job will be created from this lead and the lead will be marked as Converted.
+            </p>
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                convertToJob.mutate({
+                  leadId: convertingLead.id,
+                  title: convertForm.title || undefined,
+                  client: convertForm.client || undefined,
+                  address: convertForm.address || undefined,
+                  jobType: convertForm.jobType,
+                  notes: convertForm.notes || undefined,
+                });
+              }}
+              className="space-y-3"
+            >
+              <div>
+                <label className="block text-xs font-medium text-muted-foreground mb-1">Job Title</label>
+                <input
+                  required
+                  value={convertForm.title}
+                  onChange={e => setConvertForm(f => ({ ...f, title: e.target.value }))}
+                  className="w-full bg-secondary/50 border border-border rounded-md px-3 py-2 text-xs text-foreground outline-none focus:border-primary/50"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-muted-foreground mb-1">Client Name</label>
+                <input
+                  required
+                  value={convertForm.client}
+                  onChange={e => setConvertForm(f => ({ ...f, client: e.target.value }))}
+                  className="w-full bg-secondary/50 border border-border rounded-md px-3 py-2 text-xs text-foreground outline-none focus:border-primary/50"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-muted-foreground mb-1">Property Address</label>
+                <input
+                  value={convertForm.address}
+                  onChange={e => setConvertForm(f => ({ ...f, address: e.target.value }))}
+                  placeholder="Optional"
+                  className="w-full bg-secondary/50 border border-border rounded-md px-3 py-2 text-xs text-foreground outline-none focus:border-primary/50 placeholder:text-muted-foreground/40"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-muted-foreground mb-1">Job Type</label>
+                <select
+                  value={convertForm.jobType}
+                  onChange={e => setConvertForm(f => ({ ...f, jobType: e.target.value as JobTypeValue }))}
+                  className="w-full bg-secondary/50 border border-border rounded-md px-3 py-2 text-xs text-foreground outline-none focus:border-primary/50"
+                >
+                  {JOB_TYPE_OPTIONS.map(opt => (
+                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-muted-foreground mb-1">Notes</label>
+                <textarea
+                  value={convertForm.notes}
+                  onChange={e => setConvertForm(f => ({ ...f, notes: e.target.value }))}
+                  rows={2}
+                  placeholder="Optional"
+                  className="w-full bg-secondary/50 border border-border rounded-md px-3 py-2 text-xs text-foreground outline-none focus:border-primary/50 resize-none placeholder:text-muted-foreground/40"
+                />
+              </div>
+              <div className="flex gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={() => setConvertingLead(null)}
+                  className="flex-1 py-2 rounded-md text-xs font-semibold text-muted-foreground bg-secondary/50 hover:bg-secondary transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={convertToJob.isPending}
+                  className="flex-1 py-2 rounded-md text-xs font-semibold text-white bg-amber-600 hover:bg-amber-500 transition-all disabled:opacity-50 flex items-center justify-center gap-1.5"
+                >
+                  {convertToJob.isPending && <Loader2 className="w-3 h-3 animate-spin" />}
+                  <Briefcase className="w-3 h-3" />
+                  Convert to Job
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* Add/Edit Modal */}
       {showModal && (

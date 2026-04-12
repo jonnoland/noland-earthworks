@@ -12,7 +12,7 @@ import {
   getOpsLeads, createOpsLead, updateOpsLead, deleteOpsLead,
   getScheduleEntries, createScheduleEntry, updateScheduleEntry, deleteScheduleEntry,
 } from "./db";
-import { opsLeads, quoteSubmissions } from "../drizzle/schema";
+import { jobs, opsLeads, quoteSubmissions } from "../drizzle/schema";
 import { and, desc, eq, like } from "drizzle-orm";
 
 /**
@@ -144,6 +144,77 @@ const leadsRouter = router({
   delete: ownerProcedure
     .input(z.object({ id: z.number() }))
     .mutation(({ ctx, input }) => deleteOpsLead(input.id, ctx.user.id)),
+
+  /**
+   * Convert a lead to a local job.
+   * Creates a new job record pre-filled with the lead's data,
+   * then sets the lead stage to "converted".
+   * Returns the new job's id so the client can navigate to /ops/jobs.
+   */
+  convertToJob: ownerProcedure
+    .input(z.object({
+      leadId: z.number(),
+      // Caller may override any of these; defaults are derived from the lead
+      title: z.string().min(1).optional(),
+      client: z.string().min(1).optional(),
+      address: z.string().optional(),
+      jobType: z.enum(["land_clearing", "forestry_mulching", "brush_removal", "stump_grinding", "wildfire_mitigation"]).optional(),
+      notes: z.string().optional(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+
+      // Fetch the lead to copy its data
+      const leadRows = await db
+        .select()
+        .from(opsLeads)
+        .where(and(eq(opsLeads.id, input.leadId), eq(opsLeads.userId, ctx.user.id)))
+        .limit(1);
+      if (leadRows.length === 0) throw new Error("Lead not found");
+      const lead = leadRows[0];
+
+      // Map lead jobType string to jobs jobType enum (best-effort)
+      const jobTypeMap: Record<string, "land_clearing" | "forestry_mulching" | "brush_removal" | "stump_grinding" | "wildfire_mitigation"> = {
+        "Land Clearing": "land_clearing",
+        "land_clearing": "land_clearing",
+        "Forestry Mulching": "forestry_mulching",
+        "forestry_mulching": "forestry_mulching",
+        "Brush Removal": "brush_removal",
+        "brush_removal": "brush_removal",
+        "Stump Grinding": "stump_grinding",
+        "stump_grinding": "stump_grinding",
+        "Wildfire Mitigation": "wildfire_mitigation",
+        "wildfire_mitigation": "wildfire_mitigation",
+      };
+      const resolvedJobType =
+        input.jobType ??
+        (lead.jobType ? (jobTypeMap[lead.jobType] ?? "land_clearing") : "land_clearing");
+
+      // Build the new job record
+      const newJobData = {
+        userId: ctx.user.id,
+        title: input.title ?? `${lead.name} — ${lead.jobType ?? "Land Clearing"}`,
+        client: input.client ?? lead.name,
+        address: input.address ?? lead.address ?? undefined,
+        jobType: resolvedJobType,
+        status: "estimate" as const,
+        notes: input.notes ?? lead.notes ?? undefined,
+      };
+
+      // Insert the job and retrieve its new id
+      const insertResult = await db.insert(jobs).values(newJobData);
+      const newJobId = (insertResult as unknown as { insertId: number }).insertId;
+
+      // Mark the lead as converted
+      await db
+        .update(opsLeads)
+        .set({ stage: "converted", updatedAt: new Date() })
+        .where(and(eq(opsLeads.id, input.leadId), eq(opsLeads.userId, ctx.user.id)));
+
+      console.log(`[Leads] Lead #${input.leadId} converted to Job #${newJobId} by user ${ctx.user.id}`);
+      return { jobId: newJobId };
+    }),
 });
 
 // ─── Schedule Router ──────────────────────────────────────────────────────────

@@ -10,6 +10,7 @@ import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
 import { prerenderMiddleware } from "../prerender";
 import { registerJobberRoutes } from "../jobberRoutes";
+import { startJobberTokenRefreshScheduler } from "../jobber";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -40,6 +41,8 @@ async function startServer() {
   registerOAuthRoutes(app);
   // Jobber OAuth routes: /api/jobber/authorize, /api/jobber/callback, /api/jobber/status
   registerJobberRoutes(app);
+  // Start background Jobber token refresh scheduler (checks every 5 min, refreshes if within 10 min of expiry)
+  startJobberTokenRefreshScheduler();
   // Sitemap + robots.txt
   registerSitemapRoutes(app);
   // Bot prerendering — must come before Vite/static middleware

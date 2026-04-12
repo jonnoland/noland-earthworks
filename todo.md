@@ -382,3 +382,22 @@
 - [x] Add import and registerJobberRoutes(app) call to index.ts if missing (was already present)
 - [x] Add /api/jobber/connect alias route (redirect to /api/jobber/authorize) if needed
 - [x] Verify JOBBER_CLIENT_ID and JOBBER_CLIENT_SECRET are set in project secrets
+
+## Jobber Token Auto-Refresh — April 2026
+
+- [ ] Audit existing token storage schema (jobber_tokens table) and refresh logic in jobber.ts
+- [ ] Add expiresAt (bigint UTC ms) column to jobber_tokens table; run db:push
+- [ ] Update upsertToken to store expiresAt from Jobber's expires_in response field
+- [ ] Add proactive pre-expiry refresh: refresh token if expiresAt is within 5 minutes
+- [ ] Add background scheduler in jobber.ts: setInterval checks every 30 minutes and refreshes if within 10-minute window
+- [ ] Wire startJobberTokenRefreshScheduler() into server/_core/index.ts on startup
+- [ ] Write vitest for token refresh logic (mock DB token, verify refresh is triggered near expiry)
+
+## Convert Lead to Job — April 2026
+
+- [x] Audit opsLeads schema (stage enum values), opsJobs schema, and existing job create procedure
+- [x] Add convertLeadToJob tRPC procedure: creates opsJob from lead data, sets lead stage to "converted"
+- [x] Add "Convert to Job" button on each lead card in /ops/leads
+- [x] Show confirmation modal with pre-filled job title, client name, and service before converting
+- [x] After conversion: invalidate leads + jobs queries, show success toast, lead card shows "Converted" badge
+- [x] Write vitest for convertLeadToJob procedure
