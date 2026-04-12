@@ -299,3 +299,12 @@
 - [x] Add post to BLOG_POSTS array in Blog.tsx
 - [x] Add route in App.tsx for /blog/land-clearing-williamson-county
 - [x] Add URL to sitemap.xml (priority 0.9 — higher than general blog posts)
+
+## Blog Post: Land Clearing in Davidson County — April 2026
+
+- [x] Research Davidson County local context, neighborhoods, and land clearing search terms
+- [x] Write full blog post content (1,200+ words) targeting local SEO keywords
+- [x] Create /client/src/pages/blog/LandClearingDavidsonCounty.tsx
+- [x] Add post to BLOG_POSTS array in Blog.tsx
+- [x] Add route in App.tsx for /blog/land-clearing-davidson-county
+- [x] Add URL to sitemap.xml (priority 0.9)
