@@ -11,6 +11,11 @@ import { exchangeCodeForTokens, isJobberConnected, jobberGraphQL } from "./jobbe
 const JOBBER_AUTH_URL = "https://api.getjobber.com/api/oauth/authorize";
 
 export function registerJobberRoutes(app: Express) {
+  // /api/jobber/connect is an alias for /api/jobber/authorize (used by Settings page)
+  app.get("/api/jobber/connect", (_req, res) => {
+    res.redirect("/api/jobber/authorize");
+  });
+
   // Redirect to Jobber OAuth consent screen
   app.get("/api/jobber/authorize", (_req, res) => {
     const params = new URLSearchParams({

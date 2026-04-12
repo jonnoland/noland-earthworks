@@ -297,7 +297,7 @@ function JobberPanel() {
     }
   }, []);
 
-  const handleConnect = () => { window.location.href = "/api/jobber/connect"; };
+  const handleConnect = () => { window.location.href = "/api/jobber/authorize"; };
   const handleDisconnect = () => {
     if (confirm("Are you sure you want to disconnect your Jobber account? This will remove all stored credentials.")) {
       disconnectMutation.mutate();

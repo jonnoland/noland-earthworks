@@ -375,3 +375,10 @@
 - [x] Remove placeholder: true from Clients, Quotes, Invoices nav items in DashboardLayout.tsx
 - [x] Add Jobber connection status bubble to DashboardLayout.tsx sidebar (green/red dot + account name or link to settings)
 - [x] Fix Jobber OAuth callback redirect from /admin/settings to /ops/settings in server/jobberRoutes.ts
+
+## Jobber OAuth 404 Fix — April 2026
+
+- [x] Confirm jobberRoutes.ts is imported and mounted in server/_core/index.ts
+- [x] Add import and registerJobberRoutes(app) call to index.ts if missing (was already present)
+- [x] Add /api/jobber/connect alias route (redirect to /api/jobber/authorize) if needed
+- [x] Verify JOBBER_CLIENT_ID and JOBBER_CLIENT_SECRET are set in project secrets
