@@ -19,8 +19,8 @@ export default function OwnerRoute({ children }: OwnerRouteProps) {
   useEffect(() => {
     if (loading) return;
     if (!isAuthenticated) {
-      // Redirect to Manus login, return to /ops after auth
-      window.location.href = getLoginUrl();
+      // Redirect to Manus login, return to the current path after auth
+      window.location.href = getLoginUrl(window.location.pathname);
       return;
     }
     // After auth, check if the user is the owner via role

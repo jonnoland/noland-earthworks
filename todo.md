@@ -253,3 +253,8 @@
 - [x] Update quoteRouter to persist each submission to quote_submissions table with Jobber sync result
 - [x] Add ops.quotes.list tRPC procedure to fetch recent quote submissions (owner-only)
 - [x] Add "Quote Log" tab to admin Settings page showing recent submissions with Jobber status badges
+
+## Auth & Jobber Fixes — April 2026
+- [x] Fix /ops login redirect: pass returnPath to getLoginUrl so OAuth callback redirects back to /ops after auth
+- [x] Fix OAuth callback to read returnPath from state and redirect there instead of hardcoded "/"
+- [x] Verify Jobber token is valid and connected (confirmed: Noland Earthworks account active)
