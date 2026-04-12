@@ -32,6 +32,7 @@ import BestTimeToClearLand from "./pages/blog/BestTimeToClearLand";
 import SitePreparationBeforeBuilding from "./pages/blog/SitePreparationBeforeBuilding";
 import LandClearingWilliamsonCounty from "./pages/blog/LandClearingWilliamsonCounty";
 import LandClearingDavidsonCounty from "./pages/blog/LandClearingDavidsonCounty";
+import LandClearingRutherfordCounty from "./pages/blog/LandClearingRutherfordCounty";
 import GalleryPage from "./pages/Gallery";
 import {
   DavidsonCountyPage,
@@ -94,6 +95,7 @@ function Router() {
       <Route path="/blog/site-preparation-before-building-tennessee" component={SitePreparationBeforeBuilding} />
       <Route path="/blog/land-clearing-williamson-county" component={LandClearingWilliamsonCounty} />
       <Route path="/blog/land-clearing-davidson-county" component={LandClearingDavidsonCounty} />
+      <Route path="/blog/land-clearing-rutherford-county" component={LandClearingRutherfordCounty} />
 
       {/* Service pages */}
       <Route path="/services/land-clearing" component={LandClearingPage} />

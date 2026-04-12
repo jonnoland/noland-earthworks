@@ -72,6 +72,15 @@ export const BLOG_POSTS = [
     readTime: "6 min read",
     category: "Local Service Areas",
   },
+  {
+    slug: "land-clearing-rutherford-county",
+    title: "Land Clearing in Rutherford County, TN: What Property Owners Need to Know",
+    meta: "Need land clearing in Rutherford County, TN? Noland Earthworks provides forestry mulching and land clearing in Murfreesboro, Smyrna, La Vergne, Eagleville, and across Rutherford County.",
+    date: "April 2026",
+    lastUpdated: "April 2026",
+    readTime: "6 min read",
+    category: "Local Service Areas",
+  },
 ];
 
 export default function Blog() {

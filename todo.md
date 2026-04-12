@@ -308,3 +308,12 @@
 - [x] Add post to BLOG_POSTS array in Blog.tsx
 - [x] Add route in App.tsx for /blog/land-clearing-davidson-county
 - [x] Add URL to sitemap.xml (priority 0.9)
+
+## Blog Post: Land Clearing in Rutherford County — April 2026
+
+- [x] Research Rutherford County local context, neighborhoods, and land clearing search terms
+- [x] Write full blog post content (1,200+ words) targeting local SEO keywords
+- [x] Create /client/src/pages/blog/LandClearingRutherfordCounty.tsx
+- [x] Add post to BLOG_POSTS array in Blog.tsx
+- [x] Add route in App.tsx for /blog/land-clearing-rutherford-county
+- [x] Add URL to sitemap.xml (priority 0.9)
