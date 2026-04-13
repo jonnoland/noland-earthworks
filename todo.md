@@ -626,3 +626,18 @@
 - [x] Bottom quick-action bar: Schedule and Timesheets buttons linking to /ops/schedule and /ops/timesheets
 - [x] Header: show today's date, jobs today count, clocked-in count
 - [x] TypeScript check and save checkpoint
+
+## Settings Page Rebuild — Apr 13 2026
+
+- [x] Browse OwnrOps settings page to capture all sections and functionality
+- [x] Read current Settings.tsx to identify what already exists
+- [x] Rebuild Settings.tsx with tabbed layout: Quote Log, Profile, Business, Integrations, Notifications, Team, Billing, Security
+- [x] Business tab: company name, phone, email, address, website, tax rate, brand color, Google review URL, license numbers — persisted to DB
+- [x] Notifications tab: email/SMS toggle switches per event type + lead automation thresholds — persisted to DB
+- [x] Integrations tab: Jobber connection status, webhook URL, Twilio/Resend/Google Maps status cards
+- [x] Billing tab: connected services list with pricing, billing notes
+- [x] Team tab: team member list, invite form with role selection
+- [x] Security tab: OAuth status, active sessions, API key, sign-out all devices
+- [x] Profile tab: name, email, phone, timezone
+- [x] Add businessSettings and automationSettings tRPC procedures to opsRouter
+- [x] TypeScript check: 0 errors. Tests: 59/59 passing. Checkpoint saved.

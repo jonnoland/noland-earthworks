@@ -12,7 +12,7 @@ import {
   getOpsLeads, createOpsLead, updateOpsLead, deleteOpsLead,
   getScheduleEntries, createScheduleEntry, updateScheduleEntry, deleteScheduleEntry,
 } from "./db";
-import { jobs, opsLeads, quoteSubmissions, crews, crewMembers, conversations, messages, reviews, timeEntries, distanceQuotes } from "../drizzle/schema";
+import { jobs, opsLeads, quoteSubmissions, crews, crewMembers, conversations, messages, reviews, timeEntries, distanceQuotes, businessSettings, automationSettings } from "../drizzle/schema";
 import { and, desc, eq, gte, lt, like } from "drizzle-orm";
 
 /**
@@ -832,6 +832,84 @@ const distanceQuotesRouter = router({
   }),
 });
 
+// ─── Settings Router ─────────────────────────────────────────────────────────
+const settingsRouter = router({
+  getBusinessSettings: ownerProcedure.query(async () => {
+    const db = await getDb();
+    if (!db) return null;
+    const rows = await db.select().from(businessSettings).limit(1);
+    if (rows.length === 0) {
+      // Seed default row
+      await db.insert(businessSettings).values({});
+      const seeded = await db.select().from(businessSettings).limit(1);
+      return seeded[0] ?? null;
+    }
+    return rows[0];
+  }),
+  updateBusinessSettings: ownerProcedure
+    .input(z.object({
+      companyName: z.string().optional(),
+      phone: z.string().optional(),
+      email: z.string().optional(),
+      address: z.string().optional(),
+      city: z.string().optional(),
+      state: z.string().optional(),
+      zip: z.string().optional(),
+      website: z.string().optional(),
+      googleReviewUrl: z.string().optional(),
+      defaultTaxRate: z.string().optional(),
+      brandColor: z.string().optional(),
+      licenseNumbers: z.string().optional(),
+      logoLight: z.string().optional(),
+      logoDark: z.string().optional(),
+    }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+      const rows = await db.select().from(businessSettings).limit(1);
+      if (rows.length === 0) {
+        await db.insert(businessSettings).values({ ...input });
+      } else {
+        await db.update(businessSettings).set({ ...input, updatedAt: new Date() }).where(eq(businessSettings.id, rows[0].id));
+      }
+      return { success: true };
+    }),
+  getAutomationSettings: ownerProcedure.query(async () => {
+    const db = await getDb();
+    if (!db) return null;
+    const rows = await db.select().from(automationSettings).limit(1);
+    if (rows.length === 0) {
+      await db.insert(automationSettings).values({});
+      const seeded = await db.select().from(automationSettings).limit(1);
+      return seeded[0] ?? null;
+    }
+    return rows[0];
+  }),
+  updateAutomationSettings: ownerProcedure
+    .input(z.object({
+      automationsEnabled: z.boolean().optional(),
+      newLeadMaxMinutes: z.number().int().min(0).optional(),
+      contactedMaxDays: z.number().int().min(0).optional(),
+      siteVisitMaxDays: z.number().int().min(0).optional(),
+      quoteSentMaxDays: z.number().int().min(0).optional(),
+      followUpMaxDays: z.number().int().min(0).optional(),
+      coldNurtureMaxDays: z.number().int().min(0).optional(),
+      followUpIntervalDays: z.number().int().min(0).optional(),
+      maxTouchesBeforeClose: z.number().int().min(0).optional(),
+    }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+      const rows = await db.select().from(automationSettings).limit(1);
+      if (rows.length === 0) {
+        await db.insert(automationSettings).values({ ...input });
+      } else {
+        await db.update(automationSettings).set({ ...input, updatedAt: new Date() }).where(eq(automationSettings.id, rows[0].id));
+      }
+      return { success: true };
+    }),
+});
+
 // ─── Combined Ops Router ──────────────────────────────────────────────────────
 export const opsRouter = router({
   jobs: jobsRouter,
@@ -843,4 +921,5 @@ export const opsRouter = router({
   reviews: reviewsRouter,
   timesheets: timesheetsRouter,
   distanceQuotes: distanceQuotesRouter,
+  settings: settingsRouter,
 });

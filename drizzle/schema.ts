@@ -375,3 +375,40 @@ export const distanceQuotes = mysqlTable("distance_quotes", {
 });
 export type DistanceQuote = typeof distanceQuotes.$inferSelect;
 export type InsertDistanceQuote = typeof distanceQuotes.$inferInsert;
+
+// ─── Business Settings ────────────────────────────────────────────────────────
+export const businessSettings = mysqlTable("business_settings", {
+  id: int("id").primaryKey().autoincrement(),
+  companyName: varchar("companyName", { length: 200 }).notNull().default("Noland Earthworks, LLC"),
+  phone: varchar("phone", { length: 30 }).default("(615) 406-4819"),
+  email: varchar("email", { length: 200 }).default("jonnoland@nolandearthworks.com"),
+  address: varchar("address", { length: 300 }).default("93 Halliburton Road"),
+  city: varchar("city", { length: 100 }).default("Vanleer"),
+  state: varchar("state", { length: 50 }).default("Tennessee"),
+  zip: varchar("zip", { length: 20 }).default("37181"),
+  website: varchar("website", { length: 300 }).default("https://www.nolandearthworks.com"),
+  googleReviewUrl: varchar("googleReviewUrl", { length: 500 }).default("https://g.page/r/CcglMAMbtQInEAI/review"),
+  defaultTaxRate: varchar("defaultTaxRate", { length: 10 }).default("0"),
+  brandColor: varchar("brandColor", { length: 20 }).default("#f97316"),
+  licenseNumbers: text("licenseNumbers"),
+  logoLight: varchar("logoLight", { length: 500 }),
+  logoDark: varchar("logoDark", { length: 500 }),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type BusinessSettings = typeof businessSettings.$inferSelect;
+
+// ─── Automation Settings ──────────────────────────────────────────────────────
+export const automationSettings = mysqlTable("automation_settings", {
+  id: int("id").primaryKey().autoincrement(),
+  automationsEnabled: boolean("automationsEnabled").notNull().default(false),
+  newLeadMaxMinutes: int("newLeadMaxMinutes").notNull().default(10080),
+  contactedMaxDays: int("contactedMaxDays").notNull().default(14),
+  siteVisitMaxDays: int("siteVisitMaxDays").notNull().default(7),
+  quoteSentMaxDays: int("quoteSentMaxDays").notNull().default(14),
+  followUpMaxDays: int("followUpMaxDays").notNull().default(30),
+  coldNurtureMaxDays: int("coldNurtureMaxDays").notNull().default(90),
+  followUpIntervalDays: int("followUpIntervalDays").notNull().default(60),
+  maxTouchesBeforeClose: int("maxTouchesBeforeClose").notNull().default(6),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type AutomationSettings = typeof automationSettings.$inferSelect;
