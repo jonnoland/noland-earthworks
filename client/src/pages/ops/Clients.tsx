@@ -2,8 +2,9 @@
  * Ops Clients page — live Jobber client data
  * Calls trpc.jobber.clients to fetch clients from Jobber CRM.
  * Shows a "Connect Jobber" banner when not connected.
+ * Supports per-row delete and bulk delete via checkboxes.
  */
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Link } from "wouter";
 import { trpc } from "@/lib/trpc";
 import DashboardLayout from "@/components/DashboardLayout";
@@ -78,13 +79,17 @@ function NotConnectedBanner() {
 
 // ─── Delete Confirmation Modal ────────────────────────────────────────────────
 
-function DeleteClientModal({
-  client,
+function DeleteModal({
+  title,
+  description,
+  warning,
   onConfirm,
   onCancel,
   isPending,
 }: {
-  client: { id: string; name?: string | null; companyName?: string | null };
+  title: string;
+  description: React.ReactNode;
+  warning: React.ReactNode;
   onConfirm: () => void;
   onCancel: () => void;
   isPending: boolean;
@@ -92,16 +97,12 @@ function DeleteClientModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
       <div className="bg-card border border-border rounded-xl shadow-2xl w-full max-w-sm p-6 space-y-4">
-        <h3 className="text-sm font-semibold text-foreground">Delete Client</h3>
-        <p className="text-xs text-muted-foreground">
-          Permanently delete <span className="font-medium text-foreground">{getClientName(client)}</span> from Jobber. This cannot be undone.
-        </p>
+        <h3 className="text-sm font-semibold text-foreground">{title}</h3>
+        <p className="text-xs text-muted-foreground">{description}</p>
         <div className="rounded-md bg-red-500/10 border border-red-500/20 px-3 py-2.5 space-y-1">
           <p className="text-[11px] font-semibold text-red-400">The following will also be deleted in Jobber:</p>
           <ul className="text-[11px] text-red-300/80 space-y-0.5 list-disc list-inside">
-            <li>All quotes, jobs, and invoices linked to this client</li>
-            <li>All contact details and billing address</li>
-            <li>All communication history</li>
+            {warning}
           </ul>
         </div>
         <div className="flex gap-2 pt-1">
@@ -125,15 +126,33 @@ function DeleteClientModal({
   );
 }
 
+// ─── Client row type ──────────────────────────────────────────────────────────
+
+type ClientNode = {
+  id: string;
+  name?: string | null;
+  companyName?: string | null;
+  isLead?: boolean | null;
+  balance?: number | null;
+  createdAt?: string | null;
+  emails?: Array<{ address: string }>;
+  phones?: Array<{ number: string; description?: string }>;
+  billingAddress?: {
+    street1?: string | null;
+    city?: string | null;
+    province?: string | null;
+    postalCode?: string | null;
+  } | null;
+};
+
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function OpsClients() {
   const [search, setSearch] = useState("");
-  const [deleteTarget, setDeleteTarget] = useState<{
-    id: string;
-    name?: string | null;
-    companyName?: string | null;
-  } | null>(null);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [deleteTarget, setDeleteTarget] = useState<ClientNode | null>(null);
+  const [showBulkConfirm, setShowBulkConfirm] = useState(false);
+  const [bulkPending, setBulkPending] = useState(false);
 
   const utils = trpc.useUtils();
   const { data, isLoading, error, refetch, isFetching } =
@@ -159,31 +178,77 @@ export default function OpsClients() {
       error?.message?.includes("token") ||
       !data);
 
-  const nodes: Array<{
-    id: string;
-    name?: string | null;
-    companyName?: string | null;
-    isLead?: boolean | null;
-    balance?: number | null;
-    createdAt?: string | null;
-    emails?: Array<{ address: string }>;
-    phones?: Array<{ number: string; description?: string }>;
-    billingAddress?: { street1?: string | null; city?: string | null; province?: string | null; postalCode?: string | null } | null;
-  }> = (data as any)?.nodes ?? [];
+  const nodes: ClientNode[] = useMemo(
+    () => (data as any)?.nodes ?? [],
+    [data]
+  );
 
-  const filtered = nodes.filter((c) => {
+  const filtered = useMemo(() => {
     const q = search.toLowerCase();
-    if (!q) return true;
-    return (
-      (c.name ?? "").toLowerCase().includes(q) ||
-      (c.companyName ?? "").toLowerCase().includes(q) ||
-      getEmail(c.emails).toLowerCase().includes(q) ||
-      getPhone(c.phones).toLowerCase().includes(q) ||
-      getCity(c.billingAddress).toLowerCase().includes(q)
+    if (!q) return nodes;
+    return nodes.filter(
+      (c) =>
+        (c.name ?? "").toLowerCase().includes(q) ||
+        (c.companyName ?? "").toLowerCase().includes(q) ||
+        getEmail(c.emails).toLowerCase().includes(q) ||
+        getPhone(c.phones).toLowerCase().includes(q) ||
+        getCity(c.billingAddress).toLowerCase().includes(q)
     );
-  });
+  }, [nodes, search]);
 
   const totalCount = (data as any)?.totalCount ?? nodes.length;
+
+  // ── Checkbox helpers ──────────────────────────────────────────────────────
+  const allFilteredSelected =
+    filtered.length > 0 && filtered.every((c) => selected.has(c.id));
+  const someSelected = selected.size > 0;
+
+  function toggleAll() {
+    if (allFilteredSelected) {
+      setSelected((prev) => {
+        const next = new Set(prev);
+        filtered.forEach((c) => next.delete(c.id));
+        return next;
+      });
+    } else {
+      setSelected((prev) => {
+        const next = new Set(prev);
+        filtered.forEach((c) => next.add(c.id));
+        return next;
+      });
+    }
+  }
+
+  function toggleOne(id: string) {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  // ── Bulk delete ───────────────────────────────────────────────────────────
+  async function handleBulkDelete() {
+    setBulkPending(true);
+    const ids = Array.from(selected);
+    let successCount = 0;
+    let failCount = 0;
+    for (const id of ids) {
+      try {
+        await deleteClient.mutateAsync({ id });
+        successCount++;
+      } catch {
+        failCount++;
+      }
+    }
+    setBulkPending(false);
+    setShowBulkConfirm(false);
+    setSelected(new Set());
+    utils.jobber.clients.invalidate();
+    if (successCount > 0) toast.success(`${successCount} client${successCount > 1 ? "s" : ""} deleted from Jobber.`);
+    if (failCount > 0) toast.error(`${failCount} deletion${failCount > 1 ? "s" : ""} failed.`);
+  }
 
   return (
     <DashboardLayout title="Clients" subtitle="Live from Jobber CRM">
@@ -192,9 +257,7 @@ export default function OpsClients() {
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div className="flex items-center gap-2">
             <Users className="w-5 h-5 text-primary" />
-            <h2 className="text-base font-semibold text-foreground">
-              All Clients
-            </h2>
+            <h2 className="text-base font-semibold text-foreground">All Clients</h2>
             {!isLoading && !notConnected && (
               <Badge variant="secondary" className="text-xs">
                 {totalCount} total
@@ -224,6 +287,30 @@ export default function OpsClients() {
           </div>
         </div>
 
+        {/* Bulk action bar */}
+        {someSelected && (
+          <div className="flex items-center justify-between px-4 py-2.5 rounded-lg bg-red-500/10 border border-red-500/20">
+            <span className="text-xs font-medium text-red-400">
+              {selected.size} client{selected.size > 1 ? "s" : ""} selected
+            </span>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setSelected(new Set())}
+                className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+              >
+                Clear
+              </button>
+              <button
+                onClick={() => setShowBulkConfirm(true)}
+                className="flex items-center gap-1.5 text-xs font-semibold text-white bg-red-600 hover:bg-red-700 px-3 py-1.5 rounded-md transition-colors"
+              >
+                <Trash2 className="w-3 h-3" />
+                Delete {selected.size} Selected
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Loading */}
         {isLoading && (
           <div className="flex items-center justify-center py-20">
@@ -250,6 +337,16 @@ export default function OpsClients() {
                   <table className="w-full text-xs">
                     <thead>
                       <tr className="border-b border-border bg-secondary/20">
+                        {/* Select-all checkbox */}
+                        <th className="px-3 py-2.5 w-8">
+                          <input
+                            type="checkbox"
+                            checked={allFilteredSelected}
+                            onChange={toggleAll}
+                            className="w-3.5 h-3.5 accent-primary cursor-pointer"
+                            aria-label="Select all"
+                          />
+                        </th>
                         <th className="text-left px-4 py-2.5 font-medium text-muted-foreground">Name</th>
                         <th className="text-left px-4 py-2.5 font-medium text-muted-foreground hidden md:table-cell">Company</th>
                         <th className="text-left px-4 py-2.5 font-medium text-muted-foreground hidden sm:table-cell">Email</th>
@@ -265,9 +362,19 @@ export default function OpsClients() {
                         <tr
                           key={client.id}
                           className={`border-b border-border last:border-0 hover:bg-secondary/20 transition-colors ${
-                            idx % 2 === 0 ? "" : "bg-secondary/5"
+                            selected.has(client.id) ? "bg-red-500/5" : idx % 2 === 0 ? "" : "bg-secondary/5"
                           }`}
                         >
+                          {/* Row checkbox */}
+                          <td className="px-3 py-3 w-8">
+                            <input
+                              type="checkbox"
+                              checked={selected.has(client.id)}
+                              onChange={() => toggleOne(client.id)}
+                              className="w-3.5 h-3.5 accent-primary cursor-pointer"
+                              aria-label={`Select ${getClientName(client)}`}
+                            />
+                          </td>
                           <td className="px-4 py-3">
                             <div className="flex items-center gap-2">
                               <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
@@ -378,13 +485,51 @@ export default function OpsClients() {
         )}
       </div>
 
-      {/* Delete confirmation modal */}
+      {/* Single delete confirmation modal */}
       {deleteTarget && (
-        <DeleteClientModal
-          client={deleteTarget}
+        <DeleteModal
+          title="Delete Client"
+          description={
+            <>
+              Permanently delete{" "}
+              <span className="font-medium text-foreground">{getClientName(deleteTarget)}</span>{" "}
+              from Jobber. This cannot be undone.
+            </>
+          }
+          warning={
+            <>
+              <li>All quotes, jobs, and invoices linked to this client</li>
+              <li>All contact details and billing address</li>
+              <li>All communication history</li>
+            </>
+          }
           onConfirm={() => deleteClient.mutate({ id: deleteTarget.id })}
           onCancel={() => setDeleteTarget(null)}
           isPending={deleteClient.isPending}
+        />
+      )}
+
+      {/* Bulk delete confirmation modal */}
+      {showBulkConfirm && (
+        <DeleteModal
+          title={`Delete ${selected.size} Client${selected.size > 1 ? "s" : ""}`}
+          description={
+            <>
+              Permanently delete{" "}
+              <span className="font-medium text-foreground">{selected.size} selected client{selected.size > 1 ? "s" : ""}</span>{" "}
+              from Jobber. This cannot be undone.
+            </>
+          }
+          warning={
+            <>
+              <li>All quotes, jobs, and invoices linked to each client</li>
+              <li>All contact details and billing addresses</li>
+              <li>All communication history for each client</li>
+            </>
+          }
+          onConfirm={handleBulkDelete}
+          onCancel={() => setShowBulkConfirm(false)}
+          isPending={bulkPending}
         />
       )}
     </DashboardLayout>

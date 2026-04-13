@@ -471,3 +471,12 @@
 - [x] Update Jobs page: Jobber Jobs section has delete button that deletes from Jobber via GraphQL
 - [x] Update Invoices page: delete button deletes from Jobber via GraphQL
 - [x] All delete modals show warning that record will be permanently removed from Jobber
+
+## Bulk Delete on Clients and Invoices — April 2026
+
+- [x] Add checkbox column to Clients table (select-all header + per-row checkboxes)
+- [x] Add bulk delete action bar to Clients page (shows count selected, Delete Selected button)
+- [x] Add bulk delete confirmation modal to Clients page (warns permanent Jobber deletion)
+- [x] Add checkbox column to Invoices table (select-all header + per-row checkboxes)
+- [x] Add bulk delete action bar to Invoices page (shows count selected, Delete Selected button)
+- [x] Add bulk delete confirmation modal to Invoices page (warns permanent Jobber deletion)

@@ -2,8 +2,9 @@
  * Ops Invoices page — live Jobber invoice data
  * Calls trpc.jobber.invoices to fetch invoices from Jobber CRM.
  * Shows a "Connect Jobber" banner when not connected.
+ * Supports per-row delete and bulk delete via checkboxes.
  */
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Link } from "wouter";
 import { trpc } from "@/lib/trpc";
 import DashboardLayout from "@/components/DashboardLayout";
@@ -84,26 +85,24 @@ function NotConnectedBanner() {
 
 // ─── Delete Confirmation Modal ────────────────────────────────────────────────
 
-function DeleteInvoiceModal({
-  invoice,
+function DeleteModal({
+  title,
+  description,
   onConfirm,
   onCancel,
   isPending,
 }: {
-  invoice: { id: string; invoiceNumber?: number | null; client?: { name?: string | null; companyName?: string | null } | null };
+  title: string;
+  description: React.ReactNode;
   onConfirm: () => void;
   onCancel: () => void;
   isPending: boolean;
 }) {
-  const label = `Invoice #${invoice.invoiceNumber ?? ""}`;
-  const clientName = invoice.client?.name || invoice.client?.companyName || "this client";
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
       <div className="bg-card border border-border rounded-xl shadow-2xl w-full max-w-sm p-6 space-y-4">
-        <h3 className="text-sm font-semibold text-foreground">Delete Invoice</h3>
-        <p className="text-xs text-muted-foreground">
-          Permanently delete <span className="font-medium text-foreground">{label}</span> for {clientName} from Jobber. This cannot be undone.
-        </p>
+        <h3 className="text-sm font-semibold text-foreground">{title}</h3>
+        <p className="text-xs text-muted-foreground">{description}</p>
         <div className="rounded-md bg-red-500/10 border border-red-500/20 px-3 py-2.5 space-y-1">
           <p className="text-[11px] font-semibold text-red-400">The following will also be deleted in Jobber:</p>
           <ul className="text-[11px] text-red-300/80 space-y-0.5 list-disc list-inside">
@@ -132,16 +131,33 @@ function DeleteInvoiceModal({
   );
 }
 
+// ─── Invoice row type ─────────────────────────────────────────────────────────
+
+type InvoiceNode = {
+  id: string;
+  invoiceNumber?: number | null;
+  invoiceStatus?: string | null;
+  dueDate?: string | null;
+  issuedDate?: string | null;
+  createdAt?: string | null;
+  subject?: string | null;
+  amounts?: {
+    subtotal?: number | null;
+    total?: number | null;
+    outstanding?: number | null;
+  } | null;
+  client?: { id?: string; name?: string | null; companyName?: string | null } | null;
+};
+
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function OpsInvoices() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("ALL");
-  const [deleteTarget, setDeleteTarget] = useState<{
-    id: string;
-    invoiceNumber?: number | null;
-    client?: { name?: string | null; companyName?: string | null } | null;
-  } | null>(null);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [deleteTarget, setDeleteTarget] = useState<InvoiceNode | null>(null);
+  const [showBulkConfirm, setShowBulkConfirm] = useState(false);
+  const [bulkPending, setBulkPending] = useState(false);
 
   const utils = trpc.useUtils();
   const { data, isLoading, error, refetch, isFetching } =
@@ -166,35 +182,29 @@ export default function OpsInvoices() {
       error?.message?.includes("token") ||
       !data);
 
-  const nodes: Array<{
-    id: string;
-    invoiceNumber?: number | null;
-    invoiceStatus?: string | null;
-    dueDate?: string | null;
-    issuedDate?: string | null;
-    createdAt?: string | null;
-    subject?: string | null;
-    amounts?: {
-      subtotal?: number | null;
-      total?: number | null;
-      outstanding?: number | null;
-    } | null;
-    client?: { id?: string; name?: string | null; companyName?: string | null } | null;
-  }> = (data as any)?.nodes ?? [];
+  const nodes: InvoiceNode[] = useMemo(
+    () => (data as any)?.nodes ?? [],
+    [data]
+  );
 
-  const statuses = ["ALL", ...Array.from(new Set(nodes.map((i) => i.invoiceStatus ?? "DRAFT")))];
+  const statuses = useMemo(
+    () => ["ALL", ...Array.from(new Set(nodes.map((i) => i.invoiceStatus ?? "DRAFT")))],
+    [nodes]
+  );
 
-  const filtered = nodes.filter((inv) => {
-    const matchStatus = statusFilter === "ALL" || inv.invoiceStatus === statusFilter;
-    const qStr = search.toLowerCase();
-    const matchSearch =
-      !qStr ||
-      (inv.client?.name ?? "").toLowerCase().includes(qStr) ||
-      (inv.client?.companyName ?? "").toLowerCase().includes(qStr) ||
-      String(inv.invoiceNumber ?? "").includes(qStr) ||
-      (inv.subject ?? "").toLowerCase().includes(qStr);
-    return matchStatus && matchSearch;
-  });
+  const filtered = useMemo(() => {
+    return nodes.filter((inv) => {
+      const matchStatus = statusFilter === "ALL" || inv.invoiceStatus === statusFilter;
+      const qStr = search.toLowerCase();
+      const matchSearch =
+        !qStr ||
+        (inv.client?.name ?? "").toLowerCase().includes(qStr) ||
+        (inv.client?.companyName ?? "").toLowerCase().includes(qStr) ||
+        String(inv.invoiceNumber ?? "").includes(qStr) ||
+        (inv.subject ?? "").toLowerCase().includes(qStr);
+      return matchStatus && matchSearch;
+    });
+  }, [nodes, search, statusFilter]);
 
   const totalCount = (data as any)?.totalCount ?? nodes.length;
 
@@ -203,6 +213,58 @@ export default function OpsInvoices() {
     .filter((i) => i.invoiceStatus !== "PAID")
     .reduce((sum, i) => sum + (i.amounts?.outstanding ?? 0), 0);
   const overdueCount = nodes.filter((i) => i.invoiceStatus === "OVERDUE").length;
+
+  // ── Checkbox helpers ──────────────────────────────────────────────────────
+  const allFilteredSelected =
+    filtered.length > 0 && filtered.every((i) => selected.has(i.id));
+  const someSelected = selected.size > 0;
+
+  function toggleAll() {
+    if (allFilteredSelected) {
+      setSelected((prev) => {
+        const next = new Set(prev);
+        filtered.forEach((i) => next.delete(i.id));
+        return next;
+      });
+    } else {
+      setSelected((prev) => {
+        const next = new Set(prev);
+        filtered.forEach((i) => next.add(i.id));
+        return next;
+      });
+    }
+  }
+
+  function toggleOne(id: string) {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  // ── Bulk delete ───────────────────────────────────────────────────────────
+  async function handleBulkDelete() {
+    setBulkPending(true);
+    const ids = Array.from(selected);
+    let successCount = 0;
+    let failCount = 0;
+    for (const id of ids) {
+      try {
+        await deleteInvoice.mutateAsync({ id });
+        successCount++;
+      } catch {
+        failCount++;
+      }
+    }
+    setBulkPending(false);
+    setShowBulkConfirm(false);
+    setSelected(new Set());
+    utils.jobber.invoices.invalidate();
+    if (successCount > 0) toast.success(`${successCount} invoice${successCount > 1 ? "s" : ""} deleted from Jobber.`);
+    if (failCount > 0) toast.error(`${failCount} deletion${failCount > 1 ? "s" : ""} failed.`);
+  }
 
   return (
     <DashboardLayout title="Invoices" subtitle="Live from Jobber CRM">
@@ -280,6 +342,30 @@ export default function OpsInvoices() {
           </div>
         )}
 
+        {/* Bulk action bar */}
+        {someSelected && (
+          <div className="flex items-center justify-between px-4 py-2.5 rounded-lg bg-red-500/10 border border-red-500/20">
+            <span className="text-xs font-medium text-red-400">
+              {selected.size} invoice{selected.size > 1 ? "s" : ""} selected
+            </span>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setSelected(new Set())}
+                className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+              >
+                Clear
+              </button>
+              <button
+                onClick={() => setShowBulkConfirm(true)}
+                className="flex items-center gap-1.5 text-xs font-semibold text-white bg-red-600 hover:bg-red-700 px-3 py-1.5 rounded-md transition-colors"
+              >
+                <Trash2 className="w-3 h-3" />
+                Delete {selected.size} Selected
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Loading */}
         {isLoading && (
           <div className="flex items-center justify-center py-20">
@@ -308,6 +394,16 @@ export default function OpsInvoices() {
                   <table className="w-full text-xs">
                     <thead>
                       <tr className="border-b border-border bg-secondary/20">
+                        {/* Select-all checkbox */}
+                        <th className="px-3 py-2.5 w-8">
+                          <input
+                            type="checkbox"
+                            checked={allFilteredSelected}
+                            onChange={toggleAll}
+                            className="w-3.5 h-3.5 accent-primary cursor-pointer"
+                            aria-label="Select all"
+                          />
+                        </th>
                         <th className="text-left px-4 py-2.5 font-medium text-muted-foreground">Invoice #</th>
                         <th className="text-left px-4 py-2.5 font-medium text-muted-foreground hidden sm:table-cell">Client</th>
                         <th className="text-right px-4 py-2.5 font-medium text-muted-foreground hidden md:table-cell">Total</th>
@@ -324,9 +420,23 @@ export default function OpsInvoices() {
                           <tr
                             key={inv.id}
                             className={`border-b border-border last:border-0 hover:bg-secondary/20 transition-colors ${
-                              idx % 2 === 0 ? "" : "bg-secondary/5"
+                              selected.has(inv.id)
+                                ? "bg-red-500/5"
+                                : idx % 2 === 0
+                                ? ""
+                                : "bg-secondary/5"
                             } ${isOverdue ? "border-l-2 border-l-red-500/50" : ""}`}
                           >
+                            {/* Row checkbox */}
+                            <td className="px-3 py-3 w-8">
+                              <input
+                                type="checkbox"
+                                checked={selected.has(inv.id)}
+                                onChange={() => toggleOne(inv.id)}
+                                className="w-3.5 h-3.5 accent-primary cursor-pointer"
+                                aria-label={`Select invoice #${inv.invoiceNumber}`}
+                              />
+                            </td>
                             <td className="px-4 py-3 font-mono text-muted-foreground">
                               #{inv.invoiceNumber ?? "—"}
                             </td>
@@ -400,13 +510,41 @@ export default function OpsInvoices() {
         )}
       </div>
 
-      {/* Delete confirmation modal */}
+      {/* Single delete confirmation modal */}
       {deleteTarget && (
-        <DeleteInvoiceModal
-          invoice={deleteTarget}
+        <DeleteModal
+          title="Delete Invoice"
+          description={
+            <>
+              Permanently delete{" "}
+              <span className="font-medium text-foreground">
+                Invoice #{deleteTarget.invoiceNumber ?? ""}
+              </span>{" "}
+              for {deleteTarget.client?.name || deleteTarget.client?.companyName || "this client"} from Jobber. This cannot be undone.
+            </>
+          }
           onConfirm={() => deleteInvoice.mutate({ id: deleteTarget.id })}
           onCancel={() => setDeleteTarget(null)}
           isPending={deleteInvoice.isPending}
+        />
+      )}
+
+      {/* Bulk delete confirmation modal */}
+      {showBulkConfirm && (
+        <DeleteModal
+          title={`Delete ${selected.size} Invoice${selected.size > 1 ? "s" : ""}`}
+          description={
+            <>
+              Permanently delete{" "}
+              <span className="font-medium text-foreground">
+                {selected.size} selected invoice{selected.size > 1 ? "s" : ""}
+              </span>{" "}
+              from Jobber. This cannot be undone.
+            </>
+          }
+          onConfirm={handleBulkDelete}
+          onCancel={() => setShowBulkConfirm(false)}
+          isPending={bulkPending}
         />
       )}
     </DashboardLayout>
