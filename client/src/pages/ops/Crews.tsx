@@ -1,7 +1,11 @@
 /**
  * Crews page — field crew management matching OwnrOps layout.
- * Crew cards show Day Rate, Cost/Day, Profit/Day, margin %, Jobs today,
- * Clocked In count, and a team section with clock-in toggles.
+ * Features:
+ *   - Header with today's date, jobs today, clocked-in count
+ *   - Crew cards: Day Rate, margin badge, Jobs/Clocked In/Profit stats
+ *   - Crew card expanded: cost summary breakdown + team + actions
+ *   - Today's jobs panel with empty state and View Schedule CTA
+ *   - Bottom quick-action bar: Schedule + Timesheets
  */
 import { useState } from "react";
 import { Link } from "wouter";
@@ -29,6 +33,13 @@ import {
   CalendarDays,
   UserPlus,
   X,
+  Clock,
+  TrendingUp,
+  DollarSign,
+  Wrench,
+  Fuel,
+  ShieldAlert,
+  Building2,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -49,9 +60,34 @@ type Crew = {
   equipmentType: string;
   dayRate: number;
   costPerDay: number;
+  // Detailed pricing fields
+  hoursPerDay: number;
+  crewMemberCount: number;
+  memberWageCents: number;
+  burdenPct: number;
+  equipmentItems: string;
+  machineBurnRateGph: number;
+  fuelPriceCents: number;
+  truckFuelPerDayCents: number;
+  teethCostPerSetCents: number;
+  daysPerSet: number;
+  annualMajorWearCents: number;
+  miscConsumablesPerDayCents: number;
+  overheadItems: string;
+  workingDaysPerMonth: number;
+  targetMarginPct: number;
+  acresPerDay: number;
   createdAt: Date;
   updatedAt: Date;
   members: CrewMember[];
+};
+
+type Job = {
+  id: number;
+  title: string;
+  client: string;
+  scheduledDate: Date | null;
+  status: string;
 };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -62,6 +98,129 @@ function fmt(n: number) {
 function marginPct(dayRate: number, costPerDay: number): number {
   if (dayRate === 0) return 0;
   return Math.round(((dayRate - costPerDay) / dayRate) * 100);
+}
+
+/** Compute a cost breakdown from the detailed pricing fields stored in cents */
+function computeCostBreakdown(crew: Crew) {
+  const laborPerDay =
+    Math.round(
+      (crew.hoursPerDay * crew.crewMemberCount * crew.memberWageCents * (1 + crew.burdenPct / 100)) / 100
+    );
+
+  const equipItems: { name: string; monthlyCostCents: number }[] = (() => {
+    try { return JSON.parse(crew.equipmentItems); } catch { return []; }
+  })();
+  const equipPerDay = crew.workingDaysPerMonth > 0
+    ? Math.round(equipItems.reduce((s, i) => s + i.monthlyCostCents, 0) / crew.workingDaysPerMonth / 100)
+    : 0;
+
+  const fuelPerDay = Math.round(
+    (crew.hoursPerDay * crew.machineBurnRateGph * crew.fuelPriceCents + crew.truckFuelPerDayCents) / 100
+  );
+
+  const wearPerDay = Math.round(
+    (crew.daysPerSet > 0 ? crew.teethCostPerSetCents / crew.daysPerSet : 0) / 100 +
+    (crew.workingDaysPerMonth > 0 ? (crew.annualMajorWearCents / 12) / crew.workingDaysPerMonth : 0) / 100 +
+    crew.miscConsumablesPerDayCents / 100
+  );
+
+  const overheadItemsParsed: { name: string; monthlyCostCents: number }[] = (() => {
+    try { return JSON.parse(crew.overheadItems); } catch { return []; }
+  })();
+  const overheadPerDay = crew.workingDaysPerMonth > 0
+    ? Math.round(overheadItemsParsed.reduce((s, i) => s + i.monthlyCostCents, 0) / crew.workingDaysPerMonth / 100)
+    : 0;
+
+  const total = laborPerDay + equipPerDay + fuelPerDay + wearPerDay + overheadPerDay;
+  return { laborPerDay, equipPerDay, fuelPerDay, wearPerDay, overheadPerDay, total };
+}
+
+// ─── Cost Summary Bar ─────────────────────────────────────────────────────────
+function CostSummaryBar({ crew }: { crew: Crew }) {
+  const { laborPerDay, equipPerDay, fuelPerDay, wearPerDay, overheadPerDay, total } = computeCostBreakdown(crew);
+
+  // Fall back to stored costPerDay if detailed fields are all zero
+  const displayTotal = total > 0 ? total : crew.costPerDay;
+  const profitPerDay = crew.dayRate - displayTotal;
+
+  const items = [
+    { label: "Labor", value: laborPerDay, icon: <UserPlus className="w-3 h-3" />, color: "text-blue-400" },
+    { label: "Equipment", value: equipPerDay, icon: <Wrench className="w-3 h-3" />, color: "text-purple-400" },
+    { label: "Fuel", value: fuelPerDay, icon: <Fuel className="w-3 h-3" />, color: "text-yellow-400" },
+    { label: "Wear", value: wearPerDay, icon: <ShieldAlert className="w-3 h-3" />, color: "text-orange-400" },
+    { label: "Overhead", value: overheadPerDay, icon: <Building2 className="w-3 h-3" />, color: "text-red-400" },
+  ];
+
+  const hasDetail = total > 0;
+
+  return (
+    <div className="mt-4 rounded-lg bg-zinc-800/60 border border-zinc-700/50 p-3">
+      <div className="flex items-center justify-between mb-2">
+        <span className="text-[11px] text-zinc-500 uppercase tracking-wider font-medium">Cost Summary</span>
+        <span className="text-xs text-zinc-400 font-semibold">{fmt(displayTotal)}/day</span>
+      </div>
+
+      {hasDetail ? (
+        <>
+          {/* Stacked bar */}
+          <div className="flex h-2 rounded-full overflow-hidden mb-3 gap-px">
+            {items.map((item) => {
+              const pct = displayTotal > 0 ? (item.value / displayTotal) * 100 : 0;
+              if (pct < 1) return null;
+              const bgMap: Record<string, string> = {
+                Labor: "bg-blue-500",
+                Equipment: "bg-purple-500",
+                Fuel: "bg-yellow-500",
+                Wear: "bg-orange-500",
+                Overhead: "bg-red-500",
+              };
+              return (
+                <div
+                  key={item.label}
+                  className={`${bgMap[item.label]} rounded-sm`}
+                  style={{ width: `${pct}%` }}
+                  title={`${item.label}: ${fmt(item.value)}`}
+                />
+              );
+            })}
+          </div>
+          {/* Line items */}
+          <div className="grid grid-cols-2 gap-x-4 gap-y-1">
+            {items.map((item) => (
+              <div key={item.label} className="flex items-center justify-between">
+                <div className={`flex items-center gap-1 ${item.color}`}>
+                  {item.icon}
+                  <span className="text-[11px]">{item.label}</span>
+                </div>
+                <span className="text-[11px] text-zinc-300">{fmt(item.value)}</span>
+              </div>
+            ))}
+          </div>
+        </>
+      ) : (
+        <p className="text-[11px] text-zinc-600 italic">
+          Set detailed pricing in{" "}
+          <Link href={`/ops/crews/${crew.id}/pricing`} className="text-amber-400 hover:underline">
+            View Pricing
+          </Link>{" "}
+          to see a full cost breakdown.
+        </p>
+      )}
+
+      {/* Profit summary */}
+      {crew.dayRate > 0 && (
+        <div className="mt-3 pt-2 border-t border-zinc-700/50 flex items-center justify-between">
+          <div className="flex items-center gap-1 text-zinc-500">
+            <TrendingUp className="w-3 h-3" />
+            <span className="text-[11px]">Profit/Day</span>
+          </div>
+          <span className={`text-xs font-semibold ${profitPerDay >= 0 ? "text-green-400" : "text-red-400"}`}>
+            {fmt(profitPerDay)}
+          </span>
+        </div>
+      )}
+    </div>
+  );
 }
 
 // ─── Crew Card ────────────────────────────────────────────────────────────────
@@ -144,7 +303,8 @@ function CrewCard({ crew, jobsToday }: { crew: Crew; jobsToday: number }) {
       <div className="rounded-xl border border-zinc-800 bg-zinc-900 overflow-hidden">
         {/* Card header */}
         <div className="p-5">
-          <div className="flex items-center gap-2 mb-1">
+          {/* Name + equipment type */}
+          <div className="flex items-center gap-2 mb-0.5">
             <span
               className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${
                 clockedInCount > 0 ? "bg-green-500" : "bg-zinc-500"
@@ -152,7 +312,9 @@ function CrewCard({ crew, jobsToday }: { crew: Crew; jobsToday: number }) {
             />
             <span className="font-semibold text-white text-lg">{crew.name}</span>
           </div>
-          <p className="text-zinc-400 text-sm ml-4">{crew.equipmentType}</p>
+          <Badge variant="outline" className="ml-4 text-[11px] border-zinc-700 text-zinc-400 bg-zinc-800/50">
+            {crew.equipmentType}
+          </Badge>
 
           {/* Day Rate */}
           <div className="mt-4">
@@ -169,6 +331,7 @@ function CrewCard({ crew, jobsToday }: { crew: Crew; jobsToday: number }) {
                 }`}
                 variant="outline"
               >
+                <TrendingUp className="w-3 h-3 mr-1" />
                 {margin >= 0 ? "+" : ""}{margin}% margin
               </Badge>
             )}
@@ -210,19 +373,8 @@ function CrewCard({ crew, jobsToday }: { crew: Crew; jobsToday: number }) {
         {/* Expanded details */}
         {expanded && (
           <div className="border-t border-zinc-800 p-5 space-y-4">
-            {/* Pricing detail */}
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <p className="text-xs text-zinc-500 uppercase tracking-wider mb-1">Cost/Day</p>
-                <p className="text-lg font-semibold text-white">{fmt(crew.costPerDay)}</p>
-              </div>
-              <div>
-                <p className="text-xs text-zinc-500 uppercase tracking-wider mb-1">Profit/Day</p>
-                <p className={`text-lg font-semibold ${profitPerDay >= 0 ? "text-green-400" : "text-red-400"}`}>
-                  {fmt(profitPerDay)}
-                </p>
-              </div>
-            </div>
+            {/* Cost summary breakdown */}
+            <CostSummaryBar crew={crew} />
 
             {/* Actions */}
             <div className="flex gap-2 flex-wrap">
@@ -232,7 +384,7 @@ function CrewCard({ crew, jobsToday }: { crew: Crew; jobsToday: number }) {
                   size="sm"
                   className="w-full border-amber-700 text-amber-400 hover:text-amber-300 hover:bg-amber-950/30"
                 >
-                  <Pencil className="w-3.5 h-3.5 mr-1.5" />
+                  <DollarSign className="w-3.5 h-3.5 mr-1.5" />
                   View Pricing
                 </Button>
               </Link>
@@ -247,7 +399,7 @@ function CrewCard({ crew, jobsToday }: { crew: Crew; jobsToday: number }) {
                 }}
               >
                 <Pencil className="w-3.5 h-3.5 mr-1.5" />
-                Edit Pricing
+                Edit Rate
               </Button>
               <Button
                 variant="outline"
@@ -279,7 +431,7 @@ function CrewCard({ crew, jobsToday }: { crew: Crew; jobsToday: number }) {
                   {crew.members.map((member) => (
                     <div
                       key={member.id}
-                      className="flex items-center justify-between py-2 border-b border-zinc-800 last:border-0"
+                      className="flex items-center justify-between rounded-lg bg-zinc-800/50 px-3 py-2"
                     >
                       <div>
                         <p className="text-sm text-white">{member.name}</p>
@@ -311,24 +463,15 @@ function CrewCard({ crew, jobsToday }: { crew: Crew; jobsToday: number }) {
                 </div>
               )}
             </div>
-
-            {/* View Schedule link */}
-            <Link
-              href="/ops/schedule"
-              className="flex items-center gap-2 text-sm text-zinc-400 hover:text-amber-400 transition-colors"
-            >
-              <CalendarDays className="w-4 h-4" />
-              View Schedule
-            </Link>
           </div>
         )}
       </div>
 
-      {/* Edit Pricing Modal */}
+      {/* Edit Rate Modal */}
       <Dialog open={showEditPricing} onOpenChange={setShowEditPricing}>
         <DialogContent className="bg-zinc-900 border-zinc-800 text-white">
           <DialogHeader>
-            <DialogTitle>Edit Pricing — {crew.name}</DialogTitle>
+            <DialogTitle>Edit Rate — {crew.name}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-2">
             <div className="space-y-1.5">
@@ -385,7 +528,7 @@ function CrewCard({ crew, jobsToday }: { crew: Crew; jobsToday: number }) {
               disabled={updatePricing.isPending}
               className="bg-amber-500 hover:bg-amber-600 text-black"
             >
-              {updatePricing.isPending ? "Saving..." : "Save Pricing"}
+              {updatePricing.isPending ? "Saving..." : "Save Rate"}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -470,6 +613,77 @@ function CrewCard({ crew, jobsToday }: { crew: Crew; jobsToday: number }) {
   );
 }
 
+// ─── Today's Jobs Panel ───────────────────────────────────────────────────────
+function TodaysJobsPanel({ jobs }: { jobs: Job[] }) {
+  const today = new Date();
+  const todayStr = today.toDateString();
+  const todaysJobs = jobs.filter(
+    (j) => j.scheduledDate && new Date(j.scheduledDate).toDateString() === todayStr
+  );
+
+  return (
+    <div className="rounded-xl border border-zinc-800 bg-zinc-900/60 overflow-hidden">
+      <div className="px-5 py-4 border-b border-zinc-800 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <CalendarDays className="w-4 h-4 text-amber-400" />
+          <span className="text-sm font-semibold text-white">Today's Jobs</span>
+        </div>
+        <span className="text-xs text-zinc-500">
+          {today.toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric" })}
+        </span>
+      </div>
+
+      {todaysJobs.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-14 px-6 text-center">
+          <HardHat className="w-10 h-10 text-zinc-700 mb-3" />
+          <p className="text-zinc-400 font-medium">No jobs scheduled</p>
+          <p className="text-zinc-600 text-sm mt-1">Check back tomorrow or view the schedule.</p>
+          <Link href="/ops/schedule">
+            <Button
+              variant="outline"
+              size="sm"
+              className="mt-4 border-zinc-700 text-zinc-300 hover:text-white hover:bg-zinc-800"
+            >
+              View Schedule
+            </Button>
+          </Link>
+        </div>
+      ) : (
+        <div className="divide-y divide-zinc-800">
+          {todaysJobs.map((job) => (
+            <div key={job.id} className="px-5 py-3 flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-white">{job.title}</p>
+                {job.client && (
+                  <p className="text-xs text-zinc-500 mt-0.5">{job.client}</p>
+                )}
+              </div>
+              <Badge
+                variant="outline"
+                className={`text-[11px] ${
+                  job.status === "completed"
+                    ? "border-green-800 text-green-400 bg-green-950/30"
+                    : job.status === "in_progress"
+                    ? "border-blue-800 text-blue-400 bg-blue-950/30"
+                    : "border-zinc-700 text-zinc-400"
+                }`}
+              >
+                {job.status.replace("_", " ")}
+              </Badge>
+            </div>
+          ))}
+          <div className="px-5 py-3">
+            <Link href="/ops/schedule" className="text-xs text-amber-400 hover:text-amber-300 flex items-center gap-1">
+              <CalendarDays className="w-3.5 h-3.5" />
+              View full schedule
+            </Link>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Page ─────────────────────────────────────────────────────────────────────
 export default function Crews() {
   const [showAddCrew, setShowAddCrew] = useState(false);
@@ -482,7 +696,6 @@ export default function Crews() {
   const { data: crewList = [], isLoading } = trpc.ops.crews.list.useQuery();
   const { data: jobsList = [] } = trpc.ops.jobs.list.useQuery();
 
-  // Count jobs scheduled for today per crew (by crewName matching)
   const today = new Date();
   const todayStr = today.toDateString();
   const jobsTodayCount = jobsList.filter(
@@ -502,7 +715,6 @@ export default function Crews() {
     onError: (e) => toast.error(e.message || "Failed to create crew"),
   });
 
-  // Summary stats
   const totalClockedIn = crewList.reduce(
     (sum, c) => sum + c.members.filter((m) => m.clockedIn).length,
     0
@@ -510,11 +722,12 @@ export default function Crews() {
   const totalMembers = crewList.reduce((sum, c) => sum + c.members.length, 0);
 
   const dayOfWeek = today.toLocaleDateString("en-US", { weekday: "long" });
-  const dateStr = today.toLocaleDateString("en-US", { month: "long", day: "numeric" });
+  const monthDay = today.toLocaleDateString("en-US", { month: "long", day: "numeric" });
 
   return (
     <DashboardLayout>
-      <div className="p-6 max-w-4xl mx-auto">
+      {/* Main content — padded bottom to clear the fixed bottom bar */}
+      <div className="p-6 max-w-4xl mx-auto pb-24">
         {/* Page header */}
         <div className="flex items-start justify-between mb-6">
           <div>
@@ -523,7 +736,7 @@ export default function Crews() {
               <h1 className="text-2xl font-bold text-white">Crews</h1>
             </div>
             <p className="text-sm text-zinc-400">
-              {dayOfWeek}, {dateStr} &middot; {jobsTodayCount} job{jobsTodayCount !== 1 ? "s" : ""} today &middot; {totalClockedIn}/{totalMembers} clocked in
+              {dayOfWeek}, {monthDay} &middot; {jobsTodayCount} job{jobsTodayCount !== 1 ? "s" : ""} today &middot; {totalClockedIn}/{totalMembers} clocked in
             </p>
           </div>
           <Button
@@ -537,13 +750,13 @@ export default function Crews() {
 
         {/* Crew cards */}
         {isLoading ? (
-          <div className="space-y-4">
+          <div className="space-y-4 mb-6">
             {[1, 2].map((i) => (
               <div key={i} className="h-48 rounded-xl bg-zinc-800 animate-pulse" />
             ))}
           </div>
         ) : crewList.length === 0 ? (
-          <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-12 text-center">
+          <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-12 text-center mb-6">
             <HardHat className="w-10 h-10 text-zinc-600 mx-auto mb-3" />
             <p className="text-zinc-400 font-medium">No crews yet</p>
             <p className="text-zinc-600 text-sm mt-1">
@@ -558,12 +771,31 @@ export default function Crews() {
             </Button>
           </div>
         ) : (
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid gap-4 sm:grid-cols-2 mb-6">
             {crewList.map((crew) => (
               <CrewCard key={crew.id} crew={crew} jobsToday={jobsTodayCount} />
             ))}
           </div>
         )}
+
+        {/* Today's jobs panel */}
+        <TodaysJobsPanel jobs={jobsList as unknown as Job[]} />
+      </div>
+
+      {/* Bottom quick-action bar — fixed */}
+      <div className="fixed bottom-0 left-0 right-0 z-30 flex border-t border-zinc-800 bg-zinc-950/95 backdrop-blur-sm">
+        <Link href="/ops/schedule" className="flex-1">
+          <button className="w-full flex items-center justify-center gap-2 py-4 text-sm font-medium text-zinc-300 hover:text-white hover:bg-zinc-800/60 transition-colors border-r border-zinc-800">
+            <CalendarDays className="w-4 h-4" />
+            Schedule
+          </button>
+        </Link>
+        <Link href="/ops/timesheets" className="flex-1">
+          <button className="w-full flex items-center justify-center gap-2 py-4 text-sm font-medium text-zinc-300 hover:text-white hover:bg-zinc-800/60 transition-colors">
+            <Clock className="w-4 h-4" />
+            Timesheets
+          </button>
+        </Link>
       </div>
 
       {/* Add Crew Modal */}

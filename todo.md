@@ -616,3 +616,13 @@
 
 - [x] Replace plain Add button in EditPricingModal Monthly Overhead section with OVERHEAD_PRESETS Select dropdown matching Pricing.tsx
 - [x] TypeScript check and save checkpoint
+
+## Crews Page Rebuild — Apr 13 2026
+
+- [x] Crew card: show Day Rate prominently with margin % badge (green)
+- [x] Crew card: show Jobs today / Clocked In / Profit Per Day stats row
+- [x] Crew card: show cost summary breakdown (labor, equipment, fuel, wear, overhead)
+- [x] Today's jobs panel: show scheduled jobs for today or empty state with View Schedule CTA
+- [x] Bottom quick-action bar: Schedule and Timesheets buttons linking to /ops/schedule and /ops/timesheets
+- [x] Header: show today's date, jobs today count, clocked-in count
+- [x] TypeScript check and save checkpoint
