@@ -654,3 +654,9 @@
 - [x] Add getServiceCatalog, upsertServiceCatalog, getMessageTemplates, upsertMessageTemplate, getReminderRules, createReminderRule, deleteReminderRule to settingsRouter
 - [x] Rebuild Settings.tsx with all 12 tabs: General, Automations, Phone, Trust Center, Team, Service Catalog, Template Editor, Template Assignments, Reminders, Integrations, Payments, Billing
 - [x] TypeScript check: 0 errors. Checkpoint saved.
+
+## Integrations Tab — Live Status — Apr 13 2026
+
+- [x] Add getIntegrationStatus tRPC procedure to settingsRouter (checks Jobber token, Twilio, Resend, Google Maps env vars)
+- [x] Update IntegrationsTab to show live connected/disconnected status for Jobber, Twilio, Resend, Google Maps, ClickGrow, Facebook, Google Business
+- [x] TypeScript check: 0 errors. Checkpoint saved.

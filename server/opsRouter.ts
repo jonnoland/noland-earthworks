@@ -6,6 +6,7 @@ import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { protectedProcedure, router } from "./_core/trpc";
 import { ENV } from "./_core/env";
+import { isJobberConnected } from "./jobber";
 import {
   getDb,
   getJobs, createJob, updateJob, deleteJob,
@@ -908,6 +909,26 @@ const settingsRouter = router({
       }
       return { success: true };
     }),
+
+  // ─── Integration Status ──────────────────────────────────────────────────────
+  getIntegrationStatus: ownerProcedure.query(async () => {
+    const jobberConnected = await isJobberConnected();
+    const twilioConfigured = !!(ENV.twilioAccountSid && ENV.twilioAuthToken && ENV.twilioFromNumber);
+    const resendConfigured = !!ENV.resendApiKey;
+    // Google Maps is always available via the Manus proxy — no key needed
+    const googleMapsActive = true;
+    return {
+      jobber: { connected: jobberConnected },
+      twilio: { configured: twilioConfigured, fromNumber: twilioConfigured ? ENV.twilioFromNumber : null },
+      resend: { configured: resendConfigured },
+      googleMaps: { active: googleMapsActive },
+      clickgrow: { note: "Managed externally via ClickGrow dashboard" },
+      facebook: { connected: false },
+      googleBusiness: { connected: false },
+      quickbooks: { connected: false },
+      gusto: { connected: false },
+    };
+  }),
 
   // ─── Service Catalog ───────────────────────────────────────────────────────
   getServiceCatalog: ownerProcedure.query(async () => {

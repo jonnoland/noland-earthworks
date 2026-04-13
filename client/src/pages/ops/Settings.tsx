@@ -1151,92 +1151,239 @@ function RemindersTab() {
 }
 
 function IntegrationsTab() {
+  const { data: status, isLoading, refetch } = trpc.ops.settings.getIntegrationStatus.useQuery();
+  const { data: jobberAuth } = trpc.jobber.getAuthUrl.useQuery();
+  const jobberDisconnect = trpc.jobber.disconnect.useMutation({
+    onSuccess: () => { toast.success("Jobber disconnected"); refetch(); },
+    onError: () => toast.error("Failed to disconnect"),
+  });
+
   const [apiKeyVisible, setApiKeyVisible] = useState(false);
   const webhookUrl = `${window.location.origin}/api/webhooks/leads`;
   const apiKey = "whk_ne-api-key-placeholder";
-
   const copy = (val: string) => { navigator.clipboard.writeText(val); toast.success("Copied to clipboard"); };
+
+  if (isLoading) return <div className="flex items-center justify-center py-16"><Loader2 className="w-5 h-5 animate-spin text-muted-foreground" /></div>;
+
+  const ConnectedBadge = ({ ok, label }: { ok: boolean; label?: string }) => ok ? (
+    <span className="inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full bg-green-500/15 text-green-400 border border-green-500/30">
+      <CheckCircle2 className="w-3 h-3" />{label ?? "Connected"}
+    </span>
+  ) : (
+    <span className="inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full bg-secondary text-muted-foreground border border-border">
+      <XCircle className="w-3 h-3" />{label ?? "Not Connected"}
+    </span>
+  );
 
   return (
     <div className="space-y-4">
-      <p className="text-xs text-muted-foreground">Connect lead sources so new leads automatically appear in your pipeline.</p>
 
-      <SettingsSection title="Facebook Lead Ads" description="Connect your Facebook Page to automatically receive leads from your ads.">
-        <button onClick={() => toast.info("Feature coming soon")}
-          className="w-full flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold px-4 py-2.5 rounded-md transition-colors">
-          Connect Facebook Page
-        </button>
-        <p className="text-[11px] text-muted-foreground text-center">You'll be asked to log into Facebook and select your business page. We only request access to receive leads from your ads.</p>
+      {/* ── Jobber ── */}
+      <SettingsSection
+        title="Jobber"
+        description="Field service management — clients, requests, jobs, invoices, and scheduling."
+        action={<ConnectedBadge ok={!!status?.jobber.connected} />}
+      >
+        {status?.jobber.connected ? (
+          <div className="space-y-3">
+            <div className="flex items-center gap-2 p-3 bg-green-500/10 border border-green-500/20 rounded-lg">
+              <CheckCircle2 className="w-4 h-4 text-green-400 shrink-0" />
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-semibold text-foreground">Jobber is connected</p>
+                <p className="text-[11px] text-muted-foreground mt-0.5">New quote submissions are automatically sent to Jobber as service requests.</p>
+              </div>
+            </div>
+            <div className="flex gap-2">
+              {jobberAuth?.url && (
+                <a href={jobberAuth.url}
+                  className="flex items-center gap-2 bg-secondary hover:bg-secondary/80 border border-border text-xs px-3 py-2 rounded-md transition-colors">
+                  <RefreshCw className="w-3.5 h-3.5" />Reconnect
+                </a>
+              )}
+              <button
+                onClick={() => jobberDisconnect.mutate()}
+                disabled={jobberDisconnect.isPending}
+                className="flex items-center gap-2 bg-secondary hover:bg-secondary/80 border border-red-500/30 text-xs text-red-400 px-3 py-2 rounded-md transition-colors disabled:opacity-50">
+                {jobberDisconnect.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <XCircle className="w-3.5 h-3.5" />}
+                Disconnect
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            <div className="flex items-start gap-2 bg-amber-500/10 border border-amber-500/20 rounded-md p-3">
+              <AlertCircle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+              <p className="text-xs text-amber-300">Jobber is not connected. Quote form submissions will not be forwarded to Jobber until you connect.</p>
+            </div>
+            {jobberAuth?.url ? (
+              <a href={jobberAuth.url}
+                className="inline-flex items-center gap-2 bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-semibold px-4 py-2 rounded-md transition-colors">
+                <Link2 className="w-3.5 h-3.5" />Connect Jobber
+              </a>
+            ) : (
+              <p className="text-xs text-muted-foreground">Jobber client credentials are not configured. Add JOBBER_CLIENT_ID and JOBBER_CLIENT_SECRET to your secrets.</p>
+            )}
+          </div>
+        )}
       </SettingsSection>
 
-      <SettingsSection title="Google Business Profile" description="Connect your Google Business Profile to show reviews on your quotes.">
-        <button onClick={() => toast.info("Feature coming soon")}
-          className="w-full flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold px-4 py-2.5 rounded-md transition-colors">
-          Connect Google Business Profile
-        </button>
-        <p className="text-[11px] text-muted-foreground text-center">You'll be asked to log into Google and select your business location. Your 5-star reviews will automatically display on customer quotes.</p>
+      {/* ── Twilio ── */}
+      <SettingsSection
+        title="Twilio SMS"
+        description="Outbound SMS for lead follow-ups, quote notifications, and automated reminders."
+        action={<ConnectedBadge ok={!!status?.twilio.configured} label={status?.twilio.configured ? "Configured" : "Not Configured"} />}
+      >
+        {status?.twilio.configured ? (
+          <div className="flex items-center gap-2 p-3 bg-green-500/10 border border-green-500/20 rounded-lg">
+            <CheckCircle2 className="w-4 h-4 text-green-400 shrink-0" />
+            <div>
+              <p className="text-xs font-semibold text-foreground">Twilio is configured</p>
+              {status.twilio.fromNumber && (
+                <p className="text-[11px] text-muted-foreground mt-0.5">Sending from: <span className="font-mono">{status.twilio.fromNumber}</span></p>
+              )}
+            </div>
+          </div>
+        ) : (
+          <div className="flex items-start gap-2 bg-secondary/40 border border-border rounded-md p-3">
+            <AlertCircle className="w-4 h-4 text-muted-foreground shrink-0 mt-0.5" />
+            <p className="text-xs text-muted-foreground">TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, and TWILIO_FROM_NUMBER are not set. Add them via Settings &gt; Secrets to enable SMS.</p>
+          </div>
+        )}
       </SettingsSection>
 
+      {/* ── Resend ── */}
+      <SettingsSection
+        title="Resend Email"
+        description="Transactional email for quote confirmations, notifications, and follow-ups."
+        action={<ConnectedBadge ok={!!status?.resend.configured} label={status?.resend.configured ? "Configured" : "Not Configured"} />}
+      >
+        {status?.resend.configured ? (
+          <div className="flex items-center gap-2 p-3 bg-green-500/10 border border-green-500/20 rounded-lg">
+            <CheckCircle2 className="w-4 h-4 text-green-400 shrink-0" />
+            <p className="text-xs font-semibold text-foreground">Resend is configured — transactional emails are active.</p>
+          </div>
+        ) : (
+          <div className="flex items-start gap-2 bg-secondary/40 border border-border rounded-md p-3">
+            <AlertCircle className="w-4 h-4 text-muted-foreground shrink-0 mt-0.5" />
+            <p className="text-xs text-muted-foreground">RESEND_API_KEY is not set. Add it via Settings &gt; Secrets to enable email delivery.</p>
+          </div>
+        )}
+      </SettingsSection>
+
+      {/* ── Google Maps ── */}
+      <SettingsSection
+        title="Google Maps"
+        description="Service area map, address autocomplete, and county boundary display on the public website."
+        action={<ConnectedBadge ok={true} label="Active" />}
+      >
+        <div className="flex items-center gap-2 p-3 bg-green-500/10 border border-green-500/20 rounded-lg">
+          <CheckCircle2 className="w-4 h-4 text-green-400 shrink-0" />
+          <p className="text-xs font-semibold text-foreground">Google Maps is active via the built-in proxy — no API key required.</p>
+        </div>
+      </SettingsSection>
+
+      {/* ── ClickGrow ── */}
+      <SettingsSection
+        title="ClickGrow Ads"
+        description="Automated Google Ads management for Noland Earthworks."
+        action={<span className="inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full bg-blue-500/15 text-blue-400 border border-blue-500/30"><Globe className="w-3 h-3" />External</span>}
+      >
+        <div className="flex items-center gap-3 p-3 bg-secondary/40 border border-border rounded-lg">
+          <Globe className="w-4 h-4 text-blue-400 shrink-0" />
+          <div className="flex-1">
+            <p className="text-xs font-semibold text-foreground">Managed via ClickGrow dashboard</p>
+            <p className="text-[11px] text-muted-foreground mt-0.5">Google Ads campaigns are managed externally. No integration required here.</p>
+          </div>
+          <a href="https://app.clickgrow.com" target="_blank" rel="noopener noreferrer"
+            className="shrink-0 flex items-center gap-1.5 text-xs text-primary hover:underline">
+            Open <ExternalLink className="w-3 h-3" />
+          </a>
+        </div>
+      </SettingsSection>
+
+      {/* ── Webhook ── */}
       <SettingsSection
         title="Zapier / Make Webhook"
-        description="The easiest way to connect Facebook Lead Ads (or any lead source) to your pipeline. No coding required."
+        description="Connect any lead source to your pipeline. No coding required."
         action={<span className="text-[11px] bg-primary/20 text-primary border border-primary/30 px-2 py-0.5 rounded-full font-semibold">Recommended</span>}
       >
         <div className="space-y-3">
-          <div>
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-2">Your Webhook Credentials</p>
-            <div className="space-y-2">
-              <div>
-                <label className="text-[11px] text-muted-foreground uppercase tracking-wider">Webhook URL</label>
-                <div className="flex gap-2 mt-1">
-                  <code className="flex-1 bg-secondary/60 border border-border rounded px-3 py-2 text-xs font-mono text-foreground truncate">{webhookUrl}</code>
-                  <button onClick={() => copy(webhookUrl)} className="shrink-0 p-2 bg-secondary border border-border rounded hover:bg-secondary/80 transition-colors">
-                    <Copy className="w-3.5 h-3.5 text-muted-foreground" />
-                  </button>
-                </div>
+          <div className="space-y-2">
+            <div>
+              <label className="text-[11px] text-muted-foreground uppercase tracking-wider">Webhook URL</label>
+              <div className="flex gap-2 mt-1">
+                <code className="flex-1 bg-secondary/60 border border-border rounded px-3 py-2 text-xs font-mono text-foreground truncate">{webhookUrl}</code>
+                <button onClick={() => copy(webhookUrl)} className="shrink-0 p-2 bg-secondary border border-border rounded hover:bg-secondary/80 transition-colors">
+                  <Copy className="w-3.5 h-3.5 text-muted-foreground" />
+                </button>
               </div>
-              <div>
-                <label className="text-[11px] text-muted-foreground uppercase tracking-wider">API Key</label>
-                <div className="flex gap-2 mt-1">
-                  <code className="flex-1 bg-secondary/60 border border-border rounded px-3 py-2 text-xs font-mono text-foreground truncate">
-                    {apiKeyVisible ? apiKey : apiKey.slice(0, 8) + "..."}
-                  </code>
-                  <button onClick={() => setApiKeyVisible(v => !v)} className="shrink-0 p-2 bg-secondary border border-border rounded hover:bg-secondary/80 transition-colors">
-                    {apiKeyVisible ? <EyeOff className="w-3.5 h-3.5 text-muted-foreground" /> : <Eye className="w-3.5 h-3.5 text-muted-foreground" />}
-                  </button>
-                  <button onClick={() => copy(apiKey)} className="shrink-0 p-2 bg-secondary border border-border rounded hover:bg-secondary/80 transition-colors">
-                    <Copy className="w-3.5 h-3.5 text-muted-foreground" />
-                  </button>
-                </div>
+            </div>
+            <div>
+              <label className="text-[11px] text-muted-foreground uppercase tracking-wider">API Key</label>
+              <div className="flex gap-2 mt-1">
+                <code className="flex-1 bg-secondary/60 border border-border rounded px-3 py-2 text-xs font-mono text-foreground truncate">
+                  {apiKeyVisible ? apiKey : apiKey.slice(0, 8) + "..."}
+                </code>
+                <button onClick={() => setApiKeyVisible(v => !v)} className="shrink-0 p-2 bg-secondary border border-border rounded hover:bg-secondary/80 transition-colors">
+                  {apiKeyVisible ? <EyeOff className="w-3.5 h-3.5 text-muted-foreground" /> : <Eye className="w-3.5 h-3.5 text-muted-foreground" />}
+                </button>
+                <button onClick={() => copy(apiKey)} className="shrink-0 p-2 bg-secondary border border-border rounded hover:bg-secondary/80 transition-colors">
+                  <Copy className="w-3.5 h-3.5 text-muted-foreground" />
+                </button>
               </div>
             </div>
           </div>
-          <button onClick={() => toast.info("Test payload sent")}
-            className="flex items-center gap-2 bg-secondary hover:bg-secondary/80 border border-border text-xs px-3 py-2 rounded-md transition-colors">
-            Send Test
-          </button>
         </div>
       </SettingsSection>
 
-      <SettingsSection title="QuickBooks Online" description="Sync invoices, payments, and expenses with your accounting.">
-        <div className="flex items-center gap-2 mb-3">
-          <span className="text-[11px] bg-secondary border border-border px-2 py-0.5 rounded-full text-muted-foreground">Not Connected</span>
-        </div>
-        <p className="text-xs text-muted-foreground mb-3">Connect QuickBooks Online to automatically sync invoices, payments, and customer data.</p>
-        <button onClick={() => toast.info("Coming soon")} className="flex items-center gap-2 bg-secondary hover:bg-secondary/80 border border-border text-xs px-3 py-2 rounded-md transition-colors opacity-60 cursor-not-allowed">
+      {/* ── Facebook Lead Ads ── */}
+      <SettingsSection
+        title="Facebook Lead Ads"
+        description="Automatically receive leads from your Facebook ad campaigns."
+        action={<ConnectedBadge ok={false} />}
+      >
+        <button onClick={() => toast.info("Feature coming soon")}
+          className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold px-4 py-2 rounded-md transition-colors">
+          Connect Facebook Page
+        </button>
+        <p className="text-[11px] text-muted-foreground">You'll be asked to log into Facebook and select your business page.</p>
+      </SettingsSection>
+
+      {/* ── Google Business Profile ── */}
+      <SettingsSection
+        title="Google Business Profile"
+        description="Display your Google reviews on quotes and proposals."
+        action={<ConnectedBadge ok={false} />}
+      >
+        <button onClick={() => toast.info("Feature coming soon")}
+          className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold px-4 py-2 rounded-md transition-colors">
+          Connect Google Business Profile
+        </button>
+        <p className="text-[11px] text-muted-foreground">Your 5-star reviews will automatically display on customer quotes.</p>
+      </SettingsSection>
+
+      {/* ── QuickBooks ── */}
+      <SettingsSection
+        title="QuickBooks Online"
+        description="Sync invoices, payments, and expenses with your accounting."
+        action={<ConnectedBadge ok={false} />}
+      >
+        <button disabled className="flex items-center gap-2 bg-secondary border border-border text-xs px-3 py-2 rounded-md opacity-50 cursor-not-allowed">
           Connect QuickBooks (Coming Soon)
         </button>
       </SettingsSection>
 
-      <SettingsSection title="Gusto Payroll" description="Export approved timesheets directly to Gusto for payroll processing.">
-        <div className="flex items-center gap-2 mb-3">
-          <span className="text-[11px] bg-secondary border border-border px-2 py-0.5 rounded-full text-muted-foreground">Not Connected</span>
-        </div>
-        <p className="text-xs text-muted-foreground mb-3">Connect your Gusto account to automatically sync approved time entries.</p>
-        <button onClick={() => toast.info("Coming soon")} className="flex items-center gap-2 bg-secondary hover:bg-secondary/80 border border-border text-xs px-3 py-2 rounded-md transition-colors opacity-60 cursor-not-allowed">
+      {/* ── Gusto ── */}
+      <SettingsSection
+        title="Gusto Payroll"
+        description="Export approved timesheets directly to Gusto for payroll processing."
+        action={<ConnectedBadge ok={false} />}
+      >
+        <button disabled className="flex items-center gap-2 bg-secondary border border-border text-xs px-3 py-2 rounded-md opacity-50 cursor-not-allowed">
           Connect Gusto (Coming Soon)
         </button>
       </SettingsSection>
+
     </div>
   );
 }
