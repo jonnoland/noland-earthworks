@@ -1,0 +1,1 @@
+ALTER TABLE `distance_quotes` ADD `emailedAt` timestamp;

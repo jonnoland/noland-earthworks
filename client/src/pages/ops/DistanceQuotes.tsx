@@ -8,7 +8,7 @@ import DashboardLayout from "@/components/DashboardLayout";
 import { useState } from "react";
 import {
   FileText, Trash2, ChevronDown, MapPin,
-  Clock, CheckCircle, XCircle, AlertTriangle, Plus,
+  Clock, CheckCircle, XCircle, AlertTriangle, Plus, Mail, Send,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -55,6 +55,7 @@ export default function OpsDistanceQuotes() {
   const [filterStatus, setFilterStatus] = useState<string>("all");
   const [expandedId, setExpandedId] = useState<number | null>(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null);
+  const [emailConfirmId, setEmailConfirmId] = useState<number | null>(null);
 
   const { data: quotes = [], isLoading, refetch } = trpc.ops.distanceQuotes.list.useQuery();
   const updateStatus = trpc.ops.distanceQuotes.updateStatus.useMutation({
@@ -63,6 +64,14 @@ export default function OpsDistanceQuotes() {
   });
   const deleteQuote = trpc.ops.distanceQuotes.delete.useMutation({
     onSuccess: () => { refetch(); toast.success("Quote deleted."); setDeleteConfirmId(null); },
+    onError: (e) => toast.error(e.message),
+  });
+  const emailQuote = trpc.ops.distanceQuotes.emailQuote.useMutation({
+    onSuccess: () => {
+      refetch();
+      toast.success("Quote emailed to client.");
+      setEmailConfirmId(null);
+    },
     onError: (e) => toast.error(e.message),
   });
 
@@ -247,6 +256,37 @@ export default function OpsDistanceQuotes() {
                         </div>
                       </div>
 
+                      {/* Email Quote */}
+                      {quote.clientEmail && (
+                        emailConfirmId === quote.id ? (
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs text-blue-400">Email quote to {quote.clientEmail}?</span>
+                            <button
+                              onClick={() => emailQuote.mutate({ id: quote.id })}
+                              disabled={emailQuote.isPending}
+                              className="flex items-center gap-1 text-xs bg-blue-600 hover:bg-blue-500 text-white px-3 py-1.5 rounded-md transition-all disabled:opacity-50"
+                            >
+                              <Send className="w-3 h-3" />
+                              {emailQuote.isPending ? "Sending..." : "Send"}
+                            </button>
+                            <button
+                              onClick={() => setEmailConfirmId(null)}
+                              className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        ) : (
+                          <button
+                            onClick={() => setEmailConfirmId(quote.id)}
+                            className="flex items-center gap-1.5 text-xs text-blue-400 hover:text-blue-300 transition-colors px-2 py-1.5"
+                          >
+                            <Mail className="w-3.5 h-3.5" />
+                            Email Quote
+                          </button>
+                        )
+                      )}
+
                       {/* Delete */}
                       {deleteConfirmId === quote.id ? (
                         <div className="flex items-center gap-2">
@@ -277,6 +317,9 @@ export default function OpsDistanceQuotes() {
                       <span className="ml-auto text-[11px] text-muted-foreground">
                         Created {fmtDate(quote.createdAt)}
                         {quote.sentAt ? ` · Sent ${fmtDate(quote.sentAt)}` : ""}
+                        {(quote as typeof quote & { emailedAt?: Date | string | null }).emailedAt
+                          ? ` · Emailed ${fmtDate((quote as typeof quote & { emailedAt?: Date | string | null }).emailedAt as string)}`
+                          : ""}
                       </span>
                     </div>
                   </div>

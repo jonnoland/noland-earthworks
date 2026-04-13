@@ -601,3 +601,13 @@
 - [x] Extend analytics tRPC procedure with avgValueByJobTypeByMonth data (last 6 months)
 - [x] Add grouped bar chart to QuoteAnalytics.tsx showing avg quote value per job type per month
 - [x] TypeScript check and save checkpoint
+
+## Email Quote Feature — Apr 13 2026
+
+- [x] Audit Resend setup in server — confirm helper exists and RESEND_API_KEY is available
+- [x] Add emailQuote tRPC mutation to distanceQuotesRouter — sends HTML email via Resend, updates quote status to "sent", records sentAt timestamp
+- [x] Add emailedAt column to distance_quotes table and run migration
+- [x] Build professional HTML email template: Noland Earthworks branding, job details, pricing breakdown, mobilization surcharge, CTA to call/visit site
+- [x] Add Send Email button to each quote row in DistanceQuotes.tsx with confirmation modal
+- [x] Show sent timestamp badge on rows that have been emailed
+- [x] TypeScript check and save checkpoint

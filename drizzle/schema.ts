@@ -369,6 +369,7 @@ export const distanceQuotes = mysqlTable("distance_quotes", {
   status: mysqlEnum("status", ["draft", "sent", "accepted", "declined", "expired"]).notNull().default("draft"),
   /** Timestamps */
   sentAt: timestamp("sentAt"),
+  emailedAt: timestamp("emailedAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });

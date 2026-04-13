@@ -71,6 +71,13 @@
       "when": 1776104016369,
       "tag": "0009_zippy_eddie_brock",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "5",
+      "when": 1776105366818,
+      "tag": "0010_yielding_wolverine",
+      "breakpoints": true
     }
   ]
 }

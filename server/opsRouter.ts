@@ -597,6 +597,110 @@ const distanceQuotesRouter = router({
       await db.delete(distanceQuotes).where(eq(distanceQuotes.id, input.id));
       return { success: true };
     }),
+  emailQuote: ownerProcedure
+    .input(z.object({ id: z.number().int().positive() }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+      const [quote] = await db.select().from(distanceQuotes).where(eq(distanceQuotes.id, input.id)).limit(1);
+      if (!quote) throw new TRPCError({ code: "NOT_FOUND", message: "Quote not found" });
+      if (!quote.clientEmail) throw new TRPCError({ code: "BAD_REQUEST", message: "No client email on this quote" });
+
+      const fmt = (cents: number) => `$${(cents / 100).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+      const fmtAc = (cents: number) => `$${Math.round(cents / 100).toLocaleString("en-US")}`;
+      const tierLabel = (miles: number) =>
+        miles <= 30 ? "Local (0–30 mi) — No surcharge" :
+        miles <= 50 ? "31–50 mi" :
+        miles <= 75 ? "51–75 mi" :
+        miles <= 100 ? "76–100 mi" : "100+ mi";
+
+      const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Quote from Noland Earthworks</title>
+  <style>
+    body { margin: 0; padding: 0; background: #f4f4f4; font-family: Arial, Helvetica, sans-serif; color: #1a1a1a; }
+    .wrapper { max-width: 600px; margin: 32px auto; background: #ffffff; border-radius: 6px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,.12); }
+    .header { background: #1a1a1a; padding: 28px 32px; }
+    .header h1 { margin: 0; font-size: 22px; color: #f0a500; letter-spacing: .5px; }
+    .header p { margin: 4px 0 0; font-size: 13px; color: #aaa; }
+    .body { padding: 28px 32px; }
+    .greeting { font-size: 15px; margin-bottom: 20px; }
+    .section-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: #888; margin: 24px 0 8px; border-bottom: 1px solid #e5e5e5; padding-bottom: 4px; }
+    .row { display: flex; justify-content: space-between; font-size: 14px; padding: 6px 0; border-bottom: 1px solid #f0f0f0; }
+    .row:last-child { border-bottom: none; }
+    .label { color: #555; }
+    .value { font-weight: 600; color: #1a1a1a; }
+    .total-row { background: #f9f5ec; border-radius: 4px; padding: 10px 12px; margin-top: 12px; display: flex; justify-content: space-between; font-size: 16px; font-weight: 700; }
+    .total-row .value { color: #f0a500; }
+    .disclaimer { font-size: 12px; color: #888; margin-top: 20px; line-height: 1.6; }
+    .cta { text-align: center; margin: 28px 0 8px; }
+    .cta a { display: inline-block; background: #f0a500; color: #1a1a1a; font-weight: 700; font-size: 14px; padding: 12px 28px; border-radius: 4px; text-decoration: none; letter-spacing: .3px; }
+    .footer { background: #f4f4f4; padding: 16px 32px; font-size: 11px; color: #999; text-align: center; }
+  </style>
+</head>
+<body>
+  <div class="wrapper">
+    <div class="header">
+      <h1>Noland Earthworks, LLC</h1>
+      <p>Veteran-Owned &amp; Operated &bull; Middle &amp; West Tennessee</p>
+    </div>
+    <div class="body">
+      <p class="greeting">Hi ${quote.clientName.split(" ")[0]},</p>
+      <p style="font-size:14px;line-height:1.7;">Thank you for your interest in Noland Earthworks. Based on the details you provided, I have put together the following estimate for your review. This is a preliminary quote based on the information available — a site visit is required to confirm the final price.</p>
+
+      <div class="section-title">Project Details</div>
+      <div class="row"><span class="label">Service</span><span class="value">${quote.jobType.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase())}</span></div>
+      <div class="row"><span class="label">Job Site</span><span class="value">${quote.jobAddress}</span></div>
+      <div class="row"><span class="label">Estimated Acreage</span><span class="value">${quote.jobAcres} ac</span></div>
+      <div class="row"><span class="label">Estimated Crew Days</span><span class="value">${quote.crewDaysNeeded}</span></div>
+      <div class="row"><span class="label">Drive Distance</span><span class="value">${quote.distanceMiles} mi (${quote.driveDuration ?? "—"})</span></div>
+      <div class="row"><span class="label">Mobilization Tier</span><span class="value">${tierLabel(quote.distanceMiles)}</span></div>
+
+      <div class="section-title">Pricing Estimate</div>
+      <div class="row"><span class="label">Base Day Rate</span><span class="value">${fmt(quote.baseDayRateCents)}</span></div>
+      ${quote.mobSurchargeCents > 0 ? `<div class="row"><span class="label">Mobilization Surcharge/Day</span><span class="value">+${fmt(quote.mobSurchargeCents)}</span></div>` : ""}
+      <div class="row"><span class="label">Adjusted Day Rate</span><span class="value">${fmt(quote.adjustedDayRateCents)}</span></div>
+      <div class="row"><span class="label">Price per Acre</span><span class="value">${fmtAc(quote.pricePerAcreCents)}/ac</span></div>
+      <div class="total-row"><span>Estimated Total</span><span class="value">${fmt(quote.adjustedJobTotalCents)}</span></div>
+
+      ${quote.notes ? `<div class="section-title">Notes</div><p style="font-size:13px;color:#555;line-height:1.6;">${quote.notes}</p>` : ""}
+
+      <p class="disclaimer">This estimate is based on the information provided and does not constitute a final contract. Pricing may vary based on site conditions, terrain, vegetation density, and access. A site visit is required to confirm the final scope and price. Noland Earthworks does not publish rates or provide binding quotes over email.</p>
+
+      <div class="cta">
+        <a href="https://www.nolandearthworks.com/quote">Schedule a Site Visit</a>
+      </div>
+      <p style="text-align:center;font-size:12px;color:#888;">Or call us directly: <strong>615-406-4819</strong></p>
+    </div>
+    <div class="footer">
+      Noland Earthworks, LLC &bull; Vanleer, TN &bull; <a href="https://www.nolandearthworks.com" style="color:#f0a500;">nolandearthworks.com</a><br />
+      Veteran-owned and operated. Licensed and insured.
+    </div>
+  </div>
+</body>
+</html>`;
+
+      const { Resend } = await import("resend");
+      const resend = new Resend(ENV.resendApiKey);
+      const { error } = await resend.emails.send({
+        from: "Noland Earthworks <quotes@nolandearthworks.com>",
+        to: quote.clientEmail,
+        replyTo: "jon@nolandearthworks.com",
+        subject: `Your Estimate from Noland Earthworks — ${quote.jobType.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase())}`,
+        html,
+      });
+      if (error) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: `Email failed: ${error.message}` });
+
+      await db.update(distanceQuotes)
+        .set({ emailedAt: new Date(), status: "sent", sentAt: new Date() })
+        .where(eq(distanceQuotes.id, input.id));
+
+      return { success: true };
+    }),
+
   analytics: ownerProcedure.query(async () => {
     const db = await getDb();
     if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
