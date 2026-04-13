@@ -85,15 +85,15 @@ const navItems2 = [
   { icon: FileText,        label: "Quotes",        href: "/ops/quotes" },
   { icon: Briefcase,       label: "Jobs",          href: "/ops/jobs" },
   { icon: DollarSign,      label: "Invoices",      href: "/ops/invoices" },
-  { icon: MessageSquare,   label: "Conversations", href: "/ops/conversations", placeholder: true },
-  { icon: Star,            label: "Reviews",       href: "/ops/reviews",       placeholder: true },
+  { icon: MessageSquare,   label: "Conversations", href: "/ops/conversations" },
+  { icon: Star,            label: "Reviews",       href: "/ops/reviews" },
 ];
 
 const navDivider2 = true;
 
 const navItems3 = [
-  { icon: ClipboardCheck,  label: "Timesheets",    href: "/ops/timesheets",    placeholder: true },
-  { icon: BarChart3,       label: "Scoreboard",    href: "/ops/scoreboard",    placeholder: true },
+  { icon: ClipboardCheck,  label: "Timesheets",    href: "/ops/timesheets" },
+  { icon: BarChart3,       label: "Scoreboard",    href: "/ops/scoreboard" },
   { icon: TrendingUp,      label: "Reports",       href: "/ops/reports" },
   { icon: Settings,        label: "Settings",      href: "/ops/settings" },
 ];

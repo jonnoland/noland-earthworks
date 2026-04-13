@@ -483,41 +483,41 @@
 
 ## Crews Page (/ops/crews) — April 2026
 
-- [ ] Audit existing Crews page and schema for existing tables/procedures
-- [ ] Add crews table (id, name, equipmentType, dayRate, costPerDay, createdAt)
-- [ ] Add crewMembers table (id, crewId, name, role, clockedIn bool, createdAt)
-- [ ] Run pnpm db:push to migrate schema
-- [ ] Add crewsRouter tRPC procedures: list, create, update, delete, updatePricing
-- [ ] Add crewMembersRouter: addMember, removeMember, toggleClockIn
-- [ ] Build Crews page UI: page header with date summary + Add Crew button
-- [ ] Build crew card (collapsed): status dot, name, equipment type, Day Rate, margin %, Jobs/ClockedIn/Profit stats, Details toggle
-- [ ] Build crew card (expanded): Cost/Day, Profit/Day, Edit Pricing button, Delete button, Team section with clock-in toggles
-- [ ] Build Add Crew modal (name, equipment type, day rate, cost/day)
-- [ ] Build Edit Pricing modal (day rate, cost/day fields)
-- [ ] Build Delete crew confirmation modal
-- [ ] Add Add Member button and modal to team section
-- [ ] Wire View Schedule link to /ops/schedule
-- [ ] Wire Crews nav item in DashboardLayout sidebar (remove placeholder if present)
-- [ ] Write vitest for crews and crewMembers procedures
+- [x] Audit existing Crews page and schema for existing tables/procedures
+- [x] Add crews table (id, name, equipmentType, dayRate, costPerDay, createdAt)
+- [x] Add crewMembers table (id, crewId, name, role, clockedIn bool, createdAt)
+- [x] Run pnpm db:push to migrate schema
+- [x] Add crewsRouter tRPC procedures: list, create, update, delete, updatePricing
+- [x] Add crewMembersRouter: addMember, removeMember, toggleClockIn
+- [x] Build Crews page UI: page header with date summary + Add Crew button
+- [x] Build crew card (collapsed): status dot, name, equipment type, Day Rate, margin %, Jobs/ClockedIn/Profit stats, Details toggle
+- [x] Build crew card (expanded): Cost/Day, Profit/Day, Edit Pricing button, Delete button, Team section with clock-in toggles
+- [x] Build Add Crew modal (name, equipment type, day rate, cost/day)
+- [x] Build Edit Pricing modal (day rate, cost/day fields)
+- [x] Build Delete crew confirmation modal
+- [x] Add Add Member button and modal to team section
+- [x] Wire View Schedule link to /ops/schedule
+- [x] Wire Crews nav item in DashboardLayout sidebar (remove placeholder if present)
+- [x] Write vitest for crews and crewMembers procedures
 
 ## OwnrOps Field Features — Apr 13 2026
 
-- [ ] Fix Crews.tsx toast import error (use correct toast hook path)
-- [ ] Wire /ops/crews route in App.tsx
-- [ ] Add Crews to sidebar nav in DashboardLayout.tsx (remove placeholder)
-- [ ] Research OwnrOps Conversations, Reviews, Timesheets, Scoreboard layouts
-- [ ] Add DB schema tables: conversations, reviews, timesheets, scoreboard_entries
-- [ ] Run db:push for new tables
-- [ ] Add tRPC procedures for Conversations (list, send, delete)
-- [ ] Add tRPC procedures for Reviews (list, create, delete)
-- [ ] Add tRPC procedures for Timesheets (list, clockIn, clockOut, delete)
-- [ ] Add tRPC procedures for Scoreboard (list, upsert weekly entry)
-- [ ] Build /ops/conversations page matching OwnrOps layout
-- [ ] Build /ops/reviews page matching OwnrOps layout
-- [ ] Build /ops/timesheets page matching OwnrOps layout
-- [ ] Build /ops/scoreboard page matching OwnrOps layout
-- [ ] Wire all four routes in App.tsx
-- [ ] Add all four to sidebar nav (remove placeholder flags)
+- [x] Fix Crews.tsx toast import error (use correct toast hook path)
+- [x] Wire /ops/crews route in App.tsx
+- [x] Add Crews to sidebar nav in DashboardLayout.tsx (remove placeholder)
+- [x] Research OwnrOps Conversations, Reviews, Timesheets, Scoreboard layouts
+- [x] Add DB schema tables: conversations, reviews, timesheets, scoreboard_entries
+- [x] Run db:push for new tables
+- [x] Add tRPC procedures for Conversations (list, send, delete)
+- [x] Add tRPC procedures for Reviews (list, create, delete)
+- [x] Add tRPC procedures for Timesheets (list, clockIn, clockOut, delete)
+- [x] Add tRPC procedures for Scoreboard (list, upsert weekly entry)
+- [x] Build /ops/conversations page matching OwnrOps layout
+- [x] Build /ops/reviews page matching OwnrOps layout
+- [x] Build /ops/timesheets page matching OwnrOps layout
+- [x] Build /ops/scoreboard page matching OwnrOps layout
+- [x] Wire all four routes in App.tsx
+- [x] Add all four to sidebar nav (remove placeholder flags)
 
 ## Session 2 Completions — Apr 13 2026
 
