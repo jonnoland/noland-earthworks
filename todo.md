@@ -706,3 +706,8 @@
 
 - [x] Upload Noland Earthworks logo PNG to CDN and replace the "N" placeholder in the DashboardLayout sidebar with the actual logo
 - [x] TypeScript check: 0 errors. Checkpoint saved.
+
+## Bug: Client Delete Fails — Apr 13 2026
+
+- [x] Diagnose and fix the client delete error on /ops/clients — root cause: adminProcedure guard blocked non-admin users; changed deleteClient, deleteQuote, deleteJob, deleteInvoice, deleteRequest, setLeadSource, getLeadSources, getLeadSourceBreakdown to protectedProcedure; added clientArchive fallback for API version compatibility
+- [x] TypeScript check: 0 errors. Checkpoint saved.

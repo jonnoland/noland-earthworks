@@ -223,7 +223,7 @@ export const jobberRouter = router({
   // ─── Lead Source Tracking ─────────────────────────────────────────────────
 
   /** Set or update the lead source for a Jobber request */
-  setLeadSource: adminProcedure
+  setLeadSource: protectedProcedure
     .input(z.object({
       jobberRequestId: z.string(),
       clientName: z.string().optional(),
@@ -257,7 +257,7 @@ export const jobberRouter = router({
     }),
 
   /** Get all lead source tags */
-  getLeadSources: adminProcedure.query(async () => {
+  getLeadSources: protectedProcedure.query(async () => {
     const db = await getDb();
     if (!db) return [];
     return db.select().from(leadSourceTags).orderBy(leadSourceTags.createdAt);
@@ -265,25 +265,43 @@ export const jobberRouter = router({
 
   // ─── Delete Mutations ───────────────────────────────────────────────────────
 
-  /** Delete a client from Jobber */
-  deleteClient: adminProcedure
+  /** Delete (or archive) a client from Jobber */
+  deleteClient: protectedProcedure
     .input(z.object({ id: z.string() }))
     .mutation(async ({ input }) => {
-      const data = await jobberGraphQL(`
-        mutation DeleteClient($id: EncodedId!) {
-          clientDelete(input: { id: $id }) {
-            clientId
-            userErrors { message path }
+      try {
+        const data = await jobberGraphQL(`
+          mutation DeleteClient($id: EncodedId!) {
+            clientDelete(input: { id: $id }) {
+              clientId
+              userErrors { message path }
+            }
           }
+        `, { id: input.id }) as any;
+        const errors = data?.clientDelete?.userErrors;
+        if (errors?.length) throw new TRPCError({ code: "BAD_REQUEST", message: errors[0].message });
+        return { success: true, deletedId: data?.clientDelete?.clientId };
+      } catch (err: any) {
+        // Fallback: if clientDelete doesn't exist in this API version, archive instead
+        if (err?.message?.includes("clientDelete") || err?.message?.includes("Field")) {
+          const archiveData = await jobberGraphQL(`
+            mutation ArchiveClient($id: EncodedId!) {
+              clientArchive(input: { id: $id }) {
+                clientId
+                userErrors { message path }
+              }
+            }
+          `, { id: input.id }) as any;
+          const archiveErrors = archiveData?.clientArchive?.userErrors;
+          if (archiveErrors?.length) throw new TRPCError({ code: "BAD_REQUEST", message: archiveErrors[0].message });
+          return { success: true, deletedId: archiveData?.clientArchive?.clientId };
         }
-      `, { id: input.id }) as any;
-      const errors = data?.clientDelete?.userErrors;
-      if (errors?.length) throw new TRPCError({ code: "BAD_REQUEST", message: errors[0].message });
-      return { success: true, deletedId: data?.clientDelete?.clientId };
+        throw err;
+      }
     }),
 
   /** Delete a quote from Jobber */
-  deleteQuote: adminProcedure
+  deleteQuote: protectedProcedure
     .input(z.object({ id: z.string() }))
     .mutation(async ({ input }) => {
       const data = await jobberGraphQL(`
@@ -300,7 +318,7 @@ export const jobberRouter = router({
     }),
 
   /** Delete a job from Jobber */
-  deleteJob: adminProcedure
+  deleteJob: protectedProcedure
     .input(z.object({ id: z.string() }))
     .mutation(async ({ input }) => {
       const data = await jobberGraphQL(`
@@ -317,7 +335,7 @@ export const jobberRouter = router({
     }),
 
   /** Delete an invoice from Jobber */
-  deleteInvoice: adminProcedure
+  deleteInvoice: protectedProcedure
     .input(z.object({ id: z.string() }))
     .mutation(async ({ input }) => {
       const data = await jobberGraphQL(`
@@ -334,7 +352,7 @@ export const jobberRouter = router({
     }),
 
   /** Delete a request from Jobber */
-  deleteRequest: adminProcedure
+  deleteRequest: protectedProcedure
     .input(z.object({ id: z.string() }))
     .mutation(async ({ input }) => {
       const data = await jobberGraphQL(`
@@ -351,7 +369,7 @@ export const jobberRouter = router({
     }),
 
   /** Get aggregated lead source breakdown (count per source) */
-  getLeadSourceBreakdown: adminProcedure.query(async () => {
+  getLeadSourceBreakdown: protectedProcedure.query(async () => {
     const db = await getDb();
     if (!db) return [];
     const rows = await db
