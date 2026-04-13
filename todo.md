@@ -409,3 +409,10 @@
 - [x] Change redirect_uri to https://nolandearthworks.com/api/jobber/callback (no www) in token exchange (callback route)
 - [x] Add JOBBER_REDIRECT_URI to env.ts so it can be overridden via secret if needed
 - [x] Run all tests and confirm passing
+
+## Jobber Status Shows Disconnected After OAuth — April 2026
+
+- [x] Trace full status check path: DB token row, isJobberConnected, tRPC connectionStatus procedure, sidebar bubble, Settings page
+- [x] Identify root cause: jobberRouter adminProcedure checked openId only, second Jon account (role=user) was blocked
+- [x] Fix root cause: updated adminProcedure to accept role=admin as fallback; promoted second account to admin in DB; added role-downgrade protection in upsertUser
+- [x] Add cache invalidation on /ops/settings?jobber=connected landing so status refreshes immediately (refetch() already called in useEffect)

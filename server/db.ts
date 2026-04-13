@@ -58,7 +58,12 @@ export async function upsertUser(user: InsertUser): Promise<void> {
     }
     if (user.role !== undefined) {
       values.role = user.role;
-      updateSet.role = user.role;
+      // Only propagate role to updateSet when upgrading to admin or when this is the
+      // known owner openId. This prevents a re-login from silently downgrading a
+      // manually-promoted admin back to 'user'.
+      if (user.role === 'admin' || user.openId === ENV.ownerOpenId) {
+        updateSet.role = user.role;
+      }
     } else if (user.openId === ENV.ownerOpenId) {
       values.role = 'admin';
       updateSet.role = 'admin';

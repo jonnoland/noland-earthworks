@@ -13,9 +13,15 @@ import { sql } from "drizzle-orm";
 
 const JOBBER_AUTH_URL = "https://api.getjobber.com/api/oauth/authorize";
 
-// Admin-only guard: only the site owner can call these procedures
+/**
+ * Owner-only guard — only the site owner can call these procedures.
+ * Primary check: openId matches OWNER_OPEN_ID env var.
+ * Fallback (when OWNER_OPEN_ID is not injected or user has a secondary account): role must be admin.
+ */
 const adminProcedure = protectedProcedure.use(({ ctx, next }) => {
-  if (ctx.user.openId !== ENV.ownerOpenId) {
+  const isOwnerByOpenId = ENV.ownerOpenId && ctx.user.openId === ENV.ownerOpenId;
+  const isOwnerByRole = ctx.user.role === "admin";
+  if (!isOwnerByOpenId && !isOwnerByRole) {
     throw new TRPCError({ code: "FORBIDDEN", message: "Admin access only." });
   }
   return next({ ctx });
