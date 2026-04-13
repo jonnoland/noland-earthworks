@@ -588,3 +588,10 @@
 - [x] Build /ops/distance-quotes page with quote list, status management, and delete
 - [x] Wire /ops/distance-quotes route in App.tsx
 - [x] TypeScript check and save checkpoint
+
+## Quote Analytics Dashboard — Apr 13 2026
+
+- [x] Add analytics tRPC procedure to distanceQuotes router (acceptance rate by job type, revenue pipeline, distance distribution, monthly trends, status breakdown)
+- [x] Build /ops/distance-quotes/analytics page with Recharts charts
+- [x] Wire route in App.tsx and add Analytics link on the Distance Quotes page
+- [x] TypeScript check and save checkpoint

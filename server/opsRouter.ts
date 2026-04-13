@@ -597,6 +597,98 @@ const distanceQuotesRouter = router({
       await db.delete(distanceQuotes).where(eq(distanceQuotes.id, input.id));
       return { success: true };
     }),
+  analytics: ownerProcedure.query(async () => {
+    const db = await getDb();
+    if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+    const all = await db.select().from(distanceQuotes).orderBy(desc(distanceQuotes.createdAt));
+
+    // Status breakdown
+    const statusCounts: Record<string, number> = {};
+    for (const q of all) statusCounts[q.status] = (statusCounts[q.status] ?? 0) + 1;
+    const statusBreakdown = Object.entries(statusCounts).map(([status, count]) => ({ status, count }));
+
+    // Acceptance rate by job type
+    const byJobType: Record<string, { total: number; accepted: number; totalCents: number; acceptedCents: number }> = {};
+    for (const q of all) {
+      const jt = q.jobType || "Other";
+      if (!byJobType[jt]) byJobType[jt] = { total: 0, accepted: 0, totalCents: 0, acceptedCents: 0 };
+      byJobType[jt].total++;
+      byJobType[jt].totalCents += q.adjustedJobTotalCents;
+      if (q.status === "accepted") { byJobType[jt].accepted++; byJobType[jt].acceptedCents += q.adjustedJobTotalCents; }
+    }
+    const acceptanceByJobType = Object.entries(byJobType).map(([jobType, d]) => ({
+      jobType, total: d.total, accepted: d.accepted,
+      acceptanceRate: d.total > 0 ? Math.round((d.accepted / d.total) * 100) : 0,
+      totalRevenueCents: d.totalCents, acceptedRevenueCents: d.acceptedCents,
+    }));
+
+    // Distance distribution (bucketed)
+    const distanceBuckets: Record<string, number> = { "0-30 mi": 0, "31-50 mi": 0, "51-75 mi": 0, "76-100 mi": 0, "100+ mi": 0 };
+    for (const q of all) {
+      const d = q.distanceMiles ?? 0;
+      if (d <= 30) distanceBuckets["0-30 mi"]++;
+      else if (d <= 50) distanceBuckets["31-50 mi"]++;
+      else if (d <= 75) distanceBuckets["51-75 mi"]++;
+      else if (d <= 100) distanceBuckets["76-100 mi"]++;
+      else distanceBuckets["100+ mi"]++;
+    }
+    const distanceDistribution = Object.entries(distanceBuckets).map(([range, count]) => ({ range, count }));
+
+    // Monthly trends (last 6 months)
+    const now = new Date();
+    const monthlyMap: Record<string, { created: number; accepted: number; revenueCents: number }> = {};
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+      monthlyMap[key] = { created: 0, accepted: 0, revenueCents: 0 };
+    }
+    for (const q of all) {
+      const d = new Date(q.createdAt);
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+      if (monthlyMap[key]) {
+        monthlyMap[key].created++;
+        if (q.status === "accepted") { monthlyMap[key].accepted++; monthlyMap[key].revenueCents += q.adjustedJobTotalCents; }
+      }
+    }
+    const monthlyTrends = Object.entries(monthlyMap).map(([month, d]) => ({
+      month,
+      label: new Date(month + "-01").toLocaleDateString("en-US", { month: "short", year: "2-digit" }),
+      created: d.created, accepted: d.accepted,
+      revenueDollars: Math.round(d.revenueCents / 100),
+    }));
+
+    // Revenue pipeline
+    const pipeline = {
+      draftCents: all.filter(q => q.status === "draft").reduce((s, q) => s + q.adjustedJobTotalCents, 0),
+      sentCents: all.filter(q => q.status === "sent").reduce((s, q) => s + q.adjustedJobTotalCents, 0),
+      acceptedCents: all.filter(q => q.status === "accepted").reduce((s, q) => s + q.adjustedJobTotalCents, 0),
+      declinedCents: all.filter(q => q.status === "declined").reduce((s, q) => s + q.adjustedJobTotalCents, 0),
+    };
+
+    // Avg distance by job type
+    const avgDistByType: Record<string, { sum: number; count: number }> = {};
+    for (const q of all) {
+      const jt = q.jobType || "Other";
+      if (!avgDistByType[jt]) avgDistByType[jt] = { sum: 0, count: 0 };
+      avgDistByType[jt].sum += q.distanceMiles ?? 0;
+      avgDistByType[jt].count++;
+    }
+    const avgDistanceByJobType = Object.entries(avgDistByType).map(([jobType, d]) => ({
+      jobType, avgMiles: d.count > 0 ? Math.round(d.sum / d.count) : 0,
+    }));
+
+    return {
+      total: all.length,
+      statusBreakdown,
+      acceptanceByJobType,
+      distanceDistribution,
+      monthlyTrends,
+      pipeline,
+      avgDistanceByJobType,
+      overallAcceptanceRate: all.length > 0
+        ? Math.round((all.filter(q => q.status === "accepted").length / all.length) * 100) : 0,
+    };
+  }),
 });
 
 // ─── Combined Ops Router ──────────────────────────────────────────────────────
