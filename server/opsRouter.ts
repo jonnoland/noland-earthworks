@@ -12,7 +12,7 @@ import {
   getOpsLeads, createOpsLead, updateOpsLead, deleteOpsLead,
   getScheduleEntries, createScheduleEntry, updateScheduleEntry, deleteScheduleEntry,
 } from "./db";
-import { jobs, opsLeads, quoteSubmissions, crews, crewMembers, conversations, messages, reviews, timeEntries } from "../drizzle/schema";
+import { jobs, opsLeads, quoteSubmissions, crews, crewMembers, conversations, messages, reviews, timeEntries, distanceQuotes } from "../drizzle/schema";
 import { and, desc, eq, gte, lt, like } from "drizzle-orm";
 
 /**
@@ -540,6 +540,65 @@ const timesheetsRouter = router({
     }),
 });
 
+// ─── Distance Quotes Router ──────────────────────────────────────────────────
+const distanceQuotesRouter = router({
+  list: ownerProcedure.query(async () => {
+    const db = await getDb();
+    if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+    return db.select().from(distanceQuotes).orderBy(desc(distanceQuotes.createdAt));
+  }),
+  create: ownerProcedure
+    .input(z.object({
+      clientName: z.string().min(1),
+      clientPhone: z.string().optional(),
+      clientEmail: z.string().optional(),
+      jobType: z.string().min(1),
+      jobAddress: z.string().min(1),
+      jobAcres: z.number().int().min(0).default(0),
+      crewDaysNeeded: z.number().int().min(1).default(1),
+      notes: z.string().optional(),
+      distanceMiles: z.number().min(0).default(0),
+      driveDuration: z.string().optional(),
+      baseDayRateCents: z.number().int().min(0),
+      mobSurchargeCents: z.number().int().min(0),
+      adjustedDayRateCents: z.number().int().min(0),
+      adjustedJobTotalCents: z.number().int().min(0),
+      pricePerAcreCents: z.number().int().min(0),
+      targetMarginPct: z.number().int().min(0).max(100),
+    }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+      const [result] = await db.insert(distanceQuotes).values({
+        ...input,
+        distanceMiles: Math.round(input.distanceMiles),
+        status: "draft",
+      });
+      return { id: (result as unknown as { insertId: number }).insertId };
+    }),
+  updateStatus: ownerProcedure
+    .input(z.object({
+      id: z.number().int().positive(),
+      status: z.enum(["draft", "sent", "accepted", "declined", "expired"]),
+    }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+      const updates: Record<string, unknown> = { status: input.status };
+      if (input.status === "sent") updates.sentAt = new Date();
+      await db.update(distanceQuotes).set(updates).where(eq(distanceQuotes.id, input.id));
+      return { success: true };
+    }),
+  delete: ownerProcedure
+    .input(z.object({ id: z.number().int().positive() }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+      await db.delete(distanceQuotes).where(eq(distanceQuotes.id, input.id));
+      return { success: true };
+    }),
+});
+
 // ─── Combined Ops Router ──────────────────────────────────────────────────────
 export const opsRouter = router({
   jobs: jobsRouter,
@@ -550,4 +609,5 @@ export const opsRouter = router({
   conversations: conversationsRouter,
   reviews: reviewsRouter,
   timesheets: timesheetsRouter,
+  distanceQuotes: distanceQuotesRouter,
 });

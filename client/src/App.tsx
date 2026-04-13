@@ -22,6 +22,7 @@ import OpsConversations from "./pages/ops/Conversations";
 import OpsReviews from "./pages/ops/Reviews";
 import OpsTimesheets from "./pages/ops/Timesheets";
 import OpsScoreboard from "./pages/ops/Scoreboard";
+import OpsDistanceQuotes from "./pages/ops/DistanceQuotes";
 import Home from "./pages/Home";
 import LandClearingPage from "./pages/LandClearing";
 import ForestryMulchingPage from "./pages/ForestryMulching";
@@ -198,6 +199,9 @@ function Router() {
       </Route>
       <Route path="/ops/scoreboard">
         <OwnerRoute><OpsScoreboard /></OwnerRoute>
+      </Route>
+      <Route path="/ops/distance-quotes">
+        <OwnerRoute><OpsDistanceQuotes /></OwnerRoute>
       </Route>
 
       <Route path="/404" component={NotFound} />

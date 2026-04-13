@@ -338,3 +338,39 @@ export const timeEntries = mysqlTable("time_entries", {
 });
 export type TimeEntry = typeof timeEntries.$inferSelect;
 export type InsertTimeEntry = typeof timeEntries.$inferInsert;
+
+/**
+ * Distance quotes — formal quotes saved from the Distance Pricing Adjustment tool.
+ * Captures all pricing inputs, the calculated route, and the adjusted rate.
+ */
+export const distanceQuotes = mysqlTable("distance_quotes", {
+  id: int("id").autoincrement().primaryKey(),
+  /** Client info */
+  clientName: varchar("clientName", { length: 255 }).notNull(),
+  clientPhone: varchar("clientPhone", { length: 50 }),
+  clientEmail: varchar("clientEmail", { length: 320 }),
+  /** Job details */
+  jobType: varchar("jobType", { length: 100 }).notNull(),
+  jobAddress: text("jobAddress").notNull(),
+  jobAcres: int("jobAcres").notNull().default(0),
+  crewDaysNeeded: int("crewDaysNeeded").notNull().default(1),
+  notes: text("notes"),
+  /** Distance calculation */
+  distanceMiles: int("distanceMiles").notNull().default(0),
+  driveDuration: varchar("driveDuration", { length: 100 }),
+  /** Pricing snapshot (cents to avoid float issues) */
+  baseDayRateCents: int("baseDayRateCents").notNull().default(0),
+  mobSurchargeCents: int("mobSurchargeCents").notNull().default(0),
+  adjustedDayRateCents: int("adjustedDayRateCents").notNull().default(0),
+  adjustedJobTotalCents: int("adjustedJobTotalCents").notNull().default(0),
+  pricePerAcreCents: int("pricePerAcreCents").notNull().default(0),
+  targetMarginPct: int("targetMarginPct").notNull().default(30),
+  /** Status */
+  status: mysqlEnum("status", ["draft", "sent", "accepted", "declined", "expired"]).notNull().default("draft"),
+  /** Timestamps */
+  sentAt: timestamp("sentAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type DistanceQuote = typeof distanceQuotes.$inferSelect;
+export type InsertDistanceQuote = typeof distanceQuotes.$inferInsert;

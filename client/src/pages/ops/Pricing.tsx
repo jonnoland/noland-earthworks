@@ -11,10 +11,12 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import {
   Calculator, DollarSign, Users, Clock, TrendingUp, Info,
   FileDown, Settings, Plus, Trash2, X, ChevronDown,
-  MapPin, Navigation, AlertTriangle,
+  MapPin, Navigation, AlertTriangle, Save, CheckCircle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { trpc } from "@/lib/trpc";
+import { Link } from "wouter";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -651,6 +653,8 @@ export default function Pricing() {
   } | null>(null);
   const [distLoading, setDistLoading] = useState(false);
   const [distError, setDistError] = useState("");
+  const [showSaveQuoteModal, setShowSaveQuoteModal] = useState(false);
+  const [savedQuoteId, setSavedQuoteId] = useState<number | null>(null);
   const mapRef = useRef<google.maps.Map | null>(null);
   const directionsRendererRef = useRef<google.maps.DirectionsRenderer | null>(null);
   const mapContainerRef = useRef<HTMLDivElement>(null);
@@ -1108,7 +1112,41 @@ export default function Pricing() {
                   Base rate ${crewDayRate.toFixed(0)}/day + ${distResult.surcharge} mobilization = <strong className="text-primary">${distResult.adjustedDayRate.toFixed(0)}/day</strong> &bull; {jobAcres} acres @ <strong className="text-primary">${distResult.adjustedPricePerAcre.toFixed(0)}/ac</strong>
                 </p>
               )}
+              <div className="flex items-center gap-3 mt-4 pt-3 border-t border-border/50">
+                {savedQuoteId ? (
+                  <div className="flex items-center gap-2 text-xs text-green-400">
+                    <CheckCircle className="w-4 h-4" />
+                    Quote saved &mdash;
+                    <Link href="/ops/quotes" className="underline hover:text-green-300 transition-colors">View in Quotes</Link>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => setShowSaveQuoteModal(true)}
+                    className="flex items-center gap-1.5 bg-green-600 hover:bg-green-500 text-white text-xs font-semibold px-4 py-2 rounded-md transition-all"
+                  >
+                    <Save className="w-3.5 h-3.5" />
+                    Save as Quote
+                  </button>
+                )}
+                <span className="text-[11px] text-muted-foreground">Saves all pricing details as a formal quote record</span>
+              </div>
             </div>
+          )}
+
+          {/* Save as Quote Modal */}
+          {showSaveQuoteModal && distResult && (
+            <SaveQuoteModal
+              distResult={distResult}
+              crewDayRate={crewDayRate}
+              crewDaysNeeded={crewDaysNeeded}
+              jobAcres={jobAcres}
+              jobType={jobType}
+              jobAddress={distAddress}
+              targetMarginPct={config.targetMarginPct}
+              prefillClientName={clientName}
+              onClose={() => setShowSaveQuoteModal(false)}
+              onSaved={(id) => { setSavedQuoteId(id); setShowSaveQuoteModal(false); toast.success("Quote saved."); }}
+            />
           )}
         </div>
 
@@ -1152,5 +1190,166 @@ export default function Pricing() {
 
       </div>
     </DashboardLayout>
+  );
+}
+
+// ─── Save Quote Modal ─────────────────────────────────────────────────────────
+
+interface SaveQuoteModalProps {
+  distResult: {
+    distanceMiles: number;
+    durationText: string;
+    surcharge: number;
+    adjustedDayRate: number;
+    adjustedJobTotal: number;
+    adjustedPricePerAcre: number;
+  };
+  crewDayRate: number;
+  crewDaysNeeded: number;
+  jobAcres: number;
+  jobType: string;
+  jobAddress: string;
+  targetMarginPct: number;
+  prefillClientName: string;
+  onClose: () => void;
+  onSaved: (id: number) => void;
+}
+
+function SaveQuoteModal({
+  distResult, crewDayRate, crewDaysNeeded, jobAcres,
+  jobType, jobAddress, targetMarginPct, prefillClientName,
+  onClose, onSaved,
+}: SaveQuoteModalProps) {
+  const [clientName, setClientName] = useState(prefillClientName || "");
+  const [clientPhone, setClientPhone] = useState("");
+  const [clientEmail, setClientEmail] = useState("");
+  const [notes, setNotes] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  const createMutation = trpc.ops.distanceQuotes.create.useMutation();
+
+  const handleSave = async () => {
+    if (!clientName.trim()) { toast.error("Client name is required."); return; }
+    setSaving(true);
+    try {
+      const result = await createMutation.mutateAsync({
+        clientName: clientName.trim(),
+        clientPhone: clientPhone.trim() || undefined,
+        clientEmail: clientEmail.trim() || undefined,
+        jobType: jobType || "Forestry Mulching",
+        jobAddress: jobAddress,
+        jobAcres: Math.round(jobAcres),
+        crewDaysNeeded: Math.round(crewDaysNeeded),
+        notes: notes.trim() || undefined,
+        distanceMiles: distResult.distanceMiles,
+        driveDuration: distResult.durationText,
+        baseDayRateCents: Math.round(crewDayRate * 100),
+        mobSurchargeCents: Math.round(distResult.surcharge * 100),
+        adjustedDayRateCents: Math.round(distResult.adjustedDayRate * 100),
+        adjustedJobTotalCents: Math.round(distResult.adjustedJobTotal * 100),
+        pricePerAcreCents: Math.round(distResult.adjustedPricePerAcre * 100),
+        targetMarginPct: Math.round(targetMarginPct),
+      });
+      onSaved(result.id);
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : "Failed to save quote.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
+      <div className="bg-card border border-border rounded-xl w-full max-w-md shadow-2xl">
+        {/* Header */}
+        <div className="flex items-center justify-between p-5 border-b border-border">
+          <div className="flex items-center gap-2">
+            <Save className="w-4 h-4 text-green-400" />
+            <h3 className="text-sm font-semibold text-foreground">Save as Quote</h3>
+          </div>
+          <button onClick={onClose} className="text-muted-foreground hover:text-foreground transition-colors">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        {/* Pricing summary */}
+        <div className="px-5 pt-4 pb-3">
+          <div className="bg-secondary/40 rounded-lg p-3 grid grid-cols-2 gap-2 text-center mb-4">
+            {[
+              { label: "Job Address", value: jobAddress || "—", span: true },
+              { label: "Distance", value: `${distResult.distanceMiles} mi (${distResult.durationText})` },
+              { label: "Mob Surcharge", value: distResult.surcharge === 0 ? "None" : `+$${distResult.surcharge}/day` },
+              { label: "Adjusted Day Rate", value: `$${distResult.adjustedDayRate.toFixed(0)}/day` },
+              { label: "Job Total", value: `$${distResult.adjustedJobTotal.toFixed(0)}` },
+            ].map((item, i) => (
+              <div key={i} className={cn("bg-secondary/50 rounded-md p-2", item.span ? "col-span-2" : "")}>
+                <div className="text-[10px] text-muted-foreground uppercase tracking-wide mb-0.5">{item.label}</div>
+                <div className="text-xs font-semibold text-primary truncate">{item.value}</div>
+              </div>
+            ))}
+          </div>
+
+          {/* Client fields */}
+          <div className="space-y-3">
+            <div>
+              <label className="block text-[11px] font-semibold text-muted-foreground mb-1">Client Name <span className="text-red-400">*</span></label>
+              <input
+                value={clientName}
+                onChange={e => setClientName(e.target.value)}
+                placeholder="e.g. John Smith"
+                className="w-full bg-secondary border border-border rounded-md px-3 py-2 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-[11px] font-semibold text-muted-foreground mb-1">Phone</label>
+                <input
+                  value={clientPhone}
+                  onChange={e => setClientPhone(e.target.value)}
+                  placeholder="(615) 555-0100"
+                  className="w-full bg-secondary border border-border rounded-md px-3 py-2 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                />
+              </div>
+              <div>
+                <label className="block text-[11px] font-semibold text-muted-foreground mb-1">Email</label>
+                <input
+                  value={clientEmail}
+                  onChange={e => setClientEmail(e.target.value)}
+                  placeholder="client@email.com"
+                  className="w-full bg-secondary border border-border rounded-md px-3 py-2 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                />
+              </div>
+            </div>
+            <div>
+              <label className="block text-[11px] font-semibold text-muted-foreground mb-1">Notes</label>
+              <textarea
+                value={notes}
+                onChange={e => setNotes(e.target.value)}
+                placeholder="Site conditions, special requirements, follow-up notes..."
+                rows={3}
+                className="w-full bg-secondary border border-border rounded-md px-3 py-2 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary resize-none"
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="flex items-center justify-end gap-3 px-5 py-4 border-t border-border">
+          <button
+            onClick={onClose}
+            className="text-xs text-muted-foreground hover:text-foreground transition-colors px-3 py-2"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleSave}
+            disabled={saving || !clientName.trim()}
+            className="flex items-center gap-1.5 bg-green-600 hover:bg-green-500 disabled:opacity-50 disabled:cursor-not-allowed text-white text-xs font-semibold px-5 py-2 rounded-md transition-all"
+          >
+            {saving ? "Saving..." : <><Save className="w-3.5 h-3.5" /> Save Quote</>}
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }

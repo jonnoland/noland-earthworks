@@ -577,3 +577,14 @@
 - [x] Wire mobilization surcharge logic: flat fee tiers based on drive distance from Vanleer TN
 - [x] Show adjusted Crew-Day Rate and Price/Acre after mobilization surcharge is applied
 - [x] TypeScript check and save checkpoint
+
+## Save Distance Quote Feature — Apr 13 2026
+
+- [x] Audit existing quotes schema in drizzle/schema.ts
+- [x] Add distance_quotes table with all pricing fields
+- [x] Run pnpm db:push to migrate
+- [x] Add createDistanceQuote, listDistanceQuotes, updateQuoteStatus, deleteDistanceQuote tRPC procedures
+- [x] Add Save as Quote button + modal to Distance Pricing card in Pricing.tsx
+- [x] Build /ops/distance-quotes page with quote list, status management, and delete
+- [x] Wire /ops/distance-quotes route in App.tsx
+- [x] TypeScript check and save checkpoint

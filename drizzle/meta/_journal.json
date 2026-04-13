@@ -64,6 +64,13 @@
       "when": 1776095154058,
       "tag": "0008_slippery_shatterstar",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "5",
+      "when": 1776104016369,
+      "tag": "0009_zippy_eddie_brock",
+      "breakpoints": true
     }
   ]
 }
