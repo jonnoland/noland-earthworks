@@ -1,13 +1,12 @@
 /**
  * DashboardLayout — Noland Earthworks Operations Dashboard
- * OwnRops-aligned sidebar layout with collapsible nav and Jobber integration
- * Color system: #0b0e14 background, #d97706 amber primary, #141820 card
+ * Style: noland-ops OpsLayout — dark #090909 sidebar, collapsible desktop,
+ * mobile overlay, orange active state, all 14 nav items.
  */
 
 import { useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { Link, useLocation } from "wouter";
-import { toast } from "sonner";
 import {
   LayoutDashboard,
   HardHat,
@@ -20,7 +19,7 @@ import {
   MessageSquare,
   Star,
   ClipboardCheck,
-  BarChart3,
+  BarChart2,
   TrendingUp,
   Settings,
   Bell,
@@ -28,80 +27,76 @@ import {
   Menu,
   X,
   ChevronLeft,
+  ChevronRight,
+  ExternalLink,
   LogOut,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
 import { useAuth } from "@/_core/hooks/useAuth";
+import { getLoginUrl } from "@/const";
+import { Button } from "@/components/ui/button";
 
-// ─── Jobber Status Bubble ─────────────────────────────────────────────────────
+// ─── Nav items — all 14 pages ─────────────────────────────────────────────────
 
-function JobberStatusBubble({ collapsed }: { collapsed: boolean }) {
-  const { data, isLoading } = trpc.jobber.connectionStatus.useQuery(undefined, {
-    retry: false,
-    refetchInterval: 5 * 60 * 1000, // refresh every 5 minutes
-  });
+const NAV_ITEMS = [
+  { label: "Dashboard",     href: "/ops",               icon: LayoutDashboard },
+  { label: "Crews",         href: "/ops/crews",          icon: HardHat },
+  { label: "Schedule",      href: "/ops/schedule",       icon: CalendarDays },
+  { label: "Clients",       href: "/ops/clients",        icon: Users },
+  { label: "Leads",         href: "/ops/leads",          icon: Target },
+  { label: "Quotes",        href: "/ops/quotes",         icon: FileText },
+  { label: "Jobs",          href: "/ops/jobs",           icon: Briefcase },
+  { label: "Invoices",      href: "/ops/invoices",       icon: DollarSign },
+  { label: "Conversations", href: "/ops/conversations",  icon: MessageSquare },
+  { label: "Reviews",       href: "/ops/reviews",        icon: Star },
+  { label: "Timesheets",    href: "/ops/timesheets",     icon: ClipboardCheck },
+  { label: "Scoreboard",    href: "/ops/scoreboard",     icon: BarChart2 },
+  { label: "Reports",       href: "/ops/reports",        icon: TrendingUp },
+  { label: "Settings",      href: "/ops/settings",       icon: Settings },
+];
 
-  const connected = !isLoading && (data as any)?.connected === true;
-  const accountName = (data as any)?.accountName as string | undefined;
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
-  return (
-    <Link href="/ops/settings">
-      <div
-        className={cn(
-          "flex items-center gap-2 px-3 py-2 rounded-lg text-xs transition-colors hover:bg-muted cursor-pointer",
-          collapsed ? "justify-center" : ""
-        )}
-        title={connected ? `Jobber: ${accountName ?? "Connected"}` : "Jobber: Not Connected"}
-      >
-        <span
-          className={cn(
-            "w-2 h-2 rounded-full shrink-0",
-            isLoading ? "bg-muted-foreground animate-pulse" : connected ? "bg-green-500" : "bg-red-500"
-          )}
-        />
-        {!collapsed && (
-          <span className="text-muted-foreground truncate">
-            {isLoading ? "Checking..." : connected ? (accountName ?? "Jobber") : "Jobber Disconnected"}
-          </span>
-        )}
-      </div>
-    </Link>
-  );
+function getInitials(name: string | null | undefined): string {
+  if (!name) return "JN";
+  return name
+    .split(" ")
+    .map((n) => n[0])
+    .join("")
+    .toUpperCase()
+    .slice(0, 2);
 }
 
-// ─── Navigation structure — mirrors OwnRops dashboard ────────────────────────
+// ─── Jobber status pill ───────────────────────────────────────────────────────
 
-const navItems = [
-  { icon: LayoutDashboard, label: "Home",          href: "/ops" },
-  { icon: HardHat,         label: "Crews",         href: "/ops/crews" },
-  { icon: CalendarDays,    label: "Schedule",       href: "/ops/schedule" },
-];
+function JobberPill({ collapsed }: { collapsed: boolean }) {
+  const { data, isLoading } = trpc.jobber.connectionStatus.useQuery(undefined, {
+    retry: false,
+    refetchInterval: 5 * 60 * 1000,
+  });
+  const connected = !isLoading && (data as any)?.connected === true;
 
-const navDivider1 = true;
-
-const navItems2 = [
-  { icon: Users,           label: "Clients",       href: "/ops/clients" },
-  { icon: Target,          label: "Leads",         href: "/ops/leads" },
-  { icon: FileText,        label: "Quotes",        href: "/ops/quotes" },
-  { icon: Briefcase,       label: "Jobs",          href: "/ops/jobs" },
-  { icon: DollarSign,      label: "Invoices",      href: "/ops/invoices" },
-  { icon: MessageSquare,   label: "Conversations", href: "/ops/conversations" },
-  { icon: Star,            label: "Reviews",       href: "/ops/reviews" },
-];
-
-const navDivider2 = true;
-
-const navItems3 = [
-  { icon: ClipboardCheck,  label: "Timesheets",    href: "/ops/timesheets" },
-  { icon: BarChart3,       label: "Scoreboard",    href: "/ops/scoreboard" },
-  { icon: TrendingUp,      label: "Reports",       href: "/ops/reports" },
-  { icon: Settings,        label: "Settings",      href: "/ops/settings" },
-];
-
-import type { LucideIcon } from "lucide-react";
-type NavItem = { icon: LucideIcon; label: string; href: string; placeholder?: boolean };
-
-const allNavItems: NavItem[] = [...navItems, ...navItems2, ...navItems3];
+  return (
+    <a
+      href="https://secure.getjobber.com/home"
+      target="_blank"
+      rel="noopener noreferrer"
+      className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-white border border-[#222] rounded-md px-2.5 py-1.5 transition-colors"
+      title="Open Jobber"
+    >
+      <span
+        className={`w-1.5 h-1.5 rounded-full shrink-0 ${
+          isLoading ? "bg-muted-foreground animate-pulse" : connected ? "bg-green-500" : "bg-red-500"
+        }`}
+      />
+      {!collapsed && (
+        <>
+          <ExternalLink size={11} className="shrink-0" />
+          <span>Jobber</span>
+        </>
+      )}
+    </a>
+  );
+}
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
@@ -112,230 +107,195 @@ interface DashboardLayoutProps {
 }
 
 export default function DashboardLayout({ children, title, subtitle }: DashboardLayoutProps) {
-  const [location, navigate] = useLocation();
-  const { user, logout } = useAuth();
-  const [sidebarOpen, setSidebarOpen] = useState(false);       // mobile drawer
-  const [collapsed, setCollapsed] = useState(false);           // desktop collapse
+  const [location] = useLocation();
+  const { user, isAuthenticated, loading, logout } = useAuth();
+  const [collapsed, setCollapsed] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
   const [userOpen, setUserOpen] = useState(false);
 
-  const handleLogout = async () => {
-    await logout();
-    navigate("/");
-  };
+  // Auth guard
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-[#090909] flex items-center justify-center">
+        <div className="text-muted-foreground text-sm">Loading...</div>
+      </div>
+    );
+  }
+  if (!isAuthenticated) {
+    return (
+      <div className="min-h-screen bg-[#090909] flex items-center justify-center">
+        <div className="text-center space-y-4">
+          <div className="text-2xl font-bold text-white">Noland Earthworks</div>
+          <div className="text-muted-foreground">Operations Dashboard</div>
+          <Button
+            className="bg-orange-500 hover:bg-orange-600 text-white"
+            onClick={() => (window.location.href = getLoginUrl())}
+          >
+            Sign In to Continue
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
-  const userInitials = user?.name
-    ? user.name.split(" ").map((n: string) => n[0]).join("").slice(0, 2).toUpperCase()
-    : "JN";
-
-  const handlePlaceholder = (label: string) => {
-    toast.info(`${label} — coming soon`);
-  };
-
-  // Determine active route
   const isActive = (href: string) => {
     if (href === "/ops") return location === "/ops" || location === "/ops/";
     return location === href || location.startsWith(href + "/");
   };
 
-  // Render a single nav link
-  const NavLink = ({ item }: { item: typeof allNavItems[0] }) => {
-    const active = isActive(item.href);
-
-    if (item.placeholder) {
-      return (
-        <div
-          className={cn("ops-sidebar-item", active && "active")}
-          onClick={() => handlePlaceholder(item.label)}
-        >
-          <item.icon
-            className={cn("h-5 w-5 flex-shrink-0", active ? "text-primary" : "")}
-            aria-hidden="true"
-          />
-          {!collapsed && <span className="flex-1">{item.label}</span>}
-        </div>
-      );
-    }
-
-    return (
-      <Link href={item.href}>
-        <div className={cn("ops-sidebar-item", active && "active")}>
-          <item.icon
-            className={cn("h-5 w-5 flex-shrink-0", active ? "text-primary" : "")}
-            aria-hidden="true"
-          />
-          {!collapsed && <span className="flex-1">{item.label}</span>}
-        </div>
-      </Link>
-    );
-  };
-
-  // Sidebar inner content (shared between desktop & mobile)
-  const SidebarContent = ({ mobile = false }: { mobile?: boolean }) => (
+  const NavLinks = ({ onClickItem }: { onClickItem?: () => void }) => (
     <>
-      {/* Logo */}
-      <div className={cn(
-        "flex h-36 shrink-0 items-center overflow-hidden border-b border-sidebar-border",
-        mobile ? "justify-between px-4" : collapsed ? "justify-center px-2" : "justify-center px-2"
-      )}>
-        <Link href="/">
-          <div className="flex items-center overflow-hidden">
-            <img
-              src="https://files.manuscdn.com/user_upload_by_module/session_file/310519663484957999/hfAVxdtCdkbXWoNa.png"
-              alt="Noland Earthworks — Built on American Strength"
-              className="object-contain border-0 h-32 max-w-[560px]"
-            />
-          </div>
-        </Link>
-        {mobile && (
-          <button
-            className="text-muted-foreground hover:text-foreground"
-            onClick={() => setSidebarOpen(false)}
-            aria-label="Close menu"
-          >
-            <X className="h-5 w-5" />
-          </button>
-        )}
-      </div>
-
-      {/* Nav */}
-      <nav className="flex-1 overflow-y-auto px-2 py-4">
-        <div className="space-y-0.5">
-          {navItems.map(item => <NavLink key={item.href} item={item} />)}
-          <div className="my-2 border-t border-border" />
-          {navItems2.map(item => <NavLink key={item.href} item={item} />)}
-          <div className="my-2 border-t border-border" />
-          {navItems3.map(item => <NavLink key={item.href} item={item} />)}
-        </div>
-      </nav>
-
-      {/* Jobber status bubble */}
-      {!mobile && (
-        <div className="border-t border-border px-2 pt-2">
-          <JobberStatusBubble collapsed={collapsed} />
-        </div>
-      )}
-
-      {/* Collapse toggle (desktop only) */}
-      {!mobile && (
-        <div className="border-t border-border p-2">
-          <button
-            className="flex w-full items-center rounded-lg px-3 py-2.5 text-[13px] font-medium text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
-            aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-            onClick={() => setCollapsed(!collapsed)}
-          >
-            <ChevronLeft
-              className={cn("h-5 w-5 flex-shrink-0 transition-transform duration-200", collapsed && "rotate-180")}
-              aria-hidden="true"
-            />
-            {!collapsed && <span className="ml-3">Collapse</span>}
-          </button>
-        </div>
-      )}
+      {NAV_ITEMS.map((item) => {
+        const Icon = item.icon;
+        const active = isActive(item.href);
+        return (
+          <Link key={item.href} href={item.href}>
+            <div
+              onClick={onClickItem}
+              className={`flex items-center gap-3 mx-2 my-0.5 px-2 py-2 rounded-md text-sm font-medium cursor-pointer transition-colors ${
+                active
+                  ? "bg-orange-500 text-white"
+                  : "text-muted-foreground hover:text-white hover:bg-white/5"
+              }`}
+            >
+              <Icon size={16} className="shrink-0" />
+              {!collapsed && <span>{item.label}</span>}
+            </div>
+          </Link>
+        );
+      })}
     </>
   );
 
   return (
-    <div className="flex h-dvh overflow-hidden max-w-[100vw]">
-      {/* Skip to content */}
-      <a
-        href="#main-content"
-        className="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-50 focus:px-4 focus:py-2 focus:bg-primary focus:text-primary-foreground focus:rounded"
-      >
-        Skip to content
-      </a>
+    <div className="min-h-screen bg-[#0b0e14] flex">
 
       {/* ── Desktop Sidebar ── */}
       <aside
-        className={cn(
-          "hidden flex-shrink-0 border-r border-border bg-background lg:flex lg:flex-col",
-          "transition-[width] duration-200",
-          collapsed ? "w-[60px]" : "w-56"
-        )}
+        className="hidden md:flex flex-col border-r border-[#1e1e1e] bg-[#090909] transition-all duration-200 shrink-0"
+        style={{ width: collapsed ? 60 : 180 }}
       >
-        <SidebarContent />
+        {/* Logo */}
+        <div className="h-14 flex items-center px-3 border-b border-[#1e1e1e] shrink-0 overflow-hidden">
+          {collapsed ? (
+            <div className="w-8 h-8 rounded bg-orange-500 flex items-center justify-center text-white font-bold text-sm mx-auto">
+              N
+            </div>
+          ) : (
+            <Link href="/">
+              <div className="flex items-center gap-2 cursor-pointer">
+                <div className="w-7 h-7 rounded bg-orange-500 flex items-center justify-center text-white font-bold text-xs shrink-0">
+                  N
+                </div>
+                <span className="text-white font-semibold text-sm truncate">Noland Ops</span>
+              </div>
+            </Link>
+          )}
+        </div>
+
+        {/* Nav */}
+        <nav className="flex-1 py-2 overflow-y-auto">
+          <NavLinks />
+        </nav>
+
+        {/* Jobber link */}
+        <div className="px-3 pb-2 border-t border-[#1e1e1e] pt-2">
+          <JobberPill collapsed={collapsed} />
+        </div>
+
+        {/* Collapse toggle */}
+        <div className="p-2 border-t border-[#1e1e1e]">
+          <button
+            onClick={() => setCollapsed(!collapsed)}
+            className="w-full flex items-center justify-center gap-2 py-2 px-2 rounded-md text-muted-foreground hover:text-white hover:bg-white/5 transition-colors text-xs"
+          >
+            {collapsed ? <ChevronRight size={14} /> : (
+              <>
+                <ChevronLeft size={14} />
+                <span>Collapse</span>
+              </>
+            )}
+          </button>
+        </div>
       </aside>
 
-      {/* ── Mobile Overlay ── */}
-      <div
-        className={cn(
-          "fixed inset-0 z-40 bg-black/50 transition-opacity duration-200",
-          sidebarOpen ? "opacity-100" : "opacity-0 pointer-events-none"
-        )}
-        aria-hidden="true"
-        onClick={() => setSidebarOpen(false)}
-      />
-
-      {/* ── Mobile Drawer ── */}
-      <div
-        className={cn(
-          "fixed inset-y-0 left-0 z-50 w-72 bg-background border-r border-border flex flex-col",
-          "transition-transform duration-200 ease-out",
-          sidebarOpen ? "translate-x-0" : "-translate-x-full"
-        )}
-      >
-        <SidebarContent mobile />
-      </div>
-
-      {/* ── Main Content ── */}
-      <div className="flex flex-1 flex-col overflow-hidden min-w-0">
-        {/* Top Header */}
-        <header className="flex h-14 shrink-0 items-center gap-3 border-b border-border bg-background px-3 sm:px-4">
-          {/* Mobile menu toggle */}
-          <button
-            className="lg:hidden text-muted-foreground hover:text-foreground p-1"
-            onClick={() => setSidebarOpen(true)}
-            aria-label="Open menu"
-          >
-            <Menu className="h-5 w-5" />
-          </button>
-
-          {/* Page title */}
-          {title && (
-            <div className="flex-1 min-w-0">
-              <h1 className="text-sm font-semibold text-foreground leading-none truncate">
-                {title}
-              </h1>
-              {subtitle && (
-                <p className="text-xs text-muted-foreground mt-0.5 truncate">{subtitle}</p>
-              )}
+      {/* ── Mobile sidebar overlay ── */}
+      {mobileOpen && (
+        <div className="fixed inset-0 z-50 md:hidden">
+          <div className="absolute inset-0 bg-black/60" onClick={() => setMobileOpen(false)} />
+          <aside className="absolute left-0 top-0 bottom-0 w-[200px] bg-[#090909] border-r border-[#1e1e1e] flex flex-col">
+            <div className="h-14 flex items-center justify-between px-4 border-b border-[#1e1e1e]">
+              <div className="flex items-center gap-2">
+                <div className="w-7 h-7 rounded bg-orange-500 flex items-center justify-center text-white font-bold text-xs">
+                  N
+                </div>
+                <span className="text-white font-semibold text-sm">Noland Ops</span>
+              </div>
+              <button onClick={() => setMobileOpen(false)} className="text-muted-foreground hover:text-white">
+                <X size={16} />
+              </button>
             </div>
-          )}
-          {!title && <div className="flex-1" />}
+            <nav className="flex-1 py-2 overflow-y-auto">
+              <NavLinks onClickItem={() => setMobileOpen(false)} />
+            </nav>
+          </aside>
+        </div>
+      )}
 
-          {/* Right actions */}
-          <div className="flex items-center gap-1 shrink-0">
+      {/* ── Main content ── */}
+      <div className="flex-1 flex flex-col min-w-0">
+
+        {/* Top header */}
+        <header className="h-14 border-b border-[#1e1e1e] bg-[#090909] flex items-center justify-between px-4 shrink-0">
+          <div className="flex items-center gap-3">
+            {/* Mobile menu button */}
+            <button
+              className="md:hidden text-muted-foreground hover:text-white"
+              onClick={() => setMobileOpen(true)}
+            >
+              <Menu size={20} />
+            </button>
+            {/* Page title */}
+            {title && (
+              <div>
+                <h1 className="text-sm font-semibold text-white leading-none">{title}</h1>
+                {subtitle && <p className="text-xs text-muted-foreground mt-0.5">{subtitle}</p>}
+              </div>
+            )}
+          </div>
+
+          <div className="flex items-center gap-2">
             {/* Phone */}
             <a
               href="tel:6154064819"
-              className="hidden sm:flex p-2 rounded-md text-muted-foreground hover:text-foreground hover:bg-secondary/50 transition-colors"
-              aria-label="Phone"
+              className="hidden sm:flex p-2 rounded-md text-muted-foreground hover:text-white hover:bg-white/5 transition-colors"
+              aria-label="Call"
             >
-              <Phone className="h-4 w-4" />
+              <Phone size={16} />
             </a>
 
             {/* Notifications */}
             <div className="relative">
               <button
-                className="relative p-2 rounded-md text-muted-foreground hover:text-foreground hover:bg-secondary/50 transition-colors"
+                className="relative p-2 rounded-md text-muted-foreground hover:text-white hover:bg-white/5 transition-colors"
                 onClick={() => { setNotifOpen(!notifOpen); setUserOpen(false); }}
-                aria-label="Notifications"
               >
-                <Bell className="h-4 w-4" />
-                <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 bg-primary rounded-full" />
+                <Bell size={16} />
+                <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 bg-orange-500 rounded-full" />
               </button>
               {notifOpen && (
-                <div className="absolute right-0 top-full mt-2 w-72 bg-popover border border-border rounded-lg shadow-2xl z-50 p-3">
-                  <p className="text-xs font-semibold text-foreground mb-2">Notifications</p>
+                <div className="absolute right-0 top-full mt-2 w-72 bg-[#111] border border-[#222] rounded-lg shadow-2xl z-50 p-3">
+                  <p className="text-xs font-semibold text-white mb-2">Notifications</p>
                   {[
-                    { msg: "New lead submitted via website", time: "5m ago", dot: "bg-primary" },
+                    { msg: "New lead submitted via website", time: "5m ago", dot: "bg-orange-500" },
                     { msg: "Job #1042 marked complete", time: "1h ago", dot: "bg-green-500" },
-                    { msg: "Invoice #892 overdue by 3 days", time: "3h ago", dot: "bg-destructive" },
+                    { msg: "Invoice #892 overdue by 3 days", time: "3h ago", dot: "bg-red-500" },
                   ].map((n, i) => (
-                    <div key={i} className="flex items-start gap-2.5 py-2 border-b border-border last:border-0">
+                    <div key={i} className="flex items-start gap-2.5 py-2 border-b border-[#222] last:border-0">
                       <span className={`mt-1.5 w-1.5 h-1.5 rounded-full shrink-0 ${n.dot}`} />
                       <div>
-                        <p className="text-xs text-foreground">{n.msg}</p>
+                        <p className="text-xs text-white/80">{n.msg}</p>
                         <p className="text-[10px] text-muted-foreground">{n.time}</p>
                       </div>
                     </div>
@@ -344,36 +304,35 @@ export default function DashboardLayout({ children, title, subtitle }: Dashboard
               )}
             </div>
 
-            {/* User menu */}
+            {/* User avatar */}
             <div className="relative">
               <button
-                className="flex items-center gap-1.5 p-1.5 rounded-md hover:bg-secondary/50 transition-colors"
+                className="flex items-center gap-1.5 p-1 rounded-md hover:bg-white/5 transition-colors"
                 onClick={() => { setUserOpen(!userOpen); setNotifOpen(false); }}
-                aria-label="User menu"
               >
-                <div className="w-7 h-7 rounded-full bg-primary/20 flex items-center justify-center">
-                  <span className="text-[10px] font-bold text-primary">{userInitials}</span>
+                <div className="w-8 h-8 rounded-full bg-orange-500 flex items-center justify-center text-white text-xs font-semibold">
+                  {getInitials(user?.name)}
                 </div>
               </button>
               {userOpen && (
-                <div className="absolute right-0 top-full mt-2 w-48 bg-popover border border-border rounded-lg shadow-2xl z-50 py-1">
-                  <div className="px-3 py-2 border-b border-border">
-                    <p className="text-xs font-semibold text-foreground">{user?.name ?? "Jon Noland"}</p>
+                <div className="absolute right-0 top-full mt-2 w-48 bg-[#111] border border-[#222] rounded-lg shadow-2xl z-50 py-1">
+                  <div className="px-3 py-2 border-b border-[#222]">
+                    <p className="text-xs font-semibold text-white">{user?.name ?? "Jon Noland"}</p>
                     <p className="text-[10px] text-muted-foreground">{user?.email ?? "jonnoland@nolandearthworks.com"}</p>
                   </div>
                   <Link href="/ops/settings">
                     <button
-                      className="w-full text-left px-3 py-2 text-xs text-foreground/80 hover:text-foreground hover:bg-secondary/50 transition-colors"
+                      className="w-full text-left px-3 py-2 text-xs text-white/70 hover:text-white hover:bg-white/5 transition-colors"
                       onClick={() => setUserOpen(false)}
                     >
                       Settings
                     </button>
                   </Link>
                   <button
-                    className="w-full text-left px-3 py-2 text-xs text-red-400 hover:text-red-300 hover:bg-secondary/50 transition-colors border-t border-border mt-1 flex items-center gap-2"
-                    onClick={() => { handleLogout(); setUserOpen(false); }}
+                    className="w-full text-left px-3 py-2 text-xs text-red-400 hover:text-red-300 hover:bg-white/5 transition-colors border-t border-[#222] mt-1 flex items-center gap-2"
+                    onClick={async () => { setUserOpen(false); await logout(); window.location.href = "/"; }}
                   >
-                    <LogOut className="w-3 h-3" />
+                    <LogOut size={12} />
                     Sign Out
                   </button>
                 </div>
@@ -385,11 +344,28 @@ export default function DashboardLayout({ children, title, subtitle }: Dashboard
         {/* Page content */}
         <main
           id="main-content"
-          className="flex-1 flex flex-col overflow-y-auto overflow-x-hidden px-3 pt-3 sm:px-4 sm:pt-4 md:px-6 md:pt-6 [&>*]:w-full [&>*]:max-w-full"
-          style={{ paddingBottom: "calc(5rem + env(safe-area-inset-bottom, 0px))" }}
+          className="flex-1 overflow-auto"
         >
           {children}
         </main>
+
+        {/* Mobile bottom nav — first 5 items */}
+        <nav className="md:hidden border-t border-[#1e1e1e] bg-[#090909] flex items-center justify-around py-2 shrink-0">
+          {NAV_ITEMS.slice(0, 5).map((item) => {
+            const Icon = item.icon;
+            const active = isActive(item.href);
+            return (
+              <Link key={item.href} href={item.href}>
+                <div className={`flex flex-col items-center gap-0.5 px-2 py-1 rounded-md transition-colors ${
+                  active ? "text-orange-500" : "text-muted-foreground"
+                }`}>
+                  <Icon size={18} />
+                  <span className="text-[10px]">{item.label}</span>
+                </div>
+              </Link>
+            );
+          })}
+        </nav>
       </div>
     </div>
   );
