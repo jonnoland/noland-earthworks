@@ -412,3 +412,37 @@ export const automationSettings = mysqlTable("automation_settings", {
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
 export type AutomationSettings = typeof automationSettings.$inferSelect;
+
+// ─── Service Catalog ──────────────────────────────────────────────────────────
+export const serviceCatalog = mysqlTable("service_catalog", {
+  id: int("id").primaryKey().autoincrement(),
+  serviceType: varchar("serviceType", { length: 100 }).notNull(),
+  easyAcresPerDay: decimal("easyAcresPerDay", { precision: 5, scale: 2 }).notNull().default("2.00"),
+  normalAcresPerDay: decimal("normalAcresPerDay", { precision: 5, scale: 2 }).notNull().default("1.50"),
+  hardAcresPerDay: decimal("hardAcresPerDay", { precision: 5, scale: 2 }).notNull().default("0.75"),
+  sortOrder: int("sortOrder").notNull().default(0),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type ServiceCatalogItem = typeof serviceCatalog.$inferSelect;
+
+// ─── Message Templates ────────────────────────────────────────────────────────
+export const messageTemplates = mysqlTable("message_templates", {
+  id: int("id").primaryKey().autoincrement(),
+  category: varchar("category", { length: 50 }).notNull(), // quotes, invoices, reminders, follow_up, thank_you
+  channel: varchar("channel", { length: 10 }).notNull(),   // email | sms
+  subject: varchar("subject", { length: 300 }),
+  body: text("body"),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type MessageTemplate = typeof messageTemplates.$inferSelect;
+
+// ─── Reminder Rules ───────────────────────────────────────────────────────────
+export const reminderRules = mysqlTable("reminder_rules", {
+  id: int("id").primaryKey().autoincrement(),
+  ruleType: varchar("ruleType", { length: 20 }).notNull(), // invoice | visit
+  offsetDays: int("offsetDays").notNull().default(1),       // negative = before, positive = after
+  channel: varchar("channel", { length: 10 }).notNull().default("sms"), // email | sms | both
+  templateId: int("templateId"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type ReminderRule = typeof reminderRules.$inferSelect;

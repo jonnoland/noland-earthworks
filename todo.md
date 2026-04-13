@@ -646,3 +646,11 @@
 
 - [x] Replace left sidebar tab nav with horizontal top tab bar matching OwnrOps layout (SETTINGS label + pipe separators + amber underline on active tab)
 - [x] TypeScript check and save checkpoint
+
+## Settings Full Rebuild — All 12 OwnrOps Sections — Apr 13 2026
+
+- [x] Browse all 12 OwnrOps settings sections and capture content
+- [x] Add serviceCatalog, messageTemplates, reminderRules DB tables and migrate
+- [x] Add getServiceCatalog, upsertServiceCatalog, getMessageTemplates, upsertMessageTemplate, getReminderRules, createReminderRule, deleteReminderRule to settingsRouter
+- [x] Rebuild Settings.tsx with all 12 tabs: General, Automations, Phone, Trust Center, Team, Service Catalog, Template Editor, Template Assignments, Reminders, Integrations, Payments, Billing
+- [x] TypeScript check: 0 errors. Checkpoint saved.

@@ -12,7 +12,7 @@ import {
   getOpsLeads, createOpsLead, updateOpsLead, deleteOpsLead,
   getScheduleEntries, createScheduleEntry, updateScheduleEntry, deleteScheduleEntry,
 } from "./db";
-import { jobs, opsLeads, quoteSubmissions, crews, crewMembers, conversations, messages, reviews, timeEntries, distanceQuotes, businessSettings, automationSettings } from "../drizzle/schema";
+import { jobs, opsLeads, quoteSubmissions, crews, crewMembers, conversations, messages, reviews, timeEntries, distanceQuotes, businessSettings, automationSettings, serviceCatalog, messageTemplates, reminderRules } from "../drizzle/schema";
 import { and, desc, eq, gte, lt, like } from "drizzle-orm";
 
 /**
@@ -906,6 +906,95 @@ const settingsRouter = router({
       } else {
         await db.update(automationSettings).set({ ...input, updatedAt: new Date() }).where(eq(automationSettings.id, rows[0].id));
       }
+      return { success: true };
+    }),
+
+  // ─── Service Catalog ───────────────────────────────────────────────────────
+  getServiceCatalog: ownerProcedure.query(async () => {
+    const db = await getDb();
+    if (!db) return [];
+    return db.select().from(serviceCatalog).orderBy(serviceCatalog.sortOrder);
+  }),
+  upsertServiceCatalog: ownerProcedure
+    .input(z.array(z.object({
+      id: z.number().optional(),
+      serviceType: z.string().min(1),
+      easyAcresPerDay: z.string(),
+      normalAcresPerDay: z.string(),
+      hardAcresPerDay: z.string(),
+      sortOrder: z.number().int().default(0),
+    })))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+      // Delete all and re-insert to handle ordering cleanly
+      await db.delete(serviceCatalog);
+      for (const item of input) {
+        await db.insert(serviceCatalog).values({
+          serviceType: item.serviceType,
+          easyAcresPerDay: item.easyAcresPerDay,
+          normalAcresPerDay: item.normalAcresPerDay,
+          hardAcresPerDay: item.hardAcresPerDay,
+          sortOrder: item.sortOrder,
+        });
+      }
+      return { success: true };
+    }),
+
+  // ─── Message Templates ──────────────────────────────────────────────────────
+  getMessageTemplates: ownerProcedure.query(async () => {
+    const db = await getDb();
+    if (!db) return [];
+    return db.select().from(messageTemplates);
+  }),
+  upsertMessageTemplate: ownerProcedure
+    .input(z.object({
+      id: z.number().optional(),
+      category: z.string(),
+      channel: z.string(),
+      subject: z.string().optional(),
+      body: z.string().optional(),
+    }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+      if (input.id) {
+        await db.update(messageTemplates).set({ subject: input.subject, body: input.body, updatedAt: new Date() }).where(eq(messageTemplates.id, input.id));
+      } else {
+        const existing = await db.select().from(messageTemplates).where(and(eq(messageTemplates.category, input.category), eq(messageTemplates.channel, input.channel))).limit(1);
+        if (existing.length > 0) {
+          await db.update(messageTemplates).set({ subject: input.subject, body: input.body, updatedAt: new Date() }).where(eq(messageTemplates.id, existing[0].id));
+        } else {
+          await db.insert(messageTemplates).values({ category: input.category, channel: input.channel, subject: input.subject, body: input.body });
+        }
+      }
+      return { success: true };
+    }),
+
+  // ─── Reminder Rules ─────────────────────────────────────────────────────────
+  getReminderRules: ownerProcedure.query(async () => {
+    const db = await getDb();
+    if (!db) return [];
+    return db.select().from(reminderRules);
+  }),
+  createReminderRule: ownerProcedure
+    .input(z.object({
+      ruleType: z.enum(["invoice", "visit"]),
+      offsetDays: z.number().int(),
+      channel: z.enum(["email", "sms", "both"]).default("sms"),
+    }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+      await db.insert(reminderRules).values(input);
+      return { success: true };
+    }),
+  deleteReminderRule: ownerProcedure
+    .input(z.object({ id: z.number() }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+      await db.delete(reminderRules).where(eq(reminderRules.id, input.id));
       return { success: true };
     }),
 });

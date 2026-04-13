@@ -1,6 +1,8 @@
 /**
  * Settings Page — Noland Earthworks Operations Dashboard
- * Tabs: Quote Log, Profile, Business, Integrations, Notifications, Team, Billing, Security
+ * 12 tabs matching OwnrOps layout:
+ * General | Automations | Phone | Trust Center | Team | Service Catalog |
+ * Template Editor | Template Assignments | Reminders | Integrations | Payments | Billing
  */
 
 import DashboardLayout from "@/components/DashboardLayout";
@@ -9,48 +11,59 @@ import {
   Save, User, Building2, Bell, Shield, CreditCard, Users, Link2,
   ClipboardList, CheckCircle2, XCircle, Clock, ExternalLink,
   RefreshCw, Loader2, Phone, Mail, MapPin, Wrench, ChevronDown, ChevronUp,
-  AlertCircle, Unlink, Webhook, Trash2, Globe, Palette, Hash,
-  ToggleLeft, ToggleRight, Key, Lock, LogOut, Eye, EyeOff,
-  UserPlus, Crown, ChevronRight, Info,
+  AlertCircle, Trash2, Globe, Hash,
+  Key, LogOut, Eye, EyeOff,
+  UserPlus, Crown, Info, Plus, BookOpen, Zap, FileText,
+  AlarmClock, CreditCard as CardIcon, BarChart2, Copy, RotateCcw,
+  Settings as SettingsIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 
+// ─── Tab definitions ──────────────────────────────────────────────────────────
 const tabs = [
-  { id: "quotes",        label: "Quote Log",     icon: ClipboardList },
-  { id: "profile",       label: "Profile",       icon: User },
-  { id: "business",      label: "Business",      icon: Building2 },
-  { id: "integrations",  label: "Integrations",  icon: Link2 },
-  { id: "notifications", label: "Notifications", icon: Bell },
-  { id: "team",          label: "Team",          icon: Users },
-  { id: "billing",       label: "Billing",       icon: CreditCard },
-  { id: "security",      label: "Security",      icon: Shield },
+  { id: "general",              label: "General",              icon: SettingsIcon },
+  { id: "automations",          label: "Automations",          icon: Zap },
+  { id: "phone",                label: "Phone",                icon: Phone },
+  { id: "trust-center",         label: "Trust Center",         icon: Shield },
+  { id: "team",                 label: "Team",                 icon: Users },
+  { id: "service-catalog",      label: "Service Catalog",      icon: BookOpen },
+  { id: "template-editor",      label: "Template Editor",      icon: FileText },
+  { id: "template-assignments", label: "Template Assignments", icon: ClipboardList },
+  { id: "reminders",            label: "Reminders",            icon: AlarmClock },
+  { id: "integrations",         label: "Integrations",         icon: Link2 },
+  { id: "payments",             label: "Payments",             icon: CardIcon },
+  { id: "billing",              label: "Billing",              icon: CreditCard },
 ];
 
 // ─── Shared helpers ───────────────────────────────────────────────────────────
-function SettingsSection({ title, description, children }: {
-  title: string; description?: string; children: React.ReactNode;
+function SettingsSection({ title, description, children, action }: {
+  title: string; description?: string; children: React.ReactNode; action?: React.ReactNode;
 }) {
   return (
     <div className="ops-card p-5 space-y-4">
-      <div>
-        <h3 className="text-sm font-semibold text-foreground" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
-          {title}
-        </h3>
-        {description && <p className="text-xs text-muted-foreground mt-0.5">{description}</p>}
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h3 className="text-sm font-semibold text-foreground" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
+            {title}
+          </h3>
+          {description && <p className="text-xs text-muted-foreground mt-0.5">{description}</p>}
+        </div>
+        {action && <div className="shrink-0">{action}</div>}
       </div>
       {children}
     </div>
   );
 }
 
-function FieldRow({ label, children }: { label: string; children: React.ReactNode }) {
+function FieldRow({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
   return (
     <div>
       <label className="block text-xs font-medium text-muted-foreground mb-1.5">{label}</label>
       {children}
+      {hint && <p className="text-[11px] text-muted-foreground/70 mt-1">{hint}</p>}
     </div>
   );
 }
@@ -112,28 +125,40 @@ function Toggle({ checked, onChange, label, description }: {
   );
 }
 
+function NumberInput({ value, onChange, min = 0, step = 1 }: {
+  value: number; onChange: (v: number) => void; min?: number; step?: number;
+}) {
+  return (
+    <input
+      type="number"
+      value={value}
+      min={min}
+      step={step}
+      onChange={e => onChange(Number(e.target.value))}
+      className="w-full bg-secondary/50 border border-border rounded-md px-3 py-2 text-xs text-foreground outline-none focus:border-primary/50 transition-colors"
+    />
+  );
+}
+
 // ─── Jobber status badge ──────────────────────────────────────────────────────
 function JobberBadge({ status }: { status: "synced" | "failed" | "skipped" }) {
   if (status === "synced") {
     return (
       <span className="inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full bg-green-500/15 text-green-400 border border-green-500/30">
-        <CheckCircle2 className="w-3 h-3" />
-        Synced to Jobber
+        <CheckCircle2 className="w-3 h-3" />Synced to Jobber
       </span>
     );
   }
   if (status === "failed") {
     return (
       <span className="inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full bg-red-500/15 text-red-400 border border-red-500/30">
-        <XCircle className="w-3 h-3" />
-        Jobber Sync Failed
+        <XCircle className="w-3 h-3" />Jobber Sync Failed
       </span>
     );
   }
   return (
     <span className="inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full bg-secondary text-muted-foreground border border-border">
-      <Clock className="w-3 h-3" />
-      Not Synced
+      <Clock className="w-3 h-3" />Not Synced
     </span>
   );
 }
@@ -199,1016 +224,497 @@ function QuoteRow({ q, onDelete }: {
             </div>
             {addressParts.length > 0 && (
               <div>
-                <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">Property Address</p>
-                {addressParts.map((line, i) => (
-                  <p key={i} className="text-xs text-foreground">{line}</p>
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">Address</p>
+                {addressParts.map((part, i) => (
+                  <p key={i} className="text-xs text-foreground flex items-center gap-1.5">
+                    <MapPin className="w-3 h-3 text-muted-foreground" />{part}
+                  </p>
                 ))}
               </div>
             )}
           </div>
           {q.message && (
             <div>
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">Project Notes</p>
-              <p className="text-xs text-foreground bg-secondary/50 rounded-md p-2.5 whitespace-pre-wrap">{q.message}</p>
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">Message</p>
+              <p className="text-xs text-foreground bg-secondary/40 rounded p-2">{q.message}</p>
             </div>
           )}
-          {q.jobberStatus === "synced" && q.jobberRequestUrl && (
+          {q.jobberError && (
+            <div className="flex items-start gap-2 bg-red-500/10 border border-red-500/20 rounded p-2">
+              <AlertCircle className="w-3.5 h-3.5 text-red-400 shrink-0 mt-0.5" />
+              <p className="text-xs text-red-400">{q.jobberError}</p>
+            </div>
+          )}
+          {q.jobberRequestUrl && (
             <a href={q.jobberRequestUrl} target="_blank" rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 text-xs font-medium text-primary hover:text-primary/80 transition-colors">
-              <ExternalLink className="w-3.5 h-3.5" />
-              View in Jobber
+              className="inline-flex items-center gap-1.5 text-xs text-primary hover:underline">
+              <ExternalLink className="w-3 h-3" />View in Jobber
             </a>
           )}
-          {q.jobberStatus === "failed" && q.jobberError && (
-            <div className="bg-red-500/10 border border-red-500/20 rounded-md p-2.5">
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-red-400 mb-1">Sync Error</p>
-              <p className="text-xs text-red-300 font-mono">{q.jobberError}</p>
-              <a href="https://nolandearthworks.com/api/jobber/authorize" target="_blank" rel="noopener noreferrer"
-                className="inline-flex items-center gap-1 text-xs text-red-400 hover:text-red-300 mt-1.5 transition-colors">
-                <ExternalLink className="w-3 h-3" />
-                Re-authorize Jobber
-              </a>
-            </div>
-          )}
-          <div className="flex justify-end pt-1">
-            <button onClick={() => onDelete(q.id)}
-              className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-red-400 transition-colors">
-              <Trash2 className="w-3.5 h-3.5" />
-              Delete submission
-            </button>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ─── Quote Log Tab ────────────────────────────────────────────────────────────
-function QuoteLogTab() {
-  const utils = trpc.useUtils();
-  const { data: quotes = [], isLoading, refetch, isFetching } = trpc.ops.quotes.list.useQuery({ limit: 100 });
-  const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null);
-  const deleteQuote = trpc.ops.quotes.delete.useMutation({
-    onSuccess: () => { utils.ops.quotes.list.invalidate(); toast.success("Submission deleted"); },
-    onError: () => toast.error("Failed to delete submission"),
-  });
-
-  const syncedCount = quotes.filter(q => q.jobberStatus === "synced").length;
-  const failedCount = quotes.filter(q => q.jobberStatus === "failed").length;
-  const skippedCount = quotes.filter(q => q.jobberStatus === "skipped").length;
-
-  return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <h3 className="text-sm font-semibold text-foreground" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
-            Quote Submission Log
-          </h3>
-          <p className="text-xs text-muted-foreground mt-0.5">Every quote form submission — most recent first</p>
-        </div>
-        <button onClick={() => refetch()} disabled={isFetching}
-          className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50">
-          <RefreshCw className={cn("w-3.5 h-3.5", isFetching && "animate-spin")} />
-          Refresh
-        </button>
-      </div>
-
-      {quotes.length > 0 && (
-        <div className="grid grid-cols-3 gap-3">
-          {[
-            { label: "Total",            value: quotes.length, color: "text-foreground" },
-            { label: "Synced to Jobber", value: syncedCount,   color: "text-green-400" },
-            { label: "Sync Failed",      value: failedCount,   color: failedCount > 0 ? "text-red-400" : "text-muted-foreground" },
-          ].map(stat => (
-            <div key={stat.label} className="ops-card p-3 text-center">
-              <div className={cn("text-xl font-bold", stat.color)}>{stat.value}</div>
-              <div className="text-[10px] text-muted-foreground mt-0.5">{stat.label}</div>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {skippedCount > 0 && syncedCount === 0 && (
-        <div className="flex items-start gap-2.5 bg-amber-500/10 border border-amber-500/20 rounded-lg p-3">
-          <XCircle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
-          <div>
-            <p className="text-xs font-semibold text-amber-300">Jobber Not Connected</p>
-            <p className="text-xs text-amber-400/80 mt-0.5">
-              {skippedCount} submission{skippedCount !== 1 ? "s were" : " was"} not synced because Jobber is not connected.{" "}
-              <a href="https://nolandearthworks.com/api/jobber/authorize" target="_blank" rel="noopener noreferrer"
-                className="underline hover:text-amber-300 transition-colors">
-                Authorize Jobber now →
-              </a>
-            </p>
-          </div>
-        </div>
-      )}
-
-      {failedCount > 0 && (
-        <div className="flex items-start gap-2.5 bg-red-500/10 border border-red-500/20 rounded-lg p-3">
-          <XCircle className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
-          <div>
-            <p className="text-xs font-semibold text-red-300">
-              {failedCount} Submission{failedCount !== 1 ? "s" : ""} Failed to Sync
-            </p>
-            <p className="text-xs text-red-400/80 mt-0.5">
-              These leads need to be added to Jobber manually. Expand each row to see the error details.
-            </p>
-          </div>
-        </div>
-      )}
-
-      {isLoading && (
-        <div className="flex items-center justify-center py-12">
-          <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
-        </div>
-      )}
-
-      {!isLoading && quotes.length === 0 && (
-        <div className="ops-card p-10 text-center">
-          <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-3">
-            <ClipboardList className="w-5 h-5 text-primary" />
-          </div>
-          <h4 className="text-sm font-semibold text-foreground mb-1" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
-            No submissions yet
-          </h4>
-          <p className="text-xs text-muted-foreground">Quote form submissions will appear here as they come in.</p>
-        </div>
-      )}
-
-      {!isLoading && quotes.length > 0 && (
-        <div className="space-y-2">
-          {quotes.map(q => <QuoteRow key={q.id} q={q} onDelete={id => setDeleteConfirmId(id)} />)}
-        </div>
-      )}
-
-      {deleteConfirmId !== null && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-          <div className="bg-card border border-border rounded-xl shadow-2xl w-full max-w-sm p-6 space-y-4">
-            <h3 className="text-sm font-semibold text-foreground">Delete Quote Submission</h3>
-            <p className="text-xs text-muted-foreground">
-              This will permanently remove the submission from the local log. This cannot be undone.
-            </p>
-            <div className="rounded-md bg-red-500/10 border border-red-500/20 px-3 py-2.5 space-y-1">
-              <p className="text-[11px] font-semibold text-red-400">The following will also be deleted:</p>
-              <ul className="text-[11px] text-red-300/80 space-y-0.5 list-disc list-inside">
-                <li>All contact info and project details submitted</li>
-                <li>Jobber sync status and error log for this submission</li>
-              </ul>
-              <p className="text-[11px] text-muted-foreground mt-1">
-                If this submission was synced to Jobber, the Jobber request record is not affected.
-              </p>
-            </div>
-            <div className="flex gap-2 pt-1">
-              <button onClick={() => setDeleteConfirmId(null)}
-                className="flex-1 py-2 rounded-md text-xs font-semibold text-muted-foreground bg-secondary/50 hover:bg-secondary transition-colors">
-                Cancel
-              </button>
-              <button
-                onClick={() => { deleteQuote.mutate({ id: deleteConfirmId }); setDeleteConfirmId(null); }}
-                disabled={deleteQuote.isPending}
-                className="flex-1 py-2 rounded-md text-xs font-semibold text-white bg-red-600 hover:bg-red-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-1.5"
-              >
-                {deleteQuote.isPending && <Loader2 className="w-3 h-3 animate-spin" />}
-                Delete Submission
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ─── Profile Tab ──────────────────────────────────────────────────────────────
-function ProfileTab() {
-  const { user } = useAuth();
-  const [name, setName] = useState(user?.name ?? "Jon Noland");
-  const [email, setEmail] = useState(user?.email ?? "jonnoland@nolandearthworks.com");
-  const [phone, setPhone] = useState("(615) 406-4819");
-  const [timezone, setTimezone] = useState("America/Chicago");
-
-  const userInitials = name.split(" ").map((n: string) => n[0]).join("").slice(0, 2).toUpperCase();
-
-  const handleSave = () => toast.success("Profile saved");
-
-  return (
-    <div className="space-y-4">
-      <SettingsSection title="Profile Information" description="Your personal account details">
-        <div className="flex items-center gap-4">
-          <div className="w-16 h-16 rounded-full bg-primary/20 flex items-center justify-center shrink-0">
-            <span className="text-xl font-bold text-primary">{userInitials}</span>
-          </div>
-          <div>
-            <p className="text-xs font-medium text-foreground">{name}</p>
-            <p className="text-[11px] text-muted-foreground">{email}</p>
-            <button className="text-[11px] text-primary hover:text-primary/80 transition-colors mt-1"
-              onClick={() => toast.info("Photo upload — coming soon")}>
-              Change photo
-            </button>
-          </div>
-        </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <FieldRow label="Full Name">
-            <TextInput value={name} onChange={setName} />
-          </FieldRow>
-          <FieldRow label="Email Address">
-            <TextInput value={email} onChange={setEmail} type="email" />
-          </FieldRow>
-          <FieldRow label="Phone Number">
-            <TextInput value={phone} onChange={setPhone} type="tel" />
-          </FieldRow>
-          <FieldRow label="Timezone">
-            <select
-              value={timezone}
-              onChange={e => setTimezone(e.target.value)}
-              className="w-full bg-secondary/50 border border-border rounded-md px-3 py-2 text-xs text-foreground outline-none focus:border-primary/50 transition-colors"
+          <div className="pt-1">
+            <button
+              onClick={() => onDelete(q.id)}
+              className="flex items-center gap-1.5 text-xs text-red-400 hover:text-red-300 transition-colors"
             >
-              <option value="America/Chicago">Central Time (CT)</option>
-              <option value="America/New_York">Eastern Time (ET)</option>
-              <option value="America/Denver">Mountain Time (MT)</option>
-              <option value="America/Los_Angeles">Pacific Time (PT)</option>
-            </select>
-          </FieldRow>
-        </div>
-        <SaveButton onClick={handleSave} />
-      </SettingsSection>
-    </div>
-  );
-}
-
-// ─── Business Tab ─────────────────────────────────────────────────────────────
-function BusinessTab() {
-  const utils = trpc.useUtils();
-  const { data: settings, isLoading } = trpc.ops.settings.getBusinessSettings.useQuery();
-  const updateMutation = trpc.ops.settings.updateBusinessSettings.useMutation({
-    onSuccess: () => { utils.ops.settings.getBusinessSettings.invalidate(); toast.success("Business settings saved"); },
-    onError: () => toast.error("Failed to save settings"),
-  });
-
-  const [companyName, setCompanyName] = useState("Noland Earthworks, LLC");
-  const [phone, setPhone] = useState("(615) 406-4819");
-  const [email, setEmail] = useState("jonnoland@nolandearthworks.com");
-  const [address, setAddress] = useState("93 Halliburton Road");
-  const [city, setCity] = useState("Vanleer");
-  const [state, setState] = useState("Tennessee");
-  const [zip, setZip] = useState("37181");
-  const [website, setWebsite] = useState("https://www.nolandearthworks.com");
-  const [googleReviewUrl, setGoogleReviewUrl] = useState("https://g.page/r/CcglMAMbtQInEAI/review");
-  const [defaultTaxRate, setDefaultTaxRate] = useState("0");
-  const [brandColor, setBrandColor] = useState("#f97316");
-  const [licenseNumbers, setLicenseNumbers] = useState("");
-
-  useEffect(() => {
-    if (settings) {
-      setCompanyName(settings.companyName ?? "Noland Earthworks, LLC");
-      setPhone(settings.phone ?? "(615) 406-4819");
-      setEmail(settings.email ?? "jonnoland@nolandearthworks.com");
-      setAddress(settings.address ?? "93 Halliburton Road");
-      setCity(settings.city ?? "Vanleer");
-      setState(settings.state ?? "Tennessee");
-      setZip(settings.zip ?? "37181");
-      setWebsite(settings.website ?? "https://www.nolandearthworks.com");
-      setGoogleReviewUrl(settings.googleReviewUrl ?? "");
-      setDefaultTaxRate(settings.defaultTaxRate ?? "0");
-      setBrandColor(settings.brandColor ?? "#f97316");
-      setLicenseNumbers(settings.licenseNumbers ?? "");
-    }
-  }, [settings]);
-
-  const handleSave = () => {
-    updateMutation.mutate({
-      companyName, phone, email, address, city, state, zip,
-      website, googleReviewUrl, defaultTaxRate, brandColor, licenseNumbers,
-    });
-  };
-
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center py-16">
-        <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
-      </div>
-    );
-  }
-
-  return (
-    <div className="space-y-4">
-      <SettingsSection title="Company Identity" description="Core business information used across proposals, emails, and reports">
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <FieldRow label="Company Name">
-            <TextInput value={companyName} onChange={setCompanyName} />
-          </FieldRow>
-          <FieldRow label="Business Phone">
-            <TextInput value={phone} onChange={setPhone} type="tel" />
-          </FieldRow>
-          <FieldRow label="Business Email">
-            <TextInput value={email} onChange={setEmail} type="email" />
-          </FieldRow>
-          <FieldRow label="Website">
-            <TextInput value={website} onChange={setWebsite} />
-          </FieldRow>
-        </div>
-        <SaveButton onClick={handleSave} loading={updateMutation.isPending} />
-      </SettingsSection>
-
-      <SettingsSection title="Service Address" description="Primary business location used for distance calculations and proposals">
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div className="sm:col-span-2">
-            <FieldRow label="Street Address">
-              <TextInput value={address} onChange={setAddress} />
-            </FieldRow>
-          </div>
-          <FieldRow label="City">
-            <TextInput value={city} onChange={setCity} />
-          </FieldRow>
-          <FieldRow label="State">
-            <TextInput value={state} onChange={setState} />
-          </FieldRow>
-          <FieldRow label="ZIP Code">
-            <TextInput value={zip} onChange={setZip} />
-          </FieldRow>
-        </div>
-        <SaveButton onClick={handleSave} loading={updateMutation.isPending} />
-      </SettingsSection>
-
-      <SettingsSection title="Business Configuration" description="Operational defaults for quotes and reporting">
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <FieldRow label="Default Tax Rate (%)">
-            <TextInput value={defaultTaxRate} onChange={setDefaultTaxRate} placeholder="0" />
-          </FieldRow>
-          <FieldRow label="Brand Color">
-            <div className="flex items-center gap-2">
-              <input
-                type="color"
-                value={brandColor}
-                onChange={e => setBrandColor(e.target.value)}
-                className="w-9 h-9 rounded-md border border-border bg-secondary/50 cursor-pointer p-0.5"
-              />
-              <TextInput value={brandColor} onChange={setBrandColor} placeholder="#f97316" />
-            </div>
-          </FieldRow>
-          <div className="sm:col-span-2">
-            <FieldRow label="Google Review URL">
-              <TextInput value={googleReviewUrl} onChange={setGoogleReviewUrl} placeholder="https://g.page/r/..." />
-            </FieldRow>
-          </div>
-          <div className="sm:col-span-2">
-            <FieldRow label="License Numbers (optional)">
-              <TextInput value={licenseNumbers} onChange={setLicenseNumbers} placeholder="TN Contractor License #..." />
-            </FieldRow>
-          </div>
-        </div>
-        <SaveButton onClick={handleSave} loading={updateMutation.isPending} />
-      </SettingsSection>
-    </div>
-  );
-}
-
-// ─── Integrations Tab ─────────────────────────────────────────────────────────
-function IntegrationsTab() {
-  const utils = trpc.useUtils();
-  const { data: jobberStatus, isLoading: statusLoading, refetch } = trpc.jobber.connectionStatus.useQuery();
-  const disconnectMutation = trpc.jobber.disconnect.useMutation({
-    onSuccess: () => { toast.success("Jobber account disconnected."); utils.jobber.connectionStatus.invalidate(); },
-    onError: () => toast.error("Failed to disconnect Jobber. Please try again."),
-  });
-
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const jobberParam = params.get("jobber");
-    const reason = params.get("reason");
-    if (jobberParam === "connected") {
-      toast.success("Jobber connected successfully.");
-      refetch();
-      window.history.replaceState({}, "", window.location.pathname);
-    } else if (jobberParam === "error") {
-      const msgs: Record<string, string> = {
-        denied: "You cancelled the Jobber authorization.",
-        no_code: "No authorization code received from Jobber.",
-        state_mismatch: "Security validation failed. Please try again.",
-        token_exchange: "Failed to exchange authorization code. Please try again.",
-      };
-      toast.error(msgs[reason ?? ""] ?? "Jobber connection failed. Please try again.");
-      window.history.replaceState({}, "", window.location.pathname);
-    }
-  }, []);
-
-  const handleConnect = () => { window.location.href = "/api/jobber/authorize"; };
-  const handleDisconnect = () => {
-    if (confirm("Are you sure you want to disconnect your Jobber account? This will remove all stored credentials.")) {
-      disconnectMutation.mutate();
-    }
-  };
-
-  const webhookUrl = `${window.location.origin}/api/jobber/webhook`;
-
-  const integrations = [
-    {
-      id: "twilio",
-      name: "Twilio",
-      tag: "SMS",
-      description: "Send and receive SMS messages with leads and clients.",
-      status: "configured" as const,
-      docsUrl: "https://www.twilio.com/docs",
-    },
-    {
-      id: "resend",
-      name: "Resend",
-      tag: "Email",
-      description: "Transactional email delivery for quote emails and notifications.",
-      status: "configured" as const,
-      docsUrl: "https://resend.com/docs",
-    },
-    {
-      id: "googlemaps",
-      name: "Google Maps",
-      tag: "Distance",
-      description: "Drive distance calculations for mobilization pricing.",
-      status: "configured" as const,
-      docsUrl: "https://developers.google.com/maps",
-    },
-  ];
-
-  return (
-    <div className="space-y-4">
-      {/* Jobber */}
-      <div className="ops-card p-5">
-        <div className="flex items-start justify-between gap-4 mb-5">
-          <div>
-            <h3 className="text-sm font-semibold text-foreground" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
-              Jobber
-            </h3>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              Connect your Jobber account to sync jobs, quotes, and client data.
-            </p>
-          </div>
-          <div className="shrink-0 w-10 h-10 rounded-lg bg-[#1a1f2b] border border-border flex items-center justify-center">
-            <span className="text-[10px] font-bold text-primary">JBR</span>
-          </div>
-        </div>
-
-        {statusLoading ? (
-          <div className="flex items-center gap-2 text-xs text-muted-foreground py-4">
-            <Loader2 className="w-4 h-4 animate-spin" />
-            Checking connection status...
-          </div>
-        ) : jobberStatus?.connected ? (
-          <>
-            <div className="flex items-center gap-2.5 p-3 rounded-lg bg-green-500/8 border border-green-500/20 mb-4">
-              <CheckCircle2 className="w-4 h-4 text-green-400 shrink-0" />
-              <div className="flex-1 min-w-0">
-                <p className="text-xs font-semibold text-green-400">Connected</p>
-                {jobberStatus.accountName && (
-                  <p className="text-[11px] text-muted-foreground truncate">Account: {jobberStatus.accountName}</p>
-                )}
-                {jobberStatus.connectedAt && (
-                  <p className="text-[11px] text-muted-foreground">
-                    Connected {new Date(jobberStatus.connectedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
-                  </p>
-                )}
-              </div>
-              <button className="shrink-0 p-1.5 rounded text-muted-foreground hover:text-foreground hover:bg-secondary/50 transition-colors"
-                onClick={() => refetch()} title="Refresh status">
-                <RefreshCw className="w-3.5 h-3.5" />
-              </button>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              <button onClick={handleConnect}
-                className="flex items-center gap-1.5 text-xs font-medium px-3 py-2 rounded-md bg-secondary/50 border border-border text-foreground hover:bg-secondary transition-colors">
-                <RefreshCw className="w-3.5 h-3.5" />
-                Reconnect
-              </button>
-              <button onClick={handleDisconnect} disabled={disconnectMutation.isPending}
-                className="flex items-center gap-1.5 text-xs font-medium px-3 py-2 rounded-md bg-destructive/10 border border-destructive/20 text-red-400 hover:bg-destructive/20 transition-colors disabled:opacity-50">
-                {disconnectMutation.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Unlink className="w-3.5 h-3.5" />}
-                Disconnect
-              </button>
-              <a href="https://app.getjobber.com" target="_blank" rel="noopener noreferrer"
-                className="flex items-center gap-1.5 text-xs font-medium px-3 py-2 rounded-md bg-secondary/50 border border-border text-foreground hover:bg-secondary transition-colors">
-                <ExternalLink className="w-3.5 h-3.5" />
-                Open Jobber
-              </a>
-            </div>
-          </>
-        ) : (
-          <>
-            <div className="flex items-center gap-2.5 p-3 rounded-lg bg-secondary/50 border border-border mb-4">
-              <AlertCircle className="w-4 h-4 text-muted-foreground shrink-0" />
-              <div>
-                <p className="text-xs font-medium text-foreground">Not connected</p>
-                <p className="text-[11px] text-muted-foreground">Connect Jobber to automatically sync jobs, quotes, and client records.</p>
-              </div>
-            </div>
-            <button onClick={handleConnect}
-              className="flex items-center gap-2 bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-semibold px-4 py-2 rounded-md transition-colors">
-              <Link2 className="w-3.5 h-3.5" />
-              Connect Jobber Account
+              <Trash2 className="w-3.5 h-3.5" />Delete submission
             </button>
-          </>
-        )}
-      </div>
-
-      {/* Webhook */}
-      <div className="ops-card p-5">
-        <div className="mb-4">
-          <h3 className="text-sm font-semibold text-foreground mb-0.5" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
-            Webhook Configuration
-          </h3>
-          <p className="text-xs text-muted-foreground">
-            Add this URL in your Jobber developer settings to receive real-time events.
-          </p>
-        </div>
-        <div className="space-y-3">
-          <div>
-            <label className="block text-xs font-medium text-muted-foreground mb-1.5">Webhook Endpoint URL</label>
-            <div className="flex items-center gap-2">
-              <div className="flex-1 flex items-center gap-2 bg-secondary/50 border border-border rounded-md px-3 py-2">
-                <Webhook className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-                <code className="text-xs text-foreground font-mono truncate">{webhookUrl}</code>
-              </div>
-              <button
-                className="shrink-0 text-xs font-medium px-3 py-2 rounded-md bg-secondary/50 border border-border text-foreground hover:bg-secondary transition-colors"
-                onClick={() => { navigator.clipboard.writeText(webhookUrl); toast.success("Webhook URL copied to clipboard"); }}>
-                Copy
-              </button>
-            </div>
-          </div>
-          <div className="rounded-lg bg-primary/5 border border-primary/15 p-3">
-            <p className="text-[11px] text-muted-foreground leading-relaxed">
-              <span className="font-semibold text-primary">Setup:</span> In Jobber, go to Settings &rarr; Developer Tools &rarr; Webhooks.
-              Add the URL above and select: <span className="text-foreground">QUOTE_APPROVED</span>,{" "}
-              <span className="text-foreground">REQUEST_CREATED</span>, <span className="text-foreground">JOB_CREATED</span>.
-            </p>
           </div>
         </div>
-      </div>
-
-      {/* Other integrations */}
-      <div className="ops-card p-5">
-        <h3 className="text-sm font-semibold text-foreground mb-3" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
-          Other Integrations
-        </h3>
-        <div className="space-y-2">
-          {integrations.map(integration => (
-            <div key={integration.id}
-              className="flex items-center justify-between gap-4 p-3 rounded-lg bg-secondary/30 border border-border">
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-md bg-secondary/70 border border-border flex items-center justify-center shrink-0">
-                  <span className="text-[9px] font-bold text-muted-foreground uppercase">{integration.tag}</span>
-                </div>
-                <div>
-                  <p className="text-xs font-medium text-foreground">{integration.name}</p>
-                  <p className="text-[11px] text-muted-foreground">{integration.description}</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-2 shrink-0">
-                <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-green-500/15 text-green-400 border border-green-500/30">
-                  <CheckCircle2 className="w-2.5 h-2.5" />
-                  Active
-                </span>
-                <a href={integration.docsUrl} target="_blank" rel="noopener noreferrer"
-                  className="p-1.5 rounded text-muted-foreground hover:text-foreground hover:bg-secondary/50 transition-colors">
-                  <ExternalLink className="w-3.5 h-3.5" />
-                </a>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* What syncs */}
-      <div className="ops-card p-5">
-        <h3 className="text-sm font-semibold text-foreground mb-3" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
-          What Syncs with Jobber
-        </h3>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          {[
-            { label: "New quote requests",  desc: "Auto-created as leads in your pipeline" },
-            { label: "Approved quotes",     desc: "Converted to active jobs automatically" },
-            { label: "Client records",      desc: "Synced from Jobber client database" },
-            { label: "Invoice status",      desc: "Paid/overdue status reflected in reports" },
-          ].map(item => (
-            <div key={item.label} className="flex items-start gap-2.5 p-3 rounded-lg bg-secondary/30 border border-border">
-              <CheckCircle2 className="w-4 h-4 text-green-400 shrink-0 mt-0.5" />
-              <div>
-                <p className="text-xs font-medium text-foreground">{item.label}</p>
-                <p className="text-[11px] text-muted-foreground">{item.desc}</p>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
+      )}
     </div>
   );
 }
 
-// ─── Notifications Tab ────────────────────────────────────────────────────────
-function NotificationsTab() {
-  const utils = trpc.useUtils();
-  const { data: settings, isLoading } = trpc.ops.settings.getAutomationSettings.useQuery();
-  const updateMutation = trpc.ops.settings.updateAutomationSettings.useMutation({
-    onSuccess: () => { utils.ops.settings.getAutomationSettings.invalidate(); toast.success("Automation settings saved"); },
+// ─── Tab panels ───────────────────────────────────────────────────────────────
+
+function GeneralTab() {
+  const { data: biz, isLoading } = trpc.ops.settings.getBusinessSettings.useQuery();
+  const update = trpc.ops.settings.updateBusinessSettings.useMutation({
+    onSuccess: () => toast.success("Settings saved"),
     onError: () => toast.error("Failed to save settings"),
   });
 
-  const [automationsEnabled, setAutomationsEnabled] = useState(false);
-  const [newLeadMaxMinutes, setNewLeadMaxMinutes] = useState(10080);
-  const [contactedMaxDays, setContactedMaxDays] = useState(14);
-  const [siteVisitMaxDays, setSiteVisitMaxDays] = useState(7);
-  const [quoteSentMaxDays, setQuoteSentMaxDays] = useState(14);
-  const [followUpMaxDays, setFollowUpMaxDays] = useState(30);
-  const [coldNurtureMaxDays, setColdNurtureMaxDays] = useState(90);
-  const [followUpIntervalDays, setFollowUpIntervalDays] = useState(60);
-  const [maxTouchesBeforeClose, setMaxTouchesBeforeClose] = useState(6);
-
-  // Email notification toggles (local state only — extend to DB if needed)
-  const [emailNewLead, setEmailNewLead] = useState(true);
-  const [emailQuoteAccepted, setEmailQuoteAccepted] = useState(true);
-  const [emailJobCompleted, setEmailJobCompleted] = useState(false);
-  const [emailInvoicePaid, setEmailInvoicePaid] = useState(true);
-  const [emailReviewReceived, setEmailReviewReceived] = useState(false);
-  const [smsNewLead, setSmsNewLead] = useState(true);
-  const [smsQuoteAccepted, setSmsQuoteAccepted] = useState(false);
-  const [smsJobReminder, setSmsJobReminder] = useState(false);
+  const [form, setForm] = useState({
+    companyName: "", phone: "", email: "", address: "", city: "", state: "", zip: "",
+    website: "", googleReviewUrl: "", defaultTaxRate: "", brandColor: "", licenseNumbers: "",
+  });
+  const [licInput, setLicInput] = useState("");
 
   useEffect(() => {
-    if (settings) {
-      setAutomationsEnabled(settings.automationsEnabled ?? false);
-      setNewLeadMaxMinutes(settings.newLeadMaxMinutes ?? 10080);
-      setContactedMaxDays(settings.contactedMaxDays ?? 14);
-      setSiteVisitMaxDays(settings.siteVisitMaxDays ?? 7);
-      setQuoteSentMaxDays(settings.quoteSentMaxDays ?? 14);
-      setFollowUpMaxDays(settings.followUpMaxDays ?? 30);
-      setColdNurtureMaxDays(settings.coldNurtureMaxDays ?? 90);
-      setFollowUpIntervalDays(settings.followUpIntervalDays ?? 60);
-      setMaxTouchesBeforeClose(settings.maxTouchesBeforeClose ?? 6);
+    if (biz) {
+      setForm({
+        companyName: biz.companyName ?? "",
+        phone: biz.phone ?? "",
+        email: biz.email ?? "",
+        address: biz.address ?? "",
+        city: biz.city ?? "",
+        state: biz.state ?? "",
+        zip: biz.zip ?? "",
+        website: biz.website ?? "",
+        googleReviewUrl: biz.googleReviewUrl ?? "",
+        defaultTaxRate: biz.defaultTaxRate ?? "",
+        brandColor: biz.brandColor ?? "",
+        licenseNumbers: biz.licenseNumbers ?? "",
+      });
     }
-  }, [settings]);
+  }, [biz]);
 
-  const handleSaveAutomation = () => {
-    updateMutation.mutate({
-      automationsEnabled, newLeadMaxMinutes, contactedMaxDays, siteVisitMaxDays,
-      quoteSentMaxDays, followUpMaxDays, coldNurtureMaxDays, followUpIntervalDays, maxTouchesBeforeClose,
-    });
+  const f = (k: keyof typeof form) => (v: string) => setForm(p => ({ ...p, [k]: v }));
+  const licenses = form.licenseNumbers ? form.licenseNumbers.split(",").map(s => s.trim()).filter(Boolean) : [];
+
+  const addLicense = () => {
+    if (!licInput.trim()) return;
+    const updated = [...licenses, licInput.trim()].join(", ");
+    setForm(p => ({ ...p, licenseNumbers: updated }));
+    setLicInput("");
   };
 
-  if (isLoading) {
-    return <div className="flex items-center justify-center py-16"><Loader2 className="w-5 h-5 animate-spin text-muted-foreground" /></div>;
-  }
+  const removeLicense = (idx: number) => {
+    const updated = licenses.filter((_, i) => i !== idx).join(", ");
+    setForm(p => ({ ...p, licenseNumbers: updated }));
+  };
+
+  if (isLoading) return <div className="flex items-center justify-center py-16"><Loader2 className="w-5 h-5 animate-spin text-muted-foreground" /></div>;
+
+  // Setup progress
+  const progressItems = [
+    { label: "Company name", done: !!form.companyName },
+    { label: "Phone number", done: !!form.phone },
+    { label: "Email address", done: !!form.email },
+    { label: "Business address", done: !!form.address },
+    { label: "Website URL", done: !!form.website },
+    { label: "Google Review URL", done: !!form.googleReviewUrl },
+  ];
+  const doneCount = progressItems.filter(i => i.done).length;
 
   return (
     <div className="space-y-4">
-      <SettingsSection title="Email Notifications" description="Choose which events trigger an email to jonnoland@nolandearthworks.com">
-        <div className="divide-y divide-border">
-          <Toggle checked={emailNewLead} onChange={setEmailNewLead} label="New lead submitted" description="Quote form submission received from website" />
-          <Toggle checked={emailQuoteAccepted} onChange={setEmailQuoteAccepted} label="Quote accepted" description="Client approves a quote in Jobber" />
-          <Toggle checked={emailJobCompleted} onChange={setEmailJobCompleted} label="Job marked complete" description="A job transitions to completed status" />
-          <Toggle checked={emailInvoicePaid} onChange={setEmailInvoicePaid} label="Invoice paid" description="Payment received on an outstanding invoice" />
-          <Toggle checked={emailReviewReceived} onChange={setEmailReviewReceived} label="New review received" description="Google or Facebook review posted" />
-        </div>
-        <SaveButton onClick={() => toast.success("Email notification preferences saved")} />
-      </SettingsSection>
-
-      <SettingsSection title="SMS Notifications" description="Text alerts sent to (615) 406-4819">
-        <div className="divide-y divide-border">
-          <Toggle checked={smsNewLead} onChange={setSmsNewLead} label="New lead submitted" description="Immediate text when a quote form comes in" />
-          <Toggle checked={smsQuoteAccepted} onChange={setSmsQuoteAccepted} label="Quote accepted" description="Text when a client approves a quote" />
-          <Toggle checked={smsJobReminder} onChange={setSmsJobReminder} label="Job day reminder" description="Morning text on days with scheduled jobs" />
-        </div>
-        <SaveButton onClick={() => toast.success("SMS notification preferences saved")} />
-      </SettingsSection>
-
-      <SettingsSection title="Lead Automation" description="Automatic follow-up and pipeline management thresholds">
-        <div className="flex items-center justify-between p-3 rounded-lg bg-primary/5 border border-primary/15 mb-2">
-          <div>
-            <p className="text-xs font-semibold text-foreground">Enable Automations</p>
-            <p className="text-[11px] text-muted-foreground">Automatically advance leads through pipeline stages based on time thresholds</p>
+      <SettingsSection title="Company Profile">
+        <div className="space-y-4">
+          <FieldRow label="Company Name *">
+            <TextInput value={form.companyName} onChange={f("companyName")} placeholder="Noland Earthworks, LLC" />
+          </FieldRow>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <FieldRow label="Phone">
+              <TextInput value={form.phone} onChange={f("phone")} placeholder="(555) 123-4567" type="tel" />
+            </FieldRow>
+            <FieldRow label="Email">
+              <TextInput value={form.email} onChange={f("email")} placeholder="info@company.com" type="email" />
+            </FieldRow>
           </div>
-          <button
-            onClick={() => setAutomationsEnabled(v => !v)}
-            className={cn(
-              "shrink-0 w-10 h-5 rounded-full transition-colors relative",
-              automationsEnabled ? "bg-primary" : "bg-secondary border border-border"
-            )}
+          <FieldRow label="Address">
+            <TextInput value={form.address} onChange={f("address")} placeholder="123 Main St" />
+          </FieldRow>
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+            <FieldRow label="City">
+              <TextInput value={form.city} onChange={f("city")} placeholder="Columbia" />
+            </FieldRow>
+            <FieldRow label="State">
+              <TextInput value={form.state} onChange={f("state")} placeholder="Tennessee" />
+            </FieldRow>
+            <FieldRow label="ZIP">
+              <TextInput value={form.zip} onChange={f("zip")} placeholder="38401" />
+            </FieldRow>
+          </div>
+          <FieldRow label="Website">
+            <TextInput value={form.website} onChange={f("website")} placeholder="https://yourcompany.com" />
+          </FieldRow>
+          <FieldRow
+            label="Google Review URL"
+            hint='Shown to customers after payment. Find yours in Google Business Profile under "Ask for reviews".'
           >
-            <span className={cn(
-              "absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform",
-              automationsEnabled ? "translate-x-5" : "translate-x-0.5"
-            )} />
-          </button>
+            <TextInput value={form.googleReviewUrl} onChange={f("googleReviewUrl")} placeholder="https://g.page/r/..." />
+          </FieldRow>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <FieldRow label="Default Tax Rate (%)" hint="Applied automatically when creating new invoices">
+              <TextInput value={form.defaultTaxRate} onChange={f("defaultTaxRate")} placeholder="e.g. 7.25" type="number" />
+            </FieldRow>
+            <FieldRow label="Brand Color" hint="Used for email CTA buttons. Leave blank for default orange.">
+              <div className="flex gap-2">
+                <TextInput value={form.brandColor} onChange={f("brandColor")} placeholder="#f97316" />
+                {form.brandColor && (
+                  <div className="w-9 h-9 rounded-md border border-border shrink-0" style={{ backgroundColor: form.brandColor }} />
+                )}
+              </div>
+            </FieldRow>
+          </div>
+          <FieldRow label="License Numbers">
+            <div className="flex gap-2 mb-2">
+              <input
+                type="text"
+                value={licInput}
+                onChange={e => setLicInput(e.target.value)}
+                onKeyDown={e => e.key === "Enter" && addLicense()}
+                placeholder="Enter license number"
+                className="flex-1 bg-secondary/50 border border-border rounded-md px-3 py-2 text-xs text-foreground outline-none focus:border-primary/50 transition-colors"
+              />
+              <button onClick={addLicense} className="flex items-center gap-1 bg-secondary hover:bg-secondary/80 border border-border text-xs px-3 py-2 rounded-md transition-colors">
+                <Plus className="w-3.5 h-3.5" />Add
+              </button>
+            </div>
+            {licenses.length > 0 && (
+              <div className="flex flex-wrap gap-2">
+                {licenses.map((lic, i) => (
+                  <span key={i} className="inline-flex items-center gap-1.5 bg-secondary border border-border text-xs px-2.5 py-1 rounded-full">
+                    <Hash className="w-3 h-3 text-muted-foreground" />{lic}
+                    <button onClick={() => removeLicense(i)} className="text-muted-foreground hover:text-red-400 transition-colors ml-0.5">
+                      <XCircle className="w-3 h-3" />
+                    </button>
+                  </span>
+                ))}
+              </div>
+            )}
+          </FieldRow>
+          <SaveButton onClick={() => update.mutate(form)} loading={update.isPending} />
         </div>
+      </SettingsSection>
 
-        <div className={cn("space-y-3 transition-opacity", !automationsEnabled && "opacity-40 pointer-events-none")}>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {[
-              { label: "New Lead Response Window (min)", value: newLeadMaxMinutes, onChange: setNewLeadMaxMinutes },
-              { label: "Contacted Stage Max (days)",     value: contactedMaxDays,   onChange: setContactedMaxDays },
-              { label: "Site Visit Stage Max (days)",    value: siteVisitMaxDays,   onChange: setSiteVisitMaxDays },
-              { label: "Quote Sent Stage Max (days)",    value: quoteSentMaxDays,   onChange: setQuoteSentMaxDays },
-              { label: "Follow-Up Stage Max (days)",     value: followUpMaxDays,    onChange: setFollowUpMaxDays },
-              { label: "Cold Nurture Max (days)",        value: coldNurtureMaxDays, onChange: setColdNurtureMaxDays },
-              { label: "Follow-Up Interval (days)",      value: followUpIntervalDays, onChange: setFollowUpIntervalDays },
-              { label: "Max Touches Before Close",       value: maxTouchesBeforeClose, onChange: setMaxTouchesBeforeClose },
-            ].map(field => (
-              <div key={field.label}>
-                <label className="block text-xs font-medium text-muted-foreground mb-1.5">{field.label}</label>
-                <input
-                  type="number"
-                  value={field.value}
-                  onChange={e => field.onChange(parseInt(e.target.value) || 0)}
-                  min={0}
-                  className="w-full bg-secondary/50 border border-border rounded-md px-3 py-2 text-xs text-foreground outline-none focus:border-primary/50 transition-colors"
-                />
+      <SettingsSection title="Setup Progress" description={`${doneCount}/6 complete`}>
+        <div className="space-y-2">
+          <div className="w-full bg-secondary rounded-full h-1.5">
+            <div className="bg-primary h-1.5 rounded-full transition-all" style={{ width: `${(doneCount / 6) * 100}%` }} />
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 pt-1">
+            {progressItems.map(item => (
+              <div key={item.label} className="flex items-center gap-2 text-xs">
+                {item.done
+                  ? <CheckCircle2 className="w-3.5 h-3.5 text-green-400 shrink-0" />
+                  : <div className="w-3.5 h-3.5 rounded-full border border-border shrink-0" />}
+                <span className={item.done ? "text-foreground" : "text-muted-foreground"}>{item.label}</span>
               </div>
             ))}
           </div>
         </div>
-        <SaveButton onClick={handleSaveAutomation} loading={updateMutation.isPending} />
       </SettingsSection>
     </div>
   );
 }
 
-// ─── Team Tab ─────────────────────────────────────────────────────────────────
-function TeamTab() {
-  const { user } = useAuth();
-  const [inviteEmail, setInviteEmail] = useState("");
-  const [inviteRole, setInviteRole] = useState<"admin" | "user">("user");
-  const [showInviteForm, setShowInviteForm] = useState(false);
+function AutomationsTab() {
+  const { data: auto, isLoading } = trpc.ops.settings.getAutomationSettings.useQuery();
+  const update = trpc.ops.settings.updateAutomationSettings.useMutation({
+    onSuccess: () => toast.success("Automation settings saved"),
+    onError: () => toast.error("Failed to save"),
+  });
 
-  const handleInvite = () => {
-    if (!inviteEmail.trim()) { toast.error("Enter an email address"); return; }
-    toast.success(`Invite sent to ${inviteEmail}`);
-    setInviteEmail("");
-    setShowInviteForm(false);
-  };
+  const [form, setForm] = useState({
+    automationsEnabled: false,
+    newLeadMaxMinutes: 10080,
+    contactedMaxDays: 14,
+    siteVisitMaxDays: 7,
+    quoteSentMaxDays: 14,
+    followUpMaxDays: 30,
+    coldNurtureMaxDays: 90,
+    followUpIntervalDays: 60,
+    maxTouchesBeforeClose: 6,
+  });
 
-  const teamMembers = [
-    {
-      name: user?.name ?? "Jon Noland",
-      email: user?.email ?? "jonnoland@nolandearthworks.com",
-      role: "Owner" as const,
-      status: "active" as const,
-      initials: (user?.name ?? "Jon Noland").split(" ").map((n: string) => n[0]).join("").slice(0, 2).toUpperCase(),
-    },
-  ];
+  useEffect(() => {
+    if (auto) setForm({
+      automationsEnabled: auto.automationsEnabled,
+      newLeadMaxMinutes: auto.newLeadMaxMinutes,
+      contactedMaxDays: auto.contactedMaxDays,
+      siteVisitMaxDays: auto.siteVisitMaxDays,
+      quoteSentMaxDays: auto.quoteSentMaxDays,
+      followUpMaxDays: auto.followUpMaxDays,
+      coldNurtureMaxDays: auto.coldNurtureMaxDays,
+      followUpIntervalDays: auto.followUpIntervalDays,
+      maxTouchesBeforeClose: auto.maxTouchesBeforeClose,
+    });
+  }, [auto]);
+
+  if (isLoading) return <div className="flex items-center justify-center py-16"><Loader2 className="w-5 h-5 animate-spin text-muted-foreground" /></div>;
 
   return (
     <div className="space-y-4">
-      <SettingsSection title="Team Members" description="Manage who has access to the operations dashboard">
-        <div className="space-y-2">
-          {teamMembers.map(member => (
-            <div key={member.email}
-              className="flex items-center justify-between gap-3 p-3 rounded-lg bg-secondary/30 border border-border">
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center shrink-0">
-                  <span className="text-xs font-bold text-primary">{member.initials}</span>
-                </div>
-                <div>
-                  <p className="text-xs font-medium text-foreground">{member.name}</p>
-                  <p className="text-[11px] text-muted-foreground">{member.email}</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-2 shrink-0">
-                <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-primary/15 text-primary border border-primary/20">
-                  <Crown className="w-2.5 h-2.5" />
-                  {member.role}
-                </span>
-                <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-green-500/15 text-green-400 border border-green-500/30">
-                  Active
-                </span>
-              </div>
+      <SettingsSection title="SMS & Email Automations" description="Configure automated workflows, stage timeouts, and nurture sequences.">
+        <Toggle
+          checked={form.automationsEnabled}
+          onChange={v => setForm(p => ({ ...p, automationsEnabled: v }))}
+          label="Enable Automations"
+          description="When enabled, automated SMS and email messages will be sent based on lead stage and timing rules."
+        />
+        {!form.automationsEnabled && (
+          <div className="flex items-start gap-2 bg-amber-500/10 border border-amber-500/20 rounded-md p-3">
+            <AlertCircle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+            <p className="text-xs text-amber-300">Automations are paused — No automated SMS or email messages will be sent.</p>
+          </div>
+        )}
+      </SettingsSection>
+
+      <SettingsSection title="Automation Settings">
+        <div className="space-y-4">
+          <div>
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Stage Timeouts</p>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+              <FieldRow label="New Lead (minutes)">
+                <NumberInput value={form.newLeadMaxMinutes} onChange={v => setForm(p => ({ ...p, newLeadMaxMinutes: v }))} />
+              </FieldRow>
+              <FieldRow label="Contacted (days)">
+                <NumberInput value={form.contactedMaxDays} onChange={v => setForm(p => ({ ...p, contactedMaxDays: v }))} />
+              </FieldRow>
+              <FieldRow label="Site Visit (days)">
+                <NumberInput value={form.siteVisitMaxDays} onChange={v => setForm(p => ({ ...p, siteVisitMaxDays: v }))} />
+              </FieldRow>
+              <FieldRow label="Quote Sent (days)">
+                <NumberInput value={form.quoteSentMaxDays} onChange={v => setForm(p => ({ ...p, quoteSentMaxDays: v }))} />
+              </FieldRow>
+              <FieldRow label="Follow Up (days)">
+                <NumberInput value={form.followUpMaxDays} onChange={v => setForm(p => ({ ...p, followUpMaxDays: v }))} />
+              </FieldRow>
+              <FieldRow label="Cold Nurture (days)">
+                <NumberInput value={form.coldNurtureMaxDays} onChange={v => setForm(p => ({ ...p, coldNurtureMaxDays: v }))} />
+              </FieldRow>
+            </div>
+          </div>
+          <div>
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Nurture Defaults</p>
+            <div className="grid grid-cols-2 gap-4">
+              <FieldRow label="Follow-Up Interval (days)">
+                <NumberInput value={form.followUpIntervalDays} onChange={v => setForm(p => ({ ...p, followUpIntervalDays: v }))} />
+              </FieldRow>
+              <FieldRow label="Max Touches Before Close">
+                <NumberInput value={form.maxTouchesBeforeClose} onChange={v => setForm(p => ({ ...p, maxTouchesBeforeClose: v }))} />
+              </FieldRow>
+            </div>
+          </div>
+          <SaveButton onClick={() => update.mutate(form)} loading={update.isPending} label="Save Automation Settings" />
+        </div>
+      </SettingsSection>
+    </div>
+  );
+}
+
+function PhoneTab() {
+  return (
+    <div className="space-y-4">
+      <SettingsSection title="Phone Numbers" description="Your business phone numbers, call routing, and compliance settings.">
+        <div className="flex items-center justify-between p-3 bg-secondary/40 border border-border rounded-lg">
+          <div>
+            <p className="text-sm font-semibold text-foreground">+1 (931) 516-6917</p>
+            <span className="inline-flex items-center gap-1 text-[11px] bg-primary/20 text-primary border border-primary/30 px-2 py-0.5 rounded-full font-semibold mt-1">Primary</span>
+          </div>
+          <div className="flex gap-2">
+            {["Browser", "Forward", "Voicemail"].map(mode => (
+              <button key={mode} onClick={() => toast.info("Feature coming soon")}
+                className="text-xs bg-secondary hover:bg-secondary/80 border border-border px-3 py-1.5 rounded-md transition-colors">
+                {mode}
+              </button>
+            ))}
+          </div>
+        </div>
+        <button onClick={() => toast.info("Feature coming soon")}
+          className="text-xs text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1.5">
+          <Plus className="w-3.5 h-3.5" />Get new number (1/3)
+        </button>
+      </SettingsSection>
+
+      <SettingsSection title="Voice Mode">
+        <div className="space-y-2 text-xs text-foreground">
+          <div className="flex justify-between py-2 border-b border-border">
+            <span className="text-muted-foreground">Inbound Call Routing</span>
+            <span>Forward — calls ring your phone</span>
+          </div>
+          <div className="flex justify-between py-2">
+            <span className="text-muted-foreground">Call Recording</span>
+            <span className="text-muted-foreground">Disabled</span>
+          </div>
+        </div>
+      </SettingsSection>
+
+      <SettingsSection title="SMS Usage">
+        <div className="space-y-3">
+          <div className="flex justify-between text-xs">
+            <span className="text-muted-foreground">Messages this month</span>
+            <span className="font-semibold text-foreground">0 / 3,000</span>
+          </div>
+          <div className="w-full bg-secondary rounded-full h-1.5">
+            <div className="bg-primary h-1.5 rounded-full" style={{ width: "0%" }} />
+          </div>
+          <p className="text-[11px] text-muted-foreground">0% of monthly limit used. Resets on the 1st of each month.</p>
+        </div>
+      </SettingsSection>
+
+      <SettingsSection title="Business Hours">
+        <div className="space-y-2 text-xs text-foreground">
+          <div className="flex justify-between py-2 border-b border-border">
+            <span className="text-muted-foreground">Send Window</span>
+            <span>6:00 AM – 6:00 PM</span>
+          </div>
+          <div className="flex justify-between py-2 border-b border-border">
+            <span className="text-muted-foreground">Business Days</span>
+            <span>Mon – Sun</span>
+          </div>
+          <div className="flex justify-between py-2">
+            <span className="text-muted-foreground">Timezone</span>
+            <span>America/Chicago</span>
+          </div>
+        </div>
+      </SettingsSection>
+    </div>
+  );
+}
+
+function TrustCenterTab() {
+  return (
+    <div className="space-y-4">
+      <SettingsSection title="Carrier Registration (A2P 10DLC)" description="US carriers require business verification to deliver text messages reliably. This typically takes 1–7 business days.">
+        <div className="flex items-start gap-2 bg-amber-500/10 border border-amber-500/20 rounded-md p-3">
+          <AlertCircle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+          <p className="text-xs text-amber-300">Your business is not registered with US carriers. Text messages may be filtered or blocked.</p>
+        </div>
+        <button onClick={() => toast.info("Feature coming soon")}
+          className="flex items-center gap-2 bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-semibold px-4 py-2 rounded-md transition-colors">
+          Register Now
+        </button>
+      </SettingsSection>
+
+      <SettingsSection title="Messaging Rate Limits">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          {[
+            { label: "SMS Sent", value: "$0.0079/msg" },
+            { label: "SMS Received", value: "$0.0075/msg" },
+            { label: "Phone Number", value: "$1.15/mo" },
+            { label: "A2P Registration", value: "$4 one-time + $0.75/mo" },
+          ].map(item => (
+            <div key={item.label} className="bg-secondary/40 border border-border rounded-lg p-3">
+              <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">{item.label}</p>
+              <p className="text-xs font-semibold text-foreground">{item.value}</p>
             </div>
           ))}
         </div>
+      </SettingsSection>
 
-        {!showInviteForm ? (
+      <SettingsSection title="Tips for Approval">
+        <ul className="space-y-2">
+          {[
+            "Use a real business name that matches your registration",
+            "Provide an accurate description of how you use SMS",
+            "Include opt-in language in your message templates",
+            "Ensure your website has a privacy policy",
+            "Do not send unsolicited messages",
+          ].map((tip, i) => (
+            <li key={i} className="flex items-start gap-2 text-xs text-foreground">
+              <CheckCircle2 className="w-3.5 h-3.5 text-green-400 shrink-0 mt-0.5" />
+              {tip}
+            </li>
+          ))}
+        </ul>
+      </SettingsSection>
+    </div>
+  );
+}
+
+function TeamTab() {
+  const { user } = useAuth();
+  const [showInvite, setShowInvite] = useState(false);
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [inviteRole, setInviteRole] = useState("viewer");
+
+  return (
+    <div className="space-y-4">
+      <SettingsSection
+        title="Team & Organization"
+        description="Manage team members, roles, and permissions."
+        action={
           <button
-            onClick={() => setShowInviteForm(true)}
-            className="flex items-center gap-2 text-xs font-medium text-primary hover:text-primary/80 transition-colors mt-2"
+            onClick={() => setShowInvite(s => !s)}
+            className="flex items-center gap-2 bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-semibold px-3 py-2 rounded-md transition-colors"
           >
-            <UserPlus className="w-3.5 h-3.5" />
-            Invite team member
+            <UserPlus className="w-3.5 h-3.5" />Invite Member
           </button>
-        ) : (
-          <div className="mt-3 p-4 rounded-lg bg-secondary/30 border border-border space-y-3">
-            <p className="text-xs font-semibold text-foreground">Invite New Member</p>
+        }
+      >
+        <p className="text-xs text-muted-foreground">1 team member</p>
+
+        {showInvite && (
+          <div className="border border-border rounded-lg p-4 space-y-3 bg-secondary/20">
+            <p className="text-xs font-semibold text-foreground">Invite a team member</p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <FieldRow label="Email Address">
-                <TextInput value={inviteEmail} onChange={setInviteEmail} type="email" placeholder="name@example.com" />
+              <FieldRow label="Email address">
+                <TextInput value={inviteEmail} onChange={setInviteEmail} placeholder="crew@example.com" type="email" />
               </FieldRow>
               <FieldRow label="Role">
                 <select
                   value={inviteRole}
-                  onChange={e => setInviteRole(e.target.value as "admin" | "user")}
+                  onChange={e => setInviteRole(e.target.value)}
                   className="w-full bg-secondary/50 border border-border rounded-md px-3 py-2 text-xs text-foreground outline-none focus:border-primary/50 transition-colors"
                 >
-                  <option value="user">Viewer — read-only access</option>
-                  <option value="admin">Admin — full access</option>
+                  <option value="viewer">Viewer</option>
+                  <option value="admin">Admin</option>
                 </select>
               </FieldRow>
             </div>
             <div className="flex gap-2">
-              <button onClick={handleInvite}
-                className="flex items-center gap-2 bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-semibold px-4 py-2 rounded-md transition-colors">
-                <UserPlus className="w-3.5 h-3.5" />
+              <button
+                onClick={() => { toast.info("Invite feature coming soon"); setShowInvite(false); }}
+                className="flex items-center gap-2 bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-semibold px-3 py-2 rounded-md transition-colors"
+              >
                 Send Invite
               </button>
-              <button onClick={() => setShowInviteForm(false)}
-                className="text-xs font-medium px-4 py-2 rounded-md bg-secondary/50 border border-border text-muted-foreground hover:text-foreground transition-colors">
+              <button onClick={() => setShowInvite(false)} className="text-xs text-muted-foreground hover:text-foreground transition-colors px-3 py-2">
                 Cancel
               </button>
             </div>
           </div>
         )}
-      </SettingsSection>
 
-      <SettingsSection title="Access Roles" description="What each role can do in the dashboard">
-        <div className="space-y-2">
-          {[
-            { role: "Owner", desc: "Full access — all pages, settings, and data management", color: "text-primary" },
-            { role: "Admin", desc: "Full access except billing and user management", color: "text-amber-400" },
-            { role: "Viewer", desc: "Read-only access to jobs, leads, and reports", color: "text-muted-foreground" },
-          ].map(item => (
-            <div key={item.role} className="flex items-start gap-3 p-3 rounded-lg bg-secondary/20 border border-border">
-              <ChevronRight className={cn("w-4 h-4 shrink-0 mt-0.5", item.color)} />
-              <div>
-                <p className={cn("text-xs font-semibold", item.color)}>{item.role}</p>
-                <p className="text-[11px] text-muted-foreground">{item.desc}</p>
-              </div>
-            </div>
-          ))}
-        </div>
-      </SettingsSection>
-    </div>
-  );
-}
-
-// ─── Billing Tab ──────────────────────────────────────────────────────────────
-function BillingTab() {
-  const services = [
-    { name: "Jobber Core",     price: "$49/mo",  status: "active",   desc: "CRM, scheduling, invoicing" },
-    { name: "Twilio",          price: "Usage",   status: "active",   desc: "SMS messaging — pay per message" },
-    { name: "Resend",          price: "Free",    status: "active",   desc: "3,000 emails/mo on free tier" },
-    { name: "Google Maps API", price: "Usage",   status: "active",   desc: "Distance calculations — pay per request" },
-    { name: "ClickGrow Ads",   price: "Varies",  status: "active",   desc: "Google Ads management" },
-  ];
-
-  return (
-    <div className="space-y-4">
-      <SettingsSection title="Connected Services" description="Third-party services used by this dashboard">
-        <div className="space-y-2">
-          {services.map(service => (
-            <div key={service.name}
-              className="flex items-center justify-between gap-3 p-3 rounded-lg bg-secondary/30 border border-border">
-              <div className="flex items-center gap-3">
-                <div className={cn(
-                  "w-2 h-2 rounded-full shrink-0",
-                  service.status === "active" ? "bg-green-400" : "bg-muted-foreground/40"
-                )} />
-                <div>
-                  <p className="text-xs font-medium text-foreground">{service.name}</p>
-                  <p className="text-[11px] text-muted-foreground">{service.desc}</p>
-                </div>
-              </div>
-              <span className="text-xs font-semibold text-foreground shrink-0">{service.price}</span>
-            </div>
-          ))}
-        </div>
-      </SettingsSection>
-
-      <SettingsSection title="Billing Notes" description="Cost management guidance">
-        <div className="space-y-2">
-          {[
-            {
-              icon: Info,
-              text: "Jobber is billed directly through Jobber. Manage your subscription at app.getjobber.com/billing.",
-            },
-            {
-              icon: Info,
-              text: "Twilio and Google Maps API charges are usage-based. Monitor usage in each platform's dashboard to avoid unexpected costs.",
-            },
-            {
-              icon: Info,
-              text: "Resend free tier covers standard quote email volume. Upgrade if volume exceeds 3,000 emails/month.",
-            },
-          ].map((note, i) => (
-            <div key={i} className="flex items-start gap-2.5 p-3 rounded-lg bg-primary/5 border border-primary/10">
-              <note.icon className="w-3.5 h-3.5 text-primary shrink-0 mt-0.5" />
-              <p className="text-[11px] text-muted-foreground leading-relaxed">{note.text}</p>
-            </div>
-          ))}
-        </div>
-      </SettingsSection>
-    </div>
-  );
-}
-
-// ─── Security Tab ─────────────────────────────────────────────────────────────
-function SecurityTab() {
-  const { logout } = useAuth();
-  const [showSessions, setShowSessions] = useState(false);
-  const [showApiKey, setShowApiKey] = useState(false);
-
-  const sessions = [
-    { device: "Chrome on Windows", location: "Vanleer, TN", lastActive: "Active now", current: true },
-    { device: "Safari on iPhone",  location: "Nashville, TN", lastActive: "2 hours ago", current: false },
-  ];
-
-  return (
-    <div className="space-y-4">
-      <SettingsSection title="Authentication" description="Your account is secured via Google OAuth through the Manus platform">
-        <div className="flex items-center gap-3 p-3 rounded-lg bg-green-500/8 border border-green-500/20">
-          <CheckCircle2 className="w-4 h-4 text-green-400 shrink-0" />
-          <div>
-            <p className="text-xs font-semibold text-green-400">OAuth Authentication Active</p>
-            <p className="text-[11px] text-muted-foreground">Signed in via Google OAuth. No password stored.</p>
+        <div className="border border-border rounded-lg p-4 flex items-center gap-3">
+          <div className="w-9 h-9 rounded-full bg-primary/20 border border-primary/30 flex items-center justify-center shrink-0">
+            <span className="text-sm font-bold text-primary">JN</span>
           </div>
-        </div>
-        <div className="flex items-start gap-2.5 p-3 rounded-lg bg-primary/5 border border-primary/10">
-          <Info className="w-3.5 h-3.5 text-primary shrink-0 mt-0.5" />
-          <p className="text-[11px] text-muted-foreground leading-relaxed">
-            Password management is handled by your Google account. To update your password or enable 2FA, visit your{" "}
-            <a href="https://myaccount.google.com/security" target="_blank" rel="noopener noreferrer"
-              className="text-primary hover:text-primary/80 transition-colors underline">
-              Google Account Security settings
-            </a>.
-          </p>
-        </div>
-      </SettingsSection>
-
-      <SettingsSection title="Active Sessions" description="Devices currently signed in to the dashboard">
-        <div className="space-y-2">
-          {sessions.map((session, i) => (
-            <div key={i} className="flex items-center justify-between gap-3 p-3 rounded-lg bg-secondary/30 border border-border">
-              <div className="flex items-center gap-3">
-                <div className={cn(
-                  "w-2 h-2 rounded-full shrink-0",
-                  session.current ? "bg-green-400" : "bg-muted-foreground/40"
-                )} />
-                <div>
-                  <div className="flex items-center gap-2">
-                    <p className="text-xs font-medium text-foreground">{session.device}</p>
-                    {session.current && (
-                      <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded-full bg-green-500/15 text-green-400 border border-green-500/30">
-                        Current
-                      </span>
-                    )}
-                  </div>
-                  <p className="text-[11px] text-muted-foreground">{session.location} · {session.lastActive}</p>
-                </div>
-              </div>
-              {!session.current && (
-                <button className="text-[11px] text-red-400 hover:text-red-300 transition-colors shrink-0"
-                  onClick={() => toast.success("Session revoked")}>
-                  Revoke
-                </button>
-              )}
+          <div className="flex-1 min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-sm font-semibold text-foreground">Jon Noland</span>
+              <span className="text-[11px] bg-secondary border border-border px-2 py-0.5 rounded-full text-muted-foreground">You</span>
             </div>
-          ))}
-        </div>
-      </SettingsSection>
-
-      <SettingsSection title="API Access" description="API key for programmatic access to the dashboard">
-        <div className="space-y-3">
-          <div>
-            <label className="block text-xs font-medium text-muted-foreground mb-1.5">Dashboard API Key</label>
-            <div className="flex items-center gap-2">
-              <div className="flex-1 flex items-center gap-2 bg-secondary/50 border border-border rounded-md px-3 py-2">
-                <Key className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-                <code className="text-xs text-foreground font-mono truncate">
-                  {showApiKey ? "ne_live_••••••••••••••••••••••••••••••••" : "ne_live_••••••••••••••••••••••••••••••••"}
-                </code>
-              </div>
-              <button
-                onClick={() => setShowApiKey(v => !v)}
-                className="shrink-0 p-2 rounded-md bg-secondary/50 border border-border text-muted-foreground hover:text-foreground transition-colors">
-                {showApiKey ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-              </button>
-              <button
-                onClick={() => toast.info("API key regeneration — contact support")}
-                className="shrink-0 text-xs font-medium px-3 py-2 rounded-md bg-secondary/50 border border-border text-foreground hover:bg-secondary transition-colors">
-                Regenerate
-              </button>
-            </div>
+            <p className="text-xs text-muted-foreground mt-0.5">jonnoland@nolandearthworks.com</p>
           </div>
-        </div>
-      </SettingsSection>
-
-      <SettingsSection title="Danger Zone" description="Irreversible actions — proceed with caution">
-        <div className="space-y-2">
-          <div className="flex items-center justify-between gap-4 p-3 rounded-lg border border-red-500/20 bg-red-500/5">
-            <div>
-              <p className="text-xs font-medium text-foreground">Sign out of all devices</p>
-              <p className="text-[11px] text-muted-foreground">Revoke all active sessions and sign out everywhere</p>
-            </div>
-            <button
-              onClick={() => { if (confirm("Sign out of all devices?")) { logout(); } }}
-              className="shrink-0 flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-md bg-red-600/20 border border-red-500/30 text-red-400 hover:bg-red-600/30 transition-colors"
-            >
-              <LogOut className="w-3.5 h-3.5" />
-              Sign Out All
-            </button>
+          <div className="flex flex-wrap gap-1.5 shrink-0">
+            <span className="inline-flex items-center gap-1 text-[11px] bg-primary/20 text-primary border border-primary/30 px-2 py-0.5 rounded-full font-semibold">
+              <Crown className="w-3 h-3" />Owner
+            </span>
+            <span className="inline-flex items-center gap-1 text-[11px] bg-green-500/15 text-green-400 border border-green-500/30 px-2 py-0.5 rounded-full font-semibold">Active</span>
           </div>
         </div>
       </SettingsSection>
@@ -1216,63 +722,724 @@ function SecurityTab() {
   );
 }
 
-// ─── Main Settings Page ───────────────────────────────────────────────────────
-export default function Settings() {
-  const [activeTab, setActiveTab] = useState("quotes");
+function ServiceCatalogTab() {
+  const { data: catalog, isLoading, refetch } = trpc.ops.settings.getServiceCatalog.useQuery();
+  const upsert = trpc.ops.settings.upsertServiceCatalog.useMutation({
+    onSuccess: () => { toast.success("Service catalog saved"); refetch(); },
+    onError: () => toast.error("Failed to save"),
+  });
+
+  const [rows, setRows] = useState<{ serviceType: string; easyAcresPerDay: string; normalAcresPerDay: string; hardAcresPerDay: string; sortOrder: number }[]>([]);
 
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    if (params.get("jobber")) {
-      setActiveTab("integrations");
-    }
-  }, []);
+    if (catalog) setRows(catalog.map((c, i) => ({
+      serviceType: c.serviceType,
+      easyAcresPerDay: String(c.easyAcresPerDay),
+      normalAcresPerDay: String(c.normalAcresPerDay),
+      hardAcresPerDay: String(c.hardAcresPerDay),
+      sortOrder: i,
+    })));
+  }, [catalog]);
+
+  const updateRow = (idx: number, field: string, val: string) => {
+    setRows(prev => prev.map((r, i) => i === idx ? { ...r, [field]: val } : r));
+  };
+
+  const addRow = () => {
+    setRows(prev => [...prev, { serviceType: "", easyAcresPerDay: "1", normalAcresPerDay: "0.75", hardAcresPerDay: "0.5", sortOrder: prev.length }]);
+  };
+
+  const removeRow = (idx: number) => setRows(prev => prev.filter((_, i) => i !== idx));
+
+  if (isLoading) return <div className="flex items-center justify-center py-16"><Loader2 className="w-5 h-5 animate-spin text-muted-foreground" /></div>;
 
   return (
-    <DashboardLayout title="Settings" subtitle="">
-      {/* ── Top tab bar — matches OwnrOps settings layout ── */}
-      <div className="border-b border-border bg-card sticky top-0 z-10">
-        <div className="flex items-center overflow-x-auto scrollbar-none px-6">
-          {/* "SETTINGS" label */}
-          <span className="shrink-0 text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60 pr-4 mr-1 border-r border-border/60">
-            Settings
-          </span>
-          {/* Tab items */}
-          {tabs.map((tab, i) => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={cn(
-                "relative shrink-0 flex items-center gap-1.5 px-3.5 py-3.5 text-xs font-medium transition-colors whitespace-nowrap",
-                activeTab === tab.id
-                  ? "text-foreground"
-                  : "text-muted-foreground hover:text-foreground"
+    <div className="space-y-4">
+      <SettingsSection title="Service Catalog" description="Configure service types and production rates used for generating estimates.">
+        <div className="overflow-x-auto">
+          <table className="w-full text-xs">
+            <thead>
+              <tr className="border-b border-border">
+                <th className="text-left py-2 pr-4 text-muted-foreground font-medium">Service Type</th>
+                <th className="text-left py-2 px-3 text-muted-foreground font-medium">Easy (acres/day)</th>
+                <th className="text-left py-2 px-3 text-muted-foreground font-medium">Normal (acres/day)</th>
+                <th className="text-left py-2 px-3 text-muted-foreground font-medium">Hard (acres/day)</th>
+                <th className="w-8" />
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((row, idx) => (
+                <tr key={idx} className="border-b border-border/50 last:border-0">
+                  <td className="py-2 pr-4">
+                    <input
+                      type="text"
+                      value={row.serviceType}
+                      onChange={e => updateRow(idx, "serviceType", e.target.value)}
+                      className="w-full bg-secondary/50 border border-border rounded px-2 py-1.5 text-xs text-foreground outline-none focus:border-primary/50"
+                      placeholder="Service name"
+                    />
+                  </td>
+                  {(["easyAcresPerDay", "normalAcresPerDay", "hardAcresPerDay"] as const).map(field => (
+                    <td key={field} className="py-2 px-3">
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={row[field]}
+                        onChange={e => updateRow(idx, field, e.target.value)}
+                        className="w-24 bg-secondary/50 border border-border rounded px-2 py-1.5 text-xs text-foreground outline-none focus:border-primary/50"
+                      />
+                    </td>
+                  ))}
+                  <td className="py-2 pl-2">
+                    <button onClick={() => removeRow(idx)} className="text-muted-foreground hover:text-red-400 transition-colors">
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <div className="flex items-center gap-3 pt-1">
+          <button onClick={addRow} className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors">
+            <Plus className="w-3.5 h-3.5" />Add service
+          </button>
+        </div>
+        <SaveButton
+          onClick={() => upsert.mutate(rows.map((r, i) => ({ ...r, sortOrder: i })))}
+          loading={upsert.isPending}
+          label="Save"
+        />
+      </SettingsSection>
+    </div>
+  );
+}
+
+const TEMPLATE_CATEGORIES = [
+  { group: "QUOTES",    items: [{ cat: "quotes",    ch: "email", label: "Quote Email" }, { cat: "quotes",    ch: "sms", label: "Quote SMS" }] },
+  { group: "INVOICES",  items: [{ cat: "invoices",  ch: "email", label: "Invoice Email" }, { cat: "invoices",  ch: "sms", label: "Invoice SMS" }] },
+  { group: "REMINDERS", items: [{ cat: "reminders", ch: "email", label: "Reminder Email" }, { cat: "reminders", ch: "sms", label: "Reminder SMS" }] },
+  { group: "FOLLOW-UP", items: [{ cat: "follow_up", ch: "email", label: "Follow-Up Email" }, { cat: "follow_up", ch: "sms", label: "Follow-Up SMS" }] },
+  { group: "THANK YOU", items: [{ cat: "thank_you", ch: "email", label: "Thank You Email" }] },
+];
+
+const TEMPLATE_VARIABLES = [
+  "{{first_name}}", "{{last_name}}", "{{company_name}}", "{{phone}}", "{{email}}",
+  "{{quote_total}}", "{{invoice_total}}", "{{job_address}}", "{{due_date}}", "{{visit_date}}",
+];
+
+function TemplateEditorTab() {
+  const { data: templates, isLoading, refetch } = trpc.ops.settings.getMessageTemplates.useQuery();
+  const upsert = trpc.ops.settings.upsertMessageTemplate.useMutation({
+    onSuccess: () => { toast.success("Template saved"); refetch(); },
+    onError: () => toast.error("Failed to save"),
+  });
+
+  const [showVars, setShowVars] = useState(false);
+  const [editForm, setEditForm] = useState<{ category: string; channel: string; subject: string; body: string } | null>(null);
+  const [showNew, setShowNew] = useState(false);
+  const [newForm, setNewForm] = useState({ name: "", body: "" });
+
+  if (isLoading) return <div className="flex items-center justify-center py-16"><Loader2 className="w-5 h-5 animate-spin text-muted-foreground" /></div>;
+
+  const count = templates?.length ?? 0;
+
+  return (
+    <div className="space-y-4">
+      <SettingsSection
+        title="Message Templates"
+        description="Create reusable SMS templates with merge fields like {{first_name}}, {{company_name}}, and {{quote_total}}."
+        action={
+          <button
+            onClick={() => setShowNew(s => !s)}
+            className="flex items-center gap-2 bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-semibold px-3 py-2 rounded-md transition-colors"
+          >
+            <Plus className="w-3.5 h-3.5" />New Template
+          </button>
+        }
+      >
+        <button
+          onClick={() => setShowVars(s => !s)}
+          className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+        >
+          <Info className="w-3.5 h-3.5" />Available Variables
+          {showVars ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+        </button>
+        {showVars && (
+          <div className="flex flex-wrap gap-2 p-3 bg-secondary/30 border border-border rounded-lg">
+            {TEMPLATE_VARIABLES.map(v => (
+              <span key={v} onClick={() => { navigator.clipboard.writeText(v); toast.success("Copied"); }}
+                className="text-[11px] font-mono bg-secondary border border-border px-2 py-0.5 rounded cursor-pointer hover:border-primary/50 transition-colors">
+                {v}
+              </span>
+            ))}
+          </div>
+        )}
+
+        {showNew && (
+          <div className="border border-border rounded-lg p-4 space-y-3 bg-secondary/20">
+            <p className="text-xs font-semibold text-foreground">New SMS Template</p>
+            <FieldRow label="Template Name">
+              <TextInput value={newForm.name} onChange={v => setNewForm(p => ({ ...p, name: v }))} placeholder="e.g. Quick Follow-Up" />
+            </FieldRow>
+            <FieldRow label="Message Body">
+              <textarea
+                value={newForm.body}
+                onChange={e => setNewForm(p => ({ ...p, body: e.target.value }))}
+                placeholder="Hi {{first_name}}, just following up on your land clearing inquiry..."
+                rows={4}
+                className="w-full bg-secondary/50 border border-border rounded-md px-3 py-2 text-xs text-foreground outline-none focus:border-primary/50 transition-colors resize-none"
+              />
+            </FieldRow>
+            <div className="flex gap-2">
+              <button
+                onClick={() => {
+                  if (!newForm.name || !newForm.body) { toast.error("Name and body required"); return; }
+                  upsert.mutate({ category: "custom", channel: "sms", subject: newForm.name, body: newForm.body });
+                  setShowNew(false);
+                  setNewForm({ name: "", body: "" });
+                }}
+                className="flex items-center gap-2 bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-semibold px-3 py-2 rounded-md transition-colors"
+              >
+                Save Template
+              </button>
+              <button onClick={() => setShowNew(false)} className="text-xs text-muted-foreground hover:text-foreground transition-colors px-3 py-2">Cancel</button>
+            </div>
+          </div>
+        )}
+
+        {count === 0 && !showNew ? (
+          <div className="text-center py-10 border border-dashed border-border rounded-lg">
+            <FileText className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
+            <p className="text-sm text-muted-foreground">No message templates yet.</p>
+            <p className="text-xs text-muted-foreground mt-1">Create your own or use the Template Assignments tab to set up email templates.</p>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {templates?.map(t => (
+              <div key={t.id} className="border border-border rounded-lg p-3 flex items-start justify-between gap-3">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-xs font-semibold text-foreground">{t.subject || `${t.category} ${t.channel}`}</span>
+                    <span className="text-[10px] bg-secondary border border-border px-1.5 py-0.5 rounded text-muted-foreground uppercase">{t.channel}</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground line-clamp-2">{t.body || "No body"}</p>
+                </div>
+                <button onClick={() => setEditForm({ category: t.category, channel: t.channel, subject: t.subject ?? "", body: t.body ?? "" })}
+                  className="text-xs text-muted-foreground hover:text-foreground transition-colors shrink-0">Edit</button>
+              </div>
+            ))}
+          </div>
+        )}
+      </SettingsSection>
+    </div>
+  );
+}
+
+function TemplateAssignmentsTab() {
+  const { data: templates, isLoading, refetch } = trpc.ops.settings.getMessageTemplates.useQuery();
+  const upsert = trpc.ops.settings.upsertMessageTemplate.useMutation({
+    onSuccess: () => { toast.success("Template saved"); refetch(); },
+    onError: () => toast.error("Failed to save"),
+  });
+
+  const [selected, setSelected] = useState<{ cat: string; ch: string; label: string }>({ cat: "quotes", ch: "email", label: "Quote Email" });
+  const [showVars, setShowVars] = useState(false);
+
+  const current = templates?.find(t => t.category === selected.cat && t.channel === selected.ch);
+  const [subject, setSubject] = useState("");
+  const [body, setBody] = useState("");
+
+  useEffect(() => {
+    setSubject(current?.subject ?? "");
+    setBody(current?.body ?? "");
+  }, [current, selected]);
+
+  if (isLoading) return <div className="flex items-center justify-center py-16"><Loader2 className="w-5 h-5 animate-spin text-muted-foreground" /></div>;
+
+  return (
+    <div className="space-y-4">
+      <SettingsSection title="Templates" description="Customize the messages sent with quotes, invoices, reminders, and follow-ups. Use {{variables}} to personalize content.">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          {/* Left: category list */}
+          <div className="space-y-3">
+            {TEMPLATE_CATEGORIES.map(group => (
+              <div key={group.group}>
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">{group.group}</p>
+                <div className="space-y-0.5">
+                  {group.items.map(item => (
+                    <button
+                      key={`${item.cat}-${item.ch}`}
+                      onClick={() => setSelected(item)}
+                      className={cn(
+                        "w-full flex items-center gap-2 px-3 py-2 rounded-md text-xs text-left transition-colors",
+                        selected.cat === item.cat && selected.ch === item.ch
+                          ? "bg-primary/20 text-primary border border-primary/30"
+                          : "text-muted-foreground hover:bg-secondary/60 hover:text-foreground"
+                      )}
+                    >
+                      {item.ch === "email" ? <Mail className="w-3.5 h-3.5 shrink-0" /> : <Phone className="w-3.5 h-3.5 shrink-0" />}
+                      {item.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Right: editor */}
+          <div className="lg:col-span-2 space-y-3">
+            <div className="flex items-center justify-between">
+              <p className="text-sm font-semibold text-foreground">{selected.label}</p>
+              <div className="flex gap-2">
+                <button onClick={() => { setSubject(""); setBody(""); }} className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors border border-border px-2.5 py-1.5 rounded-md">
+                  <RotateCcw className="w-3 h-3" />Reset
+                </button>
+                <button
+                  onClick={() => upsert.mutate({ category: selected.cat, channel: selected.ch, subject, body })}
+                  className="flex items-center gap-1.5 bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-semibold px-3 py-1.5 rounded-md transition-colors"
+                >
+                  <Save className="w-3 h-3" />Save
+                </button>
+              </div>
+            </div>
+
+            {selected.ch === "email" && (
+              <FieldRow label="Subject Line">
+                <TextInput value={subject} onChange={setSubject} placeholder="Email subject..." />
+              </FieldRow>
+            )}
+
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="text-xs font-medium text-muted-foreground">
+                  {selected.ch === "email" ? "Email Body" : "SMS Body"}
+                </label>
+                <button onClick={() => setShowVars(s => !s)} className="flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground transition-colors">
+                  <Hash className="w-3 h-3" />Insert Variable
+                </button>
+              </div>
+              {showVars && (
+                <div className="flex flex-wrap gap-1.5 p-2 bg-secondary/30 border border-border rounded-lg mb-2">
+                  {TEMPLATE_VARIABLES.map(v => (
+                    <button key={v} onClick={() => { setBody(b => b + v); setShowVars(false); }}
+                      className="text-[11px] font-mono bg-secondary border border-border px-2 py-0.5 rounded hover:border-primary/50 transition-colors">
+                      {v}
+                    </button>
+                  ))}
+                </div>
               )}
-            >
-              {/* Pipe separator before each tab */}
-              {i > 0 && (
-                <span className="absolute left-0 top-1/2 -translate-y-1/2 h-3.5 w-px bg-border/60" />
-              )}
-              <tab.icon className="w-3 h-3 shrink-0" />
-              {tab.label}
-              {/* Active underline */}
-              {activeTab === tab.id && (
-                <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary rounded-t-full" />
-              )}
-            </button>
+              <textarea
+                value={body}
+                onChange={e => setBody(e.target.value)}
+                placeholder={selected.ch === "email" ? "Email body..." : "SMS message..."}
+                rows={8}
+                className="w-full bg-secondary/50 border border-border rounded-md px-3 py-2 text-xs text-foreground outline-none focus:border-primary/50 transition-colors resize-none"
+              />
+            </div>
+
+            {body && (
+              <div className="border border-border rounded-lg p-3 bg-secondary/20">
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-2">Preview</p>
+                <p className="text-xs text-foreground whitespace-pre-wrap">{body}</p>
+              </div>
+            )}
+          </div>
+        </div>
+      </SettingsSection>
+    </div>
+  );
+}
+
+function RemindersTab() {
+  const { data: rules, isLoading, refetch } = trpc.ops.settings.getReminderRules.useQuery();
+  const create = trpc.ops.settings.createReminderRule.useMutation({
+    onSuccess: () => { toast.success("Reminder rule added"); refetch(); setShowAdd(null); },
+    onError: () => toast.error("Failed to add rule"),
+  });
+  const del = trpc.ops.settings.deleteReminderRule.useMutation({
+    onSuccess: () => { toast.success("Rule deleted"); refetch(); },
+    onError: () => toast.error("Failed to delete"),
+  });
+
+  const [showAdd, setShowAdd] = useState<"invoice" | "visit" | null>(null);
+  const [newOffset, setNewOffset] = useState(-1);
+  const [newChannel, setNewChannel] = useState<"email" | "sms" | "both">("sms");
+
+  if (isLoading) return <div className="flex items-center justify-center py-16"><Loader2 className="w-5 h-5 animate-spin text-muted-foreground" /></div>;
+
+  const invoiceRules = rules?.filter(r => r.ruleType === "invoice") ?? [];
+  const visitRules = rules?.filter(r => r.ruleType === "visit") ?? [];
+
+  const offsetLabel = (days: number) => {
+    if (days === 0) return "On the day";
+    if (days < 0) return `${Math.abs(days)} day${Math.abs(days) !== 1 ? "s" : ""} before`;
+    return `${days} day${days !== 1 ? "s" : ""} after`;
+  };
+
+  const RuleSection = ({ type, label, desc, ruleList }: { type: "invoice" | "visit"; label: string; desc: string; ruleList: typeof invoiceRules }) => (
+    <SettingsSection title={label} description={desc}>
+      {ruleList.length === 0 && showAdd !== type ? (
+        <div className="text-center py-8 border border-dashed border-border rounded-lg">
+          <AlarmClock className="w-7 h-7 text-muted-foreground mx-auto mb-2" />
+          <p className="text-xs text-muted-foreground">No reminder rules configured. Add one to start sending automatic reminders.</p>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {ruleList.map(rule => (
+            <div key={rule.id} className="flex items-center justify-between p-3 border border-border rounded-lg">
+              <div className="flex items-center gap-3 text-xs">
+                <span className="font-semibold text-foreground">{offsetLabel(rule.offsetDays)}</span>
+                <span className="text-muted-foreground">via</span>
+                <span className="uppercase font-semibold text-primary text-[11px]">{rule.channel}</span>
+              </div>
+              <button onClick={() => del.mutate({ id: rule.id })} className="text-muted-foreground hover:text-red-400 transition-colors">
+                <Trash2 className="w-3.5 h-3.5" />
+              </button>
+            </div>
           ))}
         </div>
-      </div>
+      )}
 
-      {/* Content area */}
-      <div className="p-6">
-        {activeTab === "quotes"        && <QuoteLogTab />}
-        {activeTab === "profile"       && <ProfileTab />}
-        {activeTab === "business"      && <BusinessTab />}
-        {activeTab === "integrations"  && <IntegrationsTab />}
-        {activeTab === "notifications" && <NotificationsTab />}
-        {activeTab === "team"          && <TeamTab />}
-        {activeTab === "billing"       && <BillingTab />}
-        {activeTab === "security"      && <SecurityTab />}
+      {showAdd === type ? (
+        <div className="border border-border rounded-lg p-4 space-y-3 bg-secondary/20">
+          <p className="text-xs font-semibold text-foreground">New Reminder Rule</p>
+          <div className="grid grid-cols-2 gap-3">
+            <FieldRow label="Offset (days, negative = before)">
+              <NumberInput value={newOffset} onChange={setNewOffset} step={1} />
+            </FieldRow>
+            <FieldRow label="Channel">
+              <select
+                value={newChannel}
+                onChange={e => setNewChannel(e.target.value as "email" | "sms" | "both")}
+                className="w-full bg-secondary/50 border border-border rounded-md px-3 py-2 text-xs text-foreground outline-none focus:border-primary/50 transition-colors"
+              >
+                <option value="sms">SMS</option>
+                <option value="email">Email</option>
+                <option value="both">Both</option>
+              </select>
+            </FieldRow>
+          </div>
+          <div className="flex gap-2">
+            <button
+              onClick={() => create.mutate({ ruleType: type, offsetDays: newOffset, channel: newChannel })}
+              className="flex items-center gap-2 bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-semibold px-3 py-2 rounded-md transition-colors"
+            >
+              Add Rule
+            </button>
+            <button onClick={() => setShowAdd(null)} className="text-xs text-muted-foreground hover:text-foreground transition-colors px-3 py-2">Cancel</button>
+          </div>
+        </div>
+      ) : (
+        <button
+          onClick={() => { setShowAdd(type); setNewOffset(-1); setNewChannel("sms"); }}
+          className="w-full flex items-center justify-center gap-2 border border-dashed border-border rounded-lg py-2.5 text-xs text-muted-foreground hover:text-foreground hover:border-border/80 transition-colors"
+        >
+          <Plus className="w-3.5 h-3.5" />Add Reminder Rule
+        </button>
+      )}
+    </SettingsSection>
+  );
+
+  return (
+    <div className="space-y-4">
+      <RuleSection type="invoice" label="Invoice Reminders" desc="Configure automatic payment reminders. Rules trigger relative to the invoice due date." ruleList={invoiceRules} />
+      <RuleSection type="visit" label="Visit Reminders" desc="Configure automatic site visit reminders. Rules trigger relative to the visit start time." ruleList={visitRules} />
+    </div>
+  );
+}
+
+function IntegrationsTab() {
+  const [apiKeyVisible, setApiKeyVisible] = useState(false);
+  const webhookUrl = `${window.location.origin}/api/webhooks/leads`;
+  const apiKey = "whk_ne-api-key-placeholder";
+
+  const copy = (val: string) => { navigator.clipboard.writeText(val); toast.success("Copied to clipboard"); };
+
+  return (
+    <div className="space-y-4">
+      <p className="text-xs text-muted-foreground">Connect lead sources so new leads automatically appear in your pipeline.</p>
+
+      <SettingsSection title="Facebook Lead Ads" description="Connect your Facebook Page to automatically receive leads from your ads.">
+        <button onClick={() => toast.info("Feature coming soon")}
+          className="w-full flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold px-4 py-2.5 rounded-md transition-colors">
+          Connect Facebook Page
+        </button>
+        <p className="text-[11px] text-muted-foreground text-center">You'll be asked to log into Facebook and select your business page. We only request access to receive leads from your ads.</p>
+      </SettingsSection>
+
+      <SettingsSection title="Google Business Profile" description="Connect your Google Business Profile to show reviews on your quotes.">
+        <button onClick={() => toast.info("Feature coming soon")}
+          className="w-full flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold px-4 py-2.5 rounded-md transition-colors">
+          Connect Google Business Profile
+        </button>
+        <p className="text-[11px] text-muted-foreground text-center">You'll be asked to log into Google and select your business location. Your 5-star reviews will automatically display on customer quotes.</p>
+      </SettingsSection>
+
+      <SettingsSection
+        title="Zapier / Make Webhook"
+        description="The easiest way to connect Facebook Lead Ads (or any lead source) to your pipeline. No coding required."
+        action={<span className="text-[11px] bg-primary/20 text-primary border border-primary/30 px-2 py-0.5 rounded-full font-semibold">Recommended</span>}
+      >
+        <div className="space-y-3">
+          <div>
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-2">Your Webhook Credentials</p>
+            <div className="space-y-2">
+              <div>
+                <label className="text-[11px] text-muted-foreground uppercase tracking-wider">Webhook URL</label>
+                <div className="flex gap-2 mt-1">
+                  <code className="flex-1 bg-secondary/60 border border-border rounded px-3 py-2 text-xs font-mono text-foreground truncate">{webhookUrl}</code>
+                  <button onClick={() => copy(webhookUrl)} className="shrink-0 p-2 bg-secondary border border-border rounded hover:bg-secondary/80 transition-colors">
+                    <Copy className="w-3.5 h-3.5 text-muted-foreground" />
+                  </button>
+                </div>
+              </div>
+              <div>
+                <label className="text-[11px] text-muted-foreground uppercase tracking-wider">API Key</label>
+                <div className="flex gap-2 mt-1">
+                  <code className="flex-1 bg-secondary/60 border border-border rounded px-3 py-2 text-xs font-mono text-foreground truncate">
+                    {apiKeyVisible ? apiKey : apiKey.slice(0, 8) + "..."}
+                  </code>
+                  <button onClick={() => setApiKeyVisible(v => !v)} className="shrink-0 p-2 bg-secondary border border-border rounded hover:bg-secondary/80 transition-colors">
+                    {apiKeyVisible ? <EyeOff className="w-3.5 h-3.5 text-muted-foreground" /> : <Eye className="w-3.5 h-3.5 text-muted-foreground" />}
+                  </button>
+                  <button onClick={() => copy(apiKey)} className="shrink-0 p-2 bg-secondary border border-border rounded hover:bg-secondary/80 transition-colors">
+                    <Copy className="w-3.5 h-3.5 text-muted-foreground" />
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+          <button onClick={() => toast.info("Test payload sent")}
+            className="flex items-center gap-2 bg-secondary hover:bg-secondary/80 border border-border text-xs px-3 py-2 rounded-md transition-colors">
+            Send Test
+          </button>
+        </div>
+      </SettingsSection>
+
+      <SettingsSection title="QuickBooks Online" description="Sync invoices, payments, and expenses with your accounting.">
+        <div className="flex items-center gap-2 mb-3">
+          <span className="text-[11px] bg-secondary border border-border px-2 py-0.5 rounded-full text-muted-foreground">Not Connected</span>
+        </div>
+        <p className="text-xs text-muted-foreground mb-3">Connect QuickBooks Online to automatically sync invoices, payments, and customer data.</p>
+        <button onClick={() => toast.info("Coming soon")} className="flex items-center gap-2 bg-secondary hover:bg-secondary/80 border border-border text-xs px-3 py-2 rounded-md transition-colors opacity-60 cursor-not-allowed">
+          Connect QuickBooks (Coming Soon)
+        </button>
+      </SettingsSection>
+
+      <SettingsSection title="Gusto Payroll" description="Export approved timesheets directly to Gusto for payroll processing.">
+        <div className="flex items-center gap-2 mb-3">
+          <span className="text-[11px] bg-secondary border border-border px-2 py-0.5 rounded-full text-muted-foreground">Not Connected</span>
+        </div>
+        <p className="text-xs text-muted-foreground mb-3">Connect your Gusto account to automatically sync approved time entries.</p>
+        <button onClick={() => toast.info("Coming soon")} className="flex items-center gap-2 bg-secondary hover:bg-secondary/80 border border-border text-xs px-3 py-2 rounded-md transition-colors opacity-60 cursor-not-allowed">
+          Connect Gusto (Coming Soon)
+        </button>
+      </SettingsSection>
+    </div>
+  );
+}
+
+function PaymentsTab() {
+  const [enabled, setEnabled] = useState(false);
+
+  return (
+    <div className="space-y-4">
+      <SettingsSection
+        title="Payment Settings"
+        description="Connect Stripe to accept online payments from your customers."
+        action={
+          <button
+            onClick={() => setEnabled(v => !v)}
+            className={cn(
+              "shrink-0 w-10 h-5 rounded-full transition-colors relative",
+              enabled ? "bg-primary" : "bg-secondary border border-border"
+            )}
+          >
+            <span className={cn("absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform", enabled ? "translate-x-5" : "translate-x-0.5")} />
+          </button>
+        }
+      >
+        <div className="border border-border rounded-lg p-5 space-y-4">
+          <p className="text-sm font-semibold text-foreground">Get paid faster with online invoices</p>
+          <p className="text-xs text-muted-foreground">Connect a free Stripe account so customers can pay your invoices by card or ACH. Money goes straight to your bank.</p>
+          <ul className="space-y-2">
+            {[
+              "Accept credit card and ACH payments",
+              "Automatic deposit to your bank account",
+              "No monthly fees — only pay when you get paid",
+            ].map(item => (
+              <li key={item} className="flex items-center gap-2 text-xs text-foreground">
+                <CheckCircle2 className="w-3.5 h-3.5 text-green-400 shrink-0" />{item}
+              </li>
+            ))}
+          </ul>
+          <button onClick={() => toast.info("Stripe integration coming soon")}
+            className="flex items-center gap-2 bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-semibold px-4 py-2.5 rounded-md transition-colors">
+            <CardIcon className="w-3.5 h-3.5" />Connect Stripe
+          </button>
+        </div>
+      </SettingsSection>
+    </div>
+  );
+}
+
+function BillingTab() {
+  return (
+    <div className="space-y-4">
+      <SettingsSection title="Current Plan">
+        <div>
+          <p className="text-sm font-semibold text-foreground mb-1">Operator Software</p>
+          <span className="inline-flex items-center gap-1 text-[11px] bg-amber-500/15 text-amber-400 border border-amber-500/30 px-2 py-0.5 rounded-full font-semibold">
+            Trial — 0 days left
+          </span>
+        </div>
+      </SettingsSection>
+
+      <SettingsSection title="Choose a Plan">
+        <div className="space-y-4">
+          <div>
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Operator Software</p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {[
+                { price: "$297/mo", desc: "Monthly billing", highlight: false },
+                { price: "$2,970/yr", desc: "Save $594 per year", highlight: true },
+              ].map(plan => (
+                <button key={plan.price} onClick={() => toast.info("Feature coming soon")}
+                  className={cn(
+                    "text-left p-4 border rounded-lg transition-colors",
+                    plan.highlight ? "border-primary/40 bg-primary/10" : "border-border hover:border-border/80 bg-secondary/20"
+                  )}>
+                  <p className="text-sm font-bold text-foreground">{plan.price}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">{plan.desc}</p>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">OPS Accelerator</p>
+            <p className="text-xs text-muted-foreground mb-3">16-week implementation program + 12 months of support. Includes all Operator Software features.</p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {[
+                { price: "$10,000", desc: "Pay in full — save $2,000" },
+                { price: "$1,500/mo × 8", desc: "$12,000 total over 8 months" },
+              ].map(plan => (
+                <button key={plan.price} onClick={() => toast.info("Feature coming soon")}
+                  className="text-left p-4 border border-border rounded-lg hover:border-border/80 bg-secondary/20 transition-colors">
+                  <p className="text-sm font-bold text-foreground">{plan.price}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">{plan.desc}</p>
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      </SettingsSection>
+    </div>
+  );
+}
+
+// ─── Quote Log ──────────────────────────────────────────────────────────────
+function QuoteLogTab() {
+  const { data: quotes, isLoading, refetch } = trpc.ops.quotes.list.useQuery({ limit: 100 });
+  const deleteQuote = trpc.ops.quotes.delete.useMutation({
+    onSuccess: () => { toast.success("Submission deleted"); refetch(); },
+    onError: () => toast.error("Failed to delete"),
+  });
+
+  if (isLoading) return <div className="flex items-center justify-center py-16"><Loader2 className="w-5 h-5 animate-spin text-muted-foreground" /></div>;
+
+  return (
+    <div className="space-y-4">
+      <SettingsSection title="Website Quote Submissions" description="All quote requests submitted through the website contact form.">
+        {!quotes || quotes.length === 0 ? (
+          <div className="text-center py-10 border border-dashed border-border rounded-lg">
+            <ClipboardList className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
+            <p className="text-sm text-muted-foreground">No quote submissions yet.</p>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {quotes.map(q => (
+              <QuoteRow key={q.id} q={q} onDelete={id => deleteQuote.mutate({ id })} />
+            ))}
+          </div>
+        )}
+      </SettingsSection>
+    </div>
+  );
+}
+
+// ─── Main Settings page ───────────────────────────────────────────────────────
+export default function Settings() {
+  const [activeTab, setActiveTab] = useState("general");
+
+  const renderTab = () => {
+    switch (activeTab) {
+      case "general":              return <GeneralTab />;
+      case "automations":          return <AutomationsTab />;
+      case "phone":                return <PhoneTab />;
+      case "trust-center":         return <TrustCenterTab />;
+      case "team":                 return <TeamTab />;
+      case "service-catalog":      return <ServiceCatalogTab />;
+      case "template-editor":      return <TemplateEditorTab />;
+      case "template-assignments": return <TemplateAssignmentsTab />;
+      case "reminders":            return <RemindersTab />;
+      case "integrations":         return <IntegrationsTab />;
+      case "payments":             return <PaymentsTab />;
+      case "billing":              return <BillingTab />;
+      default:                     return <GeneralTab />;
+    }
+  };
+
+  return (
+    <DashboardLayout>
+      <div className="min-h-screen" style={{ backgroundColor: "#0a0a0a" }}>
+        {/* ── Top settings nav bar ── */}
+        <div className="sticky top-0 z-20 border-b border-border bg-[#0f0f0f]">
+          <div className="overflow-x-auto">
+            <div className="flex items-center min-w-max px-4 h-11">
+              {/* SETTINGS label */}
+              <span
+                className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground pr-4 mr-1 border-r border-border shrink-0"
+                style={{ fontFamily: "'Space Grotesk', sans-serif" }}
+              >
+                SETTINGS
+              </span>
+
+              {/* Tabs */}
+              {tabs.map((tab, idx) => {
+                const Icon = tab.icon;
+                const isActive = activeTab === tab.id;
+                return (
+                  <div key={tab.id} className="flex items-center">
+                    {idx > 0 && <span className="text-border/60 px-1 text-xs select-none">|</span>}
+                    <button
+                      onClick={() => setActiveTab(tab.id)}
+                      className={cn(
+                        "flex items-center gap-1.5 px-3 h-11 text-xs font-medium transition-colors relative whitespace-nowrap",
+                        isActive
+                          ? "text-foreground"
+                          : "text-muted-foreground hover:text-foreground"
+                      )}
+                    >
+                      <Icon className="w-3.5 h-3.5 shrink-0" />
+                      {tab.label}
+                      {isActive && (
+                        <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary rounded-t-full" />
+                      )}
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+
+        {/* ── Content ── */}
+        <div className="p-4 sm:p-6 max-w-4xl">
+          {renderTab()}
+        </div>
       </div>
     </DashboardLayout>
   );
