@@ -423,3 +423,11 @@
 - [x] Remove "Coming soon" tag from "Invoice status" sync card in Settings Integrations tab
 - [x] Replace gray circle icon with green CheckCircle2 on "Client records" card
 - [x] Replace gray circle icon with green CheckCircle2 on "Invoice status" card
+
+## Clear Placeholder Data from Ops Dashboard — April 2026
+
+- [x] Remove hardcoded Lead Pipeline entries from ops Home page
+- [x] Remove hardcoded Weekly Scoreboard entries from ops Home page
+- [x] Remove hardcoded Active Job Site entries from ops Home page
+- [x] Remove hardcoded Recent Jobs data from ops Home page
+- [x] Remove hardcoded Crew Days This Week entries from ops Home page
