@@ -657,6 +657,14 @@ export default function Leads() {
             <p className="text-xs text-muted-foreground">
               This will permanently remove the lead record. This cannot be undone.
             </p>
+            <div className="rounded-md bg-red-500/10 border border-red-500/20 px-3 py-2.5 space-y-1">
+              <p className="text-[11px] font-semibold text-red-400">The following will also be deleted:</p>
+              <ul className="text-[11px] text-red-300/80 space-y-0.5 list-disc list-inside">
+                <li>All contact info, notes, and estimated value</li>
+                <li>Pipeline stage history for this lead</li>
+              </ul>
+              <p className="text-[11px] text-muted-foreground mt-1">If this lead was converted to a job, that job record is not affected.</p>
+            </div>
             <div className="flex gap-2 pt-1">
               <button
                 onClick={() => setDeleteConfirmId(null)}

@@ -434,13 +434,13 @@
 
 ## Delete Records on /ops Pages — April 2026
 
-- [ ] Audit existing delete procedures in opsRouter (leads, jobs, quotes)
-- [ ] Add delete procedure for local quotes if missing
-- [ ] Add delete button + confirmation dialog to /ops/leads page
-- [ ] Add delete button + confirmation dialog to /ops/jobs page
-- [ ] Add delete button + confirmation dialog to /ops/quotes page (local quotes from DB)
-- [ ] Add delete button + confirmation dialog to /ops/clients page (note: Jobber clients are read-only — delete from Jobber directly)
-- [ ] Write vitest for any new delete procedures
+- [x] Audit existing delete procedures in opsRouter (leads, jobs, quotes)
+- [x] Add delete procedure for local quotes if missing
+- [x] Add delete button + confirmation dialog to /ops/leads page
+- [x] Add delete button + confirmation dialog to /ops/jobs page
+- [x] Add delete button + confirmation dialog to /ops/quotes page (local quotes from DB)
+- [x] Add delete button + confirmation dialog to /ops/clients page (note: Jobber clients are read-only — delete from Jobber directly)
+- [x] Write vitest for any new delete procedures
 
 ## Delete / Actions Refinement — April 2026
 
@@ -449,3 +449,10 @@
 - [x] Add delete button to Settings Quote Log tab for local quote submissions (uses trpc.ops.quotes.delete)
 - [x] Add per-row "Open in Jobber" action button to Clients page (links to Jobber client record)
 - [x] Add per-row "Open in Jobber" action button to Quotes page (links to Jobber quote record)
+
+## Delete Modal Associated-Data Warnings — April 2026
+
+- [x] Audit schema cascade rules for leads, jobs, and quote submissions
+- [x] Enhance Leads delete modal with warning about associated data (converted job link, notes)
+- [x] Enhance Jobs delete modal with warning about associated data (schedule entries, invoices)
+- [x] Enhance Settings Quote Log delete modal with warning about associated data (Jobber sync record)

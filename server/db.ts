@@ -166,6 +166,8 @@ export async function updateJob(id: number, userId: number, data: Partial<Insert
 export async function deleteJob(id: number, userId: number) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
+  // Remove linked schedule entries first — no DB-level cascade on jobId
+  await db.delete(scheduleEntries).where(and(eq(scheduleEntries.jobId, id), eq(scheduleEntries.userId, userId)));
   return db.delete(jobs).where(and(eq(jobs.id, id), eq(jobs.userId, userId)));
 }
 

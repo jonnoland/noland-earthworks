@@ -184,6 +184,7 @@ function QuoteRow({ q, onDelete }: { q: {
 function QuoteLogTab() {
   const utils = trpc.useUtils();
   const { data: quotes = [], isLoading, refetch, isFetching } = trpc.ops.quotes.list.useQuery({ limit: 100 });
+  const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null);
   const deleteQuote = trpc.ops.quotes.delete.useMutation({
     onSuccess: () => {
       utils.ops.quotes.list.invalidate();
@@ -192,8 +193,7 @@ function QuoteLogTab() {
     onError: () => toast.error("Failed to delete submission"),
   });
   const handleDelete = (id: number) => {
-    if (!confirm("Delete this quote submission? This cannot be undone.")) return;
-    deleteQuote.mutate({ id });
+    setDeleteConfirmId(id);
   };
 
   const syncedCount = quotes.filter(q => q.jobberStatus === "synced").length;
@@ -282,6 +282,42 @@ function QuoteLogTab() {
       {!isLoading && quotes.length > 0 && (
         <div className="space-y-2">
           {quotes.map(q => <QuoteRow key={q.id} q={q} onDelete={handleDelete} />)}
+        </div>
+      )}
+
+      {/* Delete confirmation modal */}
+      {deleteConfirmId !== null && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="bg-card border border-border rounded-xl shadow-2xl w-full max-w-sm p-6 space-y-4">
+            <h3 className="text-sm font-semibold text-foreground">Delete Quote Submission</h3>
+            <p className="text-xs text-muted-foreground">
+              This will permanently remove the submission from the local log. This cannot be undone.
+            </p>
+            <div className="rounded-md bg-red-500/10 border border-red-500/20 px-3 py-2.5 space-y-1">
+              <p className="text-[11px] font-semibold text-red-400">The following will also be deleted:</p>
+              <ul className="text-[11px] text-red-300/80 space-y-0.5 list-disc list-inside">
+                <li>All contact info and project details submitted</li>
+                <li>Jobber sync status and error log for this submission</li>
+              </ul>
+              <p className="text-[11px] text-muted-foreground mt-1">If this submission was synced to Jobber, the Jobber request record is not affected.</p>
+            </div>
+            <div className="flex gap-2 pt-1">
+              <button
+                onClick={() => setDeleteConfirmId(null)}
+                className="flex-1 py-2 rounded-md text-xs font-semibold text-muted-foreground bg-secondary/50 hover:bg-secondary transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => { deleteQuote.mutate({ id: deleteConfirmId }); setDeleteConfirmId(null); }}
+                disabled={deleteQuote.isPending}
+                className="flex-1 py-2 rounded-md text-xs font-semibold text-white bg-red-600 hover:bg-red-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-1.5"
+              >
+                {deleteQuote.isPending && <Loader2 className="w-3 h-3 animate-spin" />}
+                Delete Submission
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>
