@@ -225,7 +225,61 @@ const quotesRouter = router({
 });
 
 // ─── Crews Router ─────────────────────────────────────────────────────────────
+const equipmentItemSchema = z.object({ name: z.string(), monthlyCostCents: z.number().int().min(0) });
+const overheadItemSchema = z.object({ name: z.string(), monthlyCostCents: z.number().int().min(0) });
+
 const crewsRouter = router({
+  getById: ownerProcedure
+    .input(z.object({ id: z.number().int().positive() }))
+    .query(async ({ input }) => {
+      const db = await getDb();
+      if (!db) return null;
+      const [crew] = await db.select().from(crews).where(eq(crews.id, input.id)).limit(1);
+      if (!crew) return null;
+      const members = await db.select().from(crewMembers).where(eq(crewMembers.crewId, input.id));
+      return {
+        ...crew,
+        equipmentItems: JSON.parse(crew.equipmentItems || '[]') as { name: string; monthlyCostCents: number }[],
+        overheadItems: JSON.parse(crew.overheadItems || '[]') as { name: string; monthlyCostCents: number }[],
+        members,
+      };
+    }),
+  updateDetailedPricing: ownerProcedure
+    .input(z.object({
+      id: z.number().int().positive(),
+      // Labor
+      hoursPerDay: z.number().int().min(1).max(24).optional(),
+      crewMemberCount: z.number().int().min(1).optional(),
+      memberWageCents: z.number().int().min(0).optional(),
+      burdenPct: z.number().int().min(0).max(100).optional(),
+      // Equipment
+      equipmentItems: z.array(equipmentItemSchema).optional(),
+      // Fuel
+      machineBurnRateGph: z.number().int().min(0).optional(),
+      fuelPriceCents: z.number().int().min(0).optional(),
+      truckFuelPerDayCents: z.number().int().min(0).optional(),
+      // Wear
+      teethCostPerSetCents: z.number().int().min(0).optional(),
+      daysPerSet: z.number().int().min(1).optional(),
+      annualMajorWearCents: z.number().int().min(0).optional(),
+      miscConsumablesPerDayCents: z.number().int().min(0).optional(),
+      // Overhead
+      overheadItems: z.array(overheadItemSchema).optional(),
+      // Scheduling
+      workingDaysPerMonth: z.number().int().min(1).max(31).optional(),
+      targetMarginPct: z.number().int().min(1).max(99).optional(),
+      acresPerDay: z.number().int().min(1).optional(),
+    }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+      const { id, equipmentItems, overheadItems, ...rest } = input;
+      const updateData: Record<string, unknown> = { ...rest };
+      if (equipmentItems !== undefined) updateData.equipmentItems = JSON.stringify(equipmentItems);
+      if (overheadItems !== undefined) updateData.overheadItems = JSON.stringify(overheadItems);
+      await db.update(crews).set(updateData).where(eq(crews.id, id));
+      return { success: true };
+    }),
   list: ownerProcedure.query(async () => {
     const db = await getDb();
     if (!db) return [];

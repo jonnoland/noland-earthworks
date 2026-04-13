@@ -17,6 +17,7 @@ import OpsClients from "./pages/ops/Clients";
 import OpsQuotes from "./pages/ops/Quotes";
 import OpsInvoices from "./pages/ops/Invoices";
 import OpsCrews from "./pages/ops/Crews";
+import CrewPricing from "./pages/ops/CrewPricing";
 import OpsConversations from "./pages/ops/Conversations";
 import OpsReviews from "./pages/ops/Reviews";
 import OpsTimesheets from "./pages/ops/Timesheets";
@@ -182,6 +183,9 @@ function Router() {
       </Route>
       <Route path="/ops/crews">
         <OwnerRoute><OpsCrews /></OwnerRoute>
+      </Route>
+      <Route path="/ops/crews/:id/pricing">
+        <OwnerRoute><CrewPricing /></OwnerRoute>
       </Route>
       <Route path="/ops/conversations">
         <OwnerRoute><OpsConversations /></OwnerRoute>

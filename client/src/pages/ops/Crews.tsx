@@ -225,11 +225,21 @@ function CrewCard({ crew, jobsToday }: { crew: Crew; jobsToday: number }) {
             </div>
 
             {/* Actions */}
-            <div className="flex gap-2">
+            <div className="flex gap-2 flex-wrap">
+              <Link href={`/ops/crews/${crew.id}/pricing`} className="flex-1 min-w-[120px]">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full border-amber-700 text-amber-400 hover:text-amber-300 hover:bg-amber-950/30"
+                >
+                  <Pencil className="w-3.5 h-3.5 mr-1.5" />
+                  View Pricing
+                </Button>
+              </Link>
               <Button
                 variant="outline"
                 size="sm"
-                className="flex-1 border-zinc-700 text-zinc-300 hover:text-white hover:bg-zinc-800"
+                className="flex-1 min-w-[120px] border-zinc-700 text-zinc-300 hover:text-white hover:bg-zinc-800"
                 onClick={() => {
                   setEditDayRate(String(crew.dayRate));
                   setEditCostPerDay(String(crew.costPerDay));

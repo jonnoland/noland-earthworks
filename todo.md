@@ -532,3 +532,23 @@
 - [x] Add all five new pages to sidebar nav in OpsDashboardLayout.tsx (Crews, Conversations, Reviews, Timesheets, Scoreboard)
 - [x] TypeScript clean (0 errors)
 - [x] 59/59 tests passing
+
+## Google & Facebook Reviews Integration — Apr 13 2026
+
+- [ ] Add GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, GOOGLE_REFRESH_TOKEN, GOOGLE_LOCATION_NAME secrets
+- [ ] Add FACEBOOK_PAGE_ID, FACEBOOK_PAGE_ACCESS_TOKEN secrets
+- [ ] Create server/reviewsRouter.ts with googleReviews and facebookReviews tRPC procedures
+- [ ] Register reviewsRouter in server/routers.ts
+- [ ] Rebuild /ops/reviews page to display live Google + Facebook reviews with KPI cards, source tabs, and respond links
+- [ ] Add Google reply mutation (PUT accounts.locations.reviews/{reviewId}/reply)
+
+## Crew Pricing Detail Page — Apr 13 2026
+
+- [x] Audit crews table schema and Crews.tsx for existing pricing fields
+- [x] Extend crews table with detailed cost fields: hoursPerDay, crewMemberCount, memberWage, burdenPct, equipmentItems (JSON), machineBurnRate, fuelPrice, truckFuelPerDay, teethCostPerSet, daysPerSet, annualMajorWear, miscConsumablesPerDay, overheadItems (JSON), workingDaysPerMonth, targetMarginPct, acresPerDay
+- [x] Run pnpm db:push to migrate schema
+- [x] Add getCrewPricing and updateCrewPricing tRPC procedures
+- [x] Build /ops/crews/:id page with KPI cards (Breakeven Floor, Crew-Day Rate, Profit/Day), donut chart, five cost breakdown sections (Labor, Equipment, Fuel, Wear & Consumables, Monthly Overhead), Crew Details card, Quick Stats card
+- [x] Build Edit Pricing modal with all cost input fields
+- [x] Wire "Edit Pricing" link from Crews list card to /ops/crews/:id
+- [x] Wire /ops/crews/:id route in App.tsx

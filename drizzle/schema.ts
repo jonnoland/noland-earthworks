@@ -210,10 +210,48 @@ export const crews = mysqlTable("crews", {
   id: int("id").autoincrement().primaryKey(),
   name: varchar("name", { length: 255 }).notNull(),
   equipmentType: varchar("equipmentType", { length: 100 }).notNull().default("Mulcher"),
-  /** Day Rate = target revenue per day (what you charge) */
+  /** Day Rate = target revenue per day (what you charge) — kept for backward compat, derived from pricing calc */
   dayRate: int("dayRate").notNull().default(0),
-  /** Cost Per Day = labor + operating costs */
+  /** Cost Per Day = total daily cost — kept for backward compat, derived from pricing calc */
   costPerDay: int("costPerDay").notNull().default(0),
+
+  // ── Labor ──────────────────────────────────────────────────────────────────
+  hoursPerDay: int("hoursPerDay").notNull().default(9),
+  crewMemberCount: int("crewMemberCount").notNull().default(1),
+  /** Wage in cents per hour */
+  memberWageCents: int("memberWageCents").notNull().default(5000),
+  /** Burden/payroll tax percent (0-100) */
+  burdenPct: int("burdenPct").notNull().default(0),
+
+  // ── Equipment (JSON array: [{name: string, monthlyCostCents: number}]) ─────
+  equipmentItems: text("equipmentItems").notNull().default("[]"),
+
+  // ── Fuel ───────────────────────────────────────────────────────────────────
+  machineBurnRateGph: int("machineBurnRateGph").notNull().default(7),
+  /** Fuel price in cents per gallon */
+  fuelPriceCents: int("fuelPriceCents").notNull().default(499),
+  /** Truck fuel cost per day in cents */
+  truckFuelPerDayCents: int("truckFuelPerDayCents").notNull().default(5000),
+
+  // ── Wear & Consumables ─────────────────────────────────────────────────────
+  /** Teeth/cutting tool cost per set in cents */
+  teethCostPerSetCents: int("teethCostPerSetCents").notNull().default(220000),
+  /** Working days per set of teeth */
+  daysPerSet: int("daysPerSet").notNull().default(10),
+  /** Annual major wear cost in cents */
+  annualMajorWearCents: int("annualMajorWearCents").notNull().default(2640000),
+  /** Misc consumables per day in cents */
+  miscConsumablesPerDayCents: int("miscConsumablesPerDayCents").notNull().default(10000),
+
+  // ── Monthly Overhead (JSON array: [{name: string, monthlyCostCents: number}]) ─
+  overheadItems: text("overheadItems").notNull().default("[]"),
+
+  // ── Scheduling / Margin ────────────────────────────────────────────────────
+  workingDaysPerMonth: int("workingDaysPerMonth").notNull().default(25),
+  /** Target profit margin percent (0-100) */
+  targetMarginPct: int("targetMarginPct").notNull().default(35),
+  acresPerDay: int("acresPerDay").notNull().default(1),
+
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
