@@ -297,7 +297,26 @@ const crewsRouter = router({
     .mutation(async ({ input }) => {
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
-      const [result] = await db.insert(crews).values(input);
+      const [result] = await db.insert(crews).values({
+        ...input,
+        // Pricing detail defaults — prevents NOT NULL failures on new columns
+        hoursPerDay: 8,
+        crewMemberCount: 1,
+        memberWageCents: 0,
+        burdenPct: 0,
+        equipmentItems: JSON.stringify([]),
+        machineBurnRateGph: 0,
+        fuelPriceCents: 0,
+        truckFuelPerDayCents: 0,
+        teethCostPerSetCents: 0,
+        daysPerSet: 1,
+        annualMajorWearCents: 0,
+        miscConsumablesPerDayCents: 0,
+        overheadItems: JSON.stringify([]),
+        workingDaysPerMonth: 20,
+        targetMarginPct: 30,
+        acresPerDay: 0,
+      });
       return { id: (result as unknown as { insertId: number }).insertId };
     }),
   updatePricing: ownerProcedure

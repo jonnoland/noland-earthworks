@@ -552,3 +552,13 @@
 - [x] Build Edit Pricing modal with all cost input fields
 - [x] Wire "Edit Pricing" link from Crews list card to /ops/crews/:id
 - [x] Wire /ops/crews/:id route in App.tsx
+
+## Quick Stats Margin Sensitivity — Apr 13 2026
+
+- [x] Add margin sensitivity table to Quick Stats card (rate and profit at 5 margin scenarios)
+- [x] Add interactive margin slider that previews rate/profit without saving
+- [x] Highlight current target margin row in the sensitivity table
+
+## Bug Fix — Apr 13 2026
+
+- [x] Fix crew create mutation — supply default values for all new pricing columns so insert does not fail

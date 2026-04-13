@@ -7,9 +7,10 @@
  *   - Right column: Crew Details card + Quick Stats card
  *   - Edit Pricing modal with all inputs
  */
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { useParams, useLocation } from "wouter";
-import { ArrowLeft, Edit, Trash2, PlusCircle, MinusCircle } from "lucide-react";
+import { ArrowLeft, Edit, Trash2, PlusCircle, MinusCircle, TrendingUp } from "lucide-react";
+import { Slider } from "@/components/ui/slider";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -282,6 +283,11 @@ export default function CrewPricing() {
   const crewId = parseInt(params.id ?? "0", 10);
   const [, navigate] = useLocation();
   const [editOpen, setEditOpen] = useState(false);
+  const [previewMargin, setPreviewMargin] = useState<number | null>(null);
+
+  const handleSliderChange = useCallback((vals: number[]) => {
+    setPreviewMargin(vals[0]);
+  }, []);
 
   const { data: crew, isLoading } = trpc.ops.crews.getById.useQuery({ id: crewId }, { enabled: crewId > 0 });
 
@@ -559,10 +565,11 @@ export default function CrewPricing() {
           <Card className="bg-zinc-900 border-zinc-800">
             <CardHeader className="pb-2">
               <CardTitle className="text-base text-white flex items-center gap-2">
-                <span className="text-orange-400">&#9650;</span> Quick Stats
+                <TrendingUp className="w-4 h-4 text-orange-400" /> Quick Stats
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-3 text-sm">
+            <CardContent className="space-y-4 text-sm">
+              {/* Core stats row */}
               {[
                 { label: "Day Rate", value: fmt(costs.dayRate), color: "text-white" },
                 { label: "Cost/Day", value: fmt(costs.totalCost), color: "text-white" },
@@ -574,6 +581,108 @@ export default function CrewPricing() {
                   <span className={`font-semibold ${color}`}>{value}</span>
                 </div>
               ))}
+
+              {/* Divider */}
+              <div className="border-t border-zinc-800 pt-3">
+                {/* Margin slider */}
+                <div className="mb-3">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-zinc-400 text-xs uppercase tracking-wide">Preview Margin</span>
+                    <span className="text-orange-400 font-bold text-sm">
+                      {previewMargin !== null ? previewMargin : crew.targetMarginPct}%
+                    </span>
+                  </div>
+                  <Slider
+                    min={0}
+                    max={70}
+                    step={1}
+                    value={[previewMargin !== null ? previewMargin : crew.targetMarginPct]}
+                    onValueChange={handleSliderChange}
+                    className="w-full"
+                  />
+                  <div className="flex justify-between text-zinc-600 text-xs mt-1">
+                    <span>0%</span>
+                    <span>35%</span>
+                    <span>70%</span>
+                  </div>
+                  {previewMargin !== null && previewMargin !== crew.targetMarginPct && (
+                    <button
+                      onClick={() => setPreviewMargin(null)}
+                      className="mt-1.5 text-xs text-zinc-500 hover:text-zinc-300 underline"
+                    >
+                      Reset to saved ({crew.targetMarginPct}%)
+                    </button>
+                  )}
+                </div>
+
+                {/* Sensitivity table */}
+                <div className="rounded-lg overflow-hidden border border-zinc-800">
+                  <table className="w-full text-xs">
+                    <thead>
+                      <tr className="bg-zinc-800/60">
+                        <th className="text-left px-2.5 py-1.5 text-zinc-400 font-medium">Margin</th>
+                        <th className="text-right px-2.5 py-1.5 text-zinc-400 font-medium">Day Rate</th>
+                        <th className="text-right px-2.5 py-1.5 text-zinc-400 font-medium">Profit/Day</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {(() => {
+                        const activeMargin = previewMargin !== null ? previewMargin : crew.targetMarginPct;
+                        // Build 5 scenario rows centered around the active margin
+                        const step = 5;
+                        const base = Math.round(activeMargin / step) * step;
+                        const rows = [-2, -1, 0, 1, 2].map((offset) => {
+                          const m = Math.max(0, Math.min(70, base + offset * step));
+                          const rate = costs.totalCost / (1 - m / 100);
+                          const profit = rate - costs.totalCost;
+                          const isActive = m === activeMargin;
+                          const isSaved = m === crew.targetMarginPct;
+                          return { m, rate, profit, isActive, isSaved };
+                        });
+                        // Always include the exact active margin if it's not already in the list
+                        const hasActive = rows.some((r) => r.m === activeMargin);
+                        const displayRows = hasActive
+                          ? rows
+                          : [
+                              ...rows.slice(0, 2),
+                              { m: activeMargin, rate: costs.totalCost / (1 - activeMargin / 100), profit: costs.totalCost / (1 - activeMargin / 100) - costs.totalCost, isActive: true, isSaved: activeMargin === crew.targetMarginPct },
+                              ...rows.slice(2),
+                            ].sort((a, b) => a.m - b.m);
+                        return displayRows.map(({ m, rate, profit, isActive, isSaved }) => (
+                          <tr
+                            key={m}
+                            className={`border-t border-zinc-800/50 ${
+                              isActive
+                                ? "bg-orange-950/40"
+                                : "hover:bg-zinc-800/30"
+                            }`}
+                          >
+                            <td className="px-2.5 py-1.5">
+                              <div className="flex items-center gap-1.5">
+                                <span className={isActive ? "text-orange-400 font-bold" : "text-zinc-300"}>{m}%</span>
+                                {isSaved && (
+                                  <span className="text-zinc-500 text-xs">(saved)</span>
+                                )}
+                              </div>
+                            </td>
+                            <td className={`px-2.5 py-1.5 text-right font-medium ${
+                              isActive ? "text-orange-400" : "text-zinc-200"
+                            }`}>
+                              {fmt(rate)}
+                            </td>
+                            <td className={`px-2.5 py-1.5 text-right font-medium ${
+                              profit >= 0 ? (isActive ? "text-green-400" : "text-green-500/80") : "text-red-400"
+                            }`}>
+                              {fmt(profit)}
+                            </td>
+                          </tr>
+                        ));
+                      })()}
+                    </tbody>
+                  </table>
+                </div>
+                <p className="text-zinc-600 text-xs mt-2">Drag the slider to preview how margin changes affect your rate and daily profit. Changes here are not saved.</p>
+              </div>
             </CardContent>
           </Card>
         </div>
