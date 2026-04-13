@@ -416,3 +416,10 @@
 - [x] Identify root cause: jobberRouter adminProcedure checked openId only, second Jon account (role=user) was blocked
 - [x] Fix root cause: updated adminProcedure to accept role=admin as fallback; promoted second account to admin in DB; added role-downgrade protection in upsertUser
 - [x] Add cache invalidation on /ops/settings?jobber=connected landing so status refreshes immediately (refetch() already called in useEffect)
+
+## Settings Sync Cards Update — April 2026
+
+- [x] Remove "Coming soon" tag from "Client records" sync card in Settings Integrations tab
+- [x] Remove "Coming soon" tag from "Invoice status" sync card in Settings Integrations tab
+- [x] Replace gray circle icon with green CheckCircle2 on "Client records" card
+- [x] Replace gray circle icon with green CheckCircle2 on "Invoice status" card

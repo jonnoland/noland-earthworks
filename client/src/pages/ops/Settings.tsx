@@ -429,8 +429,8 @@ function JobberPanel() {
           {[
             { label: "New quote requests",  desc: "Auto-created as leads in your pipeline",       status: "ready" },
             { label: "Approved quotes",     desc: "Converted to active jobs automatically",        status: "ready" },
-            { label: "Client records",      desc: "Synced from Jobber client database",            status: "coming" },
-            { label: "Invoice status",      desc: "Paid/overdue status reflected in reports",      status: "coming" },
+            { label: "Client records",      desc: "Synced from Jobber client database",            status: "ready" },
+            { label: "Invoice status",      desc: "Paid/overdue status reflected in reports",      status: "ready" },
           ].map(item => (
             <div key={item.label} className="flex items-start gap-2.5 p-3 rounded-lg bg-secondary/30 border border-border">
               {item.status === "ready" ? (
