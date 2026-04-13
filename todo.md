@@ -595,3 +595,9 @@
 - [x] Build /ops/distance-quotes/analytics page with Recharts charts
 - [x] Wire route in App.tsx and add Analytics link on the Distance Quotes page
 - [x] TypeScript check and save checkpoint
+
+## Avg Quote Value Chart — Apr 13 2026
+
+- [x] Extend analytics tRPC procedure with avgValueByJobTypeByMonth data (last 6 months)
+- [x] Add grouped bar chart to QuoteAnalytics.tsx showing avg quote value per job type per month
+- [x] TypeScript check and save checkpoint

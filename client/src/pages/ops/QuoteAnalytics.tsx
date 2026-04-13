@@ -345,6 +345,47 @@ export default function QuoteAnalytics() {
           </div>
         )}
 
+        {/* Avg quote value per job type — last 6 months */}
+        {data.jobTypesList.length > 0 && (
+          <div className="ops-card p-4">
+            <h3 className="text-xs font-semibold text-foreground mb-1">Avg Quote Value per Job Type — Last 6 Months</h3>
+            <p className="text-[10px] text-muted-foreground mb-4">
+              Average adjusted job total per quote, grouped by service type. Months with no quotes for a type are omitted.
+            </p>
+            <ResponsiveContainer width="100%" height={260}>
+              <BarChart
+                data={data.avgValueByJobTypeByMonth}
+                margin={{ top: 4, right: 16, left: 0, bottom: 0 }}
+              >
+                <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" />
+                <XAxis dataKey="label" tick={{ fontSize: 10, fill: MUTED }} />
+                <YAxis
+                  tick={{ fontSize: 10, fill: MUTED }}
+                  tickFormatter={v => `$${(v / 1000).toFixed(0)}k`}
+                />
+                <Tooltip
+                  formatter={(v: number, name: string) => [
+                    v != null ? `$${v.toLocaleString()}` : "—",
+                    name,
+                  ]}
+                  contentStyle={{ backgroundColor: "#111827", border: "1px solid #374151", borderRadius: 6, fontSize: 11 }}
+                />
+                <Legend wrapperStyle={{ fontSize: 10 }} />
+                {data.jobTypesList.map((jt, i) => (
+                  <Bar
+                    key={jt}
+                    dataKey={jt}
+                    name={jt}
+                    fill={JOB_TYPE_COLORS[i % JOB_TYPE_COLORS.length]}
+                    radius={[3, 3, 0, 0]}
+                    maxBarSize={32}
+                  />
+                ))}
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        )}
+
       </div>
     </DashboardLayout>
   );

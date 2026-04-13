@@ -677,6 +677,41 @@ const distanceQuotesRouter = router({
       jobType, avgMiles: d.count > 0 ? Math.round(d.sum / d.count) : 0,
     }));
 
+    // Avg quote value per job type per month (last 6 months)
+    // Structure: { [monthKey]: { [jobType]: { sum: number; count: number } } }
+    const monthKeys: string[] = [];
+    const monthLabels: Record<string, string> = {};
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+      monthKeys.push(key);
+      monthLabels[key] = d.toLocaleDateString("en-US", { month: "short", year: "2-digit" });
+    }
+    // Collect all job types present in last-6-month data
+    const jobTypesSet = new Set<string>();
+    const avgValMap: Record<string, Record<string, { sum: number; count: number }>> = {};
+    for (const mk of monthKeys) avgValMap[mk] = {};
+    for (const q of all) {
+      const d = new Date(q.createdAt);
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+      if (!avgValMap[key]) continue; // outside 6-month window
+      const jt = q.jobType || "Other";
+      jobTypesSet.add(jt);
+      if (!avgValMap[key][jt]) avgValMap[key][jt] = { sum: 0, count: 0 };
+      avgValMap[key][jt].sum += q.adjustedJobTotalCents;
+      avgValMap[key][jt].count++;
+    }
+    const jobTypesList = Array.from(jobTypesSet).sort();
+    // Build one row per month with a key per job type (avg dollars, null if no quotes)
+    const avgValueByJobTypeByMonth = monthKeys.map(mk => {
+      const row: Record<string, string | number | null> = { month: mk, label: monthLabels[mk] };
+      for (const jt of jobTypesList) {
+        const entry = avgValMap[mk][jt];
+        row[jt] = entry && entry.count > 0 ? Math.round(entry.sum / entry.count / 100) : null;
+      }
+      return row;
+    });
+
     return {
       total: all.length,
       statusBreakdown,
@@ -685,6 +720,8 @@ const distanceQuotesRouter = router({
       monthlyTrends,
       pipeline,
       avgDistanceByJobType,
+      avgValueByJobTypeByMonth,
+      jobTypesList,
       overallAcceptanceRate: all.length > 0
         ? Math.round((all.filter(q => q.status === "accepted").length / all.length) * 100) : 0,
     };
