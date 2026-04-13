@@ -177,19 +177,22 @@ export default function DashboardLayout({ children, title, subtitle }: Dashboard
         style={{ width: collapsed ? 60 : 180 }}
       >
         {/* Logo */}
-        <div className="h-14 flex items-center px-3 border-b border-[#1e1e1e] shrink-0 overflow-hidden">
+        <div className="flex items-center justify-center border-b border-[#1e1e1e] shrink-0 overflow-hidden" style={{ height: collapsed ? 56 : 80 }}>
           {collapsed ? (
-            <div className="w-8 h-8 rounded bg-orange-500 flex items-center justify-center text-white font-bold text-sm mx-auto">
-              N
-            </div>
+            <Link href="/">
+              <img
+                src="https://d2xsxph8kpxj0f.cloudfront.net/310519663484957999/PymCzDCnSJzPjdkfwA7Jn6/noland_earthworks_logo_3091ee09.png"
+                alt="Noland Earthworks"
+                className="w-10 h-10 object-contain cursor-pointer"
+              />
+            </Link>
           ) : (
             <Link href="/">
-              <div className="flex items-center gap-2 cursor-pointer">
-                <div className="w-7 h-7 rounded bg-orange-500 flex items-center justify-center text-white font-bold text-xs shrink-0">
-                  N
-                </div>
-                <span className="text-white font-semibold text-sm truncate">Noland Ops</span>
-              </div>
+              <img
+                src="https://d2xsxph8kpxj0f.cloudfront.net/310519663484957999/PymCzDCnSJzPjdkfwA7Jn6/noland_earthworks_logo_3091ee09.png"
+                alt="Noland Earthworks"
+                className="h-16 w-auto object-contain cursor-pointer px-2"
+              />
             </Link>
           )}
         </div>
@@ -226,11 +229,12 @@ export default function DashboardLayout({ children, title, subtitle }: Dashboard
           <div className="absolute inset-0 bg-black/60" onClick={() => setMobileOpen(false)} />
           <aside className="absolute left-0 top-0 bottom-0 w-[200px] bg-[#090909] border-r border-[#1e1e1e] flex flex-col">
             <div className="h-14 flex items-center justify-between px-4 border-b border-[#1e1e1e]">
-              <div className="flex items-center gap-2">
-                <div className="w-7 h-7 rounded bg-orange-500 flex items-center justify-center text-white font-bold text-xs">
-                  N
-                </div>
-                <span className="text-white font-semibold text-sm">Noland Ops</span>
+              <div className="flex items-center">
+                <img
+                  src="https://d2xsxph8kpxj0f.cloudfront.net/310519663484957999/PymCzDCnSJzPjdkfwA7Jn6/noland_earthworks_logo_3091ee09.png"
+                  alt="Noland Earthworks"
+                  className="h-9 w-auto object-contain"
+                />
               </div>
               <button onClick={() => setMobileOpen(false)} className="text-muted-foreground hover:text-white">
                 <X size={16} />

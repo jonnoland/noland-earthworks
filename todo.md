@@ -691,13 +691,18 @@
 
 ## Ops Dashboard Migration — Apr 13 2026
 
-- [ ] Audit noland-ops vs noland-earthworks to map what needs to be merged
-- [ ] Merge DB schema: add missing tables from noland-ops, run db:push
-- [ ] Merge server routers: bring missing tRPC procedures into opsRouter
-- [ ] Migrate missing ops pages (Crews, Timesheets, Scoreboard, Reports) and update OpsLayout sidebar with all 14 nav items
-- [ ] TypeScript check and save checkpoint
+- [x] Audit noland-ops vs noland-earthworks: all 14 pages already exist in noland-earthworks (more complete versions)
+- [x] DB schema: noland-earthworks already has all tables from noland-ops plus additional ones
+- [x] Server routers: noland-earthworks already has all procedures from noland-ops
+- [x] OpsLayout sidebar replaced with noland-ops style: dark #090909, collapsible, mobile overlay, orange active state, all 14 nav items
+- [x] TypeScript check: 0 errors. Checkpoint saved.
 
 ## OpsLayout Sidebar Replacement — Apr 13 2026
 
 - [x] Replace DashboardLayout.tsx sidebar with noland-ops OpsLayout style: dark #090909, collapsible desktop sidebar (180px/60px), mobile overlay, orange active state, all 14 nav items
+- [x] TypeScript check: 0 errors. Checkpoint saved.
+
+## Ops Sidebar Logo — Apr 13 2026
+
+- [x] Upload Noland Earthworks logo PNG to CDN and replace the "N" placeholder in the DashboardLayout sidebar with the actual logo
 - [x] TypeScript check: 0 errors. Checkpoint saved.
