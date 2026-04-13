@@ -611,3 +611,8 @@
 - [x] Add Send Email button to each quote row in DistanceQuotes.tsx with confirmation modal
 - [x] Show sent timestamp badge on rows that have been emailed
 - [x] TypeScript check and save checkpoint
+
+## CrewPricing Overhead Dropdown — Apr 13 2026
+
+- [x] Replace plain Add button in EditPricingModal Monthly Overhead section with OVERHEAD_PRESETS Select dropdown matching Pricing.tsx
+- [x] TypeScript check and save checkpoint

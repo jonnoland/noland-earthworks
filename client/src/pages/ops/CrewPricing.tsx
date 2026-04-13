@@ -9,7 +9,7 @@
  */
 import { useState, useMemo, useCallback } from "react";
 import { useParams, useLocation } from "wouter";
-import { ArrowLeft, Edit, Trash2, PlusCircle, MinusCircle, TrendingUp } from "lucide-react";
+import { ArrowLeft, Edit, Trash2, PlusCircle, MinusCircle, TrendingUp, ChevronDown, Plus } from "lucide-react";
 import { Slider } from "@/components/ui/slider";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
@@ -20,6 +20,28 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import OpsDashboardLayout from "@/components/OpsDashboardLayout";
+
+// ─── Overhead Presets ─────────────────────────────────────────────────────────
+const OVERHEAD_PRESETS: { label: string; defaultCost: number }[] = [
+  { label: "Equipment Loan / Lease Payment", defaultCost: 2200 },
+  { label: "Truck / Trailer Payment", defaultCost: 1400 },
+  { label: "Commercial General Liability Insurance", defaultCost: 600 },
+  { label: "Equipment Insurance (Inland Marine)", defaultCost: 325 },
+  { label: "Workers Comp Insurance", defaultCost: 450 },
+  { label: "Business Phone / Cell Plan", defaultCost: 110 },
+  { label: "Software Subscriptions (CRM, Quoting, Accounting)", defaultCost: 225 },
+  { label: "Website Hosting / Marketing Tools", defaultCost: 150 },
+  { label: "Google Ads / ClickGrow Budget", defaultCost: 600 },
+  { label: "Shop / Storage Rent", defaultCost: 400 },
+  { label: "Accounting / Bookkeeping", defaultCost: 200 },
+  { label: "Business Licenses & Permits", defaultCost: 50 },
+  { label: "Trailer Maintenance & Tires", defaultCost: 100 },
+  { label: "Truck Maintenance & Repairs", defaultCost: 300 },
+  { label: "Safety Equipment (PPE, First Aid)", defaultCost: 50 },
+  { label: "DOT Compliance / IFTA Filing", defaultCost: 40 },
+  { label: "Tax Preparation / CPA Fees", defaultCost: 125 },
+  { label: "Custom Item", defaultCost: 0 },
+];
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface LineItem { name: string; monthlyCostCents: number; }
@@ -120,10 +142,24 @@ function EditPricingModal({
   const updateEquipItem = (i: number, field: keyof LineItem, val: string | number) =>
     setForm((f) => ({ ...f, equipmentItems: f.equipmentItems.map((item, idx) => idx === i ? { ...item, [field]: val } : item) }));
 
+  const [selectedPreset, setSelectedPreset] = useState("");
+  const [presetPrice, setPresetPrice] = useState(0);
+  const [customItemName, setCustomItemName] = useState("");
+
   const addOverheadItem = () => setForm((f) => ({ ...f, overheadItems: [...f.overheadItems, { name: "", monthlyCostCents: 0 }] }));
   const removeOverheadItem = (i: number) => setForm((f) => ({ ...f, overheadItems: f.overheadItems.filter((_, idx) => idx !== i) }));
   const updateOverheadItem = (i: number, field: keyof LineItem, val: string | number) =>
     setForm((f) => ({ ...f, overheadItems: f.overheadItems.map((item, idx) => idx === i ? { ...item, [field]: val } : item) }));
+
+  const addOverheadFromPreset = () => {
+    if (!selectedPreset) return;
+    const name = selectedPreset === "Custom Item" ? (customItemName.trim() || "Custom Item") : selectedPreset;
+    setForm((f) => ({
+      ...f,
+      overheadItems: [...f.overheadItems, { name, monthlyCostCents: Math.round(presetPrice * 100) }],
+    }));
+    setSelectedPreset(""); setCustomItemName(""); setPresetPrice(0);
+  };
 
   const handleSave = () => {
     updateMutation.mutate({
@@ -231,12 +267,68 @@ function EditPricingModal({
 
           {/* Overhead */}
           <div>
-            <div className="flex items-center justify-between mb-3">
-              <h4 className="text-sm font-semibold text-red-400">Monthly Overhead</h4>
-              <Button variant="ghost" size="sm" onClick={addOverheadItem} className="text-zinc-400 hover:text-white h-7 px-2">
-                <PlusCircle className="h-3.5 w-3.5 mr-1" /> Add
-              </Button>
+            <h4 className="text-sm font-semibold text-red-400 mb-3">Monthly Overhead</h4>
+            {/* Preset dropdown */}
+            <div className="bg-zinc-800 border border-zinc-700 rounded-lg p-3 mb-3">
+              <p className="text-[11px] text-zinc-500 mb-2">Select a common overhead item to add:</p>
+              <div className="flex gap-2">
+                <div className="relative flex-1">
+                  <select
+                    value={selectedPreset}
+                    onChange={e => {
+                      const val = e.target.value;
+                      setSelectedPreset(val);
+                      const found = OVERHEAD_PRESETS.find(p => p.label === val);
+                      setPresetPrice(found ? found.defaultCost : 0);
+                    }}
+                    className="w-full appearance-none bg-zinc-900 border border-zinc-700 rounded-md px-3 py-1.5 text-xs text-white outline-none focus:border-orange-500/60 transition-colors pr-7"
+                  >
+                    <option value="">-- Select item --</option>
+                    {OVERHEAD_PRESETS.map(p => (
+                      <option key={p.label} value={p.label}>{p.label}</option>
+                    ))}
+                  </select>
+                  <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 text-zinc-500 pointer-events-none" />
+                </div>
+                <button
+                  type="button"
+                  onClick={addOverheadFromPreset}
+                  disabled={!selectedPreset}
+                  className="flex items-center gap-1 bg-orange-500/20 hover:bg-orange-500/30 disabled:opacity-30 disabled:cursor-not-allowed text-orange-400 text-[11px] font-semibold px-3 py-1.5 rounded-md transition-colors shrink-0"
+                >
+                  <Plus className="w-3 h-3" /> Add
+                </button>
+              </div>
+              {selectedPreset === "Custom Item" && (
+                <input
+                  type="text"
+                  value={customItemName}
+                  onChange={e => setCustomItemName(e.target.value)}
+                  placeholder="Enter custom item name..."
+                  className="mt-2 w-full bg-zinc-900 border border-zinc-700 rounded-md px-3 py-1.5 text-xs text-white outline-none focus:border-orange-500/60 transition-colors placeholder:text-zinc-600"
+                />
+              )}
+              {selectedPreset && (
+                <div className="mt-2 flex items-center gap-2">
+                  <span className="text-[11px] text-zinc-500 shrink-0">Monthly cost:</span>
+                  <div className="flex items-center gap-1 flex-1">
+                    <span className="text-xs text-zinc-500">$</span>
+                    <input
+                      type="number"
+                      value={presetPrice === 0 ? "" : presetPrice}
+                      placeholder="0"
+                      min={0} step={50}
+                      onChange={e => setPresetPrice(Number(e.target.value))}
+                      className="flex-1 bg-zinc-900 border border-zinc-700 rounded-md px-2 py-1.5 text-xs text-right text-white outline-none focus:border-orange-500/60 transition-colors"
+                    />
+                    <span className="text-[11px] text-zinc-500">/mo</span>
+                  </div>
+                </div>
+              )}
             </div>
+            {form.overheadItems.length === 0 && (
+              <p className="text-xs text-zinc-600 italic mb-2">No overhead items added yet.</p>
+            )}
             {form.overheadItems.map((item, i) => (
               <div key={i} className="flex gap-2 mb-2">
                 <Input value={item.name} onChange={(e) => updateOverheadItem(i, "name", e.target.value)}
