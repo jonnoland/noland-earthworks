@@ -73,7 +73,7 @@ function JobberStatusBubble({ collapsed }: { collapsed: boolean }) {
 
 const navItems = [
   { icon: LayoutDashboard, label: "Home",          href: "/ops" },
-  { icon: HardHat,         label: "Crews",         href: "/ops/crews",         placeholder: true },
+  { icon: HardHat,         label: "Crews",         href: "/ops/crews" },
   { icon: CalendarDays,    label: "Schedule",       href: "/ops/schedule" },
 ];
 
@@ -98,7 +98,10 @@ const navItems3 = [
   { icon: Settings,        label: "Settings",      href: "/ops/settings" },
 ];
 
-const allNavItems = [...navItems, ...navItems2, ...navItems3];
+import type { LucideIcon } from "lucide-react";
+type NavItem = { icon: LucideIcon; label: string; href: string; placeholder?: boolean };
+
+const allNavItems: NavItem[] = [...navItems, ...navItems2, ...navItems3];
 
 // ─── Component ────────────────────────────────────────────────────────────────
 

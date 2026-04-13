@@ -16,6 +16,11 @@ import OpsSettings from "./pages/ops/Settings";
 import OpsClients from "./pages/ops/Clients";
 import OpsQuotes from "./pages/ops/Quotes";
 import OpsInvoices from "./pages/ops/Invoices";
+import OpsCrews from "./pages/ops/Crews";
+import OpsConversations from "./pages/ops/Conversations";
+import OpsReviews from "./pages/ops/Reviews";
+import OpsTimesheets from "./pages/ops/Timesheets";
+import OpsScoreboard from "./pages/ops/Scoreboard";
 import Home from "./pages/Home";
 import LandClearingPage from "./pages/LandClearing";
 import ForestryMulchingPage from "./pages/ForestryMulching";
@@ -174,6 +179,21 @@ function Router() {
       </Route>
       <Route path="/ops/invoices">
         <OwnerRoute><OpsInvoices /></OwnerRoute>
+      </Route>
+      <Route path="/ops/crews">
+        <OwnerRoute><OpsCrews /></OwnerRoute>
+      </Route>
+      <Route path="/ops/conversations">
+        <OwnerRoute><OpsConversations /></OwnerRoute>
+      </Route>
+      <Route path="/ops/reviews">
+        <OwnerRoute><OpsReviews /></OwnerRoute>
+      </Route>
+      <Route path="/ops/timesheets">
+        <OwnerRoute><OpsTimesheets /></OwnerRoute>
+      </Route>
+      <Route path="/ops/scoreboard">
+        <OwnerRoute><OpsScoreboard /></OwnerRoute>
       </Route>
 
       <Route path="/404" component={NotFound} />

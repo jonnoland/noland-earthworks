@@ -1,4 +1,4 @@
-import { decimal, int, mysqlEnum, mysqlTable, text, timestamp, varchar } from "drizzle-orm/mysql-core";
+import { boolean, decimal, int, mysqlEnum, mysqlTable, text, timestamp, varchar } from "drizzle-orm/mysql-core";
 
 /**
  * Core user table backing auth flow.
@@ -201,3 +201,102 @@ export const quoteSubmissions = mysqlTable("quote_submissions", {
 
 export type QuoteSubmission = typeof quoteSubmissions.$inferSelect;
 export type InsertQuoteSubmission = typeof quoteSubmissions.$inferInsert;
+
+/**
+ * Crews — field crews with daily rate and cost tracking.
+ * Mirrors the OwnrOps Crews page concept.
+ */
+export const crews = mysqlTable("crews", {
+  id: int("id").autoincrement().primaryKey(),
+  name: varchar("name", { length: 255 }).notNull(),
+  equipmentType: varchar("equipmentType", { length: 100 }).notNull().default("Mulcher"),
+  /** Day Rate = target revenue per day (what you charge) */
+  dayRate: int("dayRate").notNull().default(0),
+  /** Cost Per Day = labor + operating costs */
+  costPerDay: int("costPerDay").notNull().default(0),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type Crew = typeof crews.$inferSelect;
+export type InsertCrew = typeof crews.$inferInsert;
+
+/**
+ * Crew members — individual people assigned to a crew.
+ * clockedIn tracks whether they are currently on the clock.
+ */
+export const crewMembers = mysqlTable("crew_members", {
+  id: int("id").autoincrement().primaryKey(),
+  crewId: int("crewId").notNull().references(() => crews.id, { onDelete: "cascade" }),
+  name: varchar("name", { length: 255 }).notNull(),
+  role: varchar("role", { length: 100 }).default("Operator"),
+  clockedIn: boolean("clockedIn").notNull().default(false),
+  clockedInAt: timestamp("clockedInAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type CrewMember = typeof crewMembers.$inferSelect;
+export type InsertCrewMember = typeof crewMembers.$inferInsert;
+
+/**
+ * Conversations — SMS/messaging threads with clients.
+ * Each conversation is linked to a contact (phone number).
+ */
+export const conversations = mysqlTable("conversations", {
+  id: int("id").autoincrement().primaryKey(),
+  contactName: varchar("contactName", { length: 255 }).notNull(),
+  contactPhone: varchar("contactPhone", { length: 30 }).notNull(),
+  lastMessage: text("lastMessage"),
+  lastMessageAt: timestamp("lastMessageAt"),
+  unread: boolean("unread").notNull().default(false),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type Conversation = typeof conversations.$inferSelect;
+export type InsertConversation = typeof conversations.$inferInsert;
+
+/**
+ * Messages — individual SMS messages within a conversation.
+ */
+export const messages = mysqlTable("messages", {
+  id: int("id").autoincrement().primaryKey(),
+  conversationId: int("conversationId").notNull().references(() => conversations.id, { onDelete: "cascade" }),
+  direction: mysqlEnum("direction", ["inbound", "outbound"]).notNull(),
+  body: text("body").notNull(),
+  twilioSid: varchar("twilioSid", { length: 64 }),
+  status: varchar("status", { length: 32 }).default("sent"),
+  sentAt: timestamp("sentAt").defaultNow().notNull(),
+});
+export type Message = typeof messages.$inferSelect;
+export type InsertMessage = typeof messages.$inferInsert;
+
+/**
+ * Reviews — customer reviews from Google or other sources.
+ */
+export const reviews = mysqlTable("reviews", {
+  id: int("id").autoincrement().primaryKey(),
+  source: mysqlEnum("source", ["google", "facebook", "yelp", "other"]).notNull().default("google"),
+  reviewerName: varchar("reviewerName", { length: 255 }).notNull(),
+  rating: int("rating").notNull(),
+  body: text("body"),
+  response: text("response"),
+  respondedAt: timestamp("respondedAt"),
+  reviewedAt: timestamp("reviewedAt").defaultNow().notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type Review = typeof reviews.$inferSelect;
+export type InsertReview = typeof reviews.$inferInsert;
+
+/**
+ * Time entries — crew member clock-in/out records for timesheet approval.
+ */
+export const timeEntries = mysqlTable("time_entries", {
+  id: int("id").autoincrement().primaryKey(),
+  crewMemberId: int("crewMemberId").notNull().references(() => crewMembers.id, { onDelete: "cascade" }),
+  crewId: int("crewId").notNull().references(() => crews.id, { onDelete: "cascade" }),
+  clockIn: timestamp("clockIn").notNull(),
+  clockOut: timestamp("clockOut"),
+  durationMinutes: int("durationMinutes"),
+  status: mysqlEnum("status", ["pending", "approved", "rejected"]).notNull().default("pending"),
+  notes: text("notes"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type TimeEntry = typeof timeEntries.$inferSelect;
+export type InsertTimeEntry = typeof timeEntries.$inferInsert;

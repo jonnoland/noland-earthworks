@@ -480,3 +480,55 @@
 - [x] Add checkbox column to Invoices table (select-all header + per-row checkboxes)
 - [x] Add bulk delete action bar to Invoices page (shows count selected, Delete Selected button)
 - [x] Add bulk delete confirmation modal to Invoices page (warns permanent Jobber deletion)
+
+## Crews Page (/ops/crews) — April 2026
+
+- [ ] Audit existing Crews page and schema for existing tables/procedures
+- [ ] Add crews table (id, name, equipmentType, dayRate, costPerDay, createdAt)
+- [ ] Add crewMembers table (id, crewId, name, role, clockedIn bool, createdAt)
+- [ ] Run pnpm db:push to migrate schema
+- [ ] Add crewsRouter tRPC procedures: list, create, update, delete, updatePricing
+- [ ] Add crewMembersRouter: addMember, removeMember, toggleClockIn
+- [ ] Build Crews page UI: page header with date summary + Add Crew button
+- [ ] Build crew card (collapsed): status dot, name, equipment type, Day Rate, margin %, Jobs/ClockedIn/Profit stats, Details toggle
+- [ ] Build crew card (expanded): Cost/Day, Profit/Day, Edit Pricing button, Delete button, Team section with clock-in toggles
+- [ ] Build Add Crew modal (name, equipment type, day rate, cost/day)
+- [ ] Build Edit Pricing modal (day rate, cost/day fields)
+- [ ] Build Delete crew confirmation modal
+- [ ] Add Add Member button and modal to team section
+- [ ] Wire View Schedule link to /ops/schedule
+- [ ] Wire Crews nav item in DashboardLayout sidebar (remove placeholder if present)
+- [ ] Write vitest for crews and crewMembers procedures
+
+## OwnrOps Field Features — Apr 13 2026
+
+- [ ] Fix Crews.tsx toast import error (use correct toast hook path)
+- [ ] Wire /ops/crews route in App.tsx
+- [ ] Add Crews to sidebar nav in DashboardLayout.tsx (remove placeholder)
+- [ ] Research OwnrOps Conversations, Reviews, Timesheets, Scoreboard layouts
+- [ ] Add DB schema tables: conversations, reviews, timesheets, scoreboard_entries
+- [ ] Run db:push for new tables
+- [ ] Add tRPC procedures for Conversations (list, send, delete)
+- [ ] Add tRPC procedures for Reviews (list, create, delete)
+- [ ] Add tRPC procedures for Timesheets (list, clockIn, clockOut, delete)
+- [ ] Add tRPC procedures for Scoreboard (list, upsert weekly entry)
+- [ ] Build /ops/conversations page matching OwnrOps layout
+- [ ] Build /ops/reviews page matching OwnrOps layout
+- [ ] Build /ops/timesheets page matching OwnrOps layout
+- [ ] Build /ops/scoreboard page matching OwnrOps layout
+- [ ] Wire all four routes in App.tsx
+- [ ] Add all four to sidebar nav (remove placeholder flags)
+
+## Session 2 Completions — Apr 13 2026
+
+- [x] Add tRPC procedures for Conversations (list, getMessages, send, create, markRead, delete) in opsRouter.ts
+- [x] Add tRPC procedures for Reviews (list, create, respond, delete) in opsRouter.ts
+- [x] Add tRPC procedures for Timesheets (list, create, updateStatus, delete) in opsRouter.ts
+- [x] Build /ops/conversations page — two-column SMS messaging UI wired to Twilio
+- [x] Build /ops/reviews page — 4 KPI cards, table with source/rating/response status, add/respond/delete
+- [x] Build /ops/timesheets page — week navigation, status filter tabs, export CSV, approve/reject/delete
+- [x] Build /ops/scoreboard page — 4 KPI cards (revenue, jobs completed, avg job value, conversion rate), recent wins table, jobs-by-type and lead pipeline breakdowns
+- [x] Wire all four routes in App.tsx (/ops/conversations, /ops/reviews, /ops/timesheets, /ops/scoreboard)
+- [x] Add all five new pages to sidebar nav in OpsDashboardLayout.tsx (Crews, Conversations, Reviews, Timesheets, Scoreboard)
+- [x] TypeScript clean (0 errors)
+- [x] 59/59 tests passing

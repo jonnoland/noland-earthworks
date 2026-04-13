@@ -1,6 +1,6 @@
 /**
  * Ops tRPC router — owner-only procedures for the operations dashboard
- * Covers Jobs, Leads, and Schedule CRUD.
+ * Covers Jobs, Leads, Schedule, Quotes, Crews, Conversations, Reviews, and Timesheets CRUD.
  */
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
@@ -12,8 +12,8 @@ import {
   getOpsLeads, createOpsLead, updateOpsLead, deleteOpsLead,
   getScheduleEntries, createScheduleEntry, updateScheduleEntry, deleteScheduleEntry,
 } from "./db";
-import { jobs, opsLeads, quoteSubmissions } from "../drizzle/schema";
-import { and, desc, eq, like } from "drizzle-orm";
+import { jobs, opsLeads, quoteSubmissions, crews, crewMembers, conversations, messages, reviews, timeEntries } from "../drizzle/schema";
+import { and, desc, eq, gte, lt, like } from "drizzle-orm";
 
 /**
  * Owner-only guard — only the site owner can call these procedures.
@@ -68,38 +68,26 @@ const jobsRouter = router({
       // Auto-close matching lead as "Won" when a job is marked Paid
       if (data.status === "paid") {
         try {
-          // Fetch the updated job to get the client name
           const jobRows = await getJobs(ctx.user.id);
           const job = jobRows.find(j => j.id === id);
           const clientName = data.client ?? job?.client;
           if (clientName) {
             const db = await getDb();
             if (db) {
-              // Find a lead whose name matches the client name (exact or partial)
               const matchingLeads = await db
                 .select()
                 .from(opsLeads)
-                .where(
-                  and(
-                    eq(opsLeads.userId, ctx.user.id),
-                    like(opsLeads.name, `%${clientName}%`)
-                  )
-                )
+                .where(and(eq(opsLeads.userId, ctx.user.id), like(opsLeads.name, `%${clientName}%`)))
                 .limit(5);
-              // Update any matching leads that are not already Won or Lost
               for (const lead of matchingLeads) {
                 if (lead.stage !== "won" && lead.stage !== "lost") {
-                  await db
-                    .update(opsLeads)
-                    .set({ stage: "won", updatedAt: new Date() })
+                  await db.update(opsLeads).set({ stage: "won", updatedAt: new Date() })
                     .where(and(eq(opsLeads.id, lead.id), eq(opsLeads.userId, ctx.user.id)));
-                  console.log(`[Jobs] Lead #${lead.id} (${lead.name}) auto-set to Won after job #${id} marked Paid`);
                 }
               }
             }
           }
         } catch (err) {
-          // Non-fatal: job update already succeeded
           console.warn("[Jobs] Failed to auto-close lead on Paid:", err);
         }
       }
@@ -144,17 +132,9 @@ const leadsRouter = router({
   delete: ownerProcedure
     .input(z.object({ id: z.number() }))
     .mutation(({ ctx, input }) => deleteOpsLead(input.id, ctx.user.id)),
-
-  /**
-   * Convert a lead to a local job.
-   * Creates a new job record pre-filled with the lead's data,
-   * then sets the lead stage to "converted".
-   * Returns the new job's id so the client can navigate to /ops/jobs.
-   */
   convertToJob: ownerProcedure
     .input(z.object({
       leadId: z.number(),
-      // Caller may override any of these; defaults are derived from the lead
       title: z.string().min(1).optional(),
       client: z.string().min(1).optional(),
       address: z.string().optional(),
@@ -164,34 +144,18 @@ const leadsRouter = router({
     .mutation(async ({ ctx, input }) => {
       const db = await getDb();
       if (!db) throw new Error("Database not available");
-
-      // Fetch the lead to copy its data
-      const leadRows = await db
-        .select()
-        .from(opsLeads)
-        .where(and(eq(opsLeads.id, input.leadId), eq(opsLeads.userId, ctx.user.id)))
-        .limit(1);
+      const leadRows = await db.select().from(opsLeads)
+        .where(and(eq(opsLeads.id, input.leadId), eq(opsLeads.userId, ctx.user.id))).limit(1);
       if (leadRows.length === 0) throw new Error("Lead not found");
       const lead = leadRows[0];
-
-      // Map lead jobType string to jobs jobType enum (best-effort)
       const jobTypeMap: Record<string, "land_clearing" | "forestry_mulching" | "brush_removal" | "stump_grinding" | "wildfire_mitigation"> = {
-        "Land Clearing": "land_clearing",
-        "land_clearing": "land_clearing",
-        "Forestry Mulching": "forestry_mulching",
-        "forestry_mulching": "forestry_mulching",
-        "Brush Removal": "brush_removal",
-        "brush_removal": "brush_removal",
-        "Stump Grinding": "stump_grinding",
-        "stump_grinding": "stump_grinding",
-        "Wildfire Mitigation": "wildfire_mitigation",
-        "wildfire_mitigation": "wildfire_mitigation",
+        "Land Clearing": "land_clearing", "land_clearing": "land_clearing",
+        "Forestry Mulching": "forestry_mulching", "forestry_mulching": "forestry_mulching",
+        "Brush Removal": "brush_removal", "brush_removal": "brush_removal",
+        "Stump Grinding": "stump_grinding", "stump_grinding": "stump_grinding",
+        "Wildfire Mitigation": "wildfire_mitigation", "wildfire_mitigation": "wildfire_mitigation",
       };
-      const resolvedJobType =
-        input.jobType ??
-        (lead.jobType ? (jobTypeMap[lead.jobType] ?? "land_clearing") : "land_clearing");
-
-      // Build the new job record
+      const resolvedJobType = input.jobType ?? (lead.jobType ? (jobTypeMap[lead.jobType] ?? "land_clearing") : "land_clearing");
       const newJobData = {
         userId: ctx.user.id,
         title: input.title ?? `${lead.name} — ${lead.jobType ?? "Land Clearing"}`,
@@ -201,18 +165,10 @@ const leadsRouter = router({
         status: "estimate" as const,
         notes: input.notes ?? lead.notes ?? undefined,
       };
-
-      // Insert the job and retrieve its new id
       const insertResult = await db.insert(jobs).values(newJobData);
       const newJobId = (insertResult as unknown as { insertId: number }).insertId;
-
-      // Mark the lead as converted
-      await db
-        .update(opsLeads)
-        .set({ stage: "converted", updatedAt: new Date() })
+      await db.update(opsLeads).set({ stage: "converted", updatedAt: new Date() })
         .where(and(eq(opsLeads.id, input.leadId), eq(opsLeads.userId, ctx.user.id)));
-
-      console.log(`[Leads] Lead #${input.leadId} converted to Job #${newJobId} by user ${ctx.user.id}`);
       return { jobId: newJobId };
     }),
 });
@@ -251,20 +207,13 @@ const scheduleRouter = router({
 
 // ─── Quote Submissions Log Router ────────────────────────────────────────────
 const quotesRouter = router({
-  /** Returns the most recent quote form submissions with Jobber sync status */
   list: ownerProcedure
     .input(z.object({ limit: z.number().min(1).max(200).default(50) }))
     .query(async ({ input }) => {
       const db = await getDb();
       if (!db) return [];
-      return db
-        .select()
-        .from(quoteSubmissions)
-        .orderBy(desc(quoteSubmissions.createdAt))
-        .limit(input.limit);
+      return db.select().from(quoteSubmissions).orderBy(desc(quoteSubmissions.createdAt)).limit(input.limit);
     }),
-
-  /** Permanently deletes a quote submission record */
   delete: ownerProcedure
     .input(z.object({ id: z.number().int().positive() }))
     .mutation(async ({ input }) => {
@@ -275,10 +224,257 @@ const quotesRouter = router({
     }),
 });
 
+// ─── Crews Router ─────────────────────────────────────────────────────────────
+const crewsRouter = router({
+  list: ownerProcedure.query(async () => {
+    const db = await getDb();
+    if (!db) return [];
+    const allCrews = await db.select().from(crews).orderBy(crews.createdAt);
+    const allMembers = await db.select().from(crewMembers);
+    return allCrews.map((crew) => ({ ...crew, members: allMembers.filter((m) => m.crewId === crew.id) }));
+  }),
+  create: ownerProcedure
+    .input(z.object({
+      name: z.string().min(1).max(255),
+      equipmentType: z.string().min(1).max(100).default("Mulcher"),
+      dayRate: z.number().int().min(0).default(0),
+      costPerDay: z.number().int().min(0).default(0),
+    }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+      const [result] = await db.insert(crews).values(input);
+      return { id: (result as unknown as { insertId: number }).insertId };
+    }),
+  updatePricing: ownerProcedure
+    .input(z.object({ id: z.number().int().positive(), dayRate: z.number().int().min(0), costPerDay: z.number().int().min(0) }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+      await db.update(crews).set({ dayRate: input.dayRate, costPerDay: input.costPerDay }).where(eq(crews.id, input.id));
+      return { success: true };
+    }),
+  delete: ownerProcedure
+    .input(z.object({ id: z.number().int().positive() }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+      await db.delete(crews).where(eq(crews.id, input.id));
+      return { success: true };
+    }),
+  addMember: ownerProcedure
+    .input(z.object({ crewId: z.number().int().positive(), name: z.string().min(1).max(255), role: z.string().max(100).default("Operator") }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+      const [result] = await db.insert(crewMembers).values(input);
+      return { id: (result as unknown as { insertId: number }).insertId };
+    }),
+  removeMember: ownerProcedure
+    .input(z.object({ id: z.number().int().positive() }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+      await db.delete(crewMembers).where(eq(crewMembers.id, input.id));
+      return { success: true };
+    }),
+  toggleClockIn: ownerProcedure
+    .input(z.object({ id: z.number().int().positive() }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+      const [member] = await db.select().from(crewMembers).where(eq(crewMembers.id, input.id)).limit(1);
+      if (!member) throw new TRPCError({ code: "NOT_FOUND", message: "Member not found" });
+      const nowClockedIn = !member.clockedIn;
+      await db.update(crewMembers).set({ clockedIn: nowClockedIn, clockedInAt: nowClockedIn ? new Date() : null })
+        .where(eq(crewMembers.id, input.id));
+      return { clockedIn: nowClockedIn };
+    }),
+});
+
+// ─── Conversations Router ─────────────────────────────────────────────────────
+const conversationsRouter = router({
+  list: ownerProcedure.query(async () => {
+    const db = await getDb();
+    if (!db) return [];
+    return db.select().from(conversations).orderBy(desc(conversations.lastMessageAt));
+  }),
+  getMessages: ownerProcedure
+    .input(z.object({ conversationId: z.number().int().positive() }))
+    .query(async ({ input }) => {
+      const db = await getDb();
+      if (!db) return [];
+      return db.select().from(messages).where(eq(messages.conversationId, input.conversationId)).orderBy(messages.sentAt);
+    }),
+  send: ownerProcedure
+    .input(z.object({ conversationId: z.number().int().positive(), body: z.string().min(1).max(1600) }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+      const [conv] = await db.select().from(conversations).where(eq(conversations.id, input.conversationId)).limit(1);
+      if (!conv) throw new TRPCError({ code: "NOT_FOUND", message: "Conversation not found" });
+      let twilioSid: string | undefined;
+      if (ENV.twilioAccountSid && ENV.twilioAuthToken && ENV.twilioFromNumber) {
+        try {
+          const twilio = await import("twilio");
+          const client = twilio.default(ENV.twilioAccountSid, ENV.twilioAuthToken);
+          const msg = await client.messages.create({ body: input.body, from: ENV.twilioFromNumber, to: conv.contactPhone });
+          twilioSid = msg.sid;
+        } catch (err) {
+          console.error("[Twilio] Send failed:", err);
+        }
+      }
+      const [result] = await db.insert(messages).values({
+        conversationId: input.conversationId,
+        direction: "outbound",
+        body: input.body,
+        twilioSid,
+        status: twilioSid ? "sent" : "local",
+      });
+      await db.update(conversations).set({ lastMessage: input.body, lastMessageAt: new Date() })
+        .where(eq(conversations.id, input.conversationId));
+      return { id: (result as unknown as { insertId: number }).insertId, twilioSid };
+    }),
+  create: ownerProcedure
+    .input(z.object({ contactName: z.string().min(1).max(255), contactPhone: z.string().min(7).max(30) }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+      const [result] = await db.insert(conversations).values(input);
+      return { id: (result as unknown as { insertId: number }).insertId };
+    }),
+  markRead: ownerProcedure
+    .input(z.object({ id: z.number().int().positive() }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+      await db.update(conversations).set({ unread: false }).where(eq(conversations.id, input.id));
+      return { success: true };
+    }),
+  delete: ownerProcedure
+    .input(z.object({ id: z.number().int().positive() }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+      await db.delete(conversations).where(eq(conversations.id, input.id));
+      return { success: true };
+    }),
+});
+
+// ─── Reviews Router ───────────────────────────────────────────────────────────
+const reviewsRouter = router({
+  list: ownerProcedure.query(async () => {
+    const db = await getDb();
+    if (!db) return [];
+    return db.select().from(reviews).orderBy(desc(reviews.reviewedAt));
+  }),
+  create: ownerProcedure
+    .input(z.object({
+      source: z.enum(["google", "facebook", "yelp", "other"]).default("google"),
+      reviewerName: z.string().min(1).max(255),
+      rating: z.number().int().min(1).max(5),
+      body: z.string().optional(),
+      reviewedAt: z.date().optional(),
+    }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+      const [result] = await db.insert(reviews).values({ ...input, reviewedAt: input.reviewedAt ?? new Date() });
+      return { id: (result as unknown as { insertId: number }).insertId };
+    }),
+  respond: ownerProcedure
+    .input(z.object({ id: z.number().int().positive(), response: z.string().min(1) }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+      await db.update(reviews).set({ response: input.response, respondedAt: new Date() }).where(eq(reviews.id, input.id));
+      return { success: true };
+    }),
+  delete: ownerProcedure
+    .input(z.object({ id: z.number().int().positive() }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+      await db.delete(reviews).where(eq(reviews.id, input.id));
+      return { success: true };
+    }),
+});
+
+// ─── Timesheets Router ────────────────────────────────────────────────────────
+const timesheetsRouter = router({
+  list: ownerProcedure
+    .input(z.object({
+      weekStart: z.date().optional(),
+      status: z.enum(["pending", "approved", "rejected", "all"]).default("all"),
+    }))
+    .query(async ({ input }) => {
+      const db = await getDb();
+      if (!db) return [];
+      const conditions: ReturnType<typeof eq>[] = [];
+      if (input.status !== "all") {
+        conditions.push(eq(timeEntries.status, input.status as "pending" | "approved" | "rejected"));
+      }
+      if (input.weekStart) {
+        const weekEnd = new Date(input.weekStart);
+        weekEnd.setDate(weekEnd.getDate() + 7);
+        conditions.push(gte(timeEntries.clockIn, input.weekStart));
+        conditions.push(lt(timeEntries.clockIn, weekEnd));
+      }
+      return db.select({
+        entry: timeEntries,
+        memberName: crewMembers.name,
+        memberRole: crewMembers.role,
+        crewName: crews.name,
+      })
+        .from(timeEntries)
+        .leftJoin(crewMembers, eq(timeEntries.crewMemberId, crewMembers.id))
+        .leftJoin(crews, eq(timeEntries.crewId, crews.id))
+        .where(conditions.length > 0 ? and(...conditions) : undefined)
+        .orderBy(desc(timeEntries.clockIn));
+    }),
+  create: ownerProcedure
+    .input(z.object({
+      crewMemberId: z.number().int().positive(),
+      crewId: z.number().int().positive(),
+      clockIn: z.date(),
+      clockOut: z.date().optional(),
+      notes: z.string().optional(),
+    }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+      const durationMinutes = input.clockOut
+        ? Math.round((input.clockOut.getTime() - input.clockIn.getTime()) / 60000)
+        : undefined;
+      const [result] = await db.insert(timeEntries).values({ ...input, durationMinutes });
+      return { id: (result as unknown as { insertId: number }).insertId };
+    }),
+  updateStatus: ownerProcedure
+    .input(z.object({ id: z.number().int().positive(), status: z.enum(["pending", "approved", "rejected"]) }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+      await db.update(timeEntries).set({ status: input.status }).where(eq(timeEntries.id, input.id));
+      return { success: true };
+    }),
+  delete: ownerProcedure
+    .input(z.object({ id: z.number().int().positive() }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+      await db.delete(timeEntries).where(eq(timeEntries.id, input.id));
+      return { success: true };
+    }),
+});
+
 // ─── Combined Ops Router ──────────────────────────────────────────────────────
 export const opsRouter = router({
   jobs: jobsRouter,
   leads: leadsRouter,
   schedule: scheduleRouter,
   quotes: quotesRouter,
+  crews: crewsRouter,
+  conversations: conversationsRouter,
+  reviews: reviewsRouter,
+  timesheets: timesheetsRouter,
 });

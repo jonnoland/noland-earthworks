@@ -23,6 +23,11 @@ import {
   LogOut,
   HelpCircle,
   Zap,
+  HardHat,
+  MessageSquare,
+  Star,
+  Clock,
+  Trophy,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/_core/hooks/useAuth";
@@ -34,6 +39,11 @@ const navItems = [
   { icon: Calculator, label: "Pricing", href: "/ops/pricing" },
   { icon: CalendarDays, label: "Schedule", href: "/ops/schedule" },
   { icon: BarChart3, label: "Reports", href: "/ops/reports" },
+  { icon: HardHat, label: "Crews", href: "/ops/crews" },
+  { icon: MessageSquare, label: "Conversations", href: "/ops/conversations" },
+  { icon: Star, label: "Reviews", href: "/ops/reviews" },
+  { icon: Clock, label: "Timesheets", href: "/ops/timesheets" },
+  { icon: Trophy, label: "Scoreboard", href: "/ops/scoreboard" },
 ];
 
 const bottomItems = [
