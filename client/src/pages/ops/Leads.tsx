@@ -70,8 +70,22 @@ const emptyForm: LeadFormData = {
 // ─── Jobber Requests Section ─────────────────────────────────────────────────
 
 function JobberRequestsSection() {
+  const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
+  const [deleteTargetLabel, setDeleteTargetLabel] = useState<string>("");
+  const utils = trpc.useUtils();
   const { data, isLoading, error, refetch, isFetching } =
     trpc.jobber.requests.useQuery({ first: 50 }, { retry: false });
+  const deleteRequest = trpc.jobber.deleteRequest.useMutation({
+    onSuccess: () => {
+      toast.success("Request deleted from Jobber.");
+      utils.jobber.requests.invalidate();
+      setDeleteTargetId(null);
+    },
+    onError: (err) => {
+      toast.error(err.message || "Failed to delete request.");
+      setDeleteTargetId(null);
+    },
+  });
 
   const notConnected =
     !isLoading &&
@@ -103,6 +117,7 @@ function JobberRequestsSection() {
   };
 
   return (
+    <>
     <div className="px-6 pb-6">
       <div className="border border-border rounded-lg overflow-hidden">
         {/* Section header */}
@@ -174,6 +189,7 @@ function JobberRequestsSection() {
                       <th className="text-left px-4 py-2.5 font-medium text-muted-foreground hidden md:table-cell">Contact</th>
                       <th className="text-left px-4 py-2.5 font-medium text-muted-foreground">Status</th>
                       <th className="text-left px-4 py-2.5 font-medium text-muted-foreground hidden lg:table-cell">Date</th>
+                      <th className="text-right px-4 py-2.5 font-medium text-muted-foreground">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -220,6 +236,15 @@ function JobberRequestsSection() {
                             ? new Date(req.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
                             : "—"}
                         </td>
+                        <td className="px-4 py-3 text-right">
+                          <button
+                            onClick={() => { setDeleteTargetId(req.id); setDeleteTargetLabel(req.title || "this request"); }}
+                            title="Delete request from Jobber"
+                            className="text-muted-foreground hover:text-red-400 transition-colors"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -230,6 +255,41 @@ function JobberRequestsSection() {
         )}
       </div>
     </div>
+    {/* Jobber request delete confirmation modal */}
+    {deleteTargetId && (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+        <div className="bg-card border border-border rounded-xl shadow-2xl w-full max-w-sm p-6 space-y-4">
+          <h3 className="text-sm font-semibold text-foreground">Delete Request</h3>
+          <p className="text-xs text-muted-foreground">
+            Permanently delete <span className="font-medium text-foreground">{deleteTargetLabel}</span> from Jobber. This cannot be undone.
+          </p>
+          <div className="rounded-md bg-red-500/10 border border-red-500/20 px-3 py-2.5 space-y-1">
+            <p className="text-[11px] font-semibold text-red-400">The following will also be deleted in Jobber:</p>
+            <ul className="text-[11px] text-red-300/80 space-y-0.5 list-disc list-inside">
+              <li>All request details and contact information</li>
+              <li>Any linked assessments or notes</li>
+            </ul>
+          </div>
+          <div className="flex gap-2 pt-1">
+            <button
+              onClick={() => setDeleteTargetId(null)}
+              className="flex-1 py-2 rounded-md text-xs font-semibold text-muted-foreground bg-secondary/50 hover:bg-secondary transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={() => deleteRequest.mutate({ id: deleteTargetId })}
+              disabled={deleteRequest.isPending}
+              className="flex-1 py-2 rounded-md text-xs font-semibold text-white bg-red-600 hover:bg-red-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-1.5"
+            >
+              {deleteRequest.isPending && <Loader2 className="w-3 h-3 animate-spin" />}
+              Delete from Jobber
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+    </>
   );
 }
 

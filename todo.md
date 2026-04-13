@@ -456,3 +456,18 @@
 - [x] Enhance Leads delete modal with warning about associated data (converted job link, notes)
 - [x] Enhance Jobs delete modal with warning about associated data (schedule entries, invoices)
 - [x] Enhance Settings Quote Log delete modal with warning about associated data (Jobber sync record)
+
+## Jobber-Synced Delete on All Ops Pages — April 2026
+
+- [x] Research Jobber GraphQL delete mutations for client, request, quote, job, invoice
+- [x] Add clientDelete mutation to jobberRouter.ts
+- [x] Add requestDelete mutation to jobberRouter.ts (for leads synced from Jobber requests)
+- [x] Add quoteDelete mutation to jobberRouter.ts
+- [x] Add jobDelete mutation to jobberRouter.ts
+- [x] Add invoiceDelete mutation to jobberRouter.ts
+- [x] Update Clients page: delete button deletes from Jobber via GraphQL + removes from local cache
+- [x] Update Leads page: Jobber Requests section has delete button that deletes from Jobber via GraphQL
+- [x] Update Quotes page: delete button deletes from Jobber via GraphQL
+- [x] Update Jobs page: Jobber Jobs section has delete button that deletes from Jobber via GraphQL
+- [x] Update Invoices page: delete button deletes from Jobber via GraphQL
+- [x] All delete modals show warning that record will be permanently removed from Jobber

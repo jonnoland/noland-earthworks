@@ -263,6 +263,93 @@ export const jobberRouter = router({
     return db.select().from(leadSourceTags).orderBy(leadSourceTags.createdAt);
   }),
 
+  // ─── Delete Mutations ───────────────────────────────────────────────────────
+
+  /** Delete a client from Jobber */
+  deleteClient: adminProcedure
+    .input(z.object({ id: z.string() }))
+    .mutation(async ({ input }) => {
+      const data = await jobberGraphQL(`
+        mutation DeleteClient($id: EncodedId!) {
+          clientDelete(input: { id: $id }) {
+            clientId
+            userErrors { message path }
+          }
+        }
+      `, { id: input.id }) as any;
+      const errors = data?.clientDelete?.userErrors;
+      if (errors?.length) throw new TRPCError({ code: "BAD_REQUEST", message: errors[0].message });
+      return { success: true, deletedId: data?.clientDelete?.clientId };
+    }),
+
+  /** Delete a quote from Jobber */
+  deleteQuote: adminProcedure
+    .input(z.object({ id: z.string() }))
+    .mutation(async ({ input }) => {
+      const data = await jobberGraphQL(`
+        mutation DeleteQuote($id: EncodedId!) {
+          quoteDelete(input: { id: $id }) {
+            quoteId
+            userErrors { message path }
+          }
+        }
+      `, { id: input.id }) as any;
+      const errors = data?.quoteDelete?.userErrors;
+      if (errors?.length) throw new TRPCError({ code: "BAD_REQUEST", message: errors[0].message });
+      return { success: true, deletedId: data?.quoteDelete?.quoteId };
+    }),
+
+  /** Delete a job from Jobber */
+  deleteJob: adminProcedure
+    .input(z.object({ id: z.string() }))
+    .mutation(async ({ input }) => {
+      const data = await jobberGraphQL(`
+        mutation DeleteJob($id: EncodedId!) {
+          jobDelete(input: { id: $id }) {
+            jobId
+            userErrors { message path }
+          }
+        }
+      `, { id: input.id }) as any;
+      const errors = data?.jobDelete?.userErrors;
+      if (errors?.length) throw new TRPCError({ code: "BAD_REQUEST", message: errors[0].message });
+      return { success: true, deletedId: data?.jobDelete?.jobId };
+    }),
+
+  /** Delete an invoice from Jobber */
+  deleteInvoice: adminProcedure
+    .input(z.object({ id: z.string() }))
+    .mutation(async ({ input }) => {
+      const data = await jobberGraphQL(`
+        mutation DeleteInvoice($id: EncodedId!) {
+          invoiceDelete(input: { id: $id }) {
+            invoiceId
+            userErrors { message path }
+          }
+        }
+      `, { id: input.id }) as any;
+      const errors = data?.invoiceDelete?.userErrors;
+      if (errors?.length) throw new TRPCError({ code: "BAD_REQUEST", message: errors[0].message });
+      return { success: true, deletedId: data?.invoiceDelete?.invoiceId };
+    }),
+
+  /** Delete a request from Jobber */
+  deleteRequest: adminProcedure
+    .input(z.object({ id: z.string() }))
+    .mutation(async ({ input }) => {
+      const data = await jobberGraphQL(`
+        mutation DeleteRequest($id: EncodedId!) {
+          requestDelete(input: { id: $id }) {
+            requestId
+            userErrors { message path }
+          }
+        }
+      `, { id: input.id }) as any;
+      const errors = data?.requestDelete?.userErrors;
+      if (errors?.length) throw new TRPCError({ code: "BAD_REQUEST", message: errors[0].message });
+      return { success: true, deletedId: data?.requestDelete?.requestId };
+    }),
+
   /** Get aggregated lead source breakdown (count per source) */
   getLeadSourceBreakdown: adminProcedure.query(async () => {
     const db = await getDb();
