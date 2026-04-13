@@ -672,3 +672,14 @@
 
 - [x] Find all Jobber-related links/hrefs in ops pages and update to https://secure.getjobber.com/home
 - [x] TypeScript check: 0 errors. Checkpoint saved.
+
+## Email Sender Address — Apr 13 2026
+
+- [ ] Update new lead notification email sender from noreply@noreply.ownrops.com to noreply@nolandearthworks.com
+- [ ] TypeScript check and save checkpoint
+
+## Leads Page Layout + Email Sender Fix — Apr 13 2026
+
+- [x] Ensure all new-lead notification emails use from: noreply@nolandearthworks.com
+- [x] Restyle Leads.tsx: full-height columns, compact cards, CLOSED label above bottom bar, Phone Ready pill bottom-right, columns fill viewport width equally
+- [x] TypeScript check: 0 errors. Checkpoint saved.

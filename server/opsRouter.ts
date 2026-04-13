@@ -710,7 +710,7 @@ const distanceQuotesRouter = router({
       const { Resend } = await import("resend");
       const resend = new Resend(ENV.resendApiKey);
       const { error } = await resend.emails.send({
-        from: "Noland Earthworks <quotes@nolandearthworks.com>",
+        from: "Noland Earthworks <noreply@nolandearthworks.com>",
         to: quote.clientEmail,
         replyTo: "jon@nolandearthworks.com",
         subject: `Your Estimate from Noland Earthworks — ${quote.jobType.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase())}`,

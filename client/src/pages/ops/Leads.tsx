@@ -1,56 +1,39 @@
 /**
  * Leads Page — Noland Earthworks
- * Kanban board layout: New Lead | Contacted | Site Visit | Quote Sent | Follow-Up
- * Bottom bar: Won | Lost | On Hold
+ * Kanban board: 5 equal-width columns filling full viewport height
+ * Bottom bar: CLOSED label + Won | Lost | On Hold strips + Phone Ready pill
  * Slide-in detail panel on lead click
  */
 
 import DashboardLayout from "@/components/DashboardLayout";
 import { MapView } from "@/components/Map";
 import { trpc } from "@/lib/trpc";
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useCallback } from "react";
 import {
   Phone, Mail, MessageSquare, FileText, Calendar,
-  Plus, Search, X, Loader2, CheckCircle2, XCircle,
-  MapPin, Clock, RefreshCw, ExternalLink, Trash2,
-  ChevronRight, AlarmClock, User, PhoneCall, PhoneOff,
-  ClipboardList, Star, Snowflake,
+  Plus, Search, X, Loader2, XCircle,
+  MapPin, ExternalLink, Trash2,
+  AlarmClock, User, PhoneCall,
+  ClipboardList, Star, Snowflake, RefreshCw,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { useLocation } from "wouter";
 
-// ─── Types ────────────────────────────────────────────────────────────────────
+// ─── Constants ────────────────────────────────────────────────────────────────
 
 const KANBAN_STAGES = [
-  { id: "new",           label: "New Lead",   subtitle: "Fresh inquiries",          color: "text-blue-400" },
-  { id: "contacted",     label: "Contacted",  subtitle: "Leads you've spoken with", color: "text-cyan-400" },
-  { id: "estimate_sent", label: "Site Visit", subtitle: "Site visits scheduled",    color: "text-amber-400" },
-  { id: "negotiating",   label: "Quote Sent", subtitle: "Proposals delivered",      color: "text-purple-400" },
-  { id: "converted",     label: "Follow-Up",  subtitle: "Chasing decisions",        color: "text-orange-400" },
+  { id: "new",           label: "New Lead",   subtitle: "Fresh inquiries" },
+  { id: "contacted",     label: "Contacted",  subtitle: "Leads you've spoken with" },
+  { id: "estimate_sent", label: "Site Visit", subtitle: "Site visits scheduled" },
+  { id: "negotiating",   label: "Quote Sent", subtitle: "Proposals delivered" },
+  { id: "converted",     label: "Follow-Up",  subtitle: "Chasing decisions" },
 ] as const;
-
-const CLOSED_STAGES = [
-  { id: "won",  label: "Won",     icon: Star,      color: "text-green-400 border-green-500/30 bg-green-500/10" },
-  { id: "lost", label: "Lost",    icon: XCircle,   color: "text-red-400 border-red-500/30 bg-red-500/10" },
-  { id: "on_hold", label: "On Hold", icon: Snowflake, color: "text-blue-400 border-blue-500/30 bg-blue-500/10" },
-] as const;
-
-type KanbanStageId = typeof KANBAN_STAGES[number]["id"];
-type ClosedStageId = typeof CLOSED_STAGES[number]["id"];
-type AnyStage = KanbanStageId | ClosedStageId | "all";
 
 const SOURCE_LABELS: Record<string, string> = {
   google: "Google Search", facebook: "Facebook", referral: "Referral",
   website: "Website Form", direct: "Direct", other: "Other",
 };
-
-const WARMTH_LABELS = ["Cold", "Warm", "Hot"] as const;
-const WARMTH_COLORS = [
-  "bg-blue-500/20 text-blue-300 border-blue-500/30",
-  "bg-amber-500/20 text-amber-300 border-amber-500/30",
-  "bg-red-500/20 text-red-300 border-red-500/30",
-] as const;
 
 function timeAgo(date: Date | string): string {
   const d = typeof date === "string" ? new Date(date) : date;
@@ -71,7 +54,7 @@ function formatDate(date: Date | string): string {
   return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }
 
-// ─── Lead Card ────────────────────────────────────────────────────────────────
+// ─── Types ────────────────────────────────────────────────────────────────────
 
 interface Lead {
   id: number;
@@ -88,35 +71,31 @@ interface Lead {
   updatedAt: Date | string;
 }
 
-function LeadCard({ lead, onClick }: { lead: Lead; onClick: () => void }) {
-  const warmthIdx = lead.stage === "new" ? 1 : lead.stage === "contacted" ? 2 : 0;
+// ─── Lead Card ────────────────────────────────────────────────────────────────
 
+function LeadCard({ lead, onClick }: { lead: Lead; onClick: () => void }) {
   return (
     <button
       onClick={onClick}
-      className="w-full text-left bg-card border border-border rounded-lg p-3 hover:border-primary/40 hover:bg-card/80 transition-all group cursor-pointer"
+      className="w-full text-left bg-[#181818] border border-[#2a2a2a] rounded-lg px-3 py-2.5 hover:border-[#3a3a3a] hover:bg-[#1e1e1e] transition-all group cursor-pointer"
     >
-      <div className="flex items-start justify-between gap-2">
+      <div className="flex items-center justify-between gap-2">
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-semibold text-foreground truncate">{lead.name}</p>
-          <p className="text-[11px] text-muted-foreground mt-0.5">
-            {lead.estimatedValue ? `$${Number(lead.estimatedValue).toLocaleString()}` : "No estimate"}
-            {" · "}
-            {formatDate(lead.createdAt)}
-          </p>
+          <p className="text-sm font-semibold text-white truncate">{lead.name}</p>
+          <div className="flex items-center gap-1.5 mt-0.5">
+            <span className="text-[11px] text-[#666]">
+              {lead.estimatedValue ? `$${Number(lead.estimatedValue).toLocaleString()}` : "No estimate"}
+            </span>
+            <span className="text-[#444]">·</span>
+            <span className="text-[11px] text-[#666]">{formatDate(lead.createdAt)}</span>
+          </div>
         </div>
         {lead.phone && (
-          <div className="shrink-0 w-7 h-7 rounded-full bg-green-500/15 border border-green-500/30 flex items-center justify-center group-hover:bg-green-500/25 transition-colors">
+          <div className="shrink-0 w-7 h-7 rounded-full bg-green-500/15 border border-green-500/25 flex items-center justify-center">
             <Phone className="w-3.5 h-3.5 text-green-400" />
           </div>
         )}
       </div>
-      {lead.address && (
-        <p className="text-[11px] text-muted-foreground mt-1.5 flex items-center gap-1 truncate">
-          <MapPin className="w-3 h-3 shrink-0" />
-          {lead.address}
-        </p>
-      )}
     </button>
   );
 }
@@ -131,23 +110,19 @@ function KanbanColumn({
   onLeadClick: (lead: Lead) => void;
 }) {
   return (
-    <div className="flex flex-col min-w-[260px] flex-1 bg-[#0e0e0e] border border-border rounded-xl overflow-hidden">
-      {/* Header */}
-      <div className="px-4 py-3 border-b border-border flex items-center justify-between">
-        <div>
-          <div className="flex items-center gap-2">
-            <span className={cn("text-sm font-semibold", stage.color)}>{stage.label}</span>
-            <span className="text-xs bg-secondary border border-border text-muted-foreground px-1.5 py-0.5 rounded-full font-mono">
-              {leads.length}
-            </span>
-          </div>
-          {leads.length === 0 && (
-            <p className="text-[11px] text-muted-foreground mt-0.5">{stage.subtitle}</p>
-          )}
+    <div className="flex flex-col flex-1 min-w-0 bg-[#111] border border-[#222] rounded-xl overflow-hidden">
+      {/* Column header */}
+      <div className="px-4 py-3 border-b border-[#1e1e1e]">
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-semibold text-white">{stage.label}</span>
+          <span className="text-xs text-[#555] font-mono">{leads.length}</span>
         </div>
+        {leads.length === 0 && (
+          <p className="text-[11px] text-[#444] mt-0.5">{stage.subtitle}</p>
+        )}
       </div>
-      {/* Cards */}
-      <div className="flex-1 p-2 space-y-2 overflow-y-auto min-h-[200px]">
+      {/* Cards area */}
+      <div className="flex-1 p-2 space-y-1.5 overflow-y-auto">
         {leads.map(lead => (
           <LeadCard key={lead.id} lead={lead} onClick={() => onLeadClick(lead)} />
         ))}
@@ -159,10 +134,7 @@ function KanbanColumn({
 // ─── Lead Detail Panel ────────────────────────────────────────────────────────
 
 function LeadDetailPanel({
-  lead,
-  onClose,
-  onStageChange,
-  onDelete,
+  lead, onClose, onStageChange, onDelete,
 }: {
   lead: Lead;
   onClose: () => void;
@@ -178,133 +150,83 @@ function LeadDetailPanel({
   const { data: notes = [], isLoading: notesLoading } = trpc.ops.leads.listNotes.useQuery({ leadId: lead.id });
 
   const addNote = trpc.ops.leads.addNote.useMutation({
-    onSuccess: () => {
-      setNoteText("");
-      utils.ops.leads.listNotes.invalidate({ leadId: lead.id });
-    },
+    onSuccess: () => { setNoteText(""); utils.ops.leads.listNotes.invalidate({ leadId: lead.id }); },
     onError: () => toast.error("Failed to add note"),
   });
 
-  const updateLead = trpc.ops.leads.update.useMutation({
-    onSuccess: () => {
-      utils.ops.leads.list.invalidate();
-      toast.success("Lead updated");
-    },
-  });
-
-  // Geocode address and place marker when map is ready
   const handleMapReady = useCallback((map: google.maps.Map) => {
     mapRef.current = map;
     if (!lead.address) return;
     const geocoder = new google.maps.Geocoder();
     geocoder.geocode({ address: lead.address }, (results, status) => {
-      if (status === "OK" && results && results[0]) {
+      if (status === "OK" && results?.[0]) {
         const loc = results[0].geometry.location;
         map.setCenter(loc);
         map.setZoom(14);
         if (markerRef.current) markerRef.current.map = null;
-        markerRef.current = new google.maps.marker.AdvancedMarkerElement({
-          map,
-          position: loc,
-          title: lead.name,
-        });
+        markerRef.current = new google.maps.marker.AdvancedMarkerElement({ map, position: loc, title: lead.name });
       }
     });
   }, [lead.address, lead.name]);
 
-  const warmthIdx = lead.stage === "new" ? 1 : lead.stage === "contacted" ? 2 : 0;
-
-  const handleMarkLost = () => {
-    onStageChange(lead.id, "lost");
-    onClose();
-  };
-
-  const handleMarkWon = () => {
-    onStageChange(lead.id, "won");
-    onClose();
-  };
-
-  const handleSubmitNote = () => {
-    if (!noteText.trim()) return;
-    addNote.mutate({ leadId: lead.id, content: noteText.trim(), type: "note" });
-  };
-
   const NOTE_ICONS: Record<string, React.ReactNode> = {
-    note: <ClipboardList className="w-3.5 h-3.5 text-muted-foreground" />,
+    note: <ClipboardList className="w-3.5 h-3.5 text-[#666]" />,
     call: <PhoneCall className="w-3.5 h-3.5 text-green-400" />,
     text: <MessageSquare className="w-3.5 h-3.5 text-blue-400" />,
     email: <Mail className="w-3.5 h-3.5 text-purple-400" />,
     stage_change: <RefreshCw className="w-3.5 h-3.5 text-amber-400" />,
-    system: <AlarmClock className="w-3.5 h-3.5 text-muted-foreground" />,
+    system: <AlarmClock className="w-3.5 h-3.5 text-[#666]" />,
   };
+
+  const stageBadge = KANBAN_STAGES.find(s => s.id === lead.stage)?.label ?? lead.stage;
 
   return (
     <div className="fixed inset-y-0 right-0 z-50 flex">
-      {/* Backdrop */}
       <div className="fixed inset-0 bg-black/50" onClick={onClose} />
-
-      {/* Panel */}
-      <div className="relative ml-auto w-full max-w-sm bg-[#0e0e0e] border-l border-border flex flex-col overflow-hidden shadow-2xl">
+      <div className="relative ml-auto w-full max-w-[360px] bg-[#0d0d0d] border-l border-[#222] flex flex-col overflow-hidden shadow-2xl">
 
         {/* Header */}
-        <div className="px-4 pt-4 pb-3 border-b border-border">
-          <div className="flex items-start justify-between gap-2">
+        <div className="px-4 pt-4 pb-3 border-b border-[#1e1e1e]">
+          <div className="flex items-start justify-between gap-2 mb-2">
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2">
-                <h2 className="text-base font-bold text-foreground truncate">{lead.name}</h2>
-                <span className={cn(
-                  "shrink-0 text-[10px] font-semibold px-2 py-0.5 rounded-full border",
-                  WARMTH_COLORS[warmthIdx]
-                )}>
-                  {WARMTH_LABELS[warmthIdx]}
+                <h2 className="text-base font-bold text-white truncate">{lead.name}</h2>
+                <span className="shrink-0 text-[10px] font-semibold px-2 py-0.5 rounded-full border bg-amber-500/15 text-amber-300 border-amber-500/25">
+                  Warm
                 </span>
               </div>
-              <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-1">
-                {lead.phone && (
-                  <a href={`tel:${lead.phone}`} className="text-xs text-muted-foreground hover:text-foreground transition-colors">
-                    {lead.phone}
-                  </a>
-                )}
-                {lead.email && (
-                  <a href={`mailto:${lead.email}`} className="text-xs text-muted-foreground hover:text-foreground transition-colors truncate">
-                    {lead.email}
-                  </a>
-                )}
+              <div className="flex flex-wrap gap-x-3 mt-0.5">
+                {lead.phone && <span className="text-xs text-[#888]">{lead.phone}</span>}
+                {lead.email && <span className="text-xs text-[#888] truncate">{lead.email}</span>}
               </div>
             </div>
-            <button onClick={onClose} className="shrink-0 p-1.5 rounded-md hover:bg-secondary transition-colors">
-              <X className="w-4 h-4 text-muted-foreground" />
+            <button onClick={onClose} className="shrink-0 p-1.5 rounded-md hover:bg-[#1e1e1e] transition-colors">
+              <X className="w-4 h-4 text-[#666]" />
             </button>
           </div>
 
-          {/* Action buttons */}
-          <div className="flex gap-2 mt-3">
+          {/* Action row */}
+          <div className="grid grid-cols-4 gap-1.5">
             {lead.phone && (
-              <a
-                href={`tel:${lead.phone}`}
-                className="flex-1 flex items-center justify-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold px-3 py-2 rounded-md transition-colors"
-              >
+              <a href={`tel:${lead.phone}`}
+                className="flex flex-col items-center justify-center gap-1 bg-blue-600 hover:bg-blue-700 text-white text-[11px] font-semibold py-2 rounded-md transition-colors">
                 <Phone className="w-3.5 h-3.5" />Call
               </a>
             )}
             {lead.phone && (
-              <a
-                href={`sms:${lead.phone}`}
-                className="flex-1 flex items-center justify-center gap-1.5 bg-green-600 hover:bg-green-700 text-white text-xs font-semibold px-3 py-2 rounded-md transition-colors"
-              >
+              <a href={`sms:${lead.phone}`}
+                className="flex flex-col items-center justify-center gap-1 bg-green-600 hover:bg-green-700 text-white text-[11px] font-semibold py-2 rounded-md transition-colors">
                 <MessageSquare className="w-3.5 h-3.5" />Text
               </a>
             )}
             <button
-              onClick={() => { navigate("/ops/quotes"); toast.info("Navigate to Quotes to create a quote for this lead"); }}
-              className="flex-1 flex items-center justify-center gap-1.5 bg-secondary hover:bg-secondary/80 border border-border text-xs font-medium px-3 py-2 rounded-md transition-colors"
-            >
+              onClick={() => { navigate("/ops/quotes"); toast.info("Create a quote from the Quotes page"); }}
+              className="flex flex-col items-center justify-center gap-1 bg-[#1e1e1e] hover:bg-[#252525] border border-[#2a2a2a] text-[11px] text-[#aaa] py-2 rounded-md transition-colors">
               <FileText className="w-3.5 h-3.5" />Create Quote
             </button>
             <button
-              onClick={() => { navigate("/ops/schedule"); toast.info("Navigate to Schedule to book a site visit"); }}
-              className="flex-1 flex items-center justify-center gap-1.5 bg-secondary hover:bg-secondary/80 border border-border text-xs font-medium px-3 py-2 rounded-md transition-colors"
-            >
+              onClick={() => { navigate("/ops/schedule"); toast.info("Schedule a site visit from the Schedule page"); }}
+              className="flex flex-col items-center justify-center gap-1 bg-[#1e1e1e] hover:bg-[#252525] border border-[#2a2a2a] text-[11px] text-[#aaa] py-2 rounded-md transition-colors">
               <Calendar className="w-3.5 h-3.5" />Schedule Visit
             </button>
           </div>
@@ -314,48 +236,29 @@ function LeadDetailPanel({
         <div className="flex-1 overflow-y-auto">
 
           {/* Lead info */}
-          <div className="px-4 py-3 border-b border-border space-y-2">
+          <div className="px-4 py-3 border-b border-[#1e1e1e] space-y-1.5">
             <div className="flex items-center justify-between">
-              <span className={cn(
-                "text-[11px] font-semibold px-2 py-0.5 rounded-full border",
-                lead.stage === "new" ? "bg-blue-500/15 text-blue-400 border-blue-500/30" :
-                lead.stage === "contacted" ? "bg-cyan-500/15 text-cyan-400 border-cyan-500/30" :
-                lead.stage === "estimate_sent" ? "bg-amber-500/15 text-amber-400 border-amber-500/30" :
-                lead.stage === "negotiating" ? "bg-purple-500/15 text-purple-400 border-purple-500/30" :
-                lead.stage === "won" ? "bg-green-500/15 text-green-400 border-green-500/30" :
-                lead.stage === "lost" ? "bg-red-500/15 text-red-400 border-red-500/30" :
-                "bg-secondary text-muted-foreground border-border"
-              )}>
-                {KANBAN_STAGES.find(s => s.id === lead.stage)?.label ?? lead.stage}
+              <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full border bg-blue-500/15 text-blue-400 border-blue-500/25">
+                {stageBadge}
               </span>
-              <span className="text-[11px] text-muted-foreground">{formatDate(lead.createdAt)}</span>
+              <span className="text-[11px] text-[#555]">{formatDate(lead.createdAt)}</span>
             </div>
             {lead.source && (
-              <p className="text-xs text-muted-foreground">
-                <span className="text-foreground/60">Source:</span> {SOURCE_LABELS[lead.source] ?? lead.source}
+              <p className="text-xs text-[#666]">
+                <span className="text-[#888]">Source:</span> {SOURCE_LABELS[lead.source] ?? lead.source}
               </p>
             )}
             {lead.address && (
-              <p className="text-xs text-muted-foreground flex items-start gap-1">
-                <MapPin className="w-3.5 h-3.5 shrink-0 mt-0.5 text-muted-foreground" />
+              <p className="text-xs text-[#666] flex items-start gap-1">
+                <MapPin className="w-3.5 h-3.5 shrink-0 mt-0.5 text-[#555]" />
                 {lead.address}
-              </p>
-            )}
-            {lead.jobType && (
-              <p className="text-xs text-muted-foreground">
-                <span className="text-foreground/60">Job type:</span> {lead.jobType}
-              </p>
-            )}
-            {lead.estimatedValue && (
-              <p className="text-xs text-muted-foreground">
-                <span className="text-foreground/60">Estimate:</span> ${Number(lead.estimatedValue).toLocaleString()}
               </p>
             )}
           </div>
 
           {/* Map */}
           {lead.address && (
-            <div className="relative h-44 border-b border-border overflow-hidden">
+            <div className="relative h-44 border-b border-[#1e1e1e] overflow-hidden">
               <MapView
                 initialCenter={{ lat: 35.9, lng: -86.8 }}
                 initialZoom={10}
@@ -363,8 +266,7 @@ function LeadDetailPanel({
               />
               <a
                 href={`https://maps.google.com/?q=${encodeURIComponent(lead.address)}`}
-                target="_blank"
-                rel="noopener noreferrer"
+                target="_blank" rel="noopener noreferrer"
                 className="absolute top-2 left-2 flex items-center gap-1 bg-black/70 hover:bg-black/90 text-white text-[11px] font-medium px-2 py-1 rounded-md transition-colors"
               >
                 <ExternalLink className="w-3 h-3" />Maps
@@ -379,63 +281,59 @@ function LeadDetailPanel({
             </div>
           )}
 
-          {/* Call Now CTA */}
+          {/* Call Now + Mark Lost */}
           {lead.phone && (
             <div className="px-4 pb-3 space-y-2">
-              <a
-                href={`tel:${lead.phone}`}
-                className="w-full flex items-center justify-center gap-2 bg-primary hover:bg-primary/90 text-primary-foreground text-sm font-bold py-3 rounded-lg transition-colors"
-              >
+              <a href={`tel:${lead.phone}`}
+                className="w-full flex items-center justify-center gap-2 bg-[#E07B2A] hover:bg-[#c96e24] text-white text-sm font-bold py-3 rounded-lg transition-colors">
                 <Phone className="w-4 h-4" />Call Now
               </a>
               <button
-                onClick={handleMarkLost}
-                className="w-full flex items-center justify-center gap-2 bg-transparent hover:bg-secondary/60 border border-border text-xs text-muted-foreground py-2 rounded-lg transition-colors"
-              >
-                <XCircle className="w-3.5 h-3.5 text-red-400" />Mark Lost
+                onClick={() => { onStageChange(lead.id, "lost"); onClose(); }}
+                className="w-full flex items-center justify-center gap-2 bg-transparent hover:bg-[#1a1a1a] border border-[#2a2a2a] text-xs text-[#666] py-2 rounded-lg transition-colors">
+                <XCircle className="w-3.5 h-3.5 text-red-500" />Mark Lost
               </button>
             </div>
           )}
 
           {/* Stage selector */}
-          <div className="px-4 pb-3 border-b border-border">
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-2">Move to Stage</p>
+          <div className="px-4 pb-3 border-b border-[#1e1e1e]">
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-[#555] mb-2">Move to Stage</p>
             <div className="flex flex-wrap gap-1.5">
-              {[...KANBAN_STAGES, { id: "won" as const, label: "Won", color: "text-green-400" }, { id: "lost" as const, label: "Lost", color: "text-red-400" }].map(s => (
-                <button
-                  key={s.id}
-                  onClick={() => { onStageChange(lead.id, s.id); }}
+              {[...KANBAN_STAGES,
+                { id: "won" as const, label: "Won" },
+                { id: "lost" as const, label: "Lost" },
+              ].map(s => (
+                <button key={s.id}
+                  onClick={() => onStageChange(lead.id, s.id)}
                   className={cn(
                     "text-[11px] px-2.5 py-1 rounded-full border transition-colors",
                     lead.stage === s.id
-                      ? "bg-primary/20 text-primary border-primary/40 font-semibold"
-                      : "bg-secondary/50 text-muted-foreground border-border hover:border-primary/30 hover:text-foreground"
-                  )}
-                >
+                      ? "bg-[#E07B2A]/20 text-[#E07B2A] border-[#E07B2A]/40 font-semibold"
+                      : "bg-[#1a1a1a] text-[#666] border-[#2a2a2a] hover:border-[#444] hover:text-[#aaa]"
+                  )}>
                   {s.label}
                 </button>
               ))}
             </div>
           </div>
 
-          {/* Activity log */}
+          {/* Activity */}
           <div className="px-4 py-3">
-            <p className="text-xs font-semibold text-foreground mb-3">Activity</p>
-
-            {/* Add note */}
+            <p className="text-xs font-semibold text-white mb-3">Activity</p>
             <div className="flex gap-2 mb-4">
               <input
                 type="text"
                 value={noteText}
                 onChange={e => setNoteText(e.target.value)}
-                onKeyDown={e => e.key === "Enter" && handleSubmitNote()}
+                onKeyDown={e => e.key === "Enter" && noteText.trim() && addNote.mutate({ leadId: lead.id, content: noteText.trim(), type: "note" })}
                 placeholder="Add a note..."
-                className="flex-1 bg-secondary/60 border border-border rounded-md px-3 py-2 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50"
+                className="flex-1 bg-[#1a1a1a] border border-[#2a2a2a] rounded-md px-3 py-2 text-xs text-white placeholder:text-[#555] focus:outline-none focus:border-[#E07B2A]/50"
               />
               <button
-                onClick={handleSubmitNote}
+                onClick={() => noteText.trim() && addNote.mutate({ leadId: lead.id, content: noteText.trim(), type: "note" })}
                 disabled={!noteText.trim() || addNote.isPending}
-                className="shrink-0 flex items-center gap-1.5 bg-secondary hover:bg-secondary/80 border border-border text-xs px-3 py-2 rounded-md transition-colors disabled:opacity-50"
+                className="shrink-0 flex items-center gap-1.5 bg-[#1a1a1a] hover:bg-[#222] border border-[#2a2a2a] text-xs text-[#aaa] px-3 py-2 rounded-md transition-colors disabled:opacity-50"
               >
                 {addNote.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
                 Add Note
@@ -444,31 +342,30 @@ function LeadDetailPanel({
 
             {/* System entry */}
             <div className="flex gap-2.5 mb-3">
-              <div className="w-6 h-6 rounded-full bg-secondary border border-border flex items-center justify-center shrink-0 mt-0.5">
-                <User className="w-3 h-3 text-muted-foreground" />
+              <div className="w-6 h-6 rounded-full bg-[#1e1e1e] border border-[#2a2a2a] flex items-center justify-center shrink-0 mt-0.5">
+                <User className="w-3 h-3 text-[#555]" />
               </div>
               <div>
-                <p className="text-xs text-foreground font-medium">New lead added: {lead.name}</p>
-                <p className="text-[11px] text-muted-foreground">{timeAgo(lead.createdAt)}</p>
+                <p className="text-xs text-white">New lead added: {lead.name}</p>
+                <p className="text-[11px] text-[#555]">{timeAgo(lead.createdAt)}</p>
               </div>
             </div>
 
-            {/* Notes */}
             {notesLoading ? (
               <div className="flex items-center gap-2 py-2">
-                <Loader2 className="w-3.5 h-3.5 animate-spin text-muted-foreground" />
-                <span className="text-xs text-muted-foreground">Loading activity...</span>
+                <Loader2 className="w-3.5 h-3.5 animate-spin text-[#555]" />
+                <span className="text-xs text-[#555]">Loading...</span>
               </div>
             ) : (
               <div className="space-y-3">
                 {notes.map(note => (
                   <div key={note.id} className="flex gap-2.5">
-                    <div className="w-6 h-6 rounded-full bg-secondary border border-border flex items-center justify-center shrink-0 mt-0.5">
-                      {NOTE_ICONS[note.type] ?? <ClipboardList className="w-3.5 h-3.5 text-muted-foreground" />}
+                    <div className="w-6 h-6 rounded-full bg-[#1e1e1e] border border-[#2a2a2a] flex items-center justify-center shrink-0 mt-0.5">
+                      {NOTE_ICONS[note.type] ?? <ClipboardList className="w-3.5 h-3.5 text-[#555]" />}
                     </div>
                     <div>
-                      <p className="text-xs text-foreground">{note.content}</p>
-                      <p className="text-[11px] text-muted-foreground">{timeAgo(note.createdAt)}</p>
+                      <p className="text-xs text-white">{note.content}</p>
+                      <p className="text-[11px] text-[#555]">{timeAgo(note.createdAt)}</p>
                     </div>
                   </div>
                 ))}
@@ -478,24 +375,21 @@ function LeadDetailPanel({
         </div>
 
         {/* Footer */}
-        <div className="px-4 py-3 border-t border-border flex gap-2">
+        <div className="px-4 py-3 border-t border-[#1e1e1e] flex gap-2">
           <button
-            onClick={() => { navigate("/ops/jobs"); toast.info("Convert this lead to a job from the Jobs page"); }}
-            className="flex-1 flex items-center justify-center gap-1.5 bg-secondary hover:bg-secondary/80 border border-border text-xs font-medium px-3 py-2 rounded-md transition-colors"
-          >
+            onClick={() => { navigate("/ops/jobs"); toast.info("Convert to a job from the Jobs page"); }}
+            className="flex-1 flex items-center justify-center gap-1.5 bg-[#1a1a1a] hover:bg-[#222] border border-[#2a2a2a] text-xs text-[#aaa] px-3 py-2 rounded-md transition-colors">
             <ExternalLink className="w-3.5 h-3.5" />View Full Deal
           </button>
           <button
-            onClick={() => { /* future: contact detail */ toast.info("Contact detail coming soon"); }}
-            className="flex-1 flex items-center justify-center gap-1.5 bg-secondary hover:bg-secondary/80 border border-border text-xs font-medium px-3 py-2 rounded-md transition-colors"
-          >
+            onClick={() => toast.info("Contact detail coming soon")}
+            className="flex-1 flex items-center justify-center gap-1.5 bg-[#1a1a1a] hover:bg-[#222] border border-[#2a2a2a] text-xs text-[#aaa] px-3 py-2 rounded-md transition-colors">
             <User className="w-3.5 h-3.5" />View Contact
           </button>
           <button
             onClick={() => onDelete(lead.id)}
-            className="shrink-0 p-2 bg-secondary hover:bg-red-500/20 border border-border hover:border-red-500/30 rounded-md transition-colors"
-          >
-            <Trash2 className="w-3.5 h-3.5 text-muted-foreground hover:text-red-400" />
+            className="shrink-0 p-2 bg-[#1a1a1a] hover:bg-red-500/15 border border-[#2a2a2a] hover:border-red-500/30 rounded-md transition-colors">
+            <Trash2 className="w-3.5 h-3.5 text-[#555] hover:text-red-400" />
           </button>
         </div>
       </div>
@@ -522,11 +416,11 @@ function AddLeadModal({ onClose, onCreate }: { onClose: () => void; onCreate: (f
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
-      <div className="bg-card border border-border rounded-xl w-full max-w-md mx-4 overflow-hidden shadow-2xl">
-        <div className="flex items-center justify-between px-5 py-4 border-b border-border">
-          <h2 className="text-sm font-bold text-foreground">Add Lead</h2>
-          <button onClick={onClose} className="p-1.5 rounded-md hover:bg-secondary transition-colors">
-            <X className="w-4 h-4 text-muted-foreground" />
+      <div className="bg-[#111] border border-[#222] rounded-xl w-full max-w-md mx-4 overflow-hidden shadow-2xl">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-[#1e1e1e]">
+          <h2 className="text-sm font-bold text-white">Add Lead</h2>
+          <button onClick={onClose} className="p-1.5 rounded-md hover:bg-[#1e1e1e] transition-colors">
+            <X className="w-4 h-4 text-[#666]" />
           </button>
         </div>
         <div className="p-5 space-y-3 max-h-[70vh] overflow-y-auto">
@@ -538,44 +432,38 @@ function AddLeadModal({ onClose, onCreate }: { onClose: () => void; onCreate: (f
             { label: "Estimated Value ($)", key: "estimatedValue" as const, type: "number", placeholder: "0" },
           ].map(f => (
             <div key={f.key}>
-              <label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{f.label}</label>
-              <input
-                type={f.type}
-                value={form[f.key]}
-                onChange={set(f.key)}
-                placeholder={f.placeholder}
-                className="mt-1 w-full bg-secondary/60 border border-border rounded-md px-3 py-2 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50"
-              />
+              <label className="text-[11px] font-semibold uppercase tracking-wider text-[#555]">{f.label}</label>
+              <input type={f.type} value={form[f.key]} onChange={set(f.key)} placeholder={f.placeholder}
+                className="mt-1 w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-md px-3 py-2 text-xs text-white placeholder:text-[#444] focus:outline-none focus:border-[#E07B2A]/50" />
             </div>
           ))}
           <div>
-            <label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Source</label>
+            <label className="text-[11px] font-semibold uppercase tracking-wider text-[#555]">Source</label>
             <select value={form.source} onChange={set("source")}
-              className="mt-1 w-full bg-secondary/60 border border-border rounded-md px-3 py-2 text-xs text-foreground focus:outline-none focus:border-primary/50">
+              className="mt-1 w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-md px-3 py-2 text-xs text-white focus:outline-none focus:border-[#E07B2A]/50">
               {Object.entries(SOURCE_LABELS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
             </select>
           </div>
           <div>
-            <label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Job Type</label>
+            <label className="text-[11px] font-semibold uppercase tracking-wider text-[#555]">Job Type</label>
             <select value={form.jobType} onChange={set("jobType")}
-              className="mt-1 w-full bg-secondary/60 border border-border rounded-md px-3 py-2 text-xs text-foreground focus:outline-none focus:border-primary/50">
+              className="mt-1 w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-md px-3 py-2 text-xs text-white focus:outline-none focus:border-[#E07B2A]/50">
               {["Land Clearing", "Forestry Mulching", "Brush Removal", "Stump Grinding", "Wildfire Mitigation"].map(t => (
                 <option key={t} value={t}>{t}</option>
               ))}
             </select>
           </div>
           <div>
-            <label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Notes</label>
+            <label className="text-[11px] font-semibold uppercase tracking-wider text-[#555]">Notes</label>
             <textarea value={form.notes} onChange={set("notes")} rows={3} placeholder="Any additional context..."
-              className="mt-1 w-full bg-secondary/60 border border-border rounded-md px-3 py-2 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50 resize-none" />
+              className="mt-1 w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-md px-3 py-2 text-xs text-white placeholder:text-[#444] focus:outline-none focus:border-[#E07B2A]/50 resize-none" />
           </div>
         </div>
-        <div className="px-5 py-4 border-t border-border flex gap-3 justify-end">
-          <button onClick={onClose} className="text-xs px-4 py-2 rounded-md bg-secondary hover:bg-secondary/80 border border-border transition-colors">Cancel</button>
+        <div className="px-5 py-4 border-t border-[#1e1e1e] flex gap-3 justify-end">
+          <button onClick={onClose} className="text-xs px-4 py-2 rounded-md bg-[#1a1a1a] hover:bg-[#222] border border-[#2a2a2a] text-[#aaa] transition-colors">Cancel</button>
           <button
             onClick={() => { if (!form.name.trim()) { toast.error("Name is required"); return; } onCreate(form); }}
-            className="text-xs px-4 py-2 rounded-md bg-primary hover:bg-primary/90 text-primary-foreground font-semibold transition-colors"
-          >
+            className="text-xs px-4 py-2 rounded-md bg-[#E07B2A] hover:bg-[#c96e24] text-white font-semibold transition-colors">
             Add Lead
           </button>
         </div>
@@ -584,7 +472,7 @@ function AddLeadModal({ onClose, onCreate }: { onClose: () => void; onCreate: (f
   );
 }
 
-// ─── Main Component ───────────────────────────────────────────────────────────
+// ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function Leads() {
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
@@ -600,7 +488,7 @@ export default function Leads() {
   });
 
   const updateLead = trpc.ops.leads.update.useMutation({
-    onSuccess: () => { utils.ops.leads.list.invalidate(); },
+    onSuccess: () => utils.ops.leads.list.invalidate(),
     onError: () => toast.error("Failed to update lead"),
   });
 
@@ -611,15 +499,17 @@ export default function Leads() {
 
   const handleStageChange = (id: number, stage: string) => {
     updateLead.mutate({ id, stage: stage as any });
-    // Optimistically update selectedLead
-    if (selectedLead?.id === id) {
-      setSelectedLead(prev => prev ? { ...prev, stage } : null);
-    }
+    if (selectedLead?.id === id) setSelectedLead(prev => prev ? { ...prev, stage } : null);
   };
 
-  const handleDelete = (id: number) => {
-    deleteLead.mutate({ id });
-  };
+  const filtered = (leads as Lead[]).filter(l => {
+    if (!search) return true;
+    const q = search.toLowerCase();
+    return l.name.toLowerCase().includes(q) || (l.phone ?? "").includes(q) || (l.address ?? "").toLowerCase().includes(q);
+  });
+
+  const byStage = (id: string) => filtered.filter(l => l.stage === id);
+  const activeCount = filtered.filter(l => !["won", "lost"].includes(l.stage)).length;
 
   const handleCreate = (form: AddLeadForm) => {
     createLead.mutate({
@@ -635,49 +525,39 @@ export default function Leads() {
     });
   };
 
-  // Filter leads
-  const filtered = leads.filter(l => {
-    if (!search) return true;
-    const q = search.toLowerCase();
-    return l.name.toLowerCase().includes(q) ||
-      (l.phone ?? "").toLowerCase().includes(q) ||
-      (l.address ?? "").toLowerCase().includes(q);
-  }) as Lead[];
-
-  // Group by stage
-  const byStage = (stageId: string) => filtered.filter(l => l.stage === stageId);
-
-  const activeCount = filtered.filter(l => !["won", "lost"].includes(l.stage)).length;
-  const wonCount = byStage("won").length;
-  const lostCount = byStage("lost").length;
-  const onHoldCount = byStage("on_hold").length;
-
   return (
     <DashboardLayout>
-      <div className="flex flex-col h-full overflow-hidden">
+      {/* Outer wrapper: fills remaining height after sidebar header */}
+      <div className="flex flex-col h-full bg-[#0a0a0a]">
 
         {/* Top bar */}
-        <div className="flex items-center justify-between px-4 py-3 border-b border-border shrink-0">
-          <div className="flex items-center gap-3">
-            <h1 className="text-base font-bold text-foreground">Leads</h1>
-            {activeCount > 0 && (
-              <span className="text-xs text-muted-foreground">{activeCount} active</span>
-            )}
+        <div className="flex items-center justify-between px-4 py-3 border-b border-[#1e1e1e] shrink-0">
+          <div className="flex items-baseline gap-2">
+            <h1 className="text-base font-bold text-white">Leads</h1>
+            {activeCount > 0 && <span className="text-xs text-[#666]">{activeCount} active</span>}
           </div>
           <div className="flex items-center gap-2">
+            {/* Bulk action icon */}
+            <button className="p-2 rounded-md hover:bg-[#1a1a1a] border border-[#222] transition-colors" title="Bulk actions">
+              <svg className="w-4 h-4 text-[#666]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+              </svg>
+            </button>
+            {/* Dialer */}
             <button
               onClick={() => toast.info("Dialer coming soon")}
-              className="flex items-center gap-1.5 bg-secondary hover:bg-secondary/80 border border-border text-xs px-3 py-1.5 rounded-md transition-colors"
+              className="flex items-center gap-1.5 bg-[#1a1a1a] hover:bg-[#222] border border-[#222] text-xs text-[#aaa] px-3 py-1.5 rounded-md transition-colors"
             >
               <PhoneCall className="w-3.5 h-3.5" />
               Dialer
               {activeCount > 0 && (
-                <span className="bg-primary text-primary-foreground text-[10px] font-bold px-1.5 py-0.5 rounded-full">{activeCount}</span>
+                <span className="bg-[#E07B2A] text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">{activeCount}</span>
               )}
             </button>
+            {/* Add Lead */}
             <button
               onClick={() => setShowAddModal(true)}
-              className="flex items-center gap-1.5 bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-semibold px-3 py-1.5 rounded-md transition-colors"
+              className="flex items-center gap-1.5 bg-[#E07B2A] hover:bg-[#c96e24] text-white text-xs font-semibold px-3 py-1.5 rounded-md transition-colors"
             >
               <Plus className="w-3.5 h-3.5" />Add Lead
             </button>
@@ -685,64 +565,88 @@ export default function Leads() {
         </div>
 
         {/* Search bar */}
-        <div className="px-4 py-2 border-b border-border shrink-0">
+        <div className="px-4 py-2 border-b border-[#1e1e1e] shrink-0">
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[#444]" />
             <input
               type="text"
               value={search}
               onChange={e => setSearch(e.target.value)}
               placeholder="Search leads..."
-              className="w-full bg-secondary/40 border border-border rounded-lg pl-9 pr-4 py-2 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/40"
+              className="w-full bg-[#111] border border-[#222] rounded-lg pl-9 pr-4 py-2 text-xs text-white placeholder:text-[#444] focus:outline-none focus:border-[#333]"
             />
           </div>
         </div>
 
-        {/* Kanban board */}
-        <div className="flex-1 overflow-x-auto overflow-y-hidden">
+        {/* Kanban board — fills remaining space */}
+        <div className="flex-1 overflow-hidden">
           {isLoading ? (
             <div className="flex items-center justify-center h-full">
-              <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+              <Loader2 className="w-6 h-6 animate-spin text-[#444]" />
             </div>
           ) : (
-            <div className="flex gap-3 p-4 h-full min-w-max">
-              {KANBAN_STAGES.map(stage => (
-                <KanbanColumn
+            <div className="flex gap-0 h-full">
+              {KANBAN_STAGES.map((stage, i) => (
+                <div
                   key={stage.id}
-                  stage={stage}
-                  leads={byStage(stage.id)}
-                  onLeadClick={setSelectedLead}
-                />
+                  className={cn(
+                    "flex flex-col flex-1 min-w-0 overflow-hidden",
+                    i < KANBAN_STAGES.length - 1 && "border-r border-[#1e1e1e]"
+                  )}
+                >
+                  {/* Column header */}
+                  <div className="px-4 py-3 border-b border-[#1e1e1e] shrink-0">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-semibold text-white">{stage.label}</span>
+                      <span className="text-xs text-[#555] font-mono">{byStage(stage.id).length}</span>
+                    </div>
+                    {byStage(stage.id).length === 0 && (
+                      <p className="text-[11px] text-[#3a3a3a] mt-0.5">{stage.subtitle}</p>
+                    )}
+                  </div>
+                  {/* Cards */}
+                  <div className="flex-1 overflow-y-auto p-2 space-y-1.5">
+                    {byStage(stage.id).map(lead => (
+                      <LeadCard key={lead.id} lead={lead} onClick={() => setSelectedLead(lead)} />
+                    ))}
+                  </div>
+                </div>
               ))}
             </div>
           )}
         </div>
 
-        {/* Bottom closed bar */}
-        <div className="shrink-0 border-t border-border px-4 py-2 flex items-center gap-3">
-          <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mr-1">CLOSED</span>
-          {CLOSED_STAGES.map(s => {
-            const count = s.id === "won" ? wonCount : s.id === "lost" ? lostCount : onHoldCount;
-            const Icon = s.icon;
-            return (
-              <div
-                key={s.id}
-                className={cn(
-                  "flex items-center gap-2 px-4 py-1.5 rounded-lg border text-xs font-semibold flex-1 justify-center",
-                  s.color
-                )}
-              >
-                <Icon className="w-3.5 h-3.5" />
-                {s.label}
-                <span className="font-mono">{count}</span>
+        {/* CLOSED bottom bar */}
+        <div className="shrink-0 border-t border-[#1e1e1e]">
+          <div className="text-center py-1">
+            <span className="text-[10px] font-semibold uppercase tracking-widest text-[#333]">CLOSED</span>
+          </div>
+          <div className="flex">
+            {/* Won */}
+            <div className="flex-1 flex items-center justify-center gap-2 py-2.5 border-t-2 border-green-500/40 bg-green-500/5">
+              <Star className="w-3.5 h-3.5 text-green-400" />
+              <span className="text-xs font-semibold text-green-400">Won</span>
+              <span className="text-xs text-green-500/60 font-mono">{byStage("won").length}</span>
+            </div>
+            {/* Lost */}
+            <div className="flex-1 flex items-center justify-center gap-2 py-2.5 border-t-2 border-red-500/40 bg-red-500/5 border-x border-x-[#1e1e1e]">
+              <XCircle className="w-3.5 h-3.5 text-red-400" />
+              <span className="text-xs font-semibold text-red-400">Lost</span>
+              <span className="text-xs text-red-500/60 font-mono">{byStage("lost").length}</span>
+            </div>
+            {/* On Hold */}
+            <div className="flex-1 flex items-center justify-center gap-2 py-2.5 border-t-2 border-blue-500/40 bg-blue-500/5">
+              <Snowflake className="w-3.5 h-3.5 text-blue-400" />
+              <span className="text-xs font-semibold text-blue-400">On Hold</span>
+              <span className="text-xs text-blue-500/60 font-mono">{byStage("on_hold").length}</span>
+            </div>
+            {/* Phone Ready pill — right side */}
+            <div className="flex items-center px-4 border-l border-[#1e1e1e]">
+              <div className="flex items-center gap-1.5 bg-green-500/10 border border-green-500/25 text-green-400 text-xs font-semibold px-3 py-1.5 rounded-full">
+                <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
+                Phone Ready
               </div>
-            );
-          })}
-
-          {/* Phone Ready indicator */}
-          <div className="ml-auto flex items-center gap-1.5 bg-green-500/15 border border-green-500/30 text-green-400 text-xs font-semibold px-3 py-1.5 rounded-full">
-            <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
-            Phone Ready
+            </div>
           </div>
         </div>
       </div>
@@ -753,16 +657,13 @@ export default function Leads() {
           lead={selectedLead}
           onClose={() => setSelectedLead(null)}
           onStageChange={handleStageChange}
-          onDelete={handleDelete}
+          onDelete={id => deleteLead.mutate({ id })}
         />
       )}
 
       {/* Add lead modal */}
       {showAddModal && (
-        <AddLeadModal
-          onClose={() => setShowAddModal(false)}
-          onCreate={handleCreate}
-        />
+        <AddLeadModal onClose={() => setShowAddModal(false)} onCreate={handleCreate} />
       )}
     </DashboardLayout>
   );
