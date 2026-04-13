@@ -675,11 +675,16 @@
 
 ## Email Sender Address — Apr 13 2026
 
-- [ ] Update new lead notification email sender from noreply@noreply.ownrops.com to noreply@nolandearthworks.com
-- [ ] TypeScript check and save checkpoint
+- [x] Update new lead notification email sender from noreply@noreply.ownrops.com to noreply@nolandearthworks.com (all senders already set to noreply@nolandearthworks.com)
+- [x] TypeScript check: 0 errors. Checkpoint saved.
 
 ## Leads Page Layout + Email Sender Fix — Apr 13 2026
 
 - [x] Ensure all new-lead notification emails use from: noreply@nolandearthworks.com
 - [x] Restyle Leads.tsx: full-height columns, compact cards, CLOSED label above bottom bar, Phone Ready pill bottom-right, columns fill viewport width equally
+- [x] TypeScript check: 0 errors. Checkpoint saved.
+
+## Leads Drag-and-Drop — Apr 13 2026
+
+- [x] Add native HTML5 drag-and-drop to kanban columns — drag cards between stages, update DB on drop
 - [x] TypeScript check: 0 errors. Checkpoint saved.

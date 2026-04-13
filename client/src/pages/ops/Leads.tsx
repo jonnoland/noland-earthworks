@@ -73,11 +73,13 @@ interface Lead {
 
 // ─── Lead Card ────────────────────────────────────────────────────────────────
 
-function LeadCard({ lead, onClick }: { lead: Lead; onClick: () => void }) {
+function LeadCard({ lead, onClick, onDragStart }: { lead: Lead; onClick: () => void; onDragStart: (id: number) => void }) {
   return (
-    <button
+    <div
+      draggable
+      onDragStart={e => { e.dataTransfer.effectAllowed = "move"; onDragStart(lead.id); }}
       onClick={onClick}
-      className="w-full text-left bg-[#181818] border border-[#2a2a2a] rounded-lg px-3 py-2.5 hover:border-[#3a3a3a] hover:bg-[#1e1e1e] transition-all group cursor-pointer"
+      className="w-full text-left bg-[#181818] border border-[#2a2a2a] rounded-lg px-3 py-2.5 hover:border-[#3a3a3a] hover:bg-[#1e1e1e] transition-all group cursor-grab active:cursor-grabbing select-none"
     >
       <div className="flex items-center justify-between gap-2">
         <div className="flex-1 min-w-0">
@@ -96,21 +98,31 @@ function LeadCard({ lead, onClick }: { lead: Lead; onClick: () => void }) {
           </div>
         )}
       </div>
-    </button>
+    </div>
   );
 }
 
 // ─── Kanban Column ────────────────────────────────────────────────────────────
 
 function KanbanColumn({
-  stage, leads, onLeadClick,
+  stage, leads, onLeadClick, onDragStart, onDrop, isDragOver,
 }: {
   stage: typeof KANBAN_STAGES[number];
   leads: Lead[];
   onLeadClick: (lead: Lead) => void;
+  onDragStart: (id: number) => void;
+  onDrop: (stageId: string) => void;
+  isDragOver: boolean;
 }) {
   return (
-    <div className="flex flex-col flex-1 min-w-0 bg-[#111] border border-[#222] rounded-xl overflow-hidden">
+    <div
+      className={cn(
+        "flex flex-col flex-1 min-w-0 bg-[#111] border border-[#222] rounded-xl overflow-hidden transition-colors",
+        isDragOver && "border-[#E07B2A]/50 bg-[#E07B2A]/5"
+      )}
+      onDragOver={e => { e.preventDefault(); e.dataTransfer.dropEffect = "move"; }}
+      onDrop={e => { e.preventDefault(); onDrop(stage.id); }}
+    >
       {/* Column header */}
       <div className="px-4 py-3 border-b border-[#1e1e1e]">
         <div className="flex items-center gap-2">
@@ -118,14 +130,19 @@ function KanbanColumn({
           <span className="text-xs text-[#555] font-mono">{leads.length}</span>
         </div>
         {leads.length === 0 && (
-          <p className="text-[11px] text-[#444] mt-0.5">{stage.subtitle}</p>
+          <p className={cn("text-[11px] mt-0.5", isDragOver ? "text-[#E07B2A]/60" : "text-[#444]")}>
+            {isDragOver ? "Drop here" : stage.subtitle}
+          </p>
         )}
       </div>
       {/* Cards area */}
       <div className="flex-1 p-2 space-y-1.5 overflow-y-auto">
         {leads.map(lead => (
-          <LeadCard key={lead.id} lead={lead} onClick={() => onLeadClick(lead)} />
+          <LeadCard key={lead.id} lead={lead} onClick={() => onLeadClick(lead)} onDragStart={onDragStart} />
         ))}
+        {isDragOver && leads.length > 0 && (
+          <div className="h-10 border-2 border-dashed border-[#E07B2A]/40 rounded-lg bg-[#E07B2A]/5" />
+        )}
       </div>
     </div>
   );
@@ -478,6 +495,8 @@ export default function Leads() {
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
   const [search, setSearch] = useState("");
+  const [draggingId, setDraggingId] = useState<number | null>(null);
+  const [dragOverStage, setDragOverStage] = useState<string | null>(null);
 
   const utils = trpc.useUtils();
   const { data: leads = [], isLoading } = trpc.ops.leads.list.useQuery();
@@ -500,6 +519,17 @@ export default function Leads() {
   const handleStageChange = (id: number, stage: string) => {
     updateLead.mutate({ id, stage: stage as any });
     if (selectedLead?.id === id) setSelectedLead(prev => prev ? { ...prev, stage } : null);
+  };
+
+  const handleDragStart = (id: number) => setDraggingId(id);
+
+  const handleDrop = (stageId: string) => {
+    if (draggingId !== null) {
+      handleStageChange(draggingId, stageId);
+      toast.success("Lead moved");
+    }
+    setDraggingId(null);
+    setDragOverStage(null);
   };
 
   const filtered = (leads as Lead[]).filter(l => {
@@ -579,36 +609,52 @@ export default function Leads() {
         </div>
 
         {/* Kanban board — fills remaining space */}
-        <div className="flex-1 overflow-hidden">
+        <div
+          className="flex-1 overflow-hidden"
+          onDragEnd={() => { setDraggingId(null); setDragOverStage(null); }}
+        >
           {isLoading ? (
             <div className="flex items-center justify-center h-full">
               <Loader2 className="w-6 h-6 animate-spin text-[#444]" />
             </div>
           ) : (
             <div className="flex gap-0 h-full">
-              {KANBAN_STAGES.map((stage, i) => (
+              {KANBAN_STAGES.map((stage) => (
                 <div
                   key={stage.id}
-                  className={cn(
-                    "flex flex-col flex-1 min-w-0 overflow-hidden",
-                    i < KANBAN_STAGES.length - 1 && "border-r border-[#1e1e1e]"
-                  )}
+                  className="flex flex-col flex-1 min-w-0 overflow-hidden border-r border-[#1e1e1e] last:border-r-0"
+                  onDragOver={e => { e.preventDefault(); setDragOverStage(stage.id); }}
+                  onDragLeave={() => setDragOverStage(null)}
+                  onDrop={e => { e.preventDefault(); handleDrop(stage.id); }}
                 >
                   {/* Column header */}
-                  <div className="px-4 py-3 border-b border-[#1e1e1e] shrink-0">
+                  <div className={cn(
+                    "px-4 py-3 border-b shrink-0 transition-colors",
+                    dragOverStage === stage.id ? "border-[#E07B2A]/40 bg-[#E07B2A]/5" : "border-[#1e1e1e]"
+                  )}>
                     <div className="flex items-center gap-2">
                       <span className="text-sm font-semibold text-white">{stage.label}</span>
                       <span className="text-xs text-[#555] font-mono">{byStage(stage.id).length}</span>
                     </div>
                     {byStage(stage.id).length === 0 && (
-                      <p className="text-[11px] text-[#3a3a3a] mt-0.5">{stage.subtitle}</p>
+                      <p className={cn("text-[11px] mt-0.5", dragOverStage === stage.id ? "text-[#E07B2A]/60" : "text-[#3a3a3a]")}>
+                        {dragOverStage === stage.id ? "Drop here" : stage.subtitle}
+                      </p>
                     )}
                   </div>
                   {/* Cards */}
                   <div className="flex-1 overflow-y-auto p-2 space-y-1.5">
                     {byStage(stage.id).map(lead => (
-                      <LeadCard key={lead.id} lead={lead} onClick={() => setSelectedLead(lead)} />
+                      <LeadCard
+                        key={lead.id}
+                        lead={lead}
+                        onClick={() => setSelectedLead(lead)}
+                        onDragStart={handleDragStart}
+                      />
                     ))}
+                    {dragOverStage === stage.id && byStage(stage.id).length > 0 && (
+                      <div className="h-10 border-2 border-dashed border-[#E07B2A]/40 rounded-lg bg-[#E07B2A]/5" />
+                    )}
                   </div>
                 </div>
               ))}
