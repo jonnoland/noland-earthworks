@@ -7,10 +7,11 @@
  */
 
 import DashboardLayout from "@/components/DashboardLayout";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import {
   Calculator, DollarSign, Users, Clock, TrendingUp, Info,
   FileDown, Settings, Plus, Trash2, X, ChevronDown,
+  MapPin, Navigation, AlertTriangle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -636,6 +637,83 @@ export default function Pricing() {
   const [jobAddress, setJobAddress] = useState("");
   const [jobType, setJobType] = useState("Land Clearing");
 
+  // ─── Distance Pricing state ────────────────────────────────────────────────
+  // Business origin: Vanleer, TN (Jon's base of operations)
+  const ORIGIN = "Vanleer, TN 37181";
+  const [distAddress, setDistAddress] = useState("");
+  const [distResult, setDistResult] = useState<{
+    distanceMiles: number;
+    durationText: string;
+    surcharge: number;
+    adjustedDayRate: number;
+    adjustedJobTotal: number;
+    adjustedPricePerAcre: number;
+  } | null>(null);
+  const [distLoading, setDistLoading] = useState(false);
+  const [distError, setDistError] = useState("");
+  const mapRef = useRef<google.maps.Map | null>(null);
+  const directionsRendererRef = useRef<google.maps.DirectionsRenderer | null>(null);
+  const mapContainerRef = useRef<HTMLDivElement>(null);
+  const [mapReady, setMapReady] = useState(false);
+
+  // Mobilization surcharge tiers (per crew-day)
+  const MOB_TIERS = [
+    { maxMiles: 30,  label: "Local (0–30 mi)",       surcharge: 0 },
+    { maxMiles: 50,  label: "Near (31–50 mi)",        surcharge: 150 },
+    { maxMiles: 75,  label: "Regional (51–75 mi)",    surcharge: 300 },
+    { maxMiles: 100, label: "Extended (76–100 mi)",   surcharge: 500 },
+    { maxMiles: 999, label: "Long-Haul (100+ mi)",    surcharge: 750 },
+  ];
+
+  const getMobTier = (miles: number) =>
+    MOB_TIERS.find(t => miles <= t.maxMiles) ?? MOB_TIERS[MOB_TIERS.length - 1];
+
+  // Initialize map once Maps API is loaded
+  const initDistanceMap = useCallback(() => {
+    if (!mapContainerRef.current || !window.google?.maps || mapRef.current) return;
+    const map = new window.google.maps.Map(mapContainerRef.current, {
+      zoom: 7,
+      center: { lat: 36.25, lng: -87.5 }, // Centered on Middle TN
+      mapTypeId: "roadmap",
+      mapTypeControl: false,
+      streetViewControl: false,
+      fullscreenControl: false,
+    });
+    mapRef.current = map;
+    directionsRendererRef.current = new window.google.maps.DirectionsRenderer({
+      map,
+      suppressMarkers: false,
+      polylineOptions: { strokeColor: "#f97316", strokeWeight: 4 },
+    });
+    setMapReady(true);
+  }, []);
+
+  // Load Maps script and init map when the distance section is first rendered
+  useEffect(() => {
+    const API_KEY = import.meta.env.VITE_FRONTEND_FORGE_API_KEY;
+    const FORGE_BASE_URL = import.meta.env.VITE_FRONTEND_FORGE_API_URL || "https://forge.manus.ai";
+    const MAPS_PROXY_URL = `${FORGE_BASE_URL}/v1/maps/proxy`;
+    if (window.google?.maps) {
+      initDistanceMap();
+      return;
+    }
+    const existing = document.querySelector(`script[src*="maps/api/js"]`);
+    if (existing) {
+      const check = setInterval(() => {
+        if (window.google?.maps) { clearInterval(check); initDistanceMap(); }
+      }, 100);
+      return () => clearInterval(check);
+    }
+    const script = document.createElement("script");
+    script.src = `${MAPS_PROXY_URL}/maps/api/js?key=${API_KEY}&v=weekly&libraries=marker,places,geocoding,geometry`;
+    script.async = true;
+    script.crossOrigin = "anonymous";
+    script.onload = () => initDistanceMap();
+    document.head.appendChild(script);
+  }, [initDistanceMap]);
+
+  // calculateDistance is defined after derived values to avoid hoisting issues — see below
+
   useEffect(() => {
     localStorage.setItem("noland_pricing_config", JSON.stringify(config));
   }, [config]);
@@ -656,6 +734,44 @@ export default function Pricing() {
   const jobTotal = crewDayRate * crewDaysNeeded;
   const pricePerAcre = jobAcres > 0 ? jobTotal / jobAcres : 0;
   const jobProfit = jobTotal - totalDailyCost * crewDaysNeeded;
+
+  // ─── Distance calculation (uses crewDayRate, declared above) ───────────────────────────────
+  const calculateDistance = async () => {
+    if (!distAddress.trim()) { setDistError("Enter a job site address."); return; }
+    if (!window.google?.maps) { setDistError("Map not loaded yet. Try again in a moment."); return; }
+    setDistLoading(true);
+    setDistError("");
+    setDistResult(null);
+    try {
+      const svc = new window.google.maps.DirectionsService();
+      const result = await svc.route({
+        origin: ORIGIN,
+        destination: distAddress,
+        travelMode: window.google.maps.TravelMode.DRIVING,
+      });
+      const leg = result.routes[0]?.legs[0];
+      if (!leg) throw new Error("No route found.");
+      const miles = (leg.distance?.value ?? 0) / 1609.344;
+      const tier = getMobTier(miles);
+      const adjDayRate = crewDayRate + tier.surcharge;
+      const adjJobTotal = adjDayRate * crewDaysNeeded;
+      setDistResult({
+        distanceMiles: Math.round(miles * 10) / 10,
+        durationText: leg.duration?.text ?? "",
+        surcharge: tier.surcharge,
+        adjustedDayRate: adjDayRate,
+        adjustedJobTotal: adjJobTotal,
+        adjustedPricePerAcre: jobAcres > 0 ? adjJobTotal / jobAcres : 0,
+      });
+      directionsRendererRef.current?.setDirections(result);
+      if (!jobAddress) setJobAddress(distAddress);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Could not calculate route.";
+      setDistError(msg.includes("ZERO_RESULTS") ? "No driving route found to that address." : msg);
+    } finally {
+      setDistLoading(false);
+    }
+  };
 
   const InputRow = ({
     label, value, onChange, prefix = "$", min = 0, max = 10000, step = 50, hint,
@@ -877,6 +993,123 @@ export default function Pricing() {
           <p className="text-[11px] text-muted-foreground mt-2">
             Opens your browser's print dialog — save as PDF or print directly.
           </p>
+        </div>
+
+        {/* Distance-Based Mobilization Pricing */}
+        <div className="ops-card p-5">
+          <div className="flex items-center gap-2 mb-1">
+            <div className="p-2 rounded-md bg-primary/10">
+              <MapPin className="w-4 h-4 text-primary" />
+            </div>
+            <div>
+              <h3 className="text-sm font-semibold text-foreground">Distance Pricing Adjustment</h3>
+              <p className="text-xs text-muted-foreground">Calculates drive distance from Vanleer, TN and applies a mobilization surcharge to your crew-day rate</p>
+            </div>
+          </div>
+
+          {/* Address input + Calculate button */}
+          <div className="flex gap-2 mt-4 mb-5">
+            <input
+              type="text"
+              value={distAddress}
+              onChange={e => { setDistAddress(e.target.value); setDistResult(null); setDistError(""); }}
+              onKeyDown={e => e.key === "Enter" && calculateDistance()}
+              placeholder="Enter job site address (e.g. 1234 Hwy 46, Dickson TN)"
+              className="flex-1 bg-secondary/50 border border-border rounded-md px-3 py-2 text-xs text-foreground outline-none focus:border-primary/50 transition-colors placeholder:text-muted-foreground/40"
+            />
+            <button
+              onClick={calculateDistance}
+              disabled={distLoading || !distAddress.trim()}
+              className="flex items-center gap-1.5 bg-primary hover:bg-primary/90 disabled:opacity-50 text-white text-xs font-semibold px-4 py-2 rounded-md transition-all whitespace-nowrap"
+            >
+              <Navigation className="w-3.5 h-3.5" />
+              {distLoading ? "Calculating..." : "Calculate"}
+            </button>
+          </div>
+
+          {/* Error */}
+          {distError && (
+            <div className="flex items-center gap-2 text-xs text-red-400 mb-4">
+              <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0" />
+              {distError}
+            </div>
+          )}
+
+          {/* Map */}
+          <div
+            ref={mapContainerRef}
+            className="w-full rounded-lg overflow-hidden mb-5"
+            style={{ height: "280px", background: "#1a1a1a", border: "1px solid rgba(249,115,22,0.2)" }}
+          />
+          {!mapReady && (
+            <p className="text-[11px] text-muted-foreground text-center -mt-4 mb-4">Loading map...</p>
+          )}
+
+          {/* Mobilization Tiers Reference Table */}
+          <div className="mb-5">
+            <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide mb-2">Mobilization Surcharge Tiers (per crew-day)</p>
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-border">
+                    <th className="text-left text-[11px] font-semibold text-muted-foreground pb-2 pr-4">Distance Band</th>
+                    <th className="text-left text-[11px] font-semibold text-muted-foreground pb-2 pr-4">Surcharge / Day</th>
+                    <th className="text-left text-[11px] font-semibold text-muted-foreground pb-2">Adjusted Day Rate</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {MOB_TIERS.map((tier, i) => {
+                    const isActive = distResult && getMobTier(distResult.distanceMiles).maxMiles === tier.maxMiles;
+                    return (
+                      <tr key={i} className={cn(
+                        "border-b border-border/50 last:border-0 transition-colors",
+                        isActive && "bg-primary/10",
+                      )}>
+                        <td className={cn("py-2.5 pr-4 text-xs font-semibold", isActive ? "text-primary" : "text-foreground")}>
+                          {tier.label}
+                          {isActive && <span className="ml-2 text-[10px] bg-primary/20 text-primary px-1.5 py-0.5 rounded">Active</span>}
+                        </td>
+                        <td className="py-2.5 pr-4 text-xs text-muted-foreground">
+                          {tier.surcharge === 0 ? "No surcharge" : `+$${tier.surcharge}`}
+                        </td>
+                        <td className="py-2.5 text-xs text-foreground">
+                          ${(crewDayRate + tier.surcharge).toFixed(0)}/day
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* Result summary */}
+          {distResult && (
+            <div className="bg-secondary/40 rounded-lg p-4 border border-primary/20">
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-xs font-semibold text-foreground">Distance Result</span>
+                <span className="text-xs text-muted-foreground">{distResult.distanceMiles} mi &bull; {distResult.durationText} drive</span>
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
+                {[
+                  { label: "Drive Distance", value: `${distResult.distanceMiles} mi`, color: "text-foreground" },
+                  { label: "Mob Surcharge", value: distResult.surcharge === 0 ? "None" : `+$${distResult.surcharge}/day`, color: distResult.surcharge === 0 ? "text-green-400" : "text-yellow-400" },
+                  { label: "Adjusted Day Rate", value: `$${distResult.adjustedDayRate.toFixed(0)}`, color: "text-primary" },
+                  { label: `Adjusted Job Total (${crewDaysNeeded} days)`, value: `$${distResult.adjustedJobTotal.toFixed(0)}`, color: "text-primary" },
+                ].map((item, i) => (
+                  <div key={i} className="bg-secondary/50 rounded-md p-3">
+                    <div className="text-[10px] text-muted-foreground uppercase tracking-wide mb-1">{item.label}</div>
+                    <div className={cn("text-sm font-bold", item.color)}>{item.value}</div>
+                  </div>
+                ))}
+              </div>
+              {distResult.surcharge > 0 && (
+                <p className="text-[11px] text-muted-foreground mt-3">
+                  Base rate ${crewDayRate.toFixed(0)}/day + ${distResult.surcharge} mobilization = <strong className="text-primary">${distResult.adjustedDayRate.toFixed(0)}/day</strong> &bull; {jobAcres} acres @ <strong className="text-primary">${distResult.adjustedPricePerAcre.toFixed(0)}/ac</strong>
+                </p>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Pricing Benchmarks — Middle & West Tennessee */}

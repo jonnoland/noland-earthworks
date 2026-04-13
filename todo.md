@@ -565,7 +565,15 @@
 
 ## Pricing Page Replacement — Apr 13 2026
 
-- [ ] Read Pricing.tsx from local ownrops-dashboard project
-- [ ] Adapt and write full Pricing.tsx into main site with correct imports
-- [ ] Update Pricing Benchmarks table to Middle & West Tennessee rates
-- [ ] TypeScript check and save checkpoint
+- [x] Read Pricing.tsx from local ownrops-dashboard project
+- [x] Adapt and write full Pricing.tsx into main site with correct imports
+- [x] Update Pricing Benchmarks table to Middle & West Tennessee rates
+- [x] TypeScript check and save checkpoint
+
+## Distance-Based Pricing Adjustment — Apr 13 2026
+
+- [x] Audit Pricing.tsx structure and identify insertion point for distance section
+- [x] Build Distance Pricing section: address search input, Google Maps route display, distance bands table, live adjusted rate
+- [x] Wire mobilization surcharge logic: flat fee tiers based on drive distance from Vanleer TN
+- [x] Show adjusted Crew-Day Rate and Price/Acre after mobilization surcharge is applied
+- [x] TypeScript check and save checkpoint
