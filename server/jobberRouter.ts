@@ -137,7 +137,7 @@ export const jobberRouter = router({
           invoices(first: $first) {
             nodes {
               id invoiceNumber invoiceStatus dueDate issuedDate createdAt subject
-              amounts { subtotal total outstanding }
+              amounts { subtotal total invoiceBalance }
               client { id name companyName }
             }
             totalCount

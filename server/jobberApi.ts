@@ -108,7 +108,7 @@ export async function jobberQuery<T = any>(query: string, variables?: Record<str
     headers: {
       "Content-Type": "application/json",
       Authorization: `Bearer ${token!.accessToken}`,
-      "X-JOBBER-GRAPHQL-VERSION": "2024-11-15",
+      "X-JOBBER-GRAPHQL-VERSION": "2025-01-20",
     },
     body: JSON.stringify({ query, variables }),
   });
@@ -199,7 +199,7 @@ export async function fetchJobberInvoices(first = 50) {
           invoiceStatus
           dueDate
           issuedDate
-          amounts { subtotal total outstanding depositAmount }
+          amounts { subtotal total invoiceBalance depositAmount }
           client { id name companyName }
           subject
           createdAt

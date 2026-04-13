@@ -144,7 +144,7 @@ type InvoiceNode = {
   amounts?: {
     subtotal?: number | null;
     total?: number | null;
-    outstanding?: number | null;
+    invoiceBalance?: number | null;
   } | null;
   client?: { id?: string; name?: string | null; companyName?: string | null } | null;
 };
@@ -211,7 +211,7 @@ export default function OpsInvoices() {
   // KPI summaries
   const totalOutstanding = nodes
     .filter((i) => i.invoiceStatus !== "PAID")
-    .reduce((sum, i) => sum + (i.amounts?.outstanding ?? 0), 0);
+    .reduce((sum, i) => sum + (i.amounts?.invoiceBalance ?? 0), 0);
   const overdueCount = nodes.filter((i) => i.invoiceStatus === "OVERDUE").length;
 
   // ── Checkbox helpers ──────────────────────────────────────────────────────
@@ -449,10 +449,10 @@ export default function OpsInvoices() {
                               </span>
                             </td>
                             <td className="px-4 py-3 text-right hidden lg:table-cell">
-                              {(inv.amounts?.outstanding ?? 0) > 0 ? (
+                              {(inv.amounts?.invoiceBalance ?? 0) > 0 ? (
                                 <div className="flex items-center justify-end gap-1 text-red-400">
                                   <TrendingDown className="w-3 h-3" />
-                                  {formatMoney(inv.amounts?.outstanding)}
+                                  {formatMoney(inv.amounts?.invoiceBalance)}
                                 </div>
                               ) : (
                                 <span className="text-green-500">Paid</span>
