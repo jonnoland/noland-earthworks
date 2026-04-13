@@ -9,7 +9,7 @@ import {
   Save, User, Building2, Bell, Shield, CreditCard, Users, Link2,
   ClipboardList, CheckCircle2, XCircle, Clock, ExternalLink,
   RefreshCw, Loader2, Phone, Mail, MapPin, Wrench, ChevronDown, ChevronUp,
-  AlertCircle, Unlink, Webhook,
+  AlertCircle, Unlink, Webhook, Trash2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -54,7 +54,7 @@ function JobberBadge({ status }: { status: "synced" | "failed" | "skipped" }) {
 }
 
 // ─── Single quote row ─────────────────────────────────────────────────────────
-function QuoteRow({ q }: { q: {
+function QuoteRow({ q, onDelete }: { q: {
   id: number;
   name: string;
   phone: string;
@@ -72,7 +72,7 @@ function QuoteRow({ q }: { q: {
   jobberRequestUrl: string | null;
   jobberError: string | null;
   createdAt: Date;
-}}) {
+}; onDelete: (id: number) => void }) {
   const [expanded, setExpanded] = useState(false);
 
   const addressParts = [q.street, [q.city, q.state, q.zip].filter(Boolean).join(" ")].filter(Boolean);
@@ -163,6 +163,17 @@ function QuoteRow({ q }: { q: {
               </a>
             </div>
           )}
+
+          {/* Delete button */}
+          <div className="flex justify-end pt-1">
+            <button
+              onClick={() => onDelete(q.id)}
+              className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-red-400 transition-colors"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              Delete submission
+            </button>
+          </div>
         </div>
       )}
     </div>
@@ -171,7 +182,19 @@ function QuoteRow({ q }: { q: {
 
 // ─── Quote Log Tab ────────────────────────────────────────────────────────────
 function QuoteLogTab() {
+  const utils = trpc.useUtils();
   const { data: quotes = [], isLoading, refetch, isFetching } = trpc.ops.quotes.list.useQuery({ limit: 100 });
+  const deleteQuote = trpc.ops.quotes.delete.useMutation({
+    onSuccess: () => {
+      utils.ops.quotes.list.invalidate();
+      toast.success("Submission deleted");
+    },
+    onError: () => toast.error("Failed to delete submission"),
+  });
+  const handleDelete = (id: number) => {
+    if (!confirm("Delete this quote submission? This cannot be undone.")) return;
+    deleteQuote.mutate({ id });
+  };
 
   const syncedCount = quotes.filter(q => q.jobberStatus === "synced").length;
   const failedCount = quotes.filter(q => q.jobberStatus === "failed").length;
@@ -258,7 +281,7 @@ function QuoteLogTab() {
 
       {!isLoading && quotes.length > 0 && (
         <div className="space-y-2">
-          {quotes.map(q => <QuoteRow key={q.id} q={q} />)}
+          {quotes.map(q => <QuoteRow key={q.id} q={q} onDelete={handleDelete} />)}
         </div>
       )}
     </div>

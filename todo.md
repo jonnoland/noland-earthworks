@@ -385,13 +385,13 @@
 
 ## Jobber Token Auto-Refresh — April 2026
 
-- [ ] Audit existing token storage schema (jobber_tokens table) and refresh logic in jobber.ts
-- [ ] Add expiresAt (bigint UTC ms) column to jobber_tokens table; run db:push
-- [ ] Update upsertToken to store expiresAt from Jobber's expires_in response field
-- [ ] Add proactive pre-expiry refresh: refresh token if expiresAt is within 5 minutes
-- [ ] Add background scheduler in jobber.ts: setInterval checks every 30 minutes and refreshes if within 10-minute window
-- [ ] Wire startJobberTokenRefreshScheduler() into server/_core/index.ts on startup
-- [ ] Write vitest for token refresh logic (mock DB token, verify refresh is triggered near expiry)
+- [x] Audit existing token storage schema (jobber_tokens table) and refresh logic in jobber.ts
+- [x] Add expiresAt (bigint UTC ms) column to jobber_tokens table; run db:push (column already existed)
+- [x] Update upsertToken to store expiresAt from Jobber's expires_in response field
+- [x] Add proactive pre-expiry refresh: refresh token if expiresAt is within 5 minutes
+- [x] Add background scheduler in jobber.ts: setInterval checks every 30 minutes and refreshes if within 10-minute window
+- [x] Wire startJobberTokenRefreshScheduler() into server/_core/index.ts on startup
+- [x] Write vitest for token refresh logic (mock DB token, verify refresh is triggered near expiry)
 
 ## Convert Lead to Job — April 2026
 
@@ -431,3 +431,21 @@
 - [x] Remove hardcoded Active Job Site entries from ops Home page
 - [x] Remove hardcoded Recent Jobs data from ops Home page
 - [x] Remove hardcoded Crew Days This Week entries from ops Home page
+
+## Delete Records on /ops Pages — April 2026
+
+- [ ] Audit existing delete procedures in opsRouter (leads, jobs, quotes)
+- [ ] Add delete procedure for local quotes if missing
+- [ ] Add delete button + confirmation dialog to /ops/leads page
+- [ ] Add delete button + confirmation dialog to /ops/jobs page
+- [ ] Add delete button + confirmation dialog to /ops/quotes page (local quotes from DB)
+- [ ] Add delete button + confirmation dialog to /ops/clients page (note: Jobber clients are read-only — delete from Jobber directly)
+- [ ] Write vitest for any new delete procedures
+
+## Delete / Actions Refinement — April 2026
+
+- [x] Upgrade Leads delete from browser confirm() to inline confirmation modal
+- [x] Upgrade Jobs delete from browser confirm() to inline confirmation modal
+- [x] Add delete button to Settings Quote Log tab for local quote submissions (uses trpc.ops.quotes.delete)
+- [x] Add per-row "Open in Jobber" action button to Clients page (links to Jobber client record)
+- [x] Add per-row "Open in Jobber" action button to Quotes page (links to Jobber quote record)

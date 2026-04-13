@@ -263,6 +263,16 @@ const quotesRouter = router({
         .orderBy(desc(quoteSubmissions.createdAt))
         .limit(input.limit);
     }),
+
+  /** Permanently deletes a quote submission record */
+  delete: ownerProcedure
+    .input(z.object({ id: z.number().int().positive() }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+      await db.delete(quoteSubmissions).where(eq(quoteSubmissions.id, input.id));
+      return { success: true };
+    }),
 });
 
 // ─── Combined Ops Router ──────────────────────────────────────────────────────

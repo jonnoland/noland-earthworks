@@ -212,6 +212,7 @@ export default function OpsQuotes() {
                         <th className="text-right px-4 py-2.5 font-medium text-muted-foreground hidden md:table-cell">Total</th>
                         <th className="text-left px-4 py-2.5 font-medium text-muted-foreground">Status</th>
                         <th className="text-left px-4 py-2.5 font-medium text-muted-foreground hidden lg:table-cell">Date</th>
+                        <th className="text-right px-4 py-2.5 font-medium text-muted-foreground">Actions</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -242,6 +243,18 @@ export default function OpsQuotes() {
                           </td>
                           <td className="px-4 py-3 text-muted-foreground hidden lg:table-cell">
                             {formatDate(quote.createdAt)}
+                          </td>
+                          <td className="px-4 py-3 text-right">
+                            <a
+                              href={`https://app.getjobber.com/quotes/${quote.id.replace(/[^0-9]/g, "")}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              title="Open in Jobber"
+                              className="inline-flex items-center gap-1 text-[10px] text-muted-foreground hover:text-primary transition-colors"
+                            >
+                              <ExternalLink className="w-3 h-3" />
+                              Jobber
+                            </a>
                           </td>
                         </tr>
                       ))}
