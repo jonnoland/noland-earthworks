@@ -13,7 +13,7 @@ import {
   getOpsLeads, createOpsLead, updateOpsLead, deleteOpsLead,
   getScheduleEntries, createScheduleEntry, updateScheduleEntry, deleteScheduleEntry,
 } from "./db";
-import { jobs, opsLeads, quoteSubmissions, crews, crewMembers, conversations, messages, reviews, timeEntries, distanceQuotes, businessSettings, automationSettings, serviceCatalog, messageTemplates, reminderRules } from "../drizzle/schema";
+import { jobs, opsLeads, quoteSubmissions, crews, crewMembers, conversations, messages, reviews, timeEntries, distanceQuotes, businessSettings, automationSettings, serviceCatalog, messageTemplates, reminderRules, leadNotes } from "../drizzle/schema";
 import { and, desc, eq, gte, lt, like } from "drizzle-orm";
 
 /**
@@ -133,6 +133,29 @@ const leadsRouter = router({
   delete: ownerProcedure
     .input(z.object({ id: z.number() }))
     .mutation(({ ctx, input }) => deleteOpsLead(input.id, ctx.user.id)),
+  // ─── Lead Notes / Activity ────────────────────────────────────────────────
+  listNotes: ownerProcedure
+    .input(z.object({ leadId: z.number() }))
+    .query(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) return [];
+      return db.select().from(leadNotes)
+        .where(and(eq(leadNotes.leadId, input.leadId), eq(leadNotes.userId, ctx.user.id)))
+        .orderBy(desc(leadNotes.createdAt));
+    }),
+  addNote: ownerProcedure
+    .input(z.object({
+      leadId: z.number(),
+      content: z.string().min(1),
+      type: z.enum(["note", "call", "text", "email", "stage_change", "system"]).default("note"),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+      await db.insert(leadNotes).values({ leadId: input.leadId, userId: ctx.user.id, type: input.type, content: input.content });
+      return { success: true };
+    }),
+
   convertToJob: ownerProcedure
     .input(z.object({
       leadId: z.number(),

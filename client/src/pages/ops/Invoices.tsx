@@ -467,7 +467,7 @@ export default function OpsInvoices() {
                             <td className="px-4 py-3 text-right">
                               <div className="flex items-center justify-end gap-2">
                                 <a
-                                  href={`https://app.getjobber.com/invoices/${inv.id.replace(/[^0-9]/g, "")}`}
+                                  href={`https://secure.getjobber.com/home"")}`}
                                   target="_blank"
                                   rel="noopener noreferrer"
                                   title="Open in Jobber"
@@ -497,7 +497,7 @@ export default function OpsInvoices() {
             {/* Jobber link */}
             <div className="flex justify-end">
               <a
-                href="https://app.getjobber.com/invoices"
+                href="https://secure.getjobber.com/home"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-primary transition-colors"

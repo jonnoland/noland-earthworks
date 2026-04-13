@@ -446,3 +446,15 @@ export const reminderRules = mysqlTable("reminder_rules", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 export type ReminderRule = typeof reminderRules.$inferSelect;
+
+// ─── Lead Notes / Activity Log ────────────────────────────────────────────────
+export const leadNotes = mysqlTable("lead_notes", {
+  id: int("id").primaryKey().autoincrement(),
+  leadId: int("leadId").notNull(),
+  userId: int("userId").notNull(),
+  type: mysqlEnum("type", ["note", "call", "text", "email", "stage_change", "system"]).default("note").notNull(),
+  content: text("content").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type LeadNote = typeof leadNotes.$inferSelect;
+export type InsertLeadNote = typeof leadNotes.$inferInsert;

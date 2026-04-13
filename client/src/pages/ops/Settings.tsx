@@ -246,7 +246,7 @@ function QuoteRow({ q, onDelete }: {
             </div>
           )}
           {q.jobberRequestUrl && (
-            <a href={q.jobberRequestUrl} target="_blank" rel="noopener noreferrer"
+            <a href="https://secure.getjobber.com/home" target="_blank" rel="noopener noreferrer"
               className="inline-flex items-center gap-1.5 text-xs text-primary hover:underline">
               <ExternalLink className="w-3 h-3" />View in Jobber
             </a>

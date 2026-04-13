@@ -129,7 +129,7 @@ function JobberJobsSection() {
               <RefreshCw className={`w-3.5 h-3.5 ${isFetching ? "animate-spin" : ""}`} />
             </button>
             <a
-              href="https://app.getjobber.com/jobs"
+              href="https://secure.getjobber.com/home"
               target="_blank"
               rel="noopener noreferrer"
               className="flex items-center gap-1 text-[10px] text-muted-foreground hover:text-primary transition-colors"
@@ -219,7 +219,7 @@ function JobberJobsSection() {
                         <td className="px-4 py-3 text-right">
                           <div className="flex items-center justify-end gap-2">
                             <a
-                              href={`https://app.getjobber.com/jobs/${job.id.replace(/[^0-9]/g, "")}`}
+                              href={`https://secure.getjobber.com/home"")}`}
                               target="_blank"
                               rel="noopener noreferrer"
                               title="Open in Jobber"

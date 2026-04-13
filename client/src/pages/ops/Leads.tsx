@@ -1,748 +1,768 @@
 /**
  * Leads Page — Noland Earthworks
- * Live data from tRPC: list, create, update stage, delete
+ * Kanban board layout: New Lead | Contacted | Site Visit | Quote Sent | Follow-Up
+ * Bottom bar: Won | Lost | On Hold
+ * Slide-in detail panel on lead click
  */
 
 import DashboardLayout from "@/components/DashboardLayout";
+import { MapView } from "@/components/Map";
 import { trpc } from "@/lib/trpc";
-import { useState } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import {
-  UserPlus, Plus, Search, Trash2, Edit3, ChevronDown,
-  Phone, Mail, MapPin, DollarSign, Loader2, X,
-  RefreshCw, ExternalLink, AlertCircle, Inbox, Briefcase,
+  Phone, Mail, MessageSquare, FileText, Calendar,
+  Plus, Search, X, Loader2, CheckCircle2, XCircle,
+  MapPin, Clock, RefreshCw, ExternalLink, Trash2,
+  ChevronRight, AlarmClock, User, PhoneCall, PhoneOff,
+  ClipboardList, Star, Snowflake,
 } from "lucide-react";
-import { useLocation } from "wouter";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { useLocation } from "wouter";
 
-const STAGE_OPTIONS = ["new", "contacted", "estimate_sent", "negotiating", "won", "lost"] as const;
-const CONVERTED_STAGE = "converted";
-const SOURCE_OPTIONS = ["google", "facebook", "referral", "website", "direct", "other"] as const;
+// ─── Types ────────────────────────────────────────────────────────────────────
 
-type LeadStage = typeof STAGE_OPTIONS[number];
-type LeadSource = typeof SOURCE_OPTIONS[number];
-
-const STAGE_LABELS: Record<string, string> = {
-  new: "New Lead", contacted: "Contacted", estimate_sent: "Estimate Sent", negotiating: "Negotiating",
-  won: "Won", lost: "Lost", converted: "Converted to Job",
-};
-
-const JOB_TYPE_OPTIONS = [
-  { value: "land_clearing", label: "Land Clearing" },
-  { value: "forestry_mulching", label: "Forestry Mulching" },
-  { value: "brush_removal", label: "Brush Removal" },
-  { value: "stump_grinding", label: "Stump Grinding" },
-  { value: "wildfire_mitigation", label: "Wildfire Mitigation" },
+const KANBAN_STAGES = [
+  { id: "new",           label: "New Lead",   subtitle: "Fresh inquiries",          color: "text-blue-400" },
+  { id: "contacted",     label: "Contacted",  subtitle: "Leads you've spoken with", color: "text-cyan-400" },
+  { id: "estimate_sent", label: "Site Visit", subtitle: "Site visits scheduled",    color: "text-amber-400" },
+  { id: "negotiating",   label: "Quote Sent", subtitle: "Proposals delivered",      color: "text-purple-400" },
+  { id: "converted",     label: "Follow-Up",  subtitle: "Chasing decisions",        color: "text-orange-400" },
 ] as const;
 
-type JobTypeValue = typeof JOB_TYPE_OPTIONS[number]["value"];
+const CLOSED_STAGES = [
+  { id: "won",  label: "Won",     icon: Star,      color: "text-green-400 border-green-500/30 bg-green-500/10" },
+  { id: "lost", label: "Lost",    icon: XCircle,   color: "text-red-400 border-red-500/30 bg-red-500/10" },
+  { id: "on_hold", label: "On Hold", icon: Snowflake, color: "text-blue-400 border-blue-500/30 bg-blue-500/10" },
+] as const;
 
-interface ConvertForm {
-  title: string;
-  client: string;
-  address: string;
-  jobType: JobTypeValue;
-  notes: string;
-}
+type KanbanStageId = typeof KANBAN_STAGES[number]["id"];
+type ClosedStageId = typeof CLOSED_STAGES[number]["id"];
+type AnyStage = KanbanStageId | ClosedStageId | "all";
 
-const STAGE_COLORS: Record<string, string> = {
-  new: "bg-blue-500/15 text-blue-400 border-blue-500/30",
-  contacted: "bg-cyan-500/15 text-cyan-400 border-cyan-500/30",
-  estimate_sent: "bg-primary/15 text-primary border-primary/30",
-  negotiating: "bg-purple-500/15 text-purple-400 border-purple-500/30",
-  won: "bg-green-500/15 text-green-400 border-green-500/30",
-  lost: "bg-red-500/15 text-red-400 border-red-500/30",
-  converted: "bg-amber-500/15 text-amber-400 border-amber-500/30",
+const SOURCE_LABELS: Record<string, string> = {
+  google: "Google Search", facebook: "Facebook", referral: "Referral",
+  website: "Website Form", direct: "Direct", other: "Other",
 };
 
-interface LeadFormData {
-  name: string; phone: string; email: string; location: string; // maps to address in DB
-  source: LeadSource; stage: LeadStage; jobType: string;
-  estimatedValue: string; notes: string;
+const WARMTH_LABELS = ["Cold", "Warm", "Hot"] as const;
+const WARMTH_COLORS = [
+  "bg-blue-500/20 text-blue-300 border-blue-500/30",
+  "bg-amber-500/20 text-amber-300 border-amber-500/30",
+  "bg-red-500/20 text-red-300 border-red-500/30",
+] as const;
+
+function timeAgo(date: Date | string): string {
+  const d = typeof date === "string" ? new Date(date) : date;
+  const secs = Math.floor((Date.now() - d.getTime()) / 1000);
+  if (secs < 60) return "just now";
+  if (secs < 3600) return `${Math.floor(secs / 60)}m ago`;
+  if (secs < 86400) return `${Math.floor(secs / 3600)}h ago`;
+  return `${Math.floor(secs / 86400)}d ago`;
 }
 
-const emptyForm: LeadFormData = {
-  name: "", phone: "", email: "", location: "",
-  source: "google", stage: "new", jobType: "Land Clearing",
-  estimatedValue: "", notes: "",
-};
+function formatDate(date: Date | string): string {
+  const d = typeof date === "string" ? new Date(date) : date;
+  const today = new Date();
+  if (d.toDateString() === today.toDateString()) return "Today";
+  const yesterday = new Date(today);
+  yesterday.setDate(today.getDate() - 1);
+  if (d.toDateString() === yesterday.toDateString()) return "Yesterday";
+  return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+}
 
-// ─── Jobber Requests Section ─────────────────────────────────────────────────
+// ─── Lead Card ────────────────────────────────────────────────────────────────
 
-function JobberRequestsSection() {
-  const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
-  const [deleteTargetLabel, setDeleteTargetLabel] = useState<string>("");
-  const utils = trpc.useUtils();
-  const { data, isLoading, error, refetch, isFetching } =
-    trpc.jobber.requests.useQuery({ first: 50 }, { retry: false });
-  const deleteRequest = trpc.jobber.deleteRequest.useMutation({
-    onSuccess: () => {
-      toast.success("Request deleted from Jobber.");
-      utils.jobber.requests.invalidate();
-      setDeleteTargetId(null);
-    },
-    onError: (err) => {
-      toast.error(err.message || "Failed to delete request.");
-      setDeleteTargetId(null);
-    },
-  });
+interface Lead {
+  id: number;
+  name: string;
+  phone?: string | null;
+  email?: string | null;
+  address?: string | null;
+  source: string;
+  stage: string;
+  jobType?: string | null;
+  estimatedValue?: string | null;
+  notes?: string | null;
+  createdAt: Date | string;
+  updatedAt: Date | string;
+}
 
-  const notConnected =
-    !isLoading &&
-    (error?.message?.includes("not connected") ||
-      error?.message?.includes("not authorized") ||
-      error?.message?.includes("token") ||
-      !data);
-
-  const nodes: Array<{
-    id: string;
-    title?: string | null;
-    requestStatus?: string | null;
-    source?: string | null;
-    createdAt?: string | null;
-    contactName?: string | null;
-    phone?: string | null;
-    email?: string | null;
-    client?: { id?: string; name?: string | null; companyName?: string | null } | null;
-    property?: { address?: { street1?: string | null; city?: string | null } | null } | null;
-  }> = (data as any)?.nodes ?? [];
-
-  const totalCount = (data as any)?.totalCount ?? nodes.length;
-
-  const REQUEST_STATUS_COLORS: Record<string, string> = {
-    NEW: "bg-blue-500/15 text-blue-400",
-    ASSESSMENT: "bg-yellow-500/15 text-yellow-400",
-    CONVERTED: "bg-green-500/15 text-green-400",
-    ARCHIVED: "bg-secondary/50 text-muted-foreground",
-  };
+function LeadCard({ lead, onClick }: { lead: Lead; onClick: () => void }) {
+  const warmthIdx = lead.stage === "new" ? 1 : lead.stage === "contacted" ? 2 : 0;
 
   return (
-    <>
-    <div className="px-6 pb-6">
-      <div className="border border-border rounded-lg overflow-hidden">
-        {/* Section header */}
-        <div className="flex items-center justify-between px-4 py-3 bg-secondary/10 border-b border-border">
-          <div className="flex items-center gap-2">
-            <Inbox className="w-4 h-4 text-primary" />
-            <span className="text-sm font-semibold text-foreground">From Jobber</span>
-            {!isLoading && !notConnected && (
-              <span className="text-[10px] bg-secondary/50 text-muted-foreground px-2 py-0.5 rounded-full">
-                {totalCount} requests
-              </span>
-            )}
-          </div>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => refetch()}
-              disabled={isFetching}
-              className="p-1.5 rounded-md hover:bg-secondary/80 text-muted-foreground hover:text-foreground transition-colors"
-              aria-label="Refresh Jobber requests"
-            >
-              <RefreshCw className={`w-3.5 h-3.5 ${isFetching ? "animate-spin" : ""}`} />
-            </button>
-            <a
-              href="https://app.getjobber.com/requests"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-1 text-[10px] text-muted-foreground hover:text-primary transition-colors"
-            >
-              <ExternalLink className="w-3 h-3" />
-              Open in Jobber
-            </a>
-          </div>
-        </div>
-
-        {/* Loading */}
-        {isLoading && (
-          <div className="flex items-center justify-center py-8">
-            <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
-          </div>
-        )}
-
-        {/* Not connected */}
-        {!isLoading && notConnected && (
-          <div className="flex flex-col items-center justify-center py-8 text-center gap-2">
-            <AlertCircle className="w-6 h-6 text-yellow-500/60" />
-            <p className="text-xs text-muted-foreground">
-              Connect Jobber in{" "}
-              <a href="/ops/settings" className="text-primary hover:underline">Settings</a>{" "}
-              to see live requests.
-            </p>
-          </div>
-        )}
-
-        {/* Requests list */}
-        {!isLoading && !notConnected && (
-          <>
-            {nodes.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-8 text-center gap-2">
-                <Inbox className="w-8 h-8 text-muted-foreground/30" />
-                <p className="text-xs text-muted-foreground">No requests found in Jobber.</p>
-              </div>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-xs">
-                  <thead>
-                    <tr className="border-b border-border bg-secondary/10">
-                      <th className="text-left px-4 py-2.5 font-medium text-muted-foreground">Request</th>
-                      <th className="text-left px-4 py-2.5 font-medium text-muted-foreground hidden sm:table-cell">Client</th>
-                      <th className="text-left px-4 py-2.5 font-medium text-muted-foreground hidden md:table-cell">Contact</th>
-                      <th className="text-left px-4 py-2.5 font-medium text-muted-foreground">Status</th>
-                      <th className="text-left px-4 py-2.5 font-medium text-muted-foreground hidden lg:table-cell">Date</th>
-                      <th className="text-right px-4 py-2.5 font-medium text-muted-foreground">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {nodes.map((req, idx) => (
-                      <tr
-                        key={req.id}
-                        className={cn(
-                          "border-b border-border/50 last:border-0 hover:bg-secondary/20 transition-colors",
-                          idx % 2 === 0 ? "" : "bg-secondary/5"
-                        )}
-                      >
-                        <td className="px-4 py-3 font-medium text-foreground max-w-[180px] truncate">
-                          {req.title || "Untitled Request"}
-                        </td>
-                        <td className="px-4 py-3 text-muted-foreground hidden sm:table-cell">
-                          {req.client?.name || req.client?.companyName || req.contactName || "—"}
-                        </td>
-                        <td className="px-4 py-3 hidden md:table-cell">
-                          <div className="space-y-0.5">
-                            {req.phone && (
-                              <div className="flex items-center gap-1 text-muted-foreground">
-                                <Phone className="w-2.5 h-2.5" />{req.phone}
-                              </div>
-                            )}
-                            {req.email && (
-                              <div className="flex items-center gap-1 text-muted-foreground">
-                                <Mail className="w-2.5 h-2.5" />{req.email}
-                              </div>
-                            )}
-                          </div>
-                        </td>
-                        <td className="px-4 py-3">
-                          <span
-                            className={cn(
-                              "inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium",
-                              REQUEST_STATUS_COLORS[req.requestStatus ?? "NEW"] ?? "bg-secondary/50 text-muted-foreground"
-                            )}
-                          >
-                            {(req.requestStatus ?? "NEW").replace(/_/g, " ")}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3 text-muted-foreground hidden lg:table-cell">
-                          {req.createdAt
-                            ? new Date(req.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
-                            : "—"}
-                        </td>
-                        <td className="px-4 py-3 text-right">
-                          <button
-                            onClick={() => { setDeleteTargetId(req.id); setDeleteTargetLabel(req.title || "this request"); }}
-                            title="Delete request from Jobber"
-                            className="text-muted-foreground hover:text-red-400 transition-colors"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </>
-        )}
-      </div>
-    </div>
-    {/* Jobber request delete confirmation modal */}
-    {deleteTargetId && (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-        <div className="bg-card border border-border rounded-xl shadow-2xl w-full max-w-sm p-6 space-y-4">
-          <h3 className="text-sm font-semibold text-foreground">Delete Request</h3>
-          <p className="text-xs text-muted-foreground">
-            Permanently delete <span className="font-medium text-foreground">{deleteTargetLabel}</span> from Jobber. This cannot be undone.
+    <button
+      onClick={onClick}
+      className="w-full text-left bg-card border border-border rounded-lg p-3 hover:border-primary/40 hover:bg-card/80 transition-all group cursor-pointer"
+    >
+      <div className="flex items-start justify-between gap-2">
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-semibold text-foreground truncate">{lead.name}</p>
+          <p className="text-[11px] text-muted-foreground mt-0.5">
+            {lead.estimatedValue ? `$${Number(lead.estimatedValue).toLocaleString()}` : "No estimate"}
+            {" · "}
+            {formatDate(lead.createdAt)}
           </p>
-          <div className="rounded-md bg-red-500/10 border border-red-500/20 px-3 py-2.5 space-y-1">
-            <p className="text-[11px] font-semibold text-red-400">The following will also be deleted in Jobber:</p>
-            <ul className="text-[11px] text-red-300/80 space-y-0.5 list-disc list-inside">
-              <li>All request details and contact information</li>
-              <li>Any linked assessments or notes</li>
-            </ul>
-          </div>
-          <div className="flex gap-2 pt-1">
-            <button
-              onClick={() => setDeleteTargetId(null)}
-              className="flex-1 py-2 rounded-md text-xs font-semibold text-muted-foreground bg-secondary/50 hover:bg-secondary transition-colors"
-            >
-              Cancel
-            </button>
-            <button
-              onClick={() => deleteRequest.mutate({ id: deleteTargetId })}
-              disabled={deleteRequest.isPending}
-              className="flex-1 py-2 rounded-md text-xs font-semibold text-white bg-red-600 hover:bg-red-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-1.5"
-            >
-              {deleteRequest.isPending && <Loader2 className="w-3 h-3 animate-spin" />}
-              Delete from Jobber
-            </button>
-          </div>
         </div>
+        {lead.phone && (
+          <div className="shrink-0 w-7 h-7 rounded-full bg-green-500/15 border border-green-500/30 flex items-center justify-center group-hover:bg-green-500/25 transition-colors">
+            <Phone className="w-3.5 h-3.5 text-green-400" />
+          </div>
+        )}
       </div>
-    )}
-    </>
+      {lead.address && (
+        <p className="text-[11px] text-muted-foreground mt-1.5 flex items-center gap-1 truncate">
+          <MapPin className="w-3 h-3 shrink-0" />
+          {lead.address}
+        </p>
+      )}
+    </button>
   );
 }
 
-// ─── Main Page ────────────────────────────────────────────────────────────────
+// ─── Kanban Column ────────────────────────────────────────────────────────────
+
+function KanbanColumn({
+  stage, leads, onLeadClick,
+}: {
+  stage: typeof KANBAN_STAGES[number];
+  leads: Lead[];
+  onLeadClick: (lead: Lead) => void;
+}) {
+  return (
+    <div className="flex flex-col min-w-[260px] flex-1 bg-[#0e0e0e] border border-border rounded-xl overflow-hidden">
+      {/* Header */}
+      <div className="px-4 py-3 border-b border-border flex items-center justify-between">
+        <div>
+          <div className="flex items-center gap-2">
+            <span className={cn("text-sm font-semibold", stage.color)}>{stage.label}</span>
+            <span className="text-xs bg-secondary border border-border text-muted-foreground px-1.5 py-0.5 rounded-full font-mono">
+              {leads.length}
+            </span>
+          </div>
+          {leads.length === 0 && (
+            <p className="text-[11px] text-muted-foreground mt-0.5">{stage.subtitle}</p>
+          )}
+        </div>
+      </div>
+      {/* Cards */}
+      <div className="flex-1 p-2 space-y-2 overflow-y-auto min-h-[200px]">
+        {leads.map(lead => (
+          <LeadCard key={lead.id} lead={lead} onClick={() => onLeadClick(lead)} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ─── Lead Detail Panel ────────────────────────────────────────────────────────
+
+function LeadDetailPanel({
+  lead,
+  onClose,
+  onStageChange,
+  onDelete,
+}: {
+  lead: Lead;
+  onClose: () => void;
+  onStageChange: (id: number, stage: string) => void;
+  onDelete: (id: number) => void;
+}) {
+  const [, navigate] = useLocation();
+  const [noteText, setNoteText] = useState("");
+  const mapRef = useRef<google.maps.Map | null>(null);
+  const markerRef = useRef<google.maps.marker.AdvancedMarkerElement | null>(null);
+
+  const utils = trpc.useUtils();
+  const { data: notes = [], isLoading: notesLoading } = trpc.ops.leads.listNotes.useQuery({ leadId: lead.id });
+
+  const addNote = trpc.ops.leads.addNote.useMutation({
+    onSuccess: () => {
+      setNoteText("");
+      utils.ops.leads.listNotes.invalidate({ leadId: lead.id });
+    },
+    onError: () => toast.error("Failed to add note"),
+  });
+
+  const updateLead = trpc.ops.leads.update.useMutation({
+    onSuccess: () => {
+      utils.ops.leads.list.invalidate();
+      toast.success("Lead updated");
+    },
+  });
+
+  // Geocode address and place marker when map is ready
+  const handleMapReady = useCallback((map: google.maps.Map) => {
+    mapRef.current = map;
+    if (!lead.address) return;
+    const geocoder = new google.maps.Geocoder();
+    geocoder.geocode({ address: lead.address }, (results, status) => {
+      if (status === "OK" && results && results[0]) {
+        const loc = results[0].geometry.location;
+        map.setCenter(loc);
+        map.setZoom(14);
+        if (markerRef.current) markerRef.current.map = null;
+        markerRef.current = new google.maps.marker.AdvancedMarkerElement({
+          map,
+          position: loc,
+          title: lead.name,
+        });
+      }
+    });
+  }, [lead.address, lead.name]);
+
+  const warmthIdx = lead.stage === "new" ? 1 : lead.stage === "contacted" ? 2 : 0;
+
+  const handleMarkLost = () => {
+    onStageChange(lead.id, "lost");
+    onClose();
+  };
+
+  const handleMarkWon = () => {
+    onStageChange(lead.id, "won");
+    onClose();
+  };
+
+  const handleSubmitNote = () => {
+    if (!noteText.trim()) return;
+    addNote.mutate({ leadId: lead.id, content: noteText.trim(), type: "note" });
+  };
+
+  const NOTE_ICONS: Record<string, React.ReactNode> = {
+    note: <ClipboardList className="w-3.5 h-3.5 text-muted-foreground" />,
+    call: <PhoneCall className="w-3.5 h-3.5 text-green-400" />,
+    text: <MessageSquare className="w-3.5 h-3.5 text-blue-400" />,
+    email: <Mail className="w-3.5 h-3.5 text-purple-400" />,
+    stage_change: <RefreshCw className="w-3.5 h-3.5 text-amber-400" />,
+    system: <AlarmClock className="w-3.5 h-3.5 text-muted-foreground" />,
+  };
+
+  return (
+    <div className="fixed inset-y-0 right-0 z-50 flex">
+      {/* Backdrop */}
+      <div className="fixed inset-0 bg-black/50" onClick={onClose} />
+
+      {/* Panel */}
+      <div className="relative ml-auto w-full max-w-sm bg-[#0e0e0e] border-l border-border flex flex-col overflow-hidden shadow-2xl">
+
+        {/* Header */}
+        <div className="px-4 pt-4 pb-3 border-b border-border">
+          <div className="flex items-start justify-between gap-2">
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2">
+                <h2 className="text-base font-bold text-foreground truncate">{lead.name}</h2>
+                <span className={cn(
+                  "shrink-0 text-[10px] font-semibold px-2 py-0.5 rounded-full border",
+                  WARMTH_COLORS[warmthIdx]
+                )}>
+                  {WARMTH_LABELS[warmthIdx]}
+                </span>
+              </div>
+              <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-1">
+                {lead.phone && (
+                  <a href={`tel:${lead.phone}`} className="text-xs text-muted-foreground hover:text-foreground transition-colors">
+                    {lead.phone}
+                  </a>
+                )}
+                {lead.email && (
+                  <a href={`mailto:${lead.email}`} className="text-xs text-muted-foreground hover:text-foreground transition-colors truncate">
+                    {lead.email}
+                  </a>
+                )}
+              </div>
+            </div>
+            <button onClick={onClose} className="shrink-0 p-1.5 rounded-md hover:bg-secondary transition-colors">
+              <X className="w-4 h-4 text-muted-foreground" />
+            </button>
+          </div>
+
+          {/* Action buttons */}
+          <div className="flex gap-2 mt-3">
+            {lead.phone && (
+              <a
+                href={`tel:${lead.phone}`}
+                className="flex-1 flex items-center justify-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold px-3 py-2 rounded-md transition-colors"
+              >
+                <Phone className="w-3.5 h-3.5" />Call
+              </a>
+            )}
+            {lead.phone && (
+              <a
+                href={`sms:${lead.phone}`}
+                className="flex-1 flex items-center justify-center gap-1.5 bg-green-600 hover:bg-green-700 text-white text-xs font-semibold px-3 py-2 rounded-md transition-colors"
+              >
+                <MessageSquare className="w-3.5 h-3.5" />Text
+              </a>
+            )}
+            <button
+              onClick={() => { navigate("/ops/quotes"); toast.info("Navigate to Quotes to create a quote for this lead"); }}
+              className="flex-1 flex items-center justify-center gap-1.5 bg-secondary hover:bg-secondary/80 border border-border text-xs font-medium px-3 py-2 rounded-md transition-colors"
+            >
+              <FileText className="w-3.5 h-3.5" />Create Quote
+            </button>
+            <button
+              onClick={() => { navigate("/ops/schedule"); toast.info("Navigate to Schedule to book a site visit"); }}
+              className="flex-1 flex items-center justify-center gap-1.5 bg-secondary hover:bg-secondary/80 border border-border text-xs font-medium px-3 py-2 rounded-md transition-colors"
+            >
+              <Calendar className="w-3.5 h-3.5" />Schedule Visit
+            </button>
+          </div>
+        </div>
+
+        {/* Scrollable body */}
+        <div className="flex-1 overflow-y-auto">
+
+          {/* Lead info */}
+          <div className="px-4 py-3 border-b border-border space-y-2">
+            <div className="flex items-center justify-between">
+              <span className={cn(
+                "text-[11px] font-semibold px-2 py-0.5 rounded-full border",
+                lead.stage === "new" ? "bg-blue-500/15 text-blue-400 border-blue-500/30" :
+                lead.stage === "contacted" ? "bg-cyan-500/15 text-cyan-400 border-cyan-500/30" :
+                lead.stage === "estimate_sent" ? "bg-amber-500/15 text-amber-400 border-amber-500/30" :
+                lead.stage === "negotiating" ? "bg-purple-500/15 text-purple-400 border-purple-500/30" :
+                lead.stage === "won" ? "bg-green-500/15 text-green-400 border-green-500/30" :
+                lead.stage === "lost" ? "bg-red-500/15 text-red-400 border-red-500/30" :
+                "bg-secondary text-muted-foreground border-border"
+              )}>
+                {KANBAN_STAGES.find(s => s.id === lead.stage)?.label ?? lead.stage}
+              </span>
+              <span className="text-[11px] text-muted-foreground">{formatDate(lead.createdAt)}</span>
+            </div>
+            {lead.source && (
+              <p className="text-xs text-muted-foreground">
+                <span className="text-foreground/60">Source:</span> {SOURCE_LABELS[lead.source] ?? lead.source}
+              </p>
+            )}
+            {lead.address && (
+              <p className="text-xs text-muted-foreground flex items-start gap-1">
+                <MapPin className="w-3.5 h-3.5 shrink-0 mt-0.5 text-muted-foreground" />
+                {lead.address}
+              </p>
+            )}
+            {lead.jobType && (
+              <p className="text-xs text-muted-foreground">
+                <span className="text-foreground/60">Job type:</span> {lead.jobType}
+              </p>
+            )}
+            {lead.estimatedValue && (
+              <p className="text-xs text-muted-foreground">
+                <span className="text-foreground/60">Estimate:</span> ${Number(lead.estimatedValue).toLocaleString()}
+              </p>
+            )}
+          </div>
+
+          {/* Map */}
+          {lead.address && (
+            <div className="relative h-44 border-b border-border overflow-hidden">
+              <MapView
+                initialCenter={{ lat: 35.9, lng: -86.8 }}
+                initialZoom={10}
+                onMapReady={handleMapReady}
+              />
+              <a
+                href={`https://maps.google.com/?q=${encodeURIComponent(lead.address)}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="absolute top-2 left-2 flex items-center gap-1 bg-black/70 hover:bg-black/90 text-white text-[11px] font-medium px-2 py-1 rounded-md transition-colors"
+              >
+                <ExternalLink className="w-3 h-3" />Maps
+              </a>
+            </div>
+          )}
+
+          {/* Speed-to-contact nudge */}
+          {lead.stage === "new" && (
+            <div className="mx-4 my-3 p-3 bg-blue-500/10 border border-blue-500/20 rounded-lg">
+              <p className="text-xs text-blue-300 font-medium">Call this lead ASAP — speed to contact wins deals.</p>
+            </div>
+          )}
+
+          {/* Call Now CTA */}
+          {lead.phone && (
+            <div className="px-4 pb-3 space-y-2">
+              <a
+                href={`tel:${lead.phone}`}
+                className="w-full flex items-center justify-center gap-2 bg-primary hover:bg-primary/90 text-primary-foreground text-sm font-bold py-3 rounded-lg transition-colors"
+              >
+                <Phone className="w-4 h-4" />Call Now
+              </a>
+              <button
+                onClick={handleMarkLost}
+                className="w-full flex items-center justify-center gap-2 bg-transparent hover:bg-secondary/60 border border-border text-xs text-muted-foreground py-2 rounded-lg transition-colors"
+              >
+                <XCircle className="w-3.5 h-3.5 text-red-400" />Mark Lost
+              </button>
+            </div>
+          )}
+
+          {/* Stage selector */}
+          <div className="px-4 pb-3 border-b border-border">
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-2">Move to Stage</p>
+            <div className="flex flex-wrap gap-1.5">
+              {[...KANBAN_STAGES, { id: "won" as const, label: "Won", color: "text-green-400" }, { id: "lost" as const, label: "Lost", color: "text-red-400" }].map(s => (
+                <button
+                  key={s.id}
+                  onClick={() => { onStageChange(lead.id, s.id); }}
+                  className={cn(
+                    "text-[11px] px-2.5 py-1 rounded-full border transition-colors",
+                    lead.stage === s.id
+                      ? "bg-primary/20 text-primary border-primary/40 font-semibold"
+                      : "bg-secondary/50 text-muted-foreground border-border hover:border-primary/30 hover:text-foreground"
+                  )}
+                >
+                  {s.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Activity log */}
+          <div className="px-4 py-3">
+            <p className="text-xs font-semibold text-foreground mb-3">Activity</p>
+
+            {/* Add note */}
+            <div className="flex gap-2 mb-4">
+              <input
+                type="text"
+                value={noteText}
+                onChange={e => setNoteText(e.target.value)}
+                onKeyDown={e => e.key === "Enter" && handleSubmitNote()}
+                placeholder="Add a note..."
+                className="flex-1 bg-secondary/60 border border-border rounded-md px-3 py-2 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50"
+              />
+              <button
+                onClick={handleSubmitNote}
+                disabled={!noteText.trim() || addNote.isPending}
+                className="shrink-0 flex items-center gap-1.5 bg-secondary hover:bg-secondary/80 border border-border text-xs px-3 py-2 rounded-md transition-colors disabled:opacity-50"
+              >
+                {addNote.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
+                Add Note
+              </button>
+            </div>
+
+            {/* System entry */}
+            <div className="flex gap-2.5 mb-3">
+              <div className="w-6 h-6 rounded-full bg-secondary border border-border flex items-center justify-center shrink-0 mt-0.5">
+                <User className="w-3 h-3 text-muted-foreground" />
+              </div>
+              <div>
+                <p className="text-xs text-foreground font-medium">New lead added: {lead.name}</p>
+                <p className="text-[11px] text-muted-foreground">{timeAgo(lead.createdAt)}</p>
+              </div>
+            </div>
+
+            {/* Notes */}
+            {notesLoading ? (
+              <div className="flex items-center gap-2 py-2">
+                <Loader2 className="w-3.5 h-3.5 animate-spin text-muted-foreground" />
+                <span className="text-xs text-muted-foreground">Loading activity...</span>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {notes.map(note => (
+                  <div key={note.id} className="flex gap-2.5">
+                    <div className="w-6 h-6 rounded-full bg-secondary border border-border flex items-center justify-center shrink-0 mt-0.5">
+                      {NOTE_ICONS[note.type] ?? <ClipboardList className="w-3.5 h-3.5 text-muted-foreground" />}
+                    </div>
+                    <div>
+                      <p className="text-xs text-foreground">{note.content}</p>
+                      <p className="text-[11px] text-muted-foreground">{timeAgo(note.createdAt)}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="px-4 py-3 border-t border-border flex gap-2">
+          <button
+            onClick={() => { navigate("/ops/jobs"); toast.info("Convert this lead to a job from the Jobs page"); }}
+            className="flex-1 flex items-center justify-center gap-1.5 bg-secondary hover:bg-secondary/80 border border-border text-xs font-medium px-3 py-2 rounded-md transition-colors"
+          >
+            <ExternalLink className="w-3.5 h-3.5" />View Full Deal
+          </button>
+          <button
+            onClick={() => { /* future: contact detail */ toast.info("Contact detail coming soon"); }}
+            className="flex-1 flex items-center justify-center gap-1.5 bg-secondary hover:bg-secondary/80 border border-border text-xs font-medium px-3 py-2 rounded-md transition-colors"
+          >
+            <User className="w-3.5 h-3.5" />View Contact
+          </button>
+          <button
+            onClick={() => onDelete(lead.id)}
+            className="shrink-0 p-2 bg-secondary hover:bg-red-500/20 border border-border hover:border-red-500/30 rounded-md transition-colors"
+          >
+            <Trash2 className="w-3.5 h-3.5 text-muted-foreground hover:text-red-400" />
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Add Lead Modal ───────────────────────────────────────────────────────────
+
+interface AddLeadForm {
+  name: string; phone: string; email: string; address: string;
+  source: string; jobType: string; estimatedValue: string; notes: string;
+}
+
+const emptyForm: AddLeadForm = {
+  name: "", phone: "", email: "", address: "",
+  source: "google", jobType: "Land Clearing", estimatedValue: "", notes: "",
+};
+
+function AddLeadModal({ onClose, onCreate }: { onClose: () => void; onCreate: (form: AddLeadForm) => void }) {
+  const [form, setForm] = useState<AddLeadForm>(emptyForm);
+  const set = (k: keyof AddLeadForm) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
+    setForm(f => ({ ...f, [k]: e.target.value }));
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
+      <div className="bg-card border border-border rounded-xl w-full max-w-md mx-4 overflow-hidden shadow-2xl">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-border">
+          <h2 className="text-sm font-bold text-foreground">Add Lead</h2>
+          <button onClick={onClose} className="p-1.5 rounded-md hover:bg-secondary transition-colors">
+            <X className="w-4 h-4 text-muted-foreground" />
+          </button>
+        </div>
+        <div className="p-5 space-y-3 max-h-[70vh] overflow-y-auto">
+          {[
+            { label: "Name *", key: "name" as const, type: "text", placeholder: "Full name" },
+            { label: "Phone", key: "phone" as const, type: "tel", placeholder: "(615) 000-0000" },
+            { label: "Email", key: "email" as const, type: "email", placeholder: "email@example.com" },
+            { label: "Property Address", key: "address" as const, type: "text", placeholder: "123 Main St, Columbia, TN" },
+            { label: "Estimated Value ($)", key: "estimatedValue" as const, type: "number", placeholder: "0" },
+          ].map(f => (
+            <div key={f.key}>
+              <label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{f.label}</label>
+              <input
+                type={f.type}
+                value={form[f.key]}
+                onChange={set(f.key)}
+                placeholder={f.placeholder}
+                className="mt-1 w-full bg-secondary/60 border border-border rounded-md px-3 py-2 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50"
+              />
+            </div>
+          ))}
+          <div>
+            <label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Source</label>
+            <select value={form.source} onChange={set("source")}
+              className="mt-1 w-full bg-secondary/60 border border-border rounded-md px-3 py-2 text-xs text-foreground focus:outline-none focus:border-primary/50">
+              {Object.entries(SOURCE_LABELS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Job Type</label>
+            <select value={form.jobType} onChange={set("jobType")}
+              className="mt-1 w-full bg-secondary/60 border border-border rounded-md px-3 py-2 text-xs text-foreground focus:outline-none focus:border-primary/50">
+              {["Land Clearing", "Forestry Mulching", "Brush Removal", "Stump Grinding", "Wildfire Mitigation"].map(t => (
+                <option key={t} value={t}>{t}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Notes</label>
+            <textarea value={form.notes} onChange={set("notes")} rows={3} placeholder="Any additional context..."
+              className="mt-1 w-full bg-secondary/60 border border-border rounded-md px-3 py-2 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50 resize-none" />
+          </div>
+        </div>
+        <div className="px-5 py-4 border-t border-border flex gap-3 justify-end">
+          <button onClick={onClose} className="text-xs px-4 py-2 rounded-md bg-secondary hover:bg-secondary/80 border border-border transition-colors">Cancel</button>
+          <button
+            onClick={() => { if (!form.name.trim()) { toast.error("Name is required"); return; } onCreate(form); }}
+            className="text-xs px-4 py-2 rounded-md bg-primary hover:bg-primary/90 text-primary-foreground font-semibold transition-colors"
+          >
+            Add Lead
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Main Component ───────────────────────────────────────────────────────────
 
 export default function Leads() {
-  const [, navigate] = useLocation();
+  const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
+  const [showAddModal, setShowAddModal] = useState(false);
   const [search, setSearch] = useState("");
-  const [filterStage, setFilterStage] = useState("all");
-  const [showModal, setShowModal] = useState(false);
-  const [editingId, setEditingId] = useState<number | null>(null);
-  const [form, setForm] = useState<LeadFormData>(emptyForm);
-
-  // Delete confirmation state
-  const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null);
-  // Convert-to-job modal state
-  const [convertingLead, setConvertingLead] = useState<typeof leads[0] | null>(null);
-  const [convertForm, setConvertForm] = useState<ConvertForm>({ title: "", client: "", address: "", jobType: "land_clearing", notes: "" });
 
   const utils = trpc.useUtils();
   const { data: leads = [], isLoading } = trpc.ops.leads.list.useQuery();
 
   const createLead = trpc.ops.leads.create.useMutation({
-    onSuccess: () => { utils.ops.leads.list.invalidate(); toast.success("Lead added"); closeModal(); },
-    onError: (e) => toast.error(e.message),
+    onSuccess: () => { utils.ops.leads.list.invalidate(); setShowAddModal(false); toast.success("Lead added"); },
+    onError: () => toast.error("Failed to add lead"),
   });
+
   const updateLead = trpc.ops.leads.update.useMutation({
-    onSuccess: () => { utils.ops.leads.list.invalidate(); toast.success("Lead updated"); closeModal(); },
-    onError: (e) => toast.error(e.message),
+    onSuccess: () => { utils.ops.leads.list.invalidate(); },
+    onError: () => toast.error("Failed to update lead"),
   });
+
   const deleteLead = trpc.ops.leads.delete.useMutation({
-    onSuccess: () => { utils.ops.leads.list.invalidate(); toast.success("Lead deleted"); },
-    onError: (e) => toast.error(e.message),
+    onSuccess: () => { utils.ops.leads.list.invalidate(); setSelectedLead(null); toast.success("Lead deleted"); },
+    onError: () => toast.error("Failed to delete lead"),
   });
 
-  const convertToJob = trpc.ops.leads.convertToJob.useMutation({
-    onSuccess: (data) => {
-      utils.ops.leads.list.invalidate();
-      utils.ops.jobs.list.invalidate();
-      setConvertingLead(null);
-      toast.success("Lead converted to job");
-      navigate("/ops/jobs");
-    },
-    onError: (e) => toast.error(e.message),
-  });
+  const handleStageChange = (id: number, stage: string) => {
+    updateLead.mutate({ id, stage: stage as any });
+    // Optimistically update selectedLead
+    if (selectedLead?.id === id) {
+      setSelectedLead(prev => prev ? { ...prev, stage } : null);
+    }
+  };
 
-  const openConvert = (lead: typeof leads[0]) => {
-    const jobTypeMap: Record<string, JobTypeValue> = {
-      "Land Clearing": "land_clearing", "land_clearing": "land_clearing",
-      "Forestry Mulching": "forestry_mulching", "forestry_mulching": "forestry_mulching",
-      "Brush Removal": "brush_removal", "brush_removal": "brush_removal",
-      "Stump Grinding": "stump_grinding", "stump_grinding": "stump_grinding",
-      "Wildfire Mitigation": "wildfire_mitigation", "wildfire_mitigation": "wildfire_mitigation",
-    };
-    setConvertForm({
-      title: `${lead.name} — ${lead.jobType ?? "Land Clearing"}`,
-      client: lead.name,
-      address: lead.address ?? "",
-      jobType: (lead.jobType ? jobTypeMap[lead.jobType] : undefined) ?? "land_clearing",
-      notes: lead.notes ?? "",
+  const handleDelete = (id: number) => {
+    deleteLead.mutate({ id });
+  };
+
+  const handleCreate = (form: AddLeadForm) => {
+    createLead.mutate({
+      name: form.name,
+      phone: form.phone || undefined,
+      email: form.email || undefined,
+      address: form.address || undefined,
+      source: form.source as any,
+      stage: "new",
+      jobType: form.jobType || undefined,
+      estimatedValue: form.estimatedValue || undefined,
+      notes: form.notes || undefined,
     });
-    setConvertingLead(lead);
   };
 
-  const openCreate = () => { setForm(emptyForm); setEditingId(null); setShowModal(true); };
-  const openEdit = (lead: typeof leads[0]) => {
-    setForm({
-      name: lead.name, phone: lead.phone ?? "", email: lead.email ?? "",
-      location: lead.address ?? "", source: lead.source as LeadSource,
-      stage: lead.stage as LeadStage, jobType: lead.jobType ?? "Land Clearing",
-      estimatedValue: lead.estimatedValue ?? "", notes: lead.notes ?? "",
-    });
-    setEditingId(lead.id);
-    setShowModal(true);
-  };
-  const closeModal = () => { setShowModal(false); setEditingId(null); setForm(emptyForm); };
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    const { location, ...rest } = form;
-    const payload = { ...rest, address: location };
-    if (editingId !== null) updateLead.mutate({ id: editingId, ...payload });
-    else createLead.mutate(payload);
-  };
-
+  // Filter leads
   const filtered = leads.filter(l => {
-    const matchSearch = l.name.toLowerCase().includes(search.toLowerCase()) ||
-      (l.address ?? "").toLowerCase().includes(search.toLowerCase());
-    const matchStage = filterStage === "all" || l.stage === filterStage;
-    return matchSearch && matchStage;
-  });
+    if (!search) return true;
+    const q = search.toLowerCase();
+    return l.name.toLowerCase().includes(q) ||
+      (l.phone ?? "").toLowerCase().includes(q) ||
+      (l.address ?? "").toLowerCase().includes(q);
+  }) as Lead[];
 
-  const isPending = createLead.isPending || updateLead.isPending;
-  const totalPipelineValue = leads.filter(l => !["won", "lost"].includes(l.stage))
-    .reduce((s, l) => s + Number(l.estimatedValue ?? 0), 0);
-  const wonValue = leads.filter(l => l.stage === "won")
-    .reduce((s, l) => s + Number(l.estimatedValue ?? 0), 0);
+  // Group by stage
+  const byStage = (stageId: string) => filtered.filter(l => l.stage === stageId);
+
+  const activeCount = filtered.filter(l => !["won", "lost"].includes(l.stage)).length;
+  const wonCount = byStage("won").length;
+  const lostCount = byStage("lost").length;
+  const onHoldCount = byStage("on_hold").length;
 
   return (
-    <DashboardLayout title="Leads" subtitle="Track your lead pipeline">
-      <div className="p-6 space-y-5">
-        {/* Stats row */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          {[
-            { label: "Total Leads", value: leads.length.toString() },
-            { label: "Open Pipeline", value: `$${totalPipelineValue.toLocaleString()}` },
-            { label: "Won This Period", value: `$${wonValue.toLocaleString()}` },
-            { label: "New This Week", value: leads.filter(l => l.stage === "new").length.toString() },
-          ].map((stat, i) => (
-            <div key={i} className="ops-card p-4">
-              <div className="text-lg font-bold text-foreground ops-metric-value">{stat.value}</div>
-              <div className="text-xs text-muted-foreground mt-0.5">{stat.label}</div>
-            </div>
-          ))}
-        </div>
+    <DashboardLayout>
+      <div className="flex flex-col h-full overflow-hidden">
 
-        {/* Header actions */}
-        <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
-          <div className="flex gap-3 flex-wrap">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
-              <input type="text" placeholder="Search leads..." value={search}
-                onChange={e => setSearch(e.target.value)}
-                className="pl-9 pr-3 py-2 bg-secondary/50 border border-border rounded-md text-xs text-foreground outline-none focus:border-primary/50 w-52 placeholder:text-muted-foreground/40" />
-            </div>
-            <div className="relative">
-              <select value={filterStage} onChange={e => setFilterStage(e.target.value)}
-                className="appearance-none pl-3 pr-8 py-2 bg-secondary/50 border border-border rounded-md text-xs text-foreground outline-none focus:border-primary/50 cursor-pointer">
-                <option value="all">All Stages</option>
-                {STAGE_OPTIONS.map(s => (
-                  <option key={s} value={s}>{STAGE_LABELS[s]}</option>
-                ))}
-              </select>
-              <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 text-muted-foreground pointer-events-none" />
-            </div>
-          </div>
-          <button onClick={openCreate}
-            className="flex items-center gap-1.5 bg-primary hover:bg-primary/90 text-white text-xs font-semibold px-4 py-2 rounded-md transition-all">
-            <Plus className="w-3.5 h-3.5" />
-            New Lead
-          </button>
-        </div>
-
-        {/* Leads table */}
-        {isLoading ? (
-          <div className="flex items-center justify-center py-20">
-            <Loader2 className="w-6 h-6 animate-spin text-primary" />
-          </div>
-        ) : filtered.length === 0 ? (
-          <div className="ops-card p-12 text-center">
-            <UserPlus className="w-10 h-10 text-muted-foreground/30 mx-auto mb-3" />
-            <p className="text-sm font-semibold text-foreground mb-1">No leads found</p>
-            <p className="text-xs text-muted-foreground mb-4">
-              {search || filterStage !== "all" ? "Try adjusting your filters" : "Add your first lead to start tracking your pipeline"}
-            </p>
-            {!search && filterStage === "all" && (
-              <button onClick={openCreate} className="bg-primary hover:bg-primary/90 text-white text-xs font-semibold px-4 py-2 rounded-md transition-all">
-                + New Lead
-              </button>
+        {/* Top bar */}
+        <div className="flex items-center justify-between px-4 py-3 border-b border-border shrink-0">
+          <div className="flex items-center gap-3">
+            <h1 className="text-base font-bold text-foreground">Leads</h1>
+            {activeCount > 0 && (
+              <span className="text-xs text-muted-foreground">{activeCount} active</span>
             )}
           </div>
-        ) : (
-          <div className="ops-card overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full text-xs">
-                <thead>
-                  <tr className="border-b border-border">
-                    <th className="text-left px-4 py-3 text-muted-foreground font-medium">Lead</th>
-                    <th className="text-left px-4 py-3 text-muted-foreground font-medium hidden sm:table-cell">Contact</th>
-                    <th className="text-left px-4 py-3 text-muted-foreground font-medium hidden md:table-cell">Location</th>
-                    <th className="text-left px-4 py-3 text-muted-foreground font-medium">Stage</th>
-                    <th className="text-left px-4 py-3 text-muted-foreground font-medium hidden lg:table-cell">Source</th>
-                    <th className="text-right px-4 py-3 text-muted-foreground font-medium">Value</th>
-                    <th className="text-right px-4 py-3 text-muted-foreground font-medium">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filtered.map((lead, i) => (
-                    <tr key={lead.id} className={cn("border-b border-border/50 hover:bg-secondary/20 transition-colors", i % 2 === 0 ? "" : "bg-secondary/5")}>
-                      <td className="px-4 py-3">
-                        <div className="font-semibold text-foreground">{lead.name}</div>
-                        {lead.notes && <div className="text-muted-foreground/60 text-[10px] mt-0.5 truncate max-w-[160px]">{lead.notes}</div>}
-                      </td>
-                      <td className="px-4 py-3 hidden sm:table-cell">
-                        <div className="space-y-0.5">
-                          {lead.phone && <div className="flex items-center gap-1 text-muted-foreground"><Phone className="w-2.5 h-2.5" />{lead.phone}</div>}
-                          {lead.email && <div className="flex items-center gap-1 text-muted-foreground"><Mail className="w-2.5 h-2.5" />{lead.email}</div>}
-                        </div>
-                      </td>
-                      <td className="px-4 py-3 hidden md:table-cell">
-                        {lead.address && (
-                          <div className="flex items-center gap-1 text-muted-foreground">
-                            <MapPin className="w-2.5 h-2.5 shrink-0" />{lead.address}
-                          </div>
-                        )}
-                      </td>
-                      <td className="px-4 py-3">
-                        <span className={cn("text-[10px] font-semibold px-2 py-0.5 rounded-full border", STAGE_COLORS[lead.stage])}>
-                          {STAGE_LABELS[lead.stage]}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 hidden lg:table-cell">
-                        <span className="text-muted-foreground capitalize">{lead.source}</span>
-                      </td>
-                      <td className="px-4 py-3 text-right">
-                        {lead.estimatedValue && (
-                          <span className="flex items-center justify-end gap-0.5 text-primary font-semibold">
-                            <DollarSign className="w-3 h-3" />{Number(lead.estimatedValue).toLocaleString()}
-                          </span>
-                        )}
-                      </td>
-                      <td className="px-4 py-3 text-right">
-                        <div className="flex items-center justify-end gap-1">
-                          {lead.stage !== CONVERTED_STAGE && lead.stage !== "won" && lead.stage !== "lost" && (
-                            <button
-                              onClick={() => openConvert(lead)}
-                              title="Convert to Job"
-                              className="p-1.5 rounded-md hover:bg-amber-500/10 text-muted-foreground hover:text-amber-400 transition-colors"
-                            >
-                              <Briefcase className="w-3.5 h-3.5" />
-                            </button>
-                          )}
-                          <button onClick={() => openEdit(lead)} className="p-1.5 rounded-md hover:bg-secondary/80 text-muted-foreground hover:text-foreground transition-colors">
-                            <Edit3 className="w-3.5 h-3.5" />
-                          </button>
-                          <button onClick={() => setDeleteConfirmId(lead.id)}
-                            className="p-1.5 rounded-md hover:bg-red-500/10 text-muted-foreground hover:text-red-400 transition-colors">
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => toast.info("Dialer coming soon")}
+              className="flex items-center gap-1.5 bg-secondary hover:bg-secondary/80 border border-border text-xs px-3 py-1.5 rounded-md transition-colors"
+            >
+              <PhoneCall className="w-3.5 h-3.5" />
+              Dialer
+              {activeCount > 0 && (
+                <span className="bg-primary text-primary-foreground text-[10px] font-bold px-1.5 py-0.5 rounded-full">{activeCount}</span>
+              )}
+            </button>
+            <button
+              onClick={() => setShowAddModal(true)}
+              className="flex items-center gap-1.5 bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-semibold px-3 py-1.5 rounded-md transition-colors"
+            >
+              <Plus className="w-3.5 h-3.5" />Add Lead
+            </button>
           </div>
-        )}
+        </div>
+
+        {/* Search bar */}
+        <div className="px-4 py-2 border-b border-border shrink-0">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+            <input
+              type="text"
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              placeholder="Search leads..."
+              className="w-full bg-secondary/40 border border-border rounded-lg pl-9 pr-4 py-2 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/40"
+            />
+          </div>
+        </div>
+
+        {/* Kanban board */}
+        <div className="flex-1 overflow-x-auto overflow-y-hidden">
+          {isLoading ? (
+            <div className="flex items-center justify-center h-full">
+              <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+            </div>
+          ) : (
+            <div className="flex gap-3 p-4 h-full min-w-max">
+              {KANBAN_STAGES.map(stage => (
+                <KanbanColumn
+                  key={stage.id}
+                  stage={stage}
+                  leads={byStage(stage.id)}
+                  onLeadClick={setSelectedLead}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Bottom closed bar */}
+        <div className="shrink-0 border-t border-border px-4 py-2 flex items-center gap-3">
+          <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mr-1">CLOSED</span>
+          {CLOSED_STAGES.map(s => {
+            const count = s.id === "won" ? wonCount : s.id === "lost" ? lostCount : onHoldCount;
+            const Icon = s.icon;
+            return (
+              <div
+                key={s.id}
+                className={cn(
+                  "flex items-center gap-2 px-4 py-1.5 rounded-lg border text-xs font-semibold flex-1 justify-center",
+                  s.color
+                )}
+              >
+                <Icon className="w-3.5 h-3.5" />
+                {s.label}
+                <span className="font-mono">{count}</span>
+              </div>
+            );
+          })}
+
+          {/* Phone Ready indicator */}
+          <div className="ml-auto flex items-center gap-1.5 bg-green-500/15 border border-green-500/30 text-green-400 text-xs font-semibold px-3 py-1.5 rounded-full">
+            <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
+            Phone Ready
+          </div>
+        </div>
       </div>
 
-      {/* ── Jobber Requests Section ── */}
-      <JobberRequestsSection />
-
-      {/* Convert to Job Modal */}
-      {convertingLead && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-          <div className="ops-card w-full max-w-md p-6 shadow-2xl">
-            <div className="flex items-center justify-between mb-1">
-              <h2 className="text-base font-bold text-foreground" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
-                Convert to Job
-              </h2>
-              <button onClick={() => setConvertingLead(null)} className="p-1.5 rounded-md hover:bg-secondary/80 text-muted-foreground">
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-            <p className="text-xs text-muted-foreground mb-4">
-              A new job will be created from this lead and the lead will be marked as Converted.
-            </p>
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                convertToJob.mutate({
-                  leadId: convertingLead.id,
-                  title: convertForm.title || undefined,
-                  client: convertForm.client || undefined,
-                  address: convertForm.address || undefined,
-                  jobType: convertForm.jobType,
-                  notes: convertForm.notes || undefined,
-                });
-              }}
-              className="space-y-3"
-            >
-              <div>
-                <label className="block text-xs font-medium text-muted-foreground mb-1">Job Title</label>
-                <input
-                  required
-                  value={convertForm.title}
-                  onChange={e => setConvertForm(f => ({ ...f, title: e.target.value }))}
-                  className="w-full bg-secondary/50 border border-border rounded-md px-3 py-2 text-xs text-foreground outline-none focus:border-primary/50"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-muted-foreground mb-1">Client Name</label>
-                <input
-                  required
-                  value={convertForm.client}
-                  onChange={e => setConvertForm(f => ({ ...f, client: e.target.value }))}
-                  className="w-full bg-secondary/50 border border-border rounded-md px-3 py-2 text-xs text-foreground outline-none focus:border-primary/50"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-muted-foreground mb-1">Property Address</label>
-                <input
-                  value={convertForm.address}
-                  onChange={e => setConvertForm(f => ({ ...f, address: e.target.value }))}
-                  placeholder="Optional"
-                  className="w-full bg-secondary/50 border border-border rounded-md px-3 py-2 text-xs text-foreground outline-none focus:border-primary/50 placeholder:text-muted-foreground/40"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-muted-foreground mb-1">Job Type</label>
-                <select
-                  value={convertForm.jobType}
-                  onChange={e => setConvertForm(f => ({ ...f, jobType: e.target.value as JobTypeValue }))}
-                  className="w-full bg-secondary/50 border border-border rounded-md px-3 py-2 text-xs text-foreground outline-none focus:border-primary/50"
-                >
-                  {JOB_TYPE_OPTIONS.map(opt => (
-                    <option key={opt.value} value={opt.value}>{opt.label}</option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-muted-foreground mb-1">Notes</label>
-                <textarea
-                  value={convertForm.notes}
-                  onChange={e => setConvertForm(f => ({ ...f, notes: e.target.value }))}
-                  rows={2}
-                  placeholder="Optional"
-                  className="w-full bg-secondary/50 border border-border rounded-md px-3 py-2 text-xs text-foreground outline-none focus:border-primary/50 resize-none placeholder:text-muted-foreground/40"
-                />
-              </div>
-              <div className="flex gap-2 pt-1">
-                <button
-                  type="button"
-                  onClick={() => setConvertingLead(null)}
-                  className="flex-1 py-2 rounded-md text-xs font-semibold text-muted-foreground bg-secondary/50 hover:bg-secondary transition-colors"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={convertToJob.isPending}
-                  className="flex-1 py-2 rounded-md text-xs font-semibold text-white bg-amber-600 hover:bg-amber-500 transition-all disabled:opacity-50 flex items-center justify-center gap-1.5"
-                >
-                  {convertToJob.isPending && <Loader2 className="w-3 h-3 animate-spin" />}
-                  <Briefcase className="w-3 h-3" />
-                  Convert to Job
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
+      {/* Detail panel */}
+      {selectedLead && (
+        <LeadDetailPanel
+          lead={selectedLead}
+          onClose={() => setSelectedLead(null)}
+          onStageChange={handleStageChange}
+          onDelete={handleDelete}
+        />
       )}
 
-      {/* Add/Edit Modal */}
-      {showModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-          <div className="ops-card w-full max-w-lg p-6 shadow-2xl max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between mb-5">
-              <h2 className="text-base font-bold text-foreground" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
-                {editingId ? "Edit Lead" : "New Lead"}
-              </h2>
-              <button onClick={closeModal} className="p-1.5 rounded-md hover:bg-secondary/80 text-muted-foreground"><X className="w-4 h-4" /></button>
-            </div>
-            <form onSubmit={handleSubmit} className="space-y-3">
-              <div className="grid grid-cols-2 gap-3">
-                <div className="col-span-2">
-                  <label className="block text-xs font-medium text-muted-foreground mb-1">Name / Company *</label>
-                  <input required value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="e.g. Smith Ranch"
-                    className="w-full bg-secondary/50 border border-border rounded-md px-3 py-2 text-xs text-foreground outline-none focus:border-primary/50 placeholder:text-muted-foreground/40" />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-muted-foreground mb-1">Phone</label>
-                  <input value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))} placeholder="(512) 555-0100"
-                    className="w-full bg-secondary/50 border border-border rounded-md px-3 py-2 text-xs text-foreground outline-none focus:border-primary/50 placeholder:text-muted-foreground/40" />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-muted-foreground mb-1">Email</label>
-                  <input type="email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} placeholder="client@email.com"
-                    className="w-full bg-secondary/50 border border-border rounded-md px-3 py-2 text-xs text-foreground outline-none focus:border-primary/50 placeholder:text-muted-foreground/40" />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-muted-foreground mb-1">Location</label>
-                  <input value={form.location} onChange={e => setForm(f => ({ ...f, location: e.target.value }))} placeholder="City, TX"
-                    className="w-full bg-secondary/50 border border-border rounded-md px-3 py-2 text-xs text-foreground outline-none focus:border-primary/50 placeholder:text-muted-foreground/40" />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-muted-foreground mb-1">Job Type</label>
-                  <input value={form.jobType} onChange={e => setForm(f => ({ ...f, jobType: e.target.value }))} placeholder="Land Clearing"
-                    className="w-full bg-secondary/50 border border-border rounded-md px-3 py-2 text-xs text-foreground outline-none focus:border-primary/50 placeholder:text-muted-foreground/40" />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-muted-foreground mb-1">Stage</label>
-                  <select value={form.stage} onChange={e => setForm(f => ({ ...f, stage: e.target.value as LeadStage }))}
-                    className="w-full bg-secondary/50 border border-border rounded-md px-3 py-2 text-xs text-foreground outline-none focus:border-primary/50">
-                    {STAGE_OPTIONS.map(s => <option key={s} value={s}>{STAGE_LABELS[s]}</option>)}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-muted-foreground mb-1">Source</label>
-                  <select value={form.source} onChange={e => setForm(f => ({ ...f, source: e.target.value as LeadSource }))}
-                    className="w-full bg-secondary/50 border border-border rounded-md px-3 py-2 text-xs text-foreground outline-none focus:border-primary/50">
-                    {SOURCE_OPTIONS.map(s => <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>)}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-muted-foreground mb-1">Est. Value ($)</label>
-                  <input type="number" step="100" value={form.estimatedValue} onChange={e => setForm(f => ({ ...f, estimatedValue: e.target.value }))} placeholder="0"
-                    className="w-full bg-secondary/50 border border-border rounded-md px-3 py-2 text-xs text-foreground outline-none focus:border-primary/50 placeholder:text-muted-foreground/40" />
-                </div>
-                <div className="col-span-2">
-                  <label className="block text-xs font-medium text-muted-foreground mb-1">Notes</label>
-                  <textarea value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} placeholder="Lead notes..." rows={2}
-                    className="w-full bg-secondary/50 border border-border rounded-md px-3 py-2 text-xs text-foreground outline-none focus:border-primary/50 resize-none placeholder:text-muted-foreground/40" />
-                </div>
-              </div>
-              <div className="flex gap-2 pt-2">
-                <button type="button" onClick={closeModal}
-                  className="flex-1 py-2 rounded-md text-xs font-semibold text-muted-foreground bg-secondary/50 hover:bg-secondary transition-colors">Cancel</button>
-                <button type="submit" disabled={isPending}
-                  className="flex-1 py-2 rounded-md text-xs font-semibold text-white bg-primary hover:bg-primary/90 transition-all disabled:opacity-50 flex items-center justify-center gap-1.5">
-                  {isPending && <Loader2 className="w-3 h-3 animate-spin" />}
-                  {editingId ? "Save Changes" : "Add Lead"}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-      {/* Delete confirmation modal */}
-      {deleteConfirmId !== null && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-          <div className="bg-card border border-border rounded-xl shadow-2xl w-full max-w-sm p-6 space-y-4">
-            <h3 className="text-sm font-semibold text-foreground">Delete Lead</h3>
-            <p className="text-xs text-muted-foreground">
-              This will permanently remove the lead record. This cannot be undone.
-            </p>
-            <div className="rounded-md bg-red-500/10 border border-red-500/20 px-3 py-2.5 space-y-1">
-              <p className="text-[11px] font-semibold text-red-400">The following will also be deleted:</p>
-              <ul className="text-[11px] text-red-300/80 space-y-0.5 list-disc list-inside">
-                <li>All contact info, notes, and estimated value</li>
-                <li>Pipeline stage history for this lead</li>
-              </ul>
-              <p className="text-[11px] text-muted-foreground mt-1">If this lead was converted to a job, that job record is not affected.</p>
-            </div>
-            <div className="flex gap-2 pt-1">
-              <button
-                onClick={() => setDeleteConfirmId(null)}
-                className="flex-1 py-2 rounded-md text-xs font-semibold text-muted-foreground bg-secondary/50 hover:bg-secondary transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={() => { deleteLead.mutate({ id: deleteConfirmId }); setDeleteConfirmId(null); }}
-                disabled={deleteLead.isPending}
-                className="flex-1 py-2 rounded-md text-xs font-semibold text-white bg-red-600 hover:bg-red-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-1.5"
-              >
-                {deleteLead.isPending && <Loader2 className="w-3 h-3 animate-spin" />}
-                Delete Lead
-              </button>
-            </div>
-          </div>
-        </div>
+      {/* Add lead modal */}
+      {showAddModal && (
+        <AddLeadModal
+          onClose={() => setShowAddModal(false)}
+          onCreate={handleCreate}
+        />
       )}
     </DashboardLayout>
   );

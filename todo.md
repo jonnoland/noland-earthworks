@@ -660,3 +660,15 @@
 - [x] Add getIntegrationStatus tRPC procedure to settingsRouter (checks Jobber token, Twilio, Resend, Google Maps env vars)
 - [x] Update IntegrationsTab to show live connected/disconnected status for Jobber, Twilio, Resend, Google Maps, ClickGrow, Facebook, Google Business
 - [x] TypeScript check: 0 errors. Checkpoint saved.
+
+## Leads Page — Kanban Board + Detail Panel — Apr 13 2026
+
+- [x] Read current Leads.tsx and opsRouter leads procedures
+- [x] Rebuild Leads.tsx as 5-column kanban board (New Lead, Contacted, Site Visit, Quote Sent, Follow-Up) with Won/Lost/On Hold bottom bar
+- [x] Add slide-in lead detail panel: name/phone/email header, Call/Text/Create Quote/Schedule Visit buttons, stage badge, source, address, map, activity log, Add Note, Mark Lost, View Full Deal
+- [x] TypeScript check: 0 errors. Checkpoint saved.
+
+## Jobber Links Audit — Apr 13 2026
+
+- [x] Find all Jobber-related links/hrefs in ops pages and update to https://secure.getjobber.com/home
+- [x] TypeScript check: 0 errors. Checkpoint saved.
