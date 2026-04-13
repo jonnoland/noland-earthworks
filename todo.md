@@ -562,3 +562,10 @@
 ## Bug Fix — Apr 13 2026
 
 - [x] Fix crew create mutation — supply default values for all new pricing columns so insert does not fail
+
+## Pricing Page Replacement — Apr 13 2026
+
+- [ ] Read Pricing.tsx from local ownrops-dashboard project
+- [ ] Adapt and write full Pricing.tsx into main site with correct imports
+- [ ] Update Pricing Benchmarks table to Middle & West Tennessee rates
+- [ ] TypeScript check and save checkpoint
