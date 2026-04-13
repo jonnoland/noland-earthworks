@@ -641,3 +641,8 @@
 - [x] Profile tab: name, email, phone, timezone
 - [x] Add businessSettings and automationSettings tRPC procedures to opsRouter
 - [x] TypeScript check: 0 errors. Tests: 59/59 passing. Checkpoint saved.
+
+## Settings Top Menu Bar — Apr 13 2026
+
+- [x] Replace left sidebar tab nav with horizontal top tab bar matching OwnrOps layout (SETTINGS label + pipe separators + amber underline on active tab)
+- [x] TypeScript check and save checkpoint

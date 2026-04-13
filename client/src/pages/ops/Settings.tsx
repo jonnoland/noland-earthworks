@@ -1228,42 +1228,51 @@ export default function Settings() {
   }, []);
 
   return (
-    <DashboardLayout title="Settings" subtitle="Manage your account and business preferences">
-      <div className="p-6">
-        <div className="flex flex-col lg:flex-row gap-5">
-          {/* Sidebar tabs */}
-          <div className="lg:w-48 shrink-0">
-            <nav className="space-y-0.5">
-              {tabs.map(tab => (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
-                  className={cn(
-                    "w-full flex items-center gap-2.5 px-3 py-2.5 rounded-md text-xs font-medium transition-all text-left",
-                    activeTab === tab.id
-                      ? "bg-primary/10 text-primary border border-primary/20"
-                      : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
-                  )}
-                >
-                  <tab.icon className="w-3.5 h-3.5 shrink-0" />
-                  {tab.label}
-                </button>
-              ))}
-            </nav>
-          </div>
-
-          {/* Content */}
-          <div className="flex-1 min-w-0">
-            {activeTab === "quotes"        && <QuoteLogTab />}
-            {activeTab === "profile"       && <ProfileTab />}
-            {activeTab === "business"      && <BusinessTab />}
-            {activeTab === "integrations"  && <IntegrationsTab />}
-            {activeTab === "notifications" && <NotificationsTab />}
-            {activeTab === "team"          && <TeamTab />}
-            {activeTab === "billing"       && <BillingTab />}
-            {activeTab === "security"      && <SecurityTab />}
-          </div>
+    <DashboardLayout title="Settings" subtitle="">
+      {/* ── Top tab bar — matches OwnrOps settings layout ── */}
+      <div className="border-b border-border bg-card sticky top-0 z-10">
+        <div className="flex items-center overflow-x-auto scrollbar-none px-6">
+          {/* "SETTINGS" label */}
+          <span className="shrink-0 text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60 pr-4 mr-1 border-r border-border/60">
+            Settings
+          </span>
+          {/* Tab items */}
+          {tabs.map((tab, i) => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={cn(
+                "relative shrink-0 flex items-center gap-1.5 px-3.5 py-3.5 text-xs font-medium transition-colors whitespace-nowrap",
+                activeTab === tab.id
+                  ? "text-foreground"
+                  : "text-muted-foreground hover:text-foreground"
+              )}
+            >
+              {/* Pipe separator before each tab */}
+              {i > 0 && (
+                <span className="absolute left-0 top-1/2 -translate-y-1/2 h-3.5 w-px bg-border/60" />
+              )}
+              <tab.icon className="w-3 h-3 shrink-0" />
+              {tab.label}
+              {/* Active underline */}
+              {activeTab === tab.id && (
+                <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary rounded-t-full" />
+              )}
+            </button>
+          ))}
         </div>
+      </div>
+
+      {/* Content area */}
+      <div className="p-6">
+        {activeTab === "quotes"        && <QuoteLogTab />}
+        {activeTab === "profile"       && <ProfileTab />}
+        {activeTab === "business"      && <BusinessTab />}
+        {activeTab === "integrations"  && <IntegrationsTab />}
+        {activeTab === "notifications" && <NotificationsTab />}
+        {activeTab === "team"          && <TeamTab />}
+        {activeTab === "billing"       && <BillingTab />}
+        {activeTab === "security"      && <SecurityTab />}
       </div>
     </DashboardLayout>
   );
