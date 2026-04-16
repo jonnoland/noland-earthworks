@@ -65,6 +65,59 @@ function volumeDiscount(acres: number): number {
 const MOBILIZATION = 350; // flat add-on
 const MIN_JOB = 1800;
 
+// Base acres-per-day production rates by service type
+// These are conservative real-world rates for a single tracked forestry mulcher
+const BASE_ACRES_PER_DAY: Record<string, number> = {
+  "forestry-mulching":     3.0,  // tracked mulcher, avg conditions
+  "land-clearing":         2.0,  // heavier work, debris management
+  "vegetation-management": 5.0,  // lighter brush, faster passes
+  "property-maintenance":  5.0,
+  "right-of-way-clearing": 2.5,  // narrow corridors, more passes
+};
+
+// Density slows production
+const DENSITY_PROD_MULT: Record<string, number> = {
+  light:    1.4,
+  moderate: 1.0,
+  heavy:    0.6,
+};
+
+// Terrain slows production
+const TERRAIN_PROD_MULT: Record<string, number> = {
+  flat:    1.0,
+  rolling: 0.85,
+  steep:   0.65,
+};
+
+function calcCompletionTime(s: CalcState): { low: string; high: string; days: number } | null {
+  const baseApd = BASE_ACRES_PER_DAY[s.service];
+  if (!baseApd) return null;
+  const dm = DENSITY_PROD_MULT[s.density] ?? 1;
+  const tm = TERRAIN_PROD_MULT[s.terrain] ?? 1;
+  const acresPerDay = baseApd * dm * tm;
+  const rawDays = s.acres / acresPerDay;
+
+  // Express as a human-readable range
+  if (rawDays < 0.5) {
+    return { low: "2–4 hours", high: "half a day", days: rawDays };
+  } else if (rawDays < 1) {
+    return { low: "half a day", high: "1 day", days: rawDays };
+  } else if (rawDays <= 1.5) {
+    return { low: "1 day", high: "1–2 days", days: rawDays };
+  } else if (rawDays <= 2.5) {
+    return { low: "1–2 days", high: "2–3 days", days: rawDays };
+  } else if (rawDays <= 4) {
+    return { low: "2–3 days", high: "3–4 days", days: rawDays };
+  } else if (rawDays <= 6) {
+    return { low: "3–5 days", high: "5–7 days", days: rawDays };
+  } else if (rawDays <= 10) {
+    return { low: "1–2 weeks", high: "2 weeks", days: rawDays };
+  } else {
+    const weeks = Math.ceil(rawDays / 5);
+    return { low: `${weeks}–${weeks + 1} weeks`, high: `${weeks + 1}+ weeks`, days: rawDays };
+  }
+}
+
 /* ─── Types ─────────────────────────────────────────────────────────── */
 
 interface CalcState {
@@ -232,6 +285,7 @@ export default function CostCalculator() {
   });
 
   const result = useMemo(() => calcEstimate(state), [state]);
+  const timeResult = useMemo(() => calcCompletionTime(state), [state]);
 
   const set = (key: keyof CalcState) => (val: string | number) =>
     setState((prev) => ({ ...prev, [key]: val }));
@@ -402,7 +456,7 @@ export default function CostCalculator() {
                   </p>
                 )}
 
-                {/* Per-acre breakdown */}
+                {/* Per-acre breakdown + completion time */}
                 <div
                   style={{
                     display: "flex",
@@ -440,6 +494,36 @@ export default function CostCalculator() {
                     </p>
                   </div>
                 </div>
+
+                {/* Completion time */}
+                {timeResult && (
+                  <div
+                    style={{
+                      backgroundColor: "rgba(224,123,42,0.07)",
+                      border: "1px solid rgba(224,123,42,0.2)",
+                      borderRadius: "4px",
+                      padding: "0.85rem 1rem",
+                      marginBottom: "1.25rem",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "0.75rem",
+                    }}
+                  >
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#E07B2A" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                      <circle cx="12" cy="12" r="10" />
+                      <polyline points="12 6 12 12 16 14" />
+                    </svg>
+                    <div>
+                      <p style={{ fontFamily: "'Lato', sans-serif", fontSize: "0.65rem", color: "rgba(240,237,230,0.4)", textTransform: "uppercase", letterSpacing: "0.1em", margin: "0 0 0.15rem" }}>Estimated Completion Time</p>
+                      <p style={{ fontFamily: "'Oswald', sans-serif", fontWeight: 600, fontSize: "1rem", color: "#E07B2A", margin: 0 }}>
+                        {timeResult.low === timeResult.high ? timeResult.low : `${timeResult.low} – ${timeResult.high}`}
+                      </p>
+                      <p style={{ fontFamily: "'Lato', sans-serif", fontSize: "0.7rem", color: "rgba(240,237,230,0.35)", margin: "0.2rem 0 0" }}>
+                        Based on {state.acres} {state.acres === 1 ? "acre" : "acres"} · {state.density} density · {state.terrain} terrain
+                      </p>
+                    </div>
+                  </div>
+                )}
 
                 {/* Disclaimer */}
                 <p

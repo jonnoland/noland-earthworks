@@ -743,3 +743,7 @@
 ## Payment Methods Display — Apr 16 2026
 
 - [x] Add Visa/MC/Amex/Discover/Apple Pay/Google Pay badge + "2.9% + 30¢" Stripe rate note to Invoices page and Settings > Payments tab
+
+## Rough Estimate Calculator — Completion Time — Apr 16 2026
+
+- [x] Add estimated completion time output to the Rough Estimate Calculator based on acreage, density, terrain, and service type
