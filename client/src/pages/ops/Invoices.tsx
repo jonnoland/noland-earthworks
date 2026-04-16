@@ -23,6 +23,49 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 
+// ─── Payment Methods Badge ───────────────────────────────────────────────────
+
+function PaymentMethodsBadge() {
+  return (
+    <div className="flex items-center gap-3 px-4 py-2.5 rounded-lg border border-border bg-card">
+      {/* Card network logos using SVG icons */}
+      <div className="flex items-center gap-2">
+        {/* Visa */}
+        <div className="flex items-center justify-center h-6 px-2 rounded bg-[#1A1F71] text-white text-[10px] font-extrabold tracking-widest" style={{ fontFamily: 'serif', minWidth: '36px' }}>VISA</div>
+        {/* Mastercard */}
+        <div className="flex items-center justify-center h-6 w-9 rounded bg-[#252525]">
+          <svg viewBox="0 0 38 24" width="28" height="18" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="13" cy="12" r="9" fill="#EB001B" />
+            <circle cx="25" cy="12" r="9" fill="#F79E1B" />
+            <path d="M19 5.4a9 9 0 0 1 0 13.2A9 9 0 0 1 19 5.4z" fill="#FF5F00" />
+          </svg>
+        </div>
+        {/* Amex */}
+        <div className="flex items-center justify-center h-6 px-1.5 rounded bg-[#2E77BC] text-white text-[8px] font-bold tracking-tight" style={{ minWidth: '40px' }}>AMEX</div>
+        {/* Discover */}
+        <div className="flex items-center justify-center h-6 px-1.5 rounded bg-white text-[#231F20] text-[8px] font-bold tracking-tight gap-0.5" style={{ minWidth: '44px' }}>
+          <span>DISCOVER</span>
+          <span className="inline-block w-2.5 h-2.5 rounded-full bg-[#F76F20] ml-0.5" />
+        </div>
+        {/* Apple Pay */}
+        <div className="flex items-center justify-center h-6 px-2 rounded bg-black text-white text-[9px] font-medium tracking-tight" style={{ minWidth: '52px' }}>
+          <svg viewBox="0 0 24 10" width="14" height="6" className="mr-0.5" xmlns="http://www.w3.org/2000/svg">
+            <path d="M4.5 0C3.4 0 2.5.9 2.5 2c0 .6.3 1.2.7 1.6-.4.1-.7.2-1 .4C1.5 4.5 1 5.3 1 6.2c0 1 .5 1.8 1.3 2.3.5.3 1.1.5 1.7.5.4 0 .8-.1 1.2-.2.3.1.7.2 1 .2.4 0 .8-.1 1.2-.2.4.1.8.2 1.2.2.6 0 1.2-.2 1.7-.5.8-.5 1.3-1.3 1.3-2.3 0-.9-.5-1.7-1.2-2.2-.3-.2-.6-.3-1-.4.4-.4.7-1 .7-1.6C9.1.9 8.2 0 7.1 0c-.5 0-1 .2-1.3.5C5.5.2 5 0 4.5 0z" fill="white"/>
+          </svg>
+          Pay
+        </div>
+        {/* Google Pay */}
+        <div className="flex items-center justify-center h-6 px-2 rounded bg-white border border-gray-200 text-[9px] font-medium tracking-tight gap-0.5" style={{ minWidth: '52px' }}>
+          <span style={{ color: '#4285F4' }}>G</span><span style={{ color: '#EA4335' }}>o</span><span style={{ color: '#FBBC05' }}>o</span><span style={{ color: '#4285F4' }}>g</span><span style={{ color: '#34A853' }}>l</span><span style={{ color: '#EA4335' }}>e</span>
+          <span className="ml-0.5 text-[#3C4043]">Pay</span>
+        </div>
+      </div>
+      <div className="h-4 w-px bg-border" />
+      <span className="text-xs text-muted-foreground whitespace-nowrap">2.9% + 30&cent; per transaction</span>
+    </div>
+  );
+}
+
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 function formatDate(iso: string | null | undefined): string {
@@ -322,6 +365,9 @@ export default function OpsInvoices() {
             </div>
           </div>
         )}
+
+        {/* Payment methods accepted */}
+        {!isLoading && !notConnected && <PaymentMethodsBadge />}
 
         {/* Status filter tabs */}
         {!isLoading && !notConnected && statuses.length > 1 && (

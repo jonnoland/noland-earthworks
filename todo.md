@@ -739,3 +739,7 @@
 - [x] Leads page: add "Map View" toggle button to switch between kanban and all-leads map
 - [x] All-leads map: geocode each active lead and plot as amber pin
 - [x] Pin click: show InfoWindow popup with client name and service requested
+
+## Payment Methods Display — Apr 16 2026
+
+- [x] Add Visa/MC/Amex/Discover/Apple Pay/Google Pay badge + "2.9% + 30¢" Stripe rate note to Invoices page and Settings > Payments tab
