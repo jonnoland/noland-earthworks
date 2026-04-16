@@ -25,6 +25,7 @@ import OpsScoreboard from "./pages/ops/Scoreboard";
 import OpsDistanceQuotes from "./pages/ops/DistanceQuotes";
 import OpsQuoteAnalytics from "./pages/ops/QuoteAnalytics";
 import Home from "./pages/Home";
+import SMSWidget from "./components/SMSWidget";
 import LandClearingPage from "./pages/LandClearing";
 import ForestryMulchingPage from "./pages/ForestryMulching";
 import VegetationManagementPage from "./pages/VegetationManagement";
@@ -222,6 +223,7 @@ function App() {
           <Toaster />
           <Router />
           <ScrollToTop />
+          <SMSWidget />
         </TooltipProvider>
       </ThemeProvider>
     </ErrorBoundary>

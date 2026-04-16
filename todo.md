@@ -711,3 +711,16 @@
 
 - [x] Diagnose and fix the client delete error on /ops/clients — root cause: adminProcedure guard blocked non-admin users; changed deleteClient, deleteQuote, deleteJob, deleteInvoice, deleteRequest, setLeadSource, getLeadSources, getLeadSourceBreakdown to protectedProcedure; added clientArchive fallback for API version compatibility
 - [x] TypeScript check: 0 errors. Checkpoint saved.
+
+## Settings Integrations — Facebook & Google Cards — Apr 13 2026
+
+- [ ] Update IntegrationsTab in Settings.tsx: Facebook Lead Ads card (Not Connected badge, blue Connect Facebook Page button, helper text) and Google Business Profile card (Not Connected badge, blue Connect Google Business Profile button, helper text) matching reference screenshot
+- [ ] Add tRPC procedures to check/store Facebook and Google connection state in DB
+- [ ] TypeScript check and save checkpoint
+
+## SMS Chat Widget — Public Site — Apr 15 2026
+
+- [x] Build SMSWidget.tsx: floating button bottom-right, expand to chat panel, name + phone + message fields, send via Twilio
+- [x] Add sendSmsMessage tRPC public procedure (widgetRouter.sendMessage) to forward visitor messages to Jon's number via Twilio + owner notification
+- [x] Wire SMSWidget into App.tsx so it appears on all public pages (not inside /ops)
+- [x] TypeScript check: 0 errors. Checkpoint saved.
