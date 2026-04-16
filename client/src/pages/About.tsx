@@ -1,9 +1,9 @@
 /*
  * DESIGN: Heavy Equipment Grit — About Us page
- * Hero banner → story section → core values → contact form for general inquiries
+ * Hero banner → Meet the Man (bio + stats) → pull quote → core values → contact form
  */
 import { useState } from "react";
-import { ArrowLeft, Shield, Star, Wrench, Clock, Send, CheckCircle, Users, MapPin, Loader2 } from "lucide-react";
+import { ArrowLeft, Shield, Star, Wrench, Clock, Send, CheckCircle, Users, MapPin, Loader2, Quote } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import MobileCTABar from "@/components/MobileCTABar";
@@ -45,34 +45,41 @@ const values = [
   {
     icon: <Star size={26} />,
     title: "Veteran Discipline",
-    desc: "Military service instilled in us a commitment to showing up, working hard, and holding ourselves accountable — on every job, every day.",
+    desc: "Military service instilled a commitment to showing up, working hard, and holding ourselves accountable — on every job, every day.",
   },
   {
     icon: <Wrench size={26} />,
     title: "Craftsmanship",
-    desc: "We take pride in our work. Our operators are experienced, our equipment is maintained, and the results speak for themselves.",
+    desc: "We take pride in the work. The equipment is maintained, the operator is experienced, and the results speak for themselves.",
   },
   {
     icon: <Clock size={26} />,
     title: "Reliability",
-    desc: "We respect your time and your property. We arrive when scheduled, communicate clearly, and clean up before we leave.",
+    desc: "We respect your time and your property. We arrive when scheduled, communicate clearly, and leave the site better than we found it.",
   },
   {
     icon: <Users size={26} />,
     title: "Community Roots",
-    desc: "We're Middle & West Tennessee locals. We know this land, these communities, and the people who live here — and we're proud to serve them.",
+    desc: "Middle & West Tennessee locals. We know this land, these communities, and the people who live here — and we're proud to serve them.",
   },
   {
     icon: <MapPin size={26} />,
     title: "Local Expertise",
-    desc: "From the rolling hills of Williamson County to the river bottoms of Humphreys County, we understand the terrain and vegetation of Middle TN.",
+    desc: "From the rolling hills of Williamson County to the river bottoms of Humphreys County, we understand the terrain and vegetation of this region.",
   },
+];
+
+const STATS = [
+  { number: "9", label: "Years U.S. Army Service", sub: "Active duty, honorably discharged" },
+  { number: "AFG", label: "Afghanistan Veteran", sub: "Deployed as 25B Information Systems Analyst" },
+  { number: "30+", label: "Years Professional Experience", sub: "IT career — problem-solving under pressure" },
+  { number: "35", label: "Counties Served", sub: "Across Middle & West Tennessee" },
 ];
 
 export default function AboutPage() {
   usePageTitle(
     "About Us — Veteran-Owned Land Clearing Company | Noland Earthworks",
-    "Learn about Noland Earthworks — a veteran-owned land clearing and forestry mulching company serving 35 counties across Middle & West Tennessee. Licensed, insured, and family-operated.",
+    "Learn about Jon M. Noland — Army veteran, IT professional, and founder of Noland Earthworks. Veteran-owned land clearing and forestry mulching serving 35 counties across Middle & West Tennessee.",
     "/about"
   );
   const [submitted, setSubmitted] = useState(false);
@@ -198,58 +205,82 @@ export default function AboutPage() {
               maxWidth: "560px",
             }}
           >
-            Built on American strength, driven by service, and rooted in Middle & West Tennessee.
+            Built on American strength, driven by service, and rooted in Middle &amp; West Tennessee.
           </p>
         </div>
       </section>
 
-      {/* ── OUR STORY ── */}
+      {/* ── MEET THE MAN ── */}
       <section style={{ paddingTop: "5rem", paddingBottom: "5rem", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
         <div className="container">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-20 items-center">
-            {/* Text */}
-            <div>
-              <div
-                style={{
-                  fontFamily: "'Oswald', sans-serif",
-                  fontWeight: 600,
-                  fontSize: "0.7rem",
-                  letterSpacing: "0.25em",
-                  textTransform: "uppercase",
-                  color: "#E07B2A",
-                  marginBottom: "0.75rem",
-                }}
-              >
-                Our Story
-              </div>
-              <h2
-                style={{
-                  fontFamily: "'Oswald', sans-serif",
-                  fontWeight: 700,
-                  fontSize: "clamp(1.75rem, 3.5vw, 2.75rem)",
-                  letterSpacing: "0.04em",
-                  textTransform: "uppercase",
-                  color: "#F0EDE6",
-                  marginBottom: "1.5rem",
-                  lineHeight: 1.1,
-                }}
-              >
-                Built on Service.<br />Built on Strength.
-              </h2>
+
+          {/* Section label + headline */}
+          <div style={{ marginBottom: "3.5rem" }}>
+            <div
+              style={{
+                fontFamily: "'Oswald', sans-serif",
+                fontWeight: 600,
+                fontSize: "0.7rem",
+                letterSpacing: "0.25em",
+                textTransform: "uppercase",
+                color: "#E07B2A",
+                marginBottom: "0.75rem",
+              }}
+            >
+              Our Story
+            </div>
+            <h2
+              style={{
+                fontFamily: "'Oswald', sans-serif",
+                fontWeight: 700,
+                fontSize: "clamp(2rem, 4vw, 3.25rem)",
+                letterSpacing: "0.03em",
+                textTransform: "uppercase",
+                color: "#F0EDE6",
+                lineHeight: 1.05,
+                marginBottom: "0.5rem",
+              }}
+            >
+              Meet the Man<br />
+              <span style={{ color: "#E07B2A" }}>Behind the Machine</span>
+            </h2>
+            <p
+              style={{
+                fontFamily: "'Lato', sans-serif",
+                fontWeight: 400,
+                fontSize: "1rem",
+                color: "rgba(240,237,230,0.5)",
+                letterSpacing: "0.02em",
+              }}
+            >
+              Jon M. Noland — Founder, Owner &amp; Operator
+            </p>
+          </div>
+
+          {/* Bio + Stats grid */}
+          <div className="grid grid-cols-1 lg:grid-cols-5 gap-12 lg:gap-16 items-start">
+
+            {/* Bio copy — 3 cols */}
+            <div className="lg:col-span-3">
               {[
-                "Noland Earthworks was founded by a U.S. military veteran who came home to Middle & West Tennessee with a simple mission: bring the same discipline, reliability, and work ethic from military service to the land clearing industry.",
-                "We started with a single machine and a commitment to doing the job right. Today, we serve 35 counties across Middle and West Tennessee — from the Nashville metro east to the Cumberland Plateau, and west through the Jackson area all the way to the Mississippi River counties. Wherever you are in our service area, you get the same crew, the same standards, and the same results.",
-                "As a veteran-owned and operated business, we hold ourselves to a higher standard. We show up on time, communicate honestly, and stand behind every project we complete. That's not a marketing line — it's how we were trained.",
+                "Before Noland Earthworks, Jon M. Noland spent nine years serving in the United States Army, including a deployment to Afghanistan as a 25B Information Systems Analyst. After leaving the military, he spent more than 30 years building a career in IT — solving complex problems, staying disciplined under pressure, and delivering results that people could count on.",
+                "Then something shifted.",
+                "Jon moved to the country. And what started as a change of scenery became something he did not expect — a genuine love for working the land. The early mornings, the physical work, the satisfaction of turning an overgrown, unusable piece of property into something a family could actually use. He bought a skid steer, added the right attachments, and in 2025, Noland Earthworks was born.",
+                "He is not a lifelong farmer or a third-generation land clearer. He is someone who found a real passion, brought the same discipline and work ethic that carried him through the Army and a 30-year career, and decided to build something of his own. Every job he takes, he shows up on time, does the work right, and leaves the property better than he found it.",
+                "That is what veteran-owned actually means here. Not just a badge — a way of operating.",
               ].map((p, i) => (
                 <p
                   key={i}
                   style={{
                     fontFamily: "'Lato', sans-serif",
-                    fontWeight: 300,
-                    fontSize: "1rem",
-                    lineHeight: 1.8,
-                    color: "rgba(240,237,230,0.72)",
-                    marginBottom: "1.125rem",
+                    fontWeight: i === 1 ? 600 : 300,
+                    fontSize: i === 1 ? "1.125rem" : "1rem",
+                    lineHeight: 1.85,
+                    color: i === 1 ? "rgba(240,237,230,0.9)" : "rgba(240,237,230,0.72)",
+                    marginBottom: i === 1 ? "1.5rem" : "1.125rem",
+                    fontStyle: i === 1 ? "italic" : "normal",
+                    paddingLeft: i === 1 ? "1rem" : "0",
+                    borderLeft: i === 1 ? "3px solid #E07B2A" : "none",
                   }}
                 >
                   {p}
@@ -257,58 +288,129 @@ export default function AboutPage() {
               ))}
             </div>
 
-            {/* Stats panel */}
-            <div className="grid grid-cols-2 gap-4">
-              {[
-                { number: "35", label: "Counties Served", sub: "Across Middle & West Tennessee" },
-                { number: "100%", label: "Veteran-Owned", sub: "U.S. military veteran founded" },
-                { number: "5★", label: "Customer Rating", sub: "Google & Facebook reviews" },
-              ].map((s) => (
+            {/* Stat block — 2 cols */}
+            <div className="lg:col-span-2 flex flex-col gap-4">
+              {STATS.map((s) => (
                 <div
                   key={s.label}
-                  className="p-6 flex flex-col"
+                  className="p-5 flex items-start gap-4"
                   style={{
                     backgroundColor: "rgba(255,255,255,0.03)",
                     border: "1px solid rgba(255,255,255,0.07)",
+                    transition: "border-color 0.2s ease, background-color 0.2s ease",
+                  }}
+                  onMouseEnter={(e) => {
+                    (e.currentTarget as HTMLElement).style.borderColor = "rgba(224,123,42,0.3)";
+                    (e.currentTarget as HTMLElement).style.backgroundColor = "rgba(224,123,42,0.04)";
+                  }}
+                  onMouseLeave={(e) => {
+                    (e.currentTarget as HTMLElement).style.borderColor = "rgba(255,255,255,0.07)";
+                    (e.currentTarget as HTMLElement).style.backgroundColor = "rgba(255,255,255,0.03)";
                   }}
                 >
                   <div
                     style={{
                       fontFamily: "'Oswald', sans-serif",
                       fontWeight: 700,
-                      fontSize: "2.25rem",
+                      fontSize: s.number.length > 2 ? "1.75rem" : "2.25rem",
                       color: "#E07B2A",
                       lineHeight: 1,
-                      marginBottom: "0.4rem",
+                      minWidth: "3.5rem",
+                      flexShrink: 0,
                     }}
                   >
                     {s.number}
                   </div>
-                  <div
-                    style={{
-                      fontFamily: "'Oswald', sans-serif",
-                      fontWeight: 600,
-                      fontSize: "0.8rem",
-                      letterSpacing: "0.1em",
-                      textTransform: "uppercase",
-                      color: "#F0EDE6",
-                      marginBottom: "0.25rem",
-                    }}
-                  >
-                    {s.label}
-                  </div>
-                  <div
-                    style={{
-                      fontFamily: "'Lato', sans-serif",
-                      fontWeight: 300,
-                      fontSize: "0.78rem",
-                      color: "rgba(240,237,230,0.45)",
-                    }}
-                  >
-                    {s.sub}
+                  <div>
+                    <div
+                      style={{
+                        fontFamily: "'Oswald', sans-serif",
+                        fontWeight: 600,
+                        fontSize: "0.8rem",
+                        letterSpacing: "0.1em",
+                        textTransform: "uppercase",
+                        color: "#F0EDE6",
+                        marginBottom: "0.2rem",
+                      }}
+                    >
+                      {s.label}
+                    </div>
+                    <div
+                      style={{
+                        fontFamily: "'Lato', sans-serif",
+                        fontWeight: 300,
+                        fontSize: "0.78rem",
+                        color: "rgba(240,237,230,0.45)",
+                        lineHeight: 1.5,
+                      }}
+                    >
+                      {s.sub}
+                    </div>
                   </div>
                 </div>
               ))}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ── PULL QUOTE ── */}
+      <section
+        style={{
+          paddingTop: "4.5rem",
+          paddingBottom: "4.5rem",
+          backgroundColor: "#0d1a0d",
+          borderBottom: "1px solid rgba(224,123,42,0.12)",
+          position: "relative",
+          overflow: "hidden",
+        }}
+      >
+        {/* Large decorative quote mark */}
+        <div
+          style={{
+            position: "absolute",
+            top: "-1rem",
+            left: "2rem",
+            fontFamily: "'Oswald', sans-serif",
+            fontSize: "18rem",
+            lineHeight: 1,
+            color: "rgba(224,123,42,0.05)",
+            userSelect: "none",
+            pointerEvents: "none",
+          }}
+        >
+          "
+        </div>
+        <div className="container relative z-10">
+          <div style={{ maxWidth: "800px", margin: "0 auto", textAlign: "center" }}>
+            <Quote
+              size={32}
+              style={{ color: "#E07B2A", margin: "0 auto 1.5rem", opacity: 0.7 }}
+            />
+            <blockquote
+              style={{
+                fontFamily: "'Lato', sans-serif",
+                fontWeight: 300,
+                fontSize: "clamp(1.1rem, 2.2vw, 1.4rem)",
+                lineHeight: 1.75,
+                color: "rgba(240,237,230,0.85)",
+                fontStyle: "italic",
+                marginBottom: "1.75rem",
+              }}
+            >
+              "I spent 30 years solving problems in IT and nine years serving my country. When I moved to the country and started working the land, I finally found the thing that brought it all together. Noland Earthworks is everything I have learned, built into one machine."
+            </blockquote>
+            <div
+              style={{
+                fontFamily: "'Oswald', sans-serif",
+                fontWeight: 600,
+                fontSize: "0.85rem",
+                letterSpacing: "0.15em",
+                textTransform: "uppercase",
+                color: "#E07B2A",
+              }}
+            >
+              — Jon M. Noland, Founder
             </div>
           </div>
         </div>
@@ -507,7 +609,7 @@ export default function AboutPage() {
                 ))}
               </div>
 
-              {/* NAP block — plain text for search engine crawlers */}
+              {/* NAP block */}
               <address
                 style={{
                   fontFamily: "'Lato', sans-serif",
