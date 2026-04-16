@@ -66,13 +66,13 @@ const MOBILIZATION = 350; // flat add-on
 const MIN_JOB = 1800;
 
 // Base acres-per-day production rates by service type
-// These are conservative real-world rates for a single tracked forestry mulcher
+// Conservative real-world rates for a single tracked forestry mulcher (1–2 ac/day max)
 const BASE_ACRES_PER_DAY: Record<string, number> = {
-  "forestry-mulching":     3.0,  // tracked mulcher, avg conditions
-  "land-clearing":         2.0,  // heavier work, debris management
-  "vegetation-management": 5.0,  // lighter brush, faster passes
-  "property-maintenance":  5.0,
-  "right-of-way-clearing": 2.5,  // narrow corridors, more passes
+  "forestry-mulching":     1.5,  // tracked mulcher, avg conditions
+  "land-clearing":         1.0,  // heavier work, debris management
+  "vegetation-management": 2.0,  // lighter brush, faster passes
+  "property-maintenance":  2.0,
+  "right-of-way-clearing": 1.25, // narrow corridors, more passes
 };
 
 // Density slows production
