@@ -95,6 +95,36 @@ async function startServer() {
     }
   });
 
+  // Maps JavaScript API proxy — serves the Maps SDK script server-side.
+  // Uses VITE_FRONTEND_FORGE_API_KEY (the frontend key) and forwards the
+  // Origin header from the browser request, which the Forge proxy requires.
+  app.get("/api/maps/js", async (req, res) => {
+    try {
+      const baseUrl = (process.env.VITE_FRONTEND_FORGE_API_URL || "https://forge.manus.ai").replace(/\/+$/, "");
+      const apiKey = process.env.VITE_FRONTEND_FORGE_API_KEY;
+      if (!apiKey) {
+        res.status(503).send("// Maps API key not configured");
+        return;
+      }
+      const params = new URLSearchParams(req.query as Record<string, string>);
+      params.set("key", apiKey);
+      const upstreamUrl = `${baseUrl}/v1/maps/proxy/maps/api/js?${params.toString()}`;
+      // The Forge Maps proxy requires an Origin header matching the registered domain.
+      // Forward the browser's Origin if present; fall back to the production domain.
+      const origin = (req.headers.origin as string) || (req.headers.referer ? new URL(req.headers.referer as string).origin : "https://nolandearthworks.com");
+      const upstream = await fetch(upstreamUrl, {
+        headers: { "Origin": origin },
+      });
+      const body = await upstream.text();
+      res.setHeader("Content-Type", "application/javascript; charset=utf-8");
+      res.setHeader("Cache-Control", "public, max-age=3600");
+      res.status(upstream.status).send(body);
+    } catch (err) {
+      console.error("Maps JS proxy error:", err);
+      res.status(502).send("// Maps proxy error");
+    }
+  });
+
   // tRPC API
   app.use(
     "/api/trpc",

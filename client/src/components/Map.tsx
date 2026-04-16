@@ -86,11 +86,9 @@ declare global {
   }
 }
 
-const API_KEY = import.meta.env.VITE_FRONTEND_FORGE_API_KEY;
-const FORGE_BASE_URL =
-  import.meta.env.VITE_FRONTEND_FORGE_API_URL ||
-  "https://forge.manus.ai";
-const MAPS_PROXY_URL = `${FORGE_BASE_URL}/v1/maps/proxy`;
+// Maps script is loaded via the server-side proxy at /api/maps/js.
+// The server injects the API key before forwarding to the Forge Maps proxy,
+// so no VITE_ env var is needed on the client.
 
 // Singleton promise — ensures the Maps script is only injected once per page lifetime.
 // IMPORTANT: Never reset this to null after it's set, even on error, to prevent
@@ -133,7 +131,7 @@ export function loadMapScript() {
 
   _mapsScriptPromise = new Promise<void>((resolve, reject) => {
     const script = document.createElement("script");
-    script.src = `${MAPS_PROXY_URL}/maps/api/js?key=${API_KEY}&v=weekly&libraries=marker,places,geocoding,geometry`;
+    script.src = `/api/maps/js?v=weekly&libraries=marker,places,geocoding,geometry`;
     script.async = true;
     script.crossOrigin = "anonymous";
     script.onload = () => resolve();
