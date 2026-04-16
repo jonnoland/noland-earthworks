@@ -2,7 +2,7 @@ import { and, desc, eq } from "drizzle-orm";
 import { drizzle, type MySql2Database } from "drizzle-orm/mysql2";
 import {
   InsertJob, InsertOpsLead, InsertScheduleEntry, InsertUser,
-  jobs, opsLeads, scheduleEntries, users
+  jobs, opsLeads, scheduleEntries, users, visitBlackoutDates, InsertVisitBlackoutDate
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
@@ -219,4 +219,21 @@ export async function deleteScheduleEntry(id: number, userId: number) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   return db.delete(scheduleEntries).where(and(eq(scheduleEntries.id, id), eq(scheduleEntries.userId, userId)));
+}
+
+// ─── Visit Blackout Dates ─────────────────────────────────────────────────────
+export async function getVisitBlackoutDates() {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(visitBlackoutDates).orderBy(visitBlackoutDates.date);
+}
+export async function addVisitBlackoutDate(date: string, reason?: string) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return db.insert(visitBlackoutDates).values({ date, reason: reason ?? null });
+}
+export async function removeVisitBlackoutDate(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return db.delete(visitBlackoutDates).where(eq(visitBlackoutDates.id, id));
 }

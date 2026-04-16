@@ -2,7 +2,8 @@ import { z } from "zod";
 import { publicProcedure, router } from "./_core/trpc";
 import { ENV } from "./_core/env";
 import { notifyOwner } from "./_core/notification";
-import { getOwnerUser, createOpsLead, updateOpsLeadById } from "./db";
+import { getOwnerUser, createOpsLead, updateOpsLeadById, getVisitBlackoutDates, addVisitBlackoutDate, removeVisitBlackoutDate } from "./db";
+import { Resend } from "resend";
 
 const SERVICE_LABELS: Record<string, string> = {
   "forestry-mulching": "Forestry Mulching",
@@ -11,6 +12,10 @@ const SERVICE_LABELS: Record<string, string> = {
   "right-of-way-clearing": "Right-of-Way Clearing",
   "property-maintenance": "Property Maintenance",
 };
+
+function getResend() {
+  return ENV.resendApiKey ? new Resend(ENV.resendApiKey) : null;
+}
 
 export const widgetRouter = router({
   /**
@@ -83,24 +88,79 @@ export const widgetRouter = router({
 
   /**
    * Public endpoint — no auth required.
+   * Returns all blackout dates so the date picker can disable them.
+   */
+  getBlackoutDates: publicProcedure.query(async () => {
+    const rows = await getVisitBlackoutDates().catch(() => []);
+    return rows.map((r) => r.date); // string[] of YYYY-MM-DD
+  }),
+
+  /**
+   * Public endpoint — no auth required.
    * Saves a requested site visit date/time to an existing lead record.
-   * Called from the ConfirmationOverlay after a calculator estimate submission.
+   * Sends an automated email confirmation to the visitor.
    */
   requestVisit: publicProcedure
     .input(
       z.object({
         leadId: z.number().int().positive(),
         visitAt: z.date(),
+        name: z.string().optional(),
+        email: z.string().email().optional(),
+        phone: z.string().optional(),
       })
     )
     .mutation(async ({ input }) => {
       try {
         await updateOpsLeadById(input.leadId, { requestedVisitAt: input.visitAt });
 
+        const visitFormatted = input.visitAt.toLocaleString("en-US", {
+          timeZone: "America/Chicago",
+          weekday: "long",
+          year: "numeric",
+          month: "long",
+          day: "numeric",
+          hour: "numeric",
+          minute: "2-digit",
+        });
+
+        // Owner notification
         await notifyOwner({
-          title: `Site visit requested`,
-          content: `Lead #${input.leadId} requested a site visit on ${input.visitAt.toLocaleString("en-US", { timeZone: "America/Chicago", weekday: "long", year: "numeric", month: "long", day: "numeric", hour: "numeric", minute: "2-digit" })}.`,
+          title: `Site visit requested${input.name ? ` — ${input.name}` : ""}`,
+          content: `Lead #${input.leadId} requested a site visit on ${visitFormatted}.${input.phone ? `\nPhone: ${input.phone}` : ""}`,
         }).catch(() => {});
+
+        // Visitor confirmation email
+        if (input.email) {
+          const resend = getResend();
+          if (resend) {
+            await resend.emails.send({
+              from: "Noland Earthworks <noreply@nolandearthworks.com>",
+              to: input.email,
+              subject: "Site Visit Request Received — Noland Earthworks",
+              html: `
+                <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;background:#fff;">
+                  <div style="background:#1a1a1a;padding:24px 32px;">
+                    <h1 style="color:#d97706;margin:0;font-size:22px;letter-spacing:1px;">NOLAND EARTHWORKS</h1>
+                    <p style="color:#888;margin:4px 0 0;font-size:13px;">Veteran-Owned Land Management</p>
+                  </div>
+                  <div style="padding:32px;">
+                    <h2 style="color:#1a1a1a;margin-top:0;">Site Visit Request Received</h2>
+                    <p style="color:#444;line-height:1.6;">Hi ${input.name ?? "there"},</p>
+                    <p style="color:#444;line-height:1.6;">We received your request for a site visit on:</p>
+                    <div style="background:#f5f5f5;border-left:4px solid #d97706;padding:16px 20px;margin:20px 0;">
+                      <strong style="font-size:16px;color:#1a1a1a;">${visitFormatted} (Central Time)</strong>
+                    </div>
+                    <p style="color:#444;line-height:1.6;">Jon will review your request and confirm the visit time — or reach out to find a time that works if there is a scheduling conflict. You can expect to hear back within one business day.</p>
+                    <p style="color:#444;line-height:1.6;">If you need to reach us sooner, call or text: <strong><a href="tel:6154064819" style="color:#d97706;">615-406-4819</a></strong></p>
+                    <hr style="border:none;border-top:1px solid #eee;margin:28px 0;">
+                    <p style="color:#888;font-size:12px;margin:0;">Noland Earthworks, LLC &mdash; Vanleer, TN &mdash; <a href="https://nolandearthworks.com" style="color:#d97706;">nolandearthworks.com</a></p>
+                  </div>
+                </div>
+              `,
+            }).catch((e: unknown) => console.error("[Widget] Visit confirmation email failed:", e));
+          }
+        }
 
         return { ok: true };
       } catch (err) {

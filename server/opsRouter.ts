@@ -12,8 +12,9 @@ import {
   getJobs, createJob, updateJob, deleteJob,
   getOpsLeads, createOpsLead, updateOpsLead, deleteOpsLead,
   getScheduleEntries, createScheduleEntry, updateScheduleEntry, deleteScheduleEntry,
+  getVisitBlackoutDates, addVisitBlackoutDate, removeVisitBlackoutDate,
 } from "./db";
-import { jobs, opsLeads, quoteSubmissions, crews, crewMembers, conversations, messages, reviews, timeEntries, distanceQuotes, businessSettings, automationSettings, serviceCatalog, messageTemplates, reminderRules, leadNotes } from "../drizzle/schema";
+import { jobs, opsLeads, quoteSubmissions, crews, crewMembers, conversations, messages, reviews, timeEntries, distanceQuotes, businessSettings, automationSettings, serviceCatalog, messageTemplates, reminderRules, leadNotes, visitBlackoutDates } from "../drizzle/schema";
 import { and, desc, eq, gte, lt, like } from "drizzle-orm";
 
 /**
@@ -1043,6 +1044,25 @@ const settingsRouter = router({
     }),
 });
 
+// ─── Blackout Dates Router ────────────────────────────────────────────────────
+const blackoutDatesRouter = router({
+  list: ownerProcedure.query(async () => {
+    return getVisitBlackoutDates();
+  }),
+  add: ownerProcedure
+    .input(z.object({ date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Must be YYYY-MM-DD"), reason: z.string().optional() }))
+    .mutation(async ({ input }) => {
+      await addVisitBlackoutDate(input.date, input.reason);
+      return { success: true };
+    }),
+  remove: ownerProcedure
+    .input(z.object({ id: z.number() }))
+    .mutation(async ({ input }) => {
+      await removeVisitBlackoutDate(input.id);
+      return { success: true };
+    }),
+});
+
 // ─── Combined Ops Router ──────────────────────────────────────────────────────
 export const opsRouter = router({
   jobs: jobsRouter,
@@ -1055,4 +1075,5 @@ export const opsRouter = router({
   timesheets: timesheetsRouter,
   distanceQuotes: distanceQuotesRouter,
   settings: settingsRouter,
+  blackoutDates: blackoutDatesRouter,
 });

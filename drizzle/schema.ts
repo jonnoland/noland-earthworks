@@ -460,3 +460,15 @@ export const leadNotes = mysqlTable("lead_notes", {
 });
 export type LeadNote = typeof leadNotes.$inferSelect;
 export type InsertLeadNote = typeof leadNotes.$inferInsert;
+
+// ─── Visit Blackout Dates ─────────────────────────────────────────────────────
+/** Dates on which Jon is unavailable for site visits (managed from /ops/settings). */
+export const visitBlackoutDates = mysqlTable("visit_blackout_dates", {
+  id: int("id").primaryKey().autoincrement(),
+  /** ISO date string YYYY-MM-DD */
+  date: varchar("date", { length: 10 }).notNull().unique(),
+  reason: varchar("reason", { length: 255 }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type VisitBlackoutDate = typeof visitBlackoutDates.$inferSelect;
+export type InsertVisitBlackoutDate = typeof visitBlackoutDates.$inferInsert;

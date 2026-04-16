@@ -766,3 +766,13 @@
 - [x] Add tRPC public procedure widget.requestVisit to save visit time to lead record
 - [x] Add date/time picker to ConfirmationOverlay with "Schedule a Site Visit" button
 - [x] Show requested visit time on lead card/detail in /ops/leads CRM
+
+## Site Visit Scheduler Enhancements — Apr 16 2026
+
+- [x] In-overlay confirmation message after visit time is submitted (already partially done via visitScheduled state — verify it's clear and complete)
+- [x] Automated email confirmation to visitor after visit request (name, requested date/time, next steps)
+- [x] Blackout dates: add visitBlackoutDates table to schema, push migration
+- [x] Blackout dates: add tRPC public procedure to list blackout dates (for date picker)
+- [x] Blackout dates: add tRPC protected procedure for owner to add/remove blackout dates
+- [x] Blackout dates: disable blackout dates in the date picker in CostCalculator
+- [x] Blackout dates: add management UI to /ops/settings page

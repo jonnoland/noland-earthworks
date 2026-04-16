@@ -15,7 +15,7 @@ import {
   Key, LogOut, Eye, EyeOff,
   UserPlus, Crown, Info, Plus, BookOpen, Zap, FileText,
   AlarmClock, CreditCard as CardIcon, BarChart2, Copy, RotateCcw,
-  Settings as SettingsIcon,
+  Settings as SettingsIcon, CalendarOff, CalendarDays,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -36,6 +36,7 @@ const tabs = [
   { id: "integrations",         label: "Integrations",         icon: Link2 },
   { id: "payments",             label: "Payments",             icon: CardIcon },
   { id: "billing",              label: "Billing",              icon: CreditCard },
+  { id: "scheduling",           label: "Scheduling",           icon: CalendarOff },
 ];
 
 // ─── Shared helpers ───────────────────────────────────────────────────────────
@@ -1517,7 +1518,106 @@ function QuoteLogTab() {
   );
 }
 
-// ─── Main Settings page ───────────────────────────────────────────────────────
+// ─── Scheduling Tab (Blackout Dates) ───────────────────────────────────────────────────
+function SchedulingTab() {
+  const [newDate, setNewDate] = useState("");
+  const [newReason, setNewReason] = useState("");
+  const utils = trpc.useUtils();
+
+  const { data: blackoutDates = [], isLoading } = trpc.ops.blackoutDates.list.useQuery();
+
+  const addMutation = trpc.ops.blackoutDates.add.useMutation({
+    onSuccess: () => {
+      utils.ops.blackoutDates.list.invalidate();
+      setNewDate("");
+      setNewReason("");
+      toast.success("Blackout date added.");
+    },
+    onError: () => toast.error("Failed to add blackout date."),
+  });
+
+  const removeMutation = trpc.ops.blackoutDates.remove.useMutation({
+    onSuccess: () => {
+      utils.ops.blackoutDates.list.invalidate();
+      toast.success("Blackout date removed.");
+    },
+    onError: () => toast.error("Failed to remove blackout date."),
+  });
+
+  const today = new Date().toISOString().split("T")[0];
+
+  return (
+    <div className="space-y-4">
+      <SettingsSection
+        title="Blackout Dates"
+        description="Dates marked as unavailable will be blocked in the site visit request calendar on the public Pricing page. Visitors cannot select these dates."
+      >
+        {/* Add new blackout date */}
+        <div className="flex gap-2 flex-wrap">
+          <input
+            type="date"
+            min={today}
+            value={newDate}
+            onChange={(e) => setNewDate(e.target.value)}
+            className="h-8 rounded-md border border-border bg-background px-3 text-sm text-foreground"
+          />
+          <input
+            type="text"
+            placeholder="Reason (optional)"
+            value={newReason}
+            onChange={(e) => setNewReason(e.target.value)}
+            className="h-8 flex-1 min-w-[160px] rounded-md border border-border bg-background px-3 text-sm text-foreground placeholder:text-muted-foreground"
+          />
+          <button
+            disabled={!newDate || addMutation.isPending}
+            onClick={() => addMutation.mutate({ date: newDate, reason: newReason || undefined })}
+            className="h-8 px-3 rounded-md bg-amber-600 hover:bg-amber-500 text-white text-xs font-semibold flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {addMutation.isPending ? <Loader2 size={12} className="animate-spin" /> : <Plus size={12} />}
+            Add Date
+          </button>
+        </div>
+
+        {/* Existing blackout dates */}
+        {isLoading ? (
+          <div className="flex items-center gap-2 text-sm text-muted-foreground py-4">
+            <Loader2 size={14} className="animate-spin" /> Loading...
+          </div>
+        ) : blackoutDates.length === 0 ? (
+          <div className="text-center py-8 border border-dashed border-border rounded-lg">
+            <CalendarOff className="w-7 h-7 text-muted-foreground mx-auto mb-2" />
+            <p className="text-sm text-muted-foreground">No blackout dates set.</p>
+            <p className="text-xs text-muted-foreground mt-1">Add dates above to block them from the site visit calendar.</p>
+          </div>
+        ) : (
+          <div className="space-y-1.5">
+            {blackoutDates.map((row) => (
+              <div key={row.id} className="flex items-center justify-between gap-3 px-3 py-2 rounded-md bg-muted/30 border border-border">
+                <div className="flex items-center gap-2">
+                  <CalendarDays size={14} className="text-amber-500 shrink-0" />
+                  <span className="text-sm font-medium text-foreground">
+                    {new Date(row.date + "T12:00:00").toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}
+                  </span>
+                  {row.reason && <span className="text-xs text-muted-foreground">— {row.reason}</span>}
+                </div>
+                <button
+                  onClick={() => removeMutation.mutate({ id: row.id })}
+                  disabled={removeMutation.isPending}
+                  className="p-1 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
+                  title="Remove blackout date"
+                >
+                  <Trash2 size={13} />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </SettingsSection>
+    </div>
+  );
+}
+
+// ─── Main Settings page ───────────────────────────────────────────────────
 export default function Settings() {
   const [activeTab, setActiveTab] = useState("general");
 
@@ -1535,6 +1635,7 @@ export default function Settings() {
       case "integrations":         return <IntegrationsTab />;
       case "payments":             return <PaymentsTab />;
       case "billing":              return <BillingTab />;
+      case "scheduling":           return <SchedulingTab />;
       default:                     return <GeneralTab />;
     }
   };

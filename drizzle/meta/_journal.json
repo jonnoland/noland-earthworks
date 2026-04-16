@@ -106,6 +106,13 @@
       "when": 1776375072319,
       "tag": "0014_wealthy_fallen_one",
       "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "5",
+      "when": 1776376583930,
+      "tag": "0015_fluffy_silvermane",
+      "breakpoints": true
     }
   ]
 }

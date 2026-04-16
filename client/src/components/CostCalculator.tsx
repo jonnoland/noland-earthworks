@@ -871,14 +871,29 @@ function ConfirmationOverlay({ data, onClose }: {
     onError: () => setVisitError("Something went wrong. Call 615-406-4819 to schedule directly."),
   });
 
+  // Fetch blackout dates so the date picker can disable them
+  const { data: blackoutDates = [] } = trpc.widget.getBlackoutDates.useQuery(undefined, {
+    staleTime: 5 * 60 * 1000,
+  });
+
   const handleScheduleVisit = () => {
     if (!visitDate || !visitTime) return;
     if (!data.leadId) {
       setVisitError("Unable to link visit to your request. Call 615-406-4819 to schedule directly.");
       return;
     }
+    if (blackoutDates.includes(visitDate)) {
+      setVisitError("That date is unavailable. Please choose another date.");
+      return;
+    }
     const visitAt = new Date(`${visitDate}T${visitTime}:00`);
-    requestVisitMutation.mutate({ leadId: data.leadId, visitAt });
+    requestVisitMutation.mutate({
+      leadId: data.leadId,
+      visitAt,
+      name: data.name,
+      email: data.email || undefined,
+      phone: data.phone,
+    });
   };
 
   // Minimum date: today
@@ -983,10 +998,16 @@ function ConfirmationOverlay({ data, onClose }: {
           </div>
 
           {visitScheduled ? (
-            <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-              <Check size={16} style={{ color: "#4ade80" }} />
-              <p style={{ fontFamily: "'Lato', sans-serif", fontSize: "0.85rem", color: "#4ade80", margin: 0 }}>
-                Visit requested for {new Date(`${visitDate}T${visitTime}:00`).toLocaleString("en-US", { weekday: "long", month: "long", day: "numeric", hour: "numeric", minute: "2-digit" })}. Jon will confirm.
+            <div style={{ backgroundColor: "rgba(74,222,128,0.06)", border: "1px solid rgba(74,222,128,0.25)", borderRadius: "6px", padding: "1rem 1.25rem" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.5rem" }}>
+                <Check size={16} style={{ color: "#4ade80" }} />
+                <p style={{ fontFamily: "'Oswald', sans-serif", fontWeight: 600, fontSize: "0.85rem", color: "#4ade80", margin: 0, letterSpacing: "0.04em", textTransform: "uppercase" }}>Visit Time Requested</p>
+              </div>
+              <p style={{ fontFamily: "'Lato', sans-serif", fontSize: "0.85rem", color: "rgba(240,237,230,0.8)", margin: "0 0 0.35rem", lineHeight: 1.5 }}>
+                <strong style={{ color: "#F0EDE6" }}>{new Date(`${visitDate}T${visitTime}:00`).toLocaleString("en-US", { weekday: "long", month: "long", day: "numeric", hour: "numeric", minute: "2-digit" })}</strong>
+              </p>
+              <p style={{ fontFamily: "'Lato', sans-serif", fontSize: "0.78rem", color: "rgba(240,237,230,0.5)", margin: 0, lineHeight: 1.5 }}>
+                Jon will confirm this time when he follows up.{data.email ? " A confirmation has been sent to your email." : ""}
               </p>
             </div>
           ) : (
@@ -1001,10 +1022,21 @@ function ConfirmationOverlay({ data, onClose }: {
                     type="date"
                     min={today}
                     value={visitDate}
-                    onChange={(e) => setVisitDate(e.target.value)}
+                    onChange={(e) => {
+                      const d = e.target.value;
+                      setVisitDate(d);
+                      if (blackoutDates.includes(d)) {
+                        setVisitError("That date is unavailable. Please choose another date.");
+                      } else {
+                        setVisitError("");
+                      }
+                    }}
                     style={{
                       width: "100%", padding: "0.55rem 0.7rem",
-                      backgroundColor: "#111", border: "1px solid rgba(255,255,255,0.12)",
+                      backgroundColor: "#111",
+                      border: visitDate && blackoutDates.includes(visitDate)
+                        ? "1px solid rgba(248,113,113,0.6)"
+                        : "1px solid rgba(255,255,255,0.12)",
                       borderRadius: "4px", color: "#F0EDE6",
                       fontFamily: "'Lato', sans-serif", fontSize: "0.85rem",
                       outline: "none", boxSizing: "border-box",
