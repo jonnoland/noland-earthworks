@@ -99,6 +99,13 @@
       "when": 1776113829008,
       "tag": "0013_crazy_cargill",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "5",
+      "when": 1776375072319,
+      "tag": "0014_wealthy_fallen_one",
+      "breakpoints": true
     }
   ]
 }

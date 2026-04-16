@@ -80,6 +80,7 @@ interface Lead {
   jobType?: string | null;
   estimatedValue?: string | null;
   notes?: string | null;
+  requestedVisitAt?: Date | string | null;
   createdAt: Date | string;
   updatedAt: Date | string;
 }
@@ -113,12 +114,18 @@ function LeadCard({ lead, onClick, onDragStart }: { lead: Lead; onClick: () => v
       </div>
       {/* Source badge */}
       {lead.source && (
-        <div className="mt-1.5">
+        <div className="mt-1.5 flex flex-wrap gap-1">
           <span className={`inline-flex items-center text-[10px] font-medium px-1.5 py-0.5 rounded border ${
             SOURCE_COLORS[lead.source] ?? SOURCE_COLORS.other
           }`}>
             {SOURCE_LABELS[lead.source] ?? lead.source}
           </span>
+          {lead.requestedVisitAt && (
+            <span className="inline-flex items-center gap-0.5 text-[10px] font-medium px-1.5 py-0.5 rounded border bg-teal-500/15 text-teal-400 border-teal-500/25">
+              <Calendar className="w-2.5 h-2.5" />
+              {new Date(lead.requestedVisitAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+            </span>
+          )}
         </div>
       )}
     </div>
@@ -431,6 +438,13 @@ function LeadDetailPanel({
               <p className="text-xs text-[#666] flex items-start gap-1">
                 <MapPin className="w-3.5 h-3.5 shrink-0 mt-0.5 text-[#555]" />
                 {lead.address}
+              </p>
+            )}
+            {lead.requestedVisitAt && (
+              <p className="text-xs flex items-center gap-1.5 bg-teal-500/10 border border-teal-500/20 rounded px-2 py-1">
+                <Calendar className="w-3.5 h-3.5 shrink-0 text-teal-400" />
+                <span className="text-teal-300 font-medium">Requested visit:</span>
+                <span className="text-teal-400">{new Date(lead.requestedVisitAt).toLocaleString("en-US", { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}</span>
               </p>
             )}
           </div>

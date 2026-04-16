@@ -6,7 +6,7 @@
  *          map polygon acreage tool, submit-as-lead form
  */
 import { useState, useMemo, useRef, useCallback } from "react";
-import { Calculator, ChevronRight, Info, Map, X, Send, Check, Share2, Download, Camera, Trash2 } from "lucide-react";
+import { Calculator, ChevronRight, Info, Map, X, Send, Check, Share2, Download, Camera, Trash2, CalendarDays } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 
 /* ─── Pricing model ─────────────────────────────────────────────────── */
@@ -582,7 +582,7 @@ function SubmitLeadModal({ state, result, onClose, onSuccess }: {
   state: CalcState;
   result: { low: number; high: number };
   onClose: () => void;
-  onSuccess: (data: { name: string; phone: string; email: string; service: string; acres: number; density: string; terrain: string; estimateLow: number; estimateHigh: number }) => void;
+  onSuccess: (data: { name: string; phone: string; email: string; service: string; acres: number; density: string; terrain: string; estimateLow: number; estimateHigh: number; leadId: number | null }) => void;
 }) {
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
@@ -593,7 +593,7 @@ function SubmitLeadModal({ state, result, onClose, onSuccess }: {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const submitMutation = trpc.widget.submitEstimate.useMutation({
-    onSuccess: () => {
+    onSuccess: (res) => {
       onSuccess({
         name: name.trim(),
         phone: phone.trim(),
@@ -604,6 +604,7 @@ function SubmitLeadModal({ state, result, onClose, onSuccess }: {
         terrain: state.terrain,
         estimateLow: result.low,
         estimateHigh: result.high,
+        leadId: res?.leadId ?? null,
       });
       onClose();
     },
@@ -855,11 +856,34 @@ function ConfirmationOverlay({ data, onClose }: {
   data: {
     name: string; phone: string; email: string; service: string;
     acres: number; density: string; terrain: string;
-    estimateLow: number; estimateHigh: number;
+    estimateLow: number; estimateHigh: number; leadId: number | null;
   };
   onClose: () => void;
 }) {
   const service = SERVICE_LABELS_CONFIRM[data.service] ?? data.service;
+  const [visitDate, setVisitDate] = useState("");
+  const [visitTime, setVisitTime] = useState("");
+  const [visitScheduled, setVisitScheduled] = useState(false);
+  const [visitError, setVisitError] = useState("");
+
+  const requestVisitMutation = trpc.widget.requestVisit.useMutation({
+    onSuccess: () => setVisitScheduled(true),
+    onError: () => setVisitError("Something went wrong. Call 615-406-4819 to schedule directly."),
+  });
+
+  const handleScheduleVisit = () => {
+    if (!visitDate || !visitTime) return;
+    if (!data.leadId) {
+      setVisitError("Unable to link visit to your request. Call 615-406-4819 to schedule directly.");
+      return;
+    }
+    const visitAt = new Date(`${visitDate}T${visitTime}:00`);
+    requestVisitMutation.mutate({ leadId: data.leadId, visitAt });
+  };
+
+  // Minimum date: today
+  const today = new Date().toISOString().split("T")[0];
+
   return (
     <div style={{
       position: "fixed", inset: 0, zIndex: 10000,
@@ -946,6 +970,94 @@ function ConfirmationOverlay({ data, onClose }: {
           ))}
         </div>
 
+        {/* Site visit scheduler */}
+        <div style={{
+          backgroundColor: "rgba(224,123,42,0.06)",
+          border: "1px solid rgba(224,123,42,0.2)",
+          borderRadius: "6px", padding: "1.25rem 1.5rem",
+          marginBottom: "1.25rem", textAlign: "left",
+        }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.85rem" }}>
+            <CalendarDays size={15} style={{ color: "#E07B2A", flexShrink: 0 }} />
+            <p style={{ fontFamily: "'Oswald', sans-serif", fontSize: "0.7rem", letterSpacing: "0.12em", textTransform: "uppercase", color: "rgba(240,237,230,0.5)", margin: 0 }}>Request a Site Visit</p>
+          </div>
+
+          {visitScheduled ? (
+            <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+              <Check size={16} style={{ color: "#4ade80" }} />
+              <p style={{ fontFamily: "'Lato', sans-serif", fontSize: "0.85rem", color: "#4ade80", margin: 0 }}>
+                Visit requested for {new Date(`${visitDate}T${visitTime}:00`).toLocaleString("en-US", { weekday: "long", month: "long", day: "numeric", hour: "numeric", minute: "2-digit" })}. Jon will confirm.
+              </p>
+            </div>
+          ) : (
+            <>
+              <p style={{ fontFamily: "'Lato', sans-serif", fontSize: "0.8rem", color: "rgba(240,237,230,0.5)", margin: "0 0 0.85rem", lineHeight: 1.5 }}>
+                Pick a date and time that works for you. Jon will confirm availability when he follows up.
+              </p>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.6rem", marginBottom: "0.75rem" }}>
+                <div>
+                  <label style={{ display: "block", fontFamily: "'Oswald', sans-serif", fontWeight: 500, fontSize: "0.65rem", letterSpacing: "0.1em", textTransform: "uppercase", color: "rgba(240,237,230,0.5)", marginBottom: "0.3rem" }}>Date</label>
+                  <input
+                    type="date"
+                    min={today}
+                    value={visitDate}
+                    onChange={(e) => setVisitDate(e.target.value)}
+                    style={{
+                      width: "100%", padding: "0.55rem 0.7rem",
+                      backgroundColor: "#111", border: "1px solid rgba(255,255,255,0.12)",
+                      borderRadius: "4px", color: "#F0EDE6",
+                      fontFamily: "'Lato', sans-serif", fontSize: "0.85rem",
+                      outline: "none", boxSizing: "border-box",
+                    }}
+                  />
+                </div>
+                <div>
+                  <label style={{ display: "block", fontFamily: "'Oswald', sans-serif", fontWeight: 500, fontSize: "0.65rem", letterSpacing: "0.1em", textTransform: "uppercase", color: "rgba(240,237,230,0.5)", marginBottom: "0.3rem" }}>Time</label>
+                  <select
+                    value={visitTime}
+                    onChange={(e) => setVisitTime(e.target.value)}
+                    style={{
+                      width: "100%", padding: "0.55rem 0.7rem",
+                      backgroundColor: "#111", border: "1px solid rgba(255,255,255,0.12)",
+                      borderRadius: "4px", color: visitTime ? "#F0EDE6" : "rgba(240,237,230,0.35)",
+                      fontFamily: "'Lato', sans-serif", fontSize: "0.85rem",
+                      outline: "none", boxSizing: "border-box",
+                    }}
+                  >
+                    <option value="">Select a time</option>
+                    {["07:00","07:30","08:00","08:30","09:00","09:30","10:00","10:30","11:00","11:30","12:00","12:30","13:00","13:30","14:00","14:30","15:00","15:30","16:00","16:30","17:00"].map((t) => {
+                      const [h, m] = t.split(":");
+                      const hr = parseInt(h);
+                      const label = `${hr > 12 ? hr - 12 : hr}:${m} ${hr >= 12 ? "PM" : "AM"}`;
+                      return <option key={t} value={t}>{label}</option>;
+                    })}
+                  </select>
+                </div>
+              </div>
+              {visitError && (
+                <p style={{ fontFamily: "'Lato', sans-serif", fontSize: "0.75rem", color: "#f87171", margin: "0 0 0.6rem" }}>{visitError}</p>
+              )}
+              <button
+                onClick={handleScheduleVisit}
+                disabled={!visitDate || !visitTime || requestVisitMutation.isPending}
+                style={{
+                  width: "100%", padding: "0.65rem",
+                  backgroundColor: !visitDate || !visitTime ? "rgba(224,123,42,0.25)" : "rgba(224,123,42,0.15)",
+                  border: "1px solid rgba(224,123,42,0.4)", borderRadius: "4px",
+                  color: !visitDate || !visitTime ? "rgba(240,237,230,0.3)" : "#E07B2A",
+                  fontFamily: "'Oswald', sans-serif", fontWeight: 600,
+                  fontSize: "0.82rem", letterSpacing: "0.06em", textTransform: "uppercase",
+                  cursor: !visitDate || !visitTime ? "not-allowed" : "pointer",
+                  display: "flex", alignItems: "center", justifyContent: "center", gap: "0.4rem",
+                }}
+              >
+                <CalendarDays size={13} />
+                {requestVisitMutation.isPending ? "Scheduling..." : "Request This Visit Time"}
+              </button>
+            </>
+          )}
+        </div>
+
         <button
           onClick={onClose}
           style={{
@@ -978,7 +1090,7 @@ export default function CostCalculator() {
   const [confirmData, setConfirmData] = useState<{
     name: string; phone: string; email: string; service: string;
     acres: number; density: string; terrain: string;
-    estimateLow: number; estimateHigh: number;
+    estimateLow: number; estimateHigh: number; leadId: number | null;
   } | null>(null);
 
   const result = useMemo(() => calcEstimate(state), [state]);

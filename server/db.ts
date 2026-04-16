@@ -187,6 +187,12 @@ export async function updateOpsLead(id: number, userId: number, data: Partial<In
   if (!db) throw new Error("Database not available");
   return db.update(opsLeads).set({ ...data, updatedAt: new Date() }).where(and(eq(opsLeads.id, id), eq(opsLeads.userId, userId)));
 }
+/** Update a lead by id only — used for public-facing mutations (e.g. visit scheduling) where userId is not in context. */
+export async function updateOpsLeadById(id: number, data: Partial<InsertOpsLead>) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return db.update(opsLeads).set({ ...data, updatedAt: new Date() }).where(eq(opsLeads.id, id));
+}
 export async function deleteOpsLead(id: number, userId: number) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");

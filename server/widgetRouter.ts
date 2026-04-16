@@ -2,7 +2,7 @@ import { z } from "zod";
 import { publicProcedure, router } from "./_core/trpc";
 import { ENV } from "./_core/env";
 import { notifyOwner } from "./_core/notification";
-import { getOwnerUser, createOpsLead } from "./db";
+import { getOwnerUser, createOpsLead, updateOpsLeadById } from "./db";
 
 const SERVICE_LABELS: Record<string, string> = {
   "forestry-mulching": "Forestry Mulching",
@@ -79,6 +79,34 @@ export const widgetRouter = router({
       }).catch(() => {});
 
       return { ok: true, leadId };
+    }),
+
+  /**
+   * Public endpoint — no auth required.
+   * Saves a requested site visit date/time to an existing lead record.
+   * Called from the ConfirmationOverlay after a calculator estimate submission.
+   */
+  requestVisit: publicProcedure
+    .input(
+      z.object({
+        leadId: z.number().int().positive(),
+        visitAt: z.date(),
+      })
+    )
+    .mutation(async ({ input }) => {
+      try {
+        await updateOpsLeadById(input.leadId, { requestedVisitAt: input.visitAt });
+
+        await notifyOwner({
+          title: `Site visit requested`,
+          content: `Lead #${input.leadId} requested a site visit on ${input.visitAt.toLocaleString("en-US", { timeZone: "America/Chicago", weekday: "long", year: "numeric", month: "long", day: "numeric", hour: "numeric", minute: "2-digit" })}.`,
+        }).catch(() => {});
+
+        return { ok: true };
+      } catch (err) {
+        console.error("[Widget] requestVisit failed:", err);
+        return { ok: false };
+      }
     }),
 
   /**

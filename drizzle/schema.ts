@@ -144,6 +144,8 @@ export const opsLeads = mysqlTable("ops_leads", {
   jobType: varchar("jobType", { length: 100 }),
   estimatedValue: decimal("estimatedValue", { precision: 10, scale: 2 }),
   notes: text("notes"),
+  /** Requested site visit date/time from the calculator confirmation overlay */
+  requestedVisitAt: timestamp("requestedVisitAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });

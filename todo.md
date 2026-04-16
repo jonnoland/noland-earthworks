@@ -759,3 +759,10 @@
 - [x] Map polygon modal: add "Save / Share" button that copies a shareable URL (polygon coords + estimate params encoded) and offers a "Download Summary" PDF/text option
 - [x] Lead submission form: add photo upload field (up to 3 images, uploaded to S3, URLs saved in lead notes)
 - [x] Post-submission: replace the simple success message with a full confirmation page summarizing the estimate and setting expectations for next steps
+
+## Confirmation Overlay — Site Visit Scheduler — Apr 16 2026
+
+- [x] Add requestedVisitAt column to opsLeads schema and push migration
+- [x] Add tRPC public procedure widget.requestVisit to save visit time to lead record
+- [x] Add date/time picker to ConfirmationOverlay with "Schedule a Site Visit" button
+- [x] Show requested visit time on lead card/detail in /ops/leads CRM
