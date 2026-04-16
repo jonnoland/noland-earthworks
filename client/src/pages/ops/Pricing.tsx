@@ -17,6 +17,7 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
 import { Link } from "wouter";
+import { loadMapScript } from "@/components/Map";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -693,27 +694,11 @@ export default function Pricing() {
   }, []);
 
   // Load Maps script and init map when the distance section is first rendered
+  // Use the shared singleton loader from Map.tsx to prevent duplicate script injection
   useEffect(() => {
-    const API_KEY = import.meta.env.VITE_FRONTEND_FORGE_API_KEY;
-    const FORGE_BASE_URL = import.meta.env.VITE_FRONTEND_FORGE_API_URL || "https://forge.manus.ai";
-    const MAPS_PROXY_URL = `${FORGE_BASE_URL}/v1/maps/proxy`;
-    if (window.google?.maps) {
-      initDistanceMap();
-      return;
-    }
-    const existing = document.querySelector(`script[src*="maps/api/js"]`);
-    if (existing) {
-      const check = setInterval(() => {
-        if (window.google?.maps) { clearInterval(check); initDistanceMap(); }
-      }, 100);
-      return () => clearInterval(check);
-    }
-    const script = document.createElement("script");
-    script.src = `${MAPS_PROXY_URL}/maps/api/js?key=${API_KEY}&v=weekly&libraries=marker,places,geocoding,geometry`;
-    script.async = true;
-    script.crossOrigin = "anonymous";
-    script.onload = () => initDistanceMap();
-    document.head.appendChild(script);
+    loadMapScript()
+      .then(() => initDistanceMap())
+      .catch((err) => console.error("Could not load Google Maps for distance calculator:", err));
   }, [initDistanceMap]);
 
   // calculateDistance is defined after derived values to avoid hoisting issues — see below

@@ -97,7 +97,7 @@ const MAPS_PROXY_URL = `${FORGE_BASE_URL}/v1/maps/proxy`;
 // duplicate script injection which causes "This page can't load Google Maps correctly".
 let _mapsScriptPromise: Promise<void> | null = null;
 
-function loadMapScript() {
+export function loadMapScript() {
   // Already loading or loaded — return the same promise
   if (_mapsScriptPromise) return _mapsScriptPromise;
 
