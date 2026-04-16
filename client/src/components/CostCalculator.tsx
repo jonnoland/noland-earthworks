@@ -6,7 +6,7 @@
  *          map polygon acreage tool, submit-as-lead form
  */
 import { useState, useMemo, useRef, useCallback } from "react";
-import { Calculator, ChevronRight, Info, Map, X, Send, Check } from "lucide-react";
+import { Calculator, ChevronRight, Info, Map, X, Send, Check, Share2, Download, Camera, Trash2 } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 
 /* ─── Pricing model ─────────────────────────────────────────────────── */
@@ -263,14 +263,17 @@ function loadMapScript(): Promise<void> {
   return window._mapsScriptPromise;
 }
 
-function MapPolygonModal({ onClose, onAcreageConfirm }: {
+function MapPolygonModal({ onClose, onAcreageConfirm, calcState }: {
   onClose: () => void;
   onAcreageConfirm: (acres: number) => void;
+  calcState: CalcState;
 }) {
   const mapRef = useRef<HTMLDivElement>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [drawnAcres, setDrawnAcres] = useState<number | null>(null);
+  const [polygonCoords, setPolygonCoords] = useState<{lat: number; lng: number}[]>([]);
+  const [shareCopied, setShareCopied] = useState(false);
   const polygonRef = useRef<unknown>(null);
   const drawingMgrRef = useRef<unknown>(null);
 
@@ -326,6 +329,13 @@ function MapPolygonModal({ onClose, onAcreageConfirm }: {
           const sqMeters = G.geometry.spherical.computeArea(path);
           const acres = sqMeters / 4046.856;
           setDrawnAcres(Math.round(acres * 100) / 100);
+          // Capture coords for share/download
+          const coords: {lat: number; lng: number}[] = [];
+          for (let i = 0; i < path.getLength(); i++) {
+            const pt = path.getAt(i);
+            coords.push({ lat: Math.round(pt.lat() * 1e6) / 1e6, lng: Math.round(pt.lng() * 1e6) / 1e6 });
+          }
+          setPolygonCoords(coords);
         };
         computeArea();
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -346,13 +356,64 @@ function MapPolygonModal({ onClose, onAcreageConfirm }: {
 
   const handleConfirm = () => {
     if (drawnAcres === null) return;
-    // Snap to nearest slider step
     const steps = [0.5, 1, 1.5, 2, 3, 4, 5, 7, 10, 15, 20, 30, 50];
     const snapped = steps.reduce((prev, curr) =>
       Math.abs(curr - drawnAcres) < Math.abs(prev - drawnAcres) ? curr : prev
     );
     onAcreageConfirm(snapped);
     onClose();
+  };
+
+  const SERVICE_LABELS_MAP: Record<string, string> = {
+    "forestry-mulching": "Forestry Mulching",
+    "land-clearing": "Land Clearing",
+    "vegetation-management": "Vegetation Management",
+    "right-of-way-clearing": "Right-of-Way Clearing",
+    "property-maintenance": "Property Maintenance",
+  };
+
+  const handleShare = () => {
+    if (drawnAcres === null) return;
+    const params = new URLSearchParams({
+      service: calcState.service,
+      acres: String(drawnAcres),
+      density: calcState.density,
+      terrain: calcState.terrain,
+      access: calcState.access,
+      poly: JSON.stringify(polygonCoords),
+    });
+    const url = `${window.location.origin}/pricing?${params.toString()}`;
+    navigator.clipboard.writeText(url).then(() => {
+      setShareCopied(true);
+      setTimeout(() => setShareCopied(false), 2500);
+    });
+  };
+
+  const handleDownload = () => {
+    if (drawnAcres === null) return;
+    const service = SERVICE_LABELS_MAP[calcState.service] ?? calcState.service;
+    const lines = [
+      "NOLAND EARTHWORKS — PARCEL ESTIMATE SUMMARY",
+      "============================================",
+      "",
+      `Service:     ${service}`,
+      `Acreage:     ${drawnAcres} acres (drawn on map)`,
+      `Density:     ${calcState.density}`,
+      `Terrain:     ${calcState.terrain}`,
+      `Access:      ${calcState.access}`,
+      "",
+      "Polygon Coordinates:",
+      ...polygonCoords.map((c, i) => `  Point ${i + 1}: ${c.lat}, ${c.lng}`),
+      "",
+      "This is a rough estimate only. An on-site visit is required for exact pricing.",
+      "Contact: nolandearthworks.com | 615-406-4819",
+    ];
+    const blob = new Blob([lines.join("\n")], { type: "text/plain" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = `noland-earthworks-estimate-${Date.now()}.txt`;
+    a.click();
+    URL.revokeObjectURL(a.href);
   };
 
   return (
@@ -451,12 +512,44 @@ function MapPolygonModal({ onClose, onAcreageConfirm }: {
               </p>
             )}
           </div>
-          <div style={{ display: "flex", gap: "0.65rem" }}>
+          <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
+            {drawnAcres !== null && (
+              <>
+                <button
+                  onClick={handleShare}
+                  title="Copy shareable link"
+                  style={{
+                    display: "flex", alignItems: "center", gap: "0.35rem",
+                    padding: "0.5rem 0.85rem", background: "none",
+                    border: "1px solid rgba(224,123,42,0.35)", borderRadius: "4px",
+                    color: shareCopied ? "#4ade80" : "#E07B2A", cursor: "pointer",
+                    fontFamily: "'Lato', sans-serif", fontSize: "0.78rem",
+                  }}
+                >
+                  <Share2 size={13} />
+                  {shareCopied ? "Copied!" : "Share"}
+                </button>
+                <button
+                  onClick={handleDownload}
+                  title="Download estimate summary"
+                  style={{
+                    display: "flex", alignItems: "center", gap: "0.35rem",
+                    padding: "0.5rem 0.85rem", background: "none",
+                    border: "1px solid rgba(255,255,255,0.15)", borderRadius: "4px",
+                    color: "rgba(240,237,230,0.6)", cursor: "pointer",
+                    fontFamily: "'Lato', sans-serif", fontSize: "0.78rem",
+                  }}
+                >
+                  <Download size={13} />
+                  Download
+                </button>
+              </>
+            )}
             <button onClick={onClose} style={{
-              padding: "0.55rem 1rem", background: "none",
+              padding: "0.5rem 0.85rem", background: "none",
               border: "1px solid rgba(255,255,255,0.15)", borderRadius: "4px",
               color: "rgba(240,237,230,0.6)", cursor: "pointer",
-              fontFamily: "'Oswald', sans-serif", fontSize: "0.8rem",
+              fontFamily: "'Oswald', sans-serif", fontSize: "0.78rem",
               letterSpacing: "0.06em", textTransform: "uppercase",
             }}>
               Cancel
@@ -465,13 +558,13 @@ function MapPolygonModal({ onClose, onAcreageConfirm }: {
               onClick={handleConfirm}
               disabled={drawnAcres === null}
               style={{
-                padding: "0.55rem 1.25rem",
+                padding: "0.5rem 1.1rem",
                 backgroundColor: drawnAcres !== null ? "#E07B2A" : "rgba(224,123,42,0.3)",
                 border: "none", borderRadius: "4px",
                 color: drawnAcres !== null ? "#121212" : "rgba(240,237,230,0.3)",
                 cursor: drawnAcres !== null ? "pointer" : "not-allowed",
                 fontFamily: "'Oswald', sans-serif", fontWeight: 700,
-                fontSize: "0.8rem", letterSpacing: "0.06em", textTransform: "uppercase",
+                fontSize: "0.78rem", letterSpacing: "0.06em", textTransform: "uppercase",
               }}
             >
               Use This Acreage
@@ -485,24 +578,71 @@ function MapPolygonModal({ onClose, onAcreageConfirm }: {
 
 /* ─── Submit as Lead Modal ──────────────────────────────────────────── */
 
-function SubmitLeadModal({ state, result, onClose }: {
+function SubmitLeadModal({ state, result, onClose, onSuccess }: {
   state: CalcState;
   result: { low: number; high: number };
   onClose: () => void;
+  onSuccess: (data: { name: string; phone: string; email: string; service: string; acres: number; density: string; terrain: string; estimateLow: number; estimateHigh: number }) => void;
 }) {
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
   const [message, setMessage] = useState("");
-  const [submitted, setSubmitted] = useState(false);
+  const [photos, setPhotos] = useState<File[]>([]);
+  const [uploadingPhotos, setUploadingPhotos] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const submitMutation = trpc.widget.submitEstimate.useMutation({
-    onSuccess: () => setSubmitted(true),
+    onSuccess: () => {
+      onSuccess({
+        name: name.trim(),
+        phone: phone.trim(),
+        email: email.trim(),
+        service: state.service,
+        acres: state.acres,
+        density: state.density,
+        terrain: state.terrain,
+        estimateLow: result.low,
+        estimateHigh: result.high,
+      });
+      onClose();
+    },
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files ?? []);
+    setPhotos((prev) => [...prev, ...files].slice(0, 3));
+    e.target.value = "";
+  };
+
+  const removePhoto = (idx: number) => {
+    setPhotos((prev) => prev.filter((_, i) => i !== idx));
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim() || !phone.trim()) return;
+
+    let photoUrls: string[] = [];
+    if (photos.length > 0) {
+      setUploadingPhotos(true);
+      try {
+        const fd = new FormData();
+        photos.forEach((f) => fd.append("photos", f));
+        const resp = await fetch("/api/upload/photos", { method: "POST", body: fd });
+        const data = await resp.json();
+        photoUrls = data.urls ?? [];
+      } catch {
+        // Non-fatal — proceed without photos
+      } finally {
+        setUploadingPhotos(false);
+      }
+    }
+
+    const photoNote = photoUrls.length > 0
+      ? `\n\nProperty photos:\n${photoUrls.join("\n")}`
+      : "";
+
     submitMutation.mutate({
       name: name.trim(),
       phone: phone.trim(),
@@ -514,7 +654,7 @@ function SubmitLeadModal({ state, result, onClose }: {
       access: state.access,
       estimateLow: result.low,
       estimateHigh: result.high,
-      message: message.trim() || undefined,
+      message: (message.trim() || "") + photoNote || undefined,
     });
   };
 
@@ -568,27 +708,7 @@ function SubmitLeadModal({ state, result, onClose }: {
           </button>
         </div>
 
-        {submitted ? (
-          <div style={{ padding: "2.5rem 1.5rem", textAlign: "center" }}>
-            <Check size={40} style={{ color: "#4ade80", margin: "0 auto 1rem" }} />
-            <h3 style={{ fontFamily: "'Oswald', sans-serif", fontWeight: 700, fontSize: "1.25rem", color: "#F0EDE6", marginBottom: "0.5rem" }}>
-              Request Received
-            </h3>
-            <p style={{ fontFamily: "'Lato', sans-serif", fontSize: "0.9rem", color: "rgba(240,237,230,0.6)", lineHeight: 1.6 }}>
-              Jon will follow up with you — usually same day or next morning. No obligation, no pressure.
-            </p>
-            <button onClick={onClose} style={{
-              marginTop: "1.5rem", padding: "0.65rem 1.5rem",
-              backgroundColor: "#E07B2A", border: "none", borderRadius: "4px",
-              color: "#121212", fontFamily: "'Oswald', sans-serif", fontWeight: 700,
-              fontSize: "0.85rem", letterSpacing: "0.06em", textTransform: "uppercase",
-              cursor: "pointer",
-            }}>
-              Close
-            </button>
-          </div>
-        ) : (
-          <form onSubmit={handleSubmit} style={{ padding: "1.5rem" }}>
+        <form onSubmit={handleSubmit} style={{ padding: "1.5rem" }}>
             {/* Estimate summary */}
             <div style={{
               backgroundColor: "rgba(224,123,42,0.07)",
@@ -645,6 +765,51 @@ function SubmitLeadModal({ state, result, onClose }: {
               />
             </div>
 
+            {/* Photo upload */}
+            <div style={{ marginBottom: "1.5rem" }}>
+              <label style={labelStyle}>Property Photos <span style={{ color: "rgba(240,237,230,0.3)" }}>(optional, up to 3)</span></label>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/jpeg,image/png,image/webp,image/heic"
+                multiple
+                style={{ display: "none" }}
+                onChange={handlePhotoChange}
+              />
+              <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem", marginBottom: photos.length > 0 ? "0.5rem" : 0 }}>
+                {photos.map((f, i) => (
+                  <div key={i} style={{
+                    display: "flex", alignItems: "center", gap: "0.4rem",
+                    backgroundColor: "rgba(255,255,255,0.06)",
+                    border: "1px solid rgba(255,255,255,0.1)",
+                    borderRadius: "4px", padding: "0.35rem 0.6rem",
+                  }}>
+                    <Camera size={12} style={{ color: "#E07B2A", flexShrink: 0 }} />
+                    <span style={{ fontFamily: "'Lato', sans-serif", fontSize: "0.75rem", color: "rgba(240,237,230,0.7)", maxWidth: "120px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{f.name}</span>
+                    <button type="button" onClick={() => removePhoto(i)} style={{ background: "none", border: "none", cursor: "pointer", padding: 0, color: "rgba(240,237,230,0.4)", display: "flex" }}>
+                      <Trash2 size={11} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+              {photos.length < 3 && (
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  style={{
+                    display: "flex", alignItems: "center", gap: "0.4rem",
+                    padding: "0.5rem 0.85rem", background: "none",
+                    border: "1px dashed rgba(255,255,255,0.2)", borderRadius: "4px",
+                    color: "rgba(240,237,230,0.5)", cursor: "pointer",
+                    fontFamily: "'Lato', sans-serif", fontSize: "0.78rem",
+                  }}
+                >
+                  <Camera size={13} />
+                  Attach photos of your property
+                </button>
+              )}
+            </div>
+
             {submitMutation.isError && (
               <p style={{ fontFamily: "'Lato', sans-serif", fontSize: "0.8rem", color: "#f87171", marginBottom: "1rem" }}>
                 Something went wrong. Please call 615-406-4819 directly.
@@ -653,7 +818,7 @@ function SubmitLeadModal({ state, result, onClose }: {
 
             <button
               type="submit"
-              disabled={submitMutation.isPending || !name.trim() || !phone.trim()}
+              disabled={submitMutation.isPending || uploadingPhotos || !name.trim() || !phone.trim()}
               style={{
                 width: "100%", padding: "0.8rem",
                 backgroundColor: submitMutation.isPending ? "rgba(224,123,42,0.5)" : "#E07B2A",
@@ -664,14 +829,135 @@ function SubmitLeadModal({ state, result, onClose }: {
                 display: "flex", alignItems: "center", justifyContent: "center", gap: "0.4rem",
               }}
             >
-              {submitMutation.isPending ? "Sending..." : "Send My Estimate Request"}
-              {!submitMutation.isPending && <ChevronRight size={15} />}
+              {uploadingPhotos ? "Uploading photos..." : submitMutation.isPending ? "Sending..." : "Send My Estimate Request"}
+              {!submitMutation.isPending && !uploadingPhotos && <ChevronRight size={15} />}
             </button>
             <p style={{ fontFamily: "'Lato', sans-serif", fontSize: "0.72rem", color: "rgba(240,237,230,0.3)", textAlign: "center", marginTop: "0.75rem" }}>
               No commitment required. Jon will follow up same day or next morning.
             </p>
           </form>
-        )}
+      </div>
+    </div>
+  );
+}
+
+/* ─── Confirmation Overlay ─────────────────────────────────────────── */
+
+const SERVICE_LABELS_CONFIRM: Record<string, string> = {
+  "forestry-mulching": "Forestry Mulching",
+  "land-clearing": "Land Clearing",
+  "vegetation-management": "Vegetation Management",
+  "right-of-way-clearing": "Right-of-Way Clearing",
+  "property-maintenance": "Property Maintenance",
+};
+
+function ConfirmationOverlay({ data, onClose }: {
+  data: {
+    name: string; phone: string; email: string; service: string;
+    acres: number; density: string; terrain: string;
+    estimateLow: number; estimateHigh: number;
+  };
+  onClose: () => void;
+}) {
+  const service = SERVICE_LABELS_CONFIRM[data.service] ?? data.service;
+  return (
+    <div style={{
+      position: "fixed", inset: 0, zIndex: 10000,
+      backgroundColor: "rgba(0,0,0,0.85)",
+      display: "flex", alignItems: "center", justifyContent: "center",
+      padding: "1rem",
+    }}>
+      <div style={{
+        backgroundColor: "#1a1a1a",
+        border: "1px solid rgba(224,123,42,0.3)",
+        borderRadius: "8px",
+        maxWidth: "520px", width: "100%",
+        padding: "2.5rem 2rem",
+        textAlign: "center",
+      }}>
+        {/* Check icon */}
+        <div style={{
+          width: "56px", height: "56px", borderRadius: "50%",
+          backgroundColor: "rgba(74,222,128,0.1)",
+          border: "2px solid rgba(74,222,128,0.4)",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          margin: "0 auto 1.5rem",
+        }}>
+          <Check size={28} style={{ color: "#4ade80" }} />
+        </div>
+
+        <h2 style={{
+          fontFamily: "'Oswald', sans-serif", fontWeight: 700,
+          fontSize: "1.5rem", color: "#F0EDE6", marginBottom: "0.5rem",
+        }}>
+          Request Received
+        </h2>
+        <p style={{
+          fontFamily: "'Lato', sans-serif", fontSize: "0.9rem",
+          color: "rgba(240,237,230,0.6)", lineHeight: 1.7, marginBottom: "1.75rem",
+        }}>
+          Jon will follow up with you — usually same day or next morning. No obligation, no pressure.
+        </p>
+
+        {/* Estimate summary card */}
+        <div style={{
+          backgroundColor: "rgba(255,255,255,0.04)",
+          border: "1px solid rgba(255,255,255,0.08)",
+          borderRadius: "6px", padding: "1.25rem 1.5rem",
+          marginBottom: "1.75rem", textAlign: "left",
+        }}>
+          <p style={{ fontFamily: "'Oswald', sans-serif", fontSize: "0.7rem", letterSpacing: "0.12em", textTransform: "uppercase", color: "rgba(240,237,230,0.4)", margin: "0 0 0.75rem" }}>Your Estimate Summary</p>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.6rem 1.5rem" }}>
+            {[
+              ["Name", data.name],
+              ["Phone", data.phone],
+              ["Service", service],
+              ["Acreage", `${data.acres} ${data.acres === 1 ? "acre" : "acres"}`],
+              ["Density", data.density],
+              ["Terrain", data.terrain],
+              ["Rough Estimate", `${fmt(data.estimateLow)} – ${fmt(data.estimateHigh)}`],
+            ].map(([label, value]) => (
+              <div key={label}>
+                <p style={{ fontFamily: "'Lato', sans-serif", fontSize: "0.65rem", color: "rgba(240,237,230,0.35)", textTransform: "uppercase", letterSpacing: "0.08em", margin: "0 0 0.15rem" }}>{label}</p>
+                <p style={{ fontFamily: "'Lato', sans-serif", fontSize: "0.85rem", color: "#F0EDE6", margin: 0 }}>{value}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Next steps */}
+        <div style={{ textAlign: "left", marginBottom: "1.75rem" }}>
+          <p style={{ fontFamily: "'Oswald', sans-serif", fontSize: "0.7rem", letterSpacing: "0.12em", textTransform: "uppercase", color: "rgba(240,237,230,0.4)", margin: "0 0 0.75rem" }}>What Happens Next</p>
+          {[
+            "Jon reviews your request and reaches out to confirm details.",
+            "A site visit is scheduled at your convenience — no charge, no commitment.",
+            "A written proposal is delivered within 1–2 days of the visit.",
+          ].map((step, i) => (
+            <div key={i} style={{ display: "flex", gap: "0.75rem", marginBottom: "0.6rem", alignItems: "flex-start" }}>
+              <span style={{
+                flexShrink: 0, width: "20px", height: "20px", borderRadius: "50%",
+                backgroundColor: "rgba(224,123,42,0.15)",
+                border: "1px solid rgba(224,123,42,0.4)",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                fontFamily: "'Oswald', sans-serif", fontSize: "0.65rem", color: "#E07B2A", fontWeight: 700,
+              }}>{i + 1}</span>
+              <p style={{ fontFamily: "'Lato', sans-serif", fontSize: "0.82rem", color: "rgba(240,237,230,0.65)", lineHeight: 1.5, margin: 0 }}>{step}</p>
+            </div>
+          ))}
+        </div>
+
+        <button
+          onClick={onClose}
+          style={{
+            width: "100%", padding: "0.8rem",
+            backgroundColor: "#E07B2A", border: "none", borderRadius: "4px",
+            color: "#121212", fontFamily: "'Oswald', sans-serif", fontWeight: 700,
+            fontSize: "0.9rem", letterSpacing: "0.06em", textTransform: "uppercase",
+            cursor: "pointer",
+          }}
+        >
+          Done
+        </button>
       </div>
     </div>
   );
@@ -689,6 +975,11 @@ export default function CostCalculator() {
   });
   const [showMap, setShowMap] = useState(false);
   const [showLeadForm, setShowLeadForm] = useState(false);
+  const [confirmData, setConfirmData] = useState<{
+    name: string; phone: string; email: string; service: string;
+    acres: number; density: string; terrain: string;
+    estimateLow: number; estimateHigh: number;
+  } | null>(null);
 
   const result = useMemo(() => calcEstimate(state), [state]);
   const timeResult = useMemo(() => calcCompletionTime(state), [state]);
@@ -924,6 +1215,7 @@ export default function CostCalculator() {
         <MapPolygonModal
           onClose={() => setShowMap(false)}
           onAcreageConfirm={(acres) => set("acres")(acres)}
+          calcState={state}
         />
       )}
 
@@ -933,6 +1225,18 @@ export default function CostCalculator() {
           state={state}
           result={result}
           onClose={() => setShowLeadForm(false)}
+          onSuccess={(data) => {
+            setShowLeadForm(false);
+            setConfirmData(data);
+          }}
+        />
+      )}
+
+      {/* Confirmation page overlay */}
+      {confirmData && (
+        <ConfirmationOverlay
+          data={confirmData}
+          onClose={() => setConfirmData(null)}
         />
       )}
     </>

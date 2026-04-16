@@ -753,3 +753,9 @@
 - [x] Calculator: terrain difficulty and density controls already exist — ensure they are clearly labeled and visible above the fold
 - [x] Calculator: add map polygon drawing tool so users can draw their parcel and auto-fill the acreage slider
 - [x] Calculator: add "Submit as Lead" button that opens a contact form and saves the estimate + contact info as a CRM lead
+
+## Calculator — Polygon Save/Share + Photo Upload + Confirmation Page — Apr 16 2026
+
+- [x] Map polygon modal: add "Save / Share" button that copies a shareable URL (polygon coords + estimate params encoded) and offers a "Download Summary" PDF/text option
+- [x] Lead submission form: add photo upload field (up to 3 images, uploaded to S3, URLs saved in lead notes)
+- [x] Post-submission: replace the simple success message with a full confirmation page summarizing the estimate and setting expectations for next steps

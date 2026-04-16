@@ -11,6 +11,8 @@ import { serveStatic, setupVite } from "./vite";
 import { prerenderMiddleware } from "../prerender";
 import { registerJobberRoutes } from "../jobberRoutes";
 import { startJobberTokenRefreshScheduler } from "../jobber";
+import multer from "multer";
+import { storagePut } from "../storage";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -92,6 +94,36 @@ async function startServer() {
       res.json({ ownerOpenId: ENV.ownerOpenId, ownerResult, insertResult, resendApiKeySet: !!ENV.resendApiKey, users: allUsers.map(u => ({ id: u.id, openId: u.openId, name: u.name, role: u.role })), leadsCount: allLeads.length, leads: allLeads.map(l => ({ id: l.id, name: l.name, userId: l.userId, stage: l.stage, createdAt: l.createdAt })) });
     } catch (err: unknown) {
       res.json({ error: String(err) });
+    }
+  });
+
+  // Photo upload endpoint — accepts up to 3 images, stores to S3, returns CDN URLs
+  const upload = multer({
+    storage: multer.memoryStorage(),
+    limits: { fileSize: 10 * 1024 * 1024, files: 3 },
+    fileFilter: (_req, file, cb) => {
+      const allowed = ["image/jpeg", "image/png", "image/webp", "image/heic"];
+      cb(null, allowed.includes(file.mimetype));
+    },
+  });
+  app.post("/api/upload/photos", upload.array("photos", 3), async (req, res) => {
+    try {
+      const files = req.files as Express.Multer.File[];
+      if (!files || files.length === 0) {
+        res.status(400).json({ error: "No files provided" });
+        return;
+      }
+      const urls: string[] = [];
+      for (const file of files) {
+        const ext = file.originalname.split(".").pop() ?? "jpg";
+        const key = `lead-photos/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+        const { url } = await storagePut(key, file.buffer, file.mimetype);
+        urls.push(url);
+      }
+      res.json({ urls });
+    } catch (err) {
+      console.error("Photo upload error:", err);
+      res.status(500).json({ error: "Upload failed" });
     }
   });
 
