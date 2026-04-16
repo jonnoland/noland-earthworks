@@ -3,24 +3,29 @@
  * Kanban board: 5 equal-width columns filling full viewport height
  * Bottom bar: CLOSED label + Won | Lost | On Hold strips + Phone Ready pill
  * Slide-in detail panel on lead click
+ * Map View: all active leads plotted as pins with InfoWindow popups
+ * Travel time: DirectionsService from business address to each lead
  */
 
 import DashboardLayout from "@/components/DashboardLayout";
-import { MapView } from "@/components/Map";
+import { MapView, loadMapScript } from "@/components/Map";
 import { trpc } from "@/lib/trpc";
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import {
   Phone, Mail, MessageSquare, FileText, Calendar,
   Plus, Search, X, Loader2, XCircle,
   MapPin, ExternalLink, Trash2,
   AlarmClock, User, PhoneCall,
   ClipboardList, Star, Snowflake, RefreshCw,
+  Map as MapIcon, LayoutGrid, Clock, Navigation,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { useLocation } from "wouter";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
+
+const BUSINESS_ADDRESS = "93 Halliburton Road, Vanleer, TN 37181";
 
 const KANBAN_STAGES = [
   { id: "new",           label: "New Lead",   subtitle: "Fresh inquiries" },
@@ -166,6 +171,125 @@ function KanbanColumn({
   );
 }
 
+// ─── All Leads Map View ───────────────────────────────────────────────────────
+
+function AllLeadsMap({ leads, onLeadClick }: { leads: Lead[]; onLeadClick: (lead: Lead) => void }) {
+  const mapRef = useRef<google.maps.Map | null>(null);
+  const markersRef = useRef<google.maps.marker.AdvancedMarkerElement[]>([]);
+  const infoWindowRef = useRef<google.maps.InfoWindow | null>(null);
+  const leadsWithAddress = leads.filter(l => l.address && !["won", "lost"].includes(l.stage));
+
+  const handleMapReady = useCallback((map: google.maps.Map) => {
+    mapRef.current = map;
+    if (leadsWithAddress.length === 0) return;
+
+    const geocoder = new google.maps.Geocoder();
+    const bounds = new google.maps.LatLngBounds();
+    let geocodedCount = 0;
+
+    // Close any open InfoWindow when clicking the map background
+    map.addListener("click", () => {
+      if (infoWindowRef.current) infoWindowRef.current.close();
+    });
+
+    leadsWithAddress.forEach(lead => {
+      if (!lead.address) return;
+      geocoder.geocode({ address: lead.address }, (results, status) => {
+        if (status !== "OK" || !results?.[0]) return;
+        const loc = results[0].geometry.location;
+        bounds.extend(loc);
+        geocodedCount++;
+
+        // Build a custom amber pin element
+        const pinEl = document.createElement("div");
+        pinEl.style.cssText = `
+          width: 28px; height: 28px; border-radius: 50% 50% 50% 0;
+          transform: rotate(-45deg); background: #E07B2A;
+          border: 2px solid #fff; box-shadow: 0 2px 6px rgba(0,0,0,0.5);
+          cursor: pointer;
+        `;
+
+        const marker = new google.maps.marker.AdvancedMarkerElement({
+          map,
+          position: loc,
+          title: lead.name,
+          content: pinEl,
+        });
+
+        // InfoWindow content
+        const stageBadge = KANBAN_STAGES.find(s => s.id === lead.stage)?.label ?? lead.stage;
+        const infoContent = `
+          <div style="background:#111;border:1px solid #2a2a2a;border-radius:8px;padding:10px 12px;min-width:180px;font-family:system-ui,sans-serif;">
+            <div style="font-size:13px;font-weight:700;color:#fff;margin-bottom:4px;">${lead.name}</div>
+            ${lead.jobType ? `<div style="font-size:11px;color:#E07B2A;margin-bottom:4px;">${lead.jobType}</div>` : ""}
+            <div style="font-size:11px;color:#888;margin-bottom:6px;">${stageBadge}</div>
+            ${lead.address ? `<div style="font-size:10px;color:#666;">${lead.address}</div>` : ""}
+          </div>
+        `;
+
+        marker.addListener("click", () => {
+          if (!infoWindowRef.current) {
+            infoWindowRef.current = new google.maps.InfoWindow({
+              disableAutoPan: false,
+            });
+          }
+          infoWindowRef.current.setContent(infoContent);
+          infoWindowRef.current.open({ anchor: marker, map });
+          onLeadClick(lead);
+        });
+
+        markersRef.current.push(marker);
+
+        // Fit bounds after all geocoding completes
+        if (geocodedCount === leadsWithAddress.length) {
+          if (geocodedCount === 1) {
+            map.setCenter(loc);
+            map.setZoom(12);
+          } else {
+            map.fitBounds(bounds, 60);
+          }
+        }
+      });
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Cleanup markers on unmount
+  useEffect(() => {
+    return () => {
+      markersRef.current.forEach(m => { m.map = null; });
+      markersRef.current = [];
+      if (infoWindowRef.current) infoWindowRef.current.close();
+    };
+  }, []);
+
+  if (leadsWithAddress.length === 0) {
+    return (
+      <div className="flex-1 flex flex-col items-center justify-center gap-3 text-[#555]">
+        <MapIcon className="w-10 h-10 text-[#2a2a2a]" />
+        <p className="text-sm">No active leads with addresses to map.</p>
+        <p className="text-xs text-[#444]">Add a property address to a lead to see it here.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex-1 relative">
+      <MapView
+        className="w-full h-full"
+        initialCenter={{ lat: 35.9, lng: -86.8 }}
+        initialZoom={9}
+        onMapReady={handleMapReady}
+      />
+      {/* Legend */}
+      <div className="absolute bottom-4 left-4 bg-black/80 border border-[#2a2a2a] rounded-lg px-3 py-2 flex items-center gap-2">
+        <div className="w-3 h-3 rounded-full bg-[#E07B2A] border border-white/50" />
+        <span className="text-[11px] text-[#aaa]">{leadsWithAddress.length} active lead{leadsWithAddress.length !== 1 ? "s" : ""}</span>
+      </div>
+    </div>
+  );
+}
+
 // ─── Lead Detail Panel ────────────────────────────────────────────────────────
 
 function LeadDetailPanel({
@@ -180,6 +304,8 @@ function LeadDetailPanel({
   const [noteText, setNoteText] = useState("");
   const mapRef = useRef<google.maps.Map | null>(null);
   const markerRef = useRef<google.maps.marker.AdvancedMarkerElement | null>(null);
+  const [travelTime, setTravelTime] = useState<string | null>(null);
+  const [travelDist, setTravelDist] = useState<string | null>(null);
 
   const utils = trpc.useUtils();
   const { data: notes = [], isLoading: notesLoading } = trpc.ops.leads.listNotes.useQuery({ leadId: lead.id });
@@ -192,14 +318,32 @@ function LeadDetailPanel({
   const handleMapReady = useCallback((map: google.maps.Map) => {
     mapRef.current = map;
     if (!lead.address) return;
+
     const geocoder = new google.maps.Geocoder();
     geocoder.geocode({ address: lead.address }, (results, status) => {
       if (status === "OK" && results?.[0]) {
         const loc = results[0].geometry.location;
         map.setCenter(loc);
-        map.setZoom(14);
+        map.setZoom(13);
         if (markerRef.current) markerRef.current.map = null;
         markerRef.current = new google.maps.marker.AdvancedMarkerElement({ map, position: loc, title: lead.name });
+
+        // Get driving time from business address
+        const directionsService = new google.maps.DirectionsService();
+        directionsService.route(
+          {
+            origin: BUSINESS_ADDRESS,
+            destination: lead.address!,
+            travelMode: google.maps.TravelMode.DRIVING,
+          },
+          (result, routeStatus) => {
+            if (routeStatus === "OK" && result?.routes?.[0]?.legs?.[0]) {
+              const leg = result.routes[0].legs[0];
+              setTravelTime(leg.duration?.text ?? null);
+              setTravelDist(leg.distance?.text ?? null);
+            }
+          }
+        );
       }
     });
   }, [lead.address, lead.name]);
@@ -291,22 +435,46 @@ function LeadDetailPanel({
             )}
           </div>
 
-          {/* Map */}
+          {/* Map + Travel Time */}
           {lead.address && (
-            <div className="relative h-44 border-b border-[#1e1e1e] overflow-hidden">
-              <MapView
-                initialCenter={{ lat: 35.9, lng: -86.8 }}
-                initialZoom={10}
-                onMapReady={handleMapReady}
-              />
-              <a
-                href={`https://maps.google.com/?q=${encodeURIComponent(lead.address)}`}
-                target="_blank" rel="noopener noreferrer"
-                className="absolute top-2 left-2 flex items-center gap-1 bg-black/70 hover:bg-black/90 text-white text-[11px] font-medium px-2 py-1 rounded-md transition-colors"
-              >
-                <ExternalLink className="w-3 h-3" />Maps
-              </a>
-            </div>
+            <>
+              <div className="relative h-44 border-b border-[#1e1e1e] overflow-hidden">
+                <MapView
+                  className="w-full h-full"
+                  initialCenter={{ lat: 35.9, lng: -86.8 }}
+                  initialZoom={10}
+                  onMapReady={handleMapReady}
+                />
+                <a
+                  href={`https://maps.google.com/?saddr=${encodeURIComponent(BUSINESS_ADDRESS)}&daddr=${encodeURIComponent(lead.address)}`}
+                  target="_blank" rel="noopener noreferrer"
+                  className="absolute top-2 left-2 flex items-center gap-1 bg-black/70 hover:bg-black/90 text-white text-[11px] font-medium px-2 py-1 rounded-md transition-colors"
+                >
+                  <ExternalLink className="w-3 h-3" />Directions
+                </a>
+              </div>
+              {/* Travel time bar */}
+              <div className="px-4 py-2.5 border-b border-[#1e1e1e] flex items-center gap-3 bg-[#0f0f0f]">
+                <div className="flex items-center gap-1.5 text-[#E07B2A]">
+                  <Clock className="w-3.5 h-3.5" />
+                  {travelTime ? (
+                    <span className="text-xs font-semibold text-white">{travelTime}</span>
+                  ) : (
+                    <span className="text-xs text-[#555]">Calculating...</span>
+                  )}
+                </div>
+                {travelDist && (
+                  <>
+                    <span className="text-[#333]">·</span>
+                    <div className="flex items-center gap-1.5 text-[#666]">
+                      <Navigation className="w-3 h-3" />
+                      <span className="text-xs text-[#666]">{travelDist}</span>
+                    </div>
+                  </>
+                )}
+                <span className="text-[10px] text-[#444] ml-auto">from Vanleer</span>
+              </div>
+            </>
           )}
 
           {/* Speed-to-contact nudge */}
@@ -515,9 +683,17 @@ export default function Leads() {
   const [search, setSearch] = useState("");
   const [draggingId, setDraggingId] = useState<number | null>(null);
   const [dragOverStage, setDragOverStage] = useState<string | null>(null);
+  const [viewMode, setViewMode] = useState<"kanban" | "map">("kanban");
 
   const utils = trpc.useUtils();
   const { data: leads = [], isLoading } = trpc.ops.leads.list.useQuery();
+
+  // Pre-load Maps script when switching to map view
+  useEffect(() => {
+    if (viewMode === "map") {
+      loadMapScript().catch(() => {});
+    }
+  }, [viewMode]);
 
   const createLead = trpc.ops.leads.create.useMutation({
     onSuccess: () => { utils.ops.leads.list.invalidate(); setShowAddModal(false); toast.success("Lead added"); },
@@ -585,6 +761,27 @@ export default function Leads() {
             {activeCount > 0 && <span className="text-xs text-[#666]">{activeCount} active</span>}
           </div>
           <div className="flex items-center gap-2">
+            {/* View toggle */}
+            <div className="flex items-center bg-[#111] border border-[#222] rounded-md overflow-hidden">
+              <button
+                onClick={() => setViewMode("kanban")}
+                className={cn(
+                  "flex items-center gap-1.5 px-3 py-1.5 text-xs transition-colors",
+                  viewMode === "kanban" ? "bg-[#1e1e1e] text-white" : "text-[#555] hover:text-[#aaa]"
+                )}
+              >
+                <LayoutGrid className="w-3.5 h-3.5" />Board
+              </button>
+              <button
+                onClick={() => setViewMode("map")}
+                className={cn(
+                  "flex items-center gap-1.5 px-3 py-1.5 text-xs transition-colors",
+                  viewMode === "map" ? "bg-[#1e1e1e] text-white" : "text-[#555] hover:text-[#aaa]"
+                )}
+              >
+                <MapIcon className="w-3.5 h-3.5" />Map
+              </button>
+            </div>
             {/* Bulk action icon */}
             <button className="p-2 rounded-md hover:bg-[#1a1a1a] border border-[#222] transition-colors" title="Bulk actions">
               <svg className="w-4 h-4 text-[#666]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -626,93 +823,113 @@ export default function Leads() {
           </div>
         </div>
 
-        {/* Kanban board — fills remaining space */}
-        <div
-          className="flex-1 overflow-hidden"
-          onDragEnd={() => { setDraggingId(null); setDragOverStage(null); }}
-        >
-          {isLoading ? (
-            <div className="flex items-center justify-center h-full">
-              <Loader2 className="w-6 h-6 animate-spin text-[#444]" />
-            </div>
-          ) : (
-            <div className="flex gap-0 h-full">
-              {KANBAN_STAGES.map((stage) => (
-                <div
-                  key={stage.id}
-                  className="flex flex-col flex-1 min-w-0 overflow-hidden border-r border-[#1e1e1e] last:border-r-0"
-                  onDragOver={e => { e.preventDefault(); setDragOverStage(stage.id); }}
-                  onDragLeave={() => setDragOverStage(null)}
-                  onDrop={e => { e.preventDefault(); handleDrop(stage.id); }}
-                >
-                  {/* Column header */}
-                  <div className={cn(
-                    "px-4 py-3 border-b shrink-0 transition-colors",
-                    dragOverStage === stage.id ? "border-[#E07B2A]/40 bg-[#E07B2A]/5" : "border-[#1e1e1e]"
-                  )}>
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm font-semibold text-white">{stage.label}</span>
-                      <span className="text-xs text-[#555] font-mono">{byStage(stage.id).length}</span>
-                    </div>
-                    {byStage(stage.id).length === 0 && (
-                      <p className={cn("text-[11px] mt-0.5", dragOverStage === stage.id ? "text-[#E07B2A]/60" : "text-[#3a3a3a]")}>
-                        {dragOverStage === stage.id ? "Drop here" : stage.subtitle}
-                      </p>
-                    )}
-                  </div>
-                  {/* Cards */}
-                  <div className="flex-1 overflow-y-auto p-2 space-y-1.5">
-                    {byStage(stage.id).map(lead => (
-                      <LeadCard
-                        key={lead.id}
-                        lead={lead}
-                        onClick={() => setSelectedLead(lead)}
-                        onDragStart={handleDragStart}
-                      />
-                    ))}
-                    {dragOverStage === stage.id && byStage(stage.id).length > 0 && (
-                      <div className="h-10 border-2 border-dashed border-[#E07B2A]/40 rounded-lg bg-[#E07B2A]/5" />
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* CLOSED bottom bar */}
-        <div className="shrink-0 border-t border-[#1e1e1e]">
-          <div className="text-center py-1">
-            <span className="text-[10px] font-semibold uppercase tracking-widest text-[#333]">CLOSED</span>
+        {/* Map View */}
+        {viewMode === "map" && (
+          <div className="flex-1 flex flex-col overflow-hidden">
+            {isLoading ? (
+              <div className="flex-1 flex items-center justify-center">
+                <Loader2 className="w-6 h-6 animate-spin text-[#444]" />
+              </div>
+            ) : (
+              <AllLeadsMap
+                leads={filtered}
+                onLeadClick={lead => setSelectedLead(lead)}
+              />
+            )}
           </div>
-          <div className="flex">
-            {/* Won */}
-            <div className="flex-1 flex items-center justify-center gap-2 py-2.5 border-t-2 border-green-500/40 bg-green-500/5">
-              <Star className="w-3.5 h-3.5 text-green-400" />
-              <span className="text-xs font-semibold text-green-400">Won</span>
-              <span className="text-xs text-green-500/60 font-mono">{byStage("won").length}</span>
+        )}
+
+        {/* Kanban board — fills remaining space */}
+        {viewMode === "kanban" && (
+          <div
+            className="flex-1 overflow-hidden"
+            onDragEnd={() => { setDraggingId(null); setDragOverStage(null); }}
+          >
+            {isLoading ? (
+              <div className="flex items-center justify-center h-full">
+                <Loader2 className="w-6 h-6 animate-spin text-[#444]" />
+              </div>
+            ) : (
+              <div className="flex gap-0 h-full">
+                {KANBAN_STAGES.map((stage) => (
+                  <div
+                    key={stage.id}
+                    className="flex flex-col flex-1 min-w-0 overflow-hidden border-r border-[#1e1e1e] last:border-r-0"
+                    onDragOver={e => { e.preventDefault(); setDragOverStage(stage.id); }}
+                    onDragLeave={() => setDragOverStage(null)}
+                    onDrop={e => { e.preventDefault(); handleDrop(stage.id); }}
+                  >
+                    {/* Column header */}
+                    <div className={cn(
+                      "px-4 py-3 border-b shrink-0 transition-colors",
+                      dragOverStage === stage.id ? "border-[#E07B2A]/40 bg-[#E07B2A]/5" : "border-[#1e1e1e]"
+                    )}>
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-semibold text-white">{stage.label}</span>
+                        <span className="text-xs text-[#555] font-mono">{byStage(stage.id).length}</span>
+                      </div>
+                      {byStage(stage.id).length === 0 && (
+                        <p className={cn("text-[11px] mt-0.5", dragOverStage === stage.id ? "text-[#E07B2A]/60" : "text-[#3a3a3a]")}>
+                          {dragOverStage === stage.id ? "Drop here" : stage.subtitle}
+                        </p>
+                      )}
+                    </div>
+                    {/* Cards */}
+                    <div className="flex-1 overflow-y-auto p-2 space-y-1.5">
+                      {byStage(stage.id).map(lead => (
+                        <LeadCard
+                          key={lead.id}
+                          lead={lead}
+                          onClick={() => setSelectedLead(lead)}
+                          onDragStart={handleDragStart}
+                        />
+                      ))}
+                      {dragOverStage === stage.id && byStage(stage.id).length > 0 && (
+                        <div className="h-10 border-2 border-dashed border-[#E07B2A]/40 rounded-lg bg-[#E07B2A]/5" />
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* CLOSED bottom bar — only in kanban view */}
+        {viewMode === "kanban" && (
+          <div className="shrink-0 border-t border-[#1e1e1e]">
+            <div className="text-center py-1">
+              <span className="text-[10px] font-semibold uppercase tracking-widest text-[#333]">CLOSED</span>
             </div>
-            {/* Lost */}
-            <div className="flex-1 flex items-center justify-center gap-2 py-2.5 border-t-2 border-red-500/40 bg-red-500/5 border-x border-x-[#1e1e1e]">
-              <XCircle className="w-3.5 h-3.5 text-red-400" />
-              <span className="text-xs font-semibold text-red-400">Lost</span>
-              <span className="text-xs text-red-500/60 font-mono">{byStage("lost").length}</span>
-            </div>
-            {/* On Hold */}
-            <div className="flex-1 flex items-center justify-center gap-2 py-2.5 border-t-2 border-blue-500/40 bg-blue-500/5">
-              <Snowflake className="w-3.5 h-3.5 text-blue-400" />
-              <span className="text-xs font-semibold text-blue-400">On Hold</span>
-              <span className="text-xs text-blue-500/60 font-mono">{byStage("on_hold").length}</span>
-            </div>
-            {/* Phone Ready pill — right side */}
-            <div className="flex items-center px-4 border-l border-[#1e1e1e]">
-              <div className="flex items-center gap-1.5 bg-green-500/10 border border-green-500/25 text-green-400 text-xs font-semibold px-3 py-1.5 rounded-full">
-                <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
-                Phone Ready
+            <div className="flex">
+              {/* Won */}
+              <div className="flex-1 flex items-center justify-center gap-2 py-2.5 border-t-2 border-green-500/40 bg-green-500/5">
+                <Star className="w-3.5 h-3.5 text-green-400" />
+                <span className="text-xs font-semibold text-green-400">Won</span>
+                <span className="text-xs text-green-500/60 font-mono">{byStage("won").length}</span>
+              </div>
+              {/* Lost */}
+              <div className="flex-1 flex items-center justify-center gap-2 py-2.5 border-t-2 border-red-500/40 bg-red-500/5 border-x border-x-[#1e1e1e]">
+                <XCircle className="w-3.5 h-3.5 text-red-400" />
+                <span className="text-xs font-semibold text-red-400">Lost</span>
+                <span className="text-xs text-red-500/60 font-mono">{byStage("lost").length}</span>
+              </div>
+              {/* On Hold */}
+              <div className="flex-1 flex items-center justify-center gap-2 py-2.5 border-t-2 border-blue-500/40 bg-blue-500/5">
+                <Snowflake className="w-3.5 h-3.5 text-blue-400" />
+                <span className="text-xs font-semibold text-blue-400">On Hold</span>
+                <span className="text-xs text-blue-500/60 font-mono">{byStage("on_hold").length}</span>
+              </div>
+              {/* Phone Ready pill — right side */}
+              <div className="flex items-center px-4 border-l border-[#1e1e1e]">
+                <div className="flex items-center gap-1.5 bg-green-500/10 border border-green-500/25 text-green-400 text-xs font-semibold px-3 py-1.5 rounded-full">
+                  <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
+                  Phone Ready
+                </div>
               </div>
             </div>
           </div>
-        </div>
+        )}
       </div>
 
       {/* Detail panel */}

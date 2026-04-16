@@ -732,3 +732,10 @@
 - [x] Lead card in kanban shows color-coded source badge (orange for Website)
 - [x] 5 new vitest tests covering CRM creation, non-fatal failure, null owner, and notification title
 - [x] All 64 tests passing. TypeScript: 0 errors.
+
+## Lead Map Enhancements — Apr 16 2026
+
+- [x] Lead detail drawer: show estimated drive time from 93 Halliburton Rd, Vanleer TN to lead address using DirectionsService
+- [x] Leads page: add "Map View" toggle button to switch between kanban and all-leads map
+- [x] All-leads map: geocode each active lead and plot as amber pin
+- [x] Pin click: show InfoWindow popup with client name and service requested
