@@ -747,3 +747,9 @@
 ## Rough Estimate Calculator — Completion Time — Apr 16 2026
 
 - [x] Add estimated completion time output to the Rough Estimate Calculator based on acreage, density, terrain, and service type
+
+## Calculator Enhancements — Apr 16 2026
+
+- [x] Calculator: terrain difficulty and density controls already exist — ensure they are clearly labeled and visible above the fold
+- [x] Calculator: add map polygon drawing tool so users can draw their parcel and auto-fill the acreage slider
+- [x] Calculator: add "Submit as Lead" button that opens a contact form and saves the estimate + contact info as a CRM lead

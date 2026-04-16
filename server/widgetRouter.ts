@@ -4,7 +4,83 @@ import { ENV } from "./_core/env";
 import { notifyOwner } from "./_core/notification";
 import { getOwnerUser, createOpsLead } from "./db";
 
+const SERVICE_LABELS: Record<string, string> = {
+  "forestry-mulching": "Forestry Mulching",
+  "land-clearing": "Land Clearing",
+  "vegetation-management": "Vegetation Management",
+  "right-of-way-clearing": "Right-of-Way Clearing",
+  "property-maintenance": "Property Maintenance",
+};
+
 export const widgetRouter = router({
+  /**
+   * Public endpoint — no auth required.
+   * Receives a rough estimate submission from the Pricing page calculator.
+   * Saves the visitor as a new CRM lead with full estimate context and notifies the owner.
+   */
+  submitEstimate: publicProcedure
+    .input(
+      z.object({
+        name: z.string().min(1).max(80),
+        phone: z.string().min(7).max(20),
+        email: z.string().email().optional(),
+        service: z.string().min(1).max(80),
+        acres: z.number().positive(),
+        density: z.string(),
+        terrain: z.string(),
+        access: z.string(),
+        estimateLow: z.number(),
+        estimateHigh: z.number(),
+        message: z.string().max(500).optional(),
+      })
+    )
+    .mutation(async ({ input }) => {
+      const svcLabel = SERVICE_LABELS[input.service] ?? input.service;
+      const notes = [
+        `Rough estimate submitted from the Pricing page calculator.`,
+        `Service: ${svcLabel}`,
+        `Acreage: ${input.acres} acres`,
+        `Vegetation density: ${input.density}`,
+        `Terrain: ${input.terrain}`,
+        `Site access: ${input.access}`,
+        `Estimate range: $${input.estimateLow.toLocaleString()} – $${input.estimateHigh.toLocaleString()}`,
+        input.message ? `\nAdditional notes: ${input.message}` : "",
+      ]
+        .filter(Boolean)
+        .join("\n");
+
+      let leadId: number | null = null;
+      try {
+        const owner = await getOwnerUser();
+        if (owner) {
+          const result = await createOpsLead({
+            userId: owner.id,
+            name: input.name,
+            phone: input.phone,
+            email: input.email,
+            source: "website",
+            stage: "new",
+            jobType: svcLabel,
+            estimatedValue: String(
+              ((input.estimateLow + input.estimateHigh) / 2).toFixed(2)
+            ),
+            notes,
+          });
+          const insertResult = result as unknown as { insertId?: number };
+          leadId = insertResult?.insertId ?? null;
+        }
+      } catch (err) {
+        console.error("[Widget] submitEstimate CRM save failed:", err);
+      }
+
+      await notifyOwner({
+        title: `New estimate lead: ${input.name}`,
+        content: `Phone: ${input.phone}\nService: ${svcLabel}\nAcreage: ${input.acres} acres\nEstimate: $${input.estimateLow.toLocaleString()} – $${input.estimateHigh.toLocaleString()}`,
+      }).catch(() => {});
+
+      return { ok: true, leadId };
+    }),
+
   /**
    * Public endpoint — no auth required.
    * Receives a visitor's name, phone, and message from the SMS widget on the public site.
