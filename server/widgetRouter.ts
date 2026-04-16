@@ -2,12 +2,16 @@ import { z } from "zod";
 import { publicProcedure, router } from "./_core/trpc";
 import { ENV } from "./_core/env";
 import { notifyOwner } from "./_core/notification";
+import { getOwnerUser, createOpsLead } from "./db";
 
 export const widgetRouter = router({
   /**
    * Public endpoint — no auth required.
    * Receives a visitor's name, phone, and message from the SMS widget on the public site.
-   * Forwards the message to Jon's phone via Twilio SMS and sends an owner notification.
+   * Actions:
+   *   1. Forwards the message to Jon's phone via Twilio SMS.
+   *   2. Creates an in-app owner notification.
+   *   3. Saves the visitor as a new lead (stage: "new", source: "website") in the CRM.
    */
   sendMessage: publicProcedure
     .input(
@@ -39,10 +43,32 @@ export const widgetRouter = router({
 
       // ── Owner notification (in-app) ──
       await notifyOwner({
-        title: `Website message from ${input.name}`,
+        title: `New website lead: ${input.name}`,
         content: `Phone: ${input.phone}\n\n${input.message}`,
       }).catch(() => {});
 
-      return { ok: true, smsSent };
+      // ── Save as CRM lead ──────────────────────────────────────────────────
+      let leadId: number | null = null;
+      try {
+        const owner = await getOwnerUser();
+        if (owner) {
+          const result = await createOpsLead({
+            userId: owner.id,
+            name: input.name,
+            phone: input.phone,
+            source: "website",
+            stage: "new",
+            notes: `Initial message via website SMS widget:\n\n${input.message}`,
+          });
+          // MySQL insertId is on result[0] when using drizzle mysql2
+          const insertResult = result as unknown as { insertId?: number };
+          leadId = insertResult?.insertId ?? null;
+        }
+      } catch (err) {
+        // Non-fatal — SMS already sent; log and continue
+        console.error("[Widget] CRM lead creation failed:", err);
+      }
+
+      return { ok: true, smsSent, leadId };
     }),
 });

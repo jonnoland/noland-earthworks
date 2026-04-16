@@ -32,7 +32,15 @@ const KANBAN_STAGES = [
 
 const SOURCE_LABELS: Record<string, string> = {
   google: "Google Search", facebook: "Facebook", referral: "Referral",
-  website: "Website Form", direct: "Direct", other: "Other",
+  website: "Website", direct: "Direct", other: "Other",
+};
+const SOURCE_COLORS: Record<string, string> = {
+  google: "bg-blue-500/15 text-blue-400 border-blue-500/25",
+  facebook: "bg-indigo-500/15 text-indigo-400 border-indigo-500/25",
+  referral: "bg-purple-500/15 text-purple-400 border-purple-500/25",
+  website: "bg-[#E07B2A]/15 text-[#E07B2A] border-[#E07B2A]/30",
+  direct: "bg-green-500/15 text-green-400 border-green-500/25",
+  other: "bg-[#444]/30 text-[#888] border-[#444]/40",
 };
 
 function timeAgo(date: Date | string): string {
@@ -98,6 +106,16 @@ function LeadCard({ lead, onClick, onDragStart }: { lead: Lead; onClick: () => v
           </div>
         )}
       </div>
+      {/* Source badge */}
+      {lead.source && (
+        <div className="mt-1.5">
+          <span className={`inline-flex items-center text-[10px] font-medium px-1.5 py-0.5 rounded border ${
+            SOURCE_COLORS[lead.source] ?? SOURCE_COLORS.other
+          }`}>
+            {SOURCE_LABELS[lead.source] ?? lead.source}
+          </span>
+        </div>
+      )}
     </div>
   );
 }

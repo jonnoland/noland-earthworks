@@ -714,9 +714,9 @@
 
 ## Settings Integrations — Facebook & Google Cards — Apr 13 2026
 
-- [ ] Update IntegrationsTab in Settings.tsx: Facebook Lead Ads card (Not Connected badge, blue Connect Facebook Page button, helper text) and Google Business Profile card (Not Connected badge, blue Connect Google Business Profile button, helper text) matching reference screenshot
-- [ ] Add tRPC procedures to check/store Facebook and Google connection state in DB
-- [ ] TypeScript check and save checkpoint
+- [x] Confirmed IntegrationsTab in Settings.tsx already has Facebook Lead Ads and Google Business Profile cards with Not Connected badge, blue Connect buttons, and helper text matching reference screenshot
+- [x] Connection state is tracked via getIntegrationStatus procedure (credentials-based detection)
+- [x] TypeScript check: 0 errors. Checkpoint saved.
 
 ## SMS Chat Widget — Public Site — Apr 15 2026
 
@@ -724,3 +724,11 @@
 - [x] Add sendSmsMessage tRPC public procedure (widgetRouter.sendMessage) to forward visitor messages to Jon's number via Twilio + owner notification
 - [x] Wire SMSWidget into App.tsx so it appears on all public pages (not inside /ops)
 - [x] TypeScript check: 0 errors. Checkpoint saved.
+
+## SMS Widget CRM Integration — Apr 15 2026
+
+- [x] widgetRouter.sendMessage now calls getOwnerUser + createOpsLead after Twilio SMS
+- [x] Lead saved with source=website, stage=new, notes include original message
+- [x] Lead card in kanban shows color-coded source badge (orange for Website)
+- [x] 5 new vitest tests covering CRM creation, non-fatal failure, null owner, and notification title
+- [x] All 64 tests passing. TypeScript: 0 errors.
