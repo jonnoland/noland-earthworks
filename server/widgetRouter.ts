@@ -2,7 +2,7 @@ import { z } from "zod";
 import { publicProcedure, router } from "./_core/trpc";
 import { ENV } from "./_core/env";
 import { notifyOwner } from "./_core/notification";
-import { getOwnerUser, createOpsLead, updateOpsLeadById, getVisitBlackoutDates, addVisitBlackoutDate, removeVisitBlackoutDate } from "./db";
+import { getOwnerUser, createOpsLead, updateOpsLeadById, getVisitBlackoutDates, addVisitBlackoutDate, removeVisitBlackoutDate, getRecurringBlackoutDays } from "./db";
 import { Resend } from "resend";
 
 const SERVICE_LABELS: Record<string, string> = {
@@ -93,6 +93,15 @@ export const widgetRouter = router({
   getBlackoutDates: publicProcedure.query(async () => {
     const rows = await getVisitBlackoutDates().catch(() => []);
     return rows.map((r) => r.date); // string[] of YYYY-MM-DD
+  }),
+
+  /**
+   * Public endpoint — no auth required.
+   * Returns recurring blackout days-of-week (0=Sun, 6=Sat) so the date picker can disable them.
+   */
+  getRecurringBlackoutDays: publicProcedure.query(async () => {
+    const rows = await getRecurringBlackoutDays().catch(() => []);
+    return rows.map((r) => r.dayOfWeek); // number[] e.g. [0, 6] for every Sat+Sun
   }),
 
   /**

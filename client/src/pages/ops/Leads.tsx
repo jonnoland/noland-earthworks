@@ -81,6 +81,7 @@ interface Lead {
   estimatedValue?: string | null;
   notes?: string | null;
   requestedVisitAt?: Date | string | null;
+  visitConfirmedAt?: Date | string | null;
   createdAt: Date | string;
   updatedAt: Date | string;
 }
@@ -121,8 +122,13 @@ function LeadCard({ lead, onClick, onDragStart }: { lead: Lead; onClick: () => v
             {SOURCE_LABELS[lead.source] ?? lead.source}
           </span>
           {lead.requestedVisitAt && (
-            <span className="inline-flex items-center gap-0.5 text-[10px] font-medium px-1.5 py-0.5 rounded border bg-teal-500/15 text-teal-400 border-teal-500/25">
+            <span className={`inline-flex items-center gap-0.5 text-[10px] font-medium px-1.5 py-0.5 rounded border ${
+              lead.visitConfirmedAt
+                ? "bg-green-500/15 text-green-400 border-green-500/25"
+                : "bg-teal-500/15 text-teal-400 border-teal-500/25"
+            }`}>
               <Calendar className="w-2.5 h-2.5" />
+              {lead.visitConfirmedAt ? "Confirmed " : ""}
               {new Date(lead.requestedVisitAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
             </span>
           )}
@@ -179,6 +185,137 @@ function KanbanColumn({
 }
 
 // ─── All Leads Map View ───────────────────────────────────────────────────────
+
+// ─── Site Visits Map ─────────────────────────────────────────────────────────
+
+function SiteVisitsMap({ leads, onLeadClick }: { leads: Lead[]; onLeadClick: (lead: Lead) => void }) {
+  const mapRef = useRef<google.maps.Map | null>(null);
+  const markersRef = useRef<google.maps.marker.AdvancedMarkerElement[]>([]);
+  const infoWindowRef = useRef<google.maps.InfoWindow | null>(null);
+  const leadsWithAddress = leads.filter(l => l.address);
+
+  const handleMapReady = useCallback((map: google.maps.Map) => {
+    mapRef.current = map;
+    if (leadsWithAddress.length === 0) return;
+
+    const geocoder = new google.maps.Geocoder();
+    const bounds = new google.maps.LatLngBounds();
+    let geocodedCount = 0;
+
+    map.addListener("click", () => {
+      if (infoWindowRef.current) infoWindowRef.current.close();
+    });
+
+    leadsWithAddress.forEach(lead => {
+      if (!lead.address) return;
+      geocoder.geocode({ address: lead.address }, (results, status) => {
+        if (status !== "OK" || !results?.[0]) return;
+        const loc = results[0].geometry.location;
+        bounds.extend(loc);
+        geocodedCount++;
+
+        // Teal pin for unconfirmed, green for confirmed
+        const isConfirmed = !!lead.visitConfirmedAt;
+        const pinEl = document.createElement("div");
+        pinEl.style.cssText = `
+          width: 28px; height: 28px; border-radius: 50% 50% 50% 0;
+          transform: rotate(-45deg); background: ${isConfirmed ? "#22c55e" : "#14b8a6"};
+          border: 2px solid #fff; box-shadow: 0 2px 6px rgba(0,0,0,0.5);
+          cursor: pointer;
+        `;
+
+        const marker = new google.maps.marker.AdvancedMarkerElement({
+          map,
+          position: loc,
+          title: lead.name,
+          content: pinEl,
+        });
+
+        const visitDate = lead.requestedVisitAt
+          ? new Date(lead.requestedVisitAt).toLocaleString("en-US", {
+              weekday: "short", month: "short", day: "numeric",
+              hour: "numeric", minute: "2-digit",
+            })
+          : "";
+
+        const infoContent = `
+          <div style="background:#111;border:1px solid #2a2a2a;border-radius:8px;padding:10px 12px;min-width:200px;font-family:system-ui,sans-serif;">
+            <div style="font-size:13px;font-weight:700;color:#fff;margin-bottom:4px;">${lead.name}</div>
+            ${lead.jobType ? `<div style="font-size:11px;color:#14b8a6;margin-bottom:4px;">${lead.jobType}</div>` : ""}
+            <div style="font-size:11px;color:${isConfirmed ? "#22c55e" : "#14b8a6"};margin-bottom:4px;">${isConfirmed ? "Confirmed" : "Requested"}: ${visitDate}</div>
+            ${lead.address ? `<div style="font-size:10px;color:#666;">${lead.address}</div>` : ""}
+          </div>
+        `;
+
+        marker.addListener("click", () => {
+          if (!infoWindowRef.current) {
+            infoWindowRef.current = new google.maps.InfoWindow({ disableAutoPan: false });
+          }
+          infoWindowRef.current.setContent(infoContent);
+          infoWindowRef.current.open({ anchor: marker, map });
+          onLeadClick(lead);
+        });
+
+        markersRef.current.push(marker);
+
+        if (geocodedCount === leadsWithAddress.length) {
+          if (geocodedCount === 1) { map.setCenter(loc); map.setZoom(12); }
+          else { map.fitBounds(bounds, 60); }
+        }
+      });
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      markersRef.current.forEach(m => { m.map = null; });
+      markersRef.current = [];
+      if (infoWindowRef.current) infoWindowRef.current.close();
+    };
+  }, []);
+
+  if (leadsWithAddress.length === 0) {
+    return (
+      <div className="flex-1 flex flex-col items-center justify-center gap-3 text-[#555]">
+        <Calendar className="w-10 h-10 text-[#2a2a2a]" />
+        <p className="text-sm">No scheduled site visits to map.</p>
+        <p className="text-xs text-[#444]">Visits appear here once a visitor requests a date from the estimate calculator.</p>
+      </div>
+    );
+  }
+
+  const confirmedCount = leadsWithAddress.filter(l => l.visitConfirmedAt).length;
+  const pendingCount = leadsWithAddress.length - confirmedCount;
+
+  return (
+    <div className="flex-1 relative">
+      <MapView
+        className="w-full h-full"
+        initialCenter={{ lat: 35.9, lng: -86.8 }}
+        initialZoom={9}
+        onMapReady={handleMapReady}
+      />
+      {/* Legend */}
+      <div className="absolute bottom-4 left-4 bg-black/80 border border-[#2a2a2a] rounded-lg px-3 py-2 flex items-center gap-3">
+        {pendingCount > 0 && (
+          <div className="flex items-center gap-1.5">
+            <div className="w-3 h-3 rounded-full bg-teal-500 border border-white/50" />
+            <span className="text-[11px] text-[#aaa]">{pendingCount} pending</span>
+          </div>
+        )}
+        {confirmedCount > 0 && (
+          <div className="flex items-center gap-1.5">
+            <div className="w-3 h-3 rounded-full bg-green-500 border border-white/50" />
+            <span className="text-[11px] text-[#aaa]">{confirmedCount} confirmed</span>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─── All Leads Map ────────────────────────────────────────────────────────────
 
 function AllLeadsMap({ leads, onLeadClick }: { leads: Lead[]; onLeadClick: (lead: Lead) => void }) {
   const mapRef = useRef<google.maps.Map | null>(null);
@@ -322,6 +459,14 @@ function LeadDetailPanel({
     onError: () => toast.error("Failed to add note"),
   });
 
+  const confirmVisit = trpc.ops.leads.confirmVisit.useMutation({
+    onSuccess: () => {
+      toast.success(lead.email ? "Visit confirmed. Confirmation email sent to visitor." : "Visit confirmed.");
+      utils.ops.leads.list.invalidate();
+    },
+    onError: (err) => toast.error(err.message ?? "Failed to confirm visit"),
+  });
+
   const handleMapReady = useCallback((map: google.maps.Map) => {
     mapRef.current = map;
     if (!lead.address) return;
@@ -441,11 +586,36 @@ function LeadDetailPanel({
               </p>
             )}
             {lead.requestedVisitAt && (
-              <p className="text-xs flex items-center gap-1.5 bg-teal-500/10 border border-teal-500/20 rounded px-2 py-1">
-                <Calendar className="w-3.5 h-3.5 shrink-0 text-teal-400" />
-                <span className="text-teal-300 font-medium">Requested visit:</span>
-                <span className="text-teal-400">{new Date(lead.requestedVisitAt).toLocaleString("en-US", { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}</span>
-              </p>
+              <div className={`text-xs rounded px-2 py-1.5 border space-y-1.5 ${
+                lead.visitConfirmedAt
+                  ? "bg-green-500/10 border-green-500/20"
+                  : "bg-teal-500/10 border-teal-500/20"
+              }`}>
+                <div className="flex items-center gap-1.5">
+                  <Calendar className={`w-3.5 h-3.5 shrink-0 ${lead.visitConfirmedAt ? "text-green-400" : "text-teal-400"}`} />
+                  <span className={`font-medium ${lead.visitConfirmedAt ? "text-green-300" : "text-teal-300"}`}>
+                    {lead.visitConfirmedAt ? "Visit confirmed:" : "Requested visit:"}
+                  </span>
+                  <span className={lead.visitConfirmedAt ? "text-green-400" : "text-teal-400"}>
+                    {new Date(lead.requestedVisitAt).toLocaleString("en-US", { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}
+                  </span>
+                </div>
+                {!lead.visitConfirmedAt && (
+                  <button
+                    onClick={() => confirmVisit.mutate({ leadId: lead.id })}
+                    disabled={confirmVisit.isPending}
+                    className="w-full flex items-center justify-center gap-1.5 bg-teal-600 hover:bg-teal-700 disabled:opacity-60 text-white text-[11px] font-semibold py-1.5 rounded transition-colors"
+                  >
+                    {confirmVisit.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <Calendar className="w-3 h-3" />}
+                    Confirm Visit{lead.email ? " & Send Email" : ""}
+                  </button>
+                )}
+                {lead.visitConfirmedAt && (
+                  <p className="text-[10px] text-green-400/70">
+                    Confirmed {new Date(lead.visitConfirmedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                  </p>
+                )}
+              </div>
             )}
           </div>
 
@@ -697,14 +867,14 @@ export default function Leads() {
   const [search, setSearch] = useState("");
   const [draggingId, setDraggingId] = useState<number | null>(null);
   const [dragOverStage, setDragOverStage] = useState<string | null>(null);
-  const [viewMode, setViewMode] = useState<"kanban" | "map">("kanban");
+  const [viewMode, setViewMode] = useState<"kanban" | "map" | "visits">("kanban");
 
   const utils = trpc.useUtils();
   const { data: leads = [], isLoading } = trpc.ops.leads.list.useQuery();
 
   // Pre-load Maps script when switching to map view
   useEffect(() => {
-    if (viewMode === "map") {
+    if (viewMode === "map" || viewMode === "visits") {
       loadMapScript().catch(() => {});
     }
   }, [viewMode]);
@@ -795,6 +965,15 @@ export default function Leads() {
               >
                 <MapIcon className="w-3.5 h-3.5" />Map
               </button>
+              <button
+                onClick={() => setViewMode("visits")}
+                className={cn(
+                  "flex items-center gap-1.5 px-3 py-1.5 text-xs transition-colors",
+                  viewMode === "visits" ? "bg-[#1e1e1e] text-white" : "text-[#555] hover:text-[#aaa]"
+                )}
+              >
+                <Calendar className="w-3.5 h-3.5" />Visits
+              </button>
             </div>
             {/* Bulk action icon */}
             <button className="p-2 rounded-md hover:bg-[#1a1a1a] border border-[#222] transition-colors" title="Bulk actions">
@@ -847,6 +1026,22 @@ export default function Leads() {
             ) : (
               <AllLeadsMap
                 leads={filtered}
+                onLeadClick={lead => setSelectedLead(lead)}
+              />
+            )}
+          </div>
+        )}
+
+        {/* Site Visits Map */}
+        {viewMode === "visits" && (
+          <div className="flex-1 flex flex-col overflow-hidden">
+            {isLoading ? (
+              <div className="flex-1 flex items-center justify-center">
+                <Loader2 className="w-6 h-6 animate-spin text-[#444]" />
+              </div>
+            ) : (
+              <SiteVisitsMap
+                leads={(leads as Lead[]).filter(l => l.requestedVisitAt)}
                 onLeadClick={lead => setSelectedLead(lead)}
               />
             )}

@@ -776,3 +776,18 @@
 - [x] Blackout dates: add tRPC protected procedure for owner to add/remove blackout dates
 - [x] Blackout dates: disable blackout dates in the date picker in CostCalculator
 - [x] Blackout dates: add management UI to /ops/settings page
+
+## Site Visit Scheduler — Ops Enhancements — Apr 16 2026
+
+- [x] Manual visit confirmation button on lead detail panel — sends confirmation email to visitor via Resend
+- [x] Add visitConfirmedAt column to opsLeads schema and push migration
+- [x] Add confirmVisit protected tRPC procedure in opsRouter.ts
+- [x] Show "Visit Confirmed" badge on lead card after confirmation
+- [x] Recurring blackout dates: add recurringBlackoutDays table to schema (day-of-week 0-6)
+- [x] Recurring blackout dates: push migration
+- [x] Recurring blackout dates: add DB helpers in server/db.ts
+- [x] Recurring blackout dates: add public getRecurringBlackoutDays and protected add/remove procedures
+- [x] Recurring blackout dates: add day-of-week toggle UI in Scheduling tab in Settings.tsx
+- [x] Recurring blackout dates: update CostCalculator.tsx date picker to disable recurring blackout days
+- [x] Site visits map: new "Visits" map view in /ops/leads showing all leads with requestedVisitAt as pins
+- [x] Site visits map: pin click shows visitor name, visit date/time, service type

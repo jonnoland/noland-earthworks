@@ -875,6 +875,16 @@ function ConfirmationOverlay({ data, onClose }: {
   const { data: blackoutDates = [] } = trpc.widget.getBlackoutDates.useQuery(undefined, {
     staleTime: 5 * 60 * 1000,
   });
+  // Fetch recurring blackout days-of-week (0=Sun, 6=Sat)
+  const { data: recurringBlackoutDays = [] } = trpc.widget.getRecurringBlackoutDays.useQuery(undefined, {
+    staleTime: 10 * 60 * 1000,
+  });
+
+  const isDateBlocked = (dateStr: string): boolean => {
+    if (blackoutDates.includes(dateStr)) return true;
+    const dow = new Date(dateStr + "T12:00:00").getDay();
+    return (recurringBlackoutDays as number[]).includes(dow);
+  };
 
   const handleScheduleVisit = () => {
     if (!visitDate || !visitTime) return;
@@ -882,7 +892,7 @@ function ConfirmationOverlay({ data, onClose }: {
       setVisitError("Unable to link visit to your request. Call 615-406-4819 to schedule directly.");
       return;
     }
-    if (blackoutDates.includes(visitDate)) {
+    if (isDateBlocked(visitDate)) {
       setVisitError("That date is unavailable. Please choose another date.");
       return;
     }
@@ -1025,7 +1035,7 @@ function ConfirmationOverlay({ data, onClose }: {
                     onChange={(e) => {
                       const d = e.target.value;
                       setVisitDate(d);
-                      if (blackoutDates.includes(d)) {
+                      if (isDateBlocked(d)) {
                         setVisitError("That date is unavailable. Please choose another date.");
                       } else {
                         setVisitError("");
@@ -1034,7 +1044,7 @@ function ConfirmationOverlay({ data, onClose }: {
                     style={{
                       width: "100%", padding: "0.55rem 0.7rem",
                       backgroundColor: "#111",
-                      border: visitDate && blackoutDates.includes(visitDate)
+                      border: visitDate && isDateBlocked(visitDate)
                         ? "1px solid rgba(248,113,113,0.6)"
                         : "1px solid rgba(255,255,255,0.12)",
                       borderRadius: "4px", color: "#F0EDE6",

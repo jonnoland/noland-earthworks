@@ -1519,12 +1519,15 @@ function QuoteLogTab() {
 }
 
 // ─── Scheduling Tab (Blackout Dates) ───────────────────────────────────────────────────
+const DAY_NAMES = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+
 function SchedulingTab() {
   const [newDate, setNewDate] = useState("");
   const [newReason, setNewReason] = useState("");
   const utils = trpc.useUtils();
 
   const { data: blackoutDates = [], isLoading } = trpc.ops.blackoutDates.list.useQuery();
+  const { data: recurringDays = [], isLoading: recurringLoading } = trpc.ops.recurringBlackout.list.useQuery();
 
   const addMutation = trpc.ops.blackoutDates.add.useMutation({
     onSuccess: () => {
@@ -1543,6 +1546,24 @@ function SchedulingTab() {
     },
     onError: () => toast.error("Failed to remove blackout date."),
   });
+
+  const addRecurring = trpc.ops.recurringBlackout.add.useMutation({
+    onSuccess: () => {
+      utils.ops.recurringBlackout.list.invalidate();
+      toast.success("Recurring blackout day added.");
+    },
+    onError: (err) => toast.error(err.message ?? "Failed to add recurring day."),
+  });
+
+  const removeRecurring = trpc.ops.recurringBlackout.remove.useMutation({
+    onSuccess: () => {
+      utils.ops.recurringBlackout.list.invalidate();
+      toast.success("Recurring day removed.");
+    },
+    onError: () => toast.error("Failed to remove recurring day."),
+  });
+
+  const activeDays = new Set(recurringDays.map((r: { dayOfWeek: number }) => r.dayOfWeek));
 
   const today = new Date().toISOString().split("T")[0];
 
@@ -1611,6 +1632,51 @@ function SchedulingTab() {
               </div>
             ))}
           </div>
+        )}
+      </SettingsSection>
+
+      {/* Recurring Blackout Days */}
+      <SettingsSection
+        title="Recurring Unavailable Days"
+        description="Days of the week that are always unavailable for site visits. Visitors cannot select these days in the calendar, regardless of the specific date."
+      >
+        {recurringLoading ? (
+          <div className="flex items-center gap-2 text-sm text-muted-foreground py-4">
+            <Loader2 size={14} className="animate-spin" /> Loading...
+          </div>
+        ) : (
+          <div className="flex flex-wrap gap-2">
+            {DAY_NAMES.map((day, idx) => {
+              const isActive = activeDays.has(idx);
+              const existingRow = recurringDays.find((r: { dayOfWeek: number; id: number }) => r.dayOfWeek === idx);
+              return (
+                <button
+                  key={day}
+                  disabled={addRecurring.isPending || removeRecurring.isPending}
+                  onClick={() => {
+                    if (isActive && existingRow) {
+                      removeRecurring.mutate({ id: existingRow.id });
+                    } else {
+                      addRecurring.mutate({ dayOfWeek: idx, label: day });
+                    }
+                  }}
+                  className={`px-3 py-1.5 rounded-md text-xs font-semibold border transition-colors disabled:opacity-50 ${
+                    isActive
+                      ? "bg-amber-600/20 text-amber-400 border-amber-600/40 hover:bg-amber-600/30"
+                      : "bg-muted/30 text-muted-foreground border-border hover:border-amber-600/40 hover:text-amber-400"
+                  }`}
+                >
+                  {day}
+                  {isActive && " ✕"}
+                </button>
+              );
+            })}
+          </div>
+        )}
+        {activeDays.size > 0 && (
+          <p className="text-xs text-muted-foreground mt-1">
+            {Array.from(activeDays).sort().map(d => DAY_NAMES[d]).join(", ")} blocked every week.
+          </p>
         )}
       </SettingsSection>
     </div>

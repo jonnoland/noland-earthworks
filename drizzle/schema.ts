@@ -146,6 +146,8 @@ export const opsLeads = mysqlTable("ops_leads", {
   notes: text("notes"),
   /** Requested site visit date/time from the calculator confirmation overlay */
   requestedVisitAt: timestamp("requestedVisitAt"),
+  /** Timestamp when Jon manually confirmed the site visit — triggers confirmation email */
+  visitConfirmedAt: timestamp("visitConfirmedAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
@@ -472,3 +474,16 @@ export const visitBlackoutDates = mysqlTable("visit_blackout_dates", {
 });
 export type VisitBlackoutDate = typeof visitBlackoutDates.$inferSelect;
 export type InsertVisitBlackoutDate = typeof visitBlackoutDates.$inferInsert;
+
+// ─── Recurring Blackout Days ──────────────────────────────────────────────────
+/** Days of the week that are always unavailable for site visits (0=Sun, 6=Sat). */
+export const recurringBlackoutDays = mysqlTable("recurring_blackout_days", {
+  id: int("id").primaryKey().autoincrement(),
+  /** 0=Sunday, 1=Monday, …, 6=Saturday */
+  dayOfWeek: int("dayOfWeek").notNull().unique(),
+  /** Optional label, e.g. "Weekend" */
+  label: varchar("label", { length: 100 }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type RecurringBlackoutDay = typeof recurringBlackoutDays.$inferSelect;
+export type InsertRecurringBlackoutDay = typeof recurringBlackoutDays.$inferInsert;

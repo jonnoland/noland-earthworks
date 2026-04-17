@@ -2,7 +2,8 @@ import { and, desc, eq } from "drizzle-orm";
 import { drizzle, type MySql2Database } from "drizzle-orm/mysql2";
 import {
   InsertJob, InsertOpsLead, InsertScheduleEntry, InsertUser,
-  jobs, opsLeads, scheduleEntries, users, visitBlackoutDates, InsertVisitBlackoutDate
+  jobs, opsLeads, scheduleEntries, users, visitBlackoutDates, InsertVisitBlackoutDate,
+  recurringBlackoutDays
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
@@ -236,4 +237,29 @@ export async function removeVisitBlackoutDate(id: number) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   return db.delete(visitBlackoutDates).where(eq(visitBlackoutDates.id, id));
+}
+
+// ─── Recurring Blackout Days ──────────────────────────────────────────────────
+export async function getRecurringBlackoutDays() {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(recurringBlackoutDays).orderBy(recurringBlackoutDays.dayOfWeek);
+}
+export async function addRecurringBlackoutDay(dayOfWeek: number, label?: string) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return db.insert(recurringBlackoutDays).values({ dayOfWeek, label: label ?? null });
+}
+export async function removeRecurringBlackoutDay(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return db.delete(recurringBlackoutDays).where(eq(recurringBlackoutDays.id, id));
+}
+
+// ─── Lead by ID ────────────────────────────────────────────────────────────────
+export async function getOpsLeadById(id: number) {
+  const db = await getDb();
+  if (!db) return null;
+  const rows = await db.select().from(opsLeads).where(eq(opsLeads.id, id)).limit(1);
+  return rows.length > 0 ? rows[0] : null;
 }

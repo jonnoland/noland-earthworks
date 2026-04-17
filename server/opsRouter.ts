@@ -13,9 +13,17 @@ import {
   getOpsLeads, createOpsLead, updateOpsLead, deleteOpsLead,
   getScheduleEntries, createScheduleEntry, updateScheduleEntry, deleteScheduleEntry,
   getVisitBlackoutDates, addVisitBlackoutDate, removeVisitBlackoutDate,
+  getRecurringBlackoutDays, addRecurringBlackoutDay, removeRecurringBlackoutDay,
+  getOpsLeadById,
 } from "./db";
-import { jobs, opsLeads, quoteSubmissions, crews, crewMembers, conversations, messages, reviews, timeEntries, distanceQuotes, businessSettings, automationSettings, serviceCatalog, messageTemplates, reminderRules, leadNotes, visitBlackoutDates } from "../drizzle/schema";
+import { Resend } from "resend";
+import { jobs, opsLeads, quoteSubmissions, crews, crewMembers, conversations, messages, reviews, timeEntries, distanceQuotes, businessSettings, automationSettings, serviceCatalog, messageTemplates, reminderRules, leadNotes, visitBlackoutDates, recurringBlackoutDays } from "../drizzle/schema";
+
 import { and, desc, eq, gte, lt, like } from "drizzle-orm";
+
+function getResend() {
+  return ENV.resendApiKey ? new Resend(ENV.resendApiKey) : null;
+}
 
 /**
  * Owner-only guard — only the site owner can call these procedures.
@@ -155,6 +163,59 @@ const leadsRouter = router({
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
       await db.insert(leadNotes).values({ leadId: input.leadId, userId: ctx.user.id, type: input.type, content: input.content });
       return { success: true };
+    }),
+
+  confirmVisit: ownerProcedure
+    .input(z.object({ leadId: z.number().int().positive() }))
+    .mutation(async ({ ctx, input }) => {
+      const lead = await getOpsLeadById(input.leadId);
+      if (!lead) throw new TRPCError({ code: "NOT_FOUND", message: "Lead not found" });
+      if (!lead.requestedVisitAt) throw new TRPCError({ code: "BAD_REQUEST", message: "No visit time requested for this lead" });
+
+      const now = new Date();
+      await updateOpsLead(input.leadId, ctx.user.id, { visitConfirmedAt: now });
+
+      // Send confirmation email to visitor if they have an email on file
+      if (lead.email) {
+        const resend = getResend();
+        if (resend) {
+          const visitFormatted = lead.requestedVisitAt.toLocaleString("en-US", {
+            timeZone: "America/Chicago",
+            weekday: "long",
+            year: "numeric",
+            month: "long",
+            day: "numeric",
+            hour: "numeric",
+            minute: "2-digit",
+          });
+          await resend.emails.send({
+            from: "Noland Earthworks <noreply@nolandearthworks.com>",
+            to: lead.email,
+            subject: "Your Site Visit is Confirmed — Noland Earthworks",
+            html: `
+              <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;background:#fff;">
+                <div style="background:#1a1a1a;padding:24px 32px;">
+                  <h1 style="color:#d97706;margin:0;font-size:22px;letter-spacing:1px;">NOLAND EARTHWORKS</h1>
+                  <p style="color:#888;margin:4px 0 0;font-size:13px;">Veteran-Owned Land Management</p>
+                </div>
+                <div style="padding:32px;">
+                  <h2 style="color:#1a1a1a;margin-top:0;">Site Visit Confirmed</h2>
+                  <p style="color:#444;line-height:1.6;">Hi ${lead.name},</p>
+                  <p style="color:#444;line-height:1.6;">Your site visit has been confirmed for:</p>
+                  <div style="background:#f5f5f5;border-left:4px solid #d97706;padding:16px 20px;margin:20px 0;">
+                    <strong style="font-size:16px;color:#1a1a1a;">${visitFormatted} (Central Time)</strong>
+                  </div>
+                  <p style="color:#444;line-height:1.6;">Jon will be on-site to walk the property and discuss the scope of work. If anything comes up before then, call or text: <strong><a href="tel:6154064819" style="color:#d97706;">615-406-4819</a></strong></p>
+                  <hr style="border:none;border-top:1px solid #eee;margin:28px 0;">
+                  <p style="color:#888;font-size:12px;margin:0;">Noland Earthworks, LLC &mdash; Vanleer, TN &mdash; <a href="https://nolandearthworks.com" style="color:#d97706;">nolandearthworks.com</a></p>
+                </div>
+              </div>
+            `,
+          }).catch((e: unknown) => console.error("[Ops] Visit confirmation email failed:", e));
+        }
+      }
+
+      return { success: true, visitConfirmedAt: now };
     }),
 
   convertToJob: ownerProcedure
@@ -1063,6 +1124,28 @@ const blackoutDatesRouter = router({
     }),
 });
 
+// ─── Recurring Blackout Days Router ────────────────────────────────────────────────
+const recurringBlackoutRouter = router({
+  list: ownerProcedure.query(async () => {
+    return getRecurringBlackoutDays();
+  }),
+  add: ownerProcedure
+    .input(z.object({
+      dayOfWeek: z.number().int().min(0).max(6),
+      label: z.string().optional(),
+    }))
+    .mutation(async ({ input }) => {
+      await addRecurringBlackoutDay(input.dayOfWeek, input.label);
+      return { success: true };
+    }),
+  remove: ownerProcedure
+    .input(z.object({ id: z.number() }))
+    .mutation(async ({ input }) => {
+      await removeRecurringBlackoutDay(input.id);
+      return { success: true };
+    }),
+});
+
 // ─── Combined Ops Router ──────────────────────────────────────────────────────
 export const opsRouter = router({
   jobs: jobsRouter,
@@ -1076,4 +1159,5 @@ export const opsRouter = router({
   distanceQuotes: distanceQuotesRouter,
   settings: settingsRouter,
   blackoutDates: blackoutDatesRouter,
+  recurringBlackout: recurringBlackoutRouter,
 });
