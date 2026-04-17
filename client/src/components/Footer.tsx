@@ -3,8 +3,12 @@
  * Company info, contact, social links, legal
  */
 import { Phone, Mail, Facebook, Instagram, Youtube } from "lucide-react";
+import { useAuth } from "@/_core/hooks/useAuth";
+import { getLoginUrl } from "@/const";
 
 export default function Footer() {
+  const { isAuthenticated } = useAuth();
+
   const scrollTo = (href: string) => {
     const el = document.querySelector(href);
     if (el) el.scrollIntoView({ behavior: "smooth" });
@@ -254,7 +258,7 @@ export default function Footer() {
           >
             © 2026 Noland Earthworks, LLC. All rights reserved. Licensed &amp; Insured.
           </p>
-          <div className="flex gap-4">
+          <div className="flex gap-4 items-center">
             {[
               { label: "Terms of Service", href: "/terms-of-service" },
               { label: "Privacy Policy", href: "/privacy-policy" },
@@ -274,6 +278,40 @@ export default function Footer() {
                 {l.label}
               </a>
             ))}
+            {/* Owner-only ops link */}
+            {isAuthenticated ? (
+              <a
+                href="/ops"
+                style={{
+                  fontFamily: "'Lato', sans-serif",
+                  fontWeight: 600,
+                  fontSize: "0.75rem",
+                  color: "rgba(224,123,42,0.7)",
+                  textDecoration: "none",
+                  letterSpacing: "0.04em",
+                  transition: "color 0.2s",
+                }}
+                onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.color = "#E07B2A"; }}
+                onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.color = "rgba(224,123,42,0.7)"; }}
+              >
+                Ops Dashboard
+              </a>
+            ) : (
+              <a
+                href={getLoginUrl("/ops")}
+                title="Owner login"
+                style={{
+                  fontFamily: "'Lato', sans-serif",
+                  fontSize: "0.75rem",
+                  color: "rgba(240,237,230,0.12)",
+                  textDecoration: "none",
+                  letterSpacing: "0.04em",
+                  userSelect: "none",
+                }}
+              >
+                &bull;
+              </a>
+            )}
           </div>
         </div>
       </div>

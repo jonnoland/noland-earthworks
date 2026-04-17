@@ -791,3 +791,6 @@
 - [x] Recurring blackout dates: update CostCalculator.tsx date picker to disable recurring blackout days
 - [x] Site visits map: new "Visits" map view in /ops/leads showing all leads with requestedVisitAt as pins
 - [x] Site visits map: pin click shows visitor name, visit date/time, service type
+
+## Owner-Only Ops Link — Apr 16 2026
+- [x] Add discreet owner-only link in the public site footer/navbar that navigates to /ops, visible only when logged in as owner
