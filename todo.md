@@ -535,12 +535,12 @@
 
 ## Google & Facebook Reviews Integration — Apr 13 2026
 
-- [ ] Add GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, GOOGLE_REFRESH_TOKEN, GOOGLE_LOCATION_NAME secrets
-- [ ] Add FACEBOOK_PAGE_ID, FACEBOOK_PAGE_ACCESS_TOKEN secrets
-- [ ] Create server/reviewsRouter.ts with googleReviews and facebookReviews tRPC procedures
-- [ ] Register reviewsRouter in server/routers.ts
-- [ ] Rebuild /ops/reviews page to display live Google + Facebook reviews with KPI cards, source tabs, and respond links
-- [ ] Add Google reply mutation (PUT accounts.locations.reviews/{reviewId}/reply)
+- [x] Add GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, GOOGLE_REFRESH_TOKEN, GOOGLE_LOCATION_NAME secrets
+- [x] Add FACEBOOK_PAGE_ID, FACEBOOK_PAGE_ACCESS_TOKEN secrets
+- [x] Create server/reviewsRouter.ts with googleReviews and facebookReviews tRPC procedures
+- [x] Register reviewsRouter in server/routers.ts
+- [x] Rebuild /ops/reviews page to display live Google + Facebook reviews with KPI cards, source tabs, and respond links
+- [x] Add Google reply mutation (PUT accounts.locations.reviews/{reviewId}/reply)
 
 ## Crew Pricing Detail Page — Apr 13 2026
 

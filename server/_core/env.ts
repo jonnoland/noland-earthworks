@@ -17,4 +17,10 @@ export const ENV = {
   twilioAuthToken: process.env.TWILIO_AUTH_TOKEN ?? "",
   twilioFromNumber: process.env.TWILIO_FROM_NUMBER ?? "",
   ownerPhone: process.env.OWNER_PHONE ?? "",
+  // Google Places API — for fetching Google Business reviews (no approval required)
+  googlePlacesApiKey: process.env.GOOGLE_PLACES_API_KEY ?? "",
+  googlePlaceId: process.env.GOOGLE_PLACE_ID ?? "",
+  // Facebook Graph API — for fetching Facebook Page ratings
+  facebookPageId: process.env.FACEBOOK_PAGE_ID ?? "",
+  facebookPageAccessToken: process.env.FACEBOOK_PAGE_ACCESS_TOKEN ?? "",
 };
