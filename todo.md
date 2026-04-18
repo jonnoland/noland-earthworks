@@ -794,3 +794,29 @@
 
 ## Owner-Only Ops Link — Apr 16 2026
 - [x] Add discreet owner-only link in the public site footer/navbar that navigates to /ops, visible only when logged in as owner
+
+## Scheduled Agent Suite — Apr 17 2026
+- [x] Schema: add agentConfig and agentLog tables, push migration
+- [x] DB helpers: listAgentConfigs, upsertAgentConfig, getAgentLogs, getLastAgentRun, insertAgentLog
+- [x] Agent: lead_followup — emails leads with no response after 3 days (daily 8 AM CT)
+- [x] Agent: visit_reminder — emails lead 24h before scheduled site visit (daily 7 AM CT)
+- [x] Agent: review_request — emails customer 1 day after job marked complete (daily 9 AM CT)
+- [x] Agent: stale_lead_alert — notifies owner of leads idle 14+ days (Mondays 8:30 AM CT)
+- [x] Agent: daily_digest — emails owner morning summary of leads, visits, jobs, revenue (daily 6 AM CT)
+- [x] agentRouter.ts: list, setEnabled, getLogs, triggerRun tRPC procedures
+- [x] Settings > Agents tab: per-agent enable/disable toggle, Run Now button, last-run status, run history log
+- [x] node-cron wired into server startup for all 5 agents
+- [x] getAgentEnabled helper exported from agents.ts
+
+## Scheduled Agent Suite -- Apr 17 2026
+- [x] Schema: add agentConfig and agentLog tables, push migration
+- [x] DB helpers: listAgentConfigs, upsertAgentConfig, getAgentLogs, getLastAgentRun, insertAgentLog
+- [x] Agent: lead_followup -- emails leads with no response after 3 days (daily 8 AM CT)
+- [x] Agent: visit_reminder -- emails lead 24h before scheduled site visit (daily 7 AM CT)
+- [x] Agent: review_request -- emails customer 1 day after job marked complete (daily 9 AM CT)
+- [x] Agent: stale_lead_alert -- notifies owner of leads idle 14+ days (Mondays 8:30 AM CT)
+- [x] Agent: daily_digest -- emails owner morning summary of leads, visits, jobs, revenue (daily 6 AM CT)
+- [x] agentRouter.ts: list, setEnabled, getLogs, triggerRun tRPC procedures
+- [x] Settings > Agents tab: per-agent enable/disable toggle, Run Now button, last-run status, run history log
+- [x] node-cron wired into server startup for all 5 agents
+- [x] getAgentEnabled helper exported from agents.ts

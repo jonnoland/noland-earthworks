@@ -11,6 +11,15 @@ import { serveStatic, setupVite } from "./vite";
 import { prerenderMiddleware } from "../prerender";
 import { registerJobberRoutes } from "../jobberRoutes";
 import { startJobberTokenRefreshScheduler } from "../jobber";
+import cron from "node-cron";
+import {
+  runLeadFollowupAgent,
+  runVisitReminderAgent,
+  runReviewRequestAgent,
+  runStaleLeadAlertAgent,
+  runDailyDigestAgent,
+  getAgentEnabled,
+} from "../agents";
 import multer from "multer";
 import { storagePut } from "../storage";
 
@@ -45,6 +54,30 @@ async function startServer() {
   registerJobberRoutes(app);
   // Start background Jobber token refresh scheduler (checks every 5 min, refreshes if within 10 min of expiry)
   startJobberTokenRefreshScheduler();
+
+  // ── Scheduled Agents ──────────────────────────────────────────────────────
+  // Lead Follow-Up: every day at 8:00 AM CT
+  cron.schedule("0 8 * * *", async () => {
+    if (await getAgentEnabled("lead_followup")) await runLeadFollowupAgent();
+  }, { timezone: "America/Chicago" });
+  // Visit Reminder: every day at 7:00 AM CT
+  cron.schedule("0 7 * * *", async () => {
+    if (await getAgentEnabled("visit_reminder")) await runVisitReminderAgent();
+  }, { timezone: "America/Chicago" });
+  // Review Request: every day at 9:00 AM CT
+  cron.schedule("0 9 * * *", async () => {
+    if (await getAgentEnabled("review_request")) await runReviewRequestAgent();
+  }, { timezone: "America/Chicago" });
+  // Stale Lead Alert: every Monday at 8:30 AM CT
+  cron.schedule("30 8 * * 1", async () => {
+    if (await getAgentEnabled("stale_lead_alert")) await runStaleLeadAlertAgent();
+  }, { timezone: "America/Chicago" });
+  // Daily Digest: every day at 6:00 AM CT
+  cron.schedule("0 6 * * *", async () => {
+    if (await getAgentEnabled("daily_digest")) await runDailyDigestAgent();
+  }, { timezone: "America/Chicago" });
+  console.log("[Agents] 5 scheduled agents registered.");
+
   // Sitemap + robots.txt
   registerSitemapRoutes(app);
   // Bot prerendering — must come before Vite/static middleware

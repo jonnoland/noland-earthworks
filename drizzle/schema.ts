@@ -487,3 +487,35 @@ export const recurringBlackoutDays = mysqlTable("recurring_blackout_days", {
 });
 export type RecurringBlackoutDay = typeof recurringBlackoutDays.$inferSelect;
 export type InsertRecurringBlackoutDay = typeof recurringBlackoutDays.$inferInsert;
+
+// ─── Agent Config ─────────────────────────────────────────────────────────────
+/** Per-agent enable/disable toggle. One row per agentId, seeded on first run. */
+export const agentConfig = mysqlTable("agent_config", {
+  id: int("id").primaryKey().autoincrement(),
+  /** Unique machine-readable identifier, e.g. "lead_followup" */
+  agentId: varchar("agentId", { length: 80 }).notNull().unique(),
+  enabled: boolean("enabled").notNull().default(true),
+  /** JSON blob for agent-specific settings */
+  config: text("config"),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type AgentConfig = typeof agentConfig.$inferSelect;
+export type InsertAgentConfig = typeof agentConfig.$inferInsert;
+
+// ─── Agent Run Log ────────────────────────────────────────────────────────────
+/** Immutable record of every agent execution for the Agents dashboard. */
+export const agentLog = mysqlTable("agent_log", {
+  id: int("id").primaryKey().autoincrement(),
+  agentId: varchar("agentId", { length: 80 }).notNull(),
+  /** "success" | "error" | "skipped" */
+  status: varchar("status", { length: 20 }).notNull().default("success"),
+  /** Human-readable summary of what the agent did */
+  summary: text("summary"),
+  /** Number of records acted on */
+  actionsCount: int("actionsCount").notNull().default(0),
+  /** Full error message if status = "error" */
+  error: text("error"),
+  ranAt: timestamp("ranAt").defaultNow().notNull(),
+});
+export type AgentLog = typeof agentLog.$inferSelect;
+export type InsertAgentLog = typeof agentLog.$inferInsert;

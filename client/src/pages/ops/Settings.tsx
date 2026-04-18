@@ -15,7 +15,7 @@ import {
   Key, LogOut, Eye, EyeOff,
   UserPlus, Crown, Info, Plus, BookOpen, Zap, FileText,
   AlarmClock, CreditCard as CardIcon, BarChart2, Copy, RotateCcw,
-  Settings as SettingsIcon, CalendarOff, CalendarDays,
+  Settings as SettingsIcon, CalendarOff, CalendarDays, Bot, PlayCircle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -37,6 +37,7 @@ const tabs = [
   { id: "payments",             label: "Payments",             icon: CardIcon },
   { id: "billing",              label: "Billing",              icon: CreditCard },
   { id: "scheduling",           label: "Scheduling",           icon: CalendarOff },
+  { id: "agents",               label: "Agents",               icon: Bot },
 ];
 
 // ─── Shared helpers ───────────────────────────────────────────────────────────
@@ -1683,6 +1684,120 @@ function SchedulingTab() {
   );
 }
 
+// ─── Agents Tab ─────────────────────────────────────────────────────────────
+function AgentsTab() {
+  const { data: agents, isLoading, refetch } = trpc.agents.list.useQuery();
+  const setEnabled = trpc.agents.setEnabled.useMutation({ onSuccess: () => refetch() });
+  const triggerRun = trpc.agents.triggerRun.useMutation({
+    onSuccess: (_, vars) => {
+      toast.success(`Agent queued: ${vars.agentId.replace(/_/g, " ")}`);
+      setTimeout(() => refetch(), 3000);
+    },
+  });
+  const { data: logs } = trpc.agents.getLogs.useQuery({ limit: 30 });
+  const [expandedLog, setExpandedLog] = useState<string | null>(null);
+
+  const statusColor = (s: string) =>
+    s === "ok" ? "text-green-400" : s === "error" ? "text-red-400" : "text-amber-400";
+
+  return (
+    <div className="space-y-4">
+      <SettingsSection
+        title="Scheduled Agents"
+        description="Background agents that run automatically. Toggle any agent off to disable it. Use Run Now to trigger a manual run."
+      >
+        {isLoading ? (
+          <div className="flex items-center gap-2 text-xs text-muted-foreground py-4">
+            <Loader2 className="w-4 h-4 animate-spin" /> Loading agents...
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {(agents ?? []).map((agent) => (
+              <div key={agent.id} className="border border-border rounded-lg p-4 space-y-2">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <p className="text-sm font-semibold text-foreground">{agent.name}</p>
+                      <span className="text-[10px] font-mono bg-secondary px-1.5 py-0.5 rounded text-muted-foreground">{agent.schedule}</span>
+                      {agent.enabled ? (
+                        <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-green-500/15 text-green-400 border border-green-500/30">Enabled</span>
+                      ) : (
+                        <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-secondary text-muted-foreground border border-border">Disabled</span>
+                      )}
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-0.5">{agent.description}</p>
+                    {agent.lastRun && (
+                      <p className="text-[11px] text-muted-foreground mt-1">
+                        Last run: <span className={statusColor(agent.lastRun.status)}>{agent.lastRun.status.toUpperCase()}</span>
+                        {" — "}{new Date(agent.lastRun.ranAt).toLocaleString("en-US", { timeZone: "America/Chicago", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}
+                        {agent.lastRun.summary ? ` — ${agent.lastRun.summary}` : ""}
+                      </p>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <button
+                      onClick={() => triggerRun.mutate({ agentId: agent.id })}
+                      disabled={triggerRun.isPending}
+                      title="Run now"
+                      className="p-1.5 rounded-md hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
+                    >
+                      <PlayCircle className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={() => setEnabled.mutate({ agentId: agent.id, enabled: !agent.enabled })}
+                      className={cn(
+                        "shrink-0 w-10 h-5 rounded-full transition-colors relative",
+                        agent.enabled ? "bg-primary" : "bg-secondary border border-border"
+                      )}
+                    >
+                      <span className={cn(
+                        "absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform",
+                        agent.enabled ? "translate-x-5" : "translate-x-0.5"
+                      )} />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </SettingsSection>
+
+      <SettingsSection
+        title="Agent Run History"
+        description="Last 30 runs across all agents."
+      >
+        {!logs || logs.length === 0 ? (
+          <p className="text-xs text-muted-foreground py-2">No runs recorded yet.</p>
+        ) : (
+          <div className="space-y-1">
+            {logs.map((log) => (
+              <div key={log.id} className="border border-border rounded-md">
+                <button
+                  onClick={() => setExpandedLog(expandedLog === String(log.id) ? null : String(log.id))}
+                  className="w-full flex items-center gap-3 px-3 py-2 text-left hover:bg-secondary/30 transition-colors"
+                >
+                  <span className={cn("text-[10px] font-bold uppercase w-10 shrink-0", statusColor(log.status))}>{log.status}</span>
+                  <span className="text-xs text-muted-foreground font-mono shrink-0">{log.agentId.replace(/_/g, " ")}</span>
+                  <span className="text-xs text-foreground flex-1 truncate">{log.summary ?? ""}</span>
+                  <span className="text-[10px] text-muted-foreground shrink-0">
+                    {new Date(log.ranAt).toLocaleString("en-US", { timeZone: "America/Chicago", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}
+                  </span>
+                </button>
+                {expandedLog === String(log.id) && log.error && (
+                  <div className="px-3 pb-2">
+                    <pre className="text-[10px] text-red-400 bg-red-500/10 rounded p-2 overflow-x-auto whitespace-pre-wrap">{log.error}</pre>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </SettingsSection>
+    </div>
+  );
+}
+
 // ─── Main Settings page ───────────────────────────────────────────────────
 export default function Settings() {
   const [activeTab, setActiveTab] = useState("general");
@@ -1702,6 +1817,7 @@ export default function Settings() {
       case "payments":             return <PaymentsTab />;
       case "billing":              return <BillingTab />;
       case "scheduling":           return <SchedulingTab />;
+      case "agents":               return <AgentsTab />;
       default:                     return <GeneralTab />;
     }
   };

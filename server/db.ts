@@ -3,7 +3,7 @@ import { drizzle, type MySql2Database } from "drizzle-orm/mysql2";
 import {
   InsertJob, InsertOpsLead, InsertScheduleEntry, InsertUser,
   jobs, opsLeads, scheduleEntries, users, visitBlackoutDates, InsertVisitBlackoutDate,
-  recurringBlackoutDays
+  recurringBlackoutDays, agentConfig, agentLog
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
@@ -262,4 +262,63 @@ export async function getOpsLeadById(id: number) {
   if (!db) return null;
   const rows = await db.select().from(opsLeads).where(eq(opsLeads.id, id)).limit(1);
   return rows.length > 0 ? rows[0] : null;
+}
+
+// ─── Agent Config helpers ─────────────────────────────────────────────────────
+export async function getAgentConfig(agentId: string) {
+  const db = await getDb();
+  if (!db) return null;
+  const rows = await db.select().from(agentConfig).where(eq(agentConfig.agentId, agentId));
+  return rows[0] ?? null;
+}
+
+export async function upsertAgentConfig(agentId: string, enabled: boolean, config?: string) {
+  const db = await getDb();
+  if (!db) return;
+  await db.insert(agentConfig).values({ agentId, enabled, config: config ?? null })
+    .onDuplicateKeyUpdate({ set: { enabled, config: config ?? null } });
+}
+
+export async function listAgentConfigs() {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(agentConfig).orderBy(agentConfig.agentId);
+}
+
+// ─── Agent Log helpers ────────────────────────────────────────────────────────
+export async function insertAgentLog(data: {
+  agentId: string;
+  status: string;
+  summary?: string;
+  actionsCount?: number;
+  error?: string;
+}) {
+  const db = await getDb();
+  if (!db) return;
+  await db.insert(agentLog).values({
+    agentId: data.agentId,
+    status: data.status,
+    summary: data.summary ?? null,
+    actionsCount: data.actionsCount ?? 0,
+    error: data.error ?? null,
+  });
+}
+
+export async function getAgentLogs(agentId?: string, limit = 50) {
+  const db = await getDb();
+  if (!db) return [];
+  if (agentId) {
+    return db.select().from(agentLog).where(eq(agentLog.agentId, agentId)).orderBy(desc(agentLog.ranAt)).limit(limit);
+  }
+  return db.select().from(agentLog).orderBy(desc(agentLog.ranAt)).limit(limit);
+}
+
+export async function getLastAgentRun(agentId: string) {
+  const db = await getDb();
+  if (!db) return null;
+  const rows = await db.select().from(agentLog)
+    .where(eq(agentLog.agentId, agentId))
+    .orderBy(desc(agentLog.ranAt))
+    .limit(1);
+  return rows[0] ?? null;
 }
