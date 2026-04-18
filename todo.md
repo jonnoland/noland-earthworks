@@ -820,3 +820,8 @@
 - [x] Settings > Agents tab: per-agent enable/disable toggle, Run Now button, last-run status, run history log
 - [x] node-cron wired into server startup for all 5 agents
 - [x] getAgentEnabled helper exported from agents.ts
+
+## Three Agent Enhancements — Apr 17 2026
+- [ ] Daily digest agent: fetch real Jobber invoice/job revenue via Jobber GraphQL API and include in morning email
+- [ ] Stale lead agent: send Twilio SMS to owner phone when stale leads are found (in addition to existing email)
+- [ ] Request a Review button on completed job records in /ops/jobs — sends customer a direct Google review link via email

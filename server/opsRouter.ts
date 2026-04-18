@@ -68,6 +68,7 @@ const jobsRouter = router({
       crewDays: z.string().optional(),
       totalPrice: z.string().optional(),
       notes: z.string().optional(),
+      clientEmail: z.string().email().optional().or(z.literal("")),
       scheduledDate: z.date().optional(),
       completedDate: z.date().optional(),
     }))
@@ -107,6 +108,63 @@ const jobsRouter = router({
   delete: ownerProcedure
     .input(z.object({ id: z.number() }))
     .mutation(({ ctx, input }) => deleteJob(input.id, ctx.user.id)),
+  requestReview: ownerProcedure
+    .input(z.object({ id: z.number() }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+
+      const jobRows = await db.select().from(jobs)
+        .where(and(eq(jobs.id, input.id), eq(jobs.userId, ctx.user.id)))
+        .limit(1);
+      const job = jobRows[0];
+      if (!job) throw new TRPCError({ code: "NOT_FOUND", message: "Job not found" });
+
+      // Resolve client email: from job.clientEmail, or fall back to matching lead email
+      let clientEmail = job.clientEmail ?? null;
+      if (!clientEmail) {
+        const matchingLeads = await db.select().from(opsLeads)
+          .where(and(eq(opsLeads.userId, ctx.user.id), like(opsLeads.name, `%${job.client}%`)))
+          .limit(1);
+        clientEmail = matchingLeads[0]?.email ?? null;
+      }
+      if (!clientEmail) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "No client email on file. Edit the job to add one." });
+      }
+
+      const resend = getResend();
+      if (!resend) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Email service not configured" });
+
+      const bizRows = await db.select().from(businessSettings).limit(1);
+      const googleReviewUrl = bizRows[0]?.googleReviewUrl ?? "https://g.page/r/CcglMAMbtQInEBM/review";
+      const firstName = job.client.split(" ")[0];
+
+      await resend.emails.send({
+        from: "Noland Earthworks <noreply@nolandearthworks.com>",
+        to: clientEmail,
+        subject: "How did we do? Leave us a review",
+        html: `
+          <div style="font-family:'Georgia',serif;max-width:560px;margin:0 auto;color:#1a1a1a;line-height:1.7;">
+            <p>Hi ${firstName},</p>
+            <p>Thank you for trusting Noland Earthworks with your property. It was a pleasure working on the project.</p>
+            <p>If you were happy with the work, a Google review goes a long way for a small, veteran-owned business like ours. It only takes a minute:</p>
+            <p style="text-align:center;margin:1.5rem 0;">
+              <a href="${googleReviewUrl}"
+                 style="background:#c96e24;color:#fff;padding:0.75rem 1.75rem;border-radius:4px;text-decoration:none;font-weight:bold;font-family:sans-serif;">
+                Leave a Google Review
+              </a>
+            </p>
+            <p>If anything wasn't right, please call me directly at <a href="tel:6154064819" style="color:#c96e24;">615-406-4819</a> and I'll make it right.</p>
+            <p style="margin-top:2rem;">&mdash; Jon Noland<br><span style="font-size:0.85rem;color:#666;">Noland Earthworks, LLC &mdash; Veteran-Owned &amp; Operated</span></p>
+          </div>
+        `,
+      });
+
+      // Stamp the job so the button shows "Sent" state
+      await db.update(jobs).set({ reviewRequestSentAt: new Date() }).where(eq(jobs.id, input.id));
+
+      return { sent: true, to: clientEmail };
+    }),
 });
 
 // ─── Leads Router ─────────────────────────────────────────────────────────────

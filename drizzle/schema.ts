@@ -105,8 +105,12 @@ export const jobs = mysqlTable("jobs", {
   crewDays: decimal("crewDays", { precision: 8, scale: 2 }),
   totalPrice: decimal("totalPrice", { precision: 10, scale: 2 }),
   notes: text("notes"),
+  /** Client email — used for review request emails */
+  clientEmail: varchar("clientEmail", { length: 320 }),
   scheduledDate: timestamp("scheduledDate"),
   completedDate: timestamp("completedDate"),
+  /** Timestamp when a review request email was sent for this job */
+  reviewRequestSentAt: timestamp("reviewRequestSentAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });

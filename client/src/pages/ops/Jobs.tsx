@@ -9,7 +9,7 @@ import { useState } from "react";
 import {
   Briefcase, Plus, Search, Trash2, Edit3, ChevronDown,
   MapPin, Clock, DollarSign, Loader2, X,
-  RefreshCw, ExternalLink, AlertCircle,
+  RefreshCw, ExternalLink, AlertCircle, Star, CheckCircle2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -40,11 +40,13 @@ type JobType = typeof JOB_TYPE_OPTIONS[number];
 interface JobFormData {
   title: string; client: string; address: string; jobType: JobType;
   status: JobStatus; acres: string; crewDays: string; totalPrice: string; notes: string;
+  clientEmail: string;
 }
 
 const emptyForm: JobFormData = {
   title: "", client: "", address: "", jobType: "land_clearing",
   status: "estimate", acres: "", crewDays: "", totalPrice: "", notes: "",
+  clientEmail: "",
 };
 
 // ─── Jobber Jobs Section ─────────────────────────────────────────────────────────────
@@ -309,6 +311,10 @@ export default function Jobs() {
     onSuccess: () => { utils.ops.jobs.list.invalidate(); toast.success("Job deleted"); },
     onError: (e) => toast.error(e.message),
   });
+  const requestReview = trpc.ops.jobs.requestReview.useMutation({
+    onSuccess: (data) => { utils.ops.jobs.list.invalidate(); toast.success(`Review request sent to ${data.to}`); },
+    onError: (e) => toast.error(e.message),
+  });
 
   const openCreate = () => { setForm(emptyForm); setEditingId(null); setShowModal(true); };
   const openEdit = (job: typeof jobs[0]) => {
@@ -317,6 +323,7 @@ export default function Jobs() {
       jobType: job.jobType as JobType, status: job.status as JobStatus,
       acres: job.acres ?? "", crewDays: job.crewDays ?? "",
       totalPrice: job.totalPrice ?? "", notes: job.notes ?? "",
+      clientEmail: (job as any).clientEmail ?? "",
     });
     setEditingId(job.id);
     setShowModal(true);
@@ -430,6 +437,23 @@ export default function Jobs() {
                     {new Date(job.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
                   </span>
                   <div className="flex gap-1">
+                    {(job.status === "completed" || job.status === "invoiced" || job.status === "paid") && (
+                      (job as any).reviewRequestSentAt ? (
+                        <span className="flex items-center gap-1 text-[10px] text-green-400 px-1.5" title={`Review request sent ${new Date((job as any).reviewRequestSentAt).toLocaleDateString()}`}>
+                          <CheckCircle2 className="w-3.5 h-3.5" />
+                          Review Sent
+                        </span>
+                      ) : (
+                        <button
+                          onClick={() => requestReview.mutate({ id: job.id })}
+                          disabled={requestReview.isPending}
+                          title="Send Google review request to client"
+                          className="flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-semibold bg-amber-500/15 text-amber-400 hover:bg-amber-500/25 border border-amber-500/30 transition-colors disabled:opacity-50">
+                          {requestReview.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <Star className="w-3 h-3" />}
+                          Review
+                        </button>
+                      )
+                    )}
                     <button onClick={() => openEdit(job)} className="p-1.5 rounded-md hover:bg-secondary/80 text-muted-foreground hover:text-foreground transition-colors">
                       <Edit3 className="w-3.5 h-3.5" />
                     </button>
@@ -502,6 +526,11 @@ export default function Jobs() {
                 <div>
                   <label className="block text-xs font-medium text-muted-foreground mb-1">Total Price ($)</label>
                   <input type="number" step="100" value={form.totalPrice} onChange={e => setForm(f => ({ ...f, totalPrice: e.target.value }))} placeholder="0"
+                    className="w-full bg-secondary/50 border border-border rounded-md px-3 py-2 text-xs text-foreground outline-none focus:border-primary/50 placeholder:text-muted-foreground/40" />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-muted-foreground mb-1">Client Email</label>
+                  <input type="email" value={form.clientEmail} onChange={e => setForm(f => ({ ...f, clientEmail: e.target.value }))} placeholder="client@email.com"
                     className="w-full bg-secondary/50 border border-border rounded-md px-3 py-2 text-xs text-foreground outline-none focus:border-primary/50 placeholder:text-muted-foreground/40" />
                 </div>
                 <div className="col-span-2">
