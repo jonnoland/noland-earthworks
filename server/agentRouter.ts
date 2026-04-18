@@ -65,7 +65,7 @@ export const agentRouter = router({
   setEnabled: ownerProcedure
     .input(z.object({ agentId: z.string(), enabled: z.boolean() }))
     .mutation(async ({ input }: { input: { agentId: string; enabled: boolean } }) => {
-      await upsertAgentConfig(input.agentId, input.enabled);
+      await upsertAgentConfig(input.agentId, input.enabled, undefined);
       return { success: true };
     }),
 
@@ -95,5 +95,22 @@ export const agentRouter = router({
         insertAgentLog({ agentId: input.agentId, status: "error", error: String(err) });
       });
       return { queued: true };
+    }),
+
+  /** Get the SMS template for a specific agent (currently only stale_lead_alert). */
+  getSmsTemplate: ownerProcedure
+    .input(z.object({ agentId: z.string() }))
+    .query(async ({ input }: { input: { agentId: string } }) => {
+      const cfg = await listAgentConfigs();
+      const entry = cfg.find((c) => c.agentId === input.agentId);
+      return { template: (entry as any)?.smsTemplate ?? null };
+    }),
+
+  /** Save a custom SMS template for an agent. */
+  setSmsTemplate: ownerProcedure
+    .input(z.object({ agentId: z.string(), template: z.string().max(500) }))
+    .mutation(async ({ input }: { input: { agentId: string; template: string } }) => {
+      await upsertAgentConfig(input.agentId, undefined, input.template);
+      return { success: true };
     }),
 });

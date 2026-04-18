@@ -822,6 +822,11 @@
 - [x] getAgentEnabled helper exported from agents.ts
 
 ## Three Agent Enhancements — Apr 17 2026
-- [ ] Daily digest agent: fetch real Jobber invoice/job revenue via Jobber GraphQL API and include in morning email
-- [ ] Stale lead agent: send Twilio SMS to owner phone when stale leads are found (in addition to existing email)
-- [ ] Request a Review button on completed job records in /ops/jobs — sends customer a direct Google review link via email
+- [x] Daily digest agent: fetch real Jobber invoice/job revenue via Jobber GraphQL API and include in morning email
+- [x] Stale lead agent: send Twilio SMS to owner phone when stale leads are found (in addition to existing email)
+- [x] Request a Review button on completed job records in /ops/jobs — sends customer a direct Google review link via email
+
+## Agent UX Enhancements — Apr 18 2026
+- [ ] Send Now button in Agents tab for daily digest — manually triggers the agent via tRPC mutation
+- [ ] Customizable SMS template for stale lead agent — editable in Agents tab, supports {name} {stage} {days} {phone} tokens
+- [ ] Auto follow-up task after review request sent — creates a reminder task due in 7 days to check for the review

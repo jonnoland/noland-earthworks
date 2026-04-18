@@ -1685,6 +1685,8 @@ function SchedulingTab() {
 }
 
 // ─── Agents Tab ─────────────────────────────────────────────────────────────
+const DEFAULT_STALE_SMS = `Heads up: {name} ({stage}) has been quiet for {days} days. Phone: {phone}. Check in at nolandearthworks.com/ops/leads`;
+
 function AgentsTab() {
   const { data: agents, isLoading, refetch } = trpc.agents.list.useQuery();
   const setEnabled = trpc.agents.setEnabled.useMutation({ onSuccess: () => refetch() });
@@ -1696,6 +1698,14 @@ function AgentsTab() {
   });
   const { data: logs } = trpc.agents.getLogs.useQuery({ limit: 30 });
   const [expandedLog, setExpandedLog] = useState<string | null>(null);
+  const { data: smsData } = trpc.agents.getSmsTemplate.useQuery({ agentId: "stale_lead_alert" });
+  const [smsTemplate, setSmsTemplateLocal] = useState("");
+  const [smsSaved, setSmsSaved] = useState(false);
+  const saveSmsTemplate = trpc.agents.setSmsTemplate.useMutation({
+    onSuccess: () => { setSmsSaved(true); setTimeout(() => setSmsSaved(false), 2500); },
+  });
+  // Sync server value into local state once loaded
+  useEffect(() => { if (smsData?.template) setSmsTemplateLocal(smsData.template); }, [smsData]);
 
   const statusColor = (s: string) =>
     s === "ok" ? "text-green-400" : s === "error" ? "text-red-400" : "text-amber-400";
@@ -1761,6 +1771,37 @@ function AgentsTab() {
             ))}
           </div>
         )}
+      </SettingsSection>
+
+      <SettingsSection
+        title="Stale Lead Alert — SMS Template"
+        description="Customize the text message sent when stale leads are found. Tokens: {name} {stage} {days} {phone}"
+      >
+        <div className="space-y-2">
+          <textarea
+            className="w-full rounded-md border border-border bg-background text-sm text-foreground px-3 py-2 resize-none focus:outline-none focus:ring-1 focus:ring-primary"
+            rows={3}
+            value={smsTemplate || DEFAULT_STALE_SMS}
+            onChange={(e) => setSmsTemplateLocal(e.target.value)}
+            placeholder={DEFAULT_STALE_SMS}
+          />
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => saveSmsTemplate.mutate({ agentId: "stale_lead_alert", template: smsTemplate || DEFAULT_STALE_SMS })}
+              disabled={saveSmsTemplate.isPending}
+              className="px-3 py-1.5 rounded-md bg-primary text-primary-foreground text-xs font-semibold hover:bg-primary/90 transition-colors disabled:opacity-50"
+            >
+              {saveSmsTemplate.isPending ? "Saving..." : smsSaved ? "Saved" : "Save Template"}
+            </button>
+            <button
+              onClick={() => setSmsTemplateLocal(DEFAULT_STALE_SMS)}
+              className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+            >
+              Reset to default
+            </button>
+            <span className="text-[11px] text-muted-foreground ml-auto">{(smsTemplate || DEFAULT_STALE_SMS).length}/500 chars</span>
+          </div>
+        </div>
       </SettingsSection>
 
       <SettingsSection

@@ -361,24 +361,40 @@ export async function runStaleLeadAlertAgent() {
 
     await notifyOwner({ title: `${staleLeads.length} Stale Lead(s) Need Attention`, content });
 
-    // SMS alert to owner phone
+    // SMS alert to owner phone — uses custom template if set
     if (ENV.twilioAccountSid && ENV.twilioAuthToken && ENV.twilioFromNumber && ENV.ownerPhone) {
       try {
+        const cfg = await getAgentConfig(AGENT_ID);
+        const customTemplate = (cfg as any)?.smsTemplate ?? null;
+        const DEFAULT_TEMPLATE = `Noland Earthworks: {name} ({stage}) idle {days}d. Phone: {phone}. Check leads.`;
+        const template = customTemplate || DEFAULT_TEMPLATE;
+
         const twilio = await import("twilio");
         const client = twilio.default(ENV.twilioAccountSid, ENV.twilioAuthToken);
-        const smsBody = `Noland Earthworks: ${staleLeads.length} stale lead(s) need attention.\n` +
-          staleLeads.slice(0, 3).map(l => {
-            const days = Math.floor((Date.now() - new Date(l.updatedAt).getTime()) / 86_400_000);
-            return `${l.name} (${l.stage}, ${days}d idle)`;
-          }).join("\n") +
-          (staleLeads.length > 3 ? `\n...and ${staleLeads.length - 3} more.` : "") +
-          "\nView: nolandearthworks.com/ops/leads";
-        await client.messages.create({
-          body: smsBody,
-          from: ENV.twilioFromNumber,
-          to: ENV.ownerPhone,
-        });
-        console.log(`[Agent:${AGENT_ID}] SMS alert sent to owner.`);
+
+        // Send one SMS per stale lead (up to 3) using the template
+        const leadsToAlert = staleLeads.slice(0, 3);
+        for (const lead of leadsToAlert) {
+          const days = Math.floor((Date.now() - new Date(lead.updatedAt).getTime()) / 86_400_000);
+          const smsBody = template
+            .replace(/\{name\}/g, lead.name)
+            .replace(/\{stage\}/g, lead.stage)
+            .replace(/\{days\}/g, String(days))
+            .replace(/\{phone\}/g, lead.phone ?? "N/A");
+          await client.messages.create({
+            body: smsBody,
+            from: ENV.twilioFromNumber,
+            to: ENV.ownerPhone,
+          });
+        }
+        if (staleLeads.length > 3) {
+          await client.messages.create({
+            body: `...and ${staleLeads.length - 3} more stale lead(s). View: nolandearthworks.com/ops/leads`,
+            from: ENV.twilioFromNumber,
+            to: ENV.ownerPhone,
+          });
+        }
+        console.log(`[Agent:${AGENT_ID}] SMS alert(s) sent to owner for ${leadsToAlert.length} lead(s).`);
       } catch (smsErr) {
         console.warn(`[Agent:${AGENT_ID}] SMS alert failed:`, smsErr);
       }

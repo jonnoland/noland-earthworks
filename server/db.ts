@@ -3,7 +3,7 @@ import { drizzle, type MySql2Database } from "drizzle-orm/mysql2";
 import {
   InsertJob, InsertOpsLead, InsertScheduleEntry, InsertUser,
   jobs, opsLeads, scheduleEntries, users, visitBlackoutDates, InsertVisitBlackoutDate,
-  recurringBlackoutDays, agentConfig, agentLog
+  recurringBlackoutDays, agentConfig, agentLog, ownerTasks, InsertOwnerTask
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
@@ -272,11 +272,24 @@ export async function getAgentConfig(agentId: string) {
   return rows[0] ?? null;
 }
 
-export async function upsertAgentConfig(agentId: string, enabled: boolean, config?: string) {
+export async function upsertAgentConfig(agentId: string, enabled?: boolean, smsTemplate?: string) {
   const db = await getDb();
   if (!db) return;
-  await db.insert(agentConfig).values({ agentId, enabled, config: config ?? null })
-    .onDuplicateKeyUpdate({ set: { enabled, config: config ?? null } });
+  const existing = await db.select().from(agentConfig).where(eq(agentConfig.agentId, agentId));
+  if (existing.length === 0) {
+    await db.insert(agentConfig).values({
+      agentId,
+      enabled: enabled ?? true,
+      smsTemplate: smsTemplate ?? null,
+    });
+  } else {
+    const updates: Record<string, unknown> = {};
+    if (enabled !== undefined) updates.enabled = enabled;
+    if (smsTemplate !== undefined) updates.smsTemplate = smsTemplate;
+    if (Object.keys(updates).length > 0) {
+      await db.update(agentConfig).set(updates).where(eq(agentConfig.agentId, agentId));
+    }
+  }
 }
 
 export async function listAgentConfigs() {
@@ -321,4 +334,37 @@ export async function getLastAgentRun(agentId: string) {
     .orderBy(desc(agentLog.ranAt))
     .limit(1);
   return rows[0] ?? null;
+}
+
+// ─── Owner Tasks helpers ──────────────────────────────────────────────────────
+export async function insertOwnerTask(data: InsertOwnerTask) {
+  const db = await getDb();
+  if (!db) return null;
+  const [result] = await db.insert(ownerTasks).values(data);
+  return result;
+}
+
+export async function listOwnerTasks(includeCompleted = false) {
+  const db = await getDb();
+  if (!db) return [];
+  if (includeCompleted) {
+    return db.select().from(ownerTasks).orderBy(ownerTasks.dueAt);
+  }
+  return db.select().from(ownerTasks)
+    .where(eq(ownerTasks.completed, false))
+    .orderBy(ownerTasks.dueAt);
+}
+
+export async function completeOwnerTask(id: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(ownerTasks)
+    .set({ completed: true, completedAt: new Date() })
+    .where(eq(ownerTasks.id, id));
+}
+
+export async function deleteOwnerTask(id: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db.delete(ownerTasks).where(eq(ownerTasks.id, id));
 }

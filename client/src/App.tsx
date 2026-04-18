@@ -24,6 +24,7 @@ import OpsTimesheets from "./pages/ops/Timesheets";
 import OpsScoreboard from "./pages/ops/Scoreboard";
 import OpsDistanceQuotes from "./pages/ops/DistanceQuotes";
 import OpsQuoteAnalytics from "./pages/ops/QuoteAnalytics";
+import OpsTasksPage from "./pages/ops/Tasks";
 import Home from "./pages/Home";
 import SMSWidget from "./components/SMSWidget";
 import LandClearingPage from "./pages/LandClearing";
@@ -201,6 +202,9 @@ function Router() {
       </Route>
       <Route path="/ops/scoreboard">
         <OwnerRoute><OpsScoreboard /></OwnerRoute>
+      </Route>
+      <Route path="/ops/tasks">
+        <OwnerRoute><OpsTasksPage /></OwnerRoute>
       </Route>
       <Route path="/ops/distance-quotes/analytics">
         <OwnerRoute><OpsQuoteAnalytics /></OwnerRoute>

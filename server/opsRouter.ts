@@ -14,7 +14,7 @@ import {
   getScheduleEntries, createScheduleEntry, updateScheduleEntry, deleteScheduleEntry,
   getVisitBlackoutDates, addVisitBlackoutDate, removeVisitBlackoutDate,
   getRecurringBlackoutDays, addRecurringBlackoutDay, removeRecurringBlackoutDay,
-  getOpsLeadById,
+  getOpsLeadById, insertOwnerTask,
 } from "./db";
 import { Resend } from "resend";
 import { jobs, opsLeads, quoteSubmissions, crews, crewMembers, conversations, messages, reviews, timeEntries, distanceQuotes, businessSettings, automationSettings, serviceCatalog, messageTemplates, reminderRules, leadNotes, visitBlackoutDates, recurringBlackoutDays } from "../drizzle/schema";
@@ -162,6 +162,17 @@ const jobsRouter = router({
 
       // Stamp the job so the button shows "Sent" state
       await db.update(jobs).set({ reviewRequestSentAt: new Date() }).where(eq(jobs.id, input.id));
+
+      // Auto-create a follow-up task due in 7 days to check for the review
+      const dueAt = new Date();
+      dueAt.setDate(dueAt.getDate() + 7);
+      await insertOwnerTask({
+        title: `Check for Google review — ${job.client}`,
+        description: `A review request was sent to ${clientEmail} on ${new Date().toLocaleDateString("en-US")}. Check Google to see if they left a review.`,
+        relatedType: "job",
+        relatedId: job.id,
+        dueAt,
+      });
 
       return { sent: true, to: clientEmail };
     }),
@@ -1205,6 +1216,32 @@ const recurringBlackoutRouter = router({
 });
 
 // ─── Combined Ops Router ──────────────────────────────────────────────────────
+// ─── Tasks Router ─────────────────────────────────────────────────────────────
+const tasksRouter = router({
+  list: ownerProcedure
+    .input(z.object({ includeCompleted: z.boolean().default(false) }))
+    .query(async ({ input }) => {
+      const { listOwnerTasks } = await import("./db");
+      return listOwnerTasks(input.includeCompleted);
+    }),
+
+  complete: ownerProcedure
+    .input(z.object({ id: z.number() }))
+    .mutation(async ({ input }) => {
+      const { completeOwnerTask } = await import("./db");
+      await completeOwnerTask(input.id);
+      return { success: true };
+    }),
+
+  delete: ownerProcedure
+    .input(z.object({ id: z.number() }))
+    .mutation(async ({ input }) => {
+      const { deleteOwnerTask } = await import("./db");
+      await deleteOwnerTask(input.id);
+      return { success: true };
+    }),
+});
+
 export const opsRouter = router({
   jobs: jobsRouter,
   leads: leadsRouter,
@@ -1218,4 +1255,5 @@ export const opsRouter = router({
   settings: settingsRouter,
   blackoutDates: blackoutDatesRouter,
   recurringBlackout: recurringBlackoutRouter,
+  tasks: tasksRouter,
 });

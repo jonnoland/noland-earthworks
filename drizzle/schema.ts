@@ -492,6 +492,28 @@ export const recurringBlackoutDays = mysqlTable("recurring_blackout_days", {
 export type RecurringBlackoutDay = typeof recurringBlackoutDays.$inferSelect;
 export type InsertRecurringBlackoutDay = typeof recurringBlackoutDays.$inferInsert;
 
+// ─── Owner Tasks ─────────────────────────────────────────────────────────────
+/** Reminder tasks for Jon — auto-created by agents or manually. */
+export const ownerTasks = mysqlTable("owner_tasks", {
+  id: int("id").primaryKey().autoincrement(),
+  /** Short title shown in the task list */
+  title: varchar("title", { length: 255 }).notNull(),
+  /** Optional longer description */
+  description: text("description"),
+  /** Related entity type, e.g. "job", "lead" */
+  relatedType: varchar("relatedType", { length: 50 }),
+  /** Related entity ID */
+  relatedId: int("relatedId"),
+  /** UTC timestamp when the task is due */
+  dueAt: timestamp("dueAt").notNull(),
+  /** Whether the task has been completed */
+  completed: boolean("completed").notNull().default(false),
+  completedAt: timestamp("completedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type OwnerTask = typeof ownerTasks.$inferSelect;
+export type InsertOwnerTask = typeof ownerTasks.$inferInsert;
+
 // ─── Agent Config ─────────────────────────────────────────────────────────────
 /** Per-agent enable/disable toggle. One row per agentId, seeded on first run. */
 export const agentConfig = mysqlTable("agent_config", {
@@ -501,6 +523,8 @@ export const agentConfig = mysqlTable("agent_config", {
   enabled: boolean("enabled").notNull().default(true),
   /** JSON blob for agent-specific settings */
   config: text("config"),
+  /** Custom SMS message template — supports {name} {stage} {days} {phone} tokens */
+  smsTemplate: text("smsTemplate"),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
 export type AgentConfig = typeof agentConfig.$inferSelect;

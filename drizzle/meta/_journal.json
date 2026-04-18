@@ -134,6 +134,20 @@
       "when": 1776483982912,
       "tag": "0018_robust_newton_destine",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "5",
+      "when": 1776484603446,
+      "tag": "0019_mature_cyclops",
+      "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "5",
+      "when": 1776484711515,
+      "tag": "0020_supreme_guardian",
+      "breakpoints": true
     }
   ]
 }
