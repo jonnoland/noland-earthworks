@@ -221,6 +221,67 @@ export default function ServicesSection() {
             <ServiceCard key={s.title} {...s} index={i} />
           ))}
         </div>
+
+        {/* Add-On Services */}
+        <div style={{ marginTop: "3rem" }}>
+          <div style={{
+            fontFamily: "'Oswald', sans-serif", fontWeight: 600,
+            fontSize: "0.65rem", letterSpacing: "0.18em", textTransform: "uppercase",
+            color: "rgba(240,237,230,0.4)", marginBottom: "1rem",
+          }}>
+            Add-On Services
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            {[
+              { title: "Post-Clear Seeding", desc: "Erosion control and ground cover seeding immediately after clearing.", href: "/services/post-clear-seeding" },
+              { title: "Fence Line Clearing", desc: "Reclaim overgrown boundaries — priced per linear foot, same mobilization.", href: "/services/fence-line-clearing" },
+              { title: "Mulch Redistribution", desc: "Uniform mulch finish after forestry mulching — drainage channels, buffers, bare spots.", href: "/services/mulch-redistribution" },
+              { title: "Selective Clearing", desc: "Pre-job walkthrough to flag trees for preservation and mark clearing boundaries.", href: "/services/selective-clearing" },
+            ].map((addon) => (
+              <a
+                key={addon.title}
+                href={addon.href}
+                style={{
+                  display: "block", padding: "1.1rem 1.25rem",
+                  backgroundColor: "rgba(255,255,255,0.03)",
+                  border: "1px solid rgba(255,255,255,0.08)",
+                  borderRadius: "4px", textDecoration: "none",
+                  transition: "border-color 0.2s ease, background-color 0.2s ease",
+                }}
+                onMouseEnter={(e) => {
+                  (e.currentTarget as HTMLAnchorElement).style.borderColor = "rgba(224,123,42,0.45)";
+                  (e.currentTarget as HTMLAnchorElement).style.backgroundColor = "rgba(224,123,42,0.05)";
+                }}
+                onMouseLeave={(e) => {
+                  (e.currentTarget as HTMLAnchorElement).style.borderColor = "rgba(255,255,255,0.08)";
+                  (e.currentTarget as HTMLAnchorElement).style.backgroundColor = "rgba(255,255,255,0.03)";
+                }}
+              >
+                <div style={{
+                  fontFamily: "'Oswald', sans-serif", fontWeight: 600,
+                  fontSize: "0.95rem", letterSpacing: "0.04em", textTransform: "uppercase",
+                  color: "#F0EDE6", marginBottom: "0.4rem",
+                }}>
+                  {addon.title}
+                </div>
+                <p style={{
+                  fontFamily: "'Lato', sans-serif", fontSize: "0.8rem",
+                  lineHeight: 1.55, color: "rgba(240,237,230,0.55)", margin: 0,
+                }}>
+                  {addon.desc}
+                </p>
+                <div style={{
+                  marginTop: "0.65rem",
+                  fontFamily: "'Oswald', sans-serif", fontWeight: 500,
+                  fontSize: "0.7rem", letterSpacing: "0.1em", textTransform: "uppercase",
+                  color: "#E07B2A",
+                }}>
+                  Learn More
+                </div>
+              </a>
+            ))}
+          </div>
+        </div>
       </div>
     </section>
   );

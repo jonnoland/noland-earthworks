@@ -16,6 +16,10 @@ const serviceLinks = [
   { label: "Vegetation Management", href: "/services/vegetation-management" },
   { label: "Right-of-Way Clearing", href: "/services/right-of-way-clearing" },
   { label: "Property Maintenance", href: "/services/property-maintenance" },
+  { label: "Post-Clear Seeding", href: "/services/post-clear-seeding", isAddon: true },
+  { label: "Fence Line Clearing", href: "/services/fence-line-clearing", isAddon: true },
+  { label: "Mulch Redistribution", href: "/services/mulch-redistribution", isAddon: true },
+  { label: "Selective Clearing", href: "/services/selective-clearing", isAddon: true },
 ];
 
 export default function Navbar() {
@@ -138,7 +142,7 @@ export default function Navbar() {
                       boxShadow: "0 8px 32px rgba(0,0,0,0.5)",
                     }}
                   >
-                    {serviceLinks.map((s) => (
+                    {serviceLinks.filter((s) => !(s as any).isAddon).map((s) => (
                       <a
                         key={s.href}
                         href={s.href}
@@ -159,6 +163,45 @@ export default function Navbar() {
                         }}
                         onMouseLeave={(e) => {
                           e.currentTarget.style.color = "rgba(240,237,230,0.75)";
+                          e.currentTarget.style.backgroundColor = "transparent";
+                        }}
+                      >
+                        {s.label}
+                      </a>
+                    ))}
+                    {/* Add-Ons divider */}
+                    <div style={{
+                      padding: "0.4rem 1rem 0.25rem",
+                      fontFamily: "'Oswald', sans-serif",
+                      fontSize: "0.6rem", letterSpacing: "0.15em",
+                      textTransform: "uppercase",
+                      color: "rgba(240,237,230,0.3)",
+                      borderTop: "1px solid rgba(255,255,255,0.08)",
+                      marginTop: "0.25rem",
+                    }}>
+                      Add-Ons
+                    </div>
+                    {serviceLinks.filter((s) => (s as any).isAddon).map((s) => (
+                      <a
+                        key={s.href}
+                        href={s.href}
+                        className="block px-4 py-2.5 transition-colors duration-150"
+                        style={{
+                          fontFamily: "'Oswald', sans-serif",
+                          fontWeight: 400,
+                          fontSize: "0.8rem",
+                          letterSpacing: "0.06em",
+                          textTransform: "uppercase",
+                          color: "rgba(240,237,230,0.6)",
+                          textDecoration: "none",
+                          borderBottom: "1px solid rgba(255,255,255,0.04)",
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.color = "#E07B2A";
+                          e.currentTarget.style.backgroundColor = "rgba(224,123,42,0.06)";
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.color = "rgba(240,237,230,0.6)";
                           e.currentTarget.style.backgroundColor = "transparent";
                         }}
                       >

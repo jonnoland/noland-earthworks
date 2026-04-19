@@ -946,12 +946,12 @@
 - [x] /ops/pricing PricingBenchmarksCard: add fallback rows for Stump Grinding and Debris Hauling
 
 ## Add-On Services Expansion — Apr 19 2026
-- [ ] Pricing.tsx: add Post-Clear Seeding / Erosion Control service entry
-- [ ] Pricing.tsx: add Fence Line Clearing service entry
-- [ ] Pricing.tsx: add Mulch Redistribution / Ground Cover Application service entry
-- [ ] Pricing.tsx: add Selective Clearing / Tree Preservation Consultation service entry
-- [ ] ServicesSection.tsx: add all four new services to the homepage services grid
-- [ ] Navbar serviceLinks: add new services to the Services dropdown
+- [x] Pricing.tsx: add Post-Clear Seeding / Erosion Control service entry
+- [x] Pricing.tsx: add Fence Line Clearing service entry
+- [x] Pricing.tsx: add Mulch Redistribution / Ground Cover Application service entry
+- [x] Pricing.tsx: add Selective Clearing / Tree Preservation Consultation service entry
+- [x] ServicesSection.tsx: add all four new services to the homepage services grid (Add-On Services row below main 2x2 grid)
+- [x] Navbar serviceLinks: add new services to the Services dropdown (with Add-Ons divider)
 - [x] Quote.tsx: add add-on services checkbox group (Post-Clear Seeding, Fence Line Clearing, Mulch Redistribution, Selective Clearing Consultation)
 - [x] Quote.tsx: include selected add-ons in the quote submission payload, email, and DB (addOns column added to quote_submissions)
 
