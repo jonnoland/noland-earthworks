@@ -491,6 +491,73 @@ export const jobberRouter = router({
       return data.job ?? null;
     }),
 
+  /** Get job history: visits + invoices for the history timeline */
+  jobHistory: adminProcedure
+    .input(z.object({ id: z.string() }))
+    .query(async ({ input }) => {
+      const data = await jobberGraphQL(`
+        query GetJobHistory($id: EncodedId!) {
+          job(id: $id) {
+            id jobNumber
+            visits(first: 20) {
+              nodes {
+                id title startAt endAt isComplete
+                assignedUsers { nodes { id name } }
+              }
+            }
+            invoices(first: 10) {
+              nodes {
+                id invoiceNumber title invoiceStatus dueDate
+                amounts { total }
+              }
+            }
+          }
+        }
+      `, { id: input.id }) as any;
+      return data.job ?? null;
+    }),
+
+  /** Create a draft invoice for a Jobber job */
+  createInvoiceForJob: adminProcedure
+    .input(z.object({
+      jobId: z.string(),
+      message: z.string().optional(),
+    }))
+    .mutation(async ({ input }) => {
+      // Fetch job to get client ID and title
+      const jobData = await jobberGraphQL(`
+        query GetJobForInvoice($id: EncodedId!) {
+          job(id: $id) {
+            id jobNumber title
+            client { id }
+          }
+        }
+      `, { id: input.jobId }) as any;
+      const job = jobData.job;
+      if (!job) throw new TRPCError({ code: 'NOT_FOUND', message: 'Job not found' });
+
+      const invoiceData = await jobberGraphQL(`
+        mutation CreateInvoice($input: InvoiceCreateInput!) {
+          invoiceCreate(input: $input) {
+            invoice {
+              id invoiceNumber invoiceStatus
+            }
+            userErrors { message }
+          }
+        }
+      `, {
+        input: {
+          clientId: job.client.id,
+          jobId: input.jobId,
+          message: input.message ?? `Invoice for ${job.title ?? `Job #${job.jobNumber}`}`,
+        }
+      }) as any;
+
+      const errors = invoiceData?.invoiceCreate?.userErrors;
+      if (errors?.length) throw new TRPCError({ code: 'BAD_REQUEST', message: errors[0].message });
+      return invoiceData?.invoiceCreate?.invoice ?? null;
+    }),
+
   /** Get aggregated lead source breakdown (count per source) */
   getLeadSourceBreakdown: protectedProcedure.query(async () => {
     const db = await getDb();

@@ -13,6 +13,7 @@ import {
   RefreshCw, ExternalLink, AlertCircle,
   Phone, Mail, User, ChevronRight,
   Calendar, CheckCircle2, Clock,
+  FileText, History, Send,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -144,6 +145,8 @@ function DeleteJobModal({
 
 // ─── Job Detail Panel ─────────────────────────────────────────────────────────
 
+type DetailTab = "details" | "history";
+
 function JobDetailPanel({
   jobId,
   onClose,
@@ -153,10 +156,28 @@ function JobDetailPanel({
   onClose: () => void;
   onDelete: (job: any) => void;
 }) {
+  const [activeTab, setActiveTab] = useState<DetailTab>("details");
+  const [invoiceNote, setInvoiceNote] = useState("");
+  const [showInvoiceForm, setShowInvoiceForm] = useState(false);
+
   const { data: job, isLoading, error } = trpc.jobber.jobDetail.useQuery(
     { id: jobId },
     { retry: false }
   );
+
+  const { data: history, isLoading: historyLoading } = trpc.jobber.jobHistory.useQuery(
+    { id: jobId },
+    { enabled: activeTab === "history", retry: false }
+  );
+
+  const createInvoice = trpc.jobber.createInvoiceForJob.useMutation({
+    onSuccess: (inv) => {
+      toast.success(`Invoice #${inv?.invoiceNumber ?? ""} created in Jobber.`);
+      setShowInvoiceForm(false);
+      setInvoiceNote("");
+    },
+    onError: (e) => toast.error(e.message || "Failed to create invoice."),
+  });
 
   return (
     <>
@@ -168,21 +189,43 @@ function JobDetailPanel({
       {/* Panel */}
       <div className="fixed right-0 top-0 bottom-0 z-50 w-full max-w-md bg-card border-l border-border shadow-2xl flex flex-col overflow-hidden">
         {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-border shrink-0">
-          <div className="flex items-center gap-2">
-            <Briefcase className="w-4 h-4 text-primary" />
-            <span className="text-sm font-semibold text-foreground">
-              {isLoading ? "Loading..." : job ? `Job #${job.jobNumber ?? "—"}` : "Job Detail"}
-            </span>
-            {job?.jobStatus && <StatusBadge status={job.jobStatus} />}
+        <div className="shrink-0 border-b border-border">
+          <div className="flex items-center justify-between px-5 py-4">
+            <div className="flex items-center gap-2">
+              <Briefcase className="w-4 h-4 text-primary" />
+              <span className="text-sm font-semibold text-foreground">
+                {isLoading ? "Loading..." : job ? `Job #${job.jobNumber ?? "—"}` : "Job Detail"}
+              </span>
+              {job?.jobStatus && <StatusBadge status={job.jobStatus} />}
+            </div>
+            <button
+              onClick={onClose}
+              className="text-muted-foreground hover:text-foreground transition-colors p-1 rounded"
+              aria-label="Close"
+            >
+              <X className="w-4 h-4" />
+            </button>
           </div>
-          <button
-            onClick={onClose}
-            className="text-muted-foreground hover:text-foreground transition-colors p-1 rounded"
-            aria-label="Close"
-          >
-            <X className="w-4 h-4" />
-          </button>
+          {/* Tabs */}
+          {!isLoading && job && (
+            <div className="flex px-5 gap-1 pb-0">
+              {(["details", "history"] as DetailTab[]).map(tab => (
+                <button
+                  key={tab}
+                  onClick={() => setActiveTab(tab)}
+                  className={cn(
+                    "flex items-center gap-1.5 px-3 py-2 text-xs font-medium border-b-2 transition-colors",
+                    activeTab === tab
+                      ? "border-primary text-primary"
+                      : "border-transparent text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  {tab === "details" ? <FileText className="w-3 h-3" /> : <History className="w-3 h-3" />}
+                  {tab.charAt(0).toUpperCase() + tab.slice(1)}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Body */}
@@ -200,7 +243,102 @@ function JobDetailPanel({
             </div>
           )}
 
-          {!isLoading && job && (
+          {/* ── History Tab ── */}
+          {!isLoading && job && activeTab === "history" && (
+            <>
+              {historyLoading && (
+                <div className="flex items-center justify-center py-12">
+                  <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+                </div>
+              )}
+              {!historyLoading && history && (
+                <>
+                  {/* Visits timeline */}
+                  {(history as any).visits?.nodes?.length > 0 && (
+                    <div>
+                      <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-3">Visits</p>
+                      <div className="relative pl-4">
+                        <div className="absolute left-1.5 top-0 bottom-0 w-px bg-border" />
+                        {(history as any).visits.nodes.map((visit: any, i: number) => (
+                          <div key={visit.id} className="relative mb-4 last:mb-0">
+                            <div className={cn(
+                              "absolute -left-2.5 top-1.5 w-2 h-2 rounded-full border-2",
+                              visit.isComplete
+                                ? "bg-green-500 border-green-500"
+                                : "bg-blue-500 border-blue-500"
+                            )} />
+                            <div className="rounded-md bg-secondary/30 border border-border px-3 py-2.5 space-y-1">
+                              <div className="flex items-center justify-between gap-2">
+                                <span className="text-xs font-medium text-foreground">
+                                  {visit.title || `Visit ${i + 1}`}
+                                </span>
+                                <span className={cn(
+                                  "text-[10px] px-1.5 py-0.5 rounded-full",
+                                  visit.isComplete
+                                    ? "bg-green-500/15 text-green-400"
+                                    : "bg-blue-500/15 text-blue-400"
+                                )}>
+                                  {visit.isComplete ? "Complete" : "Scheduled"}
+                                </span>
+                              </div>
+                              <div className="text-[10px] text-muted-foreground">
+                                {visit.startAt ? new Date(visit.startAt).toLocaleString("en-US", {
+                                  month: "short", day: "numeric", year: "numeric",
+                                  hour: "numeric", minute: "2-digit",
+                                }) : "No date"}
+                                {visit.endAt && visit.endAt !== visit.startAt && (
+                                  <> – {new Date(visit.endAt).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}</>
+                                )}
+                              </div>
+                              {visit.assignedUsers?.nodes?.length > 0 && (
+                                <div className="text-[10px] text-muted-foreground">
+                                  Assigned: {visit.assignedUsers.nodes.map((u: any) => u.name).join(", ")}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Invoices */}
+                  {(history as any).invoices?.nodes?.length > 0 && (
+                    <div>
+                      <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-2">Invoices</p>
+                      <div className="space-y-2">
+                        {(history as any).invoices.nodes.map((inv: any) => (
+                          <div key={inv.id} className="flex items-center justify-between rounded-md bg-secondary/20 border border-border px-3 py-2.5">
+                            <div>
+                              <p className="text-xs font-medium text-foreground">
+                                Invoice #{inv.invoiceNumber}
+                              </p>
+                              <p className="text-[10px] text-muted-foreground">
+                                {inv.invoiceStatus?.replace(/_/g, " ")} · Due {formatDate(inv.dueDate)}
+                              </p>
+                            </div>
+                            <span className="text-xs font-semibold text-foreground">
+                              {formatMoney(inv.amounts?.total)}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {(history as any).visits?.nodes?.length === 0 &&
+                    (history as any).invoices?.nodes?.length === 0 && (
+                    <div className="flex flex-col items-center justify-center py-16 gap-3 text-center">
+                      <History className="w-8 h-8 text-muted-foreground/30" />
+                      <p className="text-xs text-muted-foreground">No history found for this job.</p>
+                    </div>
+                  )}
+                </>
+              )}
+            </>
+          )}
+
+          {!isLoading && job && activeTab === "details" && (
             <>
               {/* Title */}
               {job.title && (
@@ -375,18 +513,59 @@ function JobDetailPanel({
 
         {/* Footer actions */}
         {!isLoading && job && (
-          <div className="shrink-0 border-t border-border px-5 py-4">
+          <div className="shrink-0 border-t border-border px-5 py-4 space-y-3">
+            {/* Send Invoice inline form */}
+            {showInvoiceForm && (
+              <div className="rounded-lg bg-secondary/30 border border-border p-3 space-y-2">
+                <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Create Invoice in Jobber</p>
+                <textarea
+                  value={invoiceNote}
+                  onChange={e => setInvoiceNote(e.target.value)}
+                  placeholder="Optional message to client..."
+                  rows={2}
+                  className="w-full bg-secondary/50 border border-border rounded-md px-2.5 py-2 text-xs text-foreground outline-none focus:border-primary/50 resize-none placeholder:text-muted-foreground/40"
+                />
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setShowInvoiceForm(false)}
+                    className="flex-1 py-1.5 rounded-md text-xs text-muted-foreground bg-secondary/50 hover:bg-secondary transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={() => createInvoice.mutate({ jobId: job.id, message: invoiceNote || undefined })}
+                    disabled={createInvoice.isPending}
+                    className="flex-1 py-1.5 rounded-md text-xs font-semibold text-white bg-primary hover:bg-primary/90 transition-all disabled:opacity-50 flex items-center justify-center gap-1"
+                  >
+                    {createInvoice.isPending && <Loader2 className="w-3 h-3 animate-spin" />}
+                    Create Invoice
+                  </button>
+                </div>
+              </div>
+            )}
+
             <div className="flex items-center justify-between">
-              <button
-                onClick={() => {
-                  onDelete(job);
-                  onClose();
-                }}
-                className="flex items-center gap-1.5 text-xs text-red-400 hover:text-red-300 transition-colors"
-              >
-                <Trash2 className="w-3.5 h-3.5" />
-                Delete
-              </button>
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => {
+                    onDelete(job);
+                    onClose();
+                  }}
+                  className="flex items-center gap-1.5 text-xs text-red-400 hover:text-red-300 transition-colors"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  Delete
+                </button>
+                {!showInvoiceForm && (
+                  <button
+                    onClick={() => setShowInvoiceForm(true)}
+                    className="flex items-center gap-1.5 text-xs text-primary hover:text-primary/80 transition-colors"
+                  >
+                    <Send className="w-3.5 h-3.5" />
+                    Send Invoice
+                  </button>
+                )}
+              </div>
               <a
                 href="https://secure.getjobber.com/home"
                 target="_blank"

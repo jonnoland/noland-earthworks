@@ -921,3 +921,9 @@
 - [x] /ops/jobs: search by client name or job title
 - [x] /ops/jobs: clicking a job row opens job detail slide-out panel (same pattern as quotes/invoices)
 - [x] /ops/jobs: jobDetail tRPC procedure added to jobberRouter (line items, visits, client, property, instructions)
+
+## Schedule + Jobs Enhancements — Apr 19 2026
+- [x] /ops/schedule: fix calendar to show Jobber jobs (ACTIVE/QUOTE status) with startAt dates — not just local DB jobs
+- [x] /ops/jobs detail panel: add full job history section (visits timeline + invoices) via History tab
+- [ ] /ops/jobs: add map view tab showing locations of all active jobs (pins from property addresses)
+- [x] /ops/jobs detail panel: add "Send Invoice" button to quickly create/send an invoice for the job via Jobber
