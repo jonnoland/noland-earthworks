@@ -608,6 +608,77 @@ export const jobberRouter = router({
     return data.productsAndServices ?? { nodes: [], totalCount: 0 };
   }),
 
+  /** Create a new product/service in the Jobber catalog */
+  createJobberService: adminProcedure
+    .input(z.object({
+      name: z.string(),
+      description: z.string().optional(),
+      defaultUnitCost: z.number().optional(),
+      category: z.enum(["LABOR", "MATERIAL", "SERVICE", "EXPENSE"]).optional(),
+    }))
+    .mutation(async ({ input }) => {
+      const connected = await isJobberConnected();
+      if (!connected) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Jobber not connected" });
+      // Jobber API v2024-11-15 uses productOrServiceCreate
+      const data = await jobberGraphQL(`
+        mutation CreateProductOrService($input: ProductOrServiceCreateInput!) {
+          productOrServiceCreate(input: $input) {
+            productOrService {
+              id
+              name
+              defaultUnitCost
+            }
+            userErrors { message }
+          }
+        }
+      `, {
+        input: {
+          name: input.name,
+          description: input.description ?? "",
+          defaultUnitCost: input.defaultUnitCost ?? 0,
+          category: input.category ?? "SERVICE",
+          taxable: false,
+          visible: true,
+        }
+      }) as any;
+      const result = data?.productOrServiceCreate;
+      if (result?.userErrors?.length) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: result.userErrors[0].message });
+      }
+      return result?.productOrService ?? null;
+    }),
+
+  /** Update the defaultUnitCost of an existing Jobber product/service */
+  updateJobberServicePrice: adminProcedure
+    .input(z.object({
+      id: z.string(),
+      defaultUnitCost: z.number(),
+    }))
+    .mutation(async ({ input }) => {
+      const connected = await isJobberConnected();
+      if (!connected) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Jobber not connected" });
+      const data = await jobberGraphQL(`
+        mutation UpdateProductOrServicePrice($id: EncodedId!, $input: ProductOrServiceUpdateInput!) {
+          productOrServiceUpdate(id: $id, input: $input) {
+            productOrService {
+              id
+              name
+              defaultUnitCost
+            }
+            userErrors { message }
+          }
+        }
+      `, {
+        id: input.id,
+        input: { defaultUnitCost: input.defaultUnitCost }
+      }) as any;
+      const result = data?.productOrServiceUpdate;
+      if (result?.userErrors?.length) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: result.userErrors[0].message });
+      }
+      return result?.productOrService ?? null;
+    }),
+
   /** Get aggregated lead source breakdown (count per source) */
   getLeadSourceBreakdown: protectedProcedure.query(async () => {
     const db = await getDb();

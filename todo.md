@@ -976,3 +976,8 @@
 - [x] /ops/pricing: build ServiceHealthCard component that cross-references Jobber catalog prices vs website benchmark prices and flags discrepancies
 - [x] ServiceHealthCard: show per-service status (OK / Warning / Missing) with Jobber price, benchmark mid-market price, and variance %
 - [x] ServiceHealthCard: surface services in Jobber not on the website and services on the website not in Jobber
+
+## Service Health Card Enhancements — Apr 19 2026
+- [x] ServiceHealthCard: add "Sync All" button that updates all Jobber service prices to match benchmark mid-market rates
+- [x] ServiceHealthCard: add adjustable warning thresholds (underpriced % and overpriced %) via collapsible Thresholds panel with range sliders
+- [x] ServiceHealthCard: add "Create in Jobber" button on each "Missing in Jobber" row to auto-create the service in the Jobber catalog

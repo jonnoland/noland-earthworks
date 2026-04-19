@@ -1315,28 +1315,37 @@ function matchJobberToWebsite(jobberName: string) {
 }
 
 function ServiceHealthCard() {
-  const { data: jobberData, isLoading: jobberLoading } = trpc.jobber.getJobberServices.useQuery();
+  const utils = trpc.useUtils();
+  const { data: jobberData, isLoading: jobberLoading, refetch: refetchJobber } = trpc.jobber.getJobberServices.useQuery();
   const { data: benchmarks = [] } = trpc.agents.getPricingBenchmarks.useQuery();
+
+  // Adjustable thresholds (default: warn if >30% below or >50% above)
+  const [underpricedThreshold, setUnderpricedThreshold] = useState(30);
+  const [overpricedThreshold, setOverpricedThreshold] = useState(50);
+  const [showThresholds, setShowThresholds] = useState(false);
+
+  const [syncingAll, setSyncingAll] = useState(false);
+  const [syncResult, setSyncResult] = useState<string | null>(null);
+  const [creatingService, setCreatingService] = useState<string | null>(null);
+
+  const updatePriceMutation = trpc.jobber.updateJobberServicePrice.useMutation();
+  const createServiceMutation = trpc.jobber.createJobberService.useMutation();
 
   const jobberServices = jobberData?.nodes ?? [];
 
   // Build comparison rows
   const rows = WEBSITE_SERVICES.map(ws => {
-    // Find matching Jobber service
     const jobberMatch = jobberServices.find((js: any) =>
       ws.keywords.some(kw => js.name.toLowerCase().includes(kw))
     );
-
-    // Find matching benchmark
-    const benchmark = benchmarks.find((b: any) =>
+    const benchmark = (benchmarks as any[]).find((b: any) =>
       b.serviceType.toLowerCase().includes(ws.name.split(" ")[0].toLowerCase())
-    ) as any ?? null;
+    ) ?? null;
 
-    const jobberPrice = jobberMatch?.defaultUnitCost ?? null;
-    const benchmarkMid = benchmark?.midPerAcre ?? null;
+    const jobberPrice: number | null = jobberMatch?.defaultUnitCost ?? null;
+    const benchmarkMid: number | null = benchmark?.midPerAcre ?? null;
 
-    // Determine status
-    let status: "ok" | "warning" | "missing_jobber" | "missing_benchmark" = "ok";
+    let status: "ok" | "warning" | "missing_jobber" = "ok";
     let issue = "";
 
     if (!jobberMatch) {
@@ -1347,10 +1356,10 @@ function ServiceHealthCard() {
       issue = "Jobber service has no unit price set";
     } else if (benchmarkMid !== null) {
       const variance = ((jobberPrice - benchmarkMid) / benchmarkMid) * 100;
-      if (variance < -30) {
+      if (variance < -underpricedThreshold) {
         status = "warning";
         issue = `Jobber price is ${Math.abs(variance).toFixed(0)}% below market benchmark`;
-      } else if (variance > 50) {
+      } else if (variance > overpricedThreshold) {
         status = "warning";
         issue = `Jobber price is ${variance.toFixed(0)}% above market benchmark`;
       }
@@ -1359,15 +1368,57 @@ function ServiceHealthCard() {
     return { ws, jobberMatch, jobberPrice, benchmarkMid, status, issue };
   });
 
-  // Services in Jobber not matched to any website service
-  const unmatchedJobber = jobberServices.filter((js: any) =>
-    !matchJobberToWebsite(js.name)
-  );
-
+  const unmatchedJobber = jobberServices.filter((js: any) => !matchJobberToWebsite(js.name));
   const okCount = rows.filter(r => r.status === "ok").length;
   const warnCount = rows.filter(r => r.status === "warning").length;
   const missingCount = rows.filter(r => r.status === "missing_jobber").length;
   const totalIssues = warnCount + missingCount;
+
+  // Sync All: push benchmark mid prices to all matched Jobber services
+  async function handleSyncAll() {
+    setSyncingAll(true);
+    setSyncResult(null);
+    let updated = 0;
+    let skipped = 0;
+    for (const row of rows) {
+      if (row.jobberMatch && row.benchmarkMid !== null && row.benchmarkMid > 0) {
+        try {
+          await updatePriceMutation.mutateAsync({
+            id: row.jobberMatch.id,
+            defaultUnitCost: row.benchmarkMid,
+          });
+          updated++;
+        } catch {
+          skipped++;
+        }
+      } else {
+        skipped++;
+      }
+    }
+    await refetchJobber();
+    setSyncingAll(false);
+    setSyncResult(`Updated ${updated} service${updated !== 1 ? "s" : ""}${skipped > 0 ? `, ${skipped} skipped (no benchmark or not in Jobber)` : "."}`);
+  }
+
+  // Create in Jobber for a missing service
+  async function handleCreateInJobber(ws: typeof WEBSITE_SERVICES[0]) {
+    setCreatingService(ws.name);
+    try {
+      await createServiceMutation.mutateAsync({
+        name: ws.name,
+        description: `${ws.name} — ${ws.unit}`,
+        defaultUnitCost: ws.websiteLow,
+        category: "SERVICE",
+      });
+      await refetchJobber();
+      utils.jobber.getJobberServices.invalidate();
+    } catch (err: any) {
+      // Surface error briefly
+      setSyncResult(`Failed to create "${ws.name}": ${err?.message ?? "Unknown error"}`);
+    } finally {
+      setCreatingService(null);
+    }
+  }
 
   return (
     <div className="ops-card p-5">
@@ -1382,7 +1433,27 @@ function ServiceHealthCard() {
             Compares Jobber catalog prices against website public pricing
           </p>
         </div>
-        <div className="flex items-center gap-2 text-xs shrink-0">
+        <div className="flex items-center gap-2 text-xs shrink-0 flex-wrap justify-end">
+          {/* Threshold toggle */}
+          <button
+            onClick={() => setShowThresholds(v => !v)}
+            className="flex items-center gap-1 text-muted-foreground hover:text-foreground border border-border rounded px-2 py-1 transition-colors"
+            title="Adjust warning thresholds"
+          >
+            <Settings className="w-3 h-3" />
+            Thresholds
+          </button>
+          {/* Sync All button */}
+          <button
+            onClick={handleSyncAll}
+            disabled={syncingAll}
+            className="flex items-center gap-1 bg-amber-500/10 border border-amber-500/30 text-amber-400 hover:bg-amber-500/20 rounded px-2 py-1 transition-colors disabled:opacity-50"
+            title="Update all Jobber prices to match benchmark mid-market rates"
+          >
+            {syncingAll ? <Loader2 className="w-3 h-3 animate-spin" /> : <RefreshCw className="w-3 h-3" />}
+            Sync All
+          </button>
+          {/* Status badge */}
           {totalIssues === 0 ? (
             <span className="flex items-center gap-1 text-green-400 bg-green-500/10 border border-green-500/20 rounded-full px-2 py-0.5">
               <CheckCircle2 className="w-3 h-3" />
@@ -1396,6 +1467,50 @@ function ServiceHealthCard() {
           )}
         </div>
       </div>
+
+      {/* Sync result feedback */}
+      {syncResult && (
+        <div className="mb-3 text-xs px-3 py-2 rounded bg-secondary/60 text-muted-foreground border border-border">
+          {syncResult}
+        </div>
+      )}
+
+      {/* Adjustable thresholds panel */}
+      {showThresholds && (
+        <div className="mb-4 p-3 rounded-md bg-secondary/40 border border-border">
+          <p className="text-[11px] font-semibold text-muted-foreground mb-2">Warning Thresholds</p>
+          <div className="flex gap-6">
+            <div>
+              <label className="text-[11px] text-muted-foreground block mb-1">
+                Underpriced warning (% below benchmark)
+              </label>
+              <div className="flex items-center gap-2">
+                <input
+                  type="range" min={5} max={60} step={5}
+                  value={underpricedThreshold}
+                  onChange={e => setUnderpricedThreshold(Number(e.target.value))}
+                  className="w-28 accent-amber-500"
+                />
+                <span className="text-xs font-mono text-foreground w-8">{underpricedThreshold}%</span>
+              </div>
+            </div>
+            <div>
+              <label className="text-[11px] text-muted-foreground block mb-1">
+                Overpriced warning (% above benchmark)
+              </label>
+              <div className="flex items-center gap-2">
+                <input
+                  type="range" min={10} max={100} step={5}
+                  value={overpricedThreshold}
+                  onChange={e => setOverpricedThreshold(Number(e.target.value))}
+                  className="w-28 accent-amber-500"
+                />
+                <span className="text-xs font-mono text-foreground w-8">{overpricedThreshold}%</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {jobberLoading ? (
         <div className="flex items-center justify-center py-8 text-muted-foreground">
@@ -1432,21 +1547,18 @@ function ServiceHealthCard() {
                   status === "missing_jobber" && "bg-red-500/5 border border-red-500/10",
                 )}
               >
-                {/* Status icon */}
                 <div className="mt-0.5 shrink-0">
                   {status === "ok" && <CheckCircle2 className="w-3.5 h-3.5 text-green-400" />}
                   {status === "warning" && <AlertTriangle className="w-3.5 h-3.5 text-amber-400" />}
                   {status === "missing_jobber" && <AlertCircle className="w-3.5 h-3.5 text-red-400" />}
                 </div>
 
-                {/* Service name + issue */}
                 <div className="flex-1 min-w-0">
                   <div className="font-medium text-foreground text-xs">{ws.name}</div>
                   {issue && <div className="text-[11px] text-muted-foreground mt-0.5">{issue}</div>}
                 </div>
 
-                {/* Price columns */}
-                <div className="flex gap-4 text-right shrink-0">
+                <div className="flex items-center gap-3 text-right shrink-0">
                   <div>
                     <div className="text-[10px] text-muted-foreground">Jobber</div>
                     <div className="text-xs font-mono text-foreground">
@@ -1462,9 +1574,22 @@ function ServiceHealthCard() {
                     </div>
                   </div>
                   <div>
-                    <div className="text-[10px] text-muted-foreground">Website</div>
+                    <div className="text-[10px] text-muted-foreground">Unit</div>
                     <div className="text-[10px] text-muted-foreground/70">{ws.unit}</div>
                   </div>
+                  {/* Create in Jobber button for missing services */}
+                  {status === "missing_jobber" && (
+                    <button
+                      onClick={() => handleCreateInJobber(ws)}
+                      disabled={creatingService === ws.name}
+                      className="flex items-center gap-1 text-[11px] bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/20 rounded px-2 py-1 transition-colors disabled:opacity-50 whitespace-nowrap"
+                    >
+                      {creatingService === ws.name
+                        ? <Loader2 className="w-3 h-3 animate-spin" />
+                        : <Plus className="w-3 h-3" />}
+                      Create in Jobber
+                    </button>
+                  )}
                 </div>
               </div>
             ))}
