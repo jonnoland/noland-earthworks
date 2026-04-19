@@ -200,6 +200,12 @@ export default function Schedule() {
 
   const utils = trpc.useUtils();
   const { data: entries = [], isLoading } = trpc.ops.schedule.list.useQuery();
+  const { data: allJobs = [] } = trpc.ops.jobs.list.useQuery();
+
+  // Jobs with a scheduledDate — shown as amber banners on the calendar
+  const scheduledJobs = useMemo(() =>
+    allJobs.filter(j => j.scheduledDate && j.status !== "completed" && j.status !== "paid"),
+  [allJobs]);
 
   const createEntry = trpc.ops.schedule.create.useMutation({
     onSuccess: () => { utils.ops.schedule.list.invalidate(); toast.success("Entry added"); closeModal(); },
@@ -235,6 +241,23 @@ export default function Schedule() {
   }, [weekOffset]);
 
   const weekLabel = `${weekDays[0].label} – ${weekDays[5].label}`;
+
+  // Map job date ranges to day keys visible in the current week
+  const jobDayMap = useMemo(() => {
+    const map: Record<string, typeof scheduledJobs> = {};
+    for (const day of weekDays) map[day.key] = [];
+    for (const job of scheduledJobs) {
+      const start = new Date(job.scheduledDate!);
+      const end = (job as any).scheduledEndDate ? new Date((job as any).scheduledEndDate) : start;
+      for (const day of weekDays) {
+        const d = new Date(day.key + "T12:00:00");
+        if (d >= new Date(start.toDateString()) && d <= new Date(end.toDateString())) {
+          map[day.key].push(job);
+        }
+      }
+    }
+    return map;
+  }, [scheduledJobs, weekDays]);
 
   // Get unique crew names from entries + defaults
   const crewNames = useMemo(() => {
@@ -326,6 +349,31 @@ export default function Schedule() {
                   </tr>
                 </thead>
                 <tbody>
+                  {/* Scheduled jobs row — spans full width */}
+                  {weekDays.some(d => (jobDayMap[d.key] ?? []).length > 0) && (
+                    <tr className="border-b border-amber-500/20 bg-amber-500/5">
+                      <td className="px-4 py-2">
+                        <span className="text-[10px] font-semibold text-amber-400 uppercase tracking-wider">Jobs</span>
+                      </td>
+                      {weekDays.map(day => {
+                        const dayJobs = jobDayMap[day.key] ?? [];
+                        return (
+                          <td key={day.key} className={cn("px-2 py-2 align-top min-w-[110px]", day.key === today ? "bg-primary/5" : "")}>
+                            {dayJobs.length > 0 ? (
+                              <div className="space-y-1">
+                                {dayJobs.map(job => (
+                                  <div key={job.id} className="rounded-md border border-amber-500/40 bg-amber-500/15 px-2 py-1.5 text-[10px]">
+                                    <div className="font-semibold text-amber-300 truncate">{job.client}</div>
+                                    <div className="text-amber-400/70 capitalize">{job.jobType?.replace(/_/g, " ") ?? "clearing"}{job.acres ? ` · ${job.acres} ac` : ""}</div>
+                                  </div>
+                                ))}
+                              </div>
+                            ) : null}
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  )}
                   {crewNames.map((crew, ci) => (
                     <tr key={crew} className={cn("border-b border-border/50", ci % 2 === 0 ? "" : "bg-secondary/5")}>
                       <td className="px-4 py-3">

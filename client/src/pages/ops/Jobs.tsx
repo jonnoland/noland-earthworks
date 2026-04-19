@@ -41,12 +41,16 @@ interface JobFormData {
   title: string; client: string; address: string; jobType: JobType;
   status: JobStatus; acres: string; crewDays: string; totalPrice: string; notes: string;
   clientEmail: string;
+  scheduledDate: string;
+  scheduledEndDate: string;
 }
 
 const emptyForm: JobFormData = {
   title: "", client: "", address: "", jobType: "land_clearing",
   status: "estimate", acres: "", crewDays: "", totalPrice: "", notes: "",
   clientEmail: "",
+  scheduledDate: "",
+  scheduledEndDate: "",
 };
 
 // ─── Jobber Jobs Section ─────────────────────────────────────────────────────────────
@@ -324,6 +328,8 @@ export default function Jobs() {
       acres: job.acres ?? "", crewDays: job.crewDays ?? "",
       totalPrice: job.totalPrice ?? "", notes: job.notes ?? "",
       clientEmail: (job as any).clientEmail ?? "",
+      scheduledDate: job.scheduledDate ? new Date(job.scheduledDate).toISOString().slice(0, 10) : "",
+      scheduledEndDate: (job as any).scheduledEndDate ? new Date((job as any).scheduledEndDate).toISOString().slice(0, 10) : "",
     });
     setEditingId(job.id);
     setShowModal(true);
@@ -332,8 +338,13 @@ export default function Jobs() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (editingId !== null) updateJob.mutate({ id: editingId, ...form });
-    else createJob.mutate(form);
+    const payload = {
+      ...form,
+      scheduledDate: form.scheduledDate ? new Date(form.scheduledDate) : undefined,
+      scheduledEndDate: form.scheduledEndDate ? new Date(form.scheduledEndDate) : undefined,
+    };
+    if (editingId !== null) updateJob.mutate({ id: editingId, ...payload });
+    else createJob.mutate(payload);
   };
 
   const filtered = jobs.filter(j => {
@@ -532,6 +543,16 @@ export default function Jobs() {
                   <label className="block text-xs font-medium text-muted-foreground mb-1">Client Email</label>
                   <input type="email" value={form.clientEmail} onChange={e => setForm(f => ({ ...f, clientEmail: e.target.value }))} placeholder="client@email.com"
                     className="w-full bg-secondary/50 border border-border rounded-md px-3 py-2 text-xs text-foreground outline-none focus:border-primary/50 placeholder:text-muted-foreground/40" />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-muted-foreground mb-1">Scheduled Start</label>
+                  <input type="date" value={form.scheduledDate} onChange={e => setForm(f => ({ ...f, scheduledDate: e.target.value }))}
+                    className="w-full bg-secondary/50 border border-border rounded-md px-3 py-2 text-xs text-foreground outline-none focus:border-primary/50" />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-muted-foreground mb-1">Scheduled End</label>
+                  <input type="date" value={form.scheduledEndDate} onChange={e => setForm(f => ({ ...f, scheduledEndDate: e.target.value }))}
+                    className="w-full bg-secondary/50 border border-border rounded-md px-3 py-2 text-xs text-foreground outline-none focus:border-primary/50" />
                 </div>
                 <div className="col-span-2">
                   <label className="block text-xs font-medium text-muted-foreground mb-1">Notes</label>
