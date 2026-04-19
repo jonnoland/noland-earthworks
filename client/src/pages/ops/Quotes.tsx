@@ -3,8 +3,8 @@
  * Calls trpc.jobber.quotes to fetch quotes from Jobber CRM.
  * Clicking a row opens a slide-out detail panel with full quote info.
  */
-import { useState } from "react";
-import { Link } from "wouter";
+import { useState, useEffect } from "react";
+import { Link, useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Input } from "@/components/ui/input";
@@ -25,6 +25,7 @@ import {
   Mail,
   ChevronRight,
   User,
+  Briefcase,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -149,10 +150,27 @@ function QuoteDetailPanel({
   onClose: () => void;
   onDelete: (quote: any) => void;
 }) {
+  const utils = trpc.useUtils();
   const { data: quote, isLoading, error } = trpc.jobber.quoteDetail.useQuery(
     { id: quoteId },
     { retry: false }
   );
+
+  const convertToJob = trpc.jobber.quoteConvertToJob.useMutation({
+    onSuccess: (result) => {
+      if (result.success) {
+        toast.success("Quote converted to job in Jobber.");
+        utils.jobber.quotes.invalidate();
+        utils.jobber.jobs.invalidate();
+        onClose();
+      } else {
+        toast.error("Conversion failed. Check Jobber for details.");
+      }
+    },
+    onError: (err) => {
+      toast.error(err.message || "Failed to convert quote to job.");
+    },
+  });
 
   return (
     <>
@@ -334,26 +352,43 @@ function QuoteDetailPanel({
 
         {/* Footer actions */}
         {!isLoading && quote && (
-          <div className="shrink-0 border-t border-border px-5 py-4 flex items-center justify-between gap-3">
-            <button
-              onClick={() => {
-                onDelete(quote);
-                onClose();
-              }}
-              className="flex items-center gap-1.5 text-xs text-red-400 hover:text-red-300 transition-colors"
-            >
-              <Trash2 className="w-3.5 h-3.5" />
-              Delete
-            </button>
-            <a
-              href="https://secure.getjobber.com/home"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-primary transition-colors"
-            >
-              <ExternalLink className="w-3 h-3" />
-              Open in Jobber
-            </a>
+          <div className="shrink-0 border-t border-border px-5 py-4 space-y-2">
+            {/* Convert to Job — only show for APPROVED quotes */}
+            {(quote.quoteStatus === "APPROVED" || quote.quoteStatus === "SENT") && (
+              <button
+                onClick={() => convertToJob.mutate({ id: quoteId })}
+                disabled={convertToJob.isPending}
+                className="w-full flex items-center justify-center gap-2 py-2 rounded-md text-xs font-semibold text-white bg-primary hover:bg-primary/90 transition-colors disabled:opacity-50"
+              >
+                {convertToJob.isPending ? (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                ) : (
+                  <Briefcase className="w-3.5 h-3.5" />
+                )}
+                Convert to Job
+              </button>
+            )}
+            <div className="flex items-center justify-between">
+              <button
+                onClick={() => {
+                  onDelete(quote);
+                  onClose();
+                }}
+                className="flex items-center gap-1.5 text-xs text-red-400 hover:text-red-300 transition-colors"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                Delete
+              </button>
+              <a
+                href="https://secure.getjobber.com/home"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-primary transition-colors"
+              >
+                <ExternalLink className="w-3 h-3" />
+                Open in Jobber
+              </a>
+            </div>
           </div>
         )}
       </div>
@@ -366,7 +401,14 @@ function QuoteDetailPanel({
 export default function OpsQuotes() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("ALL");
-  const [selectedQuoteId, setSelectedQuoteId] = useState<string | null>(null);
+  const [selectedQuoteId, setSelectedQuoteId] = useState<string | null>(() => {
+    // Open a specific quote panel if ?quote=ID is in the URL
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      return params.get("quote");
+    }
+    return null;
+  });
   const [deleteTarget, setDeleteTarget] = useState<{
     id: string;
     quoteNumber?: number | null;

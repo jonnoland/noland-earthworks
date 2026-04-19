@@ -900,3 +900,8 @@
 - [x] Dashboard Quotes section: clicking a quote row routes to /ops/quotes
 - [x] /ops/quotes: add slide-out detail panel showing full quote details when a row is clicked
 - [x] /ops/quotes: add Jobber quote detail GraphQL query to jobberRouter (quoteDetail procedure)
+
+## Invoice Detail Panel + Quote Enhancements — Apr 19 2026
+- [x] /ops/invoices: add invoiceDetail Jobber query and slide-out detail panel (line items, amounts, payment history)
+- [x] /ops/quotes: add Convert to Job button in quote detail panel for approved/sent quotes
+- [x] /ops/quotes + Dashboard: add ?quote=ID URL param so dashboard quote cards open the specific quote detail panel

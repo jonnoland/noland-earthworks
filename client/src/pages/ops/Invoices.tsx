@@ -1,7 +1,7 @@
 /**
  * Ops Invoices page — live Jobber invoice data
  * Calls trpc.jobber.invoices to fetch invoices from Jobber CRM.
- * Shows a "Connect Jobber" banner when not connected.
+ * Clicking a row opens a slide-out detail panel with line items and amounts.
  * Supports per-row delete and bulk delete via checkboxes.
  */
 import { useState, useMemo } from "react";
@@ -20,51 +20,15 @@ import {
   TrendingDown,
   Trash2,
   Loader2,
+  X,
+  FileText,
+  MapPin,
+  Phone,
+  Mail,
+  ChevronRight,
 } from "lucide-react";
 import { toast } from "sonner";
-
-// ─── Payment Methods Badge ───────────────────────────────────────────────────
-
-function PaymentMethodsBadge() {
-  return (
-    <div className="flex items-center gap-3 px-4 py-2.5 rounded-lg border border-border bg-card">
-      {/* Card network logos using SVG icons */}
-      <div className="flex items-center gap-2">
-        {/* Visa */}
-        <div className="flex items-center justify-center h-6 px-2 rounded bg-[#1A1F71] text-white text-[10px] font-extrabold tracking-widest" style={{ fontFamily: 'serif', minWidth: '36px' }}>VISA</div>
-        {/* Mastercard */}
-        <div className="flex items-center justify-center h-6 w-9 rounded bg-[#252525]">
-          <svg viewBox="0 0 38 24" width="28" height="18" xmlns="http://www.w3.org/2000/svg">
-            <circle cx="13" cy="12" r="9" fill="#EB001B" />
-            <circle cx="25" cy="12" r="9" fill="#F79E1B" />
-            <path d="M19 5.4a9 9 0 0 1 0 13.2A9 9 0 0 1 19 5.4z" fill="#FF5F00" />
-          </svg>
-        </div>
-        {/* Amex */}
-        <div className="flex items-center justify-center h-6 px-1.5 rounded bg-[#2E77BC] text-white text-[8px] font-bold tracking-tight" style={{ minWidth: '40px' }}>AMEX</div>
-        {/* Discover */}
-        <div className="flex items-center justify-center h-6 px-1.5 rounded bg-white text-[#231F20] text-[8px] font-bold tracking-tight gap-0.5" style={{ minWidth: '44px' }}>
-          <span>DISCOVER</span>
-          <span className="inline-block w-2.5 h-2.5 rounded-full bg-[#F76F20] ml-0.5" />
-        </div>
-        {/* Apple Pay */}
-        <div className="flex items-center justify-center h-6 px-2 rounded bg-black text-white text-[9px] font-medium tracking-tight" style={{ minWidth: '52px' }}>
-          <svg viewBox="0 0 24 10" width="14" height="6" className="mr-0.5" xmlns="http://www.w3.org/2000/svg">
-            <path d="M4.5 0C3.4 0 2.5.9 2.5 2c0 .6.3 1.2.7 1.6-.4.1-.7.2-1 .4C1.5 4.5 1 5.3 1 6.2c0 1 .5 1.8 1.3 2.3.5.3 1.1.5 1.7.5.4 0 .8-.1 1.2-.2.3.1.7.2 1 .2.4 0 .8-.1 1.2-.2.4.1.8.2 1.2.2.6 0 1.2-.2 1.7-.5.8-.5 1.3-1.3 1.3-2.3 0-.9-.5-1.7-1.2-2.2-.3-.2-.6-.3-1-.4.4-.4.7-1 .7-1.6C9.1.9 8.2 0 7.1 0c-.5 0-1 .2-1.3.5C5.5.2 5 0 4.5 0z" fill="white"/>
-          </svg>
-          Pay
-        </div>
-        {/* Google Pay */}
-        <div className="flex items-center justify-center h-6 px-2 rounded bg-white border border-gray-200 text-[9px] font-medium tracking-tight gap-0.5" style={{ minWidth: '52px' }}>
-          <span style={{ color: '#4285F4' }}>G</span><span style={{ color: '#EA4335' }}>o</span><span style={{ color: '#FBBC05' }}>o</span><span style={{ color: '#4285F4' }}>g</span><span style={{ color: '#34A853' }}>l</span><span style={{ color: '#EA4335' }}>e</span>
-          <span className="ml-0.5 text-[#3C4043]">Pay</span>
-        </div>
-      </div>
-      <div className="h-4 w-px bg-border" />
-      <span className="text-xs text-muted-foreground whitespace-nowrap">2.9% + 30&cent; per transaction</span>
-    </div>
-  );
-}
+import { cn } from "@/lib/utils";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -82,7 +46,8 @@ function formatMoney(val: number | null | undefined): string {
   return new Intl.NumberFormat("en-US", {
     style: "currency",
     currency: "USD",
-    maximumFractionDigits: 0,
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
   }).format(val);
 }
 
@@ -174,6 +139,209 @@ function DeleteModal({
   );
 }
 
+// ─── Invoice Detail Panel ─────────────────────────────────────────────────────
+
+function InvoiceDetailPanel({
+  invoiceId,
+  onClose,
+}: {
+  invoiceId: string;
+  onClose: () => void;
+}) {
+  const { data: inv, isLoading } = trpc.jobber.invoiceDetail.useQuery(
+    { id: invoiceId },
+    { retry: false }
+  );
+
+  return (
+    <>
+      {/* Backdrop */}
+      <div
+        className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm"
+        onClick={onClose}
+      />
+      {/* Panel */}
+      <div className="fixed right-0 top-0 bottom-0 z-50 w-full max-w-md bg-card border-l border-border shadow-2xl flex flex-col overflow-hidden">
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 py-4 border-b border-border shrink-0">
+          <div className="flex items-center gap-2">
+            <FileText className="w-4 h-4 text-primary" />
+            <span className="text-sm font-semibold text-foreground">
+              {isLoading ? "Loading..." : inv ? `Invoice #${inv.invoiceNumber}` : "Invoice Detail"}
+            </span>
+            {inv && <StatusBadge status={inv.invoiceStatus ?? "DRAFT"} />}
+          </div>
+          <button
+            onClick={onClose}
+            className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-secondary/50 transition-colors"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        {/* Body */}
+        <div className="flex-1 overflow-y-auto px-5 py-4 space-y-5">
+          {isLoading && (
+            <div className="flex items-center justify-center py-20">
+              <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+            </div>
+          )}
+
+          {!isLoading && !inv && (
+            <div className="flex flex-col items-center justify-center py-20 text-center gap-2">
+              <AlertCircle className="w-8 h-8 text-muted-foreground/40" />
+              <p className="text-xs text-muted-foreground">Invoice details not available.</p>
+            </div>
+          )}
+
+          {!isLoading && inv && (
+            <>
+              {/* Client */}
+              <div className="space-y-2">
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Client</p>
+                <div className="rounded-lg border border-border bg-secondary/20 p-3 space-y-1.5">
+                  <p className="text-sm font-semibold text-foreground">
+                    {(inv as any).client?.name || (inv as any).client?.companyName || "—"}
+                  </p>
+                  {(inv as any).client?.phones?.[0]?.number && (
+                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                      <Phone className="w-3 h-3" />
+                      {(inv as any).client.phones[0].number}
+                    </div>
+                  )}
+                  {(inv as any).client?.emails?.[0]?.address && (
+                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                      <Mail className="w-3 h-3" />
+                      {(inv as any).client.emails[0].address}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Property */}
+              {(inv as any).property?.address?.street1 && (
+                <div className="space-y-2">
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Property</p>
+                  <div className="flex items-start gap-2 rounded-lg border border-border bg-secondary/20 p-3">
+                    <MapPin className="w-3.5 h-3.5 text-muted-foreground mt-0.5 shrink-0" />
+                    <p className="text-xs text-foreground">
+                      {(inv as any).property.address.street1}
+                      {(inv as any).property.address.city && `, ${(inv as any).property.address.city}`}
+                      {(inv as any).property.address.province && `, ${(inv as any).property.address.province}`}
+                      {(inv as any).property.address.postalCode && ` ${(inv as any).property.address.postalCode}`}
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* Dates */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="rounded-lg border border-border bg-secondary/20 p-3">
+                  <p className="text-[10px] text-muted-foreground uppercase tracking-wide mb-1">Issued</p>
+                  <p className="text-xs font-medium text-foreground">{formatDate((inv as any).issuedDate)}</p>
+                </div>
+                <div className="rounded-lg border border-border bg-secondary/20 p-3">
+                  <p className="text-[10px] text-muted-foreground uppercase tracking-wide mb-1">Due</p>
+                  <p className={cn("text-xs font-medium", (inv as any).invoiceStatus === "OVERDUE" ? "text-red-400" : "text-foreground")}>
+                    {formatDate((inv as any).dueDate)}
+                  </p>
+                </div>
+              </div>
+
+              {/* Subject / message */}
+              {(inv as any).subject && (
+                <div className="space-y-1">
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Subject</p>
+                  <p className="text-xs text-foreground">{(inv as any).subject}</p>
+                </div>
+              )}
+              {(inv as any).message && (
+                <div className="space-y-1">
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Message</p>
+                  <p className="text-xs text-muted-foreground whitespace-pre-wrap">{(inv as any).message}</p>
+                </div>
+              )}
+
+              {/* Line Items */}
+              {(inv as any).lineItems?.nodes?.length > 0 && (
+                <div className="space-y-2">
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Line Items</p>
+                  <div className="rounded-lg border border-border overflow-hidden">
+                    <table className="w-full text-xs">
+                      <thead>
+                        <tr className="border-b border-border bg-secondary/30">
+                          <th className="text-left px-3 py-2 font-medium text-muted-foreground">Item</th>
+                          <th className="text-right px-3 py-2 font-medium text-muted-foreground">Qty</th>
+                          <th className="text-right px-3 py-2 font-medium text-muted-foreground">Unit Price</th>
+                          <th className="text-right px-3 py-2 font-medium text-muted-foreground">Total</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {(inv as any).lineItems.nodes.map((item: any, i: number) => (
+                          <tr key={i} className="border-b border-border last:border-0">
+                            <td className="px-3 py-2.5">
+                              <p className="font-medium text-foreground">{item.name}</p>
+                              {item.description && (
+                                <p className="text-[10px] text-muted-foreground mt-0.5">{item.description}</p>
+                              )}
+                            </td>
+                            <td className="px-3 py-2.5 text-right text-muted-foreground">{item.quantity ?? 1}</td>
+                            <td className="px-3 py-2.5 text-right text-muted-foreground">{formatMoney(item.unitPrice)}</td>
+                            <td className="px-3 py-2.5 text-right font-medium text-foreground">
+                              {formatMoney((item.quantity ?? 1) * (item.unitPrice ?? 0))}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+
+              {/* Amounts summary */}
+              <div className="rounded-lg border border-border bg-secondary/10 p-4 space-y-2">
+                <div className="flex justify-between text-xs text-muted-foreground">
+                  <span>Subtotal</span>
+                  <span>{formatMoney((inv as any).amounts?.subtotal)}</span>
+                </div>
+                <div className="flex justify-between text-sm font-semibold text-foreground border-t border-border pt-2">
+                  <span>Total</span>
+                  <span>{formatMoney((inv as any).amounts?.total)}</span>
+                </div>
+                {((inv as any).amounts?.invoiceBalance ?? 0) > 0 && (
+                  <div className="flex justify-between text-xs font-semibold text-red-400 border-t border-border pt-2">
+                    <span>Outstanding Balance</span>
+                    <span>{formatMoney((inv as any).amounts?.invoiceBalance)}</span>
+                  </div>
+                )}
+                {((inv as any).amounts?.invoiceBalance ?? 0) === 0 && (inv as any).invoiceStatus === "PAID" && (
+                  <div className="flex justify-between text-xs font-semibold text-green-400 border-t border-border pt-2">
+                    <span>Paid in Full</span>
+                    <span>{formatMoney((inv as any).amounts?.total)}</span>
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="shrink-0 px-5 py-3 border-t border-border">
+          <a
+            href="https://secure.getjobber.com/home"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center justify-center gap-1.5 w-full py-2 rounded-md text-xs font-medium text-muted-foreground hover:text-foreground border border-border hover:border-primary/40 transition-colors"
+          >
+            <ExternalLink className="w-3.5 h-3.5" />
+            Open in Jobber
+          </a>
+        </div>
+      </div>
+    </>
+  );
+}
+
 // ─── Invoice row type ─────────────────────────────────────────────────────────
 
 type InvoiceNode = {
@@ -201,6 +369,7 @@ export default function OpsInvoices() {
   const [deleteTarget, setDeleteTarget] = useState<InvoiceNode | null>(null);
   const [showBulkConfirm, setShowBulkConfirm] = useState(false);
   const [bulkPending, setBulkPending] = useState(false);
+  const [selectedInvoiceId, setSelectedInvoiceId] = useState<string | null>(null);
 
   const utils = trpc.useUtils();
   const { data, isLoading, error, refetch, isFetching } =
@@ -257,7 +426,7 @@ export default function OpsInvoices() {
     .reduce((sum, i) => sum + (i.amounts?.invoiceBalance ?? 0), 0);
   const overdueCount = nodes.filter((i) => i.invoiceStatus === "OVERDUE").length;
 
-  // ── Checkbox helpers ──────────────────────────────────────────────────────
+  // ── Checkbox helpers ──────────────────────────────────────────────────
   const allFilteredSelected =
     filtered.length > 0 && filtered.every((i) => selected.has(i.id));
   const someSelected = selected.size > 0;
@@ -366,9 +535,6 @@ export default function OpsInvoices() {
           </div>
         )}
 
-        {/* Payment methods accepted */}
-        {!isLoading && !notConnected && <PaymentMethodsBadge />}
-
         {/* Status filter tabs */}
         {!isLoading && !notConnected && statuses.length > 1 && (
           <div className="flex flex-wrap gap-1.5">
@@ -440,7 +606,6 @@ export default function OpsInvoices() {
                   <table className="w-full text-xs">
                     <thead>
                       <tr className="border-b border-border bg-secondary/20">
-                        {/* Select-all checkbox */}
                         <th className="px-3 py-2.5 w-8">
                           <input
                             type="checkbox"
@@ -465,16 +630,15 @@ export default function OpsInvoices() {
                         return (
                           <tr
                             key={inv.id}
-                            className={`border-b border-border last:border-0 hover:bg-secondary/20 transition-colors ${
-                              selected.has(inv.id)
-                                ? "bg-red-500/5"
-                                : idx % 2 === 0
-                                ? ""
-                                : "bg-secondary/5"
-                            } ${isOverdue ? "border-l-2 border-l-red-500/50" : ""}`}
+                            onClick={() => setSelectedInvoiceId(inv.id)}
+                            className={cn(
+                              "border-b border-border last:border-0 hover:bg-secondary/30 transition-colors cursor-pointer",
+                              selected.has(inv.id) ? "bg-red-500/5" : idx % 2 === 0 ? "" : "bg-secondary/5",
+                              isOverdue ? "border-l-2 border-l-red-500/50" : "",
+                              selectedInvoiceId === inv.id ? "bg-primary/5 border-l-2 border-l-primary" : ""
+                            )}
                           >
-                            {/* Row checkbox */}
-                            <td className="px-3 py-3 w-8">
+                            <td className="px-3 py-3 w-8" onClick={(e) => e.stopPropagation()}>
                               <input
                                 type="checkbox"
                                 checked={selected.has(inv.id)}
@@ -510,18 +674,16 @@ export default function OpsInvoices() {
                             <td className="px-4 py-3 text-muted-foreground hidden lg:table-cell">
                               {formatDate(inv.dueDate)}
                             </td>
-                            <td className="px-4 py-3 text-right">
+                            <td className="px-4 py-3 text-right" onClick={(e) => e.stopPropagation()}>
                               <div className="flex items-center justify-end gap-2">
-                                <a
-                                  href={`https://secure.getjobber.com/home"")}`}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  title="Open in Jobber"
+                                <button
+                                  onClick={() => setSelectedInvoiceId(inv.id)}
+                                  title="View details"
                                   className="inline-flex items-center gap-1 text-[10px] text-muted-foreground hover:text-primary transition-colors"
                                 >
-                                  <ExternalLink className="w-3 h-3" />
-                                  Jobber
-                                </a>
+                                  <ChevronRight className="w-3 h-3" />
+                                  Details
+                                </button>
                                 <button
                                   onClick={() => setDeleteTarget(inv)}
                                   title="Delete invoice"
@@ -555,6 +717,14 @@ export default function OpsInvoices() {
           </>
         )}
       </div>
+
+      {/* Invoice detail slide-out panel */}
+      {selectedInvoiceId && (
+        <InvoiceDetailPanel
+          invoiceId={selectedInvoiceId}
+          onClose={() => setSelectedInvoiceId(null)}
+        />
+      )}
 
       {/* Single delete confirmation modal */}
       {deleteTarget && (

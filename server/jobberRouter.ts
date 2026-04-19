@@ -390,6 +390,45 @@ export const jobberRouter = router({
       return { success: true, deletedId: data?.requestDelete?.requestId };
     }),
 
+  /** Get full invoice detail including line items */
+  invoiceDetail: adminProcedure
+    .input(z.object({ id: z.string() }))
+    .query(async ({ input }) => {
+      const data = await jobberGraphQL(`
+        query GetInvoiceDetail($id: EncodedId!) {
+          invoice(id: $id) {
+            id invoiceNumber invoiceStatus dueDate issuedDate createdAt subject message
+            amounts { subtotal total invoiceBalance }
+            client { id name companyName phones { number } emails { address } }
+            property { address { street1 city province postalCode } }
+            lineItems {
+              nodes {
+                name description quantity unitPrice unitCost taxable
+              }
+            }
+          }
+        }
+      `, { id: input.id }) as any;
+      return data.invoice ?? null;
+    }),
+
+  /** Convert an approved quote to a job in Jobber */
+  quoteConvertToJob: adminProcedure
+    .input(z.object({ id: z.string() }))
+    .mutation(async ({ input }) => {
+      const data = await jobberGraphQL(`
+        mutation ConvertQuoteToJob($id: EncodedId!) {
+          quoteConvertToJob(input: { id: $id }) {
+            job { id jobNumber title }
+            userErrors { message path }
+          }
+        }
+      `, { id: input.id }) as any;
+      const errors = data?.quoteConvertToJob?.userErrors;
+      if (errors?.length) throw new TRPCError({ code: "BAD_REQUEST", message: errors[0].message });
+      return { success: true, job: data?.quoteConvertToJob?.job };
+    }),
+
   /** Get aggregated lead source breakdown (count per source) */
   getLeadSourceBreakdown: protectedProcedure.query(async () => {
     const db = await getDb();

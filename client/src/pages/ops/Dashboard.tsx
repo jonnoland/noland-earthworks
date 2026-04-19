@@ -818,7 +818,7 @@ export default function Dashboard() {
                 {openQuotes.slice(0, 6).map((q: any) => {
                   const cfg = quoteStatusConfig[q.quoteStatus] ?? { label: q.quoteStatus, color: "text-muted-foreground bg-secondary border-border" };
                   return (
-                    <Link key={q.id} href="/ops/quotes">
+                    <Link key={q.id} href={`/ops/quotes?quote=${q.id}`}>
                       <div className="flex items-center gap-3 p-3 rounded-md bg-secondary/30 hover:bg-secondary/50 transition-colors cursor-pointer">
                         <div className="w-8 h-8 rounded-md bg-primary/10 flex items-center justify-center shrink-0">
                           <FileText className="w-3.5 h-3.5 text-primary" />
