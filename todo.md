@@ -895,3 +895,8 @@
 - [x] teamRouter: submitRegistration (public), listRegistrations, approveRegistration, denyRegistration, pendingCount (owner-only)
 - [x] Add "Team" link to /ops sidebar with red pending count badge
 - [x] Fix all 8 KPI card hrefs to route to correct /ops pages
+
+## Clickable Quote Rows — Apr 19 2026
+- [x] Dashboard Quotes section: clicking a quote row routes to /ops/quotes
+- [x] /ops/quotes: add slide-out detail panel showing full quote details when a row is clicked
+- [x] /ops/quotes: add Jobber quote detail GraphQL query to jobberRouter (quoteDetail procedure)

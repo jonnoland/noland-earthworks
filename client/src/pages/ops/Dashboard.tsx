@@ -803,24 +803,22 @@ export default function Dashboard() {
               title="Open Quotes"
               badge={jobberConnected ? "Jobber" : undefined}
               sub={`${openQuotes.length} quote${openQuotes.length !== 1 ? "s" : ""} awaiting approval`}
-              href="https://secure.getjobber.com/quotes"
-              external
+              href="/ops/quotes"
             />
             {jobberQuotesError ? (
               <EmptyState message="Jobber not connected — quotes unavailable." />
             ) : openQuotes.length === 0 ? (
               <EmptyState
                 message="No open quotes."
-                linkLabel="View in Jobber"
-                linkHref="https://secure.getjobber.com/quotes"
-                external
+                linkLabel="View all quotes"
+                linkHref="/ops/quotes"
               />
             ) : (
               <div className="space-y-2">
                 {openQuotes.slice(0, 6).map((q: any) => {
                   const cfg = quoteStatusConfig[q.quoteStatus] ?? { label: q.quoteStatus, color: "text-muted-foreground bg-secondary border-border" };
                   return (
-                    <a key={q.id} href="https://secure.getjobber.com/quotes" target="_blank" rel="noopener noreferrer">
+                    <Link key={q.id} href="/ops/quotes">
                       <div className="flex items-center gap-3 p-3 rounded-md bg-secondary/30 hover:bg-secondary/50 transition-colors cursor-pointer">
                         <div className="w-8 h-8 rounded-md bg-primary/10 flex items-center justify-center shrink-0">
                           <FileText className="w-3.5 h-3.5 text-primary" />
@@ -845,14 +843,15 @@ export default function Dashboard() {
                           </div>
                         </div>
                       </div>
-                    </a>
+                    </Link>
                   );
                 })}
                 {openQuotes.length > 6 && (
-                  <a href="https://secure.getjobber.com/quotes" target="_blank" rel="noopener noreferrer"
-                    className="block text-center text-xs text-primary hover:text-primary/80 py-2 transition-colors">
-                    +{openQuotes.length - 6} more quotes in Jobber
-                  </a>
+                  <Link href="/ops/quotes">
+                    <span className="block text-center text-xs text-primary hover:text-primary/80 py-2 transition-colors cursor-pointer">
+                      +{openQuotes.length - 6} more quotes
+                    </span>
+                  </Link>
                 )}
               </div>
             )}

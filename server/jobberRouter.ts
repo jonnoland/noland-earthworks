@@ -300,6 +300,28 @@ export const jobberRouter = router({
       }
     }),
 
+  /** Get full detail for a single Jobber quote */
+  quoteDetail: adminProcedure
+    .input(z.object({ id: z.string() }))
+    .query(async ({ input }) => {
+      const data = await jobberGraphQL(`
+        query GetQuoteDetail($id: EncodedId!) {
+          quote(id: $id) {
+            id quoteNumber title quoteStatus createdAt message
+            amounts { subtotal total depositAmount }
+            client { id name companyName phones { number } emails { address } }
+            property { address { street1 city province postalCode } }
+            lineItems {
+              nodes {
+                name description quantity unitPrice unitCost taxable
+              }
+            }
+          }
+        }
+      `, { id: input.id }) as any;
+      return data.quote ?? null;
+    }),
+
   /** Delete a quote from Jobber */
   deleteQuote: protectedProcedure
     .input(z.object({ id: z.string() }))

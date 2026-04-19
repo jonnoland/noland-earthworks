@@ -1,7 +1,7 @@
 /**
  * Ops Quotes page — live Jobber quote data
  * Calls trpc.jobber.quotes to fetch quotes from Jobber CRM.
- * Shows a "Connect Jobber" banner when not connected.
+ * Clicking a row opens a slide-out detail panel with full quote info.
  */
 import { useState } from "react";
 import { Link } from "wouter";
@@ -19,6 +19,12 @@ import {
   DollarSign,
   Trash2,
   Loader2,
+  X,
+  MapPin,
+  Phone,
+  Mail,
+  ChevronRight,
+  User,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -48,6 +54,7 @@ const STATUS_COLORS: Record<string, string> = {
   CHANGES_REQUESTED: "bg-yellow-500/15 text-yellow-400",
   APPROVED: "bg-green-500/15 text-green-400",
   CONVERTED: "bg-primary/15 text-primary",
+  CONVERTED_TO_JOB: "bg-primary/15 text-primary",
   ARCHIVED: "bg-secondary/50 text-muted-foreground",
 };
 
@@ -131,11 +138,235 @@ function DeleteQuoteModal({
   );
 }
 
+// ─── Quote Detail Panel ───────────────────────────────────────────────────────
+
+function QuoteDetailPanel({
+  quoteId,
+  onClose,
+  onDelete,
+}: {
+  quoteId: string;
+  onClose: () => void;
+  onDelete: (quote: any) => void;
+}) {
+  const { data: quote, isLoading, error } = trpc.jobber.quoteDetail.useQuery(
+    { id: quoteId },
+    { retry: false }
+  );
+
+  return (
+    <>
+      {/* Backdrop */}
+      <div
+        className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm"
+        onClick={onClose}
+      />
+      {/* Panel */}
+      <div className="fixed right-0 top-0 bottom-0 z-50 w-full max-w-md bg-card border-l border-border shadow-2xl flex flex-col overflow-hidden">
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 py-4 border-b border-border shrink-0">
+          <div className="flex items-center gap-2">
+            <FileText className="w-4 h-4 text-primary" />
+            <span className="text-sm font-semibold text-foreground">
+              {isLoading ? "Loading..." : quote ? `Quote #${quote.quoteNumber ?? "—"}` : "Quote Detail"}
+            </span>
+            {quote?.quoteStatus && <StatusBadge status={quote.quoteStatus} />}
+          </div>
+          <button
+            onClick={onClose}
+            className="text-muted-foreground hover:text-foreground transition-colors p-1 rounded"
+            aria-label="Close"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        {/* Body */}
+        <div className="flex-1 overflow-y-auto p-5 space-y-5">
+          {isLoading && (
+            <div className="flex items-center justify-center py-20">
+              <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+            </div>
+          )}
+
+          {!isLoading && (error || !quote) && (
+            <div className="flex flex-col items-center justify-center py-16 gap-3 text-center">
+              <AlertCircle className="w-8 h-8 text-yellow-500" />
+              <p className="text-sm text-muted-foreground">Could not load quote details.</p>
+            </div>
+          )}
+
+          {!isLoading && quote && (
+            <>
+              {/* Title */}
+              {quote.title && (
+                <div>
+                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Title</p>
+                  <p className="text-sm font-medium text-foreground">{quote.title}</p>
+                </div>
+              )}
+
+              {/* Client */}
+              {quote.client && (
+                <div className="rounded-lg bg-secondary/30 border border-border p-4 space-y-2">
+                  <div className="flex items-center gap-2 mb-2">
+                    <User className="w-3.5 h-3.5 text-primary" />
+                    <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Client</span>
+                  </div>
+                  <p className="text-sm font-semibold text-foreground">
+                    {quote.client.name || quote.client.companyName || "—"}
+                  </p>
+                  {quote.client.companyName && quote.client.name && (
+                    <p className="text-xs text-muted-foreground">{quote.client.companyName}</p>
+                  )}
+                  {quote.client.phones?.[0]?.number && (
+                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                      <Phone className="w-3 h-3" />
+                      {quote.client.phones[0].number}
+                    </div>
+                  )}
+                  {quote.client.emails?.[0]?.address && (
+                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                      <Mail className="w-3 h-3" />
+                      {quote.client.emails[0].address}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Property */}
+              {quote.property?.address?.street1 && (
+                <div className="flex items-start gap-2 text-xs text-muted-foreground">
+                  <MapPin className="w-3.5 h-3.5 mt-0.5 shrink-0 text-primary" />
+                  <span>
+                    {quote.property.address.street1}
+                    {quote.property.address.city && `, ${quote.property.address.city}`}
+                    {quote.property.address.province && `, ${quote.property.address.province}`}
+                    {quote.property.address.postalCode && ` ${quote.property.address.postalCode}`}
+                  </span>
+                </div>
+              )}
+
+              {/* Amounts */}
+              {quote.amounts && (
+                <div className="rounded-lg bg-secondary/30 border border-border p-4">
+                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-3">Amounts</p>
+                  <div className="space-y-2">
+                    {quote.amounts.subtotal != null && (
+                      <div className="flex justify-between text-xs">
+                        <span className="text-muted-foreground">Subtotal</span>
+                        <span className="font-medium text-foreground">{formatMoney(quote.amounts.subtotal)}</span>
+                      </div>
+                    )}
+                    {quote.amounts.depositAmount != null && quote.amounts.depositAmount > 0 && (
+                      <div className="flex justify-between text-xs">
+                        <span className="text-muted-foreground">Deposit</span>
+                        <span className="font-medium text-foreground">{formatMoney(quote.amounts.depositAmount)}</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between text-sm border-t border-border pt-2 mt-1">
+                      <span className="font-semibold text-foreground">Total</span>
+                      <span className="font-bold text-primary">{formatMoney(quote.amounts.total)}</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Line Items */}
+              {quote.lineItems?.nodes?.length > 0 && (
+                <div>
+                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-2">Line Items</p>
+                  <div className="rounded-lg border border-border overflow-hidden">
+                    <table className="w-full text-xs">
+                      <thead>
+                        <tr className="bg-secondary/20 border-b border-border">
+                          <th className="text-left px-3 py-2 font-medium text-muted-foreground">Item</th>
+                          <th className="text-right px-3 py-2 font-medium text-muted-foreground">Qty</th>
+                          <th className="text-right px-3 py-2 font-medium text-muted-foreground">Unit Price</th>
+                          <th className="text-right px-3 py-2 font-medium text-muted-foreground">Total</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {quote.lineItems.nodes.map((item: any, i: number) => (
+                          <tr key={i} className="border-b border-border last:border-0">
+                            <td className="px-3 py-2.5">
+                              <p className="font-medium text-foreground">{item.name || "—"}</p>
+                              {item.description && (
+                                <p className="text-[10px] text-muted-foreground mt-0.5">{item.description}</p>
+                              )}
+                            </td>
+                            <td className="px-3 py-2.5 text-right text-muted-foreground">
+                              {item.quantity ?? "—"}
+                            </td>
+                            <td className="px-3 py-2.5 text-right text-muted-foreground">
+                              {item.unitPrice != null ? formatMoney(item.unitPrice) : "—"}
+                            </td>
+                            <td className="px-3 py-2.5 text-right font-medium text-foreground">
+                              {item.quantity != null && item.unitPrice != null
+                                ? formatMoney(item.quantity * item.unitPrice)
+                                : "—"}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+
+              {/* Message / Notes */}
+              {quote.message && (
+                <div>
+                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Notes / Message</p>
+                  <p className="text-xs text-muted-foreground bg-secondary/30 rounded-md p-3 whitespace-pre-wrap">
+                    {quote.message}
+                  </p>
+                </div>
+              )}
+
+              {/* Created date */}
+              <p className="text-[11px] text-muted-foreground">
+                Created {formatDate(quote.createdAt)}
+              </p>
+            </>
+          )}
+        </div>
+
+        {/* Footer actions */}
+        {!isLoading && quote && (
+          <div className="shrink-0 border-t border-border px-5 py-4 flex items-center justify-between gap-3">
+            <button
+              onClick={() => {
+                onDelete(quote);
+                onClose();
+              }}
+              className="flex items-center gap-1.5 text-xs text-red-400 hover:text-red-300 transition-colors"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              Delete
+            </button>
+            <a
+              href="https://secure.getjobber.com/home"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-primary transition-colors"
+            >
+              <ExternalLink className="w-3 h-3" />
+              Open in Jobber
+            </a>
+          </div>
+        )}
+      </div>
+    </>
+  );
+}
+
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function OpsQuotes() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("ALL");
+  const [selectedQuoteId, setSelectedQuoteId] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<{
     id: string;
     quoteNumber?: number | null;
@@ -290,15 +521,19 @@ export default function OpsQuotes() {
                       {filtered.map((quote, idx) => (
                         <tr
                           key={quote.id}
-                          className={`border-b border-border last:border-0 hover:bg-secondary/20 transition-colors ${
+                          onClick={() => setSelectedQuoteId(quote.id)}
+                          className={`border-b border-border last:border-0 hover:bg-secondary/30 transition-colors cursor-pointer ${
                             idx % 2 === 0 ? "" : "bg-secondary/5"
-                          }`}
+                          } ${selectedQuoteId === quote.id ? "bg-primary/5 border-l-2 border-l-primary" : ""}`}
                         >
                           <td className="px-4 py-3 font-mono text-muted-foreground">
                             #{quote.quoteNumber ?? "—"}
                           </td>
                           <td className="px-4 py-3 font-medium text-foreground max-w-[200px] truncate">
-                            {quote.title || "Untitled Quote"}
+                            <div className="flex items-center gap-1.5">
+                              {quote.title || "Untitled Quote"}
+                              <ChevronRight className="w-3 h-3 text-muted-foreground/50 shrink-0" />
+                            </div>
                           </td>
                           <td className="px-4 py-3 text-muted-foreground hidden sm:table-cell">
                             {quote.client?.name || quote.client?.companyName || "—"}
@@ -317,18 +552,11 @@ export default function OpsQuotes() {
                           </td>
                           <td className="px-4 py-3 text-right">
                             <div className="flex items-center justify-end gap-2">
-                              <a
-                                href={`https://secure.getjobber.com/home"")}`}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                title="Open in Jobber"
-                                className="inline-flex items-center gap-1 text-[10px] text-muted-foreground hover:text-primary transition-colors"
-                              >
-                                <ExternalLink className="w-3 h-3" />
-                                Jobber
-                              </a>
                               <button
-                                onClick={() => setDeleteTarget(quote)}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setDeleteTarget(quote);
+                                }}
                                 title="Delete quote"
                                 className="text-muted-foreground hover:text-red-400 transition-colors"
                               >
@@ -359,6 +587,15 @@ export default function OpsQuotes() {
           </>
         )}
       </div>
+
+      {/* Quote detail slide-out panel */}
+      {selectedQuoteId && (
+        <QuoteDetailPanel
+          quoteId={selectedQuoteId}
+          onClose={() => setSelectedQuoteId(null)}
+          onDelete={(quote) => setDeleteTarget(quote)}
+        />
+      )}
 
       {/* Delete confirmation modal */}
       {deleteTarget && (
