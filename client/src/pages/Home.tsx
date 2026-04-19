@@ -7,6 +7,7 @@ import HeroSection from "@/components/HeroSection";
 import StatsBar from "@/components/StatsBar";
 import ProblemSolutionSection from "@/components/ProblemSolutionSection";
 import ServicesSection from "@/components/ServicesSection";
+import AddOnGuideSection from "@/components/AddOnGuideSection";
 import HowItWorksSection from "@/components/HowItWorksSection";
 import WhyUsSection from "@/components/WhyUsSection";
 import TestimonialsSection from "@/components/TestimonialsSection";
@@ -34,6 +35,7 @@ export default function Home() {
       <StatsBar />
       <ProblemSolutionSection />
       <ServicesSection />
+      <AddOnGuideSection />
       <HowItWorksSection />
       <WhyUsSection />
       <TestimonialsSection />

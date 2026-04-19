@@ -68,6 +68,16 @@ function buildPrefillNote(density: string, terrain: string, access: string): str
   return parts.length ? `From pricing calculator:\n${parts.join("\n")}` : "";
 }
 
+// Maps each core service to the add-ons most relevant to it
+const ADDON_SUGGESTIONS: Record<string, string[]> = {
+  "land-clearing": ["Post-Clear Seeding & Erosion Control", "Fence Line Clearing", "Selective Clearing & Tree Preservation"],
+  "forestry-mulching": ["Mulch Redistribution", "Post-Clear Seeding & Erosion Control", "Fence Line Clearing"],
+  "vegetation-management": ["Fence Line Clearing", "Post-Clear Seeding & Erosion Control"],
+  "right-of-way-clearing": ["Fence Line Clearing", "Mulch Redistribution"],
+  "property-maintenance": ["Post-Clear Seeding & Erosion Control", "Fence Line Clearing"],
+  "multiple": ["Post-Clear Seeding & Erosion Control", "Fence Line Clearing", "Mulch Redistribution", "Selective Clearing & Tree Preservation"],
+};
+
 export default function QuotePage() {
   usePageTitle(
     "Request a Free Quote — Land Clearing & Forestry Mulching | Noland Earthworks",
@@ -733,62 +743,98 @@ export default function QuotePage() {
                   <div>
                     <label style={labelStyle}>Add-On Services <span style={{ color: "rgba(240,237,230,0.4)", fontSize: "0.7rem", letterSpacing: "0.08em" }}>(Optional)</span></label>
                     <p style={{ fontFamily: "'Lato', sans-serif", fontSize: "0.78rem", color: "rgba(240,237,230,0.45)", marginBottom: "0.75rem", marginTop: "0.25rem" }}>
-                      Select any add-on services you'd like included with your quote.
+                      {form.service
+                        ? "Based on your selected service, these add-ons are commonly included."
+                        : "Select any add-on services you'd like included with your quote."}
                     </p>
+                    {/* Sort: suggested add-ons first, rest after */}
                     <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
-                      {[
-                        { key: "post-clear-seeding", label: "Post-Clear Seeding & Erosion Control" },
-                        { key: "fence-line-clearing", label: "Fence Line Clearing" },
-                        { key: "mulch-redistribution", label: "Mulch Redistribution" },
-                        { key: "selective-clearing", label: "Selective Clearing & Tree Preservation" },
-                      ].map((addon) => (
-                        <label
-                          key={addon.key}
-                          style={{
-                            display: "flex",
-                            alignItems: "center",
-                            gap: "0.65rem",
-                            cursor: "pointer",
-                            padding: "0.6rem 0.85rem",
-                            borderRadius: "4px",
-                            border: selectedAddOns.includes(addon.label)
-                              ? "1px solid rgba(224,123,42,0.5)"
-                              : "1px solid rgba(255,255,255,0.08)",
-                            backgroundColor: selectedAddOns.includes(addon.label)
-                              ? "rgba(224,123,42,0.08)"
-                              : "rgba(255,255,255,0.02)",
-                            transition: "all 0.15s ease",
-                          }}
-                          onClick={() => toggleAddOn(addon.label)}
-                        >
-                          <div
+                      {((): { key: string; label: string }[] => {
+                        const all = [
+                          { key: "post-clear-seeding", label: "Post-Clear Seeding & Erosion Control" },
+                          { key: "fence-line-clearing", label: "Fence Line Clearing" },
+                          { key: "mulch-redistribution", label: "Mulch Redistribution" },
+                          { key: "selective-clearing", label: "Selective Clearing & Tree Preservation" },
+                        ];
+                        const suggested = ADDON_SUGGESTIONS[form.service] ?? [];
+                        return [
+                          ...all.filter((a) => suggested.includes(a.label)),
+                          ...all.filter((a) => !suggested.includes(a.label)),
+                        ];
+                      })().map((addon) => {
+                        const suggested = (ADDON_SUGGESTIONS[form.service] ?? []).includes(addon.label);
+                        return (
+                          <label
+                            key={addon.key}
                             style={{
-                              width: "16px",
-                              height: "16px",
-                              borderRadius: "3px",
-                              border: selectedAddOns.includes(addon.label)
-                                ? "2px solid #E07B2A"
-                                : "2px solid rgba(255,255,255,0.25)",
-                              backgroundColor: selectedAddOns.includes(addon.label)
-                                ? "#E07B2A"
-                                : "transparent",
-                              flexShrink: 0,
                               display: "flex",
                               alignItems: "center",
-                              justifyContent: "center",
+                              gap: "0.65rem",
+                              cursor: "pointer",
+                              padding: "0.6rem 0.85rem",
+                              borderRadius: "4px",
+                              border: selectedAddOns.includes(addon.label)
+                                ? "1px solid rgba(224,123,42,0.5)"
+                                : suggested
+                                ? "1px solid rgba(224,123,42,0.25)"
+                                : "1px solid rgba(255,255,255,0.08)",
+                              backgroundColor: selectedAddOns.includes(addon.label)
+                                ? "rgba(224,123,42,0.08)"
+                                : suggested
+                                ? "rgba(224,123,42,0.03)"
+                                : "rgba(255,255,255,0.02)",
+                              transition: "all 0.15s ease",
                             }}
+                            onClick={() => toggleAddOn(addon.label)}
                           >
-                            {selectedAddOns.includes(addon.label) && (
-                              <svg width="10" height="8" viewBox="0 0 10 8" fill="none">
-                                <path d="M1 4L3.5 6.5L9 1" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-                              </svg>
-                            )}
-                          </div>
-                          <span style={{ fontFamily: "'Lato', sans-serif", fontSize: "0.875rem", color: "rgba(240,237,230,0.85)" }}>
-                            {addon.label}
-                          </span>
-                        </label>
-                      ))}
+                            <div
+                              style={{
+                                width: "16px",
+                                height: "16px",
+                                borderRadius: "3px",
+                                border: selectedAddOns.includes(addon.label)
+                                  ? "2px solid #E07B2A"
+                                  : "2px solid rgba(255,255,255,0.25)",
+                                backgroundColor: selectedAddOns.includes(addon.label)
+                                  ? "#E07B2A"
+                                  : "transparent",
+                                flexShrink: 0,
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                              }}
+                            >
+                              {selectedAddOns.includes(addon.label) && (
+                                <svg width="10" height="8" viewBox="0 0 10 8" fill="none">
+                                  <path d="M1 4L3.5 6.5L9 1" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                                </svg>
+                              )}
+                            </div>
+                            <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "space-between", gap: "0.5rem" }}>
+                              <span style={{ fontFamily: "'Lato', sans-serif", fontSize: "0.875rem", color: "rgba(240,237,230,0.85)" }}>
+                                {addon.label}
+                              </span>
+                              {suggested && form.service && (
+                                <span style={{
+                                  fontFamily: "'Oswald', sans-serif",
+                                  fontSize: "0.6rem",
+                                  fontWeight: 600,
+                                  letterSpacing: "0.12em",
+                                  textTransform: "uppercase",
+                                  color: "#E07B2A",
+                                  backgroundColor: "rgba(224,123,42,0.12)",
+                                  padding: "0.15rem 0.45rem",
+                                  borderRadius: "2px",
+                                  whiteSpace: "nowrap",
+                                  flexShrink: 0,
+                                }}>
+                                  Recommended
+                                </span>
+                              )}
+                            </div>
+                          </label>
+                        );
+                      })}
                     </div>
                   </div>
 

@@ -959,3 +959,7 @@
 - [x] CostCalculator: add add-on services checkbox group (Post-Clear Seeding, Fence Line Clearing, Mulch Redistribution, Selective Clearing Consultation)
 - [x] CostCalculator: pass selected add-ons to SubmitLeadModal and include in submitEstimate mutation
 - [x] CostCalculator: add-ons included in lead notes and owner notification
+
+## Add-On Suggestions + Visual Guide — Apr 19 2026
+- [x] Quote.tsx: smart add-on suggestions — when user selects a core service, relevant add-ons float to top with orange "Recommended" badge and subtle highlight border
+- [x] Homepage: AddOnGuideSection component added after ServicesSection — 4 cards with icon, when-to-add, benefit, and CTA link
