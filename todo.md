@@ -871,3 +871,7 @@
 - [x] Fix: Recent Jobs rows on Dashboard link to /ops/jobs (not Jobber)
 - [x] Build /ops/invoices page: full Jobber invoice list, search, filter by status, revenue summary (already existed, confirmed complete)
 - [x] Add monthly revenue trend chart to Dashboard Performance Metrics (Jobber paid invoices by month)
+
+## Chat Button Position — Apr 19 2026
+- [x] Move floating chat circle button from bottom-right to top-right on all pages
+- [x] Add owner-only /ops link to public site Navbar (only visible when logged in as owner)

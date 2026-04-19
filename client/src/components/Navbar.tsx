@@ -4,7 +4,8 @@
  * wouter Link renders as <a> itself, so wrapping another <a> inside causes errors.
  */
 import { useState, useEffect } from "react";
-import { Menu, X, Phone, ChevronDown } from "lucide-react";
+import { Menu, X, Phone, ChevronDown, LayoutDashboard } from "lucide-react";
+import { useAuth } from "@/_core/hooks/useAuth";
 
 const LOGO_URL = "https://d2xsxph8kpxj0f.cloudfront.net/310519663484957999/PymCzDCnSJzPjdkfwA7Jn6/noland-logo-transparent_783e5c7b.png";
 
@@ -20,6 +21,8 @@ export default function Navbar() {
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [servicesOpen, setServicesOpen] = useState(false);
+  const { user } = useAuth();
+  const isOwner = user?.role === "admin";
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 60);
@@ -179,6 +182,30 @@ export default function Navbar() {
               <Phone size={14} style={{ color: "#E07B2A" }} />
               615-406-4819
             </a>
+            {/* Owner-only Ops link */}
+            {isOwner && (
+              <a
+                href="/ops"
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "0.4rem",
+                  fontFamily: "'Lato', sans-serif",
+                  fontSize: "0.8rem",
+                  fontWeight: 600,
+                  letterSpacing: "0.04em",
+                  color: "#E07B2A",
+                  textDecoration: "none",
+                  padding: "0.35rem 0.75rem",
+                  borderRadius: "0.375rem",
+                  border: "1px solid rgba(224,123,42,0.35)",
+                  background: "rgba(224,123,42,0.08)",
+                }}
+              >
+                <LayoutDashboard size={13} />
+                Ops
+              </a>
+            )}
             <a
               href="/quote"
               className="btn-amber"
@@ -280,6 +307,29 @@ export default function Navbar() {
             >
               Resources
             </a>
+
+            {/* Owner-only Ops link in mobile menu */}
+            {isOwner && (
+              <a
+                href="/ops"
+                className="text-left py-3 px-2 block"
+                style={{
+                  fontFamily: "'Lato', sans-serif",
+                  fontWeight: 600,
+                  fontSize: "0.875rem",
+                  letterSpacing: "0.04em",
+                  color: "#E07B2A",
+                  textDecoration: "none",
+                  borderBottom: "1px solid rgba(224,123,42,0.2)",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "0.5rem",
+                }}
+              >
+                <LayoutDashboard size={14} />
+                Operations Dashboard
+              </a>
+            )}
 
             <div className="pt-4 flex flex-col gap-3">
               <a
