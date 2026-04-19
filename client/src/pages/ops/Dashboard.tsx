@@ -497,6 +497,18 @@ export default function Dashboard() {
                   New Job
                 </button>
               </Link>
+              <a
+                href="https://nolandjobber-c3cs6zr4.manus.space"
+                target="_blank"
+                rel="noopener noreferrer"
+                title="Jobber Service Update"
+                onClick={() => { const w = window.open('https://nolandjobber-c3cs6zr4.manus.space', '_blank'); if (w) { w.document.title = 'Jobber Service Update'; } }}
+              >
+                <button className="flex items-center gap-2 bg-secondary hover:bg-secondary/80 text-foreground text-sm font-semibold px-4 py-2 rounded-md transition-colors border border-border">
+                  <ExternalLink className="w-4 h-4" />
+                  Jobber Services Update
+                </button>
+              </a>
             </div>
           </div>
         </div>

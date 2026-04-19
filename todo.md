@@ -963,3 +963,6 @@
 ## Add-On Suggestions + Visual Guide — Apr 19 2026
 - [x] Quote.tsx: smart add-on suggestions — when user selects a core service, relevant add-ons float to top with orange "Recommended" badge and subtle highlight border
 - [x] Homepage: AddOnGuideSection component added after ServicesSection — 4 cards with icon, when-to-add, benefit, and CTA link
+
+## Jobber Services Update Button — Apr 19 2026
+- [x] /ops page: add "Jobber Services Update" button that opens https://nolandjobber-c3cs6zr4.manus.space in a new tab with title "Jobber Service Update"
