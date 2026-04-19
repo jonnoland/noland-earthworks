@@ -966,3 +966,8 @@
 
 ## Jobber Services Update Button — Apr 19 2026
 - [x] /ops page: add "Jobber Services Update" button that opens https://nolandjobber-c3cs6zr4.manus.space in a new tab with title "Jobber Service Update"
+
+## Jobber Services Sync — Apr 19 2026
+- [x] jobberRouter.ts: add getJobberServices procedure — query productsAndServices from Jobber GraphQL (name, description, defaultUnitCost, category, visible, taxable)
+- [x] /ops/pricing: add JobberServicesCard component showing live catalog pulled from Jobber with refresh button
+- [x] /ops/pricing: show name, description, unit price, internal cost, taxable, and visibility for each service

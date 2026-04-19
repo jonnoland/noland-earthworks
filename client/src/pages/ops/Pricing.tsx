@@ -1281,8 +1281,122 @@ export default function Pricing() {
         {/* Pricing Benchmarks — live from DB, updated by weekly agent */}
         <PricingBenchmarksCard />
 
+        {/* Jobber Products & Services — live sync from Jobber catalog */}
+        <JobberServicesCard />
+
       </div>
     </DashboardLayout>
+  );
+}
+
+// ─── Jobber Services Card ────────────────────────────────────────────────────
+
+function JobberServicesCard() {
+  const utils = trpc.useUtils();
+  const { data, isLoading, error } = trpc.jobber.getJobberServices.useQuery();
+  const services = data?.nodes ?? [];
+  const totalCount = data?.totalCount ?? 0;
+
+  const CATEGORY_LABELS: Record<string, string> = {
+    SERVICE:  "Service",
+    PRODUCT:  "Product",
+    LABOR:    "Labor",
+    MATERIAL: "Material",
+    EXPENSE:  "Expense",
+  };
+
+  return (
+    <div className="ops-card p-5">
+      {/* Header */}
+      <div className="flex items-start justify-between gap-3 mb-4">
+        <div>
+          <h3 className="text-sm font-semibold text-foreground">Jobber Products &amp; Services</h3>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            {isLoading ? "Loading from Jobber..." : error ? "Jobber not connected" : `${totalCount} item${totalCount !== 1 ? "s" : ""} in your Jobber catalog`}
+          </p>
+        </div>
+        <button
+          onClick={() => utils.jobber.getJobberServices.invalidate()}
+          className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors px-2 py-1 rounded border border-border hover:border-foreground/20"
+          title="Refresh from Jobber"
+        >
+          <RefreshCw className={cn("w-3 h-3", isLoading && "animate-spin")} />
+          Refresh
+        </button>
+      </div>
+
+      {isLoading && (
+        <div className="flex items-center justify-center py-8 text-muted-foreground">
+          <Loader2 className="w-5 h-5 animate-spin mr-2" />
+          <span className="text-sm">Fetching from Jobber...</span>
+        </div>
+      )}
+
+      {!isLoading && error && (
+        <div className="flex items-center gap-2 text-sm text-amber-400 bg-amber-400/10 border border-amber-400/20 rounded-md px-3 py-2">
+          <AlertTriangle className="w-4 h-4 flex-shrink-0" />
+          Jobber is not connected. Connect Jobber in Settings to sync your services catalog.
+        </div>
+      )}
+
+      {!isLoading && !error && services.length === 0 && (
+        <div className="text-sm text-muted-foreground text-center py-6">
+          No products or services found in your Jobber account.
+        </div>
+      )}
+
+      {!isLoading && services.length > 0 && (
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-border">
+                <th className="text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider pb-2 pr-4">Name</th>
+                <th className="text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider pb-2 pr-4">Category</th>
+                <th className="text-right text-xs font-semibold text-muted-foreground uppercase tracking-wider pb-2 pr-4">Unit Price</th>
+                <th className="text-right text-xs font-semibold text-muted-foreground uppercase tracking-wider pb-2 pr-4">Internal Cost</th>
+                <th className="text-center text-xs font-semibold text-muted-foreground uppercase tracking-wider pb-2 pr-4">Taxable</th>
+                <th className="text-center text-xs font-semibold text-muted-foreground uppercase tracking-wider pb-2">Visible</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border">
+              {services.map((svc: any) => (
+                <tr key={svc.id} className="hover:bg-secondary/30 transition-colors">
+                  <td className="py-2.5 pr-4">
+                    <div className="font-medium text-foreground">{svc.name}</div>
+                    {svc.description && (
+                      <div className="text-xs text-muted-foreground mt-0.5 max-w-xs truncate" title={svc.description}>
+                        {svc.description}
+                      </div>
+                    )}
+                  </td>
+                  <td className="py-2.5 pr-4">
+                    <span className="text-xs bg-secondary text-muted-foreground px-2 py-0.5 rounded">
+                      {CATEGORY_LABELS[svc.category] ?? svc.category}
+                    </span>
+                  </td>
+                  <td className="py-2.5 pr-4 text-right font-mono text-foreground">
+                    {svc.defaultUnitCost != null ? `$${Number(svc.defaultUnitCost).toFixed(2)}` : "—"}
+                  </td>
+                  <td className="py-2.5 pr-4 text-right font-mono text-muted-foreground">
+                    {svc.internalUnitCost != null ? `$${Number(svc.internalUnitCost).toFixed(2)}` : "—"}
+                  </td>
+                  <td className="py-2.5 pr-4 text-center">
+                    <span className={cn("text-xs px-1.5 py-0.5 rounded", svc.taxable ? "bg-amber-400/10 text-amber-400" : "bg-secondary text-muted-foreground")}>
+                      {svc.taxable ? "Yes" : "No"}
+                    </span>
+                  </td>
+                  <td className="py-2.5 text-center">
+                    <span className={cn("text-xs px-1.5 py-0.5 rounded", svc.visible ? "bg-green-500/10 text-green-400" : "bg-secondary text-muted-foreground")}>
+                      {svc.visible ? "Visible" : "Hidden"}
+                    </span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
   );
 }
 

@@ -581,6 +581,33 @@ export const jobberRouter = router({
       return { success: true };
     }),
 
+  /** Pull Products & Services catalog from Jobber */
+  getJobberServices: adminProcedure.query(async () => {
+    const connected = await isJobberConnected();
+    if (!connected) return { nodes: [], totalCount: 0 };
+    const data = await jobberGraphQL(`
+      query GetProductsAndServices {
+        productsAndServices(first: 200) {
+          nodes {
+            id
+            name
+            description
+            defaultUnitCost
+            internalUnitCost
+            markup
+            category
+            taxable
+            visible
+            durationMinutes
+            onlineBookingEnabled
+          }
+          totalCount
+        }
+      }
+    `) as any;
+    return data.productsAndServices ?? { nodes: [], totalCount: 0 };
+  }),
+
   /** Get aggregated lead source breakdown (count per source) */
   getLeadSourceBreakdown: protectedProcedure.query(async () => {
     const db = await getDb();
