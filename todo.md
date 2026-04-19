@@ -911,3 +911,13 @@
 - [x] /ops/clients: search bar already existed at top of client list (confirmed)
 - [x] /ops/clients: clicking a client opens slide-out detail panel with all their quotes, jobs, invoices, total revenue, and outstanding balance
 - [x] Client detail panel: quote rows link to /ops/quotes?quote=ID, job rows link to /ops/jobs, invoice rows link to /ops/invoices
+
+## User Access — Apr 19 2026
+- [ ] Grant snoland@nolandearthworks.com full /ops access (promote to admin role in users table)
+
+## /ops/jobs Jobber Integration — Apr 19 2026
+- [x] /ops/jobs: pull Jobber jobs as primary source (not local DB) — show all jobs with status, client, date, address
+- [x] /ops/jobs: status filter tabs (All / Active / Quote / Requires Invoicing / Completed / Archived)
+- [x] /ops/jobs: search by client name or job title
+- [x] /ops/jobs: clicking a job row opens job detail slide-out panel (same pattern as quotes/invoices)
+- [x] /ops/jobs: jobDetail tRPC procedure added to jobberRouter (line items, visits, client, property, instructions)

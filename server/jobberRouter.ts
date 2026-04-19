@@ -463,6 +463,34 @@ export const jobberRouter = router({
       return data.client ?? null;
     }),
 
+  /** Get full detail for a single Jobber job */
+  jobDetail: adminProcedure
+    .input(z.object({ id: z.string() }))
+    .query(async ({ input }) => {
+      const data = await jobberGraphQL(`
+        query GetJobDetail($id: EncodedId!) {
+          job(id: $id) {
+            id jobNumber title jobStatus jobType total
+            startAt endAt completedAt createdAt
+            instructions
+            client { id name companyName phones { number } emails { address } }
+            property { address { street1 city province postalCode } }
+            lineItems {
+              nodes {
+                name description quantity unitPrice unitCost taxable
+              }
+            }
+            visits(first: 10) {
+              nodes {
+                id title startAt endAt isComplete
+              }
+            }
+          }
+        }
+      `, { id: input.id }) as any;
+      return data.job ?? null;
+    }),
+
   /** Get aggregated lead source breakdown (count per source) */
   getLeadSourceBreakdown: protectedProcedure.query(async () => {
     const db = await getDb();
