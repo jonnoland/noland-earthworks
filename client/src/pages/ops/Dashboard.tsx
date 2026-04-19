@@ -341,7 +341,7 @@ export default function Dashboard() {
   }, [jobberQuotesRaw]);
 
   const openQuotes = useMemo(() =>
-    quotes.filter((q: any) => !["ARCHIVED", "CONVERTED_TO_JOB"].includes(q.quoteStatus)),
+    quotes.filter((q: any) => !["ARCHIVED", "CONVERTED_TO_JOB", "DRAFT"].includes(q.quoteStatus)),
     [quotes]
   );
 

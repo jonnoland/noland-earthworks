@@ -880,3 +880,6 @@
 - [x] Notification dot on Ops navbar link when there are open Jobber requests or overdue invoices
 - [x] Logout dropdown on Ops navbar link (click Ops to get dropdown with Go to Ops + Log Out)
 - [x] Lower chat button to top-20 so it clears the navbar on scroll
+
+## Open Quotes Filter Fix — Apr 19 2026
+- [x] Exclude DRAFT quotes from open quotes count and list on Dashboard (only show SENT/awaiting approval)
