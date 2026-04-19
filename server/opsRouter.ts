@@ -54,6 +54,7 @@ const jobsRouter = router({
       totalPrice: z.string().optional(),
       notes: z.string().optional(),
       scheduledDate: z.date().optional(),
+      scheduledEndDate: z.date().optional(),
     }))
     .mutation(({ ctx, input }) => createJob({ ...input, userId: ctx.user.id })),
   update: ownerProcedure
@@ -70,6 +71,7 @@ const jobsRouter = router({
       notes: z.string().optional(),
       clientEmail: z.string().email().optional().or(z.literal("")),
       scheduledDate: z.date().optional(),
+      scheduledEndDate: z.date().optional(),
       completedDate: z.date().optional(),
     }))
     .mutation(async ({ ctx, input }) => {

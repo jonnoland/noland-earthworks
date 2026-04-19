@@ -108,6 +108,7 @@ export const jobs = mysqlTable("jobs", {
   /** Client email — used for review request emails */
   clientEmail: varchar("clientEmail", { length: 320 }),
   scheduledDate: timestamp("scheduledDate"),
+  scheduledEndDate: timestamp("scheduledEndDate"),
   completedDate: timestamp("completedDate"),
   /** Timestamp when a review request email was sent for this job */
   reviewRequestSentAt: timestamp("reviewRequestSentAt"),

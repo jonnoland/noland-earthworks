@@ -1,6 +1,6 @@
 /**
  * Dashboard Page — Noland Earthworks
- * Main overview with KPI metrics, job pipeline, and lead pipeline.
+ * Main overview with KPI metrics, scheduled jobs, job pipeline, and lead pipeline.
  * All data is live from the database — no hardcoded placeholder entries.
  */
 
@@ -9,7 +9,8 @@ import DashboardLayout from "@/components/DashboardLayout";
 import { trpc } from "@/lib/trpc";
 import {
   DollarSign, Briefcase,
-  Users, Clock, ArrowUpRight, MapPin, Plus, ChevronRight, Inbox
+  Users, Clock, ArrowUpRight, MapPin, Plus, ChevronRight, Inbox,
+  CalendarDays, CalendarCheck,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -17,6 +18,7 @@ import { Link } from "wouter";
 
 const statusConfig: Record<string, { label: string; color: string }> = {
   estimate:    { label: "Estimate",   color: "text-blue-400 bg-blue-400/10 border-blue-400/20" },
+  scheduled:   { label: "Scheduled",  color: "text-amber-400 bg-amber-400/10 border-amber-400/20" },
   in_progress: { label: "Active",     color: "text-primary bg-primary/10 border-primary/20" },
   completed:   { label: "Complete",   color: "text-green-400 bg-green-400/10 border-green-400/20" },
   invoiced:    { label: "Invoiced",   color: "text-yellow-400 bg-yellow-400/10 border-yellow-400/20" },
@@ -34,6 +36,18 @@ const stageConfig: Record<string, { label: string; color: string }> = {
   lost:          { label: "Lost",          color: "text-muted-foreground bg-secondary border-border" },
   converted:     { label: "Converted",     color: "text-amber-400 bg-amber-400/10 border-amber-400/20" },
 };
+
+function formatScheduledDate(d: Date | string | null | undefined): string {
+  if (!d) return "";
+  const date = new Date(d);
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const tomorrow = new Date(today); tomorrow.setDate(today.getDate() + 1);
+  const jobDay = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  if (jobDay.getTime() === today.getTime()) return "Today";
+  if (jobDay.getTime() === tomorrow.getTime()) return "Tomorrow";
+  return date.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
+}
 
 function KPICard({ title, value, sub, icon: Icon, delay = 0 }: {
   title: string;
@@ -101,15 +115,25 @@ export default function Dashboard() {
   const kpis = useMemo(() => {
     const totalRevenue = jobs.reduce((s, j) => s + Number(j.totalPrice ?? 0), 0);
     const activeJobs = jobs.filter(j => j.status === "in_progress").length;
+    const scheduledJobs = jobs.filter(j => j.status === "scheduled" || (j.scheduledDate && j.status !== "completed" && j.status !== "paid")).length;
     const openLeads = leads.filter(l => !["won", "lost", "converted"].includes(l.stage)).length;
     const crewDayJobs = jobs.filter(j => j.crewDays && j.totalPrice);
     const avgRate = crewDayJobs.length > 0
       ? crewDayJobs.reduce((s, j) => s + Number(j.totalPrice ?? 0) / Number(j.crewDays ?? 1), 0) / crewDayJobs.length
       : 0;
-    return { totalRevenue, activeJobs, openLeads, avgRate };
+    return { totalRevenue, activeJobs, scheduledJobs, openLeads, avgRate };
   }, [jobs, leads]);
 
-  // Recent jobs — last 5 by created date
+  // Scheduled jobs — jobs with a scheduledDate, sorted by date ascending, upcoming first
+  const scheduledJobs = useMemo(() => {
+    const now = new Date();
+    return [...jobs]
+      .filter(j => j.scheduledDate && j.status !== "completed" && j.status !== "paid")
+      .sort((a, b) => new Date(a.scheduledDate!).getTime() - new Date(b.scheduledDate!).getTime())
+      .slice(0, 6);
+  }, [jobs]);
+
+  // Recent jobs — last 5 by created date (fallback when no scheduled dates set)
   const recentJobs = useMemo(() => [...jobs].slice(0, 5), [jobs]);
 
   // Active pipeline leads — exclude won/lost/converted, most recent first
@@ -139,14 +163,23 @@ export default function Dashboard() {
               <p className="text-xs font-semibold uppercase tracking-widest text-primary mb-1">Good morning, Jon</p>
               <h2 className="text-xl font-bold text-foreground" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
                 You have{" "}
-                <span className="text-primary">{kpis.activeJobs} active {kpis.activeJobs === 1 ? "job" : "jobs"}</span>{" "}
-                and{" "}
+                <span className="text-primary">{kpis.activeJobs} active {kpis.activeJobs === 1 ? "job" : "jobs"}</span>
+                {kpis.scheduledJobs > 0 && (
+                  <>, <span className="text-amber-400">{kpis.scheduledJobs} scheduled</span></>
+                )}
+                {" "}and{" "}
                 <span className="text-primary">{kpis.openLeads} open {kpis.openLeads === 1 ? "lead" : "leads"}</span>{" "}
                 today
               </h2>
               <p className="text-sm text-muted-foreground mt-1">Middle &amp; West Tennessee operations</p>
             </div>
             <div className="hidden md:flex items-center gap-3">
+              <Link href="/ops/schedule">
+                <button className="flex items-center gap-2 bg-secondary hover:bg-secondary/80 text-foreground text-sm font-semibold px-4 py-2 rounded-md transition-colors border border-border">
+                  <CalendarDays className="w-4 h-4" />
+                  Schedule
+                </button>
+              </Link>
               <Link href="/ops/jobs">
                 <button className="flex items-center gap-2 bg-primary hover:bg-primary/90 text-primary-foreground text-sm font-semibold px-4 py-2 rounded-md transition-colors">
                   <Plus className="w-4 h-4" />
@@ -174,19 +207,99 @@ export default function Dashboard() {
             delay={80}
           />
           <KPICard
+            title="Scheduled Jobs"
+            value={kpis.scheduledJobs.toString()}
+            sub="upcoming on calendar"
+            icon={CalendarCheck}
+            delay={160}
+          />
+          <KPICard
             title="Open Leads"
             value={kpis.openLeads.toString()}
             sub="in pipeline"
             icon={Users}
-            delay={160}
-          />
-          <KPICard
-            title="Avg Crew-Day Rate"
-            value={kpis.avgRate > 0 ? `$${Math.round(kpis.avgRate).toLocaleString()}` : "—"}
-            sub="from job data"
-            icon={Clock}
             delay={240}
           />
+        </div>
+
+        {/* Scheduled Jobs — full width */}
+        <div className="ops-card p-5">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h3 className="text-sm font-semibold text-foreground" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
+                Scheduled Jobs
+              </h3>
+              <p className="text-xs text-muted-foreground">Upcoming jobs with a scheduled date</p>
+            </div>
+            <Link href="/ops/schedule">
+              <span className="text-xs text-primary hover:text-primary/80 flex items-center gap-1 transition-colors cursor-pointer">
+                View schedule <ChevronRight className="w-3 h-3" />
+              </span>
+            </Link>
+          </div>
+          {scheduledJobs.length === 0 ? (
+            <EmptyState
+              message="No jobs have a scheduled date. Set a scheduled date on a job to see it here."
+              linkLabel="Go to Jobs"
+              linkHref="/ops/jobs"
+            />
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              {scheduledJobs.map((job) => {
+                const status = statusConfig[job.status] ?? { label: job.status, color: "text-muted-foreground bg-secondary border-border" };
+                const dateLabel = formatScheduledDate(job.scheduledDate);
+                const isToday = dateLabel === "Today";
+                const isTomorrow = dateLabel === "Tomorrow";
+                return (
+                  <Link href="/ops/jobs" key={job.id}>
+                    <div className={cn(
+                      "flex flex-col gap-2 p-4 rounded-lg border transition-colors cursor-pointer",
+                      isToday
+                        ? "border-primary/40 bg-primary/5 hover:bg-primary/10"
+                        : isTomorrow
+                        ? "border-amber-400/30 bg-amber-400/5 hover:bg-amber-400/10"
+                        : "border-border bg-secondary/20 hover:bg-secondary/40"
+                    )}>
+                      {/* Date badge */}
+                      <div className="flex items-center justify-between">
+                        <div className={cn(
+                          "flex items-center gap-1.5 text-[11px] font-semibold px-2 py-0.5 rounded",
+                          isToday ? "text-primary bg-primary/15" : isTomorrow ? "text-amber-400 bg-amber-400/15" : "text-muted-foreground bg-secondary"
+                        )}>
+                          <CalendarDays className="w-3 h-3" />
+                          {dateLabel}
+                        </div>
+                        <span className={cn("text-[10px] font-medium px-1.5 py-0.5 rounded border", status.color)}>
+                          {status.label}
+                        </span>
+                      </div>
+                      {/* Client + job info */}
+                      <div>
+                        <p className="text-sm font-semibold text-foreground leading-snug">{job.client}</p>
+                        <p className="text-[11px] text-muted-foreground capitalize mt-0.5">
+                          {job.jobType?.replace(/_/g, " ") ?? "Land clearing"}
+                          {job.acres ? ` · ${job.acres} ac` : ""}
+                        </p>
+                      </div>
+                      {/* Address */}
+                      {job.address && (
+                        <div className="flex items-center gap-1.5">
+                          <MapPin className="w-2.5 h-2.5 text-muted-foreground shrink-0" />
+                          <span className="text-[11px] text-muted-foreground truncate">{job.address}</span>
+                        </div>
+                      )}
+                      {/* Price */}
+                      {job.totalPrice && (
+                        <div className="text-xs font-semibold text-foreground ops-metric-value">
+                          ${Number(job.totalPrice).toLocaleString()}
+                        </div>
+                      )}
+                    </div>
+                  </Link>
+                );
+              })}
+            </div>
+          )}
         </div>
 
         {/* Recent Jobs + Lead Pipeline */}
@@ -230,12 +343,17 @@ export default function Dashboard() {
                               {status.label}
                             </span>
                           </div>
-                          <div className="flex items-center gap-2 mt-0.5">
+                          <div className="flex items-center gap-3 mt-0.5">
                             {job.address && (
                               <>
                                 <MapPin className="w-2.5 h-2.5 text-muted-foreground shrink-0" />
                                 <span className="text-[11px] text-muted-foreground truncate">{job.address}</span>
                               </>
+                            )}
+                            {job.scheduledDate && (
+                              <span className="text-[11px] text-amber-400 shrink-0">
+                                {formatScheduledDate(job.scheduledDate)}
+                              </span>
                             )}
                           </div>
                         </div>

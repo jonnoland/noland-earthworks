@@ -148,6 +148,13 @@
       "when": 1776484711515,
       "tag": "0020_supreme_guardian",
       "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "5",
+      "when": 1776559442842,
+      "tag": "0021_gifted_triton",
+      "breakpoints": true
     }
   ]
 }

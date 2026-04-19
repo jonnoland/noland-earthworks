@@ -827,6 +827,15 @@
 - [x] Request a Review button on completed job records in /ops/jobs — sends customer a direct Google review link via email
 
 ## Agent UX Enhancements — Apr 18 2026
-- [ ] Send Now button in Agents tab for daily digest — manually triggers the agent via tRPC mutation
-- [ ] Customizable SMS template for stale lead agent — editable in Agents tab, supports {name} {stage} {days} {phone} tokens
-- [ ] Auto follow-up task after review request sent — creates a reminder task due in 7 days to check for the review
+- [x] Send Now button in Agents tab for daily digest — manually triggers the agent via tRPC mutation
+- [x] Customizable SMS template for stale lead agent — editable in Agents tab, supports {name} {stage} {days} {phone} tokens
+- [x] Auto follow-up task after review request sent — creates a reminder task due in 7 days to check for the review
+
+## Dashboard Jobs Section — Apr 18 2026
+- [ ] Show jobs on the /ops dashboard: active/recent jobs list with status badge, client name, acreage, and link to /ops/jobs
+
+## Scheduled Jobs on Dashboard and Schedule — Apr 18 2026
+- [ ] Ensure jobs table has scheduledDate and scheduledEndDate fields
+- [ ] Dashboard: show upcoming scheduled jobs section sorted by scheduledDate with date, client, job type, status
+- [ ] Schedule page: render scheduled jobs as calendar events alongside blackout dates and site visits
+- [ ] Jobs form: add scheduledDate / scheduledEndDate fields so jobs can be scheduled
