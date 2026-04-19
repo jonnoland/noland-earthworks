@@ -30,6 +30,7 @@ import {
   ChevronRight,
   ExternalLink,
   LogOut,
+  UserPlus,
 } from "lucide-react";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { getLoginUrl } from "@/const";
@@ -51,6 +52,7 @@ const NAV_ITEMS = [
   { label: "Timesheets",    href: "/ops/timesheets",     icon: ClipboardCheck },
   { label: "Scoreboard",    href: "/ops/scoreboard",     icon: BarChart2 },
   { label: "Reports",       href: "/ops/reports",        icon: TrendingUp },
+  { label: "Team",          href: "/ops/team",           icon: UserPlus },
   { label: "Settings",      href: "/ops/settings",       icon: Settings },
 ];
 
@@ -114,6 +116,13 @@ export default function DashboardLayout({ children, title, subtitle }: Dashboard
   const [notifOpen, setNotifOpen] = useState(false);
   const [userOpen, setUserOpen] = useState(false);
 
+  // Pending team registration count for badge
+  const { data: pendingData } = trpc.team.pendingCount.useQuery(undefined, {
+    retry: false,
+    refetchInterval: 60_000,
+  });
+  const pendingCount = pendingData?.count ?? 0;
+
   // Auth guard
   if (loading) {
     return (
@@ -149,18 +158,24 @@ export default function DashboardLayout({ children, title, subtitle }: Dashboard
       {NAV_ITEMS.map((item) => {
         const Icon = item.icon;
         const active = isActive(item.href);
+        const showBadge = item.href === "/ops/team" && pendingCount > 0;
         return (
           <Link key={item.href} href={item.href}>
             <div
               onClick={onClickItem}
-              className={`flex items-center gap-3 mx-2 my-0.5 px-2 py-2 rounded-md text-sm font-medium cursor-pointer transition-colors ${
+              className={`relative flex items-center gap-3 mx-2 my-0.5 px-2 py-2 rounded-md text-sm font-medium cursor-pointer transition-colors ${
                 active
                   ? "bg-orange-500 text-white"
                   : "text-muted-foreground hover:text-white hover:bg-white/5"
               }`}
             >
               <Icon size={16} className="shrink-0" />
-              {!collapsed && <span>{item.label}</span>}
+              {!collapsed && <span className="flex-1">{item.label}</span>}
+              {showBadge && (
+                <span className="ml-auto min-w-[18px] h-[18px] flex items-center justify-center rounded-full bg-red-500 text-white text-[10px] font-bold px-1">
+                  {pendingCount}
+                </span>
+              )}
             </div>
           </Link>
         );

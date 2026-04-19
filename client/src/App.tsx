@@ -25,6 +25,8 @@ import OpsScoreboard from "./pages/ops/Scoreboard";
 import OpsDistanceQuotes from "./pages/ops/DistanceQuotes";
 import OpsQuoteAnalytics from "./pages/ops/QuoteAnalytics";
 import OpsTasksPage from "./pages/ops/Tasks";
+import OpsTeam from "./pages/ops/Team";
+import OpsRegister from "./pages/ops/Register";
 import Home from "./pages/Home";
 import SMSWidget from "./components/SMSWidget";
 import LandClearingPage from "./pages/LandClearing";
@@ -212,6 +214,11 @@ function Router() {
       <Route path="/ops/distance-quotes">
         <OwnerRoute><OpsDistanceQuotes /></OwnerRoute>
       </Route>
+      <Route path="/ops/team">
+        <OwnerRoute><OpsTeam /></OwnerRoute>
+      </Route>
+      {/* Public — no auth required, employees register here */}
+      <Route path="/ops/register" component={OpsRegister} />
 
       <Route path="/404" component={NotFound} />
       <Route component={NotFound} />

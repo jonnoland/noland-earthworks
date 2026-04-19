@@ -535,6 +535,39 @@ export const agentConfig = mysqlTable("agent_config", {
 export type AgentConfig = typeof agentConfig.$inferSelect;
 export type InsertAgentConfig = typeof agentConfig.$inferInsert;
 
+// ─── Employee Registrations ──────────────────────────────────────────────────
+/**
+ * Pending employee registrations — submitted from /ops/register.
+ * Owner reviews and approves or denies from /ops/team.
+ */
+export const employeeRegistrations = mysqlTable("employee_registrations", {
+  id: int("id").primaryKey().autoincrement(),
+  /** Full name entered by the employee */
+  name: varchar("name", { length: 255 }).notNull(),
+  /** Email address */
+  email: varchar("email", { length: 320 }).notNull(),
+  /** Phone number */
+  phone: varchar("phone", { length: 50 }),
+  /** The access level the employee is requesting */
+  requestedRole: mysqlEnum("requestedRole", [
+    "field_crew",      // View schedule + jobs only
+    "office",          // View jobs, invoices, quotes
+    "supervisor",      // Full ops view except settings
+  ]).notNull().default("field_crew"),
+  /** What they plan to do — optional note from the employee */
+  message: text("message"),
+  /** Approval status */
+  status: mysqlEnum("status", ["pending", "approved", "denied"]).notNull().default("pending"),
+  /** Owner note on approval or denial */
+  ownerNote: text("ownerNote"),
+  /** If approved, the users.id of the created/linked account */
+  linkedUserId: int("linkedUserId"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type EmployeeRegistration = typeof employeeRegistrations.$inferSelect;
+export type InsertEmployeeRegistration = typeof employeeRegistrations.$inferInsert;
+
 // ─── Agent Run Log ────────────────────────────────────────────────────────────
 /** Immutable record of every agent execution for the Agents dashboard. */
 export const agentLog = mysqlTable("agent_log", {

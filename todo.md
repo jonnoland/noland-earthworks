@@ -883,3 +883,15 @@
 
 ## Open Quotes Filter Fix — Apr 19 2026
 - [x] Exclude DRAFT quotes from open quotes count and list on Dashboard (only show SENT/awaiting approval)
+
+## KPI Card Link Audit — Apr 19 2026
+- [x] Audit and fix all 8 KPI card links: Active Jobs → /ops/jobs, Scheduled Jobs → /ops/schedule, Outstanding Balance → /ops/invoices, Open Leads → /ops/leads, Paid This Month → /ops/invoices, Open Quotes → /ops/quotes, Revenue/Acre → /ops/jobs, Win Rate → /ops/leads
+
+## Employee Registration & Access Control — Apr 19 2026
+- [x] Add employeeRegistrations table to schema (name, email, phone, requestedRole, status: pending/approved/denied, ownerNote) — migration 0023 applied
+- [x] Build /ops/register page: employee enters name, email, phone, selects requested access level, submits (public, no auth required)
+- [x] On registration submit: save to employeeRegistrations table and send owner notification via notifyOwner
+- [x] Build /ops/team page: owner sees pending/approved/denied registrations with Approve / Deny buttons and optional owner note
+- [x] teamRouter: submitRegistration (public), listRegistrations, approveRegistration, denyRegistration, pendingCount (owner-only)
+- [x] Add "Team" link to /ops sidebar with red pending count badge
+- [x] Fix all 8 KPI card hrefs to route to correct /ops pages

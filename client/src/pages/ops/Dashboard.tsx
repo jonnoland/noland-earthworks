@@ -98,13 +98,14 @@ function formatDate(d: Date | string | null | undefined): string {
   return new Date(d).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 }
 
-function KPICard({ title, value, sub, icon: Icon, delay = 0, accent }: {
+function KPICard({ title, value, sub, icon: Icon, delay = 0, accent, href }: {
   title: string;
   value: string;
   sub: string;
   icon: React.ElementType;
   delay?: number;
   accent?: "green" | "red" | "amber" | "default";
+  href?: string;
 }) {
   const [visible, setVisible] = useState(false);
   useEffect(() => {
@@ -117,10 +118,11 @@ function KPICard({ title, value, sub, icon: Icon, delay = 0, accent }: {
     : accent === "amber" ? "text-amber-400 bg-amber-400/10"
     : "text-primary bg-primary/10";
 
-  return (
+  const inner = (
     <div
       className={cn(
         "ops-card p-5 transition-all duration-500",
+        href ? "cursor-pointer hover:border-primary/40 hover:bg-card/80" : "",
         visible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"
       )}
     >
@@ -138,6 +140,8 @@ function KPICard({ title, value, sub, icon: Icon, delay = 0, accent }: {
       <div className="text-[10px] text-muted-foreground/60 mt-0.5">{sub}</div>
     </div>
   );
+  if (!href) return inner;
+  return <Link href={href}>{inner}</Link>;
 }
 
 function SectionHeader({ title, badge, sub, href, external }: {
@@ -505,6 +509,7 @@ export default function Dashboard() {
             sub={jobberConnected ? "from Jobber" : "in progress"}
             icon={Briefcase}
             delay={0}
+            href="/ops/jobs"
           />
           <KPICard
             title="Scheduled Jobs"
@@ -512,6 +517,7 @@ export default function Dashboard() {
             sub="upcoming on calendar"
             icon={CalendarCheck}
             delay={80}
+            href="/ops/schedule"
           />
           <KPICard
             title="Outstanding Balance"
@@ -520,6 +526,7 @@ export default function Dashboard() {
             icon={Receipt}
             delay={160}
             accent={overdueInvoices.length > 0 ? "red" : "default"}
+            href="/ops/invoices"
           />
           <KPICard
             title="Open Leads / Requests"
@@ -527,6 +534,7 @@ export default function Dashboard() {
             sub={jobberConnected ? "from Jobber requests" : "in pipeline"}
             icon={Users}
             delay={240}
+            href="/ops/leads"
           />
         </div>
 
@@ -539,6 +547,7 @@ export default function Dashboard() {
             icon={DollarSign}
             delay={0}
             accent="green"
+            href="/ops/invoices"
           />
           <KPICard
             title="Open Quotes"
@@ -546,6 +555,7 @@ export default function Dashboard() {
             sub={jobberConnected ? "awaiting approval" : "pending"}
             icon={FileText}
             delay={80}
+            href="/ops/quotes"
           />
           <KPICard
             title="Revenue / Acre"
@@ -553,6 +563,7 @@ export default function Dashboard() {
             sub={`avg across ${normalizedLocalJobs.filter(j => j.totalPrice && j.acres).length} local jobs`}
             icon={TrendingUp}
             delay={160}
+            href="/ops/jobs"
           />
           <KPICard
             title="Win Rate"
@@ -560,6 +571,7 @@ export default function Dashboard() {
             sub="of closed leads converted"
             icon={Gauge}
             delay={240}
+            href="/ops/leads"
           />
         </div>
 
