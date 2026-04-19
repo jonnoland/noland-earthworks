@@ -21,6 +21,7 @@ const quoteSchema = z.object({
   state: z.string().max(50).optional().default("TN"),
   zip: z.string().max(20).optional().default(""),
   message: z.string().max(2000).optional().default(""),
+  addOns: z.array(z.string()).optional().default([]),
 });
 
 export type QuoteInput = z.infer<typeof quoteSchema>;
@@ -134,6 +135,7 @@ function buildEmailHtml(data: QuoteInput): string {
               ${row("County", escapeHtml(data.county) + " County")}
               ${data.acreage ? row("Acreage", escapeHtml(data.acreage)) : ""}
               ${addressLines.length ? row("Property Address", addressLines.map(escapeHtml).join("<br />")) : ""}
+              ${data.addOns && data.addOns.length > 0 ? row("Add-On Services", data.addOns.map(escapeHtml).join("<br />")) : ""}
             </table>
           </td>
         </tr>
@@ -259,6 +261,7 @@ function buildConfirmationEmailHtml(data: QuoteInput): string {
               ${row("County", escapeHtml(data.county) + " County")}
               ${data.acreage ? row("Acreage", escapeHtml(data.acreage)) : ""}
               ${addressLines.length ? row("Property Address", addressLines.map(escapeHtml).join("<br />")) : ""}
+              ${data.addOns && data.addOns.length > 0 ? row("Add-On Services", data.addOns.map(escapeHtml).join("<br />")) : ""}
             </table>
           </td>
         </tr>
@@ -452,6 +455,7 @@ export const quoteRouter = router({
           state: input.state || null,
           zip: input.zip || null,
           message: input.message || null,
+          addOns: input.addOns && input.addOns.length > 0 ? JSON.stringify(input.addOns) : null,
           jobberStatus,
           jobberRequestId: jobberRequestId ?? null,
           jobberRequestUrl: jobberRequestUrl ?? null,

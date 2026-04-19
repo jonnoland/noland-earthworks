@@ -183,6 +183,13 @@
       "when": 1776569025826,
       "tag": "0025_ambitious_pyro",
       "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "5",
+      "when": 1776612352475,
+      "tag": "0026_sturdy_reaper",
+      "breakpoints": true
     }
   ]
 }

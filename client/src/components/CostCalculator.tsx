@@ -578,9 +578,10 @@ function MapPolygonModal({ onClose, onAcreageConfirm, calcState }: {
 
 /* ─── Submit as Lead Modal ──────────────────────────────────────────── */
 
-function SubmitLeadModal({ state, result, onClose, onSuccess }: {
+function SubmitLeadModal({ state, result, addOns = [], onClose, onSuccess }: {
   state: CalcState;
   result: { low: number; high: number };
+  addOns?: string[];
   onClose: () => void;
   onSuccess: (data: { name: string; phone: string; email: string; service: string; acres: number; density: string; terrain: string; estimateLow: number; estimateHigh: number; leadId: number | null }) => void;
 }) {
@@ -656,6 +657,7 @@ function SubmitLeadModal({ state, result, onClose, onSuccess }: {
       estimateLow: result.low,
       estimateHigh: result.high,
       message: (message.trim() || "") + photoNote || undefined,
+      addOns: addOns.length > 0 ? addOns : undefined,
     });
   };
 
@@ -1129,6 +1131,20 @@ export default function CostCalculator() {
   });
   const [showMap, setShowMap] = useState(false);
   const [showLeadForm, setShowLeadForm] = useState(false);
+  const [selectedAddOns, setSelectedAddOns] = useState<string[]>([]);
+
+  const toggleAddOn = (label: string) => {
+    setSelectedAddOns((prev) =>
+      prev.includes(label) ? prev.filter((a) => a !== label) : [...prev, label]
+    );
+  };
+
+  const ADD_ON_OPTIONS = [
+    { key: "post-clear-seeding",  label: "Post-Clear Seeding & Erosion Control" },
+    { key: "fence-line-clearing", label: "Fence Line Clearing" },
+    { key: "mulch-redistribution", label: "Mulch Redistribution" },
+    { key: "selective-clearing",  label: "Selective Clearing & Tree Preservation" },
+  ];
   const [confirmData, setConfirmData] = useState<{
     name: string; phone: string; email: string; service: string;
     acres: number; density: string; terrain: string;
@@ -1243,6 +1259,53 @@ export default function CostCalculator() {
               onChange={set("access")}
               options={accessOptions}
             />
+
+            {/* Add-On Services */}
+            <div style={{ marginTop: "1.25rem" }}>
+              <p style={{
+                fontFamily: "'Oswald', sans-serif", fontWeight: 600,
+                fontSize: "0.65rem", letterSpacing: "0.14em", textTransform: "uppercase",
+                color: "rgba(240,237,230,0.45)", marginBottom: "0.6rem",
+              }}>
+                Add-On Services <span style={{ color: "rgba(240,237,230,0.3)", fontWeight: 400, textTransform: "none", letterSpacing: 0, fontSize: "0.65rem" }}>(optional)</span>
+              </p>
+              <div style={{ display: "flex", flexDirection: "column", gap: "0.4rem" }}>
+                {ADD_ON_OPTIONS.map((addon) => (
+                  <label
+                    key={addon.key}
+                    style={{
+                      display: "flex", alignItems: "center", gap: "0.6rem",
+                      cursor: "pointer", padding: "0.5rem 0.75rem", borderRadius: "4px",
+                      border: selectedAddOns.includes(addon.label)
+                        ? "1px solid rgba(224,123,42,0.45)"
+                        : "1px solid rgba(255,255,255,0.07)",
+                      backgroundColor: selectedAddOns.includes(addon.label)
+                        ? "rgba(224,123,42,0.07)"
+                        : "rgba(255,255,255,0.02)",
+                      transition: "all 0.15s ease",
+                    }}
+                    onClick={() => toggleAddOn(addon.label)}
+                  >
+                    <div style={{
+                      width: "15px", height: "15px", borderRadius: "3px", flexShrink: 0,
+                      border: selectedAddOns.includes(addon.label)
+                        ? "2px solid #E07B2A" : "2px solid rgba(255,255,255,0.22)",
+                      backgroundColor: selectedAddOns.includes(addon.label) ? "#E07B2A" : "transparent",
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                    }}>
+                      {selectedAddOns.includes(addon.label) && (
+                        <svg width="9" height="7" viewBox="0 0 10 8" fill="none">
+                          <path d="M1 4L3.5 6.5L9 1" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                        </svg>
+                      )}
+                    </div>
+                    <span style={{ fontFamily: "'Lato', sans-serif", fontSize: "0.82rem", color: "rgba(240,237,230,0.8)" }}>
+                      {addon.label}
+                    </span>
+                  </label>
+                ))}
+              </div>
+            </div>
           </div>
 
           {/* Result panel */}
@@ -1378,6 +1441,7 @@ export default function CostCalculator() {
         <SubmitLeadModal
           state={state}
           result={result}
+          addOns={selectedAddOns}
           onClose={() => setShowLeadForm(false)}
           onSuccess={(data) => {
             setShowLeadForm(false);

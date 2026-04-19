@@ -944,3 +944,18 @@
 ## Pricing Agent Expansion — Apr 19 2026
 - [x] agents.ts: add "Stump Grinding" and "Debris Hauling" to PRICING_SERVICES array in runPricingUpdateAgent
 - [x] /ops/pricing PricingBenchmarksCard: add fallback rows for Stump Grinding and Debris Hauling
+
+## Add-On Services Expansion — Apr 19 2026
+- [ ] Pricing.tsx: add Post-Clear Seeding / Erosion Control service entry
+- [ ] Pricing.tsx: add Fence Line Clearing service entry
+- [ ] Pricing.tsx: add Mulch Redistribution / Ground Cover Application service entry
+- [ ] Pricing.tsx: add Selective Clearing / Tree Preservation Consultation service entry
+- [ ] ServicesSection.tsx: add all four new services to the homepage services grid
+- [ ] Navbar serviceLinks: add new services to the Services dropdown
+- [x] Quote.tsx: add add-on services checkbox group (Post-Clear Seeding, Fence Line Clearing, Mulch Redistribution, Selective Clearing Consultation)
+- [x] Quote.tsx: include selected add-ons in the quote submission payload, email, and DB (addOns column added to quote_submissions)
+
+## Estimate Tool Add-On Services — Apr 19 2026
+- [x] CostCalculator: add add-on services checkbox group (Post-Clear Seeding, Fence Line Clearing, Mulch Redistribution, Selective Clearing Consultation)
+- [x] CostCalculator: pass selected add-ons to SubmitLeadModal and include in submitEstimate mutation
+- [x] CostCalculator: add-ons included in lead notes and owner notification

@@ -37,6 +37,7 @@ export const widgetRouter = router({
         estimateLow: z.number(),
         estimateHigh: z.number(),
         message: z.string().max(500).optional(),
+        addOns: z.array(z.string()).optional().default([]),
       })
     )
     .mutation(async ({ input }) => {
@@ -49,6 +50,7 @@ export const widgetRouter = router({
         `Terrain: ${input.terrain}`,
         `Site access: ${input.access}`,
         `Estimate range: $${input.estimateLow.toLocaleString()} – $${input.estimateHigh.toLocaleString()}`,
+        input.addOns && input.addOns.length > 0 ? `Add-on services: ${input.addOns.join(", ")}` : "",
         input.message ? `\nAdditional notes: ${input.message}` : "",
       ]
         .filter(Boolean)

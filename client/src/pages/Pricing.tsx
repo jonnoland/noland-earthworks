@@ -48,7 +48,7 @@ const services = [
     tagline: "Full-site preparation for construction or agriculture",
     icon: "🏗️",
     description:
-      "Complete removal of trees, stumps, brush, and debris. Site is graded and ready for building, farming, or pasture use. Includes haul-away of material.",
+      "Complete removal of trees, stumps, brush, and debris. Site is cleared and ready for building, farming, or pasture use.",
     priceUnit: "per acre",
     tiers: [
       {
@@ -67,7 +67,7 @@ const services = [
         detail: "Dense mature timber, steep terrain, large stump removal",
       },
     ],
-    note: "Stump grinding is included. Debris haul-away is included in the estimate.",
+    note: "Stump grinding is included. Debris disposal expectations should be discussed during the site visit.",
     href: "/services/land-clearing",
   },
   {
@@ -153,6 +153,117 @@ const services = [
     ],
     note: "Annual maintenance plans available. Discounts for multi-visit contracts.",
     href: "/services/property-maintenance",
+  },
+  {
+    id: "post-clear-seeding",
+    name: "Post-Clear Seeding & Erosion Control",
+    tagline: "Protect bare ground after clearing",
+    icon: "🌱",
+    description:
+      "Broadcast seeding, erosion blanket installation, and ground cover application following land clearing or forestry mulching. Keeps topsoil in place and establishes ground cover before the next rain.",
+    priceUnit: "per acre",
+    tiers: [
+      {
+        label: "Broadcast Seeding",
+        range: "$150 – $350 / acre",
+        detail: "Seed mix selected for terrain and intended use — pasture, wildlife, or erosion control",
+      },
+      {
+        label: "Seeding + Erosion Blanket",
+        range: "$350 – $700 / acre",
+        detail: "Seed plus biodegradable erosion control blanket on slopes and drainage areas",
+      },
+      {
+        label: "Full Site Stabilization",
+        range: "$700 – $1,500 / acre",
+        detail: "Comprehensive seeding, blanket, and straw mulch application for high-erosion or steep sites",
+      },
+    ],
+    note: "Best scheduled immediately after clearing while ground is freshly worked. Seed mix varies by intended land use — pasture, wildlife habitat, or erosion control.",
+    href: "/services/post-clear-seeding",
+    isAddon: true,
+  },
+  {
+    id: "fence-line-clearing",
+    name: "Fence Line Clearing",
+    tagline: "Reclaim your boundaries without a second mobilization",
+    icon: "🚧",
+    description:
+      "Clearing overgrown brush, saplings, and encroaching vegetation along fence rows and property boundaries. Priced per linear foot and typically added to land clearing or pasture reclamation jobs at no additional mobilization cost.",
+    priceUnit: "per linear foot",
+    tiers: [
+      {
+        label: "Light Overgrowth",
+        range: "$1.50 – $3.00 / linear ft",
+        detail: "Grass, briars, and light brush along established fence lines",
+      },
+      {
+        label: "Moderate Brush",
+        range: "$3.00 – $6.00 / linear ft",
+        detail: "Established brush and small saplings encroaching on fence",
+      },
+      {
+        label: "Heavy Overgrowth",
+        range: "$6.00 – $12.00 / linear ft",
+        detail: "Dense brush, vines, and trees overtaking fence line — fence may not be visible",
+      },
+    ],
+    note: "Most cost-effective when added to an existing land clearing or pasture job — same mobilization, no additional trip charge.",
+    href: "/services/fence-line-clearing",
+    isAddon: true,
+  },
+  {
+    id: "mulch-redistribution",
+    name: "Mulch Redistribution",
+    tagline: "Finish the job with a clean, uniform ground cover",
+    icon: "🪵",
+    description:
+      "After forestry mulching, redistribute or concentrate the mulch layer around specific areas — drainage channels, tree buffers, landscaping edges, or bare spots. Leaves the property with a clean, intentional finish.",
+    priceUnit: "per hour",
+    tiers: [
+      {
+        label: "Spot Redistribution",
+        range: "$150 – $300",
+        detail: "Targeted redistribution of mulch in specific areas — 1–2 hours of machine time",
+      },
+      {
+        label: "Full Site Finish",
+        range: "$300 – $700",
+        detail: "Uniform mulch layer spread across the entire cleared area",
+      },
+      {
+        label: "Drainage & Buffer Work",
+        range: "$400 – $900",
+        detail: "Concentrated mulch application along drainage channels and sensitive buffer zones",
+      },
+    ],
+    note: "Add-on to any forestry mulching job. Scheduled same day as the primary clearing work.",
+    href: "/services/mulch-redistribution",
+    isAddon: true,
+  },
+  {
+    id: "selective-clearing-consultation",
+    name: "Selective Clearing & Tree Preservation",
+    tagline: "Precision clearing — keep what matters, remove the rest",
+    icon: "🌳",
+    description:
+      "Pre-job site walkthrough to identify and flag trees for preservation, mark clearing boundaries, and document scope before work begins. Reduces scope disputes, protects valuable hardwoods, and ensures the finished property matches your vision.",
+    priceUnit: "flat fee",
+    tiers: [
+      {
+        label: "Consultation Walkthrough",
+        range: "$150 – $300",
+        detail: "On-site walkthrough, tree flagging, and boundary marking — fee applied toward job if booked",
+      },
+      {
+        label: "Precision Clearing Premium",
+        range: "$200 – $500 / acre",
+        detail: "Premium rate applied to jobs requiring detailed selective clearing around preserved trees or structures",
+      },
+    ],
+    note: "Consultation fee is credited toward the job total when you proceed with booking. Recommended for any job where specific trees, structures, or boundary areas require special attention.",
+    href: "/services/selective-clearing",
+    isAddon: true,
   },
 ];
 
@@ -660,14 +771,16 @@ export default function PricingPage() {
             </p>
           </div>
 
+          {/* Core services */}
           <div
             style={{
               display: "grid",
               gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 480px), 1fr))",
               gap: "2rem",
+              marginBottom: "4rem",
             }}
           >
-            {services.map((svc) => (
+            {services.filter((s) => !(s as any).isAddon).map((svc) => (
               <div
                 key={svc.id}
                 style={{
@@ -798,6 +911,107 @@ export default function PricingPage() {
                 </div>
               </div>
             ))}
+          </div>
+
+          {/* Add-on services */}
+          <div style={{ marginTop: "1rem" }}>
+            <div style={{ marginBottom: "2rem" }}>
+              <h3
+                style={{
+                  fontFamily: "'Oswald', sans-serif",
+                  fontWeight: 700,
+                  fontSize: "clamp(1.35rem, 2.5vw, 1.85rem)",
+                  color: "#F0EDE6",
+                  marginBottom: "0.5rem",
+                }}
+              >
+                Add-On Services
+              </h3>
+              <p style={{ fontFamily: "'Lato', sans-serif", color: "rgba(240,237,230,0.55)", fontSize: "0.9rem" }}>
+                Available as additions to any primary clearing or mulching job — same mobilization, no extra trip charge.
+              </p>
+            </div>
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 480px), 1fr))",
+                gap: "2rem",
+              }}
+            >
+              {services.filter((s) => (s as any).isAddon).map((svc) => (
+                <div
+                  key={svc.id}
+                  style={{
+                    backgroundColor: "#1a1a1a",
+                    border: "1px solid rgba(224,123,42,0.25)",
+                    borderRadius: "8px",
+                    overflow: "hidden",
+                    position: "relative",
+                  }}
+                >
+                  {/* Add-on badge */}
+                  <div
+                    style={{
+                      position: "absolute",
+                      top: "1rem",
+                      right: "1rem",
+                      backgroundColor: "rgba(224,123,42,0.15)",
+                      border: "1px solid rgba(224,123,42,0.3)",
+                      borderRadius: "4px",
+                      padding: "0.2rem 0.6rem",
+                      fontFamily: "'Oswald', sans-serif",
+                      fontWeight: 600,
+                      fontSize: "0.6rem",
+                      letterSpacing: "0.15em",
+                      textTransform: "uppercase",
+                      color: "#E07B2A",
+                    }}
+                  >
+                    Add-On
+                  </div>
+                  {/* Card header */}
+                  <div style={{ padding: "1.75rem 1.75rem 1.25rem", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+                    <div style={{ display: "flex", alignItems: "flex-start", gap: "1rem", marginBottom: "0.75rem" }}>
+                      <span style={{ fontSize: "2rem", lineHeight: 1 }}>{svc.icon}</span>
+                      <div style={{ paddingRight: "3rem" }}>
+                        <h3 style={{ fontFamily: "'Oswald', sans-serif", fontWeight: 700, fontSize: "1.25rem", color: "#F0EDE6", marginBottom: "0.2rem" }}>
+                          {svc.name}
+                        </h3>
+                        <p style={{ fontFamily: "'Lato', sans-serif", fontSize: "0.85rem", color: "#E07B2A", fontStyle: "italic" }}>
+                          {svc.tagline}
+                        </p>
+                      </div>
+                    </div>
+                    <p style={{ fontFamily: "'Lato', sans-serif", fontSize: "0.9rem", color: "rgba(240,237,230,0.65)", lineHeight: 1.6 }}>
+                      {svc.description}
+                    </p>
+                  </div>
+                  {/* Pricing tiers */}
+                  <div style={{ padding: "1.25rem 1.75rem" }}>
+                    <p style={{ fontFamily: "'Oswald', sans-serif", fontWeight: 600, fontSize: "0.65rem", letterSpacing: "0.2em", textTransform: "uppercase", color: "rgba(240,237,230,0.4)", marginBottom: "0.75rem" }}>
+                      Typical Range — {svc.priceUnit}
+                    </p>
+                    <div style={{ display: "flex", flexDirection: "column", gap: "0.6rem" }}>
+                      {svc.tiers.map((tier) => (
+                        <div key={tier.label} style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "1rem", padding: "0.75rem 1rem", backgroundColor: "rgba(255,255,255,0.03)", borderRadius: "4px", border: "1px solid rgba(255,255,255,0.05)" }}>
+                          <div>
+                            <p style={{ fontFamily: "'Oswald', sans-serif", fontWeight: 500, fontSize: "0.9rem", color: "#F0EDE6", marginBottom: "0.2rem" }}>{tier.label}</p>
+                            <p style={{ fontFamily: "'Lato', sans-serif", fontSize: "0.78rem", color: "rgba(240,237,230,0.5)" }}>{tier.detail}</p>
+                          </div>
+                          <span style={{ fontFamily: "'Oswald', sans-serif", fontWeight: 700, fontSize: "1rem", color: "#E07B2A", whiteSpace: "nowrap", flexShrink: 0 }}>{tier.range}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  {/* Note */}
+                  {svc.note && (
+                    <div style={{ padding: "0.75rem 1.75rem 1.5rem", borderTop: "1px solid rgba(255,255,255,0.05)" }}>
+                      <p style={{ fontFamily: "'Lato', sans-serif", fontSize: "0.82rem", color: "rgba(240,237,230,0.5)", fontStyle: "italic" }}>{svc.note}</p>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       </section>

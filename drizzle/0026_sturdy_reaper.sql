@@ -1,0 +1,1 @@
+ALTER TABLE `quote_submissions` ADD `addOns` text;

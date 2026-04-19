@@ -75,6 +75,13 @@ export default function QuotePage() {
     "/quote"
   );
   const [submitted, setSubmitted] = useState(false);
+  const [selectedAddOns, setSelectedAddOns] = useState<string[]>([]);
+
+  const toggleAddOn = (label: string) => {
+    setSelectedAddOns((prev) =>
+      prev.includes(label) ? prev.filter((a) => a !== label) : [...prev, label]
+    );
+  };
 
   // Read calculator pre-fill params from URL on first render
   const initialForm = (() => {
@@ -134,6 +141,7 @@ export default function QuotePage() {
       state: form.state || "TN",
       zip: form.zip,
       message: form.message,
+      addOns: selectedAddOns,
     });
   };
 
@@ -543,6 +551,12 @@ export default function QuotePage() {
                             <span style={valueStyle}>{acreageDisplay}</span>
                           </div>
                         )}
+                        {selectedAddOns.length > 0 && (
+                          <div style={rowStyle}>
+                            <span style={labelStyle2}>Add-Ons</span>
+                            <span style={{ ...valueStyle, maxWidth: "260px", wordBreak: "break-word" }}>{selectedAddOns.join(", ")}</span>
+                          </div>
+                        )}
                         {addressLine && (
                           <div style={{ ...rowStyle, borderBottom: "none" }}>
                             <span style={labelStyle2}>Address</span>
@@ -713,6 +727,69 @@ export default function QuotePage() {
                       <option value="ten-plus" style={{ backgroundColor: "#1a1a1a" }}>10+ acres</option>
                       <option value="unsure" style={{ backgroundColor: "#1a1a1a" }}>Not sure</option>
                     </select>
+                  </div>
+
+                  {/* Add-On Services */}
+                  <div>
+                    <label style={labelStyle}>Add-On Services <span style={{ color: "rgba(240,237,230,0.4)", fontSize: "0.7rem", letterSpacing: "0.08em" }}>(Optional)</span></label>
+                    <p style={{ fontFamily: "'Lato', sans-serif", fontSize: "0.78rem", color: "rgba(240,237,230,0.45)", marginBottom: "0.75rem", marginTop: "0.25rem" }}>
+                      Select any add-on services you'd like included with your quote.
+                    </p>
+                    <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+                      {[
+                        { key: "post-clear-seeding", label: "Post-Clear Seeding & Erosion Control" },
+                        { key: "fence-line-clearing", label: "Fence Line Clearing" },
+                        { key: "mulch-redistribution", label: "Mulch Redistribution" },
+                        { key: "selective-clearing", label: "Selective Clearing & Tree Preservation" },
+                      ].map((addon) => (
+                        <label
+                          key={addon.key}
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "0.65rem",
+                            cursor: "pointer",
+                            padding: "0.6rem 0.85rem",
+                            borderRadius: "4px",
+                            border: selectedAddOns.includes(addon.label)
+                              ? "1px solid rgba(224,123,42,0.5)"
+                              : "1px solid rgba(255,255,255,0.08)",
+                            backgroundColor: selectedAddOns.includes(addon.label)
+                              ? "rgba(224,123,42,0.08)"
+                              : "rgba(255,255,255,0.02)",
+                            transition: "all 0.15s ease",
+                          }}
+                          onClick={() => toggleAddOn(addon.label)}
+                        >
+                          <div
+                            style={{
+                              width: "16px",
+                              height: "16px",
+                              borderRadius: "3px",
+                              border: selectedAddOns.includes(addon.label)
+                                ? "2px solid #E07B2A"
+                                : "2px solid rgba(255,255,255,0.25)",
+                              backgroundColor: selectedAddOns.includes(addon.label)
+                                ? "#E07B2A"
+                                : "transparent",
+                              flexShrink: 0,
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                            }}
+                          >
+                            {selectedAddOns.includes(addon.label) && (
+                              <svg width="10" height="8" viewBox="0 0 10 8" fill="none">
+                                <path d="M1 4L3.5 6.5L9 1" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                              </svg>
+                            )}
+                          </div>
+                          <span style={{ fontFamily: "'Lato', sans-serif", fontSize: "0.875rem", color: "rgba(240,237,230,0.85)" }}>
+                            {addon.label}
+                          </span>
+                        </label>
+                      ))}
+                    </div>
                   </div>
 
                   {/* Property Address */}

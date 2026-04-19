@@ -204,6 +204,7 @@ export const quoteSubmissions = mysqlTable("quote_submissions", {
   state: varchar("state", { length: 50 }),
   zip: varchar("zip", { length: 20 }),
   message: text("message"),
+  addOns: text("addOns"),  // JSON array of selected add-on service names
   /** Jobber sync outcome */
   jobberStatus: mysqlEnum("jobberStatus", ["synced", "failed", "skipped"]).notNull().default("skipped"),
   jobberRequestId: varchar("jobberRequestId", { length: 256 }),
