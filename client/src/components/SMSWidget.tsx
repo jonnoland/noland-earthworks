@@ -49,7 +49,7 @@ export default function SMSWidget() {
   if (typeof window !== "undefined" && window.location.pathname.startsWith("/ops")) return null;
 
   return (
-    <div className="fixed top-4 right-4 z-50 flex flex-col items-end gap-3" ref={panelRef}>
+    <div className="fixed top-20 right-4 z-50 flex flex-col items-end gap-3" ref={panelRef}>
 
       {/* ── Panel ── */}
       {step !== "idle" && (

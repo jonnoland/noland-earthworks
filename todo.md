@@ -875,3 +875,8 @@
 ## Chat Button Position — Apr 19 2026
 - [x] Move floating chat circle button from bottom-right to top-right on all pages
 - [x] Add owner-only /ops link to public site Navbar (only visible when logged in as owner)
+
+## Navbar Ops Link Improvements — Apr 19 2026
+- [x] Notification dot on Ops navbar link when there are open Jobber requests or overdue invoices
+- [x] Logout dropdown on Ops navbar link (click Ops to get dropdown with Go to Ops + Log Out)
+- [x] Lower chat button to top-20 so it clears the navbar on scroll
