@@ -865,3 +865,9 @@
 - [x] Dashboard: Active Jobs KPI uses Jobber job statuses
 - [x] Dashboard: Open Leads KPI uses Jobber requests count
 - [x] Dashboard: Scheduled Jobs count uses Jobber jobs with startAt in future
+
+## Dashboard Job Links + Invoices Page + Revenue Chart — Apr 19 2026
+- [x] Fix: Scheduled Jobs cards on Dashboard link to /ops/jobs (not Jobber) for all sources
+- [x] Fix: Recent Jobs rows on Dashboard link to /ops/jobs (not Jobber)
+- [x] Build /ops/invoices page: full Jobber invoice list, search, filter by status, revenue summary (already existed, confirmed complete)
+- [x] Add monthly revenue trend chart to Dashboard Performance Metrics (Jobber paid invoices by month)

@@ -5,6 +5,9 @@
  */
 
 import { useState, useEffect, useMemo, useRef } from "react";
+import {
+  AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
+} from "recharts";
 import DashboardLayout from "@/components/DashboardLayout";
 import { trpc } from "@/lib/trpc";
 import {
@@ -638,10 +641,8 @@ export default function Dashboard() {
                 const dateLabel = formatScheduledDate(job.scheduledDate);
                 const isToday = dateLabel === "Today";
                 const isTomorrow = dateLabel === "Tomorrow";
-                const cardHref = job.source === "jobber"
-                  ? "https://secure.getjobber.com/home"
-                  : "/ops/jobs";
-                const isExternal = job.source === "jobber";
+                const cardHref = "/ops/jobs";
+                const isExternal = false;
 
                 const CardContent = (
                   <div className={cn(
@@ -924,8 +925,8 @@ export default function Dashboard() {
               <div className="space-y-2">
                 {recentJobs.map((job) => {
                   const status = statusConfig[job.status] ?? { label: job.status, color: "text-muted-foreground bg-secondary border-border" };
-                  const isExternal = job.source === "jobber";
-                  const href = isExternal ? "https://secure.getjobber.com/home" : "/ops/jobs";
+                  const isExternal = false;
+                  const href = "/ops/jobs";
 
                   const rowContent = (
                     <div className="flex items-center gap-3 p-3 rounded-md bg-secondary/30 hover:bg-secondary/50 transition-colors cursor-pointer">
@@ -978,6 +979,60 @@ export default function Dashboard() {
             )}
           </div>
         </div>
+
+        {/* Monthly Revenue Trend */}
+        {jobberConnected && (() => {
+          const now = new Date();
+          const months: { month: string; revenue: number }[] = [];
+          for (let i = 5; i >= 0; i--) {
+            const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+            const label = d.toLocaleDateString("en-US", { month: "short", year: "2-digit" });
+            const start = new Date(d.getFullYear(), d.getMonth(), 1);
+            const end = new Date(d.getFullYear(), d.getMonth() + 1, 0, 23, 59, 59);
+            const revenue = invoices
+              .filter((inv: any) =>
+                inv.invoiceStatus === "PAID" &&
+                inv.issuedDate &&
+                new Date(inv.issuedDate) >= start &&
+                new Date(inv.issuedDate) <= end
+              )
+              .reduce((s: number, inv: any) => s + Number(inv.amounts?.total ?? 0), 0);
+            months.push({ month: label, revenue });
+          }
+          const hasData = months.some(m => m.revenue > 0);
+          if (!hasData) return null;
+          return (
+            <div className="ops-card p-5">
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h3 className="text-sm font-semibold text-foreground" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
+                    Monthly Revenue
+                  </h3>
+                  <p className="text-xs text-muted-foreground">Paid invoices — last 6 months</p>
+                </div>
+                <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-green-400/10 text-green-400 border border-green-400/20">Jobber</span>
+              </div>
+              <ResponsiveContainer width="100%" height={160}>
+                <AreaChart data={months} margin={{ top: 4, right: 4, left: -16, bottom: 0 }}>
+                  <defs>
+                    <linearGradient id="revenueGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="oklch(0.65 0.18 55)" stopOpacity={0.3} />
+                      <stop offset="95%" stopColor="oklch(0.65 0.18 55)" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="oklch(0.3 0.01 255 / 30%)" />
+                  <XAxis dataKey="month" tick={{ fontSize: 10, fill: "oklch(0.6 0.01 255)" }} axisLine={false} tickLine={false} />
+                  <YAxis tick={{ fontSize: 10, fill: "oklch(0.6 0.01 255)" }} axisLine={false} tickLine={false} tickFormatter={(v) => `$${(v/1000).toFixed(0)}k`} />
+                  <Tooltip
+                    contentStyle={{ background: "oklch(0.15 0.01 255)", border: "1px solid oklch(0.25 0.01 255)", borderRadius: "8px", fontSize: "11px" }}
+                    formatter={(v: number) => [`$${v.toLocaleString()}`, "Revenue"]}
+                  />
+                  <Area type="monotone" dataKey="revenue" stroke="oklch(0.65 0.18 55)" strokeWidth={2} fill="url(#revenueGrad)" dot={{ r: 3, fill: "oklch(0.65 0.18 55)" }} />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+          );
+        })()}
 
         {/* Lead Pipeline (local) + Performance Metrics */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
