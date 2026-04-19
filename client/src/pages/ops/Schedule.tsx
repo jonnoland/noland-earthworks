@@ -6,9 +6,11 @@
 import DashboardLayout from "@/components/DashboardLayout";
 import { trpc } from "@/lib/trpc";
 import { useState, useMemo } from "react";
-import { ChevronLeft, ChevronRight, Plus, Trash2, Loader2, X, Calendar, RefreshCw, ExternalLink, AlertCircle, CheckCircle2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, Plus, Trash2, Loader2, X, Calendar, RefreshCw, ExternalLink, AlertCircle, CheckCircle2, GripVertical } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { DndContext, DragEndEvent, DragOverlay, DragStartEvent, PointerSensor, useSensor, useSensors } from "@dnd-kit/core";
+import { useDraggable, useDroppable } from "@dnd-kit/core";
 
 const CREW_COLORS = [
   "bg-primary/20 border-primary/40 text-primary",
@@ -191,12 +193,54 @@ function JobberVisitsSection() {
   );
 }
 
+// ─── DnD sub-components ──────────────────────────────────────────────────────
+
+function DraggableJobBanner({ job }: { job: { id: number; client: string; jobType?: string | null; acres?: string | null } }) {
+  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({ id: `job-${job.id}` });
+  return (
+    <div
+      ref={setNodeRef}
+      {...listeners}
+      {...attributes}
+      className={cn(
+        "rounded-md border border-amber-500/40 bg-amber-500/15 px-2 py-1.5 text-[10px] cursor-grab active:cursor-grabbing select-none flex items-start gap-1",
+        isDragging && "opacity-40"
+      )}
+    >
+      <GripVertical className="w-2.5 h-2.5 text-amber-400/50 mt-0.5 shrink-0" />
+      <div className="min-w-0">
+        <div className="font-semibold text-amber-300 truncate">{job.client}</div>
+        <div className="text-amber-400/70 capitalize">{job.jobType?.replace(/_/g, " ") ?? "clearing"}{job.acres ? ` · ${job.acres} ac` : ""}</div>
+      </div>
+    </div>
+  );
+}
+
+function DroppableDayCell({ dayKey, children, isToday }: { dayKey: string; children: React.ReactNode; isToday: boolean }) {
+  const { setNodeRef, isOver } = useDroppable({ id: `drop-${dayKey}` });
+  return (
+    <td
+      ref={setNodeRef}
+      className={cn(
+        "px-2 py-2 align-top min-w-[110px] transition-colors",
+        isToday ? "bg-primary/5" : "",
+        isOver ? "bg-amber-500/10 ring-1 ring-inset ring-amber-500/40" : ""
+      )}
+    >
+      {children}
+    </td>
+  );
+}
+
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function Schedule() {
   const [weekOffset, setWeekOffset] = useState(0);
   const [showModal, setShowModal] = useState(false);
   const [form, setForm] = useState<EntryFormData>(emptyForm);
+  const [draggingJobId, setDraggingJobId] = useState<number | null>(null);
+
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
 
   const utils = trpc.useUtils();
   const { data: entries = [], isLoading } = trpc.ops.schedule.list.useQuery();
@@ -206,6 +250,42 @@ export default function Schedule() {
   const scheduledJobs = useMemo(() =>
     allJobs.filter(j => j.scheduledDate && j.status !== "completed" && j.status !== "paid"),
   [allJobs]);
+
+  const rescheduleJob = trpc.ops.jobs.update.useMutation({
+    onSuccess: () => { utils.ops.jobs.list.invalidate(); toast.success("Job rescheduled"); },
+    onError: (e) => toast.error(e.message),
+  });
+
+  const handleDragStart = (event: DragStartEvent) => {
+    const id = String(event.active.id);
+    if (id.startsWith("job-")) setDraggingJobId(Number(id.replace("job-", "")));
+  };
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    setDraggingJobId(null);
+    const { active, over } = event;
+    if (!over) return;
+    const jobId = Number(String(active.id).replace("job-", ""));
+    const newDateKey = String(over.id).replace("drop-", "");
+    const job = allJobs.find(j => j.id === jobId);
+    if (!job) return;
+    const oldDateKey = job.scheduledDate ? new Date(job.scheduledDate).toISOString().split("T")[0] : null;
+    if (oldDateKey === newDateKey) return;
+    // Calculate offset to shift end date by same number of days
+    const oldStart = job.scheduledDate ? new Date(job.scheduledDate) : null;
+    const oldEnd = (job as any).scheduledEndDate ? new Date((job as any).scheduledEndDate) : null;
+    const newStart = new Date(newDateKey + "T12:00:00");
+    let newEnd: Date | undefined;
+    if (oldStart && oldEnd) {
+      const diffMs = oldEnd.getTime() - oldStart.getTime();
+      newEnd = new Date(newStart.getTime() + diffMs);
+    }
+    rescheduleJob.mutate({
+      id: jobId,
+      scheduledDate: newStart,
+      ...(newEnd ? { scheduledEndDate: newEnd } : {}),
+    });
+  };
 
   const createEntry = trpc.ops.schedule.create.useMutation({
     onSuccess: () => { utils.ops.schedule.list.invalidate(); toast.success("Entry added"); closeModal(); },
@@ -329,6 +409,7 @@ export default function Schedule() {
             <Loader2 className="w-6 h-6 animate-spin text-primary" />
           </div>
         ) : (
+          <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
           <div className="ops-card overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full min-w-[700px]">
@@ -349,7 +430,7 @@ export default function Schedule() {
                   </tr>
                 </thead>
                 <tbody>
-                  {/* Scheduled jobs row — spans full width */}
+                  {/* Scheduled jobs row — draggable banners */}
                   {weekDays.some(d => (jobDayMap[d.key] ?? []).length > 0) && (
                     <tr className="border-b border-amber-500/20 bg-amber-500/5">
                       <td className="px-4 py-2">
@@ -358,20 +439,30 @@ export default function Schedule() {
                       {weekDays.map(day => {
                         const dayJobs = jobDayMap[day.key] ?? [];
                         return (
-                          <td key={day.key} className={cn("px-2 py-2 align-top min-w-[110px]", day.key === today ? "bg-primary/5" : "")}>
+                          <DroppableDayCell key={day.key} dayKey={day.key} isToday={day.key === today}>
                             {dayJobs.length > 0 ? (
                               <div className="space-y-1">
                                 {dayJobs.map(job => (
-                                  <div key={job.id} className="rounded-md border border-amber-500/40 bg-amber-500/15 px-2 py-1.5 text-[10px]">
-                                    <div className="font-semibold text-amber-300 truncate">{job.client}</div>
-                                    <div className="text-amber-400/70 capitalize">{job.jobType?.replace(/_/g, " ") ?? "clearing"}{job.acres ? ` · ${job.acres} ac` : ""}</div>
-                                  </div>
+                                  <DraggableJobBanner key={job.id} job={job} />
                                 ))}
                               </div>
                             ) : null}
-                          </td>
+                          </DroppableDayCell>
                         );
                       })}
+                    </tr>
+                  )}
+                  {/* Empty droppable row when no jobs visible this week */}
+                  {!weekDays.some(d => (jobDayMap[d.key] ?? []).length > 0) && scheduledJobs.length > 0 && (
+                    <tr className="border-b border-amber-500/10">
+                      <td className="px-4 py-2">
+                        <span className="text-[10px] font-semibold text-amber-400/50 uppercase tracking-wider">Jobs</span>
+                      </td>
+                      {weekDays.map(day => (
+                        <DroppableDayCell key={day.key} dayKey={day.key} isToday={day.key === today}>
+                          <div className="h-8" />
+                        </DroppableDayCell>
+                      ))}
                     </tr>
                   )}
                   {crewNames.map((crew, ci) => (
@@ -420,6 +511,21 @@ export default function Schedule() {
               </table>
             </div>
           </div>
+          <DragOverlay>
+            {draggingJobId !== null && (() => {
+              const job = allJobs.find(j => j.id === draggingJobId);
+              return job ? (
+                <div className="rounded-md border border-amber-500/60 bg-amber-500/25 px-2 py-1.5 text-[10px] shadow-xl cursor-grabbing flex items-start gap-1 w-32">
+                  <GripVertical className="w-2.5 h-2.5 text-amber-400/50 mt-0.5 shrink-0" />
+                  <div className="min-w-0">
+                    <div className="font-semibold text-amber-300 truncate">{job.client}</div>
+                    <div className="text-amber-400/70 capitalize">{job.jobType?.replace(/_/g, " ") ?? "clearing"}</div>
+                  </div>
+                </div>
+              ) : null;
+            })()}
+          </DragOverlay>
+          </DndContext>
         )}
 
         {/* Upcoming entries list */}

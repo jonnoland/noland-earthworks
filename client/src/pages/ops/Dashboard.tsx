@@ -10,7 +10,7 @@ import { trpc } from "@/lib/trpc";
 import {
   DollarSign, Briefcase,
   Users, Clock, ArrowUpRight, MapPin, Plus, ChevronRight, Inbox,
-  CalendarDays, CalendarCheck,
+  CalendarDays, CalendarCheck, TrendingUp, Gauge, Activity,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -121,16 +121,52 @@ export default function Dashboard() {
     const avgRate = crewDayJobs.length > 0
       ? crewDayJobs.reduce((s, j) => s + Number(j.totalPrice ?? 0) / Number(j.crewDays ?? 1), 0) / crewDayJobs.length
       : 0;
-    return { totalRevenue, activeJobs, scheduledJobs, openLeads, avgRate };
+
+    // Performance KPIs
+    const now = new Date();
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const jobsThisMonth = jobs.filter(j => {
+      const d = j.scheduledDate ? new Date(j.scheduledDate) : null;
+      return d && d >= monthStart && d <= now;
+    });
+    const revenueThisMonth = jobsThisMonth.reduce((s, j) => s + Number(j.totalPrice ?? 0), 0);
+
+    // Revenue per acre — from jobs that have both totalPrice and acres
+    const acreJobs = jobs.filter(j => j.totalPrice && j.acres && Number(j.acres) > 0);
+    const revenuePerAcre = acreJobs.length > 0
+      ? acreJobs.reduce((s, j) => s + Number(j.totalPrice ?? 0) / Number(j.acres ?? 1), 0) / acreJobs.length
+      : 0;
+
+    // Avg completion time in days — jobs with scheduledDate and completedDate
+    const completedWithDates = jobs.filter(j =>
+      (j.status === "completed" || j.status === "paid") &&
+      j.scheduledDate && j.crewDays && Number(j.crewDays) > 0
+    );
+    const avgCompletionDays = completedWithDates.length > 0
+      ? completedWithDates.reduce((s, j) => s + Number(j.crewDays ?? 1), 0) / completedWithDates.length
+      : 0;
+
+    // Win rate — leads that became won/converted vs all closed
+    const closedLeads = leads.filter(l => ["won", "lost", "converted"].includes(l.stage));
+    const wonLeads = leads.filter(l => ["won", "converted"].includes(l.stage));
+    const winRate = closedLeads.length > 0 ? (wonLeads.length / closedLeads.length) * 100 : 0;
+
+    return { totalRevenue, activeJobs, scheduledJobs, openLeads, avgRate, revenueThisMonth, revenuePerAcre, avgCompletionDays, winRate, jobsThisMonth: jobsThisMonth.length };
   }, [jobs, leads]);
 
-  // Scheduled jobs — jobs with a scheduledDate, sorted by date ascending, upcoming first
+  // Scheduled jobs — next 30 days, sorted by date ascending
   const scheduledJobs = useMemo(() => {
     const now = new Date();
+    const cutoff = new Date(now);
+    cutoff.setDate(cutoff.getDate() + 30);
     return [...jobs]
-      .filter(j => j.scheduledDate && j.status !== "completed" && j.status !== "paid")
-      .sort((a, b) => new Date(a.scheduledDate!).getTime() - new Date(b.scheduledDate!).getTime())
-      .slice(0, 6);
+      .filter(j => {
+        if (!j.scheduledDate) return false;
+        if (j.status === "completed" || j.status === "paid") return false;
+        const d = new Date(j.scheduledDate);
+        return d >= new Date(now.getFullYear(), now.getMonth(), now.getDate()) && d <= cutoff;
+      })
+      .sort((a, b) => new Date(a.scheduledDate!).getTime() - new Date(b.scheduledDate!).getTime());
   }, [jobs]);
 
   // Recent jobs — last 5 by created date (fallback when no scheduled dates set)
@@ -229,7 +265,7 @@ export default function Dashboard() {
               <h3 className="text-sm font-semibold text-foreground" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
                 Scheduled Jobs
               </h3>
-              <p className="text-xs text-muted-foreground">Upcoming jobs with a scheduled date</p>
+              <p className="text-xs text-muted-foreground">Next 30 days — {scheduledJobs.length} job{scheduledJobs.length !== 1 ? "s" : ""} scheduled</p>
             </div>
             <Link href="/ops/schedule">
               <span className="text-xs text-primary hover:text-primary/80 flex items-center gap-1 transition-colors cursor-pointer">
@@ -418,6 +454,61 @@ export default function Dashboard() {
             )}
           </div>
 
+        </div>
+
+        {/* Performance KPIs */}
+        <div className="ops-card p-5">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h3 className="text-sm font-semibold text-foreground" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
+                Performance Metrics
+              </h3>
+              <p className="text-xs text-muted-foreground">Calculated from your job and lead records</p>
+            </div>
+            <Activity className="w-4 h-4 text-muted-foreground" />
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            <div className="rounded-lg border border-border bg-secondary/20 p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <TrendingUp className="w-3.5 h-3.5 text-green-400" />
+                <span className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Revenue / Acre</span>
+              </div>
+              <div className="text-xl font-bold text-foreground ops-metric-value">
+                {kpis.revenuePerAcre > 0 ? `$${Math.round(kpis.revenuePerAcre).toLocaleString()}` : "—"}
+              </div>
+              <div className="text-[11px] text-muted-foreground mt-1">avg across {jobs.filter(j => j.totalPrice && j.acres).length} jobs</div>
+            </div>
+            <div className="rounded-lg border border-border bg-secondary/20 p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <Clock className="w-3.5 h-3.5 text-amber-400" />
+                <span className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Avg Crew Days</span>
+              </div>
+              <div className="text-xl font-bold text-foreground ops-metric-value">
+                {kpis.avgCompletionDays > 0 ? kpis.avgCompletionDays.toFixed(1) : "—"}
+              </div>
+              <div className="text-[11px] text-muted-foreground mt-1">days per completed job</div>
+            </div>
+            <div className="rounded-lg border border-border bg-secondary/20 p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <DollarSign className="w-3.5 h-3.5 text-primary" />
+                <span className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">This Month</span>
+              </div>
+              <div className="text-xl font-bold text-foreground ops-metric-value">
+                {kpis.revenueThisMonth > 0 ? `$${kpis.revenueThisMonth.toLocaleString()}` : "—"}
+              </div>
+              <div className="text-[11px] text-muted-foreground mt-1">{kpis.jobsThisMonth} job{kpis.jobsThisMonth !== 1 ? "s" : ""} scheduled</div>
+            </div>
+            <div className="rounded-lg border border-border bg-secondary/20 p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <Gauge className="w-3.5 h-3.5 text-sky-400" />
+                <span className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Win Rate</span>
+              </div>
+              <div className="text-xl font-bold text-foreground ops-metric-value">
+                {kpis.winRate > 0 ? `${Math.round(kpis.winRate)}%` : "—"}
+              </div>
+              <div className="text-[11px] text-muted-foreground mt-1">of closed leads converted</div>
+            </div>
+          </div>
         </div>
 
       </div>

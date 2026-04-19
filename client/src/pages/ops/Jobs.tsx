@@ -5,7 +5,7 @@
 
 import DashboardLayout from "@/components/DashboardLayout";
 import { trpc } from "@/lib/trpc";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import {
   Briefcase, Plus, Search, Trash2, Edit3, ChevronDown,
   MapPin, Clock, DollarSign, Loader2, X,
@@ -302,6 +302,37 @@ export default function Jobs() {
 
   const utils = trpc.useUtils();
   const { data: jobs = [], isLoading } = trpc.ops.jobs.list.useQuery();
+  const { data: catalog = [] } = trpc.ops.settings.getServiceCatalog.useQuery();
+
+  // Auto-price: estimate based on job type + acres + catalog normal rate
+  // Uses a blended rate: $1,800/acre base for forestry mulching, $1,200 for land clearing, etc.
+  // These are per-acre revenue estimates, not production rates
+  const PRICE_PER_ACRE: Record<string, number> = {
+    forestry_mulching: 1800,
+    land_clearing: 1400,
+    brush_removal: 900,
+    stump_grinding: 600,
+    wildfire_mitigation: 1200,
+  };
+
+  const estimatedPrice = useMemo(() => {
+    const acres = parseFloat(form.acres);
+    if (!acres || acres <= 0) return null;
+    // Try to find catalog entry matching job type
+    const catalogEntry = catalog.find(
+      c => c.serviceType?.toLowerCase().replace(/[^a-z]/g, "_") === form.jobType ||
+           c.serviceType?.toLowerCase().includes(form.jobType.replace(/_/g, " ").split(" ")[0])
+    );
+    // Use catalog normal acres/day to derive days, then price at $1,800/day
+    const DAY_RATE = 1800;
+    if (catalogEntry && catalogEntry.normalAcresPerDay) {
+      const days = Math.ceil(acres / Number(catalogEntry.normalAcresPerDay));
+      return Math.round(days * DAY_RATE / 100) * 100;
+    }
+    // Fallback: flat per-acre rate
+    const rate = PRICE_PER_ACRE[form.jobType] ?? 1200;
+    return Math.round(acres * rate / 100) * 100;
+  }, [form.acres, form.jobType, catalog]);
 
   const createJob = trpc.ops.jobs.create.useMutation({
     onSuccess: () => { utils.ops.jobs.list.invalidate(); toast.success("Job created"); closeModal(); },
@@ -536,8 +567,25 @@ export default function Jobs() {
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-muted-foreground mb-1">Total Price ($)</label>
-                  <input type="number" step="100" value={form.totalPrice} onChange={e => setForm(f => ({ ...f, totalPrice: e.target.value }))} placeholder="0"
-                    className="w-full bg-secondary/50 border border-border rounded-md px-3 py-2 text-xs text-foreground outline-none focus:border-primary/50 placeholder:text-muted-foreground/40" />
+                  <div className="flex gap-1.5">
+                    <input type="number" step="100" value={form.totalPrice} onChange={e => setForm(f => ({ ...f, totalPrice: e.target.value }))} placeholder="0"
+                      className="flex-1 bg-secondary/50 border border-border rounded-md px-3 py-2 text-xs text-foreground outline-none focus:border-primary/50 placeholder:text-muted-foreground/40" />
+                    {estimatedPrice !== null && (
+                      <button
+                        type="button"
+                        onClick={() => setForm(f => ({ ...f, totalPrice: estimatedPrice.toString() }))}
+                        className="shrink-0 px-2.5 py-1.5 rounded-md bg-primary/15 hover:bg-primary/25 text-primary text-[10px] font-semibold border border-primary/20 transition-colors whitespace-nowrap"
+                        title={`Estimated from ${form.acres} acres of ${JOB_TYPE_LABELS[form.jobType]}`}
+                      >
+                        Use ${estimatedPrice.toLocaleString()}
+                      </button>
+                    )}
+                  </div>
+                  {estimatedPrice !== null && (
+                    <p className="text-[10px] text-muted-foreground/60 mt-1">
+                      Catalog estimate for {form.acres} ac {JOB_TYPE_LABELS[form.jobType]}
+                    </p>
+                  )}
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-muted-foreground mb-1">Client Email</label>

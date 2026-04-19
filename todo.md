@@ -832,10 +832,16 @@
 - [x] Auto follow-up task after review request sent — creates a reminder task due in 7 days to check for the review
 
 ## Dashboard Jobs Section — Apr 18 2026
-- [ ] Show jobs on the /ops dashboard: active/recent jobs list with status badge, client name, acreage, and link to /ops/jobs
+- [x] Show jobs on the /ops dashboard: active/recent jobs list with status badge, client name, acreage, and link to /ops/jobs
 
 ## Scheduled Jobs on Dashboard and Schedule — Apr 18 2026
-- [ ] Ensure jobs table has scheduledDate and scheduledEndDate fields
-- [ ] Dashboard: show upcoming scheduled jobs section sorted by scheduledDate with date, client, job type, status
-- [ ] Schedule page: render scheduled jobs as calendar events alongside blackout dates and site visits
-- [ ] Jobs form: add scheduledDate / scheduledEndDate fields so jobs can be scheduled
+- [x] Ensure jobs table has scheduledDate and scheduledEndDate fields
+- [x] Dashboard: show upcoming scheduled jobs section sorted by scheduledDate with date, client, job type, status
+- [x] Schedule page: render scheduled jobs as calendar events alongside blackout dates and site visits
+- [x] Jobs form: add scheduledDate / scheduledEndDate fields so jobs can be scheduled
+
+## Four Dashboard/Schedule Enhancements — Apr 19 2026
+- [ ] Dashboard scheduled jobs: show next 30 days (not just current week) sorted by scheduledDate
+- [ ] Auto-calculate total price in job form from service type + acreage using service catalog rates
+- [ ] Drag-and-drop on schedule calendar to reschedule job dates
+- [ ] Dashboard KPI section: avg job completion time, revenue per acre, jobs this month, pipeline value
