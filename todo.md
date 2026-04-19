@@ -971,3 +971,8 @@
 - [x] jobberRouter.ts: add getJobberServices procedure — query productsAndServices from Jobber GraphQL (name, description, defaultUnitCost, category, visible, taxable)
 - [x] /ops/pricing: add JobberServicesCard component showing live catalog pulled from Jobber with refresh button
 - [x] /ops/pricing: show name, description, unit price, internal cost, taxable, and visibility for each service
+
+## Service Health Card — Apr 19 2026
+- [x] /ops/pricing: build ServiceHealthCard component that cross-references Jobber catalog prices vs website benchmark prices and flags discrepancies
+- [x] ServiceHealthCard: show per-service status (OK / Warning / Missing) with Jobber price, benchmark mid-market price, and variance %
+- [x] ServiceHealthCard: surface services in Jobber not on the website and services on the website not in Jobber

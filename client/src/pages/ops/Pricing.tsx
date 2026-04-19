@@ -9,10 +9,10 @@
 import DashboardLayout from "@/components/DashboardLayout";
 import { useState, useEffect, useCallback, useRef } from "react";
 import {
-  Calculator, DollarSign, Users, Clock, TrendingUp, Info,
+  Calculator, DollarSign, Users, Clock, TrendingUp, TrendingDown, Info,
   FileDown, Settings, Plus, Trash2, X, ChevronDown,
   MapPin, Navigation, AlertTriangle, Save, CheckCircle,
-  RefreshCw, CheckCircle2, AlertCircle, Loader2,
+  RefreshCw, CheckCircle2, AlertCircle, Loader2, ShieldCheck,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -1281,11 +1281,218 @@ export default function Pricing() {
         {/* Pricing Benchmarks — live from DB, updated by weekly agent */}
         <PricingBenchmarksCard />
 
+        {/* Service Health — cross-reference Jobber prices vs website benchmarks */}
+        <ServiceHealthCard />
+
         {/* Jobber Products & Services — live sync from Jobber catalog */}
         <JobberServicesCard />
 
       </div>
     </DashboardLayout>
+  );
+}
+
+// ─── Service Health Card ────────────────────────────────────────────────────
+
+// Maps website public service names to Jobber catalog keywords for fuzzy matching
+const WEBSITE_SERVICES = [
+  { name: "Forestry Mulching",                    keywords: ["forestry", "mulch", "mulching"],                  websiteLow: 1000, websiteHigh: 4500, unit: "per acre" },
+  { name: "Land Clearing",                         keywords: ["land clearing", "clearing"],                      websiteLow: 1500, websiteHigh: 12000, unit: "per acre" },
+  { name: "Vegetation Management",                 keywords: ["vegetation", "right-of-way", "row", "corridor"],  websiteLow: 1200, websiteHigh: 2500, unit: "per acre" },
+  { name: "Right-of-Way Clearing",                 keywords: ["right of way", "right-of-way", "row"],            websiteLow: 1200, websiteHigh: 2500, unit: "per acre" },
+  { name: "Property Maintenance",                  keywords: ["property maintenance", "maintenance"],            websiteLow: 150, websiteHigh: 600, unit: "per visit" },
+  { name: "Post-Clear Seeding & Erosion Control",  keywords: ["seed", "seeding", "erosion"],                    websiteLow: 150, websiteHigh: 1500, unit: "per acre" },
+  { name: "Fence Line Clearing",                   keywords: ["fence", "fenceline"],                            websiteLow: 1.50, websiteHigh: 12, unit: "per linear ft" },
+  { name: "Mulch Redistribution",                  keywords: ["mulch redistrib", "redistrib", "ground cover"],  websiteLow: 150, websiteHigh: 900, unit: "per hour" },
+  { name: "Selective Clearing & Tree Preservation", keywords: ["selective", "tree preservation", "precision"],  websiteLow: 150, websiteHigh: 500, unit: "flat fee" },
+];
+
+function matchJobberToWebsite(jobberName: string) {
+  const lower = jobberName.toLowerCase();
+  return WEBSITE_SERVICES.find(ws =>
+    ws.keywords.some(kw => lower.includes(kw))
+  ) ?? null;
+}
+
+function ServiceHealthCard() {
+  const { data: jobberData, isLoading: jobberLoading } = trpc.jobber.getJobberServices.useQuery();
+  const { data: benchmarks = [] } = trpc.agents.getPricingBenchmarks.useQuery();
+
+  const jobberServices = jobberData?.nodes ?? [];
+
+  // Build comparison rows
+  const rows = WEBSITE_SERVICES.map(ws => {
+    // Find matching Jobber service
+    const jobberMatch = jobberServices.find((js: any) =>
+      ws.keywords.some(kw => js.name.toLowerCase().includes(kw))
+    );
+
+    // Find matching benchmark
+    const benchmark = benchmarks.find((b: any) =>
+      b.serviceType.toLowerCase().includes(ws.name.split(" ")[0].toLowerCase())
+    ) as any ?? null;
+
+    const jobberPrice = jobberMatch?.defaultUnitCost ?? null;
+    const benchmarkMid = benchmark?.midPerAcre ?? null;
+
+    // Determine status
+    let status: "ok" | "warning" | "missing_jobber" | "missing_benchmark" = "ok";
+    let issue = "";
+
+    if (!jobberMatch) {
+      status = "missing_jobber";
+      issue = "Not found in Jobber catalog";
+    } else if (jobberPrice === null || jobberPrice === 0) {
+      status = "warning";
+      issue = "Jobber service has no unit price set";
+    } else if (benchmarkMid !== null) {
+      const variance = ((jobberPrice - benchmarkMid) / benchmarkMid) * 100;
+      if (variance < -30) {
+        status = "warning";
+        issue = `Jobber price is ${Math.abs(variance).toFixed(0)}% below market benchmark`;
+      } else if (variance > 50) {
+        status = "warning";
+        issue = `Jobber price is ${variance.toFixed(0)}% above market benchmark`;
+      }
+    }
+
+    return { ws, jobberMatch, jobberPrice, benchmarkMid, status, issue };
+  });
+
+  // Services in Jobber not matched to any website service
+  const unmatchedJobber = jobberServices.filter((js: any) =>
+    !matchJobberToWebsite(js.name)
+  );
+
+  const okCount = rows.filter(r => r.status === "ok").length;
+  const warnCount = rows.filter(r => r.status === "warning").length;
+  const missingCount = rows.filter(r => r.status === "missing_jobber").length;
+  const totalIssues = warnCount + missingCount;
+
+  return (
+    <div className="ops-card p-5">
+      {/* Header */}
+      <div className="flex items-start justify-between gap-3 mb-4">
+        <div>
+          <div className="flex items-center gap-2">
+            <ShieldCheck className={cn("w-4 h-4", totalIssues === 0 ? "text-green-400" : "text-amber-400")} />
+            <h3 className="text-sm font-semibold text-foreground">Service Health</h3>
+          </div>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Compares Jobber catalog prices against website public pricing
+          </p>
+        </div>
+        <div className="flex items-center gap-2 text-xs shrink-0">
+          {totalIssues === 0 ? (
+            <span className="flex items-center gap-1 text-green-400 bg-green-500/10 border border-green-500/20 rounded-full px-2 py-0.5">
+              <CheckCircle2 className="w-3 h-3" />
+              All clear
+            </span>
+          ) : (
+            <span className="flex items-center gap-1 text-amber-400 bg-amber-400/10 border border-amber-400/20 rounded-full px-2 py-0.5">
+              <AlertTriangle className="w-3 h-3" />
+              {totalIssues} issue{totalIssues !== 1 ? "s" : ""}
+            </span>
+          )}
+        </div>
+      </div>
+
+      {jobberLoading ? (
+        <div className="flex items-center justify-center py-8 text-muted-foreground">
+          <Loader2 className="w-4 h-4 animate-spin mr-2" />
+          <span className="text-sm">Loading...</span>
+        </div>
+      ) : (
+        <>
+          {/* Summary strip */}
+          <div className="flex gap-4 mb-4 pb-3 border-b border-border">
+            <div className="text-center">
+              <div className="text-lg font-bold text-green-400">{okCount}</div>
+              <div className="text-[10px] text-muted-foreground">Healthy</div>
+            </div>
+            <div className="text-center">
+              <div className="text-lg font-bold text-amber-400">{warnCount}</div>
+              <div className="text-[10px] text-muted-foreground">Warnings</div>
+            </div>
+            <div className="text-center">
+              <div className="text-lg font-bold text-red-400">{missingCount}</div>
+              <div className="text-[10px] text-muted-foreground">Missing in Jobber</div>
+            </div>
+          </div>
+
+          {/* Per-service rows */}
+          <div className="space-y-2">
+            {rows.map(({ ws, jobberMatch, jobberPrice, benchmarkMid, status, issue }) => (
+              <div
+                key={ws.name}
+                className={cn(
+                  "flex items-start gap-3 rounded-md px-3 py-2.5 text-sm",
+                  status === "ok" && "bg-green-500/5 border border-green-500/10",
+                  status === "warning" && "bg-amber-400/5 border border-amber-400/15",
+                  status === "missing_jobber" && "bg-red-500/5 border border-red-500/10",
+                )}
+              >
+                {/* Status icon */}
+                <div className="mt-0.5 shrink-0">
+                  {status === "ok" && <CheckCircle2 className="w-3.5 h-3.5 text-green-400" />}
+                  {status === "warning" && <AlertTriangle className="w-3.5 h-3.5 text-amber-400" />}
+                  {status === "missing_jobber" && <AlertCircle className="w-3.5 h-3.5 text-red-400" />}
+                </div>
+
+                {/* Service name + issue */}
+                <div className="flex-1 min-w-0">
+                  <div className="font-medium text-foreground text-xs">{ws.name}</div>
+                  {issue && <div className="text-[11px] text-muted-foreground mt-0.5">{issue}</div>}
+                </div>
+
+                {/* Price columns */}
+                <div className="flex gap-4 text-right shrink-0">
+                  <div>
+                    <div className="text-[10px] text-muted-foreground">Jobber</div>
+                    <div className="text-xs font-mono text-foreground">
+                      {jobberMatch
+                        ? (jobberPrice != null && jobberPrice > 0 ? `$${Number(jobberPrice).toFixed(0)}` : "No price")
+                        : <span className="text-red-400/70">—</span>}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-[10px] text-muted-foreground">Benchmark</div>
+                    <div className="text-xs font-mono text-muted-foreground">
+                      {benchmarkMid != null ? `$${benchmarkMid.toLocaleString()}` : <span className="opacity-40">—</span>}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-[10px] text-muted-foreground">Website</div>
+                    <div className="text-[10px] text-muted-foreground/70">{ws.unit}</div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Jobber services not on website */}
+          {unmatchedJobber.length > 0 && (
+            <div className="mt-4 pt-3 border-t border-border">
+              <p className="text-[11px] font-semibold text-muted-foreground mb-2">
+                In Jobber but not on the website ({unmatchedJobber.length})
+              </p>
+              <div className="space-y-1">
+                {unmatchedJobber.map((js: any) => (
+                  <div key={js.id} className="flex items-center justify-between text-xs px-3 py-1.5 rounded bg-secondary/40">
+                    <span className="text-foreground">{js.name}</span>
+                    <span className="font-mono text-muted-foreground">
+                      {js.defaultUnitCost != null && js.defaultUnitCost > 0
+                        ? `$${Number(js.defaultUnitCost).toFixed(0)}`
+                        : "No price"}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </>
+      )}
+    </div>
   );
 }
 
