@@ -429,6 +429,40 @@ export const jobberRouter = router({
       return { success: true, job: data?.quoteConvertToJob?.job };
     }),
 
+  /** Get full client detail: quotes, jobs, invoices, revenue, and balance */
+  clientDetail: adminProcedure
+    .input(z.object({ id: z.string() }))
+    .query(async ({ input }) => {
+      const data = await jobberGraphQL(`
+        query GetClientDetail($id: EncodedId!) {
+          client(id: $id) {
+            id name companyName isLead balance createdAt
+            emails { address }
+            phones { number description }
+            billingAddress { street1 city province postalCode }
+            quotes(first: 50) {
+              nodes {
+                id quoteNumber title quoteStatus createdAt
+                amounts { subtotal total }
+              }
+            }
+            jobs(first: 50) {
+              nodes {
+                id jobNumber title jobStatus startAt total
+              }
+            }
+            invoices(first: 50) {
+              nodes {
+                id invoiceNumber title invoiceStatus dueDate
+                amounts { total invoiceBalance }
+              }
+            }
+          }
+        }
+      `, { id: input.id }) as any;
+      return data.client ?? null;
+    }),
+
   /** Get aggregated lead source breakdown (count per source) */
   getLeadSourceBreakdown: protectedProcedure.query(async () => {
     const db = await getDb();

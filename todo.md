@@ -905,3 +905,9 @@
 - [x] /ops/invoices: add invoiceDetail Jobber query and slide-out detail panel (line items, amounts, payment history)
 - [x] /ops/quotes: add Convert to Job button in quote detail panel for approved/sent quotes
 - [x] /ops/quotes + Dashboard: add ?quote=ID URL param so dashboard quote cards open the specific quote detail panel
+
+## Client Detail Panel — Apr 19 2026
+- [x] Add clientDetail Jobber query: fetch quotes, jobs, and invoices for a specific client by ID
+- [x] /ops/clients: search bar already existed at top of client list (confirmed)
+- [x] /ops/clients: clicking a client opens slide-out detail panel with all their quotes, jobs, invoices, total revenue, and outstanding balance
+- [x] Client detail panel: quote rows link to /ops/quotes?quote=ID, job rows link to /ops/jobs, invoice rows link to /ops/invoices

@@ -1,8 +1,7 @@
 /**
  * Ops Clients page — live Jobber client data
- * Calls trpc.jobber.clients to fetch clients from Jobber CRM.
- * Shows a "Connect Jobber" banner when not connected.
- * Supports per-row delete and bulk delete via checkboxes.
+ * Clicking a client row opens a slide-out detail panel showing all their
+ * quotes, jobs, invoices, total revenue, and outstanding balance.
  */
 import { useState, useMemo } from "react";
 import { Link } from "wouter";
@@ -23,6 +22,12 @@ import {
   MapPin,
   Trash2,
   Loader2,
+  X,
+  ChevronRight,
+  Briefcase,
+  FileText,
+  Receipt,
+  DollarSign,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -35,6 +40,16 @@ function formatDate(iso: string | null | undefined): string {
     day: "numeric",
     year: "numeric",
   });
+}
+
+function formatCurrency(val: number | null | undefined): string {
+  if (val == null) return "—";
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(val);
 }
 
 function getClientName(client: {
@@ -54,6 +69,14 @@ function getPhone(phones?: Array<{ number: string }>): string {
 
 function getCity(billingAddress?: { city?: string | null } | null): string {
   return billingAddress?.city ?? "—";
+}
+
+function statusColor(status: string): string {
+  const s = status?.toLowerCase() ?? "";
+  if (s.includes("paid") || s.includes("active") || s.includes("approved") || s.includes("complete")) return "text-green-400";
+  if (s.includes("overdue") || s.includes("cancelled") || s.includes("declined")) return "text-red-400";
+  if (s.includes("draft") || s.includes("pending") || s.includes("awaiting")) return "text-yellow-400";
+  return "text-muted-foreground";
 }
 
 // ─── Not-connected banner ─────────────────────────────────────────────────────
@@ -126,6 +149,268 @@ function DeleteModal({
   );
 }
 
+// ─── Client Detail Panel ──────────────────────────────────────────────────────
+
+function ClientDetailPanel({
+  clientId,
+  clientName,
+  onClose,
+}: {
+  clientId: string;
+  clientName: string;
+  onClose: () => void;
+}) {
+  const { data, isLoading } = trpc.jobber.clientDetail.useQuery(
+    { id: clientId },
+    { retry: false }
+  );
+
+  const client = data as any;
+
+  const quotes: any[] = client?.quotes?.nodes ?? [];
+  const jobs: any[] = client?.jobs?.nodes ?? [];
+  const invoices: any[] = client?.invoices?.nodes ?? [];
+
+  // Revenue = sum of paid invoices; outstanding = sum of invoiceBalance
+  const totalRevenue = invoices.reduce((sum: number, inv: any) => {
+    if ((inv.invoiceStatus ?? "").toLowerCase().includes("paid")) {
+      return sum + (inv.amounts?.total ?? 0);
+    }
+    return sum;
+  }, 0);
+
+  const outstanding = invoices.reduce(
+    (sum: number, inv: any) => sum + (inv.amounts?.invoiceBalance ?? 0),
+    0
+  );
+
+  return (
+    <div className="fixed inset-0 z-40 flex justify-end">
+      {/* Backdrop */}
+      <div
+        className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+        onClick={onClose}
+      />
+
+      {/* Panel */}
+      <div className="relative z-50 w-full max-w-lg bg-card border-l border-border shadow-2xl flex flex-col h-full overflow-hidden">
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 py-4 border-b border-border shrink-0">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center">
+              <span className="text-xs font-bold text-primary">
+                {clientName.slice(0, 2).toUpperCase()}
+              </span>
+            </div>
+            <div>
+              <h3 className="text-sm font-semibold text-foreground">{clientName}</h3>
+              {client?.companyName && client.companyName !== clientName && (
+                <p className="text-[11px] text-muted-foreground">{client.companyName}</p>
+              )}
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            className="text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        {isLoading ? (
+          <div className="flex items-center justify-center flex-1">
+            <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+          </div>
+        ) : (
+          <div className="flex-1 overflow-y-auto px-5 py-4 space-y-6">
+            {/* Contact info */}
+            {client && (
+              <div className="grid grid-cols-2 gap-3 text-xs">
+                {getEmail(client.emails) !== "—" && (
+                  <div className="flex items-center gap-1.5 text-muted-foreground">
+                    <Mail className="w-3 h-3 shrink-0" />
+                    <a href={`mailto:${getEmail(client.emails)}`} className="hover:text-primary truncate">
+                      {getEmail(client.emails)}
+                    </a>
+                  </div>
+                )}
+                {getPhone(client.phones) !== "—" && (
+                  <div className="flex items-center gap-1.5 text-muted-foreground">
+                    <Phone className="w-3 h-3 shrink-0" />
+                    <a href={`tel:${getPhone(client.phones)}`} className="hover:text-primary">
+                      {getPhone(client.phones)}
+                    </a>
+                  </div>
+                )}
+                {client.billingAddress?.city && (
+                  <div className="flex items-center gap-1.5 text-muted-foreground">
+                    <MapPin className="w-3 h-3 shrink-0" />
+                    <span>{client.billingAddress.city}, {client.billingAddress.province}</span>
+                  </div>
+                )}
+                <div className="flex items-center gap-1.5 text-muted-foreground">
+                  <Users className="w-3 h-3 shrink-0" />
+                  <span>Since {formatDate(client.createdAt)}</span>
+                </div>
+              </div>
+            )}
+
+            {/* Revenue summary */}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="rounded-lg bg-green-500/10 border border-green-500/20 p-3">
+                <div className="flex items-center gap-1.5 mb-1">
+                  <DollarSign className="w-3 h-3 text-green-400" />
+                  <span className="text-[10px] font-medium text-green-400 uppercase tracking-wide">Total Revenue</span>
+                </div>
+                <p className="text-base font-bold text-green-400">{formatCurrency(totalRevenue)}</p>
+              </div>
+              <div className="rounded-lg bg-orange-500/10 border border-orange-500/20 p-3">
+                <div className="flex items-center gap-1.5 mb-1">
+                  <Receipt className="w-3 h-3 text-orange-400" />
+                  <span className="text-[10px] font-medium text-orange-400 uppercase tracking-wide">Outstanding</span>
+                </div>
+                <p className="text-base font-bold text-orange-400">{formatCurrency(outstanding)}</p>
+              </div>
+            </div>
+
+            {/* Quotes */}
+            <div>
+              <div className="flex items-center gap-2 mb-3">
+                <FileText className="w-3.5 h-3.5 text-primary" />
+                <h4 className="text-xs font-semibold text-foreground uppercase tracking-wide">
+                  Quotes ({quotes.length})
+                </h4>
+              </div>
+              {quotes.length === 0 ? (
+                <p className="text-xs text-muted-foreground italic">No quotes on file.</p>
+              ) : (
+                <div className="space-y-2">
+                  {quotes.map((q: any) => (
+                    <Link
+                      key={q.id}
+                      href={`/ops/quotes?quote=${q.id}`}
+                      className="flex items-center justify-between px-3 py-2.5 rounded-md bg-secondary/30 hover:bg-secondary/50 transition-colors cursor-pointer"
+                    >
+                      <div>
+                        <p className="text-xs font-medium text-foreground">
+                          {q.title || `Quote #${q.quoteNumber}`}
+                        </p>
+                        <p className="text-[11px] text-muted-foreground">{formatDate(q.createdAt)}</p>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <span className="text-xs font-semibold text-foreground">
+                          {formatCurrency(q.amounts?.total)}
+                        </span>
+                        <span className={`text-[10px] font-medium ${statusColor(q.quoteStatus ?? "")}`}>
+                          {q.quoteStatus ?? "—"}
+                        </span>
+                        <ChevronRight className="w-3 h-3 text-muted-foreground" />
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Jobs */}
+            <div>
+              <div className="flex items-center gap-2 mb-3">
+                <Briefcase className="w-3.5 h-3.5 text-primary" />
+                <h4 className="text-xs font-semibold text-foreground uppercase tracking-wide">
+                  Jobs ({jobs.length})
+                </h4>
+              </div>
+              {jobs.length === 0 ? (
+                <p className="text-xs text-muted-foreground italic">No jobs on file.</p>
+              ) : (
+                <div className="space-y-2">
+                  {jobs.map((j: any) => (
+                    <Link
+                      key={j.id}
+                      href="/ops/jobs"
+                      className="flex items-center justify-between px-3 py-2.5 rounded-md bg-secondary/30 hover:bg-secondary/50 transition-colors cursor-pointer"
+                    >
+                      <div>
+                        <p className="text-xs font-medium text-foreground">
+                          {j.title || `Job #${j.jobNumber}`}
+                        </p>
+                        <p className="text-[11px] text-muted-foreground">{formatDate(j.startAt)}</p>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        {j.total != null && (
+                          <span className="text-xs font-semibold text-foreground">
+                            {formatCurrency(j.total)}
+                          </span>
+                        )}
+                        <span className={`text-[10px] font-medium ${statusColor(j.jobStatus ?? "")}`}>
+                          {j.jobStatus ?? "—"}
+                        </span>
+                        <ChevronRight className="w-3 h-3 text-muted-foreground" />
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Invoices */}
+            <div>
+              <div className="flex items-center gap-2 mb-3">
+                <Receipt className="w-3.5 h-3.5 text-primary" />
+                <h4 className="text-xs font-semibold text-foreground uppercase tracking-wide">
+                  Invoices ({invoices.length})
+                </h4>
+              </div>
+              {invoices.length === 0 ? (
+                <p className="text-xs text-muted-foreground italic">No invoices on file.</p>
+              ) : (
+                <div className="space-y-2">
+                  {invoices.map((inv: any) => (
+                    <Link
+                      key={inv.id}
+                      href="/ops/invoices"
+                      className="flex items-center justify-between px-3 py-2.5 rounded-md bg-secondary/30 hover:bg-secondary/50 transition-colors cursor-pointer"
+                    >
+                      <div>
+                        <p className="text-xs font-medium text-foreground">
+                          {inv.title || `Invoice #${inv.invoiceNumber}`}
+                        </p>
+                        <p className="text-[11px] text-muted-foreground">Due {formatDate(inv.dueDate)}</p>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <span className="text-xs font-semibold text-foreground">
+                          {formatCurrency(inv.amounts?.total)}
+                        </span>
+                        <span className={`text-[10px] font-medium ${statusColor(inv.invoiceStatus ?? "")}`}>
+                          {inv.invoiceStatus ?? "—"}
+                        </span>
+                        <ChevronRight className="w-3 h-3 text-muted-foreground" />
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Footer */}
+        <div className="px-5 py-3 border-t border-border shrink-0">
+          <a
+            href="https://secure.getjobber.com/home"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-primary transition-colors"
+          >
+            <ExternalLink className="w-3 h-3" />
+            Open in Jobber
+          </a>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── Client row type ──────────────────────────────────────────────────────────
 
 type ClientNode = {
@@ -153,6 +438,7 @@ export default function OpsClients() {
   const [deleteTarget, setDeleteTarget] = useState<ClientNode | null>(null);
   const [showBulkConfirm, setShowBulkConfirm] = useState(false);
   const [bulkPending, setBulkPending] = useState(false);
+  const [detailClient, setDetailClient] = useState<ClientNode | null>(null);
 
   const utils = trpc.useUtils();
   const { data, isLoading, error, refetch, isFetching } =
@@ -170,7 +456,6 @@ export default function OpsClients() {
     },
   });
 
-  // Jobber throws a TRPCError when not connected
   const notConnected =
     !isLoading &&
     (error?.message?.includes("not connected") ||
@@ -198,7 +483,6 @@ export default function OpsClients() {
 
   const totalCount = (data as any)?.totalCount ?? nodes.length;
 
-  // ── Checkbox helpers ──────────────────────────────────────────────────────
   const allFilteredSelected =
     filtered.length > 0 && filtered.every((c) => selected.has(c.id));
   const someSelected = selected.size > 0;
@@ -228,7 +512,6 @@ export default function OpsClients() {
     });
   }
 
-  // ── Bulk delete ───────────────────────────────────────────────────────────
   async function handleBulkDelete() {
     setBulkPending(true);
     const ids = Array.from(selected);
@@ -302,7 +585,7 @@ export default function OpsClients() {
               </button>
               <button
                 onClick={() => setShowBulkConfirm(true)}
-                className="flex items-center gap-1.5 text-xs font-semibold text-white bg-red-600 hover:bg-red-700 px-3 py-1.5 rounded-md transition-colors"
+                className="flex items-center gap-1.5 text-xs font-medium text-red-400 hover:text-red-300 transition-colors"
               >
                 <Trash2 className="w-3 h-3" />
                 Delete {selected.size} Selected
@@ -337,7 +620,6 @@ export default function OpsClients() {
                   <table className="w-full text-xs">
                     <thead>
                       <tr className="border-b border-border bg-secondary/20">
-                        {/* Select-all checkbox */}
                         <th className="px-3 py-2.5 w-8">
                           <input
                             type="checkbox"
@@ -361,12 +643,13 @@ export default function OpsClients() {
                       {filtered.map((client, idx) => (
                         <tr
                           key={client.id}
-                          className={`border-b border-border last:border-0 hover:bg-secondary/20 transition-colors ${
+                          onClick={() => setDetailClient(client)}
+                          className={`border-b border-border last:border-0 hover:bg-secondary/30 transition-colors cursor-pointer ${
                             selected.has(client.id) ? "bg-red-500/5" : idx % 2 === 0 ? "" : "bg-secondary/5"
-                          }`}
+                          } ${detailClient?.id === client.id ? "bg-primary/5" : ""}`}
                         >
-                          {/* Row checkbox */}
-                          <td className="px-3 py-3 w-8">
+                          {/* Row checkbox — stop propagation so clicking checkbox doesn't open panel */}
+                          <td className="px-3 py-3 w-8" onClick={(e) => e.stopPropagation()}>
                             <input
                               type="checkbox"
                               checked={selected.has(client.id)}
@@ -385,6 +668,7 @@ export default function OpsClients() {
                               <span className="font-medium text-foreground">
                                 {getClientName(client)}
                               </span>
+                              <ChevronRight className="w-3 h-3 text-muted-foreground/40" />
                             </div>
                           </td>
                           <td className="px-4 py-3 text-muted-foreground hidden md:table-cell">
@@ -397,7 +681,7 @@ export default function OpsClients() {
                           </td>
                           <td className="px-4 py-3 text-muted-foreground hidden sm:table-cell">
                             {getEmail(client.emails) !== "—" ? (
-                              <div className="flex items-center gap-1">
+                              <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
                                 <Mail className="w-3 h-3 shrink-0" />
                                 <a
                                   href={`mailto:${getEmail(client.emails)}`}
@@ -410,7 +694,7 @@ export default function OpsClients() {
                           </td>
                           <td className="px-4 py-3 text-muted-foreground hidden lg:table-cell">
                             {getPhone(client.phones) !== "—" ? (
-                              <div className="flex items-center gap-1">
+                              <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
                                 <Phone className="w-3 h-3 shrink-0" />
                                 <a
                                   href={`tel:${getPhone(client.phones)}`}
@@ -440,10 +724,10 @@ export default function OpsClients() {
                               {client.isLead ? "Lead" : "Client"}
                             </Badge>
                           </td>
-                          <td className="px-4 py-3 text-right">
+                          <td className="px-4 py-3 text-right" onClick={(e) => e.stopPropagation()}>
                             <div className="flex items-center justify-end gap-2">
                               <a
-                                href={`https://secure.getjobber.com/home"")}`}
+                                href="https://secure.getjobber.com/home"
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 title="Open in Jobber"
@@ -484,6 +768,15 @@ export default function OpsClients() {
           </>
         )}
       </div>
+
+      {/* Client detail slide-out panel */}
+      {detailClient && (
+        <ClientDetailPanel
+          clientId={detailClient.id}
+          clientName={getClientName(detailClient)}
+          onClose={() => setDetailClient(null)}
+        />
+      )}
 
       {/* Single delete confirmation modal */}
       {deleteTarget && (
