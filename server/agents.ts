@@ -16,11 +16,12 @@
 
 import { Resend } from "resend";
 import { and, eq, gte, isNotNull, lte, ne, or } from "drizzle-orm";
-import { getDb, getOwnerUser, insertAgentLog, getAgentConfig, upsertAgentConfig } from "./db";
+import { getDb, getOwnerUser, insertAgentLog, getAgentConfig, upsertAgentConfig, upsertPricingBenchmark } from "./db";
 import { businessSettings, jobs, opsLeads, scheduleEntries } from "../drizzle/schema";
 import { ENV } from "./_core/env";
 import { notifyOwner } from "./_core/notification";
 import { isJobberConnected, jobberGraphQL } from "./jobber";
+import { invokeLLM } from "./_core/llm";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -605,6 +606,139 @@ export async function runDailyDigestAgent() {
   }
 }
 
+// ─── Agent 6: Pricing Benchmark Update ───────────────────────────────────────
+/**
+ * Runs every Sunday at 6 AM. Uses the LLM to research current market rates
+ * for land clearing, forestry mulching, brush removal, and brush hogging in
+ * Middle & West Tennessee. Upserts results into pricing_benchmarks table.
+ */
+
+const PRICING_SERVICES = [
+  { key: "Land Clearing",    description: "land clearing per acre in Middle and West Tennessee" },
+  { key: "Forestry Mulching", description: "forestry mulching per acre in Middle and West Tennessee" },
+  { key: "Brush Removal",    description: "brush removal per acre in Middle and West Tennessee" },
+  { key: "Brush Hogging",    description: "brush hogging / bush hogging per acre in Middle and West Tennessee" },
+];
+
+export async function runPricingUpdateAgent() {
+  const AGENT_ID = "pricing_update";
+  if (!(await isEnabled(AGENT_ID))) {
+    console.log("[pricing_update] Disabled — skipping.");
+    return;
+  }
+
+  console.log("[pricing_update] Starting pricing research for Middle & West Tennessee...");
+  let updatedCount = 0;
+  const summaryLines: string[] = [];
+
+  try {
+    for (const svc of PRICING_SERVICES) {
+      try {
+        const prompt = `You are a market research assistant for a land clearing company in Tennessee.
+
+Research current market rates for ${svc.description}. Focus specifically on:
+- Middle Tennessee (Nashville metro, Columbia, Murfreesboro, Franklin, Clarksville, Lawrenceburg areas)
+- West Tennessee (Jackson, Memphis suburbs, Dyersburg, Paris, Brownsville areas)
+
+Consider:
+- Competitor pricing from companies like Middle Tennessee Land Clearing, Mid State Land Clearing, Grounded Land Solutions, Stribling Land Clearing & Dirtwork, Wolf Creek Land Company
+- Industry forums, contractor pricing guides, and homeowner cost reports for Tennessee
+- Typical terrain conditions in this region (rolling hills, cedar glades, bottomland hardwoods)
+- Current fuel and equipment operating costs as of ${new Date().getFullYear()}
+
+Respond with JSON only:
+{
+  "lowPerAcre": <integer, low end of market range per acre>,
+  "midPerAcre": <integer, typical market rate per acre>,
+  "highPerAcre": <integer, premium or complex terrain rate per acre>,
+  "summary": "<1-2 sentence explanation of the rates and key factors considered>"
+}
+
+All values are per-acre USD integers. No $ signs or commas in the numbers.`;
+
+        const response = await invokeLLM({
+          messages: [
+            { role: "system", content: "You are a market research assistant. Respond with valid JSON only." },
+            { role: "user", content: prompt },
+          ],
+          response_format: {
+            type: "json_schema",
+            json_schema: {
+              name: "pricing_research",
+              strict: true,
+              schema: {
+                type: "object",
+                properties: {
+                  lowPerAcre:  { type: "integer" },
+                  midPerAcre:  { type: "integer" },
+                  highPerAcre: { type: "integer" },
+                  summary:     { type: "string" },
+                },
+                required: ["lowPerAcre", "midPerAcre", "highPerAcre", "summary"],
+                additionalProperties: false,
+              },
+            },
+          },
+        } as any);
+
+        const content = (response as any)?.choices?.[0]?.message?.content;
+        if (!content) throw new Error("Empty LLM response");
+
+        const parsed = JSON.parse(content) as {
+          lowPerAcre: number;
+          midPerAcre: number;
+          highPerAcre: number;
+          summary: string;
+        };
+        const { lowPerAcre, midPerAcre, highPerAcre, summary } = parsed;
+
+        // Sanity check — values must be positive integers in a plausible range
+        if (
+          typeof lowPerAcre  !== "number" || lowPerAcre  < 50 || lowPerAcre  > 10000 ||
+          typeof midPerAcre  !== "number" || midPerAcre  < 50 || midPerAcre  > 10000 ||
+          typeof highPerAcre !== "number" || highPerAcre < 50 || highPerAcre > 10000 ||
+          lowPerAcre > midPerAcre || midPerAcre > highPerAcre
+        ) {
+          throw new Error(
+            `Implausible values for ${svc.key}: low=${lowPerAcre} mid=${midPerAcre} high=${highPerAcre}`
+          );
+        }
+
+        await upsertPricingBenchmark({
+          serviceType: svc.key,
+          lowPerAcre,
+          midPerAcre,
+          highPerAcre,
+          region: "Middle & West Tennessee",
+          researchSummary: summary,
+        });
+
+        updatedCount++;
+        summaryLines.push(`${svc.key}: $${lowPerAcre}–$${midPerAcre}–$${highPerAcre}/ac`);
+        console.log(`[pricing_update] ${svc.key}: $${lowPerAcre}/$${midPerAcre}/$${highPerAcre}/ac`);
+      } catch (svcErr) {
+        const msg = (svcErr as Error).message ?? String(svcErr);
+        console.error(`[pricing_update] Failed for ${svc.key}:`, msg);
+        summaryLines.push(`${svc.key}: FAILED (${msg})`);
+      }
+    }
+
+    const runSummary = `Updated ${updatedCount}/${PRICING_SERVICES.length} services. ${summaryLines.join(" | ")}`;
+    await insertAgentLog({ agentId: AGENT_ID, status: "success", summary: runSummary, actionsCount: updatedCount });
+
+    if (updatedCount > 0) {
+      await notifyOwner({
+        title: "Pricing Benchmarks Updated",
+        content: `Weekly pricing research complete for Middle & West Tennessee.\n\n${summaryLines.join("\n")}`,
+      });
+    }
+  } catch (err) {
+    const msg = (err as Error).message ?? String(err);
+    console.error("[pricing_update] Fatal error:", msg);
+    await insertAgentLog({ agentId: AGENT_ID, status: "error", summary: msg, actionsCount: 0, error: msg });
+  }
+}
+
 // ─── Agent registry (for the UI) ─────────────────────────────────────────────
 export const AGENT_REGISTRY = [
   {
@@ -636,6 +770,12 @@ export const AGENT_REGISTRY = [
     name: "Daily Ops Digest",
     description: "Emails you a morning summary: today's schedule, open leads, pending visits, and jobs ready to invoice.",
     schedule: "Daily at 7 AM",
+  },
+  {
+    id: "pricing_update",
+    name: "Pricing Benchmark Update",
+    description: "Researches current market rates for land clearing, forestry mulching, brush removal, and brush hogging in Middle & West Tennessee. Updates the benchmarks on the Pricing page.",
+    schedule: "Sundays at 6 AM",
   },
 ] as const;
 

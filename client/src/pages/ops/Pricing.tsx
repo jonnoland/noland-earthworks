@@ -12,6 +12,7 @@ import {
   Calculator, DollarSign, Users, Clock, TrendingUp, Info,
   FileDown, Settings, Plus, Trash2, X, ChevronDown,
   MapPin, Navigation, AlertTriangle, Save, CheckCircle,
+  RefreshCw, CheckCircle2, AlertCircle, Loader2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -624,7 +625,147 @@ function EditPricingModal({
   );
 }
 
-// ─── Main Page ────────────────────────────────────────────────────────────────
+// ─── Pricing Benchmarks Card (live from DB) ────────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Reads pricing benchmarks from the DB (updated by the weekly pricing agent)
+ * and shows the last-run status plus a manual trigger button.
+ */
+function PricingBenchmarksCard() {
+  const utils = trpc.useUtils();
+
+  const { data: benchmarks = [], isLoading: benchmarksLoading } =
+    trpc.agents.getPricingBenchmarks.useQuery();
+
+  const { data: agentList = [] } = trpc.agents.list.useQuery();
+  const pricingAgent = agentList.find((a: any) => a.id === "pricing_update");
+
+  const triggerRun = trpc.agents.triggerRun.useMutation({
+    onSuccess: () => {
+      toast.success("Pricing research started — benchmarks will update in a moment.");
+      // Poll for updated benchmarks after a short delay
+      setTimeout(() => utils.agents.getPricingBenchmarks.invalidate(), 8000);
+      setTimeout(() => utils.agents.list.invalidate(), 8000);
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  // Static fallback rows shown when DB has no data yet
+  const FALLBACK_ROWS = [
+    { serviceType: "Land Clearing",    lowPerAcre: 400, midPerAcre: 650,  highPerAcre: 1000, researchSummary: null, lastUpdatedAt: null },
+    { serviceType: "Forestry Mulching", lowPerAcre: 500, midPerAcre: 800,  highPerAcre: 1200, researchSummary: null, lastUpdatedAt: null },
+    { serviceType: "Brush Removal",    lowPerAcre: 250, midPerAcre: 400,  highPerAcre: 600,  researchSummary: null, lastUpdatedAt: null },
+    { serviceType: "Brush Hogging",    lowPerAcre: 75,  midPerAcre: 125,  highPerAcre: 200,  researchSummary: null, lastUpdatedAt: null },
+  ];
+
+  const rows = benchmarks.length > 0 ? benchmarks : FALLBACK_ROWS;
+  const hasLiveData = benchmarks.length > 0;
+
+  // Most recent lastUpdatedAt across all rows
+  const lastUpdated = hasLiveData
+    ? benchmarks.reduce((latest: Date | null, b: any) => {
+        const d = new Date(b.lastUpdatedAt);
+        return !latest || d > latest ? d : latest;
+      }, null as Date | null)
+    : null;
+
+  const lastRunStatus = pricingAgent?.lastRun?.status ?? null;
+
+  return (
+    <div className="ops-card p-5">
+      {/* Header */}
+      <div className="flex items-start justify-between gap-3 mb-4">
+        <div>
+          <h3 className="text-sm font-semibold text-foreground">
+            Pricing Benchmarks — Middle &amp; West Tennessee
+          </h3>
+          <p className="text-[11px] text-muted-foreground mt-0.5">
+            {hasLiveData && lastUpdated
+              ? `Last updated ${lastUpdated.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })} by weekly agent`
+              : "Per-acre market rates — updated automatically every Sunday at 6 AM"}
+          </p>
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
+          {/* Agent last-run status badge */}
+          {lastRunStatus === "success" && (
+            <span className="flex items-center gap-1 text-[10px] text-green-400 bg-green-500/10 border border-green-500/20 rounded-full px-2 py-0.5">
+              <CheckCircle2 className="w-2.5 h-2.5" />
+              Up to date
+            </span>
+          )}
+          {lastRunStatus === "error" && (
+            <span className="flex items-center gap-1 text-[10px] text-red-400 bg-red-500/10 border border-red-500/20 rounded-full px-2 py-0.5">
+              <AlertCircle className="w-2.5 h-2.5" />
+              Last run failed
+            </span>
+          )}
+          {/* Manual trigger */}
+          <button
+            onClick={() => triggerRun.mutate({ agentId: "pricing_update" })}
+            disabled={triggerRun.isPending}
+            className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground border border-border hover:border-primary/40 rounded-md px-3 py-1.5 transition-all disabled:opacity-50"
+            title="Run pricing research now"
+          >
+            {triggerRun.isPending
+              ? <Loader2 className="w-3 h-3 animate-spin" />
+              : <RefreshCw className="w-3 h-3" />}
+            {triggerRun.isPending ? "Running..." : "Update Now"}
+          </button>
+        </div>
+      </div>
+
+      {/* Table */}
+      {benchmarksLoading ? (
+        <div className="flex items-center justify-center py-8">
+          <Loader2 className="w-4 h-4 animate-spin text-primary" />
+        </div>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead>
+              <tr className="border-b border-border">
+                <th className="text-left text-[11px] font-semibold text-muted-foreground pb-2 pr-4">Job Type</th>
+                <th className="text-left text-[11px] font-semibold text-muted-foreground pb-2 pr-4">Low</th>
+                <th className="text-left text-[11px] font-semibold text-muted-foreground pb-2 pr-4">Market Rate</th>
+                <th className="text-left text-[11px] font-semibold text-muted-foreground pb-2">Premium</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((row: any, i: number) => (
+                <tr key={i} className="border-b border-border/50 last:border-0 group">
+                  <td className="py-2.5 pr-4 text-xs font-semibold text-foreground">{row.serviceType}</td>
+                  <td className="py-2.5 pr-4 text-xs text-muted-foreground">${row.lowPerAcre.toLocaleString()}/ac</td>
+                  <td className="py-2.5 pr-4 text-xs text-primary font-semibold">${row.midPerAcre.toLocaleString()}/ac</td>
+                  <td className="py-2.5 text-xs text-green-400">${row.highPerAcre.toLocaleString()}/ac</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* Research summaries (shown when live data exists) */}
+      {hasLiveData && benchmarks.some((b: any) => b.researchSummary) && (
+        <div className="mt-4 space-y-2">
+          {benchmarks.filter((b: any) => b.researchSummary).map((b: any, i: number) => (
+            <div key={i} className="text-[10px] text-muted-foreground">
+              <span className="font-semibold text-foreground/70">{b.serviceType}:</span>{" "}
+              {b.researchSummary}
+            </div>
+          ))}
+        </div>
+      )}
+
+      <p className="text-[10px] text-muted-foreground mt-3">
+        {hasLiveData
+          ? "Rates are researched weekly by the pricing agent using Middle & West Tennessee market data. Actual pricing varies by terrain, density, access, and site conditions. Never quote from benchmarks alone — always conduct a site visit."
+          : "Static fallback rates shown — click \"Update Now\" to run the pricing agent and pull live market data for Middle & West Tennessee."}
+      </p>
+    </div>
+  );
+}
+
+// ─── Main Page ────────────────────────────────────────────────────────────────────────────────
 
 export default function Pricing() {
   const [config, setConfig] = useState<PricingConfig>(() => {
@@ -1135,43 +1276,8 @@ export default function Pricing() {
           )}
         </div>
 
-        {/* Pricing Benchmarks — Middle & West Tennessee */}
-        <div className="ops-card p-5">
-          <h3 className="text-sm font-semibold text-foreground mb-1">
-            Pricing Benchmarks — Middle &amp; West Tennessee
-          </h3>
-          <p className="text-[11px] text-muted-foreground mb-4">Per-acre market rates as of Apr 2026</p>
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-border">
-                  <th className="text-left text-[11px] font-semibold text-muted-foreground pb-2 pr-4">Job Type</th>
-                  <th className="text-left text-[11px] font-semibold text-muted-foreground pb-2 pr-4">Low</th>
-                  <th className="text-left text-[11px] font-semibold text-muted-foreground pb-2 pr-4">Market Rate</th>
-                  <th className="text-left text-[11px] font-semibold text-muted-foreground pb-2">Premium</th>
-                </tr>
-              </thead>
-              <tbody>
-                {[
-                  { type: "Land Clearing", low: "$400", mid: "$650", high: "$1,000" },
-                  { type: "Forestry Mulching", low: "$500", mid: "$800", high: "$1,200" },
-                  { type: "Brush Removal", low: "$250", mid: "$400", high: "$600" },
-                  { type: "Brush Hogging", low: "$75", mid: "$125", high: "$200" },
-                ].map((row, i) => (
-                  <tr key={i} className="border-b border-border/50 last:border-0">
-                    <td className="py-2.5 pr-4 text-xs font-semibold text-foreground">{row.type}</td>
-                    <td className="py-2.5 pr-4 text-xs text-muted-foreground">{row.low}/ac</td>
-                    <td className="py-2.5 pr-4 text-xs text-primary font-semibold">{row.mid}/ac</td>
-                    <td className="py-2.5 text-xs text-green-400">{row.high}/ac</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          <p className="text-[10px] text-muted-foreground mt-3">
-            Rates reflect Middle &amp; West Tennessee market conditions as of Apr 2026. Actual pricing varies by terrain, density, access, and site-specific conditions. Never quote from benchmarks alone — always conduct a site visit.
-          </p>
-        </div>
+        {/* Pricing Benchmarks — live from DB, updated by weekly agent */}
+        <PricingBenchmarksCard />
 
       </div>
     </DashboardLayout>

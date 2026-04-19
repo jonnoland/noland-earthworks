@@ -3,7 +3,8 @@ import { drizzle, type MySql2Database } from "drizzle-orm/mysql2";
 import {
   InsertJob, InsertOpsLead, InsertScheduleEntry, InsertUser,
   jobs, opsLeads, scheduleEntries, users, visitBlackoutDates, InsertVisitBlackoutDate,
-  recurringBlackoutDays, agentConfig, agentLog, ownerTasks, InsertOwnerTask
+  recurringBlackoutDays, agentConfig, agentLog, ownerTasks, InsertOwnerTask,
+  jobNotes, pricingBenchmarks,
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
@@ -367,4 +368,60 @@ export async function deleteOwnerTask(id: number) {
   const db = await getDb();
   if (!db) return;
   await db.delete(ownerTasks).where(eq(ownerTasks.id, id));
+}
+
+// ─── Pricing Benchmarks ─────────────────────────────────────────────────────────────────────────────────
+export async function getPricingBenchmarks() {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(pricingBenchmarks).orderBy(pricingBenchmarks.serviceType);
+}
+export async function upsertPricingBenchmark(data: {
+  serviceType: string;
+  lowPerAcre: number;
+  midPerAcre: number;
+  highPerAcre: number;
+  region?: string;
+  researchSummary?: string;
+}) {
+  const db = await getDb();
+  if (!db) throw new Error('DB unavailable');
+  await db.insert(pricingBenchmarks)
+    .values({
+      serviceType: data.serviceType,
+      lowPerAcre: data.lowPerAcre,
+      midPerAcre: data.midPerAcre,
+      highPerAcre: data.highPerAcre,
+      region: data.region ?? 'Middle & West Tennessee',
+      researchSummary: data.researchSummary ?? null,
+      lastUpdatedAt: new Date(),
+    })
+    .onDuplicateKeyUpdate({
+      set: {
+        lowPerAcre: data.lowPerAcre,
+        midPerAcre: data.midPerAcre,
+        highPerAcre: data.highPerAcre,
+        region: data.region ?? 'Middle & West Tennessee',
+        researchSummary: data.researchSummary ?? null,
+        lastUpdatedAt: new Date(),
+      },
+    });
+}
+
+// ─── Job Notes ─────────────────────────────────────────────────────────────────────────────────
+export async function getJobNotes(jobId: string) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(jobNotes).where(eq(jobNotes.jobId, jobId)).orderBy(jobNotes.createdAt);
+}
+export async function addJobNote(jobId: string, userId: number, content: string) {
+  const db = await getDb();
+  if (!db) throw new Error('DB unavailable');
+  const [row] = await db.insert(jobNotes).values({ jobId, userId, content }).$returningId();
+  return row;
+}
+export async function deleteJobNote(id: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db.delete(jobNotes).where(eq(jobNotes.id, id));
 }

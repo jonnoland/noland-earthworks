@@ -169,6 +169,20 @@
       "when": 1776564526031,
       "tag": "0023_big_plazm",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "5",
+      "when": 1776568693977,
+      "tag": "0024_wet_charles_xavier",
+      "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "5",
+      "when": 1776569025826,
+      "tag": "0025_ambitious_pyro",
+      "breakpoints": true
     }
   ]
 }

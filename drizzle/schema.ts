@@ -585,3 +585,41 @@ export const agentLog = mysqlTable("agent_log", {
 });
 export type AgentLog = typeof agentLog.$inferSelect;
 export type InsertAgentLog = typeof agentLog.$inferInsert;
+
+// ─── Pricing Benchmarks (updated by weekly agent) ───────────────────────────────
+/**
+ * Market rate benchmarks for each service type — updated weekly by the pricing agent.
+ * One row per service type; upserted on serviceType.
+ */
+export const pricingBenchmarks = mysqlTable("pricing_benchmarks", {
+  id: int("id").primaryKey().autoincrement(),
+  /** Service type key — matches the label shown on /ops/pricing */
+  serviceType: varchar("serviceType", { length: 100 }).notNull().unique(),
+  /** Low end of market range (per acre) */
+  lowPerAcre: int("lowPerAcre").notNull().default(0),
+  /** Mid / market rate (per acre) */
+  midPerAcre: int("midPerAcre").notNull().default(0),
+  /** High / premium end (per acre) */
+  highPerAcre: int("highPerAcre").notNull().default(0),
+  /** Region researched */
+  region: varchar("region", { length: 200 }).notNull().default("Middle & West Tennessee"),
+  /** Brief summary of sources / reasoning from the LLM */
+  researchSummary: text("researchSummary"),
+  /** ISO timestamp of when this row was last updated by the agent */
+  lastUpdatedAt: timestamp("lastUpdatedAt").defaultNow().notNull(),
+});
+export type PricingBenchmark = typeof pricingBenchmarks.$inferSelect;
+export type InsertPricingBenchmark = typeof pricingBenchmarks.$inferInsert;
+
+// ─── Job Notes (manual history timeline entries) ──────────────────────────────
+/** Manual notes attached to a Jobber job ID — shown in the History tab timeline. */
+export const jobNotes = mysqlTable("job_notes", {
+  id: int("id").primaryKey().autoincrement(),
+  /** Jobber job ID (encoded) */
+  jobId: varchar("jobId", { length: 120 }).notNull(),
+  userId: int("userId").notNull(),
+  content: text("content").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type JobNote = typeof jobNotes.$inferSelect;
+export type InsertJobNote = typeof jobNotes.$inferInsert;

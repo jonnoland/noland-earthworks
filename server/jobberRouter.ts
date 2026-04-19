@@ -7,7 +7,7 @@ import { z } from "zod";
 import { protectedProcedure, router } from "./_core/trpc";
 import { ENV } from "./_core/env";
 import { isJobberConnected, jobberGraphQL } from "./jobber";
-import { getDb } from "./db";
+import { getDb, getJobNotes, addJobNote, deleteJobNote } from "./db";
 import { jobberTokens, leadSourceTags } from "../drizzle/schema";
 import { sql } from "drizzle-orm";
 
@@ -556,6 +556,29 @@ export const jobberRouter = router({
       const errors = invoiceData?.invoiceCreate?.userErrors;
       if (errors?.length) throw new TRPCError({ code: 'BAD_REQUEST', message: errors[0].message });
       return invoiceData?.invoiceCreate?.invoice ?? null;
+    }),
+
+  /** Get manual notes for a job (from local DB) */
+  getJobNotes: adminProcedure
+    .input(z.object({ jobId: z.string() }))
+    .query(async ({ input }) => {
+      return getJobNotes(input.jobId);
+    }),
+
+  /** Add a manual note to a job's history timeline */
+  addJobNote: adminProcedure
+    .input(z.object({ jobId: z.string(), content: z.string().min(1).max(2000) }))
+    .mutation(async ({ input, ctx }) => {
+      const row = await addJobNote(input.jobId, ctx.user.id, input.content);
+      return row;
+    }),
+
+  /** Delete a manual job note */
+  deleteJobNote: adminProcedure
+    .input(z.object({ id: z.number() }))
+    .mutation(async ({ input }) => {
+      await deleteJobNote(input.id);
+      return { success: true };
     }),
 
   /** Get aggregated lead source breakdown (count per source) */

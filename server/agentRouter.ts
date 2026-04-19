@@ -19,7 +19,9 @@ import {
   runReviewRequestAgent,
   runStaleLeadAlertAgent,
   runDailyDigestAgent,
+  runPricingUpdateAgent,
 } from "./agents";
+import { getPricingBenchmarks } from "./db";
 
 // Owner-only guard — mirrors the pattern in opsRouter
 const ownerProcedure = protectedProcedure;
@@ -30,6 +32,7 @@ const agentRunners: Record<string, () => Promise<void>> = {
   review_request: runReviewRequestAgent,
   stale_lead_alert: runStaleLeadAlertAgent,
   daily_digest: runDailyDigestAgent,
+  pricing_update: runPricingUpdateAgent,
 };
 
 export const agentRouter = router({
@@ -113,4 +116,9 @@ export const agentRouter = router({
       await upsertAgentConfig(input.agentId, undefined, input.template);
       return { success: true };
     }),
+
+  /** Return the current pricing benchmarks from the DB. */
+  getPricingBenchmarks: ownerProcedure.query(async () => {
+    return getPricingBenchmarks();
+  }),
 });

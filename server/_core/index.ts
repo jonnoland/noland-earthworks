@@ -18,6 +18,7 @@ import {
   runReviewRequestAgent,
   runStaleLeadAlertAgent,
   runDailyDigestAgent,
+  runPricingUpdateAgent,
   getAgentEnabled,
 } from "../agents";
 import multer from "multer";
@@ -76,7 +77,11 @@ async function startServer() {
   cron.schedule("0 6 * * *", async () => {
     if (await getAgentEnabled("daily_digest")) await runDailyDigestAgent();
   }, { timezone: "America/Chicago" });
-  console.log("[Agents] 5 scheduled agents registered.");
+  // Pricing Benchmark Update: every Sunday at 6:00 AM CT
+  cron.schedule("0 6 * * 0", async () => {
+    if (await getAgentEnabled("pricing_update")) await runPricingUpdateAgent();
+  }, { timezone: "America/Chicago" });
+  console.log("[Agents] 6 scheduled agents registered.");
 
   // Sitemap + robots.txt
   registerSitemapRoutes(app);

@@ -927,3 +927,16 @@
 - [x] /ops/jobs detail panel: add full job history section (visits timeline + invoices) via History tab
 - [ ] /ops/jobs: add map view tab showing locations of all active jobs (pins from property addresses)
 - [x] /ops/jobs detail panel: add "Send Invoice" button to quickly create/send an invoice for the job via Jobber
+
+## Schedule + Job Detail Enhancements — Apr 19 2026 (batch 2)
+- [ ] /ops/schedule: status filter system to show/hide jobs by status (All / Active / Quote / Requires Invoicing / Completed)
+- [ ] /ops/jobs detail panel History tab: manual note entry — user can type and save a note that appears in the timeline
+- [ ] /ops/schedule Upcoming Jobs list: show assigned crew members for each job
+
+## Weekly Pricing Update Agent — Apr 19 2026
+- [x] Audit /ops/pricing page to understand current pricing data structure
+- [x] Add pricingBenchmarks table to schema (serviceType, lowPerAcre, midPerAcre, highPerAcre, researchSummary, lastUpdatedAt)
+- [x] Build runPricingUpdateAgent server function: LLM-driven research + upsert benchmarks in DB + owner notification
+- [x] Add tRPC procedures: agents.getPricingBenchmarks, agents.triggerRun (pricing_update), agents.list (shows pricing agent status)
+- [x] Update /ops/pricing page: PricingBenchmarksCard reads live DB data, shows last-run status badge, Update Now button
+- [x] Register Sunday 6 AM CT cron schedule in server/_core/index.ts (6 agents total)
