@@ -656,6 +656,8 @@ function PricingBenchmarksCard() {
     { serviceType: "Forestry Mulching", lowPerAcre: 500, midPerAcre: 800,  highPerAcre: 1200, researchSummary: null, lastUpdatedAt: null },
     { serviceType: "Brush Removal",    lowPerAcre: 250, midPerAcre: 400,  highPerAcre: 600,  researchSummary: null, lastUpdatedAt: null },
     { serviceType: "Brush Hogging",    lowPerAcre: 75,  midPerAcre: 125,  highPerAcre: 200,  researchSummary: null, lastUpdatedAt: null },
+    { serviceType: "Stump Grinding",   lowPerAcre: 75,  midPerAcre: 150,  highPerAcre: 300,  researchSummary: "Per stump. Size, root spread, and access affect cost.", lastUpdatedAt: null },
+    { serviceType: "Debris Hauling",   lowPerAcre: 250, midPerAcre: 450,  highPerAcre: 750,  researchSummary: "Per load. Volume, haul distance, and dump fees are primary variables.", lastUpdatedAt: null },
   ];
 
   const rows = benchmarks.length > 0 ? benchmarks : FALLBACK_ROWS;

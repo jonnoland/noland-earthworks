@@ -940,3 +940,7 @@
 - [x] Add tRPC procedures: agents.getPricingBenchmarks, agents.triggerRun (pricing_update), agents.list (shows pricing agent status)
 - [x] Update /ops/pricing page: PricingBenchmarksCard reads live DB data, shows last-run status badge, Update Now button
 - [x] Register Sunday 6 AM CT cron schedule in server/_core/index.ts (6 agents total)
+
+## Pricing Agent Expansion — Apr 19 2026
+- [x] agents.ts: add "Stump Grinding" and "Debris Hauling" to PRICING_SERVICES array in runPricingUpdateAgent
+- [x] /ops/pricing PricingBenchmarksCard: add fallback rows for Stump Grinding and Debris Hauling

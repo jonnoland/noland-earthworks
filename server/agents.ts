@@ -618,6 +618,8 @@ const PRICING_SERVICES = [
   { key: "Forestry Mulching", description: "forestry mulching per acre in Middle and West Tennessee" },
   { key: "Brush Removal",    description: "brush removal per acre in Middle and West Tennessee" },
   { key: "Brush Hogging",    description: "brush hogging / bush hogging per acre in Middle and West Tennessee" },
+  { key: "Stump Grinding",   description: "stump grinding per stump or per hour in Middle and West Tennessee — express rates as per-stump low/mid/high" },
+  { key: "Debris Hauling",   description: "debris hauling and removal per load or per acre in Middle and West Tennessee — express rates as per-load or per-acre low/mid/high" },
 ];
 
 export async function runPricingUpdateAgent() {
@@ -646,15 +648,17 @@ Consider:
 - Typical terrain conditions in this region (rolling hills, cedar glades, bottomland hardwoods)
 - Current fuel and equipment operating costs as of ${new Date().getFullYear()}
 
+For services priced per stump or per load (not per acre), express the low/mid/high values as the typical unit price (per stump for stump grinding, per load for debris hauling). The field names still use "PerAcre" but treat them as the relevant unit price for this service.
+
 Respond with JSON only:
 {
-  "lowPerAcre": <integer, low end of market range per acre>,
-  "midPerAcre": <integer, typical market rate per acre>,
-  "highPerAcre": <integer, premium or complex terrain rate per acre>,
-  "summary": "<1-2 sentence explanation of the rates and key factors considered>"
+  "lowPerAcre": <integer, low end of market range>,
+  "midPerAcre": <integer, typical market rate>,
+  "highPerAcre": <integer, premium or complex rate>,
+  "summary": "<1-2 sentence explanation of the rates, the unit used (per acre / per stump / per load), and key factors considered>"
 }
 
-All values are per-acre USD integers. No $ signs or commas in the numbers.`;
+All values are USD integers. No $ signs or commas in the numbers.`;
 
         const response = await invokeLLM({
           messages: [
@@ -693,10 +697,11 @@ All values are per-acre USD integers. No $ signs or commas in the numbers.`;
         const { lowPerAcre, midPerAcre, highPerAcre, summary } = parsed;
 
         // Sanity check — values must be positive integers in a plausible range
+        // Lower bound is 25 to accommodate per-stump / per-load services
         if (
-          typeof lowPerAcre  !== "number" || lowPerAcre  < 50 || lowPerAcre  > 10000 ||
-          typeof midPerAcre  !== "number" || midPerAcre  < 50 || midPerAcre  > 10000 ||
-          typeof highPerAcre !== "number" || highPerAcre < 50 || highPerAcre > 10000 ||
+          typeof lowPerAcre  !== "number" || lowPerAcre  < 25 || lowPerAcre  > 10000 ||
+          typeof midPerAcre  !== "number" || midPerAcre  < 25 || midPerAcre  > 10000 ||
+          typeof highPerAcre !== "number" || highPerAcre < 25 || highPerAcre > 10000 ||
           lowPerAcre > midPerAcre || midPerAcre > highPerAcre
         ) {
           throw new Error(
