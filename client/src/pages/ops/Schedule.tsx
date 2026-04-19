@@ -6,7 +6,7 @@
 import DashboardLayout from "@/components/DashboardLayout";
 import { trpc } from "@/lib/trpc";
 import { useState, useMemo } from "react";
-import { ChevronLeft, ChevronRight, Plus, Trash2, Loader2, X, Calendar, RefreshCw, ExternalLink, AlertCircle, CheckCircle2, GripVertical } from "lucide-react";
+import { ChevronLeft, ChevronRight, Plus, Trash2, Loader2, X, Calendar, RefreshCw, ExternalLink, AlertCircle, CheckCircle2, GripVertical, Flag } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { DndContext, DragEndEvent, DragOverlay, DragStartEvent, PointerSensor, useSensor, useSensors } from "@dnd-kit/core";
@@ -213,7 +213,7 @@ function JobberVisitsSection() {
 
 // ─── DnD sub-components ──────────────────────────────────────────────────────
 
-function DraggableJobBanner({ job }: { job: { id: number; client: string; jobType?: string | null; acres?: string | null } }) {
+function DraggableJobBanner({ job }: { job: { id: number; client: string; jobType?: string | null; acres?: string | null; isHighPriority?: boolean | null; rescheduledAt?: Date | string | null } }) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({ id: `job-${job.id}` });
   const colorClass = getJobTypeColor(job.jobType);
   return (
@@ -223,14 +223,20 @@ function DraggableJobBanner({ job }: { job: { id: number; client: string; jobTyp
       {...attributes}
       className={cn(
         "rounded-md border px-2 py-1.5 text-[10px] cursor-grab active:cursor-grabbing select-none flex items-start gap-1",
-        colorClass,
+        job.isHighPriority ? "border-red-500/40 bg-red-500/10 text-red-300" : colorClass,
         isDragging && "opacity-40"
       )}
     >
       <GripVertical className="w-2.5 h-2.5 opacity-40 mt-0.5 shrink-0" />
-      <div className="min-w-0">
-        <div className="font-semibold truncate">{job.client}</div>
-        <div className="opacity-70 capitalize">{job.jobType?.replace(/_/g, " ") ?? "clearing"}{job.acres ? ` · ${job.acres} ac` : ""}</div>
+      <div className="min-w-0 flex-1">
+        <div className="font-semibold truncate flex items-center gap-1">
+          {job.isHighPriority && <Flag className="w-2.5 h-2.5 text-red-400 shrink-0" />}
+          {job.client}
+        </div>
+        <div className="opacity-70 capitalize">
+          {job.jobType?.replace(/_/g, " ") ?? "clearing"}{job.acres ? ` · ${job.acres} ac` : ""}
+          {job.rescheduledAt && <span className="ml-1 text-amber-400 not-italic">· rescheduled</span>}
+        </div>
       </div>
     </div>
   );
@@ -310,6 +316,7 @@ export default function Schedule() {
       id: pendingReschedule.jobId,
       scheduledDate: pendingReschedule.newStart,
       ...(pendingReschedule.newEnd ? { scheduledEndDate: pendingReschedule.newEnd } : {}),
+      rescheduledAt: new Date(),
     });
     setPendingReschedule(null);
   };

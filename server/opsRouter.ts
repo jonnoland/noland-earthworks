@@ -55,6 +55,7 @@ const jobsRouter = router({
       notes: z.string().optional(),
       scheduledDate: z.date().optional(),
       scheduledEndDate: z.date().optional(),
+      isHighPriority: z.boolean().optional(),
     }))
     .mutation(({ ctx, input }) => createJob({ ...input, userId: ctx.user.id })),
   update: ownerProcedure
@@ -73,6 +74,8 @@ const jobsRouter = router({
       scheduledDate: z.date().optional(),
       scheduledEndDate: z.date().optional(),
       completedDate: z.date().optional(),
+      rescheduledAt: z.date().optional(),
+      isHighPriority: z.boolean().optional(),
     }))
     .mutation(async ({ ctx, input }) => {
       const { id, ...data } = input;

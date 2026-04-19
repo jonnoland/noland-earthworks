@@ -1,7 +1,7 @@
-/**
+/*
  * Dashboard Page — Noland Earthworks
  * Main overview with KPI metrics, scheduled jobs, job pipeline, and lead pipeline.
- * All data is live from the database — no hardcoded placeholder entries.
+ * Scheduled Jobs + KPIs are driven by Jobber data. Local jobs table is a secondary fallback.
  */
 
 import { useState, useEffect, useMemo, useRef } from "react";
@@ -10,11 +10,24 @@ import { trpc } from "@/lib/trpc";
 import {
   DollarSign, Briefcase,
   Users, Clock, ArrowUpRight, MapPin, Plus, ChevronRight, Inbox,
-  CalendarDays, CalendarCheck, TrendingUp, Gauge, Activity,
+  CalendarDays, CalendarCheck, TrendingUp, Gauge, Activity, ExternalLink, Flag,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { Link } from "wouter";
+
+// ─── Jobber status → local status mapping ────────────────────────────────────
+// Jobber statuses: active, completed, requires_invoicing, late, archived
+function mapJobberStatus(jobStatus: string): string {
+  switch (jobStatus?.toLowerCase()) {
+    case "active":                return "in_progress";
+    case "requires_invoicing":    return "invoiced";
+    case "completed":             return "completed";
+    case "late":                  return "in_progress";
+    case "archived":              return "cancelled";
+    default:                      return "scheduled";
+  }
+}
 
 const statusConfig: Record<string, { label: string; color: string }> = {
   estimate:    { label: "Estimate",   color: "text-blue-400 bg-blue-400/10 border-blue-400/20" },
@@ -99,9 +112,37 @@ function EmptyState({ message, linkLabel, linkHref }: { message: string; linkLab
   );
 }
 
+// ─── Normalized job shape used by both Jobber and local jobs ─────────────────
+interface NormalizedJob {
+  id: string;
+  client: string;
+  title: string;
+  status: string;
+  jobType?: string;
+  scheduledDate?: Date | null;
+  address?: string;
+  totalPrice?: number | null;
+  acres?: number | null;
+  crewDays?: number | null;
+  source: "jobber" | "local";
+  jobberJobNumber?: number;
+  isHighPriority?: boolean;
+  rescheduledAt?: Date | null;
+}
+
 export default function Dashboard() {
   const prevLeadCount = useRef<number | null>(null);
-  const { data: jobs = [] } = trpc.ops.jobs.list.useQuery(undefined, { refetchInterval: 15000 });
+
+  // Local jobs (secondary — manual entries only)
+  const { data: localJobs = [] } = trpc.ops.jobs.list.useQuery(undefined, { refetchInterval: 30000 });
+
+  // Jobber jobs — primary source of truth
+  const { data: jobberJobsRaw, isError: jobberError } = trpc.jobber.jobs.useQuery(
+    { first: 100 },
+    { retry: false, refetchInterval: 60000 }
+  );
+
+  // Leads
   const { data: leads = [] } = trpc.ops.leads.list.useQuery(undefined, { refetchInterval: 15000 });
 
   useEffect(() => {
@@ -112,79 +153,138 @@ export default function Dashboard() {
     prevLeadCount.current = leads.length;
   }, [leads.length]);
 
+  // ─── Normalize Jobber jobs ────────────────────────────────────────────────
+  const jobberJobs = useMemo<NormalizedJob[]>(() => {
+    const nodes = jobberJobsRaw?.nodes ?? [];
+    return nodes.map((j: any) => ({
+      id: `jobber-${j.id}`,
+      client: j.client?.name ?? "Unknown Client",
+      title: j.title ?? `Job #${j.jobNumber}`,
+      status: mapJobberStatus(j.jobStatus),
+      jobType: j.jobType ?? undefined,
+      scheduledDate: j.startAt ? new Date(j.startAt) : null,
+      address: [j.property?.address?.street1, j.property?.address?.city]
+        .filter(Boolean).join(", ") || undefined,
+      totalPrice: j.total != null ? Number(j.total) : null,
+      acres: null,
+      crewDays: null,
+      source: "jobber" as const,
+      jobberJobNumber: j.jobNumber,
+    }));
+  }, [jobberJobsRaw]);
+
+  // ─── Normalize local jobs ─────────────────────────────────────────────────
+  const normalizedLocalJobs = useMemo<NormalizedJob[]>(() => {
+    return localJobs.map((j) => ({
+      id: `local-${j.id}`,
+      client: j.client ?? "Unknown",
+      title: j.title ?? j.client ?? "Untitled Job",
+      status: j.status ?? "scheduled",
+      jobType: j.jobType ?? undefined,
+      scheduledDate: j.scheduledDate ? new Date(j.scheduledDate) : null,
+      address: j.address ?? undefined,
+      totalPrice: j.totalPrice != null ? Number(j.totalPrice) : null,
+      acres: j.acres != null ? Number(j.acres) : null,
+      crewDays: j.crewDays != null ? Number(j.crewDays) : null,
+      source: "local" as const,
+      isHighPriority: (j as any).isHighPriority ?? false,
+      rescheduledAt: (j as any).rescheduledAt ? new Date((j as any).rescheduledAt) : null,
+    }));
+  }, [localJobs]);
+
+  // ─── Merged jobs — Jobber is primary, local fills in anything not in Jobber ─
+  const allJobs = useMemo<NormalizedJob[]>(() => {
+    // If Jobber is connected and has jobs, use those as primary
+    if (jobberJobs.length > 0) return jobberJobs;
+    // Fallback to local jobs if Jobber not connected or empty
+    return normalizedLocalJobs;
+  }, [jobberJobs, normalizedLocalJobs]);
+
+  // ─── KPIs ─────────────────────────────────────────────────────────────────
   const kpis = useMemo(() => {
-    const totalRevenue = jobs.reduce((s, j) => s + Number(j.totalPrice ?? 0), 0);
-    const activeJobs = jobs.filter(j => j.status === "in_progress").length;
-    const scheduledJobs = jobs.filter(j => j.status === "scheduled" || (j.scheduledDate && j.status !== "completed" && j.status !== "paid")).length;
+    const totalRevenue = allJobs.reduce((s, j) => s + (j.totalPrice ?? 0), 0);
+    const activeJobs = allJobs.filter(j => j.status === "in_progress").length;
+    const scheduledCount = allJobs.filter(j =>
+      j.status === "scheduled" || (j.scheduledDate && j.status !== "completed" && j.status !== "paid" && j.status !== "cancelled")
+    ).length;
     const openLeads = leads.filter(l => !["won", "lost", "converted"].includes(l.stage)).length;
-    const crewDayJobs = jobs.filter(j => j.crewDays && j.totalPrice);
-    const avgRate = crewDayJobs.length > 0
-      ? crewDayJobs.reduce((s, j) => s + Number(j.totalPrice ?? 0) / Number(j.crewDays ?? 1), 0) / crewDayJobs.length
-      : 0;
 
     // Performance KPIs
     const now = new Date();
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-    const jobsThisMonth = jobs.filter(j => {
-      const d = j.scheduledDate ? new Date(j.scheduledDate) : null;
+    const jobsThisMonth = allJobs.filter(j => {
+      const d = j.scheduledDate;
       return d && d >= monthStart && d <= now;
     });
-    const revenueThisMonth = jobsThisMonth.reduce((s, j) => s + Number(j.totalPrice ?? 0), 0);
+    const revenueThisMonth = jobsThisMonth.reduce((s, j) => s + (j.totalPrice ?? 0), 0);
 
-    // Revenue per acre — from jobs that have both totalPrice and acres
-    const acreJobs = jobs.filter(j => j.totalPrice && j.acres && Number(j.acres) > 0);
+    // Revenue per acre — local jobs only (Jobber doesn't expose acreage)
+    const acreJobs = normalizedLocalJobs.filter(j => j.totalPrice && j.acres && j.acres > 0);
     const revenuePerAcre = acreJobs.length > 0
-      ? acreJobs.reduce((s, j) => s + Number(j.totalPrice ?? 0) / Number(j.acres ?? 1), 0) / acreJobs.length
+      ? acreJobs.reduce((s, j) => s + (j.totalPrice ?? 0) / (j.acres ?? 1), 0) / acreJobs.length
       : 0;
 
-    // Avg completion time in days — jobs with scheduledDate and completedDate
-    const completedWithDates = jobs.filter(j =>
-      (j.status === "completed" || j.status === "paid") &&
-      j.scheduledDate && j.crewDays && Number(j.crewDays) > 0
+    // Avg crew days — local jobs only
+    const completedWithDays = normalizedLocalJobs.filter(j =>
+      (j.status === "completed" || j.status === "paid") && j.crewDays && j.crewDays > 0
     );
-    const avgCompletionDays = completedWithDates.length > 0
-      ? completedWithDates.reduce((s, j) => s + Number(j.crewDays ?? 1), 0) / completedWithDates.length
+    const avgCompletionDays = completedWithDays.length > 0
+      ? completedWithDays.reduce((s, j) => s + (j.crewDays ?? 1), 0) / completedWithDays.length
       : 0;
 
-    // Win rate — leads that became won/converted vs all closed
+    // Win rate — from local leads
     const closedLeads = leads.filter(l => ["won", "lost", "converted"].includes(l.stage));
     const wonLeads = leads.filter(l => ["won", "converted"].includes(l.stage));
     const winRate = closedLeads.length > 0 ? (wonLeads.length / closedLeads.length) * 100 : 0;
 
-    return { totalRevenue, activeJobs, scheduledJobs, openLeads, avgRate, revenueThisMonth, revenuePerAcre, avgCompletionDays, winRate, jobsThisMonth: jobsThisMonth.length };
-  }, [jobs, leads]);
+    return {
+      totalRevenue, activeJobs, scheduledJobs: scheduledCount, openLeads,
+      revenueThisMonth, revenuePerAcre, avgCompletionDays, winRate,
+      jobsThisMonth: jobsThisMonth.length,
+    };
+  }, [allJobs, normalizedLocalJobs, leads]);
 
-  // Status filter for scheduled jobs
-  const [schedFilter, setSchedFilter] = useState<"all" | "scheduled" | "in_progress" | "quoted">("all");
+  // ─── Status filter for scheduled jobs section ─────────────────────────────
+  const [schedFilter, setSchedFilter] = useState<"all" | "scheduled" | "in_progress" | "invoiced">("all");
 
-  // Scheduled jobs — next 30 days, sorted by date ascending
-  const scheduledJobs = useMemo(() => {
+  // ─── Scheduled jobs — next 30 days, sorted by date ascending ─────────────
+  const scheduledJobs = useMemo<NormalizedJob[]>(() => {
     const now = new Date();
     const cutoff = new Date(now);
     cutoff.setDate(cutoff.getDate() + 30);
-    return [...jobs]
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    return [...allJobs]
       .filter(j => {
         if (!j.scheduledDate) return false;
-        if (j.status === "completed" || j.status === "paid") return false;
-        const d = new Date(j.scheduledDate);
-        return d >= new Date(now.getFullYear(), now.getMonth(), now.getDate()) && d <= cutoff;
+        if (j.status === "completed" || j.status === "paid" || j.status === "cancelled") return false;
+        return j.scheduledDate >= today && j.scheduledDate <= cutoff;
       })
-      .sort((a, b) => new Date(a.scheduledDate!).getTime() - new Date(b.scheduledDate!).getTime());
-  }, [jobs]);
+      .sort((a, b) => (a.scheduledDate!.getTime()) - (b.scheduledDate!.getTime()));
+  }, [allJobs]);
 
-  const filteredScheduledJobs = useMemo(() => {
+  const filteredScheduledJobs = useMemo<NormalizedJob[]>(() => {
     if (schedFilter === "all") return scheduledJobs;
     return scheduledJobs.filter(j => j.status === schedFilter);
   }, [scheduledJobs, schedFilter]);
 
-  // Recent jobs — last 5 by created date (fallback when no scheduled dates set)
-  const recentJobs = useMemo(() => [...jobs].slice(0, 5), [jobs]);
+  // ─── Recent jobs — last 8 by scheduled date desc, or all jobs if few ──────
+  const recentJobs = useMemo<NormalizedJob[]>(() => {
+    return [...allJobs]
+      .sort((a, b) => {
+        const da = a.scheduledDate?.getTime() ?? 0;
+        const db = b.scheduledDate?.getTime() ?? 0;
+        return db - da;
+      })
+      .slice(0, 8);
+  }, [allJobs]);
 
-  // Active pipeline leads — exclude won/lost/converted, most recent first
+  // ─── Active pipeline leads ────────────────────────────────────────────────
   const pipelineLeads = useMemo(
     () => leads.filter(l => !["won", "lost", "converted"].includes(l.stage)).slice(0, 6),
     [leads]
   );
+
+  const jobberConnected = !jobberError && (jobberJobsRaw !== undefined);
 
   return (
     <DashboardLayout
@@ -239,7 +339,7 @@ export default function Dashboard() {
           <KPICard
             title="Total Revenue"
             value={kpis.totalRevenue > 0 ? `$${kpis.totalRevenue.toLocaleString()}` : "—"}
-            sub="from all jobs"
+            sub={jobberConnected ? "from Jobber jobs" : "from all jobs"}
             icon={DollarSign}
             delay={0}
           />
@@ -270,13 +370,22 @@ export default function Dashboard() {
         <div className="ops-card p-5">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
             <div>
-              <h3 className="text-sm font-semibold text-foreground" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
-                Scheduled Jobs
-              </h3>
-              <p className="text-xs text-muted-foreground">Next 30 days — {filteredScheduledJobs.length} of {scheduledJobs.length} job{scheduledJobs.length !== 1 ? "s" : ""} shown</p>
+              <div className="flex items-center gap-2">
+                <h3 className="text-sm font-semibold text-foreground" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
+                  Scheduled Jobs
+                </h3>
+                {jobberConnected && (
+                  <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-green-400/10 text-green-400 border border-green-400/20">
+                    Jobber
+                  </span>
+                )}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Next 30 days — {filteredScheduledJobs.length} of {scheduledJobs.length} job{scheduledJobs.length !== 1 ? "s" : ""} shown
+              </p>
             </div>
             <div className="flex items-center gap-2 flex-wrap">
-              {(["all", "scheduled", "in_progress", "quoted"] as const).map(f => (
+              {(["all", "scheduled", "in_progress", "invoiced"] as const).map(f => (
                 <button
                   key={f}
                   onClick={() => setSchedFilter(f)}
@@ -294,19 +403,39 @@ export default function Dashboard() {
                   </span>
                 </button>
               ))}
-              <Link href="/ops/schedule">
-                <span className="text-xs text-primary hover:text-primary/80 flex items-center gap-1 transition-colors cursor-pointer ml-1">
-                  Calendar <ChevronRight className="w-3 h-3" />
-                </span>
-              </Link>
+              {jobberConnected ? (
+                <a
+                  href="https://secure.getjobber.com/home"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs text-primary hover:text-primary/80 flex items-center gap-1 transition-colors cursor-pointer ml-1"
+                >
+                  Jobber <ExternalLink className="w-3 h-3" />
+                </a>
+              ) : (
+                <Link href="/ops/schedule">
+                  <span className="text-xs text-primary hover:text-primary/80 flex items-center gap-1 transition-colors cursor-pointer ml-1">
+                    Calendar <ChevronRight className="w-3 h-3" />
+                  </span>
+                </Link>
+              )}
             </div>
           </div>
+
           {filteredScheduledJobs.length === 0 ? (
-            <EmptyState
-              message="No jobs have a scheduled date. Set a scheduled date on a job to see it here."
-              linkLabel="Go to Jobs"
-              linkHref="/ops/jobs"
-            />
+            jobberError ? (
+              <EmptyState
+                message="Jobber is not connected. Jobs will appear here once Jobber credentials are configured."
+                linkLabel="Go to Jobs"
+                linkHref="/ops/jobs"
+              />
+            ) : (
+              <EmptyState
+                message="No jobs scheduled in the next 30 days. Jobs with a start date in Jobber will appear here."
+                linkLabel="Open Jobber"
+                linkHref="https://secure.getjobber.com/home"
+              />
+            )
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
               {filteredScheduledJobs.map((job) => {
@@ -314,18 +443,23 @@ export default function Dashboard() {
                 const dateLabel = formatScheduledDate(job.scheduledDate);
                 const isToday = dateLabel === "Today";
                 const isTomorrow = dateLabel === "Tomorrow";
-                return (
-                  <Link href="/ops/jobs" key={job.id}>
-                    <div className={cn(
-                      "flex flex-col gap-2 p-4 rounded-lg border transition-colors cursor-pointer",
-                      isToday
-                        ? "border-primary/40 bg-primary/5 hover:bg-primary/10"
-                        : isTomorrow
-                        ? "border-amber-400/30 bg-amber-400/5 hover:bg-amber-400/10"
-                        : "border-border bg-secondary/20 hover:bg-secondary/40"
-                    )}>
-                      {/* Date badge */}
-                      <div className="flex items-center justify-between">
+                const cardHref = job.source === "jobber"
+                  ? "https://secure.getjobber.com/home"
+                  : "/ops/jobs";
+                const isExternal = job.source === "jobber";
+
+                const CardContent = (
+                  <div className={cn(
+                    "flex flex-col gap-2 p-4 rounded-lg border transition-colors cursor-pointer",
+                    isToday
+                      ? "border-primary/40 bg-primary/5 hover:bg-primary/10"
+                      : isTomorrow
+                      ? "border-amber-400/30 bg-amber-400/5 hover:bg-amber-400/10"
+                      : "border-border bg-secondary/20 hover:bg-secondary/40"
+                  )}>
+                    {/* Date badge + status + flags */}
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-1.5">
                         <div className={cn(
                           "flex items-center gap-1.5 text-[11px] font-semibold px-2 py-0.5 rounded",
                           isToday ? "text-primary bg-primary/15" : isTomorrow ? "text-amber-400 bg-amber-400/15" : "text-muted-foreground bg-secondary"
@@ -333,32 +467,58 @@ export default function Dashboard() {
                           <CalendarDays className="w-3 h-3" />
                           {dateLabel}
                         </div>
-                        <span className={cn("text-[10px] font-medium px-1.5 py-0.5 rounded border", status.color)}>
-                          {status.label}
-                        </span>
+                        {job.isHighPriority && (
+                          <span title="High Priority" className="flex items-center gap-0.5 text-[10px] font-semibold px-1.5 py-0.5 rounded bg-red-500/15 text-red-400 border border-red-500/20">
+                            <Flag className="w-2.5 h-2.5" /> Priority
+                          </span>
+                        )}
+                        {job.rescheduledAt && (
+                          <span title="Rescheduled" className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-400 border border-amber-500/20">
+                            Rescheduled
+                          </span>
+                        )}
                       </div>
-                      {/* Client + job info */}
-                      <div>
-                        <p className="text-sm font-semibold text-foreground leading-snug">{job.client}</p>
-                        <p className="text-[11px] text-muted-foreground capitalize mt-0.5">
-                          {job.jobType?.replace(/_/g, " ") ?? "Land clearing"}
-                          {job.acres ? ` · ${job.acres} ac` : ""}
-                        </p>
-                      </div>
-                      {/* Address */}
-                      {job.address && (
-                        <div className="flex items-center gap-1.5">
-                          <MapPin className="w-2.5 h-2.5 text-muted-foreground shrink-0" />
-                          <span className="text-[11px] text-muted-foreground truncate">{job.address}</span>
-                        </div>
-                      )}
-                      {/* Price */}
-                      {job.totalPrice && (
-                        <div className="text-xs font-semibold text-foreground ops-metric-value">
-                          ${Number(job.totalPrice).toLocaleString()}
-                        </div>
-                      )}
+                      <span className={cn("text-[10px] font-medium px-1.5 py-0.5 rounded border", status.color)}>
+                        {status.label}
+                      </span>
                     </div>
+                    {/* Client + job info */}
+                    <div>
+                      <p className="text-sm font-semibold text-foreground leading-snug">{job.client}</p>
+                      <p className="text-[11px] text-muted-foreground capitalize mt-0.5">
+                        {job.title !== job.client ? job.title : (job.jobType?.replace(/_/g, " ") ?? "Land clearing")}
+                        {job.jobberJobNumber ? ` · #${job.jobberJobNumber}` : ""}
+                        {job.acres ? ` · ${job.acres} ac` : ""}
+                      </p>
+                    </div>
+                    {/* Address */}
+                    {job.address && (
+                      <div className="flex items-center gap-1.5">
+                        <MapPin className="w-2.5 h-2.5 text-muted-foreground shrink-0" />
+                        <span className="text-[11px] text-muted-foreground truncate">{job.address}</span>
+                      </div>
+                    )}
+                    {/* Price */}
+                    {job.totalPrice != null && job.totalPrice > 0 && (
+                      <div className="text-xs font-semibold text-foreground ops-metric-value">
+                        ${Number(job.totalPrice).toLocaleString()}
+                      </div>
+                    )}
+                  </div>
+                );
+
+                return isExternal ? (
+                  <a
+                    key={job.id}
+                    href={cardHref}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    {CardContent}
+                  </a>
+                ) : (
+                  <Link href={cardHref} key={job.id}>
+                    {CardContent}
                   </Link>
                 );
               })}
@@ -373,16 +533,34 @@ export default function Dashboard() {
           <div className="lg:col-span-2 ops-card p-5">
             <div className="flex items-center justify-between mb-4">
               <div>
-                <h3 className="text-sm font-semibold text-foreground" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
-                  Recent Jobs
-                </h3>
+                <div className="flex items-center gap-2">
+                  <h3 className="text-sm font-semibold text-foreground" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
+                    Recent Jobs
+                  </h3>
+                  {jobberConnected && (
+                    <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-green-400/10 text-green-400 border border-green-400/20">
+                      Jobber
+                    </span>
+                  )}
+                </div>
                 <p className="text-xs text-muted-foreground">Latest job activity</p>
               </div>
-              <Link href="/ops/jobs">
-                <span className="text-xs text-primary hover:text-primary/80 flex items-center gap-1 transition-colors cursor-pointer">
-                  View all <ChevronRight className="w-3 h-3" />
-                </span>
-              </Link>
+              {jobberConnected ? (
+                <a
+                  href="https://secure.getjobber.com/home"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs text-primary hover:text-primary/80 flex items-center gap-1 transition-colors cursor-pointer"
+                >
+                  View in Jobber <ExternalLink className="w-3 h-3" />
+                </a>
+              ) : (
+                <Link href="/ops/jobs">
+                  <span className="text-xs text-primary hover:text-primary/80 flex items-center gap-1 transition-colors cursor-pointer">
+                    View all <ChevronRight className="w-3 h-3" />
+                  </span>
+                </Link>
+              )}
             </div>
             {recentJobs.length === 0 ? (
               <EmptyState
@@ -394,42 +572,53 @@ export default function Dashboard() {
               <div className="space-y-2">
                 {recentJobs.map((job) => {
                   const status = statusConfig[job.status] ?? { label: job.status, color: "text-muted-foreground bg-secondary border-border" };
-                  return (
-                    <Link href="/ops/jobs" key={job.id}>
-                      <div className="flex items-center gap-3 p-3 rounded-md bg-secondary/30 hover:bg-secondary/50 transition-colors cursor-pointer">
-                        <div className="w-8 h-8 rounded-md bg-primary/10 flex items-center justify-center shrink-0">
-                          <Briefcase className="w-3.5 h-3.5 text-primary" />
+                  const isExternal = job.source === "jobber";
+                  const href = isExternal ? "https://secure.getjobber.com/home" : "/ops/jobs";
+
+                  const rowContent = (
+                    <div className="flex items-center gap-3 p-3 rounded-md bg-secondary/30 hover:bg-secondary/50 transition-colors cursor-pointer">
+                      <div className="w-8 h-8 rounded-md bg-primary/10 flex items-center justify-center shrink-0">
+                        <Briefcase className="w-3.5 h-3.5 text-primary" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-semibold text-foreground truncate">{job.client}</span>
+                          <span className={cn("text-[10px] font-medium px-1.5 py-0.5 rounded border shrink-0", status.color)}>
+                            {status.label}
+                          </span>
                         </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2">
-                            <span className="text-xs font-semibold text-foreground truncate">{job.client}</span>
-                            <span className={cn("text-[10px] font-medium px-1.5 py-0.5 rounded border shrink-0", status.color)}>
-                              {status.label}
+                        <div className="flex items-center gap-3 mt-0.5">
+                          {job.address && (
+                            <>
+                              <MapPin className="w-2.5 h-2.5 text-muted-foreground shrink-0" />
+                              <span className="text-[11px] text-muted-foreground truncate">{job.address}</span>
+                            </>
+                          )}
+                          {job.scheduledDate && (
+                            <span className="text-[11px] text-amber-400 shrink-0">
+                              {formatScheduledDate(job.scheduledDate)}
                             </span>
-                          </div>
-                          <div className="flex items-center gap-3 mt-0.5">
-                            {job.address && (
-                              <>
-                                <MapPin className="w-2.5 h-2.5 text-muted-foreground shrink-0" />
-                                <span className="text-[11px] text-muted-foreground truncate">{job.address}</span>
-                              </>
-                            )}
-                            {job.scheduledDate && (
-                              <span className="text-[11px] text-amber-400 shrink-0">
-                                {formatScheduledDate(job.scheduledDate)}
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                        <div className="text-right shrink-0">
-                          <div className="text-xs font-semibold text-foreground ops-metric-value">
-                            {job.totalPrice ? `$${Number(job.totalPrice).toLocaleString()}` : "—"}
-                          </div>
-                          {job.jobType && (
-                            <div className="text-[10px] text-muted-foreground capitalize">{job.jobType.replace(/_/g, " ")}</div>
                           )}
                         </div>
                       </div>
+                      <div className="text-right shrink-0">
+                        <div className="text-xs font-semibold text-foreground ops-metric-value">
+                          {job.totalPrice != null && job.totalPrice > 0 ? `$${Number(job.totalPrice).toLocaleString()}` : "—"}
+                        </div>
+                        {job.jobberJobNumber && (
+                          <div className="text-[10px] text-muted-foreground">#{job.jobberJobNumber}</div>
+                        )}
+                      </div>
+                    </div>
+                  );
+
+                  return isExternal ? (
+                    <a key={job.id} href={href} target="_blank" rel="noopener noreferrer">
+                      {rowContent}
+                    </a>
+                  ) : (
+                    <Link href={href} key={job.id}>
+                      {rowContent}
                     </Link>
                   );
                 })}
@@ -491,7 +680,11 @@ export default function Dashboard() {
               <h3 className="text-sm font-semibold text-foreground" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
                 Performance Metrics
               </h3>
-              <p className="text-xs text-muted-foreground">Calculated from your job and lead records</p>
+              <p className="text-xs text-muted-foreground">
+                {jobberConnected
+                  ? "Revenue from Jobber · Crew days and win rate from local records"
+                  : "Calculated from your job and lead records"}
+              </p>
             </div>
             <Activity className="w-4 h-4 text-muted-foreground" />
           </div>
@@ -504,7 +697,7 @@ export default function Dashboard() {
               <div className="text-xl font-bold text-foreground ops-metric-value">
                 {kpis.revenuePerAcre > 0 ? `$${Math.round(kpis.revenuePerAcre).toLocaleString()}` : "—"}
               </div>
-              <div className="text-[11px] text-muted-foreground mt-1">avg across {jobs.filter(j => j.totalPrice && j.acres).length} jobs</div>
+              <div className="text-[11px] text-muted-foreground mt-1">avg across {normalizedLocalJobs.filter(j => j.totalPrice && j.acres).length} jobs</div>
             </div>
             <div className="rounded-lg border border-border bg-secondary/20 p-4">
               <div className="flex items-center gap-2 mb-2">

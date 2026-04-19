@@ -112,6 +112,10 @@ export const jobs = mysqlTable("jobs", {
   completedDate: timestamp("completedDate"),
   /** Timestamp when a review request email was sent for this job */
   reviewRequestSentAt: timestamp("reviewRequestSentAt"),
+  /** Set when a job is rescheduled — used to show rescheduled badge on dashboard */
+  rescheduledAt: timestamp("rescheduledAt"),
+  /** High-priority flag — shown with a flag icon on dashboard and schedule calendar */
+  isHighPriority: boolean("isHighPriority").default(false).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });

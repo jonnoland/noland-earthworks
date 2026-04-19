@@ -43,6 +43,7 @@ interface JobFormData {
   clientEmail: string;
   scheduledDate: string;
   scheduledEndDate: string;
+  isHighPriority: boolean;
 }
 
 const emptyForm: JobFormData = {
@@ -51,6 +52,7 @@ const emptyForm: JobFormData = {
   clientEmail: "",
   scheduledDate: "",
   scheduledEndDate: "",
+  isHighPriority: false,
 };
 
 // ─── Jobber Jobs Section ─────────────────────────────────────────────────────────────
@@ -361,6 +363,7 @@ export default function Jobs() {
       clientEmail: (job as any).clientEmail ?? "",
       scheduledDate: job.scheduledDate ? new Date(job.scheduledDate).toISOString().slice(0, 10) : "",
       scheduledEndDate: (job as any).scheduledEndDate ? new Date((job as any).scheduledEndDate).toISOString().slice(0, 10) : "",
+      isHighPriority: (job as any).isHighPriority ?? false,
     });
     setEditingId(job.id);
     setShowModal(true);
@@ -373,6 +376,7 @@ export default function Jobs() {
       ...form,
       scheduledDate: form.scheduledDate ? new Date(form.scheduledDate) : undefined,
       scheduledEndDate: form.scheduledEndDate ? new Date(form.scheduledEndDate) : undefined,
+      isHighPriority: form.isHighPriority,
     };
     if (editingId !== null) updateJob.mutate({ id: editingId, ...payload });
     else createJob.mutate(payload);
@@ -606,6 +610,29 @@ export default function Jobs() {
                   <label className="block text-xs font-medium text-muted-foreground mb-1">Notes</label>
                   <textarea value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} placeholder="Job notes..." rows={2}
                     className="w-full bg-secondary/50 border border-border rounded-md px-3 py-2 text-xs text-foreground outline-none focus:border-primary/50 resize-none placeholder:text-muted-foreground/40" />
+                </div>
+                <div className="col-span-2">
+                  <label className="flex items-center gap-2.5 cursor-pointer select-none">
+                    <button
+                      type="button"
+                      role="switch"
+                      aria-checked={form.isHighPriority}
+                      onClick={() => setForm(f => ({ ...f, isHighPriority: !f.isHighPriority }))}
+                      className={cn(
+                        "relative inline-flex h-5 w-9 shrink-0 rounded-full border-2 border-transparent transition-colors",
+                        form.isHighPriority ? "bg-red-500" : "bg-secondary"
+                      )}
+                    >
+                      <span className={cn(
+                        "pointer-events-none inline-block h-4 w-4 rounded-full bg-white shadow-sm transition-transform",
+                        form.isHighPriority ? "translate-x-4" : "translate-x-0"
+                      )} />
+                    </button>
+                    <span className="text-xs font-medium text-muted-foreground">
+                      High Priority
+                      {form.isHighPriority && <span className="ml-1.5 text-red-400 font-semibold">— flagged</span>}
+                    </span>
+                  </label>
                 </div>
               </div>
               <div className="flex gap-2 pt-2">

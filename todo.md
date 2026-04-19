@@ -847,6 +847,11 @@
 - [x] Dashboard KPI section: avg job completion time, revenue per acre, jobs this month, pipeline value
 
 ## Schedule & Dashboard Enhancements — Apr 19 2026
-- [ ] Dashboard: filter scheduled jobs by status (all, active, pending, completed)
+- [x] Dashboard: filter scheduled jobs by status (all, active, pending, completed)
 - [x] Schedule: confirmation pop-up before drag-and-drop reschedule commits
-- [ ] Schedule: color-code job banners by job type on the calendar
+- [x] Schedule: color-code job banners by job type on the calendar
+
+## Dashboard Jobs Bug + New Features — Apr 19 2026
+- [x] Fix: scheduled job not showing on dashboard — root cause was empty local jobs table; dashboard now queries Jobber jobs via trpc.jobber.jobs and maps them to normalized shape
+- [x] Rescheduled notification icon next to job title on dashboard when job has been rescheduled (rescheduledAt column added to schema)
+- [x] High Priority flag on jobs: toggle in form, special icon on schedule calendar and dashboard (isHighPriority column added to schema)
