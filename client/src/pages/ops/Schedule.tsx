@@ -12,6 +12,24 @@ import { toast } from "sonner";
 import { DndContext, DragEndEvent, DragOverlay, DragStartEvent, PointerSensor, useSensor, useSensors } from "@dnd-kit/core";
 import { useDraggable, useDroppable } from "@dnd-kit/core";
 
+// Color palette per job type
+const JOB_TYPE_COLORS: Record<string, string> = {
+  forestry_mulching:  "border-emerald-500/40 bg-emerald-500/15 text-emerald-300",
+  land_clearing:      "border-sky-500/40 bg-sky-500/15 text-sky-300",
+  brush_hogging:      "border-orange-500/40 bg-orange-500/15 text-orange-300",
+  lot_clearing:       "border-violet-500/40 bg-violet-500/15 text-violet-300",
+  row_clearing:       "border-pink-500/40 bg-pink-500/15 text-pink-300",
+  fire_mitigation:    "border-red-500/40 bg-red-500/15 text-red-300",
+  storm_cleanup:      "border-yellow-500/40 bg-yellow-500/15 text-yellow-300",
+};
+const DEFAULT_JOB_COLOR = "border-amber-500/40 bg-amber-500/15 text-amber-300";
+
+function getJobTypeColor(jobType?: string | null): string {
+  if (!jobType) return DEFAULT_JOB_COLOR;
+  const key = jobType.toLowerCase().replace(/[\s-]+/g, "_");
+  return JOB_TYPE_COLORS[key] ?? DEFAULT_JOB_COLOR;
+}
+
 const CREW_COLORS = [
   "bg-primary/20 border-primary/40 text-primary",
   "bg-blue-500/20 border-blue-500/40 text-blue-400",
@@ -197,20 +215,22 @@ function JobberVisitsSection() {
 
 function DraggableJobBanner({ job }: { job: { id: number; client: string; jobType?: string | null; acres?: string | null } }) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({ id: `job-${job.id}` });
+  const colorClass = getJobTypeColor(job.jobType);
   return (
     <div
       ref={setNodeRef}
       {...listeners}
       {...attributes}
       className={cn(
-        "rounded-md border border-amber-500/40 bg-amber-500/15 px-2 py-1.5 text-[10px] cursor-grab active:cursor-grabbing select-none flex items-start gap-1",
+        "rounded-md border px-2 py-1.5 text-[10px] cursor-grab active:cursor-grabbing select-none flex items-start gap-1",
+        colorClass,
         isDragging && "opacity-40"
       )}
     >
-      <GripVertical className="w-2.5 h-2.5 text-amber-400/50 mt-0.5 shrink-0" />
+      <GripVertical className="w-2.5 h-2.5 opacity-40 mt-0.5 shrink-0" />
       <div className="min-w-0">
-        <div className="font-semibold text-amber-300 truncate">{job.client}</div>
-        <div className="text-amber-400/70 capitalize">{job.jobType?.replace(/_/g, " ") ?? "clearing"}{job.acres ? ` · ${job.acres} ac` : ""}</div>
+        <div className="font-semibold truncate">{job.client}</div>
+        <div className="opacity-70 capitalize">{job.jobType?.replace(/_/g, " ") ?? "clearing"}{job.acres ? ` · ${job.acres} ac` : ""}</div>
       </div>
     </div>
   );
@@ -239,6 +259,7 @@ export default function Schedule() {
   const [showModal, setShowModal] = useState(false);
   const [form, setForm] = useState<EntryFormData>(emptyForm);
   const [draggingJobId, setDraggingJobId] = useState<number | null>(null);
+  const [pendingReschedule, setPendingReschedule] = useState<{ jobId: number; newStart: Date; newEnd?: Date; newDateKey: string } | null>(null);
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
 
@@ -271,7 +292,6 @@ export default function Schedule() {
     if (!job) return;
     const oldDateKey = job.scheduledDate ? new Date(job.scheduledDate).toISOString().split("T")[0] : null;
     if (oldDateKey === newDateKey) return;
-    // Calculate offset to shift end date by same number of days
     const oldStart = job.scheduledDate ? new Date(job.scheduledDate) : null;
     const oldEnd = (job as any).scheduledEndDate ? new Date((job as any).scheduledEndDate) : null;
     const newStart = new Date(newDateKey + "T12:00:00");
@@ -280,11 +300,18 @@ export default function Schedule() {
       const diffMs = oldEnd.getTime() - oldStart.getTime();
       newEnd = new Date(newStart.getTime() + diffMs);
     }
+    // Show confirmation dialog instead of mutating immediately
+    setPendingReschedule({ jobId, newStart, newEnd, newDateKey });
+  };
+
+  const confirmReschedule = () => {
+    if (!pendingReschedule) return;
     rescheduleJob.mutate({
-      id: jobId,
-      scheduledDate: newStart,
-      ...(newEnd ? { scheduledEndDate: newEnd } : {}),
+      id: pendingReschedule.jobId,
+      scheduledDate: pendingReschedule.newStart,
+      ...(pendingReschedule.newEnd ? { scheduledEndDate: pendingReschedule.newEnd } : {}),
     });
+    setPendingReschedule(null);
   };
 
   const createEntry = trpc.ops.schedule.create.useMutation({
@@ -514,15 +541,20 @@ export default function Schedule() {
           <DragOverlay>
             {draggingJobId !== null && (() => {
               const job = allJobs.find(j => j.id === draggingJobId);
-              return job ? (
-                <div className="rounded-md border border-amber-500/60 bg-amber-500/25 px-2 py-1.5 text-[10px] shadow-xl cursor-grabbing flex items-start gap-1 w-32">
-                  <GripVertical className="w-2.5 h-2.5 text-amber-400/50 mt-0.5 shrink-0" />
+              if (!job) return null;
+              const colorClass = getJobTypeColor(job.jobType);
+              return (
+                <div className={cn(
+                  "rounded-md border px-2 py-1.5 text-[10px] shadow-xl cursor-grabbing flex items-start gap-1 w-32",
+                  colorClass
+                )}>
+                  <GripVertical className="w-2.5 h-2.5 opacity-40 mt-0.5 shrink-0" />
                   <div className="min-w-0">
-                    <div className="font-semibold text-amber-300 truncate">{job.client}</div>
-                    <div className="text-amber-400/70 capitalize">{job.jobType?.replace(/_/g, " ") ?? "clearing"}</div>
+                    <div className="font-semibold truncate">{job.client}</div>
+                    <div className="opacity-70 capitalize">{job.jobType?.replace(/_/g, " ") ?? "clearing"}</div>
                   </div>
                 </div>
-              ) : null;
+              );
             })()}
           </DragOverlay>
           </DndContext>
@@ -611,6 +643,45 @@ export default function Schedule() {
           </div>
         </div>
       )}
+      {/* Reschedule confirmation dialog */}
+      {pendingReschedule && (() => {
+        const job = allJobs.find(j => j.id === pendingReschedule.jobId);
+        const newDateLabel = pendingReschedule.newStart.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+            <div className="ops-card w-full max-w-sm p-6 shadow-2xl">
+              <h2 className="text-base font-bold text-foreground mb-2" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
+                Confirm Reschedule
+              </h2>
+              <p className="text-sm text-muted-foreground mb-5">
+                Move <span className="font-semibold text-foreground">{job?.client ?? "this job"}</span> to{" "}
+                <span className="font-semibold text-primary">{newDateLabel}</span>?
+                {pendingReschedule.newEnd && (
+                  <span className="block text-xs mt-1 text-muted-foreground/70">
+                    End date will shift to maintain the same duration.
+                  </span>
+                )}
+              </p>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setPendingReschedule(null)}
+                  className="flex-1 py-2 rounded-md text-xs font-semibold text-muted-foreground bg-secondary/50 hover:bg-secondary transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={confirmReschedule}
+                  disabled={rescheduleJob.isPending}
+                  className="flex-1 py-2 rounded-md text-xs font-semibold text-white bg-primary hover:bg-primary/90 transition-all disabled:opacity-50 flex items-center justify-center gap-1.5"
+                >
+                  {rescheduleJob.isPending && <Loader2 className="w-3 h-3 animate-spin" />}
+                  Confirm
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </DashboardLayout>
   );
 }

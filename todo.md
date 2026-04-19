@@ -841,7 +841,12 @@
 - [x] Jobs form: add scheduledDate / scheduledEndDate fields so jobs can be scheduled
 
 ## Four Dashboard/Schedule Enhancements — Apr 19 2026
-- [ ] Dashboard scheduled jobs: show next 30 days (not just current week) sorted by scheduledDate
-- [ ] Auto-calculate total price in job form from service type + acreage using service catalog rates
-- [ ] Drag-and-drop on schedule calendar to reschedule job dates
-- [ ] Dashboard KPI section: avg job completion time, revenue per acre, jobs this month, pipeline value
+- [x] Dashboard scheduled jobs: show next 30 days (not just current week) sorted by scheduledDate
+- [x] Auto-calculate total price in job form from service type + acreage using service catalog rates
+- [x] Drag-and-drop on schedule calendar to reschedule job dates
+- [x] Dashboard KPI section: avg job completion time, revenue per acre, jobs this month, pipeline value
+
+## Schedule & Dashboard Enhancements — Apr 19 2026
+- [ ] Dashboard: filter scheduled jobs by status (all, active, pending, completed)
+- [x] Schedule: confirmation pop-up before drag-and-drop reschedule commits
+- [ ] Schedule: color-code job banners by job type on the calendar

@@ -154,6 +154,9 @@ export default function Dashboard() {
     return { totalRevenue, activeJobs, scheduledJobs, openLeads, avgRate, revenueThisMonth, revenuePerAcre, avgCompletionDays, winRate, jobsThisMonth: jobsThisMonth.length };
   }, [jobs, leads]);
 
+  // Status filter for scheduled jobs
+  const [schedFilter, setSchedFilter] = useState<"all" | "scheduled" | "in_progress" | "quoted">("all");
+
   // Scheduled jobs — next 30 days, sorted by date ascending
   const scheduledJobs = useMemo(() => {
     const now = new Date();
@@ -168,6 +171,11 @@ export default function Dashboard() {
       })
       .sort((a, b) => new Date(a.scheduledDate!).getTime() - new Date(b.scheduledDate!).getTime());
   }, [jobs]);
+
+  const filteredScheduledJobs = useMemo(() => {
+    if (schedFilter === "all") return scheduledJobs;
+    return scheduledJobs.filter(j => j.status === schedFilter);
+  }, [scheduledJobs, schedFilter]);
 
   // Recent jobs — last 5 by created date (fallback when no scheduled dates set)
   const recentJobs = useMemo(() => [...jobs].slice(0, 5), [jobs]);
@@ -260,20 +268,40 @@ export default function Dashboard() {
 
         {/* Scheduled Jobs — full width */}
         <div className="ops-card p-5">
-          <div className="flex items-center justify-between mb-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
             <div>
               <h3 className="text-sm font-semibold text-foreground" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
                 Scheduled Jobs
               </h3>
-              <p className="text-xs text-muted-foreground">Next 30 days — {scheduledJobs.length} job{scheduledJobs.length !== 1 ? "s" : ""} scheduled</p>
+              <p className="text-xs text-muted-foreground">Next 30 days — {filteredScheduledJobs.length} of {scheduledJobs.length} job{scheduledJobs.length !== 1 ? "s" : ""} shown</p>
             </div>
-            <Link href="/ops/schedule">
-              <span className="text-xs text-primary hover:text-primary/80 flex items-center gap-1 transition-colors cursor-pointer">
-                View schedule <ChevronRight className="w-3 h-3" />
-              </span>
-            </Link>
+            <div className="flex items-center gap-2 flex-wrap">
+              {(["all", "scheduled", "in_progress", "quoted"] as const).map(f => (
+                <button
+                  key={f}
+                  onClick={() => setSchedFilter(f)}
+                  className={cn(
+                    "text-[11px] font-semibold px-2.5 py-1 rounded border transition-colors",
+                    schedFilter === f
+                      ? "bg-primary text-primary-foreground border-primary"
+                      : "bg-secondary/40 text-muted-foreground border-border hover:bg-secondary/70"
+                  )}
+                >
+                  {f === "all" ? "All" : f === "in_progress" ? "Active" : f.charAt(0).toUpperCase() + f.slice(1)}
+                  {" "}
+                  <span className="opacity-70">
+                    ({f === "all" ? scheduledJobs.length : scheduledJobs.filter(j => j.status === f).length})
+                  </span>
+                </button>
+              ))}
+              <Link href="/ops/schedule">
+                <span className="text-xs text-primary hover:text-primary/80 flex items-center gap-1 transition-colors cursor-pointer ml-1">
+                  Calendar <ChevronRight className="w-3 h-3" />
+                </span>
+              </Link>
+            </div>
           </div>
-          {scheduledJobs.length === 0 ? (
+          {filteredScheduledJobs.length === 0 ? (
             <EmptyState
               message="No jobs have a scheduled date. Set a scheduled date on a job to see it here."
               linkLabel="Go to Jobs"
@@ -281,7 +309,7 @@ export default function Dashboard() {
             />
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-              {scheduledJobs.map((job) => {
+              {filteredScheduledJobs.map((job) => {
                 const status = statusConfig[job.status] ?? { label: job.status, color: "text-muted-foreground bg-secondary border-border" };
                 const dateLabel = formatScheduledDate(job.scheduledDate);
                 const isToday = dateLabel === "Today";
