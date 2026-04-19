@@ -855,3 +855,13 @@
 - [x] Fix: scheduled job not showing on dashboard — root cause was empty local jobs table; dashboard now queries Jobber jobs via trpc.jobber.jobs and maps them to normalized shape
 - [x] Rescheduled notification icon next to job title on dashboard when job has been rescheduled (rescheduledAt column added to schema)
 - [x] High Priority flag on jobs: toggle in form, special icon on schedule calendar and dashboard (isHighPriority column added to schema)
+
+## Full Jobber Dashboard Sync — Apr 19 2026
+- [x] Dashboard KPIs: pull total revenue, invoiced amount, outstanding balance, and paid-this-month from Jobber invoices
+- [x] Dashboard: Invoices section — list open/overdue invoices from Jobber with client, amount, due date, status badge
+- [x] Dashboard: Quotes section — list open Jobber quotes with client, amount, status badge
+- [x] Dashboard: Requests section — list Jobber requests (leads) with client, status, source, date
+- [x] Dashboard: Revenue KPI uses Jobber invoice totals (not just job totals)
+- [x] Dashboard: Active Jobs KPI uses Jobber job statuses
+- [x] Dashboard: Open Leads KPI uses Jobber requests count
+- [x] Dashboard: Scheduled Jobs count uses Jobber jobs with startAt in future

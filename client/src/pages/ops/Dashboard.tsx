@@ -1,7 +1,7 @@
-/*
+/**
  * Dashboard Page — Noland Earthworks
- * Main overview with KPI metrics, scheduled jobs, job pipeline, and lead pipeline.
- * Scheduled Jobs + KPIs are driven by Jobber data. Local jobs table is a secondary fallback.
+ * Full Jobber sync: Jobs, Invoices, Quotes, and Requests all pulled from Jobber.
+ * Local jobs table is a secondary fallback when Jobber is not connected.
  */
 
 import { useState, useEffect, useMemo, useRef } from "react";
@@ -11,13 +11,13 @@ import {
   DollarSign, Briefcase,
   Users, Clock, ArrowUpRight, MapPin, Plus, ChevronRight, Inbox,
   CalendarDays, CalendarCheck, TrendingUp, Gauge, Activity, ExternalLink, Flag,
+  FileText, Receipt, AlertCircle, CheckCircle2, PhoneCall,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { Link } from "wouter";
 
 // ─── Jobber status → local status mapping ────────────────────────────────────
-// Jobber statuses: active, completed, requires_invoicing, late, archived
 function mapJobberStatus(jobStatus: string): string {
   switch (jobStatus?.toLowerCase()) {
     case "active":                return "in_progress";
@@ -37,6 +37,34 @@ const statusConfig: Record<string, { label: string; color: string }> = {
   invoiced:    { label: "Invoiced",   color: "text-yellow-400 bg-yellow-400/10 border-yellow-400/20" },
   paid:        { label: "Paid",       color: "text-green-400 bg-green-400/10 border-green-400/20" },
   cancelled:   { label: "Cancelled",  color: "text-muted-foreground bg-secondary border-border" },
+};
+
+const invoiceStatusConfig: Record<string, { label: string; color: string }> = {
+  DRAFT:     { label: "Draft",     color: "text-muted-foreground bg-secondary border-border" },
+  SENT:      { label: "Sent",      color: "text-blue-400 bg-blue-400/10 border-blue-400/20" },
+  VIEWED:    { label: "Viewed",    color: "text-sky-400 bg-sky-400/10 border-sky-400/20" },
+  PAID:      { label: "Paid",      color: "text-green-400 bg-green-400/10 border-green-400/20" },
+  OVERDUE:   { label: "Overdue",   color: "text-red-400 bg-red-400/10 border-red-400/20" },
+  BAD_DEBT:  { label: "Bad Debt",  color: "text-red-500 bg-red-500/10 border-red-500/20" },
+};
+
+const quoteStatusConfig: Record<string, { label: string; color: string }> = {
+  DRAFT:     { label: "Draft",     color: "text-muted-foreground bg-secondary border-border" },
+  SENT:      { label: "Sent",      color: "text-blue-400 bg-blue-400/10 border-blue-400/20" },
+  VIEWED:    { label: "Viewed",    color: "text-sky-400 bg-sky-400/10 border-sky-400/20" },
+  APPROVED:  { label: "Approved",  color: "text-green-400 bg-green-400/10 border-green-400/20" },
+  CHANGES_REQUESTED: { label: "Changes Req.", color: "text-orange-400 bg-orange-400/10 border-orange-400/20" },
+  ARCHIVED:  { label: "Archived",  color: "text-muted-foreground bg-secondary border-border" },
+  CONVERTED_TO_JOB: { label: "Converted", color: "text-primary bg-primary/10 border-primary/20" },
+};
+
+const requestStatusConfig: Record<string, { label: string; color: string }> = {
+  NEW:         { label: "New",         color: "text-blue-400 bg-blue-400/10 border-blue-400/20" },
+  ASSESSMENT_SCHEDULED: { label: "Assessment", color: "text-amber-400 bg-amber-400/10 border-amber-400/20" },
+  ASSESSMENT_COMPLETE:  { label: "Assessed",   color: "text-sky-400 bg-sky-400/10 border-sky-400/20" },
+  QUOTE_SENT:  { label: "Quote Sent",  color: "text-primary bg-primary/10 border-primary/20" },
+  CONVERTED:   { label: "Converted",   color: "text-green-400 bg-green-400/10 border-green-400/20" },
+  ARCHIVED:    { label: "Archived",    color: "text-muted-foreground bg-secondary border-border" },
 };
 
 const stageConfig: Record<string, { label: string; color: string }> = {
@@ -62,18 +90,29 @@ function formatScheduledDate(d: Date | string | null | undefined): string {
   return date.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
 }
 
-function KPICard({ title, value, sub, icon: Icon, delay = 0 }: {
+function formatDate(d: Date | string | null | undefined): string {
+  if (!d) return "—";
+  return new Date(d).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+}
+
+function KPICard({ title, value, sub, icon: Icon, delay = 0, accent }: {
   title: string;
   value: string;
   sub: string;
   icon: React.ElementType;
   delay?: number;
+  accent?: "green" | "red" | "amber" | "default";
 }) {
   const [visible, setVisible] = useState(false);
   useEffect(() => {
     const t = setTimeout(() => setVisible(true), delay);
     return () => clearTimeout(t);
   }, [delay]);
+
+  const accentColor = accent === "green" ? "text-green-400 bg-green-400/10"
+    : accent === "red" ? "text-red-400 bg-red-400/10"
+    : accent === "amber" ? "text-amber-400 bg-amber-400/10"
+    : "text-primary bg-primary/10";
 
   return (
     <div
@@ -83,8 +122,8 @@ function KPICard({ title, value, sub, icon: Icon, delay = 0 }: {
       )}
     >
       <div className="flex items-start justify-between mb-4">
-        <div className="p-2 rounded-md bg-primary/10">
-          <Icon className="w-4 h-4 text-primary" />
+        <div className={cn("p-2 rounded-md", accentColor.split(" ")[1])}>
+          <Icon className={cn("w-4 h-4", accentColor.split(" ")[0])} />
         </div>
         <div className="flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full text-green-400 bg-green-400/10">
           <ArrowUpRight className="w-3 h-3" />
@@ -98,21 +137,73 @@ function KPICard({ title, value, sub, icon: Icon, delay = 0 }: {
   );
 }
 
-function EmptyState({ message, linkLabel, linkHref }: { message: string; linkLabel?: string; linkHref?: string }) {
+function SectionHeader({ title, badge, sub, href, external }: {
+  title: string;
+  badge?: string;
+  sub: string;
+  href?: string;
+  external?: boolean;
+}) {
   return (
-    <div className="flex flex-col items-center justify-center py-10 text-center gap-2">
-      <Inbox className="w-8 h-8 text-muted-foreground/30" />
-      <p className="text-xs text-muted-foreground">{message}</p>
-      {linkLabel && linkHref && (
-        <Link href={linkHref}>
-          <span className="text-xs text-primary hover:text-primary/80 transition-colors cursor-pointer">{linkLabel} →</span>
-        </Link>
+    <div className="flex items-center justify-between mb-4">
+      <div>
+        <div className="flex items-center gap-2">
+          <h3 className="text-sm font-semibold text-foreground" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
+            {title}
+          </h3>
+          {badge && (
+            <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-green-400/10 text-green-400 border border-green-400/20">
+              {badge}
+            </span>
+          )}
+        </div>
+        <p className="text-xs text-muted-foreground">{sub}</p>
+      </div>
+      {href && (
+        external ? (
+          <a href={href} target="_blank" rel="noopener noreferrer"
+            className="text-xs text-primary hover:text-primary/80 flex items-center gap-1 transition-colors cursor-pointer">
+            View in Jobber <ExternalLink className="w-3 h-3" />
+          </a>
+        ) : (
+          <Link href={href}>
+            <span className="text-xs text-primary hover:text-primary/80 flex items-center gap-1 transition-colors cursor-pointer">
+              View all <ChevronRight className="w-3 h-3" />
+            </span>
+          </Link>
+        )
       )}
     </div>
   );
 }
 
-// ─── Normalized job shape used by both Jobber and local jobs ─────────────────
+function EmptyState({ message, linkLabel, linkHref, external }: {
+  message: string;
+  linkLabel?: string;
+  linkHref?: string;
+  external?: boolean;
+}) {
+  return (
+    <div className="flex flex-col items-center justify-center py-10 text-center gap-2">
+      <Inbox className="w-8 h-8 text-muted-foreground/30" />
+      <p className="text-xs text-muted-foreground">{message}</p>
+      {linkLabel && linkHref && (
+        external ? (
+          <a href={linkHref} target="_blank" rel="noopener noreferrer"
+            className="text-xs text-primary hover:text-primary/80 transition-colors">
+            {linkLabel} →
+          </a>
+        ) : (
+          <Link href={linkHref}>
+            <span className="text-xs text-primary hover:text-primary/80 transition-colors cursor-pointer">{linkLabel} →</span>
+          </Link>
+        )
+      )}
+    </div>
+  );
+}
+
+// ─── Normalized job shape ─────────────────────────────────────────────────────
 interface NormalizedJob {
   id: string;
   client: string;
@@ -133,16 +224,24 @@ interface NormalizedJob {
 export default function Dashboard() {
   const prevLeadCount = useRef<number | null>(null);
 
-  // Local jobs (secondary — manual entries only)
-  const { data: localJobs = [] } = trpc.ops.jobs.list.useQuery(undefined, { refetchInterval: 30000 });
-
-  // Jobber jobs — primary source of truth
-  const { data: jobberJobsRaw, isError: jobberError } = trpc.jobber.jobs.useQuery(
-    { first: 100 },
-    { retry: false, refetchInterval: 60000 }
+  // ─── Jobber data — primary source of truth ───────────────────────────────
+  const { data: jobberJobsRaw, isError: jobberJobsError } = trpc.jobber.jobs.useQuery(
+    { first: 100 }, { retry: false, refetchInterval: 60000 }
+  );
+  const { data: jobberInvoicesRaw, isError: jobberInvoicesError } = trpc.jobber.invoices.useQuery(
+    { first: 50 }, { retry: false, refetchInterval: 60000 }
+  );
+  const { data: jobberQuotesRaw, isError: jobberQuotesError } = trpc.jobber.quotes.useQuery(
+    { first: 50 }, { retry: false, refetchInterval: 60000 }
+  );
+  const { data: jobberRequestsRaw, isError: jobberRequestsError } = trpc.jobber.requests.useQuery(
+    { first: 50 }, { retry: false, refetchInterval: 60000 }
   );
 
-  // Leads
+  // ─── Local jobs (fallback) ────────────────────────────────────────────────
+  const { data: localJobs = [] } = trpc.ops.jobs.list.useQuery(undefined, { refetchInterval: 30000 });
+
+  // ─── Local leads (for pipeline section) ──────────────────────────────────
   const { data: leads = [] } = trpc.ops.leads.list.useQuery(undefined, { refetchInterval: 15000 });
 
   useEffect(() => {
@@ -152,6 +251,8 @@ export default function Dashboard() {
     }
     prevLeadCount.current = leads.length;
   }, [leads.length]);
+
+  const jobberConnected = !jobberJobsError && jobberJobsRaw !== undefined;
 
   // ─── Normalize Jobber jobs ────────────────────────────────────────────────
   const jobberJobs = useMemo<NormalizedJob[]>(() => {
@@ -192,13 +293,64 @@ export default function Dashboard() {
     }));
   }, [localJobs]);
 
-  // ─── Merged jobs — Jobber is primary, local fills in anything not in Jobber ─
   const allJobs = useMemo<NormalizedJob[]>(() => {
-    // If Jobber is connected and has jobs, use those as primary
     if (jobberJobs.length > 0) return jobberJobs;
-    // Fallback to local jobs if Jobber not connected or empty
     return normalizedLocalJobs;
   }, [jobberJobs, normalizedLocalJobs]);
+
+  // ─── Jobber invoices ──────────────────────────────────────────────────────
+  const invoices = useMemo(() => {
+    return (jobberInvoicesRaw?.nodes ?? []) as any[];
+  }, [jobberInvoicesRaw]);
+
+  const openInvoices = useMemo(() =>
+    invoices.filter((inv: any) => !["PAID", "BAD_DEBT", "DRAFT"].includes(inv.invoiceStatus)),
+    [invoices]
+  );
+
+  const overdueInvoices = useMemo(() =>
+    invoices.filter((inv: any) => inv.invoiceStatus === "OVERDUE"),
+    [invoices]
+  );
+
+  const paidThisMonth = useMemo(() => {
+    const now = new Date();
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    return invoices.filter((inv: any) =>
+      inv.invoiceStatus === "PAID" &&
+      inv.issuedDate && new Date(inv.issuedDate) >= monthStart
+    );
+  }, [invoices]);
+
+  const outstandingBalance = useMemo(() =>
+    openInvoices.reduce((s: number, inv: any) => s + Number(inv.amounts?.invoiceBalance ?? 0), 0),
+    [openInvoices]
+  );
+
+  const paidThisMonthTotal = useMemo(() =>
+    paidThisMonth.reduce((s: number, inv: any) => s + Number(inv.amounts?.total ?? 0), 0),
+    [paidThisMonth]
+  );
+
+  // ─── Jobber quotes ────────────────────────────────────────────────────────
+  const quotes = useMemo(() => {
+    return (jobberQuotesRaw?.nodes ?? []) as any[];
+  }, [jobberQuotesRaw]);
+
+  const openQuotes = useMemo(() =>
+    quotes.filter((q: any) => !["ARCHIVED", "CONVERTED_TO_JOB"].includes(q.quoteStatus)),
+    [quotes]
+  );
+
+  // ─── Jobber requests ──────────────────────────────────────────────────────
+  const requests = useMemo(() => {
+    return (jobberRequestsRaw?.nodes ?? []) as any[];
+  }, [jobberRequestsRaw]);
+
+  const openRequests = useMemo(() =>
+    requests.filter((r: any) => !["CONVERTED", "ARCHIVED"].includes(r.requestStatus)),
+    [requests]
+  );
 
   // ─── KPIs ─────────────────────────────────────────────────────────────────
   const kpis = useMemo(() => {
@@ -207,18 +359,23 @@ export default function Dashboard() {
     const scheduledCount = allJobs.filter(j =>
       j.status === "scheduled" || (j.scheduledDate && j.status !== "completed" && j.status !== "paid" && j.status !== "cancelled")
     ).length;
-    const openLeads = leads.filter(l => !["won", "lost", "converted"].includes(l.stage)).length;
 
-    // Performance KPIs
+    // Leads: Jobber requests if connected, otherwise local leads
+    const openLeads = jobberConnected
+      ? openRequests.length
+      : leads.filter(l => !["won", "lost", "converted"].includes(l.stage)).length;
+
     const now = new Date();
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
     const jobsThisMonth = allJobs.filter(j => {
       const d = j.scheduledDate;
       return d && d >= monthStart && d <= now;
     });
-    const revenueThisMonth = jobsThisMonth.reduce((s, j) => s + (j.totalPrice ?? 0), 0);
+    const revenueThisMonth = jobberConnected
+      ? paidThisMonthTotal
+      : jobsThisMonth.reduce((s, j) => s + (j.totalPrice ?? 0), 0);
 
-    // Revenue per acre — local jobs only (Jobber doesn't expose acreage)
+    // Revenue per acre — local jobs only
     const acreJobs = normalizedLocalJobs.filter(j => j.totalPrice && j.acres && j.acres > 0);
     const revenuePerAcre = acreJobs.length > 0
       ? acreJobs.reduce((s, j) => s + (j.totalPrice ?? 0) / (j.acres ?? 1), 0) / acreJobs.length
@@ -241,13 +398,15 @@ export default function Dashboard() {
       totalRevenue, activeJobs, scheduledJobs: scheduledCount, openLeads,
       revenueThisMonth, revenuePerAcre, avgCompletionDays, winRate,
       jobsThisMonth: jobsThisMonth.length,
+      outstandingBalance,
+      openQuotes: openQuotes.length,
     };
-  }, [allJobs, normalizedLocalJobs, leads]);
+  }, [allJobs, normalizedLocalJobs, leads, openRequests, paidThisMonthTotal, outstandingBalance, openQuotes, jobberConnected]);
 
   // ─── Status filter for scheduled jobs section ─────────────────────────────
   const [schedFilter, setSchedFilter] = useState<"all" | "scheduled" | "in_progress" | "invoiced">("all");
 
-  // ─── Scheduled jobs — next 30 days, sorted by date ascending ─────────────
+  // ─── Scheduled jobs — next 30 days ───────────────────────────────────────
   const scheduledJobs = useMemo<NormalizedJob[]>(() => {
     const now = new Date();
     const cutoff = new Date(now);
@@ -267,7 +426,7 @@ export default function Dashboard() {
     return scheduledJobs.filter(j => j.status === schedFilter);
   }, [scheduledJobs, schedFilter]);
 
-  // ─── Recent jobs — last 8 by scheduled date desc, or all jobs if few ──────
+  // ─── Recent jobs ──────────────────────────────────────────────────────────
   const recentJobs = useMemo<NormalizedJob[]>(() => {
     return [...allJobs]
       .sort((a, b) => {
@@ -283,8 +442,6 @@ export default function Dashboard() {
     () => leads.filter(l => !["won", "lost", "converted"].includes(l.stage)).slice(0, 6),
     [leads]
   );
-
-  const jobberConnected = !jobberError && (jobberJobsRaw !== undefined);
 
   return (
     <DashboardLayout
@@ -311,6 +468,9 @@ export default function Dashboard() {
                 {kpis.scheduledJobs > 0 && (
                   <>, <span className="text-amber-400">{kpis.scheduledJobs} scheduled</span></>
                 )}
+                {kpis.outstandingBalance > 0 && (
+                  <>, <span className="text-yellow-400">${kpis.outstandingBalance.toLocaleString()} outstanding</span></>
+                )}
                 {" "}and{" "}
                 <span className="text-primary">{kpis.openLeads} open {kpis.openLeads === 1 ? "lead" : "leads"}</span>{" "}
                 today
@@ -334,34 +494,68 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* KPI Cards */}
+        {/* KPI Cards — row 1: jobs + money */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <KPICard
-            title="Total Revenue"
-            value={kpis.totalRevenue > 0 ? `$${kpis.totalRevenue.toLocaleString()}` : "—"}
-            sub={jobberConnected ? "from Jobber jobs" : "from all jobs"}
-            icon={DollarSign}
-            delay={0}
-          />
           <KPICard
             title="Active Jobs"
             value={kpis.activeJobs.toString()}
-            sub="in progress"
+            sub={jobberConnected ? "from Jobber" : "in progress"}
             icon={Briefcase}
-            delay={80}
+            delay={0}
           />
           <KPICard
             title="Scheduled Jobs"
             value={kpis.scheduledJobs.toString()}
             sub="upcoming on calendar"
             icon={CalendarCheck}
+            delay={80}
+          />
+          <KPICard
+            title="Outstanding Balance"
+            value={kpis.outstandingBalance > 0 ? `$${kpis.outstandingBalance.toLocaleString()}` : "—"}
+            sub={jobberConnected ? `${openInvoices.length} open invoice${openInvoices.length !== 1 ? "s" : ""}` : "from invoices"}
+            icon={Receipt}
+            delay={160}
+            accent={overdueInvoices.length > 0 ? "red" : "default"}
+          />
+          <KPICard
+            title="Open Leads / Requests"
+            value={kpis.openLeads.toString()}
+            sub={jobberConnected ? "from Jobber requests" : "in pipeline"}
+            icon={Users}
+            delay={240}
+          />
+        </div>
+
+        {/* KPI Cards — row 2: revenue + quotes */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <KPICard
+            title="Paid This Month"
+            value={paidThisMonthTotal > 0 ? `$${paidThisMonthTotal.toLocaleString()}` : "—"}
+            sub={jobberConnected ? `${paidThisMonth.length} invoice${paidThisMonth.length !== 1 ? "s" : ""} paid` : "from completed jobs"}
+            icon={DollarSign}
+            delay={0}
+            accent="green"
+          />
+          <KPICard
+            title="Open Quotes"
+            value={kpis.openQuotes.toString()}
+            sub={jobberConnected ? "awaiting approval" : "pending"}
+            icon={FileText}
+            delay={80}
+          />
+          <KPICard
+            title="Revenue / Acre"
+            value={kpis.revenuePerAcre > 0 ? `$${Math.round(kpis.revenuePerAcre).toLocaleString()}` : "—"}
+            sub={`avg across ${normalizedLocalJobs.filter(j => j.totalPrice && j.acres).length} local jobs`}
+            icon={TrendingUp}
             delay={160}
           />
           <KPICard
-            title="Open Leads"
-            value={kpis.openLeads.toString()}
-            sub="in pipeline"
-            icon={Users}
+            title="Win Rate"
+            value={kpis.winRate > 0 ? `${Math.round(kpis.winRate)}%` : "—"}
+            sub="of closed leads converted"
+            icon={Gauge}
             delay={240}
           />
         </div>
@@ -423,7 +617,7 @@ export default function Dashboard() {
           </div>
 
           {filteredScheduledJobs.length === 0 ? (
-            jobberError ? (
+            jobberJobsError ? (
               <EmptyState
                 message="Jobber is not connected. Jobs will appear here once Jobber credentials are configured."
                 linkLabel="Go to Jobs"
@@ -431,9 +625,10 @@ export default function Dashboard() {
               />
             ) : (
               <EmptyState
-                message="No jobs scheduled in the next 30 days. Jobs with a start date in Jobber will appear here."
+                message="No jobs scheduled in the next 30 days."
                 linkLabel="Open Jobber"
                 linkHref="https://secure.getjobber.com/home"
+                external
               />
             )
           ) : (
@@ -457,7 +652,6 @@ export default function Dashboard() {
                       ? "border-amber-400/30 bg-amber-400/5 hover:bg-amber-400/10"
                       : "border-border bg-secondary/20 hover:bg-secondary/40"
                   )}>
-                    {/* Date badge + status + flags */}
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-1.5">
                         <div className={cn(
@@ -482,7 +676,6 @@ export default function Dashboard() {
                         {status.label}
                       </span>
                     </div>
-                    {/* Client + job info */}
                     <div>
                       <p className="text-sm font-semibold text-foreground leading-snug">{job.client}</p>
                       <p className="text-[11px] text-muted-foreground capitalize mt-0.5">
@@ -491,14 +684,12 @@ export default function Dashboard() {
                         {job.acres ? ` · ${job.acres} ac` : ""}
                       </p>
                     </div>
-                    {/* Address */}
                     {job.address && (
                       <div className="flex items-center gap-1.5">
-                        <MapPin className="w-2.5 h-2.5 text-muted-foreground shrink-0" />
+                        <MapPin className="w-3 h-3 text-muted-foreground shrink-0" />
                         <span className="text-[11px] text-muted-foreground truncate">{job.address}</span>
                       </div>
                     )}
-                    {/* Price */}
                     {job.totalPrice != null && job.totalPrice > 0 && (
                       <div className="text-xs font-semibold text-foreground ops-metric-value">
                         ${Number(job.totalPrice).toLocaleString()}
@@ -508,12 +699,7 @@ export default function Dashboard() {
                 );
 
                 return isExternal ? (
-                  <a
-                    key={job.id}
-                    href={cardHref}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
+                  <a key={job.id} href={cardHref} target="_blank" rel="noopener noreferrer">
                     {CardContent}
                   </a>
                 ) : (
@@ -526,42 +712,208 @@ export default function Dashboard() {
           )}
         </div>
 
-        {/* Recent Jobs + Lead Pipeline */}
+        {/* Invoices + Quotes row */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+
+          {/* Open Invoices */}
+          <div className="ops-card p-5">
+            <SectionHeader
+              title="Open Invoices"
+              badge={jobberConnected ? "Jobber" : undefined}
+              sub={overdueInvoices.length > 0
+                ? `${overdueInvoices.length} overdue · $${outstandingBalance.toLocaleString()} outstanding`
+                : `$${outstandingBalance.toLocaleString()} outstanding`}
+              href="https://secure.getjobber.com/invoices"
+              external
+            />
+            {jobberInvoicesError ? (
+              <EmptyState message="Jobber not connected — invoices unavailable." />
+            ) : openInvoices.length === 0 ? (
+              <EmptyState
+                message="No open invoices. All caught up."
+                linkLabel="View in Jobber"
+                linkHref="https://secure.getjobber.com/invoices"
+                external
+              />
+            ) : (
+              <div className="space-y-2">
+                {openInvoices.slice(0, 6).map((inv: any) => {
+                  const cfg = invoiceStatusConfig[inv.invoiceStatus] ?? { label: inv.invoiceStatus, color: "text-muted-foreground bg-secondary border-border" };
+                  const isOverdue = inv.invoiceStatus === "OVERDUE";
+                  return (
+                    <a key={inv.id} href="https://secure.getjobber.com/invoices" target="_blank" rel="noopener noreferrer">
+                      <div className={cn(
+                        "flex items-center gap-3 p-3 rounded-md transition-colors cursor-pointer",
+                        isOverdue ? "bg-red-500/5 hover:bg-red-500/10 border border-red-500/20" : "bg-secondary/30 hover:bg-secondary/50"
+                      )}>
+                        <div className={cn("w-8 h-8 rounded-md flex items-center justify-center shrink-0", isOverdue ? "bg-red-500/10" : "bg-primary/10")}>
+                          {isOverdue
+                            ? <AlertCircle className="w-3.5 h-3.5 text-red-400" />
+                            : <Receipt className="w-3.5 h-3.5 text-primary" />}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-semibold text-foreground truncate">
+                              {inv.client?.name ?? "Unknown"}
+                            </span>
+                            <span className={cn("text-[10px] font-medium px-1.5 py-0.5 rounded border shrink-0", cfg.color)}>
+                              {cfg.label}
+                            </span>
+                          </div>
+                          <div className="text-[11px] text-muted-foreground mt-0.5">
+                            #{inv.invoiceNumber}
+                            {inv.dueDate && ` · Due ${formatDate(inv.dueDate)}`}
+                          </div>
+                        </div>
+                        <div className="text-right shrink-0">
+                          <div className={cn("text-xs font-semibold ops-metric-value", isOverdue ? "text-red-400" : "text-foreground")}>
+                            ${Number(inv.amounts?.invoiceBalance ?? inv.amounts?.total ?? 0).toLocaleString()}
+                          </div>
+                        </div>
+                      </div>
+                    </a>
+                  );
+                })}
+                {openInvoices.length > 6 && (
+                  <a href="https://secure.getjobber.com/invoices" target="_blank" rel="noopener noreferrer"
+                    className="block text-center text-xs text-primary hover:text-primary/80 py-2 transition-colors">
+                    +{openInvoices.length - 6} more invoices in Jobber
+                  </a>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Open Quotes */}
+          <div className="ops-card p-5">
+            <SectionHeader
+              title="Open Quotes"
+              badge={jobberConnected ? "Jobber" : undefined}
+              sub={`${openQuotes.length} quote${openQuotes.length !== 1 ? "s" : ""} awaiting approval`}
+              href="https://secure.getjobber.com/quotes"
+              external
+            />
+            {jobberQuotesError ? (
+              <EmptyState message="Jobber not connected — quotes unavailable." />
+            ) : openQuotes.length === 0 ? (
+              <EmptyState
+                message="No open quotes."
+                linkLabel="View in Jobber"
+                linkHref="https://secure.getjobber.com/quotes"
+                external
+              />
+            ) : (
+              <div className="space-y-2">
+                {openQuotes.slice(0, 6).map((q: any) => {
+                  const cfg = quoteStatusConfig[q.quoteStatus] ?? { label: q.quoteStatus, color: "text-muted-foreground bg-secondary border-border" };
+                  return (
+                    <a key={q.id} href="https://secure.getjobber.com/quotes" target="_blank" rel="noopener noreferrer">
+                      <div className="flex items-center gap-3 p-3 rounded-md bg-secondary/30 hover:bg-secondary/50 transition-colors cursor-pointer">
+                        <div className="w-8 h-8 rounded-md bg-primary/10 flex items-center justify-center shrink-0">
+                          <FileText className="w-3.5 h-3.5 text-primary" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-semibold text-foreground truncate">
+                              {q.client?.name ?? q.title ?? "Unknown"}
+                            </span>
+                            <span className={cn("text-[10px] font-medium px-1.5 py-0.5 rounded border shrink-0", cfg.color)}>
+                              {cfg.label}
+                            </span>
+                          </div>
+                          <div className="text-[11px] text-muted-foreground mt-0.5">
+                            #{q.quoteNumber}
+                            {q.createdAt && ` · ${formatDate(q.createdAt)}`}
+                          </div>
+                        </div>
+                        <div className="text-right shrink-0">
+                          <div className="text-xs font-semibold text-foreground ops-metric-value">
+                            {q.amounts?.total != null ? `$${Number(q.amounts.total).toLocaleString()}` : "—"}
+                          </div>
+                        </div>
+                      </div>
+                    </a>
+                  );
+                })}
+                {openQuotes.length > 6 && (
+                  <a href="https://secure.getjobber.com/quotes" target="_blank" rel="noopener noreferrer"
+                    className="block text-center text-xs text-primary hover:text-primary/80 py-2 transition-colors">
+                    +{openQuotes.length - 6} more quotes in Jobber
+                  </a>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Requests + Recent Jobs row */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+
+          {/* Jobber Requests (Leads) */}
+          <div className="ops-card p-5">
+            <SectionHeader
+              title="Requests"
+              badge={jobberConnected ? "Jobber" : undefined}
+              sub={`${openRequests.length} open request${openRequests.length !== 1 ? "s" : ""}`}
+              href="https://secure.getjobber.com/requests"
+              external
+            />
+            {jobberRequestsError ? (
+              <EmptyState message="Jobber not connected — requests unavailable." />
+            ) : openRequests.length === 0 ? (
+              <EmptyState
+                message="No open requests."
+                linkLabel="View in Jobber"
+                linkHref="https://secure.getjobber.com/requests"
+                external
+              />
+            ) : (
+              <div className="space-y-2">
+                {openRequests.slice(0, 6).map((r: any) => {
+                  const cfg = requestStatusConfig[r.requestStatus] ?? { label: r.requestStatus, color: "text-muted-foreground bg-secondary border-border" };
+                  return (
+                    <a key={r.id} href="https://secure.getjobber.com/requests" target="_blank" rel="noopener noreferrer">
+                      <div className="flex items-center gap-3 p-3 rounded-md bg-secondary/30 hover:bg-secondary/50 transition-colors cursor-pointer">
+                        <div className="w-8 h-8 rounded-md bg-primary/10 flex items-center justify-center shrink-0">
+                          <PhoneCall className="w-3.5 h-3.5 text-primary" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-semibold text-foreground truncate">
+                              {r.client?.name ?? r.contactName ?? "Unknown"}
+                            </span>
+                            <span className={cn("text-[10px] font-medium px-1.5 py-0.5 rounded border shrink-0", cfg.color)}>
+                              {cfg.label}
+                            </span>
+                          </div>
+                          <div className="text-[11px] text-muted-foreground mt-0.5">
+                            {r.title ?? "Service request"}
+                            {r.createdAt && ` · ${formatDate(r.createdAt)}`}
+                          </div>
+                        </div>
+                      </div>
+                    </a>
+                  );
+                })}
+                {openRequests.length > 6 && (
+                  <a href="https://secure.getjobber.com/requests" target="_blank" rel="noopener noreferrer"
+                    className="block text-center text-xs text-primary hover:text-primary/80 py-2 transition-colors">
+                    +{openRequests.length - 6} more in Jobber
+                  </a>
+                )}
+              </div>
+            )}
+          </div>
 
           {/* Recent Jobs */}
           <div className="lg:col-span-2 ops-card p-5">
-            <div className="flex items-center justify-between mb-4">
-              <div>
-                <div className="flex items-center gap-2">
-                  <h3 className="text-sm font-semibold text-foreground" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
-                    Recent Jobs
-                  </h3>
-                  {jobberConnected && (
-                    <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-green-400/10 text-green-400 border border-green-400/20">
-                      Jobber
-                    </span>
-                  )}
-                </div>
-                <p className="text-xs text-muted-foreground">Latest job activity</p>
-              </div>
-              {jobberConnected ? (
-                <a
-                  href="https://secure.getjobber.com/home"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-xs text-primary hover:text-primary/80 flex items-center gap-1 transition-colors cursor-pointer"
-                >
-                  View in Jobber <ExternalLink className="w-3 h-3" />
-                </a>
-              ) : (
-                <Link href="/ops/jobs">
-                  <span className="text-xs text-primary hover:text-primary/80 flex items-center gap-1 transition-colors cursor-pointer">
-                    View all <ChevronRight className="w-3 h-3" />
-                  </span>
-                </Link>
-              )}
-            </div>
+            <SectionHeader
+              title="Recent Jobs"
+              badge={jobberConnected ? "Jobber" : undefined}
+              sub="Latest job activity"
+              href={jobberConnected ? "https://secure.getjobber.com/home" : "/ops/jobs"}
+              external={jobberConnected}
+            />
             {recentJobs.length === 0 ? (
               <EmptyState
                 message="No jobs yet. Add your first job to get started."
@@ -625,22 +977,18 @@ export default function Dashboard() {
               </div>
             )}
           </div>
+        </div>
+
+        {/* Lead Pipeline (local) + Performance Metrics */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
 
           {/* Lead Pipeline */}
           <div className="ops-card p-5">
-            <div className="flex items-center justify-between mb-4">
-              <div>
-                <h3 className="text-sm font-semibold text-foreground" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
-                  Lead Pipeline
-                </h3>
-                <p className="text-xs text-muted-foreground">Active opportunities</p>
-              </div>
-              <Link href="/ops/leads">
-                <span className="text-xs text-primary hover:text-primary/80 flex items-center gap-1 transition-colors cursor-pointer">
-                  View all <ChevronRight className="w-3 h-3" />
-                </span>
-              </Link>
-            </div>
+            <SectionHeader
+              title="Lead Pipeline"
+              sub="Active local opportunities"
+              href="/ops/leads"
+            />
             {pipelineLeads.length === 0 ? (
               <EmptyState
                 message="No open leads. New quote form submissions will appear here."
@@ -671,65 +1019,65 @@ export default function Dashboard() {
             )}
           </div>
 
-        </div>
+          {/* Performance Metrics */}
+          <div className="lg:col-span-2 ops-card p-5">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h3 className="text-sm font-semibold text-foreground" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
+                  Performance Metrics
+                </h3>
+                <p className="text-xs text-muted-foreground">
+                  {jobberConnected
+                    ? "Revenue from Jobber invoices · Crew days and win rate from local records"
+                    : "Calculated from your job and lead records"}
+                </p>
+              </div>
+              <Activity className="w-4 h-4 text-muted-foreground" />
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+              <div className="rounded-lg border border-border bg-secondary/20 p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <DollarSign className="w-3.5 h-3.5 text-green-400" />
+                  <span className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Paid This Month</span>
+                </div>
+                <div className="text-xl font-bold text-foreground ops-metric-value">
+                  {paidThisMonthTotal > 0 ? `$${paidThisMonthTotal.toLocaleString()}` : "—"}
+                </div>
+                <div className="text-[11px] text-muted-foreground mt-1">{paidThisMonth.length} invoice{paidThisMonth.length !== 1 ? "s" : ""}</div>
+              </div>
+              <div className="rounded-lg border border-border bg-secondary/20 p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <TrendingUp className="w-3.5 h-3.5 text-primary" />
+                  <span className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Revenue / Acre</span>
+                </div>
+                <div className="text-xl font-bold text-foreground ops-metric-value">
+                  {kpis.revenuePerAcre > 0 ? `$${Math.round(kpis.revenuePerAcre).toLocaleString()}` : "—"}
+                </div>
+                <div className="text-[11px] text-muted-foreground mt-1">avg across {normalizedLocalJobs.filter(j => j.totalPrice && j.acres).length} jobs</div>
+              </div>
+              <div className="rounded-lg border border-border bg-secondary/20 p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <Clock className="w-3.5 h-3.5 text-amber-400" />
+                  <span className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Avg Crew Days</span>
+                </div>
+                <div className="text-xl font-bold text-foreground ops-metric-value">
+                  {kpis.avgCompletionDays > 0 ? kpis.avgCompletionDays.toFixed(1) : "—"}
+                </div>
+                <div className="text-[11px] text-muted-foreground mt-1">days per completed job</div>
+              </div>
+              <div className="rounded-lg border border-border bg-secondary/20 p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <Gauge className="w-3.5 h-3.5 text-sky-400" />
+                  <span className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Win Rate</span>
+                </div>
+                <div className="text-xl font-bold text-foreground ops-metric-value">
+                  {kpis.winRate > 0 ? `${Math.round(kpis.winRate)}%` : "—"}
+                </div>
+                <div className="text-[11px] text-muted-foreground mt-1">of closed leads converted</div>
+              </div>
+            </div>
+          </div>
 
-        {/* Performance KPIs */}
-        <div className="ops-card p-5">
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <h3 className="text-sm font-semibold text-foreground" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
-                Performance Metrics
-              </h3>
-              <p className="text-xs text-muted-foreground">
-                {jobberConnected
-                  ? "Revenue from Jobber · Crew days and win rate from local records"
-                  : "Calculated from your job and lead records"}
-              </p>
-            </div>
-            <Activity className="w-4 h-4 text-muted-foreground" />
-          </div>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-            <div className="rounded-lg border border-border bg-secondary/20 p-4">
-              <div className="flex items-center gap-2 mb-2">
-                <TrendingUp className="w-3.5 h-3.5 text-green-400" />
-                <span className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Revenue / Acre</span>
-              </div>
-              <div className="text-xl font-bold text-foreground ops-metric-value">
-                {kpis.revenuePerAcre > 0 ? `$${Math.round(kpis.revenuePerAcre).toLocaleString()}` : "—"}
-              </div>
-              <div className="text-[11px] text-muted-foreground mt-1">avg across {normalizedLocalJobs.filter(j => j.totalPrice && j.acres).length} jobs</div>
-            </div>
-            <div className="rounded-lg border border-border bg-secondary/20 p-4">
-              <div className="flex items-center gap-2 mb-2">
-                <Clock className="w-3.5 h-3.5 text-amber-400" />
-                <span className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Avg Crew Days</span>
-              </div>
-              <div className="text-xl font-bold text-foreground ops-metric-value">
-                {kpis.avgCompletionDays > 0 ? kpis.avgCompletionDays.toFixed(1) : "—"}
-              </div>
-              <div className="text-[11px] text-muted-foreground mt-1">days per completed job</div>
-            </div>
-            <div className="rounded-lg border border-border bg-secondary/20 p-4">
-              <div className="flex items-center gap-2 mb-2">
-                <DollarSign className="w-3.5 h-3.5 text-primary" />
-                <span className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">This Month</span>
-              </div>
-              <div className="text-xl font-bold text-foreground ops-metric-value">
-                {kpis.revenueThisMonth > 0 ? `$${kpis.revenueThisMonth.toLocaleString()}` : "—"}
-              </div>
-              <div className="text-[11px] text-muted-foreground mt-1">{kpis.jobsThisMonth} job{kpis.jobsThisMonth !== 1 ? "s" : ""} scheduled</div>
-            </div>
-            <div className="rounded-lg border border-border bg-secondary/20 p-4">
-              <div className="flex items-center gap-2 mb-2">
-                <Gauge className="w-3.5 h-3.5 text-sky-400" />
-                <span className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Win Rate</span>
-              </div>
-              <div className="text-xl font-bold text-foreground ops-metric-value">
-                {kpis.winRate > 0 ? `${Math.round(kpis.winRate)}%` : "—"}
-              </div>
-              <div className="text-[11px] text-muted-foreground mt-1">of closed leads converted</div>
-            </div>
-          </div>
         </div>
 
       </div>
