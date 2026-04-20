@@ -981,3 +981,7 @@
 - [x] ServiceHealthCard: add "Sync All" button that updates all Jobber service prices to match benchmark mid-market rates
 - [x] ServiceHealthCard: add adjustable warning thresholds (underpriced % and overpriced %) via collapsible Thresholds panel with range sliders
 - [x] ServiceHealthCard: add "Create in Jobber" button on each "Missing in Jobber" row to auto-create the service in the Jobber catalog
+
+## Public Pricing Page Cleanup — Apr 20 2026
+- [x] Pricing.tsx: remove "Pricing by Service" section (core services grid)
+- [x] Pricing.tsx: remove "Add-On Services" section
