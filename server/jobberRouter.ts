@@ -313,7 +313,7 @@ export const jobberRouter = router({
             property { address { street1 city province postalCode } }
             lineItems {
               nodes {
-                name description quantity unitPrice unitCost taxable
+                id name description quantity unitPrice unitCost taxable
               }
             }
           }
@@ -708,9 +708,29 @@ export const jobberRouter = router({
    * Create a new quote in Jobber.
    * Requires an existing Jobber clientId and at least one line item.
    */
+  /** Fetch a client's properties (for propertyId when creating quotes) */
+  clientProperties: adminProcedure
+    .input(z.object({ clientId: z.string() }))
+    .query(async ({ input }) => {
+      const data = await jobberGraphQL(`
+        query GetClientProperties($id: EncodedId!) {
+          client(id: $id) {
+            properties {
+              nodes { id address { street1 city province postalCode } }
+            }
+          }
+        }
+      `, { id: input.clientId }) as any;
+      return (data?.client?.properties?.nodes ?? []) as Array<{
+        id: string;
+        address: { street1?: string; city?: string; province?: string; postalCode?: string };
+      }>;
+    }),
+
   quoteCreate: adminProcedure
     .input(z.object({
       clientId: z.string(),
+      propertyId: z.string().optional(),
       title: z.string().min(1),
       message: z.string().optional(),
       lineItems: z.array(z.object({
@@ -725,16 +745,49 @@ export const jobberRouter = router({
       const connected = await isJobberConnected();
       if (!connected) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Jobber not connected" });
 
-      // Step 1: Create the quote. Jobber uses `attributes` (not `input`) for quoteCreate.
+      // Resolve propertyId — required by Jobber's quoteCreate schema.
+      // If not supplied by the caller, fetch the client's first property.
+      let propertyId = input.propertyId;
+      if (!propertyId) {
+        const propData = await jobberGraphQL(`
+          query GetClientProps($id: EncodedId!) {
+            client(id: $id) { properties { nodes { id } } }
+          }
+        `, { id: input.clientId }) as any;
+        propertyId = propData?.client?.properties?.nodes?.[0]?.id;
+      }
+      if (!propertyId) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "This client has no property on file. Add a property address in Jobber first.",
+        });
+      }
+
+      // Build inline line items for QuoteCreateAttributes
+      const lineItemsInput = input.lineItems.map((item) => ({
+        name: item.name,
+        description: item.description ?? "",
+        quantity: item.quantity,
+        unitPrice: item.unitPrice,
+      }));
+
       const createData = await jobberGraphQL(`
-        mutation CreateQuote($clientId: EncodedId!, $title: String!, $message: String) {
-          quoteCreate(attributes: { clientId: $clientId, title: $title, message: $message }) {
+        mutation CreateQuote(
+          $clientId: EncodedId!
+          $propertyId: EncodedId!
+          $title: String!
+          $message: String
+          $lineItems: [QuoteCreateLineItemAttributes!]!
+        ) {
+          quoteCreate(attributes: {
+            clientId: $clientId
+            propertyId: $propertyId
+            title: $title
+            message: $message
+            lineItems: $lineItems
+          }) {
             quote {
-              id
-              quoteNumber
-              title
-              quoteStatus
-              createdAt
+              id quoteNumber title quoteStatus createdAt
               amounts { subtotal total }
               client { id name }
             }
@@ -743,45 +796,95 @@ export const jobberRouter = router({
         }
       `, {
         clientId: input.clientId,
+        propertyId,
         title: input.title,
         message: input.message ?? "",
+        lineItems: lineItemsInput,
       }) as any;
+
       const createErrors = createData?.quoteCreate?.userErrors;
       if (createErrors?.length) {
         throw new TRPCError({ code: "BAD_REQUEST", message: createErrors.map((e: any) => e.message).join("; ") });
       }
       const quote = createData?.quoteCreate?.quote;
       if (!quote?.id) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Quote creation returned no ID" });
-
-      // Step 2: Add each line item via quoteLineItemCreate
-      for (const item of input.lineItems) {
-        const lineData = await jobberGraphQL(`
-          mutation AddLineItem($quoteId: EncodedId!, $name: String!, $description: String, $quantity: Float!, $unitPrice: Decimal!) {
-            quoteLineItemCreate(attributes: {
-              quoteId: $quoteId
-              name: $name
-              description: $description
-              quantity: $quantity
-              unitPrice: $unitPrice
-            }) {
-              lineItem { id name quantity unitPrice }
-              userErrors { message path }
-            }
-          }
-        `, {
-          quoteId: quote.id,
-          name: item.name,
-          description: item.description ?? "",
-          quantity: item.quantity,
-          unitPrice: item.unitPrice,
-        }) as any;
-        const lineErrors = lineData?.quoteLineItemCreate?.userErrors;
-        if (lineErrors?.length) {
-          console.warn(`[quoteCreate] Line item error for "${item.name}": ${lineErrors.map((e: any) => e.message).join("; ")}`);
-        }
-      }
-
       return quote;
+    }),
+
+  /** Update a quote's title and/or message */
+  quoteUpdate: adminProcedure
+    .input(z.object({
+      id: z.string(),
+      title: z.string().min(1).optional(),
+      message: z.string().optional(),
+    }))
+    .mutation(async ({ input }) => {
+      const connected = await isJobberConnected();
+      if (!connected) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Jobber not connected" });
+      const data = await jobberGraphQL(`
+        mutation UpdateQuote($id: EncodedId!, $title: String, $message: String) {
+          quoteUpdate(id: $id, attributes: { title: $title, message: $message }) {
+            quote { id quoteNumber title quoteStatus message }
+            userErrors { message path }
+          }
+        }
+      `, { id: input.id, title: input.title, message: input.message ?? "" }) as any;
+      const errors = data?.quoteUpdate?.userErrors;
+      if (errors?.length) throw new TRPCError({ code: "BAD_REQUEST", message: errors.map((e: any) => e.message).join("; ") });
+      return data?.quoteUpdate?.quote ?? null;
+    }),
+
+  /** Add a line item to an existing quote */
+  quoteLineItemAdd: adminProcedure
+    .input(z.object({
+      quoteId: z.string(),
+      name: z.string().min(1),
+      description: z.string().optional(),
+      quantity: z.number().positive(),
+      unitPrice: z.number().min(0),
+    }))
+    .mutation(async ({ input }) => {
+      const connected = await isJobberConnected();
+      if (!connected) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Jobber not connected" });
+      const data = await jobberGraphQL(`
+        mutation AddLineItem($quoteId: EncodedId!, $name: String!, $description: String, $quantity: Float!, $unitPrice: Decimal!) {
+          quoteLineItemCreate(attributes: {
+            quoteId: $quoteId name: $name description: $description
+            quantity: $quantity unitPrice: $unitPrice
+          }) {
+            lineItem { id name description quantity unitPrice }
+            userErrors { message path }
+          }
+        }
+      `, {
+        quoteId: input.quoteId,
+        name: input.name,
+        description: input.description ?? "",
+        quantity: input.quantity,
+        unitPrice: input.unitPrice,
+      }) as any;
+      const errors = data?.quoteLineItemCreate?.userErrors;
+      if (errors?.length) throw new TRPCError({ code: "BAD_REQUEST", message: errors.map((e: any) => e.message).join("; ") });
+      return data?.quoteLineItemCreate?.lineItem ?? null;
+    }),
+
+  /** Delete a line item from a quote */
+  quoteLineItemDelete: adminProcedure
+    .input(z.object({ lineItemId: z.string() }))
+    .mutation(async ({ input }) => {
+      const connected = await isJobberConnected();
+      if (!connected) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Jobber not connected" });
+      const data = await jobberGraphQL(`
+        mutation DeleteLineItem($id: EncodedId!) {
+          quoteLineItemDelete(id: $id) {
+            lineItemId
+            userErrors { message path }
+          }
+        }
+      `, { id: input.lineItemId }) as any;
+      const errors = data?.quoteLineItemDelete?.userErrors;
+      if (errors?.length) throw new TRPCError({ code: "BAD_REQUEST", message: errors.map((e: any) => e.message).join("; ") });
+      return { success: true };
     }),
 
   /** Get aggregated lead source breakdown (count per source) */

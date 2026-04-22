@@ -996,3 +996,14 @@
 - [x] Add quoteCreate mutation to jobberRouter (Jobber GraphQL API)
 - [x] Add fetchServicesFromManager procedure to jobberRouter (pulls from nolandjobber service manager)
 - [x] Build Create Quote modal on /ops/quotes with client search, service line items, and quote submission
+- [ ] /ops/quotes: add real-time status badges (Draft/Sent/Approved/Archived) to quotes list
+- [ ] /ops/quotes: add Convert to Job button on approved quotes that calls quoteConvertToJob mutation
+- [ ] Redesign Create Quote modal to match Jobber's native form style (sections, labels, line item table)
+- [x] Fix quoteCreate: fetch client propertyId first, pass lineItems inline in QuoteCreateAttributes
+- [x] Add quoteUpdate mutation to jobberRouter (title, message)
+- [x] Add quoteLineItemUpdate and quoteLineItemDelete mutations to jobberRouter
+- [x] Build Edit Quote form in ops/Quotes page (pre-filled from quoteDetail, saves via quoteUpdate + line item mutations)
+- [x] Fix quoteCreate: fetch client propertyId first, pass lineItems inline in QuoteCreateAttributes
+- [x] Add quoteUpdate mutation to jobberRouter (title, message)
+- [x] Add quoteLineItemUpdate and quoteLineItemDelete mutations to jobberRouter
+- [x] Build Edit Quote form in ops/Quotes page (pre-filled from quoteDetail, saves via quoteUpdate + line item mutations)
