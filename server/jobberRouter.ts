@@ -712,16 +712,16 @@ export const jobberRouter = router({
   clientProperties: adminProcedure
     .input(z.object({ clientId: z.string() }))
     .query(async ({ input }) => {
+      // Use root-level properties query filtered by clientId
+      // (Jobber's Client.properties is not a standard connection — use root query instead)
       const data = await jobberGraphQL(`
-        query GetClientProperties($id: EncodedId!) {
-          client(id: $id) {
-            properties {
-              nodes { id address { street1 city province postalCode } }
-            }
+        query GetClientProperties($clientId: EncodedId!) {
+          properties(filter: { clientId: $clientId }) {
+            nodes { id address { street1 city province postalCode } }
           }
         }
-      `, { id: input.clientId }) as any;
-      return (data?.client?.properties?.nodes ?? []) as Array<{
+      `, { clientId: input.clientId }) as any;
+      return (data?.properties?.nodes ?? []) as Array<{
         id: string;
         address: { street1?: string; city?: string; province?: string; postalCode?: string };
       }>;
@@ -749,12 +749,15 @@ export const jobberRouter = router({
       // If not supplied by the caller, fetch the client's first property.
       let propertyId = input.propertyId;
       if (!propertyId) {
+        // Use root-level properties query filtered by clientId
         const propData = await jobberGraphQL(`
-          query GetClientProps($id: EncodedId!) {
-            client(id: $id) { properties { nodes { id } } }
+          query GetClientProps($clientId: EncodedId!) {
+            properties(filter: { clientId: $clientId }) {
+              nodes { id }
+            }
           }
-        `, { id: input.clientId }) as any;
-        propertyId = propData?.client?.properties?.nodes?.[0]?.id;
+        `, { clientId: input.clientId }) as any;
+        propertyId = propData?.properties?.nodes?.[0]?.id;
       }
       if (!propertyId) {
         throw new TRPCError({
