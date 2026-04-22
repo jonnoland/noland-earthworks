@@ -3,7 +3,7 @@
  * Calls trpc.jobber.quotes to fetch quotes from Jobber CRM.
  * Clicking a row opens a slide-out detail panel with full quote info.
  */
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Link, useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import DashboardLayout from "@/components/DashboardLayout";
@@ -26,6 +26,8 @@ import {
   ChevronRight,
   User,
   Briefcase,
+  Plus,
+  PlusCircle,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -396,6 +398,390 @@ function QuoteDetailPanel({
   );
 }
 
+// ─── Create Quote Modal ───────────────────────────────────────────────────────
+type ServiceItem = {
+  id: string;
+  name: string;
+  description: string;
+  unitPrice: number;
+  unitCost: number;
+  category: string;
+  taxable: boolean;
+  active: boolean;
+};
+type LineItem = {
+  productOrServiceId?: string;
+  name: string;
+  description: string;
+  quantity: number;
+  unitPrice: number;
+};
+type ClientNode = {
+  id: string;
+  name?: string | null;
+  companyName?: string | null;
+  emails?: Array<{ address: string }> | null;
+  phones?: Array<{ number: string }> | null;
+};
+
+function CreateQuoteModal({ onClose, onCreated }: { onClose: () => void; onCreated: () => void }) {
+  const [title, setTitle] = useState("");
+  const [message, setMessage] = useState("");
+  const [clientSearch, setClientSearch] = useState("");
+  const [selectedClient, setSelectedClient] = useState<ClientNode | null>(null);
+  const [lineItems, setLineItems] = useState<LineItem[]>([]);
+  const [serviceSearch, setServiceSearch] = useState("");
+  const [showServicePicker, setShowServicePicker] = useState(false);
+
+  const { data: clientsData, isLoading: clientsLoading } = trpc.jobber.clients.useQuery(
+    { first: 200 },
+    { retry: false }
+  );
+  const { data: services, isLoading: servicesLoading } = trpc.jobber.fetchServicesFromManager.useQuery(
+    undefined,
+    { retry: false }
+  );
+
+  const createQuote = trpc.jobber.quoteCreate.useMutation({
+    onSuccess: (quote) => {
+      toast.success(`Quote #${(quote as any)?.quoteNumber ?? ""} created in Jobber.`);
+      onCreated();
+      onClose();
+    },
+    onError: (err) => {
+      toast.error(err.message || "Failed to create quote.");
+    },
+  });
+
+  const clients: ClientNode[] = (clientsData as any)?.nodes ?? [];
+  const filteredClients = useMemo(() => {
+    const q = clientSearch.toLowerCase();
+    if (!q) return clients.slice(0, 20);
+    return clients
+      .filter(
+        (c) =>
+          (c.name ?? "").toLowerCase().includes(q) ||
+          (c.companyName ?? "").toLowerCase().includes(q) ||
+          (c.emails?.[0]?.address ?? "").toLowerCase().includes(q)
+      )
+      .slice(0, 20);
+  }, [clients, clientSearch]);
+
+  const activeServices: ServiceItem[] = useMemo(() => {
+    const all = (services as ServiceItem[] | undefined) ?? [];
+    const q = serviceSearch.toLowerCase();
+    return all.filter((s) => s.active && (!q || s.name.toLowerCase().includes(q)));
+  }, [services, serviceSearch]);
+
+  const subtotal = lineItems.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0);
+
+  function addServiceAsLineItem(svc: ServiceItem) {
+    setLineItems((prev) => [
+      ...prev,
+      {
+        productOrServiceId: svc.id,
+        name: svc.name,
+        description: svc.description,
+        quantity: 1,
+        unitPrice: svc.unitPrice,
+      },
+    ]);
+    setShowServicePicker(false);
+    setServiceSearch("");
+  }
+
+  function updateLineItem(idx: number, field: keyof LineItem, value: string | number) {
+    setLineItems((prev) => prev.map((item, i) => (i === idx ? { ...item, [field]: value } : item)));
+  }
+
+  function removeLineItem(idx: number) {
+    setLineItems((prev) => prev.filter((_, i) => i !== idx));
+  }
+
+  function addBlankLineItem() {
+    setLineItems((prev) => [...prev, { name: "", description: "", quantity: 1, unitPrice: 0 }]);
+  }
+
+  function handleSubmit() {
+    if (!selectedClient) { toast.error("Select a client."); return; }
+    if (!title.trim()) { toast.error("Enter a quote title."); return; }
+    if (lineItems.length === 0) { toast.error("Add at least one line item."); return; }
+    const invalid = lineItems.find((item) => !item.name.trim());
+    if (invalid) { toast.error("All line items must have a name."); return; }
+    createQuote.mutate({
+      clientId: selectedClient.id,
+      title: title.trim(),
+      message: message.trim() || undefined,
+      lineItems: lineItems.map((item) => ({
+        name: item.name,
+        description: item.description || undefined,
+        quantity: item.quantity,
+        unitPrice: item.unitPrice,
+        productOrServiceId: item.productOrServiceId,
+      })),
+    });
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+      <div className="bg-card border border-border rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden">
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 py-4 border-b border-border shrink-0">
+          <div className="flex items-center gap-2">
+            <PlusCircle className="w-4 h-4 text-primary" />
+            <h3 className="text-sm font-semibold text-foreground">New Quote</h3>
+          </div>
+          <button onClick={onClose} className="text-muted-foreground hover:text-foreground transition-colors">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        {/* Body */}
+        <div className="flex-1 overflow-y-auto px-5 py-5 space-y-5">
+          {/* Client selection */}
+          <div>
+            <label className="text-xs font-medium text-muted-foreground block mb-1.5">Client *</label>
+            {selectedClient ? (
+              <div className="flex items-center justify-between rounded-lg bg-secondary/30 border border-border px-3 py-2.5">
+                <div>
+                  <p className="text-sm font-medium text-foreground">{selectedClient.name || selectedClient.companyName}</p>
+                  {selectedClient.emails?.[0]?.address && (
+                    <p className="text-[11px] text-muted-foreground">{selectedClient.emails[0].address}</p>
+                  )}
+                </div>
+                <button
+                  onClick={() => { setSelectedClient(null); setClientSearch(""); }}
+                  className="text-muted-foreground hover:text-foreground transition-colors ml-2"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-1.5">
+                <div className="relative">
+                  <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+                  <Input
+                    placeholder="Search clients by name or email..."
+                    value={clientSearch}
+                    onChange={(e) => setClientSearch(e.target.value)}
+                    className="pl-8 h-8 text-xs bg-secondary/30 border-border"
+                  />
+                </div>
+                {clientsLoading ? (
+                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground py-1">
+                    <Loader2 className="w-3 h-3 animate-spin" /> Loading clients…
+                  </div>
+                ) : filteredClients.length > 0 ? (
+                  <div className="rounded-lg border border-border bg-card max-h-40 overflow-y-auto">
+                    {filteredClients.map((c) => (
+                      <button
+                        key={c.id}
+                        onClick={() => { setSelectedClient(c); setClientSearch(""); }}
+                        className="w-full text-left px-3 py-2 hover:bg-secondary/40 transition-colors border-b border-border last:border-0"
+                      >
+                        <p className="text-xs font-medium text-foreground">{c.name || c.companyName || "—"}</p>
+                        {c.emails?.[0]?.address && (
+                          <p className="text-[11px] text-muted-foreground">{c.emails[0].address}</p>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                ) : clientSearch ? (
+                  <p className="text-xs text-muted-foreground py-1">No clients found.</p>
+                ) : null}
+              </div>
+            )}
+          </div>
+
+          {/* Title */}
+          <div>
+            <label className="text-xs font-medium text-muted-foreground block mb-1.5">Quote Title *</label>
+            <Input
+              placeholder="e.g. Forestry Mulching — 5 Acres, Smith Property"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              className="h-8 text-xs bg-secondary/30 border-border"
+            />
+          </div>
+
+          {/* Message */}
+          <div>
+            <label className="text-xs font-medium text-muted-foreground block mb-1.5">Message (optional)</label>
+            <textarea
+              placeholder="Notes or message to include on the quote..."
+              value={message}
+              onChange={(e) => setMessage(e.target.value)}
+              rows={2}
+              className="w-full rounded-md border border-border bg-secondary/30 px-3 py-2 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary resize-none"
+            />
+          </div>
+
+          {/* Line items */}
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <label className="text-xs font-medium text-muted-foreground">Line Items *</label>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setShowServicePicker((v) => !v)}
+                  className="flex items-center gap-1 text-xs text-primary hover:text-primary/80 transition-colors"
+                >
+                  <Plus className="w-3 h-3" />
+                  From Services
+                </button>
+                <button
+                  onClick={addBlankLineItem}
+                  className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  <Plus className="w-3 h-3" />
+                  Custom
+                </button>
+              </div>
+            </div>
+
+            {/* Service picker dropdown */}
+            {showServicePicker && (
+              <div className="rounded-lg border border-border bg-card mb-3 overflow-hidden">
+                <div className="p-2 border-b border-border">
+                  <div className="relative">
+                    <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-muted-foreground" />
+                    <Input
+                      placeholder="Search services..."
+                      value={serviceSearch}
+                      onChange={(e) => setServiceSearch(e.target.value)}
+                      className="pl-7 h-7 text-xs bg-secondary/30 border-border"
+                      autoFocus
+                    />
+                  </div>
+                </div>
+                <div className="max-h-48 overflow-y-auto">
+                  {servicesLoading ? (
+                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground p-3">
+                      <Loader2 className="w-3 h-3 animate-spin" /> Loading services…
+                    </div>
+                  ) : activeServices.length === 0 ? (
+                    <p className="text-xs text-muted-foreground p-3">No services found.</p>
+                  ) : (
+                    activeServices.map((svc) => (
+                      <button
+                        key={svc.id}
+                        onClick={() => addServiceAsLineItem(svc)}
+                        className="w-full text-left px-3 py-2 hover:bg-secondary/40 transition-colors border-b border-border last:border-0 flex items-center justify-between gap-2"
+                      >
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-medium text-foreground truncate">{svc.name}</p>
+                          {svc.description && (
+                            <p className="text-[11px] text-muted-foreground line-clamp-1">{svc.description}</p>
+                          )}
+                        </div>
+                        <span className="text-xs font-medium text-primary shrink-0">
+                          {formatMoney(svc.unitPrice)}
+                        </span>
+                      </button>
+                    ))
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Line item rows */}
+            {lineItems.length === 0 ? (
+              <div className="rounded-lg border border-dashed border-border py-6 text-center text-xs text-muted-foreground">
+                No line items yet. Add from your services or enter a custom item.
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {lineItems.map((item, idx) => (
+                  <div key={idx} className="rounded-lg border border-border bg-secondary/10 p-3 space-y-2">
+                    <div className="flex items-start gap-2">
+                      <div className="flex-1 space-y-1.5">
+                        <Input
+                          placeholder="Item name *"
+                          value={item.name}
+                          onChange={(e) => updateLineItem(idx, "name", e.target.value)}
+                          className="h-7 text-xs bg-secondary/30 border-border"
+                        />
+                        <Input
+                          placeholder="Description (optional)"
+                          value={item.description}
+                          onChange={(e) => updateLineItem(idx, "description", e.target.value)}
+                          className="h-7 text-xs bg-secondary/30 border-border"
+                        />
+                      </div>
+                      <button
+                        onClick={() => removeLineItem(idx)}
+                        className="text-muted-foreground hover:text-red-400 transition-colors mt-0.5 shrink-0"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <div className="flex items-center gap-1">
+                        <label className="text-[11px] text-muted-foreground">Qty</label>
+                        <input
+                          type="number"
+                          min="0.01"
+                          step="0.01"
+                          value={item.quantity}
+                          onChange={(e) => updateLineItem(idx, "quantity", parseFloat(e.target.value) || 1)}
+                          className="w-16 h-7 rounded-md border border-border bg-secondary/30 px-2 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                        />
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <label className="text-[11px] text-muted-foreground">Unit Price</label>
+                        <div className="relative">
+                          <span className="absolute left-2 top-1/2 -translate-y-1/2 text-[11px] text-muted-foreground">$</span>
+                          <input
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            value={item.unitPrice}
+                            onChange={(e) => updateLineItem(idx, "unitPrice", parseFloat(e.target.value) || 0)}
+                            className="w-24 h-7 rounded-md border border-border bg-secondary/30 pl-5 pr-2 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                          />
+                        </div>
+                      </div>
+                      <div className="ml-auto text-xs font-medium text-foreground">
+                        = {formatMoney(item.quantity * item.unitPrice)}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Subtotal */}
+            {lineItems.length > 0 && (
+              <div className="flex justify-end mt-2">
+                <p className="text-xs text-muted-foreground">
+                  Subtotal: <span className="font-semibold text-foreground">{formatMoney(subtotal)}</span>
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="px-5 py-4 border-t border-border shrink-0 flex items-center justify-between gap-2">
+          <p className="text-[11px] text-muted-foreground">Quote will be created as a Draft in Jobber.</p>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={onClose} disabled={createQuote.isPending}>
+              Cancel
+            </Button>
+            <Button
+              size="sm"
+              onClick={handleSubmit}
+              disabled={createQuote.isPending || !selectedClient || !title.trim() || lineItems.length === 0}
+            >
+              {createQuote.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1" /> : null}
+              Create Quote
+            </Button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function OpsQuotes() {
@@ -415,8 +801,8 @@ export default function OpsQuotes() {
     title?: string | null;
     client?: { name?: string | null; companyName?: string | null } | null;
   } | null>(null);
-
-  const utils = trpc.useUtils();
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const utils = trpc.useUtils();;
   const { data, isLoading, error, refetch, isFetching } =
     trpc.jobber.quotes.useQuery({ first: 100 }, { retry: false });
 
@@ -500,6 +886,16 @@ export default function OpsQuotes() {
             >
               <RefreshCw className={`w-3.5 h-3.5 ${isFetching ? "animate-spin" : ""}`} />
             </Button>
+            {!notConnected && !isLoading && (
+              <Button
+                size="sm"
+                className="h-8 gap-1.5 text-xs"
+                onClick={() => setShowCreateModal(true)}
+              >
+                <PlusCircle className="w-3.5 h-3.5" />
+                New Quote
+              </Button>
+            )}
           </div>
         </div>
 
@@ -646,6 +1042,13 @@ export default function OpsQuotes() {
           onConfirm={() => deleteQuote.mutate({ id: deleteTarget.id })}
           onCancel={() => setDeleteTarget(null)}
           isPending={deleteQuote.isPending}
+        />
+      )}
+      {/* Create Quote modal */}
+      {showCreateModal && (
+        <CreateQuoteModal
+          onClose={() => setShowCreateModal(false)}
+          onCreated={() => utils.jobber.quotes.invalidate()}
         />
       )}
     </DashboardLayout>

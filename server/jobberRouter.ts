@@ -679,6 +679,88 @@ export const jobberRouter = router({
       return result?.productOrService ?? null;
     }),
 
+  /**
+   * Fetch active services from the Noland Jobber Service Manager app.
+   * This is a public endpoint on the service manager — no auth required.
+   */
+  fetchServicesFromManager: adminProcedure.query(async () => {
+    const res = await fetch(
+      "https://nolandjobber-c3cs6zr4.manus.space/api/trpc/jobber.listServices?batch=1&input=%7B%220%22%3A%7B%22json%22%3Anull%7D%7D",
+      { headers: { "Content-Type": "application/json" } }
+    );
+    if (!res.ok) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Failed to fetch services from service manager" });
+    const json = await res.json() as any;
+    // tRPC batch response: [{ result: { data: { json: { services: [...] } } } }]
+    const services = json?.[0]?.result?.data?.json?.services ?? json?.[0]?.result?.data?.json ?? [];
+    return services as Array<{
+      id: string;
+      name: string;
+      description: string;
+      unitPrice: number;
+      unitCost: number;
+      category: string;
+      taxable: boolean;
+      active: boolean;
+    }>;
+  }),
+
+  /**
+   * Create a new quote in Jobber.
+   * Requires an existing Jobber clientId and at least one line item.
+   */
+  quoteCreate: adminProcedure
+    .input(z.object({
+      clientId: z.string(),
+      title: z.string().min(1),
+      message: z.string().optional(),
+      lineItems: z.array(z.object({
+        name: z.string().min(1),
+        description: z.string().optional(),
+        quantity: z.number().positive(),
+        unitPrice: z.number().min(0),
+        productOrServiceId: z.string().optional(),
+      })).min(1),
+    }))
+    .mutation(async ({ input }) => {
+      const connected = await isJobberConnected();
+      if (!connected) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Jobber not connected" });
+      const lineItemsInput = input.lineItems.map(item => ({
+        name: item.name,
+        description: item.description ?? "",
+        quantity: item.quantity,
+        unitPrice: item.unitPrice,
+        ...(item.productOrServiceId ? { productOrServiceId: item.productOrServiceId } : {}),
+      }));
+      const data = await jobberGraphQL(`
+        mutation CreateQuote($input: QuoteCreateInput!) {
+          quoteCreate(input: $input) {
+            quote {
+              id
+              quoteNumber
+              title
+              quoteStatus
+              createdAt
+              amounts { subtotal total }
+              client { id name }
+            }
+            userErrors { message path }
+          }
+        }
+      `, {
+        input: {
+          clientId: input.clientId,
+          title: input.title,
+          message: input.message ?? "",
+          lineItems: lineItemsInput,
+        }
+      }) as any;
+      const errors = data?.quoteCreate?.userErrors;
+      if (errors?.length) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: errors.map((e: any) => e.message).join("; ") });
+      }
+      return data?.quoteCreate?.quote ?? null;
+    }),
+
   /** Get aggregated lead source breakdown (count per source) */
   getLeadSourceBreakdown: protectedProcedure.query(async () => {
     const db = await getDb();

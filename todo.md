@@ -993,3 +993,6 @@
 - [ ] Update CostCalculator, Quote, widgetRouter, CountyPageLayout, ForestryMulching, PropertyMaintenance, VegetationManagement, RightOfWayClearing related-service slug references
 - [x] Rewrite LandClearing.tsx Overview and Key Benefits copy to reflect land management scope and voice
 - [x] Update Land Management pricing tiers on public Pricing page based on current Middle & West TN market research
+- [x] Add quoteCreate mutation to jobberRouter (Jobber GraphQL API)
+- [ ] Add fetchServicesFromManager procedure to jobberRouter (pulls from nolandjobber service manager)
+- [x] Build Create Quote modal on /ops/quotes with client search, service line items, and quote submission
