@@ -8,14 +8,14 @@ import { Link } from "wouter";
 
 const faqs = [
   {
-    question: "How much does forestry mulching or land clearing cost?",
+    question: "How much does forestry mulching or land management cost?",
     answer:
       "Pricing depends on acreage, brush density, terrain, and the service type. Most residential jobs range from a few hundred to a few thousand dollars. We provide free, no-obligation quotes — fill out our quote form or call us at 615-406-4819 and we'll give you a clear, upfront number before any work begins.",
   },
   {
     question: "How long does a typical job take?",
     answer:
-      "Most residential land clearing and forestry mulching jobs are completed in a single day. Larger commercial or heavily overgrown properties may take 2–3 days. We'll give you a realistic timeline when we quote the job — no surprises.",
+      "Most residential land management and forestry mulching jobs are completed in a single day. Larger commercial or heavily overgrown properties may take 2–3 days. We'll give you a realistic timeline when we quote the job — no surprises.",
   },
   {
     question: "Will your equipment damage my existing trees or lawn?",

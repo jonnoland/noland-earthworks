@@ -75,10 +75,10 @@ describe("Jobber quote form data mapping", () => {
   });
 
   it("builds correct request title from service and county", () => {
-    const service = "Land Clearing";
+    const service = "Land Management";
     const county = "Williamson";
     const title = `${service} — ${county} County`;
-    expect(title).toBe("Land Clearing — Williamson County");
+    expect(title).toBe("Land Management — Williamson County");
   });
 
   it("includes acreage and message in description when provided", () => {
@@ -97,7 +97,7 @@ describe("Jobber quote form data mapping", () => {
     const acreage = "";
     const message = "";
     const parts = [
-      "Service: Land Clearing",
+      "Service: Land Management",
       "County: Maury County",
       acreage ? `Acreage: ${acreage}` : "",
       message ? `\nProject Details:\n${message}` : "",

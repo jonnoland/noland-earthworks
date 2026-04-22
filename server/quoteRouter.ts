@@ -473,7 +473,7 @@ export const quoteRouter = router({
       if (owner) {
         // Map the free-text service to a jobType enum value
         const serviceMap: Record<string, string> = {
-          "Land Clearing": "land_clearing",
+          "Land Management": "land_clearing",
           "Forestry Mulching": "forestry_mulching",
           "Brush Removal": "brush_removal",
           "Stump Grinding": "stump_grinding",

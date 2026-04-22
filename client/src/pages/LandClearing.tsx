@@ -12,12 +12,12 @@ const HERO = "https://d2xsxph8kpxj0f.cloudfront.net/310519663484957999/PymCzDCnS
 
 const data: ServicePageProps = {
   slug: "land-clearing",
-  title: "Land Clearing",
-  tagline: "Professional land clearing for residential, commercial, and agricultural properties across Middle & West Tennessee.",
+  title: "Land Management",
+  tagline: "Professional land management for residential, commercial, and agricultural properties across Middle & West Tennessee.",
   heroImage: HERO,
-  overviewTitle: "Complete Land Clearing Solutions",
+  overviewTitle: "Complete Land Management Solutions",
   overviewBody: [
-    "Noland Earthworks provides comprehensive land clearing services designed to prepare your property for its next chapter — whether that's a new home, commercial development, agricultural use, or simply reclaiming overgrown land.",
+    "Noland Earthworks provides comprehensive land management services designed to prepare your property for its next chapter — whether that's a new home, commercial development, agricultural use, or simply reclaiming overgrown land.",
     "Our experienced operators use modern, well-maintained equipment to safely and efficiently remove trees, stumps, brush, rocks, and debris. We work with you to understand your goals and deliver a clean, usable site that meets your specifications.",
     "As a veteran-owned company, we bring the discipline, precision, and work ethic of military service to every job. We show up on time, communicate clearly, and don't leave until the work is done right.",
   ],
@@ -37,7 +37,7 @@ const data: ServicePageProps = {
   ],
   faqs: [
     {
-      question: "How long does land clearing take?",
+      question: "How long does land management take?",
       answer: "Most residential lots (under 1 acre) can be cleared in a single day. Larger properties or those with dense tree cover may take 2–3 days. We'll give you a realistic timeline during the free estimate.",
     },
     {
@@ -46,10 +46,10 @@ const data: ServicePageProps = {
     },
     {
       question: "Do you handle stump removal?",
-      answer: "Yes. Stump grinding is available as an add-on to any land clearing project. We can grind stumps below grade so the area can be graded, seeded, or built upon.",
+      answer: "Yes. Stump grinding is available as an add-on to any land management project. We can grind stumps below grade so the area can be graded, seeded, or built upon.",
     },
     {
-      question: "Do I need a permit for land clearing in Tennessee?",
+      question: "Do I need a permit for land management in Tennessee?",
       answer: "Permit requirements vary by county and project scope. Some areas require erosion control permits for disturbed acreage. We can advise you on what's typically required in your county, but recommend checking with your local planning office.",
     },
     {
@@ -65,8 +65,8 @@ const data: ServicePageProps = {
 
 export default function LandClearingPage() {
   usePageTitle(
-    "Land Clearing Services — Middle & West Tennessee | Noland Earthworks",
-    "Expert land clearing services across Middle & West Tennessee. We remove trees, stumps, brush, and debris to prepare your property for building, farming, or recreation. Free estimates.",
+    "Land Management Services — Middle & West Tennessee | Noland Earthworks",
+    "Expert land management services across Middle & West Tennessee. We remove trees, stumps, brush, and debris to prepare your property for building, farming, or recreation. Free estimates.",
     "/services/land-clearing"
   );
   return (

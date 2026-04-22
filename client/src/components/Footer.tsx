@@ -43,7 +43,7 @@ export default function Footer() {
                 marginBottom: "1.5rem",
               }}
             >
-              Veteran-owned and operated land clearing and forestry mulching
+              Veteran-owned and operated land management and forestry mulching
               services for Middle &amp; West Tennessee. Licensed &amp; Insured.
             </p>
             {/* Social links */}

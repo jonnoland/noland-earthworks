@@ -586,7 +586,7 @@ function JobDetailPanel({
 // ─── Local Job Form types (kept for the Add Job modal) ────────────────────────
 
 const JOB_TYPE_LABELS: Record<string, string> = {
-  land_clearing: "Land Clearing",
+  land_clearing: "Land Management",
   forestry_mulching: "Forestry Mulching",
   brush_removal: "Brush Removal",
   stump_grinding: "Stump Grinding",

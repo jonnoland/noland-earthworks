@@ -652,7 +652,7 @@ function PricingBenchmarksCard() {
 
   // Static fallback rows shown when DB has no data yet
   const FALLBACK_ROWS = [
-    { serviceType: "Land Clearing",    lowPerAcre: 400, midPerAcre: 650,  highPerAcre: 1000, researchSummary: null, lastUpdatedAt: null },
+    { serviceType: "Land Management",    lowPerAcre: 400, midPerAcre: 650,  highPerAcre: 1000, researchSummary: null, lastUpdatedAt: null },
     { serviceType: "Forestry Mulching", lowPerAcre: 500, midPerAcre: 800,  highPerAcre: 1200, researchSummary: null, lastUpdatedAt: null },
     { serviceType: "Brush Removal",    lowPerAcre: 250, midPerAcre: 400,  highPerAcre: 600,  researchSummary: null, lastUpdatedAt: null },
     { serviceType: "Brush Hogging",    lowPerAcre: 75,  midPerAcre: 125,  highPerAcre: 200,  researchSummary: null, lastUpdatedAt: null },
@@ -781,7 +781,7 @@ export default function Pricing() {
   const [crewDaysNeeded, setCrewDaysNeeded] = useState(2);
   const [clientName, setClientName] = useState("");
   const [jobAddress, setJobAddress] = useState("");
-  const [jobType, setJobType] = useState("Land Clearing");
+  const [jobType, setJobType] = useState("Land Management");
 
   // ─── Distance Pricing state ────────────────────────────────────────────────
   // Business origin: Vanleer, TN (Jon's base of operations)
@@ -1084,7 +1084,7 @@ export default function Pricing() {
                 value={jobType} onChange={e => setJobType(e.target.value)}
                 className="w-full bg-secondary/50 border border-border rounded-md px-3 py-2 text-xs text-foreground outline-none focus:border-primary/50 transition-colors"
               >
-                <option>Land Clearing</option>
+                <option>Land Management</option>
                 <option>Forestry Mulching</option>
                 <option>Brush Removal</option>
                 <option>Brush Hogging</option>
@@ -1297,7 +1297,7 @@ export default function Pricing() {
 // Maps website public service names to Jobber catalog keywords for fuzzy matching
 const WEBSITE_SERVICES = [
   { name: "Forestry Mulching",                    keywords: ["forestry", "mulch", "mulching"],                  websiteLow: 1000, websiteHigh: 4500, unit: "per acre" },
-  { name: "Land Clearing",                         keywords: ["land clearing", "clearing"],                      websiteLow: 1500, websiteHigh: 12000, unit: "per acre" },
+  { name: "Land Management",                         keywords: ["land management", "clearing"],                      websiteLow: 1500, websiteHigh: 12000, unit: "per acre" },
   { name: "Vegetation Management",                 keywords: ["vegetation", "right-of-way", "row", "corridor"],  websiteLow: 1200, websiteHigh: 2500, unit: "per acre" },
   { name: "Right-of-Way Clearing",                 keywords: ["right of way", "right-of-way", "row"],            websiteLow: 1200, websiteHigh: 2500, unit: "per acre" },
   { name: "Property Maintenance",                  keywords: ["property maintenance", "maintenance"],            websiteLow: 150, websiteHigh: 600, unit: "per visit" },

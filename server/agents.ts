@@ -112,11 +112,11 @@ export async function runLeadFollowupAgent() {
         await resend.emails.send({
           from: "Noland Earthworks <noreply@nolandearthworks.com>",
           to: lead.email,
-          subject: "Still thinking about your land clearing project?",
+          subject: "Still thinking about your land management project?",
           html: `
             <div style="font-family:'Georgia',serif;max-width:560px;margin:0 auto;color:#1a1a1a;line-height:1.7;">
               <p>Hi ${lead.name.split(" ")[0]},</p>
-              <p>I wanted to follow up on your inquiry about ${lead.jobType ?? "land clearing"} work. If you're still planning the project, I'd be glad to schedule a site visit and put together a quote for you.</p>
+              <p>I wanted to follow up on your inquiry about ${lead.jobType ?? "land management"} work. If you're still planning the project, I'd be glad to schedule a site visit and put together a quote for you.</p>
               <p>No pressure — just want to make sure you have what you need to move forward when the time is right.</p>
               <p>Give me a call at <a href="tel:6154064819" style="color:#c96e24;">615-406-4819</a> or reply to this email and we'll get it sorted out.</p>
               <p style="margin-top:2rem;">— Jon Noland<br><span style="font-size:0.85rem;color:#666;">Noland Earthworks, LLC &mdash; Veteran-Owned &amp; Operated</span></p>
@@ -609,12 +609,12 @@ export async function runDailyDigestAgent() {
 // ─── Agent 6: Pricing Benchmark Update ───────────────────────────────────────
 /**
  * Runs every Sunday at 6 AM. Uses the LLM to research current market rates
- * for land clearing, forestry mulching, brush removal, and brush hogging in
+ * for land management, forestry mulching, brush removal, and brush hogging in
  * Middle & West Tennessee. Upserts results into pricing_benchmarks table.
  */
 
 const PRICING_SERVICES = [
-  { key: "Land Clearing",    description: "land clearing per acre in Middle and West Tennessee" },
+  { key: "Land Management",    description: "land management per acre in Middle and West Tennessee" },
   { key: "Forestry Mulching", description: "forestry mulching per acre in Middle and West Tennessee" },
   { key: "Brush Removal",    description: "brush removal per acre in Middle and West Tennessee" },
   { key: "Brush Hogging",    description: "brush hogging / bush hogging per acre in Middle and West Tennessee" },
@@ -636,14 +636,14 @@ export async function runPricingUpdateAgent() {
   try {
     for (const svc of PRICING_SERVICES) {
       try {
-        const prompt = `You are a market research assistant for a land clearing company in Tennessee.
+        const prompt = `You are a market research assistant for a land management company in Tennessee.
 
 Research current market rates for ${svc.description}. Focus specifically on:
 - Middle Tennessee (Nashville metro, Columbia, Murfreesboro, Franklin, Clarksville, Lawrenceburg areas)
 - West Tennessee (Jackson, Memphis suburbs, Dyersburg, Paris, Brownsville areas)
 
 Consider:
-- Competitor pricing from companies like Middle Tennessee Land Clearing, Mid State Land Clearing, Grounded Land Solutions, Stribling Land Clearing & Dirtwork, Wolf Creek Land Company
+- Competitor pricing from companies like Middle Tennessee Land Clearing LLC, Mid State Land Clearing LLC, Grounded Land Solutions, Stribling Land Clearing & Dirtwork, Wolf Creek Land Company
 - Industry forums, contractor pricing guides, and homeowner cost reports for Tennessee
 - Typical terrain conditions in this region (rolling hills, cedar glades, bottomland hardwoods)
 - Current fuel and equipment operating costs as of ${new Date().getFullYear()}
@@ -779,7 +779,7 @@ export const AGENT_REGISTRY = [
   {
     id: "pricing_update",
     name: "Pricing Benchmark Update",
-    description: "Researches current market rates for land clearing, forestry mulching, brush removal, and brush hogging in Middle & West Tennessee. Updates the benchmarks on the Pricing page.",
+    description: "Researches current market rates for land management, forestry mulching, brush removal, and brush hogging in Middle & West Tennessee. Updates the benchmarks on the Pricing page.",
     schedule: "Sundays at 6 AM",
   },
 ] as const;

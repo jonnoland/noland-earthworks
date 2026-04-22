@@ -78,8 +78,8 @@ const STATS = [
 
 export default function AboutPage() {
   usePageTitle(
-    "About Us — Veteran-Owned Land Clearing Company | Noland Earthworks",
-    "Learn about Jon M. Noland — Army veteran, IT professional, and founder of Noland Earthworks. Veteran-owned land clearing and forestry mulching serving 35 counties across Middle & West Tennessee.",
+    "About Us — Veteran-Owned Land Management Company | Noland Earthworks",
+    "Learn about Jon M. Noland — Army veteran, IT professional, and founder of Noland Earthworks. Veteran-owned land management and forestry mulching serving 35 counties across Middle & West Tennessee.",
     "/about"
   );
   const [submitted, setSubmitted] = useState(false);
@@ -662,7 +662,7 @@ export default function AboutPage() {
                     lineHeight: 1.6,
                   }}
                 >
-                  For land clearing, forestry mulching, or other services, use our dedicated quote form for the fastest response.
+                  For land management, forestry mulching, or other services, use our dedicated quote form for the fastest response.
                 </p>
                 <a
                   href="/quote"

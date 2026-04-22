@@ -30,7 +30,7 @@ const data: ServicePageProps = {
     "Flexible scheduling: one-time or recurring maintenance",
   ],
   relatedServices: [
-    { title: "Land Clearing", slug: "land-clearing", description: "Full site clearing of trees, stumps, brush, and debris.", heroImage: LAND_HERO },
+    { title: "Land Management", slug: "land-clearing", description: "Full site clearing of trees, stumps, brush, and debris.", heroImage: LAND_HERO },
     { title: "Forestry Mulching", slug: "forestry-mulching", description: "Mulch trees, brush, and stumps in a single pass — no hauling required.", heroImage: FORESTRY_HERO },
     { title: "Property Maintenance", slug: "property-maintenance", description: "Keep your land clean, safe, and well-maintained year-round.", heroImage: MAINTENANCE_HERO },
   ],
@@ -48,8 +48,8 @@ const data: ServicePageProps = {
       answer: "Our primary methods are mechanical — mulching, cutting, and mowing. We do not apply herbicides. If chemical treatment is needed for stubborn invasives, we can recommend licensed applicators to work alongside our mechanical services.",
     },
     {
-      question: "What's the difference between vegetation management and land clearing?",
-      answer: "Land clearing is a one-time, comprehensive removal of all vegetation from a site. Vegetation management is an ongoing service focused on controlling regrowth and maintaining cleared areas. Many clients start with land clearing and then transition to a vegetation management program.",
+      question: "What's the difference between vegetation management and land management?",
+      answer: "Land clearing is a one-time, comprehensive removal of all vegetation from a site. Vegetation management is an ongoing service focused on controlling regrowth and maintaining cleared areas. Many clients start with land management and then transition to a vegetation management program.",
     },
     {
       question: "Can you manage vegetation around my pond or creek?",

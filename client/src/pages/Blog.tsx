@@ -11,8 +11,8 @@ import { ArrowRight, Calendar, RefreshCw } from "lucide-react";
 export const BLOG_POSTS = [
   {
     slug: "cost-of-land-clearing-tennessee",
-    title: "How Much Does Land Clearing Cost in Tennessee? (2026 Guide)",
-    meta: "Discover the true cost of land clearing and forestry mulching in Middle Tennessee. Learn what factors affect pricing per acre and how to get the best value.",
+    title: "How Much Does Land Management Cost in Tennessee? (2026 Guide)",
+    meta: "Discover the true cost of land management and forestry mulching in Middle Tennessee. Learn what factors affect pricing per acre and how to get the best value.",
     date: "April 2026",
     lastUpdated: "April 2026",
     readTime: "5 min read",
@@ -21,7 +21,7 @@ export const BLOG_POSTS = [
   {
     slug: "forestry-mulching-vs-bulldozing",
     title: "Forestry Mulching vs. Bulldozing: Which is Better for Your Property?",
-    meta: "Compare forestry mulching and traditional bulldozing for land clearing. Learn why mulching is faster, cheaper, and better for your Tennessee property's soil.",
+    meta: "Compare forestry mulching and traditional bulldozing for land management. Learn why mulching is faster, cheaper, and better for your Tennessee property's soil.",
     date: "April 2026",
     lastUpdated: "April 2026",
     readTime: "5 min read",
@@ -39,7 +39,7 @@ export const BLOG_POSTS = [
   {
     slug: "best-time-to-clear-land-tennessee",
     title: "Best Time of Year to Clear Land in Middle Tennessee",
-    meta: "Wondering when to clear land in Tennessee? Learn the best season for forestry mulching and land clearing in Middle Tennessee to save money and get faster results.",
+    meta: "Wondering when to clear land in Tennessee? Learn the best season for forestry mulching and land management in Middle Tennessee to save money and get faster results.",
     date: "April 2026",
     lastUpdated: "April 2026",
     readTime: "5 min read",
@@ -56,8 +56,8 @@ export const BLOG_POSTS = [
   },
   {
     slug: "land-clearing-williamson-county",
-    title: "Land Clearing in Williamson County, TN: What Property Owners Need to Know",
-    meta: "Need land clearing in Williamson County, TN? Learn about forestry mulching, permit requirements, and local terrain — serving Franklin, Brentwood, Spring Hill, and all of Williamson County.",
+    title: "Land Management in Williamson County, TN: What Property Owners Need to Know",
+    meta: "Need land management in Williamson County, TN? Learn about forestry mulching, permit requirements, and local terrain — serving Franklin, Brentwood, Spring Hill, and all of Williamson County.",
     date: "April 2026",
     lastUpdated: "April 2026",
     readTime: "6 min read",
@@ -65,8 +65,8 @@ export const BLOG_POSTS = [
   },
   {
     slug: "land-clearing-davidson-county",
-    title: "Land Clearing in Davidson County, TN: What Property Owners Need to Know",
-    meta: "Need land clearing in Davidson County, TN? Noland Earthworks provides forestry mulching and land clearing across Nashville, Antioch, Hermitage, Bellevue, and all of Davidson County.",
+    title: "Land Management in Davidson County, TN: What Property Owners Need to Know",
+    meta: "Need land management in Davidson County, TN? Noland Earthworks provides forestry mulching and land management across Nashville, Antioch, Hermitage, Bellevue, and all of Davidson County.",
     date: "April 2026",
     lastUpdated: "April 2026",
     readTime: "6 min read",
@@ -74,8 +74,8 @@ export const BLOG_POSTS = [
   },
   {
     slug: "land-clearing-rutherford-county",
-    title: "Land Clearing in Rutherford County, TN: What Property Owners Need to Know",
-    meta: "Need land clearing in Rutherford County, TN? Noland Earthworks provides forestry mulching and land clearing in Murfreesboro, Smyrna, La Vergne, Eagleville, and across Rutherford County.",
+    title: "Land Management in Rutherford County, TN: What Property Owners Need to Know",
+    meta: "Need land management in Rutherford County, TN? Noland Earthworks provides forestry mulching and land management in Murfreesboro, Smyrna, La Vergne, Eagleville, and across Rutherford County.",
     date: "April 2026",
     lastUpdated: "April 2026",
     readTime: "6 min read",
@@ -85,8 +85,8 @@ export const BLOG_POSTS = [
 
 export default function Blog() {
   usePageTitle(
-    "Land Clearing Resources & Blog | Noland Earthworks",
-    "Expert land clearing and forestry mulching guides for Tennessee property owners. Pricing, methods, and tips from Noland Earthworks — veteran-owned and operated.",
+    "Land Management Resources & Blog | Noland Earthworks",
+    "Expert land management and forestry mulching guides for Tennessee property owners. Pricing, methods, and tips from Noland Earthworks — veteran-owned and operated.",
     "/blog"
   );
 
@@ -129,7 +129,7 @@ export default function Blog() {
               marginBottom: "1rem",
             }}
           >
-            Land Clearing <span style={{ color: "#E07B2A" }}>Knowledge Base</span>
+            Land Management <span style={{ color: "#E07B2A" }}>Knowledge Base</span>
           </h1>
           <p
             style={{

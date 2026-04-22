@@ -338,7 +338,7 @@ async function findClientByPhone(phone: string): Promise<string | null> {
 
 // Map website service names to Jobber line item names
 const SERVICE_LINE_ITEMS: Record<string, string> = {
-  "Land Clearing": "Land Clearing",
+  "Land Management": "Land Management",
   "Forestry Mulching": "Forestry Mulching",
   "Vegetation Management": "Vegetation Management",
   "Property Maintenance": "Property Maintenance",

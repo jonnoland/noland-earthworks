@@ -265,7 +265,7 @@ export default function BlogPostLayout({
                   letterSpacing: "0.05em",
                 }}
               >
-                Veteran-owned land clearing &amp; forestry mulching specialists, Middle Tennessee
+                Veteran-owned land management &amp; forestry mulching specialists, Middle Tennessee
               </div>
             </div>
           </div>

@@ -48,7 +48,7 @@ const PROJECTS: Project[] = [
     id: 3,
     title: "New Home Site Preparation",
     county: "Williamson County",
-    service: "Land Clearing",
+    service: "Land Management",
     acreage: "5 acres",
     before: HERO_IMG,
     after: LAND_IMG,
@@ -68,7 +68,7 @@ const PROJECTS: Project[] = [
     id: 5,
     title: "Commercial Development Site",
     county: "Rutherford County",
-    service: "Land Clearing",
+    service: "Land Management",
     acreage: "8 acres",
     before: HERO_IMG,
     after: LAND_IMG,
@@ -86,7 +86,7 @@ const PROJECTS: Project[] = [
   },
 ];
 
-const SERVICES = ["All", "Forestry Mulching", "Land Clearing", "Vegetation Management"];
+const SERVICES = ["All", "Forestry Mulching", "Land Management", "Vegetation Management"];
 
 function ProjectCard({ project }: { project: Project }) {
   const [showAfter, setShowAfter] = useState(false);
@@ -238,7 +238,7 @@ function ProjectCard({ project }: { project: Project }) {
 export default function Gallery() {
   usePageTitle(
     "Before & After Gallery | Noland Earthworks",
-    "See real before and after photos of land clearing and forestry mulching projects across Middle Tennessee. Wilson, Dickson, Williamson, Maury, Rutherford, and Montgomery counties.",
+    "See real before and after photos of land management and forestry mulching projects across Middle Tennessee. Wilson, Dickson, Williamson, Maury, Rutherford, and Montgomery counties.",
     "/gallery"
   );
 
@@ -290,7 +290,7 @@ export default function Gallery() {
               marginTop: "1rem",
             }}
           >
-            Real projects. Real results. See what professional land clearing and forestry mulching looks like across Middle Tennessee.
+            Real projects. Real results. See what professional land management and forestry mulching looks like across Middle Tennessee.
           </p>
         </div>
       </section>

@@ -7,7 +7,7 @@ import { Resend } from "resend";
 
 const SERVICE_LABELS: Record<string, string> = {
   "forestry-mulching": "Forestry Mulching",
-  "land-clearing": "Land Clearing",
+  "land-clearing": "Land Management",
   "vegetation-management": "Vegetation Management",
   "right-of-way-clearing": "Right-of-Way Clearing",
   "property-maintenance": "Property Maintenance",

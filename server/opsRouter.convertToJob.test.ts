@@ -204,13 +204,13 @@ describe("opsRouter.leads.convertToJob", () => {
   });
 
   it("derives job title and client from lead data when no overrides given", async () => {
-    mockLeadStore = [makeLead({ name: "Jones Farm", jobType: "Land Clearing" })];
+    mockLeadStore = [makeLead({ name: "Jones Farm", jobType: "Land Management" })];
     const caller = createCaller(makeCtx(ownerUser));
     await caller.leads.convertToJob({ leadId: 1 });
     const inserted = (global as any).__lastInsertedJob;
     expect(inserted.client).toBe("Jones Farm");
     expect(inserted.title).toContain("Jones Farm");
-    expect(inserted.title).toContain("Land Clearing");
+    expect(inserted.title).toContain("Land Management");
   });
 
   it("caller-supplied overrides take precedence over lead data", async () => {

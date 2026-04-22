@@ -309,7 +309,7 @@ const leadsRouter = router({
       if (leadRows.length === 0) throw new Error("Lead not found");
       const lead = leadRows[0];
       const jobTypeMap: Record<string, "land_clearing" | "forestry_mulching" | "brush_removal" | "stump_grinding" | "wildfire_mitigation"> = {
-        "Land Clearing": "land_clearing", "land_clearing": "land_clearing",
+        "Land Management": "land_clearing", "land_clearing": "land_clearing",
         "Forestry Mulching": "forestry_mulching", "forestry_mulching": "forestry_mulching",
         "Brush Removal": "brush_removal", "brush_removal": "brush_removal",
         "Stump Grinding": "stump_grinding", "stump_grinding": "stump_grinding",
@@ -318,7 +318,7 @@ const leadsRouter = router({
       const resolvedJobType = input.jobType ?? (lead.jobType ? (jobTypeMap[lead.jobType] ?? "land_clearing") : "land_clearing");
       const newJobData = {
         userId: ctx.user.id,
-        title: input.title ?? `${lead.name} — ${lead.jobType ?? "Land Clearing"}`,
+        title: input.title ?? `${lead.name} — ${lead.jobType ?? "Land Management"}`,
         client: input.client ?? lead.name,
         address: input.address ?? lead.address ?? undefined,
         jobType: resolvedJobType,

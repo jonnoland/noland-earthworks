@@ -16,7 +16,7 @@ const data: ServicePageProps = {
   heroImage: HERO,
   overviewTitle: "What Is Forestry Mulching?",
   overviewBody: [
-    "Forestry mulching is a single-step land clearing process that uses a specialized machine with a rotating drum of carbide teeth to grind trees, brush, stumps, and vegetation directly into mulch — all in one pass.",
+    "Forestry mulching is a single-step land management process that uses a specialized machine with a rotating drum of carbide teeth to grind trees, brush, stumps, and vegetation directly into mulch — all in one pass.",
     "Unlike traditional clearing methods that require separate crews for felling, chipping, hauling, and burning, forestry mulching accomplishes everything simultaneously. The resulting mulch layer stays on-site, protecting the soil from erosion, retaining moisture, and naturally decomposing into organic matter.",
     "This method is ideal for properties where you want to clear vegetation without disturbing the soil structure — perfect for future pasture, trails, fire breaks, or simply opening up views and access on wooded land.",
   ],
@@ -30,7 +30,7 @@ const data: ServicePageProps = {
     "Ideal for fire break creation and wildfire risk reduction",
   ],
   relatedServices: [
-    { title: "Land Clearing", slug: "land-clearing", description: "Full site clearing of trees, stumps, brush, and debris.", heroImage: LAND_HERO },
+    { title: "Land Management", slug: "land-clearing", description: "Full site clearing of trees, stumps, brush, and debris.", heroImage: LAND_HERO },
     { title: "Vegetation Management", slug: "vegetation-management", description: "Control invasive species, overgrowth, and unwanted vegetation.", heroImage: VEGETATION_HERO },
     { title: "Property Maintenance", slug: "property-maintenance", description: "Keep your land clean, safe, and well-maintained year-round.", heroImage: MAINTENANCE_HERO },
   ],
@@ -57,7 +57,7 @@ const data: ServicePageProps = {
     },
     {
       question: "What's the minimum acreage for a forestry mulching job?",
-      answer: "We typically have a minimum job size of around ¼ acre to make mobilization worthwhile. However, we're happy to discuss smaller projects — especially if combined with other services like vegetation management or land clearing.",
+      answer: "We typically have a minimum job size of around ¼ acre to make mobilization worthwhile. However, we're happy to discuss smaller projects — especially if combined with other services like vegetation management or land management.",
     },
   ],
 };

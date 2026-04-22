@@ -3,8 +3,8 @@ import BlogPostLayout from "@/components/BlogPostLayout";
 export default function CostOfLandClearing() {
   return (
     <BlogPostLayout
-      title="How Much Does Land Clearing Cost in Tennessee? (2026 Guide)"
-      pageTitle="How Much Does Land Clearing Cost in Tennessee? (2026 Guide) | Noland Earthworks"
+      title="How Much Does Land Management Cost in Tennessee? (2026 Guide)"
+      pageTitle="How Much Does Land Management Cost in Tennessee? (2026 Guide) | Noland Earthworks"
       metaDescription="Land clearing in Tennessee costs $1,500–$4,000 per acre. Learn what drives pricing, how forestry mulching compares to bulldozing, and how to get an accurate estimate."
       date="April 2026"
       dateISO="2026-04-01"
@@ -15,12 +15,12 @@ export default function CostOfLandClearing() {
       category="Pricing & Planning"
     >
       <p>
-        If you've recently purchased property in Middle Tennessee or are looking to develop existing acreage, one of your first questions is likely: <strong>How much does land clearing cost?</strong> The short answer is that land clearing in Tennessee typically ranges from <strong>$1,500 to $4,000 per acre</strong>, but the exact price depends heavily on the method used, the density of the vegetation, and the terrain.
+        If you've recently purchased property in Middle Tennessee or are looking to develop existing acreage, one of your first questions is likely: <strong>How much does land management cost?</strong> The short answer is that land management in Tennessee typically ranges from <strong>$1,500 to $4,000 per acre</strong>, but the exact price depends heavily on the method used, the density of the vegetation, and the terrain.
       </p>
 
-      <h2>Traditional Land Clearing</h2>
+      <h2>Traditional Land Management</h2>
       <p>
-        Traditional land clearing involves bulldozers, excavators, and dump trucks. It requires knocking down trees, digging up stumps, piling the debris, and either burning it or hauling it away. Because this method requires multiple heavy machines, permits for burning, and hauling fees, it is often the most expensive route — frequently exceeding <strong>$3,000 per acre</strong>.
+        Traditional land management involves bulldozers, excavators, and dump trucks. It requires knocking down trees, digging up stumps, piling the debris, and either burning it or hauling it away. Because this method requires multiple heavy machines, permits for burning, and hauling fees, it is often the most expensive route — frequently exceeding <strong>$3,000 per acre</strong>.
       </p>
 
       <h2>Forestry Mulching: A More Cost-Effective Alternative</h2>
@@ -49,7 +49,7 @@ export default function CostOfLandClearing() {
         Beyond the upfront cost savings, forestry mulching provides long-term value. The mulch left behind acts as an erosion barrier, protecting your topsoil from washing away in heavy Tennessee rains. As the mulch decomposes, it returns nutrients to the soil, leaving your land healthier than before.
       </p>
       <p>
-        For most residential, agricultural, and recreational land clearing projects in Middle Tennessee, forestry mulching delivers the best combination of speed, cost, and land health. Contact Noland Earthworks today for a free, no-obligation quote.
+        For most residential, agricultural, and recreational land management projects in Middle Tennessee, forestry mulching delivers the best combination of speed, cost, and land health. Contact Noland Earthworks today for a free, no-obligation quote.
       </p>
     </BlogPostLayout>
   );

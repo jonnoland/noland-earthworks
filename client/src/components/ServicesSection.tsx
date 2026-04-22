@@ -12,10 +12,10 @@ const PROPERTY_MAINT = "https://d2xsxph8kpxj0f.cloudfront.net/310519663484957999
 
 const services = [
   {
-    title: "Land Clearing",
+    title: "Land Management",
     href: "/services/land-clearing",
     description:
-      "Professional land clearing services for residential and commercial properties. We safely remove trees, brush, stumps, and debris to prepare your land for development, agriculture, or landscaping.",
+      "Professional land management services for residential and commercial properties. We safely remove trees, brush, stumps, and debris to prepare your land for development, agriculture, or landscaping.",
     image: LAND_CLEARING,
   },
   {
@@ -208,7 +208,7 @@ export default function ServicesSection() {
                 maxWidth: "480px",
               }}
             >
-              Whether you need land clearing, forestry mulching, or vegetation
+              Whether you need land management, forestry mulching, or vegetation
               management, Noland Earthworks has the expertise and equipment to
               handle your project efficiently and professionally.
             </p>

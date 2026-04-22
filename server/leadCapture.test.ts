@@ -148,7 +148,7 @@ describe("quoteRouter — lead capture", () => {
       name: "John Farm",
       phone: "615-555-0002",
       email: "john@farm.com",
-      service: "Land Clearing",
+      service: "Land Management",
       county: "Davidson",
       acreage: "10",
       street: "123 Farm Rd",

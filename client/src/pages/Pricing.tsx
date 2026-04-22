@@ -1,7 +1,7 @@
 /*
  * DESIGN: Heavy Equipment Grit — matches site style
  * Pricing Guide page — transparent pricing ranges for Middle & West Tennessee
- * Based on Tennessee market research for land clearing / forestry mulching services
+ * Based on Tennessee market research for land management / forestry mulching services
  */
 import React, { useState } from "react";
 import Navbar from "@/components/Navbar";
@@ -44,7 +44,7 @@ const services = [
   },
   {
     id: "land-clearing",
-    name: "Land Clearing",
+    name: "Land Management",
     tagline: "Full-site preparation for construction or agriculture",
     icon: "🏗️",
     description:
@@ -160,7 +160,7 @@ const services = [
     tagline: "Protect bare ground after clearing",
     icon: "🌱",
     description:
-      "Broadcast seeding, erosion blanket installation, and ground cover application following land clearing or forestry mulching. Keeps topsoil in place and establishes ground cover before the next rain.",
+      "Broadcast seeding, erosion blanket installation, and ground cover application following land management or forestry mulching. Keeps topsoil in place and establishes ground cover before the next rain.",
     priceUnit: "per acre",
     tiers: [
       {
@@ -189,7 +189,7 @@ const services = [
     tagline: "Reclaim your boundaries without a second mobilization",
     icon: "🚧",
     description:
-      "Clearing overgrown brush, saplings, and encroaching vegetation along fence rows and property boundaries. Priced per linear foot and typically added to land clearing or pasture reclamation jobs at no additional mobilization cost.",
+      "Clearing overgrown brush, saplings, and encroaching vegetation along fence rows and property boundaries. Priced per linear foot and typically added to land management or pasture reclamation jobs at no additional mobilization cost.",
     priceUnit: "per linear foot",
     tiers: [
       {
@@ -208,7 +208,7 @@ const services = [
         detail: "Dense brush, vines, and trees overtaking fence line — fence may not be visible",
       },
     ],
-    note: "Most cost-effective when added to an existing land clearing or pasture job — same mobilization, no additional trip charge.",
+    note: "Most cost-effective when added to an existing land management or pasture job — same mobilization, no additional trip charge.",
     href: "/services/fence-line-clearing",
     isAddon: true,
   },
@@ -336,7 +336,7 @@ const costFactors = [
     icon: "Flame",
     expanded: {
       headline: "How you handle the material changes the price significantly",
-      body: "Forestry mulching is the lowest-cost disposal method because there's nothing to haul — the machine grinds everything into a mulch layer that stays on-site. Traditional land clearing generates large volumes of brush, logs, and stumps that must be piled, burned (where permitted), or hauled to a disposal site. Haul-away requires additional equipment (skid steers, dump trucks) and tipping fees at the disposal site. If burning is an option on your property, it's typically the next most cost-effective method after mulching.",
+      body: "Forestry mulching is the lowest-cost disposal method because there's nothing to haul — the machine grinds everything into a mulch layer that stays on-site. Traditional land management generates large volumes of brush, logs, and stumps that must be piled, burned (where permitted), or hauled to a disposal site. Haul-away requires additional equipment (skid steers, dump trucks) and tipping fees at the disposal site. If burning is an option on your property, it's typically the next most cost-effective method after mulching.",
       example: "Forestry mulching a 3-acre parcel: no disposal cost — mulch stays on-site. Land clearing the same 3 acres with haul-away: add $500–$1,500 in disposal costs depending on debris volume.",
     },
   },
@@ -364,7 +364,7 @@ const faqs = [
     a: "Yes — our minimum is 1 acre or $1,800, whichever is greater. This covers equipment mobilization and ensures we can do quality work on every job.",
   },
   {
-    q: "Why is forestry mulching sometimes cheaper than land clearing?",
+    q: "Why is forestry mulching sometimes cheaper than land management?",
     a: "Forestry mulching is a single-machine operation — no separate grinder, no haul trucks, no burning. The mulch stays on-site as a soil amendment. Land clearing involves more equipment, labor, and debris disposal, which adds cost.",
   },
   {
@@ -377,11 +377,11 @@ const faqs = [
   },
   {
     q: "Do prices include stump removal?",
-    a: "Forestry mulching grinds stumps flush with the ground in the same pass — included at no extra charge. For traditional land clearing, stump grinding is included in our estimates unless otherwise noted.",
+    a: "Forestry mulching grinds stumps flush with the ground in the same pass — included at no extra charge. For traditional land management, stump grinding is included in our estimates unless otherwise noted.",
   },
   {
-    q: "How is right-of-way clearing priced differently from general land clearing?",
-    a: "ROW clearing is priced by the linear foot for narrow corridors (driveways, fence lines) or by the acre for wider easements. Because ROW work is long and narrow, equipment must make more passes per acre than open-field clearing — which is why per-acre rates are sometimes slightly higher than general land clearing. We'll measure your corridor and quote whichever unit makes more sense for your project.",
+    q: "How is right-of-way clearing priced differently from general land management?",
+    a: "ROW clearing is priced by the linear foot for narrow corridors (driveways, fence lines) or by the acre for wider easements. Because ROW work is long and narrow, equipment must make more passes per acre than open-field clearing — which is why per-acre rates are sometimes slightly higher than general land management. We'll measure your corridor and quote whichever unit makes more sense for your project.",
   },
   {
     q: "Do you offer recurring ROW maintenance contracts?",
@@ -617,8 +617,8 @@ function CostFactorCard({ row }: { row: typeof costFactors[number] }) {
 
 export default function PricingPage() {
   usePageTitle(
-    "Land Clearing & Forestry Mulching Pricing Guide — Middle & West Tennessee | Noland Earthworks",
-    "Transparent pricing for land clearing and forestry mulching in Tennessee. Typical costs range $1,000–$4,500/acre. Use our free estimate calculator to get a rough number in 30 seconds.",
+    "Land Management & Forestry Mulching Pricing Guide — Middle & West Tennessee | Noland Earthworks",
+    "Transparent pricing for land management and forestry mulching in Tennessee. Typical costs range $1,000–$4,500/acre. Use our free estimate calculator to get a rough number in 30 seconds.",
     "/pricing"
   );
   return (
@@ -662,7 +662,7 @@ export default function PricingPage() {
                 marginBottom: "1.25rem",
               }}
             >
-              What Does Land Clearing<br />
+              What Does Land Management<br />
               <span style={{ color: "#E07B2A" }}>Cost in Tennessee?</span>
             </h1>
             <p
@@ -774,7 +774,7 @@ export default function PricingPage() {
               What Affects Your Price?
             </h2>
             <p style={{ fontFamily: "'Lato', sans-serif", color: "rgba(240,237,230,0.6)", fontSize: "1rem", maxWidth: "580px", margin: "0 auto" }}>
-              Seven factors determine the final cost of any land clearing or forestry mulching job. Here's exactly how each one works — and what it means for your estimate.
+              Seven factors determine the final cost of any land management or forestry mulching job. Here's exactly how each one works — and what it means for your estimate.
             </p>
           </div>
 
@@ -792,7 +792,7 @@ export default function PricingPage() {
         </div>
       </section>
 
-      {/* ── Forestry mulching vs land clearing comparison ── */}
+      {/* ── Forestry mulching vs land management comparison ── */}
       <section style={{ padding: "5rem 0" }}>
         <div className="container">
           <div style={{ textAlign: "center", marginBottom: "3rem" }}>
@@ -805,7 +805,7 @@ export default function PricingPage() {
                 marginBottom: "0.75rem",
               }}
             >
-              Forestry Mulching vs. Traditional Land Clearing
+              Forestry Mulching vs. Traditional Land Management
             </h2>
             <p style={{ fontFamily: "'Lato', sans-serif", color: "rgba(240,237,230,0.6)", fontSize: "1rem", maxWidth: "560px", margin: "0 auto" }}>
               Not sure which method is right for your property? Here's how they compare.
@@ -867,7 +867,7 @@ export default function PricingPage() {
                       width: "37.5%",
                     }}
                   >
-                    🏗️ Traditional Land Clearing
+                    🏗️ Traditional Land Management
                   </th>
                 </tr>
               </thead>

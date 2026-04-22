@@ -889,7 +889,7 @@ function TemplateEditorTab() {
               <textarea
                 value={newForm.body}
                 onChange={e => setNewForm(p => ({ ...p, body: e.target.value }))}
-                placeholder="Hi {{first_name}}, just following up on your land clearing inquiry..."
+                placeholder="Hi {{first_name}}, just following up on your land management inquiry..."
                 rows={4}
                 className="w-full bg-secondary/50 border border-border rounded-md px-3 py-2 text-xs text-foreground outline-none focus:border-primary/50 transition-colors resize-none"
               />

@@ -40,7 +40,7 @@ const features = [
     icon: <Tag size={28} />,
     title: "5% Multi-Service Discount",
     description:
-      "Bundle multiple services and save. Combine land clearing, forestry mulching, and vegetation management for 5% off.",
+      "Bundle multiple services and save. Combine land management, forestry mulching, and vegetation management for 5% off.",
   },
 ];
 

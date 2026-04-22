@@ -65,7 +65,7 @@ const STATUS_COLORS: Record<string, string> = {
 };
 
 const JOB_TYPE_LABELS: Record<string, string> = {
-  land_clearing: "Land Clearing",
+  land_clearing: "Land Management",
   forestry_mulching: "Forestry Mulching",
   brush_removal: "Brush Removal",
   stump_grinding: "Stump Grinding",

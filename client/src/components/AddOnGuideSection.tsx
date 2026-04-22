@@ -11,7 +11,7 @@ const addOns = [
     icon: Sprout,
     title: "Post-Clear Seeding",
     subtitle: "Erosion Control & Ground Cover",
-    when: "After any land clearing or forestry mulching job",
+    when: "After any land management or forestry mulching job",
     benefit:
       "Bare ground erodes. Seeding immediately after clearing locks the soil in place, prevents runoff, and starts the land on the right path — whether that's pasture, wildlife habitat, or a clean buffer zone.",
     cta: "Add to your quote",
@@ -24,7 +24,7 @@ const addOns = [
     icon: Fence,
     title: "Fence Line Clearing",
     subtitle: "Boundary Reclamation",
-    when: "Alongside any land clearing or pasture reclamation job",
+    when: "Alongside any land management or pasture reclamation job",
     benefit:
       "Same machine, same mobilization, same day. Fence lines that haven't seen daylight in years get cleared while we're already on-site. Priced per linear foot — no second trip charge.",
     cta: "Add to your quote",

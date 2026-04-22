@@ -35,10 +35,10 @@ const SERVICES = [
   {
     title: "Forestry Mulching",
     slug: "forestry-mulching",
-    desc: "Single-pass land clearing that grinds trees, brush, and stumps into mulch — no hauling, no burning.",
+    desc: "Single-pass land management that grinds trees, brush, and stumps into mulch — no hauling, no burning.",
   },
   {
-    title: "Land Clearing",
+    title: "Land Management",
     slug: "land-clearing",
     desc: "Full site clearing of trees, stumps, brush, and debris for residential and commercial properties.",
   },
@@ -216,7 +216,7 @@ export default function CountyPageLayout({
               marginBottom: "1rem",
             }}
           >
-            Land Clearing &amp;
+            Land Management &amp;
             <br />
             <span style={{ color: "#E07B2A" }}>Forestry Mulching</span>
             <br />

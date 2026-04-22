@@ -5,7 +5,7 @@ export default function ForestryMulchingVsBulldozing() {
     <BlogPostLayout
       title="Forestry Mulching vs. Bulldozing: Which is Better for Your Property?"
       pageTitle="Forestry Mulching vs. Bulldozing: Which is Better? | Noland Earthworks"
-      metaDescription="Forestry mulching vs. bulldozing: compare cost, soil impact, speed, and best use cases to decide which land clearing method is right for your Tennessee property."
+      metaDescription="Forestry mulching vs. bulldozing: compare cost, soil impact, speed, and best use cases to decide which land management method is right for your Tennessee property."
       date="April 2026"
       dateISO="2026-04-01"
       lastUpdated="April 2026"
@@ -15,7 +15,7 @@ export default function ForestryMulchingVsBulldozing() {
       category="Education"
     >
       <p>
-        When it's time to clear overgrown land, property owners usually face a choice between two primary methods: <strong>traditional bulldozing</strong> or <strong>modern forestry mulching</strong>. While bulldozers have been the standard for decades, forestry mulching has rapidly become the preferred choice for land clearing in Middle Tennessee.
+        When it's time to clear overgrown land, property owners usually face a choice between two primary methods: <strong>traditional bulldozing</strong> or <strong>modern forestry mulching</strong>. While bulldozers have been the standard for decades, forestry mulching has rapidly become the preferred choice for land management in Middle Tennessee.
       </p>
 
       <h2>Traditional Bulldozing</h2>

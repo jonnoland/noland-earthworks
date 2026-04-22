@@ -11,7 +11,7 @@ import { trpc } from "@/lib/trpc";
 const LOGO_URL = "https://d2xsxph8kpxj0f.cloudfront.net/310519663484957999/PymCzDCnSJzPjdkfwA7Jn6/noland-logo-transparent_783e5c7b.png";
 
 const serviceLinks = [
-  { label: "Land Clearing", href: "/services/land-clearing" },
+  { label: "Land Management", href: "/services/land-clearing" },
   { label: "Forestry Mulching", href: "/services/forestry-mulching" },
   { label: "Vegetation Management", href: "/services/vegetation-management" },
   { label: "Right-of-Way Clearing", href: "/services/right-of-way-clearing" },

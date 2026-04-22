@@ -3,9 +3,9 @@ import BlogPostLayout from "@/components/BlogPostLayout";
 export default function LandClearingDavidsonCounty() {
   return (
     <BlogPostLayout
-      title="Land Clearing in Davidson County, TN: What Property Owners Need to Know"
-      pageTitle="Land Clearing in Davidson County, TN | Noland Earthworks"
-      metaDescription="Need land clearing in Davidson County, TN? Noland Earthworks provides forestry mulching and land clearing across Nashville, Antioch, Hermitage, Bellevue, and all of Davidson County."
+      title="Land Management in Davidson County, TN: What Property Owners Need to Know"
+      pageTitle="Land Management in Davidson County, TN | Noland Earthworks"
+      metaDescription="Need land management in Davidson County, TN? Noland Earthworks provides forestry mulching and land management across Nashville, Antioch, Hermitage, Bellevue, and all of Davidson County."
       date="April 2026"
       dateISO="2026-04-12"
       lastUpdated="April 2026"
@@ -20,7 +20,7 @@ export default function LandClearingDavidsonCounty() {
 
       <h2>The Davidson County Landscape: What Makes It Different</h2>
       <p>
-        Davidson County sits at the heart of the Nashville Basin, a geographic region characterized by flat to gently rolling terrain underlain by limestone bedrock. The county's soils are generally productive and well-drained in the upland areas, but the numerous creek systems — including Whites Creek, Browns Creek, Mill Creek, and the Cumberland River tributaries — create bottomland corridors with heavier clay soils and seasonal wetness that require careful handling during any land clearing operation.
+        Davidson County sits at the heart of the Nashville Basin, a geographic region characterized by flat to gently rolling terrain underlain by limestone bedrock. The county's soils are generally productive and well-drained in the upland areas, but the numerous creek systems — including Whites Creek, Browns Creek, Mill Creek, and the Cumberland River tributaries — create bottomland corridors with heavier clay soils and seasonal wetness that require careful handling during any land management operation.
       </p>
       <p>
         Vegetation across Davidson County reflects decades of land use change. Properties that were once farmland and have sat idle for 10 to 20 years are now dominated by eastern red cedar, privet, multiflora rose, and young hardwood regrowth. Older wooded lots in established neighborhoods like Bellevue and Madison carry mature hardwoods — oaks, hickories, and tulip poplars — that require a different approach than the brushy overgrowth common on former agricultural land. Understanding what is on your property before selecting a clearing method is the first step toward getting the job done right.
@@ -28,13 +28,13 @@ export default function LandClearingDavidsonCounty() {
 
       <h2>Why Forestry Mulching Works Well in Davidson County</h2>
       <p>
-        Forestry mulching is the most widely used land clearing method across Davidson County for several practical reasons. The tracked mulching machine is well-suited to the county's varied terrain — it handles the flat suburban lots of Antioch and Hermitage as efficiently as the sloped, wooded acreage in the western portions of the county near Bellevue and the Harpeth Hills. Because the machine grinds all vegetation — trees, brush, vines, and stumps — into a layer of mulch on the ground in a single pass, there is no debris pile to burn and no haul trucks needed. That matters in Davidson County, where burn permits are tightly regulated and hauling fees add up quickly on larger jobs.
+        Forestry mulching is the most widely used land management method across Davidson County for several practical reasons. The tracked mulching machine is well-suited to the county's varied terrain — it handles the flat suburban lots of Antioch and Hermitage as efficiently as the sloped, wooded acreage in the western portions of the county near Bellevue and the Harpeth Hills. Because the machine grinds all vegetation — trees, brush, vines, and stumps — into a layer of mulch on the ground in a single pass, there is no debris pile to burn and no haul trucks needed. That matters in Davidson County, where burn permits are tightly regulated and hauling fees add up quickly on larger jobs.
       </p>
       <p>
         The mulch layer left behind also addresses one of the most common problems on Davidson County properties: erosion. The county's creek systems and drainage corridors are subject to Metro Nashville's stormwater management regulations, and disturbed soil that washes into those waterways can trigger compliance issues. The mulch mat produced by forestry mulching stabilizes the soil surface immediately after clearing, reducing runoff and protecting your property — and your neighbors' — from erosion damage.
       </p>
 
-      <h2>Common Land Clearing Projects We Handle in Davidson County</h2>
+      <h2>Common Land Management Projects We Handle in Davidson County</h2>
       <p>
         The diversity of land in Davidson County means the clearing work we handle here covers a wide range of project types. The most common include:
       </p>
@@ -61,7 +61,7 @@ export default function LandClearingDavidsonCounty() {
 
       <h2>Davidson County Permit and Regulatory Requirements</h2>
       <p>
-        Davidson County operates under Metro Nashville's consolidated government, which means land clearing and grading activities are regulated by Metro Water Services (MWS) rather than a county planning office. Any land disturbing activity that affects one acre or more requires a <strong>Grading Permit</strong> from Metro Water Services' Stormwater Division. This permit requires a stormwater pollution prevention plan (SWPPP) and erosion control measures to be in place before work begins.
+        Davidson County operates under Metro Nashville's consolidated government, which means land management and grading activities are regulated by Metro Water Services (MWS) rather than a county planning office. Any land disturbing activity that affects one acre or more requires a <strong>Grading Permit</strong> from Metro Water Services' Stormwater Division. This permit requires a stormwater pollution prevention plan (SWPPP) and erosion control measures to be in place before work begins.
       </p>
       <p>
         In addition to the grading permit, Metro Nashville has an <strong>Urban Forestry</strong> program that regulates tree removal on certain types of properties. For commercial and multi-family development projects, an approved landscape plan is required before a building permit is issued. Single-family residential properties have different requirements depending on the zoning classification and whether the property is in a designated tree preservation overlay.
@@ -75,7 +75,7 @@ export default function LandClearingDavidsonCounty() {
 
       <h2>Serving All of Davidson County</h2>
       <p>
-        Noland Earthworks provides land clearing and forestry mulching services throughout Davidson County, including Nashville, Antioch, Hermitage, Bellevue, Madison, Donelson, Joelton, Whites Creek, and the surrounding unincorporated areas of the county. We are a veteran-owned and operated business based in Middle Tennessee, and we bring the same standard of reliability and quality to every job — whether it is a quarter-acre infill lot in Antioch or a 20-acre reclamation project near the county line.
+        Noland Earthworks provides land management and forestry mulching services throughout Davidson County, including Nashville, Antioch, Hermitage, Bellevue, Madison, Donelson, Joelton, Whites Creek, and the surrounding unincorporated areas of the county. We are a veteran-owned and operated business based in Middle Tennessee, and we bring the same standard of reliability and quality to every job — whether it is a quarter-acre infill lot in Antioch or a 20-acre reclamation project near the county line.
       </p>
       <p>
         Contact us for a free, no-obligation on-site estimate. We will walk the property with you, assess the vegetation and terrain, and give you a straightforward quote with no surprises.
@@ -86,8 +86,8 @@ export default function LandClearingDavidsonCounty() {
         Noland Earthworks serves landowners across all of Middle and West Tennessee — not just Davidson County. If your property is located in a neighboring county, we cover those areas as well. Learn more about our services in the counties bordering Davidson:
       </p>
       <ul>
-        <li><a href="/blog/land-clearing-williamson-county"><strong>Land Clearing in Williamson County, TN</strong></a> — Serving Franklin, Brentwood, Spring Hill, Nolensville, Fairview, and surrounding areas.</li>
-        <li><a href="/blog/land-clearing-rutherford-county"><strong>Land Clearing in Rutherford County, TN</strong></a> — Serving Murfreesboro, Smyrna, La Vergne, Eagleville, and surrounding areas.</li>
+        <li><a href="/blog/land-clearing-williamson-county"><strong>Land Management in Williamson County, TN</strong></a> — Serving Franklin, Brentwood, Spring Hill, Nolensville, Fairview, and surrounding areas.</li>
+        <li><a href="/blog/land-clearing-rutherford-county"><strong>Land Management in Rutherford County, TN</strong></a> — Serving Murfreesboro, Smyrna, La Vergne, Eagleville, and surrounding areas.</li>
       </ul>
       <p>
         Not sure which county your property falls in? <a href="/quote">Request a free estimate</a> and we will confirm your location and service area when we follow up.

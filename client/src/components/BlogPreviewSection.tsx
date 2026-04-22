@@ -4,9 +4,9 @@ const FEATURED_POSTS = [
   {
     slug: "cost-of-land-clearing-tennessee",
     category: "Pricing & Planning",
-    title: "How Much Does Land Clearing Cost in Tennessee? (2026 Guide)",
+    title: "How Much Does Land Management Cost in Tennessee? (2026 Guide)",
     excerpt:
-      "Discover the true cost of land clearing and forestry mulching in Middle Tennessee. Learn what factors affect pricing per acre and how to get the best value.",
+      "Discover the true cost of land management and forestry mulching in Middle Tennessee. Learn what factors affect pricing per acre and how to get the best value.",
     readTime: "5 min read",
   },
   {
@@ -14,7 +14,7 @@ const FEATURED_POSTS = [
     category: "Education",
     title: "Forestry Mulching vs. Bulldozing: Which is Better for Your Property?",
     excerpt:
-      "Compare forestry mulching and traditional bulldozing for land clearing. Learn why mulching is faster, cheaper, and better for your Tennessee property's soil.",
+      "Compare forestry mulching and traditional bulldozing for land management. Learn why mulching is faster, cheaper, and better for your Tennessee property's soil.",
     readTime: "5 min read",
   },
   {
@@ -22,7 +22,7 @@ const FEATURED_POSTS = [
     category: "Seasonal Tips",
     title: "Best Time of Year to Clear Land in Middle Tennessee",
     excerpt:
-      "Wondering when to clear land in Tennessee? Learn the best season for forestry mulching and land clearing in Middle Tennessee to save money and get faster results.",
+      "Wondering when to clear land in Tennessee? Learn the best season for forestry mulching and land management in Middle Tennessee to save money and get faster results.",
     readTime: "5 min read",
   },
 ];
@@ -47,7 +47,7 @@ export default function BlogPreviewSection() {
               className="text-3xl md:text-4xl font-black uppercase"
               style={{ color: "#F0EDE6" }}
             >
-              Land Clearing{" "}
+              Land Management{" "}
               <span style={{ color: "#E07B2A" }}>Knowledge Base</span>
             </h2>
           </div>

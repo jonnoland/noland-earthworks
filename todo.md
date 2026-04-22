@@ -985,3 +985,4 @@
 ## Public Pricing Page Cleanup — Apr 20 2026
 - [x] Pricing.tsx: remove "Pricing by Service" section (core services grid)
 - [x] Pricing.tsx: remove "Add-On Services" section
+- [x] Rename all "Land Clearing" to "Land Management" across entire codebase (client, server, shared)

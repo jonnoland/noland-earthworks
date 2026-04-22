@@ -80,8 +80,8 @@ const ADDON_SUGGESTIONS: Record<string, string[]> = {
 
 export default function QuotePage() {
   usePageTitle(
-    "Request a Free Quote — Land Clearing & Forestry Mulching | Noland Earthworks",
-    "Get a free, no-obligation quote for land clearing, forestry mulching, or vegetation management anywhere in Middle & West Tennessee. 24-hour response guaranteed.",
+    "Request a Free Quote — Land Management & Forestry Mulching | Noland Earthworks",
+    "Get a free, no-obligation quote for land management, forestry mulching, or vegetation management anywhere in Middle & West Tennessee. 24-hour response guaranteed.",
     "/quote"
   );
   const [submitted, setSubmitted] = useState(false);
@@ -487,7 +487,7 @@ export default function QuotePage() {
                   {/* Submitted details summary */}
                   {(() => {
                     const serviceLabels: Record<string, string> = {
-                      "land-clearing": "Land Clearing",
+                      "land-clearing": "Land Management",
                       "forestry-mulching": "Forestry Mulching",
                       "vegetation-management": "Vegetation Management",
                       "right-of-way-clearing": "Right-of-Way Clearing",
@@ -689,7 +689,7 @@ export default function QuotePage() {
                         onBlur={(e) => (e.target.style.borderColor = "rgba(255,255,255,0.12)")}
                       >
                         <option value="" style={{ backgroundColor: "#1a1a1a" }}>Select a service...</option>
-                        <option value="land-clearing" style={{ backgroundColor: "#1a1a1a" }}>Land Clearing</option>
+                        <option value="land-clearing" style={{ backgroundColor: "#1a1a1a" }}>Land Management</option>
                         <option value="forestry-mulching" style={{ backgroundColor: "#1a1a1a" }}>Forestry Mulching</option>
                         <option value="vegetation-management" style={{ backgroundColor: "#1a1a1a" }}>Vegetation Management</option>
                         <option value="right-of-way-clearing" style={{ backgroundColor: "#1a1a1a" }}>Right-of-Way Clearing</option>

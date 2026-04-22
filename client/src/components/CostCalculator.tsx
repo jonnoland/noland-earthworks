@@ -366,7 +366,7 @@ function MapPolygonModal({ onClose, onAcreageConfirm, calcState }: {
 
   const SERVICE_LABELS_MAP: Record<string, string> = {
     "forestry-mulching": "Forestry Mulching",
-    "land-clearing": "Land Clearing",
+    "land-clearing": "Land Management",
     "vegetation-management": "Vegetation Management",
     "right-of-way-clearing": "Right-of-Way Clearing",
     "property-maintenance": "Property Maintenance",
@@ -676,7 +676,7 @@ function SubmitLeadModal({ state, result, addOns = [], onClose, onSuccess }: {
 
   const SERVICE_LABELS: Record<string, string> = {
     "forestry-mulching": "Forestry Mulching",
-    "land-clearing": "Land Clearing",
+    "land-clearing": "Land Management",
     "vegetation-management": "Vegetation Management",
     "right-of-way-clearing": "Right-of-Way Clearing",
     "property-maintenance": "Property Maintenance",
@@ -848,7 +848,7 @@ function SubmitLeadModal({ state, result, addOns = [], onClose, onSuccess }: {
 
 const SERVICE_LABELS_CONFIRM: Record<string, string> = {
   "forestry-mulching": "Forestry Mulching",
-  "land-clearing": "Land Clearing",
+  "land-clearing": "Land Management",
   "vegetation-management": "Vegetation Management",
   "right-of-way-clearing": "Right-of-Way Clearing",
   "property-maintenance": "Property Maintenance",
@@ -1159,7 +1159,7 @@ export default function CostCalculator() {
 
   const serviceOptions = [
     { value: "forestry-mulching",      label: "Forestry Mulching" },
-    { value: "land-clearing",          label: "Land Clearing" },
+    { value: "land-clearing",          label: "Land Management" },
     { value: "vegetation-management",  label: "Vegetation Management" },
     { value: "right-of-way-clearing",  label: "Right-of-Way Clearing" },
     { value: "property-maintenance",   label: "Property Maintenance" },
