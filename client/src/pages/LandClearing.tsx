@@ -11,23 +11,23 @@ const MAINTENANCE_HERO = "https://d2xsxph8kpxj0f.cloudfront.net/3105196634849579
 const HERO = "https://d2xsxph8kpxj0f.cloudfront.net/310519663484957999/PymCzDCnSJzPjdkfwA7Jn6/land-clearing-iPC6VzRdyjJa4bVNXaWy5n.webp";
 
 const data: ServicePageProps = {
-  slug: "land-clearing",
+  slug: "land-management",
   title: "Land Management",
   tagline: "Professional land management for residential, commercial, and agricultural properties across Middle & West Tennessee.",
   heroImage: HERO,
-  overviewTitle: "Complete Land Management Solutions",
+  overviewTitle: "Land Management That Gets Results",
   overviewBody: [
-    "Noland Earthworks provides comprehensive land management services designed to prepare your property for its next chapter — whether that's a new home, commercial development, agricultural use, or simply reclaiming overgrown land.",
-    "Our experienced operators use modern, well-maintained equipment to safely and efficiently remove trees, stumps, brush, rocks, and debris. We work with you to understand your goals and deliver a clean, usable site that meets your specifications.",
-    "As a veteran-owned company, we bring the discipline, precision, and work ethic of military service to every job. We show up on time, communicate clearly, and don't leave until the work is done right.",
+    "Land management is about more than just cutting things down. It's about understanding what the land needs to be useful — and executing the work in a way that holds up over time. Whether you're reclaiming pasture that's been overtaken by cedar and brush, preparing a lot for construction, or clearing a property that's been neglected for years, the approach matters as much as the equipment.",
+    "Noland Earthworks uses a tracked forestry mulcher as the primary tool for most land management work. It handles heavy brush, saplings, and small timber in a single pass — grinding everything into a mulch layer that stays on the ground as natural cover. No burn piles, no hauling, no bare dirt left behind. For jobs that require full removal, we'll discuss the right method during the site visit and quote accordingly.",
+    "Every job starts with a walk of the property. We look at terrain, vegetation density, access points, and anything that could affect the work — slopes, wet areas, proximity to structures or fencing. That's how we quote accurately and avoid surprises on the job. We're veteran-owned and operated, and we run the business the same way: show up when we say we will, do the work as quoted, and don't leave until it's right.",
   ],
   benefits: [
-    "Full site clearing including trees, stumps, brush, and debris",
-    "Residential, commercial, and agricultural projects",
-    "Proper disposal or on-site mulching of cleared material",
-    "Grading and leveling available as an add-on",
-    "Licensed and fully insured for your protection",
-    "Free on-site estimate before any work begins",
+    "Tracked forestry mulcher handles heavy brush, saplings, and timber in a single pass",
+    "Works on slopes, wet ground, and difficult terrain wheeled machines can't access",
+    "Mulch stays on-site as ground cover — no hauling, no burn piles, no bare soil",
+    "Residential lots, agricultural land, pasture reclamation, and site prep",
+    "Fence line and boundary clearing available as an add-on to any job",
+    "Free on-site estimate — we walk the property before quoting",
     "10% discount for active military and veterans",
   ],
   relatedServices: [
@@ -67,7 +67,7 @@ export default function LandClearingPage() {
   usePageTitle(
     "Land Management Services — Middle & West Tennessee | Noland Earthworks",
     "Expert land management services across Middle & West Tennessee. We remove trees, stumps, brush, and debris to prepare your property for building, farming, or recreation. Free estimates.",
-    "/services/land-clearing"
+    "/services/land-management"
   );
   return (
     <>

@@ -572,7 +572,7 @@ export default function AboutPage() {
                 {[
                   { label: "Phone", value: "615-406-4819", href: "tel:6154064819" },
                   { label: "Email", value: "info@nolandearthworks.com", href: "mailto:info@nolandearthworks.com" },
-                  { label: "Service Area", value: "Middle & West Tennessee — 35 Counties", href: "/services/land-clearing" },
+                  { label: "Service Area", value: "Middle & West Tennessee — 35 Counties", href: "/services/land-management" },
                 ].map((c) => (
                   <a
                     key={c.label}

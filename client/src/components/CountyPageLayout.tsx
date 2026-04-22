@@ -39,7 +39,7 @@ const SERVICES = [
   },
   {
     title: "Land Management",
-    slug: "land-clearing",
+    slug: "land-management",
     desc: "Full site clearing of trees, stumps, brush, and debris for residential and commercial properties.",
   },
   {

@@ -986,3 +986,9 @@
 - [x] Pricing.tsx: remove "Pricing by Service" section (core services grid)
 - [x] Pricing.tsx: remove "Add-On Services" section
 - [x] Rename all "Land Clearing" to "Land Management" across entire codebase (client, server, shared)
+## Sitemap / SEO — Land Management URL Update — Apr 22 2026
+- [ ] Rename /services/land-clearing to /services/land-management in sitemap, App.tsx route, LandClearing.tsx slug, Navbar, and all internal links
+- [ ] Add 301 redirect from /services/land-clearing to /services/land-management in Express server
+- [ ] Update blog post cross-links: land-clearing-williamson/davidson/rutherford county slugs stay (SEO), but update service page hrefs inside those posts
+- [ ] Update CostCalculator, Quote, widgetRouter, CountyPageLayout, ForestryMulching, PropertyMaintenance, VegetationManagement, RightOfWayClearing related-service slug references
+- [x] Rewrite LandClearing.tsx Overview and Key Benefits copy to reflect land management scope and voice

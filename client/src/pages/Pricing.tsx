@@ -43,7 +43,7 @@ const services = [
     href: "/services/forestry-mulching",
   },
   {
-    id: "land-clearing",
+    id: "land-management",
     name: "Land Management",
     tagline: "Full-site preparation for construction or agriculture",
     icon: "🏗️",
@@ -68,7 +68,7 @@ const services = [
       },
     ],
     note: "Stump grinding is included. Debris disposal expectations should be discussed during the site visit.",
-    href: "/services/land-clearing",
+    href: "/services/land-management",
   },
   {
     id: "vegetation-management",

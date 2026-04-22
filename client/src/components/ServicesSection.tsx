@@ -13,7 +13,7 @@ const PROPERTY_MAINT = "https://d2xsxph8kpxj0f.cloudfront.net/310519663484957999
 const services = [
   {
     title: "Land Management",
-    href: "/services/land-clearing",
+    href: "/services/land-management",
     description:
       "Professional land management services for residential and commercial properties. We safely remove trees, brush, stumps, and debris to prepare your land for development, agriculture, or landscaping.",
     image: LAND_CLEARING,

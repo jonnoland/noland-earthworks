@@ -30,7 +30,7 @@ const data: ServicePageProps = {
     "Ideal for fire break creation and wildfire risk reduction",
   ],
   relatedServices: [
-    { title: "Land Management", slug: "land-clearing", description: "Full site clearing of trees, stumps, brush, and debris.", heroImage: LAND_HERO },
+    { title: "Land Management", slug: "land-management", description: "Full site clearing of trees, stumps, brush, and debris.", heroImage: LAND_HERO },
     { title: "Vegetation Management", slug: "vegetation-management", description: "Control invasive species, overgrowth, and unwanted vegetation.", heroImage: VEGETATION_HERO },
     { title: "Property Maintenance", slug: "property-maintenance", description: "Keep your land clean, safe, and well-maintained year-round.", heroImage: MAINTENANCE_HERO },
   ],

@@ -32,7 +32,7 @@ const data: ServicePageProps = {
   ],
   relatedServices: [
     { title: "Forestry Mulching", slug: "forestry-mulching", description: "One-pass clearing of trees, brush, and stumps — no hauling required.", heroImage: FORESTRY_HERO },
-    { title: "Land Management", slug: "land-clearing", description: "Full site clearing for building, farming, or recreation.", heroImage: LAND_HERO },
+    { title: "Land Management", slug: "land-management", description: "Full site clearing for building, farming, or recreation.", heroImage: LAND_HERO },
     { title: "Vegetation Management", slug: "vegetation-management", description: "Ongoing control of invasive species and overgrowth.", heroImage: VEGETATION_HERO },
   ],
   faqs: [

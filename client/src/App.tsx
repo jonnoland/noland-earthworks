@@ -113,7 +113,8 @@ function Router() {
       <Route path="/blog/land-clearing-rutherford-county" component={LandClearingRutherfordCounty} />
 
       {/* Service pages */}
-      <Route path="/services/land-clearing" component={LandClearingPage} />
+      <Route path="/services/land-management" component={LandClearingPage} />
+      <Route path="/services/land-clearing" component={() => { window.location.replace("/services/land-management"); return null; }} />
       <Route path="/services/forestry-mulching" component={ForestryMulchingPage} />
       <Route path="/services/vegetation-management" component={VegetationManagementPage} />
       <Route path="/services/property-maintenance" component={PropertyMaintenancePage} />

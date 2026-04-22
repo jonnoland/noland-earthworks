@@ -7,7 +7,7 @@ const PAGES = [
   { path: "/",                                                          priority: "1.0", changefreq: "weekly"  },
   // Service pages
   { path: "/services/forestry-mulching",                                priority: "0.9", changefreq: "monthly" },
-  { path: "/services/land-clearing",                                    priority: "0.9", changefreq: "monthly" },
+  { path: "/services/land-management",                                   priority: "0.9", changefreq: "monthly" },
   { path: "/services/vegetation-management",                            priority: "0.9", changefreq: "monthly" },
   { path: "/services/right-of-way-clearing",                            priority: "0.9", changefreq: "monthly" },
   { path: "/services/property-maintenance",                             priority: "0.8", changefreq: "monthly" },
