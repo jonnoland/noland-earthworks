@@ -64,10 +64,10 @@ const services = [
       {
         label: "Heavy Clearing",
         range: "$6,000 – $12,000+",
-        detail: "Dense mature timber, steep terrain, large stump removal",
+        detail: "Dense mature timber, steep terrain, difficult access — stump grinding priced separately",
       },
     ],
-    note: "Stump grinding is included. Debris disposal expectations should be discussed during the site visit.",
+    note: "Stump grinding is available as an add-on and priced separately. Debris disposal method and any site-specific conditions will be discussed during the on-site estimate.",
     href: "/services/land-management",
   },
   {

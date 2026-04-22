@@ -26,6 +26,7 @@ const data: ServicePageProps = {
     "Works on slopes, wet ground, and difficult terrain wheeled machines can't access",
     "Mulch stays on-site as ground cover — no hauling, no burn piles, no bare soil",
     "Residential lots, agricultural land, pasture reclamation, and site prep",
+    "Stump grinding available as an add-on — priced separately based on count and size",
     "Fence line and boundary clearing available as an add-on to any job",
     "Free on-site estimate — we walk the property before quoting",
     "10% discount for active military and veterans",

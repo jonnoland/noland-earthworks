@@ -992,3 +992,4 @@
 - [ ] Update blog post cross-links: land-clearing-williamson/davidson/rutherford county slugs stay (SEO), but update service page hrefs inside those posts
 - [ ] Update CostCalculator, Quote, widgetRouter, CountyPageLayout, ForestryMulching, PropertyMaintenance, VegetationManagement, RightOfWayClearing related-service slug references
 - [x] Rewrite LandClearing.tsx Overview and Key Benefits copy to reflect land management scope and voice
+- [x] Update Land Management pricing tiers on public Pricing page based on current Middle & West TN market research
