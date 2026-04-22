@@ -724,16 +724,11 @@ export const jobberRouter = router({
     .mutation(async ({ input }) => {
       const connected = await isJobberConnected();
       if (!connected) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Jobber not connected" });
-      const lineItemsInput = input.lineItems.map(item => ({
-        name: item.name,
-        description: item.description ?? "",
-        quantity: item.quantity,
-        unitPrice: item.unitPrice,
-        ...(item.productOrServiceId ? { productOrServiceId: item.productOrServiceId } : {}),
-      }));
-      const data = await jobberGraphQL(`
-        mutation CreateQuote($input: QuoteCreateInput!) {
-          quoteCreate(input: $input) {
+
+      // Step 1: Create the quote. Jobber uses `attributes` (not `input`) for quoteCreate.
+      const createData = await jobberGraphQL(`
+        mutation CreateQuote($clientId: EncodedId!, $title: String!, $message: String) {
+          quoteCreate(attributes: { clientId: $clientId, title: $title, message: $message }) {
             quote {
               id
               quoteNumber
@@ -747,18 +742,46 @@ export const jobberRouter = router({
           }
         }
       `, {
-        input: {
-          clientId: input.clientId,
-          title: input.title,
-          message: input.message ?? "",
-          lineItems: lineItemsInput,
-        }
+        clientId: input.clientId,
+        title: input.title,
+        message: input.message ?? "",
       }) as any;
-      const errors = data?.quoteCreate?.userErrors;
-      if (errors?.length) {
-        throw new TRPCError({ code: "BAD_REQUEST", message: errors.map((e: any) => e.message).join("; ") });
+      const createErrors = createData?.quoteCreate?.userErrors;
+      if (createErrors?.length) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: createErrors.map((e: any) => e.message).join("; ") });
       }
-      return data?.quoteCreate?.quote ?? null;
+      const quote = createData?.quoteCreate?.quote;
+      if (!quote?.id) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Quote creation returned no ID" });
+
+      // Step 2: Add each line item via quoteLineItemCreate
+      for (const item of input.lineItems) {
+        const lineData = await jobberGraphQL(`
+          mutation AddLineItem($quoteId: EncodedId!, $name: String!, $description: String, $quantity: Float!, $unitPrice: Decimal!) {
+            quoteLineItemCreate(attributes: {
+              quoteId: $quoteId
+              name: $name
+              description: $description
+              quantity: $quantity
+              unitPrice: $unitPrice
+            }) {
+              lineItem { id name quantity unitPrice }
+              userErrors { message path }
+            }
+          }
+        `, {
+          quoteId: quote.id,
+          name: item.name,
+          description: item.description ?? "",
+          quantity: item.quantity,
+          unitPrice: item.unitPrice,
+        }) as any;
+        const lineErrors = lineData?.quoteLineItemCreate?.userErrors;
+        if (lineErrors?.length) {
+          console.warn(`[quoteCreate] Line item error for "${item.name}": ${lineErrors.map((e: any) => e.message).join("; ")}`);
+        }
+      }
+
+      return quote;
     }),
 
   /** Get aggregated lead source breakdown (count per source) */

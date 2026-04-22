@@ -987,12 +987,12 @@
 - [x] Pricing.tsx: remove "Add-On Services" section
 - [x] Rename all "Land Clearing" to "Land Management" across entire codebase (client, server, shared)
 ## Sitemap / SEO — Land Management URL Update — Apr 22 2026
-- [ ] Rename /services/land-clearing to /services/land-management in sitemap, App.tsx route, LandClearing.tsx slug, Navbar, and all internal links
-- [ ] Add 301 redirect from /services/land-clearing to /services/land-management in Express server
-- [ ] Update blog post cross-links: land-clearing-williamson/davidson/rutherford county slugs stay (SEO), but update service page hrefs inside those posts
-- [ ] Update CostCalculator, Quote, widgetRouter, CountyPageLayout, ForestryMulching, PropertyMaintenance, VegetationManagement, RightOfWayClearing related-service slug references
+- [x] Rename /services/land-clearing to /services/land-management in sitemap, App.tsx route, LandClearing.tsx slug, Navbar, and all internal links
+- [x] Add 301 redirect from /services/land-clearing to /services/land-management in Express server
+- [x] Update blog post cross-links: land-clearing-williamson/davidson/rutherford county slugs stay (SEO), but update service page hrefs inside those posts
+- [x] Update CostCalculator, Quote, widgetRouter, CountyPageLayout, ForestryMulching, PropertyMaintenance, VegetationManagement, RightOfWayClearing related-service slug references
 - [x] Rewrite LandClearing.tsx Overview and Key Benefits copy to reflect land management scope and voice
 - [x] Update Land Management pricing tiers on public Pricing page based on current Middle & West TN market research
 - [x] Add quoteCreate mutation to jobberRouter (Jobber GraphQL API)
-- [ ] Add fetchServicesFromManager procedure to jobberRouter (pulls from nolandjobber service manager)
+- [x] Add fetchServicesFromManager procedure to jobberRouter (pulls from nolandjobber service manager)
 - [x] Build Create Quote modal on /ops/quotes with client search, service line items, and quote submission
