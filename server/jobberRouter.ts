@@ -767,11 +767,13 @@ export const jobberRouter = router({
       }
 
       // Build inline line items for QuoteCreateAttributes
+      // saveToProductsAndServices must be explicitly set (not null) per Jobber schema
       const lineItemsInput = input.lineItems.map((item) => ({
         name: item.name,
         description: item.description ?? "",
         quantity: item.quantity,
         unitPrice: item.unitPrice,
+        saveToProductsAndServices: false,
       }));
 
       const createData = await jobberGraphQL(`
