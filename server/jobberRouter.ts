@@ -105,6 +105,13 @@ export const jobberRouter = router({
           }
         }
       `, { first: input.first ?? 50 }) as any;
+      // Normalize quoteStatus to uppercase so all UI comparisons work consistently
+      if (data?.quotes?.nodes) {
+        data.quotes.nodes = data.quotes.nodes.map((q: any) => ({
+          ...q,
+          quoteStatus: q.quoteStatus ? String(q.quoteStatus).toUpperCase() : q.quoteStatus,
+        }));
+      }
       return data.quotes;
     }),
 
@@ -320,7 +327,8 @@ export const jobberRouter = router({
         }
       `, { id: input.id }) as any;
       if (data?.quote) {
-        console.log(`[Jobber] quoteDetail id=${input.id} quoteStatus=${JSON.stringify(data.quote.quoteStatus)}`);
+        // Normalize quoteStatus to uppercase so all UI comparisons work consistently
+        data.quote.quoteStatus = data.quote.quoteStatus ? String(data.quote.quoteStatus).toUpperCase() : data.quote.quoteStatus;
       }
       return data.quote ?? null;
     }),
