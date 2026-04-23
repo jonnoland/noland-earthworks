@@ -29,7 +29,6 @@ import {
   Plus,
   PlusCircle,
   Pencil,
-  Send,
   CheckCircle,
   Copy,
   ArchiveRestore,
@@ -201,17 +200,6 @@ function QuoteDetailPanel({
   const openInJobberForConversion = (quoteNumber: number | string) => {
     window.open(`https://secure.getjobber.com/quotes/${quoteNumber}`, "_blank", "noopener,noreferrer");
   };
-
-  const sendQuote = trpc.jobber.quoteSend.useMutation({
-    onSuccess: () => {
-      toast.success("Quote sent to client via Jobber.");
-      utils.jobber.quotes.invalidate();
-      utils.jobber.quoteDetail.invalidate({ id: quoteId });
-    },
-    onError: (err) => {
-      toast.error(err.message || "Failed to send quote.");
-    },
-  });
 
   const markApproved = trpc.jobber.quoteMarkApproved.useMutation({
     onSuccess: () => {
@@ -428,19 +416,14 @@ function QuoteDetailPanel({
         {/* Footer actions */}
         {!isLoading && quote && (
           <div className="shrink-0 border-t border-border px-5 py-4 space-y-2">
-            {/* Send Quote — only show for DRAFT or CHANGES_REQUESTED quotes */}
+            {/* Open in Jobber — for DRAFT or CHANGES_REQUESTED, opens quote in Jobber to send natively */}
             {(quote.quoteStatus === "DRAFT" || quote.quoteStatus === "CHANGES_REQUESTED") && (
               <button
-                onClick={() => sendQuote.mutate({ quoteId: quote.id })}
-                disabled={sendQuote.isPending}
-                className="w-full flex items-center justify-center gap-2 py-2 rounded-md text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 transition-colors disabled:opacity-50"
+                onClick={() => window.open(`https://secure.getjobber.com/quotes/${quote.quoteNumber}`, "_blank", "noopener,noreferrer")}
+                className="w-full flex items-center justify-center gap-2 py-2 rounded-md text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 transition-colors"
               >
-                {sendQuote.isPending ? (
-                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                ) : (
-                  <Send className="w-3.5 h-3.5" />
-                )}
-                Send Quote to Client
+                <ExternalLink className="w-3.5 h-3.5" />
+                Open in Jobber
               </button>
             )}
 

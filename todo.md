@@ -1035,3 +1035,5 @@
 - [x] After Convert to Job succeeds, navigate to the new job detail page with all details from the original quote
 - [x] Fix quoteConvertToJob: find correct Jobber mutation name and update the procedure
 - [x] Convert to Job button: open quote in Jobber web app instead of calling broken API mutation
+- [x] Fix Send Quote button: quoteSendEmail does not exist in Jobber API 2014 replaced with Open in Jobber
+- [x] Replace Send Quote to Client button with Open in Jobber button (opens quote in Jobber web app)
