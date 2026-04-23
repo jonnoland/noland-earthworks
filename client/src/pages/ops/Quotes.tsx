@@ -1331,6 +1331,7 @@ export default function OpsQuotes() {
   const utils = trpc.useUtils();;
   const { data, isLoading, error, refetch, isFetching } =
     trpc.jobber.quotes.useQuery({ first: 100 }, { retry: false });
+  const { data: followUps } = trpc.jobber.quoteFollowUpList.useQuery();
 
   const [, navigate] = useLocation();
 
@@ -1531,18 +1532,28 @@ export default function OpsQuotes() {
                               >
                                 <Pencil className="w-3.5 h-3.5" />
                               </button>
-                              {quote.quoteStatus === "APPROVED" && (
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    window.open(`https://secure.getjobber.com/quotes/${quote.id}`, "_blank", "noopener,noreferrer");
-                                  }}
-                                  title="Convert to Job in Jobber"
-                                  className="text-muted-foreground hover:text-amber-400 transition-colors"
-                                >
-                                  <Briefcase className="w-3.5 h-3.5" />
-                                </button>
-                              )}
+                              {quote.quoteStatus === "APPROVED" && (() => {
+                                const fu = followUps?.find((f) => f.jobberQuoteId === quote.id);
+                                const jobId = fu?.jobberJobId;
+                                const jobNum = fu?.jobberJobNumber;
+                                return (
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      if (jobId) {
+                                        window.open(`https://secure.getjobber.com/jobs/${jobId}`, "_blank", "noopener,noreferrer");
+                                      } else {
+                                        // No auto-created job yet — open quote in Jobber
+                                        window.open(`https://secure.getjobber.com/quotes/${quote.id}`, "_blank", "noopener,noreferrer");
+                                      }
+                                    }}
+                                    title={jobNum ? `View Job #${jobNum} in Jobber` : "Open in Jobber"}
+                                    className="text-muted-foreground hover:text-amber-400 transition-colors"
+                                  >
+                                    <Briefcase className="w-3.5 h-3.5" />
+                                  </button>
+                                );
+                              })()}
                               <button
                                 onClick={(e) => {
                                   e.stopPropagation();
