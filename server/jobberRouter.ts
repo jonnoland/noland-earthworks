@@ -319,6 +319,9 @@ export const jobberRouter = router({
           }
         }
       `, { id: input.id }) as any;
+      if (data?.quote) {
+        console.log(`[Jobber] quoteDetail id=${input.id} quoteStatus=${JSON.stringify(data.quote.quoteStatus)}`);
+      }
       return data.quote ?? null;
     }),
 

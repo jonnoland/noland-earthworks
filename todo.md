@@ -1029,3 +1029,4 @@
 - [x] Add Add-Ons to sitemap.xml
 - [x] Add Add-On links to navbar Services dropdown
 - [x] Add Convert to Job button in the Actions column of the quotes table on /ops/quotes
+- [ ] Fix Convert to Job button not appearing after quote is approved on production
