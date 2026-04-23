@@ -1037,3 +1037,6 @@
 - [x] Convert to Job button: open quote in Jobber web app instead of calling broken API mutation
 - [x] Fix Send Quote button: quoteSendEmail does not exist in Jobber API 2014 replaced with Open in Jobber
 - [x] Replace Send Quote to Client button with Open in Jobber button (opens quote in Jobber web app)
+- [x] Add loading spinner to Open in Jobber buttons (brief delay to indicate page is loading in new tab)
+- [x] After quote is approved, automatically add a Follow-up tag to it in the system
+- [x] Convert to Job button: fixed URL to use quote.id instead of quoteNumber (was causing 404 in Jobber)

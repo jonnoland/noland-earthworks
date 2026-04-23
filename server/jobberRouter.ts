@@ -8,7 +8,7 @@ import { protectedProcedure, router } from "./_core/trpc";
 import { ENV } from "./_core/env";
 import { isJobberConnected, jobberGraphQL } from "./jobber";
 import { getDb, getJobNotes, addJobNote, deleteJobNote } from "./db";
-import { jobberTokens, leadSourceTags } from "../drizzle/schema";
+import { jobberTokens, leadSourceTags, quoteFollowUps } from "../drizzle/schema";
 import { sql } from "drizzle-orm";
 
 const JOBBER_AUTH_URL = "https://api.getjobber.com/api/oauth/authorize";
@@ -978,14 +978,35 @@ export const jobberRouter = router({
       const data = await jobberGraphQL(`
         mutation MarkQuoteApproved($id: EncodedId!) {
           quoteUpdate(id: $id, attributes: { quoteStatus: APPROVED }) {
-            quote { id quoteNumber quoteStatus }
+            quote { id quoteNumber title quoteStatus
+              client { name companyName }
+            }
             userErrors { message path }
           }
         }
       `, { id: input.id }) as any;
       const errors = data?.quoteUpdate?.userErrors;
       if (errors?.length) throw new TRPCError({ code: "BAD_REQUEST", message: errors.map((e: any) => e.message).join("; ") });
-      return data?.quoteUpdate?.quote;
+      const quote = data?.quoteUpdate?.quote;
+      // Automatically create a Follow-up flag in the local DB
+      if (quote?.id) {
+        try {
+          const db = await getDb();
+          if (db) {
+            await db
+              .insert(quoteFollowUps)
+              .values({
+                jobberQuoteId: quote.id,
+                quoteNumber: quote.quoteNumber ?? null,
+                quoteTitle: quote.title ?? null,
+                clientName: quote.client?.name || quote.client?.companyName || null,
+                cleared: false,
+              })
+              .onDuplicateKeyUpdate({ set: { cleared: false, clearedAt: null } });
+          }
+        } catch { /* non-fatal — follow-up flag is best-effort */ }
+      }
+      return quote;
     }),
 
   /** Restore an archived quote back to Draft status */
@@ -1092,28 +1113,29 @@ export const jobberRouter = router({
     return rows;
   }),
 
-  /** TEMP: Introspect Jobber schema for quote mutations — remove after use */
-  introspectQuoteMutations: adminProcedure.query(async () => {
-    const connected = await isJobberConnected();
-    if (!connected) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Jobber not connected" });
-    const data = await jobberGraphQL(`
-      query {
-        __type(name: "Mutation") {
-          fields(includeDeprecated: true) {
-            name
-            isDeprecated
-            deprecationReason
-            args {
-              name
-              type { name kind ofType { name kind ofType { name kind } } }
-            }
-          }
-        }
-      }
-    `) as any;
-    const fields: any[] = data?.__type?.fields ?? [];
-    const quoteFields = fields.filter((f: any) => f.name.toLowerCase().includes("quote"));
-    const deleteFields = fields.filter((f: any) => f.name.toLowerCase().includes("delete") || f.name.toLowerCase().includes("destroy"));
-    return { quoteFields, deleteFields };
+  // ─── Quote Follow-Up Flags ──────────────────────────────────────────────────
+
+  /** Get all pending (uncleared) follow-up flags */
+  quoteFollowUpList: adminProcedure.query(async () => {
+    const db = await getDb();
+    if (!db) return [];
+    return db
+      .select()
+      .from(quoteFollowUps)
+      .orderBy(quoteFollowUps.createdAt);
   }),
+
+  /** Clear a follow-up flag (Jon has followed up) */
+  quoteFollowUpClear: adminProcedure
+    .input(z.object({ jobberQuoteId: z.string() }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+      const { eq } = await import("drizzle-orm");
+      await db
+        .update(quoteFollowUps)
+        .set({ cleared: true, clearedAt: new Date() })
+        .where(eq(quoteFollowUps.jobberQuoteId, input.jobberQuoteId));
+      return { success: true };
+    }),
 });

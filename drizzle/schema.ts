@@ -624,3 +624,27 @@ export const jobNotes = mysqlTable("job_notes", {
 });
 export type JobNote = typeof jobNotes.$inferSelect;
 export type InsertJobNote = typeof jobNotes.$inferInsert;
+
+// ─── Quote Follow-Up Flags ────────────────────────────────────────────────────
+/**
+ * Local follow-up flags for Jobber quotes.
+ * One row per quote — created automatically when a quote is marked as Approved.
+ * Jon can clear the flag once he has followed up with the client.
+ */
+export const quoteFollowUps = mysqlTable("quote_follow_ups", {
+  id: int("id").primaryKey().autoincrement(),
+  /** Jobber quote ID (encoded) */
+  jobberQuoteId: varchar("jobberQuoteId", { length: 120 }).notNull().unique(),
+  /** Human-readable quote number for display */
+  quoteNumber: int("quoteNumber"),
+  /** Snapshot of the quote title at time of flagging */
+  quoteTitle: varchar("quoteTitle", { length: 255 }),
+  /** Snapshot of the client name at time of flagging */
+  clientName: varchar("clientName", { length: 255 }),
+  /** Whether the follow-up has been cleared by Jon */
+  cleared: boolean("cleared").notNull().default(false),
+  clearedAt: timestamp("clearedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type QuoteFollowUp = typeof quoteFollowUps.$inferSelect;
+export type InsertQuoteFollowUp = typeof quoteFollowUps.$inferInsert;

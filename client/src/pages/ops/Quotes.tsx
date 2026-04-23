@@ -179,10 +179,35 @@ function QuoteDetailPanel({
     { retry: false }
   );
 
+  // Follow-up flag for this quote
+  const { data: followUps } = trpc.jobber.quoteFollowUpList.useQuery();
+  const followUp = followUps?.find((f) => f.jobberQuoteId === quoteId);
+  const hasActiveFollowUp = followUp && !followUp.cleared;
+
+  const clearFollowUp = trpc.jobber.quoteFollowUpClear.useMutation({
+    onSuccess: () => {
+      toast.success("Follow-up cleared.");
+      utils.jobber.quoteFollowUpList.invalidate();
+    },
+    onError: (err) => {
+      toast.error(err.message || "Failed to clear follow-up.");
+    },
+  });
+
   // Ref for the Convert to Job button — used to auto-scroll after Mark as Approved
   const convertToJobRef = useRef<HTMLButtonElement>(null);
   // Track whether the quote was just approved so we can scroll on the next render
   const justApprovedRef = useRef(false);
+
+  // Loading state for "Open in Jobber" / "Convert to Job" buttons
+  const [isOpeningJobber, setIsOpeningJobber] = useState(false);
+
+  // Opens a Jobber URL in a new tab with a brief loading indicator
+  const openInJobber = (quoteId: string) => {
+    setIsOpeningJobber(true);
+    window.open(`https://secure.getjobber.com/quotes/${quoteId}`, "_blank", "noopener,noreferrer");
+    setTimeout(() => setIsOpeningJobber(false), 1500);
+  };
 
   // Scroll to Convert to Job button whenever the quote transitions to APPROVED
   // and the button becomes visible in the DOM.
@@ -196,18 +221,14 @@ function QuoteDetailPanel({
     }
   }, [quote?.quoteStatus]);
 
-  // Convert to Job opens the quote in Jobber's web app where the native conversion is available
-  const openInJobberForConversion = (quoteNumber: number | string) => {
-    window.open(`https://secure.getjobber.com/quotes/${quoteNumber}`, "_blank", "noopener,noreferrer");
-  };
-
   const markApproved = trpc.jobber.quoteMarkApproved.useMutation({
     onSuccess: () => {
-      toast.success("Quote marked as approved.");
+      toast.success("Quote marked as approved. Follow-up flag added.");
       // Signal that we want to scroll to Convert to Job once the status updates
       justApprovedRef.current = true;
       utils.jobber.quotes.invalidate();
       utils.jobber.quoteDetail.invalidate({ id: quoteId });
+      utils.jobber.quoteFollowUpList.invalidate();
     },
     onError: (err) => {
       toast.error(err.message || "Failed to mark quote as approved.");
@@ -252,6 +273,11 @@ function QuoteDetailPanel({
               {isLoading ? "Loading..." : quote ? `Quote #${quote.quoteNumber ?? "—"}` : "Quote Detail"}
             </span>
             {quote?.quoteStatus && <StatusBadge status={quote.quoteStatus} />}
+            {hasActiveFollowUp && (
+              <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold bg-orange-500/20 text-orange-400 border border-orange-500/30">
+                Follow-up
+              </span>
+            )}
           </div>
           <button
             onClick={onClose}
@@ -419,11 +445,16 @@ function QuoteDetailPanel({
             {/* Open in Jobber — for DRAFT or CHANGES_REQUESTED, opens quote in Jobber to send natively */}
             {(quote.quoteStatus === "DRAFT" || quote.quoteStatus === "CHANGES_REQUESTED") && (
               <button
-                onClick={() => window.open(`https://secure.getjobber.com/quotes/${quote.quoteNumber}`, "_blank", "noopener,noreferrer")}
-                className="w-full flex items-center justify-center gap-2 py-2 rounded-md text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 transition-colors"
+                onClick={() => openInJobber(quote.id)}
+                disabled={isOpeningJobber}
+                className="w-full flex items-center justify-center gap-2 py-2 rounded-md text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 transition-colors disabled:opacity-70"
               >
-                <ExternalLink className="w-3.5 h-3.5" />
-                Open in Jobber
+                {isOpeningJobber ? (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                ) : (
+                  <ExternalLink className="w-3.5 h-3.5" />
+                )}
+                {isOpeningJobber ? "Opening..." : "Open in Jobber"}
               </button>
             )}
 
@@ -463,12 +494,17 @@ function QuoteDetailPanel({
             {(quote.quoteStatus === "APPROVED" || quote.quoteStatus === "SENT") && (
               <button
                 ref={convertToJobRef}
-                onClick={() => openInJobberForConversion(quote.quoteNumber)}
-                className="w-full flex items-center justify-center gap-2 py-2 rounded-md text-xs font-semibold text-white bg-primary hover:bg-primary/90 transition-colors"
+                onClick={() => openInJobber(quote.id)}
+                disabled={isOpeningJobber}
+                className="w-full flex items-center justify-center gap-2 py-2 rounded-md text-xs font-semibold text-white bg-primary hover:bg-primary/90 transition-colors disabled:opacity-70"
               >
-                <Briefcase className="w-3.5 h-3.5" />
-                Convert to Job
-                <ExternalLink className="w-3 h-3 opacity-70" />
+                {isOpeningJobber ? (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                ) : (
+                  <Briefcase className="w-3.5 h-3.5" />
+                )}
+                {isOpeningJobber ? "Opening..." : "Convert to Job"}
+                {!isOpeningJobber && <ExternalLink className="w-3 h-3 opacity-70" />}
               </button>
             )}
             <div className="flex items-center justify-between">
@@ -507,15 +543,34 @@ function QuoteDetailPanel({
                   <Pencil className="w-3 h-3" />
                   Edit
                 </button>
-                <a
-                  href="https://secure.getjobber.com/home"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-primary transition-colors"
-                >
-                  <ExternalLink className="w-3 h-3" />
-                  Open in Jobber
-                </a>
+                {hasActiveFollowUp ? (
+                  <button
+                    onClick={() => clearFollowUp.mutate({ jobberQuoteId: quoteId })}
+                    disabled={clearFollowUp.isPending}
+                    className="flex items-center gap-1.5 text-xs text-orange-400 hover:text-orange-300 transition-colors disabled:opacity-50"
+                    title="Mark follow-up as done"
+                  >
+                    {clearFollowUp.isPending ? (
+                      <Loader2 className="w-3 h-3 animate-spin" />
+                    ) : (
+                      <CheckCircle className="w-3 h-3" />
+                    )}
+                    Clear Follow-up
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => openInJobber(quote.id)}
+                    disabled={isOpeningJobber}
+                    className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-primary transition-colors disabled:opacity-50"
+                  >
+                    {isOpeningJobber ? (
+                      <Loader2 className="w-3 h-3 animate-spin" />
+                    ) : (
+                      <ExternalLink className="w-3 h-3" />
+                    )}
+                    {isOpeningJobber ? "Opening..." : "Open in Jobber"}
+                  </button>
+                )}
               </div>
             </div>
           </div>
@@ -1435,7 +1490,7 @@ export default function OpsQuotes() {
                                 <button
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    window.open(`https://secure.getjobber.com/quotes/${quote.quoteNumber}`, "_blank", "noopener,noreferrer");
+                                    window.open(`https://secure.getjobber.com/quotes/${quote.id}`, "_blank", "noopener,noreferrer");
                                   }}
                                   title="Convert to Job in Jobber"
                                   className="text-muted-foreground hover:text-amber-400 transition-colors"
