@@ -1019,3 +1019,12 @@
 - [x] Auto-scroll to Convert to Job button after quote is marked as Approved
 - [x] Wire Delete Quote button to Jobber's real quoteDelete mutation (not archive workaround)
 - [x] Add loading spinner to Delete Quote button while deletion/archiving is in progress
+- [x] Auto-close quote detail panel after successful delete and refresh quote list
+- [x] Toast notification confirming quote deleted/archived successfully
+- [x] Create /services/add-ons/post-clear-seeding page
+- [x] Create /services/add-ons/fence-line-clearing page
+- [x] Create /services/add-ons/mulch-redistribution page
+- [x] Create /services/add-ons/selective-clearing page
+- [x] Register all four Add-On routes in App.tsx
+- [x] Add Add-Ons to sitemap.xml
+- [x] Add Add-On links to navbar Services dropdown

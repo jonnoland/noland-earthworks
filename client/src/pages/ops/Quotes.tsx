@@ -1253,9 +1253,11 @@ export default function OpsQuotes() {
 
   const deleteQuote = trpc.jobber.deleteQuote.useMutation({
     onSuccess: () => {
-      toast.success("Quote deleted from Jobber.");
+      toast.success("Quote removed from Jobber.");
       utils.jobber.quotes.invalidate();
       setDeleteTarget(null);
+      // Auto-close the detail panel so the user returns to the refreshed list
+      setSelectedQuoteId(null);
     },
     onError: (err) => {
       toast.error(err.message || "Failed to delete quote.");

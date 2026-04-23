@@ -11,6 +11,11 @@ const PAGES = [
   { path: "/services/vegetation-management",                            priority: "0.9", changefreq: "monthly" },
   { path: "/services/right-of-way-clearing",                            priority: "0.9", changefreq: "monthly" },
   { path: "/services/property-maintenance",                             priority: "0.8", changefreq: "monthly" },
+  // Add-On service pages
+  { path: "/services/add-ons/post-clear-seeding",                        priority: "0.7", changefreq: "monthly" },
+  { path: "/services/add-ons/fence-line-clearing",                       priority: "0.7", changefreq: "monthly" },
+  { path: "/services/add-ons/mulch-redistribution",                      priority: "0.7", changefreq: "monthly" },
+  { path: "/services/add-ons/selective-clearing",                        priority: "0.7", changefreq: "monthly" },
   // Key pages
   { path: "/quote",                                                     priority: "0.9", changefreq: "monthly" },
   { path: "/pricing",                                                   priority: "0.8", changefreq: "monthly" },

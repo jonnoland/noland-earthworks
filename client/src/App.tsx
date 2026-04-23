@@ -34,6 +34,10 @@ import ForestryMulchingPage from "./pages/ForestryMulching";
 import VegetationManagementPage from "./pages/VegetationManagement";
 import PropertyMaintenancePage from "./pages/PropertyMaintenance";
 import RightOfWayClearingPage from "./pages/RightOfWayClearing";
+import PostClearSeedingPage from "./pages/PostClearSeeding";
+import FenceLineClearingPage from "./pages/FenceLineClearing";
+import MulchRedistributionPage from "./pages/MulchRedistribution";
+import SelectiveClearingPage from "./pages/SelectiveClearing";
 import QuotePage from "./pages/Quote";
 import AboutPage from "./pages/About";
 import PricingPage from "./pages/Pricing";
@@ -119,6 +123,11 @@ function Router() {
       <Route path="/services/vegetation-management" component={VegetationManagementPage} />
       <Route path="/services/property-maintenance" component={PropertyMaintenancePage} />
       <Route path="/services/right-of-way-clearing" component={RightOfWayClearingPage} />
+      {/* Add-On service pages */}
+      <Route path="/services/add-ons/post-clear-seeding" component={PostClearSeedingPage} />
+      <Route path="/services/add-ons/fence-line-clearing" component={FenceLineClearingPage} />
+      <Route path="/services/add-ons/mulch-redistribution" component={MulchRedistributionPage} />
+      <Route path="/services/add-ons/selective-clearing" component={SelectiveClearingPage} />
 
       {/* County landing pages */}
       <Route path="/service-areas/davidson-county" component={DavidsonCountyPage} />

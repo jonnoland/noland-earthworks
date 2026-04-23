@@ -16,10 +16,10 @@ const serviceLinks = [
   { label: "Vegetation Management", href: "/services/vegetation-management" },
   { label: "Right-of-Way Clearing", href: "/services/right-of-way-clearing" },
   { label: "Property Maintenance", href: "/services/property-maintenance" },
-  { label: "Post-Clear Seeding", href: "/services/post-clear-seeding", isAddon: true },
-  { label: "Fence Line Clearing", href: "/services/fence-line-clearing", isAddon: true },
-  { label: "Mulch Redistribution", href: "/services/mulch-redistribution", isAddon: true },
-  { label: "Selective Clearing", href: "/services/selective-clearing", isAddon: true },
+  { label: "Post-Clear Seeding", href: "/services/add-ons/post-clear-seeding", isAddon: true },
+  { label: "Fence Line Clearing", href: "/services/add-ons/fence-line-clearing", isAddon: true },
+  { label: "Mulch Redistribution", href: "/services/add-ons/mulch-redistribution", isAddon: true },
+  { label: "Selective Clearing", href: "/services/add-ons/selective-clearing", isAddon: true },
 ];
 
 export default function Navbar() {
