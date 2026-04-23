@@ -203,10 +203,14 @@ function QuoteDetailPanel({
   const [isOpeningJobber, setIsOpeningJobber] = useState(false);
 
   // Opens a Jobber URL in a new tab with a brief loading indicator
-  const openInJobber = (quoteId: string) => {
+  const openInJobber = (id: string) => {
     setIsOpeningJobber(true);
-    window.open(`https://secure.getjobber.com/quotes/${quoteId}`, "_blank", "noopener,noreferrer");
+    window.open(`https://secure.getjobber.com/quotes/${id}`, "_blank", "noopener,noreferrer");
     setTimeout(() => setIsOpeningJobber(false), 1500);
+  };
+
+  const openJobInJobber = (jobId: string) => {
+    window.open(`https://secure.getjobber.com/jobs/${jobId}`, "_blank", "noopener,noreferrer");
   };
 
   // Scroll to Convert to Job button whenever the quote transitions to APPROVED
@@ -222,9 +226,17 @@ function QuoteDetailPanel({
   }, [quote?.quoteStatus]);
 
   const markApproved = trpc.jobber.quoteMarkApproved.useMutation({
-    onSuccess: () => {
-      toast.success("Quote marked as approved. Follow-up flag added.");
-      // Signal that we want to scroll to Convert to Job once the status updates
+    onSuccess: (result) => {
+      const job = (result as any)?.createdJob;
+      const jobErr = (result as any)?.jobError;
+      if (job?.jobNumber) {
+        toast.success(`Quote approved. Job #${job.jobNumber} created in Jobber.`);
+      } else if (jobErr) {
+        toast.success("Quote approved.");
+        toast.error(`Job creation failed: ${jobErr}`);
+      } else {
+        toast.success("Quote approved. Follow-up flag added.");
+      }
       justApprovedRef.current = true;
       utils.jobber.quotes.invalidate();
       utils.jobber.quoteDetail.invalidate({ id: quoteId });
@@ -305,6 +317,28 @@ function QuoteDetailPanel({
 
           {!isLoading && quote && (
             <>
+              {/* Created Job Banner — shown when a job was auto-created from this quote */}
+              {followUp?.jobberJobNumber && (
+                <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2">
+                    <Briefcase className="w-4 h-4 text-amber-400 shrink-0" />
+                    <div>
+                      <p className="text-xs font-semibold text-amber-300">Job #{followUp.jobberJobNumber} created</p>
+                      <p className="text-[11px] text-amber-400/70">Converted from this quote</p>
+                    </div>
+                  </div>
+                  {followUp.jobberJobId && (
+                    <button
+                      onClick={() => openJobInJobber(followUp.jobberJobId!)}
+                      className="flex items-center gap-1 text-[11px] text-amber-400 hover:text-amber-300 transition-colors shrink-0"
+                    >
+                      <ExternalLink className="w-3 h-3" />
+                      View Job
+                    </button>
+                  )}
+                </div>
+              )}
+
               {/* Title */}
               {quote.title && (
                 <div>
@@ -470,7 +504,7 @@ function QuoteDetailPanel({
                 ) : (
                   <CheckCircle className="w-3.5 h-3.5" />
                 )}
-                Mark as Approved
+                {markApproved.isPending ? "Approving & Creating Job..." : "Approve & Create Job"}
               </button>
             )}
 
@@ -490,8 +524,8 @@ function QuoteDetailPanel({
               </button>
             )}
 
-            {/* Convert to Job — opens quote in Jobber web app for native conversion */}
-            {(quote.quoteStatus === "APPROVED" || quote.quoteStatus === "SENT") && (
+            {/* Convert to Job — only shown if no job has been auto-created yet */}
+            {(quote.quoteStatus === "APPROVED" || quote.quoteStatus === "SENT") && !followUp?.jobberJobNumber && (
               <button
                 ref={convertToJobRef}
                 onClick={() => openInJobber(quote.id)}
@@ -503,8 +537,19 @@ function QuoteDetailPanel({
                 ) : (
                   <Briefcase className="w-3.5 h-3.5" />
                 )}
-                {isOpeningJobber ? "Opening..." : "Convert to Job"}
+                {isOpeningJobber ? "Opening..." : "Open in Jobber"}
                 {!isOpeningJobber && <ExternalLink className="w-3 h-3 opacity-70" />}
+              </button>
+            )}
+            {/* View Job — shown when a job was auto-created from this quote */}
+            {followUp?.jobberJobNumber && followUp?.jobberJobId && (
+              <button
+                onClick={() => openJobInJobber(followUp.jobberJobId!)}
+                className="w-full flex items-center justify-center gap-2 py-2 rounded-md text-xs font-semibold text-white bg-amber-600 hover:bg-amber-700 transition-colors"
+              >
+                <Briefcase className="w-3.5 h-3.5" />
+                View Job #{followUp.jobberJobNumber} in Jobber
+                <ExternalLink className="w-3 h-3 opacity-70" />
               </button>
             )}
             <div className="flex items-center justify-between">

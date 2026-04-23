@@ -641,6 +641,10 @@ export const quoteFollowUps = mysqlTable("quote_follow_ups", {
   quoteTitle: varchar("quoteTitle", { length: 255 }),
   /** Snapshot of the client name at time of flagging */
   clientName: varchar("clientName", { length: 255 }),
+  /** Jobber job ID created from this quote (encoded) */
+  jobberJobId: varchar("jobberJobId", { length: 120 }),
+  /** Jobber job number (human-readable) */
+  jobberJobNumber: int("jobberJobNumber"),
   /** Whether the follow-up has been cleared by Jon */
   cleared: boolean("cleared").notNull().default(false),
   clearedAt: timestamp("clearedAt"),

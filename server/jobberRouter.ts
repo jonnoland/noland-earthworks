@@ -969,13 +969,15 @@ export const jobberRouter = router({
       return data?.quoteSendEmail?.quote ?? { success: true };
     }),
 
-  /** Mark a quote as Approved (manual approval without client action) */
+  /** Mark a quote as Approved and automatically create a job in Jobber */
   quoteMarkApproved: protectedProcedure
     .input(z.object({ id: z.string() }))
     .mutation(async ({ input }) => {
       const connected = await isJobberConnected();
       if (!connected) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Jobber not connected" });
-      const data = await jobberGraphQL(`
+
+      // Step 1: Mark quote as APPROVED
+      const approveData = await jobberGraphQL(`
         mutation MarkQuoteApproved($id: EncodedId!) {
           quoteUpdate(id: $id, attributes: { quoteStatus: APPROVED }) {
             quote { id quoteNumber title quoteStatus
@@ -985,10 +987,35 @@ export const jobberRouter = router({
           }
         }
       `, { id: input.id }) as any;
-      const errors = data?.quoteUpdate?.userErrors;
-      if (errors?.length) throw new TRPCError({ code: "BAD_REQUEST", message: errors.map((e: any) => e.message).join("; ") });
-      const quote = data?.quoteUpdate?.quote;
-      // Automatically create a Follow-up flag in the local DB
+      const approveErrors = approveData?.quoteUpdate?.userErrors;
+      if (approveErrors?.length) throw new TRPCError({ code: "BAD_REQUEST", message: approveErrors.map((e: any) => e.message).join("; ") });
+      const quote = approveData?.quoteUpdate?.quote;
+
+      // Step 2: Convert the approved quote to a job
+      let createdJob: { id: string; jobNumber: number; title?: string } | null = null;
+      let jobError: string | null = null;
+      if (quote?.id) {
+        try {
+          const convertData = await jobberGraphQL(`
+            mutation ConvertQuoteToJob($id: EncodedId!) {
+              quoteConvertToJob(input: { id: $id }) {
+                job { id jobNumber title }
+                userErrors { message path }
+              }
+            }
+          `, { id: quote.id }) as any;
+          const convertErrors = convertData?.quoteConvertToJob?.userErrors;
+          if (convertErrors?.length) {
+            jobError = convertErrors.map((e: any) => e.message).join("; ");
+          } else {
+            createdJob = convertData?.quoteConvertToJob?.job ?? null;
+          }
+        } catch (err: any) {
+          jobError = err?.message ?? "Failed to create job";
+        }
+      }
+
+      // Step 3: Upsert follow-up flag with job info (best-effort)
       if (quote?.id) {
         try {
           const db = await getDb();
@@ -1000,13 +1027,27 @@ export const jobberRouter = router({
                 quoteNumber: quote.quoteNumber ?? null,
                 quoteTitle: quote.title ?? null,
                 clientName: quote.client?.name || quote.client?.companyName || null,
+                jobberJobId: createdJob?.id ?? null,
+                jobberJobNumber: createdJob?.jobNumber ?? null,
                 cleared: false,
               })
-              .onDuplicateKeyUpdate({ set: { cleared: false, clearedAt: null } });
+              .onDuplicateKeyUpdate({
+                set: {
+                  cleared: false,
+                  clearedAt: null,
+                  jobberJobId: createdJob?.id ?? null,
+                  jobberJobNumber: createdJob?.jobNumber ?? null,
+                },
+              });
           }
-        } catch { /* non-fatal — follow-up flag is best-effort */ }
+        } catch { /* non-fatal */ }
       }
-      return quote;
+
+      return {
+        ...quote,
+        createdJob,
+        jobError,
+      };
     }),
 
   /** Restore an archived quote back to Draft status */

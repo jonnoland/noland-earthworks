@@ -1040,3 +1040,4 @@
 - [x] Add loading spinner to Open in Jobber buttons (brief delay to indicate page is loading in new tab)
 - [x] After quote is approved, automatically add a Follow-up tag to it in the system
 - [x] Convert to Job button: fixed URL to use quote.id instead of quoteNumber (was causing 404 in Jobber)
+- [x] After quote is approved, automatically create a job in Jobber and display the job number in the detail panel
