@@ -56,22 +56,35 @@ function formatMoney(val: number | null | undefined): string {
   }).format(val);
 }
 
-const STATUS_COLORS: Record<string, string> = {
-  DRAFT: "bg-secondary/50 text-muted-foreground",
-  SENT: "bg-blue-500/15 text-blue-400",
-  CHANGES_REQUESTED: "bg-yellow-500/15 text-yellow-400",
-  APPROVED: "bg-green-500/15 text-green-400",
-  CONVERTED: "bg-primary/15 text-primary",
-  CONVERTED_TO_JOB: "bg-primary/15 text-primary",
-  ARCHIVED: "bg-secondary/50 text-muted-foreground",
+const STATUS_CONFIG: Record<string, { bg: string; text: string; dot: string; label: string }> = {
+  DRAFT:             { bg: "bg-zinc-700/50",         text: "text-zinc-400",   dot: "bg-zinc-400",   label: "Draft" },
+  SENT:              { bg: "bg-blue-500/15",          text: "text-blue-400",  dot: "bg-blue-400",  label: "Sent" },
+  CHANGES_REQUESTED: { bg: "bg-yellow-500/15",        text: "text-yellow-400", dot: "bg-yellow-400", label: "Changes Requested" },
+  APPROVED:          { bg: "bg-green-500/20",          text: "text-green-400", dot: "bg-green-400", label: "Approved" },
+  CONVERTED:         { bg: "bg-amber-500/15",          text: "text-amber-400", dot: "bg-amber-400", label: "Converted" },
+  CONVERTED_TO_JOB:  { bg: "bg-amber-500/15",          text: "text-amber-400", dot: "bg-amber-400", label: "Converted" },
+  ARCHIVED:          { bg: "bg-zinc-700/50",           text: "text-zinc-500",  dot: "bg-zinc-500",  label: "Archived" },
 };
 
+// Keep STATUS_COLORS for any legacy references
+const STATUS_COLORS: Record<string, string> = Object.fromEntries(
+  Object.entries(STATUS_CONFIG).map(([k, v]) => [k, `${v.bg} ${v.text}`])
+);
+
 function StatusBadge({ status }: { status: string }) {
-  const cls = STATUS_COLORS[status] ?? "bg-secondary/50 text-muted-foreground";
-  const label = status.replace(/_/g, " ");
+  const cfg = STATUS_CONFIG[status];
+  if (!cfg) {
+    return (
+      <span className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-semibold bg-zinc-700/50 text-zinc-400">
+        <span className="w-1.5 h-1.5 rounded-full bg-zinc-400 shrink-0" />
+        {status.replace(/_/g, " ")}
+      </span>
+    );
+  }
   return (
-    <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium ${cls}`}>
-      {label}
+    <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-semibold ${cfg.bg} ${cfg.text}`}>
+      <span className={`w-1.5 h-1.5 rounded-full ${cfg.dot} shrink-0`} />
+      {cfg.label}
     </span>
   );
 }
@@ -184,13 +197,21 @@ function QuoteDetailPanel({
     }
   }, [quote?.quoteStatus]);
 
+  const [, navigatePanel] = useLocation();
   const convertToJob = trpc.jobber.quoteConvertToJob.useMutation({
     onSuccess: (result) => {
       if (result.success) {
-        toast.success("Quote converted to job in Jobber.");
+        toast.success("Quote converted to job. Opening job details...");
         utils.jobber.quotes.invalidate();
         utils.jobber.jobs.invalidate();
         onClose();
+        // Navigate to Jobs page, auto-opening the new job's detail panel
+        const jobId = result.job?.id;
+        if (jobId) {
+          navigatePanel(`/ops/jobs?jobId=${encodeURIComponent(jobId)}`);
+        } else {
+          navigatePanel("/ops/jobs");
+        }
       } else {
         toast.error("Conversion failed. Check Jobber for details.");
       }
@@ -1252,13 +1273,21 @@ export default function OpsQuotes() {
     trpc.jobber.quotes.useQuery({ first: 100 }, { retry: false });
 
   const [convertingId, setConvertingId] = useState<string | null>(null);
+  const [, navigate] = useLocation();
   const convertToJobFromTable = trpc.jobber.quoteConvertToJob.useMutation({
     onSuccess: (result) => {
       setConvertingId(null);
       if (result.success) {
-        toast.success("Quote converted to job in Jobber.");
+        toast.success("Quote converted to job. Opening job details...");
         utils.jobber.quotes.invalidate();
         utils.jobber.jobs.invalidate();
+        // Navigate to Jobs page, auto-opening the new job's detail panel
+        const jobId = result.job?.id;
+        if (jobId) {
+          navigate(`/ops/jobs?jobId=${encodeURIComponent(jobId)}`);
+        } else {
+          navigate("/ops/jobs");
+        }
       } else {
         toast.error("Conversion failed. Check Jobber for details.");
       }

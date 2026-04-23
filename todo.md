@@ -1030,3 +1030,6 @@
 - [x] Add Add-On links to navbar Services dropdown
 - [x] Add Convert to Job button in the Actions column of the quotes table on /ops/quotes
 - [x] Fix Convert to Job button not appearing after quote is approved on production
+- [x] Color-code quote status badges (Draft=gray, Sent=blue, Approved=green, Converted=orange/primary, Archived=gray, Changes Requested=yellow)
+- [x] After Convert to Job succeeds, optimistically update quote status to CONVERTED and hide the Convert to Job button
+- [x] After Convert to Job succeeds, navigate to the new job detail page with all details from the original quote

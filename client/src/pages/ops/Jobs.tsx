@@ -615,7 +615,14 @@ const emptyForm: JobFormData = {
 export default function Jobs() {
   const [search, setSearch] = useState("");
   const [statusTab, setStatusTab] = useState<StatusTab>("ALL");
-  const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
+  const [selectedJobId, setSelectedJobId] = useState<string | null>(() => {
+    // Auto-open a job's detail panel if ?jobId=ID is in the URL (e.g. after Convert to Job)
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      return params.get("jobId");
+    }
+    return null;
+  });
   const [deleteTarget, setDeleteTarget] = useState<{
     id: string;
     jobNumber?: number | null;
