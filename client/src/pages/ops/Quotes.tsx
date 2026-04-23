@@ -1251,6 +1251,24 @@ export default function OpsQuotes() {
   const { data, isLoading, error, refetch, isFetching } =
     trpc.jobber.quotes.useQuery({ first: 100 }, { retry: false });
 
+  const [convertingId, setConvertingId] = useState<string | null>(null);
+  const convertToJobFromTable = trpc.jobber.quoteConvertToJob.useMutation({
+    onSuccess: (result) => {
+      setConvertingId(null);
+      if (result.success) {
+        toast.success("Quote converted to job in Jobber.");
+        utils.jobber.quotes.invalidate();
+        utils.jobber.jobs.invalidate();
+      } else {
+        toast.error("Conversion failed. Check Jobber for details.");
+      }
+    },
+    onError: (err) => {
+      setConvertingId(null);
+      toast.error(err.message || "Failed to convert quote to job.");
+    },
+  });
+
   const deleteQuote = trpc.jobber.deleteQuote.useMutation({
     onSuccess: () => {
       toast.success("Quote removed from Jobber.");
@@ -1448,6 +1466,24 @@ export default function OpsQuotes() {
                               >
                                 <Pencil className="w-3.5 h-3.5" />
                               </button>
+                              {quote.quoteStatus === "APPROVED" && (
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setConvertingId(quote.id);
+                                    convertToJobFromTable.mutate({ id: quote.id });
+                                  }}
+                                  disabled={convertingId === quote.id}
+                                  title="Convert to Job"
+                                  className="text-muted-foreground hover:text-amber-400 transition-colors disabled:opacity-50"
+                                >
+                                  {convertingId === quote.id ? (
+                                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                  ) : (
+                                    <Briefcase className="w-3.5 h-3.5" />
+                                  )}
+                                </button>
+                              )}
                               <button
                                 onClick={(e) => {
                                   e.stopPropagation();
