@@ -1033,3 +1033,5 @@
 - [x] Color-code quote status badges (Draft=gray, Sent=blue, Approved=green, Converted=orange/primary, Archived=gray, Changes Requested=yellow)
 - [x] After Convert to Job succeeds, optimistically update quote status to CONVERTED and hide the Convert to Job button
 - [x] After Convert to Job succeeds, navigate to the new job detail page with all details from the original quote
+- [x] Fix quoteConvertToJob: find correct Jobber mutation name and update the procedure
+- [x] Convert to Job button: open quote in Jobber web app instead of calling broken API mutation

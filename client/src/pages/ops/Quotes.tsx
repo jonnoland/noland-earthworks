@@ -197,29 +197,10 @@ function QuoteDetailPanel({
     }
   }, [quote?.quoteStatus]);
 
-  const [, navigatePanel] = useLocation();
-  const convertToJob = trpc.jobber.quoteConvertToJob.useMutation({
-    onSuccess: (result) => {
-      if (result.success) {
-        toast.success("Quote converted to job. Opening job details...");
-        utils.jobber.quotes.invalidate();
-        utils.jobber.jobs.invalidate();
-        onClose();
-        // Navigate to Jobs page, auto-opening the new job's detail panel
-        const jobId = result.job?.id;
-        if (jobId) {
-          navigatePanel(`/ops/jobs?jobId=${encodeURIComponent(jobId)}`);
-        } else {
-          navigatePanel("/ops/jobs");
-        }
-      } else {
-        toast.error("Conversion failed. Check Jobber for details.");
-      }
-    },
-    onError: (err) => {
-      toast.error(err.message || "Failed to convert quote to job.");
-    },
-  });
+  // Convert to Job opens the quote in Jobber's web app where the native conversion is available
+  const openInJobberForConversion = (quoteNumber: number | string) => {
+    window.open(`https://secure.getjobber.com/quotes/${quoteNumber}`, "_blank", "noopener,noreferrer");
+  };
 
   const sendQuote = trpc.jobber.quoteSend.useMutation({
     onSuccess: () => {
@@ -495,20 +476,16 @@ function QuoteDetailPanel({
               </button>
             )}
 
-            {/* Convert to Job — only show for APPROVED quotes */}
+            {/* Convert to Job — opens quote in Jobber web app for native conversion */}
             {(quote.quoteStatus === "APPROVED" || quote.quoteStatus === "SENT") && (
               <button
                 ref={convertToJobRef}
-                onClick={() => convertToJob.mutate({ id: quoteId })}
-                disabled={convertToJob.isPending}
-                className="w-full flex items-center justify-center gap-2 py-2 rounded-md text-xs font-semibold text-white bg-primary hover:bg-primary/90 transition-colors disabled:opacity-50"
+                onClick={() => openInJobberForConversion(quote.quoteNumber)}
+                className="w-full flex items-center justify-center gap-2 py-2 rounded-md text-xs font-semibold text-white bg-primary hover:bg-primary/90 transition-colors"
               >
-                {convertToJob.isPending ? (
-                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                ) : (
-                  <Briefcase className="w-3.5 h-3.5" />
-                )}
+                <Briefcase className="w-3.5 h-3.5" />
                 Convert to Job
+                <ExternalLink className="w-3 h-3 opacity-70" />
               </button>
             )}
             <div className="flex items-center justify-between">
@@ -1272,31 +1249,7 @@ export default function OpsQuotes() {
   const { data, isLoading, error, refetch, isFetching } =
     trpc.jobber.quotes.useQuery({ first: 100 }, { retry: false });
 
-  const [convertingId, setConvertingId] = useState<string | null>(null);
   const [, navigate] = useLocation();
-  const convertToJobFromTable = trpc.jobber.quoteConvertToJob.useMutation({
-    onSuccess: (result) => {
-      setConvertingId(null);
-      if (result.success) {
-        toast.success("Quote converted to job. Opening job details...");
-        utils.jobber.quotes.invalidate();
-        utils.jobber.jobs.invalidate();
-        // Navigate to Jobs page, auto-opening the new job's detail panel
-        const jobId = result.job?.id;
-        if (jobId) {
-          navigate(`/ops/jobs?jobId=${encodeURIComponent(jobId)}`);
-        } else {
-          navigate("/ops/jobs");
-        }
-      } else {
-        toast.error("Conversion failed. Check Jobber for details.");
-      }
-    },
-    onError: (err) => {
-      setConvertingId(null);
-      toast.error(err.message || "Failed to convert quote to job.");
-    },
-  });
 
   const deleteQuote = trpc.jobber.deleteQuote.useMutation({
     onSuccess: () => {
@@ -1499,18 +1452,12 @@ export default function OpsQuotes() {
                                 <button
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    setConvertingId(quote.id);
-                                    convertToJobFromTable.mutate({ id: quote.id });
+                                    window.open(`https://secure.getjobber.com/quotes/${quote.quoteNumber}`, "_blank", "noopener,noreferrer");
                                   }}
-                                  disabled={convertingId === quote.id}
-                                  title="Convert to Job"
-                                  className="text-muted-foreground hover:text-amber-400 transition-colors disabled:opacity-50"
+                                  title="Convert to Job in Jobber"
+                                  className="text-muted-foreground hover:text-amber-400 transition-colors"
                                 >
-                                  {convertingId === quote.id ? (
-                                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                                  ) : (
-                                    <Briefcase className="w-3.5 h-3.5" />
-                                  )}
+                                  <Briefcase className="w-3.5 h-3.5" />
                                 </button>
                               )}
                               <button
