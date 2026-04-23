@@ -153,11 +153,13 @@ function QuoteDetailPanel({
   onClose,
   onDelete,
   onEdit,
+  isDeletePending,
 }: {
   quoteId: string;
   onClose: () => void;
   onDelete: (quote: any) => void;
   onEdit: (quote: any) => void;
+  isDeletePending?: boolean;
 }) {
   const utils = trpc.useUtils();
   const { data: quote, isLoading, error } = trpc.jobber.quoteDetail.useQuery(
@@ -494,10 +496,15 @@ function QuoteDetailPanel({
                   onDelete(quote);
                   onClose();
                 }}
-                className="flex items-center gap-1.5 text-xs text-red-400 hover:text-red-300 transition-colors"
+                disabled={isDeletePending}
+                className="flex items-center gap-1.5 text-xs text-red-400 hover:text-red-300 transition-colors disabled:opacity-50"
               >
-                <Trash2 className="w-3.5 h-3.5" />
-                Delete
+                {isDeletePending ? (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                ) : (
+                  <Trash2 className="w-3.5 h-3.5" />
+                )}
+                {isDeletePending ? "Deleting..." : "Delete"}
               </button>
               <div className="flex items-center gap-3">
                 <button
@@ -1481,6 +1488,7 @@ export default function OpsQuotes() {
           quoteId={selectedQuoteId}
           onClose={() => setSelectedQuoteId(null)}
           onDelete={(quote) => setDeleteTarget(quote)}
+          isDeletePending={deleteQuote.isPending}
           onEdit={(q) => {
             setEditTarget({
               quoteId: q.id,

@@ -1018,3 +1018,4 @@
 - [x] Wire Restore button in detail panel (shows for ARCHIVED quotes)
 - [x] Auto-scroll to Convert to Job button after quote is marked as Approved
 - [x] Wire Delete Quote button to Jobber's real quoteDelete mutation (not archive workaround)
+- [x] Add loading spinner to Delete Quote button while deletion/archiving is in progress
