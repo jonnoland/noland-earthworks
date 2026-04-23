@@ -322,21 +322,26 @@ export const jobberRouter = router({
       return data.quote ?? null;
     }),
 
-  /** Delete a quote from Jobber */
-  deleteQuote: protectedProcedure
+  /**
+   * Archive a quote in Jobber.
+   * Jobber does not support quoteDelete — quotes can only be archived.
+   */
+  deleteQuote: adminProcedure
     .input(z.object({ id: z.string() }))
     .mutation(async ({ input }) => {
+      const connected = await isJobberConnected();
+      if (!connected) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Jobber not connected" });
       const data = await jobberGraphQL(`
-        mutation DeleteQuote($id: EncodedId!) {
-          quoteDelete(input: { id: $id }) {
-            quoteId
+        mutation ArchiveQuote($id: EncodedId!) {
+          quoteUpdate(id: $id, attributes: { quoteStatus: ARCHIVED }) {
+            quote { id quoteNumber quoteStatus }
             userErrors { message path }
           }
         }
       `, { id: input.id }) as any;
-      const errors = data?.quoteDelete?.userErrors;
+      const errors = data?.quoteUpdate?.userErrors;
       if (errors?.length) throw new TRPCError({ code: "BAD_REQUEST", message: errors[0].message });
-      return { success: true, deletedId: data?.quoteDelete?.quoteId };
+      return { success: true, archivedId: data?.quoteUpdate?.quote?.id };
     }),
 
   /** Delete a job from Jobber */
@@ -890,6 +895,35 @@ export const jobberRouter = router({
       const errors = data?.quoteLineItemDelete?.userErrors;
       if (errors?.length) throw new TRPCError({ code: "BAD_REQUEST", message: errors.map((e: any) => e.message).join("; ") });
       return { success: true };
+    }),
+
+  /**
+   * Send a quote to the client's email via Jobber.
+   * Jobber handles the email delivery and provides the client with an
+   * approval/rejection link (digital signature flow).
+   */
+  quoteSend: adminProcedure
+    .input(z.object({
+      quoteId: z.string(),
+      /** Optional custom message to include in the email */
+      message: z.string().optional(),
+    }))
+    .mutation(async ({ input }) => {
+      const connected = await isJobberConnected();
+      if (!connected) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Jobber not connected" });
+      const data = await jobberGraphQL(`
+        mutation SendQuote($id: EncodedId!, $message: String) {
+          quoteSendEmail(quoteId: $id, attributes: { message: $message }) {
+            quote { id quoteNumber quoteStatus }
+            userErrors { message path }
+          }
+        }
+      `, { id: input.quoteId, message: input.message ?? null }) as any;
+      const errors = data?.quoteSendEmail?.userErrors;
+      if (errors?.length) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: errors.map((e: any) => e.message).join("; ") });
+      }
+      return data?.quoteSendEmail?.quote ?? { success: true };
     }),
 
   /** Get aggregated lead source breakdown (count per source) */

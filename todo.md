@@ -1007,3 +1007,6 @@
 - [x] Add quoteUpdate mutation to jobberRouter (title, message)
 - [x] Add quoteLineItemUpdate and quoteLineItemDelete mutations to jobberRouter
 - [x] Build Edit Quote form in ops/Quotes page (pre-filled from quoteDetail, saves via quoteUpdate + line item mutations)
+- [x] Add quoteSend mutation to jobberRouter (sends quote to client email via Jobber API)
+- [x] Add Send Quote button to the detail panel in ops/Quotes page
+- [x] Confirm status badges (Draft/Sent/Approved/Rejected) are visible in quotes list and detail panel

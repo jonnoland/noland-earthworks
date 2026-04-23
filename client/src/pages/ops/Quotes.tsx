@@ -29,6 +29,7 @@ import {
   Plus,
   PlusCircle,
   Pencil,
+  Send,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -174,6 +175,17 @@ function QuoteDetailPanel({
     },
     onError: (err) => {
       toast.error(err.message || "Failed to convert quote to job.");
+    },
+  });
+
+  const sendQuote = trpc.jobber.quoteSend.useMutation({
+    onSuccess: () => {
+      toast.success("Quote sent to client via Jobber.");
+      utils.jobber.quotes.invalidate();
+      utils.jobber.quoteDetail.invalidate({ id: quoteId });
+    },
+    onError: (err) => {
+      toast.error(err.message || "Failed to send quote.");
     },
   });
 
@@ -358,6 +370,22 @@ function QuoteDetailPanel({
         {/* Footer actions */}
         {!isLoading && quote && (
           <div className="shrink-0 border-t border-border px-5 py-4 space-y-2">
+            {/* Send Quote — only show for DRAFT or CHANGES_REQUESTED quotes */}
+            {(quote.quoteStatus === "DRAFT" || quote.quoteStatus === "CHANGES_REQUESTED") && (
+              <button
+                onClick={() => sendQuote.mutate({ quoteId: quote.id })}
+                disabled={sendQuote.isPending}
+                className="w-full flex items-center justify-center gap-2 py-2 rounded-md text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 transition-colors disabled:opacity-50"
+              >
+                {sendQuote.isPending ? (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                ) : (
+                  <Send className="w-3.5 h-3.5" />
+                )}
+                Send Quote to Client
+              </button>
+            )}
+
             {/* Convert to Job — only show for APPROVED quotes */}
             {(quote.quoteStatus === "APPROVED" || quote.quoteStatus === "SENT") && (
               <button
