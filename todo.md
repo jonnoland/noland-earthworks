@@ -1010,3 +1010,9 @@
 - [x] Add quoteSend mutation to jobberRouter (sends quote to client email via Jobber API)
 - [x] Add Send Quote button to the detail panel in ops/Quotes page
 - [x] Confirm status badges (Draft/Sent/Approved/Rejected) are visible in quotes list and detail panel
+- [x] Add quoteMarkApproved mutation to jobberRouter (quoteUpdate with APPROVED status)
+- [x] Add quoteDuplicate mutation to jobberRouter (create new Draft quote copying title/lineItems)
+- [x] Add quoteRestore mutation to jobberRouter (quoteUpdate with DRAFT status to unarchive)
+- [x] Wire Mark as Approved button in detail panel (shows for SENT quotes)
+- [x] Wire Duplicate Quote button in detail panel (shows for any non-archived quote)
+- [x] Wire Restore button in detail panel (shows for ARCHIVED quotes)

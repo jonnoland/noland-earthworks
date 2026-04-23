@@ -926,6 +926,114 @@ export const jobberRouter = router({
       return data?.quoteSendEmail?.quote ?? { success: true };
     }),
 
+  /** Mark a quote as Approved (manual approval without client action) */
+  quoteMarkApproved: protectedProcedure
+    .input(z.object({ id: z.string() }))
+    .mutation(async ({ input }) => {
+      const connected = await isJobberConnected();
+      if (!connected) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Jobber not connected" });
+      const data = await jobberGraphQL(`
+        mutation MarkQuoteApproved($id: EncodedId!) {
+          quoteUpdate(id: $id, attributes: { quoteStatus: APPROVED }) {
+            quote { id quoteNumber quoteStatus }
+            userErrors { message path }
+          }
+        }
+      `, { id: input.id }) as any;
+      const errors = data?.quoteUpdate?.userErrors;
+      if (errors?.length) throw new TRPCError({ code: "BAD_REQUEST", message: errors.map((e: any) => e.message).join("; ") });
+      return data?.quoteUpdate?.quote;
+    }),
+
+  /** Restore an archived quote back to Draft status */
+  quoteRestore: protectedProcedure
+    .input(z.object({ id: z.string() }))
+    .mutation(async ({ input }) => {
+      const connected = await isJobberConnected();
+      if (!connected) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Jobber not connected" });
+      const data = await jobberGraphQL(`
+        mutation RestoreQuote($id: EncodedId!) {
+          quoteUpdate(id: $id, attributes: { quoteStatus: DRAFT }) {
+            quote { id quoteNumber quoteStatus }
+            userErrors { message path }
+          }
+        }
+      `, { id: input.id }) as any;
+      const errors = data?.quoteUpdate?.userErrors;
+      if (errors?.length) throw new TRPCError({ code: "BAD_REQUEST", message: errors.map((e: any) => e.message).join("; ") });
+      return data?.quoteUpdate?.quote;
+    }),
+
+  /**
+   * Duplicate a quote — fetches the source quote's line items then creates a
+   * new Draft quote for the same client with the same title and line items.
+   */
+  quoteDuplicate: protectedProcedure
+    .input(z.object({ id: z.string() }))
+    .mutation(async ({ input }) => {
+      const connected = await isJobberConnected();
+      if (!connected) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Jobber not connected" });
+
+      // 1. Fetch the source quote
+      const sourceData = await jobberGraphQL(`
+        query GetQuoteForDuplicate($id: EncodedId!) {
+          quote(id: $id) {
+            id
+            title
+            message
+            client { id }
+            property { id }
+            lineItems {
+              nodes {
+                name description quantity unitPrice
+              }
+            }
+          }
+        }
+      `, { id: input.id }) as any;
+      const src = sourceData?.quote;
+      if (!src) throw new TRPCError({ code: "NOT_FOUND", message: "Source quote not found" });
+
+      const lineItems = (src.lineItems?.nodes ?? []).map((li: any) => ({
+        name: li.name,
+        description: li.description ?? "",
+        quantity: li.quantity,
+        unitPrice: li.unitPrice,
+        saveToProductsAndServices: false,
+      }));
+
+      // 2. Create the duplicate quote
+      const createData = await jobberGraphQL(`
+        mutation DuplicateQuote(
+          $clientId: EncodedId!
+          $propertyId: EncodedId!
+          $title: String
+          $message: String
+          $lineItems: [QuoteCreateLineItemAttributes!]!
+        ) {
+          quoteCreate(attributes: {
+            clientId: $clientId
+            propertyId: $propertyId
+            title: $title
+            message: $message
+            lineItems: $lineItems
+          }) {
+            quote { id quoteNumber quoteStatus }
+            userErrors { message path }
+          }
+        }
+      `, {
+        clientId: src.client.id,
+        propertyId: src.property.id,
+        title: src.title ? `Copy of ${src.title}` : "Duplicate Quote",
+        message: src.message ?? "",
+        lineItems,
+      }) as any;
+      const errors = createData?.quoteCreate?.userErrors;
+      if (errors?.length) throw new TRPCError({ code: "BAD_REQUEST", message: errors.map((e: any) => e.message).join("; ") });
+      return createData?.quoteCreate?.quote;
+    }),
+
   /** Get aggregated lead source breakdown (count per source) */
   getLeadSourceBreakdown: protectedProcedure.query(async () => {
     const db = await getDb();
