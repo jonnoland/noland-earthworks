@@ -551,7 +551,16 @@ function LeadDetailPanel({
               </a>
             )}
             <button
-              onClick={() => { navigate("/ops/quotes"); toast.info("Create a quote from the Quotes page"); }}
+              onClick={() => {
+                const params = new URLSearchParams();
+                params.set("newQuote", "1");
+                if (lead.name) params.set("clientName", lead.name);
+                if (lead.phone) params.set("clientPhone", lead.phone);
+                if (lead.email) params.set("clientEmail", lead.email);
+                if (lead.address) params.set("clientAddress", lead.address);
+                if (lead.jobType) params.set("jobType", lead.jobType);
+                navigate(`/ops/quotes?${params.toString()}`);
+              }}
               className="flex flex-col items-center justify-center gap-1 bg-[#1e1e1e] hover:bg-[#252525] border border-[#2a2a2a] text-[11px] text-[#aaa] py-2 rounded-md transition-colors">
               <FileText className="w-3.5 h-3.5" />Create Quote
             </button>

@@ -968,14 +968,30 @@ function EditQuoteModal({ quoteId, initialTitle, initialMessage, initialLineItem
 
 // ─── Create Quote Modal ────────────────────────────────────────────────────────
 
-function CreateQuoteModal({ onClose, onCreated }: { onClose: () => void; onCreated: () => void }) {
-  const [title, setTitle] = useState("");
+type CreateQuoteModalProps = {
+  onClose: () => void;
+  onCreated: () => void;
+  prefill?: {
+    clientName?: string;
+    clientPhone?: string;
+    clientEmail?: string;
+    clientAddress?: string;
+    jobType?: string;
+  };
+};
+
+function CreateQuoteModal({ onClose, onCreated, prefill }: CreateQuoteModalProps) {
+  const [title, setTitle] = useState(() => {
+    if (prefill?.jobType) return prefill.jobType;
+    return "";
+  });
   const [message, setMessage] = useState("");
-  const [clientSearch, setClientSearch] = useState("");
+  const [clientSearch, setClientSearch] = useState(() => prefill?.clientName ?? "");
   const [selectedClient, setSelectedClient] = useState<ClientNode | null>(null);
   const [lineItems, setLineItems] = useState<LineItem[]>([]);
   const [serviceSearch, setServiceSearch] = useState("");
   const [showServicePicker, setShowServicePicker] = useState(false);
+  const autoSelectedRef = useRef(false);
 
   const { data: clientsData, isLoading: clientsLoading } = trpc.jobber.clients.useQuery(
     { first: 200 },
@@ -1016,6 +1032,19 @@ function CreateQuoteModal({ onClose, onCreated }: { onClose: () => void; onCreat
     const q = serviceSearch.toLowerCase();
     return all.filter((s) => s.active && (!q || s.name.toLowerCase().includes(q)));
   }, [services, serviceSearch]);
+
+  // Auto-select the first matching client when prefill name is provided and clients have loaded
+  useEffect(() => {
+    if (autoSelectedRef.current) return;
+    if (!prefill?.clientName) return;
+    if (clientsLoading || clients.length === 0) return;
+    const match = filteredClients[0];
+    if (match) {
+      setSelectedClient(match);
+      setClientSearch("");
+      autoSelectedRef.current = true;
+    }
+  }, [prefill?.clientName, clientsLoading, filteredClients, clients.length]);
 
   const subtotal = lineItems.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0);
 
@@ -1345,7 +1374,30 @@ export default function OpsQuotes() {
     title?: string | null;
     client?: { name?: string | null; companyName?: string | null } | null;
   } | null>(null);
-  const [showCreateModal, setShowCreateModal] = useState(false);
+  // Read prefill data from URL params (set by Leads page Create Quote button)
+  const [createModalPrefill] = useState<{
+    clientName?: string;
+    clientPhone?: string;
+    clientEmail?: string;
+    clientAddress?: string;
+    jobType?: string;
+  } | undefined>(() => {
+    if (typeof window === "undefined") return undefined;
+    const p = new URLSearchParams(window.location.search);
+    if (!p.get("newQuote")) return undefined;
+    return {
+      clientName: p.get("clientName") ?? undefined,
+      clientPhone: p.get("clientPhone") ?? undefined,
+      clientEmail: p.get("clientEmail") ?? undefined,
+      clientAddress: p.get("clientAddress") ?? undefined,
+      jobType: p.get("jobType") ?? undefined,
+    };
+  });
+  const [showCreateModal, setShowCreateModal] = useState(() => {
+    // Auto-open modal if ?newQuote=1 is in the URL
+    if (typeof window === "undefined") return false;
+    return new URLSearchParams(window.location.search).get("newQuote") === "1";
+  });
   const [editTarget, setEditTarget] = useState<{
     quoteId: string;
     title: string;
@@ -1650,8 +1702,14 @@ export default function OpsQuotes() {
       {/* Create Quote modal */}
       {showCreateModal && (
         <CreateQuoteModal
-          onClose={() => setShowCreateModal(false)}
+          onClose={() => {
+            setShowCreateModal(false);
+            // Clean ?newQuote params from URL without triggering a navigation
+            const clean = window.location.pathname;
+            window.history.replaceState({}, "", clean);
+          }}
           onCreated={() => utils.jobber.quotes.invalidate()}
+          prefill={createModalPrefill}
         />
       )}
       {/* Edit Quote modal */}
