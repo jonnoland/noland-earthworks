@@ -3,7 +3,7 @@
  * Calls trpc.jobber.quotes to fetch quotes from Jobber CRM.
  * Clicking a row opens a slide-out detail panel with full quote info.
  */
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { Link, useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import DashboardLayout from "@/components/DashboardLayout";
@@ -165,6 +165,23 @@ function QuoteDetailPanel({
     { retry: false }
   );
 
+  // Ref for the Convert to Job button — used to auto-scroll after Mark as Approved
+  const convertToJobRef = useRef<HTMLButtonElement>(null);
+  // Track whether the quote was just approved so we can scroll on the next render
+  const justApprovedRef = useRef(false);
+
+  // Scroll to Convert to Job button whenever the quote transitions to APPROVED
+  // and the button becomes visible in the DOM.
+  useEffect(() => {
+    if (quote?.quoteStatus === "APPROVED" && justApprovedRef.current) {
+      justApprovedRef.current = false;
+      // Small timeout lets React finish rendering the button before scrolling
+      setTimeout(() => {
+        convertToJobRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      }, 80);
+    }
+  }, [quote?.quoteStatus]);
+
   const convertToJob = trpc.jobber.quoteConvertToJob.useMutation({
     onSuccess: (result) => {
       if (result.success) {
@@ -195,6 +212,8 @@ function QuoteDetailPanel({
   const markApproved = trpc.jobber.quoteMarkApproved.useMutation({
     onSuccess: () => {
       toast.success("Quote marked as approved.");
+      // Signal that we want to scroll to Convert to Job once the status updates
+      justApprovedRef.current = true;
       utils.jobber.quotes.invalidate();
       utils.jobber.quoteDetail.invalidate({ id: quoteId });
     },
@@ -456,6 +475,7 @@ function QuoteDetailPanel({
             {/* Convert to Job — only show for APPROVED quotes */}
             {(quote.quoteStatus === "APPROVED" || quote.quoteStatus === "SENT") && (
               <button
+                ref={convertToJobRef}
                 onClick={() => convertToJob.mutate({ id: quoteId })}
                 disabled={convertToJob.isPending}
                 className="w-full flex items-center justify-center gap-2 py-2 rounded-md text-xs font-semibold text-white bg-primary hover:bg-primary/90 transition-colors disabled:opacity-50"

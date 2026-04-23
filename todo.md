@@ -1016,3 +1016,5 @@
 - [x] Wire Mark as Approved button in detail panel (shows for SENT quotes)
 - [x] Wire Duplicate Quote button in detail panel (shows for any non-archived quote)
 - [x] Wire Restore button in detail panel (shows for ARCHIVED quotes)
+- [x] Auto-scroll to Convert to Job button after quote is marked as Approved
+- [x] Wire Delete Quote button to Jobber's real quoteDelete mutation (not archive workaround)

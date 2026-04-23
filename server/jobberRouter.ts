@@ -323,15 +323,47 @@ export const jobberRouter = router({
     }),
 
   /**
-   * Archive a quote in Jobber.
-   * Jobber does not support quoteDelete — quotes can only be archived.
+   * Delete a quote from Jobber.
+   * Attempts the native quoteDelete mutation first; if Jobber returns a
+   * schema / field error (mutation not supported), falls back to archiving
+   * the quote via quoteUpdate so the button always works.
    */
   deleteQuote: adminProcedure
     .input(z.object({ id: z.string() }))
     .mutation(async ({ input }) => {
       const connected = await isJobberConnected();
       if (!connected) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Jobber not connected" });
-      const data = await jobberGraphQL(`
+
+      // --- Attempt 1: native quoteDelete ---
+      let deleteData: any;
+      let deleteError: unknown;
+      try {
+        deleteData = await jobberGraphQL(`
+          mutation DeleteQuote($id: EncodedId!) {
+            quoteDelete(input: { id: $id }) {
+              quoteId
+              userErrors { message path }
+            }
+          }
+        `, { id: input.id });
+      } catch (err) {
+        deleteError = err;
+      }
+
+      // If quoteDelete succeeded (no GraphQL field errors and no thrown error)
+      if (deleteData && !deleteError) {
+        const userErrors = (deleteData as any)?.quoteDelete?.userErrors;
+        // A non-null quoteDelete field means the mutation exists and ran
+        if ((deleteData as any)?.quoteDelete !== undefined) {
+          if (userErrors?.length) {
+            throw new TRPCError({ code: "BAD_REQUEST", message: userErrors[0].message });
+          }
+          return { success: true, method: "delete", deletedId: (deleteData as any)?.quoteDelete?.quoteId };
+        }
+      }
+
+      // --- Fallback: archive via quoteUpdate ---
+      const archiveData = await jobberGraphQL(`
         mutation ArchiveQuote($id: EncodedId!) {
           quoteUpdate(id: $id, attributes: { quoteStatus: ARCHIVED }) {
             quote { id quoteNumber quoteStatus }
@@ -339,9 +371,9 @@ export const jobberRouter = router({
           }
         }
       `, { id: input.id }) as any;
-      const errors = data?.quoteUpdate?.userErrors;
-      if (errors?.length) throw new TRPCError({ code: "BAD_REQUEST", message: errors[0].message });
-      return { success: true, archivedId: data?.quoteUpdate?.quote?.id };
+      const archiveErrors = archiveData?.quoteUpdate?.userErrors;
+      if (archiveErrors?.length) throw new TRPCError({ code: "BAD_REQUEST", message: archiveErrors[0].message });
+      return { success: true, method: "archive", archivedId: archiveData?.quoteUpdate?.quote?.id };
     }),
 
   /** Delete a job from Jobber */
@@ -1047,5 +1079,30 @@ export const jobberRouter = router({
       .groupBy(leadSourceTags.source)
       .orderBy(sql`count(*) desc`);
     return rows;
+  }),
+
+  /** TEMP: Introspect Jobber schema for quote mutations — remove after use */
+  introspectQuoteMutations: adminProcedure.query(async () => {
+    const connected = await isJobberConnected();
+    if (!connected) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Jobber not connected" });
+    const data = await jobberGraphQL(`
+      query {
+        __type(name: "Mutation") {
+          fields(includeDeprecated: true) {
+            name
+            isDeprecated
+            deprecationReason
+            args {
+              name
+              type { name kind ofType { name kind ofType { name kind } } }
+            }
+          }
+        }
+      }
+    `) as any;
+    const fields: any[] = data?.__type?.fields ?? [];
+    const quoteFields = fields.filter((f: any) => f.name.toLowerCase().includes("quote"));
+    const deleteFields = fields.filter((f: any) => f.name.toLowerCase().includes("delete") || f.name.toLowerCase().includes("destroy"));
+    return { quoteFields, deleteFields };
   }),
 });
