@@ -37,6 +37,30 @@ import { toast } from "sonner";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
+/**
+ * Decode a Jobber GraphQL encoded ID (base64 gid://jobber/Type/12345)
+ * and return the numeric ID portion for use in web URLs.
+ * Falls back to the raw encoded ID if decoding fails.
+ */
+function decodeJobberId(encodedId: string): string {
+  try {
+    const decoded = atob(encodedId);
+    // Format: gid://jobber/Quote/12345
+    const parts = decoded.split("/");
+    const numericId = parts[parts.length - 1];
+    if (numericId && /^\d+$/.test(numericId)) return numericId;
+  } catch { /* ignore */ }
+  return encodedId;
+}
+
+function jobberQuoteUrl(encodedId: string): string {
+  return `https://secure.getjobber.com/quotes/${decodeJobberId(encodedId)}`;
+}
+
+function jobberJobUrl(encodedId: string): string {
+  return `https://secure.getjobber.com/jobs/${decodeJobberId(encodedId)}`;
+}
+
 function formatDate(iso: string | null | undefined): string {
   if (!iso) return "—";
   return new Date(iso).toLocaleDateString("en-US", {
@@ -205,12 +229,12 @@ function QuoteDetailPanel({
   // Opens a Jobber URL in a new tab with a brief loading indicator
   const openInJobber = (id: string) => {
     setIsOpeningJobber(true);
-    window.open(`https://secure.getjobber.com/quotes/${id}`, "_blank", "noopener,noreferrer");
+    window.open(jobberQuoteUrl(id), "_blank", "noopener,noreferrer");
     setTimeout(() => setIsOpeningJobber(false), 1500);
   };
 
   const openJobInJobber = (jobId: string) => {
-    window.open(`https://secure.getjobber.com/jobs/${jobId}`, "_blank", "noopener,noreferrer");
+    window.open(jobberJobUrl(jobId), "_blank", "noopener,noreferrer");
   };
 
   // Scroll to Convert to Job button whenever the quote transitions to APPROVED
@@ -1541,10 +1565,10 @@ export default function OpsQuotes() {
                                     onClick={(e) => {
                                       e.stopPropagation();
                                       if (jobId) {
-                                        window.open(`https://secure.getjobber.com/jobs/${jobId}`, "_blank", "noopener,noreferrer");
+                                        window.open(jobberJobUrl(jobId), "_blank", "noopener,noreferrer");
                                       } else {
                                         // No auto-created job yet — open quote in Jobber
-                                        window.open(`https://secure.getjobber.com/quotes/${quote.id}`, "_blank", "noopener,noreferrer");
+                                        window.open(jobberQuoteUrl(quote.id), "_blank", "noopener,noreferrer");
                                       }
                                     }}
                                     title={jobNum ? `View Job #${jobNum} in Jobber` : "Open in Jobber"}
