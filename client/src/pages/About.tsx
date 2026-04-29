@@ -2,8 +2,8 @@
  * DESIGN: Heavy Equipment Grit — About Us page
  * Hero banner → Meet the Man (bio + stats) → pull quote → core values → contact form
  */
-import { useState } from "react";
-import { ArrowLeft, Shield, Star, Wrench, Clock, Send, CheckCircle, Users, MapPin, Loader2, Quote } from "lucide-react";
+import { useState, useRef } from "react";
+import { ArrowLeft, Shield, Star, Wrench, Clock, Send, CheckCircle, Users, MapPin, Loader2, Quote, Volume2, VolumeX } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import MobileCTABar from "@/components/MobileCTABar";
@@ -11,6 +11,58 @@ import { trpc } from "@/lib/trpc";
 import { usePageTitle } from "@/hooks/usePageTitle";
 
 const LOGO_URL = "https://d2xsxph8kpxj0f.cloudfront.net/310519663484957999/PymCzDCnSJzPjdkfwA7Jn6/noland-logo-transparent_783e5c7b.png";
+
+function EquipmentVideo() {
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const [muted, setMuted] = useState(true);
+
+  const toggleMute = () => {
+    if (videoRef.current) {
+      videoRef.current.muted = !muted;
+      setMuted(!muted);
+    }
+  };
+
+  return (
+    <div style={{ position: "relative" }}>
+      <video
+        ref={videoRef}
+        src="/manus-storage/mulcher-action_eceea83b.mp4"
+        poster="/manus-storage/equipment-hero_b34c99e2.png"
+        autoPlay
+        loop
+        muted
+        playsInline
+        style={{ width: "100%", display: "block", objectFit: "cover" }}
+        aria-label="CAT 299D3 XE with Fecon BH74SS drum mulcher actively clearing dense Tennessee woodland"
+      />
+      <button
+        onClick={toggleMute}
+        title={muted ? "Unmute" : "Mute"}
+        style={{
+          position: "absolute",
+          bottom: "0.75rem",
+          right: "0.75rem",
+          background: "rgba(0,0,0,0.55)",
+          border: "1px solid rgba(224,123,42,0.4)",
+          borderRadius: "4px",
+          color: "#F0EDE6",
+          cursor: "pointer",
+          padding: "0.4rem 0.5rem",
+          display: "flex",
+          alignItems: "center",
+          gap: "0.35rem",
+          fontSize: "0.75rem",
+          fontFamily: "'Lato', sans-serif",
+          letterSpacing: "0.06em",
+        }}
+      >
+        {muted ? <VolumeX size={14} /> : <Volume2 size={14} />}
+        {muted ? "SOUND OFF" : "SOUND ON"}
+      </button>
+    </div>
+  );
+}
 
 const inputStyle: React.CSSProperties = {
   width: "100%",
@@ -431,19 +483,16 @@ export default function AboutPage() {
           {/* Image + copy layout */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16 items-center">
 
-            {/* Image */}
+            {/* Video */}
             <div
               style={{
                 overflow: "hidden",
                 border: "1px solid rgba(224,123,42,0.2)",
                 boxShadow: "0 12px 48px rgba(0,0,0,0.6)",
+                position: "relative",
               }}
             >
-              <img
-                src="/manus-storage/equipment-hero_b34c99e2.png"
-                alt="CAT 299D3 XE with Fecon BH74SS drum mulcher actively clearing dense Tennessee woodland"
-                style={{ width: "100%", display: "block", objectFit: "cover" }}
-              />
+              <EquipmentVideo />
             </div>
 
             {/* Copy */}
