@@ -273,7 +273,7 @@ export default function AboutPage() {
                 }}
               >
                 <img
-                  src="/manus-storage/meet-style-c_96e0c1eb.png"
+                  src="/manus-storage/meet-style-c-v2_d02bd304.png"
                   alt="Jon Noland — Founder of Noland Earthworks, leaning on his CAT 299D3 XE with Fecon drum mulcher"
                   style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "center top", display: "block" }}
                 />
