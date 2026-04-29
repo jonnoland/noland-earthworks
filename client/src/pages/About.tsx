@@ -387,6 +387,208 @@ export default function AboutPage() {
         </div>
       </section>
 
+      {/* ── THE EQUIPMENT ── */}
+      <section
+        style={{
+          paddingTop: "5rem",
+          paddingBottom: "5rem",
+          backgroundColor: "#0a0a0a",
+          borderTop: "1px solid rgba(255,255,255,0.05)",
+          borderBottom: "1px solid rgba(255,255,255,0.05)",
+        }}
+      >
+        <div className="container">
+          {/* Section header */}
+          <div style={{ marginBottom: "3rem" }}>
+            <p
+              style={{
+                fontFamily: "'Oswald', sans-serif",
+                fontWeight: 400,
+                fontSize: "0.75rem",
+                letterSpacing: "0.2em",
+                textTransform: "uppercase",
+                color: "#E07B2A",
+                marginBottom: "0.75rem",
+              }}
+            >
+              The Equipment
+            </p>
+            <h2
+              style={{
+                fontFamily: "'Oswald', sans-serif",
+                fontWeight: 700,
+                fontSize: "clamp(2rem, 4vw, 3rem)",
+                lineHeight: 1.1,
+                color: "#F0EDE6",
+                marginBottom: "0.5rem",
+              }}
+            >
+              Built for the Work.<br />
+              <span style={{ color: "#E07B2A" }}>Not Just the Easy Jobs.</span>
+            </h2>
+          </div>
+
+          {/* Image + copy layout */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16 items-center">
+
+            {/* Image */}
+            <div
+              style={{
+                overflow: "hidden",
+                border: "1px solid rgba(224,123,42,0.2)",
+                boxShadow: "0 12px 48px rgba(0,0,0,0.6)",
+              }}
+            >
+              <img
+                src="/manus-storage/equipment-hero_b34c99e2.png"
+                alt="CAT 299D3 XE with Fecon BH74SS drum mulcher actively clearing dense Tennessee woodland"
+                style={{ width: "100%", display: "block", objectFit: "cover" }}
+              />
+            </div>
+
+            {/* Copy */}
+            <div>
+              {/* Machine 1 */}
+              <div style={{ marginBottom: "2.5rem" }}>
+                <h3
+                  style={{
+                    fontFamily: "'Oswald', sans-serif",
+                    fontWeight: 700,
+                    fontSize: "1.35rem",
+                    letterSpacing: "0.04em",
+                    color: "#F0EDE6",
+                    marginBottom: "0.25rem",
+                  }}
+                >
+                  CAT 299D3 XE
+                </h3>
+                <p
+                  style={{
+                    fontFamily: "'Lato', sans-serif",
+                    fontWeight: 400,
+                    fontSize: "0.72rem",
+                    letterSpacing: "0.12em",
+                    textTransform: "uppercase",
+                    color: "#E07B2A",
+                    marginBottom: "0.85rem",
+                  }}
+                >
+                  Tracked Compact Track Loader
+                </p>
+                <p
+                  style={{
+                    fontFamily: "'Lato', sans-serif",
+                    fontWeight: 300,
+                    fontSize: "1rem",
+                    lineHeight: 1.85,
+                    color: "rgba(240,237,230,0.72)",
+                  }}
+                >
+                  The CAT 299D3 XE runs on rubber tracks, not wheels. That matters on Tennessee terrain — soft ground after rain, steep slopes, and tight access points that would stop a wheeled machine cold. The tracked platform distributes weight across a wider footprint, which means less ground disturbance and the ability to work in conditions that would otherwise shut a job down.
+                </p>
+              </div>
+
+              {/* Divider */}
+              <div
+                style={{
+                  width: "3rem",
+                  height: "2px",
+                  backgroundColor: "rgba(224,123,42,0.4)",
+                  marginBottom: "2.5rem",
+                }}
+              />
+
+              {/* Machine 2 */}
+              <div style={{ marginBottom: "2.5rem" }}>
+                <h3
+                  style={{
+                    fontFamily: "'Oswald', sans-serif",
+                    fontWeight: 700,
+                    fontSize: "1.35rem",
+                    letterSpacing: "0.04em",
+                    color: "#F0EDE6",
+                    marginBottom: "0.25rem",
+                  }}
+                >
+                  Fecon BH74SS
+                </h3>
+                <p
+                  style={{
+                    fontFamily: "'Lato', sans-serif",
+                    fontWeight: 400,
+                    fontSize: "0.72rem",
+                    letterSpacing: "0.12em",
+                    textTransform: "uppercase",
+                    color: "#E07B2A",
+                    marginBottom: "0.85rem",
+                  }}
+                >
+                  Drum Mulcher Attachment
+                </p>
+                <p
+                  style={{
+                    fontFamily: "'Lato', sans-serif",
+                    fontWeight: 300,
+                    fontSize: "1rem",
+                    lineHeight: 1.85,
+                    color: "rgba(240,237,230,0.72)",
+                  }}
+                >
+                  The Fecon BH74SS drum mulcher is what separates forestry mulching from every other clearing method. It grinds brush, saplings, and small trees directly into mulch that stays on the ground as natural cover. No debris piles to burn, no hauling, no cleanup crew. What comes out of the drum goes right back into the soil — protecting against erosion and leaving the property looking finished, not stripped.
+                </p>
+              </div>
+
+              {/* Capability callouts */}
+              <div
+                className="grid grid-cols-2 gap-3"
+                style={{ marginTop: "0.5rem" }}
+              >
+                {[
+                  { label: "Steep Slopes", desc: "Tracked platform handles grades that wheeled machines cannot" },
+                  { label: "Wet Ground", desc: "Low ground pressure keeps the machine moving after rain" },
+                  { label: "Dense Brush", desc: "Grinds cedar, privet, and mixed hardwood up to 6\" diameter" },
+                  { label: "No Debris", desc: "Everything mulched in place — no hauling, no burning" },
+                ].map((item) => (
+                  <div
+                    key={item.label}
+                    className="p-4"
+                    style={{
+                      backgroundColor: "rgba(255,255,255,0.03)",
+                      border: "1px solid rgba(255,255,255,0.07)",
+                    }}
+                  >
+                    <div
+                      style={{
+                        fontFamily: "'Oswald', sans-serif",
+                        fontWeight: 600,
+                        fontSize: "0.8rem",
+                        letterSpacing: "0.08em",
+                        textTransform: "uppercase",
+                        color: "#E07B2A",
+                        marginBottom: "0.3rem",
+                      }}
+                    >
+                      {item.label}
+                    </div>
+                    <div
+                      style={{
+                        fontFamily: "'Lato', sans-serif",
+                        fontWeight: 300,
+                        fontSize: "0.78rem",
+                        color: "rgba(240,237,230,0.5)",
+                        lineHeight: 1.5,
+                      }}
+                    >
+                      {item.desc}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* ── PULL QUOTE ── */}
       <section
         style={{

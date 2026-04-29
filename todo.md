@@ -1042,3 +1042,4 @@
 - [x] Convert to Job button: fixed URL to use quote.id instead of quoteNumber (was causing 404 in Jobber)
 - [x] After quote is approved, automatically create a job in Jobber and display the job number in the detail panel
 - [x] When navigating to Quotes from a lead's Create Quote button, auto-open the New Quote modal pre-filled with the lead's client info (no extra click required)
+- [x] Add equipment section to About page below Meet the Man: introduce CAT 299D3 XE and Fecon BH74SS with capability-focused copy and supporting image
