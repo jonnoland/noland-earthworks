@@ -258,7 +258,40 @@ export default function AboutPage() {
           </div>
 
           {/* Bio + Stats grid */}
-          <div className="grid grid-cols-1 lg:grid-cols-5 gap-12 lg:gap-16 items-start">
+          <div className="grid grid-cols-1 lg:grid-cols-7 gap-10 lg:gap-14 items-start">
+
+            {/* Photo — 2 cols */}
+            <div className="lg:col-span-2 flex flex-col items-center lg:items-start">
+              <div
+                style={{
+                  width: "100%",
+                  maxWidth: "320px",
+                  aspectRatio: "3/4",
+                  overflow: "hidden",
+                  border: "2px solid rgba(224,123,42,0.25)",
+                  boxShadow: "0 8px 40px rgba(0,0,0,0.5)",
+                }}
+              >
+                <img
+                  src="/manus-storage/meet-style-c_96e0c1eb.png"
+                  alt="Jon Noland — Founder of Noland Earthworks, leaning on his CAT 299D3 XE with Fecon drum mulcher"
+                  style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "center top", display: "block" }}
+                />
+              </div>
+              <p
+                style={{
+                  fontFamily: "'Lato', sans-serif",
+                  fontSize: "0.72rem",
+                  color: "rgba(240,237,230,0.35)",
+                  marginTop: "0.75rem",
+                  textAlign: "center",
+                  maxWidth: "320px",
+                  letterSpacing: "0.04em",
+                }}
+              >
+                CAT 299D3 XE &bull; Fecon BH74SS Drum Mulcher
+              </p>
+            </div>
 
             {/* Bio copy — 3 cols */}
             <div className="lg:col-span-3">
@@ -289,7 +322,7 @@ export default function AboutPage() {
             </div>
 
             {/* Stat block — 2 cols */}
-            <div className="lg:col-span-2 flex flex-col gap-4">
+            <div className="lg:col-span-2 flex flex-col gap-4" style={{ marginTop: 0 }}>
               {STATS.map((s) => (
                 <div
                   key={s.label}

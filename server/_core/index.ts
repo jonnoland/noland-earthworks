@@ -10,6 +10,7 @@ import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
 import { prerenderMiddleware } from "../prerender";
 import { registerJobberRoutes } from "../jobberRoutes";
+import { registerStorageProxy } from "./storageProxy";
 import { startJobberTokenRefreshScheduler } from "../jobber";
 import cron from "node-cron";
 import {
@@ -49,6 +50,8 @@ async function startServer() {
   // Configure body parser with larger size limit for file uploads
   app.use(express.json({ limit: "50mb" }));
   app.use(express.urlencoded({ limit: "50mb", extended: true }));
+  // Storage proxy for /manus-storage/* paths
+  registerStorageProxy(app);
   // OAuth callback under /api/oauth/callback
   registerOAuthRoutes(app);
   // Jobber OAuth routes: /api/jobber/authorize, /api/jobber/callback, /api/jobber/status
