@@ -472,12 +472,24 @@ export default function AboutPage() {
                 fontSize: "clamp(2rem, 4vw, 3rem)",
                 lineHeight: 1.1,
                 color: "#F0EDE6",
-                marginBottom: "0.5rem",
+                marginBottom: "1.25rem",
               }}
             >
               Built for the Work.<br />
               <span style={{ color: "#E07B2A" }}>Not Just the Easy Jobs.</span>
             </h2>
+            <p
+              style={{
+                fontFamily: "'Lato', sans-serif",
+                fontWeight: 300,
+                fontSize: "1.0625rem",
+                lineHeight: 1.9,
+                color: "rgba(240,237,230,0.72)",
+                maxWidth: "680px",
+              }}
+            >
+              Most land clearing equipment has limits. Wet ground, steep grades, tight access — conditions that are common on Tennessee properties — can shut a wheeled machine down before the job even starts. The CAT 299D3 XE with the Fecon BH74SS drum mulcher is built specifically for terrain like this. Rubber tracks distribute the machine's weight across the ground, reducing compaction and maintaining traction where other equipment gets stuck. The Fecon drum mulcher doesn't knock brush down and leave it — it grinds everything into a layer of wood chip mulch that stays on the ground as natural cover. No debris piles. No burning. No hauling. The land is cleaner when we leave than most operators can deliver on a dry day.
+            </p>
           </div>
 
           {/* Image + copy layout */}

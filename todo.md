@@ -1044,3 +1044,4 @@
 - [x] When navigating to Quotes from a lead's Create Quote button, auto-open the New Quote modal pre-filled with the lead's client info (no extra click required)
 - [x] Add equipment section to About page below Meet the Man: introduce CAT 299D3 XE and Fecon BH74SS with capability-focused copy and supporting image
 - [x] Add short AI video clip of the mulcher in action to the equipment section on the About page
+- [x] Add compelling headline and descriptive paragraph above/around the equipment video section on the About page
