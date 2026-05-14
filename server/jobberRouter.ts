@@ -28,13 +28,15 @@ const adminProcedure = protectedProcedure.use(({ ctx, next }) => {
 });
 
 export const jobberRouter = router({
-  /** Returns whether Jobber is currently connected */
+  /** Returns whether Jobber is currently connected and the token is valid */
   connectionStatus: adminProcedure.query(async () => {
-    const connected = await isJobberConnected();
+    const hasToken = await isJobberConnected();
 
     let expiresAt: Date | null = null;
     let accountName: string | null = null;
     let connectedAt: Date | null = null;
+    let tokenExpired = false;
+
     try {
       const dbConn = await getDb();
       if (dbConn) {
@@ -43,10 +45,17 @@ export const jobberRouter = router({
           expiresAt = rows[0]?.expiresAt ?? null;
           accountName = (rows[0] as any).accountName ?? null;
           connectedAt = (rows[0] as any).createdAt ?? null;
+          // Check if token is expired (with 2-minute buffer)
+          if (expiresAt && new Date(expiresAt).getTime() < Date.now() + 2 * 60 * 1000) {
+            tokenExpired = true;
+          }
         }
       }
     } catch { /* ignore */ }
-    return { connected, expiresAt, accountName, connectedAt };
+
+    // connected = has a token row AND the token is not expired
+    const connected = hasToken && !tokenExpired;
+    return { connected, tokenExpired, expiresAt, accountName, connectedAt };
   }),
 
   /** Disconnect Jobber by deleting stored tokens */
