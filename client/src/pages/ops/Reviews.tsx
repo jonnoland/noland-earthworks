@@ -1,7 +1,7 @@
 /**
- * Reviews — live review feed from Google Places API and Facebook Graph API.
- * Also displays the local manual review log.
- * KPI cards | Source tabs (All / Google / Facebook / Manual) | Review cards
+ * Reviews — Google Business Profile reviews via OAuth API + Facebook + Manual log.
+ * Supports in-app reply and delete-reply for Google reviews (OAuth required).
+ * KPI cards | Source tabs | Review cards with reply modal
  */
 import { useState } from "react";
 import OpsDashboardLayout from "@/components/OpsDashboardLayout";
@@ -20,20 +20,23 @@ import {
   RefreshCw,
   ExternalLink,
   AlertCircle,
+  CheckCircle2,
+  Send,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+// ─── Types ─────────────────────────────────────────────────────────────────────
+type SourceFilter = "all" | "google" | "facebook" | "manual";
 
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 const SOURCE_LABELS: Record<string, string> = {
   google: "Google",
   facebook: "Facebook",
   yelp: "Yelp",
   other: "Other",
 };
-
 const SOURCE_COLORS: Record<string, string> = {
   google: "bg-blue-500/20 text-blue-300 border-blue-500/30",
   facebook: "bg-indigo-500/20 text-indigo-300 border-indigo-500/30",
@@ -83,26 +86,125 @@ function KpiCard({
 
 function ConfigNotice({ source }: { source: string }) {
   return (
-    <div className="flex items-start gap-2 bg-amber-500/10 border border-amber-500/20 rounded-lg px-4 py-3 text-xs text-amber-300">
-      <AlertCircle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+    <div className="flex items-center gap-2 px-4 py-3 bg-amber-500/10 border border-amber-500/20 rounded-lg text-xs text-amber-300">
+      <AlertCircle className="h-3.5 w-3.5 shrink-0" />
       <span>
-        {source} credentials not configured. Add <code className="font-mono bg-white/10 px-1 rounded">
-          {source === "Google" ? "GOOGLE_PLACES_API_KEY and GOOGLE_PLACE_ID" : "FACEBOOK_PAGE_ID and FACEBOOK_PAGE_ACCESS_TOKEN"}
-        </code> in Settings &gt; Secrets to enable live {source} reviews.
+        {source === "Google"
+          ? "Google Business Profile not connected. Go to Settings → Integrations to connect your account and enable live review fetching and in-app replies."
+          : `${source} credentials not configured. Add them in Settings to enable live reviews.`}
       </span>
     </div>
   );
 }
 
-// ─── Main Component ───────────────────────────────────────────────────────────
+// ─── Reply Modal ───────────────────────────────────────────────────────────────
+interface ReplyTarget {
+  localId: number;
+  externalId: string | null;
+  reviewerName: string;
+  existingReply?: string | null;
+  isGoogleOAuth: boolean; // true = can post via API; false = local-only
+}
 
-type SourceFilter = "all" | "google" | "facebook" | "manual";
+function ReplyModal({
+  target,
+  onClose,
+  onSaved,
+}: {
+  target: ReplyTarget;
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const [text, setText] = useState(target.existingReply ?? "");
+  const utils = trpc.useUtils();
 
+  // Google OAuth reply
+  const googleReply = trpc.ops.google.replyToReview.useMutation({
+    onSuccess: () => {
+      toast.success("Reply posted to Google.");
+      utils.ops.reviews.list.invalidate();
+      utils.ops.google.fetchReviews.invalidate();
+      onSaved();
+    },
+    onError: (err) => toast.error(`Failed to post reply: ${err.message}`),
+  });
+
+  // Local-only reply (manual reviews)
+  const localReply = trpc.ops.reviews.respond.useMutation({
+    onSuccess: () => {
+      toast.success("Response saved.");
+      utils.ops.reviews.list.invalidate();
+      onSaved();
+    },
+    onError: (err) => toast.error(`Failed: ${err.message}`),
+  });
+
+  const handleSave = () => {
+    if (!text.trim()) return;
+    if (target.isGoogleOAuth && target.externalId) {
+      googleReply.mutate({ localId: target.localId, externalId: target.externalId, replyText: text.trim() });
+    } else {
+      localReply.mutate({ id: target.localId, response: text.trim() });
+    }
+  };
+
+  const isPending = googleReply.isPending || localReply.isPending;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
+      <div className="bg-[#1a1a1a] border border-white/10 rounded-xl p-6 w-full max-w-lg shadow-2xl">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h3 className="text-white font-semibold">
+              {target.existingReply ? "Edit Response" : "Reply to Review"}
+            </h3>
+            <p className="text-xs text-white/40 mt-0.5">{target.reviewerName}</p>
+          </div>
+          <button onClick={onClose} className="text-white/30 hover:text-white">
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+        {target.isGoogleOAuth && target.externalId && (
+          <div className="flex items-center gap-2 px-3 py-2 bg-blue-500/10 border border-blue-500/20 rounded-lg text-xs text-blue-300 mb-4">
+            <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />
+            This reply will be posted directly to your Google Business Profile.
+          </div>
+        )}
+        <textarea
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          placeholder="Write your response..."
+          rows={5}
+          maxLength={4096}
+          className="w-full px-3 py-2 rounded-md bg-white/5 border border-white/10 text-white text-sm placeholder:text-white/30 resize-none"
+        />
+        <div className="flex items-center justify-between mt-1 mb-4">
+          <span className="text-[10px] text-white/20">{text.length}/4096</span>
+        </div>
+        <div className="flex justify-end gap-2">
+          <Button variant="outline" size="sm" className="border-white/10 text-white/60" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button
+            size="sm"
+            className="bg-amber-500 hover:bg-amber-400 text-black"
+            disabled={!text.trim() || isPending}
+            onClick={handleSave}
+          >
+            <Send className="h-3.5 w-3.5 mr-1" />
+            {isPending ? "Posting..." : target.isGoogleOAuth && target.externalId ? "Post to Google" : "Save Response"}
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Main Component ────────────────────────────────────────────────────────────
 export default function Reviews() {
   const [sourceFilter, setSourceFilter] = useState<SourceFilter>("all");
   const [showAddModal, setShowAddModal] = useState(false);
-  const [showRespondModal, setShowRespondModal] = useState<number | null>(null);
-  const [responseText, setResponseText] = useState("");
+  const [replyTarget, setReplyTarget] = useState<ReplyTarget | null>(null);
   const [deleteId, setDeleteId] = useState<number | null>(null);
   const [form, setForm] = useState({
     source: "google" as "google" | "facebook" | "yelp" | "other",
@@ -113,17 +215,30 @@ export default function Reviews() {
 
   const utils = trpc.useUtils();
 
-  // Live reviews from Google Places + Facebook
+  // Google Business Profile OAuth reviews (live from API)
+  const { data: googleOAuthData, isLoading: googleOAuthLoading, refetch: refetchGoogleOAuth } =
+    trpc.ops.google.fetchReviews.useQuery(undefined, {
+      staleTime: 5 * 60 * 1000,
+      retry: false,
+    });
+
+  // Google connection status
+  const { data: googleStatus } = trpc.ops.google.connectionStatus.useQuery(undefined, {
+    staleTime: 60 * 1000,
+  });
+
+  // Live reviews from Google Places + Facebook (legacy fallback for Facebook)
   const { data: liveData, isLoading: liveLoading, refetch: refetchLive } = trpc.reviewsLive.getLive.useQuery(undefined, {
-    staleTime: 5 * 60 * 1000, // 5 min cache
+    staleTime: 5 * 60 * 1000,
   });
 
   // Manual reviews from local DB
   const { data: manualList = [], isLoading: manualLoading } = trpc.ops.reviews.list.useQuery();
 
-  const syncMutation = trpc.reviewsLive.syncToLocal.useMutation({
+  // Sync Google OAuth reviews to local DB
+  const syncMutation = trpc.ops.google.syncReviews.useMutation({
     onSuccess: (res) => {
-      toast.success(`Synced ${res.synced} new review${res.synced !== 1 ? "s" : ""} to local log.`);
+      toast.success(`Synced ${res.inserted} new, updated ${res.updated} of ${res.total} Google reviews.`);
       utils.ops.reviews.list.invalidate();
     },
     onError: (err) => toast.error(`Sync failed: ${err.message}`),
@@ -139,16 +254,6 @@ export default function Reviews() {
     onError: (err) => toast.error(`Failed: ${err.message}`),
   });
 
-  const respondMutation = trpc.ops.reviews.respond.useMutation({
-    onSuccess: () => {
-      setShowRespondModal(null);
-      setResponseText("");
-      utils.ops.reviews.list.invalidate();
-      toast.success("Response saved.");
-    },
-    onError: (err) => toast.error(`Failed: ${err.message}`),
-  });
-
   const deleteMutation = trpc.ops.reviews.delete.useMutation({
     onSuccess: () => {
       setDeleteId(null);
@@ -158,32 +263,64 @@ export default function Reviews() {
     onError: (err) => toast.error(`Delete failed: ${err.message}`),
   });
 
+  const deleteReplyMutation = trpc.ops.google.deleteReply.useMutation({
+    onSuccess: () => {
+      toast.success("Reply deleted from Google.");
+      utils.ops.reviews.list.invalidate();
+      utils.ops.google.fetchReviews.invalidate();
+    },
+    onError: (err) => toast.error(`Failed to delete reply: ${err.message}`),
+  });
+
+  // Merge Google OAuth reviews with Facebook live reviews
+  const googleOAuthReviews = (googleOAuthData?.reviews ?? []).map((r) => ({
+    id: `goauth-${r.reviewId}`,
+    source: "google" as const,
+    reviewerName: r.reviewerName,
+    reviewerPhotoUrl: r.reviewerPhotoUrl,
+    rating: r.starRating,
+    body: r.comment ?? "",
+    reviewedAt: r.createTime,
+    reviewReply: r.reviewReply,
+    reviewId: r.reviewId,
+    isGoogleOAuth: true,
+  }));
+
+  const facebookLiveReviews = (liveData?.reviews ?? [])
+    .filter((r) => r.source === "facebook")
+    .map((r) => ({ ...r, isGoogleOAuth: false, reviewId: undefined, reviewReply: undefined }));
+
+  const allLiveReviews = [...googleOAuthReviews, ...facebookLiveReviews].sort(
+    (a, b) => new Date(b.reviewedAt).getTime() - new Date(a.reviewedAt).getTime()
+  );
+
   // KPI calculations
-  const liveReviews = liveData?.reviews ?? [];
-  const allForKpi = [...liveReviews, ...manualList.map((r) => ({ ...r, source: r.source as string, body: r.body ?? "", reviewedAt: r.reviewedAt.toISOString?.() ?? String(r.reviewedAt) }))];
+  const allForKpi = [...allLiveReviews, ...manualList.map((r) => ({ ...r, source: r.source as string, body: r.body ?? "", reviewedAt: r.reviewedAt.toISOString?.() ?? String(r.reviewedAt) }))];
   const totalKpi = allForKpi.length;
   const avgRating = totalKpi > 0 ? (allForKpi.reduce((s, r) => s + r.rating, 0) / totalKpi).toFixed(1) : "—";
   const fiveStars = allForKpi.filter((r) => r.rating === 5).length;
-  const responded = manualList.filter((r) => r.response).length;
-  const responseRate = manualList.length > 0 ? `${Math.round((responded / manualList.length) * 100)}%` : "—";
+  const responded = [...googleOAuthReviews.filter((r) => r.reviewReply), ...manualList.filter((r) => r.response)].length;
+  const totalResponsible = googleOAuthReviews.length + manualList.length;
+  const responseRate = totalResponsible > 0 ? `${Math.round((responded / totalResponsible) * 100)}%` : "—";
 
   // Filtered live reviews
-  const filteredLive = liveReviews.filter((r) =>
+  const filteredLive = allLiveReviews.filter((r) =>
     sourceFilter === "all" ? true : sourceFilter === "manual" ? false : r.source === sourceFilter
   );
   const showManual = sourceFilter === "all" || sourceFilter === "manual";
 
-  const isLoading = liveLoading || manualLoading;
+  const isLoading = googleOAuthLoading || liveLoading || manualLoading;
+  const googleConnected = googleStatus?.connected ?? false;
 
   return (
-    <OpsDashboardLayout title="Reviews" subtitle="Live reputation feed and response management">
+    <OpsDashboardLayout title="Reviews" subtitle="Google Business Profile reputation management">
       {/* KPI Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         <KpiCard
           icon={Star}
           label="Avg Rating"
-          value={liveData?.googleRating ? `${liveData.googleRating}` : avgRating}
-          sub={liveData?.googleReviewCount ? `${liveData.googleReviewCount} Google reviews` : `${totalKpi} total reviews`}
+          value={googleOAuthData?.averageRating ? `${googleOAuthData.averageRating.toFixed(1)}` : avgRating}
+          sub={googleOAuthData?.totalReviewCount ? `${googleOAuthData.totalReviewCount} Google reviews` : `${totalKpi} total`}
           color="bg-amber-400/10 text-amber-400"
         />
         <KpiCard
@@ -197,7 +334,7 @@ export default function Reviews() {
           icon={MessageSquare}
           label="Response Rate"
           value={responseRate}
-          sub={`${responded} of ${manualList.length} responded`}
+          sub={`${responded} of ${totalResponsible} responded`}
           color="bg-blue-500/10 text-blue-400"
         />
         <KpiCard
@@ -211,7 +348,7 @@ export default function Reviews() {
 
       {/* Config notices */}
       <div className="space-y-2 mb-4">
-        {liveData && !liveData.googleConfigured && <ConfigNotice source="Google" />}
+        {!googleConnected && <ConfigNotice source="Google" />}
         {liveData && !liveData.facebookConfigured && <ConfigNotice source="Facebook" />}
       </div>
 
@@ -231,7 +368,7 @@ export default function Reviews() {
               )}
             >
               {tab === "all" ? "All" : tab === "manual" ? "Manual Log" : SOURCE_LABELS[tab]}
-              {tab === "google" && liveData?.googleReviewCount ? ` (${liveData.googleReviewCount})` : ""}
+              {tab === "google" && googleOAuthData?.totalReviewCount ? ` (${googleOAuthData.totalReviewCount})` : ""}
               {tab === "facebook" && liveData?.facebookReviewCount ? ` (${liveData.facebookReviewCount})` : ""}
               {tab === "manual" ? ` (${manualList.length})` : ""}
             </button>
@@ -243,10 +380,10 @@ export default function Reviews() {
             size="sm"
             variant="outline"
             className="text-xs border-white/10 text-white/60 hover:text-white"
-            onClick={() => { refetchLive(); toast.info("Refreshing live reviews..."); }}
-            disabled={liveLoading}
+            onClick={() => { refetchGoogleOAuth(); refetchLive(); toast.info("Refreshing reviews..."); }}
+            disabled={isLoading}
           >
-            <RefreshCw className={cn("h-3.5 w-3.5 mr-1", liveLoading && "animate-spin")} />
+            <RefreshCw className={cn("h-3.5 w-3.5 mr-1", isLoading && "animate-spin")} />
             Refresh
           </Button>
           <Button
@@ -254,8 +391,8 @@ export default function Reviews() {
             variant="outline"
             className="text-xs border-white/10 text-white/60 hover:text-white"
             onClick={() => syncMutation.mutate()}
-            disabled={syncMutation.isPending || !liveData?.googleConfigured}
-            title="Sync Google reviews to local log"
+            disabled={syncMutation.isPending || !googleConnected}
+            title={googleConnected ? "Sync Google reviews to local log" : "Connect Google Business Profile first"}
           >
             Sync to Log
           </Button>
@@ -274,12 +411,12 @@ export default function Reviews() {
       {(sourceFilter === "all" || sourceFilter === "google" || sourceFilter === "facebook") && (
         <div className="space-y-3 mb-6">
           {isLoading ? (
-            <div className="p-8 text-center text-white/30 text-sm">Loading live reviews...</div>
+            <div className="p-8 text-center text-white/30 text-sm">Loading reviews...</div>
           ) : filteredLive.length === 0 ? (
             <div className="p-6 text-center text-white/30 text-sm bg-[#111] border border-white/10 rounded-xl">
-              {liveData?.googleConfigured || liveData?.facebookConfigured
+              {googleConnected || liveData?.facebookConfigured
                 ? "No reviews found."
-                : "Configure API credentials above to see live reviews."}
+                : "Connect Google Business Profile in Settings to see live reviews."}
             </div>
           ) : (
             filteredLive.map((review) => (
@@ -311,21 +448,62 @@ export default function Reviews() {
                     <span className={cn("text-[10px] px-2 py-0.5 rounded-full font-medium border", SOURCE_COLORS[review.source])}>
                       {SOURCE_LABELS[review.source]}
                     </span>
-                    {review.replyUrl && (
-                      <a
-                        href={review.replyUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
+                    {/* Reply button — only for Google OAuth reviews */}
+                    {review.isGoogleOAuth && review.reviewId && (
+                      <button
                         className="text-white/30 hover:text-amber-400 transition-colors p-1"
-                        title="Reply on Google"
+                        title={review.reviewReply ? "Edit reply" : "Reply on Google"}
+                        onClick={() => {
+                          // Find local DB id by externalId
+                          const local = manualList.find((m) => m.externalId === review.reviewId);
+                          setReplyTarget({
+                            localId: local?.id ?? -1,
+                            externalId: review.reviewId ?? null,
+                            reviewerName: review.reviewerName,
+                            existingReply: review.reviewReply?.comment,
+                            isGoogleOAuth: true,
+                          });
+                        }}
                       >
-                        <ExternalLink className="h-3.5 w-3.5" />
-                      </a>
+                        <Reply className="h-3.5 w-3.5" />
+                      </button>
                     )}
+                    <a
+                      href="https://business.google.com/reviews"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-white/30 hover:text-amber-400 transition-colors p-1"
+                      title="Open in Google Business Profile"
+                    >
+                      <ExternalLink className="h-3.5 w-3.5" />
+                    </a>
                   </div>
                 </div>
                 {review.body && (
                   <p className="text-xs text-white/60 mt-3 leading-relaxed">{review.body}</p>
+                )}
+                {/* Existing reply */}
+                {review.reviewReply && (
+                  <div className="mt-3 pl-4 border-l-2 border-amber-500/30">
+                    <div className="flex items-center justify-between gap-2 mb-1">
+                      <span className="text-[10px] text-amber-400 font-medium uppercase tracking-wider">Your Response</span>
+                      {review.isGoogleOAuth && review.reviewId && (
+                        <button
+                          className="text-white/20 hover:text-red-400 transition-colors"
+                          title="Delete reply"
+                          onClick={() => {
+                            const local = manualList.find((m) => m.externalId === review.reviewId);
+                            if (local && review.reviewId) {
+                              deleteReplyMutation.mutate({ localId: local.id, externalId: review.reviewId });
+                            }
+                          }}
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </button>
+                      )}
+                    </div>
+                    <p className="text-xs text-white/50 leading-relaxed">{review.reviewReply.comment}</p>
+                  </div>
                 )}
               </div>
             ))
@@ -384,7 +562,13 @@ export default function Reviews() {
                         <button
                           className="text-white/30 hover:text-amber-400 transition-colors p-1"
                           title="Respond"
-                          onClick={() => { setShowRespondModal(review.id); setResponseText(review.response ?? ""); }}
+                          onClick={() => setReplyTarget({
+                            localId: review.id,
+                            externalId: review.externalId ?? null,
+                            reviewerName: review.reviewerName,
+                            existingReply: review.response,
+                            isGoogleOAuth: !!(review.source === "google" && review.externalId && googleConnected),
+                          })}
                         >
                           <Reply className="h-3.5 w-3.5" />
                         </button>
@@ -403,6 +587,15 @@ export default function Reviews() {
             </table>
           </div>
         </>
+      )}
+
+      {/* Reply Modal */}
+      {replyTarget && (
+        <ReplyModal
+          target={replyTarget}
+          onClose={() => setReplyTarget(null)}
+          onSaved={() => setReplyTarget(null)}
+        />
       )}
 
       {/* Add Review Modal */}
@@ -474,40 +667,6 @@ export default function Reviews() {
                 onClick={() => createMutation.mutate(form)}
               >
                 Add Review
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Respond Modal */}
-      {showRespondModal !== null && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
-          <div className="bg-[#1a1a1a] border border-white/10 rounded-xl p-6 w-full max-w-md shadow-2xl">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-white font-semibold">Add Response</h3>
-              <button onClick={() => setShowRespondModal(null)} className="text-white/30 hover:text-white">
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-            <textarea
-              value={responseText}
-              onChange={(e) => setResponseText(e.target.value)}
-              placeholder="Write your response..."
-              rows={4}
-              className="w-full px-3 py-2 rounded-md bg-white/5 border border-white/10 text-white text-sm placeholder:text-white/30 resize-none"
-            />
-            <div className="flex justify-end gap-2 mt-4">
-              <Button variant="outline" size="sm" className="border-white/10 text-white/60" onClick={() => setShowRespondModal(null)}>
-                Cancel
-              </Button>
-              <Button
-                size="sm"
-                className="bg-amber-500 hover:bg-amber-400 text-black"
-                disabled={!responseText || respondMutation.isPending}
-                onClick={() => respondMutation.mutate({ id: showRespondModal, response: responseText })}
-              >
-                Save Response
               </Button>
             </div>
           </div>

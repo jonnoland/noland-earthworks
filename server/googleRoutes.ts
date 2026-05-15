@@ -158,6 +158,111 @@ export async function getGoogleConnectionInfo(): Promise<{
   };
 }
 
+// ─── Token Refresh ───────────────────────────────────────────────────────────
+
+/**
+ * Refresh the Google access token using the stored refresh token.
+ * Updates the DB row in-place. Returns true if refreshed, false if no token stored.
+ */
+export async function refreshGoogleAccessToken(): Promise<boolean> {
+  const db = await getDb();
+  if (!db) return false;
+  const rows = await db.select().from(googleOAuthTokens).limit(1);
+  if (rows.length === 0) return false;
+  const row = rows[0];
+  if (!row.refreshToken) {
+    console.warn("[Google] No refresh token stored — cannot refresh access token");
+    return false;
+  }
+  // Only refresh if within 10 minutes of expiry (or already expired)
+  const tenMinFromNow = new Date(Date.now() + 10 * 60 * 1000);
+  if (row.expiresAt > tenMinFromNow) return false; // Still valid, skip
+
+  console.log("[Google] Access token expiring soon — refreshing...");
+  try {
+    const res = await fetch(GOOGLE_TOKEN_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({
+        client_id: ENV.googleClientId,
+        client_secret: ENV.googleClientSecret,
+        grant_type: "refresh_token",
+        refresh_token: row.refreshToken,
+      }).toString(),
+    });
+    if (!res.ok) {
+      const text = await res.text();
+      console.error(`[Google] Token refresh failed: ${res.status} ${text}`);
+      return false;
+    }
+    const data = (await res.json()) as {
+      access_token: string;
+      expires_in?: number;
+      refresh_token?: string;
+    };
+    const expiresAt = data.expires_in
+      ? new Date(Date.now() + data.expires_in * 1000)
+      : new Date(Date.now() + 55 * 60 * 1000);
+    await db.update(googleOAuthTokens).set({
+      accessToken: data.access_token,
+      // Google only returns a new refresh_token if it rotates — keep the old one otherwise
+      ...(data.refresh_token ? { refreshToken: data.refresh_token } : {}),
+      expiresAt,
+    });
+    console.log(`[Google] Access token refreshed, new expiry: ${expiresAt.toISOString()}`);
+    return true;
+  } catch (err) {
+    console.error("[Google] Token refresh error:", err);
+    return false;
+  }
+}
+
+/**
+ * Returns the current valid access token, refreshing it first if needed.
+ * Returns null if Google is not connected or refresh fails.
+ */
+export async function getValidGoogleAccessToken(): Promise<string | null> {
+  const db = await getDb();
+  if (!db) return null;
+  const rows = await db.select().from(googleOAuthTokens).limit(1);
+  if (rows.length === 0) return null;
+  const row = rows[0];
+  // Refresh if within 10 minutes of expiry
+  const tenMinFromNow = new Date(Date.now() + 10 * 60 * 1000);
+  if (row.expiresAt <= tenMinFromNow) {
+    await refreshGoogleAccessToken();
+    // Re-fetch after refresh
+    const refreshed = await db.select().from(googleOAuthTokens).limit(1);
+    return refreshed[0]?.accessToken ?? null;
+  }
+  return row.accessToken;
+}
+
+let googleSchedulerTimer: ReturnType<typeof setInterval> | null = null;
+const GOOGLE_SCHEDULER_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
+
+/**
+ * Start a background scheduler that proactively refreshes the Google access token
+ * before it expires. Runs every 5 minutes, refreshes if within 10 minutes of expiry.
+ */
+export function startGoogleTokenRefreshScheduler(): void {
+  if (googleSchedulerTimer !== null) return; // Already running
+  // Run once immediately on startup
+  refreshGoogleAccessToken().catch(() => {/* already logged */});
+  googleSchedulerTimer = setInterval(() => {
+    refreshGoogleAccessToken().catch(() => {/* already logged */});
+  }, GOOGLE_SCHEDULER_INTERVAL_MS);
+  if (googleSchedulerTimer.unref) googleSchedulerTimer.unref();
+  console.log(`[Google] Token refresh scheduler started (interval: ${GOOGLE_SCHEDULER_INTERVAL_MS / 60_000} min)`);
+}
+
+export function stopGoogleTokenRefreshScheduler(): void {
+  if (googleSchedulerTimer !== null) {
+    clearInterval(googleSchedulerTimer);
+    googleSchedulerTimer = null;
+  }
+}
+
 export function registerGoogleRoutes(app: Express) {
   // Redirect to Google OAuth consent screen
   app.get("/api/google/authorize", (_req, res) => {

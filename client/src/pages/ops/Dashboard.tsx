@@ -14,7 +14,7 @@ import {
   DollarSign, Briefcase,
   Users, Clock, ArrowUpRight, MapPin, Plus, ChevronRight, Inbox,
   CalendarDays, CalendarCheck, TrendingUp, Gauge, Activity, ExternalLink, Flag,
-  FileText, Receipt, AlertCircle, CheckCircle2, PhoneCall,
+  FileText, Receipt, AlertCircle, CheckCircle2, PhoneCall, Star, MessageSquare,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -248,9 +248,19 @@ export default function Dashboard() {
   // ─── Local jobs (fallback) ────────────────────────────────────────────────
   const { data: localJobs = [] } = trpc.ops.jobs.list.useQuery(undefined, { refetchInterval: 30000 });
 
-  // ─── Local leads (for pipeline section) ──────────────────────────────────
+  // ─── Local leads (for pipeline section) ────────────────────────────────────────────
   const { data: leads = [] } = trpc.ops.leads.list.useQuery(undefined, { refetchInterval: 15000 });
 
+  // ─── Google Business Profile reviews (latest 5 for dashboard widget) ────────────
+  const { data: googleReviewsData } = trpc.ops.google.fetchReviews.useQuery(undefined, {
+    staleTime: 10 * 60 * 1000,
+    retry: false,
+  });
+  const { data: googleStatus } = trpc.ops.google.connectionStatus.useQuery(undefined, {
+    staleTime: 5 * 60 * 1000,
+    retry: false,
+  });
+  const dashboardReviews = (googleReviewsData?.reviews ?? []).slice(0, 5);
   useEffect(() => {
     if (prevLeadCount.current !== null && leads.length > prevLeadCount.current) {
       const diff = leads.length - prevLeadCount.current;
@@ -1156,6 +1166,82 @@ export default function Dashboard() {
             </div>
           </div>
 
+        </div>
+
+        {/* ─── Google Business Profile Reviews Widget ─────────────────────────────── */}
+        <div className="mt-6 rounded-xl border border-border bg-card">
+          <div className="flex items-center justify-between px-5 py-4 border-b border-border">
+            <div className="flex items-center gap-2">
+              <Star className="w-4 h-4 text-amber-400" />
+              <h3 className="text-sm font-semibold text-foreground">Google Business Profile Reviews</h3>
+              {googleReviewsData?.averageRating && (
+                <span className="text-xs text-amber-400 font-bold ml-1">{googleReviewsData.averageRating.toFixed(1)} avg</span>
+              )}
+              {googleReviewsData?.totalReviewCount && (
+                <span className="text-xs text-muted-foreground">({googleReviewsData.totalReviewCount} total)</span>
+              )}
+            </div>
+            <Link href="/ops/reviews">
+              <span className="text-xs text-primary hover:underline flex items-center gap-1 cursor-pointer">
+                View All <ArrowUpRight className="w-3 h-3" />
+              </span>
+            </Link>
+          </div>
+          {!googleStatus?.connected ? (
+            <div className="flex items-center gap-2 px-5 py-4 text-xs text-muted-foreground">
+              <AlertCircle className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+              Google Business Profile not connected. Go to{" "}
+              <Link href="/ops/settings">
+                <span className="text-primary hover:underline cursor-pointer">Settings → Integrations</span>
+              </Link>{" "}
+              to connect.
+            </div>
+          ) : dashboardReviews.length === 0 ? (
+            <div className="px-5 py-4 text-xs text-muted-foreground">No reviews found.</div>
+          ) : (
+            <div className="divide-y divide-border">
+              {dashboardReviews.map((review) => (
+                <div key={review.reviewId} className="flex items-start gap-3 px-5 py-3">
+                  {review.reviewerPhotoUrl ? (
+                    <img src={review.reviewerPhotoUrl} alt={review.reviewerName} className="w-8 h-8 rounded-full object-cover shrink-0 mt-0.5" />
+                  ) : (
+                    <div className="w-8 h-8 rounded-full bg-secondary flex items-center justify-center shrink-0 mt-0.5 text-muted-foreground text-xs font-bold">
+                      {review.reviewerName.charAt(0).toUpperCase()}
+                    </div>
+                  )}
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-sm font-medium text-foreground truncate">{review.reviewerName}</span>
+                      <span className="text-[10px] text-muted-foreground shrink-0">
+                        {new Date(review.createTime).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1 mt-0.5">
+                      {[1,2,3,4,5].map((n) => (
+                        <Star key={n} className={cn("h-3 w-3", n <= review.starRating ? "fill-amber-400 text-amber-400" : "text-border")} />
+                      ))}
+                    </div>
+                    {review.comment && (
+                      <p className="text-xs text-muted-foreground mt-1 line-clamp-2 leading-relaxed">{review.comment}</p>
+                    )}
+                    {review.reviewReply && (
+                      <div className="mt-1.5 pl-3 border-l-2 border-amber-500/30">
+                        <p className="text-[10px] text-amber-400 font-medium mb-0.5">Your Response</p>
+                        <p className="text-[11px] text-muted-foreground line-clamp-1">{review.reviewReply.comment}</p>
+                      </div>
+                    )}
+                  </div>
+                  {!review.reviewReply && (
+                    <Link href="/ops/reviews">
+                      <span className="text-[10px] text-primary hover:underline cursor-pointer shrink-0 mt-1 flex items-center gap-0.5">
+                        <MessageSquare className="w-3 h-3" /> Reply
+                      </span>
+                    </Link>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
       </div>

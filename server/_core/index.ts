@@ -14,6 +14,7 @@ import { registerFacebookWebhookRoutes } from "../facebookWebhookRoutes";
 import { registerGoogleRoutes } from "../googleRoutes";
 import { registerStorageProxy } from "./storageProxy";
 import { startJobberTokenRefreshScheduler } from "../jobber";
+import { startGoogleTokenRefreshScheduler } from "../googleRoutes";
 import cron from "node-cron";
 import {
   runLeadFollowupAgent,
@@ -64,6 +65,8 @@ async function startServer() {
   registerGoogleRoutes(app);
   // Start background Jobber token refresh scheduler (checks every 5 min, refreshes if within 10 min of expiry)
   startJobberTokenRefreshScheduler();
+  // Start background Google token refresh scheduler (checks every 5 min, refreshes if within 10 min of expiry)
+  startGoogleTokenRefreshScheduler();
 
   // ── Scheduled Agents ──────────────────────────────────────────────────────
   // Lead Follow-Up: every day at 8:00 AM CT

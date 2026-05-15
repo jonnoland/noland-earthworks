@@ -1046,12 +1046,12 @@
 - [x] Add short AI video clip of the mulcher in action to the equipment section on the About page
 - [x] Add compelling headline and descriptive paragraph above/around the equipment video section on the About page
 - [x] Keep Jobber connected persistently on /ops page: fix token refresh so connection never drops without manual re-authorization
-- [ ] Build Facebook webhook handler: GET verify token endpoint at /api/webhooks/facebook
-- [ ] Build Facebook webhook handler: POST lead ingestion, Graph API fetch, ops lead creation
-- [ ] Register Facebook webhook route in server/_core/index.ts
-- [ ] Add FACEBOOK_WEBHOOK_VERIFY_TOKEN and FACEBOOK_SYSTEM_USER_TOKEN to env.ts
-- [ ] Write vitest tests for the Facebook webhook handler
-- [ ] Write shell test script for live webhook endpoint testing
+- [x] Build Facebook webhook handler: GET verify token endpoint at /api/webhooks/facebook
+- [x] Build Facebook webhook handler: POST lead ingestion, Graph API fetch, ops lead creation
+- [x] Register Facebook webhook route in server/_core/index.ts
+- [x] Add FACEBOOK_WEBHOOK_VERIFY_TOKEN and FACEBOOK_SYSTEM_USER_TOKEN to env.ts
+- [x] Write vitest tests for the Facebook webhook handler
+- [x] Write shell test script for live webhook endpoint testing
 
 - [x] Build Facebook webhook handler (GET verify + POST lead ingestion)
 - [x] Register Facebook webhook routes in server index
@@ -1060,10 +1060,10 @@
 - [x] Add source filter to ops leads page (Facebook, Google, Website, Referral, Direct, All)
 - [x] Add lead source conversion rate chart to ops leads dashboard header
 - [x] Update Facebook Lead Ads integration card to Connected status with live webhook details
-- [ ] Add Disconnect button to Facebook Lead Ads card
-- [ ] Add Test Connection button to Facebook Lead Ads card (sends sample lead to verify webhook)
-- [ ] Add last-received timestamp to Facebook Lead Ads card
-- [ ] Implement Google Business Profile connection flow
+- [x] Add Disconnect button to Facebook Lead Ads card
+- [x] Add Test Connection button to Facebook Lead Ads card (sends sample lead to verify webhook)
+- [x] Add last-received timestamp to Facebook Lead Ads card
+- [x] Implement Google Business Profile connection flow
 
 ## Google Business Profile OAuth Integration — May 2026
 - [x] Add googleOAuthTokens table to drizzle/schema.ts and run db:push (migration 0029)
@@ -1073,3 +1073,15 @@
 - [x] Register Google OAuth routes in server/_core/index.ts
 - [x] Update Settings.tsx Google Business Profile card with live OAuth connect/disconnect flow
 - [x] Auto-navigate to Integrations tab and show toast on return from Google OAuth callback
+
+## Google Business Profile — Reviews & Token Refresh — May 2026
+- [x] Add Google OAuth token refresh function to googleRoutes.ts (auto-refresh when within 10 min of expiry)
+- [x] Add startGoogleTokenRefreshScheduler to index.ts (runs every 5 min like Jobber)
+- [x] Add syncGoogleReviews function: fetch reviews from Google Business Profile API, upsert into reviews table
+- [x] Add trpc.ops.google.syncReviews procedure (ownerProcedure, triggers manual sync)
+- [x] Add trpc.ops.google.listReviews procedure (returns reviews from DB with reply status)
+- [x] Add trpc.ops.google.replyToReview procedure (posts reply via Google Business Profile API)
+- [x] Add trpc.ops.google.deleteReply procedure (deletes reply via Google Business Profile API)
+- [x] Add Google Reviews widget to ops dashboard (latest 3 reviews, star ratings, reply status)
+- [x] Build /ops/reviews page: full review list, star filter, reply modal, sync button
+- [x] Register /ops/reviews route in App.tsx and add to DashboardLayout sidebar nav

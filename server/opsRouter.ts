@@ -1327,6 +1327,73 @@ const tasksRouter = router({
 });
 
 // ─── Google Business Profile Router ──────────────────────────────────────────
+
+const STAR_MAP: Record<string, number> = { ONE: 1, TWO: 2, THREE: 3, FOUR: 4, FIVE: 5 };
+
+/**
+ * Fetch reviews from Google Business Profile API using the stored OAuth token.
+ * Uses the My Business Reviews API (v4.9) which requires OAuth (not Places API key).
+ * Returns up to 50 most recent reviews sorted by newest first.
+ */
+async function fetchGoogleBusinessReviews(): Promise<{
+  reviews: Array<{
+    reviewId: string;
+    reviewerName: string;
+    reviewerPhotoUrl?: string;
+    starRating: number;
+    comment?: string;
+    createTime: string;
+    updateTime: string;
+    reviewReply?: { comment: string; updateTime: string };
+  }>;
+  averageRating: number | null;
+  totalReviewCount: number | null;
+}> {
+  const { getValidGoogleAccessToken, getGoogleConnectionInfo } = await import("./googleRoutes");
+  const accessToken = await getValidGoogleAccessToken();
+  if (!accessToken) return { reviews: [], averageRating: null, totalReviewCount: null };
+  const info = await getGoogleConnectionInfo();
+  const locationName = info?.locationName;
+  if (!locationName) return { reviews: [], averageRating: null, totalReviewCount: null };
+
+  const url = `https://mybusiness.googleapis.com/v4/${locationName}/reviews?pageSize=50&orderBy=updateTime%20desc`;
+  const res = await fetch(url, { headers: { Authorization: `Bearer ${accessToken}` } });
+  if (!res.ok) {
+    console.error(`[Google Reviews] API error: ${res.status} ${await res.text()}`);
+    return { reviews: [], averageRating: null, totalReviewCount: null };
+  }
+  const data = (await res.json()) as {
+    reviews?: Array<{
+      reviewId: string;
+      reviewer?: { displayName?: string; profilePhotoUrl?: string; isAnonymous?: boolean };
+      starRating?: string;
+      comment?: string;
+      createTime?: string;
+      updateTime?: string;
+      reviewReply?: { comment?: string; updateTime?: string };
+    }>;
+    averageRating?: number;
+    totalReviewCount?: number;
+  };
+
+  const reviewList = (data.reviews ?? []).map((r) => ({
+    reviewId: r.reviewId,
+    reviewerName: r.reviewer?.isAnonymous ? "Anonymous" : (r.reviewer?.displayName ?? "Google User"),
+    reviewerPhotoUrl: r.reviewer?.profilePhotoUrl,
+    starRating: STAR_MAP[r.starRating ?? ""] ?? 0,
+    comment: r.comment,
+    createTime: r.createTime ?? new Date().toISOString(),
+    updateTime: r.updateTime ?? new Date().toISOString(),
+    reviewReply: r.reviewReply?.comment ? { comment: r.reviewReply.comment, updateTime: r.reviewReply.updateTime ?? "" } : undefined,
+  }));
+
+  return {
+    reviews: reviewList,
+    averageRating: data.averageRating ?? null,
+    totalReviewCount: data.totalReviewCount ?? null,
+  };
+}
+
 const googleRouter = router({
   /** Returns connection status and business name for the Settings card. */
   connectionStatus: ownerProcedure.query(async () => {
@@ -1347,6 +1414,110 @@ const googleRouter = router({
     await db.delete(googleOAuthTokens);
     return { success: true };
   }),
+  /**
+   * Fetch live Google Business Profile reviews (uses OAuth token).
+   * Returns up to 50 most recent reviews with average rating.
+   */
+  fetchReviews: ownerProcedure.query(async () => {
+    return fetchGoogleBusinessReviews();
+  }),
+  /**
+   * Sync Google Business Profile reviews into the local reviews table.
+   * Upserts by externalId to avoid duplicates.
+   */
+  syncReviews: ownerProcedure.mutation(async () => {
+    const db = await getDb();
+    if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+    const result = await fetchGoogleBusinessReviews();
+    let inserted = 0;
+    let updated = 0;
+    for (const r of result.reviews) {
+      if (!r.reviewId) continue;
+      const existing = await db.select({ id: reviews.id, response: reviews.response })
+        .from(reviews)
+        .where(eq(reviews.externalId, r.reviewId))
+        .limit(1);
+      if (existing.length === 0) {
+        await db.insert(reviews).values({
+          source: "google",
+          externalId: r.reviewId,
+          reviewerName: r.reviewerName,
+          reviewerPhotoUrl: r.reviewerPhotoUrl,
+          rating: r.starRating,
+          body: r.comment ?? "",
+          response: r.reviewReply?.comment ?? null,
+          respondedAt: r.reviewReply?.updateTime ? new Date(r.reviewReply.updateTime) : null,
+          reviewedAt: new Date(r.createTime),
+        });
+        inserted++;
+      } else if (r.reviewReply?.comment && !existing[0].response) {
+        await db.update(reviews)
+          .set({ response: r.reviewReply.comment, respondedAt: r.reviewReply.updateTime ? new Date(r.reviewReply.updateTime) : new Date() })
+          .where(eq(reviews.id, existing[0].id));
+        updated++;
+      }
+    }
+    return { inserted, updated, total: result.reviews.length };
+  }),
+  /**
+   * Post a reply to a Google Business Profile review via the API.
+   * Also saves the reply to the local reviews table.
+   */
+  replyToReview: ownerProcedure
+    .input(z.object({
+      localId: z.number().int().positive(),
+      externalId: z.string().min(1),
+      replyText: z.string().min(1).max(4096),
+    }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+      const { getGoogleConnectionInfo, getValidGoogleAccessToken } = await import("./googleRoutes");
+      const info = await getGoogleConnectionInfo();
+      if (!info?.locationName) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Google Business Profile not connected" });
+      const accessToken = await getValidGoogleAccessToken();
+      if (!accessToken) throw new TRPCError({ code: "UNAUTHORIZED", message: "Not authenticated with Google" });
+      const url = `https://mybusiness.googleapis.com/v4/${info.locationName}/reviews/${input.externalId}/reply`;
+      const res = await fetch(url, {
+        method: "PUT",
+        headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ comment: input.replyText }),
+      });
+      if (!res.ok) {
+        const text = await res.text();
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: `Google API error: ${text}` });
+      }
+      await db.update(reviews)
+        .set({ response: input.replyText, respondedAt: new Date() })
+        .where(eq(reviews.id, input.localId));
+      return { success: true };
+    }),
+  /**
+   * Delete a reply from a Google Business Profile review.
+   */
+  deleteReply: ownerProcedure
+    .input(z.object({
+      localId: z.number().int().positive(),
+      externalId: z.string().min(1),
+    }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+      const { getGoogleConnectionInfo, getValidGoogleAccessToken } = await import("./googleRoutes");
+      const info = await getGoogleConnectionInfo();
+      if (!info?.locationName) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Google Business Profile not connected" });
+      const accessToken = await getValidGoogleAccessToken();
+      if (!accessToken) throw new TRPCError({ code: "UNAUTHORIZED", message: "Not authenticated with Google" });
+      const url = `https://mybusiness.googleapis.com/v4/${info.locationName}/reviews/${input.externalId}/reply`;
+      const res = await fetch(url, { method: "DELETE", headers: { Authorization: `Bearer ${accessToken}` } });
+      if (!res.ok && res.status !== 404) {
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Failed to delete reply from Google" });
+      }
+      await db.update(reviews)
+        .set({ response: null, respondedAt: null })
+        .where(eq(reviews.id, input.localId));
+      return { success: true };
+    }),
 });
 
 export const opsRouter = router({

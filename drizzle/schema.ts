@@ -325,7 +325,10 @@ export type InsertMessage = typeof messages.$inferInsert;
 export const reviews = mysqlTable("reviews", {
   id: int("id").autoincrement().primaryKey(),
   source: mysqlEnum("source", ["google", "facebook", "yelp", "other"]).notNull().default("google"),
+  /** External review ID from the source platform (e.g. Google review name like "accounts/123/locations/456/reviews/abc") */
+  externalId: varchar("externalId", { length: 512 }),
   reviewerName: varchar("reviewerName", { length: 255 }).notNull(),
+  reviewerPhotoUrl: varchar("reviewerPhotoUrl", { length: 1024 }),
   rating: int("rating").notNull(),
   body: text("body"),
   response: text("response"),

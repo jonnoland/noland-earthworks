@@ -1,0 +1,17 @@
+{
+  "query": "SELECT id, email, name, role, openId FROM users WHERE email LIKE '%snoland%' OR email LIKE '%nolandearthworks%';",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway05.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 4URdbyUXkTLuAyd.1068bf1d0e22 --database PymCzDCnSJzPjdkfwA7Jn6 --execute SELECT id, email, name, role, openId FROM users WHERE email LIKE '%snoland%' OR email LIKE '%nolandearthworks%';",
+  "rows": [
+    {
+      "id": "1",
+      "email": "jonnoland@nolandearthworks.com",
+      "name": "Jon Noland",
+      "role": "admin",
+      "openId": "LTfqz9HUyNLSmf26UUZJ79"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\temail\tname\trole\topenId\n1\tjonnoland@nolandearthworks.com\tJon Noland\tadmin\tLTfqz9HUyNLSmf26UUZJ79\n",
+  "stderr": "",
+  "execution_time_ms": 396
+}
