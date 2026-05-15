@@ -1,0 +1,8 @@
+{
+  "query": "SELECT id, access_token IS NOT NULL as has_access_token, refresh_token IS NOT NULL as has_refresh_token, expires_at, business_name, location_name, created_at, updated_at FROM google_oauth_tokens ORDER BY created_at DESC LIMIT 5;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway05.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 4URdbyUXkTLuAyd.1068bf1d0e22 --database PymCzDCnSJzPjdkfwA7Jn6 --execute SELECT id, access_token IS NOT NULL as has_access_token, refresh_token IS NOT NULL as has_refresh_token, expires_at, business_name, location_name, created_at, updated_at FROM google_oauth_tokens ORDER BY created_at DESC LIMIT 5;",
+  "returncode": 1,
+  "logs": [
+    "ERROR 1054 (42S22) at line 1: Unknown column 'access_token' in 'field list'"
+  ]
+}

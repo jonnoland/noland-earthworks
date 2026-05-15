@@ -1,0 +1,18 @@
+{
+  "query": "SELECT id, businessName, locationName, expiresAt, createdAt, updatedAt FROM google_oauth_tokens LIMIT 5;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway05.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 4URdbyUXkTLuAyd.1068bf1d0e22 --database PymCzDCnSJzPjdkfwA7Jn6 --execute SELECT id, businessName, locationName, expiresAt, createdAt, updatedAt FROM google_oauth_tokens LIMIT 5;",
+  "rows": [
+    {
+      "id": "1",
+      "businessName": "NULL",
+      "locationName": "NULL",
+      "expiresAt": "2026-05-15 21:37:00",
+      "createdAt": "2026-05-15 20:37:01",
+      "updatedAt": "2026-05-15 20:37:01"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tbusinessName\tlocationName\texpiresAt\tcreatedAt\tupdatedAt\n1\tNULL\tNULL\t2026-05-15 21:37:00\t2026-05-15 20:37:01\t2026-05-15 20:37:01\n",
+  "stderr": "",
+  "execution_time_ms": 282
+}

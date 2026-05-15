@@ -1351,11 +1351,73 @@ async function fetchGoogleBusinessReviews(): Promise<{
 }> {
   const { getValidGoogleAccessToken, getGoogleConnectionInfo } = await import("./googleRoutes");
   const accessToken = await getValidGoogleAccessToken();
-  if (!accessToken) return { reviews: [], averageRating: null, totalReviewCount: null };
+  if (!accessToken) {
+    console.error("[Google Reviews] No valid access token — Google not connected or token refresh failed");
+    return { reviews: [], averageRating: null, totalReviewCount: null };
+  }
   const info = await getGoogleConnectionInfo();
-  const locationName = info?.locationName;
-  if (!locationName) return { reviews: [], averageRating: null, totalReviewCount: null };
+  let locationName = info?.locationName ?? null;
 
+  // Fallback: if locationName was not stored during OAuth callback, discover it now at runtime
+  if (!locationName) {
+    console.log("[Google Reviews] locationName not in DB — attempting runtime discovery...");
+    try {
+      // Step 1: fetch accounts
+      const accountsRes = await fetch(
+        "https://mybusinessaccountmanagement.googleapis.com/v1/accounts",
+        { headers: { Authorization: `Bearer ${accessToken}` } }
+      );
+      if (!accountsRes.ok) {
+        const txt = await accountsRes.text();
+        console.error(`[Google Reviews] accounts API error: ${accountsRes.status} ${txt}`);
+      } else {
+        const accountsData = (await accountsRes.json()) as {
+          accounts?: Array<{ name: string; accountName: string; type: string }>;
+        };
+        console.log("[Google Reviews] accounts response:", JSON.stringify(accountsData));
+        const account = accountsData.accounts?.[0];
+        if (account) {
+          // Step 2: fetch locations for this account
+          const locRes = await fetch(
+            `https://mybusinessbusinessinformation.googleapis.com/v1/${account.name}/locations?readMask=name,title`,
+            { headers: { Authorization: `Bearer ${accessToken}` } }
+          );
+          if (!locRes.ok) {
+            const txt = await locRes.text();
+            console.error(`[Google Reviews] locations API error: ${locRes.status} ${txt}`);
+          } else {
+            const locData = (await locRes.json()) as {
+              locations?: Array<{ name: string; title: string }>;
+            };
+            console.log("[Google Reviews] locations response:", JSON.stringify(locData));
+            const loc = locData.locations?.[0];
+            if (loc) {
+              locationName = loc.name;
+              // Persist to DB so future calls don't need to rediscover
+              const { googleOAuthTokens } = await import("../drizzle/schema");
+              const db2 = await getDb();
+              if (db2) {
+                await db2.update(googleOAuthTokens).set({
+                  locationName: loc.name,
+                  businessName: loc.title ?? account.accountName,
+                });
+                console.log(`[Google Reviews] Persisted locationName: ${loc.name}`);
+              }
+            }
+          }
+        }
+      }
+    } catch (err) {
+      console.error("[Google Reviews] Runtime location discovery error:", err);
+    }
+  }
+
+  if (!locationName) {
+    console.error("[Google Reviews] Could not determine locationName — cannot fetch reviews");
+    return { reviews: [], averageRating: null, totalReviewCount: null };
+  }
+
+  console.log(`[Google Reviews] Fetching reviews for location: ${locationName}`);
   const url = `https://mybusiness.googleapis.com/v4/${locationName}/reviews?pageSize=50&orderBy=updateTime%20desc`;
   const res = await fetch(url, { headers: { Authorization: `Bearer ${accessToken}` } });
   if (!res.ok) {
