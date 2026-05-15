@@ -29,6 +29,7 @@ import {
   Clock,
   Trophy,
   CheckSquare,
+  Facebook,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/_core/hooks/useAuth";
@@ -46,6 +47,7 @@ const navItems = [
   { icon: Clock, label: "Timesheets", href: "/ops/timesheets" },
   { icon: Trophy, label: "Scoreboard", href: "/ops/scoreboard" },
   { icon: CheckSquare, label: "Tasks", href: "/ops/tasks" },
+  { icon: Facebook, label: "FB Leads", href: "/ops/facebook-leads" },
 ];
 
 const bottomItems = [

@@ -204,6 +204,20 @@
       "when": 1776910215391,
       "tag": "0028_demonic_malice",
       "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "5",
+      "when": 1778858851741,
+      "tag": "0029_previous_revanche",
+      "breakpoints": true
+    },
+    {
+      "idx": 30,
+      "version": "5",
+      "when": 1778859805911,
+      "tag": "0030_petite_siren",
+      "breakpoints": true
     }
   ]
 }

@@ -25,6 +25,7 @@ import OpsScoreboard from "./pages/ops/Scoreboard";
 import OpsDistanceQuotes from "./pages/ops/DistanceQuotes";
 import OpsQuoteAnalytics from "./pages/ops/QuoteAnalytics";
 import OpsTasksPage from "./pages/ops/Tasks";
+import FacebookLeadsPage from "./pages/ops/FacebookLeads";
 import OpsTeam from "./pages/ops/Team";
 import GoogleAdsPage from "./pages/ops/analytics/GoogleAds";
 import GoogleAnalyticsPage from "./pages/ops/analytics/GoogleAnalytics";
@@ -220,6 +221,9 @@ function Router() {
       </Route>
       <Route path="/ops/tasks">
         <OwnerRoute><OpsTasksPage /></OwnerRoute>
+      </Route>
+      <Route path="/ops/facebook-leads">
+        <OwnerRoute><FacebookLeadsPage /></OwnerRoute>
       </Route>
       <Route path="/ops/distance-quotes/analytics">
         <OwnerRoute><OpsQuoteAnalytics /></OwnerRoute>

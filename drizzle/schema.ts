@@ -652,3 +652,89 @@ export const quoteFollowUps = mysqlTable("quote_follow_ups", {
 });
 export type QuoteFollowUp = typeof quoteFollowUps.$inferSelect;
 export type InsertQuoteFollowUp = typeof quoteFollowUps.$inferInsert;
+
+// ─── Facebook Lead Ads ────────────────────────────────────────────────────────
+/**
+ * Stores leads captured via the Facebook Lead Ads webhook.
+ * Each row represents one lead form submission from a Facebook ad.
+ */
+export const facebookLeads = mysqlTable("facebook_leads", {
+  id: int("id").primaryKey().autoincrement(),
+  /** Facebook's unique lead ID */
+  leadId: varchar("leadId", { length: 64 }).notNull().unique(),
+  /** The lead form ID the lead was submitted through */
+  formId: varchar("formId", { length: 64 }),
+  /** The Facebook Page ID */
+  pageId: varchar("pageId", { length: 64 }),
+  /** The ad ID that generated this lead */
+  adId: varchar("adId", { length: 64 }),
+  /** The ad set ID */
+  adSetId: varchar("adSetId", { length: 64 }),
+  /** The campaign ID */
+  campaignId: varchar("campaignId", { length: 64 }),
+  /** Parsed lead fields — JSON object: { full_name, email, phone_number, ... } */
+  fields: text("fields").notNull(),
+  /** Convenience columns extracted from fields for easy querying */
+  name: varchar("name", { length: 255 }),
+  email: varchar("email", { length: 320 }),
+  phone: varchar("phone", { length: 50 }),
+  /** Pipeline stage for this lead */
+  status: mysqlEnum("status", ["new", "contacted", "converted", "lost"]).notNull().default("new"),
+  /** Optional notes from Jon */
+  notes: text("notes"),
+  /** Timestamp from Facebook's webhook payload */
+  createdTime: timestamp("createdTime"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type FacebookLead = typeof facebookLeads.$inferSelect;
+export type InsertFacebookLead = typeof facebookLeads.$inferInsert;
+
+// ─── Google OAuth Tokens ──────────────────────────────────────────────────────
+/**
+ * Stores the Google OAuth tokens for the owner's Google Business Profile.
+ * Only one row is expected (the owner's tokens).
+ */
+export const googleTokens = mysqlTable("google_tokens", {
+  id: int("id").primaryKey().autoincrement(),
+  accessToken: text("accessToken").notNull(),
+  refreshToken: text("refreshToken").notNull(),
+  expiresAt: timestamp("expiresAt").notNull(),
+  /** Space-separated list of granted scopes */
+  scope: text("scope"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type GoogleToken = typeof googleTokens.$inferSelect;
+export type InsertGoogleToken = typeof googleTokens.$inferInsert;
+
+// ─── Google Business Profile Reviews ─────────────────────────────────────────
+/**
+ * Stores reviews synced from Google Business Profile.
+ * Upserted on reviewId to keep data current.
+ */
+export const googleReviews = mysqlTable("google_reviews", {
+  id: int("id").primaryKey().autoincrement(),
+  /** Google's unique review name/ID e.g. accounts/xxx/locations/yyy/reviews/zzz */
+  reviewId: varchar("reviewId", { length: 255 }).notNull().unique(),
+  /** Reviewer display name */
+  authorName: varchar("authorName", { length: 255 }),
+  /** Profile photo URL */
+  authorPhotoUrl: varchar("authorPhotoUrl", { length: 512 }),
+  /** Star rating 1-5 */
+  rating: int("rating").notNull(),
+  /** Review text body */
+  comment: text("comment"),
+  /** ISO timestamp from Google */
+  createTime: varchar("createTime", { length: 64 }),
+  updateTime: varchar("updateTime", { length: 64 }),
+  /** Owner reply text */
+  replyComment: text("replyComment"),
+  /** ISO timestamp of reply */
+  replyTime: varchar("replyTime", { length: 64 }),
+  /** When this row was last synced from the API */
+  syncedAt: timestamp("syncedAt").defaultNow().notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type GoogleReview = typeof googleReviews.$inferSelect;
+export type InsertGoogleReview = typeof googleReviews.$inferInsert;

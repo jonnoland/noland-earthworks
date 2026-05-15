@@ -1055,3 +1055,16 @@
 - [x] Before archiving a client, automatically archive all their open work requests first (cascade archive)
 - [ ] Add confirmation dialog before archiving a client on /ops/clients to prevent accidental clicks
 - [x] Build visual step-by-step integration setup guide page inside /ops/settings for Facebook Lead Ads and Google Business Profile
+- [x] Database schema: facebook_leads table (leadId, formId, pageId, adId, fields JSON, createdAt, status)
+- [x] Database schema: google_oauth_tokens table (accessToken, refreshToken, expiresAt, scope)
+- [x] Database schema: google_reviews table (reviewId, authorName, rating, comment, createTime, replyComment, replyTime)
+- [x] Facebook webhook: GET /api/webhooks/facebook for hub verification
+- [x] Facebook webhook: POST /api/webhooks/facebook for lead event ingestion
+- [x] Facebook webhook: fetch lead field data from Graph API on receipt
+- [x] Facebook webhook: register webhook subscription via Graph API on startup
+- [x] Google OAuth: GET /api/auth/google to initiate OAuth flow
+- [x] Google OAuth: GET /api/auth/google/callback to handle token exchange and store tokens
+- [x] Google OAuth: token refresh logic (auto-refresh on expiry using stored refresh token)
+- [x] Google reviews: fetch reviews from My Business API and store in DB
+- [x] Ops dashboard: Facebook Leads page showing all captured leads with status management
+- [x] Ops dashboard: Google Reviews page showing reviews with reply capability

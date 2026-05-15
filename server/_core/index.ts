@@ -10,6 +10,8 @@ import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
 import { prerenderMiddleware } from "../prerender";
 import { registerJobberRoutes } from "../jobberRoutes";
+import { registerFacebookWebhookRoutes } from "../facebookWebhookRoutes";
+import { registerGoogleReviewsRoutes } from "../googleReviewsRoutes";
 import { registerStorageProxy } from "./storageProxy";
 import { startJobberTokenRefreshScheduler } from "../jobber";
 import cron from "node-cron";
@@ -58,6 +60,10 @@ async function startServer() {
   registerJobberRoutes(app);
   // Start background Jobber token refresh scheduler (checks every 5 min, refreshes if within 10 min of expiry)
   startJobberTokenRefreshScheduler();
+  // Facebook Lead Ads webhook
+  registerFacebookWebhookRoutes(app);
+  // Google Business Profile OAuth + reviews sync
+  registerGoogleReviewsRoutes(app);
 
   // ── Scheduled Agents ──────────────────────────────────────────────────────
   // Lead Follow-Up: every day at 8:00 AM CT

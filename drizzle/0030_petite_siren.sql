@@ -1,0 +1,1 @@
+ALTER TABLE `facebook_leads` MODIFY COLUMN `fields` text NOT NULL;
