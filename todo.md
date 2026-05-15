@@ -1054,3 +1054,4 @@
 - [x] Create Google Search Console page with key metric cards (impressions, clicks, average position, top queries)
 - [x] Before archiving a client, automatically archive all their open work requests first (cascade archive)
 - [ ] Add confirmation dialog before archiving a client on /ops/clients to prevent accidental clicks
+- [x] Build visual step-by-step integration setup guide page inside /ops/settings for Facebook Lead Ads and Google Business Profile
