@@ -130,9 +130,9 @@ export const jobberRouter = router({
     .query(async ({ input }) => {
       const data = await jobberGraphQL(`
         query GetClients($first: Int) {
-          clients(first: $first, filter: { status: ACTIVE }) {
+          clients(first: $first) {
             nodes {
-              id name companyName isLead balance createdAt
+              id name companyName isLead balance createdAt isArchived
               emails { address }
               phones { number description }
               billingAddress { street1 city province postalCode }
@@ -141,7 +141,9 @@ export const jobberRouter = router({
           }
         }
       `, { first: input.first ?? 100 }) as any;
-      return data.clients;
+      // Filter out archived clients server-side since Jobber's filter API doesn't support a status field
+      const nodes = (data.clients?.nodes ?? []).filter((c: any) => !c.isArchived);
+      return { nodes, totalCount: nodes.length };
     }),
 
   // ─── Invoices ────────────────────────────────────────────────────────────────
