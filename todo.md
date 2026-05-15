@@ -1085,3 +1085,7 @@
 - [x] Add Google Reviews widget to ops dashboard (latest 3 reviews, star ratings, reply status)
 - [x] Build /ops/reviews page: full review list, star filter, reply modal, sync button
 - [x] Register /ops/reviews route in App.tsx and add to DashboardLayout sidebar nav
+
+## AI Suggest Reply — Reviews Page — May 2026
+- [x] Add trpc.ops.google.suggestReply procedure: takes reviewerName, starRating, reviewText, returns AI-generated draft response
+- [x] Add "Suggest Reply" button to Reviews page reply modal: calls procedure, streams/inserts draft into textarea

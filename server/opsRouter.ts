@@ -1518,6 +1518,52 @@ const googleRouter = router({
         .where(eq(reviews.id, input.localId));
       return { success: true };
     }),
+  /**
+   * Generate an AI-drafted reply for a Google Business Profile review.
+   * Uses the built-in LLM helper (server-side only).
+   * Returns a plain-text draft the owner can edit before posting.
+   */
+  suggestReply: ownerProcedure
+    .input(z.object({
+      reviewerName: z.string(),
+      starRating: z.number().int().min(1).max(5),
+      reviewText: z.string().max(5000).optional(),
+    }))
+    .mutation(async ({ input }) => {
+      const { invokeLLM } = await import("./_core/llm");
+
+      const ratingLabel = ["one-star", "two-star", "three-star", "four-star", "five-star"][input.starRating - 1];
+      const hasText = input.reviewText && input.reviewText.trim().length > 0;
+
+      const systemPrompt = `You are writing a reply to a Google Business Profile review on behalf of Jon Noland, owner of Noland Earthworks, LLC — a veteran-owned land clearing and forestry mulching company in Middle Tennessee.
+
+Tone rules:
+- Professional but warm. Sound like a real person, not a template.
+- Confident without being boastful.
+- Never use: "solutions", "industry-leading", "best-in-class", "we are passionate", "dedicated team", "we strive to", "cutting-edge", or any corporate jargon.
+- No emojis. Ever.
+- Keep it concise — 3 to 5 sentences maximum.
+- Always thank the reviewer by first name.
+- For 5-star reviews: express genuine appreciation, briefly mention the work if context is available, and invite them to reach out for future projects.
+- For 4-star reviews: thank them, acknowledge any implicit concern, and invite direct contact if anything fell short.
+- For 3-star or below: acknowledge their feedback respectfully, take ownership without being defensive, and invite them to call Jon directly at 615-406-4819 to make it right.
+- Sign off as: Jon Noland — Noland Earthworks, LLC`;
+
+      const userPrompt = hasText
+        ? `Write a reply to this ${ratingLabel} Google review from ${input.reviewerName}:\n\n"${input.reviewText}"`
+        : `Write a reply to a ${ratingLabel} Google review from ${input.reviewerName} who left no written comment.`;
+
+      const result = await invokeLLM({
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userPrompt },
+        ],
+      });
+
+      const draft = result.choices?.[0]?.message?.content ?? "";
+      if (!draft) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "AI did not return a response. Try again." });
+      return { draft: typeof draft === "string" ? draft : JSON.stringify(draft) };
+    }),
 });
 
 export const opsRouter = router({

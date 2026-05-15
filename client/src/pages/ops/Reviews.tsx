@@ -22,6 +22,8 @@ import {
   AlertCircle,
   CheckCircle2,
   Send,
+  Sparkles,
+  Loader2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -102,6 +104,8 @@ interface ReplyTarget {
   localId: number;
   externalId: string | null;
   reviewerName: string;
+  starRating: number;
+  reviewText?: string;
   existingReply?: string | null;
   isGoogleOAuth: boolean; // true = can post via API; false = local-only
 }
@@ -150,6 +154,23 @@ function ReplyModal({
 
   const isPending = googleReply.isPending || localReply.isPending;
 
+  // AI suggest reply
+  const suggestReply = trpc.ops.google.suggestReply.useMutation({
+    onSuccess: ({ draft }) => {
+      setText(draft);
+      toast.success("Draft generated — review and edit before posting.");
+    },
+    onError: (err) => toast.error(`AI suggestion failed: ${err.message}`),
+  });
+
+  const handleSuggest = () => {
+    suggestReply.mutate({
+      reviewerName: target.reviewerName,
+      starRating: target.starRating,
+      reviewText: target.reviewText,
+    });
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
       <div className="bg-[#1a1a1a] border border-white/10 rounded-xl p-6 w-full max-w-lg shadow-2xl">
@@ -180,6 +201,19 @@ function ReplyModal({
         />
         <div className="flex items-center justify-between mt-1 mb-4">
           <span className="text-[10px] text-white/20">{text.length}/4096</span>
+          <button
+            type="button"
+            onClick={handleSuggest}
+            disabled={suggestReply.isPending}
+            className="flex items-center gap-1.5 text-xs text-amber-400 hover:text-amber-300 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            {suggestReply.isPending ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <Sparkles className="h-3.5 w-3.5" />
+            )}
+            {suggestReply.isPending ? "Generating..." : "Suggest Reply"}
+          </button>
         </div>
         <div className="flex justify-end gap-2">
           <Button variant="outline" size="sm" className="border-white/10 text-white/60" onClick={onClose}>
@@ -460,6 +494,8 @@ export default function Reviews() {
                             localId: local?.id ?? -1,
                             externalId: review.reviewId ?? null,
                             reviewerName: review.reviewerName,
+                            starRating: review.rating,
+                            reviewText: review.body,
                             existingReply: review.reviewReply?.comment,
                             isGoogleOAuth: true,
                           });
@@ -566,6 +602,8 @@ export default function Reviews() {
                             localId: review.id,
                             externalId: review.externalId ?? null,
                             reviewerName: review.reviewerName,
+                            starRating: review.rating,
+                            reviewText: review.body ?? undefined,
                             existingReply: review.response,
                             isGoogleOAuth: !!(review.source === "google" && review.externalId && googleConnected),
                           })}
