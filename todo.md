@@ -1095,3 +1095,7 @@
 - [x] Add Tone Adjust dropdown to reply modal (Professional / Friendly / Apologetic, defaults to Professional)
 - [x] Add Regenerate button next to Suggest Reply (re-runs the same mutation with current tone)
 - [x] Replace static char counter with dynamic one that turns red when text.length > 4096
+- [ ] Switch Google reviews fetch to mybusinessreviews.googleapis.com (newer endpoint, replaces legacy mybusiness.googleapis.com/v4)
+- [ ] Enable mybusinessreviews.googleapis.com API in Google Cloud Console
+- [x] Add Google Places API fallback for reviews sync (while awaiting Business Profile API access)
+- [x] Update Reviews page to show read-only note for Places API reviews (no reply available via Places API)

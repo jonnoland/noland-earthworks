@@ -1449,10 +1449,86 @@ async function fetchGoogleBusinessReviews(): Promise<{
     reviewReply: r.reviewReply?.comment ? { comment: r.reviewReply.comment, updateTime: r.reviewReply.updateTime ?? "" } : undefined,
   }));
 
+  // If the Business Profile API returned reviews, use them
+  if (reviewList.length > 0) {
+    return {
+      reviews: reviewList,
+      averageRating: data.averageRating ?? null,
+      totalReviewCount: data.totalReviewCount ?? null,
+    };
+  }
+
+  // Fallback: use Google Places API (up to 5 most recent reviews, read-only)
+  console.log("[Google Reviews] Business Profile API returned 0 reviews — falling back to Places API");
+  return fetchPlacesApiReviews();
+}
+
+/** Fallback: fetch up to 5 reviews from Google Places API (no OAuth required). */
+async function fetchPlacesApiReviews(): Promise<{
+  reviews: Array<{
+    reviewId: string;
+    reviewerName: string;
+    reviewerPhotoUrl?: string;
+    starRating: number;
+    comment?: string;
+    createTime: string;
+    updateTime: string;
+    reviewReply?: { comment: string; updateTime: string };
+  }>;
+  averageRating: number | null;
+  totalReviewCount: number | null;
+}> {
+  const { ENV } = await import("./_core/env");
+  const apiKey = ENV.googlePlacesApiKey;
+  const placeId = ENV.googlePlaceId;
+  if (!apiKey || !placeId) {
+    console.error("[Places API] GOOGLE_PLACES_API_KEY or GOOGLE_PLACE_ID not set");
+    return { reviews: [], averageRating: null, totalReviewCount: null };
+  }
+  const url = `https://maps.googleapis.com/maps/api/place/details/json?place_id=${encodeURIComponent(placeId)}&fields=name,rating,user_ratings_total,reviews&key=${apiKey}&reviews_sort=newest`;
+  const res = await fetch(url);
+  if (!res.ok) {
+    console.error(`[Places API] HTTP error: ${res.status}`);
+    return { reviews: [], averageRating: null, totalReviewCount: null };
+  }
+  const data = (await res.json()) as {
+    result?: {
+      name?: string;
+      rating?: number;
+      user_ratings_total?: number;
+      reviews?: Array<{
+        author_name?: string;
+        profile_photo_url?: string;
+        rating?: number;
+        text?: string;
+        time?: number;
+        author_url?: string;
+      }>;
+    };
+    status?: string;
+  };
+  if (data.status !== "OK" || !data.result) {
+    console.error(`[Places API] API status: ${data.status}`);
+    return { reviews: [], averageRating: null, totalReviewCount: null };
+  }
+  const placesReviews = (data.result.reviews ?? []).map((r, idx) => {
+    const ts = r.time ? new Date(r.time * 1000).toISOString() : new Date().toISOString();
+    return {
+      reviewId: `places-${placeId}-${idx}-${r.time ?? Date.now()}`,
+      reviewerName: r.author_name ?? "Google User",
+      reviewerPhotoUrl: r.profile_photo_url,
+      starRating: r.rating ?? 0,
+      comment: r.text,
+      createTime: ts,
+      updateTime: ts,
+      reviewReply: undefined,
+    };
+  });
+  console.log(`[Places API] Fetched ${placesReviews.length} reviews. Rating: ${data.result.rating}, Total: ${data.result.user_ratings_total}`);
   return {
-    reviews: reviewList,
-    averageRating: data.averageRating ?? null,
-    totalReviewCount: data.totalReviewCount ?? null,
+    reviews: placesReviews,
+    averageRating: data.result.rating ?? null,
+    totalReviewCount: data.result.user_ratings_total ?? null,
   };
 }
 
