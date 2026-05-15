@@ -10,7 +10,8 @@
 import DashboardLayout from "@/components/DashboardLayout";
 import { MapView, loadMapScript } from "@/components/Map";
 import { trpc } from "@/lib/trpc";
-import { useState, useRef, useCallback, useEffect } from "react";
+import { useState, useRef, useCallback, useEffect, useMemo } from "react";
+
 import {
   Phone, Mail, MessageSquare, FileText, Calendar,
   Plus, Search, X, Loader2, XCircle,
@@ -22,6 +23,93 @@ import {
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { useLocation } from "wouter";
+
+// ─── Source Conversion Chart ─────────────────────────────────────────────────
+
+const SOURCE_CHART_COLORS: Record<string, string> = {
+  google:   "#3b82f6",
+  facebook: "#6366f1",
+  referral: "#a855f7",
+  website:  "#E07B2A",
+  direct:   "#22c55e",
+  other:    "#555",
+};
+
+function SourceConversionChart({ leads, onSourceClick }: { leads: Lead[]; onSourceClick: (src: string) => void }) {
+  const data = useMemo(() => {
+    const sources = ["facebook", "google", "website", "referral", "direct", "other"];
+    return sources
+      .map(src => {
+        const total = leads.filter(l => l.source === src).length;
+        if (total === 0) return null;
+        const won = leads.filter(l => l.source === src && l.stage === "won").length;
+        const active = leads.filter(l => l.source === src && !["won", "lost"].includes(l.stage)).length;
+        const lost = leads.filter(l => l.source === src && l.stage === "lost").length;
+        const rate = total > 0 ? Math.round((won / total) * 100) : 0;
+        return { src, label: SOURCE_LABELS[src] ?? src, total, won, active, lost, rate };
+      })
+      .filter(Boolean) as { src: string; label: string; total: number; won: number; active: number; lost: number; rate: number }[];
+  }, [leads]);
+
+  if (data.length === 0) return null;
+
+  const totalLeads = leads.length;
+  const totalWon = leads.filter(l => l.stage === "won").length;
+  const overallRate = totalLeads > 0 ? Math.round((totalWon / totalLeads) * 100) : 0;
+
+  return (
+    <div className="px-4 py-3 border-b border-[#1e1e1e] bg-[#080808] shrink-0">
+      {/* Summary row */}
+      <div className="flex items-center justify-between mb-3">
+        <p className="text-[11px] font-semibold uppercase tracking-wider text-[#555]">Lead Source Performance</p>
+        <div className="flex items-center gap-3 text-[11px] text-[#555]">
+          <span>{totalLeads} total</span>
+          <span className="text-green-400 font-semibold">{totalWon} won</span>
+          <span className="text-[#666]">Overall: <span className="text-white font-bold">{overallRate}%</span></span>
+        </div>
+      </div>
+
+      {/* Source cards */}
+      <div className="grid gap-2" style={{ gridTemplateColumns: `repeat(${Math.min(data.length, 6)}, minmax(0, 1fr))` }}>
+        {data.map(d => {
+          const color = SOURCE_CHART_COLORS[d.src] ?? "#555";
+          const wonPct = d.total > 0 ? (d.won / d.total) * 100 : 0;
+          const activePct = d.total > 0 ? (d.active / d.total) * 100 : 0;
+          return (
+            <button
+              key={d.src}
+              onClick={() => onSourceClick(d.src)}
+              className="group flex flex-col gap-1.5 bg-[#0f0f0f] hover:bg-[#141414] border border-[#1e1e1e] hover:border-[#2a2a2a] rounded-lg p-2.5 text-left transition-colors"
+            >
+              {/* Source label + count */}
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-semibold truncate" style={{ color }}>{d.label}</span>
+                <span className="text-[10px] text-[#555] ml-1 shrink-0">{d.total}</span>
+              </div>
+
+              {/* Stacked bar */}
+              <div className="h-1.5 w-full rounded-full bg-[#1a1a1a] overflow-hidden flex">
+                <div className="h-full rounded-l-full transition-all" style={{ width: `${wonPct}%`, backgroundColor: color, opacity: 1 }} />
+                <div className="h-full transition-all" style={{ width: `${activePct}%`, backgroundColor: color, opacity: 0.3 }} />
+              </div>
+
+              {/* Conversion rate */}
+              <div className="flex items-end justify-between">
+                <span className="text-[10px] text-[#555]">
+                  <span className="text-green-400 font-bold">{d.won}</span> won
+                  {d.active > 0 && <span className="text-[#555]"> · {d.active} active</span>}
+                </span>
+                <span className="text-xs font-bold" style={{ color: d.rate >= 30 ? "#22c55e" : d.rate >= 10 ? "#E07B2A" : "#666" }}>
+                  {d.rate}%
+                </span>
+              </div>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -1012,6 +1100,9 @@ export default function Leads() {
             </button>
           </div>
         </div>
+
+        {/* Source Conversion Chart */}
+        <SourceConversionChart leads={leads as Lead[]} onSourceClick={src => setSourceFilter(src)} />
 
         {/* Search + Source filter bar */}
         <div className="px-4 py-2 border-b border-[#1e1e1e] shrink-0 space-y-2">

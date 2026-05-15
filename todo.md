@@ -1058,3 +1058,4 @@
 - [x] Write vitest unit tests for Facebook webhook handler (13 tests)
 - [x] Write live endpoint test script (fb-webhook-test.sh)
 - [x] Add source filter to ops leads page (Facebook, Google, Website, Referral, Direct, All)
+- [x] Add lead source conversion rate chart to ops leads dashboard header
