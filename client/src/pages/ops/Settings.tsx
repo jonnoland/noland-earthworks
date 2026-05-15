@@ -1342,13 +1342,33 @@ function IntegrationsTab() {
       <SettingsSection
         title="Facebook Lead Ads"
         description="Automatically receive leads from your Facebook ad campaigns."
-        action={<ConnectedBadge ok={false} />}
+        action={<ConnectedBadge ok={true} />}
       >
-        <button onClick={() => toast.info("Feature coming soon")}
-          className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold px-4 py-2 rounded-md transition-colors">
-          Connect Facebook Page
-        </button>
-        <p className="text-[11px] text-muted-foreground">You'll be asked to log into Facebook and select your business page.</p>
+        <div className="space-y-3">
+          <div className="bg-green-500/10 border border-green-500/20 rounded-lg px-3 py-2.5 space-y-1.5">
+            <div className="flex items-center gap-2">
+              <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse shrink-0" />
+              <span className="text-xs font-semibold text-green-300">Webhook active — receiving leads</span>
+            </div>
+            <div className="space-y-1">
+              <p className="text-[11px] text-muted-foreground">
+                <span className="text-foreground/60">Page:</span> Noland Earthworks, LLC
+              </p>
+              <p className="text-[11px] text-muted-foreground">
+                <span className="text-foreground/60">App:</span> Noland Earthworks Leads (Published)
+              </p>
+              <p className="text-[11px] text-muted-foreground font-mono">
+                <span className="text-foreground/60">Endpoint:</span> /api/webhooks/facebook
+              </p>
+              <p className="text-[11px] text-muted-foreground">
+                <span className="text-foreground/60">Subscribed fields:</span> leadgen
+              </p>
+            </div>
+          </div>
+          <p className="text-[11px] text-muted-foreground">
+            New leads from Facebook Lead Ads are automatically captured and appear in the Leads board tagged with source "Facebook".
+          </p>
+        </div>
       </SettingsSection>
 
       {/* ── Google Business Profile ── */}

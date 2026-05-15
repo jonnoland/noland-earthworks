@@ -1059,3 +1059,4 @@
 - [x] Write live endpoint test script (fb-webhook-test.sh)
 - [x] Add source filter to ops leads page (Facebook, Google, Website, Referral, Direct, All)
 - [x] Add lead source conversion rate chart to ops leads dashboard header
+- [x] Update Facebook Lead Ads integration card to Connected status with live webhook details
