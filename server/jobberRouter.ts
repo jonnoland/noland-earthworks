@@ -130,7 +130,7 @@ export const jobberRouter = router({
     .query(async ({ input }) => {
       const data = await jobberGraphQL(`
         query GetClients($first: Int) {
-          clients(first: $first) {
+          clients(first: $first, filter: { status: ACTIVE }) {
             nodes {
               id name companyName isLead balance createdAt
               emails { address }
