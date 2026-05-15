@@ -285,35 +285,18 @@ export const jobberRouter = router({
   deleteClient: protectedProcedure
     .input(z.object({ id: z.string() }))
     .mutation(async ({ input }) => {
-      try {
-        const data = await jobberGraphQL(`
-          mutation DeleteClient($id: EncodedId!) {
-            clientDelete(input: { id: $id }) {
-              clientId
-              userErrors { message path }
-            }
+      // Jobber doesn't support clientDelete in the public API — use clientArchive instead
+      const archiveData = await jobberGraphQL(`
+        mutation ArchiveClient($clientId: EncodedId!) {
+          clientArchive(clientId: $clientId) {
+            client { id name }
+            userErrors { message path }
           }
-        `, { id: input.id }) as any;
-        const errors = data?.clientDelete?.userErrors;
-        if (errors?.length) throw new TRPCError({ code: "BAD_REQUEST", message: errors[0].message });
-        return { success: true, deletedId: data?.clientDelete?.clientId };
-      } catch (err: any) {
-        // Fallback: if clientDelete doesn't exist in this API version, archive instead
-        if (err?.message?.includes("clientDelete") || err?.message?.includes("Field")) {
-          const archiveData = await jobberGraphQL(`
-            mutation ArchiveClient($id: EncodedId!) {
-              clientArchive(input: { id: $id }) {
-                clientId
-                userErrors { message path }
-              }
-            }
-          `, { id: input.id }) as any;
-          const archiveErrors = archiveData?.clientArchive?.userErrors;
-          if (archiveErrors?.length) throw new TRPCError({ code: "BAD_REQUEST", message: archiveErrors[0].message });
-          return { success: true, deletedId: archiveData?.clientArchive?.clientId };
         }
-        throw err;
-      }
+      `, { clientId: input.id }) as any;
+      const archiveErrors = archiveData?.clientArchive?.userErrors;
+      if (archiveErrors?.length) throw new TRPCError({ code: "BAD_REQUEST", message: archiveErrors[0].message });
+      return { success: true, deletedId: archiveData?.clientArchive?.client?.id };
     }),
 
   /** Get full detail for a single Jobber quote */
