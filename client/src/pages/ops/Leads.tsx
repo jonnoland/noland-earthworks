@@ -877,6 +877,7 @@ export default function Leads() {
   const [draggingId, setDraggingId] = useState<number | null>(null);
   const [dragOverStage, setDragOverStage] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<"kanban" | "map" | "visits">("kanban");
+  const [sourceFilter, setSourceFilter] = useState<string>("all");
 
   const utils = trpc.useUtils();
   const { data: leads = [], isLoading } = trpc.ops.leads.list.useQuery();
@@ -920,6 +921,7 @@ export default function Leads() {
   };
 
   const filtered = (leads as Lead[]).filter(l => {
+    if (sourceFilter !== "all" && l.source !== sourceFilter) return false;
     if (!search) return true;
     const q = search.toLowerCase();
     return l.name.toLowerCase().includes(q) || (l.phone ?? "").includes(q) || (l.address ?? "").toLowerCase().includes(q);
@@ -1011,8 +1013,8 @@ export default function Leads() {
           </div>
         </div>
 
-        {/* Search bar */}
-        <div className="px-4 py-2 border-b border-[#1e1e1e] shrink-0">
+        {/* Search + Source filter bar */}
+        <div className="px-4 py-2 border-b border-[#1e1e1e] shrink-0 space-y-2">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[#444]" />
             <input
@@ -1022,6 +1024,51 @@ export default function Leads() {
               placeholder="Search leads..."
               className="w-full bg-[#111] border border-[#222] rounded-lg pl-9 pr-4 py-2 text-xs text-white placeholder:text-[#444] focus:outline-none focus:border-[#333]"
             />
+          </div>
+          {/* Source filter pills */}
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 scrollbar-none">
+            {[
+              { key: "all", label: "All Sources" },
+              { key: "facebook", label: "Facebook" },
+              { key: "google", label: "Google" },
+              { key: "website", label: "Website" },
+              { key: "referral", label: "Referral" },
+              { key: "direct", label: "Direct" },
+              { key: "other", label: "Other" },
+            ].map(({ key, label }) => {
+              const count = key === "all"
+                ? (leads as Lead[]).length
+                : (leads as Lead[]).filter(l => l.source === key).length;
+              if (key !== "all" && count === 0) return null;
+              const isActive = sourceFilter === key;
+              const colorClass = key === "facebook"
+                ? isActive ? "bg-indigo-500/30 text-indigo-300 border-indigo-500/50" : "bg-indigo-500/10 text-indigo-400/70 border-indigo-500/20 hover:border-indigo-500/40"
+                : key === "google"
+                ? isActive ? "bg-blue-500/30 text-blue-300 border-blue-500/50" : "bg-blue-500/10 text-blue-400/70 border-blue-500/20 hover:border-blue-500/40"
+                : key === "website"
+                ? isActive ? "bg-[#E07B2A]/30 text-[#E07B2A] border-[#E07B2A]/50" : "bg-[#E07B2A]/10 text-[#E07B2A]/70 border-[#E07B2A]/20 hover:border-[#E07B2A]/40"
+                : key === "referral"
+                ? isActive ? "bg-purple-500/30 text-purple-300 border-purple-500/50" : "bg-purple-500/10 text-purple-400/70 border-purple-500/20 hover:border-purple-500/40"
+                : key === "direct"
+                ? isActive ? "bg-green-500/30 text-green-300 border-green-500/50" : "bg-green-500/10 text-green-400/70 border-green-500/20 hover:border-green-500/40"
+                : isActive ? "bg-[#2a2a2a] text-white border-[#444]" : "bg-[#111] text-[#555] border-[#222] hover:border-[#333] hover:text-[#888]";
+              return (
+                <button
+                  key={key}
+                  onClick={() => setSourceFilter(key)}
+                  className={cn(
+                    "shrink-0 flex items-center gap-1 text-[11px] font-medium px-2.5 py-1 rounded-full border transition-colors",
+                    colorClass
+                  )}
+                >
+                  {label}
+                  <span className={cn(
+                    "text-[10px] font-bold px-1 py-0.5 rounded-full",
+                    isActive ? "bg-white/15" : "bg-white/5"
+                  )}>{count}</span>
+                </button>
+              );
+            })}
           </div>
         </div>
 

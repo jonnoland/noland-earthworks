@@ -1057,3 +1057,4 @@
 - [x] Register Facebook webhook routes in server index
 - [x] Write vitest unit tests for Facebook webhook handler (13 tests)
 - [x] Write live endpoint test script (fb-webhook-test.sh)
+- [x] Add source filter to ops leads page (Facebook, Google, Website, Referral, Direct, All)
