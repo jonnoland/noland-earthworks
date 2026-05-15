@@ -327,9 +327,13 @@ export const jobberRouter = router({
           }
         }
       `, { clientId: input.id }) as any;
-      const archiveErrors = archiveData?.clientArchive?.userErrors;
-      if (archiveErrors?.length) throw new TRPCError({ code: "BAD_REQUEST", message: archiveErrors[0].message });
-      return { success: true, deletedId: archiveData?.clientArchive?.client?.id };
+      const archiveErrors: Array<{ message: string }> = archiveData?.clientArchive?.userErrors ?? [];
+      // "Already archived" means the client is already in the desired state — treat as success
+      const realErrors = archiveErrors.filter(
+        (e) => !e.message.toLowerCase().includes("already archived")
+      );
+      if (realErrors.length) throw new TRPCError({ code: "BAD_REQUEST", message: realErrors[0].message });
+      return { success: true, deletedId: archiveData?.clientArchive?.client?.id ?? input.id };
     }),
 
   /** Get full detail for a single Jobber quote */
