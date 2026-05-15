@@ -1068,3 +1068,5 @@
 - [x] Google reviews: fetch reviews from My Business API and store in DB
 - [x] Ops dashboard: Facebook Leads page showing all captured leads with status management
 - [x] Ops dashboard: Google Reviews page showing reviews with reply capability
+- [x] Add CSV export button to /ops/facebook-leads page
+- [x] Update public homepage Testimonials section to display synced Google reviews from the database

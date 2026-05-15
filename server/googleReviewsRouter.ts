@@ -3,12 +3,40 @@
  * Provides procedures for querying Google Business Profile reviews and connection status.
  */
 import { z } from "zod";
-import { protectedProcedure, router } from "./_core/trpc";
+import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
 import { getDb } from "./db";
 import { googleReviews, googleTokens } from "../drizzle/schema";
-import { desc, count, avg } from "drizzle-orm";
+import { desc, count, eq } from "drizzle-orm";
 
 export const googleReviewsRouter = router({
+  /**
+   * Public: get top 5-star Google reviews for homepage display.
+   * Returns at most `limit` reviews (default 6), newest first.
+   * No auth required — safe for public homepage use.
+   */
+  publicHighlights: publicProcedure
+    .input(z.object({
+      limit: z.number().min(1).max(20).optional().default(6),
+    }))
+    .query(async ({ input }) => {
+      const db = await getDb();
+      if (!db) return { reviews: [] };
+
+      const reviews = await db.select({
+        reviewId: googleReviews.reviewId,
+        authorName: googleReviews.authorName,
+        rating: googleReviews.rating,
+        comment: googleReviews.comment,
+        createTime: googleReviews.createTime,
+      })
+        .from(googleReviews)
+        .where(eq(googleReviews.rating, 5))
+        .orderBy(desc(googleReviews.createTime))
+        .limit(input.limit);
+
+      return { reviews };
+    }),
+
   /**
    * Get all stored Google reviews, newest first.
    */

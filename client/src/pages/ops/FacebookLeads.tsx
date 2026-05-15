@@ -20,6 +20,7 @@ import {
   Clock,
   TrendingUp,
   ExternalLink,
+  Download,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -298,6 +299,42 @@ export default function FacebookLeadsPage() {
             >
               <RefreshCw className="h-4 w-4 mr-1.5" />
               Refresh
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                if (!data?.leads.length) {
+                  toast.error("No leads to export");
+                  return;
+                }
+                // Build CSV
+                const headers = ["Name", "Email", "Phone", "Status", "Notes", "Date", "Campaign ID", "Ad ID", "Lead ID"];
+                const rows = data.leads.map(lead => [
+                  lead.name ?? "",
+                  lead.email ?? "",
+                  lead.phone ?? "",
+                  lead.status,
+                  (lead.notes ?? "").replace(/,/g, ";").replace(/\n/g, " "),
+                  new Date(lead.createdAt).toLocaleDateString("en-US"),
+                  lead.campaignId ?? "",
+                  lead.adId ?? "",
+                  lead.leadId,
+                ]);
+                const csv = [headers, ...rows].map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(",")).join("\n");
+                const blob = new Blob([csv], { type: "text/csv" });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement("a");
+                a.href = url;
+                a.download = `facebook-leads-${new Date().toISOString().slice(0, 10)}.csv`;
+                a.click();
+                URL.revokeObjectURL(url);
+                toast.success(`Exported ${data.leads.length} leads`);
+              }}
+              className="border-white/20 text-white/70 hover:text-white bg-transparent"
+            >
+              <Download className="h-4 w-4 mr-1.5" />
+              Export CSV
             </Button>
             <a
               href="https://www.facebook.com/ads/manager"
