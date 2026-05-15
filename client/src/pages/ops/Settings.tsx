@@ -1152,12 +1152,116 @@ function RemindersTab() {
   );
 }
 
+// ─── Google Business Profile Card ───────────────────────────────────────────
+function GoogleBusinessProfileCard() {
+  const { data: googleStatus, isLoading, refetch } = trpc.ops.google.connectionStatus.useQuery();
+  const googleDisconnect = trpc.ops.google.disconnect.useMutation({
+    onSuccess: () => { toast.success("Google Business Profile disconnected"); refetch(); },
+    onError: (e) => toast.error(`Disconnect failed: ${e.message}`),
+  });
+
+  const ConnectedBadge = ({ ok }: { ok: boolean }) => ok ? (
+    <span className="inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full bg-green-500/15 text-green-400 border border-green-500/30">
+      <CheckCircle2 className="w-3 h-3" />Connected
+    </span>
+  ) : (
+    <span className="inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full bg-secondary text-muted-foreground border border-border">
+      <XCircle className="w-3 h-3" />Not Connected
+    </span>
+  );
+
+  if (isLoading) {
+    return (
+      <SettingsSection title="Google Business Profile" description="Display your Google reviews on quotes and proposals." action={<ConnectedBadge ok={false} />}>
+        <div className="flex items-center gap-2 py-2"><Loader2 className="w-4 h-4 animate-spin text-muted-foreground" /><span className="text-xs text-muted-foreground">Checking connection...</span></div>
+      </SettingsSection>
+    );
+  }
+
+  const isConnected = googleStatus?.connected ?? false;
+
+  return (
+    <SettingsSection
+      title="Google Business Profile"
+      description="Display your Google reviews on quotes and proposals."
+      action={<ConnectedBadge ok={isConnected} />}
+    >
+      {isConnected ? (
+        <div className="space-y-3">
+          <div className="bg-green-500/10 border border-green-500/20 rounded-lg px-3 py-2.5 space-y-1.5">
+            <div className="flex items-center gap-2">
+              <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse shrink-0" />
+              <span className="text-xs font-semibold text-green-300">Google Business Profile connected</span>
+            </div>
+            {googleStatus?.businessName && (
+              <p className="text-[11px] text-muted-foreground">
+                <span className="text-foreground/60">Business:</span> {googleStatus.businessName}
+              </p>
+            )}
+            {googleStatus?.expiresAt && (
+              <p className="text-[11px] text-muted-foreground">
+                <span className="text-foreground/60">Token expires:</span> {new Date(googleStatus.expiresAt).toLocaleDateString()}
+              </p>
+            )}
+            <p className="text-[11px] text-muted-foreground">5-star reviews are synced and displayed on the homepage and customer quotes.</p>
+          </div>
+          <div className="flex items-center gap-2 flex-wrap">
+            <a
+              href="/api/google/authorize"
+              className="flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-md bg-secondary border border-border hover:bg-secondary/80 transition-colors"
+            >
+              <RefreshCw className="w-3 h-3" />Reconnect
+            </a>
+            <button
+              onClick={() => {
+                if (confirm("Disconnect Google Business Profile? Review sync will stop until you reconnect.")) {
+                  googleDisconnect.mutate();
+                }
+              }}
+              disabled={googleDisconnect.isPending}
+              className="flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-md bg-secondary border border-border hover:bg-destructive/10 hover:border-destructive/40 hover:text-destructive text-muted-foreground transition-colors disabled:opacity-50"
+            >
+              {googleDisconnect.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <LogOut className="w-3 h-3" />}
+              Disconnect
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          <div className="flex items-start gap-2 bg-secondary/40 border border-border rounded-md p-3">
+            <Info className="w-4 h-4 text-muted-foreground shrink-0 mt-0.5" />
+            <p className="text-xs text-muted-foreground">Connect your Google Business Profile to automatically sync 5-star reviews to your homepage and customer quotes.</p>
+          </div>
+          <a
+            href="/api/google/authorize"
+            className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold px-4 py-2 rounded-md transition-colors"
+          >
+            <Link2 className="w-3.5 h-3.5" />Connect Google Business Profile
+          </a>
+          <p className="text-[11px] text-muted-foreground">You will be redirected to Google to authorize access. Requires a Google account with access to your Business Profile.</p>
+        </div>
+      )}
+    </SettingsSection>
+  );
+}
+
 function IntegrationsTab() {
   const { data: status, isLoading, refetch } = trpc.ops.settings.getIntegrationStatus.useQuery();
   const { data: jobberAuth } = trpc.jobber.getAuthUrl.useQuery();
   const jobberDisconnect = trpc.jobber.disconnect.useMutation({
     onSuccess: () => { toast.success("Jobber disconnected"); refetch(); },
     onError: () => toast.error("Failed to disconnect"),
+  });
+
+  // Facebook webhook utilities
+  const { data: fbLastReceived, refetch: refetchFbLast } = trpc.ops.leads.facebookLastReceived.useQuery();
+  const fbTestWebhook = trpc.ops.leads.facebookTestWebhook.useMutation({
+    onSuccess: () => { toast.success("Test lead sent — check the Leads board"); refetchFbLast(); },
+    onError: (e) => toast.error(`Test failed: ${e.message}`),
+  });
+  const fbDisconnect = trpc.ops.leads.facebookDisconnect.useMutation({
+    onSuccess: () => toast.success("Facebook webhook disconnected"),
+    onError: (e) => toast.error(`Disconnect failed: ${e.message}`),
   });
 
   const [apiKeyVisible, setApiKeyVisible] = useState(false);
@@ -1345,10 +1449,19 @@ function IntegrationsTab() {
         action={<ConnectedBadge ok={true} />}
       >
         <div className="space-y-3">
+          {/* Status block */}
           <div className="bg-green-500/10 border border-green-500/20 rounded-lg px-3 py-2.5 space-y-1.5">
-            <div className="flex items-center gap-2">
-              <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse shrink-0" />
-              <span className="text-xs font-semibold text-green-300">Webhook active — receiving leads</span>
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse shrink-0" />
+                <span className="text-xs font-semibold text-green-300">Webhook active — receiving leads</span>
+              </div>
+              {fbLastReceived && (
+                <span className="text-[10px] text-muted-foreground flex items-center gap-1">
+                  <Clock className="w-3 h-3" />
+                  Last received: {new Date(fbLastReceived).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}
+                </span>
+              )}
             </div>
             <div className="space-y-1">
               <p className="text-[11px] text-muted-foreground">
@@ -1365,6 +1478,29 @@ function IntegrationsTab() {
               </p>
             </div>
           </div>
+          {/* Action buttons */}
+          <div className="flex items-center gap-2 flex-wrap">
+            <button
+              onClick={() => fbTestWebhook.mutate()}
+              disabled={fbTestWebhook.isPending}
+              className="flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-md bg-blue-600 hover:bg-blue-700 text-white transition-colors disabled:opacity-50"
+            >
+              {fbTestWebhook.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <PlayCircle className="w-3 h-3" />}
+              Test Connection
+            </button>
+            <button
+              onClick={() => {
+                if (confirm("Disconnect Facebook Lead Ads? New leads will stop being received until you reconnect.")) {
+                  fbDisconnect.mutate();
+                }
+              }}
+              disabled={fbDisconnect.isPending}
+              className="flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-md bg-secondary border border-border hover:bg-destructive/10 hover:border-destructive/40 hover:text-destructive text-muted-foreground transition-colors disabled:opacity-50"
+            >
+              {fbDisconnect.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <LogOut className="w-3 h-3" />}
+              Disconnect
+            </button>
+          </div>
           <p className="text-[11px] text-muted-foreground">
             New leads from Facebook Lead Ads are automatically captured and appear in the Leads board tagged with source "Facebook".
           </p>
@@ -1372,17 +1508,7 @@ function IntegrationsTab() {
       </SettingsSection>
 
       {/* ── Google Business Profile ── */}
-      <SettingsSection
-        title="Google Business Profile"
-        description="Display your Google reviews on quotes and proposals."
-        action={<ConnectedBadge ok={false} />}
-      >
-        <button onClick={() => toast.info("Feature coming soon")}
-          className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold px-4 py-2 rounded-md transition-colors">
-          Connect Google Business Profile
-        </button>
-        <p className="text-[11px] text-muted-foreground">Your 5-star reviews will automatically display on customer quotes.</p>
-      </SettingsSection>
+      <GoogleBusinessProfileCard />
 
       {/* ── QuickBooks ── */}
       <SettingsSection
@@ -1861,7 +1987,30 @@ function AgentsTab() {
 
 // ─── Main Settings page ───────────────────────────────────────────────────
 export default function Settings() {
-  const [activeTab, setActiveTab] = useState("general");
+  const [activeTab, setActiveTab] = useState(() => {
+    // Auto-navigate to integrations tab when returning from Google OAuth
+    const params = new URLSearchParams(window.location.search);
+    if (params.has("google")) return "integrations";
+    return "general";
+  });
+
+  // Clean up the ?google= query param after reading it
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.has("google")) {
+      const status = params.get("google");
+      if (status === "connected") {
+        toast.success("Google Business Profile connected");
+      } else if (status === "error") {
+        const reason = params.get("reason") ?? "Unknown error";
+        toast.error(`Google connection failed: ${reason}`);
+      }
+      const url = new URL(window.location.href);
+      url.searchParams.delete("google");
+      url.searchParams.delete("reason");
+      window.history.replaceState({}, "", url.toString());
+    }
+  }, []);
 
   const renderTab = () => {
     switch (activeTab) {

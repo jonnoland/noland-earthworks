@@ -23,4 +23,12 @@ export const ENV = {
   // Facebook Graph API — for fetching Facebook Page ratings
   facebookPageId: process.env.FACEBOOK_PAGE_ID ?? "",
   facebookPageAccessToken: process.env.FACEBOOK_PAGE_ACCESS_TOKEN ?? "",
+  // Facebook App credentials — for webhook management and disconnect
+  facebookAppId: process.env.FACEBOOK_APP_ID ?? "",
+  facebookAppSecret: process.env.FACEBOOK_APP_SECRET ?? "",
+  // Google OAuth — for Google Business Profile integration
+  googleClientId: process.env.GOOGLE_CLIENT_ID ?? "",
+  googleClientSecret: process.env.GOOGLE_CLIENT_SECRET ?? "",
+  // Canonical Google OAuth redirect URI — must match what is registered in Google Cloud Console.
+  googleRedirectUri: process.env.GOOGLE_REDIRECT_URI ?? "https://nolandearthworks.com/api/google/callback",
 };

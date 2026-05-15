@@ -331,6 +331,85 @@ const leadsRouter = router({
         .where(and(eq(opsLeads.id, input.leadId), eq(opsLeads.userId, ctx.user.id)));
       return { jobId: newJobId };
     }),
+
+  // ─── Facebook Webhook Utilities ───────────────────────────────────────────
+  facebookLastReceived: ownerProcedure.query(async ({ ctx }) => {
+    const db = await getDb();
+    if (!db) return null;
+    const rows = await db.select({ createdAt: opsLeads.createdAt })
+      .from(opsLeads)
+      .where(and(eq(opsLeads.userId, ctx.user.id), eq(opsLeads.source, "facebook")))
+      .orderBy(desc(opsLeads.createdAt))
+      .limit(1);
+    return rows[0]?.createdAt ?? null;
+  }),
+
+  facebookTestWebhook: ownerProcedure.mutation(async () => {
+    // Send a synthetic leadgen payload to the local webhook endpoint
+    const testPayload = {
+      object: "page",
+      entry: [{
+        id: ENV.facebookPageId ?? "830611640137363",
+        time: Math.floor(Date.now() / 1000),
+        changes: [{
+          field: "leadgen",
+          value: {
+            leadgen_id: `test_${Date.now()}`,
+            page_id: ENV.facebookPageId ?? "830611640137363",
+            form_id: "test_form",
+            adgroup_id: "test_adgroup",
+            ad_id: "test_ad",
+            created_time: Math.floor(Date.now() / 1000),
+          },
+        }],
+      }],
+    };
+    // Compute HMAC signature so the webhook handler accepts it
+    const { createHmac } = await import("crypto");
+    const appSecret = ENV.facebookAppSecret ?? "";
+    const body = JSON.stringify(testPayload);
+    const sig = "sha256=" + createHmac("sha256", appSecret).update(body).digest("hex");
+    // Call the local webhook endpoint
+    const baseUrl = `http://localhost:${process.env.PORT ?? 3000}`;
+    const resp = await fetch(`${baseUrl}/api/webhooks/facebook`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-hub-signature-256": sig,
+      },
+      body,
+    });
+    if (!resp.ok) {
+      throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: `Webhook returned ${resp.status}` });
+    }
+    return { success: true, status: resp.status };
+  }),
+
+  facebookDisconnect: ownerProcedure.mutation(async () => {
+    // Unsubscribe the app from the Page webhook via Graph API
+    const appId = ENV.facebookAppId;
+    const appSecret = ENV.facebookAppSecret;
+    if (!appId || !appSecret) {
+      throw new TRPCError({ code: "BAD_REQUEST", message: "Facebook app credentials not configured" });
+    }
+    try {
+      const tokenRes = await fetch(
+        `https://graph.facebook.com/oauth/access_token?client_id=${appId}&client_secret=${appSecret}&grant_type=client_credentials`
+      );
+      const tokenData = await tokenRes.json() as { access_token?: string };
+      const appToken = tokenData.access_token;
+      if (!appToken) throw new Error("Could not obtain app access token");
+      // Delete the app-level webhook subscription
+      await fetch(
+        `https://graph.facebook.com/v20.0/${appId}/subscriptions?object=page&access_token=${appToken}`,
+        { method: "DELETE" }
+      );
+    } catch (err) {
+      console.warn("[FB Disconnect] Graph API call failed:", err);
+      // Don't throw — still mark as disconnected locally
+    }
+    return { success: true };
+  }),
 });
 
 // ─── Schedule Router ──────────────────────────────────────────────────────────
@@ -1247,6 +1326,29 @@ const tasksRouter = router({
     }),
 });
 
+// ─── Google Business Profile Router ──────────────────────────────────────────
+const googleRouter = router({
+  /** Returns connection status and business name for the Settings card. */
+  connectionStatus: ownerProcedure.query(async () => {
+    const { getGoogleConnectionInfo } = await import("./googleRoutes");
+    const info = await getGoogleConnectionInfo();
+    return info ?? { connected: false, businessName: null, locationName: null, expiresAt: null };
+  }),
+  /** Returns the URL to initiate the Google OAuth flow. */
+  getAuthUrl: ownerProcedure.query(() => {
+    return { url: "/api/google/authorize" };
+  }),
+  /** Disconnects Google Business Profile by deleting the stored tokens. */
+  disconnect: ownerProcedure.mutation(async () => {
+    const { getDb } = await import("./db");
+    const { googleOAuthTokens } = await import("../drizzle/schema");
+    const db = await getDb();
+    if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+    await db.delete(googleOAuthTokens);
+    return { success: true };
+  }),
+});
+
 export const opsRouter = router({
   jobs: jobsRouter,
   leads: leadsRouter,
@@ -1261,4 +1363,5 @@ export const opsRouter = router({
   blackoutDates: blackoutDatesRouter,
   recurringBlackout: recurringBlackoutRouter,
   tasks: tasksRouter,
+  google: googleRouter,
 });

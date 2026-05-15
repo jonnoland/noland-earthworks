@@ -652,3 +652,24 @@ export const quoteFollowUps = mysqlTable("quote_follow_ups", {
 });
 export type QuoteFollowUp = typeof quoteFollowUps.$inferSelect;
 export type InsertQuoteFollowUp = typeof quoteFollowUps.$inferInsert;
+
+// ─── Google Business Profile OAuth Tokens ────────────────────────────────────
+/**
+ * Stores the Google OAuth tokens for the Google Business Profile integration.
+ * Only one row is expected (the owner's token). Upsert on id=1.
+ */
+export const googleOAuthTokens = mysqlTable("google_oauth_tokens", {
+  id: int("id").primaryKey().autoincrement(),
+  accessToken: text("accessToken").notNull(),
+  refreshToken: text("refreshToken"),
+  expiresAt: timestamp("expiresAt").notNull(),
+  scope: varchar("scope", { length: 500 }),
+  /** Google Business Profile location name (e.g. "accounts/123/locations/456") */
+  locationName: varchar("locationName", { length: 255 }),
+  /** Human-readable business name from the profile */
+  businessName: varchar("businessName", { length: 255 }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type GoogleOAuthToken = typeof googleOAuthTokens.$inferSelect;
+export type InsertGoogleOAuthToken = typeof googleOAuthTokens.$inferInsert;

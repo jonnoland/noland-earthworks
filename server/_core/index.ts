@@ -11,6 +11,7 @@ import { serveStatic, setupVite } from "./vite";
 import { prerenderMiddleware } from "../prerender";
 import { registerJobberRoutes } from "../jobberRoutes";
 import { registerFacebookWebhookRoutes } from "../facebookWebhookRoutes";
+import { registerGoogleRoutes } from "../googleRoutes";
 import { registerStorageProxy } from "./storageProxy";
 import { startJobberTokenRefreshScheduler } from "../jobber";
 import cron from "node-cron";
@@ -59,6 +60,8 @@ async function startServer() {
   registerJobberRoutes(app);
   // Facebook Leadgen Webhook: GET /api/webhooks/facebook (verify), POST /api/webhooks/facebook (lead events)
   registerFacebookWebhookRoutes(app);
+  // Google Business Profile OAuth: GET /api/google/authorize, /api/google/callback, /api/google/status
+  registerGoogleRoutes(app);
   // Start background Jobber token refresh scheduler (checks every 5 min, refreshes if within 10 min of expiry)
   startJobberTokenRefreshScheduler();
 

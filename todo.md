@@ -1060,3 +1060,16 @@
 - [x] Add source filter to ops leads page (Facebook, Google, Website, Referral, Direct, All)
 - [x] Add lead source conversion rate chart to ops leads dashboard header
 - [x] Update Facebook Lead Ads integration card to Connected status with live webhook details
+- [ ] Add Disconnect button to Facebook Lead Ads card
+- [ ] Add Test Connection button to Facebook Lead Ads card (sends sample lead to verify webhook)
+- [ ] Add last-received timestamp to Facebook Lead Ads card
+- [ ] Implement Google Business Profile connection flow
+
+## Google Business Profile OAuth Integration — May 2026
+- [x] Add googleOAuthTokens table to drizzle/schema.ts and run db:push (migration 0029)
+- [x] Add googleClientId, googleClientSecret, googleRedirectUri to server/_core/env.ts
+- [x] Create server/googleRoutes.ts (GET /api/google/authorize, /api/google/callback, /api/google/status)
+- [x] Add googleRouter (connectionStatus, getAuthUrl, disconnect) to opsRouter.ts
+- [x] Register Google OAuth routes in server/_core/index.ts
+- [x] Update Settings.tsx Google Business Profile card with live OAuth connect/disconnect flow
+- [x] Auto-navigate to Integrations tab and show toast on return from Google OAuth callback
