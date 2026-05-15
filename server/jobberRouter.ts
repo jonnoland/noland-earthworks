@@ -285,7 +285,40 @@ export const jobberRouter = router({
   deleteClient: protectedProcedure
     .input(z.object({ id: z.string() }))
     .mutation(async ({ input }) => {
-      // Jobber doesn't support clientDelete in the public API — use clientArchive instead
+      // Step 1: Fetch all open work requests for this client so we can archive them first.
+      // Jobber refuses to archive a client who still has open requests.
+      try {
+        const reqData = await jobberGraphQL(`
+          query GetClientRequests($clientId: EncodedId!) {
+            requests(filter: { clientId: $clientId }) {
+              nodes { id requestStatus }
+            }
+          }
+        `, { clientId: input.id }) as any;
+        const openRequests: Array<{ id: string }> = (
+          reqData?.requests?.nodes ?? []
+        ).filter((r: any) => r.requestStatus !== "ARCHIVED" && r.requestStatus !== "CONVERTED");
+
+        // Step 2: Archive each open request sequentially
+        for (const req of openRequests) {
+          try {
+            await jobberGraphQL(`
+              mutation ArchiveRequest($requestId: EncodedId!) {
+                requestArchive(requestId: $requestId) {
+                  request { id }
+                  userErrors { message path }
+                }
+              }
+            `, { requestId: req.id });
+          } catch {
+            // If a single request fails to archive, continue — don't block the client archive
+          }
+        }
+      } catch {
+        // If the requests query fails (e.g. API doesn't support filter), proceed anyway
+      }
+
+      // Step 3: Archive the client
       const archiveData = await jobberGraphQL(`
         mutation ArchiveClient($clientId: EncodedId!) {
           clientArchive(clientId: $clientId) {

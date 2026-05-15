@@ -1052,3 +1052,4 @@
 - [x] Create Google Ads analytics page with key metric cards (impressions, clicks, CTR, spend, conversions)
 - [x] Create Google Analytics page with key metric cards (sessions, users, bounce rate, top pages)
 - [x] Create Google Search Console page with key metric cards (impressions, clicks, average position, top queries)
+- [x] Before archiving a client, automatically archive all their open work requests first (cascade archive)
