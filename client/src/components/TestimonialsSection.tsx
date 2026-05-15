@@ -1,13 +1,10 @@
 /*
  * DESIGN: Heavy Equipment Grit — dark section with amber star ratings
- * Shows live Google reviews when synced; falls back to static testimonials.
+ * Horizontal scroll cards on mobile, 3-column on desktop
  */
 import { useRef, useEffect, useState } from "react";
-import { trpc } from "@/lib/trpc";
 
-// ─── Static fallback testimonials ─────────────────────────────────────────────
-
-const STATIC_TESTIMONIALS = [
+const testimonials = [
   {
     source: "Google",
     quote:
@@ -50,19 +47,6 @@ const STATIC_TESTIMONIALS = [
   },
 ];
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
-function getInitial(name: string): string {
-  return (name?.trim()?.[0] ?? "G").toUpperCase();
-}
-
-function truncate(text: string, maxLen = 280): string {
-  if (!text) return "";
-  return text.length > maxLen ? text.slice(0, maxLen).trimEnd() + "…" : text;
-}
-
-// ─── Sub-components ───────────────────────────────────────────────────────────
-
 function SourceBadge({ source }: { source: string }) {
   const isGoogle = source === "Google";
   return (
@@ -85,29 +69,15 @@ function SourceBadge({ source }: { source: string }) {
   );
 }
 
-function TestimonialCard({
-  source,
-  quote,
-  name,
-  role,
-  initial,
-  index,
-}: {
-  source: string;
-  quote: string;
-  name: string;
-  role: string;
-  initial: string;
-  index: number;
+function TestimonialCard({ source, quote, name, role, initial, index }: {
+  source: string; quote: string; name: string; role: string; initial: string; index: number;
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
     const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) setVisible(true);
-      },
+      ([entry]) => { if (entry.isIntersecting) setVisible(true); },
       { threshold: 0.1 }
     );
     if (ref.current) observer.observe(ref.current);
@@ -133,9 +103,7 @@ function TestimonialCard({
       </div>
 
       {/* Stars */}
-      <div className="stars mb-4" style={{ fontSize: "1rem", color: "#E07B2A" }}>
-        ★★★★★
-      </div>
+      <div className="stars mb-4" style={{ fontSize: "1rem" }}>★★★★★</div>
 
       {/* Quote */}
       <p
@@ -196,43 +164,21 @@ function TestimonialCard({
   );
 }
 
-// ─── Main Section ─────────────────────────────────────────────────────────────
-
 export default function TestimonialsSection() {
   const ref = useRef<HTMLDivElement>(null);
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
     const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) setVisible(true);
-      },
+      ([entry]) => { if (entry.isIntersecting) setVisible(true); },
       { threshold: 0.1 }
     );
     if (ref.current) observer.observe(ref.current);
     return () => observer.disconnect();
   }, []);
 
-  // Fetch live Google reviews (public endpoint — no auth required)
-  const { data: googleData } = trpc.googleReviews.publicHighlights.useQuery({ limit: 6 });
-
-  // Build the display list: prefer live Google reviews, fall back to static
-  const displayTestimonials =
-    googleData?.reviews && googleData.reviews.length > 0
-      ? googleData.reviews.map((r) => ({
-          source: "Google",
-          quote: truncate(r.comment ?? ""),
-          name: r.authorName ?? "Google Reviewer",
-          role: "Google Review",
-          initial: getInitial(r.authorName ?? "G"),
-        }))
-      : STATIC_TESTIMONIALS;
-
   return (
-    <section
-      id="testimonials"
-      style={{ backgroundColor: "#121212", paddingTop: "6rem", paddingBottom: "6rem" }}
-    >
+    <section id="testimonials" style={{ backgroundColor: "#121212", paddingTop: "6rem", paddingBottom: "6rem" }}>
       <div className="container">
         {/* Header */}
         <div
@@ -257,25 +203,12 @@ export default function TestimonialsSection() {
           >
             What Our Clients Say
           </h2>
-          {googleData?.reviews && googleData.reviews.length > 0 && (
-            <p
-              style={{
-                fontFamily: "'Lato', sans-serif",
-                fontWeight: 300,
-                fontSize: "0.875rem",
-                color: "rgba(240,237,230,0.45)",
-                marginTop: "0.5rem",
-              }}
-            >
-              Verified Google Business Profile reviews
-            </p>
-          )}
         </div>
 
         {/* Cards grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {displayTestimonials.map((t, i) => (
-            <TestimonialCard key={`${t.name}-${i}`} {...t} index={i} />
+          {testimonials.map((t, i) => (
+            <TestimonialCard key={t.name} {...t} index={i} />
           ))}
         </div>
 
@@ -339,14 +272,8 @@ export default function TestimonialsSection() {
               whiteSpace: "nowrap",
             }}
           >
-            <svg
-              width="18"
-              height="18"
-              viewBox="0 0 24 24"
-              fill="currentColor"
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+              <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
             </svg>
             Leave a Google Review
           </a>

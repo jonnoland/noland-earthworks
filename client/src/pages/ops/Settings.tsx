@@ -16,7 +16,6 @@ import {
   UserPlus, Crown, Info, Plus, BookOpen, Zap, FileText,
   AlarmClock, CreditCard as CardIcon, BarChart2, Copy, RotateCcw,
   Settings as SettingsIcon, CalendarOff, CalendarDays, Bot, PlayCircle,
-  ListChecks, ArrowRight, ChevronRight,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -39,7 +38,6 @@ const tabs = [
   { id: "billing",              label: "Billing",              icon: CreditCard },
   { id: "scheduling",           label: "Scheduling",           icon: CalendarOff },
   { id: "agents",               label: "Agents",               icon: Bot },
-  { id: "setup-guide",           label: "Setup Guide",           icon: ListChecks },
 ];
 
 // ─── Shared helpers ───────────────────────────────────────────────────────────
@@ -1154,7 +1152,7 @@ function RemindersTab() {
   );
 }
 
-function IntegrationsTab({ onNavigate }: { onNavigate?: (tab: string) => void }) {
+function IntegrationsTab() {
   const { data: status, isLoading, refetch } = trpc.ops.settings.getIntegrationStatus.useQuery();
   const { data: jobberAuth } = trpc.jobber.getAuthUrl.useQuery();
   const jobberDisconnect = trpc.jobber.disconnect.useMutation({
@@ -1343,89 +1341,27 @@ function IntegrationsTab({ onNavigate }: { onNavigate?: (tab: string) => void })
       {/* ── Facebook Lead Ads ── */}
       <SettingsSection
         title="Facebook Lead Ads"
-        description="Automatically pull leads from your Facebook and Instagram ad campaigns directly into your pipeline."
-        action={<ConnectedBadge ok={false} label="Not Connected" />}
+        description="Automatically receive leads from your Facebook ad campaigns."
+        action={<ConnectedBadge ok={false} />}
       >
-        <div className="space-y-3">
-          <div className="flex items-start gap-2 bg-secondary/40 border border-border rounded-md p-3">
-            <AlertCircle className="w-4 h-4 text-muted-foreground shrink-0 mt-0.5" />
-            <div className="space-y-1">
-              <p className="text-xs font-medium text-foreground">Connect your Facebook Business account to enable Lead Ads sync.</p>
-              <p className="text-[11px] text-muted-foreground">When a prospect fills out a Facebook or Instagram lead form, they will automatically appear in your Leads pipeline — no manual entry required.</p>
-            </div>
-          </div>
-          <div className="grid grid-cols-1 gap-2 text-[11px] text-muted-foreground">
-            <div className="flex items-center gap-2"><CheckCircle2 className="w-3 h-3 text-muted-foreground/50" />New leads from ad campaigns appear instantly in /ops/leads</div>
-            <div className="flex items-center gap-2"><CheckCircle2 className="w-3 h-3 text-muted-foreground/50" />Lead name, phone, email, and job type captured automatically</div>
-            <div className="flex items-center gap-2"><CheckCircle2 className="w-3 h-3 text-muted-foreground/50" />Works with all Facebook and Instagram lead form ad types</div>
-          </div>
-          <div className="flex items-center gap-2 pt-1 flex-wrap">
-            <button
-              onClick={() => toast.info("To connect Facebook Lead Ads, you will need a Facebook App ID and App Secret. Add FACEBOOK_APP_ID and FACEBOOK_APP_SECRET to your Secrets, then return here to authorize.")}
-              className="flex items-center gap-2 bg-[#1877F2] hover:bg-[#166FE5] text-white text-xs font-semibold px-4 py-2 rounded-md transition-colors">
-              <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
-              Connect Facebook Business
-            </button>
-            <a
-              href="https://developers.facebook.com/apps"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors">
-              Get App Credentials <ExternalLink className="w-3 h-3" />
-            </a>
-            {onNavigate && (
-              <button
-                onClick={() => onNavigate("setup-guide")}
-                className="flex items-center gap-1.5 text-xs text-primary hover:text-primary/80 transition-colors ml-auto">
-                <ListChecks className="w-3 h-3" />View Setup Guide <ChevronRight className="w-3 h-3" />
-              </button>
-            )}
-          </div>
-        </div>
+        <button onClick={() => toast.info("Feature coming soon")}
+          className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold px-4 py-2 rounded-md transition-colors">
+          Connect Facebook Page
+        </button>
+        <p className="text-[11px] text-muted-foreground">You'll be asked to log into Facebook and select your business page.</p>
       </SettingsSection>
 
       {/* ── Google Business Profile ── */}
       <SettingsSection
         title="Google Business Profile"
-        description="Pull your Google reviews and business info directly into your ops dashboard."
-        action={<ConnectedBadge ok={false} label="Not Connected" />}
+        description="Display your Google reviews on quotes and proposals."
+        action={<ConnectedBadge ok={false} />}
       >
-        <div className="space-y-3">
-          <div className="flex items-start gap-2 bg-secondary/40 border border-border rounded-md p-3">
-            <AlertCircle className="w-4 h-4 text-muted-foreground shrink-0 mt-0.5" />
-            <div className="space-y-1">
-              <p className="text-xs font-medium text-foreground">Connect your Google account to sync your Business Profile.</p>
-              <p className="text-[11px] text-muted-foreground">Display your live star rating and recent reviews on your dashboard. Respond to reviews without leaving the ops panel.</p>
-            </div>
-          </div>
-          <div className="grid grid-cols-1 gap-2 text-[11px] text-muted-foreground">
-            <div className="flex items-center gap-2"><CheckCircle2 className="w-3 h-3 text-muted-foreground/50" />Live star rating and review count on your dashboard</div>
-            <div className="flex items-center gap-2"><CheckCircle2 className="w-3 h-3 text-muted-foreground/50" />Recent reviews with one-click reply from the ops panel</div>
-            <div className="flex items-center gap-2"><CheckCircle2 className="w-3 h-3 text-muted-foreground/50" />Business hours, phone, and address sync verification</div>
-          </div>
-          <div className="flex items-center gap-2 pt-1 flex-wrap">
-            <button
-              onClick={() => toast.info("To connect Google Business Profile, you will need a Google OAuth Client ID and Client Secret. Add GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET to your Secrets, then return here to authorize.")}
-              className="flex items-center gap-2 bg-white hover:bg-gray-50 text-gray-700 border border-gray-300 text-xs font-semibold px-4 py-2 rounded-md transition-colors">
-              <svg className="w-3.5 h-3.5" viewBox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
-              Connect Google Account
-            </button>
-            <a
-              href="https://console.cloud.google.com/apis/credentials"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors">
-              Get OAuth Credentials <ExternalLink className="w-3 h-3" />
-            </a>
-            {onNavigate && (
-              <button
-                onClick={() => onNavigate("setup-guide")}
-                className="flex items-center gap-1.5 text-xs text-primary hover:text-primary/80 transition-colors ml-auto">
-                <ListChecks className="w-3 h-3" />View Setup Guide <ChevronRight className="w-3 h-3" />
-              </button>
-            )}
-          </div>
-        </div>
+        <button onClick={() => toast.info("Feature coming soon")}
+          className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold px-4 py-2 rounded-md transition-colors">
+          Connect Google Business Profile
+        </button>
+        <p className="text-[11px] text-muted-foreground">Your 5-star reviews will automatically display on customer quotes.</p>
       </SettingsSection>
 
       {/* ── QuickBooks ── */}
@@ -1903,290 +1839,6 @@ function AgentsTab() {
   );
 }
 
-// ─── Setup Guide Tab ────────────────────────────────────────────────────────
-function SetupGuideTab({ onNavigate }: { onNavigate?: (tab: string) => void }) {
-  const [activeSection, setActiveSection] = useState<"facebook" | "google">("facebook");
-
-  const facebookSteps = [
-    {
-      num: 1,
-      title: "Create a Facebook Developer App",
-      description: "Log in to the Facebook Developer portal and create a new app. Choose \"Business\" as the app type. Give it a name like \"Noland Earthworks Leads\".",
-      link: "https://developers.facebook.com/apps/create/",
-      linkLabel: "Open Facebook Developer Portal",
-      credential: null,
-    },
-    {
-      num: 2,
-      title: "Add the Facebook Login Product",
-      description: "Inside your app dashboard, click \"Add Product\" and add \"Facebook Login\". Under Facebook Login settings, add your redirect URI: the ops dashboard URL followed by /api/auth/facebook/callback.",
-      link: "https://developers.facebook.com/apps",
-      linkLabel: "Open My Apps",
-      credential: null,
-    },
-    {
-      num: 3,
-      title: "Enable the Lead Ads Retrieval API",
-      description: "In your app, go to \"Add Product\" and add \"Lead Ads Retrieval\". This grants access to the leadgen_forms and pages_read_engagement permissions needed to pull leads.",
-      link: "https://developers.facebook.com/docs/marketing-api/guides/lead-ads/",
-      linkLabel: "Lead Ads API Docs",
-      credential: null,
-    },
-    {
-      num: 4,
-      title: "Copy Your App ID and App Secret",
-      description: "Go to your app's Settings → Basic. Copy the App ID and App Secret. These are the two credentials you will add to the ops dashboard Secrets panel.",
-      link: "https://developers.facebook.com/apps",
-      linkLabel: "Open App Settings",
-      credential: { label: "FACEBOOK_APP_ID", hint: "Found in App Settings → Basic → App ID" },
-    },
-    {
-      num: 5,
-      title: "Get Your Facebook Page ID",
-      description: "Navigate to your Facebook Business Page. Click \"About\" then scroll to \"Page Transparency\". Your Page ID is listed there. Alternatively, visit facebook.com/pg/[your-page-name]/about.",
-      link: "https://www.facebook.com/nolandearthworks/about",
-      linkLabel: "Open Noland Earthworks Page",
-      credential: { label: "FACEBOOK_PAGE_ID", hint: "Found on your Page → About → Page Transparency" },
-    },
-    {
-      num: 6,
-      title: "Generate a Page Access Token",
-      description: "Use the Facebook Graph API Explorer to generate a Page Access Token with ads_management, leads_retrieval, and pages_read_engagement permissions. Convert it to a long-lived token using the token debugger.",
-      link: "https://developers.facebook.com/tools/explorer/",
-      linkLabel: "Open Graph API Explorer",
-      credential: { label: "FACEBOOK_PAGE_ACCESS_TOKEN", hint: "Long-lived token from Graph API Explorer" },
-    },
-    {
-      num: 7,
-      title: "Add Credentials to Secrets",
-      description: "In the ops dashboard, go to Settings → Secrets (or use the Manus Secrets panel). Add FACEBOOK_APP_ID, FACEBOOK_APP_SECRET, FACEBOOK_PAGE_ID, and FACEBOOK_PAGE_ACCESS_TOKEN. Then return to the Integrations tab and click Connect Facebook Business.",
-      link: null,
-      linkLabel: null,
-      credential: { label: "FACEBOOK_APP_SECRET", hint: "Found in App Settings → Basic → App Secret" },
-    },
-  ];
-
-  const googleSteps = [
-    {
-      num: 1,
-      title: "Create a Google Cloud Project",
-      description: "Go to the Google Cloud Console and create a new project. Name it something identifiable like \"Noland Earthworks Ops\". This project will house all the API credentials.",
-      link: "https://console.cloud.google.com/projectcreate",
-      linkLabel: "Create Google Cloud Project",
-      credential: null,
-    },
-    {
-      num: 2,
-      title: "Enable Required APIs",
-      description: "In your project, navigate to APIs & Services → Library. Search for and enable: \"Google Business Profile API\" and \"Google My Business API\". Both are required for review and profile sync.",
-      link: "https://console.cloud.google.com/apis/library",
-      linkLabel: "Open API Library",
-      credential: null,
-    },
-    {
-      num: 3,
-      title: "Configure the OAuth Consent Screen",
-      description: "Go to APIs & Services → OAuth consent screen. Select \"External\" user type. Fill in the app name, support email, and developer contact. Add the scopes: business.manage and plus.business.manage.",
-      link: "https://console.cloud.google.com/apis/credentials/consent",
-      linkLabel: "Configure Consent Screen",
-      credential: null,
-    },
-    {
-      num: 4,
-      title: "Create OAuth 2.0 Credentials",
-      description: "Go to APIs & Services → Credentials → Create Credentials → OAuth Client ID. Choose \"Web application\". Add your ops dashboard URL as an authorized redirect URI: [your-domain]/api/auth/google/callback.",
-      link: "https://console.cloud.google.com/apis/credentials",
-      linkLabel: "Open Credentials Page",
-      credential: null,
-    },
-    {
-      num: 5,
-      title: "Copy Client ID and Client Secret",
-      description: "After creating the OAuth client, download the JSON or copy the Client ID and Client Secret directly from the credentials page. These are the two values you will add to Secrets.",
-      link: "https://console.cloud.google.com/apis/credentials",
-      linkLabel: "Open Credentials Page",
-      credential: { label: "GOOGLE_CLIENT_ID", hint: "Found in OAuth 2.0 Client IDs → your client → Client ID" },
-    },
-    {
-      num: 6,
-      title: "Get Your Google Place ID",
-      description: "Use the Google Place ID Finder to look up your business. Search for \"Noland Earthworks\" and copy the Place ID. This is used to pull your live reviews and star rating.",
-      link: "https://developers.google.com/maps/documentation/javascript/examples/places-placeid-finder",
-      linkLabel: "Open Place ID Finder",
-      credential: { label: "GOOGLE_PLACE_ID", hint: "Found via the Place ID Finder tool — search your business name" },
-    },
-    {
-      num: 7,
-      title: "Add Credentials to Secrets",
-      description: "In the ops dashboard Secrets panel, add GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, and GOOGLE_PLACE_ID. Then return to the Integrations tab and click Connect Google Account to complete the OAuth flow.",
-      link: null,
-      linkLabel: null,
-      credential: { label: "GOOGLE_CLIENT_SECRET", hint: "Found in OAuth 2.0 Client IDs → your client → Client Secret" },
-    },
-  ];
-
-  const steps = activeSection === "facebook" ? facebookSteps : googleSteps;
-
-  return (
-    <div className="space-y-5">
-      {/* Header */}
-      <div className="ops-card p-5">
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <h2 className="text-sm font-semibold text-foreground" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
-              Integration Setup Guide
-            </h2>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              Step-by-step instructions for connecting Facebook Lead Ads and Google Business Profile. Follow each step in order — credentials are collected at the end.
-            </p>
-          </div>
-          {onNavigate && (
-            <button
-              onClick={() => onNavigate("integrations")}
-              className="shrink-0 flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors">
-              <ArrowRight className="w-3.5 h-3.5 rotate-180" />Back to Integrations
-            </button>
-          )}
-        </div>
-
-        {/* Section selector */}
-        <div className="flex gap-2 mt-4">
-          <button
-            onClick={() => setActiveSection("facebook")}
-            className={cn(
-              "flex items-center gap-2 px-4 py-2 rounded-md text-xs font-semibold transition-colors border",
-              activeSection === "facebook"
-                ? "bg-[#1877F2]/20 border-[#1877F2]/40 text-[#4a9eff]"
-                : "bg-secondary border-border text-muted-foreground hover:text-foreground"
-            )}
-          >
-            <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
-            Facebook Lead Ads
-          </button>
-          <button
-            onClick={() => setActiveSection("google")}
-            className={cn(
-              "flex items-center gap-2 px-4 py-2 rounded-md text-xs font-semibold transition-colors border",
-              activeSection === "google"
-                ? "bg-blue-500/20 border-blue-500/40 text-blue-400"
-                : "bg-secondary border-border text-muted-foreground hover:text-foreground"
-            )}
-          >
-            <svg className="w-3.5 h-3.5" viewBox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
-            Google Business Profile
-          </button>
-        </div>
-      </div>
-
-      {/* Step cards */}
-      <div className="space-y-3">
-        {steps.map((step, idx) => (
-          <div key={step.num} className="ops-card p-5">
-            <div className="flex gap-4">
-              {/* Step number + connector */}
-              <div className="flex flex-col items-center shrink-0">
-                <div className={cn(
-                  "w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-bold border shrink-0",
-                  activeSection === "facebook"
-                    ? "bg-[#1877F2]/20 border-[#1877F2]/40 text-[#4a9eff]"
-                    : "bg-blue-500/20 border-blue-500/40 text-blue-400"
-                )}>
-                  {step.num}
-                </div>
-                {idx < steps.length - 1 && (
-                  <div className="w-px flex-1 bg-border mt-2" />
-                )}
-              </div>
-
-              {/* Content */}
-              <div className="flex-1 min-w-0 pb-2">
-                <h3 className="text-sm font-semibold text-foreground" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
-                  {step.title}
-                </h3>
-                <p className="text-xs text-muted-foreground mt-1.5 leading-relaxed">{step.description}</p>
-
-                {/* Credential badge */}
-                {step.credential && (
-                  <div className="mt-3 flex items-start gap-2 bg-secondary/60 border border-border rounded-md p-2.5">
-                    <Key className="w-3.5 h-3.5 text-amber-400 shrink-0 mt-0.5" />
-                    <div>
-                      <code className="text-[11px] font-mono font-semibold text-amber-300">{step.credential.label}</code>
-                      <p className="text-[11px] text-muted-foreground mt-0.5">{step.credential.hint}</p>
-                    </div>
-                  </div>
-                )}
-
-                {/* Link button */}
-                {step.link && (
-                  <a
-                    href={step.link}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className={cn(
-                      "inline-flex items-center gap-1.5 mt-3 text-xs font-medium px-3 py-1.5 rounded-md border transition-colors",
-                      activeSection === "facebook"
-                        ? "bg-[#1877F2]/10 border-[#1877F2]/30 text-[#4a9eff] hover:bg-[#1877F2]/20"
-                        : "bg-blue-500/10 border-blue-500/30 text-blue-400 hover:bg-blue-500/20"
-                    )}
-                  >
-                    {step.linkLabel} <ExternalLink className="w-3 h-3" />
-                  </a>
-                )}
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {/* Credentials summary */}
-      <div className="ops-card p-5">
-        <h3 className="text-sm font-semibold text-foreground mb-3" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
-          {activeSection === "facebook" ? "Facebook" : "Google"} Credentials Summary
-        </h3>
-        <p className="text-xs text-muted-foreground mb-4">
-          Once you have completed the steps above, add these environment variables to the Manus Secrets panel. All four are required before the integration will connect.
-        </p>
-        <div className="space-y-2">
-          {steps
-            .filter(s => s.credential)
-            .map(s => (
-              <div key={s.credential!.label} className="flex items-center gap-3 p-2.5 bg-secondary/40 border border-border rounded-md">
-                <Key className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-                <div className="flex-1 min-w-0">
-                  <code className="text-[11px] font-mono font-semibold text-amber-300">{s.credential!.label}</code>
-                  <p className="text-[11px] text-muted-foreground mt-0.5 truncate">{s.credential!.hint}</p>
-                </div>
-                <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/50 shrink-0">Step {s.num}</span>
-              </div>
-            ))}
-        </div>
-        <div className="flex items-center gap-2 mt-4 pt-4 border-t border-border">
-          {onNavigate && (
-            <button
-              onClick={() => onNavigate("integrations")}
-              className={cn(
-                "flex items-center gap-2 text-xs font-semibold px-4 py-2 rounded-md transition-colors",
-                activeSection === "facebook"
-                  ? "bg-[#1877F2] hover:bg-[#166FE5] text-white"
-                  : "bg-blue-600 hover:bg-blue-700 text-white"
-              )}
-            >
-              Go to Integrations to Connect <ArrowRight className="w-3.5 h-3.5" />
-            </button>
-          )}
-          <a
-            href={activeSection === "facebook" ? "https://developers.facebook.com/apps" : "https://console.cloud.google.com/apis/credentials"}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors">
-            Open {activeSection === "facebook" ? "Facebook Developer Portal" : "Google Cloud Console"} <ExternalLink className="w-3 h-3" />
-          </a>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 // ─── Main Settings page ───────────────────────────────────────────────────
 export default function Settings() {
   const [activeTab, setActiveTab] = useState("general");
@@ -2202,12 +1854,11 @@ export default function Settings() {
       case "template-editor":      return <TemplateEditorTab />;
       case "template-assignments": return <TemplateAssignmentsTab />;
       case "reminders":            return <RemindersTab />;
-      case "integrations":         return <IntegrationsTab onNavigate={setActiveTab} />;
+      case "integrations":         return <IntegrationsTab />;
       case "payments":             return <PaymentsTab />;
       case "billing":              return <BillingTab />;
       case "scheduling":           return <SchedulingTab />;
       case "agents":               return <AgentsTab />;
-      case "setup-guide":           return <SetupGuideTab onNavigate={setActiveTab} />;
       default:                     return <GeneralTab />;
     }
   };

@@ -1,9 +1,0 @@
-{
-  "query": "SHOW TABLES LIKE 'facebook_leads'; SHOW TABLES LIKE 'google_tokens'; SHOW TABLES LIKE 'google_reviews';",
-  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway05.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 4URdbyUXkTLuAyd.1068bf1d0e22 --database PymCzDCnSJzPjdkfwA7Jn6 --execute SHOW TABLES LIKE 'facebook_leads'; SHOW TABLES LIKE 'google_tokens'; SHOW TABLES LIKE 'google_reviews';",
-  "rows": [],
-  "messages": [],
-  "stdout": "",
-  "stderr": "",
-  "execution_time_ms": 264
-}

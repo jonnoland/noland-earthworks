@@ -25,11 +25,7 @@ import OpsScoreboard from "./pages/ops/Scoreboard";
 import OpsDistanceQuotes from "./pages/ops/DistanceQuotes";
 import OpsQuoteAnalytics from "./pages/ops/QuoteAnalytics";
 import OpsTasksPage from "./pages/ops/Tasks";
-import FacebookLeadsPage from "./pages/ops/FacebookLeads";
 import OpsTeam from "./pages/ops/Team";
-import GoogleAdsPage from "./pages/ops/analytics/GoogleAds";
-import GoogleAnalyticsPage from "./pages/ops/analytics/GoogleAnalytics";
-import SearchConsolePage from "./pages/ops/analytics/SearchConsole";
 import OpsRegister from "./pages/ops/Register";
 import Home from "./pages/Home";
 import SMSWidget from "./components/SMSWidget";
@@ -222,9 +218,6 @@ function Router() {
       <Route path="/ops/tasks">
         <OwnerRoute><OpsTasksPage /></OwnerRoute>
       </Route>
-      <Route path="/ops/facebook-leads">
-        <OwnerRoute><FacebookLeadsPage /></OwnerRoute>
-      </Route>
       <Route path="/ops/distance-quotes/analytics">
         <OwnerRoute><OpsQuoteAnalytics /></OwnerRoute>
       </Route>
@@ -233,15 +226,6 @@ function Router() {
       </Route>
       <Route path="/ops/team">
         <OwnerRoute><OpsTeam /></OwnerRoute>
-      </Route>
-      <Route path="/ops/analytics/google-ads">
-        <OwnerRoute><GoogleAdsPage /></OwnerRoute>
-      </Route>
-      <Route path="/ops/analytics/google-analytics">
-        <OwnerRoute><GoogleAnalyticsPage /></OwnerRoute>
-      </Route>
-      <Route path="/ops/analytics/search-console">
-        <OwnerRoute><SearchConsolePage /></OwnerRoute>
       </Route>
       {/* Public — no auth required, employees register here */}
       <Route path="/ops/register" component={OpsRegister} />

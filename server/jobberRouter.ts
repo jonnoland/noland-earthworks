@@ -132,7 +132,7 @@ export const jobberRouter = router({
         query GetClients($first: Int) {
           clients(first: $first) {
             nodes {
-              id name companyName isLead balance createdAt isArchived
+              id name companyName isLead balance createdAt
               emails { address }
               phones { number description }
               billingAddress { street1 city province postalCode }
@@ -141,9 +141,7 @@ export const jobberRouter = router({
           }
         }
       `, { first: input.first ?? 100 }) as any;
-      // Filter out archived clients server-side since Jobber's filter API doesn't support a status field
-      const nodes = (data.clients?.nodes ?? []).filter((c: any) => !c.isArchived);
-      return { nodes, totalCount: nodes.length };
+      return data.clients;
     }),
 
   // ─── Invoices ────────────────────────────────────────────────────────────────
@@ -287,55 +285,35 @@ export const jobberRouter = router({
   deleteClient: protectedProcedure
     .input(z.object({ id: z.string() }))
     .mutation(async ({ input }) => {
-      // Step 1: Fetch all open work requests for this client so we can archive them first.
-      // Jobber refuses to archive a client who still has open requests.
       try {
-        const reqData = await jobberGraphQL(`
-          query GetClientRequests($clientId: EncodedId!) {
-            requests(filter: { clientId: $clientId }) {
-              nodes { id requestStatus }
+        const data = await jobberGraphQL(`
+          mutation DeleteClient($id: EncodedId!) {
+            clientDelete(input: { id: $id }) {
+              clientId
+              userErrors { message path }
             }
           }
-        `, { clientId: input.id }) as any;
-        const openRequests: Array<{ id: string }> = (
-          reqData?.requests?.nodes ?? []
-        ).filter((r: any) => r.requestStatus !== "ARCHIVED" && r.requestStatus !== "CONVERTED");
-
-        // Step 2: Archive each open request sequentially
-        for (const req of openRequests) {
-          try {
-            await jobberGraphQL(`
-              mutation ArchiveRequest($requestId: EncodedId!) {
-                requestArchive(requestId: $requestId) {
-                  request { id }
-                  userErrors { message path }
-                }
+        `, { id: input.id }) as any;
+        const errors = data?.clientDelete?.userErrors;
+        if (errors?.length) throw new TRPCError({ code: "BAD_REQUEST", message: errors[0].message });
+        return { success: true, deletedId: data?.clientDelete?.clientId };
+      } catch (err: any) {
+        // Fallback: if clientDelete doesn't exist in this API version, archive instead
+        if (err?.message?.includes("clientDelete") || err?.message?.includes("Field")) {
+          const archiveData = await jobberGraphQL(`
+            mutation ArchiveClient($id: EncodedId!) {
+              clientArchive(input: { id: $id }) {
+                clientId
+                userErrors { message path }
               }
-            `, { requestId: req.id });
-          } catch {
-            // If a single request fails to archive, continue — don't block the client archive
-          }
+            }
+          `, { id: input.id }) as any;
+          const archiveErrors = archiveData?.clientArchive?.userErrors;
+          if (archiveErrors?.length) throw new TRPCError({ code: "BAD_REQUEST", message: archiveErrors[0].message });
+          return { success: true, deletedId: archiveData?.clientArchive?.clientId };
         }
-      } catch {
-        // If the requests query fails (e.g. API doesn't support filter), proceed anyway
+        throw err;
       }
-
-      // Step 3: Archive the client
-      const archiveData = await jobberGraphQL(`
-        mutation ArchiveClient($clientId: EncodedId!) {
-          clientArchive(clientId: $clientId) {
-            client { id name }
-            userErrors { message path }
-          }
-        }
-      `, { clientId: input.id }) as any;
-      const archiveErrors: Array<{ message: string }> = archiveData?.clientArchive?.userErrors ?? [];
-      // "Already archived" means the client is already in the desired state — treat as success
-      const realErrors = archiveErrors.filter(
-        (e) => !e.message.toLowerCase().includes("already archived")
-      );
-      if (realErrors.length) throw new TRPCError({ code: "BAD_REQUEST", message: realErrors[0].message });
-      return { success: true, deletedId: archiveData?.clientArchive?.client?.id ?? input.id };
     }),
 
   /** Get full detail for a single Jobber quote */

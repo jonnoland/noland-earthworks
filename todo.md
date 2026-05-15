@@ -1046,27 +1046,14 @@
 - [x] Add short AI video clip of the mulcher in action to the equipment section on the About page
 - [x] Add compelling headline and descriptive paragraph above/around the equipment video section on the About page
 - [x] Keep Jobber connected persistently on /ops page: fix token refresh so connection never drops without manual re-authorization
-- [x] Add Facebook Lead Ads integration card to Settings -> Integrations tab (connect/disconnect UI, status indicator)
-- [x] Add Google Business Profile integration card to Settings -> Integrations tab (connect/disconnect UI, status indicator)
-- [x] Add Analytics section to left nav below Team with Google Ads, Analytics, and Search Console sub-items
-- [x] Create Google Ads analytics page with key metric cards (impressions, clicks, CTR, spend, conversions)
-- [x] Create Google Analytics page with key metric cards (sessions, users, bounce rate, top pages)
-- [x] Create Google Search Console page with key metric cards (impressions, clicks, average position, top queries)
-- [x] Before archiving a client, automatically archive all their open work requests first (cascade archive)
-- [ ] Add confirmation dialog before archiving a client on /ops/clients to prevent accidental clicks
-- [x] Build visual step-by-step integration setup guide page inside /ops/settings for Facebook Lead Ads and Google Business Profile
-- [x] Database schema: facebook_leads table (leadId, formId, pageId, adId, fields JSON, createdAt, status)
-- [x] Database schema: google_oauth_tokens table (accessToken, refreshToken, expiresAt, scope)
-- [x] Database schema: google_reviews table (reviewId, authorName, rating, comment, createTime, replyComment, replyTime)
-- [x] Facebook webhook: GET /api/webhooks/facebook for hub verification
-- [x] Facebook webhook: POST /api/webhooks/facebook for lead event ingestion
-- [x] Facebook webhook: fetch lead field data from Graph API on receipt
-- [x] Facebook webhook: register webhook subscription via Graph API on startup
-- [x] Google OAuth: GET /api/auth/google to initiate OAuth flow
-- [x] Google OAuth: GET /api/auth/google/callback to handle token exchange and store tokens
-- [x] Google OAuth: token refresh logic (auto-refresh on expiry using stored refresh token)
-- [x] Google reviews: fetch reviews from My Business API and store in DB
-- [x] Ops dashboard: Facebook Leads page showing all captured leads with status management
-- [x] Ops dashboard: Google Reviews page showing reviews with reply capability
-- [x] Add CSV export button to /ops/facebook-leads page
-- [x] Update public homepage Testimonials section to display synced Google reviews from the database
+- [ ] Build Facebook webhook handler: GET verify token endpoint at /api/webhooks/facebook
+- [ ] Build Facebook webhook handler: POST lead ingestion, Graph API fetch, ops lead creation
+- [ ] Register Facebook webhook route in server/_core/index.ts
+- [ ] Add FACEBOOK_WEBHOOK_VERIFY_TOKEN and FACEBOOK_SYSTEM_USER_TOKEN to env.ts
+- [ ] Write vitest tests for the Facebook webhook handler
+- [ ] Write shell test script for live webhook endpoint testing
+
+- [x] Build Facebook webhook handler (GET verify + POST lead ingestion)
+- [x] Register Facebook webhook routes in server index
+- [x] Write vitest unit tests for Facebook webhook handler (13 tests)
+- [x] Write live endpoint test script (fb-webhook-test.sh)
