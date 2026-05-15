@@ -1046,3 +1046,9 @@
 - [x] Add short AI video clip of the mulcher in action to the equipment section on the About page
 - [x] Add compelling headline and descriptive paragraph above/around the equipment video section on the About page
 - [x] Keep Jobber connected persistently on /ops page: fix token refresh so connection never drops without manual re-authorization
+- [x] Add Facebook Lead Ads integration card to Settings -> Integrations tab (connect/disconnect UI, status indicator)
+- [x] Add Google Business Profile integration card to Settings -> Integrations tab (connect/disconnect UI, status indicator)
+- [x] Add Analytics section to left nav below Team with Google Ads, Analytics, and Search Console sub-items
+- [x] Create Google Ads analytics page with key metric cards (impressions, clicks, CTR, spend, conversions)
+- [x] Create Google Analytics page with key metric cards (sessions, users, bounce rate, top pages)
+- [x] Create Google Search Console page with key metric cards (impressions, clicks, average position, top queries)

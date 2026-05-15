@@ -1341,27 +1341,75 @@ function IntegrationsTab() {
       {/* ── Facebook Lead Ads ── */}
       <SettingsSection
         title="Facebook Lead Ads"
-        description="Automatically receive leads from your Facebook ad campaigns."
-        action={<ConnectedBadge ok={false} />}
+        description="Automatically pull leads from your Facebook and Instagram ad campaigns directly into your pipeline."
+        action={<ConnectedBadge ok={false} label="Not Connected" />}
       >
-        <button onClick={() => toast.info("Feature coming soon")}
-          className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold px-4 py-2 rounded-md transition-colors">
-          Connect Facebook Page
-        </button>
-        <p className="text-[11px] text-muted-foreground">You'll be asked to log into Facebook and select your business page.</p>
+        <div className="space-y-3">
+          <div className="flex items-start gap-2 bg-secondary/40 border border-border rounded-md p-3">
+            <AlertCircle className="w-4 h-4 text-muted-foreground shrink-0 mt-0.5" />
+            <div className="space-y-1">
+              <p className="text-xs font-medium text-foreground">Connect your Facebook Business account to enable Lead Ads sync.</p>
+              <p className="text-[11px] text-muted-foreground">When a prospect fills out a Facebook or Instagram lead form, they will automatically appear in your Leads pipeline — no manual entry required.</p>
+            </div>
+          </div>
+          <div className="grid grid-cols-1 gap-2 text-[11px] text-muted-foreground">
+            <div className="flex items-center gap-2"><CheckCircle2 className="w-3 h-3 text-muted-foreground/50" />New leads from ad campaigns appear instantly in /ops/leads</div>
+            <div className="flex items-center gap-2"><CheckCircle2 className="w-3 h-3 text-muted-foreground/50" />Lead name, phone, email, and job type captured automatically</div>
+            <div className="flex items-center gap-2"><CheckCircle2 className="w-3 h-3 text-muted-foreground/50" />Works with all Facebook and Instagram lead form ad types</div>
+          </div>
+          <div className="flex items-center gap-2 pt-1">
+            <button
+              onClick={() => toast.info("To connect Facebook Lead Ads, you will need a Facebook App ID and App Secret. Add FACEBOOK_APP_ID and FACEBOOK_APP_SECRET to your Secrets, then return here to authorize.")}
+              className="flex items-center gap-2 bg-[#1877F2] hover:bg-[#166FE5] text-white text-xs font-semibold px-4 py-2 rounded-md transition-colors">
+              <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
+              Connect Facebook Business
+            </button>
+            <a
+              href="https://developers.facebook.com/apps"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors">
+              Get App Credentials <ExternalLink className="w-3 h-3" />
+            </a>
+          </div>
+        </div>
       </SettingsSection>
 
       {/* ── Google Business Profile ── */}
       <SettingsSection
         title="Google Business Profile"
-        description="Display your Google reviews on quotes and proposals."
-        action={<ConnectedBadge ok={false} />}
+        description="Pull your Google reviews and business info directly into your ops dashboard."
+        action={<ConnectedBadge ok={false} label="Not Connected" />}
       >
-        <button onClick={() => toast.info("Feature coming soon")}
-          className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold px-4 py-2 rounded-md transition-colors">
-          Connect Google Business Profile
-        </button>
-        <p className="text-[11px] text-muted-foreground">Your 5-star reviews will automatically display on customer quotes.</p>
+        <div className="space-y-3">
+          <div className="flex items-start gap-2 bg-secondary/40 border border-border rounded-md p-3">
+            <AlertCircle className="w-4 h-4 text-muted-foreground shrink-0 mt-0.5" />
+            <div className="space-y-1">
+              <p className="text-xs font-medium text-foreground">Connect your Google account to sync your Business Profile.</p>
+              <p className="text-[11px] text-muted-foreground">Display your live star rating and recent reviews on your dashboard. Respond to reviews without leaving the ops panel.</p>
+            </div>
+          </div>
+          <div className="grid grid-cols-1 gap-2 text-[11px] text-muted-foreground">
+            <div className="flex items-center gap-2"><CheckCircle2 className="w-3 h-3 text-muted-foreground/50" />Live star rating and review count on your dashboard</div>
+            <div className="flex items-center gap-2"><CheckCircle2 className="w-3 h-3 text-muted-foreground/50" />Recent reviews with one-click reply from the ops panel</div>
+            <div className="flex items-center gap-2"><CheckCircle2 className="w-3 h-3 text-muted-foreground/50" />Business hours, phone, and address sync verification</div>
+          </div>
+          <div className="flex items-center gap-2 pt-1">
+            <button
+              onClick={() => toast.info("To connect Google Business Profile, you will need a Google OAuth Client ID and Client Secret. Add GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET to your Secrets, then return here to authorize.")}
+              className="flex items-center gap-2 bg-white hover:bg-gray-50 text-gray-700 border border-gray-300 text-xs font-semibold px-4 py-2 rounded-md transition-colors">
+              <svg className="w-3.5 h-3.5" viewBox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
+              Connect Google Account
+            </button>
+            <a
+              href="https://console.cloud.google.com/apis/credentials"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors">
+              Get OAuth Credentials <ExternalLink className="w-3 h-3" />
+            </a>
+          </div>
+        </div>
       </SettingsSection>
 
       {/* ── QuickBooks ── */}

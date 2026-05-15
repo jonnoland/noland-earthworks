@@ -33,12 +33,15 @@ import {
   UserPlus,
   AlertTriangle,
   RefreshCw,
+  Megaphone,
+  LineChart,
+  Search,
 } from "lucide-react";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { getLoginUrl } from "@/const";
 import { Button } from "@/components/ui/button";
 
-// ─── Nav items — all 14 pages ─────────────────────────────────────────────────
+// ─── Nav items — grouped sections ────────────────────────────────────────────
 
 const NAV_ITEMS = [
   { label: "Dashboard",     href: "/ops",               icon: LayoutDashboard },
@@ -55,6 +58,15 @@ const NAV_ITEMS = [
   { label: "Scoreboard",    href: "/ops/scoreboard",     icon: BarChart2 },
   { label: "Reports",       href: "/ops/reports",        icon: TrendingUp },
   { label: "Team",          href: "/ops/team",           icon: UserPlus },
+];
+
+const ANALYTICS_ITEMS = [
+  { label: "Google Ads",      href: "/ops/analytics/google-ads",      icon: Megaphone },
+  { label: "Analytics",       href: "/ops/analytics/google-analytics", icon: LineChart },
+  { label: "Search Console",  href: "/ops/analytics/search-console",  icon: Search },
+];
+
+const SETTINGS_ITEMS = [
   { label: "Settings",      href: "/ops/settings",       icon: Settings },
 ];
 
@@ -196,33 +208,48 @@ export default function DashboardLayout({ children, title, subtitle }: Dashboard
     return location === href || location.startsWith(href + "/");
   };
 
+  const renderNavItem = (item: { label: string; href: string; icon: React.ElementType }, onClickItem?: () => void, badge?: number) => {
+    const Icon = item.icon;
+    const active = isActive(item.href);
+    return (
+      <Link key={item.href} href={item.href}>
+        <div
+          onClick={onClickItem}
+          className={`relative flex items-center gap-3 mx-2 my-0.5 px-2 py-2 rounded-md text-sm font-medium cursor-pointer transition-colors ${
+            active
+              ? "bg-orange-500 text-white"
+              : "text-muted-foreground hover:text-white hover:bg-white/5"
+          }`}
+        >
+          <Icon size={16} className="shrink-0" />
+          {!collapsed && <span className="flex-1">{item.label}</span>}
+          {badge != null && badge > 0 && (
+            <span className="ml-auto min-w-[18px] h-[18px] flex items-center justify-center rounded-full bg-red-500 text-white text-[10px] font-bold px-1">
+              {badge}
+            </span>
+          )}
+        </div>
+      </Link>
+    );
+  };
+
   const NavLinks = ({ onClickItem }: { onClickItem?: () => void }) => (
     <>
-      {NAV_ITEMS.map((item) => {
-        const Icon = item.icon;
-        const active = isActive(item.href);
-        const showBadge = item.href === "/ops/team" && pendingCount > 0;
-        return (
-          <Link key={item.href} href={item.href}>
-            <div
-              onClick={onClickItem}
-              className={`relative flex items-center gap-3 mx-2 my-0.5 px-2 py-2 rounded-md text-sm font-medium cursor-pointer transition-colors ${
-                active
-                  ? "bg-orange-500 text-white"
-                  : "text-muted-foreground hover:text-white hover:bg-white/5"
-              }`}
-            >
-              <Icon size={16} className="shrink-0" />
-              {!collapsed && <span className="flex-1">{item.label}</span>}
-              {showBadge && (
-                <span className="ml-auto min-w-[18px] h-[18px] flex items-center justify-center rounded-full bg-red-500 text-white text-[10px] font-bold px-1">
-                  {pendingCount}
-                </span>
-              )}
-            </div>
-          </Link>
-        );
-      })}
+      {/* Main nav items */}
+      {NAV_ITEMS.map((item) => renderNavItem(item, onClickItem, item.href === "/ops/team" ? pendingCount : undefined))}
+
+      {/* Analytics section */}
+      {!collapsed && (
+        <div className="mx-2 mt-3 mb-1 px-2">
+          <span className="text-[10px] font-semibold text-muted-foreground/50 uppercase tracking-widest">Analytics</span>
+        </div>
+      )}
+      {collapsed && <div className="mx-2 my-1 border-t border-[#1e1e1e]" />}
+      {ANALYTICS_ITEMS.map((item) => renderNavItem(item, onClickItem))}
+
+      {/* Settings at bottom */}
+      <div className="mx-2 my-1 border-t border-[#1e1e1e]" />
+      {SETTINGS_ITEMS.map((item) => renderNavItem(item, onClickItem))}
     </>
   );
 
