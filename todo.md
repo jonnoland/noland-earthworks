@@ -1089,3 +1089,9 @@
 ## AI Suggest Reply — Reviews Page — May 2026
 - [x] Add trpc.ops.google.suggestReply procedure: takes reviewerName, starRating, reviewText, returns AI-generated draft response
 - [x] Add "Suggest Reply" button to Reviews page reply modal: calls procedure, streams/inserts draft into textarea
+
+## Reply Modal Enhancements — May 2026
+- [x] Update suggestReply procedure to accept optional tone param: 'professional' | 'friendly' | 'apologetic'
+- [x] Add Tone Adjust dropdown to reply modal (Professional / Friendly / Apologetic, defaults to Professional)
+- [x] Add Regenerate button next to Suggest Reply (re-runs the same mutation with current tone)
+- [x] Replace static char counter with dynamic one that turns red when text.length > 4096

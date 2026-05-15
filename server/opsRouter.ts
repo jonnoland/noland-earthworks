@@ -1528,6 +1528,7 @@ const googleRouter = router({
       reviewerName: z.string(),
       starRating: z.number().int().min(1).max(5),
       reviewText: z.string().max(5000).optional(),
+      tone: z.enum(["professional", "friendly", "apologetic"]).default("professional"),
     }))
     .mutation(async ({ input }) => {
       const { invokeLLM } = await import("./_core/llm");
@@ -1535,11 +1536,20 @@ const googleRouter = router({
       const ratingLabel = ["one-star", "two-star", "three-star", "four-star", "five-star"][input.starRating - 1];
       const hasText = input.reviewText && input.reviewText.trim().length > 0;
 
+      // Tone-specific instruction appended to the base system prompt
+      const toneInstructions: Record<string, string> = {
+        professional:
+          "Write in a professional, direct tone. Warm but businesslike. No casual language. Confident and clear.",
+        friendly:
+          "Write in a warm, conversational tone — like a neighbor talking to a neighbor. Genuine and approachable, but still respectful and never over-the-top.",
+        apologetic:
+          "Write in a humble, empathetic tone. Acknowledge the reviewer's experience sincerely, take responsibility where appropriate, and make clear you want to make it right. Do not be defensive.",
+      };
+
       const systemPrompt = `You are writing a reply to a Google Business Profile review on behalf of Jon Noland, owner of Noland Earthworks, LLC — a veteran-owned land clearing and forestry mulching company in Middle Tennessee.
 
-Tone rules:
-- Professional but warm. Sound like a real person, not a template.
-- Confident without being boastful.
+Base rules (always apply):
+- Sound like a real person, not a template.
 - Never use: "solutions", "industry-leading", "best-in-class", "we are passionate", "dedicated team", "we strive to", "cutting-edge", or any corporate jargon.
 - No emojis. Ever.
 - Keep it concise — 3 to 5 sentences maximum.
@@ -1547,7 +1557,10 @@ Tone rules:
 - For 5-star reviews: express genuine appreciation, briefly mention the work if context is available, and invite them to reach out for future projects.
 - For 4-star reviews: thank them, acknowledge any implicit concern, and invite direct contact if anything fell short.
 - For 3-star or below: acknowledge their feedback respectfully, take ownership without being defensive, and invite them to call Jon directly at 615-406-4819 to make it right.
-- Sign off as: Jon Noland — Noland Earthworks, LLC`;
+- Sign off as: Jon Noland — Noland Earthworks, LLC
+
+Tone instruction for this reply:
+${toneInstructions[input.tone]}`;
 
       const userPrompt = hasText
         ? `Write a reply to this ${ratingLabel} Google review from ${input.reviewerName}:\n\n"${input.reviewText}"`

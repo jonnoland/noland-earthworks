@@ -110,6 +110,14 @@ interface ReplyTarget {
   isGoogleOAuth: boolean; // true = can post via API; false = local-only
 }
 
+const GOOGLE_REPLY_LIMIT = 4096;
+type Tone = "professional" | "friendly" | "apologetic";
+const TONE_OPTIONS: { value: Tone; label: string }[] = [
+  { value: "professional", label: "Professional" },
+  { value: "friendly",     label: "Friendly" },
+  { value: "apologetic",   label: "Apologetic" },
+];
+
 function ReplyModal({
   target,
   onClose,
@@ -120,7 +128,12 @@ function ReplyModal({
   onSaved: () => void;
 }) {
   const [text, setText] = useState(target.existingReply ?? "");
+  const [tone, setTone] = useState<Tone>("professional");
+  const [hasDraft, setHasDraft] = useState(false);
   const utils = trpc.useUtils();
+
+  const charCount = text.length;
+  const isOverLimit = charCount > GOOGLE_REPLY_LIMIT;
 
   // Google OAuth reply
   const googleReply = trpc.ops.google.replyToReview.useMutation({
@@ -144,7 +157,7 @@ function ReplyModal({
   });
 
   const handleSave = () => {
-    if (!text.trim()) return;
+    if (!text.trim() || isOverLimit) return;
     if (target.isGoogleOAuth && target.externalId) {
       googleReply.mutate({ localId: target.localId, externalId: target.externalId, replyText: text.trim() });
     } else {
@@ -154,11 +167,12 @@ function ReplyModal({
 
   const isPending = googleReply.isPending || localReply.isPending;
 
-  // AI suggest reply
+  // AI suggest / regenerate reply
   const suggestReply = trpc.ops.google.suggestReply.useMutation({
     onSuccess: ({ draft }) => {
       setText(draft);
-      toast.success("Draft generated — review and edit before posting.");
+      setHasDraft(true);
+      toast.success(hasDraft ? "New draft generated." : "Draft generated — review and edit before posting.");
     },
     onError: (err) => toast.error(`AI suggestion failed: ${err.message}`),
   });
@@ -168,12 +182,14 @@ function ReplyModal({
       reviewerName: target.reviewerName,
       starRating: target.starRating,
       reviewText: target.reviewText,
+      tone,
     });
   };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
       <div className="bg-[#1a1a1a] border border-white/10 rounded-xl p-6 w-full max-w-lg shadow-2xl">
+        {/* Header */}
         <div className="flex items-center justify-between mb-4">
           <div>
             <h3 className="text-white font-semibold">
@@ -185,22 +201,32 @@ function ReplyModal({
             <X className="h-4 w-4" />
           </button>
         </div>
+
+        {/* Google live-post notice */}
         {target.isGoogleOAuth && target.externalId && (
           <div className="flex items-center gap-2 px-3 py-2 bg-blue-500/10 border border-blue-500/20 rounded-lg text-xs text-blue-300 mb-4">
             <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />
             This reply will be posted directly to your Google Business Profile.
           </div>
         )}
-        <textarea
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          placeholder="Write your response..."
-          rows={5}
-          maxLength={4096}
-          className="w-full px-3 py-2 rounded-md bg-white/5 border border-white/10 text-white text-sm placeholder:text-white/30 resize-none"
-        />
-        <div className="flex items-center justify-between mt-1 mb-4">
-          <span className="text-[10px] text-white/20">{text.length}/4096</span>
+
+        {/* AI controls row: Tone dropdown + Suggest / Regenerate */}
+        <div className="flex items-center gap-2 mb-3">
+          <div className="flex items-center gap-1.5">
+            <label className="text-[10px] text-white/40 uppercase tracking-wider">Tone</label>
+            <select
+              value={tone}
+              onChange={(e) => setTone(e.target.value as Tone)}
+              className="text-xs bg-white/5 border border-white/10 text-white/80 rounded px-2 py-1 focus:outline-none focus:border-amber-500/50 cursor-pointer"
+            >
+              {TONE_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value} className="bg-[#1a1a1a]">
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="flex-1" />
           <button
             type="button"
             onClick={handleSuggest}
@@ -212,17 +238,42 @@ function ReplyModal({
             ) : (
               <Sparkles className="h-3.5 w-3.5" />
             )}
-            {suggestReply.isPending ? "Generating..." : "Suggest Reply"}
+            {suggestReply.isPending ? "Generating..." : hasDraft ? "Regenerate" : "Suggest Reply"}
           </button>
         </div>
+
+        {/* Textarea */}
+        <textarea
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          placeholder="Write your response..."
+          rows={5}
+          className={cn(
+            "w-full px-3 py-2 rounded-md bg-white/5 border text-white text-sm placeholder:text-white/30 resize-none transition-colors",
+            isOverLimit ? "border-red-500/60 focus:border-red-500" : "border-white/10 focus:border-amber-500/40"
+          )}
+        />
+
+        {/* Character counter */}
+        <div className="flex items-center justify-between mt-1 mb-4">
+          <span className={cn(
+            "text-[10px] transition-colors",
+            isOverLimit ? "text-red-400 font-medium" : "text-white/20"
+          )}>
+            {charCount.toLocaleString()}/{GOOGLE_REPLY_LIMIT.toLocaleString()}
+            {isOverLimit && ` — ${(charCount - GOOGLE_REPLY_LIMIT).toLocaleString()} over limit`}
+          </span>
+        </div>
+
+        {/* Action buttons */}
         <div className="flex justify-end gap-2">
           <Button variant="outline" size="sm" className="border-white/10 text-white/60" onClick={onClose}>
             Cancel
           </Button>
           <Button
             size="sm"
-            className="bg-amber-500 hover:bg-amber-400 text-black"
-            disabled={!text.trim() || isPending}
+            className="bg-amber-500 hover:bg-amber-400 text-black disabled:opacity-50"
+            disabled={!text.trim() || isPending || isOverLimit}
             onClick={handleSave}
           >
             <Send className="h-3.5 w-3.5 mr-1" />
