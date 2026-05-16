@@ -1099,3 +1099,4 @@
 - [x] Enable mybusinessreviews.googleapis.com API in Google Cloud Console — SUPERSEDED: API does not exist; mybusiness.googleapis.com/v4 requires special access approval from Google; Places API fallback implemented instead
 - [x] Add Google Places API fallback for reviews sync (while awaiting Business Profile API access)
 - [x] Update Reviews page to show read-only note for Places API reviews (no reply available via Places API)
+- [x] Fix Jobber clientArchive GraphQL mutation — wrong argument structure (input vs client, clientId vs client.id)

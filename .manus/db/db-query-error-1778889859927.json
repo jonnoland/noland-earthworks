@@ -1,0 +1,8 @@
+{
+  "query": "SELECT id, open_id, name, email, role, created_at FROM users WHERE email LIKE '%snoland%' OR name LIKE '%snoland%' OR email LIKE '%nolandearthworks%' LIMIT 10;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway05.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 4URdbyUXkTLuAyd.1068bf1d0e22 --database PymCzDCnSJzPjdkfwA7Jn6 --execute SELECT id, open_id, name, email, role, created_at FROM users WHERE email LIKE '%snoland%' OR name LIKE '%snoland%' OR email LIKE '%nolandearthworks%' LIMIT 10;",
+  "returncode": 1,
+  "logs": [
+    "ERROR 1054 (42S22) at line 1: Unknown column 'open_id' in 'field list'"
+  ]
+}

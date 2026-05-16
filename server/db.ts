@@ -425,3 +425,26 @@ export async function deleteJobNote(id: number) {
   if (!db) return;
   await db.delete(jobNotes).where(eq(jobNotes.id, id));
 }
+
+// ─── User Management ──────────────────────────────────────────────────────────
+export async function getAllUsers() {
+  const db = await getDb();
+  if (!db) return [];
+  return db
+    .select({
+      id: users.id,
+      name: users.name,
+      email: users.email,
+      role: users.role,
+      createdAt: users.createdAt,
+      lastSignedIn: users.lastSignedIn,
+    })
+    .from(users)
+    .orderBy(desc(users.lastSignedIn));
+}
+
+export async function setUserRole(userId: number, role: 'user' | 'admin') {
+  const db = await getDb();
+  if (!db) throw new Error('DB unavailable');
+  await db.update(users).set({ role }).where(eq(users.id, userId));
+}
