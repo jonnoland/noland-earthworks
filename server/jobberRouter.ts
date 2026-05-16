@@ -286,10 +286,10 @@ export const jobberRouter = router({
     .input(z.object({ id: z.string() }))
     .mutation(async ({ input }) => {
       // Jobber does not expose a clientDelete mutation in the public API.
-      // Use clientArchive instead: argument is `client: { id }`, response is `client { id }`.
+      // Confirmed via introspection: clientArchive(clientId: EncodedId!) — single top-level arg.
       const archiveData = await jobberGraphQL(`
         mutation ArchiveClient($clientId: EncodedId!) {
-          clientArchive(client: { id: $clientId }) {
+          clientArchive(clientId: $clientId) {
             client { id }
             userErrors { message path }
           }
