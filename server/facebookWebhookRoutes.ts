@@ -83,9 +83,11 @@ interface FacebookWebhookPayload {
  * Returns null on any error so the webhook can still respond 200 to Facebook.
  */
 async function fetchLeadFromGraph(leadgenId: string): Promise<FacebookLeadData | null> {
-  const token = process.env.FACEBOOK_SYSTEM_USER_TOKEN ?? "";
+  // Page Access Token is preferred for lead fetching (required for test leads and some production leads).
+  // Fall back to System User Token if Page Access Token is not set.
+  const token = process.env.FACEBOOK_PAGE_ACCESS_TOKEN || process.env.FACEBOOK_SYSTEM_USER_TOKEN || "";
   if (!token) {
-    console.error("[FB Webhook] FACEBOOK_SYSTEM_USER_TOKEN not configured — cannot fetch lead data");
+    console.error("[FB Webhook] Neither FACEBOOK_PAGE_ACCESS_TOKEN nor FACEBOOK_SYSTEM_USER_TOKEN is configured — cannot fetch lead data");
     return null;
   }
 
@@ -205,7 +207,7 @@ async function processLead(leadgenId: string): Promise<void> {
     console.error(`[FB Webhook] Could not fetch lead data for ${leadgenId} — skipping`);
     await notifyOwner({
       title: "Facebook Lead — Fetch Failed",
-      content: `A new Facebook lead was received (ID: ${leadgenId}) but the lead data could not be retrieved from the Graph API. Check FACEBOOK_SYSTEM_USER_TOKEN and try fetching manually:\n\nhttps://graph.facebook.com/v20.0/${leadgenId}?fields=field_data`,
+      content: `A new Facebook lead was received (ID: ${leadgenId}) but the lead data could not be retrieved from the Graph API. Check FACEBOOK_PAGE_ACCESS_TOKEN and try fetching manually:\n\nhttps://graph.facebook.com/v20.0/${leadgenId}?fields=field_data`,
     }).catch(() => {});
     return;
   }
