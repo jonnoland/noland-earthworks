@@ -563,6 +563,41 @@ const quotesRouter = router({
       const adMult  = parseFloat(pricingRow?.accessDifficultMultiplier ?? "1.25");
       const spread  = parseFloat(pricingRow?.priceRangeSpread          ?? "0.15");
 
+      // ── Add-on rates from DB ────────────────────────────────────────────────
+      const stumpPerStump   = pricingRow?.stumpGrindingPerStump ?? 150;
+      const debrisPerLoad   = pricingRow?.debrisHaulingPerLoad  ?? 450;
+
+      // ── Volume discount thresholds from DB ─────────────────────────────────
+      const vd3to5   = (pricingRow?.volumeDiscount3to5Pct   ?? 3)  / 100;
+      const vd5to10  = (pricingRow?.volumeDiscount5to10Pct  ?? 7)  / 100;
+      const vd10plus = (pricingRow?.volumeDiscount10plusPct ?? 12) / 100;
+
+      // ── Production rates (acres/day) from DB ────────────────────────────────
+      const BASE_APD: Record<string, number> = {
+        "forestry-mulching":     parseFloat(pricingRow?.apdForestryMulching ?? "1.5"),
+        "land-clearing":         parseFloat(pricingRow?.apdLandClearing     ?? "1.2"),
+        "vegetation-management": 2.5,
+        "property-maintenance":  2.5,
+        "right-of-way-clearing": parseFloat(pricingRow?.apdRowClearing      ?? "1.25"),
+        "brush-hogging":         parseFloat(pricingRow?.apdBrushHogging     ?? "8.0"),
+      };
+
+      // ── Seasonal adjustment ─────────────────────────────────────────────────
+      const currentMonth = new Date().getMonth() + 1; // 1=Jan … 12=Dec
+      const isPeakSeason = currentMonth >= 10 || currentMonth <= 3;  // Oct–Mar
+      const isSlowSeason = currentMonth >= 7  && currentMonth <= 9;  // Jul–Sep
+      const peakUplift   = (pricingRow?.seasonalPeakUpliftPct    ?? 0) / 100;
+      const slowReduct   = (pricingRow?.seasonalSlowReductionPct ?? 0) / 100;
+      const seasonalMult = isPeakSeason ? (1 + peakUplift) : isSlowSeason ? (1 - slowReduct) : 1.0;
+
+      // ── Complexity premium ──────────────────────────────────────────────────
+      // Detect complexity signals in the customer message
+      const complexityKeywords = ["structure", "fence", "fencing", "utility", "utilities", "power line",
+        "septic", "well", "building", "barn", "house", "shed", "pond", "creek", "stream", "neighbor"];
+      const msgLower = (input.message ?? "").toLowerCase();
+      const hasComplexity = complexityKeywords.some(kw => msgLower.includes(kw));
+      const complexityMult = hasComplexity ? (1 + (pricingRow?.complexityPremiumPct ?? 15) / 100) : 1.0;
+
       // Build per-acre rate ranges from DB base rates + density multipliers
       const BASE_RATES: Record<string, Record<string, [number, number]>> = {
         "forestry-mulching":     {
@@ -590,12 +625,6 @@ const quotesRouter = router({
       };
       const TERRAIN_MULT: Record<string, number> = { flat: 1.0, rolling: trMult, steep: tsMult };
       const ACCESS_MULT:  Record<string, number> = { easy: 1.0, moderate: amMult, difficult: adMult };
-      const BASE_APD: Record<string, number> = {
-        // Acres per day (tracked mulcher, Middle TN conditions)
-        "forestry-mulching": 1.5, "land-clearing": 1.2,
-        "vegetation-management": 2.5, "property-maintenance": 2.5,
-        "right-of-way-clearing": 1.25, "brush-hogging": 8.0,
-      };
       const DENSITY_PROD: Record<string, number> = { light: 1.5, moderate: 1.0, heavy: 0.55 };
       const TERRAIN_PROD: Record<string, number> = { flat: 1.0, rolling: 0.82, steep: 0.60 };
       // Use West TN mobilization fee if county is in West TN and the override is set
@@ -604,7 +633,6 @@ const quotesRouter = router({
         ? pricingRow.westTnMobilizationFee
         : baseMobilization;
       const MIN_JOB = pricingRow?.minimumJobTotal ?? 1800;
-      void spread; // used in future spread-based range calculation
 
       // Parse acreage string to a number and a human-readable label
       const ACREAGE_MAP: Record<string, number> = {
@@ -630,15 +658,38 @@ const quotesRouter = router({
       const baseRange = BASE_RATES[svcKey]?.[density] ?? [1500, 3000];
       const tm = TERRAIN_MULT[terrain] ?? 1;
       const am = ACCESS_MULT[access] ?? 1;
-      const vd = acres >= 10 ? 0.88 : acres >= 5 ? 0.93 : acres >= 3 ? 0.97 : 1.0;
-      const refLow  = Math.max(MIN_JOB, Math.round((baseRange[0] * acres + MOBILIZATION) * tm * am * vd));
-      const refHigh = Math.max(MIN_JOB, Math.round((baseRange[1] * acres + MOBILIZATION) * tm * am * vd));
+      // Configurable volume discount (from DB)
+      const vd = acres >= 10 ? (1 - vd10plus) : acres >= 5 ? (1 - vd5to10) : acres >= 3 ? (1 - vd3to5) : 1.0;
+      // Apply seasonal and complexity multipliers
+      const refLow  = Math.max(MIN_JOB, Math.round((baseRange[0] * acres + MOBILIZATION) * tm * am * vd * seasonalMult * complexityMult));
+      const refHigh = Math.max(MIN_JOB, Math.round((baseRange[1] * acres + MOBILIZATION) * tm * am * vd * seasonalMult * complexityMult));
+      // Apply spread to widen the range symmetrically around the midpoint
+      const midpoint = (refLow + refHigh) / 2;
+      const spreadLow  = Math.max(MIN_JOB, Math.round(midpoint * (1 - spread)));
+      const spreadHigh = Math.round(midpoint * (1 + spread));
+      // Use spread-adjusted range if it produces a wider band than the base calculation
+      const finalLow  = Math.min(refLow,  spreadLow);
+      const finalHigh = Math.max(refHigh, spreadHigh);
       const apdBase = BASE_APD[svcKey] ?? 1.5;
       const apdAdj  = apdBase * (DENSITY_PROD[density] ?? 1) * (TERRAIN_PROD[terrain] ?? 1);
       const estDays = acres > 0 ? Math.max(1, Math.ceil(acres / apdAdj)) : null;
 
       const addOnsList = (() => { try { return JSON.parse(input.addOns ?? "[]"); } catch { return []; } })();
       const acreageLabel = ACREAGE_LABEL[acreageStr] ?? (acres > 0 ? `${acres} acres` : "acreage not specified — site visit required");
+
+      // Build add-on pricing context for the system prompt
+      const addOnPricingContext: string[] = [];
+      const addOnsLower = addOnsList.map((a: string) => a.toLowerCase());
+      if (addOnsLower.some((a: string) => a.includes("stump"))) {
+        addOnPricingContext.push(`Stump grinding: $${stumpPerStump} per stump (use this rate for stump line items)`);
+      }
+      if (addOnsLower.some((a: string) => a.includes("debris") || a.includes("haul"))) {
+        addOnPricingContext.push(`Debris hauling/removal: $${debrisPerLoad} per load (use this rate for haul-out line items)`);
+      }
+
+      const seasonLabel = isPeakSeason ? "peak season (Oct–Mar) — dormant vegetation, firm ground" :
+                          isSlowSeason ? "slow season (Jul–Sep) — heat, potential ground saturation" :
+                          "shoulder season (Apr–Jun)";
 
       const systemPrompt = `You are an expert estimator for Noland Earthworks, LLC — a veteran-owned forestry mulching and land clearing company in Middle and West Tennessee. Jon Noland is the owner and sole operator. He uses a tracked forestry mulcher.
 
@@ -650,10 +701,13 @@ Pricing reference — Middle & West Tennessee market rates (2025–2026):
 - Vegetation density: ${density}
 - Terrain: ${terrain}
 - Site access: ${access}
-- Calculated price range: $${refLow.toLocaleString()} – $${refHigh.toLocaleString()} (based on current TN market rates)
+- Calculated price range: $${finalLow.toLocaleString()} – $${finalHigh.toLocaleString()} (based on current TN market rates, all adjustments applied)
 - Estimated days on site: ${estDays ?? "unknown"}
 - Mobilization fee: $${MOBILIZATION} (included in range; ${isWestTn ? "West TN rate — longer drive from Middle TN base" : "standard for tracked equipment in Middle TN"})
 - Add-ons requested: ${addOnsList.length > 0 ? addOnsList.join(", ") : "none"}
+- Season: ${seasonLabel}${seasonalMult !== 1.0 ? ` — ${seasonalMult > 1 ? "+" : ""}${Math.round((seasonalMult - 1) * 100)}% seasonal adjustment applied` : ""}
+${hasComplexity ? `- Complexity premium applied: +${pricingRow?.complexityPremiumPct ?? 15}% (structures, fencing, or utilities detected in customer message)` : ""}
+${addOnPricingContext.length > 0 ? `\nAdd-on rates to use for line items:\n${addOnPricingContext.map(s => `- ${s}`).join("\n")}` : ""}
 
 Pricing context for your reference:
 - Forestry mulching in Middle/West TN: $1,200–$4,500/acre depending on density
@@ -664,6 +718,7 @@ Rules:
 - Never publish or promise specific rates. Use the reference range as a guide only.
 - If acreage is unknown or the customer's message suggests complex conditions, flag it for a site visit.
 - Line items should reflect real work components: mobilization, primary clearing work (per-acre or flat), any add-ons.
+- When stump grinding or debris hauling add-ons are present, use the exact per-stump or per-load rates provided above for those line items.
 - Prices in line items should be integers (no decimals).
 - The quote message MUST reference the acreage (use "${acreageLabel}") — this is required.
 - The quote message should sound like Jon wrote it — direct, professional, no fluff, no emojis.
@@ -1642,6 +1697,23 @@ const settingsRouter = router({
       accessDifficultMultiplier: z.string().optional(),
       priceRangeSpread: z.string().optional(),
       westTnMobilizationFee: z.number().int().min(0).nullable().optional(),
+      // Add-on rates
+      stumpGrindingPerStump: z.number().int().min(0).optional(),
+      debrisHaulingPerLoad: z.number().int().min(0).optional(),
+      // Volume discounts
+      volumeDiscount3to5Pct: z.number().int().min(0).max(50).optional(),
+      volumeDiscount5to10Pct: z.number().int().min(0).max(50).optional(),
+      volumeDiscount10plusPct: z.number().int().min(0).max(50).optional(),
+      // Production rates
+      apdForestryMulching: z.string().optional(),
+      apdLandClearing: z.string().optional(),
+      apdRowClearing: z.string().optional(),
+      apdBrushHogging: z.string().optional(),
+      // Seasonal adjustment
+      seasonalPeakUpliftPct: z.number().int().min(0).max(50).optional(),
+      seasonalSlowReductionPct: z.number().int().min(0).max(50).optional(),
+      // Complexity premium
+      complexityPremiumPct: z.number().int().min(0).max(100).optional(),
     }))
     .mutation(async ({ input }) => {
       const db = await getDb();

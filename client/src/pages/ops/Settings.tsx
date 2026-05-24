@@ -1956,6 +1956,23 @@ function AIPricingTab() {
         accessDifficultMultiplier: settings.accessDifficultMultiplier,
         priceRangeSpread: settings.priceRangeSpread,
         westTnMobilizationFee: settings.westTnMobilizationFee ?? "",
+        // Add-on rates
+        stumpGrindingPerStump: settings.stumpGrindingPerStump,
+        debrisHaulingPerLoad: settings.debrisHaulingPerLoad,
+        // Volume discounts
+        volumeDiscount3to5Pct: settings.volumeDiscount3to5Pct,
+        volumeDiscount5to10Pct: settings.volumeDiscount5to10Pct,
+        volumeDiscount10plusPct: settings.volumeDiscount10plusPct,
+        // Production rates
+        apdForestryMulching: settings.apdForestryMulching,
+        apdLandClearing: settings.apdLandClearing,
+        apdRowClearing: settings.apdRowClearing,
+        apdBrushHogging: settings.apdBrushHogging,
+        // Seasonal adjustment
+        seasonalPeakUpliftPct: settings.seasonalPeakUpliftPct,
+        seasonalSlowReductionPct: settings.seasonalSlowReductionPct,
+        // Complexity premium
+        complexityPremiumPct: settings.complexityPremiumPct,
       });
       setDirty(false);
     }
@@ -1983,6 +2000,23 @@ function AIPricingTab() {
       accessDifficultMultiplier: String(form.accessDifficultMultiplier),
       priceRangeSpread: String(form.priceRangeSpread),
       westTnMobilizationFee: westTnRaw !== "" && westTnRaw !== undefined ? Number(westTnRaw) : undefined,
+      // Add-on rates
+      stumpGrindingPerStump: Number(form.stumpGrindingPerStump),
+      debrisHaulingPerLoad: Number(form.debrisHaulingPerLoad),
+      // Volume discounts
+      volumeDiscount3to5Pct: Number(form.volumeDiscount3to5Pct),
+      volumeDiscount5to10Pct: Number(form.volumeDiscount5to10Pct),
+      volumeDiscount10plusPct: Number(form.volumeDiscount10plusPct),
+      // Production rates
+      apdForestryMulching: String(form.apdForestryMulching),
+      apdLandClearing: String(form.apdLandClearing),
+      apdRowClearing: String(form.apdRowClearing),
+      apdBrushHogging: String(form.apdBrushHogging),
+      // Seasonal adjustment
+      seasonalPeakUpliftPct: Number(form.seasonalPeakUpliftPct),
+      seasonalSlowReductionPct: Number(form.seasonalSlowReductionPct),
+      // Complexity premium
+      complexityPremiumPct: Number(form.complexityPremiumPct),
     });
   }
 
@@ -2153,6 +2187,131 @@ function AIPricingTab() {
             className="w-24 rounded-md border border-border bg-secondary/30 px-2.5 py-1.5 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
           />
           <span className="text-xs text-muted-foreground">e.g. 0.15 = ±15%</span>
+        </div>
+      </SettingsSection>
+
+      <SettingsSection
+        title="Add-On Rates"
+        description="Per-unit rates used when stump grinding or debris hauling are selected as add-ons. These feed directly into line item pricing."
+      >
+        <div className="grid grid-cols-2 gap-4">
+          {([
+            { label: "Stump Grinding", key: "stumpGrindingPerStump", unit: "per stump" },
+            { label: "Debris Hauling", key: "debrisHaulingPerLoad",  unit: "per load" },
+          ] as const).map(({ label, key, unit }) => (
+            <div key={key}>
+              <label className="block text-xs font-medium text-foreground mb-1">{label}</label>
+              <p className="text-[11px] text-muted-foreground mb-1.5">{unit}</p>
+              <div className="flex items-center gap-1">
+                <span className="text-sm text-muted-foreground">$</span>
+                <input
+                  type="number" min={0}
+                  value={form[key] as number ?? 0}
+                  onChange={(e) => setField(key, parseInt(e.target.value, 10) || 0)}
+                  className="w-28 rounded-md border border-border bg-secondary/30 px-2.5 py-1.5 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                />
+              </div>
+            </div>
+          ))}
+        </div>
+      </SettingsSection>
+
+      <SettingsSection
+        title="Volume Discounts"
+        description="Percentage discount applied automatically based on job size. Set to 0 to disable."
+      >
+        <div className="grid grid-cols-3 gap-4">
+          {([
+            { label: "3–5 Acres",  key: "volumeDiscount3to5Pct" },
+            { label: "5–10 Acres", key: "volumeDiscount5to10Pct" },
+            { label: "10+ Acres",  key: "volumeDiscount10plusPct" },
+          ] as const).map(({ label, key }) => (
+            <div key={key}>
+              <label className="block text-xs font-medium text-foreground mb-1">{label}</label>
+              <div className="flex items-center gap-1.5">
+                <input
+                  type="number" min={0} max={50}
+                  value={form[key] as number ?? 0}
+                  onChange={(e) => setField(key, parseInt(e.target.value, 10) || 0)}
+                  className="w-20 rounded-md border border-border bg-secondary/30 px-2.5 py-1.5 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                />
+                <span className="text-xs text-muted-foreground">%</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      </SettingsSection>
+
+      <SettingsSection
+        title="Production Rates"
+        description="Acres per day your machine covers under moderate conditions. Used to calculate estimated days on site."
+      >
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+          {([
+            { label: "Forestry Mulching", key: "apdForestryMulching" },
+            { label: "Land Clearing",     key: "apdLandClearing" },
+            { label: "ROW Clearing",      key: "apdRowClearing" },
+            { label: "Brush Hogging",     key: "apdBrushHogging" },
+          ] as const).map(({ label, key }) => (
+            <div key={key}>
+              <label className="block text-xs font-medium text-foreground mb-1">{label}</label>
+              <div className="flex items-center gap-1.5">
+                <input
+                  type="number" step="0.25" min={0.25} max={20}
+                  value={form[key] as string ?? "1.5"}
+                  onChange={(e) => setField(key, e.target.value)}
+                  className="w-24 rounded-md border border-border bg-secondary/30 px-2.5 py-1.5 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                />
+                <span className="text-xs text-muted-foreground">ac/day</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      </SettingsSection>
+
+      <SettingsSection
+        title="Seasonal &amp; Complexity Adjustments"
+        description="Optional percentage adjustments applied automatically based on time of year and job complexity signals."
+      >
+        <div className="space-y-4">
+          <div>
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Seasonal Rate Adjustment</p>
+            <div className="grid grid-cols-2 gap-4">
+              {([
+                { label: "Peak Season Uplift (Oct–Mar)",    key: "seasonalPeakUpliftPct",    help: "% added during dormant season" },
+                { label: "Slow Season Reduction (Jul–Sep)", key: "seasonalSlowReductionPct", help: "% removed during peak heat" },
+              ] as const).map(({ label, key, help }) => (
+                <div key={key}>
+                  <label className="block text-xs font-medium text-foreground mb-1">{label}</label>
+                  <p className="text-[11px] text-muted-foreground mb-1.5">{help}. Set to 0 to disable.</p>
+                  <div className="flex items-center gap-1.5">
+                    <input
+                      type="number" min={0} max={50}
+                      value={form[key] as number ?? 0}
+                      onChange={(e) => setField(key, parseInt(e.target.value, 10) || 0)}
+                      className="w-20 rounded-md border border-border bg-secondary/30 px-2.5 py-1.5 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                    />
+                    <span className="text-xs text-muted-foreground">%</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+          <div className="pt-3 border-t border-border">
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Complexity Premium</p>
+            <p className="text-[11px] text-muted-foreground mb-3">
+              Applied automatically when the customer message mentions structures, fencing, utilities, water features, or neighboring properties.
+            </p>
+            <div className="flex items-center gap-1.5">
+              <input
+                type="number" min={0} max={100}
+                value={form.complexityPremiumPct as number ?? 15}
+                onChange={(e) => setField("complexityPremiumPct", parseInt(e.target.value, 10) || 0)}
+                className="w-20 rounded-md border border-border bg-secondary/30 px-2.5 py-1.5 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+              />
+              <span className="text-xs text-muted-foreground">% premium</span>
+            </div>
+          </div>
         </div>
       </SettingsSection>
 

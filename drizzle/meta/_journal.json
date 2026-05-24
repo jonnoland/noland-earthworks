@@ -232,6 +232,13 @@
       "when": 1779588114347,
       "tag": "0032_small_terrax",
       "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "5",
+      "when": 1779635543265,
+      "tag": "0033_safe_wallop",
+      "breakpoints": true
     }
   ]
 }

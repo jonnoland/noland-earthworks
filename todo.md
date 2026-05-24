@@ -1119,3 +1119,9 @@
 - [x] County-level mobilization fee adjustment in AI pricing settings panel (West TN vs Middle TN)
 - [x] Daily pricing verification agent — change pricing_update agent from weekly to daily at 6 AM CT, add Market Rate Benchmarks panel to AI Pricing settings tab with Run Now button and low/mid/high rate table + research summaries
 - [x] One-click "Sync to Market Mid-Rates" button in AI Pricing settings — maps benchmark mid-tier values to Forestry Mulching, Land Clearing, and Brush Hogging base rate fields; marks form dirty so Save Changes is required to commit
+- [x] AI Pricing: Add stump grinding (per stump) and debris hauling (per load) add-on rates to DB schema, analyzeSubmission, and settings panel
+- [x] AI Pricing: Make volume discount thresholds configurable (3/7/12% currently hardcoded)
+- [x] AI Pricing: Make production rates (acres/day) configurable per service type
+- [x] AI Pricing: Add seasonal rate adjustment (% uplift Oct–Mar, reduction Jul–Sep)
+- [x] AI Pricing: Add complexity premium (% applied when structures/fencing/utilities flagged)
+- [x] AI Pricing: Wire priceRangeSpread field into actual range calculation (currently unused)

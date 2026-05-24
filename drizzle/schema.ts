@@ -712,6 +712,41 @@ export const aiPricingSettings = mysqlTable("ai_pricing_settings", {
   priceRangeSpread: varchar("priceRangeSpread", { length: 10 }).notNull().default("0.15"),
   /** Mobilization fee override for West TN jobs (longer drive). Null = use mobilizationFee for all. */
   westTnMobilizationFee: int("westTnMobilizationFee"),
+
+  // ── Add-on rates ────────────────────────────────────────────────────────────
+  /** Stump grinding rate per stump (USD). Used when stump grinding is selected as an add-on. */
+  stumpGrindingPerStump: int("stumpGrindingPerStump").notNull().default(150),
+  /** Debris hauling rate per load (USD). Used when debris hauling/removal is selected as an add-on. */
+  debrisHaulingPerLoad: int("debrisHaulingPerLoad").notNull().default(450),
+
+  // ── Volume discounts ────────────────────────────────────────────────────────
+  /** Volume discount % applied to jobs 3–5 acres (integer, e.g. 3 = 3%). 0 = disabled. */
+  volumeDiscount3to5Pct: int("volumeDiscount3to5Pct").notNull().default(3),
+  /** Volume discount % applied to jobs 5–10 acres. 0 = disabled. */
+  volumeDiscount5to10Pct: int("volumeDiscount5to10Pct").notNull().default(7),
+  /** Volume discount % applied to jobs 10+ acres. 0 = disabled. */
+  volumeDiscount10plusPct: int("volumeDiscount10plusPct").notNull().default(12),
+
+  // ── Production rates (acres per day) ────────────────────────────────────────
+  /** Acres per day for forestry mulching (tracked mulcher, moderate conditions) */
+  apdForestryMulching: varchar("apdForestryMulching", { length: 10 }).notNull().default("1.5"),
+  /** Acres per day for land clearing */
+  apdLandClearing: varchar("apdLandClearing", { length: 10 }).notNull().default("1.2"),
+  /** Acres per day for right-of-way clearing */
+  apdRowClearing: varchar("apdRowClearing", { length: 10 }).notNull().default("1.25"),
+  /** Acres per day for brush hogging */
+  apdBrushHogging: varchar("apdBrushHogging", { length: 10 }).notNull().default("8.0"),
+
+  // ── Seasonal adjustment ─────────────────────────────────────────────────────
+  /** Seasonal uplift % for peak season (Oct–Mar). 0 = no adjustment. e.g. 10 = +10% */
+  seasonalPeakUpliftPct: int("seasonalPeakUpliftPct").notNull().default(0),
+  /** Seasonal reduction % for slow season (Jul–Sep). 0 = no adjustment. e.g. 5 = -5% */
+  seasonalSlowReductionPct: int("seasonalSlowReductionPct").notNull().default(0),
+
+  // ── Complexity premium ──────────────────────────────────────────────────────
+  /** Complexity premium % added when structures, fencing, or utilities are flagged. e.g. 15 = +15% */
+  complexityPremiumPct: int("complexityPremiumPct").notNull().default(15),
+
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
 export type AIPricingSettings = typeof aiPricingSettings.$inferSelect;
