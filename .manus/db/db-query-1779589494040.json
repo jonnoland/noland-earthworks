@@ -1,0 +1,17 @@
+{
+  "query": "SELECT id, LEFT(accessToken, 20) as tokenPreview, LEFT(refreshToken, 20) as refreshPreview, expiresAt, updatedAt FROM jobber_tokens ORDER BY updatedAt DESC LIMIT 1;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway05.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 4URdbyUXkTLuAyd.1068bf1d0e22 --database PymCzDCnSJzPjdkfwA7Jn6 --execute SELECT id, LEFT(accessToken, 20) as tokenPreview, LEFT(refreshToken, 20) as refreshPreview, expiresAt, updatedAt FROM jobber_tokens ORDER BY updatedAt DESC LIMIT 1;",
+  "rows": [
+    {
+      "id": "13560002",
+      "tokenPreview": "eyJhbGciOiJIUzI1NiJ9",
+      "refreshPreview": "123b7fea9ad829032a88",
+      "expiresAt": "2026-05-24 03:09:17",
+      "updatedAt": "2026-05-24 02:09:19"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\ttokenPreview\trefreshPreview\texpiresAt\tupdatedAt\n13560002\teyJhbGciOiJIUzI1NiJ9\t123b7fea9ad829032a88\t2026-05-24 03:09:17\t2026-05-24 02:09:19\n",
+  "stderr": "",
+  "execution_time_ms": 307
+}

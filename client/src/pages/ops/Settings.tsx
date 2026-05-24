@@ -1984,7 +1984,7 @@ function AIPricingTab() {
     },
     onError: (e) => toast.error(`Save failed: ${e.message}`),
   });
-  const runAgent = trpc.agents.runAgent.useMutation({
+  const runAgent = trpc.agents.triggerRun.useMutation({
     onSuccess: () => {
       toast.success("Pricing research started. Results will update in a moment.");
       setTimeout(() => refetchBenchmarks(), 8000);
