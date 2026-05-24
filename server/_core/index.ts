@@ -23,6 +23,7 @@ import {
   runStaleLeadAlertAgent,
   runDailyDigestAgent,
   runPricingUpdateAgent,
+  runNotificationRetryAgent,
   getAgentEnabled,
 } from "../agents";
 import multer from "multer";
@@ -93,7 +94,11 @@ async function startServer() {
   cron.schedule("0 6 * * *", async () => {
     if (await getAgentEnabled("pricing_update")) await runPricingUpdateAgent();
   }, { timezone: "America/Chicago" });
-  console.log("[Agents] 6 scheduled agents registered.");
+  // Notification Retry Queue: every 30 minutes
+  cron.schedule("*/30 * * * *", async () => {
+    await runNotificationRetryAgent();
+  }, { timezone: "America/Chicago" });
+  console.log("[Agents] 7 scheduled agents registered.");
 
   // Sitemap + robots.txt
   registerSitemapRoutes(app);

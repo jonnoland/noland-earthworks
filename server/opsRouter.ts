@@ -677,6 +677,49 @@ const quotesRouter = router({
       const addOnsList = (() => { try { return JSON.parse(input.addOns ?? "[]"); } catch { return []; } })();
       const acreageLabel = ACREAGE_LABEL[acreageStr] ?? (acres > 0 ? `${acres} acres` : "acreage not specified — site visit required");
 
+      // ── Similar completed jobs for context ────────────────────────────────────
+      // Pull up to 5 completed jobs of the same service type to give the LLM
+      // real historical pricing context instead of relying solely on market benchmarks.
+      let jobHistoryContext = "";
+      if (db) {
+        try {
+          const serviceTypeMap: Record<string, string[]> = {
+            "forestry-mulching":     ["forestry_mulching"],
+            "land-clearing":         ["land_clearing"],
+            "brush-hogging":         ["brush_removal"],
+            "right-of-way-clearing": ["land_clearing", "forestry_mulching"],
+            "vegetation-management": ["forestry_mulching", "land_clearing"],
+            "property-maintenance":  ["brush_removal", "land_clearing"],
+          };
+          const jobTypes = serviceTypeMap[svcKey] ?? ["land_clearing"];
+          const similarJobs = await db.select({
+            client: jobs.client,
+            acres: jobs.acres,
+            totalPrice: jobs.totalPrice,
+            completedDate: jobs.completedDate,
+            jobType: jobs.jobType,
+          }).from(jobs)
+            .where(and(
+              eq(jobs.status, "completed"),
+              eq(jobs.jobType, jobTypes[0] as any)
+            ))
+            .orderBy(desc(jobs.completedDate))
+            .limit(5);
+
+          if (similarJobs.length > 0) {
+            const lines = similarJobs.map(j => {
+              const acresStr = j.acres ? `${j.acres} acres` : "unknown acreage";
+              const priceStr = j.totalPrice ? `$${Number(j.totalPrice).toLocaleString()}` : "price not recorded";
+              const dateStr  = j.completedDate ? new Date(j.completedDate).toLocaleDateString("en-US", { month: "short", year: "numeric" }) : "";
+              return `  - ${acresStr} @ ${priceStr}${dateStr ? ` (${dateStr})` : ""}`;
+            });
+            jobHistoryContext = `\nHistorical completed jobs (same service type — use for calibration):\n${lines.join("\n")}`;
+          }
+        } catch (histErr) {
+          console.warn("[analyzeSubmission] Job history lookup failed:", histErr);
+        }
+      }
+
       // Build add-on pricing context for the system prompt
       const addOnPricingContext: string[] = [];
       const addOnsLower = addOnsList.map((a: string) => a.toLowerCase());
@@ -713,6 +756,7 @@ Pricing context for your reference:
 - Forestry mulching in Middle/West TN: $1,200–$4,500/acre depending on density
 - Land clearing: $1,500–$8,000/acre depending on density
 - These rates reflect 2025–2026 market conditions in the Nashville/Columbia/West TN corridor
+${jobHistoryContext}
 
 Rules:
 - Never publish or promise specific rates. Use the reference range as a guide only.

@@ -16,7 +16,7 @@
 
 import { Resend } from "resend";
 import { and, eq, gte, isNotNull, lte, ne, or } from "drizzle-orm";
-import { getDb, getOwnerUser, insertAgentLog, getAgentConfig, upsertAgentConfig, upsertPricingBenchmark } from "./db";
+import { getDb, getOwnerUser, insertAgentLog, getAgentConfig, upsertAgentConfig, upsertPricingBenchmark, getPendingNotifications, markNotificationAttempt, deleteNotification } from "./db";
 import { businessSettings, jobs, opsLeads, scheduleEntries } from "../drizzle/schema";
 import { ENV } from "./_core/env";
 import { notifyOwner } from "./_core/notification";
@@ -90,6 +90,7 @@ export async function runLeadFollowupAgent() {
 
     const cutoff = daysAgo(3);
     const staleCutoff = daysAgo(30); // Don't follow up leads older than 30 days
+    const MAX_FOLLOWUPS = 2; // Cap at 2 automated follow-ups per lead to protect deliverability
 
     const leads = await db.select().from(opsLeads)
       .where(
@@ -97,7 +98,8 @@ export async function runLeadFollowupAgent() {
           or(eq(opsLeads.stage, "new"), eq(opsLeads.stage, "contacted")),
           isNotNull(opsLeads.email),
           lte(opsLeads.updatedAt, cutoff),
-          gte(opsLeads.createdAt, staleCutoff)
+          gte(opsLeads.createdAt, staleCutoff),
+          lte(opsLeads.followupCount, MAX_FOLLOWUPS - 1) // Only leads that haven't hit the cap
         )
       )
       .orderBy(opsLeads.updatedAt)
@@ -125,9 +127,9 @@ export async function runLeadFollowupAgent() {
         });
         sent++;
         names.push(lead.name);
-        // Update updatedAt so the same lead is not emailed again for 7 days
+        // Increment followupCount and reset updatedAt so the 3-day window restarts
         await db.update(opsLeads)
-          .set({ updatedAt: new Date() })
+          .set({ followupCount: (lead.followupCount ?? 0) + 1, updatedAt: new Date() })
           .where(eq(opsLeads.id, lead.id));
       } catch (emailErr) {
         console.warn(`[Agent:lead_followup] Failed to email ${lead.email}:`, emailErr);
@@ -271,11 +273,21 @@ export async function runReviewRequestAgent() {
     const names: string[] = [];
 
     for (const job of completedJobs) {
-      // Try to find a matching lead by client name to get email
-      const matchingLeads = await db.select().from(opsLeads)
-        .where(eq(opsLeads.name, job.client))
-        .limit(1);
-      const lead = matchingLeads[0];
+      // Prefer explicit leadId FK; fall back to name match for jobs created before the FK was added
+      let lead: typeof opsLeads.$inferSelect | undefined;
+      if (job.leadId) {
+        const byId = await db.select().from(opsLeads)
+          .where(eq(opsLeads.id, job.leadId))
+          .limit(1);
+        lead = byId[0];
+      }
+      if (!lead) {
+        // Fallback: name match (legacy jobs without leadId)
+        const byName = await db.select().from(opsLeads)
+          .where(eq(opsLeads.name, job.client))
+          .limit(1);
+        lead = byName[0];
+      }
       if (!lead?.email) continue;
 
       try {
@@ -596,6 +608,36 @@ export async function runDailyDigestAgent() {
       `,
     });
 
+    // ── SMS fallback — short digest to owner phone for field use ───────────────
+    if (ENV.twilioAccountSid && ENV.twilioAuthToken && ENV.twilioFromNumber && ENV.ownerPhone) {
+      try {
+        const visitSummary = pendingVisits.length > 0
+          ? `${pendingVisits.length} pending visit(s).`
+          : "No pending visits.";
+        const invoiceSummary = completedYesterday.length > 0
+          ? `${completedYesterday.length} job(s) ready to invoice.`
+          : "";
+        const smsBody = [
+          `Noland Earthworks Digest — ${new Date().toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })}`,
+          `Jobs today: ${todayEntries.length}`,
+          `Open leads: ${openLeads.length}`,
+          visitSummary,
+          invoiceSummary,
+        ].filter(Boolean).join(" | ");
+
+        const twilio = await import("twilio");
+        const client = twilio.default(ENV.twilioAccountSid, ENV.twilioAuthToken);
+        await client.messages.create({
+          body: smsBody.slice(0, 1600), // Twilio 1600-char limit
+          from: ENV.twilioFromNumber,
+          to: ENV.ownerPhone,
+        });
+        console.log(`[Agent:${AGENT_ID}] SMS digest sent to owner.`);
+      } catch (smsErr) {
+        console.warn(`[Agent:${AGENT_ID}] SMS digest failed (non-fatal):`, smsErr);
+      }
+    }
+
     const summary = `Digest sent. ${todayEntries.length} jobs today, ${openLeads.length} open leads, ${pendingVisits.length} pending visits.`;
     await insertAgentLog({ agentId: AGENT_ID, status: "success", summary, actionsCount: 1 });
     console.log(`[Agent:${AGENT_ID}] ${summary}`);
@@ -636,17 +678,20 @@ export async function runPricingUpdateAgent() {
   try {
     for (const svc of PRICING_SERVICES) {
       try {
-        const prompt = `You are a market research assistant for a land management company in Tennessee.
+        const currentDate = new Date().toLocaleDateString("en-US", { month: "long", year: "numeric" });
+        const prompt = `You are a market research assistant for a land management company in Tennessee. Today is ${currentDate}.
 
 Research current market rates for ${svc.description}. Focus specifically on:
 - Middle Tennessee (Nashville metro, Columbia, Murfreesboro, Franklin, Clarksville, Lawrenceburg areas)
 - West Tennessee (Jackson, Memphis suburbs, Dyersburg, Paris, Brownsville areas)
 
-Consider:
+Use your knowledge of:
 - Competitor pricing from companies like Middle Tennessee Land Clearing LLC, Mid State Land Clearing LLC, Grounded Land Solutions, Stribling Land Clearing & Dirtwork, Wolf Creek Land Company
-- Industry forums, contractor pricing guides, and homeowner cost reports for Tennessee
-- Typical terrain conditions in this region (rolling hills, cedar glades, bottomland hardwoods)
-- Current fuel and equipment operating costs as of ${new Date().getFullYear()}
+- Industry forums (LawnSite, ArboristSite, TractorByNet), contractor pricing guides, and homeowner cost reports for Tennessee
+- HomeAdvisor, Angi, Thumbtack, and similar platforms for regional cost data
+- Typical terrain conditions in this region (rolling hills, cedar glades, bottomland hardwoods, river bottoms)
+- Current fuel prices, diesel costs, and equipment operating costs in Tennessee as of ${currentDate}
+- Seasonal demand patterns — peak season (Oct–Mar) typically supports higher rates in Middle TN
 
 For services priced per stump or per load (not per acre), express the low/mid/high values as the typical unit price (per stump for stump grinding, per load for debris hauling). The field names still use "PerAcre" but treat them as the relevant unit price for this service.
 
@@ -744,6 +789,74 @@ All values are USD integers. No $ signs or commas in the numbers.`;
   }
 }
 
+// ─── Agent 7: Notification Retry Queue ──────────────────────────────────────
+/**
+ * Runs every 30 minutes. Retries failed email/SMS notifications from the
+ * pending_notifications queue. Max 3 attempts per message, 5-minute cooldown
+ * between retries. Deletes successfully delivered messages.
+ */
+export async function runNotificationRetryAgent() {
+  const AGENT_ID = "notification_retry";
+  const db = await getDb();
+  if (!db) return;
+
+  let sent = 0;
+  let failed = 0;
+
+  try {
+    const pending = await getPendingNotifications(50);
+    if (pending.length === 0) return;
+
+    const resend = getResend();
+
+    for (const notif of pending) {
+      try {
+        if (notif.channel === "email") {
+          if (!resend) throw new Error("Resend not configured");
+          await resend.emails.send({
+            from: "Noland Earthworks <noreply@nolandearthworks.com>",
+            to: notif.recipient,
+            subject: notif.subject ?? "Noland Earthworks",
+            html: notif.body,
+          });
+        } else if (notif.channel === "sms") {
+          if (!ENV.twilioAccountSid || !ENV.twilioAuthToken || !ENV.twilioFromNumber) {
+            throw new Error("Twilio not configured");
+          }
+          const twilio = await import("twilio");
+          const client = twilio.default(ENV.twilioAccountSid, ENV.twilioAuthToken);
+          await client.messages.create({
+            body: notif.body.slice(0, 1600),
+            from: ENV.twilioFromNumber,
+            to: notif.recipient,
+          });
+        }
+        // Success — remove from queue
+        await deleteNotification(notif.id);
+        sent++;
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        await markNotificationAttempt(notif.id, msg);
+        failed++;
+        console.warn(`[Agent:${AGENT_ID}] Retry failed for notification ${notif.id} (${notif.channel}):`, msg);
+      }
+    }
+
+    if (sent > 0 || failed > 0) {
+      await insertAgentLog({
+        agentId: AGENT_ID,
+        status: failed > 0 && sent === 0 ? "error" : "success",
+        summary: `Retry pass: ${sent} delivered, ${failed} still failing.`,
+        actionsCount: sent,
+      });
+    }
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    await insertAgentLog({ agentId: AGENT_ID, status: "error", error: msg });
+    console.error(`[Agent:${AGENT_ID}] Fatal error:`, err);
+  }
+}
+
 // ─── Agent registry (for the UI) ─────────────────────────────────────────────
 export const AGENT_REGISTRY = [
   {
@@ -781,6 +894,12 @@ export const AGENT_REGISTRY = [
     name: "Pricing Benchmark Update",
     description: "Researches current market rates for land management, forestry mulching, brush removal, and brush hogging in Middle & West Tennessee. Updates the benchmarks on the Pricing page.",
     schedule: "Daily at 6 AM",
+  },
+  {
+    id: "notification_retry",
+    name: "Notification Retry Queue",
+    description: "Retries failed email and SMS notifications. Max 3 attempts per message with a 5-minute cooldown between retries.",
+    schedule: "Every 30 minutes",
   },
 ] as const;
 

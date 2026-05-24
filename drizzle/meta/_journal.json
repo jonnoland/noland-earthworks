@@ -239,6 +239,13 @@
       "when": 1779635543265,
       "tag": "0033_safe_wallop",
       "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "5",
+      "when": 1779658204934,
+      "tag": "0034_aromatic_quasar",
+      "breakpoints": true
     }
   ]
 }

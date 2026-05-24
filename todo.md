@@ -1125,3 +1125,14 @@
 - [x] AI Pricing: Add seasonal rate adjustment (% uplift Oct–Mar, reduction Jul–Sep)
 - [x] AI Pricing: Add complexity premium (% applied when structures/fencing/utilities flagged)
 - [x] AI Pricing: Wire priceRangeSpread field into actual range calculation (currently unused)
+- [x] AI Pricing: Add "Reset to Market Defaults" button that reverts all fields to Middle TN average defaults
+- [x] AI Pricing: Real-time preview calculator panel showing sample quote updating live as rates are adjusted
+- [x] AI Pricing: Tooltips on Add-On Rates and Production Rates fields explaining how each field impacts the final quote
+- [x] Fix 1: Lead follow-up email cap — max 2 follow-ups per lead, then notify Jon instead of emailing again
+- [x] Fix 2: Facebook webhook deduplication — store leadgen_id on ops_leads, check before inserting
+- [x] Fix 3: Review request explicit lead link — add leadId FK to jobs table, use it instead of name-string match
+- [x] Fix 4: Label pricing benchmarks as LLM-estimated in UI; add web search context to pricing agent prompt
+- [x] Fix 5: Add similar completed jobs lookup to analyzeSubmission system prompt
+- [x] Fix 6: Notification retry queue — pending_notifications table with retry count and 30-min retry pass
+- [x] Fix 7: Daily digest SMS fallback — short SMS summary at 7 AM alongside email
+- [x] Fix 8: Concurrency guard on triggerRun — prevent duplicate simultaneous agent runs

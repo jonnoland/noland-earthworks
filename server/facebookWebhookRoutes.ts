@@ -34,9 +34,11 @@
 
 import type { Application, Request, Response } from "express";
 import { ENV } from "./_core/env";
-import { createOpsLead, getOwnerUser } from "./db";
+import { createOpsLead, getOwnerUser, getDb } from "./db";
 import { notifyOwner } from "./_core/notification";
 import { Resend } from "resend";
+import { eq } from "drizzle-orm";
+import { opsLeads } from "../drizzle/schema";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -200,6 +202,23 @@ async function processWebhookPayload(payload: FacebookWebhookPayload): Promise<v
 }
 
 async function processLead(leadgenId: string): Promise<void> {
+  // 0. Deduplication check — Facebook retries webhooks and can deliver the same event twice
+  try {
+    const db = await getDb();
+    if (db) {
+      const existing = await db.select({ id: opsLeads.id })
+        .from(opsLeads)
+        .where(eq(opsLeads.leadgenId, leadgenId))
+        .limit(1);
+      if (existing.length > 0) {
+        console.log(`[FB Webhook] Duplicate leadgen_id ${leadgenId} — already in DB (id=${existing[0].id}), skipping.`);
+        return;
+      }
+    }
+  } catch (dedupErr) {
+    console.warn(`[FB Webhook] Dedup check failed for ${leadgenId}, proceeding anyway:`, dedupErr);
+  }
+
   // 1. Fetch full lead data from Graph API
   const leadData = await fetchLeadFromGraph(leadgenId);
 
@@ -257,6 +276,7 @@ async function processLead(leadgenId: string): Promise<void> {
       stage: "new",
       jobType: service || undefined,
       notes,
+      leadgenId, // Store for deduplication on future webhook retries
     });
 
     console.log(`[FB Webhook] Lead created: ${name} (${leadgenId})`);

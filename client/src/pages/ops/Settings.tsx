@@ -6,7 +6,7 @@
  */
 
 import DashboardLayout from "@/components/DashboardLayout";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import {
   Save, User, Building2, Bell, Shield, Users, Link2,
   ClipboardList, CheckCircle2, XCircle, Clock, ExternalLink,
@@ -1917,6 +1917,62 @@ function AgentsTab() {
 }
 
 /// ─── AI Pricing Settings Tab ─────────────────────────────────────────────────
+
+// Middle TN market averages — used for Reset to Market Defaults
+const MIDDLE_TN_DEFAULTS = {
+  forestryMulchingBaseRate: 1800,
+  landClearingBaseRate: 2200,
+  brushHoggingBaseRate: 175,
+  rowClearingBaseRate: 1400,
+  mobilizationFee: 450,
+  minimumJobTotal: 1200,
+  densityModerateMultiplier: "1.25",
+  densityHeavyMultiplier: "1.60",
+  terrainRollingMultiplier: "1.15",
+  terrainSteepMultiplier: "1.40",
+  accessModerateMultiplier: "1.10",
+  accessDifficultMultiplier: "1.25",
+  priceRangeSpread: "0.15",
+  westTnMobilizationFee: "",
+  stumpGrindingPerStump: 150,
+  debrisHaulingPerLoad: 450,
+  volumeDiscount3to5Pct: 3,
+  volumeDiscount5to10Pct: 7,
+  volumeDiscount10plusPct: 12,
+  apdForestryMulching: "1.5",
+  apdLandClearing: "1.2",
+  apdRowClearing: "3.0",
+  apdBrushHogging: "8.0",
+  seasonalPeakUpliftPct: 0,
+  seasonalSlowReductionPct: 0,
+  complexityPremiumPct: 15,
+} as const;
+
+// Inline tooltip component
+function FieldTip({ text }: { text: string }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <span className="relative inline-flex ml-1 align-middle">
+      <button
+        type="button"
+        onMouseEnter={() => setOpen(true)}
+        onMouseLeave={() => setOpen(false)}
+        onFocus={() => setOpen(true)}
+        onBlur={() => setOpen(false)}
+        className="text-muted-foreground hover:text-foreground transition-colors"
+        aria-label="Help"
+      >
+        <Info className="w-3 h-3" />
+      </button>
+      {open && (
+        <span className="absolute left-5 top-0 z-50 w-56 rounded-md border border-border bg-popover px-2.5 py-2 text-[11px] text-popover-foreground shadow-md">
+          {text}
+        </span>
+      )}
+    </span>
+  );
+}
+
 function AIPricingTab() {
   const { data: settings, isLoading } = trpc.ops.settings.getAIPricingSettings.useQuery();
   const { data: benchmarks, isLoading: benchmarksLoading, refetch: refetchBenchmarks } = trpc.agents.getPricingBenchmarks.useQuery();
@@ -2028,8 +2084,64 @@ function AIPricingTab() {
     );
   }
 
+  // ── Live preview calculator ──────────────────────────────────────────────
+  // Mirrors the core math in analyzeSubmission so the preview stays in sync
+  const [calc, setCalc] = useState({ service: "forestry-mulching", acres: 5, density: "moderate", terrain: "flat", access: "easy", addStumps: 0, addLoads: 0 });
+
+  const previewResult = useMemo(() => {
+    const baseRateMap: Record<string, number> = {
+      "forestry-mulching": Number(form.forestryMulchingBaseRate) || 1800,
+      "land-clearing":     Number(form.landClearingBaseRate)     || 2200,
+      "brush-hogging":     Number(form.brushHoggingBaseRate)     || 175,
+      "row-clearing":      Number(form.rowClearingBaseRate)      || 1400,
+    };
+    const densityMult: Record<string, number> = {
+      light:    1.0,
+      moderate: Number(form.densityModerateMultiplier) || 1.25,
+      heavy:    Number(form.densityHeavyMultiplier)    || 1.60,
+    };
+    const terrainMult: Record<string, number> = {
+      flat:    1.0,
+      rolling: Number(form.terrainRollingMultiplier) || 1.15,
+      steep:   Number(form.terrainSteepMultiplier)   || 1.40,
+    };
+    const accessMult: Record<string, number> = {
+      easy:     1.0,
+      moderate: Number(form.accessModerateMultiplier)  || 1.10,
+      difficult: Number(form.accessDifficultMultiplier) || 1.25,
+    };
+    const vd3 = (Number(form.volumeDiscount3to5Pct)  || 0) / 100;
+    const vd5 = (Number(form.volumeDiscount5to10Pct) || 0) / 100;
+    const vd10 = (Number(form.volumeDiscount10plusPct) || 0) / 100;
+    const vd = calc.acres >= 10 ? (1 - vd10) : calc.acres >= 5 ? (1 - vd5) : calc.acres >= 3 ? (1 - vd3) : 1.0;
+    const mob = Number(form.mobilizationFee) || 450;
+    const minJob = Number(form.minimumJobTotal) || 1200;
+    const spread = Number(form.priceRangeSpread) || 0.15;
+    const base = (baseRateMap[calc.service] ?? 1800) * calc.acres;
+    const dm = densityMult[calc.density] ?? 1;
+    const tm = terrainMult[calc.terrain] ?? 1;
+    const am = accessMult[calc.access] ?? 1;
+    const raw = (base + mob) * dm * tm * am * vd;
+    const mid = Math.max(minJob, Math.round(raw));
+    const low = Math.max(minJob, Math.round(mid * (1 - spread)));
+    const high = Math.round(mid * (1 + spread));
+    const stumpTotal = calc.addStumps * (Number(form.stumpGrindingPerStump) || 150);
+    const debrisTotal = calc.addLoads * (Number(form.debrisHaulingPerLoad) || 450);
+    const apdMap: Record<string, number> = {
+      "forestry-mulching": Number(form.apdForestryMulching) || 1.5,
+      "land-clearing":     Number(form.apdLandClearing)     || 1.2,
+      "row-clearing":      Number(form.apdRowClearing)      || 3.0,
+      "brush-hogging":     Number(form.apdBrushHogging)     || 8.0,
+    };
+    const apd = apdMap[calc.service] ?? 1.5;
+    const estDays = calc.acres > 0 ? Math.max(1, Math.ceil(calc.acres / apd)) : 1;
+    return { low: low + stumpTotal + debrisTotal, mid: mid + stumpTotal + debrisTotal, high: high + stumpTotal + debrisTotal, estDays, stumpTotal, debrisTotal };
+  }, [form, calc]);
+
   return (
-    <div className="space-y-6">
+    <div className="flex gap-6 items-start">
+      {/* ── Left: settings form ── */}
+      <div className="flex-1 min-w-0 space-y-6">
       <SettingsSection
         title="Base Rates"
         description="Per-acre revenue target for each service type. These feed directly into AI quote estimates."
@@ -2318,7 +2430,7 @@ function AIPricingTab() {
       {/* Market Rate Benchmarks */}
       <SettingsSection
         title="Middle & West TN Market Rate Benchmarks"
-        description="Current market rates researched daily by the Pricing Benchmark agent. Use these to verify your base rates are competitive."
+        description="AI-estimated market rates, updated daily. The agent uses LLM research based on regional competitor data, industry forums, and cost guides — not live scraped prices. Use as a directional reference to verify your rates are in range, not as a definitive market quote."
         action={
           <button
             onClick={() => runAgent.mutate({ agentId: "pricing_update" })}
@@ -2381,7 +2493,18 @@ function AIPricingTab() {
         )}
       </SettingsSection>
 
-      <div className="flex justify-end pt-2">
+      <div className="flex items-center justify-between pt-2">
+        <button
+          onClick={() => {
+            setForm({ ...MIDDLE_TN_DEFAULTS });
+            setDirty(true);
+            toast.success("Form reset to Middle TN market defaults. Click Save Changes to apply.");
+          }}
+          className="flex items-center gap-1.5 rounded-md border border-border bg-secondary/20 px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-secondary/50 hover:text-foreground transition-colors"
+        >
+          <RotateCcw className="w-3.5 h-3.5" />
+          Reset to Market Defaults
+        </button>
         <button
           onClick={handleSave}
           disabled={!dirty || update.isPending}
@@ -2390,6 +2513,119 @@ function AIPricingTab() {
           {update.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
           Save Changes
         </button>
+      </div>
+      </div>{/* end left column */}
+
+      {/* ── Right: live preview calculator ── */}
+      <div className="w-72 shrink-0 sticky top-6">
+        <div className="rounded-lg border border-border bg-card p-4 space-y-4">
+          <div className="text-sm font-semibold text-foreground">Live Quote Preview</div>
+          <p className="text-[11px] text-muted-foreground -mt-2">Updates instantly as you adjust rates above.</p>
+
+          {/* Service */}
+          <div className="space-y-1">
+            <label className="text-[11px] font-medium text-muted-foreground">Service</label>
+            <select
+              value={calc.service}
+              onChange={e => setCalc(c => ({ ...c, service: e.target.value }))}
+              className="w-full rounded-md border border-border bg-background px-2 py-1.5 text-xs text-foreground"
+            >
+              <option value="forestry-mulching">Forestry Mulching</option>
+              <option value="land-clearing">Land Clearing</option>
+              <option value="brush-hogging">Brush Hogging</option>
+              <option value="row-clearing">ROW Clearing</option>
+            </select>
+          </div>
+
+          {/* Acres */}
+          <div className="space-y-1">
+            <label className="text-[11px] font-medium text-muted-foreground">Acres</label>
+            <input
+              type="number" min={0.5} max={100} step={0.5}
+              value={calc.acres}
+              onChange={e => setCalc(c => ({ ...c, acres: parseFloat(e.target.value) || 0 }))}
+              className="w-full rounded-md border border-border bg-background px-2 py-1.5 text-xs text-foreground"
+            />
+          </div>
+
+          {/* Density / Terrain / Access */}
+          {([
+            { label: "Density", key: "density", opts: ["light", "moderate", "heavy"] },
+            { label: "Terrain", key: "terrain", opts: ["flat", "rolling", "steep"] },
+            { label: "Access",  key: "access",  opts: ["easy", "moderate", "difficult"] },
+          ] as const).map(({ label, key, opts }) => (
+            <div key={key} className="space-y-1">
+              <label className="text-[11px] font-medium text-muted-foreground">{label}</label>
+              <div className="flex gap-1">
+                {opts.map(o => (
+                  <button
+                    key={o}
+                    type="button"
+                    onClick={() => setCalc(c => ({ ...c, [key]: o }))}
+                    className={cn(
+                      "flex-1 rounded px-1 py-1 text-[10px] font-medium border transition-colors",
+                      calc[key] === o
+                        ? "bg-primary text-primary-foreground border-primary"
+                        : "bg-secondary/20 text-muted-foreground border-border hover:bg-secondary/40"
+                    )}
+                  >{o}</button>
+                ))}
+              </div>
+            </div>
+          ))}
+
+          {/* Add-ons */}
+          <div className="grid grid-cols-2 gap-2">
+            <div className="space-y-1">
+              <label className="text-[11px] font-medium text-muted-foreground">Stumps</label>
+              <input type="number" min={0} step={1}
+                value={calc.addStumps}
+                onChange={e => setCalc(c => ({ ...c, addStumps: parseInt(e.target.value) || 0 }))}
+                className="w-full rounded-md border border-border bg-background px-2 py-1.5 text-xs text-foreground"
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-[11px] font-medium text-muted-foreground">Haul Loads</label>
+              <input type="number" min={0} step={1}
+                value={calc.addLoads}
+                onChange={e => setCalc(c => ({ ...c, addLoads: parseInt(e.target.value) || 0 }))}
+                className="w-full rounded-md border border-border bg-background px-2 py-1.5 text-xs text-foreground"
+              />
+            </div>
+          </div>
+
+          {/* Result */}
+          <div className="rounded-md bg-secondary/20 border border-border p-3 space-y-2">
+            <div className="flex justify-between text-xs">
+              <span className="text-muted-foreground">Low</span>
+              <span className="font-medium text-foreground">${previewResult.low.toLocaleString()}</span>
+            </div>
+            <div className="flex justify-between text-xs">
+              <span className="text-muted-foreground font-medium">Mid</span>
+              <span className="font-bold text-primary text-sm">${previewResult.mid.toLocaleString()}</span>
+            </div>
+            <div className="flex justify-between text-xs">
+              <span className="text-muted-foreground">High</span>
+              <span className="font-medium text-foreground">${previewResult.high.toLocaleString()}</span>
+            </div>
+            <div className="border-t border-border pt-2 flex justify-between text-[11px] text-muted-foreground">
+              <span>Est. days on site</span>
+              <span className="font-medium text-foreground">{previewResult.estDays}</span>
+            </div>
+            {previewResult.stumpTotal > 0 && (
+              <div className="flex justify-between text-[11px] text-muted-foreground">
+                <span>Stump grinding</span>
+                <span>+${previewResult.stumpTotal.toLocaleString()}</span>
+              </div>
+            )}
+            {previewResult.debrisTotal > 0 && (
+              <div className="flex justify-between text-[11px] text-muted-foreground">
+                <span>Debris hauling</span>
+                <span>+${previewResult.debrisTotal.toLocaleString()}</span>
+              </div>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );

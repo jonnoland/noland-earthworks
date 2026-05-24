@@ -448,3 +448,50 @@ export async function setUserRole(userId: number, role: 'user' | 'admin') {
   if (!db) throw new Error('DB unavailable');
   await db.update(users).set({ role }).where(eq(users.id, userId));
 }
+
+// ─── Pending Notifications (retry queue) ─────────────────────────────────────
+import { pendingNotifications, InsertPendingNotification } from "../drizzle/schema";
+import { lte, isNull, or } from "drizzle-orm";
+
+export async function queueNotification(data: InsertPendingNotification) {
+  const db = await getDb();
+  if (!db) return;
+  await db.insert(pendingNotifications).values(data);
+}
+
+export async function getPendingNotifications(limit = 50) {
+  const db = await getDb();
+  if (!db) return [];
+  const MAX_RETRIES = 3;
+  const retryAfter = new Date(Date.now() - 5 * 60 * 1000); // 5 min cooldown between retries
+  return db.select().from(pendingNotifications)
+    .where(
+      and(
+        lte(pendingNotifications.retryCount, MAX_RETRIES - 1),
+        or(
+          isNull(pendingNotifications.lastAttemptAt),
+          lte(pendingNotifications.lastAttemptAt, retryAfter)
+        )
+      )
+    )
+    .orderBy(pendingNotifications.createdAt)
+    .limit(limit);
+}
+
+export async function markNotificationAttempt(id: number, error?: string) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(pendingNotifications)
+    .set({
+      retryCount: (pendingNotifications.retryCount as any) + 1,
+      lastAttemptAt: new Date(),
+      lastError: error ?? null,
+    })
+    .where(eq(pendingNotifications.id, id));
+}
+
+export async function deleteNotification(id: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db.delete(pendingNotifications).where(eq(pendingNotifications.id, id));
+}

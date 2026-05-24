@@ -26,6 +26,9 @@ import { getPricingBenchmarks } from "./db";
 // Owner-only guard — mirrors the pattern in opsRouter
 const ownerProcedure = protectedProcedure;
 
+// In-memory concurrency guard — prevents double-triggering the same agent
+const runningAgents = new Set<string>();
+
 const agentRunners: Record<string, () => Promise<void>> = {
   lead_followup: runLeadFollowupAgent,
   visit_reminder: runVisitReminderAgent,
@@ -92,11 +95,20 @@ export const agentRouter = router({
       if (!runner) {
         throw new Error(`Unknown agent: ${input.agentId}`);
       }
+      // Concurrency guard — prevent two simultaneous runs of the same agent
+      if (runningAgents.has(input.agentId)) {
+        return { queued: false, reason: "Agent is already running" };
+      }
+      runningAgents.add(input.agentId);
       // Run async — don't block the response
-      runner().catch((err: unknown) => {
-        console.error(`[agentRouter] Manual trigger error for ${input.agentId}:`, err);
-        insertAgentLog({ agentId: input.agentId, status: "error", error: String(err) });
-      });
+      runner()
+        .catch((err: unknown) => {
+          console.error(`[agentRouter] Manual trigger error for ${input.agentId}:`, err);
+          insertAgentLog({ agentId: input.agentId, status: "error", error: String(err) });
+        })
+        .finally(() => {
+          runningAgents.delete(input.agentId);
+        });
       return { queued: true };
     }),
 

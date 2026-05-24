@@ -112,6 +112,8 @@ export const jobs = mysqlTable("jobs", {
   completedDate: timestamp("completedDate"),
   /** Timestamp when a review request email was sent for this job */
   reviewRequestSentAt: timestamp("reviewRequestSentAt"),
+  /** FK to ops_leads — explicit link used by review request agent instead of name-string match */
+  leadId: int("leadId"),
   /** Set when a job is rescheduled — used to show rescheduled badge on dashboard */
   rescheduledAt: timestamp("rescheduledAt"),
   /** High-priority flag — shown with a flag icon on dashboard and schedule calendar */
@@ -157,6 +159,10 @@ export const opsLeads = mysqlTable("ops_leads", {
   requestedVisitAt: timestamp("requestedVisitAt"),
   /** Timestamp when Jon manually confirmed the site visit — triggers confirmation email */
   visitConfirmedAt: timestamp("visitConfirmedAt"),
+  /** Number of automated follow-up emails sent — capped at 2 to prevent deliverability damage */
+  followupCount: int("followupCount").notNull().default(0),
+  /** Facebook leadgen_id — stored for deduplication; prevents duplicate leads from FB webhook retries */
+  leadgenId: varchar("leadgenId", { length: 128 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
@@ -781,3 +787,31 @@ export const quoteDrafts = mysqlTable("quote_drafts", {
 });
 export type QuoteDraft = typeof quoteDrafts.$inferSelect;
 export type InsertQuoteDraft = typeof quoteDrafts.$inferInsert;
+
+// ─── Pending Notifications (retry queue) ─────────────────────────────────────
+/**
+ * Outbox for failed email/SMS notifications — retried every 30 minutes.
+ * Rows are deleted on successful delivery.
+ */
+export const pendingNotifications = mysqlTable("pending_notifications", {
+  id: int("id").primaryKey().autoincrement(),
+  /** Channel: 'email' | 'sms' */
+  channel: mysqlEnum("channel", ["email", "sms"]).notNull(),
+  /** Recipient address (email) or phone number (sms) */
+  recipient: varchar("recipient", { length: 320 }).notNull(),
+  /** Subject line (email only) */
+  subject: varchar("subject", { length: 500 }),
+  /** Message body — HTML for email, plain text for SMS */
+  body: text("body").notNull(),
+  /** Number of delivery attempts made so far */
+  retryCount: int("retryCount").notNull().default(0),
+  /** Timestamp of last attempt */
+  lastAttemptAt: timestamp("lastAttemptAt"),
+  /** Error from last attempt */
+  lastError: text("lastError"),
+  /** Context tag for debugging (e.g. 'lead_followup', 'review_request') */
+  context: varchar("context", { length: 100 }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type PendingNotification = typeof pendingNotifications.$inferSelect;
+export type InsertPendingNotification = typeof pendingNotifications.$inferInsert;
