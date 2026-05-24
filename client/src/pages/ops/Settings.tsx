@@ -8,7 +8,7 @@
 import DashboardLayout from "@/components/DashboardLayout";
 import { useState, useEffect } from "react";
 import {
-  Save, User, Building2, Bell, Shield, CreditCard, Users, Link2,
+  Save, User, Building2, Bell, Shield, Users, Link2,
   ClipboardList, CheckCircle2, XCircle, Clock, ExternalLink,
   RefreshCw, Loader2, Phone, Mail, MapPin, Wrench, ChevronDown, ChevronUp,
   AlertCircle, Trash2, Globe, Hash,
@@ -35,7 +35,6 @@ const tabs = [
   { id: "reminders",            label: "Reminders",            icon: AlarmClock },
   { id: "integrations",         label: "Integrations",         icon: Link2 },
   { id: "payments",             label: "Payments",             icon: CardIcon },
-  { id: "billing",              label: "Billing",              icon: CreditCard },
   { id: "scheduling",           label: "Scheduling",           icon: CalendarOff },
   { id: "agents",               label: "Agents",               icon: Bot },
   { id: "ai-pricing",           label: "AI Pricing",           icon: BarChart2 },
@@ -1567,61 +1566,6 @@ function PaymentsTab() {
   );
 }
 
-function BillingTab() {
-  return (
-    <div className="space-y-4">
-      <SettingsSection title="Current Plan">
-        <div>
-          <p className="text-sm font-semibold text-foreground mb-1">Operator Software</p>
-          <span className="inline-flex items-center gap-1 text-[11px] bg-amber-500/15 text-amber-400 border border-amber-500/30 px-2 py-0.5 rounded-full font-semibold">
-            Trial — 0 days left
-          </span>
-        </div>
-      </SettingsSection>
-
-      <SettingsSection title="Choose a Plan">
-        <div className="space-y-4">
-          <div>
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Operator Software</p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {[
-                { price: "$297/mo", desc: "Monthly billing", highlight: false },
-                { price: "$2,970/yr", desc: "Save $594 per year", highlight: true },
-              ].map(plan => (
-                <button key={plan.price} onClick={() => toast.info("Feature coming soon")}
-                  className={cn(
-                    "text-left p-4 border rounded-lg transition-colors",
-                    plan.highlight ? "border-primary/40 bg-primary/10" : "border-border hover:border-border/80 bg-secondary/20"
-                  )}>
-                  <p className="text-sm font-bold text-foreground">{plan.price}</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">{plan.desc}</p>
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div>
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">OPS Accelerator</p>
-            <p className="text-xs text-muted-foreground mb-3">16-week implementation program + 12 months of support. Includes all Operator Software features.</p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {[
-                { price: "$10,000", desc: "Pay in full — save $2,000" },
-                { price: "$1,500/mo × 8", desc: "$12,000 total over 8 months" },
-              ].map(plan => (
-                <button key={plan.price} onClick={() => toast.info("Feature coming soon")}
-                  className="text-left p-4 border border-border rounded-lg hover:border-border/80 bg-secondary/20 transition-colors">
-                  <p className="text-sm font-bold text-foreground">{plan.price}</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">{plan.desc}</p>
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-      </SettingsSection>
-    </div>
-  );
-}
-
 // ─── Quote Log ──────────────────────────────────────────────────────────────
 function QuoteLogTab() {
   const { data: quotes, isLoading, refetch } = trpc.ops.quotes.list.useQuery({ limit: 100 });
@@ -2331,7 +2275,6 @@ export default function Settings() {
       case "reminders":            return <RemindersTab />;
       case "integrations":         return <IntegrationsTab />;
       case "payments":             return <PaymentsTab />;
-      case "billing":              return <BillingTab />;
       case "scheduling":           return <SchedulingTab />;
       case "agents":               return <AgentsTab />;
       case "ai-pricing":           return <AIPricingTab />;

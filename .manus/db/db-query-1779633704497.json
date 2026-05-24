@@ -1,0 +1,58 @@
+{
+  "query": "SELECT id, name, equipmentType, crewMemberCount, acresPerDay, targetMarginPct FROM crews ORDER BY id;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway05.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 4URdbyUXkTLuAyd.1068bf1d0e22 --database PymCzDCnSJzPjdkfwA7Jn6 --execute SELECT id, name, equipmentType, crewMemberCount, acresPerDay, targetMarginPct FROM crews ORDER BY id;",
+  "rows": [
+    {
+      "id": "3",
+      "name": "Mulcher Crew",
+      "equipmentType": "Mulcher",
+      "crewMemberCount": "1",
+      "acresPerDay": "1",
+      "targetMarginPct": "30"
+    },
+    {
+      "id": "30001",
+      "name": "Solo Tracked Mulcher",
+      "equipmentType": "Tracked Forestry Mulcher",
+      "crewMemberCount": "1",
+      "acresPerDay": "3",
+      "targetMarginPct": "35"
+    },
+    {
+      "id": "30002",
+      "name": "Mulcher + Groundsman",
+      "equipmentType": "Tracked Forestry Mulcher",
+      "crewMemberCount": "2",
+      "acresPerDay": "4",
+      "targetMarginPct": "35"
+    },
+    {
+      "id": "30003",
+      "name": "Mulcher + Skid Steer",
+      "equipmentType": "Forestry Mulcher & Skid Steer",
+      "crewMemberCount": "2",
+      "acresPerDay": "6",
+      "targetMarginPct": "35"
+    },
+    {
+      "id": "30004",
+      "name": "ROW / Brush Hog Crew",
+      "equipmentType": "Tractor with Brush Hog",
+      "crewMemberCount": "1",
+      "acresPerDay": "8",
+      "targetMarginPct": "30"
+    },
+    {
+      "id": "30005",
+      "name": "Full Site Prep Crew",
+      "equipmentType": "Mulcher, Excavator & Haul",
+      "crewMemberCount": "3",
+      "acresPerDay": "5",
+      "targetMarginPct": "35"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tname\tequipmentType\tcrewMemberCount\tacresPerDay\ttargetMarginPct\n3\tMulcher Crew\tMulcher\t1\t1\t30\n30001\tSolo Tracked Mulcher\tTracked Forestry Mulcher\t1\t3\t35\n30002\tMulcher + Groundsman\tTracked Forestry Mulcher\t2\t4\t35\n30003\tMulcher + Skid Steer\tForestry Mulcher & Skid Steer\t2\t6\t35\n30004\tROW / Brush Hog Crew\tTractor with Brush Hog\t1\t8\t30\n30005\tFull Site Prep Crew\tMulcher, Excavator & Haul\t3\t5\t35\n",
+  "stderr": "",
+  "execution_time_ms": 259
+}
