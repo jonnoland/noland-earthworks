@@ -523,6 +523,7 @@ const quotesRouter = router({
       message: z.string().optional(),    // customer's notes
       addOns: z.string().optional(),     // JSON array of add-on services
       name: z.string().optional(),
+      customPrompt: z.string().max(500).optional(), // user-supplied adjustment instruction
     }))
     .mutation(async ({ input }) => {
       const { invokeLLM } = await import("./_core/llm");
@@ -614,7 +615,8 @@ Return ONLY valid JSON with this exact structure:
 Service requested: ${input.service}
 Acreage: ${input.acreage ?? "not specified"}
 ${input.message ? `Customer notes: "${input.message}"` : "No additional notes provided."}
-${addOnsList.length > 0 ? `Add-ons: ${addOnsList.join(", ")}` : ""}`;
+${addOnsList.length > 0 ? `Add-ons: ${addOnsList.join(", ")}` : ""}
+${input.customPrompt ? `\nADJUSTMENT INSTRUCTION: ${input.customPrompt}\nApply this adjustment to the quote — update line items, pricing, and message accordingly.` : ""}`;
 
       const result = await invokeLLM({
         messages: [

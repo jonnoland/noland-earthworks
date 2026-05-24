@@ -998,7 +998,7 @@
 - [x] Build Create Quote modal on /ops/quotes with client search, service line items, and quote submission
 - [x] /ops/quotes: add real-time status badges (Draft/Sent/Approved/Archived) to quotes list
 - [x] /ops/quotes: add Convert to Job button on approved quotes that calls quoteConvertToJob mutation
-- [ ] Redesign Create Quote modal to match Jobber's native form style (sections, labels, line item table)
+- [x] Redesign Create Quote modal to match Jobber's native form style (sections, labels, line item table)
 - [x] Fix quoteCreate: fetch client propertyId first, pass lineItems inline in QuoteCreateAttributes
 - [x] Add quoteUpdate mutation to jobberRouter (title, message)
 - [x] Add quoteLineItemUpdate and quoteLineItemDelete mutations to jobberRouter
@@ -1107,3 +1107,8 @@
 - [x] Satellite imagery for property address on Website Request cards (Google Maps Static API via backend proxy)
 - [x] Loading animation + progressive status messages during AI quote analysis
 - [x] AI pricing model settings panel on /ops/settings — adjustable base rates, multipliers, mobilization fee, min job
+
+## AI Quote Assistant + Map + Preview — May 2026
+- [ ] AI Quote Assistant: add Regenerate button with custom prompt input (e.g. "add a rush fee") to re-run analysis with modifications
+- [ ] /ops/jobs map view: add hover card on map pins showing job title and status
+- [ ] Create Quote modal: add Preview Quote button showing client-facing view before submitting to Jobber

@@ -39,6 +39,8 @@ import {
   ChevronUp,
   Globe,
   ClipboardList,
+  Eye,
+  Building2,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -1007,6 +1009,7 @@ function CreateQuoteModal({ onClose, onCreated, prefill }: CreateQuoteModalProps
   );
   const [serviceSearch, setServiceSearch] = useState("");
   const [showServicePicker, setShowServicePicker] = useState(false);
+  const [showPreview, setShowPreview] = useState(false);
   const autoSelectedRef = useRef(false);
 
   const { data: clientsData, isLoading: clientsLoading } = trpc.jobber.clients.useQuery(
@@ -1383,6 +1386,16 @@ function CreateQuoteModal({ onClose, onCreated, prefill }: CreateQuoteModalProps
               Cancel
             </Button>
             <Button
+              variant="outline"
+              size="sm"
+              className="gap-1.5"
+              onClick={() => setShowPreview(true)}
+              disabled={!selectedClient || !title.trim() || lineItems.length === 0}
+            >
+              <Eye className="w-3.5 h-3.5" />
+              Preview
+            </Button>
+            <Button
               size="sm"
               onClick={handleSubmit}
               disabled={createQuote.isPending || !selectedClient || !title.trim() || lineItems.length === 0}
@@ -1398,6 +1411,108 @@ function CreateQuoteModal({ onClose, onCreated, prefill }: CreateQuoteModalProps
         </div>
 
       </div>
+
+      {/* ── Quote Preview Modal ── */}
+      {showPreview && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4" onClick={() => setShowPreview(false)}>
+          <div
+            className="bg-white text-gray-900 rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Preview header */}
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+              <div className="flex items-center gap-2">
+                <Building2 className="w-5 h-5 text-orange-600" />
+                <div>
+                  <p className="text-sm font-bold text-gray-900">Noland Earthworks, LLC</p>
+                  <p className="text-[10px] text-gray-500">Veteran-Owned Land Clearing • Middle Tennessee</p>
+                </div>
+              </div>
+              <button onClick={() => setShowPreview(false)} className="text-gray-400 hover:text-gray-700">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Quote meta */}
+            <div className="px-6 pt-5 pb-3 flex justify-between items-start gap-4">
+              <div>
+                <p className="text-[10px] uppercase tracking-widest text-gray-400 mb-0.5">Quote for</p>
+                <p className="text-base font-semibold text-gray-900">{selectedClient?.name ?? selectedClient?.companyName ?? ""}</p>
+                {selectedClient?.emails?.[0]?.address && (
+                  <p className="text-xs text-gray-500">{selectedClient.emails[0].address}</p>
+                )}
+              </div>
+              <div className="text-right">
+                <p className="text-[10px] uppercase tracking-widest text-gray-400 mb-0.5">Date</p>
+                <p className="text-sm text-gray-700">{new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })}</p>
+                <p className="text-[10px] text-gray-400 mt-0.5">Draft</p>
+              </div>
+            </div>
+
+            {/* Title */}
+            <div className="px-6 pb-3">
+              <p className="text-lg font-bold text-gray-900">{title}</p>
+            </div>
+
+            {/* Message */}
+            {message.trim() && (
+              <div className="px-6 pb-4">
+                <p className="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed">{message}</p>
+              </div>
+            )}
+
+            {/* Line items table */}
+            <div className="px-6 pb-4">
+              <table className="w-full text-sm border-collapse">
+                <thead>
+                  <tr className="border-b-2 border-gray-200">
+                    <th className="text-left py-2 text-xs uppercase tracking-wider text-gray-500 font-semibold">Service</th>
+                    <th className="text-right py-2 text-xs uppercase tracking-wider text-gray-500 font-semibold w-16">Qty</th>
+                    <th className="text-right py-2 text-xs uppercase tracking-wider text-gray-500 font-semibold w-24">Unit Price</th>
+                    <th className="text-right py-2 text-xs uppercase tracking-wider text-gray-500 font-semibold w-24">Total</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {lineItems.map((item, i) => (
+                    <tr key={i} className="border-b border-gray-100">
+                      <td className="py-2.5 pr-4">
+                        <p className="font-medium text-gray-900">{item.name}</p>
+                        {item.description && <p className="text-xs text-gray-500 mt-0.5">{item.description}</p>}
+                      </td>
+                      <td className="py-2.5 text-right text-gray-700">{item.quantity}</td>
+                      <td className="py-2.5 text-right text-gray-700">{formatMoney(item.unitPrice)}</td>
+                      <td className="py-2.5 text-right font-medium text-gray-900">{formatMoney(item.quantity * item.unitPrice)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Subtotal */}
+            <div className="px-6 pb-5">
+              <div className="flex justify-end">
+                <div className="border-t-2 border-gray-900 pt-2 min-w-[180px]">
+                  <div className="flex justify-between gap-8">
+                    <span className="text-sm font-bold text-gray-900">Total</span>
+                    <span className="text-sm font-bold text-gray-900">{formatMoney(subtotal)}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Footer note */}
+            <div className="px-6 py-4 bg-gray-50 border-t border-gray-200 rounded-b-xl">
+              <p className="text-[11px] text-gray-500 text-center">This is a preview only. The quote will be saved as a Draft in Jobber before sending to the client.</p>
+              <div className="flex justify-center mt-3">
+                <Button size="sm" onClick={() => setShowPreview(false)} className="gap-1.5">
+                  <X className="w-3.5 h-3.5" />
+                  Close Preview
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -1466,6 +1581,7 @@ function WebsiteRequestCard({
   const [editedMessage, setEditedMessage] = useState("");
   const [statusIdx, setStatusIdx] = useState(0);
   const statusTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const [customPrompt, setCustomPrompt] = useState("");
   const utils = trpc.useUtils();
 
   // Build full address for satellite imagery
@@ -1756,6 +1872,52 @@ function WebsiteRequestCard({
               rows={4}
               className="w-full rounded-md border border-border bg-secondary/30 px-3 py-2 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary resize-none"
             />
+          </div>
+
+          {/* Regenerate with custom prompt */}
+          <div className="flex gap-2 items-center border-t border-border pt-3">
+            <input
+              type="text"
+              value={customPrompt}
+              onChange={(e) => setCustomPrompt(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && customPrompt.trim() && !analyze.isPending) {
+                  analyze.mutate({
+                    service: submission.service,
+                    county: submission.county,
+                    acreage: submission.acreage ?? undefined,
+                    message: submission.message ?? undefined,
+                    addOns: submission.addOns ?? undefined,
+                    name: submission.name,
+                    customPrompt: customPrompt.trim(),
+                  });
+                }
+              }}
+              placeholder='Adjust quote (e.g. "add a rush fee", "increase mobilization")'
+              className="flex-1 rounded-md border border-border bg-secondary/30 px-3 py-1.5 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+            />
+            <Button
+              size="sm"
+              variant="outline"
+              className="gap-1.5 text-xs shrink-0"
+              disabled={analyze.isPending || !customPrompt.trim()}
+              onClick={() => analyze.mutate({
+                service: submission.service,
+                county: submission.county,
+                acreage: submission.acreage ?? undefined,
+                message: submission.message ?? undefined,
+                addOns: submission.addOns ?? undefined,
+                name: submission.name,
+                customPrompt: customPrompt.trim(),
+              })}
+            >
+              {analyze.isPending ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              ) : (
+                <RefreshCw className="w-3.5 h-3.5" />
+              )}
+              Regenerate
+            </Button>
           </div>
 
           {/* Build Quote CTA */}

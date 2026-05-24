@@ -698,10 +698,21 @@ type MapJob = {
 function JobsMapView({ jobs, onSelectJob }: { jobs: MapJob[]; onSelectJob: (id: string) => void }) {
   const localMapRef = useRef<google.maps.Map | null>(null);
   const markersRef = useRef<google.maps.marker.AdvancedMarkerElement[]>([]);
+  const infoWindowRef = useRef<google.maps.InfoWindow | null>(null);
+
+  const STATUS_COLORS: Record<string, string> = {
+    ACTIVE: "#22c55e",
+    QUOTE: "#f59e0b",
+    REQUIRES_INVOICING: "#3b82f6",
+    COMPLETED: "#6b7280",
+    ARCHIVED: "#9ca3af",
+  };
 
   const geocodeAndPin = useCallback(async (map: google.maps.Map) => {
     markersRef.current.forEach(m => { m.map = null; });
     markersRef.current = [];
+    if (infoWindowRef.current) { infoWindowRef.current.close(); }
+    infoWindowRef.current = new google.maps.InfoWindow();
     const geocoder = new google.maps.Geocoder();
     const bounds = new google.maps.LatLngBounds();
     let pinned = 0;
@@ -718,12 +729,37 @@ function JobsMapView({ jobs, onSelectJob }: { jobs: MapJob[]; onSelectJob: (id: 
         if (!result) continue;
         const pos = result.geometry.location;
         bounds.extend(pos);
+        // Colored pin element
+        const statusColor = STATUS_COLORS[job.jobStatus ?? ""] ?? "#f97316";
+        const pinEl = document.createElement("div");
+        pinEl.style.cssText = `width:14px;height:14px;border-radius:50%;background:${statusColor};border:2px solid white;box-shadow:0 1px 4px rgba(0,0,0,.4);cursor:pointer;`;
         const pin = new google.maps.marker.AdvancedMarkerElement({
           map,
           position: pos,
           title: job.title ?? `Job #${job.jobNumber}`,
+          content: pinEl,
         });
-        pin.addListener("click", () => onSelectJob(job.id));
+        // Hover card (InfoWindow)
+        const jobTitle = job.title ?? `Job #${job.jobNumber}`;
+        const statusLabel = (job.jobStatus ?? "UNKNOWN").replace(/_/g, " ");
+        const clientName = job.client?.name ?? "";
+        const infoContent = `<div style="font-family:system-ui,sans-serif;font-size:12px;min-width:160px;max-width:220px;padding:2px 0">
+          <div style="font-weight:600;color:#111;margin-bottom:3px">${jobTitle}</div>
+          ${clientName ? `<div style="color:#555;margin-bottom:2px">${clientName}</div>` : ""}
+          <div style="display:inline-block;padding:1px 8px;border-radius:999px;font-size:10px;font-weight:600;background:${statusColor}22;color:${statusColor};border:1px solid ${statusColor}44">${statusLabel}</div>
+          <div style="margin-top:6px;font-size:10px;color:#888">Click to open detail</div>
+        </div>`;
+        pin.addListener("mouseover", () => {
+          infoWindowRef.current?.setContent(infoContent);
+          infoWindowRef.current?.open({ map, anchor: pin });
+        });
+        pin.addListener("mouseout", () => {
+          infoWindowRef.current?.close();
+        });
+        pin.addListener("click", () => {
+          infoWindowRef.current?.close();
+          onSelectJob(job.id);
+        });
         markersRef.current.push(pin);
         pinned++;
       } catch { /* skip */ }
