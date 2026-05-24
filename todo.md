@@ -1112,3 +1112,9 @@
 - [x] AI Quote Assistant: add Regenerate button with custom prompt input (e.g. "add a rush fee") to re-run analysis with modifications
 - [x] /ops/jobs map view: add hover card on map pins showing job title and status
 - [x] Create Quote modal: add Preview Quote button showing client-facing view before submitting to Jobber
+
+## AI Quote Assistant Enhancements — Round 3 (May 2026)
+- [x] Save as Draft button on AI Quote Assistant — save analyzed submission + AI result to DB, show Drafts tab in Website Requests section
+- [x] Wire AI pricing settings panel to override analyzeSubmission rate table live (read from aiPricingSettings table instead of hardcoded defaults)
+- [x] County-level mobilization fee adjustment in AI pricing settings panel (West TN vs Middle TN)
+- [x] Daily pricing verification agent — change pricing_update agent from weekly to daily at 6 AM CT, add Market Rate Benchmarks panel to AI Pricing settings tab with Run Now button and low/mid/high rate table + research summaries

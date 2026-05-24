@@ -710,7 +710,39 @@ export const aiPricingSettings = mysqlTable("ai_pricing_settings", {
   accessDifficultMultiplier: varchar("accessDifficultMultiplier", { length: 10 }).notNull().default("1.25"),
   /** Price range spread as a decimal string (e.g. "0.15" = ±15% around midpoint) */
   priceRangeSpread: varchar("priceRangeSpread", { length: 10 }).notNull().default("0.15"),
+  /** Mobilization fee override for West TN jobs (longer drive). Null = use mobilizationFee for all. */
+  westTnMobilizationFee: int("westTnMobilizationFee"),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
 export type AIPricingSettings = typeof aiPricingSettings.$inferSelect;
 export type InsertAIPricingSettings = typeof aiPricingSettings.$inferInsert;
+
+/**
+ * Stores AI-analyzed quote drafts so Jon can save and return to them later.
+ * Each draft is linked to a quote submission and stores the full AI analysis result.
+ */
+export const quoteDrafts = mysqlTable("quote_drafts", {
+  id: int("id").autoincrement().primaryKey(),
+  /** ID of the original quote submission from quoteSubmissions table */
+  submissionId: int("submissionId").notNull(),
+  /** Customer name from the submission */
+  customerName: varchar("customerName", { length: 255 }),
+  /** Customer email from the submission */
+  customerEmail: varchar("customerEmail", { length: 320 }),
+  /** Service type from the submission */
+  service: varchar("service", { length: 100 }),
+  /** County from the submission */
+  county: varchar("county", { length: 100 }),
+  /** Acreage range from the submission */
+  acreage: varchar("acreage", { length: 50 }),
+  /** Full AI analysis result stored as JSON string */
+  aiResult: text("aiResult").notNull(),
+  /** Draft status: 'saved' | 'sent' | 'archived' */
+  status: mysqlEnum("status", ["saved", "sent", "archived"]).default("saved").notNull(),
+  /** Optional notes Jon adds to the draft */
+  notes: text("notes"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type QuoteDraft = typeof quoteDrafts.$inferSelect;
+export type InsertQuoteDraft = typeof quoteDrafts.$inferInsert;

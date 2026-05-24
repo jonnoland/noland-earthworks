@@ -1975,6 +1975,7 @@ function AgentsTab() {
 /// ─── AI Pricing Settings Tab ─────────────────────────────────────────────────
 function AIPricingTab() {
   const { data: settings, isLoading } = trpc.ops.settings.getAIPricingSettings.useQuery();
+  const { data: benchmarks, isLoading: benchmarksLoading, refetch: refetchBenchmarks } = trpc.agents.getPricingBenchmarks.useQuery();
   const utils = trpc.useUtils();
   const update = trpc.ops.settings.updateAIPricingSettings.useMutation({
     onSuccess: () => {
@@ -1982,6 +1983,13 @@ function AIPricingTab() {
       utils.ops.settings.getAIPricingSettings.invalidate();
     },
     onError: (e) => toast.error(`Save failed: ${e.message}`),
+  });
+  const runAgent = trpc.agents.runAgent.useMutation({
+    onSuccess: () => {
+      toast.success("Pricing research started. Results will update in a moment.");
+      setTimeout(() => refetchBenchmarks(), 8000);
+    },
+    onError: (e) => toast.error(`Agent run failed: ${e.message}`),
   });
 
   const [form, setForm] = useState<Record<string, string | number>>({});
@@ -2003,6 +2011,7 @@ function AIPricingTab() {
         accessModerateMultiplier: settings.accessModerateMultiplier,
         accessDifficultMultiplier: settings.accessDifficultMultiplier,
         priceRangeSpread: settings.priceRangeSpread,
+        westTnMobilizationFee: settings.westTnMobilizationFee ?? "",
       });
       setDirty(false);
     }
@@ -2014,6 +2023,7 @@ function AIPricingTab() {
   }
 
   function handleSave() {
+    const westTnRaw = form.westTnMobilizationFee;
     update.mutate({
       forestryMulchingBaseRate: Number(form.forestryMulchingBaseRate),
       landClearingBaseRate: Number(form.landClearingBaseRate),
@@ -2028,6 +2038,7 @@ function AIPricingTab() {
       accessModerateMultiplier: String(form.accessModerateMultiplier),
       accessDifficultMultiplier: String(form.accessDifficultMultiplier),
       priceRangeSpread: String(form.priceRangeSpread),
+      westTnMobilizationFee: westTnRaw !== "" && westTnRaw !== undefined ? Number(westTnRaw) : undefined,
     });
   }
 
@@ -2093,6 +2104,24 @@ function AIPricingTab() {
             </div>
           ))}
         </div>
+        {/* West TN mobilization fee override */}
+        <div className="mt-4 pt-4 border-t border-border">
+          <label className="block text-xs font-medium text-foreground mb-1">West TN Mobilization Fee (optional)</label>
+          <p className="text-[11px] text-muted-foreground mb-1.5">
+            Override for jobs in Carroll, Chester, Decatur, Gibson, Hardin, Henderson, Henry, Madison, or Weakley counties.
+            Leave blank to use the standard mobilization fee above.
+          </p>
+          <div className="flex items-center gap-1">
+            <span className="text-sm text-muted-foreground">$</span>
+            <input
+              type="number" min={0}
+              value={form.westTnMobilizationFee as string ?? ""}
+              placeholder="e.g. 600"
+              onChange={(e) => setField("westTnMobilizationFee", e.target.value)}
+              className="w-28 rounded-md border border-border bg-secondary/30 px-2.5 py-1.5 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary placeholder:text-muted-foreground/50"
+            />
+          </div>
+        </div>
       </SettingsSection>
 
       <SettingsSection
@@ -2150,6 +2179,72 @@ function AIPricingTab() {
           />
           <span className="text-xs text-muted-foreground">e.g. 0.15 = ±15%</span>
         </div>
+      </SettingsSection>
+
+      {/* Market Rate Benchmarks */}
+      <SettingsSection
+        title="Middle & West TN Market Rate Benchmarks"
+        description="Current market rates researched daily by the Pricing Benchmark agent. Use these to verify your base rates are competitive."
+        action={
+          <button
+            onClick={() => runAgent.mutate({ agentId: "pricing_update" })}
+            disabled={runAgent.isPending || benchmarksLoading}
+            className="flex items-center gap-1.5 rounded-md border border-border bg-secondary/30 px-3 py-1.5 text-xs font-medium text-foreground hover:bg-secondary/60 disabled:opacity-50 transition-colors"
+          >
+            {runAgent.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <RefreshCw className="w-3 h-3" />}
+            Run Now
+          </button>
+        }
+      >
+        {benchmarksLoading && (
+          <div className="flex items-center gap-2 py-3 text-xs text-muted-foreground">
+            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+            Loading benchmarks...
+          </div>
+        )}
+        {!benchmarksLoading && (!benchmarks || benchmarks.length === 0) && (
+          <div className="text-xs text-muted-foreground py-3">
+            No benchmark data yet. Click Run Now to pull current market rates.
+          </div>
+        )}
+        {!benchmarksLoading && benchmarks && benchmarks.length > 0 && (
+          <div className="space-y-3">
+            <div className="rounded-md border border-border overflow-hidden">
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="bg-secondary/30 border-b border-border">
+                    <th className="text-left px-3 py-2 font-medium text-muted-foreground">Service</th>
+                    <th className="text-right px-3 py-2 font-medium text-muted-foreground">Low</th>
+                    <th className="text-right px-3 py-2 font-medium text-muted-foreground">Mid</th>
+                    <th className="text-right px-3 py-2 font-medium text-muted-foreground">High</th>
+                    <th className="text-right px-3 py-2 font-medium text-muted-foreground">Updated</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {benchmarks.map((b) => (
+                    <tr key={b.id} className="border-b border-border last:border-0 group">
+                      <td className="px-3 py-2 font-medium text-foreground">{b.serviceType}</td>
+                      <td className="px-3 py-2 text-right text-muted-foreground">${b.lowPerAcre.toLocaleString()}</td>
+                      <td className="px-3 py-2 text-right text-foreground font-medium">${b.midPerAcre.toLocaleString()}</td>
+                      <td className="px-3 py-2 text-right text-muted-foreground">${b.highPerAcre.toLocaleString()}</td>
+                      <td className="px-3 py-2 text-right text-[11px] text-muted-foreground">
+                        {new Date(b.lastUpdatedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            {/* Research summaries */}
+            <div className="space-y-2">
+              {benchmarks.filter(b => b.researchSummary).map((b) => (
+                <div key={b.id} className="text-[11px] text-muted-foreground">
+                  <span className="font-medium text-foreground">{b.serviceType}:</span> {b.researchSummary}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </SettingsSection>
 
       <div className="flex justify-end pt-2">

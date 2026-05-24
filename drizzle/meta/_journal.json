@@ -225,6 +225,13 @@
       "when": 1779585671621,
       "tag": "0031_loose_captain_midlands",
       "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "5",
+      "when": 1779588114347,
+      "tag": "0032_small_terrax",
+      "breakpoints": true
     }
   ]
 }

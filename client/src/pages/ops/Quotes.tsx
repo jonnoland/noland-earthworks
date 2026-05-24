@@ -41,6 +41,9 @@ import {
   ClipboardList,
   Eye,
   Building2,
+  BookmarkPlus,
+  Archive,
+  BookmarkCheck,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -1582,7 +1585,17 @@ function WebsiteRequestCard({
   const [statusIdx, setStatusIdx] = useState(0);
   const statusTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const [customPrompt, setCustomPrompt] = useState("");
+  const [draftSaved, setDraftSaved] = useState(false);
   const utils = trpc.useUtils();
+
+  const saveDraft = trpc.ops.quotes.saveDraft.useMutation({
+    onSuccess: () => {
+      toast.success("Draft saved.");
+      setDraftSaved(true);
+      utils.ops.quotes.listDrafts.invalidate();
+    },
+    onError: (err) => toast.error(`Failed to save draft: ${err.message}`),
+  });
 
   // Build full address for satellite imagery
   const fullAddress = [
@@ -1920,8 +1933,32 @@ function WebsiteRequestCard({
             </Button>
           </div>
 
-          {/* Build Quote CTA */}
-          <div className="flex justify-end">
+          {/* Build Quote CTA + Save Draft */}
+          <div className="flex items-center justify-between">
+            <Button
+              size="sm"
+              variant="outline"
+              className="gap-1.5 text-xs"
+              disabled={saveDraft.isPending || draftSaved}
+              onClick={() => saveDraft.mutate({
+                submissionId: submission.id,
+                customerName: submission.name,
+                customerEmail: submission.email,
+                service: submission.service,
+                county: submission.county,
+                acreage: submission.acreage ?? undefined,
+                aiResult: JSON.stringify({ ...analysis, quoteMessage: editedMessage }),
+              })}
+            >
+              {saveDraft.isPending ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              ) : draftSaved ? (
+                <BookmarkCheck className="w-3.5 h-3.5 text-green-400" />
+              ) : (
+                <BookmarkPlus className="w-3.5 h-3.5" />
+              )}
+              {draftSaved ? "Draft Saved" : "Save Draft"}
+            </Button>
             <Button
               size="sm"
               className="gap-1.5 text-xs"

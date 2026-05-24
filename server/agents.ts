@@ -780,7 +780,7 @@ export const AGENT_REGISTRY = [
     id: "pricing_update",
     name: "Pricing Benchmark Update",
     description: "Researches current market rates for land management, forestry mulching, brush removal, and brush hogging in Middle & West Tennessee. Updates the benchmarks on the Pricing page.",
-    schedule: "Sundays at 6 AM",
+    schedule: "Daily at 6 AM",
   },
 ] as const;
 

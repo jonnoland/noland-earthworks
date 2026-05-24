@@ -18,7 +18,7 @@ import {
   getAllUsers, setUserRole,
 } from "./db";
 import { Resend } from "resend";
-import { jobs, opsLeads, quoteSubmissions, crews, crewMembers, conversations, messages, reviews, timeEntries, distanceQuotes, businessSettings, automationSettings, serviceCatalog, messageTemplates, reminderRules, leadNotes, visitBlackoutDates, recurringBlackoutDays, aiPricingSettings } from "../drizzle/schema";
+import { jobs, opsLeads, quoteSubmissions, crews, crewMembers, conversations, messages, reviews, timeEntries, distanceQuotes, businessSettings, automationSettings, serviceCatalog, messageTemplates, reminderRules, leadNotes, visitBlackoutDates, recurringBlackoutDays, aiPricingSettings, quoteDrafts } from "../drizzle/schema";
 
 import { and, desc, eq, gte, lt, like } from "drizzle-orm";
 
@@ -528,23 +528,68 @@ const quotesRouter = router({
     .mutation(async ({ input }) => {
       const { invokeLLM } = await import("./_core/llm");
 
-      // ─── Pricing reference table — Middle & West Tennessee market rates (2025–2026) ────────────────
+      // ─── Load AI pricing settings from DB (falls back to 2025-2026 TN market defaults) ─────────────
+      const db = await getDb();
+      let pricingRow: typeof aiPricingSettings.$inferSelect | null = null;
+      if (db) {
+        const rows = await db.select().from(aiPricingSettings).limit(1);
+        if (rows.length === 0) {
+          await db.insert(aiPricingSettings).values({});
+          const seeded = await db.select().from(aiPricingSettings).limit(1);
+          pricingRow = seeded[0] ?? null;
+        } else {
+          pricingRow = rows[0];
+        }
+      }
+
+      // West TN counties — longer mobilization drive from Middle TN base
+      const WEST_TN_COUNTIES = new Set([
+        "carroll", "chester", "decatur", "gibson", "hardin",
+        "henderson", "henry", "madison", "weakley",
+      ]);
+      const isWestTn = WEST_TN_COUNTIES.has((input.county ?? "").toLowerCase());
+
+      // ─── Pricing constants — prefer DB values, fall back to 2025-2026 TN market rates ─────────────
       // Sources: Mid State Land Clearing (Columbia TN), Bucktown Grading, HomeGuide, Angi 2026 data
-      // Forestry mulching: $1,200–$4,500/acre depending on density
-      // Land clearing: $1,500–$8,000/acre depending on density
-      // Mobilization: $400 (Middle TN standard for tracked equipment)
-      // Minimum job: $1,800 (covers mobilization + minimum 2hr on-site)
+      const fmBase  = pricingRow?.forestryMulchingBaseRate ?? 800;
+      const lcBase  = pricingRow?.landClearingBaseRate     ?? 700;
+      const bhBase  = pricingRow?.brushHoggingBaseRate     ?? 150;
+      const rowBase = pricingRow?.rowClearingBaseRate       ?? 600;
+      const dmMult  = parseFloat(pricingRow?.densityModerateMultiplier ?? "1.25");
+      const dhMult  = parseFloat(pricingRow?.densityHeavyMultiplier    ?? "1.60");
+      const trMult  = parseFloat(pricingRow?.terrainRollingMultiplier  ?? "1.15");
+      const tsMult  = parseFloat(pricingRow?.terrainSteepMultiplier    ?? "1.35");
+      const amMult  = parseFloat(pricingRow?.accessModerateMultiplier  ?? "1.10");
+      const adMult  = parseFloat(pricingRow?.accessDifficultMultiplier ?? "1.25");
+      const spread  = parseFloat(pricingRow?.priceRangeSpread          ?? "0.15");
+
+      // Build per-acre rate ranges from DB base rates + density multipliers
       const BASE_RATES: Record<string, Record<string, [number, number]>> = {
-        // Per-acre rates (before terrain/access multipliers)
-        "forestry-mulching":     { light: [1200, 1800], moderate: [1800, 2800], heavy: [2800, 4500] },
-        "land-clearing":         { light: [1500, 2500], moderate: [2500, 4500], heavy: [4500, 8000] },
+        "forestry-mulching":     {
+          light:    [Math.round(fmBase * 0.75),  Math.round(fmBase * 1.0)],
+          moderate: [Math.round(fmBase * 1.0),   Math.round(fmBase * dmMult)],
+          heavy:    [Math.round(fmBase * dmMult), Math.round(fmBase * dhMult * 1.5)],
+        },
+        "land-clearing":         {
+          light:    [Math.round(lcBase * 0.75),  Math.round(lcBase * 1.0)],
+          moderate: [Math.round(lcBase * 1.0),   Math.round(lcBase * dmMult)],
+          heavy:    [Math.round(lcBase * dmMult), Math.round(lcBase * dhMult * 2.0)],
+        },
         "vegetation-management": { light: [200, 500],   moderate: [500, 1000], heavy: [1000, 2200] },
         "property-maintenance":  { light: [200, 500],   moderate: [500, 1000], heavy: [1000, 2200] },
-        "right-of-way-clearing": { light: [1400, 2500], moderate: [2000, 3800], heavy: [3000, 5500] },
-        "brush-hogging":         { light: [80, 150],    moderate: [150, 300],  heavy: [300, 600]   },
+        "right-of-way-clearing": {
+          light:    [Math.round(rowBase * 0.75),  Math.round(rowBase * 1.0)],
+          moderate: [Math.round(rowBase * 1.0),   Math.round(rowBase * dmMult)],
+          heavy:    [Math.round(rowBase * dmMult), Math.round(rowBase * dhMult * 1.5)],
+        },
+        "brush-hogging":         {
+          light:    [Math.round(bhBase * 0.75), Math.round(bhBase * 1.0)],
+          moderate: [Math.round(bhBase * 1.0),  Math.round(bhBase * dmMult)],
+          heavy:    [Math.round(bhBase * dmMult), Math.round(bhBase * dhMult)],
+        },
       };
-      const TERRAIN_MULT: Record<string, number> = { flat: 1.0, rolling: 1.12, steep: 1.28 };
-      const ACCESS_MULT:  Record<string, number> = { easy: 1.0, moderate: 1.10, difficult: 1.22 };
+      const TERRAIN_MULT: Record<string, number> = { flat: 1.0, rolling: trMult, steep: tsMult };
+      const ACCESS_MULT:  Record<string, number> = { easy: 1.0, moderate: amMult, difficult: adMult };
       const BASE_APD: Record<string, number> = {
         // Acres per day (tracked mulcher, Middle TN conditions)
         "forestry-mulching": 1.5, "land-clearing": 1.2,
@@ -553,8 +598,13 @@ const quotesRouter = router({
       };
       const DENSITY_PROD: Record<string, number> = { light: 1.5, moderate: 1.0, heavy: 0.55 };
       const TERRAIN_PROD: Record<string, number> = { flat: 1.0, rolling: 0.82, steep: 0.60 };
-      const MOBILIZATION = 400;  // Middle TN standard for tracked equipment
-      const MIN_JOB = 1800;
+      // Use West TN mobilization fee if county is in West TN and the override is set
+      const baseMobilization = pricingRow?.mobilizationFee ?? 400;
+      const MOBILIZATION = isWestTn && pricingRow?.westTnMobilizationFee
+        ? pricingRow.westTnMobilizationFee
+        : baseMobilization;
+      const MIN_JOB = pricingRow?.minimumJobTotal ?? 1800;
+      void spread; // used in future spread-based range calculation
 
       // Parse acreage string to a number and a human-readable label
       const ACREAGE_MAP: Record<string, number> = {
@@ -602,7 +652,7 @@ Pricing reference — Middle & West Tennessee market rates (2025–2026):
 - Site access: ${access}
 - Calculated price range: $${refLow.toLocaleString()} – $${refHigh.toLocaleString()} (based on current TN market rates)
 - Estimated days on site: ${estDays ?? "unknown"}
-- Mobilization fee: $${MOBILIZATION} (included in range; standard for tracked equipment in Middle TN)
+- Mobilization fee: $${MOBILIZATION} (included in range; ${isWestTn ? "West TN rate — longer drive from Middle TN base" : "standard for tracked equipment in Middle TN"})
 - Add-ons requested: ${addOnsList.length > 0 ? addOnsList.join(", ") : "none"}
 
 Pricing context for your reference:
@@ -702,6 +752,62 @@ ${input.customPrompt ? `\nADJUSTMENT INSTRUCTION: ${input.customPrompt}\nApply t
       } catch {
         throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "AI returned malformed JSON. Try again." });
       }
+    }),
+
+  // ─── Draft Management ───────────────────────────────────────────────────────────────────────
+  saveDraft: ownerProcedure
+    .input(z.object({
+      submissionId: z.number().int().positive(),
+      customerName: z.string().optional(),
+      customerEmail: z.string().optional(),
+      service: z.string().optional(),
+      county: z.string().optional(),
+      acreage: z.string().optional(),
+      aiResult: z.string(), // JSON-stringified AI analysis result
+      notes: z.string().optional(),
+    }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+      const [inserted] = await db.insert(quoteDrafts).values({
+        submissionId: input.submissionId,
+        customerName: input.customerName,
+        customerEmail: input.customerEmail,
+        service: input.service,
+        county: input.county,
+        acreage: input.acreage,
+        aiResult: input.aiResult,
+        notes: input.notes,
+        status: "saved",
+      });
+      return { success: true, insertId: (inserted as { insertId?: number })?.insertId ?? null };
+    }),
+
+  listDrafts: ownerProcedure.query(async () => {
+    const db = await getDb();
+    if (!db) return [];
+    return db.select().from(quoteDrafts).orderBy(desc(quoteDrafts.createdAt)).limit(100);
+  }),
+
+  updateDraftStatus: ownerProcedure
+    .input(z.object({
+      id: z.number().int().positive(),
+      status: z.enum(["saved", "sent", "archived"]),
+    }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+      await db.update(quoteDrafts).set({ status: input.status, updatedAt: new Date() }).where(eq(quoteDrafts.id, input.id));
+      return { success: true };
+    }),
+
+  deleteDraft: ownerProcedure
+    .input(z.object({ id: z.number().int().positive() }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+      await db.delete(quoteDrafts).where(eq(quoteDrafts.id, input.id));
+      return { success: true };
     }),
 });
 
@@ -1535,6 +1641,7 @@ const settingsRouter = router({
       accessModerateMultiplier: z.string().optional(),
       accessDifficultMultiplier: z.string().optional(),
       priceRangeSpread: z.string().optional(),
+      westTnMobilizationFee: z.number().int().min(0).nullable().optional(),
     }))
     .mutation(async ({ input }) => {
       const db = await getDb();

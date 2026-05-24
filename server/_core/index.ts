@@ -89,8 +89,8 @@ async function startServer() {
   cron.schedule("0 6 * * *", async () => {
     if (await getAgentEnabled("daily_digest")) await runDailyDigestAgent();
   }, { timezone: "America/Chicago" });
-  // Pricing Benchmark Update: every Sunday at 6:00 AM CT
-  cron.schedule("0 6 * * 0", async () => {
+  // Pricing Benchmark Update: every day at 6:00 AM CT
+  cron.schedule("0 6 * * *", async () => {
     if (await getAgentEnabled("pricing_update")) await runPricingUpdateAgent();
   }, { timezone: "America/Chicago" });
   console.log("[Agents] 6 scheduled agents registered.");
