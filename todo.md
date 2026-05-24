@@ -1100,5 +1100,10 @@
 - [x] Add Google Places API fallback for reviews sync (while awaiting Business Profile API access)
 - [x] Update Reviews page to show read-only note for Places API reviews (no reply available via Places API)
 - [x] Fix Jobber clientArchive GraphQL mutation — wrong argument structure (input vs client, clientId vs client.id)
-- [ ] Add AI Quote Assistant backend procedure (ops.quotes.analyzeSubmission) — takes a quote submission and returns AI-suggested scope, line items, pricing, and flags
-- [ ] Build AI Quote Assistant UI panel on /ops/quotes — "Analyze with AI" button on each inbound submission opens a slide-out with AI-generated quote draft, one-click push to Jobber
+- [x] Add AI Quote Assistant backend procedure (ops.quotes.analyzeSubmission) — takes a quote submission and returns AI-suggested scope, line items, pricing, and flags
+- [x] Build AI Quote Assistant UI panel on /ops/quotes — "Analyze with AI" button on each inbound submission opens a slide-out with AI-generated quote draft, one-click push to Jobber
+
+## AI Quote Assistant Enhancements — May 2026
+- [x] Satellite imagery for property address on Website Request cards (Google Maps Static API via backend proxy)
+- [x] Loading animation + progressive status messages during AI quote analysis
+- [x] AI pricing model settings panel on /ops/settings — adjustable base rates, multipliers, mobilization fee, min job

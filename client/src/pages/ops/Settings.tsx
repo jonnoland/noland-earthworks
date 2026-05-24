@@ -38,6 +38,7 @@ const tabs = [
   { id: "billing",              label: "Billing",              icon: CreditCard },
   { id: "scheduling",           label: "Scheduling",           icon: CalendarOff },
   { id: "agents",               label: "Agents",               icon: Bot },
+  { id: "ai-pricing",           label: "AI Pricing",           icon: BarChart2 },
 ];
 
 // ─── Shared helpers ───────────────────────────────────────────────────────────
@@ -1985,7 +1986,200 @@ function AgentsTab() {
   );
 }
 
-// ─── Main Settings page ───────────────────────────────────────────────────
+/// ─── AI Pricing Settings Tab ─────────────────────────────────────────────────
+function AIPricingTab() {
+  const { data: settings, isLoading } = trpc.ops.settings.getAIPricingSettings.useQuery();
+  const utils = trpc.useUtils();
+  const update = trpc.ops.settings.updateAIPricingSettings.useMutation({
+    onSuccess: () => {
+      toast.success("AI pricing model saved");
+      utils.ops.settings.getAIPricingSettings.invalidate();
+    },
+    onError: (e) => toast.error(`Save failed: ${e.message}`),
+  });
+
+  const [form, setForm] = useState<Record<string, string | number>>({});
+  const [dirty, setDirty] = useState(false);
+
+  useEffect(() => {
+    if (settings) {
+      setForm({
+        forestryMulchingBaseRate: settings.forestryMulchingBaseRate,
+        landClearingBaseRate: settings.landClearingBaseRate,
+        brushHoggingBaseRate: settings.brushHoggingBaseRate,
+        rowClearingBaseRate: settings.rowClearingBaseRate,
+        mobilizationFee: settings.mobilizationFee,
+        minimumJobTotal: settings.minimumJobTotal,
+        densityModerateMultiplier: settings.densityModerateMultiplier,
+        densityHeavyMultiplier: settings.densityHeavyMultiplier,
+        terrainRollingMultiplier: settings.terrainRollingMultiplier,
+        terrainSteepMultiplier: settings.terrainSteepMultiplier,
+        accessModerateMultiplier: settings.accessModerateMultiplier,
+        accessDifficultMultiplier: settings.accessDifficultMultiplier,
+        priceRangeSpread: settings.priceRangeSpread,
+      });
+      setDirty(false);
+    }
+  }, [settings]);
+
+  function setField(key: string, value: string | number) {
+    setForm((prev) => ({ ...prev, [key]: value }));
+    setDirty(true);
+  }
+
+  function handleSave() {
+    update.mutate({
+      forestryMulchingBaseRate: Number(form.forestryMulchingBaseRate),
+      landClearingBaseRate: Number(form.landClearingBaseRate),
+      brushHoggingBaseRate: Number(form.brushHoggingBaseRate),
+      rowClearingBaseRate: Number(form.rowClearingBaseRate),
+      mobilizationFee: Number(form.mobilizationFee),
+      minimumJobTotal: Number(form.minimumJobTotal),
+      densityModerateMultiplier: String(form.densityModerateMultiplier),
+      densityHeavyMultiplier: String(form.densityHeavyMultiplier),
+      terrainRollingMultiplier: String(form.terrainRollingMultiplier),
+      terrainSteepMultiplier: String(form.terrainSteepMultiplier),
+      accessModerateMultiplier: String(form.accessModerateMultiplier),
+      accessDifficultMultiplier: String(form.accessDifficultMultiplier),
+      priceRangeSpread: String(form.priceRangeSpread),
+    });
+  }
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center gap-2 p-6 text-sm text-muted-foreground">
+        <Loader2 className="w-4 h-4 animate-spin" />Loading...
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <SettingsSection
+        title="Base Rates"
+        description="Per-acre revenue target for each service type. These feed directly into AI quote estimates."
+      >
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+          {([
+            { label: "Forestry Mulching", key: "forestryMulchingBaseRate" },
+            { label: "Land Clearing",     key: "landClearingBaseRate" },
+            { label: "Brush Hogging",     key: "brushHoggingBaseRate" },
+            { label: "ROW Clearing",      key: "rowClearingBaseRate" },
+          ] as const).map(({ label, key }) => (
+            <div key={key}>
+              <label className="block text-xs font-medium text-foreground mb-1">{label}</label>
+              <p className="text-[11px] text-muted-foreground mb-1.5">$/acre</p>
+              <div className="flex items-center gap-1">
+                <span className="text-sm text-muted-foreground">$</span>
+                <input
+                  type="number" min={0}
+                  value={form[key] as number ?? 0}
+                  onChange={(e) => setField(key, parseInt(e.target.value, 10) || 0)}
+                  className="w-28 rounded-md border border-border bg-secondary/30 px-2.5 py-1.5 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                />
+              </div>
+            </div>
+          ))}
+        </div>
+      </SettingsSection>
+
+      <SettingsSection
+        title="Job Minimums"
+        description="Fixed costs and floor pricing applied to every job."
+      >
+        <div className="grid grid-cols-2 gap-4">
+          {([
+            { label: "Mobilization Fee",  key: "mobilizationFee",  help: "Added to every job" },
+            { label: "Minimum Job Total", key: "minimumJobTotal",  help: "Quotes below this are floored" },
+          ] as const).map(({ label, key, help }) => (
+            <div key={key}>
+              <label className="block text-xs font-medium text-foreground mb-1">{label}</label>
+              <p className="text-[11px] text-muted-foreground mb-1.5">{help}</p>
+              <div className="flex items-center gap-1">
+                <span className="text-sm text-muted-foreground">$</span>
+                <input
+                  type="number" min={0}
+                  value={form[key] as number ?? 0}
+                  onChange={(e) => setField(key, parseInt(e.target.value, 10) || 0)}
+                  className="w-28 rounded-md border border-border bg-secondary/30 px-2.5 py-1.5 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                />
+              </div>
+            </div>
+          ))}
+        </div>
+      </SettingsSection>
+
+      <SettingsSection
+        title="Condition Multipliers"
+        description="Adjustments applied on top of base rates. 1.00 = no change, 1.25 = +25%."
+      >
+        <div className="space-y-4">
+          {([
+            { heading: "Vegetation Density", fields: [
+              { label: "Moderate", key: "densityModerateMultiplier" },
+              { label: "Heavy",    key: "densityHeavyMultiplier" },
+            ]},
+            { heading: "Terrain", fields: [
+              { label: "Rolling", key: "terrainRollingMultiplier" },
+              { label: "Steep",   key: "terrainSteepMultiplier" },
+            ]},
+            { heading: "Site Access", fields: [
+              { label: "Moderate",  key: "accessModerateMultiplier" },
+              { label: "Difficult", key: "accessDifficultMultiplier" },
+            ]},
+          ] as const).map(({ heading, fields }) => (
+            <div key={heading}>
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">{heading}</p>
+              <div className="grid grid-cols-2 gap-4">
+                {fields.map(({ label, key }) => (
+                  <div key={key}>
+                    <label className="block text-xs font-medium text-foreground mb-1">{label}</label>
+                    <div className="flex items-center gap-1.5">
+                      <input
+                        type="number" step="0.01" min={0.5} max={5}
+                        value={form[key] as string ?? "1.00"}
+                        onChange={(e) => setField(key, e.target.value)}
+                        className="w-24 rounded-md border border-border bg-secondary/30 px-2.5 py-1.5 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                      />
+                      <span className="text-xs text-muted-foreground">x</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      </SettingsSection>
+
+      <SettingsSection
+        title="Price Range Spread"
+        description="Controls how wide the low/high range is on AI estimates. 0.15 = ±15% around the midpoint."
+      >
+        <div className="flex items-center gap-1.5">
+          <input
+            type="number" step="0.01" min={0} max={0.5}
+            value={form.priceRangeSpread as string ?? "0.15"}
+            onChange={(e) => setField("priceRangeSpread", e.target.value)}
+            className="w-24 rounded-md border border-border bg-secondary/30 px-2.5 py-1.5 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+          />
+          <span className="text-xs text-muted-foreground">e.g. 0.15 = ±15%</span>
+        </div>
+      </SettingsSection>
+
+      <div className="flex justify-end pt-2">
+        <button
+          onClick={handleSave}
+          disabled={!dirty || update.isPending}
+          className="flex items-center gap-1.5 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors"
+        >
+          {update.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+          Save Changes
+        </button>
+      </div>
+    </div>
+  );
+}
+// ─── Main Settings page ─────────────────────────────────────────────────
 export default function Settings() {
   const [activeTab, setActiveTab] = useState(() => {
     // Auto-navigate to integrations tab when returning from Google OAuth
@@ -2028,6 +2222,7 @@ export default function Settings() {
       case "billing":              return <BillingTab />;
       case "scheduling":           return <SchedulingTab />;
       case "agents":               return <AgentsTab />;
+      case "ai-pricing":           return <AIPricingTab />;
       default:                     return <GeneralTab />;
     }
   };

@@ -18,7 +18,7 @@ type MapsConfig = {
   apiKey: string;
 };
 
-function getMapsConfig(): MapsConfig {
+export function getMapsConfig(): MapsConfig {
   const baseUrl = ENV.forgeApiUrl;
   const apiKey = ENV.forgeApiKey;
 

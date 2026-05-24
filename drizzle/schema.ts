@@ -676,3 +676,41 @@ export const googleOAuthTokens = mysqlTable("google_oauth_tokens", {
 });
 export type GoogleOAuthToken = typeof googleOAuthTokens.$inferSelect;
 export type InsertGoogleOAuthToken = typeof googleOAuthTokens.$inferInsert;
+
+// ─── AI Pricing Model Settings ───────────────────────────────────────────────
+/**
+ * Stores the adjustable parameters used by the AI Quote Analyzer.
+ * Only one row is expected (id=1). Upsert on id=1.
+ */
+export const aiPricingSettings = mysqlTable("ai_pricing_settings", {
+  id: int("id").primaryKey().autoincrement(),
+  /** Base rate per acre for forestry mulching (USD) */
+  forestryMulchingBaseRate: int("forestryMulchingBaseRate").notNull().default(800),
+  /** Base rate per acre for land clearing (USD) */
+  landClearingBaseRate: int("landClearingBaseRate").notNull().default(700),
+  /** Base rate per acre for brush hogging (USD) */
+  brushHoggingBaseRate: int("brushHoggingBaseRate").notNull().default(150),
+  /** Base rate per acre for right-of-way clearing (USD) */
+  rowClearingBaseRate: int("rowClearingBaseRate").notNull().default(600),
+  /** Flat mobilization fee added to every job (USD) */
+  mobilizationFee: int("mobilizationFee").notNull().default(350),
+  /** Minimum job total (USD) — quotes below this are floored */
+  minimumJobTotal: int("minimumJobTotal").notNull().default(750),
+  /** Density multiplier for moderate vegetation (decimal stored as string, e.g. "1.25") */
+  densityModerateMultiplier: varchar("densityModerateMultiplier", { length: 10 }).notNull().default("1.25"),
+  /** Density multiplier for heavy vegetation */
+  densityHeavyMultiplier: varchar("densityHeavyMultiplier", { length: 10 }).notNull().default("1.60"),
+  /** Terrain multiplier for rolling terrain */
+  terrainRollingMultiplier: varchar("terrainRollingMultiplier", { length: 10 }).notNull().default("1.15"),
+  /** Terrain multiplier for steep terrain */
+  terrainSteepMultiplier: varchar("terrainSteepMultiplier", { length: 10 }).notNull().default("1.35"),
+  /** Access multiplier for moderate access difficulty */
+  accessModerateMultiplier: varchar("accessModerateMultiplier", { length: 10 }).notNull().default("1.10"),
+  /** Access multiplier for difficult access */
+  accessDifficultMultiplier: varchar("accessDifficultMultiplier", { length: 10 }).notNull().default("1.25"),
+  /** Price range spread as a decimal string (e.g. "0.15" = ±15% around midpoint) */
+  priceRangeSpread: varchar("priceRangeSpread", { length: 10 }).notNull().default("0.15"),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type AIPricingSettings = typeof aiPricingSettings.$inferSelect;
+export type InsertAIPricingSettings = typeof aiPricingSettings.$inferInsert;

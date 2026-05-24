@@ -1403,6 +1403,18 @@ type QuoteSubmission = {
   createdAt: Date | string;
 };
 
+// Progressive status messages shown during AI analysis
+const AI_STATUS_MESSAGES = [
+  "Reading the request...",
+  "Checking acreage and service type...",
+  "Applying pricing model...",
+  "Assessing terrain and access conditions...",
+  "Identifying risk factors...",
+  "Building line items...",
+  "Drafting quote message...",
+  "Finalizing estimate...",
+];
+
 function WebsiteRequestCard({
   submission,
   onBuildQuote,
@@ -1421,15 +1433,45 @@ function WebsiteRequestCard({
   const [expanded, setExpanded] = useState(false);
   const [analysis, setAnalysis] = useState<AIQuoteAnalysis | null>(null);
   const [editedMessage, setEditedMessage] = useState("");
+  const [statusIdx, setStatusIdx] = useState(0);
+  const statusTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const utils = trpc.useUtils();
 
+  // Build full address for satellite imagery
+  const fullAddress = [
+    submission.street,
+    submission.city,
+    submission.state ?? "TN",
+    submission.zip,
+  ].filter(Boolean).join(", ");
+
+  // Fallback to county + TN if no street address
+  const satelliteAddress = fullAddress || `${submission.county} County, TN`;
+  const hasPreciseAddress = !!(submission.street && submission.city);
+
+  // Fetch satellite imagery — only when the card has an address worth showing
+  const { data: satData, isLoading: satLoading } = trpc.ops.quotes.satelliteImage.useQuery(
+    { address: satelliteAddress },
+    { enabled: hasPreciseAddress, staleTime: 1000 * 60 * 30, retry: false }
+  );
+
   const analyze = trpc.ops.quotes.analyzeSubmission.useMutation({
+    onMutate: () => {
+      setStatusIdx(0);
+      statusTimerRef.current = setInterval(() => {
+        setStatusIdx((i) => (i + 1 < AI_STATUS_MESSAGES.length ? i + 1 : i));
+      }, 1800);
+    },
     onSuccess: (result) => {
+      if (statusTimerRef.current) clearInterval(statusTimerRef.current);
       setAnalysis(result);
       setEditedMessage(result.quoteMessage);
       setExpanded(true);
     },
-    onError: (err) => toast.error(`AI analysis failed: ${err.message}`),
+    onError: (err) => {
+      if (statusTimerRef.current) clearInterval(statusTimerRef.current);
+      toast.error(`AI analysis failed: ${err.message}`);
+    },
   });
 
   const deleteSubmission = trpc.ops.quotes.delete.useMutation({
@@ -1470,6 +1512,46 @@ function WebsiteRequestCard({
 
   return (
     <div className="rounded-lg border border-border bg-card overflow-hidden">
+      {/* Satellite imagery strip — shown when a precise address is available */}
+      {hasPreciseAddress && (
+        <div className="relative w-full h-36 bg-secondary/20 overflow-hidden">
+          {satLoading && (
+            <div className="absolute inset-0 flex items-center justify-center gap-2 text-[11px] text-muted-foreground">
+              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              Loading satellite view...
+            </div>
+          )}
+          {satData?.url && (
+            <>
+              <img
+                src={satData.url}
+                alt={`Satellite view of ${address}`}
+                className="w-full h-full object-cover"
+                onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
+              />
+              {/* Overlay: address + Google Maps link */}
+              <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/70 to-transparent px-3 py-2 flex items-end justify-between">
+                <span className="text-[10px] text-white/80 truncate">{address}</span>
+                <a
+                  href={`https://maps.google.com/?q=${encodeURIComponent(address)}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-1 text-[10px] text-white/70 hover:text-white transition-colors shrink-0 ml-2"
+                >
+                  <ExternalLink className="w-2.5 h-2.5" />
+                  View in Maps
+                </a>
+              </div>
+            </>
+          )}
+          {!satLoading && !satData?.url && (
+            <div className="absolute inset-0 flex items-center justify-center text-[11px] text-muted-foreground">
+              Satellite imagery unavailable
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Card header row */}
       <div className="flex items-start gap-3 px-4 py-3">
         <div className="flex-1 min-w-0">
@@ -1538,7 +1620,7 @@ function WebsiteRequestCard({
             ) : (
               <Sparkles className="w-3.5 h-3.5" />
             )}
-            {analyze.isPending ? "Analyzing..." : analysis ? "Re-analyze" : "Analyze with AI"}
+            {analyze.isPending ? AI_STATUS_MESSAGES[statusIdx] : analysis ? "Re-analyze" : "Analyze with AI"}
           </button>
           <button
             onClick={handleBuildQuote}

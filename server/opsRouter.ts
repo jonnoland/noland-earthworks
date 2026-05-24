@@ -18,7 +18,7 @@ import {
   getAllUsers, setUserRole,
 } from "./db";
 import { Resend } from "resend";
-import { jobs, opsLeads, quoteSubmissions, crews, crewMembers, conversations, messages, reviews, timeEntries, distanceQuotes, businessSettings, automationSettings, serviceCatalog, messageTemplates, reminderRules, leadNotes, visitBlackoutDates, recurringBlackoutDays } from "../drizzle/schema";
+import { jobs, opsLeads, quoteSubmissions, crews, crewMembers, conversations, messages, reviews, timeEntries, distanceQuotes, businessSettings, automationSettings, serviceCatalog, messageTemplates, reminderRules, leadNotes, visitBlackoutDates, recurringBlackoutDays, aiPricingSettings } from "../drizzle/schema";
 
 import { and, desc, eq, gte, lt, like } from "drizzle-orm";
 
@@ -464,6 +464,44 @@ const quotesRouter = router({
     }),
 
   /**
+   * Satellite imagery for a property address.
+   * Geocodes the address, then returns a Google Maps Static API URL
+   * (satellite view, 600x300, zoom 18) via the Manus Maps proxy.
+   * The URL is safe to embed in an <img> tag — no API key is exposed.
+   */
+  satelliteImage: ownerProcedure
+    .input(z.object({
+      address: z.string().min(1),  // full address string
+    }))
+    .query(async ({ input }) => {
+      const { makeRequest, getMapsConfig } = await import("./_core/map");
+
+      // Step 1: Geocode the address to get lat/lng
+      const geo = await makeRequest<{
+        results: Array<{ geometry: { location: { lat: number; lng: number } } }>;
+        status: string;
+      }>("/maps/api/geocode/json", { address: input.address });
+
+      if (geo.status !== "OK" || !geo.results[0]) {
+        return { url: null, lat: null, lng: null };
+      }
+
+      const { lat, lng } = geo.results[0].geometry.location;
+
+      // Step 2: Build a Static Maps URL through the proxy
+      const { baseUrl, apiKey } = getMapsConfig();
+      const staticUrl = new URL(`${baseUrl}/v1/maps/proxy/maps/api/staticmap`);
+      staticUrl.searchParams.set("center", `${lat},${lng}`);
+      staticUrl.searchParams.set("zoom", "17");
+      staticUrl.searchParams.set("size", "600x300");
+      staticUrl.searchParams.set("maptype", "satellite");
+      staticUrl.searchParams.set("markers", `color:red|${lat},${lng}`);
+      staticUrl.searchParams.set("key", apiKey);
+
+      return { url: staticUrl.toString(), lat, lng };
+    }),
+
+  /**
    * AI Quote Analyzer — takes an inbound quote submission and returns:
    * - Recommended scope of work (plain English)
    * - Suggested line items with quantities and unit prices
@@ -513,7 +551,8 @@ const quotesRouter = router({
         "half-to-one": 0.75, "1-to-2": 1.5, "2-to-5": 3.5,
         "5-to-10": 7.5, "10-to-20": 15, "20+": 25,
       };
-      const acres = ACREAGE_MAP[input.acreage ?? ""] ?? (parseFloat(input.acreage ?? "0") || 0);
+      const acreageStr = input.acreage ?? "";
+      const acres = ACREAGE_MAP[acreageStr] ?? (parseFloat(acreageStr) || 0);
       const density = input.density ?? "moderate";
       const terrain = input.terrain ?? "flat";
       const access  = input.access  ?? "easy";
@@ -1431,6 +1470,45 @@ const settingsRouter = router({
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
       await db.delete(reminderRules).where(eq(reminderRules.id, input.id));
+      return { success: true };
+    }),
+  // ─── AI Pricing Settings ─────────────────────────────────────────────────────
+  getAIPricingSettings: ownerProcedure.query(async () => {
+    const db = await getDb();
+    if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+    const rows = await db.select().from(aiPricingSettings).limit(1);
+    if (rows.length === 0) {
+      await db.insert(aiPricingSettings).values({});
+      const seeded = await db.select().from(aiPricingSettings).limit(1);
+      return seeded[0];
+    }
+    return rows[0];
+  }),
+  updateAIPricingSettings: ownerProcedure
+    .input(z.object({
+      forestryMulchingBaseRate: z.number().int().min(0).optional(),
+      landClearingBaseRate: z.number().int().min(0).optional(),
+      brushHoggingBaseRate: z.number().int().min(0).optional(),
+      rowClearingBaseRate: z.number().int().min(0).optional(),
+      mobilizationFee: z.number().int().min(0).optional(),
+      minimumJobTotal: z.number().int().min(0).optional(),
+      densityModerateMultiplier: z.string().optional(),
+      densityHeavyMultiplier: z.string().optional(),
+      terrainRollingMultiplier: z.string().optional(),
+      terrainSteepMultiplier: z.string().optional(),
+      accessModerateMultiplier: z.string().optional(),
+      accessDifficultMultiplier: z.string().optional(),
+      priceRangeSpread: z.string().optional(),
+    }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+      const rows = await db.select().from(aiPricingSettings).limit(1);
+      if (rows.length === 0) {
+        await db.insert(aiPricingSettings).values({ ...input });
+      } else {
+        await db.update(aiPricingSettings).set({ ...input, updatedAt: new Date() }).where(eq(aiPricingSettings.id, rows[0].id));
+      }
       return { success: true };
     }),
 });
