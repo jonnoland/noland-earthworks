@@ -32,6 +32,13 @@ import {
   CheckCircle,
   Copy,
   ArchiveRestore,
+  Sparkles,
+  AlertTriangle,
+  Clock,
+  ChevronDown,
+  ChevronUp,
+  Globe,
+  ClipboardList,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -977,6 +984,8 @@ type CreateQuoteModalProps = {
     clientEmail?: string;
     clientAddress?: string;
     jobType?: string;
+    message?: string;
+    lineItems?: { name: string; description: string; quantity: number; unitPrice: number }[];
   };
 };
 
@@ -985,10 +994,17 @@ function CreateQuoteModal({ onClose, onCreated, prefill }: CreateQuoteModalProps
     if (prefill?.jobType) return prefill.jobType;
     return "";
   });
-  const [message, setMessage] = useState("");
+  const [message, setMessage] = useState(() => prefill?.message ?? "");
   const [clientSearch, setClientSearch] = useState(() => prefill?.clientName ?? "");
   const [selectedClient, setSelectedClient] = useState<ClientNode | null>(null);
-  const [lineItems, setLineItems] = useState<LineItem[]>([]);
+  const [lineItems, setLineItems] = useState<LineItem[]>(() =>
+    prefill?.lineItems?.map((li) => ({
+      name: li.name,
+      description: li.description,
+      quantity: li.quantity,
+      unitPrice: li.unitPrice,
+    })) ?? []
+  );
   const [serviceSearch, setServiceSearch] = useState("");
   const [showServicePicker, setShowServicePicker] = useState(false);
   const autoSelectedRef = useRef(false);
@@ -1355,6 +1371,366 @@ function CreateQuoteModal({ onClose, onCreated, prefill }: CreateQuoteModalProps
   );
 }
 
+// ─── AI Quote Analysis Result type ──────────────────────────────────────────
+type AIQuoteAnalysis = {
+  scopeNotes: string;
+  lineItems: { name: string; description: string; quantity: number; unitPrice: number }[];
+  priceLow: number;
+  priceHigh: number;
+  estimatedDays: number | null;
+  quoteMessage: string;
+  riskFlags: string[];
+  siteVisitRequired: boolean;
+  confidence: "high" | "medium" | "low";
+};
+
+// ─── Website Request Card ─────────────────────────────────────────────────────
+type QuoteSubmission = {
+  id: number;
+  name: string;
+  phone: string;
+  email: string;
+  service: string;
+  county: string;
+  acreage?: string | null;
+  street?: string | null;
+  city?: string | null;
+  state?: string | null;
+  zip?: string | null;
+  message?: string | null;
+  addOns?: string | null;
+  jobberStatus: string;
+  createdAt: Date | string;
+};
+
+function WebsiteRequestCard({
+  submission,
+  onBuildQuote,
+}: {
+  submission: QuoteSubmission;
+  onBuildQuote: (prefill: {
+    clientName?: string;
+    clientPhone?: string;
+    clientEmail?: string;
+    clientAddress?: string;
+    jobType?: string;
+    message?: string;
+    lineItems?: { name: string; description: string; quantity: number; unitPrice: number }[];
+  }) => void;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const [analysis, setAnalysis] = useState<AIQuoteAnalysis | null>(null);
+  const [editedMessage, setEditedMessage] = useState("");
+  const utils = trpc.useUtils();
+
+  const analyze = trpc.ops.quotes.analyzeSubmission.useMutation({
+    onSuccess: (result) => {
+      setAnalysis(result);
+      setEditedMessage(result.quoteMessage);
+      setExpanded(true);
+    },
+    onError: (err) => toast.error(`AI analysis failed: ${err.message}`),
+  });
+
+  const deleteSubmission = trpc.ops.quotes.delete.useMutation({
+    onSuccess: () => {
+      toast.success("Request removed.");
+      utils.ops.quotes.list.invalidate();
+    },
+    onError: (err) => toast.error(`Failed to delete: ${err.message}`),
+  });
+
+  const address = [submission.street, submission.city, submission.state]
+    .filter(Boolean)
+    .join(", ");
+
+  const addOnsList: string[] = (() => {
+    try { return JSON.parse(submission.addOns ?? "[]"); } catch { return []; }
+  })();
+
+  const CONFIDENCE_COLORS: Record<string, string> = {
+    high: "text-green-400",
+    medium: "text-yellow-400",
+    low: "text-red-400",
+  };
+
+  function handleBuildQuote() {
+    onBuildQuote({
+      clientName: submission.name,
+      clientPhone: submission.phone,
+      clientEmail: submission.email,
+      clientAddress: address,
+      jobType: analysis
+        ? `${submission.service} — ${submission.acreage ?? ""} ${submission.county} County`.trim()
+        : submission.service,
+      message: analysis ? editedMessage : undefined,
+      lineItems: analysis?.lineItems,
+    });
+  }
+
+  return (
+    <div className="rounded-lg border border-border bg-card overflow-hidden">
+      {/* Card header row */}
+      <div className="flex items-start gap-3 px-4 py-3">
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-sm font-semibold text-foreground">{submission.name}</span>
+            <span className="text-[11px] text-muted-foreground bg-secondary/40 rounded-full px-2 py-0.5">
+              {submission.service}
+            </span>
+            {submission.acreage && (
+              <span className="text-[11px] text-muted-foreground">{submission.acreage} acres</span>
+            )}
+            <span className="text-[11px] text-muted-foreground">{submission.county} County</span>
+          </div>
+          <div className="flex items-center gap-3 mt-1 flex-wrap">
+            <a href={`tel:${submission.phone}`} className="flex items-center gap-1 text-[11px] text-muted-foreground hover:text-primary transition-colors">
+              <Phone className="w-3 h-3" />{submission.phone}
+            </a>
+            <a href={`mailto:${submission.email}`} className="flex items-center gap-1 text-[11px] text-muted-foreground hover:text-primary transition-colors">
+              <Mail className="w-3 h-3" />{submission.email}
+            </a>
+            {address && (
+              <span className="flex items-center gap-1 text-[11px] text-muted-foreground">
+                <MapPin className="w-3 h-3" />{address}
+              </span>
+            )}
+            <span className="text-[11px] text-muted-foreground">
+              {new Date(submission.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+            </span>
+          </div>
+          {submission.message && (
+            <p className="mt-1.5 text-[11px] text-muted-foreground italic line-clamp-2">"{submission.message}"</p>
+          )}
+          {addOnsList.length > 0 && (
+            <div className="flex flex-wrap gap-1 mt-1.5">
+              {addOnsList.map((a: string) => (
+                <span key={a} className="text-[10px] bg-primary/10 text-primary rounded-full px-2 py-0.5">{a}</span>
+              ))}
+            </div>
+          )}
+        </div>
+        {/* Actions */}
+        <div className="flex items-center gap-2 shrink-0">
+          {analysis && (
+            <button
+              onClick={() => setExpanded((v) => !v)}
+              className="flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground transition-colors"
+            >
+              {expanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+              {expanded ? "Hide" : "Show"} Analysis
+            </button>
+          )}
+          <button
+            onClick={() => analyze.mutate({
+              service: submission.service,
+              county: submission.county,
+              acreage: submission.acreage ?? undefined,
+              message: submission.message ?? undefined,
+              addOns: submission.addOns ?? undefined,
+              name: submission.name,
+            })}
+            disabled={analyze.isPending}
+            className="flex items-center gap-1.5 text-xs font-medium text-amber-400 hover:text-amber-300 disabled:opacity-50 transition-colors"
+          >
+            {analyze.isPending ? (
+              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+            ) : (
+              <Sparkles className="w-3.5 h-3.5" />
+            )}
+            {analyze.isPending ? "Analyzing..." : analysis ? "Re-analyze" : "Analyze with AI"}
+          </button>
+          <button
+            onClick={handleBuildQuote}
+            className="flex items-center gap-1.5 text-xs font-medium text-primary hover:text-primary/80 transition-colors"
+          >
+            <PlusCircle className="w-3.5 h-3.5" />
+            Build Quote
+          </button>
+          <button
+            onClick={() => deleteSubmission.mutate({ id: submission.id })}
+            disabled={deleteSubmission.isPending}
+            className="text-muted-foreground hover:text-red-400 transition-colors disabled:opacity-50"
+            title="Remove request"
+          >
+            {deleteSubmission.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <Trash2 className="w-3 h-3" />}
+          </button>
+        </div>
+      </div>
+
+      {/* AI Analysis panel */}
+      {expanded && analysis && (
+        <div className="border-t border-border bg-secondary/10 px-4 py-4 space-y-4">
+          {/* Confidence + site visit banner */}
+          <div className="flex items-center gap-3 flex-wrap">
+            <span className={`text-[11px] font-semibold uppercase tracking-wide ${CONFIDENCE_COLORS[analysis.confidence]}`}>
+              {analysis.confidence} confidence
+            </span>
+            {analysis.siteVisitRequired && (
+              <span className="flex items-center gap-1 text-[11px] text-yellow-400 bg-yellow-500/10 rounded-full px-2.5 py-0.5">
+                <AlertTriangle className="w-3 h-3" />
+                Site visit required before quoting
+              </span>
+            )}
+            {analysis.estimatedDays && (
+              <span className="flex items-center gap-1 text-[11px] text-muted-foreground">
+                <Clock className="w-3 h-3" />
+                Est. {analysis.estimatedDays} day{analysis.estimatedDays !== 1 ? "s" : ""} on site
+              </span>
+            )}
+            <span className="ml-auto text-sm font-semibold text-foreground">
+              {formatMoney(analysis.priceLow)} – {formatMoney(analysis.priceHigh)}
+            </span>
+          </div>
+
+          {/* Scope notes */}
+          <div>
+            <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide mb-1">Scope Notes</p>
+            <p className="text-xs text-foreground leading-relaxed">{analysis.scopeNotes}</p>
+          </div>
+
+          {/* Risk flags */}
+          {analysis.riskFlags.length > 0 && (
+            <div>
+              <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide mb-1.5">Risk Flags</p>
+              <div className="space-y-1">
+                {analysis.riskFlags.map((flag, i) => (
+                  <div key={i} className="flex items-start gap-1.5 text-xs text-yellow-300/80">
+                    <AlertTriangle className="w-3 h-3 mt-0.5 shrink-0 text-yellow-400" />
+                    {flag}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Suggested line items */}
+          <div>
+            <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide mb-1.5">Suggested Line Items</p>
+            <div className="rounded-md border border-border overflow-hidden">
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="bg-secondary/30 border-b border-border">
+                    <th className="text-left px-3 py-2 font-medium text-muted-foreground">Item</th>
+                    <th className="text-right px-3 py-2 font-medium text-muted-foreground">Qty</th>
+                    <th className="text-right px-3 py-2 font-medium text-muted-foreground">Unit Price</th>
+                    <th className="text-right px-3 py-2 font-medium text-muted-foreground">Total</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {analysis.lineItems.map((li, i) => (
+                    <tr key={i} className="border-b border-border last:border-0">
+                      <td className="px-3 py-2">
+                        <p className="font-medium text-foreground">{li.name}</p>
+                        {li.description && <p className="text-muted-foreground text-[11px]">{li.description}</p>}
+                      </td>
+                      <td className="px-3 py-2 text-right text-muted-foreground">{li.quantity}</td>
+                      <td className="px-3 py-2 text-right text-muted-foreground">{formatMoney(li.unitPrice)}</td>
+                      <td className="px-3 py-2 text-right font-medium text-foreground">{formatMoney(li.quantity * li.unitPrice)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* Quote message — editable */}
+          <div>
+            <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide mb-1.5">Quote Message (editable)</p>
+            <textarea
+              value={editedMessage}
+              onChange={(e) => setEditedMessage(e.target.value)}
+              rows={4}
+              className="w-full rounded-md border border-border bg-secondary/30 px-3 py-2 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary resize-none"
+            />
+          </div>
+
+          {/* Build Quote CTA */}
+          <div className="flex justify-end">
+            <Button
+              size="sm"
+              className="gap-1.5 text-xs"
+              onClick={handleBuildQuote}
+            >
+              <PlusCircle className="w-3.5 h-3.5" />
+              Build Quote in Jobber
+            </Button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Website Requests Section ─────────────────────────────────────────────────
+function WebsiteRequestsSection({
+  onBuildQuote,
+}: {
+  onBuildQuote: (prefill: {
+    clientName?: string;
+    clientPhone?: string;
+    clientEmail?: string;
+    clientAddress?: string;
+    jobType?: string;
+    message?: string;
+    lineItems?: { name: string; description: string; quantity: number; unitPrice: number }[];
+  }) => void;
+}) {
+  const { data: submissions, isLoading, refetch, isFetching } = trpc.ops.quotes.list.useQuery(
+    { limit: 50 },
+    { retry: false }
+  );
+
+  const list = (submissions ?? []) as QuoteSubmission[];
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Globe className="w-4 h-4 text-primary" />
+          <h2 className="text-base font-semibold text-foreground">Website Requests</h2>
+          {!isLoading && (
+            <Badge variant="secondary" className="text-xs">{list.length}</Badge>
+          )}
+        </div>
+        <button
+          onClick={() => refetch()}
+          disabled={isFetching}
+          className="text-muted-foreground hover:text-foreground transition-colors"
+          aria-label="Refresh"
+        >
+          <RefreshCw className={`w-3.5 h-3.5 ${isFetching ? "animate-spin" : ""}`} />
+        </button>
+      </div>
+
+      {isLoading && (
+        <div className="flex items-center justify-center py-10">
+          <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+        </div>
+      )}
+
+      {!isLoading && list.length === 0 && (
+        <div className="flex flex-col items-center justify-center py-10 text-center gap-2">
+          <ClipboardList className="w-8 h-8 text-muted-foreground/30" />
+          <p className="text-xs text-muted-foreground">No website requests yet.</p>
+        </div>
+      )}
+
+      {!isLoading && list.length > 0 && (
+        <div className="space-y-2">
+          {list.map((sub) => (
+            <WebsiteRequestCard
+              key={sub.id}
+              submission={sub}
+              onBuildQuote={onBuildQuote}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function OpsQuotes() {
@@ -1393,6 +1769,17 @@ export default function OpsQuotes() {
       jobType: p.get("jobType") ?? undefined,
     };
   });
+  // Dynamic prefill from AI analysis (overrides URL prefill)
+  const [aiPrefill, setAiPrefill] = useState<{
+    clientName?: string;
+    clientPhone?: string;
+    clientEmail?: string;
+    clientAddress?: string;
+    jobType?: string;
+    message?: string;
+    lineItems?: { name: string; description: string; quantity: number; unitPrice: number }[];
+  } | undefined>(undefined);
+
   const [showCreateModal, setShowCreateModal] = useState(() => {
     // Auto-open modal if ?newQuote=1 is in the URL
     if (typeof window === "undefined") return false;
@@ -1531,6 +1918,17 @@ export default function OpsQuotes() {
             <RefreshCw className="w-6 h-6 animate-spin text-muted-foreground" />
           </div>
         )}
+
+        {/* Website Requests — AI-powered quote builder from inbound form submissions */}
+        <WebsiteRequestsSection
+          onBuildQuote={(prefill) => {
+            setAiPrefill(prefill);
+            setShowCreateModal(true);
+          }}
+        />
+
+        {/* Divider */}
+        <div className="border-t border-border pt-2" />
 
         {/* Not connected */}
         {!isLoading && notConnected && <NotConnectedBanner />}
@@ -1704,12 +2102,13 @@ export default function OpsQuotes() {
         <CreateQuoteModal
           onClose={() => {
             setShowCreateModal(false);
+            setAiPrefill(undefined);
             // Clean ?newQuote params from URL without triggering a navigation
             const clean = window.location.pathname;
             window.history.replaceState({}, "", clean);
           }}
           onCreated={() => utils.jobber.quotes.invalidate()}
-          prefill={createModalPrefill}
+          prefill={aiPrefill ?? createModalPrefill}
         />
       )}
       {/* Edit Quote modal */}

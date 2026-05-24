@@ -462,6 +462,182 @@ const quotesRouter = router({
       await db.delete(quoteSubmissions).where(eq(quoteSubmissions.id, input.id));
       return { success: true };
     }),
+
+  /**
+   * AI Quote Analyzer — takes an inbound quote submission and returns:
+   * - Recommended scope of work (plain English)
+   * - Suggested line items with quantities and unit prices
+   * - Estimated price range (low / high)
+   * - Estimated days to complete
+   * - Risk flags or site notes Jon should verify
+   * - A ready-to-send message for the Jobber quote
+   *
+   * Uses the same pricing model as the public CostCalculator.
+   */
+  analyzeSubmission: ownerProcedure
+    .input(z.object({
+      service: z.string(),
+      county: z.string(),
+      acreage: z.string().optional(),
+      density: z.string().optional(),    // light | moderate | heavy — inferred if not provided
+      terrain: z.string().optional(),    // flat | rolling | steep
+      access: z.string().optional(),     // easy | moderate | difficult
+      message: z.string().optional(),    // customer's notes
+      addOns: z.string().optional(),     // JSON array of add-on services
+      name: z.string().optional(),
+    }))
+    .mutation(async ({ input }) => {
+      const { invokeLLM } = await import("./_core/llm");
+
+      // ─── Pricing reference table (mirrors CostCalculator) ────────────────
+      const BASE_RATES: Record<string, Record<string, [number, number]>> = {
+        "forestry-mulching":     { light: [1000, 1500], moderate: [1500, 2500], heavy: [2500, 4500] },
+        "land-clearing":         { light: [1500, 3000], moderate: [3000, 6000], heavy: [6000, 12000] },
+        "vegetation-management": { light: [150, 400],  moderate: [400, 900],  heavy: [900, 2000] },
+        "property-maintenance":  { light: [150, 400],  moderate: [400, 900],  heavy: [900, 2000] },
+        "right-of-way-clearing": { light: [1200, 2800], moderate: [1800, 3500], heavy: [2800, 5500] },
+      };
+      const TERRAIN_MULT: Record<string, number> = { flat: 1.0, rolling: 1.1, steep: 1.25 };
+      const ACCESS_MULT:  Record<string, number> = { easy: 1.0, moderate: 1.08, difficult: 1.18 };
+      const BASE_APD: Record<string, number> = {
+        "forestry-mulching": 1.5, "land-clearing": 1.0,
+        "vegetation-management": 2.0, "property-maintenance": 2.0, "right-of-way-clearing": 1.25,
+      };
+      const DENSITY_PROD: Record<string, number> = { light: 1.4, moderate: 1.0, heavy: 0.6 };
+      const TERRAIN_PROD: Record<string, number> = { flat: 1.0, rolling: 0.85, steep: 0.65 };
+      const MOBILIZATION = 350;
+      const MIN_JOB = 1800;
+
+      // Parse acreage string to a number
+      const ACREAGE_MAP: Record<string, number> = {
+        "half-to-one": 0.75, "1-to-2": 1.5, "2-to-5": 3.5,
+        "5-to-10": 7.5, "10-to-20": 15, "20+": 25,
+      };
+      const acres = ACREAGE_MAP[input.acreage ?? ""] ?? (parseFloat(input.acreage ?? "0") || 0);
+      const density = input.density ?? "moderate";
+      const terrain = input.terrain ?? "flat";
+      const access  = input.access  ?? "easy";
+
+      // Compute reference price range
+      const svcKey = input.service.toLowerCase().replace(/\s+/g, "-");
+      const baseRange = BASE_RATES[svcKey]?.[density] ?? [1500, 3000];
+      const tm = TERRAIN_MULT[terrain] ?? 1;
+      const am = ACCESS_MULT[access] ?? 1;
+      const vd = acres >= 10 ? 0.88 : acres >= 5 ? 0.93 : acres >= 3 ? 0.97 : 1.0;
+      const refLow  = Math.max(MIN_JOB, Math.round((baseRange[0] * acres + MOBILIZATION) * tm * am * vd));
+      const refHigh = Math.max(MIN_JOB, Math.round((baseRange[1] * acres + MOBILIZATION) * tm * am * vd));
+      const apdBase = BASE_APD[svcKey] ?? 1.5;
+      const apdAdj  = apdBase * (DENSITY_PROD[density] ?? 1) * (TERRAIN_PROD[terrain] ?? 1);
+      const estDays = acres > 0 ? Math.max(1, Math.ceil(acres / apdAdj)) : null;
+
+      const addOnsList = (() => { try { return JSON.parse(input.addOns ?? "[]"); } catch { return []; } })();
+
+      const systemPrompt = `You are an expert estimator for Noland Earthworks, LLC — a veteran-owned forestry mulching and land clearing company in Tennessee. Jon Noland is the owner and sole operator. He uses a tracked forestry mulcher.
+
+Your job is to analyze an inbound quote request and return a structured JSON object that Jon can use to quickly build an accurate Jobber quote.
+
+Pricing reference (pre-calculated for this job):
+- Service: ${input.service}
+- Acreage: ${acres > 0 ? acres + " acres" : "unknown — flag for site visit"}
+- Vegetation density: ${density}
+- Terrain: ${terrain}
+- Site access: ${access}
+- Reference price range: $${refLow.toLocaleString()} – $${refHigh.toLocaleString()}
+- Estimated days on site: ${estDays ?? "unknown"}
+- Mobilization fee: $${MOBILIZATION} (already included in range)
+- Add-ons requested: ${addOnsList.length > 0 ? addOnsList.join(", ") : "none"}
+
+Rules:
+- Never publish or promise specific rates. Use the reference range as a guide only.
+- If acreage is unknown or the customer's message suggests complex conditions, flag it for a site visit.
+- Line items should reflect real work components: mobilization, primary clearing work (per-acre or flat), any add-ons.
+- Prices in line items should be integers (no decimals).
+- The quote message should sound like Jon wrote it — direct, professional, no fluff, no emojis.
+- Flag any risk factors: slopes, water, structures nearby, debris disposal expectations, access issues.
+- Keep scope notes concise and field-ready.
+
+Return ONLY valid JSON with this exact structure:
+{
+  "scopeNotes": "string — 2-4 sentences describing the work in plain language",
+  "lineItems": [
+    { "name": "string", "description": "string", "quantity": number, "unitPrice": number }
+  ],
+  "priceLow": number,
+  "priceHigh": number,
+  "estimatedDays": number or null,
+  "quoteMessage": "string — the message body for the Jobber quote (3-5 sentences, Jon's voice)",
+  "riskFlags": ["string"],
+  "siteVisitRequired": boolean,
+  "confidence": "high" | "medium" | "low"
+}`;
+
+      const userPrompt = `Quote request from ${input.name ?? "customer"} in ${input.county} County, TN.
+Service requested: ${input.service}
+Acreage: ${input.acreage ?? "not specified"}
+${input.message ? `Customer notes: "${input.message}"` : "No additional notes provided."}
+${addOnsList.length > 0 ? `Add-ons: ${addOnsList.join(", ")}` : ""}`;
+
+      const result = await invokeLLM({
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user",   content: userPrompt },
+        ],
+        response_format: {
+          type: "json_schema",
+          json_schema: {
+            name: "quote_analysis",
+            strict: true,
+            schema: {
+              type: "object",
+              properties: {
+                scopeNotes:        { type: "string" },
+                lineItems: {
+                  type: "array",
+                  items: {
+                    type: "object",
+                    properties: {
+                      name:        { type: "string" },
+                      description: { type: "string" },
+                      quantity:    { type: "number" },
+                      unitPrice:   { type: "number" },
+                    },
+                    required: ["name", "description", "quantity", "unitPrice"],
+                    additionalProperties: false,
+                  },
+                },
+                priceLow:          { type: "number" },
+                priceHigh:         { type: "number" },
+                estimatedDays:     { type: ["number", "null"] },
+                quoteMessage:      { type: "string" },
+                riskFlags:         { type: "array", items: { type: "string" } },
+                siteVisitRequired: { type: "boolean" },
+                confidence:        { type: "string", enum: ["high", "medium", "low"] },
+              },
+              required: ["scopeNotes", "lineItems", "priceLow", "priceHigh", "estimatedDays", "quoteMessage", "riskFlags", "siteVisitRequired", "confidence"],
+              additionalProperties: false,
+            },
+          },
+        },
+      });
+
+      const raw = result.choices?.[0]?.message?.content;
+      if (!raw) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "AI did not return a response. Try again." });
+      try {
+        return JSON.parse(typeof raw === "string" ? raw : JSON.stringify(raw)) as {
+          scopeNotes: string;
+          lineItems: { name: string; description: string; quantity: number; unitPrice: number }[];
+          priceLow: number;
+          priceHigh: number;
+          estimatedDays: number | null;
+          quoteMessage: string;
+          riskFlags: string[];
+          siteVisitRequired: boolean;
+          confidence: "high" | "medium" | "low";
+        };
+      } catch {
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "AI returned malformed JSON. Try again." });
+      }
+    }),
 });
 
 // ─── Crews Router ─────────────────────────────────────────────────────────────
