@@ -1109,6 +1109,6 @@
 - [x] AI pricing model settings panel on /ops/settings — adjustable base rates, multipliers, mobilization fee, min job
 
 ## AI Quote Assistant + Map + Preview — May 2026
-- [ ] AI Quote Assistant: add Regenerate button with custom prompt input (e.g. "add a rush fee") to re-run analysis with modifications
-- [ ] /ops/jobs map view: add hover card on map pins showing job title and status
-- [ ] Create Quote modal: add Preview Quote button showing client-facing view before submitting to Jobber
+- [x] AI Quote Assistant: add Regenerate button with custom prompt input (e.g. "add a rush fee") to re-run analysis with modifications
+- [x] /ops/jobs map view: add hover card on map pins showing job title and status
+- [x] Create Quote modal: add Preview Quote button showing client-facing view before submitting to Jobber
