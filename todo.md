@@ -1118,3 +1118,4 @@
 - [x] Wire AI pricing settings panel to override analyzeSubmission rate table live (read from aiPricingSettings table instead of hardcoded defaults)
 - [x] County-level mobilization fee adjustment in AI pricing settings panel (West TN vs Middle TN)
 - [x] Daily pricing verification agent — change pricing_update agent from weekly to daily at 6 AM CT, add Market Rate Benchmarks panel to AI Pricing settings tab with Run Now button and low/mid/high rate table + research summaries
+- [x] One-click "Sync to Market Mid-Rates" button in AI Pricing settings — maps benchmark mid-tier values to Forestry Mulching, Land Clearing, and Brush Hogging base rate fields; marks form dirty so Save Changes is required to commit

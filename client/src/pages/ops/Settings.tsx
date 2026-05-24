@@ -2055,6 +2055,37 @@ function AIPricingTab() {
       <SettingsSection
         title="Base Rates"
         description="Per-acre revenue target for each service type. These feed directly into AI quote estimates."
+        action={
+          benchmarks && benchmarks.length > 0 ? (
+            <button
+              onClick={() => {
+                // Map benchmark serviceType keys → form field keys
+                const MAP: Record<string, string> = {
+                  "Forestry Mulching": "forestryMulchingBaseRate",
+                  "Land Management":   "landClearingBaseRate",
+                  "Brush Hogging":     "brushHoggingBaseRate",
+                };
+                let applied = 0;
+                for (const b of benchmarks) {
+                  const fieldKey = MAP[b.serviceType];
+                  if (fieldKey) {
+                    setField(fieldKey, b.midPerAcre);
+                    applied++;
+                  }
+                }
+                if (applied > 0) {
+                  toast.success(`Base rates updated to current mid-tier benchmarks (${applied} fields).`);
+                } else {
+                  toast.error("No matching benchmarks found. Run the pricing agent first.");
+                }
+              }}
+              className="flex items-center gap-1.5 rounded-md border border-border bg-secondary/30 px-3 py-1.5 text-xs font-medium text-foreground hover:bg-secondary/60 transition-colors"
+            >
+              <RefreshCw className="w-3 h-3" />
+              Sync to Market Mid-Rates
+            </button>
+          ) : null
+        }
       >
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
           {([
