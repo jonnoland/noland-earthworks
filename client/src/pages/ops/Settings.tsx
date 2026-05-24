@@ -649,77 +649,63 @@ function TrustCenterTab() {
 }
 
 function TeamTab() {
-  const { user } = useAuth();
-  const [showInvite, setShowInvite] = useState(false);
-  const [inviteEmail, setInviteEmail] = useState("");
-  const [inviteRole, setInviteRole] = useState("viewer");
+  const { user: currentUser } = useAuth();
+  const { data: users, isLoading, refetch } = trpc.ops.settings.listUsers.useQuery();
+  const setRole = trpc.ops.settings.setUserRole.useMutation({
+    onSuccess: () => { toast.success("Role updated"); refetch(); },
+    onError: (e) => toast.error(`Failed: ${e.message}`),
+  });
 
   return (
     <div className="space-y-4">
       <SettingsSection
-        title="Team & Organization"
-        description="Manage team members, roles, and permissions."
-        action={
-          <button
-            onClick={() => setShowInvite(s => !s)}
-            className="flex items-center gap-2 bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-semibold px-3 py-2 rounded-md transition-colors"
-          >
-            <UserPlus className="w-3.5 h-3.5" />Invite Member
-          </button>
-        }
+        title="Team & Access"
+        description="All users who have logged into the ops dashboard. Promote to Admin to grant full access."
       >
-        <p className="text-xs text-muted-foreground">1 team member</p>
-
-        {showInvite && (
-          <div className="border border-border rounded-lg p-4 space-y-3 bg-secondary/20">
-            <p className="text-xs font-semibold text-foreground">Invite a team member</p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <FieldRow label="Email address">
-                <TextInput value={inviteEmail} onChange={setInviteEmail} placeholder="crew@example.com" type="email" />
-              </FieldRow>
-              <FieldRow label="Role">
-                <select
-                  value={inviteRole}
-                  onChange={e => setInviteRole(e.target.value)}
-                  className="w-full bg-secondary/50 border border-border rounded-md px-3 py-2 text-xs text-foreground outline-none focus:border-primary/50 transition-colors"
-                >
-                  <option value="viewer">Viewer</option>
-                  <option value="admin">Admin</option>
-                </select>
-              </FieldRow>
-            </div>
-            <div className="flex gap-2">
-              <button
-                onClick={() => { toast.info("Invite feature coming soon"); setShowInvite(false); }}
-                className="flex items-center gap-2 bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-semibold px-3 py-2 rounded-md transition-colors"
-              >
-                Send Invite
-              </button>
-              <button onClick={() => setShowInvite(false)} className="text-xs text-muted-foreground hover:text-foreground transition-colors px-3 py-2">
-                Cancel
-              </button>
-            </div>
+        {isLoading && (
+          <div className="flex items-center gap-2 text-xs text-muted-foreground py-2">
+            <Loader2 className="w-3.5 h-3.5 animate-spin" />Loading users...
           </div>
         )}
-
-        <div className="border border-border rounded-lg p-4 flex items-center gap-3">
-          <div className="w-9 h-9 rounded-full bg-primary/20 border border-primary/30 flex items-center justify-center shrink-0">
-            <span className="text-sm font-bold text-primary">JN</span>
-          </div>
-          <div className="flex-1 min-w-0">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="text-sm font-semibold text-foreground">Jon Noland</span>
-              <span className="text-[11px] bg-secondary border border-border px-2 py-0.5 rounded-full text-muted-foreground">You</span>
+        {!isLoading && (!users || users.length === 0) && (
+          <p className="text-xs text-muted-foreground">No users found.</p>
+        )}
+        {users && users.map((u) => {
+          const initials = (u.name ?? u.email ?? "?").split(" ").map((w: string) => w[0]).join("").toUpperCase().slice(0, 2);
+          const isOwner = u.id === currentUser?.id;
+          return (
+            <div key={u.id} className="border border-border rounded-lg p-4 flex items-center gap-3">
+              <div className="w-9 h-9 rounded-full bg-primary/20 border border-primary/30 flex items-center justify-center shrink-0">
+                <span className="text-sm font-bold text-primary">{initials}</span>
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-sm font-semibold text-foreground">{u.name ?? "Unnamed"}</span>
+                  {isOwner && <span className="text-[11px] bg-secondary border border-border px-2 py-0.5 rounded-full text-muted-foreground">You</span>}
+                </div>
+                <p className="text-xs text-muted-foreground mt-0.5">{u.email ?? "No email"}</p>
+              </div>
+              <div className="flex flex-wrap items-center gap-2 shrink-0">
+                {isOwner ? (
+                  <span className="inline-flex items-center gap-1 text-[11px] bg-primary/20 text-primary border border-primary/30 px-2 py-0.5 rounded-full font-semibold">
+                    <Crown className="w-3 h-3" />Owner
+                  </span>
+                ) : (
+                  <select
+                    value={u.role}
+                    disabled={setRole.isPending}
+                    onChange={(e) => setRole.mutate({ userId: u.id, role: e.target.value as "user" | "admin" })}
+                    className="bg-secondary/50 border border-border rounded-md px-2 py-1 text-xs text-foreground outline-none focus:border-primary/50 transition-colors"
+                  >
+                    <option value="user">User</option>
+                    <option value="admin">Admin</option>
+                  </select>
+                )}
+                <span className="inline-flex items-center gap-1 text-[11px] bg-green-500/15 text-green-400 border border-green-500/30 px-2 py-0.5 rounded-full font-semibold">Active</span>
+              </div>
             </div>
-            <p className="text-xs text-muted-foreground mt-0.5">jonnoland@nolandearthworks.com</p>
-          </div>
-          <div className="flex flex-wrap gap-1.5 shrink-0">
-            <span className="inline-flex items-center gap-1 text-[11px] bg-primary/20 text-primary border border-primary/30 px-2 py-0.5 rounded-full font-semibold">
-              <Crown className="w-3 h-3" />Owner
-            </span>
-            <span className="inline-flex items-center gap-1 text-[11px] bg-green-500/15 text-green-400 border border-green-500/30 px-2 py-0.5 rounded-full font-semibold">Active</span>
-          </div>
-        </div>
+          );
+        })}
       </SettingsSection>
     </div>
   );

@@ -1472,6 +1472,16 @@ const settingsRouter = router({
       await db.delete(reminderRules).where(eq(reminderRules.id, input.id));
       return { success: true };
     }),
+  // ─── User Management ─────────────────────────────────────────────────────────────────
+  listUsers: ownerProcedure.query(async () => {
+    return getAllUsers();
+  }),
+  setUserRole: ownerProcedure
+    .input(z.object({ userId: z.number(), role: z.enum(["user", "admin"]) }))
+    .mutation(async ({ input }) => {
+      await setUserRole(input.userId, input.role);
+      return { success: true };
+    }),
   // ─── AI Pricing Settings ─────────────────────────────────────────────────────
   getAIPricingSettings: ownerProcedure.query(async () => {
     const db = await getDb();

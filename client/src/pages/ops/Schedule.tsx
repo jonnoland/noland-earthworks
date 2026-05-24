@@ -10,7 +10,7 @@ import { useState, useMemo } from "react";
 import {
   ChevronLeft, ChevronRight, Plus, Trash2, Loader2, X,
   Calendar, RefreshCw, ExternalLink, AlertCircle,
-  CheckCircle2, GripVertical, Flag, Briefcase,
+  CheckCircle2, GripVertical, Flag, Briefcase, MapPin,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -153,52 +153,118 @@ function DroppableDayCell({
 
 // ─── Upcoming Jobber jobs list ─────────────────────────────────────────────────
 
+const UPCOMING_STATUS_FILTERS = ["ALL", "ACTIVE", "QUOTE", "REQUIRES_INVOICING"] as const;
+type UpcomingStatusFilter = typeof UPCOMING_STATUS_FILTERS[number];
+
+const UPCOMING_STATUS_LABELS: Record<string, string> = {
+  ALL: "All",
+  ACTIVE: "Active",
+  QUOTE: "Quote",
+  REQUIRES_INVOICING: "Req. Invoicing",
+};
+
+const UPCOMING_STATUS_DOT: Record<string, string> = {
+  ACTIVE: "bg-blue-400",
+  QUOTE: "bg-yellow-400",
+  REQUIRES_INVOICING: "bg-purple-400",
+};
+
 function UpcomingJobberJobs({ jobs }: { jobs: JobberJob[] }) {
-  const upcoming = useMemo(() => {
+  const [statusFilter, setStatusFilter] = useState<UpcomingStatusFilter>("ALL");
+
+  const allUpcoming = useMemo(() => {
     const now = new Date();
     return jobs
       .filter(j => j.startAt && new Date(j.startAt) >= now)
-      .sort((a, b) => new Date(a.startAt!).getTime() - new Date(b.startAt!).getTime())
-      .slice(0, 6);
+      .sort((a, b) => new Date(a.startAt!).getTime() - new Date(b.startAt!).getTime());
   }, [jobs]);
 
-  if (upcoming.length === 0) return null;
+  const filtered = useMemo(() => {
+    return allUpcoming
+      .filter(j => statusFilter === "ALL" || j.jobStatus === statusFilter)
+      .slice(0, 12);
+  }, [allUpcoming, statusFilter]);
+
+  if (allUpcoming.length === 0) return null;
 
   return (
-    <div>
-      <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
-        Upcoming Jobs (from Jobber)
-      </h3>
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-        {upcoming.map(job => (
-          <div key={job.id} className="ops-card p-3 flex items-start gap-3">
-            <div className={cn(
-              "mt-0.5 w-2 h-2 rounded-full shrink-0",
-              job.jobStatus === "ACTIVE" ? "bg-blue-400" :
-              job.jobStatus === "QUOTE" ? "bg-yellow-400" :
-              "bg-primary"
-            )} />
-            <div className="flex-1 min-w-0">
-              <div className="text-xs font-semibold text-foreground truncate">
-                {job.title || `Job #${job.jobNumber ?? "—"}`}
-              </div>
-              <div className="text-[10px] text-muted-foreground mt-0.5 truncate">
-                {job.client?.name || job.client?.companyName || "—"}
-              </div>
-              <div className="text-[10px] text-muted-foreground mt-0.5">
-                {job.startAt
-                  ? new Date(job.startAt).toLocaleDateString("en-US", {
-                      month: "short", day: "numeric", year: "numeric",
-                    })
-                  : "No date"}
-                {job.endAt && job.endAt !== job.startAt &&
-                  ` – ${new Date(job.endAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}`
-                }
-              </div>
-            </div>
-          </div>
-        ))}
+    <div className="space-y-3">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+        <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+          Upcoming Jobs
+          <span className="ml-2 text-primary normal-case font-normal">{allUpcoming.length} scheduled</span>
+        </h3>
+        <div className="flex flex-wrap gap-1">
+          {UPCOMING_STATUS_FILTERS.map(f => (
+            <button
+              key={f}
+              onClick={() => setStatusFilter(f)}
+              className={cn(
+                "px-2.5 py-1 rounded-full text-[10px] font-medium transition-colors",
+                statusFilter === f
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-secondary/40 text-muted-foreground hover:bg-secondary/70"
+              )}
+            >
+              {UPCOMING_STATUS_LABELS[f] ?? f}
+            </button>
+          ))}
+        </div>
       </div>
+      {filtered.length === 0 ? (
+        <p className="text-xs text-muted-foreground">No upcoming jobs match this filter.</p>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          {filtered.map(job => {
+            const addr = job.property?.address;
+            const addrStr = addr?.street1
+              ? [addr.street1, addr.city].filter(Boolean).join(", ")
+              : null;
+            return (
+              <div key={job.id} className="ops-card p-3 flex items-start gap-3">
+                <div className={cn(
+                  "mt-1 w-2 h-2 rounded-full shrink-0",
+                  UPCOMING_STATUS_DOT[job.jobStatus ?? ""] ?? "bg-primary"
+                )} />
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-start justify-between gap-1">
+                    <div className="text-xs font-semibold text-foreground truncate flex-1">
+                      {job.title || `Job #${job.jobNumber ?? "—"}`}
+                    </div>
+                    {job.jobStatus && job.jobStatus !== "ACTIVE" && (
+                      <span className={cn(
+                        "shrink-0 text-[9px] font-medium px-1.5 py-0.5 rounded-full border",
+                        JOBBER_STATUS_COLORS[job.jobStatus] ?? "bg-secondary/50 text-muted-foreground"
+                      )}>
+                        {UPCOMING_STATUS_LABELS[job.jobStatus] ?? job.jobStatus}
+                      </span>
+                    )}
+                  </div>
+                  <div className="text-[10px] text-muted-foreground mt-0.5 truncate">
+                    {job.client?.name || job.client?.companyName || "—"}
+                  </div>
+                  {addrStr && (
+                    <div className="text-[10px] text-muted-foreground mt-0.5 truncate flex items-center gap-1">
+                      <MapPin className="w-2.5 h-2.5 shrink-0" />
+                      {addrStr}
+                    </div>
+                  )}
+                  <div className="text-[10px] text-muted-foreground mt-1 font-medium">
+                    {job.startAt
+                      ? new Date(job.startAt).toLocaleDateString("en-US", {
+                          weekday: "short", month: "short", day: "numeric",
+                        })
+                      : "No date"}
+                    {job.endAt && job.endAt !== job.startAt &&
+                      ` – ${new Date(job.endAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}`
+                    }
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

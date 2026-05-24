@@ -6,7 +6,7 @@
 
 import DashboardLayout from "@/components/DashboardLayout";
 import { trpc } from "@/lib/trpc";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef, useEffect, useCallback } from "react";
 import {
   Briefcase, Plus, Search, Trash2,
   MapPin, DollarSign, Loader2, X,
@@ -14,6 +14,7 @@ import {
   Phone, Mail, User, ChevronRight,
   Calendar, CheckCircle2, Clock,
   FileText, History, Send,
+  List, Map as MapIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -21,6 +22,7 @@ import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { MapView } from "@/components/Map";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -159,17 +161,32 @@ function JobDetailPanel({
   const [activeTab, setActiveTab] = useState<DetailTab>("details");
   const [invoiceNote, setInvoiceNote] = useState("");
   const [showInvoiceForm, setShowInvoiceForm] = useState(false);
-
+  const [noteInput, setNoteInput] = useState("");
+  const utils = trpc.useUtils();
   const { data: job, isLoading, error } = trpc.jobber.jobDetail.useQuery(
     { id: jobId },
     { retry: false }
   );
-
   const { data: history, isLoading: historyLoading } = trpc.jobber.jobHistory.useQuery(
     { id: jobId },
     { enabled: activeTab === "history", retry: false }
   );
-
+  const { data: jobNotes = [], isLoading: notesLoading } = trpc.jobber.getJobNotes.useQuery(
+    { jobId },
+    { enabled: activeTab === "history" }
+  );
+  const addNoteMut = trpc.jobber.addJobNote.useMutation({
+    onSuccess: () => {
+      setNoteInput("");
+      utils.jobber.getJobNotes.invalidate({ jobId });
+      toast.success("Note saved.");
+    },
+    onError: (e) => toast.error(e.message || "Failed to save note."),
+  });
+  const deleteNoteMut = trpc.jobber.deleteJobNote.useMutation({
+    onSuccess: () => utils.jobber.getJobNotes.invalidate({ jobId }),
+    onError: (e) => toast.error(e.message || "Failed to delete note."),
+  });
   const createInvoice = trpc.jobber.createInvoiceForJob.useMutation({
     onSuccess: (inv) => {
       toast.success(`Invoice #${inv?.invoiceNumber ?? ""} created in Jobber.`);
@@ -328,11 +345,68 @@ function JobDetailPanel({
 
                   {(history as any).visits?.nodes?.length === 0 &&
                     (history as any).invoices?.nodes?.length === 0 && (
-                    <div className="flex flex-col items-center justify-center py-16 gap-3 text-center">
+                    <div className="flex flex-col items-center justify-center py-8 gap-3 text-center">
                       <History className="w-8 h-8 text-muted-foreground/30" />
-                      <p className="text-xs text-muted-foreground">No history found for this job.</p>
+                      <p className="text-xs text-muted-foreground">No Jobber history found for this job.</p>
                     </div>
                   )}
+
+                  {/* ── Manual Notes ── */}
+                  <div className="pt-2 border-t border-border space-y-3">
+                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Internal Notes</p>
+                    {/* Add note input */}
+                    <div className="flex gap-2">
+                      <textarea
+                        value={noteInput}
+                        onChange={e => setNoteInput(e.target.value)}
+                        placeholder="Add a note..."
+                        rows={2}
+                        className="flex-1 bg-secondary/40 border border-border rounded-md px-3 py-2 text-xs text-foreground placeholder:text-muted-foreground resize-none outline-none focus:border-primary/50 transition-colors"
+                      />
+                      <button
+                        onClick={() => {
+                          if (!noteInput.trim()) return;
+                          addNoteMut.mutate({ jobId, content: noteInput.trim() });
+                        }}
+                        disabled={addNoteMut.isPending || !noteInput.trim()}
+                        className="shrink-0 self-end flex items-center gap-1.5 bg-primary hover:bg-primary/90 disabled:opacity-50 text-primary-foreground text-xs font-semibold px-3 py-2 rounded-md transition-colors"
+                      >
+                        {addNoteMut.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <Send className="w-3 h-3" />}
+                        Save
+                      </button>
+                    </div>
+                    {/* Notes list */}
+                    {notesLoading ? (
+                      <div className="flex justify-center py-4">
+                        <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
+                      </div>
+                    ) : jobNotes.length === 0 ? (
+                      <p className="text-[10px] text-muted-foreground italic">No internal notes yet.</p>
+                    ) : (
+                      <div className="space-y-2">
+                        {jobNotes.map((note: any) => (
+                          <div key={note.id} className="rounded-md bg-secondary/30 border border-border px-3 py-2.5 space-y-1 group">
+                            <div className="flex items-start justify-between gap-2">
+                              <p className="text-xs text-foreground whitespace-pre-wrap flex-1">{note.content}</p>
+                              <button
+                                onClick={() => deleteNoteMut.mutate({ id: note.id })}
+                                className="shrink-0 text-muted-foreground hover:text-destructive transition-colors opacity-0 group-hover:opacity-100 p-0.5"
+                                aria-label="Delete note"
+                              >
+                                <Trash2 className="w-3 h-3" />
+                              </button>
+                            </div>
+                            <p className="text-[10px] text-muted-foreground">
+                              {new Date(note.createdAt).toLocaleString("en-US", {
+                                month: "short", day: "numeric", year: "numeric",
+                                hour: "numeric", minute: "2-digit",
+                              })}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </>
               )}
             </>
@@ -610,11 +684,87 @@ const emptyForm: JobFormData = {
   clientEmail: "", scheduledDate: "", scheduledEndDate: "", isHighPriority: false,
 };
 
-// ─── Main Page ────────────────────────────────────────────────────────────────
+// ─── Jobs Map View ───────────────────────────────────────────────────────────
+
+type MapJob = {
+  id: string;
+  title?: string | null;
+  jobNumber?: number | null;
+  jobStatus?: string | null;
+  client?: { name?: string | null; companyName?: string | null } | null;
+  property?: { address?: { street1?: string | null; city?: string | null; province?: string | null } | null } | null;
+};
+
+function JobsMapView({ jobs, onSelectJob }: { jobs: MapJob[]; onSelectJob: (id: string) => void }) {
+  const localMapRef = useRef<google.maps.Map | null>(null);
+  const markersRef = useRef<google.maps.marker.AdvancedMarkerElement[]>([]);
+
+  const geocodeAndPin = useCallback(async (map: google.maps.Map) => {
+    markersRef.current.forEach(m => { m.map = null; });
+    markersRef.current = [];
+    const geocoder = new google.maps.Geocoder();
+    const bounds = new google.maps.LatLngBounds();
+    let pinned = 0;
+    for (const job of jobs) {
+      const addr = job.property?.address;
+      if (!addr?.street1) continue;
+      const fullAddr = [addr.street1, addr.city, addr.province].filter(Boolean).join(", ");
+      try {
+        const result = await new Promise<google.maps.GeocoderResult | null>((resolve) => {
+          geocoder.geocode({ address: fullAddr }, (results, status) => {
+            resolve(status === "OK" && results?.[0] ? results[0] : null);
+          });
+        });
+        if (!result) continue;
+        const pos = result.geometry.location;
+        bounds.extend(pos);
+        const pin = new google.maps.marker.AdvancedMarkerElement({
+          map,
+          position: pos,
+          title: job.title ?? `Job #${job.jobNumber}`,
+        });
+        pin.addListener("click", () => onSelectJob(job.id));
+        markersRef.current.push(pin);
+        pinned++;
+      } catch { /* skip */ }
+    }
+    if (pinned > 0) map.fitBounds(bounds);
+  }, [jobs, onSelectJob]);
+
+  const handleMapReady = useCallback((map: google.maps.Map) => {
+    localMapRef.current = map;
+    geocodeAndPin(map);
+  }, [geocodeAndPin]);
+
+  const jobsWithAddress = jobs.filter(j => j.property?.address?.street1);
+
+  return (
+    <div className="space-y-2">
+      {jobsWithAddress.length === 0 && (
+        <p className="text-xs text-muted-foreground text-center py-4">No jobs have a property address to map.</p>
+      )}
+      <div className="rounded-lg overflow-hidden border border-border" style={{ height: 480 }}>
+        <MapView
+          initialCenter={{ lat: 35.9, lng: -87.1 }}
+          initialZoom={8}
+          onMapReady={handleMapReady}
+        />
+      </div>
+      <p className="text-xs text-muted-foreground">
+        {jobsWithAddress.length} of {jobs.length} jobs have a property address. Click a pin to open the job detail.
+      </p>
+    </div>
+  );
+}
+
+// ─── Main Page ─────────────────────────────────────────────────────────────────────────────
 
 export default function Jobs() {
   const [search, setSearch] = useState("");
   const [statusTab, setStatusTab] = useState<StatusTab>("ALL");
+  const [viewMode, setViewMode] = useState<"list" | "map">("list");
+  const mapRef = useRef<google.maps.Map | null>(null);
+  const markersRef = useRef<google.maps.marker.AdvancedMarkerElement[]>([]);
   const [selectedJobId, setSelectedJobId] = useState<string | null>(() => {
     // Auto-open a job's detail panel if ?jobId=ID is in the URL (e.g. after Convert to Job)
     if (typeof window !== "undefined") {
@@ -779,6 +929,22 @@ export default function Jobs() {
                 className="pl-8 h-8 text-xs bg-secondary/30 border-border"
               />
             </div>
+            <div className="flex items-center rounded-md border border-border overflow-hidden h-8">
+              <button
+                onClick={() => setViewMode("list")}
+                className={`px-2.5 h-full flex items-center gap-1.5 text-xs transition-colors ${viewMode === "list" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-secondary/50"}`}
+                title="List view"
+              >
+                <List className="w-3.5 h-3.5" />
+              </button>
+              <button
+                onClick={() => setViewMode("map")}
+                className={`px-2.5 h-full flex items-center gap-1.5 text-xs transition-colors border-l border-border ${viewMode === "map" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-secondary/50"}`}
+                title="Map view"
+              >
+                <MapIcon className="w-3.5 h-3.5" />
+              </button>
+            </div>
             <Button
               variant="outline"
               size="sm"
@@ -837,8 +1003,12 @@ export default function Jobs() {
         {/* Not connected */}
         {!isLoading && notConnected && <NotConnectedBanner />}
 
+        {/* Map view */}
+        {!isLoading && !notConnected && viewMode === "map" && (
+          <JobsMapView jobs={filtered} onSelectJob={(id) => { setSelectedJobId(id); setViewMode("list"); }} />
+        )}
         {/* Jobs table */}
-        {!isLoading && !notConnected && (
+        {!isLoading && !notConnected && viewMode === "list" && (
           <>
             {filtered.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-16 text-center gap-3">

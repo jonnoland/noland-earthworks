@@ -913,7 +913,7 @@
 - [x] Client detail panel: quote rows link to /ops/quotes?quote=ID, job rows link to /ops/jobs, invoice rows link to /ops/invoices
 
 ## User Access — Apr 19 2026
-- [ ] Grant snoland@nolandearthworks.com full /ops access (promote to admin role in users table)
+- [x] Grant snoland@nolandearthworks.com full /ops access (promote to admin role in users table)
 
 ## /ops/jobs Jobber Integration — Apr 19 2026
 - [x] /ops/jobs: pull Jobber jobs as primary source (not local DB) — show all jobs with status, client, date, address
@@ -925,13 +925,13 @@
 ## Schedule + Jobs Enhancements — Apr 19 2026
 - [x] /ops/schedule: fix calendar to show Jobber jobs (ACTIVE/QUOTE status) with startAt dates — not just local DB jobs
 - [x] /ops/jobs detail panel: add full job history section (visits timeline + invoices) via History tab
-- [ ] /ops/jobs: add map view tab showing locations of all active jobs (pins from property addresses)
+- [x] /ops/jobs: add map view tab showing locations of all active jobs (pins from property addresses)
 - [x] /ops/jobs detail panel: add "Send Invoice" button to quickly create/send an invoice for the job via Jobber
 
 ## Schedule + Job Detail Enhancements — Apr 19 2026 (batch 2)
-- [ ] /ops/schedule: status filter system to show/hide jobs by status (All / Active / Quote / Requires Invoicing / Completed)
-- [ ] /ops/jobs detail panel History tab: manual note entry — user can type and save a note that appears in the timeline
-- [ ] /ops/schedule Upcoming Jobs list: show assigned crew members for each job
+- [x] /ops/schedule: status filter system to show/hide jobs by status (All / Active / Quote / Requires Invoicing / Completed)
+- [x] /ops/jobs detail panel History tab: manual note entry — user can type and save a note that appears in the timeline
+- [x] /ops/schedule Upcoming Jobs list: show assigned crew members for each job
 
 ## Weekly Pricing Update Agent — Apr 19 2026
 - [x] Audit /ops/pricing page to understand current pricing data structure
