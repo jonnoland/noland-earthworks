@@ -271,6 +271,16 @@ export default function Dashboard() {
 
   const jobberConnected = !jobberJobsError && jobberJobsRaw !== undefined;
 
+  // ── Jobber token status (for expiry alert banner) ─────────────────────────
+  const { data: integrationStatus } = trpc.ops.settings.getIntegrationStatus.useQuery(undefined, {
+    staleTime: 2 * 60 * 1000,   // re-check every 2 minutes
+    refetchInterval: 2 * 60 * 1000,
+    retry: false,
+  });
+  const jobberTokenStatus = integrationStatus?.jobber.tokenStatus ?? null;
+  const jobberExpiresAt   = integrationStatus?.jobber.expiresAt   ?? null;
+  const { data: jobberAuthUrl } = trpc.jobber.getAuthUrl.useQuery(undefined, { staleTime: 60_000 });
+
   // ─── Normalize Jobber jobs ────────────────────────────────────────────────
   const jobberJobs = useMemo<NormalizedJob[]>(() => {
     const nodes = jobberJobsRaw?.nodes ?? [];
@@ -522,6 +532,49 @@ export default function Dashboard() {
             </div>
           </div>
         </div>
+
+        {/* Jobber token expiry alert banner */}
+        {(jobberTokenStatus === "expired" || jobberTokenStatus === "expiring_soon") && (
+          <div className={`flex items-start gap-3 rounded-lg border px-4 py-3 ${
+            jobberTokenStatus === "expired"
+              ? "bg-red-500/10 border-red-500/30"
+              : "bg-amber-500/10 border-amber-500/30"
+          }`}>
+            <AlertCircle className={`w-4 h-4 shrink-0 mt-0.5 ${
+              jobberTokenStatus === "expired" ? "text-red-400" : "text-amber-400"
+            }`} />
+            <div className="flex-1 min-w-0">
+              <p className={`text-xs font-semibold ${
+                jobberTokenStatus === "expired" ? "text-red-300" : "text-amber-300"
+              }`}>
+                {jobberTokenStatus === "expired"
+                  ? "Jobber integration disconnected — reconnection required"
+                  : "Jobber token expiring soon"}
+              </p>
+              <p className="text-[11px] text-muted-foreground mt-0.5">
+                {jobberTokenStatus === "expired"
+                  ? "The Jobber access token has expired. Quote submissions are no longer forwarded to Jobber until you reconnect."
+                  : `The Jobber access token expires shortly${
+                      jobberExpiresAt
+                        ? ` (${new Date(jobberExpiresAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })})`
+                        : ""
+                    }. The system will attempt an automatic refresh — if it fails, reconnect manually.`}
+              </p>
+            </div>
+            {jobberAuthUrl?.url && (
+              <a
+                href={jobberAuthUrl.url}
+                className={`shrink-0 inline-flex items-center gap-1.5 text-[11px] font-semibold px-3 py-1.5 rounded-md transition-colors ${
+                  jobberTokenStatus === "expired"
+                    ? "bg-red-500/20 hover:bg-red-500/30 text-red-300 border border-red-500/30"
+                    : "bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/30"
+                }`}
+              >
+                Reconnect
+              </a>
+            )}
+          </div>
+        )}
 
         {/* KPI Cards — row 1: jobs + money */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">

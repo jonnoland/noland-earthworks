@@ -1173,3 +1173,6 @@
 - [x] Reformat AI Pricing page to streamlined, compact layout
 - [x] Update stump grinding rate to $200/stump in AI Pricing page
 - [x] Convert ROW clearing from per-acre to per-linear-foot in AI Pricing page, calculator, and agent logic
+
+## Jobber Token Expiry Alert — May 2026
+- [x] Add Jobber token expiry alert to ops dashboard — red banner when expired, amber when expiring soon, both with Reconnect link; Settings Integrations tab shows token status and expiry time

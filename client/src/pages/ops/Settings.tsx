@@ -1278,13 +1278,39 @@ function IntegrationsTab() {
       >
         {status?.jobber.connected ? (
           <div className="space-y-3">
-            <div className="flex items-center gap-2 p-3 bg-green-500/10 border border-green-500/20 rounded-lg">
-              <CheckCircle2 className="w-4 h-4 text-green-400 shrink-0" />
-              <div className="flex-1 min-w-0">
-                <p className="text-xs font-semibold text-foreground">Jobber is connected</p>
-                <p className="text-[11px] text-muted-foreground mt-0.5">New quote submissions are automatically sent to Jobber as service requests.</p>
+            {/* Token status indicator */}
+            {status.jobber.tokenStatus === "expired" ? (
+              <div className="flex items-start gap-2 p-3 bg-red-500/10 border border-red-500/20 rounded-lg">
+                <AlertCircle className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-semibold text-red-300">Token expired — reconnection required</p>
+                  <p className="text-[11px] text-muted-foreground mt-0.5">The Jobber access token has expired. Quote submissions are no longer forwarded to Jobber until you reconnect.</p>
+                </div>
               </div>
-            </div>
+            ) : status.jobber.tokenStatus === "expiring_soon" ? (
+              <div className="flex items-start gap-2 p-3 bg-amber-500/10 border border-amber-500/20 rounded-lg">
+                <AlertCircle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-semibold text-amber-300">Token expiring soon</p>
+                  <p className="text-[11px] text-muted-foreground mt-0.5">
+                    The access token expires shortly{status.jobber.expiresAt ? ` (${new Date(status.jobber.expiresAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })})` : ""}. The system will attempt an automatic refresh — if it fails, reconnect manually.
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2 p-3 bg-green-500/10 border border-green-500/20 rounded-lg">
+                <CheckCircle2 className="w-4 h-4 text-green-400 shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-semibold text-foreground">Jobber is connected</p>
+                  <p className="text-[11px] text-muted-foreground mt-0.5">
+                    New quote submissions are automatically sent to Jobber as service requests.
+                    {status.jobber.expiresAt && (
+                      <> Token refreshed, valid until {new Date(status.jobber.expiresAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}.</>
+                    )}
+                  </p>
+                </div>
+              </div>
+            )}
             <div className="flex gap-2">
               {jobberAuth?.url && (
                 <a href={jobberAuth.url}

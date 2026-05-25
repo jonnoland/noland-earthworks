@@ -19,7 +19,7 @@ import {
   getPricingBenchmarks,
 } from "./db";
 import { Resend } from "resend";
-import { jobs, opsLeads, quoteSubmissions, crews, crewMembers, conversations, messages, reviews, timeEntries, distanceQuotes, businessSettings, automationSettings, serviceCatalog, messageTemplates, reminderRules, leadNotes, visitBlackoutDates, recurringBlackoutDays, aiPricingSettings, quoteDrafts } from "../drizzle/schema";
+import { jobs, opsLeads, quoteSubmissions, crews, crewMembers, conversations, messages, reviews, timeEntries, distanceQuotes, businessSettings, automationSettings, serviceCatalog, messageTemplates, reminderRules, leadNotes, visitBlackoutDates, recurringBlackoutDays, aiPricingSettings, quoteDrafts, jobberTokens } from "../drizzle/schema";
 
 import { and, desc, eq, gte, lt, like } from "drizzle-orm";
 
@@ -1696,8 +1696,38 @@ const settingsRouter = router({
     const resendConfigured = !!ENV.resendApiKey;
     // Google Maps is always available via the Manus proxy — no key needed
     const googleMapsActive = true;
+
+    // ── Jobber token expiry details ─────────────────────────────────────────
+    // Fetch the most-recently-updated token row to surface expiry info to the UI.
+    // The background scheduler auto-refreshes short-lived access tokens, but the
+    // refresh token itself can expire if the server is offline for an extended
+    // period (Jobber refresh tokens last ~365 days but can be revoked manually).
+    let jobberExpiresAt: string | null = null;
+    let jobberTokenStatus: "ok" | "expiring_soon" | "expired" | "not_connected" = "not_connected";
+    const db = await getDb();
+    if (db && jobberConnected) {
+      try {
+        const tokenRows = await db.select().from(jobberTokens).orderBy(desc(jobberTokens.updatedAt)).limit(1);
+        if (tokenRows.length > 0) {
+          const expiresAt = tokenRows[0].expiresAt;
+          jobberExpiresAt = expiresAt.toISOString();
+          const msLeft = expiresAt.getTime() - Date.now();
+          if (msLeft <= 0) {
+            jobberTokenStatus = "expired";
+          } else if (msLeft < 15 * 60 * 1000) {
+            // Within 15 minutes — warn so the user knows a refresh is imminent
+            jobberTokenStatus = "expiring_soon";
+          } else {
+            jobberTokenStatus = "ok";
+          }
+        }
+      } catch {
+        // Non-fatal — just omit expiry details if the query fails
+      }
+    }
+
     return {
-      jobber: { connected: jobberConnected },
+      jobber: { connected: jobberConnected, expiresAt: jobberExpiresAt, tokenStatus: jobberTokenStatus },
       twilio: { configured: twilioConfigured, fromNumber: twilioConfigured ? ENV.twilioFromNumber : null },
       resend: { configured: resendConfigured },
       googleMaps: { active: googleMapsActive },
