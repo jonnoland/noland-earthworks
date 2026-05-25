@@ -56,6 +56,14 @@ import LandManagementDavidsonCounty from "./pages/blog/LandManagementDavidsonCou
 import LandManagementRutherfordCounty from "./pages/blog/LandManagementRutherfordCounty";
 import LandManagementMauryCounty from "./pages/blog/LandManagementMauryCounty";
 import LandManagementMarshallCounty from "./pages/blog/LandManagementMarshallCounty";
+import ForestryMulchingVsBushHogging from "./pages/blog/ForestryMulchingVsBushHogging";
+import HowToPrepareForLandClearing from "./pages/blog/HowToPrepareForLandClearing";
+import PastureReclamationTennessee from "./pages/blog/PastureReclamationTennessee";
+import LandManagementLincolnCounty from "./pages/blog/LandManagementLincolnCounty";
+import LandManagementWilsonCounty from "./pages/blog/LandManagementWilsonCounty";
+import LandManagementMontgomeryCounty from "./pages/blog/LandManagementMontgomeryCounty";
+import LandManagementGilesCounty from "./pages/blog/LandManagementGilesCounty";
+import LandManagementSumnerCounty from "./pages/blog/LandManagementSumnerCounty";
 import GalleryPage from "./pages/Gallery";
 import {
   DavidsonCountyPage,
@@ -126,6 +134,14 @@ function Router() {
       <Route path="/blog/land-clearing-williamson-county" component={() => { window.location.replace("/blog/land-management-williamson-county"); return null; }} />
       <Route path="/blog/land-clearing-davidson-county" component={() => { window.location.replace("/blog/land-management-davidson-county"); return null; }} />
       <Route path="/blog/land-clearing-rutherford-county" component={() => { window.location.replace("/blog/land-management-rutherford-county"); return null; }} />
+      <Route path="/blog/forestry-mulching-vs-bush-hogging" component={ForestryMulchingVsBushHogging} />
+      <Route path="/blog/how-to-prepare-for-land-clearing" component={HowToPrepareForLandClearing} />
+      <Route path="/blog/pasture-reclamation-tennessee" component={PastureReclamationTennessee} />
+      <Route path="/blog/land-management-lincoln-county" component={LandManagementLincolnCounty} />
+      <Route path="/blog/land-management-wilson-county" component={LandManagementWilsonCounty} />
+      <Route path="/blog/land-management-montgomery-county" component={LandManagementMontgomeryCounty} />
+      <Route path="/blog/land-management-giles-county" component={LandManagementGilesCounty} />
+      <Route path="/blog/land-management-sumner-county" component={LandManagementSumnerCounty} />
 
       {/* Service pages */}
       <Route path="/services/land-management" component={LandClearingPage} />

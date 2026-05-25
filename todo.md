@@ -1179,3 +1179,16 @@
 
 ## Google Maps Fix — May 2026
 - [x] Fix Google Maps loading=async race condition — poll for google.maps.Map constructor readiness instead of resolving on script.onload
+
+## Blog SEO Expansion — May 2026
+- [x] Write and publish blog post: Forestry Mulching vs. Bush Hogging
+- [x] Write and publish blog post: How to Prepare for a Land Clearing Job in Tennessee
+- [x] Write and publish blog post: Pasture Reclamation in Tennessee
+- [x] Write and publish blog post: Land Management in Lincoln County, TN
+- [x] Write and publish blog post: Land Management in Wilson County, TN
+- [x] Write and publish blog post: Land Management in Montgomery County, TN
+- [x] Write and publish blog post: Land Management in Giles County, TN
+- [x] Write and publish blog post: Land Management in Sumner County, TN
+- [x] Register all 8 new blog routes in App.tsx
+- [x] Add all 8 new blog posts to Blog.tsx index
+- [x] Add all 8 new blog posts to sitemap
