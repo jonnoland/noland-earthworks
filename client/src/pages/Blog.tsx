@@ -10,7 +10,7 @@ import { ArrowRight, Calendar, RefreshCw } from "lucide-react";
 
 export const BLOG_POSTS = [
   {
-    slug: "cost-of-land-clearing-tennessee",
+    slug: "cost-of-land-management-tennessee",
     title: "How Much Does Land Management Cost in Tennessee? (2026 Guide)",
     meta: "Discover the true cost of land management and forestry mulching in Middle Tennessee. Learn what factors affect pricing per acre and how to get the best value.",
     date: "April 2026",
@@ -55,7 +55,7 @@ export const BLOG_POSTS = [
     category: "Planning & Preparation",
   },
   {
-    slug: "land-clearing-williamson-county",
+    slug: "land-management-williamson-county",
     title: "Land Management in Williamson County, TN: What Property Owners Need to Know",
     meta: "Need land management in Williamson County, TN? Learn about forestry mulching, permit requirements, and local terrain — serving Franklin, Brentwood, Spring Hill, and all of Williamson County.",
     date: "April 2026",
@@ -64,7 +64,7 @@ export const BLOG_POSTS = [
     category: "Local Service Areas",
   },
   {
-    slug: "land-clearing-davidson-county",
+    slug: "land-management-davidson-county",
     title: "Land Management in Davidson County, TN: What Property Owners Need to Know",
     meta: "Need land management in Davidson County, TN? Noland Earthworks provides forestry mulching and land management across Nashville, Antioch, Hermitage, Bellevue, and all of Davidson County.",
     date: "April 2026",
@@ -73,7 +73,7 @@ export const BLOG_POSTS = [
     category: "Local Service Areas",
   },
   {
-    slug: "land-clearing-rutherford-county",
+    slug: "land-management-rutherford-county",
     title: "Land Management in Rutherford County, TN: What Property Owners Need to Know",
     meta: "Need land management in Rutherford County, TN? Noland Earthworks provides forestry mulching and land management in Murfreesboro, Smyrna, La Vergne, Eagleville, and across Rutherford County.",
     date: "April 2026",

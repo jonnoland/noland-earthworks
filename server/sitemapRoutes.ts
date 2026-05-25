@@ -23,14 +23,14 @@ const PAGES = [
   { path: "/gallery",                                                   priority: "0.7", changefreq: "monthly" },
   // Blog / Resources
   { path: "/blog",                                                      priority: "0.8", changefreq: "weekly"  },
-  { path: "/blog/cost-of-land-clearing-tennessee",                      priority: "0.8", changefreq: "monthly" },
+  { path: "/blog/cost-of-land-management-tennessee",                      priority: "0.8", changefreq: "monthly" },
   { path: "/blog/forestry-mulching-vs-bulldozing",                      priority: "0.8", changefreq: "monthly" },
   { path: "/blog/signs-you-need-vegetation-management",                 priority: "0.7", changefreq: "monthly" },
   { path: "/blog/best-time-to-clear-land-tennessee",                    priority: "0.7", changefreq: "monthly" },
   { path: "/blog/site-preparation-before-building-tennessee",           priority: "0.8", changefreq: "monthly" },
-  { path: "/blog/land-clearing-williamson-county",                       priority: "0.9", changefreq: "monthly" },
-  { path: "/blog/land-clearing-davidson-county",                         priority: "0.9", changefreq: "monthly" },
-  { path: "/blog/land-clearing-rutherford-county",                       priority: "0.9", changefreq: "monthly" },
+  { path: "/blog/land-management-williamson-county",                       priority: "0.9", changefreq: "monthly" },
+  { path: "/blog/land-management-davidson-county",                         priority: "0.9", changefreq: "monthly" },
+  { path: "/blog/land-management-rutherford-county",                       priority: "0.9", changefreq: "monthly" },
   // County landing pages
   { path: "/service-areas/davidson-county",                             priority: "0.8", changefreq: "monthly" },
   { path: "/service-areas/williamson-county",                           priority: "0.8", changefreq: "monthly" },

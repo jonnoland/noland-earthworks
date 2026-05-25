@@ -2,7 +2,7 @@ import { Link } from "wouter";
 
 const FEATURED_POSTS = [
   {
-    slug: "cost-of-land-clearing-tennessee",
+    slug: "cost-of-land-management-tennessee",
     category: "Pricing & Planning",
     title: "How Much Does Land Management Cost in Tennessee? (2026 Guide)",
     excerpt:

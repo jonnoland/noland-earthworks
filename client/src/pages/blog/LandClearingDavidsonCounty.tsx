@@ -10,7 +10,7 @@ export default function LandClearingDavidsonCounty() {
       dateISO="2026-04-12"
       lastUpdated="April 2026"
       lastUpdatedISO="2026-04-12"
-      slug="land-clearing-davidson-county"
+      slug="land-management-davidson-county"
       readTime="6 min read"
       category="Local Service Areas"
     >
@@ -86,8 +86,8 @@ export default function LandClearingDavidsonCounty() {
         Noland Earthworks serves landowners across all of Middle and West Tennessee — not just Davidson County. If your property is located in a neighboring county, we cover those areas as well. Learn more about our services in the counties bordering Davidson:
       </p>
       <ul>
-        <li><a href="/blog/land-clearing-williamson-county"><strong>Land Management in Williamson County, TN</strong></a> — Serving Franklin, Brentwood, Spring Hill, Nolensville, Fairview, and surrounding areas.</li>
-        <li><a href="/blog/land-clearing-rutherford-county"><strong>Land Management in Rutherford County, TN</strong></a> — Serving Murfreesboro, Smyrna, La Vergne, Eagleville, and surrounding areas.</li>
+        <li><a href="/blog/land-management-williamson-county"><strong>Land Management in Williamson County, TN</strong></a> — Serving Franklin, Brentwood, Spring Hill, Nolensville, Fairview, and surrounding areas.</li>
+        <li><a href="/blog/land-management-rutherford-county"><strong>Land Management in Rutherford County, TN</strong></a> — Serving Murfreesboro, Smyrna, La Vergne, Eagleville, and surrounding areas.</li>
       </ul>
       <p>
         Not sure which county your property falls in? <a href="/quote">Request a free estimate</a> and we will confirm your location and service area when we follow up.

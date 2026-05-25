@@ -19,7 +19,7 @@ export interface BlogPostProps {
   lastUpdatedISO?: string;  // e.g. "2026-04-12" for schema / OG
   readTime: string;
   category: string;
-  slug: string;             // e.g. "cost-of-land-clearing-tennessee"
+  slug: string;             // e.g. "cost-of-land-management-tennessee"
   children: React.ReactNode;
 }
 

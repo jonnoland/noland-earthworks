@@ -10,7 +10,7 @@ export default function CostOfLandClearing() {
       dateISO="2026-04-01"
       lastUpdated="April 2026"
       lastUpdatedISO="2026-04-12"
-      slug="cost-of-land-clearing-tennessee"
+      slug="cost-of-land-management-tennessee"
       readTime="5 min read"
       category="Pricing & Planning"
     >

@@ -107,14 +107,18 @@ function Router() {
 
       {/* Blog / Resources */}
       <Route path="/blog" component={BlogPage} />
-      <Route path="/blog/cost-of-land-clearing-tennessee" component={CostOfLandClearing} />
+      <Route path="/blog/cost-of-land-management-tennessee" component={CostOfLandClearing} />
+      <Route path="/blog/cost-of-land-clearing-tennessee" component={() => { window.location.replace("/blog/cost-of-land-management-tennessee"); return null; }} />
       <Route path="/blog/forestry-mulching-vs-bulldozing" component={ForestryMulchingVsBulldozing} />
       <Route path="/blog/signs-you-need-vegetation-management" component={SignsVegetationManagement} />
       <Route path="/blog/best-time-to-clear-land-tennessee" component={BestTimeToClearLand} />
       <Route path="/blog/site-preparation-before-building-tennessee" component={SitePreparationBeforeBuilding} />
-      <Route path="/blog/land-clearing-williamson-county" component={LandClearingWilliamsonCounty} />
-      <Route path="/blog/land-clearing-davidson-county" component={LandClearingDavidsonCounty} />
-      <Route path="/blog/land-clearing-rutherford-county" component={LandClearingRutherfordCounty} />
+      <Route path="/blog/land-management-williamson-county" component={LandClearingWilliamsonCounty} />
+      <Route path="/blog/land-management-davidson-county" component={LandClearingDavidsonCounty} />
+      <Route path="/blog/land-management-rutherford-county" component={LandClearingRutherfordCounty} />
+      <Route path="/blog/land-clearing-williamson-county" component={() => { window.location.replace("/blog/land-management-williamson-county"); return null; }} />
+      <Route path="/blog/land-clearing-davidson-county" component={() => { window.location.replace("/blog/land-management-davidson-county"); return null; }} />
+      <Route path="/blog/land-clearing-rutherford-county" component={() => { window.location.replace("/blog/land-management-rutherford-county"); return null; }} />
 
       {/* Service pages */}
       <Route path="/services/land-management" component={LandClearingPage} />
