@@ -50,6 +50,7 @@ import {
   BookmarkPlus,
   Archive,
   BookmarkCheck,
+  CheckCircle2,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -2134,6 +2135,8 @@ function WebsiteRequestsSection({
   const [activeTab, setActiveTab] = useState<"requests" | "drafts">("requests");
   type DraftRow = { id: number; customerName?: string | null; customerEmail?: string | null; service?: string | null; county?: string | null; acreage?: string | null; aiResult: string; status: string; notes?: string | null; createdAt: Date | string; updatedAt: Date | string; submissionId: number };
   const [previewDraft, setPreviewDraft] = useState<DraftRow | null>(null);
+  // Track which drafts have been pushed to Jobber in this session (optimistic, before DB refetch)
+  const [pushedDraftIds, setPushedDraftIds] = useState<Set<number>>(new Set());
 
   const { data: submissions, isLoading, refetch, isFetching } = trpc.ops.quotes.list.useQuery(
     { limit: 50 },
@@ -2256,7 +2259,9 @@ function WebsiteRequestsSection({
                 const priceHigh = parsed.priceHigh ?? parsed.totalEstimate?.high;
                 const scopeText = parsed.scopeNotes ?? parsed.scopeSummary ?? "";
 
+                const alreadySent = pushedDraftIds.has(draft.id) || draft.status === "sent";
                 function handlePushToJobber() {
+                  if (alreadySent) return;
                   onBuildQuote({
                     clientName: draft.customerName ?? undefined,
                     clientEmail: draft.customerEmail ?? undefined,
@@ -2264,6 +2269,9 @@ function WebsiteRequestsSection({
                     message: parsed.quoteMessage,
                     lineItems: parsed.lineItems,
                   });
+                  // Mark as sent in DB and update local state immediately
+                  setPushedDraftIds((prev) => new Set(prev).add(draft.id));
+                  updateDraftStatusMutation.mutate({ id: draft.id, status: "sent" });
                 }
 
                 return (
@@ -2305,15 +2313,22 @@ function WebsiteRequestsSection({
                         <Eye className="w-3 h-3" />
                         Preview
                       </Button>
-                      <Button
-                        size="sm"
-                        className="h-6 text-xs px-2 gap-1"
-                        onClick={handlePushToJobber}
-                      >
-                        <PlusCircle className="w-3 h-3" />
-                        Push to Jobber
-                      </Button>
-                      {draft.status === "saved" && (
+                      {alreadySent ? (
+                        <span className="inline-flex items-center gap-1 h-6 px-2 rounded text-[11px] font-medium text-green-400 bg-green-500/10 border border-green-500/20">
+                          <CheckCircle2 className="w-3 h-3" />
+                          Sent to Jobber
+                        </span>
+                      ) : (
+                        <Button
+                          size="sm"
+                          className="h-6 text-xs px-2 gap-1"
+                          onClick={handlePushToJobber}
+                        >
+                          <PlusCircle className="w-3 h-3" />
+                          Push to Jobber
+                        </Button>
+                      )}
+                      {!alreadySent && draft.status === "saved" && (
                         <Button
                           size="sm"
                           variant="ghost"

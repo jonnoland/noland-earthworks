@@ -1,6 +1,6 @@
 /*
  * DESIGN: Heavy Equipment Grit — full-width dark amber-accented stats band
- * Animated counters on scroll entry
+ * Counters display final values immediately; animate only when scrolled into view.
  */
 import { useEffect, useRef, useState } from "react";
 
@@ -10,10 +10,14 @@ const stats = [
   { value: 24, suffix: "hr", label: "Quote Turnaround", prefix: "", display: null },
 ];
 
-function useCountUp(target: number, duration = 1500, active: boolean) {
-  const [count, setCount] = useState(0);
+function useCountUp(target: number, duration = 1200, active: boolean) {
+  // Start at final value so the stat is never shown as 0 on page load
+  const [count, setCount] = useState(target);
+  const hasRun = useRef(false);
   useEffect(() => {
-    if (!active) return;
+    if (!active || hasRun.current) return;
+    hasRun.current = true;
+    setCount(0);
     let start = 0;
     const step = Math.ceil(target / (duration / 16));
     const timer = setInterval(() => {
@@ -69,7 +73,12 @@ export default function StatsBar() {
 
   useEffect(() => {
     const observer = new IntersectionObserver(
-      ([entry]) => { if (entry.isIntersecting) setActive(true); },
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setActive(true);
+          observer.disconnect(); // only animate once
+        }
+      },
       { threshold: 0.3 }
     );
     if (ref.current) observer.observe(ref.current);

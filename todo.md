@@ -1148,3 +1148,6 @@
 - [x] Wire up equipment diagnostics: register maintenanceRouter, secure with ownerProcedure, build /ops/equipment page with photo upload and diagnostic result display, add sidebar link
 - [x] Feed pricing benchmarks into AI quote system prompt for real market context
 - [x] Add AI-suggested SMS reply drafting to Conversations inbox
+- [x] Fix homepage stats bar counters — display correct numbers on page load (no animation-dependent zero state)
+- [x] Add before/after photo section to homepage with image pairs labeled by project type and county
+- [x] Add Sent to Jobber badge on draft cards after push to prevent duplicate pushes
