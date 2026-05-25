@@ -550,7 +550,7 @@ const quotesRouter = router({
       const isWestTn = WEST_TN_COUNTIES.has((input.county ?? "").toLowerCase());
 
       // ─── Pricing constants — prefer DB values, fall back to 2025-2026 TN market rates ─────────────
-      // Sources: Mid State Land Clearing (Columbia TN), Bucktown Grading, HomeGuide, Angi 2026 data
+      // Sources: Mid State Land Management (Columbia TN), Bucktown Grading, HomeGuide, Angi 2026 data
       const fmBase  = pricingRow?.forestryMulchingBaseRate ?? 800;
       const lcBase  = pricingRow?.landClearingBaseRate     ?? 700;
       const bhBase  = pricingRow?.brushHoggingBaseRate     ?? 150;

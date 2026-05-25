@@ -60,7 +60,7 @@ const data: ServicePageProps = {
 
 export default function PostClearSeedingPage() {
   usePageTitle(
-    "Post-Clear Seeding — Tennessee Land Clearing Add-On | Noland Earthworks",
+    "Post-Clear Seeding — Tennessee Land Management Add-On | Noland Earthworks",
     "Protect cleared land with post-clear seeding across Middle & West Tennessee. Establish ground cover, prevent erosion, and get your property working faster. Free estimates.",
     "/services/add-ons/post-clear-seeding"
   );

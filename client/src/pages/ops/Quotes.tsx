@@ -1428,7 +1428,7 @@ function CreateQuoteModal({ onClose, onCreated, prefill }: CreateQuoteModalProps
                 <Building2 className="w-5 h-5 text-orange-600" />
                 <div>
                   <p className="text-sm font-bold text-gray-900">Noland Earthworks, LLC</p>
-                  <p className="text-[10px] text-gray-500">Veteran-Owned Land Clearing • Middle Tennessee</p>
+                  <p className="text-[10px] text-gray-500">Veteran-Owned Land Management • Middle Tennessee</p>
                 </div>
               </div>
               <button onClick={() => setShowPreview(false)} className="text-gray-400 hover:text-gray-700">

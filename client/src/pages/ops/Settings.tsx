@@ -2181,7 +2181,7 @@ function AIPricingTab() {
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
           {([
             { label: "Forestry Mulching", key: "forestryMulchingBaseRate" },
-            { label: "Land Clearing",     key: "landClearingBaseRate" },
+            { label: "Land Management",     key: "landClearingBaseRate" },
             { label: "Brush Hogging",     key: "brushHoggingBaseRate" },
             { label: "ROW Clearing",      key: "rowClearingBaseRate" },
           ] as const).map(({ label, key }) => (
@@ -2362,7 +2362,7 @@ function AIPricingTab() {
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
           {([
             { label: "Forestry Mulching", key: "apdForestryMulching" },
-            { label: "Land Clearing",     key: "apdLandClearing" },
+            { label: "Land Management",     key: "apdLandClearing" },
             { label: "ROW Clearing",      key: "apdRowClearing" },
             { label: "Brush Hogging",     key: "apdBrushHogging" },
           ] as const).map(({ label, key }) => (
@@ -2532,7 +2532,7 @@ function AIPricingTab() {
               className="w-full rounded-md border border-border bg-background px-2 py-1.5 text-xs text-foreground"
             >
               <option value="forestry-mulching">Forestry Mulching</option>
-              <option value="land-clearing">Land Clearing</option>
+              <option value="land-clearing">Land Management</option>
               <option value="brush-hogging">Brush Hogging</option>
               <option value="row-clearing">ROW Clearing</option>
             </select>

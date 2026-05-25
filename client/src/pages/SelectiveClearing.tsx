@@ -64,7 +64,7 @@ const data: ServicePageProps = {
 
 export default function SelectiveClearingPage() {
   usePageTitle(
-    "Selective Clearing — Tennessee Land Clearing Add-On | Noland Earthworks",
+    "Selective Clearing — Tennessee Land Management Add-On | Noland Earthworks",
     "Remove specific trees and brush while preserving what you want to keep across Middle & West Tennessee. Precision land clearing with no wholesale removal. Free estimates.",
     "/services/add-ons/selective-clearing"
   );
