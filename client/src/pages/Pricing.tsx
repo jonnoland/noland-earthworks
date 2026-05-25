@@ -312,7 +312,7 @@ const costFactors = [
     icon: "Mountain",
     expanded: {
       headline: "Slope and ground conditions affect equipment speed and safety",
-      body: "Tracked forestry mulchers handle slopes up to about 30–35 degrees safely. Beyond that, work slows considerably and operator safety becomes a factor. Wet or boggy ground can limit access entirely — we may need to wait for dry conditions or use different equipment. Rocky outcroppings and buried debris (old fence wire, concrete) also slow progress and can damage cutting heads. Middle Tennessee's rolling terrain is generally manageable, but we always note slope and soil conditions during the estimate walk.",
+      body: "Tracked forestry mulchers handle slopes up to about 30–35 degrees safely. Beyond that, work slows considerably and operator safety becomes a factor. Wet or boggy ground can limit access entirely — we may need to wait for dry conditions or use different equipment. Rocky outcroppings and buried debris (old fence wire, concrete) also slow progress and can damage cutting heads. Middle & West Tennessee's rolling terrain is generally manageable, but we always note slope and soil conditions during the estimate walk.",
       example: "Flat, dry ground: standard rate. A hillside parcel with 25° slopes and seasonal wet areas: expect a 15–25% terrain surcharge.",
     },
   },

@@ -4,7 +4,7 @@
  */
 import { useState, useRef } from "react";
 import { trpc } from "@/lib/trpc";
-import DashboardLayout from "@/components/OpsDashboardLayout";
+import DashboardLayout from "@/components/DashboardLayout";
 import { toast } from "sonner";
 import {
   Upload,

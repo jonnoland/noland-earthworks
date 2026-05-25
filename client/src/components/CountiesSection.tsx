@@ -175,7 +175,7 @@ export default function CountiesSection() {
             transition: "opacity 0.5s ease 0.15s, transform 0.5s ease 0.15s",
           }}
         >
-          {/* Middle Tennessee */}
+          {/* Middle Tennessee counties */}
           <div>
             <div
               style={{

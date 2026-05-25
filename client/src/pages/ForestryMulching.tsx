@@ -57,7 +57,7 @@ const data: ServicePageProps = {
     },
     {
       question: "What's the minimum acreage for a forestry mulching job?",
-      answer: "We typically have a minimum job size of around ¼ acre to make mobilization worthwhile. However, we're happy to discuss smaller projects — especially if combined with other services like vegetation management or land management.",
+      answer: "Our sweet spot is jobs in the 2–20 acre range — large enough to justify mobilization and equipment transport, but manageable for a single crew in one to a few days. Lots under an acre are generally not cost-effective for the customer given mobilization costs. If you're unsure whether your property qualifies, reach out and we'll give you a straight answer.",
     },
   ],
 };

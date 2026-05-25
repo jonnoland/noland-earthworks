@@ -1173,7 +1173,7 @@ const conversationsRouter = router({
 
       const { invokeLLM } = await import("./_core/llm");
 
-      const systemPrompt = `You are drafting an SMS reply on behalf of Jon Noland, owner of Noland Earthworks, LLC — a veteran-owned land clearing and forestry mulching company in Middle Tennessee.
+      const systemPrompt = `You are drafting an SMS reply on behalf of Jon Noland, owner of Noland Earthworks, LLC — a veteran-owned land clearing and forestry mulching company serving Middle & West Tennessee.
 
 Voice rules (MUST follow):
 - Sound like Jon wrote it — direct, warm, no corporate language
@@ -2289,7 +2289,7 @@ const googleRouter = router({
           "Write in a humble, empathetic tone. Acknowledge the reviewer's experience sincerely, take responsibility where appropriate, and make clear you want to make it right. Do not be defensive.",
       };
 
-      const systemPrompt = `You are writing a reply to a Google Business Profile review on behalf of Jon Noland, owner of Noland Earthworks, LLC — a veteran-owned land clearing and forestry mulching company in Middle Tennessee.
+      const systemPrompt = `You are writing a reply to a Google Business Profile review on behalf of Jon Noland, owner of Noland Earthworks, LLC — a veteran-owned land clearing and forestry mulching company serving Middle & West Tennessee.
 
 Base rules (always apply):
 - Sound like a real person, not a template.

@@ -238,7 +238,7 @@ function ProjectCard({ project }: { project: Project }) {
 export default function Gallery() {
   usePageTitle(
     "Before & After Gallery | Noland Earthworks",
-    "See real before and after photos of land management and forestry mulching projects across Middle Tennessee. Wilson, Dickson, Williamson, Maury, Rutherford, and Montgomery counties.",
+    "See real before and after photos of land management and forestry mulching projects across Middle & West Tennessee. Wilson, Dickson, Williamson, Maury, Rutherford, and Montgomery counties.",
     "/gallery"
   );
 
@@ -290,7 +290,7 @@ export default function Gallery() {
               marginTop: "1rem",
             }}
           >
-            Real projects. Real results. See what professional land management and forestry mulching looks like across Middle Tennessee.
+            Real projects. Real results. See what professional land management and forestry mulching looks like across Middle & West Tennessee.
           </p>
         </div>
       </section>
@@ -381,7 +381,7 @@ export default function Gallery() {
                 marginBottom: "1.75rem",
               }}
             >
-              Get a free on-site estimate. We serve 35 counties across Middle Tennessee.
+              Get a free on-site estimate. We serve 35 counties across Middle & West Tennessee.
             </p>
             <a
               href="/quote"

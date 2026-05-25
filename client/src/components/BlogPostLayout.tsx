@@ -269,7 +269,7 @@ export default function BlogPostLayout({
                   letterSpacing: "0.05em",
                 }}
               >
-                Veteran-owned land management &amp; forestry mulching specialists, Middle Tennessee
+                Veteran-owned land management &amp; forestry mulching specialists, Middle &amp; West Tennessee
               </div>
             </div>
           </div>
@@ -321,7 +321,7 @@ export default function BlogPostLayout({
             }}
           >
             Contact Noland Earthworks today for a free, no-obligation on-site estimate anywhere in
-            Middle Tennessee.
+            Middle &amp; West Tennessee.
           </p>
           <a href="/quote" className="btn-amber" style={{ textDecoration: "none" }}>
             Get a Free Quote →

@@ -682,11 +682,11 @@ export async function runPricingUpdateAgent() {
         const prompt = `You are a market research assistant for a land management company in Tennessee. Today is ${currentDate}.
 
 Research current market rates for ${svc.description}. Focus specifically on:
-- Middle Tennessee (Nashville metro, Columbia, Murfreesboro, Franklin, Clarksville, Lawrenceburg areas)
+- Middle & West Tennessee (Nashville metro, Columbia, Murfreesboro, Franklin, Clarksville, Lawrenceburg, Jackson, Henderson, Decatur areas)
 - West Tennessee (Jackson, Memphis suburbs, Dyersburg, Paris, Brownsville areas)
 
 Use your knowledge of:
-- Competitor pricing from companies like Middle Tennessee Land Management LLC, Mid State Land Management LLC, Grounded Land Solutions, Stribling Land Management & Dirtwork, Wolf Creek Land Company
+- Competitor pricing from companies like Middle Tennessee Land Clearing LLC, Mid State Land Clearing LLC, Grounded Land Solutions, Stribling Land Management & Dirtwork, Wolf Creek Land Company
 - Industry forums (LawnSite, ArboristSite, TractorByNet), contractor pricing guides, and homeowner cost reports for Tennessee
 - HomeAdvisor, Angi, Thumbtack, and similar platforms for regional cost data
 - Typical terrain conditions in this region (rolling hills, cedar glades, bottomland hardwoods, river bottoms)

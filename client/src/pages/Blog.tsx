@@ -12,7 +12,7 @@ export const BLOG_POSTS = [
   {
     slug: "cost-of-land-management-tennessee",
     title: "How Much Does Land Management Cost in Tennessee? (2026 Guide)",
-    meta: "Discover the true cost of land management and forestry mulching in Middle Tennessee. Learn what factors affect pricing per acre and how to get the best value.",
+    meta: "Discover the true cost of land management and forestry mulching in Middle & West Tennessee. Learn what factors affect pricing per acre and how to get the best value.",
     date: "April 2026",
     lastUpdated: "April 2026",
     readTime: "5 min read",
@@ -38,8 +38,8 @@ export const BLOG_POSTS = [
   },
   {
     slug: "best-time-to-clear-land-tennessee",
-    title: "Best Time of Year to Clear Land in Middle Tennessee",
-    meta: "Wondering when to clear land in Tennessee? Learn the best season for forestry mulching and land management in Middle Tennessee to save money and get faster results.",
+    title: "Best Time of Year to Clear Land in Middle & West Tennessee",
+    meta: "Wondering when to clear land in Tennessee? Learn the best season for forestry mulching and land management in Middle & West Tennessee to save money and get faster results.",
     date: "April 2026",
     lastUpdated: "April 2026",
     readTime: "5 min read",
@@ -83,8 +83,8 @@ export const BLOG_POSTS = [
   },
   {
     slug: "land-management-developers-farmers-middle-tennessee",
-    title: "Land Management for Developers and Farmers in Middle Tennessee",
-    meta: "Planning a development or reclaiming pasture in Middle Tennessee? Noland Earthworks provides forestry mulching and land management tailored to developers and farmers across the region.",
+    title: "Land Management for Developers and Farmers in Middle & West Tennessee",
+    meta: "Planning a development or reclaiming pasture in Middle & West Tennessee? Noland Earthworks provides forestry mulching and land management tailored to developers and farmers across the region.",
     date: "May 2026",
     lastUpdated: "May 2026",
     readTime: "7 min read",

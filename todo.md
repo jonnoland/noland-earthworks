@@ -1154,3 +1154,6 @@
 - [x] Fix JSON-LD schema in index.html — remove excavation/grading from description and service catalog; fix keywords meta
 - [x] Add 2 missing blog posts to sitemap (Maury County, Developers/Farmers)
 - [x] Expand quote form county dropdown from 17 to all 35 service area counties
+- [x] Migrate 8 ops pages from OpsDashboardLayout to DashboardLayout (Equipment, Reports, Conversations, Reviews, Timesheets, Scoreboard, Tasks, CrewPricing)
+- [x] Sweep and fix all standalone "Middle Tennessee" references across public-facing pages to include "West"
+- [x] Update ForestryMulching FAQ minimum acreage from 1/4 acre to 2 acres

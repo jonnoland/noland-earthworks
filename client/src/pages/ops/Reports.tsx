@@ -3,7 +3,7 @@
  * Financial scoreboard, revenue reports, and business metrics (live data)
  */
 
-import DashboardLayout from "@/components/OpsDashboardLayout";
+import DashboardLayout from "@/components/DashboardLayout";
 import { trpc } from "@/lib/trpc";
 import { useMemo } from "react";
 import {

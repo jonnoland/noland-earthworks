@@ -6,7 +6,7 @@ const FEATURED_POSTS = [
     category: "Pricing & Planning",
     title: "How Much Does Land Management Cost in Tennessee? (2026 Guide)",
     excerpt:
-      "Discover the true cost of land management and forestry mulching in Middle Tennessee. Learn what factors affect pricing per acre and how to get the best value.",
+      "Discover the true cost of land management and forestry mulching in Middle & West Tennessee. Learn what factors affect pricing per acre and how to get the best value.",
     readTime: "5 min read",
   },
   {
@@ -20,9 +20,9 @@ const FEATURED_POSTS = [
   {
     slug: "best-time-to-clear-land-tennessee",
     category: "Seasonal Tips",
-    title: "Best Time of Year to Clear Land in Middle Tennessee",
+    title: "Best Time of Year to Clear Land in Middle & West Tennessee",
     excerpt:
-      "Wondering when to clear land in Tennessee? Learn the best season for forestry mulching and land management in Middle Tennessee to save money and get faster results.",
+      "Wondering when to clear land in Tennessee? Learn the best season for forestry mulching and land management in Middle & West Tennessee to save money and get faster results.",
     readTime: "5 min read",
   },
 ];
