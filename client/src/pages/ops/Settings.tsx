@@ -1918,9 +1918,13 @@ function AgentsTab() {
 
 /// ─── AI Pricing Settings Tab ─────────────────────────────────────────────────
 
-// Middle TN market averages — used for Reset to Market Defaults
+// Middle & West TN market averages — updated May 2026 based on competitor research
+// Mid State LC (Nashville): $1,500–$3,000/ac forestry mulching
+// Angi 2026 national average: $2,000/ac, range $1,000–$2,500
+// Brush hogging market: $100–$175/ac open pasture, $150–$250 heavy growth
+// West TN mobilization: +$150–$200 over Middle TN due to drive distance
 const MIDDLE_TN_DEFAULTS = {
-  forestryMulchingBaseRate: 1800,
+  forestryMulchingBaseRate: 2000,  // raised from 1800 — market mid for tracked machine
   landClearingBaseRate: 2200,
   brushHoggingBaseRate: 175,
   rowClearingBaseRate: 1400,
@@ -1933,12 +1937,12 @@ const MIDDLE_TN_DEFAULTS = {
   accessModerateMultiplier: "1.10",
   accessDifficultMultiplier: "1.25",
   priceRangeSpread: "0.15",
-  westTnMobilizationFee: "",
+  westTnMobilizationFee: "650",    // reflects additional 60–90 mi drive time
   stumpGrindingPerStump: 150,
   debrisHaulingPerLoad: 450,
   volumeDiscount3to5Pct: 3,
   volumeDiscount5to10Pct: 7,
-  volumeDiscount10plusPct: 12,
+  volumeDiscount10plusPct: 10,     // reduced from 12 — protects margin on large jobs
   apdForestryMulching: "1.5",
   apdLandClearing: "1.2",
   apdRowClearing: "3.0",
@@ -2139,382 +2143,431 @@ function AIPricingTab() {
     );
   }
 
+  // ── Section tab state ──────────────────────────────────────────────────────
+  const [activeSection, setActiveSection] = useState<"rates" | "modifiers" | "addons" | "production" | "benchmarks">("rates");
+
+  const sectionTabs = [
+    { id: "rates"      as const, label: "Rates & Minimums" },
+    { id: "modifiers"  as const, label: "Multipliers" },
+    { id: "addons"     as const, label: "Add-ons & Discounts" },
+    { id: "production" as const, label: "Production & Seasonal" },
+    { id: "benchmarks" as const, label: "Market Benchmarks" },
+  ];
+
   return (
     <div className="flex gap-6 items-start">
       {/* ── Left: settings form ── */}
-      <div className="flex-1 min-w-0 space-y-6">
-      <SettingsSection
-        title="Base Rates"
-        description="Per-acre revenue target for each service type. These feed directly into AI quote estimates."
-        action={
-          benchmarks && benchmarks.length > 0 ? (
+      <div className="flex-1 min-w-0 space-y-4">
+
+        {/* Section tab bar */}
+        <div className="flex gap-1 border-b border-border pb-0">
+          {sectionTabs.map(t => (
             <button
-              onClick={() => {
-                // Map benchmark serviceType keys → form field keys
-                const MAP: Record<string, string> = {
-                  "Forestry Mulching": "forestryMulchingBaseRate",
-                  "Land Management":   "landClearingBaseRate",
-                  "Brush Hogging":     "brushHoggingBaseRate",
-                };
-                let applied = 0;
-                for (const b of benchmarks) {
-                  const fieldKey = MAP[b.serviceType];
-                  if (fieldKey) {
-                    setField(fieldKey, b.midPerAcre);
-                    applied++;
-                  }
-                }
-                if (applied > 0) {
-                  toast.success(`Base rates updated to current mid-tier benchmarks (${applied} fields).`);
-                } else {
-                  toast.error("No matching benchmarks found. Run the pricing agent first.");
-                }
-              }}
-              className="flex items-center gap-1.5 rounded-md border border-border bg-secondary/30 px-3 py-1.5 text-xs font-medium text-foreground hover:bg-secondary/60 transition-colors"
-            >
-              <RefreshCw className="w-3 h-3" />
-              Sync to Market Mid-Rates
-            </button>
-          ) : null
-        }
-      >
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-          {([
-            { label: "Forestry Mulching", key: "forestryMulchingBaseRate" },
-            { label: "Land Management",     key: "landClearingBaseRate" },
-            { label: "Brush Hogging",     key: "brushHoggingBaseRate" },
-            { label: "ROW Clearing",      key: "rowClearingBaseRate" },
-          ] as const).map(({ label, key }) => (
-            <div key={key}>
-              <label className="block text-xs font-medium text-foreground mb-1">{label}</label>
-              <p className="text-[11px] text-muted-foreground mb-1.5">$/acre</p>
-              <div className="flex items-center gap-1">
-                <span className="text-sm text-muted-foreground">$</span>
-                <input
-                  type="number" min={0}
-                  value={form[key] as number ?? 0}
-                  onChange={(e) => setField(key, parseInt(e.target.value, 10) || 0)}
-                  className="w-28 rounded-md border border-border bg-secondary/30 px-2.5 py-1.5 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
-                />
-              </div>
-            </div>
+              key={t.id}
+              type="button"
+              onClick={() => setActiveSection(t.id)}
+              className={cn(
+                "px-3 py-2 text-xs font-medium rounded-t-md border-b-2 transition-colors",
+                activeSection === t.id
+                  ? "border-primary text-foreground bg-secondary/20"
+                  : "border-transparent text-muted-foreground hover:text-foreground hover:bg-secondary/10"
+              )}
+            >{t.label}</button>
           ))}
         </div>
-      </SettingsSection>
 
-      <SettingsSection
-        title="Job Minimums"
-        description="Fixed costs and floor pricing applied to every job."
-      >
-        <div className="grid grid-cols-2 gap-4">
-          {([
-            { label: "Mobilization Fee",  key: "mobilizationFee",  help: "Added to every job" },
-            { label: "Minimum Job Total", key: "minimumJobTotal",  help: "Quotes below this are floored" },
-          ] as const).map(({ label, key, help }) => (
-            <div key={key}>
-              <label className="block text-xs font-medium text-foreground mb-1">{label}</label>
-              <p className="text-[11px] text-muted-foreground mb-1.5">{help}</p>
-              <div className="flex items-center gap-1">
-                <span className="text-sm text-muted-foreground">$</span>
-                <input
-                  type="number" min={0}
-                  value={form[key] as number ?? 0}
-                  onChange={(e) => setField(key, parseInt(e.target.value, 10) || 0)}
-                  className="w-28 rounded-md border border-border bg-secondary/30 px-2.5 py-1.5 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
-                />
+        {/* ── Rates & Minimums ── */}
+        {activeSection === "rates" && (
+          <div className="space-y-5">
+            {/* Base rates */}
+            <div>
+              <div className="flex items-center justify-between mb-3">
+                <div>
+                  <p className="text-sm font-semibold text-foreground">Base Rates</p>
+                  <p className="text-[11px] text-muted-foreground mt-0.5">Per-acre revenue target for each service. Feed directly into AI quote estimates.</p>
+                </div>
+                {benchmarks && benchmarks.length > 0 && (
+                  <button
+                    onClick={() => {
+                      const MAP: Record<string, string> = {
+                        "Forestry Mulching": "forestryMulchingBaseRate",
+                        "Land Management":   "landClearingBaseRate",
+                        "Brush Hogging":     "brushHoggingBaseRate",
+                      };
+                      let applied = 0;
+                      for (const b of benchmarks) {
+                        const fieldKey = MAP[b.serviceType];
+                        if (fieldKey) { setField(fieldKey, b.midPerAcre); applied++; }
+                      }
+                      if (applied > 0) toast.success(`Base rates synced to market mid-rates (${applied} fields).`);
+                      else toast.error("No matching benchmarks. Run the pricing agent first.");
+                    }}
+                    className="flex items-center gap-1.5 rounded-md border border-border bg-secondary/30 px-3 py-1.5 text-xs font-medium text-foreground hover:bg-secondary/60 transition-colors shrink-0"
+                  >
+                    <RefreshCw className="w-3 h-3" />
+                    Sync to Market Mid-Rates
+                  </button>
+                )}
               </div>
-            </div>
-          ))}
-        </div>
-        {/* West TN mobilization fee override */}
-        <div className="mt-4 pt-4 border-t border-border">
-          <label className="block text-xs font-medium text-foreground mb-1">West TN Mobilization Fee (optional)</label>
-          <p className="text-[11px] text-muted-foreground mb-1.5">
-            Override for jobs in Carroll, Chester, Decatur, Gibson, Hardin, Henderson, Henry, Madison, or Weakley counties.
-            Leave blank to use the standard mobilization fee above.
-          </p>
-          <div className="flex items-center gap-1">
-            <span className="text-sm text-muted-foreground">$</span>
-            <input
-              type="number" min={0}
-              value={form.westTnMobilizationFee as string ?? ""}
-              placeholder="e.g. 600"
-              onChange={(e) => setField("westTnMobilizationFee", e.target.value)}
-              className="w-28 rounded-md border border-border bg-secondary/30 px-2.5 py-1.5 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary placeholder:text-muted-foreground/50"
-            />
-          </div>
-        </div>
-      </SettingsSection>
-
-      <SettingsSection
-        title="Condition Multipliers"
-        description="Adjustments applied on top of base rates. 1.00 = no change, 1.25 = +25%."
-      >
-        <div className="space-y-4">
-          {([
-            { heading: "Vegetation Density", fields: [
-              { label: "Moderate", key: "densityModerateMultiplier" },
-              { label: "Heavy",    key: "densityHeavyMultiplier" },
-            ]},
-            { heading: "Terrain", fields: [
-              { label: "Rolling", key: "terrainRollingMultiplier" },
-              { label: "Steep",   key: "terrainSteepMultiplier" },
-            ]},
-            { heading: "Site Access", fields: [
-              { label: "Moderate",  key: "accessModerateMultiplier" },
-              { label: "Difficult", key: "accessDifficultMultiplier" },
-            ]},
-          ] as const).map(({ heading, fields }) => (
-            <div key={heading}>
-              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">{heading}</p>
-              <div className="grid grid-cols-2 gap-4">
-                {fields.map(({ label, key }) => (
-                  <div key={key}>
-                    <label className="block text-xs font-medium text-foreground mb-1">{label}</label>
-                    <div className="flex items-center gap-1.5">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                {([
+                  { label: "Forestry Mulching", key: "forestryMulchingBaseRate", note: "Market mid: $2,000" },
+                  { label: "Land Management",   key: "landClearingBaseRate",     note: "Market mid: $2,200" },
+                  { label: "Brush Hogging",     key: "brushHoggingBaseRate",     note: "Market: $150–$250" },
+                  { label: "ROW Clearing",      key: "rowClearingBaseRate",       note: "Market: $1,200–$1,600" },
+                ] as const).map(({ label, key, note }) => (
+                  <div key={key} className="ops-card p-3">
+                    <label className="block text-[11px] font-semibold text-foreground mb-0.5">{label}</label>
+                    <p className="text-[10px] text-muted-foreground mb-2">{note}</p>
+                    <div className="flex items-center gap-1">
+                      <span className="text-sm text-muted-foreground">$</span>
                       <input
-                        type="number" step="0.01" min={0.5} max={5}
-                        value={form[key] as string ?? "1.00"}
-                        onChange={(e) => setField(key, e.target.value)}
-                        className="w-24 rounded-md border border-border bg-secondary/30 px-2.5 py-1.5 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                        type="number" min={0}
+                        value={form[key] as number ?? 0}
+                        onChange={(e) => setField(key, parseInt(e.target.value, 10) || 0)}
+                        className="w-full rounded-md border border-border bg-background px-2 py-1.5 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
                       />
-                      <span className="text-xs text-muted-foreground">x</span>
+                    </div>
+                    <p className="text-[10px] text-muted-foreground mt-1">$/acre</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Job minimums */}
+            <div>
+              <p className="text-sm font-semibold text-foreground mb-1">Job Minimums</p>
+              <p className="text-[11px] text-muted-foreground mb-3">Fixed costs and floor pricing applied to every job.</p>
+              <div className="grid grid-cols-2 gap-3">
+                {([
+                  { label: "Mobilization Fee",  key: "mobilizationFee",  note: "Added to every job" },
+                  { label: "Minimum Job Total", key: "minimumJobTotal",  note: "Quotes below this are floored" },
+                ] as const).map(({ label, key, note }) => (
+                  <div key={key} className="ops-card p-3">
+                    <label className="block text-[11px] font-semibold text-foreground mb-0.5">{label}</label>
+                    <p className="text-[10px] text-muted-foreground mb-2">{note}</p>
+                    <div className="flex items-center gap-1">
+                      <span className="text-sm text-muted-foreground">$</span>
+                      <input
+                        type="number" min={0}
+                        value={form[key] as number ?? 0}
+                        onChange={(e) => setField(key, parseInt(e.target.value, 10) || 0)}
+                        className="w-full rounded-md border border-border bg-background px-2 py-1.5 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                      />
                     </div>
                   </div>
                 ))}
               </div>
             </div>
-          ))}
-        </div>
-      </SettingsSection>
 
-      <SettingsSection
-        title="Price Range Spread"
-        description="Controls how wide the low/high range is on AI estimates. 0.15 = ±15% around the midpoint."
-      >
-        <div className="flex items-center gap-1.5">
-          <input
-            type="number" step="0.01" min={0} max={0.5}
-            value={form.priceRangeSpread as string ?? "0.15"}
-            onChange={(e) => setField("priceRangeSpread", e.target.value)}
-            className="w-24 rounded-md border border-border bg-secondary/30 px-2.5 py-1.5 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
-          />
-          <span className="text-xs text-muted-foreground">e.g. 0.15 = ±15%</span>
-        </div>
-      </SettingsSection>
-
-      <SettingsSection
-        title="Add-On Rates"
-        description="Per-unit rates used when stump grinding or debris hauling are selected as add-ons. These feed directly into line item pricing."
-      >
-        <div className="grid grid-cols-2 gap-4">
-          {([
-            { label: "Stump Grinding", key: "stumpGrindingPerStump", unit: "per stump" },
-            { label: "Debris Hauling", key: "debrisHaulingPerLoad",  unit: "per load" },
-          ] as const).map(({ label, key, unit }) => (
-            <div key={key}>
-              <label className="block text-xs font-medium text-foreground mb-1">{label}</label>
-              <p className="text-[11px] text-muted-foreground mb-1.5">{unit}</p>
-              <div className="flex items-center gap-1">
+            {/* West TN override */}
+            <div className="ops-card p-4">
+              <p className="text-xs font-semibold text-foreground mb-1">West TN Mobilization Override</p>
+              <p className="text-[11px] text-muted-foreground mb-3">
+                Applies to Carroll, Chester, Decatur, Gibson, Hardin, Henderson, Henry, Madison, and Weakley counties.
+                Leave blank to use the standard mobilization fee. Market rate: $600–$700 for the additional drive distance.
+              </p>
+              <div className="flex items-center gap-2">
                 <span className="text-sm text-muted-foreground">$</span>
                 <input
                   type="number" min={0}
-                  value={form[key] as number ?? 0}
-                  onChange={(e) => setField(key, parseInt(e.target.value, 10) || 0)}
-                  className="w-28 rounded-md border border-border bg-secondary/30 px-2.5 py-1.5 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                  value={form.westTnMobilizationFee as string ?? ""}
+                  placeholder="e.g. 650"
+                  onChange={(e) => setField("westTnMobilizationFee", e.target.value)}
+                  className="w-28 rounded-md border border-border bg-background px-2 py-1.5 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary placeholder:text-muted-foreground/50"
                 />
+                <span className="text-[11px] text-muted-foreground">per job</span>
               </div>
             </div>
-          ))}
-        </div>
-      </SettingsSection>
 
-      <SettingsSection
-        title="Volume Discounts"
-        description="Percentage discount applied automatically based on job size. Set to 0 to disable."
-      >
-        <div className="grid grid-cols-3 gap-4">
-          {([
-            { label: "3–5 Acres",  key: "volumeDiscount3to5Pct" },
-            { label: "5–10 Acres", key: "volumeDiscount5to10Pct" },
-            { label: "10+ Acres",  key: "volumeDiscount10plusPct" },
-          ] as const).map(({ label, key }) => (
-            <div key={key}>
-              <label className="block text-xs font-medium text-foreground mb-1">{label}</label>
-              <div className="flex items-center gap-1.5">
+            {/* Price range spread */}
+            <div className="ops-card p-4">
+              <p className="text-xs font-semibold text-foreground mb-1">Price Range Spread</p>
+              <p className="text-[11px] text-muted-foreground mb-3">Controls the low/high band on AI estimates. 0.15 = ±15% around the midpoint.</p>
+              <div className="flex items-center gap-2">
                 <input
-                  type="number" min={0} max={50}
-                  value={form[key] as number ?? 0}
-                  onChange={(e) => setField(key, parseInt(e.target.value, 10) || 0)}
-                  className="w-20 rounded-md border border-border bg-secondary/30 px-2.5 py-1.5 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                  type="number" step="0.01" min={0} max={0.5}
+                  value={form.priceRangeSpread as string ?? "0.15"}
+                  onChange={(e) => setField("priceRangeSpread", e.target.value)}
+                  className="w-24 rounded-md border border-border bg-background px-2 py-1.5 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
                 />
-                <span className="text-xs text-muted-foreground">%</span>
+                <span className="text-[11px] text-muted-foreground">decimal — 0.15 = ±15%</span>
               </div>
             </div>
-          ))}
-        </div>
-      </SettingsSection>
+          </div>
+        )}
 
-      <SettingsSection
-        title="Production Rates"
-        description="Acres per day your machine covers under moderate conditions. Used to calculate estimated days on site."
-      >
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-          {([
-            { label: "Forestry Mulching", key: "apdForestryMulching" },
-            { label: "Land Management",     key: "apdLandClearing" },
-            { label: "ROW Clearing",      key: "apdRowClearing" },
-            { label: "Brush Hogging",     key: "apdBrushHogging" },
-          ] as const).map(({ label, key }) => (
-            <div key={key}>
-              <label className="block text-xs font-medium text-foreground mb-1">{label}</label>
-              <div className="flex items-center gap-1.5">
-                <input
-                  type="number" step="0.25" min={0.25} max={20}
-                  value={form[key] as string ?? "1.5"}
-                  onChange={(e) => setField(key, e.target.value)}
-                  className="w-24 rounded-md border border-border bg-secondary/30 px-2.5 py-1.5 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
-                />
-                <span className="text-xs text-muted-foreground">ac/day</span>
-              </div>
+        {/* ── Multipliers ── */}
+        {activeSection === "modifiers" && (
+          <div className="ops-card p-5 space-y-5">
+            <div>
+              <p className="text-sm font-semibold text-foreground mb-1">Condition Multipliers</p>
+              <p className="text-[11px] text-muted-foreground">Applied on top of base rates. 1.00 = no change, 1.25 = +25%. Light density and flat terrain are always 1.00.</p>
             </div>
-          ))}
-        </div>
-      </SettingsSection>
-
-      <SettingsSection
-        title="Seasonal &amp; Complexity Adjustments"
-        description="Optional percentage adjustments applied automatically based on time of year and job complexity signals."
-      >
-        <div className="space-y-4">
-          <div>
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Seasonal Rate Adjustment</p>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-3 gap-6">
               {([
-                { label: "Peak Season Uplift (Oct–Mar)",    key: "seasonalPeakUpliftPct",    help: "% added during dormant season" },
-                { label: "Slow Season Reduction (Jul–Sep)", key: "seasonalSlowReductionPct", help: "% removed during peak heat" },
-              ] as const).map(({ label, key, help }) => (
-                <div key={key}>
-                  <label className="block text-xs font-medium text-foreground mb-1">{label}</label>
-                  <p className="text-[11px] text-muted-foreground mb-1.5">{help}. Set to 0 to disable.</p>
-                  <div className="flex items-center gap-1.5">
-                    <input
-                      type="number" min={0} max={50}
-                      value={form[key] as number ?? 0}
-                      onChange={(e) => setField(key, parseInt(e.target.value, 10) || 0)}
-                      className="w-20 rounded-md border border-border bg-secondary/30 px-2.5 py-1.5 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
-                    />
-                    <span className="text-xs text-muted-foreground">%</span>
+                { heading: "Vegetation Density", fields: [
+                  { label: "Moderate", key: "densityModerateMultiplier", note: "Mixed brush/saplings" },
+                  { label: "Heavy",    key: "densityHeavyMultiplier",    note: "Dense cedar/hardwood" },
+                ]},
+                { heading: "Terrain", fields: [
+                  { label: "Rolling", key: "terrainRollingMultiplier", note: "Gentle slopes" },
+                  { label: "Steep",   key: "terrainSteepMultiplier",   note: "Significant grade" },
+                ]},
+                { heading: "Site Access", fields: [
+                  { label: "Moderate",  key: "accessModerateMultiplier",  note: "Limited entry points" },
+                  { label: "Difficult", key: "accessDifficultMultiplier", note: "Tight or obstructed" },
+                ]},
+              ] as const).map(({ heading, fields }) => (
+                <div key={heading}>
+                  <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide mb-3">{heading}</p>
+                  <div className="space-y-3">
+                    {fields.map(({ label, key, note }) => (
+                      <div key={key}>
+                        <label className="block text-xs font-medium text-foreground mb-0.5">{label}</label>
+                        <p className="text-[10px] text-muted-foreground mb-1.5">{note}</p>
+                        <div className="flex items-center gap-1.5">
+                          <input
+                            type="number" step="0.01" min={0.5} max={5}
+                            value={form[key] as string ?? "1.00"}
+                            onChange={(e) => setField(key, e.target.value)}
+                            className="w-24 rounded-md border border-border bg-background px-2 py-1.5 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                          />
+                          <span className="text-xs text-muted-foreground">x</span>
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 </div>
               ))}
             </div>
           </div>
-          <div className="pt-3 border-t border-border">
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Complexity Premium</p>
-            <p className="text-[11px] text-muted-foreground mb-3">
-              Applied automatically when the customer message mentions structures, fencing, utilities, water features, or neighboring properties.
-            </p>
-            <div className="flex items-center gap-1.5">
-              <input
-                type="number" min={0} max={100}
-                value={form.complexityPremiumPct as number ?? 15}
-                onChange={(e) => setField("complexityPremiumPct", parseInt(e.target.value, 10) || 0)}
-                className="w-20 rounded-md border border-border bg-secondary/30 px-2.5 py-1.5 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
-              />
-              <span className="text-xs text-muted-foreground">% premium</span>
-            </div>
-          </div>
-        </div>
-      </SettingsSection>
+        )}
 
-      {/* Market Rate Benchmarks */}
-      <SettingsSection
-        title="Middle & West TN Market Rate Benchmarks"
-        description="AI-estimated market rates, updated daily. The agent uses LLM research based on regional competitor data, industry forums, and cost guides — not live scraped prices. Use as a directional reference to verify your rates are in range, not as a definitive market quote."
-        action={
-          <button
-            onClick={() => runAgent.mutate({ agentId: "pricing_update" })}
-            disabled={runAgent.isPending || benchmarksLoading}
-            className="flex items-center gap-1.5 rounded-md border border-border bg-secondary/30 px-3 py-1.5 text-xs font-medium text-foreground hover:bg-secondary/60 disabled:opacity-50 transition-colors"
-          >
-            {runAgent.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <RefreshCw className="w-3 h-3" />}
-            Run Now
-          </button>
-        }
-      >
-        {benchmarksLoading && (
-          <div className="flex items-center gap-2 py-3 text-xs text-muted-foreground">
-            <Loader2 className="w-3.5 h-3.5 animate-spin" />
-            Loading benchmarks...
-          </div>
-        )}
-        {!benchmarksLoading && (!benchmarks || benchmarks.length === 0) && (
-          <div className="text-xs text-muted-foreground py-3">
-            No benchmark data yet. Click Run Now to pull current market rates.
-          </div>
-        )}
-        {!benchmarksLoading && benchmarks && benchmarks.length > 0 && (
-          <div className="space-y-3">
-            <div className="rounded-md border border-border overflow-hidden">
-              <table className="w-full text-xs">
-                <thead>
-                  <tr className="bg-secondary/30 border-b border-border">
-                    <th className="text-left px-3 py-2 font-medium text-muted-foreground">Service</th>
-                    <th className="text-right px-3 py-2 font-medium text-muted-foreground">Low</th>
-                    <th className="text-right px-3 py-2 font-medium text-muted-foreground">Mid</th>
-                    <th className="text-right px-3 py-2 font-medium text-muted-foreground">High</th>
-                    <th className="text-right px-3 py-2 font-medium text-muted-foreground">Updated</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {benchmarks.map((b) => (
-                    <tr key={b.id} className="border-b border-border last:border-0 group">
-                      <td className="px-3 py-2 font-medium text-foreground">{b.serviceType}</td>
-                      <td className="px-3 py-2 text-right text-muted-foreground">${b.lowPerAcre.toLocaleString()}</td>
-                      <td className="px-3 py-2 text-right text-foreground font-medium">${b.midPerAcre.toLocaleString()}</td>
-                      <td className="px-3 py-2 text-right text-muted-foreground">${b.highPerAcre.toLocaleString()}</td>
-                      <td className="px-3 py-2 text-right text-[11px] text-muted-foreground">
-                        {new Date(b.lastUpdatedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+        {/* ── Add-ons & Discounts ── */}
+        {activeSection === "addons" && (
+          <div className="space-y-4">
+            <div className="ops-card p-4">
+              <p className="text-sm font-semibold text-foreground mb-1">Add-On Rates</p>
+              <p className="text-[11px] text-muted-foreground mb-4">Per-unit rates for optional services. Added as line items when selected on a quote.</p>
+              <div className="grid grid-cols-2 gap-4">
+                {([
+                  { label: "Stump Grinding", key: "stumpGrindingPerStump", unit: "per stump", note: "Market: $100–$200/stump" },
+                  { label: "Debris Hauling", key: "debrisHaulingPerLoad",  unit: "per load",  note: "Market: $350–$550/load" },
+                ] as const).map(({ label, key, unit, note }) => (
+                  <div key={key}>
+                    <label className="block text-xs font-medium text-foreground mb-0.5">{label}</label>
+                    <p className="text-[10px] text-muted-foreground mb-2">{note}</p>
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-sm text-muted-foreground">$</span>
+                      <input
+                        type="number" min={0}
+                        value={form[key] as number ?? 0}
+                        onChange={(e) => setField(key, parseInt(e.target.value, 10) || 0)}
+                        className="w-28 rounded-md border border-border bg-background px-2 py-1.5 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                      />
+                      <span className="text-[11px] text-muted-foreground">{unit}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
-            {/* Research summaries */}
-            <div className="space-y-2">
-              {benchmarks.filter(b => b.researchSummary).map((b) => (
-                <div key={b.id} className="text-[11px] text-muted-foreground">
-                  <span className="font-medium text-foreground">{b.serviceType}:</span> {b.researchSummary}
+
+            <div className="ops-card p-4">
+              <p className="text-sm font-semibold text-foreground mb-1">Volume Discounts</p>
+              <p className="text-[11px] text-muted-foreground mb-4">Automatically applied based on job size. Set to 0 to disable. Larger discounts reduce margin on big jobs — adjust carefully.</p>
+              <div className="grid grid-cols-3 gap-4">
+                {([
+                  { label: "3–5 Acres",  key: "volumeDiscount3to5Pct",   note: "Small uplift" },
+                  { label: "5–10 Acres", key: "volumeDiscount5to10Pct",  note: "Mid-range" },
+                  { label: "10+ Acres",  key: "volumeDiscount10plusPct", note: "Large job" },
+                ] as const).map(({ label, key, note }) => (
+                  <div key={key}>
+                    <label className="block text-xs font-medium text-foreground mb-0.5">{label}</label>
+                    <p className="text-[10px] text-muted-foreground mb-2">{note}</p>
+                    <div className="flex items-center gap-1.5">
+                      <input
+                        type="number" min={0} max={50}
+                        value={form[key] as number ?? 0}
+                        onChange={(e) => setField(key, parseInt(e.target.value, 10) || 0)}
+                        className="w-20 rounded-md border border-border bg-background px-2 py-1.5 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                      />
+                      <span className="text-xs text-muted-foreground">%</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ── Production & Seasonal ── */}
+        {activeSection === "production" && (
+          <div className="space-y-4">
+            <div className="ops-card p-4">
+              <p className="text-sm font-semibold text-foreground mb-1">Production Rates</p>
+              <p className="text-[11px] text-muted-foreground mb-4">Acres your machine covers per day under moderate conditions. Used to calculate estimated days on site.</p>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                {([
+                  { label: "Forestry Mulching", key: "apdForestryMulching", note: "Dense cedar/brush" },
+                  { label: "Land Management",   key: "apdLandClearing",     note: "Mixed clearing" },
+                  { label: "ROW Clearing",       key: "apdRowClearing",     note: "Linear corridors" },
+                  { label: "Brush Hogging",      key: "apdBrushHogging",    note: "Open pasture" },
+                ] as const).map(({ label, key, note }) => (
+                  <div key={key}>
+                    <label className="block text-xs font-medium text-foreground mb-0.5">{label}</label>
+                    <p className="text-[10px] text-muted-foreground mb-2">{note}</p>
+                    <div className="flex items-center gap-1.5">
+                      <input
+                        type="number" step="0.25" min={0.25} max={20}
+                        value={form[key] as string ?? "1.5"}
+                        onChange={(e) => setField(key, e.target.value)}
+                        className="w-24 rounded-md border border-border bg-background px-2 py-1.5 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                      />
+                      <span className="text-xs text-muted-foreground">ac/day</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="ops-card p-4">
+              <p className="text-sm font-semibold text-foreground mb-1">Seasonal Adjustments</p>
+              <p className="text-[11px] text-muted-foreground mb-4">Optional percentage adjustments applied automatically by time of year. Set to 0 to disable.</p>
+              <div className="grid grid-cols-2 gap-4 mb-5">
+                {([
+                  { label: "Peak Season Uplift",    key: "seasonalPeakUpliftPct",    note: "Oct–Mar (dormant season)" },
+                  { label: "Slow Season Reduction", key: "seasonalSlowReductionPct", note: "Jul–Sep (peak heat)" },
+                ] as const).map(({ label, key, note }) => (
+                  <div key={key}>
+                    <label className="block text-xs font-medium text-foreground mb-0.5">{label}</label>
+                    <p className="text-[10px] text-muted-foreground mb-2">{note}</p>
+                    <div className="flex items-center gap-1.5">
+                      <input
+                        type="number" min={0} max={50}
+                        value={form[key] as number ?? 0}
+                        onChange={(e) => setField(key, parseInt(e.target.value, 10) || 0)}
+                        className="w-20 rounded-md border border-border bg-background px-2 py-1.5 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                      />
+                      <span className="text-xs text-muted-foreground">%</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div className="pt-4 border-t border-border">
+                <p className="text-xs font-semibold text-foreground mb-1">Complexity Premium</p>
+                <p className="text-[11px] text-muted-foreground mb-3">
+                  Added automatically when the customer message mentions structures, fencing, utilities, water features, or neighboring properties.
+                </p>
+                <div className="flex items-center gap-1.5">
+                  <input
+                    type="number" min={0} max={100}
+                    value={form.complexityPremiumPct as number ?? 15}
+                    onChange={(e) => setField("complexityPremiumPct", parseInt(e.target.value, 10) || 0)}
+                    className="w-20 rounded-md border border-border bg-background px-2 py-1.5 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                  />
+                  <span className="text-xs text-muted-foreground">% premium</span>
                 </div>
-              ))}
+              </div>
             </div>
           </div>
         )}
-      </SettingsSection>
 
-      <div className="flex items-center justify-between pt-2">
-        <button
-          onClick={() => {
-            setForm({ ...MIDDLE_TN_DEFAULTS });
-            setDirty(true);
-            toast.success("Form reset to Middle TN market defaults. Click Save Changes to apply.");
-          }}
-          className="flex items-center gap-1.5 rounded-md border border-border bg-secondary/20 px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-secondary/50 hover:text-foreground transition-colors"
-        >
-          <RotateCcw className="w-3.5 h-3.5" />
-          Reset to Market Defaults
-        </button>
-        <button
-          onClick={handleSave}
-          disabled={!dirty || update.isPending}
-          className="flex items-center gap-1.5 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors"
-        >
-          {update.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
-          Save Changes
-        </button>
-      </div>
+        {/* ── Market Benchmarks ── */}
+        {activeSection === "benchmarks" && (
+          <div className="ops-card p-5">
+            <div className="flex items-start justify-between mb-4">
+              <div>
+                <p className="text-sm font-semibold text-foreground">Middle & West TN Market Benchmarks</p>
+                <p className="text-[11px] text-muted-foreground mt-1 max-w-lg">
+                  AI-researched directional rates based on regional competitor data, industry forums, and cost guides.
+                  Updated daily. Not live-scraped prices — use as a reference to verify your rates are in range.
+                </p>
+              </div>
+              <button
+                onClick={() => runAgent.mutate({ agentId: "pricing_update" })}
+                disabled={runAgent.isPending || benchmarksLoading}
+                className="flex items-center gap-1.5 rounded-md border border-border bg-secondary/30 px-3 py-1.5 text-xs font-medium text-foreground hover:bg-secondary/60 disabled:opacity-50 transition-colors shrink-0"
+              >
+                {runAgent.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <RefreshCw className="w-3 h-3" />}
+                Refresh Now
+              </button>
+            </div>
+            {benchmarksLoading && (
+              <div className="flex items-center gap-2 py-4 text-xs text-muted-foreground">
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />Loading benchmarks...
+              </div>
+            )}
+            {!benchmarksLoading && (!benchmarks || benchmarks.length === 0) && (
+              <div className="text-xs text-muted-foreground py-4">
+                No benchmark data yet. Click Refresh Now to pull current market rates.
+              </div>
+            )}
+            {!benchmarksLoading && benchmarks && benchmarks.length > 0 && (
+              <div className="space-y-4">
+                <div className="rounded-md border border-border overflow-hidden">
+                  <table className="w-full text-xs">
+                    <thead>
+                      <tr className="bg-secondary/30 border-b border-border">
+                        <th className="text-left px-3 py-2.5 font-medium text-muted-foreground">Service</th>
+                        <th className="text-right px-3 py-2.5 font-medium text-muted-foreground">Low /ac</th>
+                        <th className="text-right px-3 py-2.5 font-medium text-muted-foreground">Mid /ac</th>
+                        <th className="text-right px-3 py-2.5 font-medium text-muted-foreground">High /ac</th>
+                        <th className="text-right px-3 py-2.5 font-medium text-muted-foreground">Updated</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {benchmarks.map((b) => (
+                        <tr key={b.id} className="border-b border-border last:border-0">
+                          <td className="px-3 py-2.5 font-medium text-foreground">{b.serviceType}</td>
+                          <td className="px-3 py-2.5 text-right text-muted-foreground">${b.lowPerAcre.toLocaleString()}</td>
+                          <td className="px-3 py-2.5 text-right text-foreground font-semibold">${b.midPerAcre.toLocaleString()}</td>
+                          <td className="px-3 py-2.5 text-right text-muted-foreground">${b.highPerAcre.toLocaleString()}</td>
+                          <td className="px-3 py-2.5 text-right text-[11px] text-muted-foreground">
+                            {new Date(b.lastUpdatedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                {benchmarks.filter(b => b.researchSummary).length > 0 && (
+                  <div className="space-y-2 pt-1">
+                    <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">Research Notes</p>
+                    {benchmarks.filter(b => b.researchSummary).map((b) => (
+                      <div key={b.id} className="text-[11px] text-muted-foreground">
+                        <span className="font-medium text-foreground">{b.serviceType}:</span> {b.researchSummary}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ── Action bar ── */}
+        <div className="flex items-center justify-between pt-2 border-t border-border">
+          <button
+            onClick={() => {
+              setForm({ ...MIDDLE_TN_DEFAULTS });
+              setDirty(true);
+              toast.success("Reset to Middle & West TN market defaults. Click Save to apply.");
+            }}
+            className="flex items-center gap-1.5 rounded-md border border-border bg-secondary/20 px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-secondary/50 hover:text-foreground transition-colors"
+          >
+            <RotateCcw className="w-3.5 h-3.5" />
+            Reset to Market Defaults
+          </button>
+          <button
+            onClick={handleSave}
+            disabled={!dirty || update.isPending}
+            className="flex items-center gap-1.5 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors"
+          >
+            {update.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+            Save Changes
+          </button>
+        </div>
       </div>{/* end left column */}
 
       {/* ── Right: live preview calculator ── */}

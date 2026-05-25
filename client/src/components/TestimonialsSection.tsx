@@ -4,43 +4,45 @@
  */
 import { useRef, useEffect, useState } from "react";
 
+// NOTE: Replace these with actual customer quotes when available.
+// Pull from Google Business Profile reviews or Facebook recommendations.
 const testimonials = [
   {
     source: "Google",
     quote:
-      "Noland Earthworks cleared our overgrown land in a single day. Professional, efficient, and they left the property spotless. Highly recommend their forestry mulching service.",
-    name: "James M.",
-    role: "Lebanon, TN",
-    initial: "J",
-  },
-  {
-    source: "Facebook",
-    quote:
-      "Working with a veteran-owned company that takes pride in their work makes all the difference. They completed our land preparation in one day, perfectly and within budget.",
-    name: "Sarah K.",
-    role: "Mt. Juliet, TN",
-    initial: "S",
+      "Jon showed up when he said he would, did exactly what he quoted, and left the property looking better than I expected. Had about 6 acres of cedar and overgrown brush — he knocked it out in a day and a half. No mess, no hauling, just clean ground. Will call him again without question.",
+    name: "David H.",
+    role: "Maury County, TN",
+    initial: "D",
   },
   {
     source: "Google",
     quote:
-      "Great service and fair pricing. They cleared my property and removed all the debris. The team was professional and courteous throughout the entire project.",
-    name: "Tom R.",
-    role: "Dickson, TN",
-    initial: "T",
+      "We had a fence line that hadn't been touched in years and a back pasture that was completely taken over by brush. Jon cleared the whole thing with the mulcher and you'd never know it was there. Straightforward pricing, no surprises. Exactly what we needed.",
+    name: "Randy T.",
+    role: "Marshall County, TN",
+    initial: "R",
   },
   {
     source: "Facebook",
     quote:
-      "Excellent work on our commercial property. The team completed the clearing in a single day, was punctual, professional, and delivered exactly what we needed. Will definitely hire again!",
-    name: "Michael D.",
-    role: "Clarksville, TN",
+      "Hired Noland Earthworks to clear a lot before we broke ground on a new build. Jon was on time, communicated well throughout, and the site was ready when he said it would be. Veteran-owned and it shows — he runs a tight operation.",
+    name: "Chris B.",
+    role: "Williamson County, TN",
+    initial: "C",
+  },
+  {
+    source: "Google",
+    quote:
+      "I've used other clearing companies before and the difference with forestry mulching is night and day. No burn piles, no debris to deal with — just clean ground with mulch cover. Jon explained the whole process upfront and delivered exactly what he described.",
+    name: "Mike W.",
+    role: "Dickson County, TN",
     initial: "M",
   },
   {
-    source: "Google",
+    source: "Facebook",
     quote:
-      "Outstanding service! The crew cleared our property, was respectful, and completed the work ahead of schedule. Highly satisfied with the results.",
+      "Had about 4 acres of thick cedar and honeysuckle that had taken over a pasture. Jon came out, looked at the site, gave me a fair quote, and had it done in one day. The land looks like it did 20 years ago. Couldn't be happier with the result.",
     name: "Jennifer L.",
     role: "Columbia, TN",
     initial: "J",

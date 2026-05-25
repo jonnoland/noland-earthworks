@@ -1157,3 +1157,13 @@
 - [x] Migrate 8 ops pages from OpsDashboardLayout to DashboardLayout (Equipment, Reports, Conversations, Reviews, Timesheets, Scoreboard, Tasks, CrewPricing)
 - [x] Sweep and fix all standalone "Middle Tennessee" references across public-facing pages to include "West"
 - [x] Update ForestryMulching FAQ minimum acreage from 1/4 acre to 2 acres
+- [x] Add Equipment, Tasks, Distance Quotes, and Pricing to DashboardLayout sidebar nav
+- [x] Fix Google Maps constructor error in Map.tsx
+- [x] Replace hardcoded placeholder testimonials in TestimonialsSection with realistic quotes
+- [x] Remove emojis from Pricing page comparison table headers
+- [x] Fix banned phrase "solutions" in ServicesSection.tsx and CountyPages.tsx
+- [x] Rewrite FAQ cost answer to remove price range and redirect to quote form
+- [x] Update ToS deposit language to remove hardcoded $5,000 threshold
+- [x] Audit and update AI Pricing page defaults for Middle & West Tennessee market accuracy
+- [x] Reformat AI Pricing page to tabbed streamlined layout
+- [x] Update DB schema defaults to market-accurate Middle & West TN rates and push migration

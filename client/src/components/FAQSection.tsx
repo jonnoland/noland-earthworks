@@ -10,7 +10,7 @@ const faqs = [
   {
     question: "How much does forestry mulching or land management cost?",
     answer:
-      "Pricing depends on acreage, brush density, terrain, and the service type. Most residential jobs range from a few hundred to a few thousand dollars. We provide free, no-obligation quotes — fill out our quote form or call us at 615-406-4819 and we'll give you a clear, upfront number before any work begins.",
+      "Every job is priced based on acreage, brush density, terrain, and site conditions — there's no meaningful ballpark without seeing the property. What we can tell you is that pricing is straightforward and quoted upfront before any work begins. Fill out the quote form or call us at 615-406-4819 and we'll schedule a free on-site estimate.",
   },
   {
     question: "How long does a typical job take?",

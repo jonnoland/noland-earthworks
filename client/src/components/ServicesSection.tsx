@@ -29,7 +29,7 @@ const services = [
     title: "Vegetation Management",
     href: "/services/vegetation-management",
     description:
-      "Strategic vegetation management to maintain property aesthetics, prevent overgrowth, and manage invasive species. Tailored solutions for your specific land management needs.",
+      "Strategic vegetation management to maintain property aesthetics, prevent overgrowth, and manage invasive species along fence lines, rights-of-way, and property boundaries.",
     image: VEGETATION_MGMT,
   },
   {

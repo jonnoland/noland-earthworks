@@ -324,6 +324,11 @@
     color: #d97706;
   }
 
+  /* Ops dashboard card */
+  .ops-card {
+    @apply rounded-lg border border-border bg-secondary/20;
+  }
+
   /* Noise texture overlay */
   .noise-overlay::after {
     content: '';

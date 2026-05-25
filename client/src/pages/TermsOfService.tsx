@@ -59,7 +59,7 @@ export default function TermsOfService() {
           <ul style={{ color: "rgba(240,237,230,0.8)", lineHeight: 2.2, paddingLeft: "1.5rem" }}>
             <li>All estimates are based on information available at the time of quoting. Final pricing may adjust based on actual site conditions, including brush density, debris, terrain, or accessibility.</li>
             <li>Quotes are valid for 30 days unless otherwise stated.</li>
-            <li>Jobs over $5,000 may require a deposit to secure scheduling and equipment allocation.</li>
+            <li>Larger jobs may require a deposit to secure scheduling and equipment allocation. Deposit requirements, if any, will be communicated at the time of booking.</li>
             <li>Deposits are refundable if cancellation occurs 14 or more days before the scheduled start date.</li>
             <li>Deposits are non-refundable if cancellation occurs within 14 days of the start date.</li>
             <li>Payment in full is due immediately upon completion unless otherwise agreed in writing.</li>

@@ -852,7 +852,7 @@ export default function PricingPage() {
                       backgroundColor: "rgba(224,123,42,0.06)",
                     }}
                   >
-                    🌲 Forestry Mulching
+                    Forestry Mulching
                   </th>
                   <th
                     style={{
@@ -867,7 +867,7 @@ export default function PricingPage() {
                       width: "37.5%",
                     }}
                   >
-                    🏗️ Traditional Land Management
+                    Traditional Land Management
                   </th>
                 </tr>
               </thead>
