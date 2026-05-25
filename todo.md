@@ -1168,3 +1168,4 @@
 - [x] Reformat AI Pricing page to tabbed streamlined layout
 - [x] Update DB schema defaults to market-accurate Middle & West TN rates and push migration
 - [x] Fix React error #310 in AIPricingTab — move activeSection useState before early return
+- [x] Create Marshall County blog post targeting Lewisburg/Cornersville area for county SEO series

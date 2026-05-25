@@ -99,6 +99,15 @@ export const BLOG_POSTS = [
     readTime: "6 min read",
     category: "Local Service Areas",
   },
+  {
+    slug: "land-management-marshall-county",
+    title: "Land Management in Marshall County, TN: What Property Owners Need to Know",
+    meta: "Need land management in Marshall County, TN? Noland Earthworks provides forestry mulching and land clearing in Lewisburg, Cornersville, Chapel Hill, Petersburg, and across Marshall County.",
+    date: "May 2026",
+    lastUpdated: "May 2026",
+    readTime: "6 min read",
+    category: "Local Service Areas",
+  },
 ];
 
 export default function Blog() {

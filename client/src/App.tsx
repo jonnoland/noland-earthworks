@@ -55,6 +55,7 @@ import LandManagementDevelopersFarmers from "./pages/blog/LandManagementDevelope
 import LandManagementDavidsonCounty from "./pages/blog/LandManagementDavidsonCounty";
 import LandManagementRutherfordCounty from "./pages/blog/LandManagementRutherfordCounty";
 import LandManagementMauryCounty from "./pages/blog/LandManagementMauryCounty";
+import LandManagementMarshallCounty from "./pages/blog/LandManagementMarshallCounty";
 import GalleryPage from "./pages/Gallery";
 import {
   DavidsonCountyPage,
@@ -121,6 +122,7 @@ function Router() {
       <Route path="/blog/land-management-davidson-county" component={LandManagementDavidsonCounty} />
       <Route path="/blog/land-management-rutherford-county" component={LandManagementRutherfordCounty} />
       <Route path="/blog/land-management-maury-county" component={LandManagementMauryCounty} />
+      <Route path="/blog/land-management-marshall-county" component={LandManagementMarshallCounty} />
       <Route path="/blog/land-clearing-williamson-county" component={() => { window.location.replace("/blog/land-management-williamson-county"); return null; }} />
       <Route path="/blog/land-clearing-davidson-county" component={() => { window.location.replace("/blog/land-management-davidson-county"); return null; }} />
       <Route path="/blog/land-clearing-rutherford-county" component={() => { window.location.replace("/blog/land-management-rutherford-county"); return null; }} />
