@@ -2076,16 +2076,9 @@ function AIPricingTab() {
     });
   }
 
-  if (isLoading) {
-    return (
-      <div className="flex items-center gap-2 p-6 text-sm text-muted-foreground">
-        <Loader2 className="w-4 h-4 animate-spin" />Loading...
-      </div>
-    );
-  }
-
   // ── Live preview calculator ──────────────────────────────────────────────
   // Mirrors the core math in analyzeSubmission so the preview stays in sync
+  // NOTE: must be declared BEFORE any early returns to satisfy React rules of hooks
   const [calc, setCalc] = useState({ service: "forestry-mulching", acres: 5, density: "moderate", terrain: "flat", access: "easy", addStumps: 0, addLoads: 0 });
 
   const previewResult = useMemo(() => {
@@ -2137,6 +2130,14 @@ function AIPricingTab() {
     const estDays = calc.acres > 0 ? Math.max(1, Math.ceil(calc.acres / apd)) : 1;
     return { low: low + stumpTotal + debrisTotal, mid: mid + stumpTotal + debrisTotal, high: high + stumpTotal + debrisTotal, estDays, stumpTotal, debrisTotal };
   }, [form, calc]);
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center gap-2 p-6 text-sm text-muted-foreground">
+        <Loader2 className="w-4 h-4 animate-spin" />Loading...
+      </div>
+    );
+  }
 
   return (
     <div className="flex gap-6 items-start">
