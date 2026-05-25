@@ -1169,3 +1169,7 @@
 - [x] Update DB schema defaults to market-accurate Middle & West TN rates and push migration
 - [x] Fix React error #310 in AIPricingTab — move activeSection useState before early return
 - [x] Create Marshall County blog post targeting Lewisburg/Cornersville area for county SEO series
+- [x] Audit AI Pricing page rates for Middle & West Tennessee market accuracy (2026)
+- [x] Reformat AI Pricing page to streamlined, compact layout
+- [x] Update stump grinding rate to $200/stump in AI Pricing page
+- [x] Convert ROW clearing from per-acre to per-linear-foot in AI Pricing page, calculator, and agent logic

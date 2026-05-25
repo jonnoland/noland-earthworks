@@ -555,7 +555,7 @@ const quotesRouter = router({
       const fmBase  = pricingRow?.forestryMulchingBaseRate ?? 800;
       const lcBase  = pricingRow?.landClearingBaseRate     ?? 700;
       const bhBase  = pricingRow?.brushHoggingBaseRate     ?? 150;
-      const rowBase = pricingRow?.rowClearingBaseRate       ?? 600;
+      const rowBase = pricingRow?.rowClearingBaseRate       ?? 6;    // $/LF — ROW priced per linear foot
       const dmMult  = parseFloat(pricingRow?.densityModerateMultiplier ?? "1.25");
       const dhMult  = parseFloat(pricingRow?.densityHeavyMultiplier    ?? "1.60");
       const trMult  = parseFloat(pricingRow?.terrainRollingMultiplier  ?? "1.15");
@@ -565,7 +565,7 @@ const quotesRouter = router({
       const spread  = parseFloat(pricingRow?.priceRangeSpread          ?? "0.15");
 
       // ── Add-on rates from DB ────────────────────────────────────────────────
-      const stumpPerStump   = pricingRow?.stumpGrindingPerStump ?? 150;
+      const stumpPerStump   = pricingRow?.stumpGrindingPerStump ?? 200;
       const debrisPerLoad   = pricingRow?.debrisHaulingPerLoad  ?? 450;
 
       // ── Volume discount thresholds from DB ─────────────────────────────────
@@ -579,7 +579,7 @@ const quotesRouter = router({
         "land-clearing":         parseFloat(pricingRow?.apdLandClearing     ?? "1.2"),
         "vegetation-management": 2.5,
         "property-maintenance":  2.5,
-        "right-of-way-clearing": parseFloat(pricingRow?.apdRowClearing      ?? "1.25"),
+        "right-of-way-clearing": parseFloat(pricingRow?.apdRowClearing      ?? "500"),  // LF/day
         "brush-hogging":         parseFloat(pricingRow?.apdBrushHogging     ?? "8.0"),
       };
 
@@ -613,10 +613,12 @@ const quotesRouter = router({
         },
         "vegetation-management": { light: [200, 500],   moderate: [500, 1000], heavy: [1000, 2200] },
         "property-maintenance":  { light: [200, 500],   moderate: [500, 1000], heavy: [1000, 2200] },
+        // ROW clearing: rowBase is $/LF. 1 acre of ROW corridor ≈ 1,320 LF (1/4 mile wide strip).
+        // Convert to per-acre equivalent so the acreage-based calculation still works for the AI range.
         "right-of-way-clearing": {
-          light:    [Math.round(rowBase * 0.75),  Math.round(rowBase * 1.0)],
-          moderate: [Math.round(rowBase * 1.0),   Math.round(rowBase * dmMult)],
-          heavy:    [Math.round(rowBase * dmMult), Math.round(rowBase * dhMult * 1.5)],
+          light:    [Math.round(rowBase * 1320 * 0.75),  Math.round(rowBase * 1320 * 1.0)],
+          moderate: [Math.round(rowBase * 1320 * 1.0),   Math.round(rowBase * 1320 * dmMult)],
+          heavy:    [Math.round(rowBase * 1320 * dmMult), Math.round(rowBase * 1320 * dhMult * 1.5)],
         },
         "brush-hogging":         {
           light:    [Math.round(bhBase * 0.75), Math.round(bhBase * 1.0)],
@@ -772,6 +774,7 @@ ${addOnPricingContext.length > 0 ? `\nAdd-on rates to use for line items:\n${add
 Pricing context for your reference:
 - Forestry mulching in Middle/West TN: $1,200–$4,500/acre depending on density
 - Land clearing: $1,500–$8,000/acre depending on density
+- Right-of-way clearing: $4–$8 per linear foot (NOT per acre) — quote in LF when possible
 - These rates reflect 2025–2026 market conditions in the Nashville/Columbia/West TN corridor
 ${benchmarkContext}
 ${jobHistoryContext}

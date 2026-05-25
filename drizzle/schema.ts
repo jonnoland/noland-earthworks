@@ -696,8 +696,8 @@ export const aiPricingSettings = mysqlTable("ai_pricing_settings", {
   landClearingBaseRate: int("landClearingBaseRate").notNull().default(2200),
   /** Base rate per acre for brush hogging (USD) */
   brushHoggingBaseRate: int("brushHoggingBaseRate").notNull().default(175),
-  /** Base rate per acre for right-of-way clearing (USD) */
-  rowClearingBaseRate: int("rowClearingBaseRate").notNull().default(1400),
+  /** Base rate per linear foot for right-of-way clearing (USD). $6/LF = Middle & West TN market rate. */
+  rowClearingBaseRate: int("rowClearingBaseRate").notNull().default(6),
   /** Flat mobilization fee added to every job (USD) */
   mobilizationFee: int("mobilizationFee").notNull().default(450),
   /** Minimum job total (USD) — quotes below this are floored */
@@ -721,7 +721,7 @@ export const aiPricingSettings = mysqlTable("ai_pricing_settings", {
 
   // ── Add-on rates ────────────────────────────────────────────────────────────
   /** Stump grinding rate per stump (USD). Used when stump grinding is selected as an add-on. */
-  stumpGrindingPerStump: int("stumpGrindingPerStump").notNull().default(150),
+  stumpGrindingPerStump: int("stumpGrindingPerStump").notNull().default(200),
   /** Debris hauling rate per load (USD). Used when debris hauling/removal is selected as an add-on. */
   debrisHaulingPerLoad: int("debrisHaulingPerLoad").notNull().default(450),
 
@@ -738,8 +738,8 @@ export const aiPricingSettings = mysqlTable("ai_pricing_settings", {
   apdForestryMulching: varchar("apdForestryMulching", { length: 10 }).notNull().default("1.5"),
   /** Acres per day for land clearing */
   apdLandClearing: varchar("apdLandClearing", { length: 10 }).notNull().default("1.2"),
-  /** Acres per day for right-of-way clearing */
-  apdRowClearing: varchar("apdRowClearing", { length: 10 }).notNull().default("3.0"),
+  /** Linear feet per day for right-of-way clearing (ROW priced per LF, not per acre) */
+  apdRowClearing: varchar("apdRowClearing", { length: 10 }).notNull().default("500"),
   /** Acres per day for brush hogging */
   apdBrushHogging: varchar("apdBrushHogging", { length: 10 }).notNull().default("8.0"),
 

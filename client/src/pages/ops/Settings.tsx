@@ -1927,7 +1927,7 @@ const MIDDLE_TN_DEFAULTS = {
   forestryMulchingBaseRate: 2000,  // raised from 1800 — market mid for tracked machine
   landClearingBaseRate: 2200,
   brushHoggingBaseRate: 175,
-  rowClearingBaseRate: 1400,
+  rowClearingBaseRate: 6,           // $6/LF — Middle & West TN market rate
   mobilizationFee: 450,
   minimumJobTotal: 1200,
   densityModerateMultiplier: "1.25",
@@ -1938,14 +1938,14 @@ const MIDDLE_TN_DEFAULTS = {
   accessDifficultMultiplier: "1.25",
   priceRangeSpread: "0.15",
   westTnMobilizationFee: "650",    // reflects additional 60–90 mi drive time
-  stumpGrindingPerStump: 150,
+  stumpGrindingPerStump: 200,
   debrisHaulingPerLoad: 450,
   volumeDiscount3to5Pct: 3,
   volumeDiscount5to10Pct: 7,
   volumeDiscount10plusPct: 10,     // reduced from 12 — protects margin on large jobs
   apdForestryMulching: "1.5",
   apdLandClearing: "1.2",
-  apdRowClearing: "3.0",
+  apdRowClearing: "500",          // LF/day — not acres/day; ROW priced per linear foot
   apdBrushHogging: "8.0",
   seasonalPeakUpliftPct: 0,
   seasonalSlowReductionPct: 0,
@@ -2089,10 +2089,11 @@ function AIPricingTab() {
 
   const previewResult = useMemo(() => {
     const baseRateMap: Record<string, number> = {
-      "forestry-mulching": Number(form.forestryMulchingBaseRate) || 1800,
+      "forestry-mulching": Number(form.forestryMulchingBaseRate) || 2000,
       "land-clearing":     Number(form.landClearingBaseRate)     || 2200,
       "brush-hogging":     Number(form.brushHoggingBaseRate)     || 175,
-      "row-clearing":      Number(form.rowClearingBaseRate)      || 1400,
+      // ROW: stored as $/LF; calc.acres holds linear feet when ROW is selected
+      "row-clearing":      Number(form.rowClearingBaseRate)      || 6,
     };
     const densityMult: Record<string, number> = {
       light:    1.0,
@@ -2116,7 +2117,9 @@ function AIPricingTab() {
     const mob = Number(form.mobilizationFee) || 450;
     const minJob = Number(form.minimumJobTotal) || 1200;
     const spread = Number(form.priceRangeSpread) || 0.15;
-    const base = (baseRateMap[calc.service] ?? 1800) * calc.acres;
+    // For ROW clearing, calc.acres holds linear feet; multiply $/LF directly
+    // For all other services, multiply $/acre by acreage
+    const base = (baseRateMap[calc.service] ?? 2000) * calc.acres;
     const dm = densityMult[calc.density] ?? 1;
     const tm = terrainMult[calc.terrain] ?? 1;
     const am = accessMult[calc.access] ?? 1;
@@ -2124,12 +2127,13 @@ function AIPricingTab() {
     const mid = Math.max(minJob, Math.round(raw));
     const low = Math.max(minJob, Math.round(mid * (1 - spread)));
     const high = Math.round(mid * (1 + spread));
-    const stumpTotal = calc.addStumps * (Number(form.stumpGrindingPerStump) || 150);
+    const stumpTotal = calc.addStumps * (Number(form.stumpGrindingPerStump) || 200);
     const debrisTotal = calc.addLoads * (Number(form.debrisHaulingPerLoad) || 450);
     const apdMap: Record<string, number> = {
       "forestry-mulching": Number(form.apdForestryMulching) || 1.5,
       "land-clearing":     Number(form.apdLandClearing)     || 1.2,
-      "row-clearing":      Number(form.apdRowClearing)      || 3.0,
+      // ROW: apdRowClearing is linear feet per day (not acres/day)
+      "row-clearing":      Number(form.apdRowClearing)      || 500,
       "brush-hogging":     Number(form.apdBrushHogging)     || 8.0,
     };
     const apd = apdMap[calc.service] ?? 1.5;
@@ -2213,7 +2217,7 @@ function AIPricingTab() {
                   { label: "Forestry Mulching", key: "forestryMulchingBaseRate", note: "Market mid: $2,000" },
                   { label: "Land Management",   key: "landClearingBaseRate",     note: "Market mid: $2,200" },
                   { label: "Brush Hogging",     key: "brushHoggingBaseRate",     note: "Market: $150–$250" },
-                  { label: "ROW Clearing",      key: "rowClearingBaseRate",       note: "Market: $1,200–$1,600" },
+                  { label: "ROW Clearing",      key: "rowClearingBaseRate",       note: "Market: $4–$8/LF" },
                 ] as const).map(({ label, key, note }) => (
                   <div key={key} className="ops-card p-3">
                     <label className="block text-[11px] font-semibold text-foreground mb-0.5">{label}</label>
@@ -2227,7 +2231,7 @@ function AIPricingTab() {
                         className="w-full rounded-md border border-border bg-background px-2 py-1.5 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
                       />
                     </div>
-                    <p className="text-[10px] text-muted-foreground mt-1">$/acre</p>
+                    <p className="text-[10px] text-muted-foreground mt-1">{key === 'rowClearingBaseRate' ? '$/linear ft' : '$/acre'}</p>
                   </div>
                 ))}
               </div>
@@ -2405,25 +2409,25 @@ function AIPricingTab() {
           <div className="space-y-4">
             <div className="ops-card p-4">
               <p className="text-sm font-semibold text-foreground mb-1">Production Rates</p>
-              <p className="text-[11px] text-muted-foreground mb-4">Acres your machine covers per day under moderate conditions. Used to calculate estimated days on site.</p>
+              <p className="text-[11px] text-muted-foreground mb-4">Production capacity per day under moderate conditions. Used to calculate estimated days on site.</p>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                 {([
-                  { label: "Forestry Mulching", key: "apdForestryMulching", note: "Dense cedar/brush" },
-                  { label: "Land Management",   key: "apdLandClearing",     note: "Mixed clearing" },
-                  { label: "ROW Clearing",       key: "apdRowClearing",     note: "Linear corridors" },
-                  { label: "Brush Hogging",      key: "apdBrushHogging",    note: "Open pasture" },
-                ] as const).map(({ label, key, note }) => (
+                  { label: "Forestry Mulching", key: "apdForestryMulching", note: "Dense cedar/brush",  unit: "ac/day", step: "0.25", min: 0.25, max: 20 },
+                  { label: "Land Management",   key: "apdLandClearing",     note: "Mixed clearing",    unit: "ac/day", step: "0.25", min: 0.25, max: 20 },
+                  { label: "ROW Clearing",       key: "apdRowClearing",     note: "Linear ft/day",     unit: "LF/day", step: "50",   min: 100,  max: 5000 },
+                  { label: "Brush Hogging",      key: "apdBrushHogging",    note: "Open pasture",      unit: "ac/day", step: "0.5",  min: 0.5,  max: 20 },
+                ] as const).map(({ label, key, note, unit, step, min, max }) => (
                   <div key={key}>
                     <label className="block text-xs font-medium text-foreground mb-0.5">{label}</label>
                     <p className="text-[10px] text-muted-foreground mb-2">{note}</p>
                     <div className="flex items-center gap-1.5">
                       <input
-                        type="number" step="0.25" min={0.25} max={20}
+                        type="number" step={step} min={min} max={max}
                         value={form[key] as string ?? "1.5"}
                         onChange={(e) => setField(key, e.target.value)}
                         className="w-24 rounded-md border border-border bg-background px-2 py-1.5 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
                       />
-                      <span className="text-xs text-muted-foreground">ac/day</span>
+                      <span className="text-xs text-muted-foreground">{unit}</span>
                     </div>
                   </div>
                 ))}
@@ -2590,15 +2594,18 @@ function AIPricingTab() {
             </select>
           </div>
 
-          {/* Acres */}
+          {/* Acres / Linear Feet */}
           <div className="space-y-1">
-            <label className="text-[11px] font-medium text-muted-foreground">Acres</label>
+            <label className="text-[11px] font-medium text-muted-foreground">
+              {calc.service === 'row-clearing' ? 'Linear Feet' : 'Acres'}
+            </label>
             <input
-              type="number" min={0.5} max={100} step={0.5}
+              type="number" min={calc.service === 'row-clearing' ? 100 : 0.5} max={calc.service === 'row-clearing' ? 50000 : 100} step={calc.service === 'row-clearing' ? 100 : 0.5}
               value={calc.acres}
               onChange={e => setCalc(c => ({ ...c, acres: parseFloat(e.target.value) || 0 }))}
               className="w-full rounded-md border border-border bg-background px-2 py-1.5 text-xs text-foreground"
             />
+            {calc.service === 'row-clearing' && <p className="text-[10px] text-muted-foreground">e.g. 1,000 LF = approx. 0.5 ac corridor</p>}
           </div>
 
           {/* Density / Terrain / Access */}
