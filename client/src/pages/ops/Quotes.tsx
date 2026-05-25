@@ -1988,12 +1988,30 @@ function WebsiteRequestsSection({
     lineItems?: { name: string; description: string; quantity: number; unitPrice: number }[];
   }) => void;
 }) {
+  const [activeTab, setActiveTab] = useState<"requests" | "drafts">("requests");
+
   const { data: submissions, isLoading, refetch, isFetching } = trpc.ops.quotes.list.useQuery(
     { limit: 50 },
     { retry: false }
   );
+  const { data: drafts, isLoading: draftsLoading, refetch: refetchDrafts, isFetching: draftsFetching } = trpc.ops.quotes.listDrafts.useQuery(
+    undefined,
+    { retry: false }
+  );
+  const deleteDraftMutation = trpc.ops.quotes.deleteDraft.useMutation({
+    onSuccess: () => { refetchDrafts(); toast.success("Draft deleted."); },
+    onError: () => toast.error("Failed to delete draft."),
+  });
+  const updateDraftStatusMutation = trpc.ops.quotes.updateDraftStatus.useMutation({
+    onSuccess: () => { refetchDrafts(); },
+    onError: () => toast.error("Failed to update draft status."),
+  });
 
   const list = (submissions ?? []) as QuoteSubmission[];
+  const draftList = drafts ?? [];
+
+  const isRefreshing = activeTab === "requests" ? isFetching : draftsFetching;
+  const handleRefresh = () => activeTab === "requests" ? refetch() : refetchDrafts();
 
   return (
     <div className="space-y-3">
@@ -2001,43 +2019,162 @@ function WebsiteRequestsSection({
         <div className="flex items-center gap-2">
           <Globe className="w-4 h-4 text-primary" />
           <h2 className="text-base font-semibold text-foreground">Website Requests</h2>
-          {!isLoading && (
-            <Badge variant="secondary" className="text-xs">{list.length}</Badge>
-          )}
         </div>
         <button
-          onClick={() => refetch()}
-          disabled={isFetching}
+          onClick={handleRefresh}
+          disabled={isRefreshing}
           className="text-muted-foreground hover:text-foreground transition-colors"
           aria-label="Refresh"
         >
-          <RefreshCw className={`w-3.5 h-3.5 ${isFetching ? "animate-spin" : ""}`} />
+          <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? "animate-spin" : ""}`} />
         </button>
       </div>
 
-      {isLoading && (
-        <div className="flex items-center justify-center py-10">
-          <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
-        </div>
+      {/* Tab switcher */}
+      <div className="flex gap-1 border-b border-border pb-0">
+        <button
+          onClick={() => setActiveTab("requests")}
+          className={`px-3 py-1.5 text-xs font-medium rounded-t transition-colors ${
+            activeTab === "requests"
+              ? "bg-background border border-b-background border-border text-foreground -mb-px"
+              : "text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          Inbound
+          {!isLoading && list.length > 0 && (
+            <span className="ml-1.5 inline-flex items-center justify-center w-4 h-4 rounded-full bg-primary/15 text-primary text-[10px] font-semibold">{list.length}</span>
+          )}
+        </button>
+        <button
+          onClick={() => setActiveTab("drafts")}
+          className={`px-3 py-1.5 text-xs font-medium rounded-t transition-colors ${
+            activeTab === "drafts"
+              ? "bg-background border border-b-background border-border text-foreground -mb-px"
+              : "text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          Saved Drafts
+          {!draftsLoading && draftList.length > 0 && (
+            <span className="ml-1.5 inline-flex items-center justify-center w-4 h-4 rounded-full bg-amber-500/15 text-amber-600 text-[10px] font-semibold">{draftList.length}</span>
+          )}
+        </button>
+      </div>
+
+      {/* Inbound requests tab */}
+      {activeTab === "requests" && (
+        <>
+          {isLoading && (
+            <div className="flex items-center justify-center py-10">
+              <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+            </div>
+          )}
+          {!isLoading && list.length === 0 && (
+            <div className="flex flex-col items-center justify-center py-10 text-center gap-2">
+              <ClipboardList className="w-8 h-8 text-muted-foreground/30" />
+              <p className="text-xs text-muted-foreground">No website requests yet.</p>
+            </div>
+          )}
+          {!isLoading && list.length > 0 && (
+            <div className="space-y-2">
+              {list.map((sub) => (
+                <WebsiteRequestCard
+                  key={sub.id}
+                  submission={sub}
+                  onBuildQuote={onBuildQuote}
+                />
+              ))}
+            </div>
+          )}
+        </>
       )}
 
-      {!isLoading && list.length === 0 && (
-        <div className="flex flex-col items-center justify-center py-10 text-center gap-2">
-          <ClipboardList className="w-8 h-8 text-muted-foreground/30" />
-          <p className="text-xs text-muted-foreground">No website requests yet.</p>
-        </div>
-      )}
-
-      {!isLoading && list.length > 0 && (
-        <div className="space-y-2">
-          {list.map((sub) => (
-            <WebsiteRequestCard
-              key={sub.id}
-              submission={sub}
-              onBuildQuote={onBuildQuote}
-            />
-          ))}
-        </div>
+      {/* Saved drafts tab */}
+      {activeTab === "drafts" && (
+        <>
+          {draftsLoading && (
+            <div className="flex items-center justify-center py-10">
+              <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+            </div>
+          )}
+          {!draftsLoading && draftList.length === 0 && (
+            <div className="flex flex-col items-center justify-center py-10 text-center gap-2">
+              <BookmarkCheck className="w-8 h-8 text-muted-foreground/30" />
+              <p className="text-xs text-muted-foreground">No saved drafts yet. Use the AI Quote Assistant to analyze a request, then click Save as Draft.</p>
+            </div>
+          )}
+          {!draftsLoading && draftList.length > 0 && (
+            <div className="space-y-2">
+              {draftList.map((draft) => {
+                let parsed: { scopeSummary?: string; totalEstimate?: { low?: number; high?: number } } | null = null;
+                try { parsed = JSON.parse(draft.aiResult); } catch { /* ignore */ }
+                return (
+                  <div key={draft.id} className="rounded-md border border-border bg-card p-3 space-y-2">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium text-foreground truncate">{draft.customerName ?? "Unknown"}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {[draft.service, draft.county, draft.acreage].filter(Boolean).join(" · ")}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-1 shrink-0">
+                        <Badge
+                          variant={draft.status === "sent" ? "default" : draft.status === "archived" ? "outline" : "secondary"}
+                          className="text-[10px] capitalize"
+                        >
+                          {draft.status}
+                        </Badge>
+                      </div>
+                    </div>
+                    {parsed?.scopeSummary && (
+                      <p className="text-xs text-muted-foreground line-clamp-2">{parsed.scopeSummary}</p>
+                    )}
+                    {parsed?.totalEstimate && (
+                      <p className="text-xs font-medium text-foreground">
+                        Est. ${parsed.totalEstimate.low?.toLocaleString()} – ${parsed.totalEstimate.high?.toLocaleString()}
+                      </p>
+                    )}
+                    <p className="text-[11px] text-muted-foreground">
+                      Saved {new Date(draft.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                    </p>
+                    <div className="flex items-center gap-2 pt-1">
+                      {draft.status === "saved" && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-6 text-xs px-2"
+                          onClick={() => updateDraftStatusMutation.mutate({ id: draft.id, status: "sent" })}
+                          disabled={updateDraftStatusMutation.isPending}
+                        >
+                          Mark Sent
+                        </Button>
+                      )}
+                      {draft.status !== "archived" && (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-6 text-xs px-2 text-muted-foreground"
+                          onClick={() => updateDraftStatusMutation.mutate({ id: draft.id, status: "archived" })}
+                          disabled={updateDraftStatusMutation.isPending}
+                        >
+                          Archive
+                        </Button>
+                      )}
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-6 text-xs px-2 text-destructive hover:text-destructive ml-auto"
+                        onClick={() => { if (confirm("Delete this draft?")) deleteDraftMutation.mutate({ id: draft.id }); }}
+                        disabled={deleteDraftMutation.isPending}
+                      >
+                        <Trash2 className="w-3 h-3" />
+                      </Button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </>
       )}
     </div>
   );

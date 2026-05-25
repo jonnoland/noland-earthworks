@@ -1139,3 +1139,6 @@
 - [x] Rename LandClearing blog post files to LandManagement for internal consistency
 - [x] Create new Land Management blog post targeting Middle TN developers and farmers
 - [x] Add related posts section to all Land Management blog posts
+- [x] Fix Google Reviews fallback — when locationName is NULL, fall back to Places API instead of returning empty
+- [x] Add Drafts tab to Website Requests section in /ops/quotes (Inbound / Saved Drafts tabs)
+- [x] Fix Google Maps loading=async warning in Map.tsx

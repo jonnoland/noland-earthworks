@@ -1,0 +1,15 @@
+{
+  "query": "SELECT locationName, businessName, updatedAt FROM google_oauth_tokens ORDER BY updatedAt DESC LIMIT 1;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway05.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 4URdbyUXkTLuAyd.1068bf1d0e22 --database PymCzDCnSJzPjdkfwA7Jn6 --execute SELECT locationName, businessName, updatedAt FROM google_oauth_tokens ORDER BY updatedAt DESC LIMIT 1;",
+  "rows": [
+    {
+      "locationName": "NULL",
+      "businessName": "NULL",
+      "updatedAt": "2026-05-25 00:36:22"
+    }
+  ],
+  "messages": [],
+  "stdout": "locationName\tbusinessName\tupdatedAt\nNULL\tNULL\t2026-05-25 00:36:22\n",
+  "stderr": "",
+  "execution_time_ms": 306
+}

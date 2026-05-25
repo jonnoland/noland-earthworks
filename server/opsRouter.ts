@@ -1927,8 +1927,8 @@ async function fetchGoogleBusinessReviews(): Promise<{
   }
 
   if (!locationName) {
-    console.error("[Google Reviews] Could not determine locationName — cannot fetch reviews");
-    return { reviews: [], averageRating: null, totalReviewCount: null };
+    console.log("[Google Reviews] Could not determine locationName — falling back to Places API");
+    return fetchPlacesApiReviews();
   }
 
   console.log(`[Google Reviews] Fetching reviews for location: ${locationName}`);

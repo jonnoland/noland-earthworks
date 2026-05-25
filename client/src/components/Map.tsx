@@ -131,7 +131,9 @@ export function loadMapScript() {
 
   _mapsScriptPromise = new Promise<void>((resolve, reject) => {
     const script = document.createElement("script");
-    script.src = `/api/maps/js?v=weekly&libraries=marker,places,geocoding,geometry`;
+    // loading=async is required by Google Maps to suppress the "loaded without loading=async" warning.
+    // The script tag itself also has async=true; these two work together.
+    script.src = `/api/maps/js?v=weekly&libraries=marker,places,geocoding,geometry&loading=async`;
     script.async = true;
     script.crossOrigin = "anonymous";
     script.onload = () => resolve();
