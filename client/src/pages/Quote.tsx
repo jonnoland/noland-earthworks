@@ -707,9 +707,14 @@ export default function QuotePage() {
                         onBlur={(e) => (e.target.style.borderColor = "rgba(255,255,255,0.12)")}
                       >
                         <option value="" style={{ backgroundColor: "#1a1a1a" }}>Select county...</option>
-                        {["Cheatham","Davidson","Dickson","Giles","Hickman","Houston","Humphreys",
-                          "Lawrence","Lewis","Maury","Montgomery","Robertson","Rutherford",
-                          "Sumner","Wayne","Williamson","Wilson"].map((c) => (
+                        {[
+                          "Bedford","Benton","Cannon","Carroll","Cheatham","Chester",
+                          "Davidson","Decatur","Dickson","Gibson","Giles",
+                          "Hardin","Henderson","Henry","Hickman","Houston","Humphreys",
+                          "Lawrence","Lewis","Lincoln","Madison","Marshall",
+                          "Maury","Montgomery","Moore","Perry","Robertson","Rutherford",
+                          "Stewart","Sumner","Trousdale","Wayne","Weakley","Williamson","Wilson"
+                        ].map((c) => (
                           <option key={c} value={c.toLowerCase()} style={{ backgroundColor: "#1a1a1a" }}>{c}</option>
                         ))}
                         <option value="other" style={{ backgroundColor: "#1a1a1a" }}>Other / Not Listed</option>

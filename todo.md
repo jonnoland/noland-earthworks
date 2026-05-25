@@ -1151,3 +1151,6 @@
 - [x] Fix homepage stats bar counters — display correct numbers on page load (no animation-dependent zero state)
 - [x] Add before/after photo section to homepage with image pairs labeled by project type and county
 - [x] Add Sent to Jobber badge on draft cards after push to prevent duplicate pushes
+- [x] Fix JSON-LD schema in index.html — remove excavation/grading from description and service catalog; fix keywords meta
+- [x] Add 2 missing blog posts to sitemap (Maury County, Developers/Farmers)
+- [x] Expand quote form county dropdown from 17 to all 35 service area counties
