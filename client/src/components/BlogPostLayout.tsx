@@ -21,6 +21,8 @@ export interface BlogPostProps {
   readTime: string;
   category: string;
   slug: string;             // e.g. "cost-of-land-management-tennessee"
+  /** Optional keywords for BlogPosting schema (comma-separated or array). */
+  keywords?: string | string[];
   /** Optional explicit list of related post slugs. Auto-selected when omitted. */
   relatedSlugs?: string[];
   children: React.ReactNode;
@@ -37,6 +39,7 @@ export default function BlogPostLayout({
   readTime,
   category,
   slug,
+  keywords,
   relatedSlugs,
   children,
 }: BlogPostProps) {
@@ -72,7 +75,7 @@ export default function BlogPostLayout({
     };
   }, [dateISO, lastUpdatedISO]);
 
-  // Inject Article JSON-LD schema for Google rich results
+  // Inject BlogPosting JSON-LD schema for Google rich results
   useEffect(() => {
     const id = `article-schema-${slug}`;
     let el = document.getElementById(id) as HTMLScriptElement | null;
@@ -82,13 +85,27 @@ export default function BlogPostLayout({
       el.type = "application/ld+json";
       document.head.appendChild(el);
     }
+
+    const keywordsStr = Array.isArray(keywords)
+      ? keywords.join(", ")
+      : (keywords ?? `${category}, land clearing Tennessee, forestry mulching Tennessee, Noland Earthworks`);
+
     el.textContent = JSON.stringify({
       "@context": "https://schema.org",
-      "@type": "Article",
+      "@type": "BlogPosting",
       headline: title,
       description: metaDescription ?? "",
       datePublished: dateISO ?? "",
       dateModified: lastUpdatedISO ?? dateISO ?? "",
+      inLanguage: "en-US",
+      keywords: keywordsStr,
+      articleSection: category,
+      image: {
+        "@type": "ImageObject",
+        url: "https://pub-b2b4f37a8a3a4e0e8f2b1c9d6e5f4a3b.r2.dev/noland-og-default.jpg",
+        width: 1200,
+        height: 630,
+      },
       author: {
         "@type": "Organization",
         name: "Noland Earthworks",
@@ -101,18 +118,26 @@ export default function BlogPostLayout({
         logo: {
           "@type": "ImageObject",
           url: "https://www.nolandearthworks.com/logo.png",
+          width: 200,
+          height: 60,
         },
       },
       mainEntityOfPage: {
         "@type": "WebPage",
         "@id": `https://www.nolandearthworks.com/blog/${slug}`,
       },
+      url: `https://www.nolandearthworks.com/blog/${slug}`,
+      isPartOf: {
+        "@type": "Blog",
+        name: "Noland Earthworks Land Management Resources",
+        url: "https://www.nolandearthworks.com/blog",
+      },
     });
     return () => {
       const existing = document.getElementById(id);
       if (existing) existing.remove();
     };
-  }, [slug, title, metaDescription, dateISO, lastUpdatedISO]);
+  }, [slug, title, metaDescription, dateISO, lastUpdatedISO, category, keywords]);
 
   return (
     <div style={{ backgroundColor: "#121212", color: "#F0EDE6", minHeight: "100vh" }}>

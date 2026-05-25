@@ -1642,6 +1642,10 @@ const settingsRouter = router({
       licenseNumbers: z.string().optional(),
       logoLight: z.string().optional(),
       logoDark: z.string().optional(),
+      // Promotional banner
+      promoBannerEnabled: z.boolean().optional(),
+      promoBannerText: z.string().max(300).optional(),
+      promoBannerColor: z.enum(["orange", "green", "blue", "red"]).optional(),
     }))
     .mutation(async ({ input }) => {
       const db = await getDb();

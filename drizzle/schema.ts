@@ -416,6 +416,11 @@ export const businessSettings = mysqlTable("business_settings", {
   licenseNumbers: text("licenseNumbers"),
   logoLight: varchar("logoLight", { length: 500 }),
   logoDark: varchar("logoDark", { length: 500 }),
+  /** Promotional banner — shown as a site-wide bar above the navbar on the public homepage */
+  promoBannerEnabled: boolean("promoBannerEnabled").notNull().default(false),
+  promoBannerText: varchar("promoBannerText", { length: 300 }).default(""),
+  /** Accent color for the banner: 'orange' | 'green' | 'blue' | 'red' */
+  promoBannerColor: varchar("promoBannerColor", { length: 20 }).default("orange"),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
 export type BusinessSettings = typeof businessSettings.$inferSelect;

@@ -1208,3 +1208,7 @@
 - [x] Add Bedford County blog post with full content, route, sitemap entry, and blog index entry
 - [x] Add Cheatham County blog post with full content, route, sitemap entry, and blog index entry
 - [x] Add category filter chips and search bar to blog index page (21 posts, 4 categories, empty-state messaging, clear-filters button)
+
+## Blog Schema + Promo Banner — May 2026
+- [x] Add BlogPosting JSON-LD schema markup to BlogPostLayout component (covers all 21 blog posts automatically)
+- [x] Build promotional banner: promoBannerEnabled/Text/Color fields on businessSettings, public tRPC siteConfig.getPromoBanner, PromoBanner component on homepage, Settings toggle/textarea/color picker in General tab

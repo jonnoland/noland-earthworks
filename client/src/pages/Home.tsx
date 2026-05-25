@@ -3,6 +3,7 @@
  * Sections: Navbar → Hero → Stats → Services → WhyUs → Testimonials → ServiceAreas → Footer
  */
 import Navbar from "@/components/Navbar";
+import PromoBanner from "@/components/PromoBanner";
 import HeroSection from "@/components/HeroSection";
 import StatsBar from "@/components/StatsBar";
 import ProblemSolutionSection from "@/components/ProblemSolutionSection";
@@ -31,6 +32,7 @@ export default function Home() {
       className="min-h-screen"
       style={{ backgroundColor: "#121212", color: "#F0EDE6" }}
     >
+      <PromoBanner />
       <Navbar />
       <HeroSection />
       <StatsBar />

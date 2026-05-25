@@ -260,6 +260,13 @@
       "when": 1779743332467,
       "tag": "0036_woozy_spiral",
       "breakpoints": true
+    },
+    {
+      "idx": 37,
+      "version": "5",
+      "when": 1779753385090,
+      "tag": "0037_plain_skullbuster",
+      "breakpoints": true
     }
   ]
 }

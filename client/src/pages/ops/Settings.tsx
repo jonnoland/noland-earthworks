@@ -280,6 +280,11 @@ function GeneralTab() {
     companyName: "", phone: "", email: "", address: "", city: "", state: "", zip: "",
     website: "", googleReviewUrl: "", defaultTaxRate: "", brandColor: "", licenseNumbers: "",
   });
+  const [banner, setBanner] = useState({
+    promoBannerEnabled: false,
+    promoBannerText: "",
+    promoBannerColor: "orange" as "orange" | "green" | "blue" | "red",
+  });
   const [licInput, setLicInput] = useState("");
 
   useEffect(() => {
@@ -297,6 +302,11 @@ function GeneralTab() {
         defaultTaxRate: biz.defaultTaxRate ?? "",
         brandColor: biz.brandColor ?? "",
         licenseNumbers: biz.licenseNumbers ?? "",
+      });
+      setBanner({
+        promoBannerEnabled: biz.promoBannerEnabled ?? false,
+        promoBannerText: biz.promoBannerText ?? "",
+        promoBannerColor: (biz.promoBannerColor ?? "orange") as "orange" | "green" | "blue" | "red",
       });
     }
   }, [biz]);
@@ -408,6 +418,59 @@ function GeneralTab() {
             )}
           </FieldRow>
           <SaveButton onClick={() => update.mutate(form)} loading={update.isPending} />
+        </div>
+      </SettingsSection>
+
+      <SettingsSection
+        title="Homepage Promotional Banner"
+        description="Display a site-wide announcement bar above the navigation on the public homepage."
+      >
+        <div className="space-y-4">
+          <Toggle
+            checked={banner.promoBannerEnabled}
+            onChange={v => setBanner(p => ({ ...p, promoBannerEnabled: v }))}
+            label="Show Banner"
+            description="When enabled, the banner appears above the navbar on the public homepage. Visitors can dismiss it."
+          />
+          {banner.promoBannerEnabled && (
+            <>
+              <FieldRow label="Banner Message" hint="Max 300 characters. Keep it short — one line reads best.">
+                <div className="space-y-1">
+                  <textarea
+                    value={banner.promoBannerText}
+                    onChange={e => setBanner(p => ({ ...p, promoBannerText: e.target.value }))}
+                    maxLength={300}
+                    rows={2}
+                    placeholder="Fall clearing — book now before the calendar fills."
+                    className="w-full bg-secondary/50 border border-border rounded-md px-3 py-2 text-xs text-foreground outline-none focus:border-primary/50 transition-colors resize-none"
+                  />
+                  <p className="text-xs text-muted-foreground text-right">{banner.promoBannerText.length}/300</p>
+                </div>
+              </FieldRow>
+              <FieldRow label="Banner Color">
+                <div className="flex gap-2 flex-wrap">
+                  {(["orange", "green", "blue", "red"] as const).map(c => (
+                    <button
+                      key={c}
+                      onClick={() => setBanner(p => ({ ...p, promoBannerColor: c }))}
+                      className={cn(
+                        "px-3 py-1.5 rounded-md text-xs font-medium border transition-all capitalize",
+                        banner.promoBannerColor === c
+                          ? "border-primary bg-primary/20 text-primary"
+                          : "border-border bg-secondary/50 text-muted-foreground hover:text-foreground"
+                      )}
+                    >
+                      {c}
+                    </button>
+                  ))}
+                </div>
+              </FieldRow>
+            </>
+          )}
+          <SaveButton
+            onClick={() => update.mutate(banner)}
+            loading={update.isPending}
+          />
         </div>
       </SettingsSection>
 

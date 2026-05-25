@@ -11,6 +11,8 @@ import { agentRouter } from "./agentRouter";
 import { reviewsLiveRouter } from "./reviewsRouter";
 import { teamRouter } from "./teamRouter";
 import { maintenanceRouter } from "./maintenanceRouter";
+import { getDb } from "./db";
+import { businessSettings } from "../drizzle/schema";
 
 export const appRouter = router({
     // if you need to use socket.io, read and register route in server/_core/index.ts, all api should start with '/api/' so that the gateway can route correctly
@@ -35,6 +37,29 @@ export const appRouter = router({
   reviewsLive: reviewsLiveRouter,
   team: teamRouter,
   maintenance: maintenanceRouter,
+
+  /**
+   * Public site configuration — read-only, no auth required.
+   * Used by the homepage promo banner and other public-facing components.
+   */
+  siteConfig: router({
+    getPromoBanner: publicProcedure.query(async () => {
+      const db = await getDb();
+      if (!db) return { enabled: false, text: "", color: "orange" as const };
+      const rows = await db.select({
+        promoBannerEnabled: businessSettings.promoBannerEnabled,
+        promoBannerText: businessSettings.promoBannerText,
+        promoBannerColor: businessSettings.promoBannerColor,
+      }).from(businessSettings).limit(1);
+      if (!rows.length) return { enabled: false, text: "", color: "orange" as const };
+      const r = rows[0];
+      return {
+        enabled: r.promoBannerEnabled ?? false,
+        text: r.promoBannerText ?? "",
+        color: (r.promoBannerColor ?? "orange") as "orange" | "green" | "blue" | "red",
+      };
+    }),
+  }),
 });
 
 export type AppRouter = typeof appRouter;
