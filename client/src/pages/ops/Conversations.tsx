@@ -15,6 +15,8 @@ import {
   Search,
   X,
   Circle,
+  Sparkles,
+  Loader2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -78,6 +80,14 @@ export default function Conversations() {
 
   const markReadMutation = trpc.ops.conversations.markRead.useMutation({
     onSuccess: () => utils.ops.conversations.list.invalidate(),
+  });
+
+  const draftReplyMutation = trpc.ops.conversations.draftReply.useMutation({
+    onSuccess: (data) => {
+      setMessageText(data.draft);
+      toast.success("AI draft ready — review and send.");
+    },
+    onError: (err) => toast.error(`Draft failed: ${err.message}`),
   });
 
   const deleteMutation = trpc.ops.conversations.delete.useMutation({
@@ -262,7 +272,7 @@ export default function Conversations() {
 
               {/* Compose */}
               <div className="px-4 py-3 border-t border-white/10">
-                <div className="flex gap-2">
+                <div className="flex gap-2 mb-2">
                   <Input
                     value={messageText}
                     onChange={(e) => setMessageText(e.target.value)}
@@ -280,6 +290,20 @@ export default function Conversations() {
                     <Send className="h-4 w-4" />
                   </Button>
                 </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 text-xs text-amber-400/70 hover:text-amber-400 hover:bg-amber-400/10 gap-1.5 px-2"
+                  onClick={() => draftReplyMutation.mutate({ conversationId: selectedId! })}
+                  disabled={draftReplyMutation.isPending || !selectedId}
+                >
+                  {draftReplyMutation.isPending ? (
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                  ) : (
+                    <Sparkles className="h-3 w-3" />
+                  )}
+                  {draftReplyMutation.isPending ? "Drafting..." : "Draft reply with AI"}
+                </Button>
               </div>
             </>
           )}

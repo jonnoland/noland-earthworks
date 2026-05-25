@@ -1145,3 +1145,6 @@
 - [x] Add "Push to Jobber" button on Saved Drafts cards to complete the AI quote workflow
 - [x] Add preview modal to Saved Drafts tab showing full AI quote details before sending
 - [x] Create Maury County blog post targeting Columbia/Spring Hill developer and farmer audience
+- [x] Wire up equipment diagnostics: register maintenanceRouter, secure with ownerProcedure, build /ops/equipment page with photo upload and diagnostic result display, add sidebar link
+- [x] Feed pricing benchmarks into AI quote system prompt for real market context
+- [x] Add AI-suggested SMS reply drafting to Conversations inbox

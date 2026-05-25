@@ -3,7 +3,9 @@
  * Accepts a base64-encoded image and returns LLM analysis.
  */
 import { z } from "zod";
-import { publicProcedure, router } from "./_core/trpc";
+import { TRPCError } from "@trpc/server";
+import { protectedProcedure, router } from "./_core/trpc";
+import { ENV } from "./_core/env";
 import { invokeLLM } from "./_core/llm";
 import { storagePut } from "./storage";
 
@@ -13,7 +15,15 @@ export const maintenanceRouter = router({
    * Accepts a base64 data URL (e.g. "data:image/jpeg;base64,...")
    * and returns a structured diagnostic report.
    */
-  analyzeDiagnostics: publicProcedure
+  analyzeDiagnostics: protectedProcedure
+    .use(({ ctx, next }) => {
+      const isOwnerByOpenId = ENV.ownerOpenId && ctx.user.openId === ENV.ownerOpenId;
+      const isOwnerByRole = ctx.user.role === "admin";
+      if (!isOwnerByOpenId && !isOwnerByRole) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Owner access only." });
+      }
+      return next({ ctx });
+    })
     .input(
       z.object({
         imageDataUrl: z.string().min(1),

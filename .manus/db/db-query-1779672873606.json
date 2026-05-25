@@ -1,0 +1,9 @@
+{
+  "query": "UPDATE ai_pricing_settings SET\n  forestryMulchingBaseRate = 1200,\n  landClearingBaseRate = 1000,\n  brushHoggingBaseRate = 200,\n  rowClearingBaseRate = 900,\n  mobilizationFee = 500,\n  minimumJobTotal = 1200,\n  densityModerateMultiplier = '1.35',\n  densityHeavyMultiplier = '1.75',\n  terrainRollingMultiplier = '1.20',\n  terrainSteepMultiplier = '1.45',\n  accessModerateMultiplier = '1.15',\n  accessDifficultMultiplier = '1.30',\n  stumpGrindingPerStump = 175,\n  debrisHaulingPerLoad = 550,\n  volumeDiscount3to5Pct = 5,\n  volumeDiscount5to10Pct = 8,\n  volumeDiscount10plusPct = 12\nWHERE id = 1;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway05.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 4URdbyUXkTLuAyd.1068bf1d0e22 --database PymCzDCnSJzPjdkfwA7Jn6 --execute UPDATE ai_pricing_settings SET\n  forestryMulchingBaseRate = 1200,\n  landClearingBaseRate = 1000,\n  brushHoggingBaseRate = 200,\n  rowClearingBaseRate = 900,\n  mobilizationFee = 500,\n  minimumJobTotal = 1200,\n  densityModerateMultiplier = '1.35',\n  densityHeavyMultiplier = '1.75',\n  terrainRollingMultiplier = '1.20',\n  terrainSteepMultiplier = '1.45',\n  accessModerateMultiplier = '1.15',\n  accessDifficultMultiplier = '1.30',\n  stumpGrindingPerStump = 175,\n  debrisHaulingPerLoad = 550,\n  volumeDiscount3to5Pct = 5,\n  volumeDiscount5to10Pct = 8,\n  volumeDiscount10plusPct = 12\nWHERE id = 1;",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 273
+}

@@ -1,0 +1,24 @@
+{
+  "query": "SELECT forestryMulchingBaseRate, landClearingBaseRate, brushHoggingBaseRate, rowClearingBaseRate, mobilizationFee, minimumJobTotal, densityModerateMultiplier, densityHeavyMultiplier, terrainRollingMultiplier, terrainSteepMultiplier, stumpGrindingPerStump, debrisHaulingPerLoad FROM ai_pricing_settings LIMIT 1;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway05.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 4URdbyUXkTLuAyd.1068bf1d0e22 --database PymCzDCnSJzPjdkfwA7Jn6 --execute SELECT forestryMulchingBaseRate, landClearingBaseRate, brushHoggingBaseRate, rowClearingBaseRate, mobilizationFee, minimumJobTotal, densityModerateMultiplier, densityHeavyMultiplier, terrainRollingMultiplier, terrainSteepMultiplier, stumpGrindingPerStump, debrisHaulingPerLoad FROM ai_pricing_settings LIMIT 1;",
+  "rows": [
+    {
+      "forestryMulchingBaseRate": "1200",
+      "landClearingBaseRate": "1000",
+      "brushHoggingBaseRate": "200",
+      "rowClearingBaseRate": "900",
+      "mobilizationFee": "500",
+      "minimumJobTotal": "1200",
+      "densityModerateMultiplier": "1.35",
+      "densityHeavyMultiplier": "1.75",
+      "terrainRollingMultiplier": "1.20",
+      "terrainSteepMultiplier": "1.45",
+      "stumpGrindingPerStump": "175",
+      "debrisHaulingPerLoad": "550"
+    }
+  ],
+  "messages": [],
+  "stdout": "forestryMulchingBaseRate\tlandClearingBaseRate\tbrushHoggingBaseRate\trowClearingBaseRate\tmobilizationFee\tminimumJobTotal\tdensityModerateMultiplier\tdensityHeavyMultiplier\tterrainRollingMultiplier\tterrainSteepMultiplier\tstumpGrindingPerStump\tdebrisHaulingPerLoad\n1200\t1000\t200\t900\t500\t1200\t1.35\t1.75\t1.20\t1.45\t175\t550\n",
+  "stderr": "",
+  "execution_time_ms": 269
+}

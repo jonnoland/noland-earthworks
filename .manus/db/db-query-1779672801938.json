@@ -1,0 +1,31 @@
+{
+  "query": "SELECT forestryMulchingBaseRate, landClearingBaseRate, brushHoggingBaseRate, rowClearingBaseRate, mobilizationFee, minimumJobTotal, densityModerateMultiplier, densityHeavyMultiplier, terrainRollingMultiplier, terrainSteepMultiplier, accessModerateMultiplier, accessDifficultMultiplier, priceRangeSpread, westTnMobilizationFee, stumpGrindingPerStump, debrisHaulingPerLoad, volumeDiscount3to5Pct, volumeDiscount5to10Pct, volumeDiscount10plusPct FROM ai_pricing_settings LIMIT 1;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway05.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 4URdbyUXkTLuAyd.1068bf1d0e22 --database PymCzDCnSJzPjdkfwA7Jn6 --execute SELECT forestryMulchingBaseRate, landClearingBaseRate, brushHoggingBaseRate, rowClearingBaseRate, mobilizationFee, minimumJobTotal, densityModerateMultiplier, densityHeavyMultiplier, terrainRollingMultiplier, terrainSteepMultiplier, accessModerateMultiplier, accessDifficultMultiplier, priceRangeSpread, westTnMobilizationFee, stumpGrindingPerStump, debrisHaulingPerLoad, volumeDiscount3to5Pct, volumeDiscount5to10Pct, volumeDiscount10plusPct FROM ai_pricing_settings LIMIT 1;",
+  "rows": [
+    {
+      "forestryMulchingBaseRate": "800",
+      "landClearingBaseRate": "700",
+      "brushHoggingBaseRate": "150",
+      "rowClearingBaseRate": "600",
+      "mobilizationFee": "350",
+      "minimumJobTotal": "750",
+      "densityModerateMultiplier": "1.25",
+      "densityHeavyMultiplier": "1.60",
+      "terrainRollingMultiplier": "1.15",
+      "terrainSteepMultiplier": "1.35",
+      "accessModerateMultiplier": "1.10",
+      "accessDifficultMultiplier": "1.25",
+      "priceRangeSpread": "0.15",
+      "westTnMobilizationFee": "NULL",
+      "stumpGrindingPerStump": "150",
+      "debrisHaulingPerLoad": "450",
+      "volumeDiscount3to5Pct": "3",
+      "volumeDiscount5to10Pct": "7",
+      "volumeDiscount10plusPct": "12"
+    }
+  ],
+  "messages": [],
+  "stdout": "forestryMulchingBaseRate\tlandClearingBaseRate\tbrushHoggingBaseRate\trowClearingBaseRate\tmobilizationFee\tminimumJobTotal\tdensityModerateMultiplier\tdensityHeavyMultiplier\tterrainRollingMultiplier\tterrainSteepMultiplier\taccessModerateMultiplier\taccessDifficultMultiplier\tpriceRangeSpread\twestTnMobilizationFee\tstumpGrindingPerStump\tdebrisHaulingPerLoad\tvolumeDiscount3to5Pct\tvolumeDiscount5to10Pct\tvolumeDiscount10plusPct\n800\t700\t150\t600\t350\t750\t1.25\t1.60\t1.15\t1.35\t1.10\t1.25\t0.15\tNULL\t150\t450\t3\t7\t12\n",
+  "stderr": "",
+  "execution_time_ms": 336
+}

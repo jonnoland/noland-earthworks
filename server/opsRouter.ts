@@ -16,6 +16,7 @@ import {
   getRecurringBlackoutDays, addRecurringBlackoutDay, removeRecurringBlackoutDay,
   getOpsLeadById, insertOwnerTask,
   getAllUsers, setUserRole,
+  getPricingBenchmarks,
 } from "./db";
 import { Resend } from "resend";
 import { jobs, opsLeads, quoteSubmissions, crews, crewMembers, conversations, messages, reviews, timeEntries, distanceQuotes, businessSettings, automationSettings, serviceCatalog, messageTemplates, reminderRules, leadNotes, visitBlackoutDates, recurringBlackoutDays, aiPricingSettings, quoteDrafts } from "../drizzle/schema";
@@ -720,6 +721,22 @@ const quotesRouter = router({
         }
       }
 
+      // Fetch live pricing benchmarks from the weekly agent
+      let benchmarkContext = "";
+      try {
+        const benchmarks = await getPricingBenchmarks();
+        if (benchmarks.length > 0) {
+          const benchmarkLines = benchmarks.map((b) => {
+            const ageMs = Date.now() - new Date(b.lastUpdatedAt).getTime();
+            const ageDays = Math.round(ageMs / (1000 * 60 * 60 * 24));
+            return `- ${b.serviceType}: $${b.lowPerAcre}\u2013$${b.highPerAcre}/acre (mid: $${b.midPerAcre}) \u2014 last updated ${ageDays}d ago`;
+          });
+          benchmarkContext = `\nLive market benchmarks (researched weekly \u2014 Middle & West TN):\n${benchmarkLines.join("\n")}`;
+        }
+      } catch (benchErr) {
+        console.warn("[analyzeSubmission] Benchmark lookup failed:", benchErr);
+      }
+
       // Build add-on pricing context for the system prompt
       const addOnPricingContext: string[] = [];
       const addOnsLower = addOnsList.map((a: string) => a.toLowerCase());
@@ -756,6 +773,7 @@ Pricing context for your reference:
 - Forestry mulching in Middle/West TN: $1,200–$4,500/acre depending on density
 - Land clearing: $1,500–$8,000/acre depending on density
 - These rates reflect 2025–2026 market conditions in the Nashville/Columbia/West TN corridor
+${benchmarkContext}
 ${jobHistoryContext}
 
 Rules:
@@ -1110,7 +1128,7 @@ const conversationsRouter = router({
       await db.update(conversations).set({ unread: false }).where(eq(conversations.id, input.id));
       return { success: true };
     }),
-  delete: ownerProcedure
+   delete: ownerProcedure
     .input(z.object({ id: z.number().int().positive() }))
     .mutation(async ({ input }) => {
       const db = await getDb();
@@ -1118,8 +1136,81 @@ const conversationsRouter = router({
       await db.delete(conversations).where(eq(conversations.id, input.id));
       return { success: true };
     }),
-});
+  /**
+   * AI-suggested SMS reply — generates a context-aware draft in Jon's voice
+   * based on the conversation history and the lead's service type.
+   */
+  draftReply: ownerProcedure
+    .input(z.object({
+      conversationId: z.number().int().positive(),
+    }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
 
+      // Fetch conversation metadata
+      const convRows = await db.select().from(conversations)
+        .where(eq(conversations.id, input.conversationId)).limit(1);
+      const conv = convRows[0];
+      if (!conv) throw new TRPCError({ code: "NOT_FOUND", message: "Conversation not found" });
+
+      // Fetch last 10 messages for context
+      const recentMessages = await db.select().from(messages)
+        .where(eq(messages.conversationId, input.conversationId))
+        .orderBy(desc(messages.sentAt))
+        .limit(10);
+      const chronological = [...recentMessages].reverse();
+
+      const threadText = chronological.map((m) => {
+        const who = m.direction === "inbound" ? conv.contactName : "Jon (Noland Earthworks)";
+        return `${who}: ${m.body}`;
+      }).join("\n");
+
+      const lastInbound = chronological.filter((m) => m.direction === "inbound").at(-1);
+      if (!lastInbound) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "No inbound message to reply to." });
+      }
+
+      const { invokeLLM } = await import("./_core/llm");
+
+      const systemPrompt = `You are drafting an SMS reply on behalf of Jon Noland, owner of Noland Earthworks, LLC — a veteran-owned land clearing and forestry mulching company in Middle Tennessee.
+
+Voice rules (MUST follow):
+- Sound like Jon wrote it — direct, warm, no corporate language
+- No emojis. Ever.
+- No filler phrases: no "solutions", "dedicated team", "we strive to", "industry-leading"
+- Professional but conversational — like a text from a contractor who knows his trade
+- 1–3 sentences max. SMS length.
+- If the customer is asking about pricing, say you'll need to see the property first and offer to schedule a site visit
+- If the customer is asking about availability, be honest about the current season and schedule
+- Always end with a clear next step or call to action
+- Sign off as "Jon" if it feels natural, but not required
+
+Context: Jon is the sole operator. He uses a tracked forestry mulcher. Services: forestry mulching (primary), land clearing, brush hogging. He does NOT do grading, excavation, or hauling.`;
+
+      const userPrompt = `Draft a short SMS reply to the most recent inbound message.
+
+Conversation history:
+${threadText}
+
+Draft a reply to: "${lastInbound.body}"
+
+Return ONLY the reply text — no quotes, no labels, no explanation.`;
+
+      const result = await invokeLLM({
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userPrompt },
+        ],
+      });
+
+      const rawContent = result.choices?.[0]?.message?.content;
+      const draft = (typeof rawContent === "string" ? rawContent : "").trim();
+      if (!draft) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "AI returned empty draft" });
+
+      return { draft };
+    }),
+});
 // ─── Reviews Router ───────────────────────────────────────────────────────────
 const reviewsRouter = router({
   list: ownerProcedure.query(async () => {

@@ -25,6 +25,7 @@ import OpsScoreboard from "./pages/ops/Scoreboard";
 import OpsDistanceQuotes from "./pages/ops/DistanceQuotes";
 import OpsQuoteAnalytics from "./pages/ops/QuoteAnalytics";
 import OpsTasksPage from "./pages/ops/Tasks";
+import OpsEquipment from "./pages/ops/Equipment";
 import OpsTeam from "./pages/ops/Team";
 import OpsRegister from "./pages/ops/Register";
 import Home from "./pages/Home";
@@ -225,6 +226,9 @@ function Router() {
       </Route>
       <Route path="/ops/tasks">
         <OwnerRoute><OpsTasksPage /></OwnerRoute>
+      </Route>
+      <Route path="/ops/equipment">
+        <OwnerRoute><OpsEquipment /></OwnerRoute>
       </Route>
       <Route path="/ops/distance-quotes/analytics">
         <OwnerRoute><OpsQuoteAnalytics /></OwnerRoute>

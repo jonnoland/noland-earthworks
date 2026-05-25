@@ -1,0 +1,52 @@
+{
+  "query": "SELECT serviceType, lowPerAcre, midPerAcre, highPerAcre, lastUpdatedAt FROM pricing_benchmarks ORDER BY lastUpdatedAt DESC;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway05.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 4URdbyUXkTLuAyd.1068bf1d0e22 --database PymCzDCnSJzPjdkfwA7Jn6 --execute SELECT serviceType, lowPerAcre, midPerAcre, highPerAcre, lastUpdatedAt FROM pricing_benchmarks ORDER BY lastUpdatedAt DESC;",
+  "rows": [
+    {
+      "serviceType": "Debris Hauling",
+      "lowPerAcre": "350",
+      "midPerAcre": "550",
+      "highPerAcre": "800",
+      "lastUpdatedAt": "2026-05-25 00:37:49"
+    },
+    {
+      "serviceType": "Stump Grinding",
+      "lowPerAcre": "75",
+      "midPerAcre": "125",
+      "highPerAcre": "250",
+      "lastUpdatedAt": "2026-05-25 00:37:46"
+    },
+    {
+      "serviceType": "Brush Hogging",
+      "lowPerAcre": "125",
+      "midPerAcre": "175",
+      "highPerAcre": "250",
+      "lastUpdatedAt": "2026-05-25 00:37:42"
+    },
+    {
+      "serviceType": "Brush Removal",
+      "lowPerAcre": "350",
+      "midPerAcre": "600",
+      "highPerAcre": "1200",
+      "lastUpdatedAt": "2026-05-25 00:37:32"
+    },
+    {
+      "serviceType": "Forestry Mulching",
+      "lowPerAcre": "400",
+      "midPerAcre": "750",
+      "highPerAcre": "1200",
+      "lastUpdatedAt": "2026-05-25 00:37:27"
+    },
+    {
+      "serviceType": "Land Management",
+      "lowPerAcre": "250",
+      "midPerAcre": "400",
+      "highPerAcre": "750",
+      "lastUpdatedAt": "2026-05-25 00:37:24"
+    }
+  ],
+  "messages": [],
+  "stdout": "serviceType\tlowPerAcre\tmidPerAcre\thighPerAcre\tlastUpdatedAt\nDebris Hauling\t350\t550\t800\t2026-05-25 00:37:49\nStump Grinding\t75\t125\t250\t2026-05-25 00:37:46\nBrush Hogging\t125\t175\t250\t2026-05-25 00:37:42\nBrush Removal\t350\t600\t1200\t2026-05-25 00:37:32\nForestry Mulching\t400\t750\t1200\t2026-05-25 00:37:27\nLand Management\t250\t400\t750\t2026-05-25 00:37:24\n",
+  "stderr": "",
+  "execution_time_ms": 397
+}
