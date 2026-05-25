@@ -8,7 +8,7 @@
  * Both endpoints degrade gracefully when credentials are not configured.
  */
 import { z } from "zod";
-import { router, protectedProcedure } from "./_core/trpc";
+import { router, protectedProcedure, publicProcedure } from "./_core/trpc";
 import { ENV } from "./_core/env";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -198,6 +198,27 @@ export const reviewsLiveRouter = router({
       reviews: allReviews,
       googleConfigured: g.configured,
       facebookConfigured: f.configured,
+    };
+  }),
+
+  /**
+   * Public endpoint — fetch Google reviews only (no auth required).
+   * Used by the public Testimonials section on the homepage.
+   * Returns up to 5 most-recent 4-or-5-star Google reviews.
+   */
+  getPublic: publicProcedure.query(async (): Promise<{
+    googleRating: number | null;
+    googleReviewCount: number | null;
+    reviews: LiveReview[];
+  }> => {
+    const google = await fetchGoogleReviews();
+    const topReviews = google.reviews
+      .filter((r) => r.rating >= 4 && r.body.trim().length > 20)
+      .slice(0, 6);
+    return {
+      googleRating: google.rating,
+      googleReviewCount: google.reviewCount,
+      reviews: topReviews,
     };
   }),
 

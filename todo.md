@@ -1192,3 +1192,19 @@
 - [x] Register all 8 new blog routes in App.tsx
 - [x] Add all 8 new blog posts to Blog.tsx index
 - [x] Add all 8 new blog posts to sitemap
+
+## Live Reviews, County Blog Posts, Blog Filter — May 2026
+- [ ] Wire live Google reviews to public Testimonials section (replace hardcoded placeholder quotes)
+- [ ] Create Bedford County blog post: Land Management in Bedford County, TN
+- [ ] Create Cheatham County blog post: Land Management in Cheatham County, TN
+- [ ] Register Bedford and Cheatham blog routes in App.tsx
+- [ ] Add Bedford and Cheatham entries to Blog.tsx index
+- [ ] Add Bedford and Cheatham to sitemap
+- [ ] Add category filter tabs to blog index page
+- [ ] Add search bar to blog index page
+
+## Live Reviews, County Posts, Blog Filter — May 2026
+- [x] Wire live Google reviews to public Testimonials section (publicGetLive procedure, 30-min cache, falls back to hardcoded quotes if fewer than 3 live reviews)
+- [x] Add Bedford County blog post with full content, route, sitemap entry, and blog index entry
+- [x] Add Cheatham County blog post with full content, route, sitemap entry, and blog index entry
+- [x] Add category filter chips and search bar to blog index page (21 posts, 4 categories, empty-state messaging, clear-filters button)

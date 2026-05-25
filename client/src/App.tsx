@@ -64,6 +64,8 @@ import LandManagementWilsonCounty from "./pages/blog/LandManagementWilsonCounty"
 import LandManagementMontgomeryCounty from "./pages/blog/LandManagementMontgomeryCounty";
 import LandManagementGilesCounty from "./pages/blog/LandManagementGilesCounty";
 import LandManagementSumnerCounty from "./pages/blog/LandManagementSumnerCounty";
+import LandManagementBedfordCounty from "./pages/blog/LandManagementBedfordCounty";
+import LandManagementCheathamCounty from "./pages/blog/LandManagementCheathamCounty";
 import GalleryPage from "./pages/Gallery";
 import {
   DavidsonCountyPage,
@@ -142,6 +144,8 @@ function Router() {
       <Route path="/blog/land-management-montgomery-county" component={LandManagementMontgomeryCounty} />
       <Route path="/blog/land-management-giles-county" component={LandManagementGilesCounty} />
       <Route path="/blog/land-management-sumner-county" component={LandManagementSumnerCounty} />
+      <Route path="/blog/land-management-bedford-county" component={LandManagementBedfordCounty} />
+      <Route path="/blog/land-management-cheatham-county" component={LandManagementCheathamCounty} />
 
       {/* Service pages */}
       <Route path="/services/land-management" component={LandClearingPage} />

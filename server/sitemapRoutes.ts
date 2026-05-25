@@ -42,6 +42,8 @@ const PAGES = [
   { path: "/blog/land-management-montgomery-county",                         priority: "0.9", changefreq: "monthly" },
   { path: "/blog/land-management-giles-county",                              priority: "0.9", changefreq: "monthly" },
   { path: "/blog/land-management-sumner-county",                             priority: "0.9", changefreq: "monthly" },
+  { path: "/blog/land-management-bedford-county",                             priority: "0.9", changefreq: "monthly" },
+  { path: "/blog/land-management-cheatham-county",                            priority: "0.9", changefreq: "monthly" },
   // County landing pages
   { path: "/service-areas/davidson-county",                             priority: "0.8", changefreq: "monthly" },
   { path: "/service-areas/williamson-county",                           priority: "0.8", changefreq: "monthly" },

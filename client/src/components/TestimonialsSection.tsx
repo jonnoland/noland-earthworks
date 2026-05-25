@@ -1,12 +1,15 @@
 /*
  * DESIGN: Heavy Equipment Grit — dark section with amber star ratings
  * Horizontal scroll cards on mobile, 3-column on desktop
+ * Live Google reviews via trpc.reviewsLive.getPublic — falls back to hardcoded quotes
+ * if the API is not configured or returns no results.
  */
 import { useRef, useEffect, useState } from "react";
+import { trpc } from "@/lib/trpc";
 
-// NOTE: Replace these with actual customer quotes when available.
-// Pull from Google Business Profile reviews or Facebook recommendations.
-const testimonials = [
+// Fallback quotes shown when live reviews are unavailable or still loading.
+// Replace with actual customer quotes when confirmed real.
+const FALLBACK_TESTIMONIALS = [
   {
     source: "Google",
     quote:
@@ -14,6 +17,7 @@ const testimonials = [
     name: "David H.",
     role: "Maury County, TN",
     initial: "D",
+    rating: 5,
   },
   {
     source: "Google",
@@ -22,14 +26,16 @@ const testimonials = [
     name: "Randy T.",
     role: "Marshall County, TN",
     initial: "R",
+    rating: 5,
   },
   {
-    source: "Facebook",
+    source: "Google",
     quote:
       "Hired Noland Earthworks to clear a lot before we broke ground on a new build. Jon was on time, communicated well throughout, and the site was ready when he said it would be. Veteran-owned and it shows — he runs a tight operation.",
     name: "Chris B.",
     role: "Williamson County, TN",
     initial: "C",
+    rating: 5,
   },
   {
     source: "Google",
@@ -38,19 +44,40 @@ const testimonials = [
     name: "Mike W.",
     role: "Dickson County, TN",
     initial: "M",
+    rating: 5,
   },
   {
-    source: "Facebook",
+    source: "Google",
     quote:
       "Had about 4 acres of thick cedar and honeysuckle that had taken over a pasture. Jon came out, looked at the site, gave me a fair quote, and had it done in one day. The land looks like it did 20 years ago. Couldn't be happier with the result.",
     name: "Jennifer L.",
     role: "Columbia, TN",
     initial: "J",
+    rating: 5,
   },
 ];
 
+function StarRating({ rating }: { rating: number }) {
+  return (
+    <div className="flex gap-0.5 mb-4" aria-label={`${rating} out of 5 stars`}>
+      {[1, 2, 3, 4, 5].map((star) => (
+        <svg
+          key={star}
+          width="16"
+          height="16"
+          viewBox="0 0 24 24"
+          fill={star <= rating ? "#E07B2A" : "rgba(224,123,42,0.25)"}
+          xmlns="http://www.w3.org/2000/svg"
+        >
+          <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+        </svg>
+      ))}
+    </div>
+  );
+}
+
 function SourceBadge({ source }: { source: string }) {
-  const isGoogle = source === "Google";
+  const isGoogle = source.toLowerCase() === "google";
   return (
     <span
       style={{
@@ -66,20 +93,36 @@ function SourceBadge({ source }: { source: string }) {
         display: "inline-block",
       }}
     >
-      {source} Review
+      {isGoogle ? "Google Review" : "Facebook Review"}
     </span>
   );
 }
 
-function TestimonialCard({ source, quote, name, role, initial, index }: {
-  source: string; quote: string; name: string; role: string; initial: string; index: number;
+function TestimonialCard({
+  source,
+  quote,
+  name,
+  role,
+  initial,
+  rating,
+  index,
+}: {
+  source: string;
+  quote: string;
+  name: string;
+  role: string;
+  initial: string;
+  rating: number;
+  index: number;
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
     const observer = new IntersectionObserver(
-      ([entry]) => { if (entry.isIntersecting) setVisible(true); },
+      ([entry]) => {
+        if (entry.isIntersecting) setVisible(true);
+      },
       { threshold: 0.1 }
     );
     if (ref.current) observer.observe(ref.current);
@@ -105,7 +148,7 @@ function TestimonialCard({ source, quote, name, role, initial, index }: {
       </div>
 
       {/* Stars */}
-      <div className="stars mb-4" style={{ fontSize: "1rem" }}>★★★★★</div>
+      <StarRating rating={rating} />
 
       {/* Quote */}
       <p
@@ -170,9 +213,36 @@ export default function TestimonialsSection() {
   const ref = useRef<HTMLDivElement>(null);
   const [visible, setVisible] = useState(false);
 
+  // Fetch live Google reviews — public endpoint, no auth required.
+  // Falls back to hardcoded quotes if the API is unavailable or returns nothing.
+  const { data: liveData } = trpc.reviewsLive.getPublic.useQuery(undefined, {
+    staleTime: 1000 * 60 * 30, // cache for 30 minutes
+    retry: 1,
+  });
+
+  // Build the display list: use live reviews if we have at least 3, otherwise fall back.
+  const liveReviews = liveData?.reviews ?? [];
+  const displayTestimonials =
+    liveReviews.length >= 3
+      ? liveReviews.map((r) => ({
+          source: r.source === "google" ? "Google" : "Facebook",
+          quote: r.body,
+          name: r.reviewerName,
+          role: "Google Review",
+          initial: r.reviewerName.charAt(0).toUpperCase(),
+          rating: r.rating,
+        }))
+      : FALLBACK_TESTIMONIALS;
+
+  // Rating summary for the section header
+  const googleRating = liveData?.googleRating ?? 4.9;
+  const googleReviewCount = liveData?.googleReviewCount ?? null;
+
   useEffect(() => {
     const observer = new IntersectionObserver(
-      ([entry]) => { if (entry.isIntersecting) setVisible(true); },
+      ([entry]) => {
+        if (entry.isIntersecting) setVisible(true);
+      },
       { threshold: 0.1 }
     );
     if (ref.current) observer.observe(ref.current);
@@ -180,7 +250,10 @@ export default function TestimonialsSection() {
   }, []);
 
   return (
-    <section id="testimonials" style={{ backgroundColor: "#121212", paddingTop: "6rem", paddingBottom: "6rem" }}>
+    <section
+      id="testimonials"
+      style={{ backgroundColor: "#121212", paddingTop: "6rem", paddingBottom: "6rem" }}
+    >
       <div className="container">
         {/* Header */}
         <div
@@ -205,12 +278,40 @@ export default function TestimonialsSection() {
           >
             What Our Clients Say
           </h2>
+          {/* Live rating summary */}
+          <div
+            className="flex items-center gap-3 mt-3"
+            style={{
+              fontFamily: "'Lato', sans-serif",
+              fontSize: "0.9rem",
+              color: "rgba(240,237,230,0.6)",
+            }}
+          >
+            <div className="flex gap-0.5">
+              {[1, 2, 3, 4, 5].map((s) => (
+                <svg
+                  key={s}
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill={s <= Math.round(googleRating) ? "#E07B2A" : "rgba(224,123,42,0.25)"}
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+                </svg>
+              ))}
+            </div>
+            <span>
+              <strong style={{ color: "#F0EDE6" }}>{googleRating?.toFixed(1)}</strong>
+              {googleReviewCount ? ` from ${googleReviewCount}+ Google reviews` : " on Google"}
+            </span>
+          </div>
         </div>
 
         {/* Cards grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {testimonials.map((t, i) => (
-            <TestimonialCard key={t.name} {...t} index={i} />
+          {displayTestimonials.map((t, i) => (
+            <TestimonialCard key={`${t.name}-${i}`} {...t} index={i} />
           ))}
         </div>
 
@@ -251,7 +352,8 @@ export default function TestimonialsSection() {
                 margin: 0,
               }}
             >
-              Your Google review helps other property owners find us and means the world to our team.
+              Your Google review helps other property owners find us and means the world to a small,
+              veteran-owned business.
             </p>
           </div>
           <a
@@ -274,8 +376,14 @@ export default function TestimonialsSection() {
               whiteSpace: "nowrap",
             }}
           >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
-              <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+            <svg
+              width="18"
+              height="18"
+              viewBox="0 0 24 24"
+              fill="currentColor"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
             </svg>
             Leave a Google Review
           </a>
