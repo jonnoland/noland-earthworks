@@ -1176,3 +1176,6 @@
 
 ## Jobber Token Expiry Alert — May 2026
 - [x] Add Jobber token expiry alert to ops dashboard — red banner when expired, amber when expiring soon, both with Reconnect link; Settings Integrations tab shows token status and expiry time
+
+## Google Maps Fix — May 2026
+- [x] Fix Google Maps loading=async race condition — poll for google.maps.Map constructor readiness instead of resolving on script.onload

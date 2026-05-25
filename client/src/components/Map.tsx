@@ -95,12 +95,33 @@ declare global {
 // duplicate script injection which causes "This page can't load Google Maps correctly".
 let _mapsScriptPromise: Promise<void> | null = null;
 
+// Wait until google.maps.Map is a valid constructor (handles loading=async race condition)
+function waitForMapsApi(timeoutMs = 15000): Promise<void> {
+  return new Promise<void>((resolve, reject) => {
+    // Already fully ready
+    if (typeof window.google?.maps?.Map === "function") {
+      resolve();
+      return;
+    }
+    const start = Date.now();
+    const check = setInterval(() => {
+      if (typeof window.google?.maps?.Map === "function") {
+        clearInterval(check);
+        resolve();
+      } else if (Date.now() - start > timeoutMs) {
+        clearInterval(check);
+        reject(new Error("Google Maps API failed to become ready (timeout)"));
+      }
+    }, 50);
+  });
+}
+
 export function loadMapScript() {
   // Already loading or loaded — return the same promise
   if (_mapsScriptPromise) return _mapsScriptPromise;
 
-  // If Google Maps is already loaded (e.g. SSR hydration or script already in DOM), resolve immediately
-  if (typeof window !== "undefined" && window.google?.maps) {
+  // If Google Maps is already fully loaded (Map is a constructor), resolve immediately
+  if (typeof window !== "undefined" && typeof window.google?.maps?.Map === "function") {
     _mapsScriptPromise = Promise.resolve();
     return _mapsScriptPromise;
   }
@@ -108,35 +129,24 @@ export function loadMapScript() {
   // Check if a Maps script tag already exists in the DOM to avoid duplicate injection
   const existingScript = document.querySelector(`script[src*="maps/api/js"]`);
   if (existingScript) {
-    // Script already injected — wait for google.maps to become available
-    _mapsScriptPromise = new Promise<void>((resolve, reject) => {
-      const check = setInterval(() => {
-        if (window.google?.maps) {
-          clearInterval(check);
-          resolve();
-        }
-      }, 100);
-      // Timeout after 15 seconds
-      setTimeout(() => {
-        clearInterval(check);
-        if (window.google?.maps) {
-          resolve();
-        } else {
-          reject(new Error("Google Maps failed to initialize (timeout)"));
-        }
-      }, 15000);
-    });
+    // Script already injected — wait for google.maps.Map to become a constructor
+    _mapsScriptPromise = waitForMapsApi();
     return _mapsScriptPromise;
   }
 
   _mapsScriptPromise = new Promise<void>((resolve, reject) => {
     const script = document.createElement("script");
     // loading=async is required by Google Maps to suppress the "loaded without loading=async" warning.
-    // The script tag itself also has async=true; these two work together.
+    // With loading=async, script.onload fires before google.maps.Map is ready — so we must
+    // poll for the constructor to be available after the script loads.
     script.src = `/api/maps/js?v=weekly&libraries=marker,places,geocoding,geometry&loading=async`;
     script.async = true;
     script.crossOrigin = "anonymous";
-    script.onload = () => resolve();
+    script.onload = () => {
+      // Don't resolve immediately — with loading=async the Maps API bootstraps
+      // asynchronously after onload. Poll until google.maps.Map is a constructor.
+      waitForMapsApi().then(resolve).catch(reject);
+    };
     script.onerror = (err) => {
       // Do NOT reset _mapsScriptPromise here — resetting it would allow a second
       // script tag to be injected, causing the "can't load Google Maps correctly" error.
