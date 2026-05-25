@@ -2084,6 +2084,8 @@ function AIPricingTab() {
   // Mirrors the core math in analyzeSubmission so the preview stays in sync
   // NOTE: must be declared BEFORE any early returns to satisfy React rules of hooks
   const [calc, setCalc] = useState({ service: "forestry-mulching", acres: 5, density: "moderate", terrain: "flat", access: "easy", addStumps: 0, addLoads: 0 });
+  // ── Section tab state — MUST be declared before any early returns ──────────
+  const [activeSection, setActiveSection] = useState<"rates" | "modifiers" | "addons" | "production" | "benchmarks">("rates");
 
   const previewResult = useMemo(() => {
     const baseRateMap: Record<string, number> = {
@@ -2142,9 +2144,6 @@ function AIPricingTab() {
       </div>
     );
   }
-
-  // ── Section tab state ──────────────────────────────────────────────────────
-  const [activeSection, setActiveSection] = useState<"rates" | "modifiers" | "addons" | "production" | "benchmarks">("rates");
 
   const sectionTabs = [
     { id: "rates"      as const, label: "Rates & Minimums" },

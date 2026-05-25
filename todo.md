@@ -1167,3 +1167,4 @@
 - [x] Audit and update AI Pricing page defaults for Middle & West Tennessee market accuracy
 - [x] Reformat AI Pricing page to tabbed streamlined layout
 - [x] Update DB schema defaults to market-accurate Middle & West TN rates and push migration
+- [x] Fix React error #310 in AIPricingTab — move activeSection useState before early return
