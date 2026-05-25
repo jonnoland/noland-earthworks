@@ -182,26 +182,21 @@ async function startServer() {
     }
   });
 
-  // Maps JavaScript API proxy — serves the Maps SDK script server-side.
-  // Uses VITE_FRONTEND_FORGE_API_KEY (the frontend key) and forwards the
-  // Origin header from the browser request, which the Forge proxy requires.
+  // Maps JavaScript API proxy — proxies the Google Maps JS SDK through the server
+  // to avoid exposing the API key on the client. Uses GOOGLE_PLACES_API_KEY with
+  // the direct Google Maps CDN (the Forge proxy requires a registered origin which
+  // is not available in dev/preview environments).
   app.get("/api/maps/js", async (req, res) => {
     try {
-      const baseUrl = (process.env.VITE_FRONTEND_FORGE_API_URL || "https://forge.manus.ai").replace(/\/+$/, "");
-      const apiKey = process.env.VITE_FRONTEND_FORGE_API_KEY;
+      const apiKey = process.env.GOOGLE_PLACES_API_KEY;
       if (!apiKey) {
         res.status(503).send("// Maps API key not configured");
         return;
       }
       const params = new URLSearchParams(req.query as Record<string, string>);
       params.set("key", apiKey);
-      const upstreamUrl = `${baseUrl}/v1/maps/proxy/maps/api/js?${params.toString()}`;
-      // The Forge Maps proxy requires an Origin header matching the registered domain.
-      // Forward the browser's Origin if present; fall back to the production domain.
-      const origin = (req.headers.origin as string) || (req.headers.referer ? new URL(req.headers.referer as string).origin : "https://nolandearthworks.com");
-      const upstream = await fetch(upstreamUrl, {
-        headers: { "Origin": origin },
-      });
+      const upstreamUrl = `https://maps.googleapis.com/maps/api/js?${params.toString()}`;
+      const upstream = await fetch(upstreamUrl);
       const body = await upstream.text();
       res.setHeader("Content-Type", "application/javascript; charset=utf-8");
       res.setHeader("Cache-Control", "public, max-age=3600");
