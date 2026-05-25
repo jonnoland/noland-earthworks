@@ -11,6 +11,12 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
   FileText,
   Search,
   RefreshCw,
@@ -1975,6 +1981,143 @@ function WebsiteRequestCard({
 }
 
 // ─── Website Requests Section ─────────────────────────────────────────────────
+// ─── Draft Preview Modal ──────────────────────────────────────────────────────
+type ParsedDraft = {
+  scopeNotes?: string;
+  scopeSummary?: string;
+  lineItems?: { name: string; description: string; quantity: number; unitPrice: number }[];
+  priceLow?: number;
+  priceHigh?: number;
+  totalEstimate?: { low?: number; high?: number };
+  quoteMessage?: string;
+  riskFlags?: string[];
+  siteVisitRequired?: boolean;
+  confidence?: string;
+  estimatedDays?: number | null;
+};
+
+function DraftPreviewModal({
+  draft,
+  onClose,
+  onPushToJobber,
+}: {
+  draft: { id: number; customerName?: string | null; customerEmail?: string | null; service?: string | null; county?: string | null; acreage?: string | null; aiResult: string; status: string; createdAt: Date | string };
+  onClose: () => void;
+  onPushToJobber: () => void;
+}) {
+  let parsed: ParsedDraft = {};
+  try { parsed = JSON.parse(draft.aiResult); } catch { /* ignore */ }
+
+  const priceLow = parsed.priceLow ?? parsed.totalEstimate?.low;
+  const priceHigh = parsed.priceHigh ?? parsed.totalEstimate?.high;
+  const scopeText = parsed.scopeNotes ?? parsed.scopeSummary ?? "";
+
+  return (
+    <Dialog open onOpenChange={(open) => { if (!open) onClose(); }}>
+      <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="text-base">
+            {draft.customerName ?? "Draft Quote"}
+          </DialogTitle>
+          <p className="text-xs text-muted-foreground">
+            {[draft.service, draft.county, draft.acreage].filter(Boolean).join(" · ")}
+          </p>
+        </DialogHeader>
+
+        <div className="space-y-4 pt-1">
+          {/* Price range */}
+          {(priceLow != null || priceHigh != null) && (
+            <div className="rounded-md bg-primary/8 border border-primary/20 px-3 py-2 flex items-center justify-between">
+              <span className="text-xs text-muted-foreground">Estimated Range</span>
+              <span className="text-sm font-semibold text-foreground">
+                ${priceLow?.toLocaleString()} – ${priceHigh?.toLocaleString()}
+              </span>
+            </div>
+          )}
+
+          {/* Scope notes */}
+          {scopeText && (
+            <div>
+              <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide mb-1">Scope Notes</p>
+              <p className="text-xs text-foreground leading-relaxed">{scopeText}</p>
+            </div>
+          )}
+
+          {/* Line items */}
+          {parsed.lineItems && parsed.lineItems.length > 0 && (
+            <div>
+              <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide mb-1.5">Line Items</p>
+              <div className="space-y-1">
+                {parsed.lineItems.map((item, i) => (
+                  <div key={i} className="flex items-start justify-between gap-2 text-xs">
+                    <div className="min-w-0">
+                      <span className="font-medium text-foreground">{item.name}</span>
+                      {item.description && <span className="text-muted-foreground ml-1">— {item.description}</span>}
+                    </div>
+                    <span className="shrink-0 text-foreground font-medium">
+                      {item.quantity > 1 ? `${item.quantity} × ` : ""}${item.unitPrice.toLocaleString()}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Quote message */}
+          {parsed.quoteMessage && (
+            <div>
+              <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide mb-1">Quote Message</p>
+              <p className="text-xs text-foreground leading-relaxed italic">"{parsed.quoteMessage}"</p>
+            </div>
+          )}
+
+          {/* Risk flags */}
+          {parsed.riskFlags && parsed.riskFlags.length > 0 && (
+            <div>
+              <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide mb-1">Risk Flags</p>
+              <ul className="space-y-0.5">
+                {parsed.riskFlags.map((flag, i) => (
+                  <li key={i} className="text-xs text-amber-600 flex items-start gap-1">
+                    <AlertTriangle className="w-3 h-3 mt-0.5 shrink-0" />
+                    {flag}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {/* Meta */}
+          <div className="flex items-center gap-3 text-[11px] text-muted-foreground border-t border-border pt-2">
+            {parsed.confidence && (
+              <span>Confidence: <span className="capitalize font-medium">{parsed.confidence}</span></span>
+            )}
+            {parsed.estimatedDays != null && (
+              <span>Est. {parsed.estimatedDays} day{parsed.estimatedDays !== 1 ? "s" : ""} on site</span>
+            )}
+            {parsed.siteVisitRequired && (
+              <span className="text-amber-600 font-medium">Site visit required</span>
+            )}
+          </div>
+
+          {/* Actions */}
+          <div className="flex gap-2 pt-1">
+            <Button
+              className="flex-1 gap-1.5 text-xs"
+              onClick={() => { onClose(); onPushToJobber(); }}
+            >
+              <PlusCircle className="w-3.5 h-3.5" />
+              Push to Jobber
+            </Button>
+            <Button variant="outline" className="text-xs" onClick={onClose}>
+              Close
+            </Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 function WebsiteRequestsSection({
   onBuildQuote,
 }: {
@@ -1989,6 +2132,8 @@ function WebsiteRequestsSection({
   }) => void;
 }) {
   const [activeTab, setActiveTab] = useState<"requests" | "drafts">("requests");
+  type DraftRow = { id: number; customerName?: string | null; customerEmail?: string | null; service?: string | null; county?: string | null; acreage?: string | null; aiResult: string; status: string; notes?: string | null; createdAt: Date | string; updatedAt: Date | string; submissionId: number };
+  const [previewDraft, setPreviewDraft] = useState<DraftRow | null>(null);
 
   const { data: submissions, isLoading, refetch, isFetching } = trpc.ops.quotes.list.useQuery(
     { limit: 50 },
@@ -2105,8 +2250,22 @@ function WebsiteRequestsSection({
           {!draftsLoading && draftList.length > 0 && (
             <div className="space-y-2">
               {draftList.map((draft) => {
-                let parsed: { scopeSummary?: string; totalEstimate?: { low?: number; high?: number } } | null = null;
+                let parsed: ParsedDraft = {};
                 try { parsed = JSON.parse(draft.aiResult); } catch { /* ignore */ }
+                const priceLow = parsed.priceLow ?? parsed.totalEstimate?.low;
+                const priceHigh = parsed.priceHigh ?? parsed.totalEstimate?.high;
+                const scopeText = parsed.scopeNotes ?? parsed.scopeSummary ?? "";
+
+                function handlePushToJobber() {
+                  onBuildQuote({
+                    clientName: draft.customerName ?? undefined,
+                    clientEmail: draft.customerEmail ?? undefined,
+                    jobType: [draft.service, draft.acreage, draft.county ? `${draft.county} County` : undefined].filter(Boolean).join(" — "),
+                    message: parsed.quoteMessage,
+                    lineItems: parsed.lineItems,
+                  });
+                }
+
                 return (
                   <div key={draft.id} className="rounded-md border border-border bg-card p-3 space-y-2">
                     <div className="flex items-start justify-between gap-2">
@@ -2125,23 +2284,40 @@ function WebsiteRequestsSection({
                         </Badge>
                       </div>
                     </div>
-                    {parsed?.scopeSummary && (
-                      <p className="text-xs text-muted-foreground line-clamp-2">{parsed.scopeSummary}</p>
+                    {scopeText && (
+                      <p className="text-xs text-muted-foreground line-clamp-2">{scopeText}</p>
                     )}
-                    {parsed?.totalEstimate && (
+                    {(priceLow != null || priceHigh != null) && (
                       <p className="text-xs font-medium text-foreground">
-                        Est. ${parsed.totalEstimate.low?.toLocaleString()} – ${parsed.totalEstimate.high?.toLocaleString()}
+                        Est. ${priceLow?.toLocaleString()} – ${priceHigh?.toLocaleString()}
                       </p>
                     )}
                     <p className="text-[11px] text-muted-foreground">
                       Saved {new Date(draft.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
                     </p>
-                    <div className="flex items-center gap-2 pt-1">
+                    <div className="flex items-center gap-2 pt-1 flex-wrap">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-6 text-xs px-2 gap-1"
+                        onClick={() => setPreviewDraft(draft as DraftRow)}
+                      >
+                        <Eye className="w-3 h-3" />
+                        Preview
+                      </Button>
+                      <Button
+                        size="sm"
+                        className="h-6 text-xs px-2 gap-1"
+                        onClick={handlePushToJobber}
+                      >
+                        <PlusCircle className="w-3 h-3" />
+                        Push to Jobber
+                      </Button>
                       {draft.status === "saved" && (
                         <Button
                           size="sm"
-                          variant="outline"
-                          className="h-6 text-xs px-2"
+                          variant="ghost"
+                          className="h-6 text-xs px-2 text-muted-foreground"
                           onClick={() => updateDraftStatusMutation.mutate({ id: draft.id, status: "sent" })}
                           disabled={updateDraftStatusMutation.isPending}
                         >
@@ -2175,6 +2351,26 @@ function WebsiteRequestsSection({
             </div>
           )}
         </>
+      )}
+
+      {/* Draft preview modal */}
+      {previewDraft && (
+        <DraftPreviewModal
+          draft={previewDraft}
+          onClose={() => setPreviewDraft(null)}
+          onPushToJobber={() => {
+            let parsed: ParsedDraft = {};
+            try { parsed = JSON.parse(previewDraft.aiResult); } catch { /* ignore */ }
+            onBuildQuote({
+              clientName: previewDraft.customerName ?? undefined,
+              clientEmail: previewDraft.customerEmail ?? undefined,
+              jobType: [previewDraft.service, previewDraft.acreage, previewDraft.county ? `${previewDraft.county} County` : undefined].filter(Boolean).join(" — "),
+              message: parsed.quoteMessage,
+              lineItems: parsed.lineItems,
+            });
+            setPreviewDraft(null);
+          }}
+        />
       )}
     </div>
   );

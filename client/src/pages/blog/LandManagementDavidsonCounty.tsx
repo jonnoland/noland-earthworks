@@ -16,7 +16,7 @@ export default function LandClearingDavidsonCounty() {
       relatedSlugs={[
         "land-management-williamson-county",
         "land-management-rutherford-county",
-        "land-management-developers-farmers-middle-tennessee",
+        "land-management-maury-county",
       ]}
     >
       <p>
@@ -93,6 +93,7 @@ export default function LandClearingDavidsonCounty() {
       <ul>
         <li><a href="/blog/land-management-williamson-county"><strong>Land Management in Williamson County, TN</strong></a> — Serving Franklin, Brentwood, Spring Hill, Nolensville, Fairview, and surrounding areas.</li>
         <li><a href="/blog/land-management-rutherford-county"><strong>Land Management in Rutherford County, TN</strong></a> — Serving Murfreesboro, Smyrna, La Vergne, Eagleville, and surrounding areas.</li>
+        <li><a href="/blog/land-management-maury-county"><strong>Land Management in Maury County, TN</strong></a> — Serving Columbia, Spring Hill, Mount Pleasant, and surrounding areas.</li>
       </ul>
       <p>
         Not sure which county your property falls in? <a href="/quote">Request a free estimate</a> and we will confirm your location and service area when we follow up.

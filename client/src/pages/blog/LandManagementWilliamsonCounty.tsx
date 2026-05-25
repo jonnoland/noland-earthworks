@@ -16,7 +16,7 @@ export default function LandClearingWilliamsonCounty() {
       relatedSlugs={[
         "land-management-davidson-county",
         "land-management-rutherford-county",
-        "land-management-developers-farmers-middle-tennessee",
+        "land-management-maury-county",
       ]}
     >
       <p>

@@ -90,6 +90,15 @@ export const BLOG_POSTS = [
     readTime: "7 min read",
     category: "Planning & Preparation",
   },
+  {
+    slug: "land-management-maury-county",
+    title: "Land Management in Maury County, TN: What Property Owners Need to Know",
+    meta: "Need land management in Maury County, TN? Noland Earthworks provides forestry mulching and land clearing in Columbia, Spring Hill, Mount Pleasant, and across Maury County.",
+    date: "May 2026",
+    lastUpdated: "May 2026",
+    readTime: "6 min read",
+    category: "Local Service Areas",
+  },
 ];
 
 export default function Blog() {

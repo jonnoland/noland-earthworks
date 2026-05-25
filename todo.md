@@ -1142,3 +1142,6 @@
 - [x] Fix Google Reviews fallback — when locationName is NULL, fall back to Places API instead of returning empty
 - [x] Add Drafts tab to Website Requests section in /ops/quotes (Inbound / Saved Drafts tabs)
 - [x] Fix Google Maps loading=async warning in Map.tsx
+- [x] Add "Push to Jobber" button on Saved Drafts cards to complete the AI quote workflow
+- [x] Add preview modal to Saved Drafts tab showing full AI quote details before sending
+- [x] Create Maury County blog post targeting Columbia/Spring Hill developer and farmer audience
