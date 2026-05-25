@@ -8,6 +8,7 @@ import Footer from "@/components/Footer";
 import MobileCTABar from "@/components/MobileCTABar";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { ArrowLeft, Calendar, RefreshCw } from "lucide-react";
+import RelatedPosts from "@/components/RelatedPosts";
 
 export interface BlogPostProps {
   title: string;
@@ -20,6 +21,8 @@ export interface BlogPostProps {
   readTime: string;
   category: string;
   slug: string;             // e.g. "cost-of-land-management-tennessee"
+  /** Optional explicit list of related post slugs. Auto-selected when omitted. */
+  relatedSlugs?: string[];
   children: React.ReactNode;
 }
 
@@ -34,6 +37,7 @@ export default function BlogPostLayout({
   readTime,
   category,
   slug,
+  relatedSlugs,
   children,
 }: BlogPostProps) {
   usePageTitle(pageTitle, metaDescription, `/blog/${slug}`);
@@ -276,6 +280,9 @@ export default function BlogPostLayout({
       <article className="container py-14" style={{ maxWidth: "820px" }}>
         <div className="blog-content">{children}</div>
       </article>
+
+      {/* Related Posts */}
+      <RelatedPosts currentSlug={slug} slugs={relatedSlugs} />
 
       {/* CTA */}
       <section

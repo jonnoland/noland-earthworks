@@ -81,6 +81,15 @@ export const BLOG_POSTS = [
     readTime: "6 min read",
     category: "Local Service Areas",
   },
+  {
+    slug: "land-management-developers-farmers-middle-tennessee",
+    title: "Land Management for Developers and Farmers in Middle Tennessee",
+    meta: "Planning a development or reclaiming pasture in Middle Tennessee? Noland Earthworks provides forestry mulching and land management tailored to developers and farmers across the region.",
+    date: "May 2026",
+    lastUpdated: "May 2026",
+    readTime: "7 min read",
+    category: "Planning & Preparation",
+  },
 ];
 
 export default function Blog() {

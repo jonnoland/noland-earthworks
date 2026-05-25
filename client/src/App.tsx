@@ -49,9 +49,10 @@ import ForestryMulchingVsBulldozing from "./pages/blog/ForestryMulchingVsBulldoz
 import SignsVegetationManagement from "./pages/blog/SignsVegetationManagement";
 import BestTimeToClearLand from "./pages/blog/BestTimeToClearLand";
 import SitePreparationBeforeBuilding from "./pages/blog/SitePreparationBeforeBuilding";
-import LandClearingWilliamsonCounty from "./pages/blog/LandClearingWilliamsonCounty";
-import LandClearingDavidsonCounty from "./pages/blog/LandClearingDavidsonCounty";
-import LandClearingRutherfordCounty from "./pages/blog/LandClearingRutherfordCounty";
+import LandManagementWilliamsonCounty from "./pages/blog/LandManagementWilliamsonCounty";
+import LandManagementDevelopersFarmers from "./pages/blog/LandManagementDevelopersFarmers";
+import LandManagementDavidsonCounty from "./pages/blog/LandManagementDavidsonCounty";
+import LandManagementRutherfordCounty from "./pages/blog/LandManagementRutherfordCounty";
 import GalleryPage from "./pages/Gallery";
 import {
   DavidsonCountyPage,
@@ -113,9 +114,10 @@ function Router() {
       <Route path="/blog/signs-you-need-vegetation-management" component={SignsVegetationManagement} />
       <Route path="/blog/best-time-to-clear-land-tennessee" component={BestTimeToClearLand} />
       <Route path="/blog/site-preparation-before-building-tennessee" component={SitePreparationBeforeBuilding} />
-      <Route path="/blog/land-management-williamson-county" component={LandClearingWilliamsonCounty} />
-      <Route path="/blog/land-management-davidson-county" component={LandClearingDavidsonCounty} />
-      <Route path="/blog/land-management-rutherford-county" component={LandClearingRutherfordCounty} />
+      <Route path="/blog/land-management-developers-farmers-middle-tennessee" component={LandManagementDevelopersFarmers} />
+      <Route path="/blog/land-management-williamson-county" component={LandManagementWilliamsonCounty} />
+      <Route path="/blog/land-management-davidson-county" component={LandManagementDavidsonCounty} />
+      <Route path="/blog/land-management-rutherford-county" component={LandManagementRutherfordCounty} />
       <Route path="/blog/land-clearing-williamson-county" component={() => { window.location.replace("/blog/land-management-williamson-county"); return null; }} />
       <Route path="/blog/land-clearing-davidson-county" component={() => { window.location.replace("/blog/land-management-davidson-county"); return null; }} />
       <Route path="/blog/land-clearing-rutherford-county" component={() => { window.location.replace("/blog/land-management-rutherford-county"); return null; }} />

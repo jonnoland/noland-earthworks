@@ -1136,3 +1136,6 @@
 - [x] Fix 6: Notification retry queue — pending_notifications table with retry count and 30-min retry pass
 - [x] Fix 7: Daily digest SMS fallback — short SMS summary at 7 AM alongside email
 - [x] Fix 8: Concurrency guard on triggerRun — prevent duplicate simultaneous agent runs
+- [x] Rename LandClearing blog post files to LandManagement for internal consistency
+- [x] Create new Land Management blog post targeting Middle TN developers and farmers
+- [x] Add related posts section to all Land Management blog posts

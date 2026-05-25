@@ -13,6 +13,11 @@ export default function LandClearingRutherfordCounty() {
       slug="land-management-rutherford-county"
       readTime="6 min read"
       category="Local Service Areas"
+      relatedSlugs={[
+        "land-management-williamson-county",
+        "land-management-davidson-county",
+        "land-management-developers-farmers-middle-tennessee",
+      ]}
     >
       <p>
         Rutherford County is one of the fastest-growing counties in Tennessee and, by some projections, is on track to surpass 550,000 residents by 2045. The growth is concentrated in and around Murfreesboro — now Tennessee's second-largest city — but it extends outward through Smyrna, La Vergne, Eagleville, Lascassas, and the rural stretches of the county that are steadily transitioning from farmland and woodland to residential and commercial development. For landowners across Rutherford County, that growth means one thing: the demand for professional land management has never been higher. This guide covers what you need to know before clearing property anywhere in the county.
