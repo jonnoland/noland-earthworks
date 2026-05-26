@@ -266,7 +266,7 @@ if ($Install) {
             Write-Fail "adb not found at $AdbPath. Install Android Platform Tools via SDK Manager."
         }
 
-        $Devices = & $AdbPath devices | Select-String "device$"
+        $Devices = @(& $AdbPath devices | Select-String "device$")
         if ($Devices.Count -eq 0) {
             Write-Fail "No Android device connected. Connect via USB and enable USB Debugging."
         }
