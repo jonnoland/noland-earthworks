@@ -1228,3 +1228,10 @@
 - [x] Register both routes in App.tsx
 - [x] Add both entries to Blog.tsx index
 - [x] Add both to sitemap
+
+## Robertson & Trousdale County Blog Posts — May 2026
+- [x] Write and publish Robertson County blog post: Land Management in Robertson County, TN
+- [x] Write and publish Trousdale County blog post: Land Management in Trousdale County, TN
+- [x] Register both routes in App.tsx
+- [x] Add both entries to Blog.tsx index
+- [x] Add both to sitemap

@@ -47,6 +47,8 @@ const PAGES = [
   { path: "/blog/land-management-lawrence-county",                            priority: "0.9", changefreq: "monthly" },
   { path: "/blog/land-management-dickson-county",                             priority: "0.9", changefreq: "monthly" },
   { path: "/blog/land-management-hickman-county",                             priority: "0.9", changefreq: "monthly" },
+  { path: "/blog/land-management-robertson-county",                           priority: "0.9", changefreq: "monthly" },
+  { path: "/blog/land-management-trousdale-county",                           priority: "0.9", changefreq: "monthly" },
   // County landing pages
   { path: "/service-areas/davidson-county",                             priority: "0.8", changefreq: "monthly" },
   { path: "/service-areas/williamson-county",                           priority: "0.8", changefreq: "monthly" },

@@ -227,6 +227,24 @@ export const BLOG_POSTS = [
     readTime: "6 min read",
     category: "Local Service Areas",
   },
+  {
+    slug: "land-management-robertson-county",
+    title: "Land Management in Robertson County, TN: What Property Owners Need to Know",
+    meta: "Need land management in Robertson County, TN? Noland Earthworks provides forestry mulching and land clearing in Springfield, Greenbrier, White House, Cross Plains, and across Robertson County.",
+    date: "May 2026",
+    lastUpdated: "May 2026",
+    readTime: "6 min read",
+    category: "Local Service Areas",
+  },
+  {
+    slug: "land-management-trousdale-county",
+    title: "Land Management in Trousdale County, TN: What Property Owners Need to Know",
+    meta: "Need land management in Trousdale County, TN? Noland Earthworks provides forestry mulching and land clearing in Hartsville and across Trousdale County, Tennessee.",
+    date: "May 2026",
+    lastUpdated: "May 2026",
+    readTime: "5 min read",
+    category: "Local Service Areas",
+  },
 ];
 
 const ALL_CATEGORIES = ["All", ...Array.from(new Set(BLOG_POSTS.map((p) => p.category)))];

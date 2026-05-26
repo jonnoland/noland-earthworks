@@ -69,6 +69,8 @@ import LandManagementCheathamCounty from "./pages/blog/LandManagementCheathamCou
 import LandManagementLawrenceCounty from "./pages/blog/LandManagementLawrenceCounty";
 import LandManagementDicksonCounty from "./pages/blog/LandManagementDicksonCounty";
 import LandManagementHickmanCounty from "./pages/blog/LandManagementHickmanCounty";
+import LandManagementRobertsonCounty from "./pages/blog/LandManagementRobertsonCounty";
+import LandManagementTrousdaleCounty from "./pages/blog/LandManagementTrousdaleCounty";
 import GalleryPage from "./pages/Gallery";
 import {
   DavidsonCountyPage,
@@ -152,6 +154,8 @@ function Router() {
       <Route path="/blog/land-management-lawrence-county" component={LandManagementLawrenceCounty} />
       <Route path="/blog/land-management-dickson-county" component={LandManagementDicksonCounty} />
       <Route path="/blog/land-management-hickman-county" component={LandManagementHickmanCounty} />
+      <Route path="/blog/land-management-robertson-county" component={LandManagementRobertsonCounty} />
+      <Route path="/blog/land-management-trousdale-county" component={LandManagementTrousdaleCounty} />
 
       {/* Service pages */}
       <Route path="/services/land-management" component={LandClearingPage} />
