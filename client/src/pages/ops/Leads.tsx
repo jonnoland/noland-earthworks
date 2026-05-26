@@ -1120,6 +1120,7 @@ export default function Leads() {
   const [viewMode, setViewMode] = useState<"kanban" | "map" | "visits">("kanban");
   const [sourceFilter, setSourceFilter] = useState<string>("all");
   const [aiScoreFilter, setAiScoreFilter] = useState<string>("all");
+  const [staleFilter, setStaleFilter] = useState<boolean>(false);
 
   const utils = trpc.useUtils();
   const { data: leads = [], isLoading } = trpc.ops.leads.list.useQuery();
@@ -1162,9 +1163,17 @@ export default function Leads() {
     setDragOverStage(null);
   };
 
+  const isLeadStale = (l: Lead) => {
+    if (l.stage === "won" || l.stage === "lost") return false;
+    const lastUpdate = l.updatedAt ?? l.createdAt;
+    if (!lastUpdate) return false;
+    return Math.floor((Date.now() - new Date(lastUpdate).getTime()) / (1000 * 60 * 60 * 24)) >= 3;
+  };
+
   const filtered = (leads as Lead[]).filter(l => {
     if (sourceFilter !== "all" && l.source !== sourceFilter) return false;
     if (aiScoreFilter !== "all" && l.aiScore !== aiScoreFilter) return false;
+    if (staleFilter && !isLeadStale(l)) return false;
     if (!search) return true;
     const q = search.toLowerCase();
     return l.name.toLowerCase().includes(q) || (l.phone ?? "").includes(q) || (l.address ?? "").toLowerCase().includes(q);
@@ -1355,6 +1364,31 @@ export default function Leads() {
               );
             })}
           </div>
+          {/* Stale filter pill */}
+          {(() => {
+            const staleCount = (leads as Lead[]).filter(isLeadStale).length;
+            if (staleCount === 0) return null;
+            return (
+              <div className="flex items-center gap-1.5">
+                <Clock className="w-3 h-3 text-[#444] shrink-0" />
+                <button
+                  onClick={() => setStaleFilter(v => !v)}
+                  className={cn(
+                    "shrink-0 flex items-center gap-1 text-[11px] font-medium px-2.5 py-1 rounded-full border transition-colors",
+                    staleFilter
+                      ? "bg-amber-500/30 text-amber-300 border-amber-500/50"
+                      : "bg-amber-500/10 text-amber-400/70 border-amber-500/20 hover:border-amber-500/40"
+                  )}
+                >
+                  Stale
+                  <span className={cn(
+                    "text-[10px] font-bold px-1 py-0.5 rounded-full",
+                    staleFilter ? "bg-white/15" : "bg-white/5"
+                  )}>{staleCount}</span>
+                </button>
+              </div>
+            );
+          })()}
         </div>
 
         {/* Map View */}

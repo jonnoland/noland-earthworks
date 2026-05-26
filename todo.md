@@ -1289,3 +1289,8 @@
 
 ## Land Clearing → Land Management Rename — May 2026
 - [x] Replace all user-facing "Land Clearing" text with "Land Management" across the entire site (pages, components, blog posts, emails, schema, nav, ops dashboard)
+
+## Land Management Page + Leads Stale Filter + Quotes Tooltip — May 2026
+- [x] Update /services/land-management page title and hero copy to reflect broader land management scope
+- [x] Add Stale filter pill to the leads filter bar so all stale leads can be viewed at once
+- [x] Add hover tooltip to AI score badges on quotes page to show reasoning (aiSummary + aiFlags)

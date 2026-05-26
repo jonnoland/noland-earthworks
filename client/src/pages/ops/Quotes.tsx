@@ -11,6 +11,12 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import {
   Dialog,
   DialogContent,
   DialogHeader,
@@ -1736,15 +1742,43 @@ function WebsiteRequestCard({
             )}
             <span className="text-[11px] text-muted-foreground">{submission.county} County</span>
             {submission.aiScore && (
-              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
-                submission.aiScore === "strong"
-                  ? "bg-green-500/15 text-green-400 border-green-500/25"
-                  : submission.aiScore === "marginal"
-                  ? "bg-amber-500/15 text-amber-400 border-amber-500/25"
-                  : "bg-red-500/15 text-red-400 border-red-500/25"
-              }`}>
-                {submission.aiScore.charAt(0).toUpperCase() + submission.aiScore.slice(1)}
-              </span>
+              <TooltipProvider delayDuration={200}>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span className={`cursor-default text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+                      submission.aiScore === "strong"
+                        ? "bg-green-500/15 text-green-400 border-green-500/25"
+                        : submission.aiScore === "marginal"
+                        ? "bg-amber-500/15 text-amber-400 border-amber-500/25"
+                        : "bg-red-500/15 text-red-400 border-red-500/25"
+                    }`}>
+                      {submission.aiScore.charAt(0).toUpperCase() + submission.aiScore.slice(1)}
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom" className="max-w-xs text-xs space-y-1.5 p-3">
+                    {submission.aiSummary && (
+                      <p className="text-foreground">{submission.aiSummary}</p>
+                    )}
+                    {submission.aiFlags && (() => {
+                      let flags: string[] = [];
+                      try { flags = JSON.parse(submission.aiFlags); } catch { flags = [submission.aiFlags]; }
+                      return flags.length > 0 ? (
+                        <ul className="space-y-0.5">
+                          {flags.map((f, i) => (
+                            <li key={i} className="flex items-start gap-1 text-amber-400">
+                              <span className="mt-0.5 shrink-0">&#9654;</span>
+                              <span>{f}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      ) : null;
+                    })()}
+                    {!submission.aiSummary && !submission.aiFlags && (
+                      <p className="text-muted-foreground">No reasoning available.</p>
+                    )}
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
             )}
           </div>
           <div className="flex items-center gap-3 mt-1 flex-wrap">
