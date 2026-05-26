@@ -28,6 +28,7 @@ import {
 } from "../agents";
 import multer from "multer";
 import { storagePut } from "../storage";
+import cors from "cors";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -51,6 +52,34 @@ async function findAvailablePort(startPort: number = 3000): Promise<number> {
 async function startServer() {
   const app = express();
   const server = createServer(app);
+
+  // CORS — allow browser clients and Capacitor mobile app
+  const allowedOrigins = [
+    // Manus-hosted domains
+    /\.manus\.space$/,
+    // Custom domain
+    "https://nolandearthworks.com",
+    "https://www.nolandearthworks.com",
+    // Capacitor Android WebView
+    "capacitor://localhost",
+    "http://localhost",
+    // Local dev
+    /^http:\/\/localhost(:\d+)?$/,
+  ];
+  app.use(cors({
+    origin: (origin, callback) => {
+      // Allow requests with no origin (server-to-server, curl, etc.)
+      if (!origin) return callback(null, true);
+      const allowed = allowedOrigins.some(o =>
+        typeof o === "string" ? o === origin : o.test(origin)
+      );
+      callback(null, allowed);
+    },
+    credentials: true,
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization", "x-field-app-token", "trpc-accept"],
+  }));
+
   // Configure body parser with larger size limit for file uploads
   app.use(express.json({ limit: "50mb" }));
   app.use(express.urlencoded({ limit: "50mb", extended: true }));
