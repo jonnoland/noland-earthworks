@@ -274,6 +274,13 @@
       "when": 1779756338961,
       "tag": "0038_loving_green_goblin",
       "breakpoints": true
+    },
+    {
+      "idx": 39,
+      "version": "5",
+      "when": 1779761973127,
+      "tag": "0039_gifted_eternals",
+      "breakpoints": true
     }
   ]
 }

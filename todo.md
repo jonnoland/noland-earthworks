@@ -1303,3 +1303,13 @@
 - [x] Add last-updated timestamp to lead detail panel header
 - [x] Add Stale filter pill and stale indicator to Quotes WebsiteRequestsPanel
 - [x] Implement bulk mark-as-contacted action when Stale filter is active on Leads page
+
+## Seven New AI Features — May 2026
+
+- [x] AI job completion note: "Generate Completion Note" button in Jobs detail panel — writes one-paragraph job summary from job record
+- [x] AI overdue invoice follow-up email: "Generate Follow-up Email" button in Invoices detail panel for overdue invoices
+- [x] AI social media post generator: new section in ops Settings — enter job description, AI writes Facebook/Instagram post in casual voice with CTA
+- [x] AI morning briefing: add AI-written one-paragraph briefing to daily digest email summarizing open leads, stale items, and what needs attention
+- [x] AI client summary: "Generate Client Summary" button in Clients detail panel — reads all jobs/leads/notes and writes relationship summary
+- [x] AI weekly KPI insight: "Generate Insight" button on Reports/Scoreboard — reads KPI data and writes plain-English summary of what the numbers mean
+- [x] AI scheduling note: "Suggest Field Note" button on Schedule job blocks — reads job/lead record and writes short field prep note

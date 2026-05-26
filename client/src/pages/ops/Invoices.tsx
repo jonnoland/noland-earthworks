@@ -26,6 +26,8 @@ import {
   Phone,
   Mail,
   ChevronRight,
+  Sparkles,
+  Copy,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -152,6 +154,12 @@ function InvoiceDetailPanel({
     { id: invoiceId },
     { retry: false }
   );
+  const [followUpDraft, setFollowUpDraft] = useState("");
+  const [followUpEmail, setFollowUpEmail] = useState<string | null>(null);
+  const generateFollowUp = trpc.jobber.generateInvoiceFollowUp.useMutation({
+    onSuccess: (data) => { setFollowUpDraft(data.draft); setFollowUpEmail(data.clientEmail); },
+    onError: (e) => toast.error(e.message || "Failed to generate follow-up."),
+  });
 
   return (
     <>
@@ -324,6 +332,49 @@ function InvoiceDetailPanel({
             </>
           )}
         </div>
+
+        {/* AI Follow-Up Email — only for overdue/sent invoices with a balance */}
+        {!isLoading && inv && ["OVERDUE", "SENT", "VIEWED", "PARTIAL"].includes((inv as any).invoiceStatus ?? "") && ((inv as any).amounts?.invoiceBalance ?? 0) > 0 && (
+          <div className="shrink-0 px-5 py-3 border-t border-border space-y-3">
+            <div className="flex items-center justify-between">
+              <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">AI Follow-Up Email</p>
+              <button
+                onClick={() => generateFollowUp.mutate({ invoiceId })}
+                disabled={generateFollowUp.isPending}
+                className="flex items-center gap-1.5 bg-primary/10 hover:bg-primary/20 disabled:opacity-50 text-primary text-[10px] font-semibold px-2.5 py-1 rounded-md transition-colors"
+              >
+                {generateFollowUp.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
+                {generateFollowUp.isPending ? "Generating..." : "Generate Draft"}
+              </button>
+            </div>
+            {followUpDraft && (
+              <div className="space-y-2">
+                <textarea
+                  value={followUpDraft}
+                  onChange={e => setFollowUpDraft(e.target.value)}
+                  rows={6}
+                  className="w-full bg-secondary/40 border border-primary/30 rounded-md px-3 py-2 text-xs text-foreground resize-none outline-none focus:border-primary/50 transition-colors"
+                />
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => { navigator.clipboard.writeText(followUpDraft); toast.success("Copied."); }}
+                    className="flex items-center gap-1.5 bg-secondary hover:bg-secondary/80 text-foreground text-[10px] font-semibold px-2.5 py-1.5 rounded-md transition-colors"
+                  >
+                    <Copy className="w-3 h-3" /> Copy
+                  </button>
+                  {followUpEmail && (
+                    <a
+                      href={`mailto:${followUpEmail}?subject=Invoice %23${(inv as any).invoiceNumber} - Payment Reminder&body=${encodeURIComponent(followUpDraft)}`}
+                      className="flex items-center gap-1.5 bg-primary hover:bg-primary/90 text-primary-foreground text-[10px] font-semibold px-2.5 py-1.5 rounded-md transition-colors"
+                    >
+                      <Mail className="w-3 h-3" /> Open in Email
+                    </a>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Footer */}
         <div className="shrink-0 px-5 py-3 border-t border-border">

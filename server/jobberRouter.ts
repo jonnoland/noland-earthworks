@@ -1174,4 +1174,87 @@ export const jobberRouter = router({
         .where(eq(quoteFollowUps.jobberQuoteId, input.jobberQuoteId));
       return { success: true };
     }),
+
+  /** Generate an AI-written client relationship summary */
+  generateClientSummary: adminProcedure
+    .input(z.object({
+      clientId: z.string(),
+      clientName: z.string(),
+      totalRevenue: z.number(),
+      outstanding: z.number(),
+      jobCount: z.number(),
+      quoteCount: z.number(),
+      invoiceCount: z.number(),
+      recentJobs: z.array(z.string()),
+    }))
+    .mutation(async ({ input }) => {
+      const { invokeLLM } = await import("./_core/llm");
+      const context = [
+        `Client: ${input.clientName}.`,
+        `Total revenue paid: $${input.totalRevenue.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}.`,
+        `Outstanding balance: $${input.outstanding.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}.`,
+        `Jobs on file: ${input.jobCount}. Quotes: ${input.quoteCount}. Invoices: ${input.invoiceCount}.`,
+        input.recentJobs.length > 0 ? `Recent jobs: ${input.recentJobs.join(", ")}.` : "",
+      ].filter(Boolean).join(" ");
+
+      const result = await invokeLLM({
+        messages: [
+          {
+            role: "system",
+            content: "You are writing a brief client relationship summary for Jon Noland, owner-operator of Noland Earthworks, LLC — a veteran-owned land management company in Middle Tennessee. Write one short paragraph (2-4 sentences) that summarizes this client's history: how much they've spent, what work was done, whether there's an outstanding balance, and any relevant notes. Sound like a field operator reviewing his records, not a CRM tool. No emojis. No filler.",
+          },
+          {
+            role: "user",
+            content: `Here is the client data:\n\n${context}\n\nWrite the client summary.`,
+          },
+        ],
+      });
+      const summary = (result.choices?.[0]?.message?.content as string ?? "").trim();
+      if (!summary) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "AI did not return a summary. Try again." });
+      return { summary };
+    }),
+
+  /** Generate an AI-written overdue invoice follow-up email */
+  generateInvoiceFollowUp: adminProcedure
+    .input(z.object({ invoiceId: z.string() }))
+    .mutation(async ({ input }) => {
+      const data = await jobberGraphQL(`
+        query GetInvoiceForFollowUp($id: EncodedId!) {
+          invoice(id: $id) {
+            id invoiceNumber invoiceStatus dueDate
+            amounts { total invoiceBalance }
+            client { name companyName emails { address } }
+            lineItems { nodes { name } }
+          }
+        }
+      `, { id: input.invoiceId }) as any;
+      const inv = data?.invoice;
+      if (!inv) throw new TRPCError({ code: "NOT_FOUND", message: "Invoice not found in Jobber" });
+
+      const clientName = inv.client?.companyName || inv.client?.name || "there";
+      const invoiceNum = inv.invoiceNumber ?? "";
+      const balance = inv.amounts?.invoiceBalance ?? inv.amounts?.total ?? 0;
+      const balanceStr = `$${Number(balance).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+      const dueStr = inv.dueDate
+        ? new Date(inv.dueDate).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })
+        : "the due date";
+      const services = (inv.lineItems?.nodes ?? []).map((l: any) => l.name).filter(Boolean).join(", ") || "land management services";
+
+      const { invokeLLM } = await import("./_core/llm");
+      const result = await invokeLLM({
+        messages: [
+          {
+            role: "system",
+            content: `You write professional, direct payment reminder emails for Jon Noland, owner of Noland Earthworks, LLC — a veteran-owned land management company in Middle Tennessee. The email should be firm but courteous, written in Jon's voice: plain, direct, no fluff, no corporate language, no emojis. Include: a brief reminder of the outstanding balance, the invoice number, the original due date, and a clear request to pay or contact Jon if there is an issue. Keep it under 150 words. Do not include a subject line — only the body. Sign off as Jon Noland, Noland Earthworks, LLC.`,
+          },
+          {
+            role: "user",
+            content: `Write a payment reminder email for:\nClient: ${clientName}\nInvoice #: ${invoiceNum}\nServices: ${services}\nBalance due: ${balanceStr}\nOriginal due date: ${dueStr}`,
+          },
+        ],
+      });
+      const draft = (result.choices?.[0]?.message?.content as string ?? "").trim();
+      if (!draft) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "AI did not return a draft. Try again." });
+      return { draft, clientEmail: inv.client?.emails?.[0]?.address ?? null };
+    }),
 });

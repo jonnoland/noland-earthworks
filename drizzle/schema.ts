@@ -893,3 +893,16 @@ export const jobCostEstimates = mysqlTable("job_cost_estimates", {
 });
 export type JobCostEstimate = typeof jobCostEstimates.$inferSelect;
 export type InsertJobCostEstimate = typeof jobCostEstimates.$inferInsert;
+
+// ─── Social Posts ─────────────────────────────────────────────────────────────
+export const socialPosts = mysqlTable("social_posts", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  jobDescription: text("jobDescription").notNull(),
+  draft: text("draft").notNull(),
+  platform: varchar("platform", { length: 50 }).notNull().default("both"),
+  published: boolean("published").notNull().default(false),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type SocialPost = typeof socialPosts.$inferSelect;
+export type InsertSocialPost = typeof socialPosts.$inferInsert;

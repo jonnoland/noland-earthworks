@@ -30,6 +30,7 @@ import OpsEquipment from "./pages/ops/Equipment";
 import OpsTeam from "./pages/ops/Team";
 import OpsRegister from "./pages/ops/Register";
 import CostEstimator from "./pages/ops/CostEstimator";
+import OpsSocialPosts from "./pages/ops/SocialPosts";
 import Home from "./pages/Home";
 import SMSWidget from "./components/SMSWidget";
 import LandClearingPage from "./pages/LandClearing";
@@ -313,6 +314,9 @@ function Router() {
       <Route path="/ops/register" component={OpsRegister} />
       <Route path="/ops/cost-estimator">
         <OwnerRoute><CostEstimator /></OwnerRoute>
+      </Route>
+      <Route path="/ops/social-posts">
+        <OwnerRoute><OpsSocialPosts /></OwnerRoute>
       </Route>
 
       <Route path="/404" component={NotFound} />

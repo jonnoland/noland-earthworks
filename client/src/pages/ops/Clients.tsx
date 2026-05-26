@@ -28,6 +28,9 @@ import {
   FileText,
   Receipt,
   DollarSign,
+  Sparkles,
+  Copy,
+  CheckCircle2,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -166,6 +169,13 @@ function ClientDetailPanel({
   );
 
   const client = data as any;
+
+  const [clientSummary, setClientSummary] = useState("");
+  const [summaryCopied, setSummaryCopied] = useState(false);
+  const generateSummaryMutation = trpc.jobber.generateClientSummary.useMutation({
+    onSuccess: (data) => setClientSummary(data.summary as string),
+    onError: (err) => toast.error(err.message || "Failed to generate summary."),
+  });
 
   const quotes: any[] = client?.quotes?.nodes ?? [];
   const jobs: any[] = client?.jobs?.nodes ?? [];
@@ -391,6 +401,59 @@ function ClientDetailPanel({
                 </div>
               )}
             </div>
+          </div>
+        )}
+
+        {/* AI Client Summary */}
+        {!isLoading && client && (
+          <div className="px-5 py-4 border-t border-border shrink-0 space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">AI Client Summary</span>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-7 text-xs gap-1.5"
+                onClick={() => generateSummaryMutation.mutate({
+                  clientId,
+                  clientName,
+                  totalRevenue,
+                  outstanding,
+                  jobCount: jobs.length,
+                  quoteCount: quotes.length,
+                  invoiceCount: invoices.length,
+                  recentJobs: jobs.slice(0, 3).map((j: any) => j.title || `Job #${j.jobNumber}`),
+                })}
+                disabled={generateSummaryMutation.isPending}
+              >
+                {generateSummaryMutation.isPending ? (
+                  <><Loader2 className="w-3 h-3 animate-spin" />Generating...</>
+                ) : (
+                  <><Sparkles className="w-3 h-3 text-orange-400" />Generate Summary</>
+                )}
+              </Button>
+            </div>
+            {clientSummary && (
+              <div className="space-y-2">
+                <p className="text-xs text-foreground leading-relaxed">{clientSummary}</p>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 text-xs gap-1 text-muted-foreground hover:text-foreground"
+                  onClick={() => {
+                    navigator.clipboard.writeText(clientSummary);
+                    setSummaryCopied(true);
+                    toast.success("Copied.");
+                    setTimeout(() => setSummaryCopied(false), 2000);
+                  }}
+                >
+                  {summaryCopied ? (
+                    <><CheckCircle2 className="w-3 h-3 text-green-400" />Copied</>
+                  ) : (
+                    <><Copy className="w-3 h-3" />Copy</>
+                  )}
+                </Button>
+              </div>
+            )}
           </div>
         )}
 

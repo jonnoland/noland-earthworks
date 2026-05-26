@@ -6,7 +6,8 @@ import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { protectedProcedure, router } from "./_core/trpc";
 import { ENV } from "./_core/env";
-import { isJobberConnected } from "./jobber";
+import { isJobberConnected, jobberGraphQL } from "./jobber";
+import { invokeLLM } from "./_core/llm";
 import {
   getDb,
   getJobs, createJob, updateJob, deleteJob,
@@ -115,6 +116,50 @@ const jobsRouter = router({
   delete: ownerProcedure
     .input(z.object({ id: z.number() }))
     .mutation(({ ctx, input }) => deleteJob(input.id, ctx.user.id)),
+  generateCompletionNote: ownerProcedure
+    .input(z.object({ jobberJobId: z.string() }))
+    .mutation(async ({ input }) => {
+      // Fetch job data from Jobber
+      const data = await jobberGraphQL(`
+        query GetJobForNote($id: EncodedId!) {
+          job(id: $id) {
+            id jobNumber title jobStatus jobType total
+            completedAt instructions
+            client { name companyName }
+            property { address { street1 city province } }
+          }
+        }
+      `, { id: input.jobberJobId }) as any;
+      const job = data?.job;
+      if (!job) throw new TRPCError({ code: "NOT_FOUND", message: "Job not found in Jobber" });
+
+      const clientName = job.client?.companyName || job.client?.name || "Unknown client";
+      const address = [job.property?.address?.street1, job.property?.address?.city, job.property?.address?.province]
+        .filter(Boolean).join(", ") || "address not recorded";
+      const svc = (job.jobType ?? "land management").toLowerCase().replace(/_/g, " ");
+      const priceStr = job.total ? `$${Number(job.total).toLocaleString()}` : "price not recorded";
+      const dateStr = job.completedAt
+        ? new Date(job.completedAt).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })
+        : "date not recorded";
+      const instrCtx = job.instructions ? `\nJob instructions/notes: ${job.instructions}` : "";
+
+      const result = await invokeLLM({
+        messages: [
+          {
+            role: "system",
+            content: `You write internal job completion notes for Jon Noland, owner of Noland Earthworks, LLC — a veteran-owned forestry mulching and land management company in Middle & West Tennessee. Write one concise paragraph (3–5 sentences) that summarizes the completed job. Cover: what service was performed, site location, site conditions or notable factors (if known from the instructions), outcome, and any relevant follow-up. Write in first person as Jon. Plain, direct, professional — no filler, no corporate language, no emojis.`,
+          },
+          {
+            role: "user",
+            content: `Write a completion note for this job:\nClient: ${clientName}\nAddress: ${address}\nService: ${svc}\nTotal: ${priceStr}\nCompleted: ${dateStr}${instrCtx}`,
+          },
+        ],
+      });
+      const note = (result.choices?.[0]?.message?.content as string ?? "").trim();
+      if (!note) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "AI did not return a note. Try again." });
+      return { note };
+    }),
+
   requestReview: ownerProcedure
     .input(z.object({ id: z.number() }))
     .mutation(async ({ ctx, input }) => {
@@ -349,8 +394,6 @@ const leadsRouter = router({
       const daysSinceContact = lead.updatedAt
         ? Math.floor((Date.now() - new Date(lead.updatedAt).getTime()) / (1000 * 60 * 60 * 24))
         : null;
-
-      const { invokeLLM } = await import("./_core/llm");
       const result = await invokeLLM({
         messages: [
           {
@@ -587,7 +630,6 @@ const quotesRouter = router({
       customPrompt: z.string().max(500).optional(), // user-supplied adjustment instruction
     }))
     .mutation(async ({ input }) => {
-      const { invokeLLM } = await import("./_core/llm");
 
       // ─── Load AI pricing settings from DB (falls back to 2025-2026 TN market defaults) ─────────────
       const db = await getDb();
@@ -1233,8 +1275,6 @@ const conversationsRouter = router({
       if (!lastInbound) {
         throw new TRPCError({ code: "BAD_REQUEST", message: "No inbound message to reply to." });
       }
-
-      const { invokeLLM } = await import("./_core/llm");
 
       const systemPrompt = `You are drafting an SMS reply on behalf of Jon Noland, owner of Noland Earthworks, LLC — a veteran-owned land management and forestry mulching company serving Middle & West Tennessee.
 
@@ -2371,7 +2411,6 @@ const googleRouter = router({
       tone: z.enum(["professional", "friendly", "apologetic"]).default("professional"),
     }))
     .mutation(async ({ input }) => {
-      const { invokeLLM } = await import("./_core/llm");
 
       const ratingLabel = ["one-star", "two-star", "three-star", "four-star", "five-star"][input.starRating - 1];
       const hasText = input.reviewText && input.reviewText.trim().length > 0;
@@ -2419,6 +2458,88 @@ ${toneInstructions[input.tone]}`;
     }),
 });
 
+// ─── Social Posts Router ─────────────────────────────────────────────────────
+const socialPostsRouter = router({
+  /** Generate a Facebook/Instagram post from a completed job description */
+  generate: ownerProcedure
+    .input(z.object({
+      jobDescription: z.string().min(10).max(1000),
+      platform: z.enum(["facebook", "instagram", "both"]).default("both"),
+      tone: z.enum(["casual", "professional"]).default("casual"),
+    }))
+    .mutation(async ({ input }) => {
+      const platformNote = input.platform === "both"
+        ? "Write one post that works for both Facebook and Instagram."
+        : `Write a post for ${input.platform === "facebook" ? "Facebook" : "Instagram"}.`;
+      const toneNote = input.tone === "professional"
+        ? "Tone: professional and direct, but still genuine and human."
+        : "Tone: casual, warm, southern hospitality. Like a neighbor talking to a neighbor. Genuine, not salesy.";
+      const result = await invokeLLM({
+        messages: [
+          {
+            role: "system",
+            content: `You write social media posts for Jon Noland, owner of Noland Earthworks, LLC — a veteran-owned land management and forestry mulching company in Middle Tennessee. ${platformNote} ${toneNote} Rules: No emojis. No hashtag overload (max 3 relevant hashtags, only if appropriate). No corporate jargon. No banned phrases: "solutions", "industry-leading", "best-in-class", "we are passionate", "dedicated team", "we strive to", "cutting-edge". Sound like a real person who does this work. Describe the actual job plainly. End with a direct, low-pressure CTA (call, text, or visit nolandearthworks.com). Keep it under 150 words.`,
+          },
+          {
+            role: "user",
+            content: `Write a social media post based on this job:\n\n${input.jobDescription}`,
+          },
+        ],
+      });
+      const draft = (result.choices?.[0]?.message?.content as string ?? "").trim();
+      if (!draft) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "AI did not return a post. Try again." });
+      return { draft };
+    }),
+
+  /** Save a generated post to history */
+  savePost: ownerProcedure
+    .input(z.object({
+      jobDescription: z.string(),
+      draft: z.string(),
+      platform: z.string(),
+      published: z.boolean().default(false),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+      const { socialPosts } = await import("../drizzle/schema");
+      await db.insert(socialPosts).values({
+        userId: ctx.user.id,
+        jobDescription: input.jobDescription,
+        draft: input.draft,
+        platform: input.platform,
+        published: input.published,
+        createdAt: new Date(),
+      });
+      return { success: true };
+    }),
+
+  /** List saved posts */
+  list: ownerProcedure.query(async ({ ctx }) => {
+    const db = await getDb();
+    if (!db) return [];
+    const { socialPosts } = await import("../drizzle/schema");
+    const { eq, desc } = await import("drizzle-orm");
+    return db.select().from(socialPosts)
+      .where(eq(socialPosts.userId, ctx.user.id))
+      .orderBy(desc(socialPosts.createdAt))
+      .limit(50);
+  }),
+
+  /** Delete a saved post */
+  delete: ownerProcedure
+    .input(z.object({ id: z.number().int().positive() }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+      const { socialPosts } = await import("../drizzle/schema");
+      const { eq, and } = await import("drizzle-orm");
+      await db.delete(socialPosts)
+        .where(and(eq(socialPosts.id, input.id), eq(socialPosts.userId, ctx.user.id)));
+      return { success: true };
+    }),
+});
+
 export const opsRouter = router({
   jobs: jobsRouter,
   leads: leadsRouter,
@@ -2434,4 +2555,75 @@ export const opsRouter = router({
   recurringBlackout: recurringBlackoutRouter,
   tasks: tasksRouter,
   google: googleRouter,
+  socialPosts: socialPostsRouter,
+
+  generateWeeklyInsight: protectedProcedure
+    .input(z.object({
+      totalRevenue: z.number(),
+      completedJobs: z.number(),
+      wonLeads: z.number(),
+      openLeads: z.number(),
+      totalLeads: z.number(),
+      conversionRate: z.number(),
+    }))
+    .mutation(async ({ input }) => {
+      const context = [
+        `Total revenue from completed jobs: $${input.totalRevenue.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}.`,
+        `Completed jobs: ${input.completedJobs}.`,
+        `Total leads: ${input.totalLeads}. Won: ${input.wonLeads}. Open (active pipeline): ${input.openLeads}.`,
+        `Lead-to-close conversion rate: ${input.conversionRate}%.`,
+      ].join(" ");
+
+      const result = await invokeLLM({
+        messages: [
+          {
+            role: "system",
+            content: "You are writing a brief business performance summary for Jon Noland, owner-operator of Noland Earthworks, LLC — a veteran-owned land management company in Middle Tennessee. Write one short paragraph (3-5 sentences) that interprets the business metrics: what the numbers mean, what is going well, what to watch, and one practical observation. Sound like a straight-talking field operator reviewing his own numbers, not a business consultant. No emojis. No filler. No corporate language.",
+          },
+          {
+            role: "user",
+            content: `Here are the current business metrics:\n\n${context}\n\nWrite the business insight.`,
+          },
+        ],
+      });
+      const insight = (result.choices?.[0]?.message?.content as string ?? "").trim();
+      if (!insight) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "AI did not return an insight. Try again." });
+      return { insight };
+    }),
+
+  generateScheduleNote: protectedProcedure
+    .input(z.object({
+      jobTitle: z.string(),
+      clientName: z.string(),
+      address: z.string().optional(),
+      serviceType: z.string().optional(),
+      acreage: z.number().optional(),
+      notes: z.string().optional(),
+    }))
+    .mutation(async ({ input }) => {
+      const context = [
+        `Job: ${input.jobTitle}.`,
+        `Client: ${input.clientName}.`,
+        input.address ? `Location: ${input.address}.` : "",
+        input.serviceType ? `Service: ${input.serviceType}.` : "",
+        input.acreage ? `Acreage: ${input.acreage} acres.` : "",
+        input.notes ? `Notes from quote/lead: ${input.notes}.` : "",
+      ].filter(Boolean).join(" ");
+
+      const result = await invokeLLM({
+        messages: [
+          {
+            role: "system",
+            content: "You are writing a brief pre-job field note for Jon Noland, owner-operator of Noland Earthworks, LLC — a veteran-owned land management company in Middle Tennessee. Based on the job details, write 2-3 short sentences covering: what to bring or prepare, what to watch for on site (terrain, access, vegetation density), and any relevant safety or logistics notes. Sound like an experienced operator briefing himself before heading out. No emojis. No filler.",
+          },
+          {
+            role: "user",
+            content: `Here are the job details:\n\n${context}\n\nWrite the pre-job field note.`,
+          },
+        ],
+      });
+      const note = (result.choices?.[0]?.message?.content as string ?? "").trim();
+      if (!note) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "AI did not return a note. Try again." });
+      return { note };
+    }),
 });

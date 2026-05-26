@@ -5,13 +5,15 @@
 
 import DashboardLayout from "@/components/DashboardLayout";
 import { trpc } from "@/lib/trpc";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer, Legend
 } from "recharts";
-import { TrendingUp, BarChart2 } from "lucide-react";
+import { TrendingUp, BarChart2, Sparkles, Loader2, Copy, CheckCircle2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
 
 const CustomTooltip = ({ active, payload, label }: any) => {
   if (active && payload && payload.length) {
@@ -32,6 +34,13 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 export default function Reports() {
   const { data: jobs = [] } = trpc.ops.jobs.list.useQuery();
   const { data: leads = [] } = trpc.ops.leads.list.useQuery();
+
+  const [weeklyInsight, setWeeklyInsight] = useState("");
+  const [insightCopied, setInsightCopied] = useState(false);
+  const generateInsightMutation = trpc.ops.generateWeeklyInsight.useMutation({
+    onSuccess: (data) => setWeeklyInsight(data.insight as string),
+    onError: (err) => toast.error(err.message || "Failed to generate insight."),
+  });
 
   // Build monthly revenue from jobs
   const monthlyData = useMemo(() => {
@@ -150,6 +159,59 @@ export default function Reports() {
                 </ResponsiveContainer>
               </div>
             )}
+
+            {/* AI Weekly Insight */}
+            <div className="ops-card p-5">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-sm font-semibold text-foreground" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
+                  AI Business Insight
+                </h3>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-7 text-xs gap-1.5"
+                  onClick={() => generateInsightMutation.mutate({
+                    totalRevenue,
+                    completedJobs,
+                    wonLeads,
+                    openLeads,
+                    totalLeads: leads.length,
+                    conversionRate: leads.length > 0 ? Math.round((wonLeads / leads.length) * 100) : 0,
+                  })}
+                  disabled={generateInsightMutation.isPending}
+                >
+                  {generateInsightMutation.isPending ? (
+                    <><Loader2 className="w-3 h-3 animate-spin" />Generating...</>
+                  ) : (
+                    <><Sparkles className="w-3 h-3 text-orange-400" />Generate Insight</>
+                  )}
+                </Button>
+              </div>
+              {weeklyInsight ? (
+                <div className="space-y-2">
+                  <p className="text-xs text-foreground leading-relaxed">{weeklyInsight}</p>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 text-xs gap-1 text-muted-foreground hover:text-foreground"
+                    onClick={() => {
+                      navigator.clipboard.writeText(weeklyInsight);
+                      setInsightCopied(true);
+                      toast.success("Copied.");
+                      setTimeout(() => setInsightCopied(false), 2000);
+                    }}
+                  >
+                    {insightCopied ? (
+                      <><CheckCircle2 className="w-3 h-3 text-green-400" />Copied</>
+                    ) : (
+                      <><Copy className="w-3 h-3" />Copy</>
+                    )}
+                  </Button>
+                </div>
+              ) : (
+                <p className="text-xs text-muted-foreground italic">Click Generate Insight to get an AI-written summary of your business metrics.</p>
+              )}
+            </div>
 
             {/* Open pipeline summary */}
             <div className="ops-card p-5">

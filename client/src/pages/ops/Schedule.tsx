@@ -11,7 +11,9 @@ import {
   ChevronLeft, ChevronRight, Plus, Trash2, Loader2, X,
   Calendar, RefreshCw, ExternalLink, AlertCircle,
   CheckCircle2, GripVertical, Flag, Briefcase, MapPin,
+  Sparkles, Copy,
 } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import {
@@ -169,6 +171,100 @@ const UPCOMING_STATUS_DOT: Record<string, string> = {
   REQUIRES_INVOICING: "bg-purple-400",
 };
 
+function UpcomingJobberJobCard({ job }: { job: JobberJob }) {
+  const [scheduleNote, setScheduleNote] = useState("");
+  const [noteCopied, setNoteCopied] = useState(false);
+  const generateNoteMutation = trpc.ops.generateScheduleNote.useMutation({
+    onSuccess: (data) => setScheduleNote(data.note as string),
+    onError: (err) => toast.error(err.message || "Failed to generate note."),
+  });
+
+  const addr = job.property?.address;
+  const addrStr = addr?.street1
+    ? [addr.street1, addr.city].filter(Boolean).join(", ")
+    : null;
+
+  return (
+    <div key={job.id} className="ops-card p-3 flex items-start gap-3">
+      <div className={cn(
+        "mt-1 w-2 h-2 rounded-full shrink-0",
+        UPCOMING_STATUS_DOT[job.jobStatus ?? ""] ?? "bg-primary"
+      )} />
+      <div className="flex-1 min-w-0">
+        <div className="flex items-start justify-between gap-1">
+          <div className="text-xs font-semibold text-foreground truncate flex-1">
+            {job.title || `Job #${job.jobNumber ?? "—"}`}
+          </div>
+          {job.jobStatus && job.jobStatus !== "ACTIVE" && (
+            <span className={cn(
+              "shrink-0 text-[9px] font-medium px-1.5 py-0.5 rounded-full border",
+              JOBBER_STATUS_COLORS[job.jobStatus] ?? "bg-secondary/50 text-muted-foreground"
+            )}>
+              {UPCOMING_STATUS_LABELS[job.jobStatus] ?? job.jobStatus}
+            </span>
+          )}
+        </div>
+        <div className="text-[10px] text-muted-foreground mt-0.5 truncate">
+          {job.client?.name || job.client?.companyName || "—"}
+        </div>
+        {addrStr && (
+          <div className="text-[10px] text-muted-foreground mt-0.5 truncate flex items-center gap-1">
+            <MapPin className="w-2.5 h-2.5 shrink-0" />
+            {addrStr}
+          </div>
+        )}
+        <div className="text-[10px] text-muted-foreground mt-1 font-medium">
+          {job.startAt
+            ? new Date(job.startAt).toLocaleDateString("en-US", {
+                weekday: "short", month: "short", day: "numeric",
+              })
+            : "No date"}
+          {job.endAt && job.endAt !== job.startAt &&
+            ` – ${new Date(job.endAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}`
+          }
+        </div>
+        {/* AI Schedule Note */}
+        <div className="mt-2 pt-2 border-t border-border/50">
+          {scheduleNote ? (
+            <div className="space-y-1.5">
+              <p className="text-[10px] text-foreground leading-relaxed">{scheduleNote}</p>
+              <button
+                className="flex items-center gap-1 text-[9px] text-muted-foreground hover:text-foreground transition-colors"
+                onClick={() => {
+                  navigator.clipboard.writeText(scheduleNote);
+                  setNoteCopied(true);
+                  toast.success("Copied.");
+                  setTimeout(() => setNoteCopied(false), 2000);
+                }}
+              >
+                {noteCopied ? <CheckCircle2 className="w-2.5 h-2.5 text-green-400" /> : <Copy className="w-2.5 h-2.5" />}
+                {noteCopied ? "Copied" : "Copy note"}
+              </button>
+            </div>
+          ) : (
+            <button
+              className="flex items-center gap-1 text-[9px] text-muted-foreground hover:text-primary transition-colors disabled:opacity-50"
+              onClick={() => generateNoteMutation.mutate({
+                jobTitle: job.title || `Job #${job.jobNumber ?? ""}`,
+                clientName: job.client?.name || job.client?.companyName || "",
+                address: addrStr ?? undefined,
+                serviceType: job.jobType ?? undefined,
+              })}
+              disabled={generateNoteMutation.isPending}
+            >
+              {generateNoteMutation.isPending ? (
+                <><Loader2 className="w-2.5 h-2.5 animate-spin" />Generating...</>
+              ) : (
+                <><Sparkles className="w-2.5 h-2.5 text-orange-400" />Generate field note</>
+              )}
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function UpcomingJobberJobs({ jobs }: { jobs: JobberJob[] }) {
   const [statusFilter, setStatusFilter] = useState<UpcomingStatusFilter>("ALL");
 
@@ -215,54 +311,9 @@ function UpcomingJobberJobs({ jobs }: { jobs: JobberJob[] }) {
         <p className="text-xs text-muted-foreground">No upcoming jobs match this filter.</p>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-          {filtered.map(job => {
-            const addr = job.property?.address;
-            const addrStr = addr?.street1
-              ? [addr.street1, addr.city].filter(Boolean).join(", ")
-              : null;
-            return (
-              <div key={job.id} className="ops-card p-3 flex items-start gap-3">
-                <div className={cn(
-                  "mt-1 w-2 h-2 rounded-full shrink-0",
-                  UPCOMING_STATUS_DOT[job.jobStatus ?? ""] ?? "bg-primary"
-                )} />
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-start justify-between gap-1">
-                    <div className="text-xs font-semibold text-foreground truncate flex-1">
-                      {job.title || `Job #${job.jobNumber ?? "—"}`}
-                    </div>
-                    {job.jobStatus && job.jobStatus !== "ACTIVE" && (
-                      <span className={cn(
-                        "shrink-0 text-[9px] font-medium px-1.5 py-0.5 rounded-full border",
-                        JOBBER_STATUS_COLORS[job.jobStatus] ?? "bg-secondary/50 text-muted-foreground"
-                      )}>
-                        {UPCOMING_STATUS_LABELS[job.jobStatus] ?? job.jobStatus}
-                      </span>
-                    )}
-                  </div>
-                  <div className="text-[10px] text-muted-foreground mt-0.5 truncate">
-                    {job.client?.name || job.client?.companyName || "—"}
-                  </div>
-                  {addrStr && (
-                    <div className="text-[10px] text-muted-foreground mt-0.5 truncate flex items-center gap-1">
-                      <MapPin className="w-2.5 h-2.5 shrink-0" />
-                      {addrStr}
-                    </div>
-                  )}
-                  <div className="text-[10px] text-muted-foreground mt-1 font-medium">
-                    {job.startAt
-                      ? new Date(job.startAt).toLocaleDateString("en-US", {
-                          weekday: "short", month: "short", day: "numeric",
-                        })
-                      : "No date"}
-                    {job.endAt && job.endAt !== job.startAt &&
-                      ` – ${new Date(job.endAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}`
-                    }
-                  </div>
-                </div>
-              </div>
-            );
-          })}
+          {filtered.map(job => (
+            <UpcomingJobberJobCard key={job.id} job={job} />
+          ))}
         </div>
       )}
     </div>

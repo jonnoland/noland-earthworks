@@ -577,6 +577,48 @@ export async function runDailyDigestAgent() {
 
     const today = new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" });
 
+    // ── AI morning briefing ────────────────────────────────────────────────────
+    let aiBriefingHtml = "";
+    try {
+      const staleLeads = openLeads.filter(l => {
+        const updated = l.updatedAt ? new Date(l.updatedAt).getTime() : new Date(l.createdAt).getTime();
+        return (Date.now() - updated) / (1000 * 60 * 60 * 24) >= 3;
+      });
+      const strongLeads = openLeads.filter(l => l.aiScore === "strong");
+      const aiContext = [
+        `Today is ${today}.`,
+        `Jobs scheduled today: ${todayEntries.length}${todayEntries.length > 0 ? " (" + todayEntries.map(e => e.title).join(", ") + ")" : ""}.`,
+        `Open leads: ${openLeads.length} total. Stage breakdown: ${Object.entries(stageCounts).map(([s, n]) => `${n} ${s.replace(/_/g, " ")}`).join(", ")}.`,
+        strongLeads.length > 0 ? `Strong AI-scored leads needing attention: ${strongLeads.map(l => l.name).join(", ")}.` : "",
+        staleLeads.length > 0 ? `Stale leads (3+ days no update): ${staleLeads.length} — ${staleLeads.map(l => l.name).join(", ")}.` : "No stale leads.",
+        pendingVisits.length > 0 ? `Pending site visits: ${pendingVisits.length}.` : "No pending site visits.",
+        completedYesterday.length > 0 ? `Jobs completed yesterday and ready to invoice: ${completedYesterday.map(j => j.title).join(", ")}.` : "No jobs ready to invoice.",
+      ].filter(Boolean).join(" ");
+
+      const aiResult = await invokeLLM({
+        messages: [
+          {
+            role: "system",
+            content: "You are writing a one-paragraph morning briefing for Jon Noland, owner-operator of Noland Earthworks, LLC — a veteran-owned land management and forestry mulching company in Middle Tennessee. Jon is a one-man operation. Write a plain-English summary of his business situation today: what is happening, what needs attention, and what is at risk of slipping. Sound like a trusted advisor giving a straight read, not a corporate report. No bullet points. No emojis. No filler. One tight paragraph, 3-5 sentences max.",
+          },
+          {
+            role: "user",
+            content: `Here is today's business data:\n\n${aiContext}\n\nWrite the morning briefing paragraph.`,
+          },
+        ],
+      });
+      const aiBriefingText = (aiResult.choices?.[0]?.message?.content as string ?? "").trim();
+      if (aiBriefingText) {
+        aiBriefingHtml = `
+          <div style="background:#f9f4ee;border-left:4px solid #c96e24;padding:1rem 1.25rem;margin-bottom:1.5rem;border-radius:0 4px 4px 0;">
+            <p style="font-family:'Georgia',serif;font-size:0.95rem;color:#1a1a1a;margin:0;line-height:1.7;">${aiBriefingText}</p>
+          </div>
+        `;
+      }
+    } catch (aiErr) {
+      console.warn("[Agent:daily_digest] AI briefing failed (non-fatal):", aiErr);
+    }
+
     await resend.emails.send({
       from: "Noland Earthworks <noreply@nolandearthworks.com>",
       to: ownerEmail,
@@ -586,6 +628,8 @@ export async function runDailyDigestAgent() {
           <h2 style="font-family:sans-serif;border-bottom:2px solid #c96e24;padding-bottom:0.5rem;color:#c96e24;">
             Daily Ops Digest &mdash; ${today}
           </h2>
+
+          ${aiBriefingHtml}
 
           <h3 style="font-family:sans-serif;margin-top:1.5rem;">Today's Schedule (${todayEntries.length})</h3>
           <ul>${scheduleLines}</ul>
