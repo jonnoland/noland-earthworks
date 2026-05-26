@@ -161,6 +161,11 @@ export const opsLeads = mysqlTable("ops_leads", {
   visitConfirmedAt: timestamp("visitConfirmedAt"),
   /** Number of automated follow-up emails sent — capped at 2 to prevent deliverability damage */
   followupCount: int("followupCount").notNull().default(0),
+  /** AI lead qualification */
+  aiScore: mysqlEnum("aiScore", ["strong", "marginal", "weak"]),
+  aiSummary: text("aiSummary"),
+  aiFlags: text("aiFlags"),        // JSON array of flag strings
+  aiDraftResponse: text("aiDraftResponse"),
   /** Facebook leadgen_id — stored for deduplication; prevents duplicate leads from FB webhook retries */
   leadgenId: varchar("leadgenId", { length: 128 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
@@ -211,6 +216,11 @@ export const quoteSubmissions = mysqlTable("quote_submissions", {
   zip: varchar("zip", { length: 20 }),
   message: text("message"),
   addOns: text("addOns"),  // JSON array of selected add-on service names
+  /** AI lead qualification */
+  aiScore: mysqlEnum("aiScore", ["strong", "marginal", "weak"]),
+  aiSummary: text("aiSummary"),
+  aiFlags: text("aiFlags"),        // JSON array of flag strings
+  aiDraftResponse: text("aiDraftResponse"),
   /** Jobber sync outcome */
   jobberStatus: mysqlEnum("jobberStatus", ["synced", "failed", "skipped"]).notNull().default("skipped"),
   jobberRequestId: varchar("jobberRequestId", { length: 256 }),
@@ -820,3 +830,66 @@ export const pendingNotifications = mysqlTable("pending_notifications", {
 });
 export type PendingNotification = typeof pendingNotifications.$inferSelect;
 export type InsertPendingNotification = typeof pendingNotifications.$inferInsert;
+
+/**
+ * Chat sessions — public AI chat widget sessions on the marketing site.
+ */
+export const chatSessions = mysqlTable("chat_sessions", {
+  id: int("id").autoincrement().primaryKey(),
+  sessionToken: varchar("sessionToken", { length: 128 }).notNull().unique(),
+  visitorName: varchar("visitorName", { length: 255 }),
+  visitorEmail: varchar("visitorEmail", { length: 320 }),
+  visitorPhone: varchar("visitorPhone", { length: 50 }),
+  leadCreated: boolean("leadCreated").notNull().default(false),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type ChatSession = typeof chatSessions.$inferSelect;
+export type InsertChatSession = typeof chatSessions.$inferInsert;
+
+/**
+ * Chat messages — individual messages within a public chat session.
+ */
+export const chatMessages = mysqlTable("chat_messages", {
+  id: int("id").autoincrement().primaryKey(),
+  sessionId: int("sessionId").notNull().references(() => chatSessions.id, { onDelete: "cascade" }),
+  role: mysqlEnum("role", ["user", "assistant"]).notNull(),
+  content: text("content").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type ChatMessage = typeof chatMessages.$inferSelect;
+export type InsertChatMessage = typeof chatMessages.$inferInsert;
+
+/**
+ * Job cost estimates — internal AI-generated cost breakdowns for ops use.
+ */
+export const jobCostEstimates = mysqlTable("job_cost_estimates", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  /** Optional link to a lead or quote */
+  leadId: int("leadId"),
+  /** Input parameters */
+  service: varchar("service", { length: 100 }).notNull(),
+  acreage: decimal("acreage", { precision: 8, scale: 2 }),
+  terrain: varchar("terrain", { length: 100 }),
+  vegetationDensity: varchar("vegetationDensity", { length: 100 }),
+  accessDifficulty: varchar("accessDifficulty", { length: 100 }),
+  mobilizationMiles: int("mobilizationMiles"),
+  notes: text("notes"),
+  /** AI-generated outputs */
+  estimatedHours: decimal("estimatedHours", { precision: 8, scale: 2 }),
+  estimatedDays: decimal("estimatedDays", { precision: 8, scale: 2 }),
+  fuelCost: decimal("fuelCost", { precision: 10, scale: 2 }),
+  mobilizationCost: decimal("mobilizationCost", { precision: 10, scale: 2 }),
+  laborCost: decimal("laborCost", { precision: 10, scale: 2 }),
+  equipmentCost: decimal("equipmentCost", { precision: 10, scale: 2 }),
+  totalInternalCost: decimal("totalInternalCost", { precision: 10, scale: 2 }),
+  customerPriceLow: decimal("customerPriceLow", { precision: 10, scale: 2 }),
+  customerPriceHigh: decimal("customerPriceHigh", { precision: 10, scale: 2 }),
+  marginPct: decimal("marginPct", { precision: 5, scale: 2 }),
+  aiSummary: text("aiSummary"),
+  aiWarnings: text("aiWarnings"),  // JSON array of warning strings
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type JobCostEstimate = typeof jobCostEstimates.$inferSelect;
+export type InsertJobCostEstimate = typeof jobCostEstimates.$inferInsert;

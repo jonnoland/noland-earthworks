@@ -33,6 +33,7 @@ import {
   UserPlus,
   AlertTriangle,
   RefreshCw,
+  Calculator,
 } from "lucide-react";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { getLoginUrl } from "@/const";
@@ -55,6 +56,7 @@ const NAV_ITEMS = [
   { label: "Scoreboard",    href: "/ops/scoreboard",     icon: BarChart2 },
   { label: "Reports",       href: "/ops/reports",        icon: TrendingUp },
   { label: "Team",          href: "/ops/team",           icon: UserPlus },
+  { label: "Cost Estimator", href: "/ops/cost-estimator", icon: Calculator },
   { label: "Settings",      href: "/ops/settings",       icon: Settings },
 ];
 

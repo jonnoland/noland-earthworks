@@ -1258,3 +1258,18 @@
 - [x] Register all 18 new routes in App.tsx
 - [x] Add all 18 entries to Blog.tsx index
 - [x] Add all 18 to sitemap
+
+## AI Lead Qualifier + Chat Widget — May 2026
+- [x] AI lead qualifier: score incoming quote submissions (Strong/Marginal/Weak), flag red flags, draft initial response text, surface in ops leads view
+- [x] AI lead qualifier: add aiScore, aiSummary, aiDraftResponse, aiFlags fields to quoteSubmissions schema
+- [x] AI lead qualifier: run qualifier on quote submission server-side, notify owner with score in subject line
+- [x] AI chat widget: public-facing chat on homepage that answers common questions about services, service area, process
+- [x] AI chat widget: collects visitor name/phone/email and routes to quote form
+- [x] AI chat widget: knowledge base includes all services, counties, pricing philosophy, process, FAQs
+- [x] AI chat widget: conversation history stored in DB, visible in ops dashboard
+
+## AI Job Cost Estimator — May 2026
+- [x] AI job cost estimator: private ops tool — enter job details, get machine hours, fuel, mobilization cost, estimated time, margin analysis
+- [x] AI job cost estimator: side-by-side customer price range vs internal cost breakdown
+- [x] AI job cost estimator: accessible from /ops/cost-estimator page with sidebar nav entry
+- [x] AI job cost estimator: save estimates to DB linked to quote/job records

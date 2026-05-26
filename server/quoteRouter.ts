@@ -7,6 +7,9 @@ import { createJobberRequest, isJobberConnected } from "./jobber";
 import { createOpsLead, getOwnerUser, getDb } from "./db";
 import { quoteSubmissions } from "../drizzle/schema";
 import { sendOwnerSms } from "./sms";
+import { qualifyLead } from "./leadQualifier";
+import { opsLeads } from "../drizzle/schema";
+import { eq } from "drizzle-orm";
 
 const quoteSchema = z.object({
   name: z.string().min(1, "Name is required").max(100),
@@ -312,6 +315,15 @@ function buildConfirmationEmailHtml(data: QuoteInput): string {
 
 export const quoteRouter = router({
   submit: publicProcedure.input(quoteSchema).mutation(async ({ input }) => {
+    // 0. Run AI lead qualifier (non-blocking — fires in background)
+    let qualification: Awaited<ReturnType<typeof qualifyLead>> | null = null;
+    try {
+      qualification = await qualifyLead(input);
+      console.log(`[Quote] AI score for ${input.name}: ${qualification.score}`);
+    } catch (err) {
+      console.warn("[Quote] AI qualifier failed (non-fatal):", err);
+    }
+
     // 1. Send email via the pre-injected RESEND_API_KEY system secret
     if (ENV.resendApiKey) {
       try {
@@ -353,10 +365,15 @@ export const quoteRouter = router({
     }
 
     // 3. Always send in-app owner notification as backup
+    const scoreLabel = qualification ? `[${qualification.score.toUpperCase()}]` : "";
     try {
       await notifyOwner({
-        title: `New Quote Request — ${input.name} (${input.service})`,
+        title: `New Quote Request ${scoreLabel} — ${input.name} (${input.service})`,
         content: [
+          qualification ? `AI Score: ${qualification.score.toUpperCase()}` : "",
+          qualification?.summary ? `Summary: ${qualification.summary}` : "",
+          qualification?.flags && qualification.flags.length > 0 ? `Flags: ${qualification.flags.join(" | ")}` : "",
+          ``,
           `Name: ${input.name}`,
           `Phone: ${input.phone}`,
           `Email: ${input.email}`,
@@ -377,12 +394,13 @@ export const quoteRouter = router({
     try {
       const addressPart = [input.street, input.city].filter(Boolean).join(", ");
       const smsBody = [
-        `🔔 New Quote — Noland Earthworks`,
+        `New Quote ${scoreLabel} — Noland Earthworks`,
         `Name: ${input.name}`,
         `Phone: ${input.phone}`,
         `Service: ${input.service} | ${input.county} County`,
         input.acreage ? `Acreage: ${input.acreage}` : "",
         addressPart ? `Address: ${addressPart}` : "",
+        qualification?.summary ? `AI: ${qualification.summary}` : "",
         `View leads: https://www.nolandearthworks.com/ops/leads`,
       ]
         .filter(Boolean)
@@ -456,6 +474,10 @@ export const quoteRouter = router({
           zip: input.zip || null,
           message: input.message || null,
           addOns: input.addOns && input.addOns.length > 0 ? JSON.stringify(input.addOns) : null,
+          aiScore: qualification?.score ?? null,
+          aiSummary: qualification?.summary ?? null,
+          aiFlags: qualification?.flags && qualification.flags.length > 0 ? JSON.stringify(qualification.flags) : null,
+          aiDraftResponse: qualification?.draftResponse ?? null,
           jobberStatus,
           jobberRequestId: jobberRequestId ?? null,
           jobberRequestUrl: jobberRequestUrl ?? null,
@@ -483,6 +505,9 @@ export const quoteRouter = router({
           .filter(Boolean)
           .join(", ");
         const notes = [
+          qualification ? `AI Score: ${qualification.score.toUpperCase()}` : "",
+          qualification?.summary ? `AI Summary: ${qualification.summary}` : "",
+          qualification?.flags && qualification.flags.length > 0 ? `AI Flags: ${qualification.flags.join(" | ")}` : "",
           input.acreage ? `Acreage: ${input.acreage}` : "",
           address ? `Address: ${address}` : "",
           input.message ? `\nProject Details:\n${input.message}` : "",

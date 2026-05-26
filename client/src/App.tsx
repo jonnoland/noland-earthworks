@@ -5,6 +5,7 @@ import { Route, Switch } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import ScrollToTop from "./components/ScrollToTop";
+import AIChatWidget from "./components/AIChatWidget";
 import OwnerRoute from "./components/OwnerRoute";
 import OpsDashboard from "./pages/ops/Dashboard";
 import OpsJobs from "./pages/ops/Jobs";
@@ -28,6 +29,7 @@ import OpsTasksPage from "./pages/ops/Tasks";
 import OpsEquipment from "./pages/ops/Equipment";
 import OpsTeam from "./pages/ops/Team";
 import OpsRegister from "./pages/ops/Register";
+import CostEstimator from "./pages/ops/CostEstimator";
 import Home from "./pages/Home";
 import SMSWidget from "./components/SMSWidget";
 import LandClearingPage from "./pages/LandClearing";
@@ -309,6 +311,9 @@ function Router() {
       </Route>
       {/* Public — no auth required, employees register here */}
       <Route path="/ops/register" component={OpsRegister} />
+      <Route path="/ops/cost-estimator">
+        <OwnerRoute><CostEstimator /></OwnerRoute>
+      </Route>
 
       <Route path="/404" component={NotFound} />
       <Route component={NotFound} />
@@ -325,6 +330,7 @@ function App() {
           <Router />
           <ScrollToTop />
           <SMSWidget />
+          <AIChatWidget />
         </TooltipProvider>
       </ThemeProvider>
     </ErrorBoundary>

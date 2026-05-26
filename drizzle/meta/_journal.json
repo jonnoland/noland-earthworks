@@ -267,6 +267,13 @@
       "when": 1779753385090,
       "tag": "0037_plain_skullbuster",
       "breakpoints": true
+    },
+    {
+      "idx": 38,
+      "version": "5",
+      "when": 1779756338961,
+      "tag": "0038_loving_green_goblin",
+      "breakpoints": true
     }
   ]
 }

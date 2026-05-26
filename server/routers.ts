@@ -11,6 +11,8 @@ import { agentRouter } from "./agentRouter";
 import { reviewsLiveRouter } from "./reviewsRouter";
 import { teamRouter } from "./teamRouter";
 import { maintenanceRouter } from "./maintenanceRouter";
+import { chatRouter } from "./chatRouter";
+import { costEstimatorRouter } from "./costEstimatorRouter";
 import { getDb } from "./db";
 import { businessSettings } from "../drizzle/schema";
 
@@ -37,6 +39,8 @@ export const appRouter = router({
   reviewsLive: reviewsLiveRouter,
   team: teamRouter,
   maintenance: maintenanceRouter,
+  chat: chatRouter,
+  costEstimator: costEstimatorRouter,
 
   /**
    * Public site configuration — read-only, no auth required.
