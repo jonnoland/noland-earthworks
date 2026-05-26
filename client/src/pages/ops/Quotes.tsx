@@ -1557,6 +1557,10 @@ type QuoteSubmission = {
   addOns?: string | null;
   jobberStatus: string;
   createdAt: Date | string;
+  aiScore?: string | null;
+  aiSummary?: string | null;
+  aiFlags?: string | null;
+  aiDraftResponse?: string | null;
 };
 
 // Progressive status messages shown during AI analysis
@@ -1731,6 +1735,17 @@ function WebsiteRequestCard({
               <span className="text-[11px] text-muted-foreground">{submission.acreage} acres</span>
             )}
             <span className="text-[11px] text-muted-foreground">{submission.county} County</span>
+            {submission.aiScore && (
+              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+                submission.aiScore === "strong"
+                  ? "bg-green-500/15 text-green-400 border-green-500/25"
+                  : submission.aiScore === "marginal"
+                  ? "bg-amber-500/15 text-amber-400 border-amber-500/25"
+                  : "bg-red-500/15 text-red-400 border-red-500/25"
+              }`}>
+                {submission.aiScore.charAt(0).toUpperCase() + submission.aiScore.slice(1)}
+              </span>
+            )}
           </div>
           <div className="flex items-center gap-3 mt-1 flex-wrap">
             <a href={`tel:${submission.phone}`} className="flex items-center gap-1 text-[11px] text-muted-foreground hover:text-primary transition-colors">
@@ -2157,6 +2172,8 @@ function WebsiteRequestsSection({
 
   const list = (submissions ?? []) as QuoteSubmission[];
   const draftList = drafts ?? [];
+  const [aiScoreFilter, setAiScoreFilter] = useState<string>("all");
+  const filteredList = aiScoreFilter === "all" ? list : list.filter(s => s.aiScore === aiScoreFilter);
 
   const isRefreshing = activeTab === "requests" ? isFetching : draftsFetching;
   const handleRefresh = () => activeTab === "requests" ? refetch() : refetchDrafts();
@@ -2211,6 +2228,38 @@ function WebsiteRequestsSection({
       {/* Inbound requests tab */}
       {activeTab === "requests" && (
         <>
+          {/* AI Score filter pills */}
+          {!isLoading && list.some(s => s.aiScore) && (
+            <div className="flex items-center gap-1.5 flex-wrap">
+              {[
+                { key: "all", label: "All" },
+                { key: "strong", label: "Strong" },
+                { key: "marginal", label: "Marginal" },
+                { key: "weak", label: "Weak" },
+              ].map(({ key, label }) => {
+                const count = key === "all" ? list.filter(s => s.aiScore).length : list.filter(s => s.aiScore === key).length;
+                if (key !== "all" && count === 0) return null;
+                const isActive = aiScoreFilter === key;
+                const colorClass = key === "strong"
+                  ? isActive ? "bg-green-500/30 text-green-300 border-green-500/50" : "bg-green-500/10 text-green-400/70 border-green-500/20 hover:border-green-500/40"
+                  : key === "marginal"
+                  ? isActive ? "bg-amber-500/30 text-amber-300 border-amber-500/50" : "bg-amber-500/10 text-amber-400/70 border-amber-500/20 hover:border-amber-500/40"
+                  : key === "weak"
+                  ? isActive ? "bg-red-500/30 text-red-300 border-red-500/50" : "bg-red-500/10 text-red-400/70 border-red-500/20 hover:border-red-500/40"
+                  : isActive ? "bg-secondary text-foreground border-border" : "bg-transparent text-muted-foreground border-border/50 hover:border-border";
+                return (
+                  <button
+                    key={key}
+                    onClick={() => setAiScoreFilter(key)}
+                    className={`shrink-0 flex items-center gap-1 text-[11px] font-medium px-2.5 py-1 rounded-full border transition-colors ${colorClass}`}
+                  >
+                    {label}
+                    <span className={`text-[10px] font-bold px-1 py-0.5 rounded-full ${isActive ? "bg-white/15" : "bg-white/5"}`}>{count}</span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
           {isLoading && (
             <div className="flex items-center justify-center py-10">
               <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
@@ -2224,13 +2273,18 @@ function WebsiteRequestsSection({
           )}
           {!isLoading && list.length > 0 && (
             <div className="space-y-2">
-              {list.map((sub) => (
+              {filteredList.map((sub) => (
                 <WebsiteRequestCard
                   key={sub.id}
                   submission={sub}
                   onBuildQuote={onBuildQuote}
                 />
               ))}
+              {filteredList.length === 0 && (
+                <div className="flex flex-col items-center justify-center py-8 text-center gap-2">
+                  <p className="text-xs text-muted-foreground">No requests match this filter.</p>
+                </div>
+              )}
             </div>
           )}
         </>

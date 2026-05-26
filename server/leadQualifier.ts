@@ -17,12 +17,12 @@ export interface LeadQualification {
   draftResponse: string; // Draft initial response in Jon's voice
 }
 
-const SYSTEM_PROMPT = `You are an AI assistant for Noland Earthworks, LLC — a veteran-owned land clearing and forestry mulching company in Middle Tennessee. Your job is to qualify incoming quote requests and score them for the owner, Jon Noland.
+const SYSTEM_PROMPT = `You are an AI assistant for Noland Earthworks, LLC — a veteran-owned land management and forestry mulching company in Middle Tennessee. Your job is to qualify incoming quote requests and score them for the owner, Jon Noland.
 
 SCORING CRITERIA:
 
 STRONG lead (score: "strong"):
-- Clear project goal (land clearing, forestry mulching, pasture reclamation, site prep)
+- Clear project goal (land management, forestry mulching, pasture reclamation, site prep)
 - Acreage in the 2–20 acre range
 - Located in Middle or West Tennessee service area
 - Customer seems realistic about scope and timeline

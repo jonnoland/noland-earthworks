@@ -27,7 +27,7 @@ const data: ServicePageProps = {
     "Reduces weed pressure by establishing desirable vegetation first",
     "Protects slopes, creek banks, and disturbed areas from washout",
     "Saves time and cost compared to scheduling a separate seeding visit",
-    "Ideal follow-up to forestry mulching or land clearing jobs",
+    "Ideal follow-up to forestry mulching or land management jobs",
   ],
   relatedServices: [
     { title: "Fence Line Clearing", slug: "add-ons/fence-line-clearing", description: "Clear overgrown fence lines and reclaim your property boundaries.", heroImage: FENCE_HERO },

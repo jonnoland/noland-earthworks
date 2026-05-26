@@ -5,7 +5,7 @@ export default function LandManagementHumphreysCounty() {
     <BlogPostLayout
       title="Land Management in Humphreys County, TN: What Property Owners Need to Know"
       pageTitle="Land Management in Humphreys County, TN | Noland Earthworks"
-      metaDescription="Need land management in Humphreys County, TN? Noland Earthworks provides forestry mulching and land clearing in Waverly, McEwen, New Johnsonville and across Humphreys County."
+      metaDescription="Need land management in Humphreys County, TN? Noland Earthworks provides forestry mulching and land management in Waverly, McEwen, New Johnsonville and across Humphreys County."
       date="May 2026"
       dateISO="2026-05-25"
       lastUpdated="May 2026"
@@ -20,7 +20,7 @@ export default function LandManagementHumphreysCounty() {
       ]}
     >
       <h2>Land Management in Humphreys County, TN: What Property Owners Need to Know</h2>
-      <p>Humphreys County, Tennessee, is a region defined by its natural beauty and diverse landscapes. With its county seat in Waverly, and other key towns like McEwen, New Johnsonville, and Hurricane Mills, this area offers a blend of rural charm and access to significant waterways. Situated on the Western Highland Rim, Humphreys County features rolling hills, dense woodlands, and fertile river bottoms. Property owners here, whether they are farmers, landowners managing timber, or those with river-adjacent properties, often face unique challenges in maintaining their land. Noland Earthworks is a veteran-owned company ready to assist with professional land clearing and forestry mulching services tailored to the specific needs of Humphreys County.</p>
+      <p>Humphreys County, Tennessee, is a region defined by its natural beauty and diverse landscapes. With its county seat in Waverly, and other key towns like McEwen, New Johnsonville, and Hurricane Mills, this area offers a blend of rural charm and access to significant waterways. Situated on the Western Highland Rim, Humphreys County features rolling hills, dense woodlands, and fertile river bottoms. Property owners here, whether they are farmers, landowners managing timber, or those with river-adjacent properties, often face unique challenges in maintaining their land. Noland Earthworks is a veteran-owned company ready to assist with professional land management and forestry mulching services tailored to the specific needs of Humphreys County.</p>
 
       <h2>The Land in Humphreys County: What You Are Working With</h2>
       <p>Humphreys County's terrain is characteristic of the Western Highland Rim, featuring a mix of gently rolling to moderately steep hills. The soil varies, with richer alluvial deposits found along the major rivers and more upland soils elsewhere, supporting a robust vegetation profile of mixed hardwood forests, pine stands, and agricultural fields. The county is notably shaped by its waterways, with the expansive Tennessee River (forming Kentucky Lake) bordering its western edge and the Duck River flowing through its southern portion. These rivers and their tributaries contribute to the area's ecological diversity but also present specific land management considerations, including potential for dense undergrowth and flood plain management.</p>
@@ -60,7 +60,7 @@ export default function LandManagementHumphreysCounty() {
         <br />
         <a href="/blog/land-management-hickman-county"><strong>Land Management in Hickman County, TN</strong></a> — To the southeast, Hickman County presents challenges with dense woodlands and river systems, making forestry mulching an effective solution for landowners.
         <br />
-        <a href="/service-areas/houston-county"><strong>Land Management in Houston County, TN</strong></a> — Bordering Humphreys County to the north, Houston County also benefits from professional land clearing services for its mix of residential, agricultural, and forested properties.
+        <a href="/service-areas/houston-county"><strong>Land Management in Houston County, TN</strong></a> — Bordering Humphreys County to the north, Houston County also benefits from professional land management services for its mix of residential, agricultural, and forested properties.
       </p>
     </BlogPostLayout>
   );

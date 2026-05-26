@@ -355,14 +355,14 @@ const leadsRouter = router({
         messages: [
           {
             role: "system",
-            content: `You are Jon Noland, owner of Noland Earthworks, LLC — a veteran-owned land clearing and forestry mulching company in Middle Tennessee. Write a short, direct follow-up message to a lead who has gone quiet. Sound like a real person, not a marketing department. Professional but warm. No emojis. No corporate jargon. No phrases like "I hope this message finds you well" or "I wanted to reach out". Get straight to the point. Reference specific job details if available. End with a clear, low-pressure call to action (call or text back). Keep it under 100 words.`,
+            content: `You are Jon Noland, owner of Noland Earthworks, LLC — a veteran-owned land management and forestry mulching company in Middle Tennessee. Write a short, direct follow-up message to a lead who has gone quiet. Sound like a real person, not a marketing department. Professional but warm. No emojis. No corporate jargon. No phrases like "I hope this message finds you well" or "I wanted to reach out". Get straight to the point. Reference specific job details if available. End with a clear, low-pressure call to action (call or text back). Keep it under 100 words.`,
           },
           {
             role: "user",
             content: `Draft a follow-up message for this lead:
 
 Name: ${lead.name}
-Job type: ${lead.jobType ?? "land clearing"}
+Job type: ${lead.jobType ?? "land management"}
 Property address: ${lead.address ?? "not provided"}
 Current stage: ${lead.stage}
 Days since last update: ${daysSinceContact ?? "unknown"}
@@ -798,7 +798,7 @@ const quotesRouter = router({
                           isSlowSeason ? "slow season (Jul–Sep) — heat, potential ground saturation" :
                           "shoulder season (Apr–Jun)";
 
-      const systemPrompt = `You are an expert estimator for Noland Earthworks, LLC — a veteran-owned forestry mulching and land clearing company in Middle and West Tennessee. Jon Noland is the owner and sole operator. He uses a tracked forestry mulcher.
+      const systemPrompt = `You are an expert estimator for Noland Earthworks, LLC — a veteran-owned forestry mulching and land management company in Middle and West Tennessee. Jon Noland is the owner and sole operator. He uses a tracked forestry mulcher.
 
 Your job is to analyze an inbound quote request and return a structured JSON object that Jon can use to quickly build an accurate Jobber quote.
 
@@ -1221,7 +1221,7 @@ const conversationsRouter = router({
 
       const { invokeLLM } = await import("./_core/llm");
 
-      const systemPrompt = `You are drafting an SMS reply on behalf of Jon Noland, owner of Noland Earthworks, LLC — a veteran-owned land clearing and forestry mulching company serving Middle & West Tennessee.
+      const systemPrompt = `You are drafting an SMS reply on behalf of Jon Noland, owner of Noland Earthworks, LLC — a veteran-owned land management and forestry mulching company serving Middle & West Tennessee.
 
 Voice rules (MUST follow):
 - Sound like Jon wrote it — direct, warm, no corporate language
@@ -1234,7 +1234,7 @@ Voice rules (MUST follow):
 - Always end with a clear next step or call to action
 - Sign off as "Jon" if it feels natural, but not required
 
-Context: Jon is the sole operator. He uses a tracked forestry mulcher. Services: forestry mulching (primary), land clearing, brush hogging. He does NOT do grading, excavation, or hauling.`;
+Context: Jon is the sole operator. He uses a tracked forestry mulcher. Services: forestry mulching (primary), land management, brush hogging. He does NOT do grading, excavation, or hauling.`;
 
       const userPrompt = `Draft a short SMS reply to the most recent inbound message.
 
@@ -2371,7 +2371,7 @@ const googleRouter = router({
           "Write in a humble, empathetic tone. Acknowledge the reviewer's experience sincerely, take responsibility where appropriate, and make clear you want to make it right. Do not be defensive.",
       };
 
-      const systemPrompt = `You are writing a reply to a Google Business Profile review on behalf of Jon Noland, owner of Noland Earthworks, LLC — a veteran-owned land clearing and forestry mulching company serving Middle & West Tennessee.
+      const systemPrompt = `You are writing a reply to a Google Business Profile review on behalf of Jon Noland, owner of Noland Earthworks, LLC — a veteran-owned land management and forestry mulching company serving Middle & West Tennessee.
 
 Base rules (always apply):
 - Sound like a real person, not a template.

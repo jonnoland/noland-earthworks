@@ -5,7 +5,7 @@ export default function LandManagementMooreCounty() {
     <BlogPostLayout
       title="Land Management in Moore County, TN: What Property Owners Need to Know"
       pageTitle="Land Management in Moore County, TN | Noland Earthworks"
-      metaDescription="Need land management in Moore County, TN? Noland Earthworks provides forestry mulching and land clearing in Lynchburg, Tullahoma, Mulberry and across Moore County."
+      metaDescription="Need land management in Moore County, TN? Noland Earthworks provides forestry mulching and land management in Lynchburg, Tullahoma, Mulberry and across Moore County."
       date="May 2026"
       dateISO="2026-05-25"
       lastUpdated="May 2026"
@@ -23,7 +23,7 @@ export default function LandManagementMooreCounty() {
         Moore County, TN, nestled on the Eastern Highland Rim and bordering the Central Basin, is known for its picturesque rural landscapes, agricultural heritage, and the iconic Jack Daniel's Distillery in Lynchburg. Property owners here, from farmers and timberland holders to rural residents and those in the distillery tourism sector, often face unique land management challenges. Towns like Lynchburg, Tullahoma, and Mulberry are central to this community.
       </p>
       <p>
-        Effective land management is crucial for maintaining property value, enhancing usability, and promoting ecological health. Noland Earthworks, a veteran-owned and operated company, provides expert forestry mulching and land clearing services tailored to the specific needs of Moore County landowners. We help you reclaim overgrown areas, prepare sites for new projects, and manage your land efficiently and responsibly.
+        Effective land management is crucial for maintaining property value, enhancing usability, and promoting ecological health. Noland Earthworks, a veteran-owned and operated company, provides expert forestry mulching and land management services tailored to the specific needs of Moore County landowners. We help you reclaim overgrown areas, prepare sites for new projects, and manage your land efficiently and responsibly.
       </p>
 
       <h2>The Land in Moore County: What You Are Working With</h2>
@@ -66,7 +66,7 @@ export default function LandManagementMooreCounty() {
 
       <h2>Permit Requirements in Moore County</h2>
       <p>
-        Before undertaking significant land clearing projects in Moore County, it's important to understand local permit requirements. For projects within the city limits of Lynchburg or Tullahoma, you may need to consult with their respective city planning or codes departments. For properties outside city limits, the Moore County Zoning Office can provide guidance on county-specific regulations.
+        Before undertaking significant land management projects in Moore County, it's important to understand local permit requirements. For projects within the city limits of Lynchburg or Tullahoma, you may need to consult with their respective city planning or codes departments. For properties outside city limits, the Moore County Zoning Office can provide guidance on county-specific regulations.
       </p>
       <p>
         Additionally, any work near waterways, especially the Elk River and its tributaries, may fall under the jurisdiction of the Tennessee Department of Environment and Conservation (TDEC) or the U.S. Army Corps of Engineers. These agencies regulate activities that could impact water quality or wetlands. Always verify permit requirements before starting your project to ensure compliance.
@@ -88,7 +88,7 @@ export default function LandManagementMooreCounty() {
 
       <h3>Can Noland Earthworks help with clearing land around the Jack Daniel's Distillery area?</h3>
       <p>
-        Yes, Noland Earthworks serves all areas of Moore County, including properties in and around Lynchburg and the Jack Daniel's Distillery. We understand the unique considerations of this historic area and work to ensure our land clearing and mulching services are conducted responsibly and in compliance with local regulations.
+        Yes, Noland Earthworks serves all areas of Moore County, including properties in and around Lynchburg and the Jack Daniel's Distillery. We understand the unique considerations of this historic area and work to ensure our land management and mulching services are conducted responsibly and in compliance with local regulations.
       </p>
 
       <h3>How does Noland Earthworks handle invasive species common to Moore County?</h3>
@@ -105,7 +105,7 @@ export default function LandManagementMooreCounty() {
           <a href="/blog/land-management-lincoln-county"><strong>Land Management in Lincoln County, TN</strong></a> — Providing services for agricultural, residential, and commercial properties in Fayetteville and beyond.
         </li>
         <li>
-          <a href="/blog/land-management-marshall-county"><strong>Land Management in Marshall County, TN</strong></a> — Offering land clearing and forestry mulching solutions for landowners in Lewisburg and the surrounding areas.
+          <a href="/blog/land-management-marshall-county"><strong>Land Management in Marshall County, TN</strong></a> — Offering land management and forestry mulching solutions for landowners in Lewisburg and the surrounding areas.
         </li>
         <li>
           <a href="/blog/land-management-bedford-county"><strong>Land Management in Bedford County, TN</strong></a> — Delivering professional land management to properties around Shelbyville and throughout the county.
@@ -114,7 +114,7 @@ export default function LandManagementMooreCounty() {
           <a href="/service-areas/coffee-county"><strong>Land Management in Coffee County, TN</strong></a> — Extending our services to property owners in Manchester, Tullahoma, and other communities in Coffee County.
         </li>
         <li>
-          <a href="/service-areas/franklin-county"><strong>Land Management in Franklin County, TN</strong></a> — Serving the land clearing and mulching needs of property owners in Winchester, Sewanee, and across Franklin County.
+          <a href="/service-areas/franklin-county"><strong>Land Management in Franklin County, TN</strong></a> — Serving the land management and mulching needs of property owners in Winchester, Sewanee, and across Franklin County.
         </li>
       </ul>
     </BlogPostLayout>

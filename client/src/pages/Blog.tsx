@@ -23,7 +23,7 @@ export const BLOG_POSTS = [
   {
     slug: "forestry-mulching-vs-bulldozing",
     title: "Forestry Mulching vs. Bulldozing: Which Is Right for Your Land?",
-    meta: "Comparing forestry mulching and bulldozing for land clearing in Tennessee. Learn the pros, cons, and best use cases for each method before you hire.",
+    meta: "Comparing forestry mulching and bulldozing for land management in Tennessee. Learn the pros, cons, and best use cases for each method before you hire.",
     date: "April 2026",
     lastUpdated: "April 2026",
     readTime: "5 min read",
@@ -41,7 +41,7 @@ export const BLOG_POSTS = [
   {
     slug: "best-time-to-clear-land-tennessee",
     title: "Best Time of Year to Clear Land in Tennessee",
-    meta: "Timing your land clearing project right can save you money and get better results. Here's when to schedule forestry mulching and land clearing in Middle Tennessee.",
+    meta: "Timing your land management project right can save you money and get better results. Here's when to schedule forestry mulching and land management in Middle Tennessee.",
     date: "April 2026",
     lastUpdated: "April 2026",
     readTime: "4 min read",
@@ -76,8 +76,8 @@ export const BLOG_POSTS = [
   },
   {
     slug: "how-to-prepare-for-land-clearing-tennessee",
-    title: "How to Prepare for a Land Clearing Job in Tennessee",
-    meta: "What to do before the mulcher shows up. A practical checklist for Tennessee property owners to get their land clearing project started on the right foot.",
+    title: "How to Prepare for a Land Management Job in Tennessee",
+    meta: "What to do before the mulcher shows up. A practical checklist for Tennessee property owners to get their land management project started on the right foot.",
     date: "May 2026",
     lastUpdated: "May 2026",
     readTime: "4 min read",
@@ -95,7 +95,7 @@ export const BLOG_POSTS = [
   {
     slug: "land-management-williamson-county",
     title: "Land Management in Williamson County, TN: What Property Owners Need to Know",
-    meta: "Need land management in Williamson County, TN? Noland Earthworks provides forestry mulching and land clearing in Franklin, Brentwood, Spring Hill, Nolensville, and across Williamson County.",
+    meta: "Need land management in Williamson County, TN? Noland Earthworks provides forestry mulching and land management in Franklin, Brentwood, Spring Hill, Nolensville, and across Williamson County.",
     date: "April 2026",
     lastUpdated: "April 2026",
     readTime: "6 min read",
@@ -104,7 +104,7 @@ export const BLOG_POSTS = [
   {
     slug: "land-management-davidson-county",
     title: "Land Management in Davidson County, TN: What Property Owners Need to Know",
-    meta: "Need land management in Davidson County, TN? Noland Earthworks provides forestry mulching and land clearing in Nashville, Antioch, Hermitage, Bellevue, and across Davidson County.",
+    meta: "Need land management in Davidson County, TN? Noland Earthworks provides forestry mulching and land management in Nashville, Antioch, Hermitage, Bellevue, and across Davidson County.",
     date: "April 2026",
     lastUpdated: "April 2026",
     readTime: "6 min read",
@@ -113,7 +113,7 @@ export const BLOG_POSTS = [
   {
     slug: "land-management-rutherford-county",
     title: "Land Management in Rutherford County, TN: What Property Owners Need to Know",
-    meta: "Need land management in Rutherford County, TN? Noland Earthworks provides forestry mulching and land clearing in Murfreesboro, Smyrna, La Vergne, Eagleville, and across Rutherford County.",
+    meta: "Need land management in Rutherford County, TN? Noland Earthworks provides forestry mulching and land management in Murfreesboro, Smyrna, La Vergne, Eagleville, and across Rutherford County.",
     date: "April 2026",
     lastUpdated: "April 2026",
     readTime: "6 min read",
@@ -122,7 +122,7 @@ export const BLOG_POSTS = [
   {
     slug: "land-management-maury-county",
     title: "Land Management in Maury County, TN: What Property Owners Need to Know",
-    meta: "Need land management in Maury County, TN? Noland Earthworks provides forestry mulching and land clearing in Columbia, Spring Hill, Mount Pleasant, Culleoka, and across Maury County.",
+    meta: "Need land management in Maury County, TN? Noland Earthworks provides forestry mulching and land management in Columbia, Spring Hill, Mount Pleasant, Culleoka, and across Maury County.",
     date: "May 2026",
     lastUpdated: "May 2026",
     readTime: "6 min read",
@@ -131,7 +131,7 @@ export const BLOG_POSTS = [
   {
     slug: "land-management-marshall-county",
     title: "Land Management in Marshall County, TN: What Property Owners Need to Know",
-    meta: "Need land management in Marshall County, TN? Noland Earthworks provides forestry mulching and land clearing in Lewisburg, Cornersville, Chapel Hill, Petersburg, and across Marshall County.",
+    meta: "Need land management in Marshall County, TN? Noland Earthworks provides forestry mulching and land management in Lewisburg, Cornersville, Chapel Hill, Petersburg, and across Marshall County.",
     date: "May 2026",
     lastUpdated: "May 2026",
     readTime: "6 min read",
@@ -140,7 +140,7 @@ export const BLOG_POSTS = [
   {
     slug: "land-management-lincoln-county",
     title: "Land Management in Lincoln County, TN: What Property Owners Need to Know",
-    meta: "Need land management in Lincoln County, TN? Noland Earthworks provides forestry mulching and land clearing in Fayetteville, Mulberry, Flintville, and across Lincoln County.",
+    meta: "Need land management in Lincoln County, TN? Noland Earthworks provides forestry mulching and land management in Fayetteville, Mulberry, Flintville, and across Lincoln County.",
     date: "May 2026",
     lastUpdated: "May 2026",
     readTime: "6 min read",
@@ -149,7 +149,7 @@ export const BLOG_POSTS = [
   {
     slug: "land-management-wilson-county",
     title: "Land Management in Wilson County, TN: What Property Owners Need to Know",
-    meta: "Need land management in Wilson County, TN? Noland Earthworks provides forestry mulching and land clearing in Lebanon, Mount Juliet, Watertown, and across Wilson County.",
+    meta: "Need land management in Wilson County, TN? Noland Earthworks provides forestry mulching and land management in Lebanon, Mount Juliet, Watertown, and across Wilson County.",
     date: "May 2026",
     lastUpdated: "May 2026",
     readTime: "6 min read",
@@ -158,7 +158,7 @@ export const BLOG_POSTS = [
   {
     slug: "land-management-montgomery-county",
     title: "Land Management in Montgomery County, TN: What Property Owners Need to Know",
-    meta: "Need land management in Montgomery County, TN? Noland Earthworks provides forestry mulching and land clearing in Clarksville and across Montgomery County.",
+    meta: "Need land management in Montgomery County, TN? Noland Earthworks provides forestry mulching and land management in Clarksville and across Montgomery County.",
     date: "May 2026",
     lastUpdated: "May 2026",
     readTime: "6 min read",
@@ -167,7 +167,7 @@ export const BLOG_POSTS = [
   {
     slug: "land-management-giles-county",
     title: "Land Management in Giles County, TN: What Property Owners Need to Know",
-    meta: "Need land management in Giles County, TN? Noland Earthworks provides forestry mulching and land clearing in Pulaski, Elkton, Lynnville, and across Giles County.",
+    meta: "Need land management in Giles County, TN? Noland Earthworks provides forestry mulching and land management in Pulaski, Elkton, Lynnville, and across Giles County.",
     date: "May 2026",
     lastUpdated: "May 2026",
     readTime: "6 min read",
@@ -176,7 +176,7 @@ export const BLOG_POSTS = [
   {
     slug: "land-management-sumner-county",
     title: "Land Management in Sumner County, TN: What Property Owners Need to Know",
-    meta: "Need land management in Sumner County, TN? Noland Earthworks provides forestry mulching and land clearing in Gallatin, Hendersonville, Portland, and across Sumner County.",
+    meta: "Need land management in Sumner County, TN? Noland Earthworks provides forestry mulching and land management in Gallatin, Hendersonville, Portland, and across Sumner County.",
     date: "May 2026",
     lastUpdated: "May 2026",
     readTime: "6 min read",
@@ -185,7 +185,7 @@ export const BLOG_POSTS = [
   {
     slug: "land-management-bedford-county",
     title: "Land Management in Bedford County, TN: What Property Owners Need to Know",
-    meta: "Need land management in Bedford County, TN? Noland Earthworks provides forestry mulching and land clearing in Shelbyville, Bell Buckle, Wartrace, and across Bedford County.",
+    meta: "Need land management in Bedford County, TN? Noland Earthworks provides forestry mulching and land management in Shelbyville, Bell Buckle, Wartrace, and across Bedford County.",
     date: "May 2026",
     lastUpdated: "May 2026",
     readTime: "6 min read",
@@ -194,7 +194,7 @@ export const BLOG_POSTS = [
   {
     slug: "land-management-cheatham-county",
     title: "Land Management in Cheatham County, TN: What Property Owners Need to Know",
-    meta: "Need land management in Cheatham County, TN? Noland Earthworks provides forestry mulching and land clearing in Ashland City, Kingston Springs, Pegram, and across Cheatham County.",
+    meta: "Need land management in Cheatham County, TN? Noland Earthworks provides forestry mulching and land management in Ashland City, Kingston Springs, Pegram, and across Cheatham County.",
     date: "May 2026",
     lastUpdated: "May 2026",
     readTime: "6 min read",
@@ -203,7 +203,7 @@ export const BLOG_POSTS = [
   {
     slug: "land-management-lawrence-county",
     title: "Land Management in Lawrence County, TN: What Property Owners Need to Know",
-    meta: "Need land management in Lawrence County, TN? Noland Earthworks provides forestry mulching and land clearing in Lawrenceburg, Loretto, Ethridge, St. Joseph, and across Lawrence County.",
+    meta: "Need land management in Lawrence County, TN? Noland Earthworks provides forestry mulching and land management in Lawrenceburg, Loretto, Ethridge, St. Joseph, and across Lawrence County.",
     date: "May 2026",
     lastUpdated: "May 2026",
     readTime: "6 min read",
@@ -212,7 +212,7 @@ export const BLOG_POSTS = [
   {
     slug: "land-management-dickson-county",
     title: "Land Management in Dickson County, TN: What Property Owners Need to Know",
-    meta: "Need land management in Dickson County, TN? Noland Earthworks provides forestry mulching and land clearing in Dickson, Charlotte, White Bluff, Burns, and across Dickson County.",
+    meta: "Need land management in Dickson County, TN? Noland Earthworks provides forestry mulching and land management in Dickson, Charlotte, White Bluff, Burns, and across Dickson County.",
     date: "May 2026",
     lastUpdated: "May 2026",
     readTime: "6 min read",
@@ -221,7 +221,7 @@ export const BLOG_POSTS = [
   {
     slug: "land-management-hickman-county",
     title: "Land Management in Hickman County, TN: What Property Owners Need to Know",
-    meta: "Need land management in Hickman County, TN? Noland Earthworks provides forestry mulching and land clearing in Centerville, Lyles, Nunnelly, Bon Aqua, and across Hickman County.",
+    meta: "Need land management in Hickman County, TN? Noland Earthworks provides forestry mulching and land management in Centerville, Lyles, Nunnelly, Bon Aqua, and across Hickman County.",
     date: "May 2026",
     lastUpdated: "May 2026",
     readTime: "6 min read",
@@ -230,7 +230,7 @@ export const BLOG_POSTS = [
   {
     slug: "land-management-robertson-county",
     title: "Land Management in Robertson County, TN: What Property Owners Need to Know",
-    meta: "Need land management in Robertson County, TN? Noland Earthworks provides forestry mulching and land clearing in Springfield, Greenbrier, White House, Cross Plains, and across Robertson County.",
+    meta: "Need land management in Robertson County, TN? Noland Earthworks provides forestry mulching and land management in Springfield, Greenbrier, White House, Cross Plains, and across Robertson County.",
     date: "May 2026",
     lastUpdated: "May 2026",
     readTime: "6 min read",
@@ -239,7 +239,7 @@ export const BLOG_POSTS = [
   {
     slug: "land-management-trousdale-county",
     title: "Land Management in Trousdale County, TN: What Property Owners Need to Know",
-    meta: "Need land management in Trousdale County, TN? Noland Earthworks provides forestry mulching and land clearing in Hartsville and across Trousdale County, Tennessee.",
+    meta: "Need land management in Trousdale County, TN? Noland Earthworks provides forestry mulching and land management in Hartsville and across Trousdale County, Tennessee.",
     date: "May 2026",
     lastUpdated: "May 2026",
     readTime: "6 min read",
@@ -248,7 +248,7 @@ export const BLOG_POSTS = [
   {
     slug: "land-management-benton-county",
     title: "Land Management in Benton County, TN: What Property Owners Need to Know",
-    meta: "Need land management in Benton County, TN? Noland Earthworks provides forestry mulching and land clearing in Camden, Big Sandy, Eva, and across Benton County.",
+    meta: "Need land management in Benton County, TN? Noland Earthworks provides forestry mulching and land management in Camden, Big Sandy, Eva, and across Benton County.",
     date: "May 2026",
     lastUpdated: "May 2026",
     readTime: "6 min read",
@@ -257,7 +257,7 @@ export const BLOG_POSTS = [
   {
     slug: "land-management-cannon-county",
     title: "Land Management in Cannon County, TN: What Property Owners Need to Know",
-    meta: "Need land management in Cannon County, TN? Noland Earthworks provides forestry mulching and land clearing in Woodbury, Auburntown, Readyville, and across Cannon County.",
+    meta: "Need land management in Cannon County, TN? Noland Earthworks provides forestry mulching and land management in Woodbury, Auburntown, Readyville, and across Cannon County.",
     date: "May 2026",
     lastUpdated: "May 2026",
     readTime: "6 min read",
@@ -266,7 +266,7 @@ export const BLOG_POSTS = [
   {
     slug: "land-management-carroll-county",
     title: "Land Management in Carroll County, TN: What Property Owners Need to Know",
-    meta: "Need land management in Carroll County, TN? Noland Earthworks provides forestry mulching and land clearing in Huntingdon, McKenzie, Hollow Rock, and across Carroll County.",
+    meta: "Need land management in Carroll County, TN? Noland Earthworks provides forestry mulching and land management in Huntingdon, McKenzie, Hollow Rock, and across Carroll County.",
     date: "May 2026",
     lastUpdated: "May 2026",
     readTime: "6 min read",
@@ -275,7 +275,7 @@ export const BLOG_POSTS = [
   {
     slug: "land-management-chester-county",
     title: "Land Management in Chester County, TN: What Property Owners Need to Know",
-    meta: "Need land management in Chester County, TN? Noland Earthworks provides forestry mulching and land clearing in Henderson, Enville, Jacks Creek, and across Chester County.",
+    meta: "Need land management in Chester County, TN? Noland Earthworks provides forestry mulching and land management in Henderson, Enville, Jacks Creek, and across Chester County.",
     date: "May 2026",
     lastUpdated: "May 2026",
     readTime: "6 min read",
@@ -284,7 +284,7 @@ export const BLOG_POSTS = [
   {
     slug: "land-management-decatur-county",
     title: "Land Management in Decatur County, TN: What Property Owners Need to Know",
-    meta: "Need land management in Decatur County, TN? Noland Earthworks provides forestry mulching and land clearing in Decaturville, Parsons, Scotts Hill, and across Decatur County.",
+    meta: "Need land management in Decatur County, TN? Noland Earthworks provides forestry mulching and land management in Decaturville, Parsons, Scotts Hill, and across Decatur County.",
     date: "May 2026",
     lastUpdated: "May 2026",
     readTime: "6 min read",
@@ -293,7 +293,7 @@ export const BLOG_POSTS = [
   {
     slug: "land-management-gibson-county",
     title: "Land Management in Gibson County, TN: What Property Owners Need to Know",
-    meta: "Need land management in Gibson County, TN? Noland Earthworks provides forestry mulching and land clearing in Trenton, Milan, Humboldt, Dyer, and across Gibson County.",
+    meta: "Need land management in Gibson County, TN? Noland Earthworks provides forestry mulching and land management in Trenton, Milan, Humboldt, Dyer, and across Gibson County.",
     date: "May 2026",
     lastUpdated: "May 2026",
     readTime: "6 min read",
@@ -302,7 +302,7 @@ export const BLOG_POSTS = [
   {
     slug: "land-management-hardin-county",
     title: "Land Management in Hardin County, TN: What Property Owners Need to Know",
-    meta: "Need land management in Hardin County, TN? Noland Earthworks provides forestry mulching and land clearing in Savannah, Adamsville, Counce, and across Hardin County.",
+    meta: "Need land management in Hardin County, TN? Noland Earthworks provides forestry mulching and land management in Savannah, Adamsville, Counce, and across Hardin County.",
     date: "May 2026",
     lastUpdated: "May 2026",
     readTime: "6 min read",
@@ -311,7 +311,7 @@ export const BLOG_POSTS = [
   {
     slug: "land-management-henderson-county",
     title: "Land Management in Henderson County, TN: What Property Owners Need to Know",
-    meta: "Need land management in Henderson County, TN? Noland Earthworks provides forestry mulching and land clearing in Lexington, Sardis, Scotts Hill, and across Henderson County.",
+    meta: "Need land management in Henderson County, TN? Noland Earthworks provides forestry mulching and land management in Lexington, Sardis, Scotts Hill, and across Henderson County.",
     date: "May 2026",
     lastUpdated: "May 2026",
     readTime: "6 min read",
@@ -320,7 +320,7 @@ export const BLOG_POSTS = [
   {
     slug: "land-management-henry-county",
     title: "Land Management in Henry County, TN: What Property Owners Need to Know",
-    meta: "Need land management in Henry County, TN? Noland Earthworks provides forestry mulching and land clearing in Paris, Puryear, Buchanan, and across Henry County.",
+    meta: "Need land management in Henry County, TN? Noland Earthworks provides forestry mulching and land management in Paris, Puryear, Buchanan, and across Henry County.",
     date: "May 2026",
     lastUpdated: "May 2026",
     readTime: "6 min read",
@@ -329,7 +329,7 @@ export const BLOG_POSTS = [
   {
     slug: "land-management-houston-county",
     title: "Land Management in Houston County, TN: What Property Owners Need to Know",
-    meta: "Need land management in Houston County, TN? Noland Earthworks provides forestry mulching and land clearing in Erin, Tennessee Ridge, Cumberland City, and across Houston County.",
+    meta: "Need land management in Houston County, TN? Noland Earthworks provides forestry mulching and land management in Erin, Tennessee Ridge, Cumberland City, and across Houston County.",
     date: "May 2026",
     lastUpdated: "May 2026",
     readTime: "6 min read",
@@ -338,7 +338,7 @@ export const BLOG_POSTS = [
   {
     slug: "land-management-humphreys-county",
     title: "Land Management in Humphreys County, TN: What Property Owners Need to Know",
-    meta: "Need land management in Humphreys County, TN? Noland Earthworks provides forestry mulching and land clearing in Waverly, McEwen, New Johnsonville, and across Humphreys County.",
+    meta: "Need land management in Humphreys County, TN? Noland Earthworks provides forestry mulching and land management in Waverly, McEwen, New Johnsonville, and across Humphreys County.",
     date: "May 2026",
     lastUpdated: "May 2026",
     readTime: "6 min read",
@@ -347,7 +347,7 @@ export const BLOG_POSTS = [
   {
     slug: "land-management-lewis-county",
     title: "Land Management in Lewis County, TN: What Property Owners Need to Know",
-    meta: "Need land management in Lewis County, TN? Noland Earthworks provides forestry mulching and land clearing in Hohenwald, Gordonsburg, and across Lewis County.",
+    meta: "Need land management in Lewis County, TN? Noland Earthworks provides forestry mulching and land management in Hohenwald, Gordonsburg, and across Lewis County.",
     date: "May 2026",
     lastUpdated: "May 2026",
     readTime: "6 min read",
@@ -356,7 +356,7 @@ export const BLOG_POSTS = [
   {
     slug: "land-management-madison-county",
     title: "Land Management in Madison County, TN: What Property Owners Need to Know",
-    meta: "Need land management in Madison County, TN? Noland Earthworks provides forestry mulching and land clearing in Jackson, Medina, Denmark, and across Madison County.",
+    meta: "Need land management in Madison County, TN? Noland Earthworks provides forestry mulching and land management in Jackson, Medina, Denmark, and across Madison County.",
     date: "May 2026",
     lastUpdated: "May 2026",
     readTime: "6 min read",
@@ -365,7 +365,7 @@ export const BLOG_POSTS = [
   {
     slug: "land-management-moore-county",
     title: "Land Management in Moore County, TN: What Property Owners Need to Know",
-    meta: "Need land management in Moore County, TN? Noland Earthworks provides forestry mulching and land clearing in Lynchburg, Mulberry, and across Moore County.",
+    meta: "Need land management in Moore County, TN? Noland Earthworks provides forestry mulching and land management in Lynchburg, Mulberry, and across Moore County.",
     date: "May 2026",
     lastUpdated: "May 2026",
     readTime: "6 min read",
@@ -374,7 +374,7 @@ export const BLOG_POSTS = [
   {
     slug: "land-management-perry-county",
     title: "Land Management in Perry County, TN: What Property Owners Need to Know",
-    meta: "Need land management in Perry County, TN? Noland Earthworks provides forestry mulching and land clearing in Linden, Lobelville, Flatwoods, and across Perry County.",
+    meta: "Need land management in Perry County, TN? Noland Earthworks provides forestry mulching and land management in Linden, Lobelville, Flatwoods, and across Perry County.",
     date: "May 2026",
     lastUpdated: "May 2026",
     readTime: "6 min read",
@@ -383,7 +383,7 @@ export const BLOG_POSTS = [
   {
     slug: "land-management-stewart-county",
     title: "Land Management in Stewart County, TN: What Property Owners Need to Know",
-    meta: "Need land management in Stewart County, TN? Noland Earthworks provides forestry mulching and land clearing in Dover, Cumberland City, Indian Mound, and across Stewart County.",
+    meta: "Need land management in Stewart County, TN? Noland Earthworks provides forestry mulching and land management in Dover, Cumberland City, Indian Mound, and across Stewart County.",
     date: "May 2026",
     lastUpdated: "May 2026",
     readTime: "6 min read",
@@ -392,7 +392,7 @@ export const BLOG_POSTS = [
   {
     slug: "land-management-wayne-county",
     title: "Land Management in Wayne County, TN: What Property Owners Need to Know",
-    meta: "Need land management in Wayne County, TN? Noland Earthworks provides forestry mulching and land clearing in Waynesboro, Clifton, Collinwood, and across Wayne County.",
+    meta: "Need land management in Wayne County, TN? Noland Earthworks provides forestry mulching and land management in Waynesboro, Clifton, Collinwood, and across Wayne County.",
     date: "May 2026",
     lastUpdated: "May 2026",
     readTime: "6 min read",
@@ -401,7 +401,7 @@ export const BLOG_POSTS = [
   {
     slug: "land-management-weakley-county",
     title: "Land Management in Weakley County, TN: What Property Owners Need to Know",
-    meta: "Need land management in Weakley County, TN? Noland Earthworks provides forestry mulching and land clearing in Dresden, Martin, Greenfield, Sharon, and across Weakley County.",
+    meta: "Need land management in Weakley County, TN? Noland Earthworks provides forestry mulching and land management in Dresden, Martin, Greenfield, Sharon, and across Weakley County.",
     date: "May 2026",
     lastUpdated: "May 2026",
     readTime: "6 min read",

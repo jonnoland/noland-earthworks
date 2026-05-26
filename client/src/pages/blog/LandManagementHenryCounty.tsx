@@ -5,7 +5,7 @@ export default function LandManagementHenryCounty() {
     <BlogPostLayout
       title="Land Management in Henry County, TN: What Property Owners Need to Know"
       pageTitle="Land Management in Henry County, TN | Noland Earthworks"
-      metaDescription="Need land management in Henry County, TN? Noland Earthworks provides forestry mulching and land clearing in Paris, Puryear, Springville and across Henry County."
+      metaDescription="Need land management in Henry County, TN? Noland Earthworks provides forestry mulching and land management in Paris, Puryear, Springville and across Henry County."
       date="May 2026"
       dateISO="2026-05-25"
       lastUpdated="May 2026"
@@ -20,7 +20,7 @@ export default function LandManagementHenryCounty() {
       ]}
     >
       <p>
-        Henry County, nestled in the scenic West Tennessee region, is a diverse landscape characterized by its rich agricultural heritage, extensive timberlands, and the prominent presence of Kentucky Lake, formed by the Tennessee River. With its county seat in Paris and other vibrant communities like Puryear, Buchanan, Springville, and Cottage Grove, Henry County offers a unique blend of rural charm and recreational opportunities. Property owners here, whether involved in farming, timber production, or managing lake-adjacent and recreational properties, often face distinct land management challenges. Noland Earthworks, a veteran-owned company, is dedicated to providing professional forestry mulching and land clearing services tailored to the specific needs of Henry County landowners.
+        Henry County, nestled in the scenic West Tennessee region, is a diverse landscape characterized by its rich agricultural heritage, extensive timberlands, and the prominent presence of Kentucky Lake, formed by the Tennessee River. With its county seat in Paris and other vibrant communities like Puryear, Buchanan, Springville, and Cottage Grove, Henry County offers a unique blend of rural charm and recreational opportunities. Property owners here, whether involved in farming, timber production, or managing lake-adjacent and recreational properties, often face distinct land management challenges. Noland Earthworks, a veteran-owned company, is dedicated to providing professional forestry mulching and land management services tailored to the specific needs of Henry County landowners.
       </p>
 
       <h2>The Land in Henry County: What You Are Working With</h2>
@@ -87,7 +87,7 @@ export default function LandManagementHenryCounty() {
       </p>
       <ul>
         <li>
-          <a href="/service-areas/weakley-county"><strong>Land Management in Weakley County, TN</strong></a> — Offering comprehensive land clearing and forestry mulching services for agricultural and residential properties.
+          <a href="/service-areas/weakley-county"><strong>Land Management in Weakley County, TN</strong></a> — Offering comprehensive land management and forestry mulching services for agricultural and residential properties.
         </li>
         <li>
           <a href="/service-areas/carroll-county"><strong>Land Management in Carroll County, TN</strong></a> — Specializing in transforming overgrown land into usable space for farming, development, and recreation.

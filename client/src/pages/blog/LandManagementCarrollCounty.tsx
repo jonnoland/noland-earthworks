@@ -5,7 +5,7 @@ export default function LandManagementCarrollCounty() {
     <BlogPostLayout
       title="Land Management in Carroll County, TN: What Property Owners Need to Know"
       pageTitle="Land Management in Carroll County, TN | Noland Earthworks"
-      metaDescription="Need land management in Carroll County, TN? Noland Earthworks provides forestry mulching and land clearing in McKenzie, Huntingdon, and across Carroll County."
+      metaDescription="Need land management in Carroll County, TN? Noland Earthworks provides forestry mulching and land management in McKenzie, Huntingdon, and across Carroll County."
       date="May 2026"
       dateISO="2026-05-25"
       lastUpdated="May 2026"
@@ -58,7 +58,7 @@ export default function LandManagementCarrollCounty() {
 
       <h2>Permit Requirements in Carroll County</h2>
       <p>
-        Navigating permit requirements for land clearing in Carroll County is crucial for a smooth project. While many residential clearing projects may not require extensive federal permits, local regulations are important. Property owners should consult the Huntingdon Planning & Codes Enforcement Department for projects within town limits, and the Carroll County Zoning Office for properties in unincorporated areas. Additionally, any work near waterways like Sandy Creek or tributaries of the Obion River may fall under the jurisdiction of the Tennessee Department of Environment and Conservation (TDEC) or the Army Corps of Engineers, requiring specific permits to protect aquatic ecosystems. We can help guide you through these local and state requirements.
+        Navigating permit requirements for land management in Carroll County is crucial for a smooth project. While many residential clearing projects may not require extensive federal permits, local regulations are important. Property owners should consult the Huntingdon Planning & Codes Enforcement Department for projects within town limits, and the Carroll County Zoning Office for properties in unincorporated areas. Additionally, any work near waterways like Sandy Creek or tributaries of the Obion River may fall under the jurisdiction of the Tennessee Department of Environment and Conservation (TDEC) or the Army Corps of Engineers, requiring specific permits to protect aquatic ecosystems. We can help guide you through these local and state requirements.
       </p>
 
       <h2>Serving All of Carroll County</h2>
@@ -73,7 +73,7 @@ export default function LandManagementCarrollCounty() {
       </p>
       <h3>Do I need a permit to clear land near Sandy Creek or the Obion River tributaries?</h3>
       <p>
-        Yes, any land clearing activities near significant waterways like Sandy Creek or the Obion River tributaries in Carroll County may require permits from the Tennessee Department of Environment and Conservation (TDEC) or the Army Corps of Engineers to ensure environmental protection. It's always best to consult with these agencies before beginning work.
+        Yes, any land management activities near significant waterways like Sandy Creek or the Obion River tributaries in Carroll County may require permits from the Tennessee Department of Environment and Conservation (TDEC) or the Army Corps of Engineers to ensure environmental protection. It's always best to consult with these agencies before beginning work.
       </p>
       <h3>What invasive species are common in Carroll County that might need removal?</h3>
       <p>
@@ -86,13 +86,13 @@ export default function LandManagementCarrollCounty() {
       </p>
       <ul>
         <li>
-          <a href="/service-areas/henry-county"><strong>Land Management in Henry County, TN</strong></a> — Offering comprehensive land clearing and forestry mulching services to enhance property value and usability.
+          <a href="/service-areas/henry-county"><strong>Land Management in Henry County, TN</strong></a> — Offering comprehensive land management and forestry mulching services to enhance property value and usability.
         </li>
         <li>
           <a href="/service-areas/weakley-county"><strong>Land Management in Weakley County, TN</strong></a> — Specializing in pasture reclamation, site preparation, and invasive species control for agricultural and residential properties.
         </li>
         <li>
-          <a href="/service-areas/gibson-county"><strong>Land Management in Gibson County, TN</strong></a> — Providing efficient and environmentally sound solutions for all your land clearing and management needs.
+          <a href="/service-areas/gibson-county"><strong>Land Management in Gibson County, TN</strong></a> — Providing efficient and environmentally sound solutions for all your land management and management needs.
         </li>
       </ul>
     </BlogPostLayout>

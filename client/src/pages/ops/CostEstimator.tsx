@@ -124,7 +124,7 @@ export default function CostEstimator() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="Forestry Mulching">Forestry Mulching</SelectItem>
-                    <SelectItem value="Land Clearing">Land Clearing</SelectItem>
+                    <SelectItem value="Land Management">Land Management</SelectItem>
                     <SelectItem value="Site Preparation">Site Preparation</SelectItem>
                     <SelectItem value="Right-of-Way Clearing">Right-of-Way Clearing</SelectItem>
                     <SelectItem value="Brush Hogging">Brush Hogging</SelectItem>

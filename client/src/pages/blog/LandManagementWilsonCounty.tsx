@@ -5,7 +5,7 @@ export default function LandManagementWilsonCounty() {
     <BlogPostLayout
       title="Land Management in Wilson County, TN: What Property Owners Need to Know"
       pageTitle="Land Management Wilson County | Noland Earthworks"
-      metaDescription="Understand effective land management in Wilson County, TN. Learn about forestry mulching, land clearing, and maintaining your property in Lebanon, Mt. Juliet, and surrounding areas."
+      metaDescription="Understand effective land management in Wilson County, TN. Learn about forestry mulching, land management, and maintaining your property in Lebanon, Mt. Juliet, and surrounding areas."
       date="May 2026"
       dateISO="2026-05-25"
       lastUpdated="May 2026"
@@ -22,8 +22,8 @@ export default function LandManagementWilsonCounty() {
       <p>Our county is known for its beautiful rolling hills, fertile soil, and distinct geological features like the cedar glades. This diverse environment means that a one-size-fits-all approach to land management simply won't work. Rapid development brings new considerations, such as managing overgrown areas near new construction, preparing sites for future projects, or simply reclaiming neglected acreage.</p>
       <p>Proper land management isn't just about clearing; it's about thoughtful stewardship. It involves understanding the specific needs of your property, addressing invasive species, mitigating fire risks, and enhancing the overall health of your ecosystem. For landowners in areas like Lebanon, forestry mulching offers an environmentally sound method for clearing brush and small trees, returning nutrients to the soil, and preventing erosion.</p>
 
-      <h2>Forestry Mulching: A Smart Choice for Land Clearing in Wilson County Tennessee</h2>
-      <p>When it comes to efficient and eco-friendly land clearing, forestry mulching stands out. Instead of traditional methods that can leave behind burn piles and scarred land, forestry mulching uses specialized equipment to grind vegetation into a nutrient-rich layer of mulch. This process is ideal for:</p>
+      <h2>Forestry Mulching: A Smart Choice for Land Management in Wilson County Tennessee</h2>
+      <p>When it comes to efficient and eco-friendly land management, forestry mulching stands out. Instead of traditional methods that can leave behind burn piles and scarred land, forestry mulching uses specialized equipment to grind vegetation into a nutrient-rich layer of mulch. This process is ideal for:</p>
       <ul>
         <li><strong>Brush and Undergrowth Removal:</strong> Clearing dense thickets that make your property inaccessible or prone to pests.</li>
         <li><strong>Site Preparation:</strong> Getting your land ready for construction, landscaping, or agricultural use without disturbing the topsoil.</li>
@@ -31,12 +31,12 @@ export default function LandManagementWilsonCounty() {
         <li><strong>Invasive Species Control:</strong> Effectively managing and reducing the spread of unwanted plants.</li>
         <li><strong>Fire Prevention:</strong> Reducing fuel loads in wooded areas, especially important during dry seasons.</li>
       </ul>
-      <p>For properties in Lebanon TN, Mt. Juliet, and across Wilson County, forestry mulching provides a clean, efficient, and sustainable solution for your land clearing needs. It’s a method that respects the land while achieving your goals.</p>
+      <p>For properties in Lebanon TN, Mt. Juliet, and across Wilson County, forestry mulching provides a clean, efficient, and sustainable solution for your land management needs. It’s a method that respects the land while achieving your goals.</p>
 
       <h2>Beyond Mulching: Comprehensive Land Management Services</h2>
       <p>While forestry mulching is a cornerstone of effective land management, it's often part of a larger strategy. Noland Earthworks offers a range of services designed to meet the diverse needs of Wilson County property owners:</p>
       <ul>
-        <li><strong>Land Clearing:</strong> From dense forests to overgrown fields, we have the equipment and expertise to clear your land safely and efficiently.</li>
+        <li><strong>Land Management:</strong> From dense forests to overgrown fields, we have the equipment and expertise to clear your land safely and efficiently.</li>
         <li><strong>Brush Removal:</strong> Targeting specific areas of heavy brush to improve aesthetics and accessibility.</li>
         <li><strong>Underbrush Clearing:</strong> Eliminating the lower layer of vegetation that can choke out desirable plants and create fire hazards.</li>
         <li><strong>Vegetation Management:</strong> Ongoing services to keep your property healthy and clear, preventing overgrowth before it becomes a major problem.</li>

@@ -5,7 +5,7 @@ export default function LandManagementDecaturCounty() {
     <BlogPostLayout
       title="Land Management in Decatur County, TN: What Property Owners Need to Know"
       pageTitle="Land Management in Decatur County, TN | Noland Earthworks"
-      metaDescription="Need land management in Decatur County, TN? Noland Earthworks provides forestry mulching and land clearing in Decaturville, Parsons, Scotts Hill and across Decatur County."
+      metaDescription="Need land management in Decatur County, TN? Noland Earthworks provides forestry mulching and land management in Decaturville, Parsons, Scotts Hill and across Decatur County."
       date="May 2026"
       dateISO="2026-05-25"
       lastUpdated="May 2026"
@@ -20,7 +20,7 @@ export default function LandManagementDecaturCounty() {
       ]}
     >
       <p>
-        Decatur County, nestled in West Tennessee, offers a unique blend of agricultural landscapes, timber-rich forests, and scenic river-adjacent properties. With its county seat in Decaturville and vibrant communities like Parsons, Scotts Hill, and Bath Springs, this area is home to landowners who understand the importance of effective land management. From maintaining productive farmland to enhancing recreational properties along the Tennessee River and Beech River Lake, Noland Earthworks is here to provide the expert land clearing services Decatur County property owners need.
+        Decatur County, nestled in West Tennessee, offers a unique blend of agricultural landscapes, timber-rich forests, and scenic river-adjacent properties. With its county seat in Decaturville and vibrant communities like Parsons, Scotts Hill, and Bath Springs, this area is home to landowners who understand the importance of effective land management. From maintaining productive farmland to enhancing recreational properties along the Tennessee River and Beech River Lake, Noland Earthworks is here to provide the expert land management services Decatur County property owners need.
       </p>
 
       <h2>The Land in Decatur County: What You Are Working With</h2>
@@ -73,7 +73,7 @@ export default function LandManagementDecaturCounty() {
 
       <h3>Do I need a permit to clear land near the Tennessee River or Beech River Lake?</h3>
       <p>
-        Yes, projects involving land clearing or disturbance near significant waterways like the Tennessee River, Beech River, or Beech River Lake often require permits. These regulations are in place to protect water quality and aquatic habitats. You should consult with the Decatur County Zoning Office and the Tennessee Department of Environment and Conservation (TDEC) to understand the specific requirements for your project.
+        Yes, projects involving land management or disturbance near significant waterways like the Tennessee River, Beech River, or Beech River Lake often require permits. These regulations are in place to protect water quality and aquatic habitats. You should consult with the Decatur County Zoning Office and the Tennessee Department of Environment and Conservation (TDEC) to understand the specific requirements for your project.
       </p>
 
       <h3>What types of properties does Noland Earthworks serve in Decatur County?</h3>
@@ -83,7 +83,7 @@ export default function LandManagementDecaturCounty() {
 
       <h2>Also Serving Nearby Counties</h2>
       <p>
-        <a href="/service-areas/henderson-county"><strong>Land Management in Henderson County, TN</strong></a> — Located to the east, Henderson County shares similar agricultural and timber characteristics, making it another key service area for our land clearing expertise.
+        <a href="/service-areas/henderson-county"><strong>Land Management in Henderson County, TN</strong></a> — Located to the east, Henderson County shares similar agricultural and timber characteristics, making it another key service area for our land management expertise.
       </p>
       <p>
         <a href="/service-areas/perry-county"><strong>Land Management in Perry County, TN</strong></a> — Bordering to the northeast, Perry County features rugged terrain and extensive forests, where our forestry mulching services are highly effective for various land improvement projects.

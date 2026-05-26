@@ -5,7 +5,7 @@ export default function LandManagementBentonCounty() {
     <BlogPostLayout
       title="Land Management in Benton County, TN: What Property Owners Need to Know"
       pageTitle="Land Management in Benton County, TN | Noland Earthworks"
-      metaDescription="Need land management in Benton County, TN? Noland Earthworks provides forestry mulching and land clearing in Camden, Big Sandy, Eva, and across Benton County."
+      metaDescription="Need land management in Benton County, TN? Noland Earthworks provides forestry mulching and land management in Camden, Big Sandy, Eva, and across Benton County."
       date="May 2026"
       dateISO="2026-05-25"
       lastUpdated="May 2026"
@@ -57,7 +57,7 @@ export default function LandManagementBentonCounty() {
 
       <h2>Permit Requirements in Benton County</h2>
       <p>
-        Property owners in Benton County should be aware of potential permit requirements for land clearing and earthwork projects. For projects within city limits, such as Camden, it is advisable to consult the local city permit office. For properties outside municipal boundaries, the Benton County Zoning Office can provide guidance on county-specific regulations. Additionally, any work near or impacting waterways like the Tennessee River or Big Sandy River may fall under the jurisdiction of the Tennessee Department of Environment and Conservation (TDEC) or the U.S. Army Corps of Engineers, requiring specific permits to protect aquatic ecosystems and ensure compliance with environmental regulations. Always verify requirements before starting significant land alterations.
+        Property owners in Benton County should be aware of potential permit requirements for land management and earthwork projects. For projects within city limits, such as Camden, it is advisable to consult the local city permit office. For properties outside municipal boundaries, the Benton County Zoning Office can provide guidance on county-specific regulations. Additionally, any work near or impacting waterways like the Tennessee River or Big Sandy River may fall under the jurisdiction of the Tennessee Department of Environment and Conservation (TDEC) or the U.S. Army Corps of Engineers, requiring specific permits to protect aquatic ecosystems and ensure compliance with environmental regulations. Always verify requirements before starting significant land alterations.
       </p>
 
       <h2>Serving All of Benton County</h2>
@@ -73,7 +73,7 @@ export default function LandManagementBentonCounty() {
 
       <h3>Do I need a permit to clear land near Kentucky Lake or the Big Sandy River?</h3>
       <p>
-        Yes, any significant land clearing or earthwork activities near major waterways like Kentucky Lake (part of the Tennessee River) or the Big Sandy River often require permits. These permits are typically issued by the Tennessee Department of Environment and Conservation (TDEC) or the U.S. Army Corps of Engineers to protect water quality and riparian habitats. It's crucial to consult with these agencies before beginning work in such sensitive areas.
+        Yes, any significant land management or earthwork activities near major waterways like Kentucky Lake (part of the Tennessee River) or the Big Sandy River often require permits. These permits are typically issued by the Tennessee Department of Environment and Conservation (TDEC) or the U.S. Army Corps of Engineers to protect water quality and riparian habitats. It's crucial to consult with these agencies before beginning work in such sensitive areas.
       </p>
 
       <h3>How does forestry mulching benefit agricultural land in Benton County?</h3>
@@ -87,13 +87,13 @@ export default function LandManagementBentonCounty() {
       </p>
       <ul>
         <li>
-          <a href="/service-areas/henry-county"><strong>Land Management in Henry County, TN</strong></a> — Offering land clearing and forestry mulching services to property owners in Paris, Henry, and across Henry County.
+          <a href="/service-areas/henry-county"><strong>Land Management in Henry County, TN</strong></a> — Offering land management and forestry mulching services to property owners in Paris, Henry, and across Henry County.
         </li>
         <li>
           <a href="/service-areas/humphreys-county"><strong>Land Management in Humphreys County, TN</strong></a> — Providing comprehensive land management solutions for properties in Waverly, McEwen, and throughout Humphreys County.
         </li>
         <li>
-          <a href="/service-areas/carroll-county"><strong>Land Management in Carroll County, TN</strong></a> — Delivering efficient forestry mulching and land clearing to communities like Huntingdon, McKenzie, and across Carroll County.
+          <a href="/service-areas/carroll-county"><strong>Land Management in Carroll County, TN</strong></a> — Delivering efficient forestry mulching and land management to communities like Huntingdon, McKenzie, and across Carroll County.
         </li>
       </ul>
     </BlogPostLayout>

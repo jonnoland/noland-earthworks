@@ -5,7 +5,7 @@ export default function LandManagementPerryCounty() {
     <BlogPostLayout
       title="Land Management in Perry County, TN: What Property Owners Need to Know"
       pageTitle="Land Management in Perry County, TN | Noland Earthworks"
-      metaDescription="Need land management in Perry County, TN? Noland Earthworks provides forestry mulching and land clearing in Linden, Lobelville, and Flatwoods and across Perry County."
+      metaDescription="Need land management in Perry County, TN? Noland Earthworks provides forestry mulching and land management in Linden, Lobelville, and Flatwoods and across Perry County."
       date="May 2026"
       dateISO="2026-05-25"
       lastUpdated="May 2026"
@@ -57,7 +57,7 @@ export default function LandManagementPerryCounty() {
 
       <h2>Permit Requirements in Perry County</h2>
       <p>
-        Before undertaking significant land clearing projects in Perry County, it’s important to understand local permit requirements. For projects within the city limits of Linden or Lobelville, you may need to consult with the respective city permit offices. For properties outside municipal boundaries, the Perry County Zoning Office can provide guidance on county-specific regulations. Additionally, any work near the Buffalo River, Tennessee River, or other significant waterways may fall under the jurisdiction of the Tennessee Department of Environment and Conservation (TDEC) or the U.S. Army Corps of Engineers, especially if it involves disturbing wetlands or altering stream banks. We recommend checking with these authorities early in your planning process.
+        Before undertaking significant land management projects in Perry County, it’s important to understand local permit requirements. For projects within the city limits of Linden or Lobelville, you may need to consult with the respective city permit offices. For properties outside municipal boundaries, the Perry County Zoning Office can provide guidance on county-specific regulations. Additionally, any work near the Buffalo River, Tennessee River, or other significant waterways may fall under the jurisdiction of the Tennessee Department of Environment and Conservation (TDEC) or the U.S. Army Corps of Engineers, especially if it involves disturbing wetlands or altering stream banks. We recommend checking with these authorities early in your planning process.
       </p>
 
       <h2>Serving All of Perry County</h2>
@@ -90,13 +90,13 @@ export default function LandManagementPerryCounty() {
           <a href="/blog/land-management-hickman-county"><strong>Land Management in Hickman County, TN</strong></a> — Just to our east, Hickman County shares similar terrain and land management needs, from forestry mulching to site preparation.
         </li>
         <li>
-          <a href="/blog/land-management-lawrence-county"><strong>Land Management in Lawrence County, TN</strong></a> — To our south, Lawrence County benefits from our comprehensive land clearing and mulching services for agricultural and residential properties.
+          <a href="/blog/land-management-lawrence-county"><strong>Land Management in Lawrence County, TN</strong></a> — To our south, Lawrence County benefits from our comprehensive land management and mulching services for agricultural and residential properties.
         </li>
         <li>
           <a href="/blog/land-management-maury-county"><strong>Land Management in Maury County, TN</strong></a> — Southeast of Perry, Maury County landowners trust us for efficient and effective solutions for their diverse land management projects.
         </li>
         <li>
-          <a href="/service-areas/humphreys-county"><strong>Land Management in Humphreys County, TN</strong></a> — North of Perry, Humphreys County properties can benefit from our land clearing expertise, especially along its waterways.
+          <a href="/service-areas/humphreys-county"><strong>Land Management in Humphreys County, TN</strong></a> — North of Perry, Humphreys County properties can benefit from our land management expertise, especially along its waterways.
         </li>
         <li>
           <a href="/service-areas/lewis-county"><strong>Land Management in Lewis County, TN</strong></a> — East of Perry, Lewis County landowners can rely on us for forestry mulching and property enhancement services.

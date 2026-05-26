@@ -14,7 +14,7 @@ import { createOpsLead, getOwnerUser } from "./db";
 import { notifyOwner } from "./_core/notification";
 import crypto from "crypto";
 
-const CHAT_SYSTEM_PROMPT = `You are the AI assistant for Noland Earthworks, LLC — a veteran-owned land clearing and forestry mulching company in Middle Tennessee. Your name is not important; you represent Noland Earthworks.
+const CHAT_SYSTEM_PROMPT = `You are the AI assistant for Noland Earthworks, LLC — a veteran-owned land management and forestry mulching company in Middle Tennessee. Your name is not important; you represent Noland Earthworks.
 
 YOUR ROLE:
 - Answer questions about our services, service area, process, and what to expect

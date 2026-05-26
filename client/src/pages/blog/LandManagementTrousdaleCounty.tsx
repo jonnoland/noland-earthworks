@@ -5,7 +5,7 @@ export default function LandManagementTrousdaleCounty() {
     <BlogPostLayout
       title="Land Management in Trousdale County, TN: What Property Owners Need to Know"
       pageTitle="Land Management in Trousdale County, TN | Noland Earthworks"
-      metaDescription="Need land management in Trousdale County, TN? Noland Earthworks provides forestry mulching and land clearing in Hartsville and across Trousdale County, Tennessee."
+      metaDescription="Need land management in Trousdale County, TN? Noland Earthworks provides forestry mulching and land management in Hartsville and across Trousdale County, Tennessee."
       date="May 2026"
       dateISO="2026-05-25"
       lastUpdated="May 2026"
@@ -60,7 +60,7 @@ export default function LandManagementTrousdaleCounty() {
           <strong>Invasive species management</strong> — Privet, multiflora rose, and autumn olive are widespread throughout Trousdale County, particularly along Cumberland River tributaries, fence lines, and idle field margins. Forestry mulching removes them at scale, and we can treat cut surfaces to reduce regrowth.
         </li>
         <li>
-          <strong>River-corridor and bottomland clearing</strong> — Properties along the Cumberland River and its tributaries often have dense bottomland vegetation that limits access and use. We work carefully in these areas with full awareness of riparian buffer requirements and setback rules.
+          <strong>River-corridor and bottomland management</strong> — Properties along the Cumberland River and its tributaries often have dense bottomland vegetation that limits access and use. We work carefully in these areas with full awareness of riparian buffer requirements and setback rules.
         </li>
         <li>
           <strong>Timber stand improvement</strong> — Properties with established hardwood timber benefit from understory clearing to improve timber quality, reduce fire risk, and make the property more accessible and usable. Forestry mulching removes the understory without damaging the standing timber above.
@@ -107,7 +107,7 @@ export default function LandManagementTrousdaleCounty() {
       <ul>
         <li><a href="/blog/land-management-sumner-county"><strong>Land Management in Sumner County, TN</strong></a> — Serving Gallatin, Hendersonville, Goodlettsville, Portland, and surrounding areas.</li>
         <li><a href="/blog/land-management-wilson-county"><strong>Land Management in Wilson County, TN</strong></a> — Serving Lebanon, Mount Juliet, Watertown, and surrounding areas.</li>
-        <li><a href="/service-areas/smith-county"><strong>Land Clearing in Smith County, TN</strong></a> — Serving Carthage, Gordonsville, and surrounding areas.</li>
+        <li><a href="/service-areas/smith-county"><strong>Land Management in Smith County, TN</strong></a> — Serving Carthage, Gordonsville, and surrounding areas.</li>
       </ul>
       <p>
         Not sure which county your property falls in? <a href="/quote">Request a free estimate</a> and we will confirm your location and service area when we follow up.

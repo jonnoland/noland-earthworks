@@ -5,7 +5,7 @@ export default function LandManagementHardinCounty() {
     <BlogPostLayout
       title="Land Management in Hardin County, TN: What Property Owners Need to Know"
       pageTitle="Land Management in Hardin County, TN | Noland Earthworks"
-      metaDescription="Need land management in Hardin County, TN? Noland Earthworks provides forestry mulching and land clearing in Savannah, Counce, Shiloh and across Hardin County."
+      metaDescription="Need land management in Hardin County, TN? Noland Earthworks provides forestry mulching and land management in Savannah, Counce, Shiloh and across Hardin County."
       date="May 2026"
       dateISO="2026-05-25"
       lastUpdated="May 2026"
@@ -20,7 +20,7 @@ export default function LandManagementHardinCounty() {
       ]}
     >
       <p>
-        Hardin County, nestled in West Tennessee along the scenic Tennessee River and Pickwick Lake, is a region rich in natural beauty and historical significance. Property owners here, from agricultural producers and timberland managers to residential and commercial developers, understand the unique challenges and opportunities presented by the land. Noland Earthworks, a veteran-owned and operated company, provides expert forestry mulching and land clearing services across Hardin County, including its main towns like Savannah, Counce, and the historic Shiloh area. We are dedicated to helping landowners effectively manage their properties, ensuring they remain productive, accessible, and beautiful.
+        Hardin County, nestled in West Tennessee along the scenic Tennessee River and Pickwick Lake, is a region rich in natural beauty and historical significance. Property owners here, from agricultural producers and timberland managers to residential and commercial developers, understand the unique challenges and opportunities presented by the land. Noland Earthworks, a veteran-owned and operated company, provides expert forestry mulching and land management services across Hardin County, including its main towns like Savannah, Counce, and the historic Shiloh area. We are dedicated to helping landowners effectively manage their properties, ensuring they remain productive, accessible, and beautiful.
       </p>
 
       <h2>The Land in Hardin County: What You Are Working With</h2>
@@ -76,9 +76,9 @@ export default function LandManagementHardinCounty() {
         Forestry mulching is particularly beneficial for river-adjacent properties as it helps control erosion, stabilizes banks, and removes invasive species that can degrade riparian ecosystems. The mulch layer protects the soil, promotes healthy native vegetation, and maintains the natural beauty of your waterfront property without disturbing the soil structure.
       </p>
 
-      <h3>Are there specific land clearing regulations around Shiloh National Military Park?</h3>
+      <h3>Are there specific land management regulations around Shiloh National Military Park?</h3>
       <p>
-        While general county and state land clearing regulations apply throughout Hardin County, projects in close proximity to sensitive areas like Shiloh National Military Park may require additional consideration or coordination with park authorities. It's always recommended to consult with local planning and zoning offices for specific guidance on projects near historical or protected sites.
+        While general county and state land management regulations apply throughout Hardin County, projects in close proximity to sensitive areas like Shiloh National Military Park may require additional consideration or coordination with park authorities. It's always recommended to consult with local planning and zoning offices for specific guidance on projects near historical or protected sites.
       </p>
 
       <h2>Also Serving Nearby Counties</h2>
@@ -87,13 +87,13 @@ export default function LandManagementHardinCounty() {
       </p>
       <ul>
         <li>
-          <a href="/service-areas/wayne-county"><strong>Land Management in Wayne County, TN</strong></a> — Offering forestry mulching and land clearing for the diverse landscapes of Wayne County, from agricultural fields to timber tracts.
+          <a href="/service-areas/wayne-county"><strong>Land Management in Wayne County, TN</strong></a> — Offering forestry mulching and land management for the diverse landscapes of Wayne County, from agricultural fields to timber tracts.
         </li>
         <li>
           <a href="/service-areas/decatur-county"><strong>Land Management in Decatur County, TN</strong></a> — Providing efficient and environmentally friendly land solutions for property owners along the Tennessee River and throughout Decatur County.
         </li>
         <li>
-          <a href="/service-areas/chester-county"><strong>Land Management in Chester County, TN</strong></a> — Delivering professional land clearing and mulching services to enhance property value and usability in Chester County.
+          <a href="/service-areas/chester-county"><strong>Land Management in Chester County, TN</strong></a> — Delivering professional land management and mulching services to enhance property value and usability in Chester County.
         </li>
       </ul>
     </BlogPostLayout>

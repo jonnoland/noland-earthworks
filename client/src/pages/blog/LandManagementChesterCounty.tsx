@@ -5,7 +5,7 @@ export default function LandManagementChesterCounty() {
     <BlogPostLayout
       title="Land Management in Chester County, TN: What Property Owners Need to Know"
       pageTitle="Land Management in Chester County, TN | Noland Earthworks"
-      metaDescription="Need land management in Chester County, TN? Noland Earthworks provides forestry mulching and land clearing in Henderson, Enville, and Jacks Creek and across Chester County."
+      metaDescription="Need land management in Chester County, TN? Noland Earthworks provides forestry mulching and land management in Henderson, Enville, and Jacks Creek and across Chester County."
       date="May 2026"
       dateISO="2026-05-25"
       lastUpdated="May 2026"
@@ -21,13 +21,13 @@ export default function LandManagementChesterCounty() {
       ]}
     >
       <h2>Land Management in Chester County, TN: What Property Owners Need to Know</h2>
-      <p>Chester County, located in West Tennessee, is characterized by its rich agricultural heritage, timberlands, and growing rural residential areas. With Henderson as its county seat and towns like Enville, Jacks Creek, and Pinson dotting the landscape, property owners here understand the importance of effective land management. Whether you're a farmer looking to expand tillable acreage, a timberland owner managing your forest, or a homeowner clearing space for a new build, Noland Earthworks provides the expertise and equipment to handle your land clearing needs efficiently and responsibly.</p>
+      <p>Chester County, located in West Tennessee, is characterized by its rich agricultural heritage, timberlands, and growing rural residential areas. With Henderson as its county seat and towns like Enville, Jacks Creek, and Pinson dotting the landscape, property owners here understand the importance of effective land management. Whether you're a farmer looking to expand tillable acreage, a timberland owner managing your forest, or a homeowner clearing space for a new build, Noland Earthworks provides the expertise and equipment to handle your land management needs efficiently and responsibly.</p>
 
       <h2>The Land in Chester County: What You Are Working With</h2>
       <p>Chester County lies within the Gulf Coastal Plain physiographic region of West Tennessee. This area is generally characterized by gently rolling hills, fertile soils, and a landscape shaped by ancient river systems. The vegetation profile typically includes mixed hardwood forests, pine stands, and extensive agricultural fields. Waterways such as the tributaries of the Forked Deer River traverse the county, influencing both the terrain and the types of land management challenges and opportunities present. Understanding these natural characteristics is key to successful and sustainable land development.</p>
 
       <h2>Why Forestry Mulching Works Well in Chester County</h2>
-      <p>Forestry mulching is an ideal land clearing method for Chester County properties. Our specialized, tracked machinery allows us to navigate the varied terrain of the Gulf Coastal Plain, from wooded areas to overgrown fields, without causing excessive ground disturbance. Unlike traditional clearing methods, forestry mulching processes vegetation where it stands, eliminating the need for burning or hauling away debris. This single-pass operation creates a nutrient-rich mulch layer that helps prevent erosion, retains soil moisture, and suppresses future weed growth, making it an environmentally sound and efficient choice for your land.</p>
+      <p>Forestry mulching is an ideal land management method for Chester County properties. Our specialized, tracked machinery allows us to navigate the varied terrain of the Gulf Coastal Plain, from wooded areas to overgrown fields, without causing excessive ground disturbance. Unlike traditional clearing methods, forestry mulching processes vegetation where it stands, eliminating the need for burning or hauling away debris. This single-pass operation creates a nutrient-rich mulch layer that helps prevent erosion, retains soil moisture, and suppresses future weed growth, making it an environmentally sound and efficient choice for your land.</p>
 
       <h2>Common Land Management Projects in Chester County</h2>
       <ul>
@@ -40,7 +40,7 @@ export default function LandManagementChesterCounty() {
       </ul>
 
       <h2>Permit Requirements in Chester County</h2>
-      <p>Navigating permit requirements for land clearing in Chester County typically involves coordination with local authorities. For projects within city limits, such as Henderson, you may need to consult the municipal planning or codes department. For properties outside city boundaries, the Chester County Zoning Office will be your primary point of contact for any necessary land disturbance permits. Additionally, any work near or impacting waterways, including tributaries of the Forked Deer River, may require permits from the Tennessee Department of Environment and Conservation (TDEC) or the Army Corps of Engineers to ensure compliance with environmental regulations.</p>
+      <p>Navigating permit requirements for land management in Chester County typically involves coordination with local authorities. For projects within city limits, such as Henderson, you may need to consult the municipal planning or codes department. For properties outside city boundaries, the Chester County Zoning Office will be your primary point of contact for any necessary land disturbance permits. Additionally, any work near or impacting waterways, including tributaries of the Forked Deer River, may require permits from the Tennessee Department of Environment and Conservation (TDEC) or the Army Corps of Engineers to ensure compliance with environmental regulations.</p>
 
       <h2>Serving All of Chester County</h2>
       <p>Noland Earthworks is proud to serve property owners throughout Chester County, including Henderson, Enville, Jacks Creek, Pinson, and all surrounding rural areas. As a veteran-owned and operated company, we bring a commitment to integrity, reliability, and quality workmanship to every project. We understand the unique land management needs of this region and are equipped to deliver exceptional results. Contact us today for a free estimate and let us help you achieve your land management goals.</p>
@@ -61,7 +61,7 @@ export default function LandManagementChesterCounty() {
         <br />
         <a href="/service-areas/henderson-county"><strong>Land Management in Henderson County, TN</strong></a> — Directly north of Chester County, Henderson County shares much of the same West Tennessee landscape and agricultural character.
         <br />
-        <a href="/service-areas/hardin-county"><strong>Land Management in Hardin County, TN</strong></a> — To the south, Hardin County offers diverse terrain along the Tennessee River, presenting unique land clearing challenges.
+        <a href="/service-areas/hardin-county"><strong>Land Management in Hardin County, TN</strong></a> — To the south, Hardin County offers diverse terrain along the Tennessee River, presenting unique land management challenges.
       </p>
     </BlogPostLayout>
   );

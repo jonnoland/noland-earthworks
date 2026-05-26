@@ -182,12 +182,25 @@ interface Lead {
 // ─── Lead Card ────────────────────────────────────────────────────────────────
 
 function LeadCard({ lead, onClick, onDragStart }: { lead: Lead; onClick: () => void; onDragStart: (id: number) => void }) {
+  const isStale = (() => {
+    if (lead.stage === "won" || lead.stage === "lost") return false;
+    const lastUpdate = lead.updatedAt ?? lead.createdAt;
+    if (!lastUpdate) return false;
+    const daysSince = Math.floor((Date.now() - new Date(lastUpdate).getTime()) / (1000 * 60 * 60 * 24));
+    return daysSince >= 3;
+  })();
+
   return (
     <div
       draggable
       onDragStart={e => { e.dataTransfer.effectAllowed = "move"; onDragStart(lead.id); }}
       onClick={onClick}
-      className="w-full text-left bg-[#181818] border border-[#2a2a2a] rounded-lg px-3 py-2.5 hover:border-[#3a3a3a] hover:bg-[#1e1e1e] transition-all group cursor-grab active:cursor-grabbing select-none"
+      className={cn(
+        "w-full text-left bg-[#181818] border rounded-lg px-3 py-2.5 hover:bg-[#1e1e1e] transition-all group cursor-grab active:cursor-grabbing select-none",
+        isStale
+          ? "border-amber-500/40 hover:border-amber-500/60"
+          : "border-[#2a2a2a] hover:border-[#3a3a3a]"
+      )}
     >
       <div className="flex items-center justify-between gap-2">
         <div className="flex-1 min-w-0">
@@ -226,6 +239,12 @@ function LeadCard({ lead, onClick, onDragStart }: { lead: Lead; onClick: () => v
             }`}>
               <Brain className="w-2.5 h-2.5" />
               {lead.aiScore.charAt(0).toUpperCase() + lead.aiScore.slice(1)}
+            </span>
+          )}
+          {isStale && (
+            <span className="inline-flex items-center gap-0.5 text-[10px] font-medium px-1.5 py-0.5 rounded border bg-amber-500/15 text-amber-400 border-amber-500/30">
+              <Clock className="w-2.5 h-2.5" />
+              Stale
             </span>
           )}
           {lead.requestedVisitAt && (

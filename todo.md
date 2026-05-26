@@ -1281,3 +1281,11 @@
 - [x] Build AI follow-up draft feature: generate draft message for stale leads (3+ days in Contacted status)
 - [x] Show AI draft in lead detail panel with copy/send buttons
 - [x] Add "Generate Follow-up" button to lead row actions
+
+## AI Score Quotes + Stale Lead Indicator — May 2026
+- [x] Apply AI score badges and filter pills to /ops/quotes list page
+- [x] Add stale lead visual indicator to lead cards (3+ days no update, not won/lost)
+- [x] Confirm loading animation on Generate Follow-up Draft button is visible while AI generates
+
+## Land Clearing → Land Management Rename — May 2026
+- [x] Replace all user-facing "Land Clearing" text with "Land Management" across the entire site (pages, components, blog posts, emails, schema, nav, ops dashboard)

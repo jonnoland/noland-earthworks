@@ -26,7 +26,7 @@ const estimatorInputSchema = z.object({
   leadId: z.number().optional(),
 });
 
-const COST_SYSTEM_PROMPT = `You are a job cost estimator for Noland Earthworks, LLC — a veteran-owned land clearing and forestry mulching company in Middle Tennessee.
+const COST_SYSTEM_PROMPT = `You are a job cost estimator for Noland Earthworks, LLC — a veteran-owned land management and forestry mulching company in Middle Tennessee.
 
 EQUIPMENT:
 - Primary machine: Tracked forestry mulcher

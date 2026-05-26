@@ -17,7 +17,7 @@ interface Message {
 const STORAGE_KEY = "ne_chat_session";
 const WELCOME_MESSAGE: Message = {
   role: "assistant",
-  content: "Hey there — thanks for stopping by Noland Earthworks. What can I help you with today? Whether you have questions about land clearing, forestry mulching, or want to get a quote started, I'm here.",
+  content: "Hey there — thanks for stopping by Noland Earthworks. What can I help you with today? Whether you have questions about land management, forestry mulching, or want to get a quote started, I'm here.",
 };
 
 export default function AIChatWidget() {

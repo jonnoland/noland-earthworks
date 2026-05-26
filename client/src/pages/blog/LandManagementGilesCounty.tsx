@@ -6,7 +6,7 @@ export default function LandManagementGilesCounty() {
     <BlogPostLayout
       title="Land Management in Giles County, TN: Essential Insights for Property Owners"
       pageTitle="Land Management in Giles County, TN | Noland Earthworks"
-      metaDescription="Discover crucial land management insights for Giles County, TN property owners. Learn about forestry mulching, land clearing, and maintaining your land effectively."
+      metaDescription="Discover crucial land management insights for Giles County, TN property owners. Learn about forestry mulching, land management, and maintaining your land effectively."
       date="May 2026"
       dateISO="2026-05-25"
       lastUpdated="May 2026"
@@ -50,9 +50,9 @@ export default function LandManagementGilesCounty() {
 
       <p>For landowners looking to reclaim overgrown areas, create new trails, or manage invasive species without harsh chemical treatments, forestry mulching offers a responsible and effective solution. If you're in Pulaski or the surrounding areas, consider how this method can benefit your land.</p>
 
-      <h2>Comprehensive Land Clearing in Giles County, Tennessee</h2>
+      <h2>Comprehensive Land Management in Giles County, Tennessee</h2>
 
-      <p>Sometimes, the scope of work goes beyond mulching. For larger trees, stumps, or significant site preparation, <a href="/services/land-clearing">land clearing</a> becomes necessary. This might involve:</p>
+      <p>Sometimes, the scope of work goes beyond mulching. For larger trees, stumps, or significant site preparation, <a href="/services/land-clearing">land management</a> becomes necessary. This might involve:</p>
 
       <ul>
         <li><strong>New Construction:</strong> Clearing land for a new home, outbuilding, or commercial development.</li>
@@ -61,7 +61,7 @@ export default function LandManagementGilesCounty() {
         <li><strong>Storm Damage Cleanup:</strong> Removing large fallen trees and debris after severe weather events.</li>
       </ul>
 
-      <p>Our approach to land clearing in Giles County, Tennessee, is always tailored to your specific project. We assess the terrain, soil type, and your objectives to determine the most efficient and environmentally sound methods. We aim to leave you with a clean slate, ready for whatever you envision for your property, while minimizing disruption to the surrounding environment.</p>
+      <p>Our approach to land management in Giles County, Tennessee, is always tailored to your specific project. We assess the terrain, soil type, and your objectives to determine the most efficient and environmentally sound methods. We aim to leave you with a clean slate, ready for whatever you envision for your property, while minimizing disruption to the surrounding environment.</p>
 
       <h2>Beyond Clearing: Long-Term Land Stewardship</h2>
 
@@ -73,7 +73,7 @@ export default function LandManagementGilesCounty() {
 
       <h2>Ready to Transform Your Giles County Property?</h2>
 
-      <p>If you own property in Pulaski, Elkton, Minor Hill, Lynnville, Prospect, or anywhere else in Giles County, and you’re considering forestry mulching or land clearing, we’re here to help. We provide honest assessments and reliable service, grounded in real-world experience.</p>
+      <p>If you own property in Pulaski, Elkton, Minor Hill, Lynnville, Prospect, or anywhere else in Giles County, and you’re considering forestry mulching or land management, we’re here to help. We provide honest assessments and reliable service, grounded in real-world experience.</p>
 
       <p>Don't let overgrown land diminish your property's value or usability. Visit <a href="https://nolandearthworks.com/quote">nolandearthworks.com/quote</a> today to request a free estimate. Let's discuss your land management needs and how we can help you achieve your goals for your Giles County property.</p>
     </BlogPostLayout>

@@ -5,7 +5,7 @@ export default function LandManagementHendersonCounty() {
     <BlogPostLayout
       title="Land Management in Henderson County, TN: What Property Owners Need to Know"
       pageTitle="Land Management in Henderson County, TN | Noland Earthworks"
-      metaDescription="Need land management in Henderson County, TN? Noland Earthworks provides forestry mulching and land clearing in Lexington, Sardis, Scotts Hill, and across Henderson County."
+      metaDescription="Need land management in Henderson County, TN? Noland Earthworks provides forestry mulching and land management in Lexington, Sardis, Scotts Hill, and across Henderson County."
       date="May 2026"
       dateISO="2026-05-25"
       lastUpdated="May 2026"
@@ -77,7 +77,7 @@ export default function LandManagementHendersonCounty() {
         Forestry mulching creates a nutrient-rich layer of organic material that improves soil health, reduces erosion, and enhances moisture retention. This is particularly beneficial for the loamy soils found in the West Tennessee Gulf Coastal Plain, promoting healthier plant growth and reducing the need for chemical treatments.
       </p>
 
-      <h3>Do I need a burn permit for land clearing in Henderson County?</h3>
+      <h3>Do I need a burn permit for land management in Henderson County?</h3>
       <p>
         While forestry mulching eliminates the need for burning debris, if you are considering any other clearing methods that involve burning, burn permits are typically required in Tennessee, especially during certain seasons. Always check with the Tennessee Department of Agriculture, Division of Forestry, or your local fire department for current regulations.
       </p>
@@ -88,13 +88,13 @@ export default function LandManagementHendersonCounty() {
       </p>
       <ul>
         <li>
-          <a href="/service-areas/chester-county"><strong>Land Management in Chester County, TN</strong></a> — Providing land clearing and forestry mulching services for agricultural, residential, and commercial properties in this neighboring county to the south.
+          <a href="/service-areas/chester-county"><strong>Land Management in Chester County, TN</strong></a> — Providing land management and forestry mulching services for agricultural, residential, and commercial properties in this neighboring county to the south.
         </li>
         <li>
           <a href="/service-areas/decatur-county"><strong>Land Management in Decatur County, TN</strong></a> — Offering professional land management solutions for landowners along the Tennessee River and throughout Decatur County.
         </li>
         <li>
-          <a href="/service-areas/hardin-county"><strong>Land Management in Hardin County, TN</strong></a> — Delivering efficient and effective land clearing, mulching, and site prep services for properties in the southeastern part of West Tennessee.
+          <a href="/service-areas/hardin-county"><strong>Land Management in Hardin County, TN</strong></a> — Delivering efficient and effective land management, mulching, and site prep services for properties in the southeastern part of West Tennessee.
         </li>
       </ul>
     </BlogPostLayout>

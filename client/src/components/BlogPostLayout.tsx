@@ -88,7 +88,7 @@ export default function BlogPostLayout({
 
     const keywordsStr = Array.isArray(keywords)
       ? keywords.join(", ")
-      : (keywords ?? `${category}, land clearing Tennessee, forestry mulching Tennessee, Noland Earthworks`);
+      : (keywords ?? `${category}, land management Tennessee, forestry mulching Tennessee, Noland Earthworks`);
 
     el.textContent = JSON.stringify({
       "@context": "https://schema.org",

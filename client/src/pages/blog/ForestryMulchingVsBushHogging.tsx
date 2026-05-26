@@ -23,7 +23,7 @@ export default function ForestryMulchingVsBushHogging() {
 
       <p>
         As a landowner in Tennessee, you've likely heard terms like "forestry mulching"
-        and "bush hogging" when considering land clearing or maintenance. It's easy
+        and "bush hogging" when considering land management or maintenance. It's easy
         to get them mixed up, but understanding the fundamental differences between
         these two methods is crucial for making the right decision for your property.
         At Noland Earthworks, we specialize in both, and we're here to help you
@@ -84,7 +84,7 @@ export default function ForestryMulchingVsBushHogging() {
       <h2>What is Forestry Mulching?</h2>
 
       <p>
-        Forestry mulching is a more advanced and comprehensive land clearing method.
+        Forestry mulching is a more advanced and comprehensive land management method.
         It utilizes specialized machinery, typically a skid steer or excavator with a
         powerful mulching head, to grind up trees, brush, and other vegetation into
         a fine layer of organic material right where it stands.
@@ -107,13 +107,13 @@ export default function ForestryMulchingVsBushHogging() {
 
       <h3>When is Forestry Mulching Appropriate?</h3>
       <p>
-        Forestry mulching is ideal for more extensive land clearing projects where you
+        Forestry mulching is ideal for more extensive land management projects where you
         want a thorough, environmentally friendly, and long-lasting solution. It's
         perfect for:
       </p>
       <ul>
         <li>
-          <strong>Land Clearing:</strong> Preparing land for construction, development,
+          <strong>Land Management:</strong> Preparing land for construction, development,
           or agricultural use.
         </li>
         <li>
@@ -227,7 +227,7 @@ export default function ForestryMulchingVsBushHogging() {
       <h2>Ready to Transform Your Land?</h2>
 
       <p>
-        Whether you need extensive land clearing or routine maintenance, Noland Earthworks
+        Whether you need extensive land management or routine maintenance, Noland Earthworks
         has the expertise and equipment to get the job done right. As a veteran-owned
         and operated company, we pride ourselves on reliability, integrity, and quality
         workmanship for landowners across Middle and West Tennessee.

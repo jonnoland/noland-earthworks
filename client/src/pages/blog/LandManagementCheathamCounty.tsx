@@ -5,7 +5,7 @@ export default function LandManagementCheathamCounty() {
     <BlogPostLayout
       title="Land Management in Cheatham County, TN: What Property Owners Need to Know"
       pageTitle="Land Management in Cheatham County, TN | Noland Earthworks"
-      metaDescription="Need land management in Cheatham County, TN? Noland Earthworks provides forestry mulching and land clearing in Ashland City, Kingston Springs, Pegram, and across Cheatham County."
+      metaDescription="Need land management in Cheatham County, TN? Noland Earthworks provides forestry mulching and land management in Ashland City, Kingston Springs, Pegram, and across Cheatham County."
       date="May 2026"
       dateISO="2026-05-25"
       lastUpdated="May 2026"
@@ -20,7 +20,7 @@ export default function LandManagementCheathamCounty() {
       ]}
     >
       <p>
-        Cheatham County sits on the western edge of the Nashville metro, and its character is defined by that position. Ashland City, Kingston Springs, Pegram, and Pleasant View are close enough to Nashville to attract residential development pressure, but the county retains a distinctly rural feel — steep ridgelines, hardwood timber, the Cumberland River corridor, and working agricultural land that has been managed for generations. For property owners in Cheatham County, land management is a practical necessity: the terrain is challenging, the vegetation grows fast, and the county's proximity to Nashville means land values and development activity are both moving in one direction. This guide covers what Cheatham County landowners need to know about forestry mulching, land clearing, and getting their property ready for whatever comes next.
+        Cheatham County sits on the western edge of the Nashville metro, and its character is defined by that position. Ashland City, Kingston Springs, Pegram, and Pleasant View are close enough to Nashville to attract residential development pressure, but the county retains a distinctly rural feel — steep ridgelines, hardwood timber, the Cumberland River corridor, and working agricultural land that has been managed for generations. For property owners in Cheatham County, land management is a practical necessity: the terrain is challenging, the vegetation grows fast, and the county's proximity to Nashville means land values and development activity are both moving in one direction. This guide covers what Cheatham County landowners need to know about forestry mulching, land management, and getting their property ready for whatever comes next.
       </p>
 
       <h2>The Land in Cheatham County: What You Are Working With</h2>

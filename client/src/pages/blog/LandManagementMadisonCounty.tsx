@@ -5,7 +5,7 @@ export default function LandManagementMadisonCounty() {
     <BlogPostLayout
       title="Land Management in Madison County, TN: What Property Owners Need to Know"
       pageTitle="Land Management in Madison County, TN | Noland Earthworks"
-      metaDescription="Need land management in Madison County, TN? Noland Earthworks provides forestry mulching and land clearing in Jackson, Medina, Humboldt and across Madison County."
+      metaDescription="Need land management in Madison County, TN? Noland Earthworks provides forestry mulching and land management in Jackson, Medina, Humboldt and across Madison County."
       date="May 2026"
       dateISO="2026-05-25"
       lastUpdated="May 2026"
@@ -44,7 +44,7 @@ export default function LandManagementMadisonCounty() {
 
       <h2>Permit Requirements in Madison County</h2>
 
-      <p>Before undertaking significant land clearing projects in Madison County, it is important to understand local permit requirements. For projects within city limits, such as Jackson, Medina, or Humboldt, you may need to consult with the respective city planning or codes department. For projects outside city boundaries, the Madison County Zoning Office can provide guidance on regulations. Additionally, any work near waterways like the South Fork Forked Deer River may require permits from the Tennessee Department of Environment and Conservation (TDEC) or the U.S. Army Corps of Engineers, especially if it involves disturbing wetlands or stream banks. Noland Earthworks can help navigate these requirements to ensure your project complies with all local and state regulations.</p>
+      <p>Before undertaking significant land management projects in Madison County, it is important to understand local permit requirements. For projects within city limits, such as Jackson, Medina, or Humboldt, you may need to consult with the respective city planning or codes department. For projects outside city boundaries, the Madison County Zoning Office can provide guidance on regulations. Additionally, any work near waterways like the South Fork Forked Deer River may require permits from the Tennessee Department of Environment and Conservation (TDEC) or the U.S. Army Corps of Engineers, especially if it involves disturbing wetlands or stream banks. Noland Earthworks can help navigate these requirements to ensure your project complies with all local and state regulations.</p>
 
       <h2>Serving All of Madison County</h2>
 
@@ -58,8 +58,8 @@ export default function LandManagementMadisonCounty() {
       <h3>How does forestry mulching benefit my land in the Gulf Coastal Plain?</h3>
       <p>Forestry mulching in the Gulf Coastal Plain helps manage the dense vegetation common to the region. It creates a protective mulch layer that enriches the soil, reduces erosion on slopes, and helps retain moisture, which is particularly beneficial during dry periods. This method also minimizes disturbance to the delicate ecosystems of the area.</p>
 
-      <h3>Do I need to be present during the land clearing process?</h3>
-      <p>While it is not strictly necessary for you to be present during the entire land clearing process, we encourage an initial consultation to discuss your project goals and a final walkthrough to ensure your satisfaction. We maintain clear communication throughout the project, regardless of your presence on-site.</p>
+      <h3>Do I need to be present during the land management process?</h3>
+      <p>While it is not strictly necessary for you to be present during the entire land management process, we encourage an initial consultation to discuss your project goals and a final walkthrough to ensure your satisfaction. We maintain clear communication throughout the project, regardless of your presence on-site.</p>
 
       <h2>Also Serving Nearby Counties</h2>
 

@@ -5,7 +5,7 @@ export default function LandManagementDicksonCounty() {
     <BlogPostLayout
       title="Land Management in Dickson County, TN: What Property Owners Need to Know"
       pageTitle="Land Management in Dickson County, TN | Noland Earthworks"
-      metaDescription="Need land management in Dickson County, TN? Noland Earthworks provides forestry mulching and land clearing in Dickson, Charlotte, White Bluff, Burns, and across Dickson County."
+      metaDescription="Need land management in Dickson County, TN? Noland Earthworks provides forestry mulching and land management in Dickson, Charlotte, White Bluff, Burns, and across Dickson County."
       date="May 2026"
       dateISO="2026-05-25"
       lastUpdated="May 2026"

@@ -5,7 +5,7 @@ export default function LandManagementGibsonCounty() {
     <BlogPostLayout
       title="Land Management in Gibson County, TN: What Property Owners Need to Know"
       pageTitle="Land Management in Gibson County, TN | Noland Earthworks"
-      metaDescription="Need land management in Gibson County, TN? Noland Earthworks provides forestry mulching and land clearing in Milan, Humboldt, and Dyer and across Gibson County."
+      metaDescription="Need land management in Gibson County, TN? Noland Earthworks provides forestry mulching and land management in Milan, Humboldt, and Dyer and across Gibson County."
       date="May 2026"
       dateISO="2026-05-25"
       lastUpdated="May 2026"
@@ -21,7 +21,7 @@ export default function LandManagementGibsonCounty() {
       ]}
     >
       <p>
-        Gibson County, located in West Tennessee, is characterized by its flat to gently rolling terrain, part of the Gulf Coastal Plain. Key towns include Trenton, Milan, Humboldt, Dyer, Bradford, Kenton, Gibson, and Medina. This area is primarily agricultural, with significant timberland and rural residential properties. Property owners here often seek services related to land clearing, forestry mulching, and general land management to maintain their valuable assets.
+        Gibson County, located in West Tennessee, is characterized by its flat to gently rolling terrain, part of the Gulf Coastal Plain. Key towns include Trenton, Milan, Humboldt, Dyer, Bradford, Kenton, Gibson, and Medina. This area is primarily agricultural, with significant timberland and rural residential properties. Property owners here often seek services related to land management, forestry mulching, and general land management to maintain their valuable assets.
       </p>
 
       <h2>The Land in Gibson County: What You Are Working With</h2>
@@ -77,9 +77,9 @@ export default function LandManagementGibsonCounty() {
         Forestry mulching is highly beneficial for agricultural land in Gibson County. It efficiently clears brush and small trees, converting them into a protective layer of mulch. This mulch helps retain soil moisture, enriches the soil with organic matter, and reduces erosion, all of which contribute to healthier soil and improved crop yields or pasture quality.
       </p>
 
-      <h3>Do I need to be present during the land clearing process?</h3>
+      <h3>Do I need to be present during the land management process?</h3>
       <p>
-        While it's not strictly necessary for you to be present during the entire land clearing process, we encourage an initial consultation to discuss your project goals and a final walkthrough to ensure your complete satisfaction. We maintain clear communication throughout the project, providing updates as needed.
+        While it's not strictly necessary for you to be present during the entire land management process, we encourage an initial consultation to discuss your project goals and a final walkthrough to ensure your complete satisfaction. We maintain clear communication throughout the project, providing updates as needed.
       </p>
 
       <h2>Also Serving Nearby Counties</h2>
@@ -88,13 +88,13 @@ export default function LandManagementGibsonCounty() {
       </p>
       <ul>
         <li>
-          <a href="/service-areas/weakley-county"><strong>Land Management in Weakley County, TN</strong></a> — Offering comprehensive land clearing and forestry mulching services to enhance property value and usability.
+          <a href="/service-areas/weakley-county"><strong>Land Management in Weakley County, TN</strong></a> — Offering comprehensive land management and forestry mulching services to enhance property value and usability.
         </li>
         <li>
           <a href="/service-areas/carroll-county"><strong>Land Management in Carroll County, TN</strong></a> — Specializing in efficient and environmentally friendly land management solutions for diverse landscapes.
         </li>
         <li>
-          <a href="/service-areas/henderson-county"><strong>Land Management in Henderson County, TN</strong></a> — Delivering professional land clearing, site preparation, and invasive species control.
+          <a href="/service-areas/henderson-county"><strong>Land Management in Henderson County, TN</strong></a> — Delivering professional land management, site preparation, and invasive species control.
         </li>
       </ul>
     </BlogPostLayout>

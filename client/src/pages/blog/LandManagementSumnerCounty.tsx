@@ -5,7 +5,7 @@ export default function LandManagementSumnerCounty() {
     <BlogPostLayout
       title="Land Management in Sumner County, TN: What Property Owners Need to Know"
       pageTitle="Land Management Sumner County, TN | Noland Earthworks"
-      metaDescription="Discover essential land management practices for Sumner County, TN property owners. Learn about forestry mulching, land clearing, and how to maintain your land effectively."
+      metaDescription="Discover essential land management practices for Sumner County, TN property owners. Learn about forestry mulching, land management, and how to maintain your land effectively."
       date="May 2026"
       dateISO="2026-05-25"
       lastUpdated="May 2026"
@@ -25,7 +25,7 @@ export default function LandManagementSumnerCounty() {
 
       <p>Sumner County, Tennessee, is a place of unique character. From the bustling growth in Gallatin and Hendersonville to the quiet farmlands and natural beauty along the Cumberland River, property owners here face a diverse set of land management needs. Whether you own a small residential lot, a large agricultural tract, or are developing new properties, understanding effective land management is key to maintaining your investment and enhancing its value.</p>
 
-      <p>At Noland Earthworks, we work with landowners across Sumner County, including areas like Portland, White House, Westmoreland, and Castalian Springs. We’ve seen firsthand the challenges and opportunities that come with managing land in this fast-growing region. Our goal is to provide practical, reliable land clearing and forestry mulching services that help you achieve your property goals.</p>
+      <p>At Noland Earthworks, we work with landowners across Sumner County, including areas like Portland, White House, Westmoreland, and Castalian Springs. We’ve seen firsthand the challenges and opportunities that come with managing land in this fast-growing region. Our goal is to provide practical, reliable land management and forestry mulching services that help you achieve your property goals.</p>
 
       <h2>Why Land Management is Crucial in Sumner County</h2>
 
@@ -53,9 +53,9 @@ export default function LandManagementSumnerCounty() {
       </ul>
       <p>In Gallatin, Hendersonville, and other Sumner County communities, forestry mulching is an excellent way to prepare land for new construction, enhance recreational areas, or simply maintain a well-managed property.</p>
 
-      <h2>Comprehensive Land Clearing Services in Sumner County</h2>
+      <h2>Comprehensive Land Management Services in Sumner County</h2>
 
-      <p>Sometimes, a property requires more extensive work than mulching alone. Our <a href="/services/land-clearing">land clearing services</a> are designed to handle larger projects, from complete site preparation to significant tree and brush removal. We work with:</p>
+      <p>Sometimes, a property requires more extensive work than mulching alone. Our <a href="/services/land-clearing">land management services</a> are designed to handle larger projects, from complete site preparation to significant tree and brush removal. We work with:</p>
       <ul>
         <li><strong>Homeowners:</strong> Clearing lots for new homes, expanding yards, or creating defensible space around existing structures.</li>
         <li><strong>Farmers:</strong> Reclaiming agricultural land, clearing fields for planting, or managing overgrown areas that impede operations.</li>
@@ -72,7 +72,7 @@ export default function LandManagementSumnerCounty() {
 
       <h2>Ready to Transform Your Sumner County Property?</h2>
 
-      <p>If you own property in Gallatin, Hendersonville, Portland, White House, Westmoreland, Castalian Springs, or anywhere else in Sumner County, and you're looking for professional land management, forestry mulching, or land clearing services, we're here to help. We invite you to learn more about how we can assist you in achieving your land goals.</p>
+      <p>If you own property in Gallatin, Hendersonville, Portland, White House, Westmoreland, Castalian Springs, or anywhere else in Sumner County, and you're looking for professional land management, forestry mulching, or land management services, we're here to help. We invite you to learn more about how we can assist you in achieving your land goals.</p>
 
       <p>For a free estimate and to discuss your specific project needs, please visit <a href="https://nolandearthworks.com/quote">nolandearthworks.com/quote</a>. Let Noland Earthworks put our experience to work for your Sumner County property.</p>
     </BlogPostLayout>

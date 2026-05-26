@@ -5,7 +5,7 @@ export default function LandManagementCannonCounty() {
     <BlogPostLayout
       title="Land Management in Cannon County, TN: What Property Owners Need to Know"
       pageTitle="Land Management in Cannon County, TN | Noland Earthworks"
-      metaDescription="Need land management in Cannon County, TN? Noland Earthworks provides forestry mulching and land clearing in Woodbury, Auburntown, and across Cannon County."
+      metaDescription="Need land management in Cannon County, TN? Noland Earthworks provides forestry mulching and land management in Woodbury, Auburntown, and across Cannon County."
       date="May 2026"
       dateISO="2026-05-25"
       lastUpdated="May 2026"
@@ -21,7 +21,7 @@ export default function LandManagementCannonCounty() {
     >
       <h2>Land Management in Cannon County, TN: What Property Owners Need to Know</h2>
       <p>
-        Cannon County, nestled in the heart of Middle Tennessee, offers a blend of rural charm and natural beauty. With its county seat in Woodbury and towns like Auburntown, Readyville, and Bradyville, the area is characterized by its position on the Eastern Highland Rim. The landscape features rolling hills, dense woodlands, and the headwaters of the Stones River. Property owners here, from agricultural operations to residential developers and private landowners, often face unique land management challenges. Noland Earthworks, a veteran-owned company, provides expert forestry mulching and land clearing services tailored to the specific needs of Cannon County properties.
+        Cannon County, nestled in the heart of Middle Tennessee, offers a blend of rural charm and natural beauty. With its county seat in Woodbury and towns like Auburntown, Readyville, and Bradyville, the area is characterized by its position on the Eastern Highland Rim. The landscape features rolling hills, dense woodlands, and the headwaters of the Stones River. Property owners here, from agricultural operations to residential developers and private landowners, often face unique land management challenges. Noland Earthworks, a veteran-owned company, provides expert forestry mulching and land management services tailored to the specific needs of Cannon County properties.
       </p>
 
       <h2>The Land in Cannon County: What You Are Working With</h2>
@@ -74,7 +74,7 @@ export default function LandManagementCannonCounty() {
 
       <h3>Do I need a permit to clear land on my property in Cannon County?</h3>
       <p>
-        Whether you need a permit depends on the scale and location of your project. Minor clearing for maintenance typically does not require a permit. However, larger projects, especially those involving significant grading, changes to drainage, or work near waterways like the Stones River, may require permits from the Cannon County Zoning Office or TDEC. It's best to consult with these local authorities before starting any major land clearing.
+        Whether you need a permit depends on the scale and location of your project. Minor clearing for maintenance typically does not require a permit. However, larger projects, especially those involving significant grading, changes to drainage, or work near waterways like the Stones River, may require permits from the Cannon County Zoning Office or TDEC. It's best to consult with these local authorities before starting any major land management.
       </p>
 
       <h3>How does forestry mulching benefit agricultural land in Cannon County?</h3>
@@ -84,7 +84,7 @@ export default function LandManagementCannonCounty() {
 
       <h2>Also Serving Nearby Counties</h2>
       <p>
-        <a href="/blog/land-management-rutherford-county"><strong>Land Management in Rutherford County, TN</strong></a> — Located to the west, Rutherford County is experiencing rapid growth, leading to increased demand for land clearing for residential and commercial development.
+        <a href="/blog/land-management-rutherford-county"><strong>Land Management in Rutherford County, TN</strong></a> — Located to the west, Rutherford County is experiencing rapid growth, leading to increased demand for land management for residential and commercial development.
       </p>
       <p>
         <a href="/blog/land-management-wilson-county"><strong>Land Management in Wilson County, TN</strong></a> — To the north, Wilson County combines agricultural heritage with suburban expansion, requiring diverse land management solutions.

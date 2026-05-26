@@ -5,7 +5,7 @@ export default function LandManagementWeakleyCounty() {
     <BlogPostLayout
       title="Land Management in Weakley County, TN: What Property Owners Need to Know"
       pageTitle="Land Management in Weakley County, TN | Noland Earthworks"
-      metaDescription="Need land management in Weakley County, TN? Noland Earthworks provides forestry mulching and land clearing in Martin, Dresden, Greenfield and across Weakley County."
+      metaDescription="Need land management in Weakley County, TN? Noland Earthworks provides forestry mulching and land management in Martin, Dresden, Greenfield and across Weakley County."
       date="May 2026"
       dateISO="2026-05-25"
       lastUpdated="May 2026"
@@ -57,7 +57,7 @@ export default function LandManagementWeakleyCounty() {
 
       <h2>Permit Requirements in Weakley County</h2>
       <p>
-        Navigating permit requirements for land clearing in Weakley County often involves local city offices, the Weakley County Zoning Office, and potentially state agencies for projects near waterways. For work within Dresden, Martin, or other incorporated towns, property owners should consult their respective city permit offices. The Weakley County Zoning Office handles permits for unincorporated areas. Projects involving significant disturbance near Obion River tributaries or other wetlands may require permits from the Tennessee Department of Environment and Conservation (TDEC) or the U.S. Army Corps of Engineers to ensure compliance with environmental regulations. It is always best to check with the relevant authorities before beginning any major land alteration.
+        Navigating permit requirements for land management in Weakley County often involves local city offices, the Weakley County Zoning Office, and potentially state agencies for projects near waterways. For work within Dresden, Martin, or other incorporated towns, property owners should consult their respective city permit offices. The Weakley County Zoning Office handles permits for unincorporated areas. Projects involving significant disturbance near Obion River tributaries or other wetlands may require permits from the Tennessee Department of Environment and Conservation (TDEC) or the U.S. Army Corps of Engineers to ensure compliance with environmental regulations. It is always best to check with the relevant authorities before beginning any major land alteration.
       </p>
 
       <h2>Serving All of Weakley County</h2>
@@ -68,7 +68,7 @@ export default function LandManagementWeakleyCounty() {
       <h2>Frequently Asked Questions — Weakley County</h2>
       <h3>What types of properties do you service in Weakley County?</h3>
       <p>
-        We work with a wide range of property owners in Weakley County, including farmers, timberland owners, rural residential landowners, and commercial developers. Whether you have a small acreage or a large tract of land, we have the equipment and expertise to handle your land clearing and mulching needs.
+        We work with a wide range of property owners in Weakley County, including farmers, timberland owners, rural residential landowners, and commercial developers. Whether you have a small acreage or a large tract of land, we have the equipment and expertise to handle your land management and mulching needs.
       </p>
 
       <h3>How does forestry mulching benefit agricultural land in Weakley County?</h3>
@@ -76,7 +76,7 @@ export default function LandManagementWeakleyCounty() {
         Forestry mulching is highly beneficial for agricultural land. It clears overgrown areas, fence lines, and unproductive sections, turning vegetation into nutrient-rich mulch. This mulch improves soil health, reduces erosion, and helps retain moisture, ultimately enhancing the productivity and value of your farmland.
       </p>
 
-      <h3>Do I need to be present during the land clearing process?</h3>
+      <h3>Do I need to be present during the land management process?</h3>
       <p>
         While it's not strictly necessary for you to be present throughout the entire process, we encourage an initial consultation to discuss your project goals and a final walkthrough to ensure your complete satisfaction. We pride ourselves on clear communication and will keep you informed of our progress.
       </p>
@@ -87,13 +87,13 @@ export default function LandManagementWeakleyCounty() {
       </p>
       <ul>
         <li>
-          <a href="/service-areas/henry-county"><strong>Land Management in Henry County, TN</strong></a> — Providing land clearing and forestry mulching services for landowners around Paris and the Kentucky Lake area.
+          <a href="/service-areas/henry-county"><strong>Land Management in Henry County, TN</strong></a> — Providing land management and forestry mulching services for landowners around Paris and the Kentucky Lake area.
         </li>
         <li>
           <a href="/service-areas/carroll-county"><strong>Land Management in Carroll County, TN</strong></a> — Expert land management for residential, agricultural, and timber properties, including areas near Huntingdon and McKenzie.
         </li>
         <li>
-          <a href="/service-areas/gibson-county"><strong>Land Management in Gibson County, TN</strong></a> — Offering comprehensive land clearing solutions for farmers and property owners in and around Trenton and Milan.
+          <a href="/service-areas/gibson-county"><strong>Land Management in Gibson County, TN</strong></a> — Offering comprehensive land management solutions for farmers and property owners in and around Trenton and Milan.
         </li>
       </ul>
     </BlogPostLayout>

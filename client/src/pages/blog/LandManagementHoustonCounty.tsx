@@ -5,7 +5,7 @@ export default function LandManagementHoustonCounty() {
     <BlogPostLayout
       title="Land Management in Houston County, TN: What Property Owners Need to Know"
       pageTitle="Land Management in Houston County, TN | Noland Earthworks"
-      metaDescription="Need land management in Houston County, TN? Noland Earthworks provides forestry mulching and land clearing in Erin, Tennessee Ridge, and Cumberland City and across Houston County."
+      metaDescription="Need land management in Houston County, TN? Noland Earthworks provides forestry mulching and land management in Erin, Tennessee Ridge, and Cumberland City and across Houston County."
       date="May 2026"
       dateISO="2026-05-25"
       lastUpdated="May 2026"
@@ -22,7 +22,7 @@ export default function LandManagementHoustonCounty() {
       <h1>Land Management in Houston County, TN: What Property Owners Need to Know</h1>
 
       <p>
-        Houston County, nestled in the Western Highland Rim of Tennessee, offers a unique blend of natural beauty and agricultural opportunity. With its county seat in Erin and other key towns like Tennessee Ridge and Cumberland City, this region is characterized by rolling hills, dense timberlands, and significant river-adjacent properties along the Cumberland River, which forms its eastern border. Property owners here, from farmers and timber operators to residential landowners, face distinct land management challenges and opportunities. Noland Earthworks, a veteran-owned company, understands the specific needs of Houston County and provides expert forestry mulching and land clearing services to help you maintain and enhance your property.
+        Houston County, nestled in the Western Highland Rim of Tennessee, offers a unique blend of natural beauty and agricultural opportunity. With its county seat in Erin and other key towns like Tennessee Ridge and Cumberland City, this region is characterized by rolling hills, dense timberlands, and significant river-adjacent properties along the Cumberland River, which forms its eastern border. Property owners here, from farmers and timber operators to residential landowners, face distinct land management challenges and opportunities. Noland Earthworks, a veteran-owned company, understands the specific needs of Houston County and provides expert forestry mulching and land management services to help you maintain and enhance your property.
       </p>
 
       <h2>The Land in Houston County: What You Are Working With</h2>
@@ -59,7 +59,7 @@ export default function LandManagementHoustonCounty() {
 
       <h2>Permit Requirements in Houston County</h2>
       <p>
-        Navigating permit requirements for land clearing projects in Houston County can be complex. For projects within city limits, such as Erin, you may need to consult the local city permit office. For projects outside city boundaries, the Houston County zoning office will be your primary contact. Additionally, any work near or impacting the Cumberland River or its tributaries may require permits from the Tennessee Department of Environment and Conservation (TDEC) or the U.S. Army Corps of Engineers. It is always advisable to check with these authorities before beginning any significant land alteration.
+        Navigating permit requirements for land management projects in Houston County can be complex. For projects within city limits, such as Erin, you may need to consult the local city permit office. For projects outside city boundaries, the Houston County zoning office will be your primary contact. Additionally, any work near or impacting the Cumberland River or its tributaries may require permits from the Tennessee Department of Environment and Conservation (TDEC) or the U.S. Army Corps of Engineers. It is always advisable to check with these authorities before beginning any significant land alteration.
       </p>
 
       <h2>Serving All of Houston County</h2>

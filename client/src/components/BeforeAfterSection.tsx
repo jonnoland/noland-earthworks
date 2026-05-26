@@ -33,7 +33,7 @@ const PAIRS: Pair[] = [
   {
     before: LAND_IMG,
     after: HERO_IMG,
-    service: "Land Clearing",
+    service: "Land Management",
     county: "Maury County",
     acreage: "8 acres",
     note: "Overgrown pasture reclaimed for cattle. Fence line cleared and fence posts preserved.",
