@@ -5,4 +5,4 @@ export const trpc = createTRPCReact<AppRouter>();
 
 // Production API base — update this to your live domain after publishing
 export const API_BASE_URL =
-  import.meta.env.VITE_API_URL ?? "https://nolandearthworks.com";
+  import.meta.env.VITE_API_URL ?? "https://nolandearth-pymczdcn.manus.space";
