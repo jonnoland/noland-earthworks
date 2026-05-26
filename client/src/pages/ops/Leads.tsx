@@ -19,6 +19,7 @@ import {
   AlarmClock, User, PhoneCall,
   ClipboardList, Star, Snowflake, RefreshCw,
   Map as MapIcon, LayoutGrid, Clock, Navigation,
+  Brain, Copy, Check, Sparkles,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -172,6 +173,10 @@ interface Lead {
   visitConfirmedAt?: Date | string | null;
   createdAt: Date | string;
   updatedAt: Date | string;
+  aiScore?: string | null;
+  aiSummary?: string | null;
+  aiFlags?: string | null;
+  aiDraftResponse?: string | null;
 }
 
 // ─── Lead Card ────────────────────────────────────────────────────────────────
@@ -201,14 +206,28 @@ function LeadCard({ lead, onClick, onDragStart }: { lead: Lead; onClick: () => v
           </div>
         )}
       </div>
-      {/* Source badge */}
-      {lead.source && (
+      {/* Source + AI score badges */}
+      {(lead.source || lead.aiScore) && (
         <div className="mt-1.5 flex flex-wrap gap-1">
-          <span className={`inline-flex items-center text-[10px] font-medium px-1.5 py-0.5 rounded border ${
-            SOURCE_COLORS[lead.source] ?? SOURCE_COLORS.other
-          }`}>
-            {SOURCE_LABELS[lead.source] ?? lead.source}
-          </span>
+          {lead.source && (
+            <span className={`inline-flex items-center text-[10px] font-medium px-1.5 py-0.5 rounded border ${
+              SOURCE_COLORS[lead.source] ?? SOURCE_COLORS.other
+            }`}>
+              {SOURCE_LABELS[lead.source] ?? lead.source}
+            </span>
+          )}
+          {lead.aiScore && (
+            <span className={`inline-flex items-center gap-0.5 text-[10px] font-semibold px-1.5 py-0.5 rounded border ${
+              lead.aiScore === "strong"
+                ? "bg-green-500/15 text-green-400 border-green-500/25"
+                : lead.aiScore === "marginal"
+                ? "bg-amber-500/15 text-amber-400 border-amber-500/25"
+                : "bg-red-500/15 text-red-400 border-red-500/25"
+            }`}>
+              <Brain className="w-2.5 h-2.5" />
+              {lead.aiScore.charAt(0).toUpperCase() + lead.aiScore.slice(1)}
+            </span>
+          )}
           {lead.requestedVisitAt && (
             <span className={`inline-flex items-center gap-0.5 text-[10px] font-medium px-1.5 py-0.5 rounded border ${
               lead.visitConfirmedAt
@@ -538,9 +557,27 @@ function LeadDetailPanel({
   const markerRef = useRef<google.maps.marker.AdvancedMarkerElement | null>(null);
   const [travelTime, setTravelTime] = useState<string | null>(null);
   const [travelDist, setTravelDist] = useState<string | null>(null);
+  const [followUpDraft, setFollowUpDraft] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
 
   const utils = trpc.useUtils();
   const { data: notes = [], isLoading: notesLoading } = trpc.ops.leads.listNotes.useQuery({ leadId: lead.id });
+
+  const generateFollowUp = trpc.ops.leads.generateFollowUp.useMutation({
+    onSuccess: (data) => {
+      setFollowUpDraft(typeof data.draft === "string" ? data.draft : String(data.draft ?? ""));
+      toast.success("Follow-up draft ready");
+    },
+    onError: () => toast.error("Failed to generate follow-up"),
+  });
+
+  const handleCopyDraft = () => {
+    if (!followUpDraft) return;
+    navigator.clipboard.writeText(followUpDraft).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  };
 
   const addNote = trpc.ops.leads.addNote.useMutation({
     onSuccess: () => { setNoteText(""); utils.ops.leads.listNotes.invalidate({ leadId: lead.id }); },
@@ -758,6 +795,103 @@ function LeadDetailPanel({
             </>
           )}
 
+          {/* AI Score section */}
+          {(lead.aiScore || lead.aiSummary || lead.aiFlags) && (
+            <div className="mx-4 my-3 p-3 rounded-lg border space-y-2 bg-[#0f0f0f] border-[#2a2a2a]">
+              <div className="flex items-center gap-2">
+                <Brain className="w-3.5 h-3.5 text-[#E07B2A]" />
+                <span className="text-[11px] font-semibold uppercase tracking-wider text-[#555]">AI Assessment</span>
+                {lead.aiScore && (
+                  <span className={`ml-auto text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+                    lead.aiScore === "strong"
+                      ? "bg-green-500/15 text-green-400 border-green-500/25"
+                      : lead.aiScore === "marginal"
+                      ? "bg-amber-500/15 text-amber-400 border-amber-500/25"
+                      : "bg-red-500/15 text-red-400 border-red-500/25"
+                  }`}>
+                    {lead.aiScore.charAt(0).toUpperCase() + lead.aiScore.slice(1)}
+                  </span>
+                )}
+              </div>
+              {lead.aiSummary && (
+                <p className="text-[11px] text-[#888] leading-relaxed">{lead.aiSummary}</p>
+              )}
+              {lead.aiFlags && (() => {
+                try {
+                  const flags = JSON.parse(lead.aiFlags) as string[];
+                  return flags.length > 0 ? (
+                    <div className="flex flex-wrap gap-1">
+                      {flags.map((flag, i) => (
+                        <span key={i} className="text-[10px] px-1.5 py-0.5 rounded bg-red-500/10 text-red-400 border border-red-500/20">
+                          {flag}
+                        </span>
+                      ))}
+                    </div>
+                  ) : null;
+                } catch { return null; }
+              })()}
+            </div>
+          )}
+
+          {/* AI Follow-Up Draft */}
+          <div className="mx-4 mb-3">
+            {!followUpDraft ? (
+              <button
+                onClick={() => generateFollowUp.mutate({ leadId: lead.id })}
+                disabled={generateFollowUp.isPending}
+                className="w-full flex items-center justify-center gap-2 bg-[#1a1a1a] hover:bg-[#222] border border-[#2a2a2a] hover:border-[#E07B2A]/40 text-xs text-[#aaa] hover:text-[#E07B2A] py-2.5 rounded-lg transition-colors disabled:opacity-50"
+              >
+                {generateFollowUp.isPending ? (
+                  <><Loader2 className="w-3.5 h-3.5 animate-spin" />Generating follow-up...</>
+                ) : (
+                  <><Sparkles className="w-3.5 h-3.5" />Generate Follow-up Draft</>
+                )}
+              </button>
+            ) : (
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-semibold uppercase tracking-wider text-[#555] flex items-center gap-1.5">
+                    <Sparkles className="w-3 h-3 text-[#E07B2A]" />Follow-Up Draft
+                  </span>
+                  <button
+                    onClick={() => setFollowUpDraft(null)}
+                    className="text-[10px] text-[#555] hover:text-[#888] transition-colors"
+                  >Regenerate</button>
+                </div>
+                <textarea
+                  value={followUpDraft}
+                  onChange={e => setFollowUpDraft(e.target.value)}
+                  rows={5}
+                  className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-3 py-2.5 text-xs text-white resize-none focus:outline-none focus:border-[#E07B2A]/50"
+                />
+                <div className="flex gap-2">
+                  <button
+                    onClick={handleCopyDraft}
+                    className="flex-1 flex items-center justify-center gap-1.5 bg-[#1a1a1a] hover:bg-[#222] border border-[#2a2a2a] text-xs text-[#aaa] py-2 rounded-md transition-colors"
+                  >
+                    {copied ? <><Check className="w-3.5 h-3.5 text-green-400" />Copied</> : <><Copy className="w-3.5 h-3.5" />Copy</>}
+                  </button>
+                  {lead.phone && (
+                    <a
+                      href={`sms:${lead.phone}?body=${encodeURIComponent(followUpDraft)}`}
+                      className="flex-1 flex items-center justify-center gap-1.5 bg-green-600 hover:bg-green-700 text-white text-xs font-semibold py-2 rounded-md transition-colors"
+                    >
+                      <MessageSquare className="w-3.5 h-3.5" />Send via Text
+                    </a>
+                  )}
+                  {lead.email && (
+                    <a
+                      href={`mailto:${lead.email}?subject=${encodeURIComponent("Following up — Noland Earthworks")}&body=${encodeURIComponent(followUpDraft)}`}
+                      className="flex-1 flex items-center justify-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold py-2 rounded-md transition-colors"
+                    >
+                      <Mail className="w-3.5 h-3.5" />Send via Email
+                    </a>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+
           {/* Speed-to-contact nudge */}
           {lead.stage === "new" && (
             <div className="mx-4 my-3 p-3 bg-blue-500/10 border border-blue-500/20 rounded-lg">
@@ -966,6 +1100,7 @@ export default function Leads() {
   const [dragOverStage, setDragOverStage] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<"kanban" | "map" | "visits">("kanban");
   const [sourceFilter, setSourceFilter] = useState<string>("all");
+  const [aiScoreFilter, setAiScoreFilter] = useState<string>("all");
 
   const utils = trpc.useUtils();
   const { data: leads = [], isLoading } = trpc.ops.leads.list.useQuery();
@@ -1010,6 +1145,7 @@ export default function Leads() {
 
   const filtered = (leads as Lead[]).filter(l => {
     if (sourceFilter !== "all" && l.source !== sourceFilter) return false;
+    if (aiScoreFilter !== "all" && l.aiScore !== aiScoreFilter) return false;
     if (!search) return true;
     const q = search.toLowerCase();
     return l.name.toLowerCase().includes(q) || (l.phone ?? "").includes(q) || (l.address ?? "").toLowerCase().includes(q);
@@ -1147,6 +1283,45 @@ export default function Leads() {
                 <button
                   key={key}
                   onClick={() => setSourceFilter(key)}
+                  className={cn(
+                    "shrink-0 flex items-center gap-1 text-[11px] font-medium px-2.5 py-1 rounded-full border transition-colors",
+                    colorClass
+                  )}
+                >
+                  {label}
+                  <span className={cn(
+                    "text-[10px] font-bold px-1 py-0.5 rounded-full",
+                    isActive ? "bg-white/15" : "bg-white/5"
+                  )}>{count}</span>
+                </button>
+              );
+            })}
+          </div>
+          {/* AI Score filter pills */}
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 scrollbar-none">
+            <Brain className="w-3 h-3 text-[#444] shrink-0" />
+            {[
+              { key: "all", label: "All Scores" },
+              { key: "strong", label: "Strong" },
+              { key: "marginal", label: "Marginal" },
+              { key: "weak", label: "Weak" },
+            ].map(({ key, label }) => {
+              const count = key === "all"
+                ? (leads as Lead[]).filter(l => l.aiScore).length
+                : (leads as Lead[]).filter(l => l.aiScore === key).length;
+              if (key !== "all" && count === 0) return null;
+              const isActive = aiScoreFilter === key;
+              const colorClass = key === "strong"
+                ? isActive ? "bg-green-500/30 text-green-300 border-green-500/50" : "bg-green-500/10 text-green-400/70 border-green-500/20 hover:border-green-500/40"
+                : key === "marginal"
+                ? isActive ? "bg-amber-500/30 text-amber-300 border-amber-500/50" : "bg-amber-500/10 text-amber-400/70 border-amber-500/20 hover:border-amber-500/40"
+                : key === "weak"
+                ? isActive ? "bg-red-500/30 text-red-300 border-red-500/50" : "bg-red-500/10 text-red-400/70 border-red-500/20 hover:border-red-500/40"
+                : isActive ? "bg-[#2a2a2a] text-white border-[#444]" : "bg-[#111] text-[#555] border-[#222] hover:border-[#333] hover:text-[#888]";
+              return (
+                <button
+                  key={key}
+                  onClick={() => setAiScoreFilter(key)}
                   className={cn(
                     "shrink-0 flex items-center gap-1 text-[11px] font-medium px-2.5 py-1 rounded-full border transition-colors",
                     colorClass

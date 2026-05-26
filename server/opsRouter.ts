@@ -334,6 +334,51 @@ const leadsRouter = router({
       return { jobId: newJobId };
     }),
 
+  // ─── AI Follow-Up Draft ──────────────────────────────────────────────────
+  generateFollowUp: ownerProcedure
+    .input(z.object({ leadId: z.number().int().positive() }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+      const rows = await db.select().from(opsLeads)
+        .where(and(eq(opsLeads.id, input.leadId), eq(opsLeads.userId, ctx.user.id)))
+        .limit(1);
+      if (rows.length === 0) throw new TRPCError({ code: "NOT_FOUND", message: "Lead not found" });
+      const lead = rows[0];
+
+      const daysSinceContact = lead.updatedAt
+        ? Math.floor((Date.now() - new Date(lead.updatedAt).getTime()) / (1000 * 60 * 60 * 24))
+        : null;
+
+      const { invokeLLM } = await import("./_core/llm");
+      const result = await invokeLLM({
+        messages: [
+          {
+            role: "system",
+            content: `You are Jon Noland, owner of Noland Earthworks, LLC — a veteran-owned land clearing and forestry mulching company in Middle Tennessee. Write a short, direct follow-up message to a lead who has gone quiet. Sound like a real person, not a marketing department. Professional but warm. No emojis. No corporate jargon. No phrases like "I hope this message finds you well" or "I wanted to reach out". Get straight to the point. Reference specific job details if available. End with a clear, low-pressure call to action (call or text back). Keep it under 100 words.`,
+          },
+          {
+            role: "user",
+            content: `Draft a follow-up message for this lead:
+
+Name: ${lead.name}
+Job type: ${lead.jobType ?? "land clearing"}
+Property address: ${lead.address ?? "not provided"}
+Current stage: ${lead.stage}
+Days since last update: ${daysSinceContact ?? "unknown"}
+AI score: ${lead.aiScore ?? "not scored"}
+AI summary: ${lead.aiSummary ?? "none"}
+Notes: ${lead.notes ?? "none"}
+
+Write the message as if you are Jon sending a text or short email. First-person, direct, genuine.`,
+          },
+        ],
+      });
+
+      const draft = result.choices?.[0]?.message?.content ?? "";
+      return { draft };
+    }),
+
   // ─── Facebook Webhook Utilities ───────────────────────────────────────────
   facebookLastReceived: ownerProcedure.query(async ({ ctx }) => {
     const db = await getDb();

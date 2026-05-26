@@ -1273,3 +1273,11 @@
 - [x] AI job cost estimator: side-by-side customer price range vs internal cost breakdown
 - [x] AI job cost estimator: accessible from /ops/cost-estimator page with sidebar nav entry
 - [x] AI job cost estimator: save estimates to DB linked to quote/job records
+
+## AI Lead Score Badges + Follow-up Drafts — May 2026
+- [x] Add AI score badge column (Strong/Marginal/Weak) to /ops/leads table
+- [x] Add AI score filter tab to /ops/leads (All / Strong / Marginal / Weak)
+- [x] Add sort-by-AI-score option to /ops/leads column sort controls
+- [x] Build AI follow-up draft feature: generate draft message for stale leads (3+ days in Contacted status)
+- [x] Show AI draft in lead detail panel with copy/send buttons
+- [x] Add "Generate Follow-up" button to lead row actions
