@@ -141,6 +141,7 @@ export const opsLeads = mysqlTable("ops_leads", {
     "referral",
     "website",
     "direct",
+    "field_app",
     "other",
   ]).default("other").notNull(),
   stage: mysqlEnum("stage", [
@@ -906,3 +907,46 @@ export const socialPosts = mysqlTable("social_posts", {
 });
 export type SocialPost = typeof socialPosts.$inferSelect;
 export type InsertSocialPost = typeof socialPosts.$inferInsert;
+
+// ─── Field Quotes (Noland Field mobile app) ───────────────────────────────────
+/**
+ * Field quotes submitted from the Noland Field mobile companion app.
+ * Captures GPS coordinates, site photos (S3 URLs), and all field measurements
+ * collected during an on-site visit. AI-scored on submission.
+ */
+export const fieldQuotes = mysqlTable("field_quotes", {
+  id: int("id").autoincrement().primaryKey(),
+  /** Contact info */
+  name: varchar("name", { length: 255 }).notNull(),
+  email: varchar("email", { length: 320 }),
+  phone: varchar("phone", { length: 50 }),
+  /** Site location */
+  address: text("address"),
+  lat: decimal("lat", { precision: 10, scale: 7 }),
+  lng: decimal("lng", { precision: 10, scale: 7 }),
+  /** Job details */
+  serviceType: varchar("serviceType", { length: 100 }),
+  acreage: decimal("acreage", { precision: 8, scale: 2 }),
+  terrainType: varchar("terrainType", { length: 100 }),
+  vegetationDensity: varchar("vegetationDensity", { length: 100 }),
+  vegetationTypes: varchar("vegetationTypes", { length: 255 }),
+  slopeCondition: varchar("slopeCondition", { length: 100 }),
+  accessCondition: varchar("accessCondition", { length: 255 }),
+  obstacles: text("obstacles"),
+  proximityToStructures: text("proximityToStructures"),
+  /** Field notes from Jon */
+  message: text("message"),
+  /** JSON array of S3 photo URLs */
+  photoUrls: text("photoUrls"),
+  /** Source identifier — always "field_app" for mobile submissions */
+  source: varchar("source", { length: 50 }).notNull().default("field_app"),
+  /** AI lead qualification */
+  aiScore: mysqlEnum("aiScore", ["strong", "marginal", "weak"]),
+  aiSummary: text("aiSummary"),
+  aiFlags: text("aiFlags"),        // JSON array of flag strings
+  aiDraftResponse: text("aiDraftResponse"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type FieldQuote = typeof fieldQuotes.$inferSelect;
+export type InsertFieldQuote = typeof fieldQuotes.$inferInsert;

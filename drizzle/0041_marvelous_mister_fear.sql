@@ -1,0 +1,1 @@
+ALTER TABLE `ops_leads` MODIFY COLUMN `source` enum('google','facebook','referral','website','direct','field_app','other') NOT NULL DEFAULT 'other';

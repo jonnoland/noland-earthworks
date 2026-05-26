@@ -57,6 +57,8 @@ import {
   Archive,
   BookmarkCheck,
   CheckCircle2,
+  Smartphone,
+  Image,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -2181,7 +2183,7 @@ function WebsiteRequestsSection({
     lineItems?: { name: string; description: string; quantity: number; unitPrice: number }[];
   }) => void;
 }) {
-  const [activeTab, setActiveTab] = useState<"requests" | "drafts">("requests");
+  const [activeTab, setActiveTab] = useState<"requests" | "drafts" | "field">("requests");
   type DraftRow = { id: number; customerName?: string | null; customerEmail?: string | null; service?: string | null; county?: string | null; acreage?: string | null; aiResult: string; status: string; notes?: string | null; createdAt: Date | string; updatedAt: Date | string; submissionId: number };
   const [previewDraft, setPreviewDraft] = useState<DraftRow | null>(null);
   // Track which drafts have been pushed to Jobber in this session (optimistic, before DB refetch)
@@ -2220,8 +2222,13 @@ function WebsiteRequestsSection({
     return true;
   });
 
-  const isRefreshing = activeTab === "requests" ? isFetching : draftsFetching;
-  const handleRefresh = () => activeTab === "requests" ? refetch() : refetchDrafts();
+  const { data: fieldQuoteList, isLoading: fieldLoading, refetch: refetchField, isFetching: fieldFetching } = trpc.fieldQuote.list.useQuery(
+    { limit: 100 },
+    { retry: false }
+  );
+
+  const isRefreshing = activeTab === "requests" ? isFetching : activeTab === "field" ? fieldFetching : draftsFetching;
+  const handleRefresh = () => activeTab === "requests" ? refetch() : activeTab === "field" ? refetchField() : refetchDrafts();
 
   return (
     <div className="space-y-3">
@@ -2266,6 +2273,22 @@ function WebsiteRequestsSection({
           Saved Drafts
           {!draftsLoading && draftList.length > 0 && (
             <span className="ml-1.5 inline-flex items-center justify-center w-4 h-4 rounded-full bg-amber-500/15 text-amber-600 text-[10px] font-semibold">{draftList.length}</span>
+          )}
+        </button>
+        <button
+          onClick={() => setActiveTab("field")}
+          className={`px-3 py-1.5 text-xs font-medium rounded-t transition-colors ${
+            activeTab === "field"
+              ? "bg-background border border-b-background border-border text-foreground -mb-px"
+              : "text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          <span className="flex items-center gap-1">
+            <Smartphone className="w-3 h-3" />
+            Field
+          </span>
+          {!fieldLoading && fieldQuoteList && fieldQuoteList.length > 0 && (
+            <span className="ml-1.5 inline-flex items-center justify-center w-4 h-4 rounded-full bg-blue-500/15 text-blue-500 text-[10px] font-semibold">{fieldQuoteList.length}</span>
           )}
         </button>
       </div>
@@ -2478,6 +2501,107 @@ function WebsiteRequestsSection({
                         <Trash2 className="w-3 h-3" />
                       </Button>
                     </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </>
+      )}
+
+      {/* Field Submissions tab */}
+      {activeTab === "field" && (
+        <>
+          {fieldLoading && (
+            <div className="flex items-center justify-center py-10">
+              <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+            </div>
+          )}
+          {!fieldLoading && (!fieldQuoteList || fieldQuoteList.length === 0) && (
+            <div className="flex flex-col items-center justify-center py-10 text-center gap-2">
+              <Smartphone className="w-8 h-8 text-muted-foreground/30" />
+              <p className="text-xs text-muted-foreground">No field submissions yet. Use the Noland Field mobile app to submit quotes from the job site.</p>
+            </div>
+          )}
+          {!fieldLoading && fieldQuoteList && fieldQuoteList.length > 0 && (
+            <div className="space-y-2">
+              {fieldQuoteList.map((fq) => {
+                const scoreColor = fq.aiScore === "strong" ? "text-green-600" : fq.aiScore === "weak" ? "text-destructive" : "text-amber-500";
+                const scoreBg = fq.aiScore === "strong" ? "bg-green-500/10" : fq.aiScore === "weak" ? "bg-destructive/10" : "bg-amber-500/10";
+                const photoUrls = Array.isArray(fq.photoUrls) ? fq.photoUrls as string[] : [];
+                const aiFlags = Array.isArray(fq.aiFlags) ? fq.aiFlags as string[] : [];
+                return (
+                  <div key={fq.id} className="rounded-md border border-border bg-card p-3 space-y-2">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium text-foreground truncate">{fq.name}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {[fq.serviceType, fq.acreage ? `${fq.acreage} ac` : null, fq.terrainType].filter(Boolean).join(" · ")}
+                        </p>
+                      </div>
+                      {fq.aiScore && (
+                        <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded capitalize ${scoreColor} ${scoreBg}`}>
+                          {fq.aiScore}
+                        </span>
+                      )}
+                    </div>
+                    {fq.address && (
+                      <p className="text-xs text-muted-foreground flex items-center gap-1">
+                        <MapPin className="w-3 h-3 shrink-0" />
+                        {fq.address}
+                      </p>
+                    )}
+                    {fq.aiSummary && (
+                      <p className="text-xs text-muted-foreground line-clamp-2">{fq.aiSummary}</p>
+                    )}
+                    {aiFlags.length > 0 && (
+                      <div className="flex flex-wrap gap-1">
+                        {aiFlags.map((flag, i) => (
+                          <span key={i} className="text-[10px] bg-amber-500/10 text-amber-600 px-1.5 py-0.5 rounded">{flag}</span>
+                        ))}
+                      </div>
+                    )}
+                    {photoUrls.length > 0 && (
+                      <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                        <Image className="w-3 h-3" />
+                        {photoUrls.length} photo{photoUrls.length !== 1 ? "s" : ""}
+                      </div>
+                    )}
+                    <div className="flex items-center gap-2 pt-1">
+                      {fq.phone && (
+                        <a href={`tel:${fq.phone}`} className="text-xs text-primary hover:underline flex items-center gap-1">
+                          <Phone className="w-3 h-3" />{fq.phone}
+                        </a>
+                      )}
+                      {fq.email && (
+                        <a href={`mailto:${fq.email}`} className="text-xs text-primary hover:underline flex items-center gap-1">
+                          <Mail className="w-3 h-3" />{fq.email}
+                        </a>
+                      )}
+                      <span className="ml-auto text-[10px] text-muted-foreground">
+                        {new Date(fq.createdAt).toLocaleDateString()}
+                      </span>
+                    </div>
+                    {fq.aiDraftResponse && (
+                      <details className="text-xs">
+                        <summary className="cursor-pointer text-muted-foreground hover:text-foreground select-none">Draft response</summary>
+                        <p className="mt-1 text-foreground/80 whitespace-pre-wrap">{fq.aiDraftResponse}</p>
+                      </details>
+                    )}
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="w-full h-7 text-xs mt-1"
+                      onClick={() => onBuildQuote({
+                        clientName: fq.name,
+                        clientEmail: fq.email ?? undefined,
+                        jobType: [fq.serviceType, fq.acreage ? `${fq.acreage} acres` : null].filter(Boolean).join(" — "),
+                        message: fq.aiDraftResponse ?? undefined,
+                      })}
+                    >
+                      <Plus className="w-3 h-3 mr-1" />
+                      Build Quote in Jobber
+                    </Button>
                   </div>
                 );
               })}

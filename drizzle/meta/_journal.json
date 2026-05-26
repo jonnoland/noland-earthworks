@@ -281,6 +281,20 @@
       "when": 1779761973127,
       "tag": "0039_gifted_eternals",
       "breakpoints": true
+    },
+    {
+      "idx": 40,
+      "version": "5",
+      "when": 1779825133064,
+      "tag": "0040_bizarre_power_man",
+      "breakpoints": true
+    },
+    {
+      "idx": 41,
+      "version": "5",
+      "when": 1779825494161,
+      "tag": "0041_marvelous_mister_fear",
+      "breakpoints": true
     }
   ]
 }

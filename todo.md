@@ -1313,3 +1313,16 @@
 - [x] AI client summary: "Generate Client Summary" button in Clients detail panel — reads all jobs/leads/notes and writes relationship summary
 - [x] AI weekly KPI insight: "Generate Insight" button on Reports/Scoreboard — reads KPI data and writes plain-English summary of what the numbers mean
 - [x] AI scheduling note: "Suggest Field Note" button on Schedule job blocks — reads job/lead record and writes short field prep note
+
+## Capacitor Mobile Companion App — May 2026
+
+- [x] Install and configure Capacitor with iOS and Android platforms
+- [x] Add Capacitor Camera, Geolocation, and Filesystem plugins
+- [x] Build mobile app shell with bottom-tab navigation and mobile-first layout
+- [x] Build field quote form: GPS auto-fill address, acreage/terrain/vegetation inputs, camera capture, photo preview strip
+- [x] Add server procedure: fieldQuote.submit — accepts field quote data + photo S3 URLs, writes to fieldQuotes table
+- [x] Add server procedure: fieldQuote.list — returns field-submitted quotes for the mobile app home screen
+- [x] Wire photo upload to S3 from mobile app: capture → base64 → upload endpoint → attach URL to quote
+- [x] Update /ops/quotes dashboard to show field photos and flag field-submitted quotes
+- [x] Add offline draft support: save incomplete quote to localStorage, sync when online
+- [x] TypeScript check, tests, build instructions for iOS/Android submission
