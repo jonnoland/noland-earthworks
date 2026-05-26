@@ -347,28 +347,30 @@ export default function AboutPage() {
 
             {/* Bio copy — 3 cols */}
             <div className="lg:col-span-3">
-              {[
-                "Before Noland Earthworks, Jon M. Noland spent nine years serving in the United States Army, including a deployment to Afghanistan as a 25B Information Systems Analyst. After leaving the military, he spent more than 30 years building a career in IT — solving complex problems, staying disciplined under pressure, and delivering results that people could count on.",
-                "Then something shifted.",
-                "Jon moved to the country. And what started as a change of scenery became something he did not expect — a genuine love for working the land. The early mornings, the physical work, the satisfaction of turning an overgrown, unusable piece of property into something a family could actually use. He bought a skid steer, added the right attachments, and in 2025, Noland Earthworks was born.",
-                "He is not a lifelong farmer or a third-generation land clearer. He is someone who found a real passion, brought the same discipline and work ethic that carried him through the Army and a 30-year career, and decided to build something of his own. Every job he takes, he shows up on time, does the work right, and leaves the property better than he found it.",
-                "That is what veteran-owned actually means here. Not just a badge — a way of operating.",
-              ].map((p, i) => (
+              {([
+                { text: "Before founding Noland Earthworks, Jon M. Noland spent nine years serving in the United States Army, including two deployments to Afghanistan where he worked as a 25B Information Systems Analyst. In that role, he was responsible for maintaining critical communication networks and solving complex technical problems in high-pressure, often unpredictable environments.", style: "normal" },
+                { text: "After an honorable discharge, Jon transitioned into the civilian world and spent more than 30 years building a successful career in Information Technology. He earned a reputation as the person who could be counted on when systems failed, deadlines loomed, or difficult problems needed clear-headed solutions. That same discipline, attention to detail, and commitment to getting the job done right followed him through every role.", style: "normal" },
+                { text: "Then life took a different turn.", style: "pivot" },
+                { text: "Jon and his family moved to the country in Tennessee. What began as a simple desire for more space and a slower pace quickly evolved into something deeper. He discovered a genuine passion for working the land — the early mornings, the physical challenge, the tangible satisfaction of transforming neglected, overgrown, or unusable property into something functional and valuable for a family. Clearing brush, leveling ground, building access roads, and creating usable spaces reignited a sense of purpose he hadn't felt in years.", style: "normal" },
+                { text: "He invested in a skid steer, equipped it with the right attachments, and in 2025, officially launched Noland Earthworks. What started as a personal project soon became a full-fledged business focused on land clearing, site preparation, and forestry mulching services for residential and small commercial properties.", style: "normal" },
+                { text: "Jon is not a third-generation farmer or a lifelong landscaper. He's a veteran who found a new calling later in life and brought the very best of his previous experience with him. The work ethic, problem-solving skills, and reliability developed in the Army and refined over three decades in IT now serve his clients every single day. He shows up on time, communicates clearly, works safely and efficiently, and always leaves every property better than he found it.", style: "normal" },
+                { text: "That's what \"veteran-owned\" means at Noland Earthworks. It's not just a label on the truck or website. It's a standard of service: disciplined, honest, and results-driven.", style: "closing" },
+              ] as { text: string; style: string }[]).map((p, i) => (
                 <p
                   key={i}
                   style={{
                     fontFamily: "'Lato', sans-serif",
-                    fontWeight: i === 1 ? 600 : 300,
-                    fontSize: i === 1 ? "1.125rem" : "1rem",
+                    fontWeight: p.style === "pivot" ? 600 : 300,
+                    fontSize: p.style === "pivot" ? "1.125rem" : "1rem",
                     lineHeight: 1.85,
-                    color: i === 1 ? "rgba(240,237,230,0.9)" : "rgba(240,237,230,0.72)",
-                    marginBottom: i === 1 ? "1.5rem" : "1.125rem",
-                    fontStyle: i === 1 ? "italic" : "normal",
-                    paddingLeft: i === 1 ? "1rem" : "0",
-                    borderLeft: i === 1 ? "3px solid #E07B2A" : "none",
+                    color: p.style === "pivot" ? "rgba(240,237,230,0.9)" : p.style === "closing" ? "rgba(240,237,230,0.85)" : "rgba(240,237,230,0.72)",
+                    marginBottom: p.style === "pivot" ? "1.5rem" : "1.125rem",
+                    fontStyle: p.style === "pivot" ? "italic" : "normal",
+                    paddingLeft: p.style === "pivot" ? "1rem" : p.style === "closing" ? "1rem" : "0",
+                    borderLeft: p.style === "pivot" ? "3px solid #E07B2A" : p.style === "closing" ? "3px solid rgba(224,123,42,0.4)" : "none",
                   }}
                 >
-                  {p}
+                  {p.text}
                 </p>
               ))}
             </div>

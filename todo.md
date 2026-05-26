@@ -1194,14 +1194,14 @@
 - [x] Add all 8 new blog posts to sitemap
 
 ## Live Reviews, County Blog Posts, Blog Filter — May 2026
-- [ ] Wire live Google reviews to public Testimonials section (replace hardcoded placeholder quotes)
-- [ ] Create Bedford County blog post: Land Management in Bedford County, TN
-- [ ] Create Cheatham County blog post: Land Management in Cheatham County, TN
-- [ ] Register Bedford and Cheatham blog routes in App.tsx
-- [ ] Add Bedford and Cheatham entries to Blog.tsx index
-- [ ] Add Bedford and Cheatham to sitemap
-- [ ] Add category filter tabs to blog index page
-- [ ] Add search bar to blog index page
+- [x] Wire live Google reviews to public Testimonials section (replace hardcoded placeholder quotes)
+- [x] Create Bedford County blog post: Land Management in Bedford County, TN
+- [x] Create Cheatham County blog post: Land Management in Cheatham County, TN
+- [x] Register Bedford and Cheatham blog routes in App.tsx
+- [x] Add Bedford and Cheatham entries to Blog.tsx index
+- [x] Add Bedford and Cheatham to sitemap
+- [x] Add category filter tabs to blog index page
+- [x] Add search bar to blog index page
 
 ## Live Reviews, County Posts, Blog Filter — May 2026
 - [x] Wire live Google reviews to public Testimonials section (publicGetLive procedure, 30-min cache, falls back to hardcoded quotes if fewer than 3 live reviews)
@@ -1212,3 +1212,6 @@
 ## Blog Schema + Promo Banner — May 2026
 - [x] Add BlogPosting JSON-LD schema markup to BlogPostLayout component (covers all 21 blog posts automatically)
 - [x] Build promotional banner: promoBannerEnabled/Text/Color fields on businessSettings, public tRPC siteConfig.getPromoBanner, PromoBanner component on homepage, Settings toggle/textarea/color picker in General tab
+
+## About Page Expansion — May 2026
+- [x] Expand Meet the Man section on /about with Jon's full biography (Army service, IT career, Tennessee move, Noland Earthworks founding)
