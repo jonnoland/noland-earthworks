@@ -1221,3 +1221,10 @@
 - [x] Register /blog/land-management-lawrence-county route in App.tsx
 - [x] Add Lawrence County to Blog.tsx index
 - [x] Add Lawrence County to sitemap
+
+## Dickson & Hickman County Blog Posts — May 2026
+- [x] Write and publish Dickson County blog post: Land Management in Dickson County, TN
+- [x] Write and publish Hickman County blog post: Land Management in Hickman County, TN
+- [x] Register both routes in App.tsx
+- [x] Add both entries to Blog.tsx index
+- [x] Add both to sitemap

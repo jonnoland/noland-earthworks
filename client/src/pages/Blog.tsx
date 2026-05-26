@@ -209,6 +209,24 @@ export const BLOG_POSTS = [
     readTime: "6 min read",
     category: "Local Service Areas",
   },
+  {
+    slug: "land-management-dickson-county",
+    title: "Land Management in Dickson County, TN: What Property Owners Need to Know",
+    meta: "Need land management in Dickson County, TN? Noland Earthworks provides forestry mulching and land clearing in Dickson, Charlotte, White Bluff, Burns, and across Dickson County.",
+    date: "May 2026",
+    lastUpdated: "May 2026",
+    readTime: "6 min read",
+    category: "Local Service Areas",
+  },
+  {
+    slug: "land-management-hickman-county",
+    title: "Land Management in Hickman County, TN: What Property Owners Need to Know",
+    meta: "Need land management in Hickman County, TN? Noland Earthworks provides forestry mulching and land clearing in Centerville, Lyles, Nunnelly, Bon Aqua, and across Hickman County.",
+    date: "May 2026",
+    lastUpdated: "May 2026",
+    readTime: "6 min read",
+    category: "Local Service Areas",
+  },
 ];
 
 const ALL_CATEGORIES = ["All", ...Array.from(new Set(BLOG_POSTS.map((p) => p.category)))];
