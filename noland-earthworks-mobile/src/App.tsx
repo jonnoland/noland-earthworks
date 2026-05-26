@@ -1,5 +1,7 @@
 import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
 import BottomNav from "@/components/BottomNav";
+import SplashScreen from "@/components/SplashScreen";
+import NetworkBanner from "@/components/NetworkBanner";
 import Home from "@/pages/Home";
 import NewQuote from "@/pages/NewQuote";
 import QuotesList from "@/pages/QuotesList";
@@ -29,6 +31,9 @@ function AppShell() {
         overflow: "hidden",
       }}
     >
+      {/* Network status banner — slides in when offline */}
+      <NetworkBanner />
+
       {/* Main content area */}
       <div style={{ flex: 1, overflow: "hidden", position: "relative" }}>
         <Routes>
@@ -50,35 +55,7 @@ function AuthGate() {
   const { isAuthenticated, loading } = useAuth();
 
   if (loading) {
-    // Splash screen while reading token from Capacitor Preferences
-    return (
-      <div
-        style={{
-          height: "100dvh",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          backgroundColor: "oklch(0.13 0 0)",
-        }}
-      >
-        <div
-          style={{
-            width: 64,
-            height: 64,
-            borderRadius: 18,
-            backgroundColor: "oklch(0.65 0.18 50)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-          }}
-        >
-          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="oklch(0.13 0 0)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
-            <polyline points="9 22 9 12 15 12 15 22" />
-          </svg>
-        </div>
-      </div>
-    );
+    return <SplashScreen />;
   }
 
   if (!isAuthenticated) {

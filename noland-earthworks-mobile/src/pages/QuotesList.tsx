@@ -1,18 +1,25 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Search, ChevronRight, Image } from "lucide-react";
+import { Search, ChevronRight, Image, RefreshCw } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { formatRelative } from "@/lib/utils";
 import PageHeader from "@/components/PageHeader";
+import { usePullToRefresh } from "@/hooks/usePullToRefresh";
 
 export default function QuotesList() {
   const navigate = useNavigate();
   const [search, setSearch] = useState("");
 
-  const { data: quotes, isLoading } = trpc.fieldQuote.mobileList.useQuery(
+  const { data: quotes, isLoading, refetch } = trpc.fieldQuote.mobileList.useQuery(
     { limit: 50 },
     { retry: false }
   );
+
+  const { containerRef, pullDistance, isRefreshing, threshold } = usePullToRefresh({
+    onRefresh: async () => {
+      await refetch();
+    },
+  });
 
   const filtered = quotes?.filter((q) =>
     !search ||
@@ -21,9 +28,56 @@ export default function QuotesList() {
     q.serviceType?.toLowerCase().includes(search.toLowerCase())
   );
 
+  // Pull-to-refresh indicator progress (0–1)
+  const pullProgress = Math.min(1, pullDistance / threshold);
+  const showPullIndicator = pullDistance > 4 || isRefreshing;
+
   return (
-    <div style={{ height: "100%", display: "flex", flexDirection: "column" }}>
+    <div style={{ height: "100%", display: "flex", flexDirection: "column", position: "relative" }}>
       <PageHeader title="My Quotes" />
+
+      {/* Pull-to-refresh indicator */}
+      {showPullIndicator && (
+        <div
+          style={{
+            position: "absolute",
+            top: 56, // below PageHeader
+            left: 0,
+            right: 0,
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            height: Math.max(0, pullDistance),
+            zIndex: 10,
+            pointerEvents: "none",
+            overflow: "hidden",
+            transition: isRefreshing ? "none" : "height 0.1s ease",
+          }}
+        >
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+              opacity: pullProgress,
+              transform: `scale(${0.6 + pullProgress * 0.4})`,
+              transition: isRefreshing ? "none" : "opacity 0.1s, transform 0.1s",
+            }}
+          >
+            <RefreshCw
+              size={18}
+              color="oklch(0.65 0.18 50)"
+              style={{
+                animation: isRefreshing ? "spin 0.8s linear infinite" : "none",
+                transform: isRefreshing ? undefined : `rotate(${pullProgress * 180}deg)`,
+              }}
+            />
+            <span style={{ color: "oklch(0.65 0.18 50)", fontSize: 13, fontWeight: 500 }}>
+              {isRefreshing ? "Refreshing..." : pullProgress >= 1 ? "Release to refresh" : "Pull to refresh"}
+            </span>
+          </div>
+        </div>
+      )}
 
       {/* Search bar */}
       <div style={{ padding: "12px 16px", backgroundColor: "oklch(0.16 0 0)", borderBottom: "1px solid oklch(0.25 0 0)" }}>
@@ -50,8 +104,19 @@ export default function QuotesList() {
         </div>
       </div>
 
-      <div className="scroll-area" style={{ flex: 1, padding: "12px 16px", paddingBottom: 80 }}>
-        {isLoading && (
+      {/* Scrollable list — pull-to-refresh is attached to this container */}
+      <div
+        ref={containerRef}
+        className="scroll-area"
+        style={{
+          flex: 1,
+          padding: "12px 16px",
+          paddingBottom: 80,
+          transform: pullDistance > 0 ? `translateY(${pullDistance}px)` : undefined,
+          transition: isRefreshing || pullDistance === 0 ? "transform 0.25s ease" : "none",
+        }}
+      >
+        {(isLoading || isRefreshing) && !quotes && (
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             {[1, 2, 3, 4, 5].map((i) => (
               <div key={i} style={{ height: 80, borderRadius: 12, backgroundColor: "oklch(0.18 0 0)" }} />
@@ -153,6 +218,13 @@ export default function QuotesList() {
           </button>
         ))}
       </div>
+
+      <style>{`
+        @keyframes spin {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+      `}</style>
     </div>
   );
 }
