@@ -31,4 +31,7 @@ export const ENV = {
   googleClientSecret: process.env.GOOGLE_CLIENT_SECRET ?? "",
   // Canonical Google OAuth redirect URI — must match what is registered in Google Cloud Console.
   googleRedirectUri: process.env.GOOGLE_REDIRECT_URI ?? "https://nolandearthworks.com/api/google/callback",
+  // Noland Field mobile app PIN — protects field quote endpoints from unauthorized access.
+  // Set via FIELD_APP_PIN secret. If unset, defaults to "0000" in dev; blocks access in production.
+  fieldAppPin: process.env.FIELD_APP_PIN ?? "",
 };

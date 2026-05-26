@@ -70,7 +70,7 @@ MARKET RATES (Middle Tennessee, 2025-2026):
 
 Return a detailed JSON cost breakdown. Be realistic and conservative — it is better to slightly overestimate costs than underestimate.`;
 
-interface CostBreakdown {
+export interface CostBreakdown {
   estimatedHours: number;
   estimatedDays: number;
   fuelCost: number;

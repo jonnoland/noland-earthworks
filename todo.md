@@ -1326,3 +1326,17 @@
 - [x] Update /ops/quotes dashboard to show field photos and flag field-submitted quotes
 - [x] Add offline draft support: save incomplete quote to localStorage, sync when online
 - [x] TypeScript check, tests, build instructions for iOS/Android submission
+
+## Capacitor Mobile — Platform Setup & PIN Auth — May 2026
+
+- [x] Add iOS and Android platform folders to the mobile app project
+- [x] Build the mobile app web assets and sync to native platforms
+- [x] Add required iOS permissions (Camera, Photo Library, Location) to Info.plist
+- [x] Add required Android permissions (Camera, Storage, Location) to AndroidManifest.xml
+- [x] Build PIN login screen in the mobile app (4-digit keypad, Capacitor Preferences storage, splash/loading state)
+- [x] Add fieldQuote.verifyPin server procedure — validates PIN against FIELD_APP_PIN secret, returns signed JWT app token
+- [x] Add requireAppToken middleware to protect submit, uploadPhoto, mobileList, mobileGet procedures
+- [x] Add logout button to Profile page with double-tap confirmation
+- [x] Update mobile app tRPC client to inject X-Field-App-Token header on all requests
+- [x] Update fieldQuote tests to pass mock app token context; add rejection test (82 tests passing)
+- [x] TypeScript clean, all 82 tests pass, checkpoint saved

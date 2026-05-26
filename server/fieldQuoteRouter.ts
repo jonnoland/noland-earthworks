@@ -1,11 +1,20 @@
 /**
  * Field Quote Router
  * Handles quote submissions from the Noland Field mobile companion app.
- * Procedures: list, get, submit, uploadPhoto, reverseGeocode
+ *
+ * AUTH MODEL:
+ * - verifyPin: public — validates the 4-digit PIN and returns a signed JWT app token
+ * - submit, uploadPhoto, reverseGeocode: require a valid app token in X-Field-App-Token header
+ * - list, get: require Manus owner session (protectedProcedure) — used by the /ops/quotes dashboard
+ *
+ * The PIN is stored in the FIELD_APP_PIN environment secret.
+ * The app token is a short-lived JWT (30 days) signed with JWT_SECRET.
  */
 
 import { z } from "zod";
 import { eq, desc } from "drizzle-orm";
+import { TRPCError } from "@trpc/server";
+import * as jose from "jose";
 import { router, publicProcedure, protectedProcedure } from "./_core/trpc";
 import { getDb, createOpsLead, getOwnerUser } from "./db";
 import { fieldQuotes } from "../drizzle/schema";
@@ -13,6 +22,59 @@ import { storagePut } from "./storage";
 import { makeRequest } from "./_core/map";
 import { notifyOwner } from "./_core/notification";
 import { invokeLLM } from "./_core/llm";
+import { ENV } from "./_core/env";
+
+// ─── PIN App Token Helpers ─────────────────────────────────────────────────────
+
+const APP_TOKEN_AUDIENCE = "noland-field-app";
+const APP_TOKEN_EXPIRY = "30d";
+
+function getJwtSecret(): Uint8Array {
+  // Read lazily so tests can set process.env.JWT_SECRET before calling.
+  return new TextEncoder().encode(process.env.JWT_SECRET ?? ENV.cookieSecret ?? "fallback-dev-secret");
+}
+
+async function signAppToken(): Promise<string> {
+  return new jose.SignJWT({ app: "noland-field" })
+    .setProtectedHeader({ alg: "HS256" })
+    .setAudience(APP_TOKEN_AUDIENCE)
+    .setIssuedAt()
+    .setExpirationTime(APP_TOKEN_EXPIRY)
+    .sign(getJwtSecret());
+}
+
+async function verifyAppToken(token: string): Promise<boolean> {
+  try {
+    await jose.jwtVerify(token, getJwtSecret(), { audience: APP_TOKEN_AUDIENCE });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+// ─── PIN Middleware ────────────────────────────────────────────────────────────
+
+/**
+ * Middleware that validates the X-Field-App-Token header on incoming requests.
+ * Used to protect field quote write/read procedures from the mobile app.
+ */
+const requireAppToken = publicProcedure.use(async ({ ctx, next }) => {
+  const token = ctx.req.headers["x-field-app-token"];
+  if (!token || typeof token !== "string") {
+    throw new TRPCError({
+      code: "UNAUTHORIZED",
+      message: "Field app token required. Please log in with your PIN.",
+    });
+  }
+  const valid = await verifyAppToken(token);
+  if (!valid) {
+    throw new TRPCError({
+      code: "UNAUTHORIZED",
+      message: "Invalid or expired field app token. Please log in again.",
+    });
+  }
+  return next({ ctx });
+});
 
 // ─── AI Qualifier ─────────────────────────────────────────────────────────────
 
@@ -66,35 +128,32 @@ async function qualifyFieldLead(data: {
   obstacles?: string | null;
   proximityToStructures?: string | null;
   message?: string | null;
-}) {
-  const submissionText = [
-    `Name: ${data.name}`,
-    `Service Requested: ${data.serviceType || "Not specified"}`,
-    data.acreage ? `Acreage: ${data.acreage}` : "Acreage: Not specified",
-    data.address ? `Address: ${data.address}` : "",
-    data.terrainType ? `Terrain: ${data.terrainType}` : "",
-    data.vegetationDensity ? `Vegetation Density: ${data.vegetationDensity}` : "",
-    data.vegetationTypes ? `Vegetation Types: ${data.vegetationTypes}` : "",
-    data.slopeCondition ? `Slope: ${data.slopeCondition}` : "",
-    data.accessCondition ? `Site Access: ${data.accessCondition}` : "",
-    data.obstacles ? `Obstacles: ${data.obstacles}` : "",
-    data.proximityToStructures ? `Proximity to Structures: ${data.proximityToStructures}` : "",
-    data.message ? `Field Notes: "${data.message}"` : "",
-  ].filter(Boolean).join("\n");
-
+}): Promise<{ score: "strong" | "marginal" | "weak"; summary: string; flags: string[]; draftResponse: string }> {
   try {
+    const details = [
+      `Name: ${data.name}`,
+      data.serviceType ? `Service: ${data.serviceType}` : "",
+      data.acreage ? `Acreage: ${data.acreage} acres` : "",
+      data.address ? `Address: ${data.address}` : "",
+      data.terrainType ? `Terrain: ${data.terrainType}` : "",
+      data.vegetationDensity ? `Vegetation density: ${data.vegetationDensity}` : "",
+      data.vegetationTypes ? `Vegetation types: ${data.vegetationTypes}` : "",
+      data.slopeCondition ? `Slope: ${data.slopeCondition}` : "",
+      data.accessCondition ? `Access: ${data.accessCondition}` : "",
+      data.obstacles ? `Obstacles: ${data.obstacles}` : "",
+      data.proximityToStructures ? `Near structures: ${data.proximityToStructures}` : "",
+      data.message ? `Notes: ${data.message}` : "",
+    ].filter(Boolean).join("\n");
+
     const result = await invokeLLM({
       messages: [
         { role: "system", content: FIELD_QUALIFIER_PROMPT },
-        {
-          role: "user",
-          content: `Please qualify this field quote request and return a JSON response:\n\n${submissionText}`,
-        },
+        { role: "user", content: `Qualify this field quote lead:\n\n${details}` },
       ],
       response_format: {
         type: "json_schema",
         json_schema: {
-          name: "lead_qualification",
+          name: "field_lead_qualification",
           strict: true,
           schema: {
             type: "object",
@@ -135,7 +194,35 @@ async function qualifyFieldLead(data: {
 
 export const fieldQuoteRouter = router({
   /**
-   * List field quotes — owner-only, newest first.
+   * Verify the mobile app PIN and return a signed app token.
+   * The token is stored on-device and sent as X-Field-App-Token on subsequent requests.
+   */
+  verifyPin: publicProcedure
+    .input(z.object({ pin: z.string().length(4) }))
+    .mutation(async ({ input }) => {
+      const configuredPin = ENV.fieldAppPin || (ENV.isProduction ? "" : "0000");
+
+      if (!configuredPin) {
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Field app PIN not configured. Contact the app administrator.",
+        });
+      }
+
+      if (input.pin !== configuredPin) {
+        throw new TRPCError({
+          code: "UNAUTHORIZED",
+          message: "Incorrect PIN.",
+        });
+      }
+
+      const token = await signAppToken();
+      return { token };
+    }),
+
+  /**
+   * List field quotes — owner-only (Manus session), newest first.
+   * Used by the /ops/quotes dashboard.
    */
   list: protectedProcedure
     .input(z.object({ limit: z.number().min(1).max(200).default(50) }))
@@ -155,7 +242,7 @@ export const fieldQuoteRouter = router({
     }),
 
   /**
-   * Get a single field quote by ID — owner-only.
+   * Get a single field quote by ID — owner-only (Manus session).
    */
   get: protectedProcedure
     .input(z.object({ id: z.number() }))
@@ -177,10 +264,53 @@ export const fieldQuoteRouter = router({
     }),
 
   /**
-   * Submit a new field quote from the mobile app.
+   * Get a single field quote by ID for the mobile app — requires app token.
+   */
+  mobileGet: requireAppToken
+    .input(z.object({ id: z.number() }))
+    .query(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+      const rows = await db
+        .select()
+        .from(fieldQuotes)
+        .where(eq(fieldQuotes.id, input.id))
+        .limit(1);
+      if (!rows.length) throw new Error("Field quote not found");
+      const r = rows[0];
+      return {
+        ...r,
+        photoUrls: r.photoUrls ? (JSON.parse(r.photoUrls) as string[]) : [],
+        aiFlags: r.aiFlags ? (JSON.parse(r.aiFlags) as string[]) : [],
+      };
+    }),
+
+  /**
+   * List field quotes for the mobile app — requires app token.
+   * Returns the same data as `list` but is accessible without a Manus session.
+   */
+  mobileList: requireAppToken
+    .input(z.object({ limit: z.number().min(1).max(200).default(50) }))
+    .query(async ({ input }) => {
+      const db = await getDb();
+      if (!db) return [];
+      const rows = await db
+        .select()
+        .from(fieldQuotes)
+        .orderBy(desc(fieldQuotes.createdAt))
+        .limit(input.limit);
+      return rows.map((r) => ({
+        ...r,
+        photoUrls: r.photoUrls ? (JSON.parse(r.photoUrls) as string[]) : [],
+        aiFlags: r.aiFlags ? (JSON.parse(r.aiFlags) as string[]) : [],
+      }));
+    }),
+
+  /**
+   * Submit a new field quote from the mobile app — requires app token.
    * Runs AI qualification asynchronously after saving.
    */
-  submit: publicProcedure
+  submit: requireAppToken
     .input(
       z.object({
         name: z.string().min(1),
@@ -314,10 +444,10 @@ export const fieldQuoteRouter = router({
     }),
 
   /**
-   * Upload a photo from the mobile app to S3.
+   * Upload a photo from the mobile app to S3 — requires app token.
    * Accepts base64-encoded image data and returns the public URL.
    */
-  uploadPhoto: publicProcedure
+  uploadPhoto: requireAppToken
     .input(
       z.object({
         base64: z.string().min(1),
@@ -338,6 +468,7 @@ export const fieldQuoteRouter = router({
 
   /**
    * Reverse geocode GPS coordinates to a human-readable address.
+   * Public — no auth required (no sensitive data returned).
    */
   reverseGeocode: publicProcedure
     .input(z.object({ lat: z.number(), lng: z.number() }))
