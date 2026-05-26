@@ -1351,3 +1351,8 @@
 - [x] Add NSFaceIDUsageDescription to iOS Info.plist
 - [x] Rebuild and sync iOS and Android platforms
 - [x] TypeScript clean, 83 tests pass, checkpoint saved
+
+## GitHub Actions -- Android Debug APK Build -- May 2026
+- [x] Create .github/workflows/android-debug.yml -- triggers on push/PR to main (mobile path filter + workflow_dispatch)
+- [x] Workflow: checkout -> JDK 21 (temurin) -> Node 20 -> pnpm -> install deps -> pnpm build -> cap add android -> cap sync android -> assembleDebug -> upload APK artifact (7-day retention)
+- [x] pnpm store and Gradle caches included for faster subsequent runs
