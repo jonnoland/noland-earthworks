@@ -1,7 +1,7 @@
-#Requires -Version 5.1
+﻿#Requires -Version 5.1
 <#
 .SYNOPSIS
-    Noland Field — Android Build Launcher
+    Noland Field - Android Build Launcher
 
 .DESCRIPTION
     One-click script. Run this from ANYWHERE on your machine.
@@ -46,16 +46,16 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
-# ─────────────────────────────────────────────────────────────────────────────
+# ---------------------------------------------------------------------------
 # CONFIGURE THIS: Set the path to where you cloned the repo
-# ─────────────────────────────────────────────────────────────────────────────
+# ---------------------------------------------------------------------------
 $RepoPath   = "E:\Noland Earthworks\Field App\noland-earthworks"
 $MobilePath = Join-Path $RepoPath "noland-earthworks-mobile"
-# ─────────────────────────────────────────────────────────────────────────────
+# ---------------------------------------------------------------------------
 
 function Write-Info  { param($Msg) Write-Host "[INFO]  $Msg" -ForegroundColor Cyan }
 function Write-Ok    { param($Msg) Write-Host "[OK]    $Msg" -ForegroundColor Green }
-function Write-Step  { param($Msg) Write-Host "`n── $Msg ──" -ForegroundColor White }
+function Write-Step  { param($Msg) Write-Host "" ; Write-Host "--- $Msg ---" -ForegroundColor White }
 function Write-Fail  {
     param($Msg)
     Write-Host ""
@@ -66,22 +66,22 @@ function Write-Fail  {
     exit 1
 }
 
-# ── Banner ────────────────────────────────────────────────────────────────────
+# Banner
 Write-Host ""
-Write-Host "  ╔═══════════════════════════════════════╗" -ForegroundColor DarkGreen
-Write-Host "  ║   Noland Field — Android Build         ║" -ForegroundColor DarkGreen
-Write-Host "  ╚═══════════════════════════════════════╝" -ForegroundColor DarkGreen
+Write-Host "  =====================================" -ForegroundColor DarkGreen
+Write-Host "   Noland Field - Android Build         " -ForegroundColor DarkGreen
+Write-Host "  =====================================" -ForegroundColor DarkGreen
 Write-Host ""
 
-# ── Step 1: Validate repo path ────────────────────────────────────────────────
+# Step 1: Validate repo path
 Write-Step "Locating repo"
 
 if (-not (Test-Path $RepoPath)) {
-    Write-Fail "Repo not found at: $RepoPath`n`nEdit the `$RepoPath variable at the top of this script to match your local path."
+    Write-Fail "Repo not found at: $RepoPath`n`nEdit the RepoPath variable at the top of this script to match your local path."
 }
 Write-Ok "Repo found: $RepoPath"
 
-# ── Step 2: Git pull ──────────────────────────────────────────────────────────
+# Step 2: Git pull
 Write-Step "Pulling latest code from GitHub"
 
 if (-not (Get-Command git -ErrorAction SilentlyContinue)) {
@@ -97,35 +97,33 @@ if ($LASTEXITCODE -ne 0) {
 }
 Write-Ok "Repo is up to date."
 
-# ── Step 3: Confirm mobile project exists ─────────────────────────────────────
+# Step 3: Confirm mobile project exists
 Write-Step "Locating mobile project"
 
 if (-not (Test-Path $MobilePath)) {
-    Write-Fail "Mobile project not found at: $MobilePath`n`nRun git pull again — the folder should appear after the first successful pull."
+    Write-Fail "Mobile project not found at: $MobilePath"
 }
 
 $BuildScript = Join-Path $MobilePath "build-android.ps1"
 if (-not (Test-Path $BuildScript)) {
-    Write-Fail "build-android.ps1 not found inside the mobile project folder.`nExpected: $BuildScript"
+    Write-Fail "build-android.ps1 not found at: $BuildScript"
 }
 
 Write-Ok "Mobile project found: $MobilePath"
 Set-Location $MobilePath
 
-# ── Step 4: Hand off to the main build script ─────────────────────────────────
+# Step 4: Hand off to the main build script
 Write-Step "Starting Android build"
 Write-Host ""
 
-# Build the argument list dynamically based on switches passed to this launcher
 $BuildArgs = @()
 if ($Release) { $BuildArgs += "-Release" }
 if ($Apk)     { $BuildArgs += "-Apk" }
 if ($Install)  { $BuildArgs += "-Install" }
 
-# Dot-source the build script so it runs in the same session (inherits execution policy)
 . $BuildScript @BuildArgs
 
-# ── Done ──────────────────────────────────────────────────────────────────────
+# Done
 Write-Host ""
 Write-Host "Press any key to close..." -ForegroundColor DarkGray
 $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
