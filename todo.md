@@ -1294,3 +1294,7 @@
 - [x] Update /services/land-management page title and hero copy to reflect broader land management scope
 - [x] Add Stale filter pill to the leads filter bar so all stale leads can be viewed at once
 - [x] Add hover tooltip to AI score badges on quotes page to show reasoning (aiSummary + aiFlags)
+
+## Leads Detail Tooltip + Stale Days Label — May 2026
+- [x] Add AI score badge tooltip to leads detail panel (same as quotes page)
+- [x] Update stale lead cards to show days since last update label (e.g. "5d stale")

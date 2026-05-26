@@ -24,6 +24,12 @@ import {
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { useLocation } from "wouter";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 // ─── Source Conversion Chart ─────────────────────────────────────────────────
 
@@ -182,13 +188,13 @@ interface Lead {
 // ─── Lead Card ────────────────────────────────────────────────────────────────
 
 function LeadCard({ lead, onClick, onDragStart }: { lead: Lead; onClick: () => void; onDragStart: (id: number) => void }) {
-  const isStale = (() => {
-    if (lead.stage === "won" || lead.stage === "lost") return false;
+  const staleDays = (() => {
+    if (lead.stage === "won" || lead.stage === "lost") return 0;
     const lastUpdate = lead.updatedAt ?? lead.createdAt;
-    if (!lastUpdate) return false;
-    const daysSince = Math.floor((Date.now() - new Date(lastUpdate).getTime()) / (1000 * 60 * 60 * 24));
-    return daysSince >= 3;
+    if (!lastUpdate) return 0;
+    return Math.floor((Date.now() - new Date(lastUpdate).getTime()) / (1000 * 60 * 60 * 24));
   })();
+  const isStale = staleDays >= 3;
 
   return (
     <div
@@ -244,7 +250,7 @@ function LeadCard({ lead, onClick, onDragStart }: { lead: Lead; onClick: () => v
           {isStale && (
             <span className="inline-flex items-center gap-0.5 text-[10px] font-medium px-1.5 py-0.5 rounded border bg-amber-500/15 text-amber-400 border-amber-500/30">
               <Clock className="w-2.5 h-2.5" />
-              Stale
+              {staleDays}d stale
             </span>
           )}
           {lead.requestedVisitAt && (
@@ -821,15 +827,43 @@ function LeadDetailPanel({
                 <Brain className="w-3.5 h-3.5 text-[#E07B2A]" />
                 <span className="text-[11px] font-semibold uppercase tracking-wider text-[#555]">AI Assessment</span>
                 {lead.aiScore && (
-                  <span className={`ml-auto text-[10px] font-bold px-2 py-0.5 rounded-full border ${
-                    lead.aiScore === "strong"
-                      ? "bg-green-500/15 text-green-400 border-green-500/25"
-                      : lead.aiScore === "marginal"
-                      ? "bg-amber-500/15 text-amber-400 border-amber-500/25"
-                      : "bg-red-500/15 text-red-400 border-red-500/25"
-                  }`}>
-                    {lead.aiScore.charAt(0).toUpperCase() + lead.aiScore.slice(1)}
-                  </span>
+                  <TooltipProvider delayDuration={200}>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <span className={`ml-auto cursor-default text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+                          lead.aiScore === "strong"
+                            ? "bg-green-500/15 text-green-400 border-green-500/25"
+                            : lead.aiScore === "marginal"
+                            ? "bg-amber-500/15 text-amber-400 border-amber-500/25"
+                            : "bg-red-500/15 text-red-400 border-red-500/25"
+                        }`}>
+                          {lead.aiScore.charAt(0).toUpperCase() + lead.aiScore.slice(1)}
+                        </span>
+                      </TooltipTrigger>
+                      <TooltipContent side="left" className="max-w-xs text-xs space-y-1.5 p-3">
+                        {lead.aiSummary && (
+                          <p className="text-foreground">{lead.aiSummary}</p>
+                        )}
+                        {lead.aiFlags && (() => {
+                          let flags: string[] = [];
+                          try { flags = JSON.parse(lead.aiFlags); } catch { flags = [lead.aiFlags]; }
+                          return flags.length > 0 ? (
+                            <ul className="space-y-0.5">
+                              {flags.map((f, i) => (
+                                <li key={i} className="flex items-start gap-1 text-amber-400">
+                                  <span className="mt-0.5 shrink-0">&#9654;</span>
+                                  <span>{f}</span>
+                                </li>
+                              ))}
+                            </ul>
+                          ) : null;
+                        })()}
+                        {!lead.aiSummary && !lead.aiFlags && (
+                          <p className="text-muted-foreground">No reasoning available.</p>
+                        )}
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
                 )}
               </div>
               {lead.aiSummary && (
