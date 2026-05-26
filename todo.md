@@ -1235,3 +1235,26 @@
 - [x] Register both routes in App.tsx
 - [x] Add both entries to Blog.tsx index
 - [x] Add both to sitemap
+
+## Full County Blog Coverage — May 2026
+- [x] Write and publish Benton County blog post
+- [x] Write and publish Cannon County blog post
+- [x] Write and publish Carroll County blog post
+- [x] Write and publish Chester County blog post
+- [x] Write and publish Decatur County blog post
+- [x] Write and publish Gibson County blog post
+- [x] Write and publish Hardin County blog post
+- [x] Write and publish Henderson County blog post
+- [x] Write and publish Henry County blog post
+- [x] Write and publish Houston County blog post
+- [x] Write and publish Humphreys County blog post
+- [x] Write and publish Lewis County blog post
+- [x] Write and publish Madison County blog post
+- [x] Write and publish Moore County blog post
+- [x] Write and publish Perry County blog post
+- [x] Write and publish Stewart County blog post
+- [x] Write and publish Wayne County blog post
+- [x] Write and publish Weakley County blog post
+- [x] Register all 18 new routes in App.tsx
+- [x] Add all 18 entries to Blog.tsx index
+- [x] Add all 18 to sitemap

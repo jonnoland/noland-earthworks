@@ -71,6 +71,24 @@ import LandManagementDicksonCounty from "./pages/blog/LandManagementDicksonCount
 import LandManagementHickmanCounty from "./pages/blog/LandManagementHickmanCounty";
 import LandManagementRobertsonCounty from "./pages/blog/LandManagementRobertsonCounty";
 import LandManagementTrousdaleCounty from "./pages/blog/LandManagementTrousdaleCounty";
+import LandManagementBentonCounty from "./pages/blog/LandManagementBentonCounty";
+import LandManagementCannonCounty from "./pages/blog/LandManagementCannonCounty";
+import LandManagementCarrollCounty from "./pages/blog/LandManagementCarrollCounty";
+import LandManagementChesterCounty from "./pages/blog/LandManagementChesterCounty";
+import LandManagementDecaturCounty from "./pages/blog/LandManagementDecaturCounty";
+import LandManagementGibsonCounty from "./pages/blog/LandManagementGibsonCounty";
+import LandManagementHardinCounty from "./pages/blog/LandManagementHardinCounty";
+import LandManagementHendersonCounty from "./pages/blog/LandManagementHendersonCounty";
+import LandManagementHenryCounty from "./pages/blog/LandManagementHenryCounty";
+import LandManagementHoustonCounty from "./pages/blog/LandManagementHoustonCounty";
+import LandManagementHumphreysCounty from "./pages/blog/LandManagementHumphreysCounty";
+import LandManagementLewisCounty from "./pages/blog/LandManagementLewisCounty";
+import LandManagementMadisonCounty from "./pages/blog/LandManagementMadisonCounty";
+import LandManagementMooreCounty from "./pages/blog/LandManagementMooreCounty";
+import LandManagementPerryCounty from "./pages/blog/LandManagementPerryCounty";
+import LandManagementStewartCounty from "./pages/blog/LandManagementStewartCounty";
+import LandManagementWayneCounty from "./pages/blog/LandManagementWayneCounty";
+import LandManagementWeakleyCounty from "./pages/blog/LandManagementWeakleyCounty";
 import GalleryPage from "./pages/Gallery";
 import {
   DavidsonCountyPage,
@@ -156,6 +174,24 @@ function Router() {
       <Route path="/blog/land-management-hickman-county" component={LandManagementHickmanCounty} />
       <Route path="/blog/land-management-robertson-county" component={LandManagementRobertsonCounty} />
       <Route path="/blog/land-management-trousdale-county" component={LandManagementTrousdaleCounty} />
+      <Route path="/blog/land-management-benton-county" component={LandManagementBentonCounty} />
+      <Route path="/blog/land-management-cannon-county" component={LandManagementCannonCounty} />
+      <Route path="/blog/land-management-carroll-county" component={LandManagementCarrollCounty} />
+      <Route path="/blog/land-management-chester-county" component={LandManagementChesterCounty} />
+      <Route path="/blog/land-management-decatur-county" component={LandManagementDecaturCounty} />
+      <Route path="/blog/land-management-gibson-county" component={LandManagementGibsonCounty} />
+      <Route path="/blog/land-management-hardin-county" component={LandManagementHardinCounty} />
+      <Route path="/blog/land-management-henderson-county" component={LandManagementHendersonCounty} />
+      <Route path="/blog/land-management-henry-county" component={LandManagementHenryCounty} />
+      <Route path="/blog/land-management-houston-county" component={LandManagementHoustonCounty} />
+      <Route path="/blog/land-management-humphreys-county" component={LandManagementHumphreysCounty} />
+      <Route path="/blog/land-management-lewis-county" component={LandManagementLewisCounty} />
+      <Route path="/blog/land-management-madison-county" component={LandManagementMadisonCounty} />
+      <Route path="/blog/land-management-moore-county" component={LandManagementMooreCounty} />
+      <Route path="/blog/land-management-perry-county" component={LandManagementPerryCounty} />
+      <Route path="/blog/land-management-stewart-county" component={LandManagementStewartCounty} />
+      <Route path="/blog/land-management-wayne-county" component={LandManagementWayneCounty} />
+      <Route path="/blog/land-management-weakley-county" component={LandManagementWeakleyCounty} />
 
       {/* Service pages */}
       <Route path="/services/land-management" component={LandClearingPage} />
