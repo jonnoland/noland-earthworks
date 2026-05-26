@@ -1298,3 +1298,8 @@
 ## Leads Detail Tooltip + Stale Days Label — May 2026
 - [x] Add AI score badge tooltip to leads detail panel (same as quotes page)
 - [x] Update stale lead cards to show days since last update label (e.g. "5d stale")
+
+## Leads Timestamp + Quotes Stale + Bulk Contacted — May 2026
+- [x] Add last-updated timestamp to lead detail panel header
+- [x] Add Stale filter pill and stale indicator to Quotes WebsiteRequestsPanel
+- [x] Implement bulk mark-as-contacted action when Stale filter is active on Leads page

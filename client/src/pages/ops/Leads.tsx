@@ -19,7 +19,7 @@ import {
   AlarmClock, User, PhoneCall,
   ClipboardList, Star, Snowflake, RefreshCw,
   Map as MapIcon, LayoutGrid, Clock, Navigation,
-  Brain, Copy, Check, Sparkles,
+  Brain, Copy, Check, CheckCheck, Sparkles,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -731,7 +731,14 @@ function LeadDetailPanel({
               <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full border bg-blue-500/15 text-blue-400 border-blue-500/25">
                 {stageBadge}
               </span>
-              <span className="text-[11px] text-[#555]">{formatDate(lead.createdAt)}</span>
+              <div className="flex flex-col items-end gap-0.5">
+                <span className="text-[11px] text-[#555]">Created {formatDate(lead.createdAt)}</span>
+                {lead.updatedAt && new Date(lead.updatedAt).getTime() !== new Date(lead.createdAt).getTime() && (
+                  <span className="text-[10px] text-[#444]">
+                    Updated {timeAgo(lead.updatedAt)}
+                  </span>
+                )}
+              </div>
             </div>
             {lead.source && (
               <p className="text-xs text-[#666]">
@@ -1181,6 +1188,15 @@ export default function Leads() {
     onError: () => toast.error("Failed to delete lead"),
   });
 
+  const bulkUpdateStage = trpc.ops.leads.bulkUpdateStage.useMutation({
+    onSuccess: (result) => {
+      utils.ops.leads.list.invalidate();
+      setStaleFilter(false);
+      toast.success(`${result.updated} lead${result.updated === 1 ? "" : "s"} marked as Contacted`);
+    },
+    onError: () => toast.error("Bulk update failed"),
+  });
+
   const handleStageChange = (id: number, stage: string) => {
     updateLead.mutate({ id, stage: stage as any });
     if (selectedLead?.id === id) setSelectedLead(prev => prev ? { ...prev, stage } : null);
@@ -1456,6 +1472,34 @@ export default function Leads() {
             )}
           </div>
         )}
+
+        {/* Bulk action bar — visible when stale filter is active */}
+        {staleFilter && viewMode === "kanban" && (() => {
+          const staleLeads = filtered.filter(isLeadStale);
+          if (staleLeads.length === 0) return null;
+          return (
+            <div className="shrink-0 mx-4 mb-2 flex items-center justify-between gap-3 bg-amber-500/10 border border-amber-500/25 rounded-lg px-3 py-2">
+              <div className="flex items-center gap-2">
+                <Clock className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                <span className="text-xs text-amber-300 font-medium">
+                  {staleLeads.length} stale lead{staleLeads.length === 1 ? "" : "s"} visible
+                </span>
+              </div>
+              <button
+                disabled={bulkUpdateStage.isPending}
+                onClick={() => bulkUpdateStage.mutate({ ids: staleLeads.map(l => l.id), stage: "contacted" })}
+                className="flex items-center gap-1.5 text-[11px] font-semibold px-3 py-1.5 rounded-md bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/30 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {bulkUpdateStage.isPending ? (
+                  <Loader2 className="w-3 h-3 animate-spin" />
+                ) : (
+                  <CheckCheck className="w-3 h-3" />
+                )}
+                Mark All as Contacted
+              </button>
+            </div>
+          );
+        })()}
 
         {/* Kanban board — fills remaining space */}
         {viewMode === "kanban" && (

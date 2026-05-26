@@ -2207,7 +2207,18 @@ function WebsiteRequestsSection({
   const list = (submissions ?? []) as QuoteSubmission[];
   const draftList = drafts ?? [];
   const [aiScoreFilter, setAiScoreFilter] = useState<string>("all");
-  const filteredList = aiScoreFilter === "all" ? list : list.filter(s => s.aiScore === aiScoreFilter);
+  const [staleFilter, setStaleFilter] = useState<boolean>(false);
+
+  const isSubmissionStale = (s: QuoteSubmission) => {
+    const daysSince = Math.floor((Date.now() - new Date(s.createdAt).getTime()) / (1000 * 60 * 60 * 24));
+    return daysSince >= 3;
+  };
+
+  const filteredList = list.filter(s => {
+    if (aiScoreFilter !== "all" && s.aiScore !== aiScoreFilter) return false;
+    if (staleFilter && !isSubmissionStale(s)) return false;
+    return true;
+  });
 
   const isRefreshing = activeTab === "requests" ? isFetching : draftsFetching;
   const handleRefresh = () => activeTab === "requests" ? refetch() : refetchDrafts();
@@ -2262,6 +2273,25 @@ function WebsiteRequestsSection({
       {/* Inbound requests tab */}
       {activeTab === "requests" && (
         <>
+          {/* Stale filter pill */}
+          {!isLoading && list.some(isSubmissionStale) && (
+            <div className="flex items-center gap-1.5">
+              <Clock className="w-3 h-3 text-muted-foreground/50 shrink-0" />
+              <button
+                onClick={() => setStaleFilter(v => !v)}
+                className={`shrink-0 flex items-center gap-1 text-[11px] font-medium px-2.5 py-1 rounded-full border transition-colors ${
+                  staleFilter
+                    ? "bg-amber-500/30 text-amber-300 border-amber-500/50"
+                    : "bg-amber-500/10 text-amber-400/70 border-amber-500/20 hover:border-amber-500/40"
+                }`}
+              >
+                Stale
+                <span className={`text-[10px] font-bold px-1 py-0.5 rounded-full ${
+                  staleFilter ? "bg-white/15" : "bg-white/5"
+                }`}>{list.filter(isSubmissionStale).length}</span>
+              </button>
+            </div>
+          )}
           {/* AI Score filter pills */}
           {!isLoading && list.some(s => s.aiScore) && (
             <div className="flex items-center gap-1.5 flex-wrap">

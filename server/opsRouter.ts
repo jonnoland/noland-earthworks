@@ -21,7 +21,7 @@ import {
 import { Resend } from "resend";
 import { jobs, opsLeads, quoteSubmissions, crews, crewMembers, conversations, messages, reviews, timeEntries, distanceQuotes, businessSettings, automationSettings, serviceCatalog, messageTemplates, reminderRules, leadNotes, visitBlackoutDates, recurringBlackoutDays, aiPricingSettings, quoteDrafts, jobberTokens } from "../drizzle/schema";
 
-import { and, desc, eq, gte, lt, like } from "drizzle-orm";
+import { and, desc, eq, gte, inArray, lt, like } from "drizzle-orm";
 
 function getResend() {
   return ENV.resendApiKey ? new Resend(ENV.resendApiKey) : null;
@@ -377,6 +377,21 @@ Write the message as if you are Jon sending a text or short email. First-person,
 
       const draft = result.choices?.[0]?.message?.content ?? "";
       return { draft };
+    }),
+
+  // ─── Bulk Operations ─────────────────────────────────────────────────────
+  bulkUpdateStage: ownerProcedure
+    .input(z.object({
+      ids: z.array(z.number()).min(1).max(100),
+      stage: z.enum(["new", "contacted", "converted", "estimate_sent", "negotiating", "won", "lost"]),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+      await db.update(opsLeads)
+        .set({ stage: input.stage, updatedAt: new Date() })
+        .where(and(inArray(opsLeads.id, input.ids), eq(opsLeads.userId, ctx.user.id)));
+      return { updated: input.ids.length };
     }),
 
   // ─── Facebook Webhook Utilities ───────────────────────────────────────────
