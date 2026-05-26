@@ -200,6 +200,15 @@ export const BLOG_POSTS = [
     readTime: "6 min read",
     category: "Local Service Areas",
   },
+  {
+    slug: "land-management-lawrence-county",
+    title: "Land Management in Lawrence County, TN: What Property Owners Need to Know",
+    meta: "Need land management in Lawrence County, TN? Noland Earthworks provides forestry mulching and land clearing in Lawrenceburg, Loretto, Ethridge, St. Joseph, and across Lawrence County.",
+    date: "May 2026",
+    lastUpdated: "May 2026",
+    readTime: "6 min read",
+    category: "Local Service Areas",
+  },
 ];
 
 const ALL_CATEGORIES = ["All", ...Array.from(new Set(BLOG_POSTS.map((p) => p.category)))];

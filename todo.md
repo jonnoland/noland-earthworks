@@ -1215,3 +1215,9 @@
 
 ## About Page Expansion — May 2026
 - [x] Expand Meet the Man section on /about with Jon's full biography (Army service, IT career, Tennessee move, Noland Earthworks founding)
+
+## Lawrence County Blog Post — May 2026
+- [x] Write and publish Lawrence County blog post: Land Management in Lawrence County, TN (Lawrenceburg, Loretto, Ethridge, St. Joseph, Shoal Creek terrain, pasture reclamation, invasive species, permit notes, 3 FAQs, nearby county links)
+- [x] Register /blog/land-management-lawrence-county route in App.tsx
+- [x] Add Lawrence County to Blog.tsx index
+- [x] Add Lawrence County to sitemap
