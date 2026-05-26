@@ -1,0 +1,53 @@
+@import "tailwindcss";
+
+@theme {
+  --color-brand: oklch(0.65 0.18 50);
+  --color-brand-dark: oklch(0.50 0.18 50);
+  --color-surface: oklch(0.12 0 0);
+  --color-surface-2: oklch(0.16 0 0);
+  --color-surface-3: oklch(0.20 0 0);
+  --color-border: oklch(0.25 0 0);
+  --color-text: oklch(0.94 0.01 80);
+  --color-muted: oklch(0.60 0.01 80);
+  --color-success: oklch(0.70 0.18 145);
+  --color-warning: oklch(0.80 0.18 75);
+  --color-danger: oklch(0.65 0.20 25);
+  --font-sans: "Inter", system-ui, -apple-system, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html, body, #root {
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+  background-color: oklch(0.12 0 0);
+  color: oklch(0.94 0.01 80);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Safe area insets for notched phones */
+.safe-top { padding-top: env(safe-area-inset-top); }
+.safe-bottom { padding-bottom: env(safe-area-inset-bottom); }
+
+/* Scrollable areas */
+.scroll-area {
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+}
+
+/* Native-feel inputs — prevents iOS zoom on focus */
+input, textarea, select {
+  font-size: 16px;
+}
+
+/* Prevent text selection on tap */
+.no-select {
+  -webkit-user-select: none;
+  user-select: none;
+}

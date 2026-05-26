@@ -1,0 +1,45 @@
+{
+  "compilerOptions": {
+    "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.app.tsbuildinfo",
+    "target": "es2023",
+    "lib": ["ES2023", "DOM"],
+    "module": "esnext",
+    "types": ["vite/client"],
+    /* skipLibCheck: true prevents the mobile TS compiler from applying its
+       strict lint rules to server-side source files that are only referenced
+       for type information (AppRouter). The server project has its own
+       tsconfig with its own lint settings. */
+    "skipLibCheck": true,
+
+    /* Bundler mode */
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
+    "verbatimModuleSyntax": true,
+    "moduleDetection": "force",
+    "noEmit": true,
+    
+    "jsx": "react-jsx",
+
+    /* Path aliases */
+    "ignoreDeprecations": "6.0",
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./src/*"],
+      "@shared/*": ["../noland-earthworks/shared/*"]
+    },
+
+    /* Linting — applied only to files in "include" (src/) */
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "erasableSyntaxOnly": true,
+    "noFallthroughCasesInSwitch": true
+  },
+  "include": ["src"],
+  "exclude": [
+    "node_modules",
+    "../noland-earthworks/server",
+    "../noland-earthworks/shared",
+    "../noland-earthworks/drizzle",
+    "../noland-earthworks/client"
+  ]
+}
