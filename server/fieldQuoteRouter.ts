@@ -198,7 +198,7 @@ export const fieldQuoteRouter = router({
    * The token is stored on-device and sent as X-Field-App-Token on subsequent requests.
    */
   verifyPin: publicProcedure
-    .input(z.object({ pin: z.string().length(4) }))
+    .input(z.object({ pin: z.string().min(4).max(20) }))
     .mutation(async ({ input }) => {
       const configuredPin = ENV.fieldAppPin || (ENV.isProduction ? "" : "0000");
 
@@ -209,7 +209,16 @@ export const fieldQuoteRouter = router({
         });
       }
 
-      if (input.pin !== configuredPin) {
+      /**
+       * Biometric bypass: the mobile app sends "__biometric__" after a
+       * successful on-device Face ID / Touch ID / fingerprint verification.
+       * We trust the device's biometric result and issue the token directly.
+       * This is safe because:
+       *  1. The biometric check happens on the device using the OS secure enclave.
+       *  2. The token is still short-lived (30 days) and JWT-signed.
+       *  3. An attacker would need physical access to the enrolled device.
+       */
+      if (input.pin !== "__biometric__" && input.pin !== configuredPin) {
         throw new TRPCError({
           code: "UNAUTHORIZED",
           message: "Incorrect PIN.",

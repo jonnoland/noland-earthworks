@@ -1340,3 +1340,14 @@
 - [x] Update mobile app tRPC client to inject X-Field-App-Token header on all requests
 - [x] Update fieldQuote tests to pass mock app token context; add rejection test (82 tests passing)
 - [x] TypeScript clean, all 82 tests pass, checkpoint saved
+
+## Capacitor Mobile — Biometric Authentication — May 2026
+
+- [x] Install @aparajita/capacitor-biometric-auth plugin in the mobile app
+- [x] Build useBiometric hook — check availability, auto-prompt, and handle errors
+- [x] Update PinLogin screen to auto-prompt biometrics on load if previously enrolled
+- [x] Add Face ID / fingerprint toggle to Profile page with toggle pill UI
+- [x] Store biometric enrollment preference in Capacitor Preferences
+- [x] Add NSFaceIDUsageDescription to iOS Info.plist
+- [x] Rebuild and sync iOS and Android platforms
+- [x] TypeScript clean, 83 tests pass, checkpoint saved
