@@ -49,7 +49,7 @@ $ErrorActionPreference = "Stop"
 # ─────────────────────────────────────────────────────────────────────────────
 # CONFIGURE THIS: Set the path to where you cloned the repo
 # ─────────────────────────────────────────────────────────────────────────────
-$RepoPath   = "E:\Noland Earthworks\Field App\noland-earthworks"
+$RepoPath   = "E:\Noland Earthworks\Field App\noland-earthworks-mobile\noland-earthworks-mobile"
 $MobilePath = Join-Path $RepoPath "noland-earthworks-mobile"
 # ─────────────────────────────────────────────────────────────────────────────
 
