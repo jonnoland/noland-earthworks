@@ -120,25 +120,68 @@ $env:ANDROID_HOME     = $SdkRoot
 $env:ANDROID_SDK_ROOT = $SdkRoot
 Write-Info "Android SDK: $SdkRoot"
 
-# Locate Java -- try Android Studio bundled JDK if not on PATH
-if (-not (Get-Command java -ErrorAction SilentlyContinue)) {
-    $JbrCandidates = @(
-        "${env:ProgramFiles}\Android\Android Studio\jbr\bin",
-        "${env:LOCALAPPDATA}\Programs\Android Studio\jbr\bin"
-    )
-    $Found = $false
-    foreach ($JbrPath in $JbrCandidates) {
-        if (Test-Path "$JbrPath\java.exe") {
-            $env:PATH = "$JbrPath;$env:PATH"
-            Write-Info "Using Android Studio bundled JDK: $JbrPath"
-            $Found = $true
-            break
-        }
-    }
-    if (-not $Found) {
-        Write-Fail "Java not found. Install a JDK or open Android Studio once to set it up."
+# Locate Java -- try JAVA_HOME, PATH, then Android Studio bundled JDK
+# Also ensure JAVA_HOME is set correctly for Gradle (Gradle reads JAVA_HOME directly)
+$JavaBin = $null
+
+# 1. Check if java is already on PATH
+if (Get-Command java -ErrorAction SilentlyContinue) {
+    $JavaBin = (Get-Command java).Source
+    # Ensure JAVA_HOME is set so Gradle can find it
+    if (-not $env:JAVA_HOME) {
+        # Walk up from java.exe -> bin -> JDK root
+        $env:JAVA_HOME = Split-Path (Split-Path $JavaBin -Parent) -Parent
+        Write-Info "JAVA_HOME auto-set to: $env:JAVA_HOME"
     }
 }
+
+# 2. Try well-known JDK install locations if not found
+if (-not $JavaBin) {
+    $JdkCandidates = @(
+        # Adoptium / Eclipse Temurin
+        "${env:ProgramFiles}\Eclipse Adoptium",
+        "${env:ProgramFiles}\Microsoft\jdk-21*",
+        "${env:ProgramFiles}\Java",
+        # Android Studio bundled JBR
+        "${env:ProgramFiles}\Android\Android Studio\jbr",
+        "${env:LOCALAPPDATA}\Programs\Android Studio\jbr"
+    )
+    foreach ($Candidate in $JdkCandidates) {
+        # Expand wildcards
+        $Expanded = Get-Item $Candidate -ErrorAction SilentlyContinue
+        foreach ($Dir in $Expanded) {
+            # Could be the JDK root or a parent containing versioned subdirs
+            $JavaExe = Join-Path $Dir "bin\java.exe"
+            if (-not (Test-Path $JavaExe)) {
+                # Try one level deeper (e.g. Eclipse Adoptium\jdk-21.0.x)
+                $SubDirs = Get-ChildItem $Dir -Directory -ErrorAction SilentlyContinue
+                foreach ($Sub in $SubDirs) {
+                    $JavaExe = Join-Path $Sub "bin\java.exe"
+                    if (Test-Path $JavaExe) {
+                        $Dir = $Sub
+                        break
+                    }
+                    $JavaExe = $null
+                }
+            }
+            if ($JavaExe -and (Test-Path $JavaExe)) {
+                $env:JAVA_HOME = $Dir.FullName
+                $env:PATH = "$($Dir.FullName)\bin;$env:PATH"
+                $JavaBin = $JavaExe
+                Write-Info "Java found at: $env:JAVA_HOME"
+                break
+            }
+        }
+        if ($JavaBin) { break }
+    }
+}
+
+if (-not $JavaBin) {
+    Write-Fail "Java not found. Install a JDK or open Android Studio once to set it up."
+}
+
+Write-Info "Java: $JavaBin"
+Write-Info "JAVA_HOME: $env:JAVA_HOME"
 
 # -- Release signing validation -------------------------------------------------
 $LocalPropsPath  = Join-Path $AndroidDir "local.properties"
