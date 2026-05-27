@@ -137,14 +137,16 @@ if (Get-Command java -ErrorAction SilentlyContinue) {
 
 # 2. Try well-known JDK install locations if not found
 if (-not $JavaBin) {
+    $PF  = $env:ProgramFiles
+    $LA  = $env:LOCALAPPDATA
     $JdkCandidates = @(
-        # Adoptium / Eclipse Temurin
-        "${env:ProgramFiles}\Eclipse Adoptium",
-        "${env:ProgramFiles}\Microsoft\jdk-21*",
-        "${env:ProgramFiles}\Java",
+        # Adoptium / Eclipse Temurin (parent dir — script searches one level deeper)
+        "$PF\Eclipse Adoptium",
+        "$PF\Microsoft",
+        "$PF\Java",
         # Android Studio bundled JBR
-        "${env:ProgramFiles}\Android\Android Studio\jbr",
-        "${env:LOCALAPPDATA}\Programs\Android Studio\jbr"
+        "$PF\Android\Android Studio\jbr",
+        "$LA\Programs\Android Studio\jbr"
     )
     foreach ($Candidate in $JdkCandidates) {
         # Expand wildcards
