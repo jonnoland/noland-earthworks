@@ -1,14 +1,17 @@
 /**
  * useAuth — Mobile app PIN authentication hook
  *
- * Manages the field app JWT token stored in Capacitor Preferences.
- * The token is set after a successful PIN verification and cleared on logout.
- * Components can call useAuth() to get the current auth state and setToken/logout helpers.
+ * Auth state is managed in a single React context (AuthProvider) so that
+ * when setToken() is called in PinLogin, AuthGate re-renders immediately
+ * and navigates to the app shell.
  *
- * The token is also exposed via getStoredToken() for use in the tRPC httpBatchLink headers.
+ * Usage:
+ *   1. Wrap your app root with <AuthProvider>
+ *   2. Call useAuth() anywhere to get { token, loading, isAuthenticated, setToken, logout }
+ *   3. Call getStoredToken() from non-React code (e.g. tRPC httpBatchLink headers)
  */
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, createContext, useContext, ReactNode } from "react";
 import { Preferences } from "@capacitor/preferences";
 
 const TOKEN_KEY = "field_app_token";
@@ -21,7 +24,21 @@ export function getStoredToken(): string | null {
   return _cachedToken;
 }
 
-export function useAuth() {
+// ── Context ───────────────────────────────────────────────────────────────────
+
+interface AuthContextValue {
+  token: string | null;
+  loading: boolean;
+  isAuthenticated: boolean;
+  setToken: (token: string) => Promise<void>;
+  logout: () => Promise<void>;
+}
+
+const AuthContext = createContext<AuthContextValue | null>(null);
+
+// ── Provider ──────────────────────────────────────────────────────────────────
+
+export function AuthProvider({ children }: { children: ReactNode }) {
   const [token, setTokenState] = useState<string | null>(_cachedToken);
   const [loading, setLoading] = useState(true);
 
@@ -54,11 +71,19 @@ export function useAuth() {
     setTokenState(null);
   }, []);
 
-  return {
-    token,
-    loading,
-    isAuthenticated: !!token,
-    setToken,
-    logout,
-  };
+  return (
+    <AuthContext.Provider value={{ token, loading, isAuthenticated: !!token, setToken, logout }}>
+      {children}
+    </AuthContext.Provider>
+  );
+}
+
+// ── Hook ──────────────────────────────────────────────────────────────────────
+
+export function useAuth(): AuthContextValue {
+  const ctx = useContext(AuthContext);
+  if (!ctx) {
+    throw new Error("useAuth must be used inside <AuthProvider>");
+  }
+  return ctx;
 }
