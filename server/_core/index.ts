@@ -60,8 +60,9 @@ async function startServer() {
     // Custom domain
     "https://nolandearthworks.com",
     "https://www.nolandearthworks.com",
-    // Capacitor Android WebView
+    // Capacitor Android/iOS WebView (origin varies by platform and Capacitor version)
     "capacitor://localhost",
+    "https://localhost",
     "http://localhost",
     // Local dev
     /^http:\/\/localhost(:\d+)?$/,
