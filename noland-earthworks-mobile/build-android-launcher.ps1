@@ -75,10 +75,17 @@ Write-Host ""
 
 # Step 1: Validate repo path
 Write-Step "Locating repo"
+Write-Info "Looking for repo at: $RepoPath"
 
 if (-not (Test-Path $RepoPath)) {
     Write-Fail "Repo not found at: $RepoPath`n`nEdit the RepoPath variable at the top of this script to match your local path."
 }
+
+$GitDir = Join-Path $RepoPath ".git"
+if (-not (Test-Path $GitDir)) {
+    Write-Fail "Directory exists but is NOT a git repo: $RepoPath`n`nThe .git folder is missing. Make sure RepoPath points to the cloned repo root, not a parent folder."
+}
+
 Write-Ok "Repo found: $RepoPath"
 
 # Step 2: Git pull
