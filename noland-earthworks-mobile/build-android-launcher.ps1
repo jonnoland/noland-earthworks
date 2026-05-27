@@ -14,37 +14,19 @@
 
     Edit the $RepoPath variable below to match where you cloned the repo.
 
-.PARAMETER Release
-    Build a release artifact instead of a debug APK.
-
-.PARAMETER Apk
-    Force APK output for release builds (default is AAB for Play Store).
-
-.PARAMETER Install
-    Install the finished APK directly to a connected Android phone via adb.
-
-.EXAMPLE
+.USAGE
     .\build-android-launcher.ps1
-    Pull latest code and build a debug APK.
+        Pull latest code and build a debug APK.
 
-.EXAMPLE
-    .\build-android-launcher.ps1 -Install
-    Pull latest code, build debug APK, and install to phone.
+    .\build-android-launcher.ps1 install
+        Pull latest code, build debug APK, and install to phone.
 
-.EXAMPLE
-    .\build-android-launcher.ps1 -Release -Apk -Install
-    Pull latest code, build release APK, and install to phone.
+    .\build-android-launcher.ps1 release
+        Pull latest code, build release AAB.
+
+    .\build-android-launcher.ps1 release apk install
+        Pull latest code, build release APK, and install to phone.
 #>
-
-[CmdletBinding()]
-param(
-    [switch]$Release,
-    [switch]$Apk,
-    [switch]$Install
-)
-
-Set-StrictMode -Version Latest
-$ErrorActionPreference = "Stop"
 
 # ---------------------------------------------------------------------------
 # CONFIGURE THIS: Set the path to where you cloned the repo
@@ -52,6 +34,13 @@ $ErrorActionPreference = "Stop"
 $RepoPath   = "E:\Noland Earthworks\Field App\noland-earthworks-mobile"
 $MobilePath = Join-Path $RepoPath "noland-earthworks-mobile"
 # ---------------------------------------------------------------------------
+
+# Parse arguments (simple string matching — works in all PS versions)
+$DoInstall = $args -contains "install"  -or $args -contains "-Install"  -or $args -contains "-install"
+$DoRelease = $args -contains "release"  -or $args -contains "-Release"  -or $args -contains "-release"
+$DoApk     = $args -contains "apk"      -or $args -contains "-Apk"      -or $args -contains "-apk"
+
+$ErrorActionPreference = "Stop"
 
 function Write-Info  { param($Msg) Write-Host "[INFO]  $Msg" -ForegroundColor Cyan }
 function Write-Ok    { param($Msg) Write-Host "[OK]    $Msg" -ForegroundColor Green }
@@ -123,12 +112,16 @@ Set-Location $MobilePath
 Write-Step "Starting Android build"
 Write-Host ""
 
+# Build the argument list for the inner script
 $BuildArgs = @()
-if ($Release) { $BuildArgs += "-Release" }
-if ($Apk)     { $BuildArgs += "-Apk" }
-if ($Install)  { $BuildArgs += "-Install" }
+if ($DoRelease) { $BuildArgs += "-Release" }
+if ($DoApk)     { $BuildArgs += "-Apk" }
+if ($DoInstall) { $BuildArgs += "-Install" }
 
-. $BuildScript @BuildArgs
+Write-Info "Build flags: $(if ($BuildArgs.Count -eq 0) { '(none — debug APK)' } else { $BuildArgs -join ' ' })"
+Write-Host ""
+
+& powershell.exe -ExecutionPolicy Bypass -File $BuildScript @BuildArgs
 
 # Done
 Write-Host ""
