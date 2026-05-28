@@ -2,7 +2,8 @@
  * Chat Sessions — view all public AI chat sessions with full conversation transcripts.
  * Two-column layout: session list (left) | transcript (right)
  */
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useLocation } from "wouter";
 import OpsDashboardLayout from "@/components/OpsDashboardLayout";
 import { trpc } from "@/lib/trpc";
 import { BotMessageSquare, User, MessageSquare, Phone, Mail, UserCheck, Clock, ChevronRight } from "lucide-react";
@@ -37,6 +38,8 @@ function formatFullTime(date: Date | string | null | undefined): string {
 
 export default function ChatSessions() {
   const [selectedId, setSelectedId] = useState<number | null>(null);
+  const [location] = useLocation();
+  const utils = trpc.useUtils();
 
   const { data: sessions = [], isLoading } = trpc.chat.listSessions.useQuery({ limit: 100 });
 
@@ -44,6 +47,25 @@ export default function ChatSessions() {
     { sessionId: selectedId! },
     { enabled: selectedId !== null }
   );
+
+  const markViewed = trpc.chat.markViewed.useMutation({
+    onSuccess: () => utils.chat.unreadCount.invalidate(),
+  });
+
+  // Handle ?session=ID param from Leads page transcript link
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const sessionParam = params.get("session");
+    if (sessionParam) {
+      const id = parseInt(sessionParam, 10);
+      if (!isNaN(id)) setSelectedId(id);
+    }
+  }, [location]);
+
+  function handleSelectSession(id: number) {
+    setSelectedId(id);
+    markViewed.mutate({ sessionId: id });
+  }
 
   const selectedSession = sessions.find((s) => s.id === selectedId) ?? null;
 
@@ -73,19 +95,24 @@ export default function ChatSessions() {
               {sessions.map((session) => (
                 <button
                   key={session.id}
-                  onClick={() => setSelectedId(session.id)}
+                  onClick={() => handleSelectSession(session.id)}
                   className={cn(
                     "w-full text-left px-4 py-3 border-b border-zinc-800/60 transition-colors hover:bg-zinc-800/50",
                     selectedId === session.id && "bg-zinc-800 border-l-2 border-l-orange-500"
                   )}
                 >
-                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex items-start justify-between gap-2">
                     <div className="flex items-center gap-2 min-w-0">
-                      <div className={cn(
-                        "w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 text-xs font-semibold",
-                        session.leadCreated ? "bg-green-900/60 text-green-400" : "bg-zinc-700 text-zinc-400"
-                      )}>
-                        {session.visitorName ? session.visitorName.charAt(0).toUpperCase() : "?"}
+                      <div className="relative flex-shrink-0">
+                        {!session.viewedAt && selectedId !== session.id && (
+                          <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-teal-400 z-10" />
+                        )}
+                        <div className={cn(
+                          "w-7 h-7 rounded-full flex items-center justify-center text-xs font-semibold",
+                          session.leadCreated ? "bg-green-900/60 text-green-400" : "bg-zinc-700 text-zinc-400"
+                        )}>
+                          {session.visitorName ? session.visitorName.charAt(0).toUpperCase() : "?"}
+                        </div>
                       </div>
                       <div className="min-w-0">
                         <p className="text-sm font-medium text-zinc-200 truncate">

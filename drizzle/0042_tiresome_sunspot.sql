@@ -1,0 +1,1 @@
+ALTER TABLE `ops_leads` ADD `chatSessionId` int;

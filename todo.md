@@ -1358,3 +1358,6 @@
 - [x] pnpm store and Gradle caches included for faster subsequent runs
 - [x] Add Chat Sessions view to /ops dashboard with full conversation transcript per session
 - [x] Upgrade chat widget contact info extraction to LLM-based parsing (name + phone from conversation)
+- [x] Add View Transcript button on Leads page linking to chat session transcript
+- [x] Add lead source filter on Leads page (All, Facebook, Chat, Form)
+- [x] Add unread chat sessions badge on sidebar nav item

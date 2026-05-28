@@ -13,7 +13,7 @@ import { trpc } from "@/lib/trpc";
 import { useState, useRef, useCallback, useEffect, useMemo } from "react";
 
 import {
-  Phone, Mail, MessageSquare, FileText, Calendar,
+  Phone, Mail, MessageSquare, BotMessageSquare, FileText, Calendar,
   Plus, Search, X, Loader2, XCircle,
   MapPin, ExternalLink, Trash2,
   AlarmClock, User, PhoneCall,
@@ -132,7 +132,7 @@ const KANBAN_STAGES = [
 
 const SOURCE_LABELS: Record<string, string> = {
   google: "Google Search", facebook: "Facebook", referral: "Referral",
-  website: "Website", direct: "Direct", other: "Other",
+  website: "Chat / Website", direct: "Direct", field_app: "Field App", other: "Other",
 };
 const SOURCE_COLORS: Record<string, string> = {
   google: "bg-blue-500/15 text-blue-400 border-blue-500/25",
@@ -183,6 +183,7 @@ interface Lead {
   aiSummary?: string | null;
   aiFlags?: string | null;
   aiDraftResponse?: string | null;
+  chatSessionId?: number | null;
 }
 
 // ─── Lead Card ────────────────────────────────────────────────────────────────
@@ -720,6 +721,15 @@ function LeadDetailPanel({
               <Calendar className="w-3.5 h-3.5" />Schedule Visit
             </button>
           </div>
+          {/* View Transcript button — only shown for chat-sourced leads */}
+          {lead.chatSessionId && (
+            <button
+              onClick={() => navigate(`/ops/chat-sessions?session=${lead.chatSessionId}`)}
+              className="mt-2 w-full flex items-center justify-center gap-2 bg-teal-600/15 hover:bg-teal-600/25 border border-teal-500/25 text-teal-400 text-[11px] font-semibold py-2 rounded-md transition-colors">
+              <BotMessageSquare className="w-3.5 h-3.5" />
+              View Chat Transcript
+            </button>
+          )}
         </div>
 
         {/* Scrollable body */}
@@ -1336,7 +1346,7 @@ export default function Leads() {
               { key: "all", label: "All Sources" },
               { key: "facebook", label: "Facebook" },
               { key: "google", label: "Google" },
-              { key: "website", label: "Website" },
+              { key: "website", label: "Chat / Website" },
               { key: "referral", label: "Referral" },
               { key: "direct", label: "Direct" },
               { key: "other", label: "Other" },

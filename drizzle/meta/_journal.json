@@ -295,6 +295,20 @@
       "when": 1779825494161,
       "tag": "0041_marvelous_mister_fear",
       "breakpoints": true
+    },
+    {
+      "idx": 42,
+      "version": "5",
+      "when": 1779994990384,
+      "tag": "0042_tiresome_sunspot",
+      "breakpoints": true
+    },
+    {
+      "idx": 43,
+      "version": "5",
+      "when": 1779995218856,
+      "tag": "0043_early_impossible_man",
+      "breakpoints": true
     }
   ]
 }

@@ -5,6 +5,7 @@
  */
 
 import { useState } from "react";
+import { trpc } from "@/lib/trpc";
 import { Link, useLocation } from "wouter";
 import { toast } from "sonner";
 import {
@@ -69,6 +70,9 @@ export default function DashboardLayout({ children, title, subtitle }: Dashboard
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
   const [userOpen, setUserOpen] = useState(false);
+  const { data: chatUnread = 0 } = trpc.chat.unreadCount.useQuery(undefined, {
+    refetchInterval: 30_000, // poll every 30s
+  });
 
   const handleLogout = async () => {
     await logout();
@@ -150,7 +154,15 @@ export default function DashboardLayout({ children, title, subtitle }: Dashboard
                 >
                   <item.icon className={cn("w-4 h-4 shrink-0", isActive && "text-primary")} />
                   <span>{item.label}</span>
-                  {isActive && (
+                  {item.href === "/ops/chat-sessions" && chatUnread > 0 && (
+                    <span className="ml-auto flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-teal-500 text-white text-[10px] font-bold">
+                      {chatUnread > 99 ? "99+" : chatUnread}
+                    </span>
+                  )}
+                  {isActive && chatUnread === 0 && (
+                    <span className="ml-auto w-1.5 h-1.5 rounded-full bg-primary" />
+                  )}
+                  {isActive && chatUnread > 0 && item.href !== "/ops/chat-sessions" && (
                     <span className="ml-auto w-1.5 h-1.5 rounded-full bg-primary" />
                   )}
                 </div>

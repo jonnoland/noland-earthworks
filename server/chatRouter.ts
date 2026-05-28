@@ -9,7 +9,7 @@ import { publicProcedure, protectedProcedure, router } from "./_core/trpc";
 import { invokeLLM } from "./_core/llm";
 import { getDb } from "./db";
 import { chatSessions, chatMessages } from "../drizzle/schema";
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, isNull, sql } from "drizzle-orm";
 import { createOpsLead, getOwnerUser } from "./db";
 import { notifyOwner } from "./_core/notification";
 import crypto from "crypto";
@@ -270,6 +270,7 @@ export const chatRouter = router({
               email: email || undefined,
               source: "website",
               stage: "new",
+              chatSessionId: session.id,
               notes: `Lead from AI chat widget.\n\nConversation summary:\n${history.slice(-4).map(m => `${m.role === "user" ? "Visitor" : "AI"}: ${m.content}`).join("\n")}`,
             });
 
@@ -326,5 +327,28 @@ export const chatRouter = router({
         .from(chatMessages)
         .where(eq(chatMessages.sessionId, input.sessionId))
         .orderBy(chatMessages.createdAt);
+    }),
+
+  /** Owner: count sessions not yet viewed (viewedAt is null) */
+  unreadCount: protectedProcedure.query(async () => {
+    const db = await getDb();
+    if (!db) return 0;
+    const rows = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(chatSessions)
+      .where(isNull(chatSessions.viewedAt));
+    return Number(rows[0]?.count ?? 0);
+  }),
+
+  /** Owner: mark a session as viewed */
+  markViewed: protectedProcedure
+    .input(z.object({ sessionId: z.number() }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) return;
+      await db
+        .update(chatSessions)
+        .set({ viewedAt: new Date() })
+        .where(eq(chatSessions.id, input.sessionId));
     }),
 });

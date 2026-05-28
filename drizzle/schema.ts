@@ -169,6 +169,8 @@ export const opsLeads = mysqlTable("ops_leads", {
   aiDraftResponse: text("aiDraftResponse"),
   /** Facebook leadgen_id — stored for deduplication; prevents duplicate leads from FB webhook retries */
   leadgenId: varchar("leadgenId", { length: 128 }),
+  /** FK to chat_sessions — set when lead is created from the AI chat widget */
+  chatSessionId: int("chatSessionId"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
@@ -842,6 +844,8 @@ export const chatSessions = mysqlTable("chat_sessions", {
   visitorEmail: varchar("visitorEmail", { length: 320 }),
   visitorPhone: varchar("visitorPhone", { length: 50 }),
   leadCreated: boolean("leadCreated").notNull().default(false),
+  /** Timestamp when the owner last viewed this session — null means unread */
+  viewedAt: timestamp("viewedAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
