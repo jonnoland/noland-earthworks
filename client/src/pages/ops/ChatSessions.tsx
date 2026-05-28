@@ -38,10 +38,11 @@ function formatFullTime(date: Date | string | null | undefined): string {
 
 export default function ChatSessions() {
   const [selectedId, setSelectedId] = useState<number | null>(null);
+  const [leadsOnly, setLeadsOnly] = useState(true);
   const [location] = useLocation();
   const utils = trpc.useUtils();
 
-  const { data: sessions = [], isLoading } = trpc.chat.listSessions.useQuery({ limit: 100 });
+  const { data: sessions = [], isLoading } = trpc.chat.listSessions.useQuery({ limit: 100, leadsOnly });
 
   const { data: messages = [], isLoading: loadingMessages } = trpc.chat.getSessionMessages.useQuery(
     { sessionId: selectedId! },
@@ -86,18 +87,38 @@ export default function ChatSessions() {
       <div className="flex h-[calc(100vh-120px)] gap-0 overflow-hidden rounded-lg border border-zinc-800">
         {/* Session list */}
         <div className="w-80 flex-shrink-0 flex flex-col border-r border-zinc-800 bg-zinc-900/50">
-          <div className="px-4 py-3 border-b border-zinc-800 flex items-center justify-between gap-2">
-            <p className="text-xs text-zinc-500">
-              {sessions.length} session{sessions.length !== 1 ? "s" : ""}
-            </p>
-            {unreadCount > 0 && (
+          <div className="px-4 py-3 border-b border-zinc-800 flex flex-col gap-2">
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-xs text-zinc-500">
+                {sessions.length} session{sessions.length !== 1 ? "s" : ""}
+              </p>
+              {unreadCount > 0 && (
+                <button
+                  onClick={() => markAllViewed.mutate()}
+                  disabled={markAllViewed.isPending}
+                  className="text-[11px] font-medium text-teal-400 hover:text-teal-300 disabled:opacity-50 transition-colors whitespace-nowrap">
+                  {markAllViewed.isPending ? "Marking..." : `Mark all read (${unreadCount})`}
+                </button>
+              )}
+            </div>
+            <div className="flex rounded-md overflow-hidden border border-zinc-700 text-[11px] font-medium">
               <button
-                onClick={() => markAllViewed.mutate()}
-                disabled={markAllViewed.isPending}
-                className="text-[11px] font-medium text-teal-400 hover:text-teal-300 disabled:opacity-50 transition-colors whitespace-nowrap">
-                {markAllViewed.isPending ? "Marking..." : `Mark all read (${unreadCount})`}
+                onClick={() => setLeadsOnly(true)}
+                className={cn(
+                  "flex-1 py-1 transition-colors",
+                  leadsOnly ? "bg-teal-600 text-white" : "bg-zinc-800 text-zinc-400 hover:text-zinc-200"
+                )}>
+                Leads
               </button>
-            )}
+              <button
+                onClick={() => setLeadsOnly(false)}
+                className={cn(
+                  "flex-1 py-1 transition-colors border-l border-zinc-700",
+                  !leadsOnly ? "bg-zinc-600 text-white" : "bg-zinc-800 text-zinc-400 hover:text-zinc-200"
+                )}>
+                All Chats
+              </button>
+            </div>
           </div>
 
           {isLoading ? (

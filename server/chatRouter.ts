@@ -305,16 +305,22 @@ export const chatRouter = router({
 
   /** Owner: list all chat sessions */
   listSessions: protectedProcedure
-    .input(z.object({ limit: z.number().min(1).max(100).default(50) }))
-    .query(async ({ }) => {
+    .input(z.object({
+      limit: z.number().min(1).max(100).default(50),
+      leadsOnly: z.boolean().default(true),
+    }))
+    .query(async ({ input }) => {
       const db = await getDb();
       if (!db) return [];
-      return db
+      const query = db
         .select()
         .from(chatSessions)
-        .where(eq(chatSessions.leadCreated, true))
         .orderBy(desc(chatSessions.updatedAt))
-        .limit(50);
+        .limit(input.limit);
+      if (input.leadsOnly) {
+        return query.where(eq(chatSessions.leadCreated, true));
+      }
+      return query;
     }),
 
   /** Owner: get messages for a specific session */
