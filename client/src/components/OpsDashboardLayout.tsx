@@ -30,6 +30,7 @@ import {
   Trophy,
   CheckSquare,
   Wrench,
+  BotMessageSquare,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/_core/hooks/useAuth";
@@ -43,6 +44,7 @@ const navItems = [
   { icon: BarChart3, label: "Reports", href: "/ops/reports" },
   { icon: HardHat, label: "Crews", href: "/ops/crews" },
   { icon: MessageSquare, label: "Conversations", href: "/ops/conversations" },
+  { icon: BotMessageSquare, label: "Chat Sessions", href: "/ops/chat-sessions" },
   { icon: Star, label: "Reviews", href: "/ops/reviews" },
   { icon: Clock, label: "Timesheets", href: "/ops/timesheets" },
   { icon: Trophy, label: "Scoreboard", href: "/ops/scoreboard" },

@@ -1356,3 +1356,5 @@
 - [x] Create .github/workflows/android-debug.yml -- triggers on push/PR to main (mobile path filter + workflow_dispatch)
 - [x] Workflow: checkout -> JDK 21 (temurin) -> Node 20 -> pnpm -> install deps -> pnpm build -> cap add android -> cap sync android -> assembleDebug -> upload APK artifact (7-day retention)
 - [x] pnpm store and Gradle caches included for faster subsequent runs
+- [x] Add Chat Sessions view to /ops dashboard with full conversation transcript per session
+- [x] Upgrade chat widget contact info extraction to LLM-based parsing (name + phone from conversation)

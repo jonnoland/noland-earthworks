@@ -190,33 +190,70 @@ export const chatRouter = router({
         .limit(1)
         .then(rows => rows[0]);
 
-      // Try to extract name from conversation history if not already stored
-      const extractNameFromHistory = (msgs: typeof history): string | null => {
-        const patterns = [
-          /(?:i['']?m|i am|my name is|this is|call me)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)/i,
-          /^([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)[\s,!.]+(?:here|calling|reaching out)/i,
-        ];
-        for (const msg of msgs.filter(m => m.role === "user")) {
-          for (const pattern of patterns) {
-            const match = msg.content.match(pattern);
-            if (match) return match[1].trim();
+      // Use LLM to extract contact info from the full conversation if not already stored
+      let resolvedName: string | null = updatedSession?.visitorName || input.visitorName || null;
+      let resolvedPhone: string | null = updatedSession?.visitorPhone || input.visitorPhone || null;
+
+      if (!resolvedName || !resolvedPhone) {
+        try {
+          const allMessages = [
+            ...history.map(m => `${m.role === "user" ? "Visitor" : "AI"}: ${m.content}`),
+            `Visitor: ${input.message}`,
+          ].join("\n");
+
+          const extractResult = await invokeLLM({
+            messages: [
+              {
+                role: "system",
+                content: "Extract the visitor's name and phone number from the following conversation. Return JSON only with keys: name (string or null), phone (string or null, digits only, 10 digits). If not present, return null for that field.",
+              },
+              { role: "user", content: allMessages },
+            ],
+            response_format: {
+              type: "json_schema",
+              json_schema: {
+                name: "contact_info",
+                strict: true,
+                schema: {
+                  type: "object",
+                  properties: {
+                    name: { type: ["string", "null"], description: "Visitor's first name or full name" },
+                    phone: { type: ["string", "null"], description: "10-digit phone number, digits only" },
+                  },
+                  required: ["name", "phone"],
+                  additionalProperties: false,
+                },
+              },
+            },
+          });
+
+          const raw = extractResult?.choices?.[0]?.message?.content;
+          if (raw) {
+            const parsed = typeof raw === "string" ? JSON.parse(raw) : raw;
+            if (!resolvedName && parsed.name) resolvedName = parsed.name;
+            if (!resolvedPhone && parsed.phone) {
+              const digits = String(parsed.phone).replace(/\D/g, "");
+              if (digits.length >= 10) resolvedPhone = digits.slice(-10);
+            }
           }
+        } catch (err) {
+          console.warn("[Chat] LLM contact extraction failed:", err);
         }
-        return null;
-      };
+      }
 
-      const resolvedName = updatedSession?.visitorName || input.visitorName ||
-        extractNameFromHistory([...history, { role: "user", content: input.message, id: 0, sessionId: session.id, createdAt: new Date() }]);
-      const resolvedPhone = updatedSession?.visitorPhone || input.visitorPhone;
-
-      // Update session with resolved name if we just found it
-      if (resolvedName && !updatedSession?.visitorName) {
+      // Persist any newly extracted contact info to the session
+      const nameChanged = resolvedName && resolvedName !== updatedSession?.visitorName;
+      const phoneChanged = resolvedPhone && resolvedPhone !== updatedSession?.visitorPhone;
+      if (nameChanged || phoneChanged) {
         await db.update(chatSessions)
-          .set({ visitorName: resolvedName })
+          .set({
+            visitorName: resolvedName ?? updatedSession?.visitorName ?? null,
+            visitorPhone: resolvedPhone ?? updatedSession?.visitorPhone ?? null,
+          })
           .where(eq(chatSessions.id, session.id));
       }
 
-      const hasContactInfo = resolvedPhone && (resolvedName || resolvedPhone);
+      const hasContactInfo = !!resolvedPhone;
 
       if (hasContactInfo && !updatedSession?.leadCreated) {
         try {
