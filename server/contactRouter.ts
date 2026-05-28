@@ -3,7 +3,7 @@ import { publicProcedure, router } from "./_core/trpc";
 import { notifyOwner } from "./_core/notification";
 import { ENV } from "./_core/env";
 import { Resend } from "resend";
-import { createOpsLead, getOwnerUser } from "./db";
+import { createOpsLead, upsertOpsLeadByPhone, getOwnerUser } from "./db";
 
 const contactSchema = z.object({
   name: z.string().min(1, "Name is required").max(100),
@@ -124,16 +124,30 @@ export const contactRouter = router({
     try {
       const owner = await getOwnerUser();
       if (owner) {
-        await createOpsLead({
-          userId: owner.id,
-          name: input.name,
-          email: input.email || undefined,
-          phone: input.phone || undefined,
-          source: "website",
-          stage: "new",
-          notes: `Subject: ${input.subject}\n\n${input.message}`,
-        });
-        console.log(`[Contact] Lead created for ${input.name}`);
+        // Use upsert — if this phone already has a lead, append notes instead of creating a duplicate
+        if (input.phone) {
+          const { created } = await upsertOpsLeadByPhone({
+            userId: owner.id,
+            name: input.name,
+            email: input.email || undefined,
+            phone: input.phone,
+            source: "website",
+            stage: "new",
+            notes: `Subject: ${input.subject}\n\n${input.message}`,
+          });
+          console.log(`[Contact] Lead ${created ? "created" : "updated"} for ${input.name}`);
+        } else {
+          await createOpsLead({
+            userId: owner.id,
+            name: input.name,
+            email: input.email || undefined,
+            phone: input.phone || undefined,
+            source: "website",
+            stage: "new",
+            notes: `Subject: ${input.subject}\n\n${input.message}`,
+          });
+          console.log(`[Contact] Lead created for ${input.name} (no phone — cannot dedup)`);
+        }
       } else {
         console.warn("[Contact] Owner not found in DB — lead not created (owner must log in once first)");
       }

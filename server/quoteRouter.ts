@@ -4,7 +4,7 @@ import { notifyOwner } from "./_core/notification";
 import { ENV } from "./_core/env";
 import { Resend } from "resend";
 import { createJobberRequest, isJobberConnected } from "./jobber";
-import { createOpsLead, getOwnerUser, getDb } from "./db";
+import { createOpsLead, upsertOpsLeadByPhone, getOwnerUser, getDb } from "./db";
 import { quoteSubmissions } from "../drizzle/schema";
 import { sendOwnerSms } from "./sms";
 import { qualifyLead } from "./leadQualifier";
@@ -514,7 +514,8 @@ export const quoteRouter = router({
         ]
           .filter(Boolean)
           .join("\n");
-        await createOpsLead({
+        // Upsert by phone — prevents duplicate leads when the same person submits multiple quote requests
+        const { created: quoteLeadCreated } = await upsertOpsLeadByPhone({
           userId: owner.id,
           name: input.name,
           email: input.email,
@@ -525,7 +526,7 @@ export const quoteRouter = router({
           jobType: serviceMap[input.service] ?? input.service,
           notes: notes || undefined,
         });
-        console.log(`[Quote] Lead created for ${input.name}`);
+        console.log(`[Quote] Lead ${quoteLeadCreated ? "created" : "updated"} for ${input.name}`);
       } else {
         console.warn("[Quote] Owner not found in DB — lead not created (owner must log in once first)");
       }

@@ -7,10 +7,12 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 
 // ─── Mock DB helpers ──────────────────────────────────────────────────────────
 const mockCreateOpsLead = vi.fn().mockResolvedValue({});
+const mockUpsertOpsLeadByPhone = vi.fn().mockResolvedValue({ leadId: 1, created: true });
 const mockGetOwnerUser = vi.fn();
 
 vi.mock("./db", () => ({
   createOpsLead: (...args: unknown[]) => mockCreateOpsLead(...args),
+  upsertOpsLeadByPhone: (...args: unknown[]) => mockUpsertOpsLeadByPhone(...args),
   getOwnerUser: () => mockGetOwnerUser(),
   upsertUser: vi.fn(),
   getUserByOpenId: vi.fn(),
@@ -96,8 +98,9 @@ describe("contactRouter — lead capture", () => {
       message: "I need 5 acres cleared.",
     });
 
-    expect(mockCreateOpsLead).toHaveBeenCalledOnce();
-    const call = mockCreateOpsLead.mock.calls[0][0];
+    // When phone is provided, contactRouter uses upsertOpsLeadByPhone for dedup
+    expect(mockUpsertOpsLeadByPhone).toHaveBeenCalledOnce();
+    const call = mockUpsertOpsLeadByPhone.mock.calls[0][0];
     expect(call.userId).toBe(1);
     expect(call.name).toBe("Jane Doe");
     expect(call.email).toBe("jane@example.com");
@@ -109,10 +112,9 @@ describe("contactRouter — lead capture", () => {
   });
 
   it("creates a lead even when owner row is auto-seeded (getOwnerUser returns row after seeding)", async () => {
-    // Simulate the auto-seed: first call returns null, second returns the seeded row
-    // But since getOwnerUser now handles seeding internally, the mock just returns the row
     mockGetOwnerUser.mockResolvedValue(ownerRow);
 
+    // No phone provided — falls back to createOpsLead
     await contactCaller.submit({
       name: "Bob Smith",
       email: "bob@example.com",
@@ -158,8 +160,9 @@ describe("quoteRouter — lead capture", () => {
       message: "Need it done by spring.",
     });
 
-    expect(mockCreateOpsLead).toHaveBeenCalledOnce();
-    const call = mockCreateOpsLead.mock.calls[0][0];
+    // quoteRouter now uses upsertOpsLeadByPhone for dedup
+    expect(mockUpsertOpsLeadByPhone).toHaveBeenCalledOnce();
+    const call = mockUpsertOpsLeadByPhone.mock.calls[0][0];
     expect(call.userId).toBe(1);
     expect(call.name).toBe("John Farm");
     expect(call.email).toBe("john@farm.com");
@@ -182,8 +185,8 @@ describe("quoteRouter — lead capture", () => {
       county: "Williamson",
     });
 
-    expect(mockCreateOpsLead).toHaveBeenCalledOnce();
-    expect(mockCreateOpsLead.mock.calls[0][0].jobType).toBe("forestry_mulching");
+    expect(mockUpsertOpsLeadByPhone).toHaveBeenCalledOnce();
+    expect(mockUpsertOpsLeadByPhone.mock.calls[0][0].jobType).toBe("forestry_mulching");
   });
 
   it("creates a lead even when owner row is auto-seeded", async () => {
@@ -197,8 +200,8 @@ describe("quoteRouter — lead capture", () => {
       county: "Wilson",
     });
 
-    expect(mockCreateOpsLead).toHaveBeenCalledOnce();
-    expect(mockCreateOpsLead.mock.calls[0][0].name).toBe("No Owner");
+    expect(mockUpsertOpsLeadByPhone).toHaveBeenCalledOnce();
+    expect(mockUpsertOpsLeadByPhone.mock.calls[0][0].name).toBe("No Owner");
   });
 
   it("still returns success even if lead creation throws", async () => {

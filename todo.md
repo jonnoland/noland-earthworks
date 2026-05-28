@@ -1376,3 +1376,5 @@
 - [x] Verified quote page reads ?service= query param — pre-fill already wired (no change needed)
 - [x] Updated AI chat system prompt — now consistently uses trigger phrases (get a quote, Jon will follow up, nolandearthworks.com/quote) to reliably surface the quote CTA button
 - [x] Updated lead capture email — now includes full conversation transcript (Visitor/AI labeled) in addition to last message
+- [x] Implement duplicate lead prevention — upsertOpsLeadByPhone helper in db.ts; applied to chatRouter, widgetRouter, contactRouter, and quoteRouter; appends notes on repeat contact instead of creating duplicate records
+- [x] Update all affected tests to assert upsertOpsLeadByPhone instead of createOpsLead; all 88 tests passing

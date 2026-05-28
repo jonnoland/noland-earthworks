@@ -10,7 +10,7 @@ import { invokeLLM } from "./_core/llm";
 import { getDb } from "./db";
 import { chatSessions, chatMessages } from "../drizzle/schema";
 import { eq, desc, isNull, sql } from "drizzle-orm";
-import { createOpsLead, getOwnerUser } from "./db";
+import { createOpsLead, getOwnerUser, upsertOpsLeadByPhone } from "./db";
 import { notifyOwner } from "./_core/notification";
 import { ENV } from "./_core/env";
 import { Resend } from "resend";
@@ -274,7 +274,7 @@ export const chatRouter = router({
             const phone = resolvedPhone || "";
             const email = updatedSession?.visitorEmail || input.visitorEmail || "";
 
-            await createOpsLead({
+            const { leadId: upsertedLeadId, created: leadCreatedNew } = await upsertOpsLeadByPhone({
               userId: owner.id,
               name,
               phone,
@@ -284,6 +284,7 @@ export const chatRouter = router({
               chatSessionId: session.id,
               notes: `Lead from AI chat widget.\n\nConversation summary:\n${history.slice(-4).map(m => `${m.role === "user" ? "Visitor" : "AI"}: ${m.content}`).join("\n")}`,
             });
+            console.log(`[Chat] Lead ${leadCreatedNew ? "created" : "updated"} (id=${upsertedLeadId}) for phone ${phone}`);
 
             await db.update(chatSessions)
               .set({ leadCreated: true })

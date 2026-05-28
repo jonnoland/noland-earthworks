@@ -1,11 +1,12 @@
 /**
  * widgetRouter — CRM lead creation tests
  *
- * Verifies that every SMS widget submission:
- *   1. Calls createOpsLead with the correct fields (name, phone, source, stage, notes).
- *   2. Returns { ok: true } even when Twilio is not configured.
+ * Verifies that every estimate widget submission:
+ *   1. Calls upsertOpsLeadByPhone with the correct fields (name, phone, source, stage, notes).
+ *   2. Returns { ok: true } even when the DB is not configured.
  *   3. Returns { ok: true } even when CRM lead creation fails (non-fatal).
  *   4. Does NOT create a lead when getOwnerUser returns null.
+ *   5. Fires owner notification with correct title and content.
  */
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
@@ -15,23 +16,30 @@ import { createCallerFactory } from "./_core/trpc";
 // ─── Mocks ────────────────────────────────────────────────────────────────────
 
 const mockGetOwnerUser = vi.fn();
-const mockCreateOpsLead = vi.fn().mockResolvedValue({ insertId: 42 });
+const mockUpsertOpsLeadByPhone = vi.fn().mockResolvedValue({ leadId: 42, created: true });
 const mockNotifyOwner = vi.fn().mockResolvedValue(true);
+const mockGetVisitBlackoutDates = vi.fn().mockResolvedValue([]);
+const mockGetRecurringBlackoutDays = vi.fn().mockResolvedValue([]);
 
 vi.mock("./db", () => ({
   getOwnerUser: (...args: unknown[]) => mockGetOwnerUser(...args),
-  createOpsLead: (...args: unknown[]) => mockCreateOpsLead(...args),
+  upsertOpsLeadByPhone: (...args: unknown[]) => mockUpsertOpsLeadByPhone(...args),
+  createOpsLead: vi.fn().mockResolvedValue({ insertId: 1 }),
+  updateOpsLeadById: vi.fn().mockResolvedValue(undefined),
+  getVisitBlackoutDates: (...args: unknown[]) => mockGetVisitBlackoutDates(...args),
+  addVisitBlackoutDate: vi.fn().mockResolvedValue(undefined),
+  removeVisitBlackoutDate: vi.fn().mockResolvedValue(undefined),
+  getRecurringBlackoutDays: (...args: unknown[]) => mockGetRecurringBlackoutDays(...args),
 }));
 
 vi.mock("./_core/notification", () => ({
   notifyOwner: (...args: unknown[]) => mockNotifyOwner(...args),
 }));
 
-// Twilio is not configured in test env — the import will be skipped
-vi.mock("twilio", () => ({
-  default: () => ({
-    messages: { create: vi.fn().mockResolvedValue({ sid: "SM123" }) },
-  }),
+vi.mock("resend", () => ({
+  Resend: vi.fn().mockImplementation(() => ({
+    emails: { send: vi.fn().mockResolvedValue({ id: "email-id-123" }) },
+  })),
 }));
 
 // ─── Caller setup ─────────────────────────────────────────────────────────────
@@ -51,45 +59,53 @@ const ownerRow = {
   lastSignedIn: new Date(),
 };
 
+const baseEstimate = {
+  name: "Sarah Landowner",
+  phone: "6155559001",
+  email: "sarah@example.com",
+  service: "forestry-mulching",
+  acres: 5,
+  density: "moderate",
+  terrain: "flat",
+  access: "good",
+  estimateLow: 1500,
+  estimateHigh: 2500,
+};
+
 beforeEach(() => {
   vi.clearAllMocks();
-  mockCreateOpsLead.mockResolvedValue({ insertId: 42 });
+  mockUpsertOpsLeadByPhone.mockResolvedValue({ leadId: 42, created: true });
   mockNotifyOwner.mockResolvedValue(true);
 });
 
 // ─── Tests ────────────────────────────────────────────────────────────────────
 
-describe("widgetRouter.sendMessage — CRM lead creation", () => {
-  it("creates a lead with correct fields when owner exists", async () => {
+describe("widgetRouter.submitEstimate — CRM lead creation", () => {
+  it("upserts a lead with correct fields when owner exists", async () => {
     mockGetOwnerUser.mockResolvedValue(ownerRow);
 
-    const result = await widgetCaller.sendMessage({
-      name: "Sarah Landowner",
-      phone: "615-555-9001",
-      message: "I have 8 acres that need clearing.",
-    });
+    const result = await widgetCaller.submitEstimate(baseEstimate);
 
     expect(result.ok).toBe(true);
-    expect(mockCreateOpsLead).toHaveBeenCalledOnce();
+    expect(mockUpsertOpsLeadByPhone).toHaveBeenCalledOnce();
 
-    const call = mockCreateOpsLead.mock.calls[0][0];
+    const call = mockUpsertOpsLeadByPhone.mock.calls[0][0];
     expect(call.userId).toBe(7);
     expect(call.name).toBe("Sarah Landowner");
-    expect(call.phone).toBe("615-555-9001");
+    expect(call.phone).toBe("6155559001");
     expect(call.source).toBe("website");
     expect(call.stage).toBe("new");
-    expect(call.notes).toContain("I have 8 acres that need clearing.");
-    expect(call.notes).toContain("website SMS widget");
+    expect(call.jobType).toContain("Forestry");
   });
 
-  it("returns leadId from the insert result", async () => {
+  it("returns leadId from the upsert result", async () => {
     mockGetOwnerUser.mockResolvedValue(ownerRow);
-    mockCreateOpsLead.mockResolvedValue({ insertId: 99 });
+    mockUpsertOpsLeadByPhone.mockResolvedValue({ leadId: 99, created: true });
 
-    const result = await widgetCaller.sendMessage({
+    const result = await widgetCaller.submitEstimate({
+      ...baseEstimate,
       name: "Tom Farmer",
-      phone: "615-555-9002",
-      message: "Need pasture reclaimed.",
+      phone: "6155559002",
     });
 
     expect(result.ok).toBe(true);
@@ -98,43 +114,43 @@ describe("widgetRouter.sendMessage — CRM lead creation", () => {
 
   it("returns ok:true even when CRM lead creation throws (non-fatal)", async () => {
     mockGetOwnerUser.mockResolvedValue(ownerRow);
-    mockCreateOpsLead.mockRejectedValueOnce(new Error("DB unavailable"));
+    mockUpsertOpsLeadByPhone.mockRejectedValueOnce(new Error("DB unavailable"));
 
-    const result = await widgetCaller.sendMessage({
+    const result = await widgetCaller.submitEstimate({
+      ...baseEstimate,
       name: "Error Case",
-      phone: "615-555-9003",
-      message: "Test resilience.",
+      phone: "6155559003",
     });
 
     expect(result.ok).toBe(true);
     expect(result.leadId).toBeNull();
   });
 
-  it("does not call createOpsLead when getOwnerUser returns null", async () => {
+  it("does not call upsertOpsLeadByPhone when getOwnerUser returns null", async () => {
     mockGetOwnerUser.mockResolvedValue(null);
 
-    const result = await widgetCaller.sendMessage({
+    const result = await widgetCaller.submitEstimate({
+      ...baseEstimate,
       name: "No Owner",
-      phone: "615-555-9004",
-      message: "No owner configured.",
+      phone: "6155559004",
     });
 
     expect(result.ok).toBe(true);
-    expect(mockCreateOpsLead).not.toHaveBeenCalled();
+    expect(mockUpsertOpsLeadByPhone).not.toHaveBeenCalled();
   });
 
-  it("fires owner notification with correct title", async () => {
+  it("fires owner notification with correct title and content", async () => {
     mockGetOwnerUser.mockResolvedValue(ownerRow);
 
-    await widgetCaller.sendMessage({
+    await widgetCaller.submitEstimate({
+      ...baseEstimate,
       name: "Notification Test",
-      phone: "615-555-9005",
-      message: "Check notification title.",
+      phone: "6155559005",
     });
 
     expect(mockNotifyOwner).toHaveBeenCalledOnce();
     const notifyCall = mockNotifyOwner.mock.calls[0][0];
     expect(notifyCall.title).toContain("Notification Test");
-    expect(notifyCall.content).toContain("615-555-9005");
+    expect(notifyCall.content).toContain("6155559005");
   });
 });

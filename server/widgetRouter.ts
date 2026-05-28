@@ -2,7 +2,7 @@ import { z } from "zod";
 import { publicProcedure, router } from "./_core/trpc";
 import { ENV } from "./_core/env";
 import { notifyOwner } from "./_core/notification";
-import { getOwnerUser, createOpsLead, updateOpsLeadById, getVisitBlackoutDates, addVisitBlackoutDate, removeVisitBlackoutDate, getRecurringBlackoutDays } from "./db";
+import { getOwnerUser, createOpsLead, upsertOpsLeadByPhone, updateOpsLeadById, getVisitBlackoutDates, addVisitBlackoutDate, removeVisitBlackoutDate, getRecurringBlackoutDays } from "./db";
 import { Resend } from "resend";
 
 const SERVICE_LABELS: Record<string, string> = {
@@ -61,7 +61,7 @@ export const widgetRouter = router({
       try {
         const owner = await getOwnerUser();
         if (owner) {
-          const result = await createOpsLead({
+          const { leadId: upsertedId, created } = await upsertOpsLeadByPhone({
             userId: owner.id,
             name: input.name,
             phone: input.phone,
@@ -74,8 +74,8 @@ export const widgetRouter = router({
             ),
             notes,
           });
-          const insertResult = result as unknown as { insertId?: number };
-          leadId = insertResult?.insertId ?? null;
+          leadId = upsertedId;
+          console.log(`[Widget] Estimate lead ${created ? "created" : "updated"} (id=${upsertedId}) for phone ${input.phone}`);
         }
       } catch (err) {
         console.error("[Widget] submitEstimate CRM save failed:", err);

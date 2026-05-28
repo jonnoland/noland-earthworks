@@ -184,6 +184,59 @@ export async function createOpsLead(data: InsertOpsLead) {
   if (!db) throw new Error("Database not available");
   return db.insert(opsLeads).values(data);
 }
+
+/**
+ * Upsert a lead by phone number.
+ * If a lead with the same phone already exists for this owner, update it (append notes,
+ * update chatSessionId, keep the existing stage unless it is still "new").
+ * Returns { leadId, created: true } on insert or { leadId, created: false } on update.
+ */
+export async function upsertOpsLeadByPhone(
+  data: InsertOpsLead & { phone: string }
+): Promise<{ leadId: number; created: boolean }> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  // Look for an existing lead with the same phone under the same owner
+  const existing = await db
+    .select()
+    .from(opsLeads)
+    .where(and(eq(opsLeads.userId, data.userId), eq(opsLeads.phone, data.phone)))
+    .limit(1)
+    .then(rows => rows[0] ?? null);
+
+  if (!existing) {
+    // No match — create new lead
+    const result = await db.insert(opsLeads).values(data);
+    const insertResult = result as unknown as { insertId?: number };
+    return { leadId: insertResult?.insertId ?? 0, created: true };
+  }
+
+  // Match found — append new notes to existing notes and update metadata
+  const appendedNotes = [
+    existing.notes ?? "",
+    data.notes ? `\n\n--- New chat session (${new Date().toLocaleDateString()}) ---\n${data.notes}` : "",
+  ].join("").trim();
+
+  await db
+    .update(opsLeads)
+    .set({
+      // Update name if we now have a better one
+      name: data.name && data.name !== "Website Visitor" ? data.name : existing.name,
+      // Update email if newly provided
+      email: data.email || existing.email,
+      // Append notes
+      notes: appendedNotes || existing.notes,
+      // Link to latest chat session
+      chatSessionId: data.chatSessionId ?? existing.chatSessionId,
+      // Keep existing stage unless it is still "new" and we have a new source
+      source: existing.source === "other" ? data.source : existing.source,
+      updatedAt: new Date(),
+    })
+    .where(eq(opsLeads.id, existing.id));
+
+  return { leadId: existing.id, created: false };
+}
 export async function updateOpsLead(id: number, userId: number, data: Partial<InsertOpsLead>) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
