@@ -284,8 +284,9 @@ function Router() {
       <Route path="/ops/crews/:id/pricing">
         <OwnerRoute><CrewPricing /></OwnerRoute>
       </Route>
+      {/* /ops/conversations redirects to Chat Sessions — SMS center is superseded */}
       <Route path="/ops/conversations">
-        <OwnerRoute><OpsConversations /></OwnerRoute>
+        <OwnerRoute><OpsChatSessions /></OwnerRoute>
       </Route>
       <Route path="/ops/reviews">
         <OwnerRoute><OpsReviews /></OwnerRoute>

@@ -124,6 +124,11 @@ export default function Scoreboard() {
 
   return (
     <OpsDashboardLayout title="Scoreboard" subtitle="Business performance at a glance">
+      {/* Local data notice */}
+      <div className="mx-6 mt-6 flex items-center gap-2 px-3 py-2 rounded-md bg-amber-500/10 border border-amber-500/20 text-amber-400 text-xs">
+        <span className="font-semibold">Note:</span>
+        <span>Metrics reflect jobs and leads entered in this dashboard only. For complete revenue data, refer to Jobber.</span>
+      </div>
       {isLoading ? (
         <div className="p-10 text-center text-white/30 text-sm">Loading data...</div>
       ) : (

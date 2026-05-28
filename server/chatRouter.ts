@@ -12,6 +12,8 @@ import { chatSessions, chatMessages } from "../drizzle/schema";
 import { eq, desc, isNull, sql } from "drizzle-orm";
 import { createOpsLead, getOwnerUser } from "./db";
 import { notifyOwner } from "./_core/notification";
+import { ENV } from "./_core/env";
+import { Resend } from "resend";
 import crypto from "crypto";
 
 const CHAT_SYSTEM_PROMPT = `You are the AI assistant for Noland Earthworks, LLC — a veteran-owned land management and forestry mulching company in Middle Tennessee. Your name is not important; you represent Noland Earthworks.
@@ -292,6 +294,69 @@ export const chatRouter = router({
                 `View leads: https://www.nolandearthworks.com/ops/leads`,
               ].filter(Boolean).join("\n"),
             });
+
+            // Send email notification via Resend
+            if (ENV.resendApiKey) {
+              try {
+                const resend = new Resend(ENV.resendApiKey);
+                const phoneFormatted = phone ? phone.replace(/(\d{3})(\d{3})(\d{4})/, "($1) $2-$3") : "";
+                const emailHtml = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <style>
+    body { font-family: Arial, sans-serif; background: #f5f5f5; margin: 0; padding: 0; }
+    .wrapper { max-width: 600px; margin: 32px auto; background: #fff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+    .header { background: #1a1a1a; padding: 28px 32px; }
+    .header h1 { color: #E07B2A; font-size: 22px; margin: 0; letter-spacing: 1px; text-transform: uppercase; }
+    .header p { color: #aaa; margin: 6px 0 0; font-size: 13px; }
+    .body { padding: 28px 32px; }
+    .field { margin-bottom: 18px; }
+    .label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: #888; margin-bottom: 4px; }
+    .value { font-size: 15px; color: #222; background: #f9f9f9; padding: 10px 14px; border-radius: 5px; border-left: 3px solid #E07B2A; }
+    .message-box { background: #f9f9f9; border-left: 3px solid #E07B2A; padding: 14px; border-radius: 5px; font-size: 14px; color: #333; white-space: pre-wrap; }
+    .cta { display: inline-block; margin-top: 20px; padding: 12px 24px; background: #E07B2A; color: #fff; text-decoration: none; border-radius: 5px; font-weight: 700; font-size: 14px; }
+    .footer { background: #f0ede6; padding: 16px 32px; font-size: 12px; color: #888; text-align: center; }
+    .footer a { color: #E07B2A; text-decoration: none; }
+  </style>
+</head>
+<body>
+  <div class="wrapper">
+    <div class="header">
+      <h1>New Chat Lead</h1>
+      <p>A visitor provided contact info via the AI chat widget on nolandearthworks.com</p>
+    </div>
+    <div class="body">
+      <div class="field">
+        <div class="label">Name</div>
+        <div class="value">${name}</div>
+      </div>
+      ${phoneFormatted ? `<div class="field"><div class="label">Phone</div><div class="value">${phoneFormatted}</div></div>` : ""}
+      ${email ? `<div class="field"><div class="label">Email</div><div class="value">${email}</div></div>` : ""}
+      <div class="field">
+        <div class="label">Last Message</div>
+        <div class="message-box">${input.message.replace(/</g, "&lt;").replace(/>/g, "&gt;")}</div>
+      </div>
+      <a href="https://www.nolandearthworks.com/ops/leads" class="cta">View in Ops Dashboard</a>
+    </div>
+    <div class="footer">
+      Noland Earthworks, LLC &bull; <a href="tel:6154064819">(615) 406-4819</a> &bull; Middle &amp; West Tennessee
+    </div>
+  </div>
+</body>
+</html>`.trim();
+
+                await resend.emails.send({
+                  from: "Noland Earthworks <noreply@nolandearthworks.com>",
+                  to: ["quotes@nolandearthworks.com"],
+                  subject: `New Chat Lead — ${name}${phoneFormatted ? ` | ${phoneFormatted}` : ""}`,
+                  html: emailHtml,
+                });
+              } catch (emailErr) {
+                console.warn("[Chat] Resend email failed:", emailErr);
+              }
+            }
 
             leadCreated = true;
           }

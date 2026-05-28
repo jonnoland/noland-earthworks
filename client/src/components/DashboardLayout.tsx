@@ -51,7 +51,7 @@ const NAV_ITEMS = [
   { label: "Quotes",        href: "/ops/quotes",         icon: FileText },
   { label: "Jobs",          href: "/ops/jobs",           icon: Briefcase },
   { label: "Invoices",      href: "/ops/invoices",       icon: DollarSign },
-  { label: "Conversations", href: "/ops/conversations",  icon: MessageSquare },
+  { label: "Chat Sessions", href: "/ops/chat-sessions",  icon: MessageSquare },
   { label: "Reviews",       href: "/ops/reviews",        icon: Star },
   { label: "Timesheets",    href: "/ops/timesheets",     icon: ClipboardCheck },
   { label: "Scoreboard",    href: "/ops/scoreboard",     icon: BarChart2 },
@@ -170,6 +170,11 @@ export default function DashboardLayout({ children, title, subtitle }: Dashboard
   });
   const pendingCount = pendingData?.count ?? 0;
 
+  // Unread chat sessions count for badge
+  const { data: chatUnread = 0 } = trpc.chat.unreadCount.useQuery(undefined, {
+    refetchInterval: 30_000,
+  });
+
   // Auth guard
   if (loading) {
     return (
@@ -205,7 +210,8 @@ export default function DashboardLayout({ children, title, subtitle }: Dashboard
       {NAV_ITEMS.map((item) => {
         const Icon = item.icon;
         const active = isActive(item.href);
-        const showBadge = item.href === "/ops/team" && pendingCount > 0;
+        const showTeamBadge = item.href === "/ops/team" && pendingCount > 0;
+        const showChatBadge = item.href === "/ops/chat-sessions" && chatUnread > 0;
         return (
           <Link key={item.href} href={item.href}>
             <div
@@ -218,9 +224,14 @@ export default function DashboardLayout({ children, title, subtitle }: Dashboard
             >
               <Icon size={16} className="shrink-0" />
               {!collapsed && <span className="flex-1">{item.label}</span>}
-              {showBadge && (
+              {showTeamBadge && (
                 <span className="ml-auto min-w-[18px] h-[18px] flex items-center justify-center rounded-full bg-red-500 text-white text-[10px] font-bold px-1">
                   {pendingCount}
+                </span>
+              )}
+              {showChatBadge && (
+                <span className="ml-auto min-w-[18px] h-[18px] flex items-center justify-center rounded-full bg-teal-500 text-white text-[10px] font-bold px-1">
+                  {chatUnread > 99 ? "99+" : chatUnread}
                 </span>
               )}
             </div>
@@ -341,34 +352,17 @@ export default function DashboardLayout({ children, title, subtitle }: Dashboard
               <Phone size={16} />
             </a>
 
-            {/* Notifications */}
-            <div className="relative">
-              <button
-                className="relative p-2 rounded-md text-muted-foreground hover:text-white hover:bg-white/5 transition-colors"
-                onClick={() => { setNotifOpen(!notifOpen); setUserOpen(false); }}
-              >
-                <Bell size={16} />
-                <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 bg-orange-500 rounded-full" />
-              </button>
-              {notifOpen && (
-                <div className="absolute right-0 top-full mt-2 w-72 bg-[#111] border border-[#222] rounded-lg shadow-2xl z-50 p-3">
-                  <p className="text-xs font-semibold text-white mb-2">Notifications</p>
-                  {[
-                    { msg: "New lead submitted via website", time: "5m ago", dot: "bg-orange-500" },
-                    { msg: "Job #1042 marked complete", time: "1h ago", dot: "bg-green-500" },
-                    { msg: "Invoice #892 overdue by 3 days", time: "3h ago", dot: "bg-red-500" },
-                  ].map((n, i) => (
-                    <div key={i} className="flex items-start gap-2.5 py-2 border-b border-[#222] last:border-0">
-                      <span className={`mt-1.5 w-1.5 h-1.5 rounded-full shrink-0 ${n.dot}`} />
-                      <div>
-                        <p className="text-xs text-white/80">{n.msg}</p>
-                        <p className="text-[10px] text-muted-foreground">{n.time}</p>
-                      </div>
-                    </div>
-                  ))}
+            {/* Chat Sessions unread badge — links to /ops/chat-sessions */}
+            {chatUnread > 0 && (
+              <Link href="/ops/chat-sessions">
+                <div className="relative p-2 rounded-md text-teal-400 hover:text-teal-300 hover:bg-white/5 transition-colors cursor-pointer">
+                  <MessageSquare size={16} />
+                  <span className="absolute top-1 right-1 min-w-[14px] h-[14px] flex items-center justify-center rounded-full bg-teal-500 text-white text-[9px] font-bold px-0.5">
+                    {chatUnread > 9 ? "9+" : chatUnread}
+                  </span>
                 </div>
-              )}
-            </div>
+              </Link>
+            )}
 
             {/* User avatar */}
             <div className="relative">

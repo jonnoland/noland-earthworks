@@ -86,6 +86,12 @@ export default function Reports() {
     <DashboardLayout title="Reports" subtitle="Financial analytics — Middle & West Tennessee">
       <div className="p-6 space-y-5">
 
+        {/* Local data notice */}
+        <div className="flex items-center gap-2 px-3 py-2 rounded-md bg-amber-500/10 border border-amber-500/20 text-amber-400 text-xs">
+          <span className="font-semibold">Note:</span>
+          <span>These metrics reflect jobs and leads entered directly in this dashboard. For complete revenue data, refer to Jobber.</span>
+        </div>
+
         {/* Summary KPIs */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           {[

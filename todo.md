@@ -1361,3 +1361,11 @@
 - [x] Add View Transcript button on Leads page linking to chat session transcript
 - [x] Add lead source filter on Leads page (All, Facebook, Chat, Form)
 - [x] Add unread chat sessions badge on sidebar nav item
+
+## Ops Dashboard Audit — May 2026
+
+- [x] Wire Resend email notification to quotes@nolandearthworks.com when chat lead is created
+- [x] Remove fake/hardcoded notifications from DashboardLayout.tsx header bell dropdown
+- [x] Fix DashboardLayout.tsx nav: remove Conversations item, add Chat Sessions item to match OpsDashboardLayout
+- [x] Add "Local data only" disclaimer to Reports and Scoreboard pages (Jobber is source of truth for revenue)
+- [x] Redirect /ops/conversations to /ops/chat-sessions (SMS Conversations page is orphaned — nav link removed but route still active)
