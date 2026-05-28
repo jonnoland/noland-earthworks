@@ -20,6 +20,27 @@ const WELCOME_MESSAGE: Message = {
   content: "Hey there — thanks for stopping by Noland Earthworks. What can I help you with today? Whether you have questions about land management, forestry mulching, or want to get a quote started, I'm here.",
 };
 
+/** Extract phone number from text, returns 10-digit string or null */
+function extractPhone(text: string): string | null {
+  const match = text.match(/\b(\+?1?\s*[-.]?\s*\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4})\b/);
+  if (!match) return null;
+  const digits = match[1].replace(/\D/g, "");
+  return digits.length >= 10 ? digits.slice(-10) : null;
+}
+
+/** Extract a likely name from text — looks for "I'm [Name]", "my name is [Name]", or "This is [Name]" */
+function extractName(text: string): string | null {
+  const patterns = [
+    /(?:i['']?m|i am|my name is|this is|call me)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)/i,
+    /^([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)[\s,!.]+(?:here|calling|reaching out)/i,
+  ];
+  for (const pattern of patterns) {
+    const match = text.match(pattern);
+    if (match) return match[1].trim();
+  }
+  return null;
+}
+
 export default function AIChatWidget() {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([WELCOME_MESSAGE]);
@@ -27,10 +48,10 @@ export default function AIChatWidget() {
   const [sessionToken, setSessionToken] = useState<string | null>(null);
   const [isTyping, setIsTyping] = useState(false);
   const [hasUnread, setHasUnread] = useState(false);
-  const [visitorName, setVisitorName] = useState<string | undefined>();
-  const [visitorPhone, setVisitorPhone] = useState<string | undefined>();
-  const messagesEndRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
+  // Use refs so the latest values are always available synchronously in handleSend
+  const visitorNameRef = useRef<string | undefined>(undefined);
+  const visitorPhoneRef = useRef<string | undefined>(undefined);
+  const [, forceUpdate] = useState(0); // used to re-render after ref updates if needed
 
   const startSession = trpc.chat.startSession.useMutation();
   const sendMessage = trpc.chat.sendMessage.useMutation();
@@ -38,7 +59,6 @@ export default function AIChatWidget() {
   // Initialize or resume session
   useEffect(() => {
     const stored = localStorage.getItem(STORAGE_KEY);
-    let token: string | null = stored;
 
     startSession.mutate(
       { sessionToken: stored ?? undefined },
@@ -58,11 +78,13 @@ export default function AIChatWidget() {
   }, []);
 
   // Scroll to bottom on new messages
+  const messagesEndRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, isTyping]);
 
   // Focus input when opened
+  const inputRef = useRef<HTMLInputElement>(null);
   useEffect(() => {
     if (isOpen) {
       setHasUnread(false);
@@ -70,33 +92,30 @@ export default function AIChatWidget() {
     }
   }, [isOpen]);
 
-  // Extract contact info from messages (simple heuristic)
-  const extractContactInfo = useCallback((text: string) => {
-    // Phone number patterns
-    const phoneMatch = text.match(/\b(\+?1?\s*[-.]?\s*\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4})\b/);
-    if (phoneMatch && !visitorPhone) {
-      setVisitorPhone(phoneMatch[1].replace(/\D/g, "").slice(-10));
-    }
-    // Name extraction is handled server-side via conversation context
-  }, [visitorPhone]);
-
-  const handleSend = useCallback(async () => {
+  const handleSend = useCallback(() => {
     const text = input.trim();
     if (!text || !sessionToken || isTyping) return;
+
+    // Extract contact info synchronously from the current message BEFORE mutating
+    const phone = extractPhone(text);
+    if (phone && !visitorPhoneRef.current) {
+      visitorPhoneRef.current = phone;
+    }
+    const name = extractName(text);
+    if (name && !visitorNameRef.current) {
+      visitorNameRef.current = name;
+    }
 
     setInput("");
     setMessages(prev => [...prev, { role: "user", content: text }]);
     setIsTyping(true);
 
-    // Check for contact info in the message
-    extractContactInfo(text);
-
     sendMessage.mutate(
       {
         sessionToken,
         message: text,
-        visitorName,
-        visitorPhone,
+        visitorName: visitorNameRef.current,
+        visitorPhone: visitorPhoneRef.current,
       },
       {
         onSuccess: (data) => {
@@ -116,7 +135,7 @@ export default function AIChatWidget() {
         },
       }
     );
-  }, [input, sessionToken, isTyping, visitorName, visitorPhone, isOpen, extractContactInfo, sendMessage]);
+  }, [input, sessionToken, isTyping, isOpen, sendMessage]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey) {

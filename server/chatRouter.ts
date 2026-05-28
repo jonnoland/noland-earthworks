@@ -190,15 +190,40 @@ export const chatRouter = router({
         .limit(1)
         .then(rows => rows[0]);
 
-      const hasContactInfo = (updatedSession?.visitorName || input.visitorName) &&
-        (updatedSession?.visitorPhone || input.visitorPhone);
+      // Try to extract name from conversation history if not already stored
+      const extractNameFromHistory = (msgs: typeof history): string | null => {
+        const patterns = [
+          /(?:i['']?m|i am|my name is|this is|call me)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)/i,
+          /^([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)[\s,!.]+(?:here|calling|reaching out)/i,
+        ];
+        for (const msg of msgs.filter(m => m.role === "user")) {
+          for (const pattern of patterns) {
+            const match = msg.content.match(pattern);
+            if (match) return match[1].trim();
+          }
+        }
+        return null;
+      };
+
+      const resolvedName = updatedSession?.visitorName || input.visitorName ||
+        extractNameFromHistory([...history, { role: "user", content: input.message, id: 0, sessionId: session.id, createdAt: new Date() }]);
+      const resolvedPhone = updatedSession?.visitorPhone || input.visitorPhone;
+
+      // Update session with resolved name if we just found it
+      if (resolvedName && !updatedSession?.visitorName) {
+        await db.update(chatSessions)
+          .set({ visitorName: resolvedName })
+          .where(eq(chatSessions.id, session.id));
+      }
+
+      const hasContactInfo = resolvedPhone && (resolvedName || resolvedPhone);
 
       if (hasContactInfo && !updatedSession?.leadCreated) {
         try {
           const owner = await getOwnerUser();
           if (owner) {
-            const name = updatedSession?.visitorName || input.visitorName || "Website Visitor";
-            const phone = updatedSession?.visitorPhone || input.visitorPhone || "";
+            const name = resolvedName || "Website Visitor";
+            const phone = resolvedPhone || "";
             const email = updatedSession?.visitorEmail || input.visitorEmail || "";
 
             await createOpsLead({
