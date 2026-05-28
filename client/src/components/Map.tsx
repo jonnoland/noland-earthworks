@@ -198,6 +198,11 @@ export function MapView({
       fullscreenControl: true,
       zoomControl: true,
       streetViewControl: true,
+      // Required for Advanced Markers (AdvancedMarkerElement)
+      // Using DEMO_MAP_ID is acceptable for development; replace with a real Map ID
+      // from Google Cloud Console (Maps > Map Management) for production if custom
+      // marker styling is needed. A real Map ID is not required for basic pin markers.
+      mapId: "DEMO_MAP_ID",
     });
     if (onMapReady) {
       onMapReady(map.current);
