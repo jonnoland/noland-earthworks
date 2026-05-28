@@ -7,7 +7,7 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
-import { MessageSquare, X, Send, ChevronDown } from "lucide-react";
+import { MessageSquare, X, Send, ChevronDown, ExternalLink } from "lucide-react";
 
 interface Message {
   role: "user" | "assistant";
@@ -144,13 +144,41 @@ export default function AIChatWidget() {
     }
   };
 
+  // Show quote CTA after AI has collected contact info or visitor expresses intent
+  const showQuoteCTA = messages.some(
+    m =>
+      m.role === "assistant" &&
+      (m.content.toLowerCase().includes("quote form") ||
+        m.content.toLowerCase().includes("nolandearthworks.com/quote") ||
+        m.content.toLowerCase().includes("get a quote") ||
+        m.content.toLowerCase().includes("fill out") ||
+        m.content.toLowerCase().includes("jon will follow up") ||
+        m.content.toLowerCase().includes("jon will get back"))
+  );
+
+  // Build pre-filled quote URL from conversation context
+  const quoteUrl = (() => {
+    const allText = messages.map(m => m.content).join(" ").toLowerCase();
+    const params = new URLSearchParams();
+    if (allText.includes("forestry mulch")) params.set("service", "forestry-mulching");
+    else if (allText.includes("land clear") || allText.includes("land management")) params.set("service", "land-clearing");
+    else if (allText.includes("brush hog") || allText.includes("brush hogg")) params.set("service", "brush-hogging");
+    else if (allText.includes("right of way") || allText.includes("right-of-way")) params.set("service", "right-of-way-clearing");
+    const qs = params.toString();
+    return qs ? `/quote?${qs}` : "/quote";
+  })();
+
   return (
     <>
       {/* Chat window */}
       {isOpen && (
         <div
-          className="fixed bottom-20 right-4 z-50 w-[340px] sm:w-[380px] flex flex-col rounded-xl shadow-2xl overflow-hidden border border-zinc-700"
-          style={{ height: "480px", backgroundColor: "#1a1a1a" }}
+          className="fixed right-4 z-50 w-[340px] sm:w-[380px] flex flex-col rounded-xl shadow-2xl overflow-hidden border border-zinc-700
+            bottom-[144px] lg:bottom-[72px]"
+          style={{
+            height: "480px",
+            backgroundColor: "#1a1a1a",
+          }}
         >
           {/* Header */}
           <div
@@ -235,6 +263,23 @@ export default function AIChatWidget() {
             </button>
           </div>
 
+          {/* Quote CTA — shown after AI mentions the quote form or collects contact info */}
+          {showQuoteCTA && (
+            <div
+              className="px-3 pb-2 flex-shrink-0"
+              style={{ backgroundColor: "#111" }}
+            >
+              <a
+                href={quoteUrl}
+                className="flex items-center justify-center gap-2 w-full py-2.5 rounded-lg text-sm font-semibold text-white transition-opacity hover:opacity-90"
+                style={{ backgroundColor: "#E07B2A" }}
+              >
+                <ExternalLink size={14} />
+                Get a Free Quote
+              </a>
+            </div>
+          )}
+
           {/* Footer */}
           <div
             className="text-center py-1 text-xs text-zinc-600 flex-shrink-0"
@@ -245,10 +290,11 @@ export default function AIChatWidget() {
         </div>
       )}
 
-      {/* Floating button */}
+      {/* Floating button — raised above sticky mobile CTA bar on small screens */}
       <button
         onClick={() => setIsOpen(prev => !prev)}
-        className="fixed bottom-4 right-4 z-50 w-14 h-14 rounded-full shadow-lg flex items-center justify-center transition-transform hover:scale-105 active:scale-95"
+        className="fixed right-4 z-50 w-14 h-14 rounded-full shadow-lg flex items-center justify-center transition-transform hover:scale-105 active:scale-95
+          bottom-[72px] lg:bottom-4"
         style={{ backgroundColor: "#E07B2A" }}
         aria-label={isOpen ? "Close chat" : "Open chat"}
       >

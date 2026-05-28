@@ -1370,3 +1370,6 @@
 - [x] Add "Local data only" disclaimer to Reports and Scoreboard pages (Jobber is source of truth for revenue)
 - [x] Redirect /ops/conversations to /ops/chat-sessions (SMS Conversations page is orphaned — nav link removed but route still active)
 - [x] Remove SMSWidget from public site (redundant — AI chat widget handles lead capture, transcripts, and email notifications)
+- [x] Raise AI chat bubble above sticky mobile CTA bar on small screens (bottom-[72px] lg:bottom-4)
+- [x] Add Get a Quote CTA button inside AI chat window — appears after AI mentions quote form or collects contact info, pre-fills service from conversation context
+- [x] Delete SMSWidget.tsx component file and remove sendMessage procedure from widgetRouter
