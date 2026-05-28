@@ -351,4 +351,15 @@ export const chatRouter = router({
         .set({ viewedAt: new Date() })
         .where(eq(chatSessions.id, input.sessionId));
     }),
+
+  /** Owner: mark all unread sessions as viewed */
+  markAllViewed: protectedProcedure.mutation(async () => {
+    const db = await getDb();
+    if (!db) return 0;
+    const result = await db
+      .update(chatSessions)
+      .set({ viewedAt: new Date() })
+      .where(isNull(chatSessions.viewedAt));
+    return (result as any)[0]?.affectedRows ?? 0;
+  }),
 });

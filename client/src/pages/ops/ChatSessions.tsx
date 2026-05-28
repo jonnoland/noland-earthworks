@@ -48,8 +48,20 @@ export default function ChatSessions() {
     { enabled: selectedId !== null }
   );
 
+  const { data: unreadCount = 0 } = trpc.chat.unreadCount.useQuery();
+
   const markViewed = trpc.chat.markViewed.useMutation({
-    onSuccess: () => utils.chat.unreadCount.invalidate(),
+    onSuccess: () => {
+      utils.chat.unreadCount.invalidate();
+      utils.chat.listSessions.invalidate();
+    },
+  });
+
+  const markAllViewed = trpc.chat.markAllViewed.useMutation({
+    onSuccess: () => {
+      utils.chat.unreadCount.invalidate();
+      utils.chat.listSessions.invalidate();
+    },
   });
 
   // Handle ?session=ID param from Leads page transcript link
@@ -74,10 +86,18 @@ export default function ChatSessions() {
       <div className="flex h-[calc(100vh-120px)] gap-0 overflow-hidden rounded-lg border border-zinc-800">
         {/* Session list */}
         <div className="w-80 flex-shrink-0 flex flex-col border-r border-zinc-800 bg-zinc-900/50">
-          <div className="px-4 py-3 border-b border-zinc-800">
+          <div className="px-4 py-3 border-b border-zinc-800 flex items-center justify-between gap-2">
             <p className="text-xs text-zinc-500">
               {sessions.length} session{sessions.length !== 1 ? "s" : ""}
             </p>
+            {unreadCount > 0 && (
+              <button
+                onClick={() => markAllViewed.mutate()}
+                disabled={markAllViewed.isPending}
+                className="text-[11px] font-medium text-teal-400 hover:text-teal-300 disabled:opacity-50 transition-colors whitespace-nowrap">
+                {markAllViewed.isPending ? "Marking..." : `Mark all read (${unreadCount})`}
+              </button>
+            )}
           </div>
 
           {isLoading ? (
