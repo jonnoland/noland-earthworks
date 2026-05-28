@@ -33,7 +33,6 @@ import CostEstimator from "./pages/ops/CostEstimator";
 import OpsSocialPosts from "./pages/ops/SocialPosts";
 import OpsChatSessions from "./pages/ops/ChatSessions";
 import Home from "./pages/Home";
-import SMSWidget from "./components/SMSWidget";
 import LandClearingPage from "./pages/LandClearing";
 import ForestryMulchingPage from "./pages/ForestryMulching";
 import VegetationManagementPage from "./pages/VegetationManagement";
@@ -338,7 +337,6 @@ function App() {
           <Toaster />
           <Router />
           <ScrollToTop />
-          <SMSWidget />
           <AIChatWidget />
         </TooltipProvider>
       </ThemeProvider>

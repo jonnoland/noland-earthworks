@@ -1369,3 +1369,4 @@
 - [x] Fix DashboardLayout.tsx nav: remove Conversations item, add Chat Sessions item to match OpsDashboardLayout
 - [x] Add "Local data only" disclaimer to Reports and Scoreboard pages (Jobber is source of truth for revenue)
 - [x] Redirect /ops/conversations to /ops/chat-sessions (SMS Conversations page is orphaned — nav link removed but route still active)
+- [x] Remove SMSWidget from public site (redundant — AI chat widget handles lead capture, transcripts, and email notifications)
