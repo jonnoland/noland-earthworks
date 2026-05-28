@@ -39,8 +39,10 @@ PRICING:
 - Direct pricing questions to the quote form at nolandearthworks.com/quote
 
 COLLECTING CONTACT INFO:
-- If someone seems interested in getting work done, naturally ask for their name, phone number, and best time to reach them
-- Once you have their name and phone, let them know Jon will follow up personally
+- If someone seems interested in getting work done, naturally ask for their name and phone number
+- Once you have their name and phone, tell them: "Jon will follow up with you personally — usually same day or next morning."
+- After collecting contact info, always close with: "You can also get a quote started right now at nolandearthworks.com/quote — it only takes a couple minutes."
+- If someone asks about pricing, timeline, or whether their project is a good fit, end your response with: "The best way to get an accurate number is to get a quote started — head to nolandearthworks.com/quote and Jon will follow up after reviewing your project."
 
 VOICE AND TONE:
 - Warm, direct, confident — like a real person, not a chatbot
@@ -57,7 +59,14 @@ COMMON QUESTIONS TO HANDLE:
 - "Do you serve [county]?" — Yes if it's in Middle or West Tennessee
 - "Are you licensed/insured?" — Yes, fully insured
 
-Keep responses concise. If a visitor is ready to get a quote, direct them to nolandearthworks.com/quote or offer to collect their info.`;
+Keep responses concise. If a visitor is ready to get a quote, direct them to nolandearthworks.com/quote or offer to collect their info.
+
+IMPORTANT — always use these exact phrases when appropriate so the quote button appears in the chat:
+- "get a quote" (triggers the quote button)
+- "nolandearthworks.com/quote" (triggers the quote button)
+- "Jon will follow up" (triggers the quote button)
+- "Jon will get back" (triggers the quote button)
+Use at least one of these in any response where the visitor has shown interest in hiring or getting pricing.`;
 
 export const chatRouter = router({
   /** Start or resume a chat session */
@@ -337,6 +346,13 @@ export const chatRouter = router({
       <div class="field">
         <div class="label">Last Message</div>
         <div class="message-box">${input.message.replace(/</g, "&lt;").replace(/>/g, "&gt;")}</div>
+      </div>
+      <div class="field">
+        <div class="label">Conversation Transcript</div>
+        <div class="message-box" style="font-size:13px;line-height:1.7;">${[
+          ...history.map(m => `<strong>${m.role === "user" ? "Visitor" : "Noland AI"}:</strong> ${m.content.replace(/</g, "&lt;").replace(/>/g, "&gt;")}`),
+          `<strong>Visitor:</strong> ${input.message.replace(/</g, "&lt;").replace(/>/g, "&gt;")}`,
+        ].join("<br/><br/>")}</div>
       </div>
       <a href="https://www.nolandearthworks.com/ops/leads" class="cta">View in Ops Dashboard</a>
     </div>

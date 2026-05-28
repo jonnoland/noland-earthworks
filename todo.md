@@ -1373,3 +1373,6 @@
 - [x] Raise AI chat bubble above sticky mobile CTA bar on small screens (bottom-[72px] lg:bottom-4)
 - [x] Add Get a Quote CTA button inside AI chat window — appears after AI mentions quote form or collects contact info, pre-fills service from conversation context
 - [x] Delete SMSWidget.tsx component file and remove sendMessage procedure from widgetRouter
+- [x] Verified quote page reads ?service= query param — pre-fill already wired (no change needed)
+- [x] Updated AI chat system prompt — now consistently uses trigger phrases (get a quote, Jon will follow up, nolandearthworks.com/quote) to reliably surface the quote CTA button
+- [x] Updated lead capture email — now includes full conversation transcript (Visitor/AI labeled) in addition to last message
