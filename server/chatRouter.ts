@@ -312,6 +312,7 @@ export const chatRouter = router({
       return db
         .select()
         .from(chatSessions)
+        .where(eq(chatSessions.leadCreated, true))
         .orderBy(desc(chatSessions.updatedAt))
         .limit(50);
     }),
