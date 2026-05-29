@@ -1,10 +1,10 @@
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, isNull, lt, lte, or } from "drizzle-orm";
 import { drizzle, type MySql2Database } from "drizzle-orm/mysql2";
 import {
   InsertJob, InsertOpsLead, InsertScheduleEntry, InsertUser,
   jobs, opsLeads, scheduleEntries, users, visitBlackoutDates, InsertVisitBlackoutDate,
   recurringBlackoutDays, agentConfig, agentLog, ownerTasks, InsertOwnerTask,
-  jobNotes, pricingBenchmarks,
+  jobNotes, pricingBenchmarks, chatSessions,
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
@@ -504,7 +504,7 @@ export async function setUserRole(userId: number, role: 'user' | 'admin') {
 
 // ─── Pending Notifications (retry queue) ─────────────────────────────────────
 import { pendingNotifications, InsertPendingNotification } from "../drizzle/schema";
-import { lte, isNull, or } from "drizzle-orm";
+// drizzle-orm helpers imported at top of file
 
 export async function queueNotification(data: InsertPendingNotification) {
   const db = await getDb();
@@ -547,4 +547,33 @@ export async function deleteNotification(id: number) {
   const db = await getDb();
   if (!db) return;
   await db.delete(pendingNotifications).where(eq(pendingNotifications.id, id));
+}
+
+/**
+ * Deletes anonymous chat sessions (no name, no phone, no lead created) older than
+ * the specified number of days. Chat messages are deleted automatically via CASCADE.
+ * Returns the number of sessions deleted.
+ */
+export async function cleanupAnonymousChatSessions(olderThanDays = 30): Promise<number> {
+  const db = await getDb();
+  if (!db) return 0;
+
+  const cutoff = new Date(Date.now() - olderThanDays * 24 * 60 * 60 * 1000);
+
+  const result = await db
+    .delete(chatSessions)
+    .where(
+      and(
+        lt(chatSessions.createdAt, cutoff),
+        // No lead was created from this session
+        eq(chatSessions.leadCreated, false),
+        // No contact info was ever captured
+        or(isNull(chatSessions.visitorName), eq(chatSessions.visitorName, "")),
+        or(isNull(chatSessions.visitorPhone), eq(chatSessions.visitorPhone, ""))
+      )
+    );
+
+  // MySQL2 result is an array [ResultSetHeader, ...]; rowsAffected is in [0]
+  const affected = (result as unknown as [{ affectedRows: number }])[0]?.affectedRows ?? 0;
+  return affected;
 }

@@ -237,6 +237,34 @@ async function startServer() {
     }
   });
 
+  // ─── Scheduled: nightly anonymous chat session cleanup ────────────────────
+  app.post("/api/scheduled/cleanup-chat-sessions", async (req, res) => {
+    try {
+      const { sdk } = await import("./sdk");
+      const { cleanupAnonymousChatSessions } = await import("../db");
+
+      const user = await sdk.authenticateRequest(req);
+      if (!(user as any).isCron) {
+        res.status(403).json({ error: "cron-only" });
+        return;
+      }
+
+      const deleted = await cleanupAnonymousChatSessions(30);
+      console.log(`[Cron] cleanup-chat-sessions: deleted ${deleted} anonymous sessions`);
+      res.json({ ok: true, deleted, timestamp: new Date().toISOString() });
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      const stack = err instanceof Error ? err.stack : undefined;
+      console.error("[Cron] cleanup-chat-sessions error:", err);
+      res.status(500).json({
+        error: message,
+        stack,
+        context: { url: req.url },
+        timestamp: new Date().toISOString(),
+      });
+    }
+  });
+
   // tRPC API
   app.use(
     "/api/trpc",

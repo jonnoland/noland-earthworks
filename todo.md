@@ -1378,3 +1378,7 @@
 - [x] Updated lead capture email — now includes full conversation transcript (Visitor/AI labeled) in addition to last message
 - [x] Implement duplicate lead prevention — upsertOpsLeadByPhone helper in db.ts; applied to chatRouter, widgetRouter, contactRouter, and quoteRouter; appends notes on repeat contact instead of creating duplicate records
 - [x] Update all affected tests to assert upsertOpsLeadByPhone instead of createOpsLead; all 88 tests passing
+- [x] Apply §5c Heartbeat patches to sdk.ts and manusTypes.ts for cron auth
+- [x] Add cleanupAnonymousChatSessions DB helper to db.ts
+- [x] Add /api/scheduled/cleanup-chat-sessions Express handler in index.ts
+- [ ] Create nightly Heartbeat cron to purge anonymous chat sessions older than 30 days (requires deploy first)
