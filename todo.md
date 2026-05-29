@@ -1393,3 +1393,13 @@
 - [x] Built /ops/Ads.tsx page: job description input, platform/tone/image toggles, AI generate, copy/headline editor, image preview, per-platform post buttons, ad history with thumbnails
 - [x] Added Ads nav item to DashboardLayout and /ops/ads route in App.tsx
 - [x] All 88 tests passing after changes
+
+## Ads Enhancements — Photo Upload, Scheduling, Live Preview
+- [x] Add scheduledAt and status columns to socialPosts schema and pushed migration
+- [x] Add uploadPhoto tRPC mutation (S3 upload, returns CDN URL) to opsRouter
+- [x] Add schedulePost tRPC mutation (saves scheduledAt, status=scheduled) to opsRouter
+- [x] Add photo upload UI to Ads page (file picker, replaces AI image, "Your photo" badge, remove button)
+- [x] Add scheduling date/time picker to Ads page (Schedule button toggles panel, Confirm schedule queues the post)
+- [x] Add live FB/IG preview panel to Ads page ("Live preview" toggle, tabbed FB/IG card mockup with real copy/image)
+- [x] History rows now show Scheduled badge with date/time for queued posts
+- [x] All 88 tests passing

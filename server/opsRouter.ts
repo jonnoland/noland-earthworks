@@ -2541,6 +2541,8 @@ const socialPostsRouter = router({
       published: z.boolean().default(false),
       imageUrl: z.string().optional(),
       imageKey: z.string().optional(),
+      scheduledAt: z.string().optional(), // ISO string
+      status: z.enum(["draft", "scheduled", "published", "failed"]).default("draft"),
     }))
     .mutation(async ({ ctx, input }) => {
       const db = await getDb();
@@ -2555,10 +2557,48 @@ const socialPostsRouter = router({
         published: input.published,
         imageUrl: input.imageUrl ?? null,
         imageKey: input.imageKey ?? null,
+        scheduledAt: input.scheduledAt ? new Date(input.scheduledAt) : null,
+        status: input.status,
         createdAt: new Date(),
       });
       const insertId = (result as any)[0]?.insertId ?? null;
       return { success: true, id: insertId };
+    }),
+
+  /** Upload a job photo to S3 and return the CDN URL */
+  uploadPhoto: ownerProcedure
+    .input(z.object({
+      base64: z.string(), // base64-encoded image data
+      mimeType: z.string().default("image/jpeg"),
+      filename: z.string().default("job-photo.jpg"),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const buffer = Buffer.from(input.base64, "base64");
+      const suffix = Date.now();
+      const key = `ads/photos/${ctx.user.id}-${suffix}-${input.filename}`;
+      const { url } = await storagePut(key, buffer, input.mimeType);
+      return { url, key };
+    }),
+
+  /** Schedule a post for future publishing */
+  schedulePost: ownerProcedure
+    .input(z.object({
+      id: z.number().int().positive(),
+      scheduledAt: z.string(), // ISO datetime string
+      platforms: z.array(z.enum(["facebook", "instagram"])).min(1),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+      const { socialPosts } = await import("../drizzle/schema");
+      await db.update(socialPosts)
+        .set({
+          scheduledAt: new Date(input.scheduledAt),
+          status: "scheduled",
+          platform: input.platforms.length === 2 ? "both" : input.platforms[0],
+        })
+        .where(and(eq(socialPosts.id, input.id), eq(socialPosts.userId, ctx.user.id)));
+      return { success: true };
     }),
 
   /** Publish a post to Facebook Page */

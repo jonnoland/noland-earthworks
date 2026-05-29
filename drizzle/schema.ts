@@ -914,6 +914,10 @@ export const socialPosts = mysqlTable("social_posts", {
   postedAt: timestamp("postedAt"),
   adType: varchar("adType", { length: 50 }).default("social"),
   headline: varchar("headline", { length: 255 }),
+  // Scheduling: null = post immediately, set = queue for future posting
+  scheduledAt: timestamp("scheduledAt"),
+  // status: draft | scheduled | published | failed
+  status: varchar("status", { length: 50 }).notNull().default("draft"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 export type SocialPost = typeof socialPosts.$inferSelect;
