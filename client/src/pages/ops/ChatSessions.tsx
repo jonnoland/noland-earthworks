@@ -66,30 +66,22 @@ export default function ChatSessions() {
   });
 
   const [cleanupResult, setCleanupResult] = useState<string | null>(null);
-  const [cleanupLoading, setCleanupLoading] = useState(false);
 
-  async function handleCleanup() {
+  const cleanupMutation = trpc.chat.cleanupAnonymousSessions.useMutation({
+    onSuccess: (data) => {
+      setCleanupResult(`Removed ${data.deleted} Unknown Visitor session${data.deleted !== 1 ? "s" : ""}`);
+      utils.chat.listSessions.invalidate();
+      utils.chat.unreadCount.invalidate();
+    },
+    onError: (err) => {
+      setCleanupResult(`Error: ${err.message}`);
+    },
+  });
+
+  function handleCleanup() {
     if (!confirm("Remove all Unknown Visitor sessions? This cannot be undone.")) return;
-    setCleanupLoading(true);
     setCleanupResult(null);
-    try {
-      const res = await fetch("/api/scheduled/cleanup-chat-sessions", {
-        method: "POST",
-        credentials: "include",
-      });
-      const data = await res.json();
-      if (res.ok) {
-        setCleanupResult(`Removed ${data.deleted} anonymous session${data.deleted !== 1 ? "s" : ""}`);
-        utils.chat.listSessions.invalidate();
-        utils.chat.unreadCount.invalidate();
-      } else {
-        setCleanupResult(`Error: ${data.error ?? "Unknown error"}`);
-      }
-    } catch {
-      setCleanupResult("Request failed");
-    } finally {
-      setCleanupLoading(false);
-    }
+    cleanupMutation.mutate();
   }
 
   // Handle ?session=ID param from Leads page transcript link
@@ -130,11 +122,11 @@ export default function ChatSessions() {
                 )}
                 <button
                   onClick={handleCleanup}
-                  disabled={cleanupLoading}
-                  title="Delete anonymous sessions older than 14 days"
+                  disabled={cleanupMutation.isPending}
+                  title="Remove all Unknown Visitor sessions"
                   className="flex items-center gap-1 text-[11px] font-medium text-zinc-500 hover:text-red-400 disabled:opacity-50 transition-colors whitespace-nowrap">
                   <Trash2 size={11} />
-                  {cleanupLoading ? "Cleaning..." : "Clean up"}
+                  {cleanupMutation.isPending ? "Cleaning..." : "Clean up"}
                 </button>
               </div>
             </div>

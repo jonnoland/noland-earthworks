@@ -451,4 +451,14 @@ export const chatRouter = router({
       .where(isNull(chatSessions.viewedAt));
     return (result as any)[0]?.affectedRows ?? 0;
   }),
+
+  // Admin-only: immediately remove all anonymous sessions (no name, no phone, no lead)
+  cleanupAnonymousSessions: protectedProcedure.mutation(async ({ ctx }) => {
+    if (ctx.user.role !== "admin") {
+      throw new Error("Admin only");
+    }
+    const { cleanupAnonymousChatSessions } = await import("./db");
+    const deleted = await cleanupAnonymousChatSessions(14, true);
+    return { deleted };
+  }),
 });
