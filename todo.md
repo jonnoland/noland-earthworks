@@ -1403,3 +1403,9 @@
 - [x] Add live FB/IG preview panel to Ads page ("Live preview" toggle, tabbed FB/IG card mockup with real copy/image)
 - [x] History rows now show Scheduled badge with date/time for queued posts
 - [x] All 88 tests passing
+
+## Ads — Generate Without Description (Competitor Intelligence)
+- [ ] Research competitor forestry mulching / land clearing Facebook ads and ad copy patterns
+- [ ] Make job description optional in generate procedure — use competitor intelligence + ad type when no description provided
+- [ ] Add "Ad Type" selector to Ads page (Service Promo, Seasonal, Before/After, Brand Awareness, Lead Gen)
+- [ ] Update AI system prompt with competitor ad patterns and Noland Earthworks brand voice rules

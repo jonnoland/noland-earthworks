@@ -22,6 +22,18 @@ import { format } from "date-fns";
 type Platform = "facebook" | "instagram" | "both";
 type Tone = "casual" | "professional";
 type PreviewPlatform = "facebook" | "instagram";
+type AdType = "before_after" | "problem_solution" | "education" | "seasonal_urgency" | "veteran_trust" | "reclaim_your_land" | "specific_use_case" | "general";
+
+const AD_TYPE_OPTIONS: { value: AdType; label: string; description: string }[] = [
+  { value: "general",          label: "AI picks",         description: "Let the AI choose the best angle" },
+  { value: "before_after",     label: "Before / After",   description: "Highest-performing format — show the transformation" },
+  { value: "problem_solution", label: "Problem / Solution", description: "Hook with the landowner's problem, present mulching as the fix" },
+  { value: "education",        label: "Education",        description: "Explain forestry mulching vs. bush hogging or bulldozing" },
+  { value: "seasonal_urgency", label: "Seasonal Urgency",  description: "Fall/winter is the best time — book before the calendar fills" },
+  { value: "veteran_trust",    label: "Veteran-Owned",    description: "Lead with reliability, integrity, and showing up when committed" },
+  { value: "reclaim_your_land",label: "Reclaim Your Land", description: "Emotional: you bought this land for a reason" },
+  { value: "specific_use_case",label: "Specific Use Case", description: "Pasture reclamation, fence line, lot clearing, right-of-way" },
+];
 
 interface GeneratedAd {
   draft: string;
@@ -127,6 +139,7 @@ function SocialPreview({
 export default function Ads() {
   // Generator state
   const [jobDescription, setJobDescription] = useState("");
+  const [adType, setAdType] = useState<AdType>("general");
   const [platform, setPlatform] = useState<Platform>("both");
   const [tone, setTone] = useState<Tone>("casual");
   const [withImage, setWithImage] = useState(true);
@@ -224,8 +237,13 @@ export default function Ads() {
 
   // ─── Handlers ────────────────────────────────────────────────────────────────
   function handleGenerate() {
-    if (!jobDescription.trim()) { toast.error("Describe the job first."); return; }
-    generateMutation.mutate({ jobDescription: jobDescription.trim(), platform, tone, generateImage: withImage });
+    generateMutation.mutate({
+      jobDescription: jobDescription.trim() || undefined,
+      adType,
+      platform,
+      tone,
+      generateImage: withImage,
+    });
   }
 
   async function handlePhotoUpload(e: React.ChangeEvent<HTMLInputElement>) {
@@ -307,13 +325,40 @@ export default function Ads() {
         <div className="bg-card border border-border rounded-xl p-6 space-y-5">
           <h2 className="text-base font-semibold text-foreground">Generate Ad</h2>
 
+          {/* Ad Type selector */}
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-foreground">Ad type</label>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              {AD_TYPE_OPTIONS.map((opt) => (
+                <button
+                  key={opt.value}
+                  onClick={() => setAdType(opt.value)}
+                  title={opt.description}
+                  className={cn(
+                    "px-3 py-2 rounded-lg border text-xs font-medium text-left transition-colors leading-tight",
+                    adType === opt.value
+                      ? "bg-primary/10 border-primary/40 text-primary"
+                      : "bg-background border-border text-muted-foreground hover:text-foreground hover:border-border/80"
+                  )}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+            {adType !== "general" && (
+              <p className="text-xs text-muted-foreground">{AD_TYPE_OPTIONS.find(o => o.value === adType)?.description}</p>
+            )}
+          </div>
+
           <div className="space-y-1.5">
-            <label className="text-sm font-medium text-foreground">Job description</label>
+            <div className="flex items-center justify-between">
+              <label className="text-sm font-medium text-foreground">Job description <span className="text-muted-foreground font-normal">(optional)</span></label>
+            </div>
             <Textarea
-              placeholder="Describe the job — what was cleared, where, what it looked like before and after. The more specific, the better the ad."
+              placeholder="Describe a specific job — what was cleared, where, what it looked like before and after. Leave blank and the AI will generate based on the ad type above."
               value={jobDescription}
               onChange={(e) => setJobDescription(e.target.value)}
-              rows={4}
+              rows={3}
               className="resize-none bg-background border-border text-foreground placeholder:text-muted-foreground"
             />
           </div>
@@ -361,7 +406,7 @@ export default function Ads() {
             </div>
           </div>
 
-          <Button onClick={handleGenerate} disabled={generateMutation.isPending || !jobDescription.trim()} className="gap-2">
+          <Button onClick={handleGenerate} disabled={generateMutation.isPending} className="gap-2">
             {generateMutation.isPending
               ? <><RefreshCw size={14} className="animate-spin" /> Generating...</>
               : <><Sparkles size={14} /> Generate Ad</>}

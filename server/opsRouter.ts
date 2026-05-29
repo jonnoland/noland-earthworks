@@ -2465,7 +2465,17 @@ const socialPostsRouter = router({
   /** Generate AI ad copy + image for Facebook/Instagram */
   generate: ownerProcedure
     .input(z.object({
-      jobDescription: z.string().min(10).max(1000),
+      jobDescription: z.string().max(1000).optional(),
+      adType: z.enum([
+        "before_after",       // Before/after transformation — most effective
+        "problem_solution",   // Opens with the landowner's problem, presents mulching as the fix
+        "education",          // Explains what forestry mulching is vs. bush hogging/bulldozing
+        "seasonal_urgency",   // Fall/winter is the best time — book before the calendar fills
+        "veteran_trust",      // Leads with veteran-owned identity and reliability
+        "reclaim_your_land",  // Emotional: "You bought this land for a reason"
+        "specific_use_case",  // Targets a specific job: pasture reclamation, fence line, lot clearing
+        "general",            // Let AI decide the best angle
+      ]).default("general"),
       platform: z.enum(["facebook", "instagram", "both"]).default("both"),
       tone: z.enum(["casual", "professional"]).default("casual"),
       generateImage: z.boolean().default(true),
@@ -2478,16 +2488,41 @@ const socialPostsRouter = router({
         ? "Tone: professional and direct, but still genuine and human."
         : "Tone: casual, warm, southern hospitality. Like a neighbor talking to a neighbor. Genuine, not salesy.";
 
+      const adTypeInstructions: Record<string, string> = {
+        before_after: "Ad type: Before/After transformation. Open with the problem (overgrown, unusable land). Close with the result (clean, cleared, usable). This is the highest-performing format — make the contrast vivid and real.",
+        problem_solution: "Ad type: Problem/Solution. Hook with a specific problem a Middle Tennessee landowner faces (overgrown fence line, can't use their acreage, fire hazard, brush taking over a pasture). Then present forestry mulching as the clean, fast solution. Emphasize: no burn piles, no hauling, no erosion.",
+        education: "Ad type: Education. Explain what forestry mulching actually is and why it beats bush hogging or bulldozing. Target people who don't know the service exists. Keep it plain and practical — not a lecture.",
+        seasonal_urgency: "Ad type: Seasonal Urgency. Fall and winter are the best time to clear — dormant vegetation, firmer ground, better visibility, faster results. Encourage booking now before the calendar fills up. Keep it honest, not pushy.",
+        veteran_trust: "Ad type: Veteran-Owned Trust. Lead with the veteran-owned identity. Reliability, integrity, showing up when committed, doing the work as quoted. This is not a marketing angle — it is how the business operates. Speak to landowners who value that.",
+        reclaim_your_land: "Ad type: Reclaim Your Land. Emotional angle — the landowner bought this property for a reason and it has gotten away from them. Speak to that feeling directly. Make it feel like Jon understands their situation. End with a low-pressure invitation to call.",
+        specific_use_case: "Ad type: Specific Use Case. Pick one specific scenario: pasture reclamation for a farmer, fence line clearing, lot clearing for a residential developer, or right-of-way clearing. Speak directly to that landowner's situation.",
+        general: "Ad type: Choose the best angle based on what performs well for land clearing companies. Consider before/after, problem/solution, or veteran trust as the top performers.",
+      };
+
+      const adTypeNote = adTypeInstructions[input.adType] ?? adTypeInstructions.general;
+
+      const jobContext = input.jobDescription
+        ? `Base the ad on this specific job or context: ${input.jobDescription}`
+        : `No specific job was provided. Draw on your knowledge of what Noland Earthworks does — forestry mulching, land clearing, brush removal, pasture reclamation, fence line clearing, right-of-way clearing in Middle Tennessee. Use real, specific details that a Tennessee landowner would recognize.`;
+
+      // Competitor intelligence to inform the AI
+      const competitorContext = `Competitor ad intelligence (for reference, do NOT copy — write in Jon's voice):
+- Hook style that works: "Are you a property owner in Middle Tennessee with overgrown land you haven't been able to use?"
+- Effective body: "Most people think clearing land means weeks of chainsaw work, burn piles, and hauling debris. Forestry mulching grinds it all down into nutrient-rich mulch right on the spot. No burn piles. No hauling fees. No erosion."
+- Effective CTA: "Click this ad, fill out the info and we will give you a call for a quote."
+- What works: specific, plain language; before/after contrast; addressing the exact problem the landowner has; low-pressure CTA.
+- What does not work: generic "call us for land clearing"; stock images; corporate language.`;
+
       // Generate copy and image prompt in one LLM call
       const result = await invokeLLM({
         messages: [
           {
             role: "system",
-            content: `You write social media ads for Jon Noland, owner of Noland Earthworks, LLC — a veteran-owned land management and forestry mulching company in Middle Tennessee. ${platformNote} ${toneNote} Rules: No emojis. No hashtag overload (max 3 relevant hashtags, only if appropriate). No corporate jargon. No banned phrases: "solutions", "industry-leading", "best-in-class", "we are passionate", "dedicated team", "we strive to", "cutting-edge". Sound like a real person who does this work. Describe the actual job plainly. End with a direct, low-pressure CTA (call, text, or visit nolandearthworks.com). Keep it under 150 words. Also write a short image generation prompt (under 60 words) describing a realistic, gritty photo of land clearing work — no people, no logos, no text in the image. Return JSON: { "draft": "...", "headline": "...", "imagePrompt": "..." }`,
+            content: `You write social media ads for Jon Noland, owner of Noland Earthworks, LLC — a veteran-owned land management and forestry mulching company in Middle Tennessee. ${platformNote} ${toneNote} ${adTypeNote} Rules: No emojis. No hashtag overload (max 3 relevant hashtags, only if appropriate for the platform). No corporate jargon. No banned phrases: "solutions", "industry-leading", "best-in-class", "we are passionate", "dedicated team", "we strive to", "cutting-edge". Sound like a real person who does this work — not a marketing department. End with a direct, low-pressure CTA (call, text, or visit nolandearthworks.com). Keep the post body under 150 words. Also write a short image generation prompt (under 60 words) describing a realistic, gritty photo of land clearing or forestry mulching work in Tennessee — no people, no logos, no text in the image. ${competitorContext} Return JSON: { "draft": "...", "headline": "...", "imagePrompt": "..." }`,
           },
           {
             role: "user",
-            content: `Write a social media ad based on this job:\n\n${input.jobDescription}`,
+            content: jobContext,
           },
         ],
         response_format: {
