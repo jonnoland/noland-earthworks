@@ -23,6 +23,7 @@ import { makeRequest } from "./_core/map";
 import { notifyOwner } from "./_core/notification";
 import { invokeLLM } from "./_core/llm";
 import { ENV } from "./_core/env";
+import { Resend } from "resend";
 
 // ─── PIN App Token Helpers ─────────────────────────────────────────────────────
 
@@ -439,11 +440,55 @@ export const fieldQuoteRouter = router({
             });
           }
 
-          // 4. Notify owner
+          // 4. Notify owner (in-app)
           await notifyOwner({
             title: `New Field Quote — ${input.name}`,
             content: `${input.serviceType || "Land work"} · ${input.acreage ? `${input.acreage} acres` : "acreage TBD"} · AI Score: ${qualification.score.toUpperCase()}\n${input.address || "No address"}\n\n${qualification.summary}`,
           });
+
+          // 5. Send email notification to owner
+          if (ENV.resendApiKey) {
+            const resend = new Resend(ENV.resendApiKey);
+            const scoreColor = qualification.score === "strong" ? "#16a34a" : qualification.score === "marginal" ? "#d97706" : "#dc2626";
+            const scoreLabel = qualification.score.charAt(0).toUpperCase() + qualification.score.slice(1);
+            await resend.emails.send({
+              from: "Noland Earthworks <noreply@nolandearthworks.com>",
+              to: ["quotes@nolandearthworks.com"],
+              subject: `New Field Quote: ${input.name}${input.serviceType ? ` — ${input.serviceType}` : ""}${input.acreage ? ` (${input.acreage} acres)` : ""}`,
+              html: `
+                <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;background:#fff;">
+                  <div style="background:#1a1a1a;padding:24px 32px;">
+                    <h1 style="color:#d97706;margin:0;font-size:22px;letter-spacing:1px;">NOLAND EARTHWORKS</h1>
+                    <p style="color:#888;margin:4px 0 0;font-size:13px;">New Field Quote — Noland Field App</p>
+                  </div>
+                  <div style="padding:32px;">
+                    <div style="display:inline-block;background:${scoreColor};color:#fff;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:1px;padding:4px 12px;border-radius:4px;margin-bottom:20px;">AI Score: ${scoreLabel}</div>
+                    <h2 style="color:#1a1a1a;margin-top:0;">${input.name}</h2>
+                    <table style="width:100%;border-collapse:collapse;margin-bottom:24px;">
+                      ${input.phone ? `<tr><td style="padding:8px 0;color:#888;width:160px;">Phone</td><td style="padding:8px 0;color:#1a1a1a;font-weight:600;"><a href="tel:${input.phone}" style="color:#d97706;">${input.phone}</a></td></tr>` : ""}
+                      ${input.email ? `<tr><td style="padding:8px 0;color:#888;">Email</td><td style="padding:8px 0;color:#1a1a1a;">${input.email}</td></tr>` : ""}
+                      ${input.serviceType ? `<tr><td style="padding:8px 0;color:#888;">Service</td><td style="padding:8px 0;color:#1a1a1a;">${input.serviceType}</td></tr>` : ""}
+                      ${input.acreage ? `<tr><td style="padding:8px 0;color:#888;">Acreage</td><td style="padding:8px 0;color:#1a1a1a;">${input.acreage} acres</td></tr>` : ""}
+                      ${input.address ? `<tr><td style="padding:8px 0;color:#888;">Address</td><td style="padding:8px 0;color:#1a1a1a;">${input.address}</td></tr>` : ""}
+                      ${input.terrainType ? `<tr><td style="padding:8px 0;color:#888;">Terrain</td><td style="padding:8px 0;color:#1a1a1a;">${input.terrainType}</td></tr>` : ""}
+                      ${input.vegetationDensity ? `<tr><td style="padding:8px 0;color:#888;">Vegetation</td><td style="padding:8px 0;color:#1a1a1a;">${input.vegetationDensity}</td></tr>` : ""}
+                      ${input.slopeCondition ? `<tr><td style="padding:8px 0;color:#888;">Slope</td><td style="padding:8px 0;color:#1a1a1a;">${input.slopeCondition}</td></tr>` : ""}
+                      ${input.accessCondition ? `<tr><td style="padding:8px 0;color:#888;">Access</td><td style="padding:8px 0;color:#1a1a1a;">${input.accessCondition}</td></tr>` : ""}
+                      ${input.obstacles ? `<tr><td style="padding:8px 0;color:#888;">Obstacles</td><td style="padding:8px 0;color:#1a1a1a;">${input.obstacles}</td></tr>` : ""}
+                      ${input.photoUrls.length > 0 ? `<tr><td style="padding:8px 0;color:#888;">Photos</td><td style="padding:8px 0;color:#1a1a1a;">${input.photoUrls.length} attached</td></tr>` : ""}
+                    </table>
+                    <div style="background:#f5f5f5;border-left:4px solid #d97706;padding:16px 20px;margin-bottom:24px;">
+                      <p style="margin:0 0 8px;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#888;">AI Summary</p>
+                      <p style="margin:0;color:#1a1a1a;line-height:1.6;">${qualification.summary}</p>
+                    </div>
+                    ${qualification.flags.length > 0 ? `<div style="background:#fff8f0;border-left:4px solid #f97316;padding:16px 20px;margin-bottom:24px;"><p style="margin:0 0 8px;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#888;">Flags</p><ul style="margin:0;padding-left:20px;color:#1a1a1a;">${qualification.flags.map((f: string) => `<li style="margin-bottom:4px;">${f}</li>`).join("")}</ul></div>` : ""}
+                    ${input.message ? `<div style="margin-bottom:24px;"><p style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#888;margin-bottom:8px;">Notes from Field</p><p style="color:#1a1a1a;line-height:1.6;margin:0;">${input.message}</p></div>` : ""}
+                    <a href="https://www.nolandearthworks.com/ops/quotes" style="display:inline-block;background:#d97706;color:#fff;font-size:14px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;padding:14px 32px;border-radius:6px;text-decoration:none;">View in Ops Dashboard</a>
+                  </div>
+                </div>
+              `,
+            }).catch((e: unknown) => console.error("[FieldQuoteRouter] Owner email failed:", e));
+          }
         } catch (err) {
           console.error("[FieldQuoteRouter] Background processing failed:", err);
         }

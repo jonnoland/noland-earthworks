@@ -83,8 +83,43 @@ export const widgetRouter = router({
 
       await notifyOwner({
         title: `New estimate lead: ${input.name}`,
-        content: `Phone: ${input.phone}\nService: ${svcLabel}\nAcreage: ${input.acres} acres\nEstimate: $${input.estimateLow.toLocaleString()} – $${input.estimateHigh.toLocaleString()}`,
+        content: `Phone: ${input.phone}\nService: ${svcLabel}\nAcreage: ${input.acres} acres\nEstimate: $${input.estimateLow.toLocaleString()} \u2013 $${input.estimateHigh.toLocaleString()}`,
       }).catch(() => {});
+
+      // Send email notification to owner
+      const resend = getResend();
+      if (resend) {
+        await resend.emails.send({
+          from: "Noland Earthworks <noreply@nolandearthworks.com>",
+          to: ["quotes@nolandearthworks.com"],
+          subject: `New Estimate Lead: ${input.name} \u2014 ${svcLabel} (${input.acres} acres)`,
+          html: `
+            <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;background:#fff;">
+              <div style="background:#1a1a1a;padding:24px 32px;">
+                <h1 style="color:#d97706;margin:0;font-size:22px;letter-spacing:1px;">NOLAND EARTHWORKS</h1>
+                <p style="color:#888;margin:4px 0 0;font-size:13px;">New Pricing Calculator Lead</p>
+              </div>
+              <div style="padding:32px;">
+                <h2 style="color:#1a1a1a;margin-top:0;">New Estimate Submission</h2>
+                <table style="width:100%;border-collapse:collapse;margin-bottom:24px;">
+                  <tr><td style="padding:8px 0;color:#888;width:140px;">Name</td><td style="padding:8px 0;color:#1a1a1a;font-weight:600;">${input.name}</td></tr>
+                  <tr><td style="padding:8px 0;color:#888;">Phone</td><td style="padding:8px 0;color:#1a1a1a;font-weight:600;"><a href="tel:${input.phone}" style="color:#d97706;">${input.phone}</a></td></tr>
+                  ${input.email ? `<tr><td style="padding:8px 0;color:#888;">Email</td><td style="padding:8px 0;color:#1a1a1a;">${input.email}</td></tr>` : ""}
+                  <tr><td style="padding:8px 0;color:#888;">Service</td><td style="padding:8px 0;color:#1a1a1a;">${svcLabel}</td></tr>
+                  <tr><td style="padding:8px 0;color:#888;">Acreage</td><td style="padding:8px 0;color:#1a1a1a;">${input.acres} acres</td></tr>
+                  <tr><td style="padding:8px 0;color:#888;">Density</td><td style="padding:8px 0;color:#1a1a1a;">${input.density}</td></tr>
+                  <tr><td style="padding:8px 0;color:#888;">Terrain</td><td style="padding:8px 0;color:#1a1a1a;">${input.terrain}</td></tr>
+                  <tr><td style="padding:8px 0;color:#888;">Site Access</td><td style="padding:8px 0;color:#1a1a1a;">${input.access}</td></tr>
+                  <tr><td style="padding:8px 0;color:#888;">Estimate Range</td><td style="padding:8px 0;color:#1a1a1a;font-weight:600;">$${input.estimateLow.toLocaleString()} \u2013 $${input.estimateHigh.toLocaleString()}</td></tr>
+                  ${input.addOns && input.addOns.length > 0 ? `<tr><td style="padding:8px 0;color:#888;">Add-ons</td><td style="padding:8px 0;color:#1a1a1a;">${input.addOns.join(", ")}</td></tr>` : ""}
+                  ${input.message ? `<tr><td style="padding:8px 0;color:#888;">Notes</td><td style="padding:8px 0;color:#1a1a1a;">${input.message}</td></tr>` : ""}
+                </table>
+                <a href="https://www.nolandearthworks.com/ops/leads" style="display:inline-block;background:#d97706;color:#fff;font-size:14px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;padding:14px 32px;border-radius:6px;text-decoration:none;">View in Ops Dashboard</a>
+              </div>
+            </div>
+          `,
+        }).catch((e: unknown) => console.error("[Widget] Owner email failed:", e));
+      }
 
       return { ok: true, leadId };
     }),

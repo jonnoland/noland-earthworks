@@ -1405,7 +1405,12 @@
 - [x] All 88 tests passing
 
 ## Ads — Generate Without Description (Competitor Intelligence)
-- [ ] Research competitor forestry mulching / land clearing Facebook ads and ad copy patterns
-- [ ] Make job description optional in generate procedure — use competitor intelligence + ad type when no description provided
-- [ ] Add "Ad Type" selector to Ads page (Service Promo, Seasonal, Before/After, Brand Awareness, Lead Gen)
-- [ ] Update AI system prompt with competitor ad patterns and Noland Earthworks brand voice rules
+- [x] Research competitor forestry mulching / land clearing Facebook ads and ad copy patterns (Facebook Ad Library + homeservicedirect.net)
+- [x] Make job description optional in generate procedure — AI uses competitor intelligence + ad type when no description provided
+- [x] Add "Ad Type" selector to Ads page (AI Picks, Before/After, Problem/Solution, Education, Seasonal Urgency, Veteran-Owned, Reclaim Your Land, Specific Use Case)
+- [x] Update AI system prompt with competitor ad patterns, proven hooks, and Noland Earthworks brand voice rules
+
+## Email Routing Audit — All Quote/Contact Submissions to quotes@nolandearthworks.com
+- [ ] Fix contactRouter: change recipient from info@nolandearthworks.com to quotes@nolandearthworks.com
+- [ ] Fix widgetRouter (pricing calculator): add missing to: quotes@nolandearthworks.com on email send
+- [ ] Add Resend email notification to fieldQuoteRouter when a field quote is submitted
