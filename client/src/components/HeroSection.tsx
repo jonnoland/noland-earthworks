@@ -54,7 +54,7 @@ export default function HeroSection() {
         <div className="max-w-3xl">
           {/* SEO-only h1 — visually hidden, read by search engines and screen readers */}
           <h1 className="sr-only">
-            Professional Land Management &amp; Forestry Mulching in Middle &amp; West Tennessee
+            Forestry Mulching &amp; Land Management Services in Middle &amp; West Tennessee — Noland Earthworks
           </h1>
 
           {/* Main headline */}

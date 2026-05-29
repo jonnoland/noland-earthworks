@@ -66,8 +66,8 @@ const data: ServicePageProps = {
 
 export default function LandClearingPage() {
   usePageTitle(
-    "Land Management Services — Middle & West Tennessee | Noland Earthworks",
-    "Full-service land management across Middle & West Tennessee. Pasture reclamation, lot clearing, fence line clearing, vegetation control, and site prep. Veteran-owned. Free on-site estimates.",
+    "Land Management Services — Nashville, Franklin & Middle Tennessee",
+    "Veteran-owned land management serving Nashville, Franklin, Murfreesboro, Clarksville, and 35 counties in Middle & West Tennessee. Lot clearing, pasture reclamation, site prep, and fence line clearing. Free on-site estimates.",
     "/services/land-management"
   );
   return (

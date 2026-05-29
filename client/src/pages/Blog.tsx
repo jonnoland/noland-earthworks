@@ -413,8 +413,8 @@ const ALL_CATEGORIES = ["All", ...Array.from(new Set(BLOG_POSTS.map((p) => p.cat
 
 export default function Blog() {
   usePageTitle(
-    "Land Management Resources & Blog | Noland Earthworks",
-    "Expert land management and forestry mulching guides for Tennessee property owners. Pricing, methods, and tips from Noland Earthworks — veteran-owned and operated.",
+    "Forestry Mulching & Land Management Blog — Tennessee",
+    "Guides, pricing breakdowns, and how-to articles for Tennessee landowners. Forestry mulching, land clearing, pasture reclamation, and more from Noland Earthworks.",
     "/blog"
   );
 

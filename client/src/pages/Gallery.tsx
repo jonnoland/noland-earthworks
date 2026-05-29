@@ -237,8 +237,8 @@ function ProjectCard({ project }: { project: Project }) {
 
 export default function Gallery() {
   usePageTitle(
-    "Before & After Gallery | Noland Earthworks",
-    "See real before and after photos of land management and forestry mulching projects across Middle & West Tennessee. Wilson, Dickson, Williamson, Maury, Rutherford, and Montgomery counties.",
+    "Forestry Mulching Before & After Gallery — Tennessee Projects",
+    "Real before and after photos of forestry mulching and land management jobs across Middle & West Tennessee. See the results — Williamson, Wilson, Dickson, Maury, Rutherford, and Montgomery counties.",
     "/gallery"
   );
 

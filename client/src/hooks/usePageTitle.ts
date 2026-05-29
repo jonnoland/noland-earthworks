@@ -21,8 +21,9 @@ function setMeta(attr: "name" | "property", key: string, value: string) {
  * @param title          Page title (site name appended automatically)
  * @param description    Optional meta description (falls back to site default)
  * @param canonicalPath  Optional path for canonical URL, e.g. "/service-areas/wilson-county"
+ * @param ogImage        Optional OG image URL for this specific page
  */
-export function usePageTitle(title: string, description?: string, canonicalPath?: string) {
+export function usePageTitle(title: string, description?: string, canonicalPath?: string, ogImage?: string) {
   useEffect(() => {
     // Strip any trailing "| Noland Earthworks" variant the caller may have included
     // to avoid duplication like "Page | Noland Earthworks | Noland Earthworks, LLC"
@@ -46,6 +47,12 @@ export function usePageTitle(title: string, description?: string, canonicalPath?
     setMeta("property", "og:description", desc);
     if (canonicalPath) {
       setMeta("property", "og:url", `${BASE_URL}${canonicalPath}`);
+    }
+
+    // ── OG Image (per-page override) ─────────────────────────────────────────
+    if (ogImage) {
+      setMeta("property", "og:image", ogImage);
+      setMeta("name", "twitter:image", ogImage);
     }
 
     // ── Twitter Card ─────────────────────────────────────────────────────────

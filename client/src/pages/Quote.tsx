@@ -80,8 +80,8 @@ const ADDON_SUGGESTIONS: Record<string, string[]> = {
 
 export default function QuotePage() {
   usePageTitle(
-    "Request a Free Quote — Land Management & Forestry Mulching | Noland Earthworks",
-    "Get a free, no-obligation quote for land management, forestry mulching, or vegetation management anywhere in Middle & West Tennessee. 24-hour response guaranteed.",
+    "Free Forestry Mulching & Land Management Quote — Tennessee",
+    "Request a free on-site estimate for forestry mulching, lot clearing, brush clearing, or land management anywhere in Middle & West Tennessee. Veteran-owned. Fast response.",
     "/quote"
   );
   const [submitted, setSubmitted] = useState(false);

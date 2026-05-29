@@ -64,8 +64,8 @@ const data: ServicePageProps = {
 
 export default function ForestryMulchingPage() {
   usePageTitle(
-    "Forestry Mulching Services — Middle & West Tennessee | Noland Earthworks",
-    "Professional forestry mulching across 35 counties in Middle & West Tennessee. One machine clears trees, brush, and stumps in a single pass. No burning, no hauling. Free estimates.",
+    "Forestry Mulching Services — Nashville, Clarksville & Middle Tennessee",
+    "Professional forestry mulching serving Nashville, Clarksville, Murfreesboro, Columbia, and 35 counties across Middle & West Tennessee. One pass clears trees, brush, and stumps. No hauling, no burning. Free on-site estimates.",
     "/services/forestry-mulching"
   );
   return (

@@ -64,8 +64,8 @@ const data: ServicePageProps = {
 
 export default function PropertyMaintenancePage() {
   usePageTitle(
-    "Property Maintenance Services — Middle & West Tennessee | Noland Earthworks",
-    "Year-round property maintenance services across Middle & West Tennessee. Brush clearing, fence line clearing, right-of-way maintenance, and more. Free estimates.",
+    "Property Maintenance Services — Brush & Vegetation Control | Tennessee",
+    "Year-round property maintenance for Tennessee landowners. Brush clearing, fence line clearing, overgrowth control, and right-of-way maintenance. Veteran-owned. Free estimates.",
     "/services/property-maintenance"
   );
   return (

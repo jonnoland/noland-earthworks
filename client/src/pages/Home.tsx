@@ -23,8 +23,8 @@ import { usePageTitle } from "@/hooks/usePageTitle";
 
 export default function Home() {
   usePageTitle(
-    "Veteran-Owned Land Management & Forestry Mulching — Middle & West Tennessee | Noland Earthworks",
-    "Noland Earthworks provides professional land management, forestry mulching, and vegetation management across Middle & West Tennessee. Veteran-owned. Free estimates. Call 615-406-4819.",
+    "Forestry Mulching & Land Management — Middle & West Tennessee",
+    "Veteran-owned forestry mulching, lot clearing, and land management serving 35 counties in Middle & West Tennessee. No hauling, no burning. Free on-site estimates. Call 615-406-4819.",
     "/"
   );
   return (

@@ -617,8 +617,8 @@ function CostFactorCard({ row }: { row: typeof costFactors[number] }) {
 
 export default function PricingPage() {
   usePageTitle(
-    "Land Management & Forestry Mulching Pricing Guide — Middle & West Tennessee | Noland Earthworks",
-    "Transparent pricing for land management and forestry mulching in Tennessee. Typical costs range $1,000–$4,500/acre. Use our free estimate calculator to get a rough number in 30 seconds.",
+    "Forestry Mulching & Land Management Pricing — Tennessee",
+    "How much does forestry mulching cost in Tennessee? Typical range is $1,000–4,500/acre depending on density, terrain, and acreage. Use our free estimate calculator or call for a site visit.",
     "/pricing"
   );
   return (

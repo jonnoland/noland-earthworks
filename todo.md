@@ -1411,6 +1411,29 @@
 - [x] Update AI system prompt with competitor ad patterns, proven hooks, and Noland Earthworks brand voice rules
 
 ## Email Routing Audit — All Quote/Contact Submissions to quotes@nolandearthworks.com
-- [ ] Fix contactRouter: change recipient from info@nolandearthworks.com to quotes@nolandearthworks.com
-- [ ] Fix widgetRouter (pricing calculator): add missing to: quotes@nolandearthworks.com on email send
-- [ ] Add Resend email notification to fieldQuoteRouter when a field quote is submitted
+- [x] contactRouter: confirmed info@nolandearthworks.com is correct for the Contact form on /about (reverted from quotes@)
+- [x] widgetRouter (pricing calculator): added owner email notification to quotes@nolandearthworks.com on submitEstimate
+- [x] fieldQuoteRouter: added Resend email notification to quotes@nolandearthworks.com with AI score, site details, and flags
+
+## SEO Improvements — May 2026
+
+- [x] Improve home page title to lead with "Forestry Mulching" primary keyword
+- [x] Improve home page H1 (sr-only) to include "Forestry Mulching" and "Land Management"
+- [x] Update home page meta description with specific services and phone number
+- [x] Update meta keywords tag with high-value local terms (Nashville, Clarksville, Murfreesboro, lot clearing, brush clearing, site preparation)
+- [x] Upgrade JSON-LD @type from LocalBusiness to ["LocalBusiness", "HomeAndConstructionBusiness"]
+- [x] Add foundingDate, slogan, knowsAbout, and serviceArea (GeoCircle) to JSON-LD schema
+- [x] Improve ForestryMulching page title with city names (Nashville, Clarksville, Murfreesboro)
+- [x] Improve LandClearing page title with city names (Nashville, Franklin, Murfreesboro)
+- [x] Improve RightOfWayClearing page title with specific use cases
+- [x] Improve VegetationManagement page title with service terms (brush control, invasive species)
+- [x] Improve PropertyMaintenance page title with service terms
+- [x] Shorten Pricing page title to under 60 characters; add "how much does forestry mulching cost" intent
+- [x] Improve Quote page title with conversion-focused copy and keyword terms
+- [x] Improve Blog page title to lead with "Forestry Mulching"
+- [x] Improve Gallery page title with "Forestry Mulching Before & After" keyword phrase
+- [x] Improve About page title with keyword terms
+- [x] Fix BlogPosting JSON-LD: replace placeholder image URL with correct CDN URL
+- [x] Fix BlogPosting JSON-LD: change author from Organization to Person (Jon Noland)
+- [x] Fix BlogPosting JSON-LD: fix all www.nolandearthworks.com URLs to canonical nolandearthworks.com
+- [x] Add ogImage parameter support to usePageTitle hook for per-page OG image overrides
