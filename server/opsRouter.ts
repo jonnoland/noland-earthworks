@@ -8,6 +8,8 @@ import { protectedProcedure, router } from "./_core/trpc";
 import { ENV } from "./_core/env";
 import { isJobberConnected, jobberGraphQL } from "./jobber";
 import { invokeLLM } from "./_core/llm";
+import { generateImage } from "./_core/imageGeneration";
+import { storagePut } from "./storage";
 import {
   getDb,
   getJobs, createJob, updateJob, deleteJob,
@@ -2460,12 +2462,13 @@ ${toneInstructions[input.tone]}`;
 
 // ─── Social Posts Router ─────────────────────────────────────────────────────
 const socialPostsRouter = router({
-  /** Generate a Facebook/Instagram post from a completed job description */
+  /** Generate AI ad copy + image for Facebook/Instagram */
   generate: ownerProcedure
     .input(z.object({
       jobDescription: z.string().min(10).max(1000),
       platform: z.enum(["facebook", "instagram", "both"]).default("both"),
       tone: z.enum(["casual", "professional"]).default("casual"),
+      generateImage: z.boolean().default(true),
     }))
     .mutation(async ({ input }) => {
       const platformNote = input.platform === "both"
@@ -2474,21 +2477,58 @@ const socialPostsRouter = router({
       const toneNote = input.tone === "professional"
         ? "Tone: professional and direct, but still genuine and human."
         : "Tone: casual, warm, southern hospitality. Like a neighbor talking to a neighbor. Genuine, not salesy.";
+
+      // Generate copy and image prompt in one LLM call
       const result = await invokeLLM({
         messages: [
           {
             role: "system",
-            content: `You write social media posts for Jon Noland, owner of Noland Earthworks, LLC — a veteran-owned land management and forestry mulching company in Middle Tennessee. ${platformNote} ${toneNote} Rules: No emojis. No hashtag overload (max 3 relevant hashtags, only if appropriate). No corporate jargon. No banned phrases: "solutions", "industry-leading", "best-in-class", "we are passionate", "dedicated team", "we strive to", "cutting-edge". Sound like a real person who does this work. Describe the actual job plainly. End with a direct, low-pressure CTA (call, text, or visit nolandearthworks.com). Keep it under 150 words.`,
+            content: `You write social media ads for Jon Noland, owner of Noland Earthworks, LLC — a veteran-owned land management and forestry mulching company in Middle Tennessee. ${platformNote} ${toneNote} Rules: No emojis. No hashtag overload (max 3 relevant hashtags, only if appropriate). No corporate jargon. No banned phrases: "solutions", "industry-leading", "best-in-class", "we are passionate", "dedicated team", "we strive to", "cutting-edge". Sound like a real person who does this work. Describe the actual job plainly. End with a direct, low-pressure CTA (call, text, or visit nolandearthworks.com). Keep it under 150 words. Also write a short image generation prompt (under 60 words) describing a realistic, gritty photo of land clearing work — no people, no logos, no text in the image. Return JSON: { "draft": "...", "headline": "...", "imagePrompt": "..." }`,
           },
           {
             role: "user",
-            content: `Write a social media post based on this job:\n\n${input.jobDescription}`,
+            content: `Write a social media ad based on this job:\n\n${input.jobDescription}`,
           },
         ],
+        response_format: {
+          type: "json_schema",
+          json_schema: {
+            name: "social_ad",
+            strict: true,
+            schema: {
+              type: "object",
+              properties: {
+                draft: { type: "string", description: "The full post body text" },
+                headline: { type: "string", description: "Short punchy headline, max 8 words" },
+                imagePrompt: { type: "string", description: "Image generation prompt for a realistic land clearing photo" },
+              },
+              required: ["draft", "headline", "imagePrompt"],
+              additionalProperties: false,
+            },
+          },
+        },
       });
-      const draft = (result.choices?.[0]?.message?.content as string ?? "").trim();
-      if (!draft) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "AI did not return a post. Try again." });
-      return { draft };
+
+      let parsed: { draft: string; headline: string; imagePrompt: string };
+      try {
+        parsed = JSON.parse(result.choices?.[0]?.message?.content as string ?? "{}");
+      } catch {
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "AI returned invalid JSON. Try again." });
+      }
+      if (!parsed.draft) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "AI did not return ad copy. Try again." });
+
+      let imageUrl: string | null = null;
+      if (input.generateImage && parsed.imagePrompt) {
+        try {
+          const imgResult = await generateImage({ prompt: parsed.imagePrompt });
+          imageUrl = imgResult.url ?? null;
+        } catch (e) {
+          console.error("[Ads] Image generation failed:", e);
+          // Non-fatal — return copy without image
+        }
+      }
+
+      return { draft: parsed.draft, headline: parsed.headline, imagePrompt: parsed.imagePrompt, imageUrl };
     }),
 
   /** Save a generated post to history */
@@ -2496,22 +2536,156 @@ const socialPostsRouter = router({
     .input(z.object({
       jobDescription: z.string(),
       draft: z.string(),
+      headline: z.string().optional(),
       platform: z.string(),
       published: z.boolean().default(false),
+      imageUrl: z.string().optional(),
+      imageKey: z.string().optional(),
     }))
     .mutation(async ({ ctx, input }) => {
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
       const { socialPosts } = await import("../drizzle/schema");
-      await db.insert(socialPosts).values({
+      const result = await db.insert(socialPosts).values({
         userId: ctx.user.id,
         jobDescription: input.jobDescription,
         draft: input.draft,
+        headline: input.headline ?? null,
         platform: input.platform,
         published: input.published,
+        imageUrl: input.imageUrl ?? null,
+        imageKey: input.imageKey ?? null,
         createdAt: new Date(),
       });
-      return { success: true };
+      const insertId = (result as any)[0]?.insertId ?? null;
+      return { success: true, id: insertId };
+    }),
+
+  /** Publish a post to Facebook Page */
+  publishToFacebook: ownerProcedure
+    .input(z.object({
+      postId: z.number().int().positive(),
+      message: z.string(),
+      imageUrl: z.string().optional(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const pageId = ENV.facebookPageId;
+      const accessToken = ENV.facebookPageAccessToken;
+      if (!pageId || !accessToken) {
+        throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Facebook Page credentials not configured. Add FACEBOOK_PAGE_ID and FACEBOOK_PAGE_ACCESS_TOKEN in project secrets." });
+      }
+
+      let fbPostId: string;
+      if (input.imageUrl) {
+        // Post with photo
+        const photoRes = await fetch(`https://graph.facebook.com/v20.0/${pageId}/photos`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            url: input.imageUrl,
+            caption: input.message,
+            access_token: accessToken,
+          }),
+        });
+        const photoData = await photoRes.json() as any;
+        if (!photoRes.ok || photoData.error) {
+          throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: `Facebook API error: ${photoData.error?.message ?? "Unknown error"}` });
+        }
+        fbPostId = photoData.post_id ?? photoData.id;
+      } else {
+        // Text-only post
+        const feedRes = await fetch(`https://graph.facebook.com/v20.0/${pageId}/feed`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            message: input.message,
+            access_token: accessToken,
+          }),
+        });
+        const feedData = await feedRes.json() as any;
+        if (!feedRes.ok || feedData.error) {
+          throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: `Facebook API error: ${feedData.error?.message ?? "Unknown error"}` });
+        }
+        fbPostId = feedData.id;
+      }
+
+      // Update record
+      const db = await getDb();
+      if (db) {
+        const { socialPosts } = await import("../drizzle/schema");
+        await db.update(socialPosts)
+          .set({ fbPostId, published: true, postedAt: new Date() })
+          .where(eq(socialPosts.id, input.postId));
+      }
+
+      return { success: true, fbPostId, url: `https://www.facebook.com/${pageId}/posts/${fbPostId.split("_")[1] ?? fbPostId}` };
+    }),
+
+  /** Publish a post to Instagram (via Facebook Graph API) */
+  publishToInstagram: ownerProcedure
+    .input(z.object({
+      postId: z.number().int().positive(),
+      caption: z.string(),
+      imageUrl: z.string(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const pageId = ENV.facebookPageId;
+      const accessToken = ENV.facebookPageAccessToken;
+      if (!pageId || !accessToken) {
+        throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Facebook Page credentials not configured." });
+      }
+
+      // Step 1: Get Instagram Business Account ID from the Facebook Page
+      const igAccountRes = await fetch(
+        `https://graph.facebook.com/v20.0/${pageId}?fields=instagram_business_account&access_token=${accessToken}`
+      );
+      const igAccountData = await igAccountRes.json() as any;
+      const igAccountId = igAccountData?.instagram_business_account?.id;
+      if (!igAccountId) {
+        throw new TRPCError({ code: "PRECONDITION_FAILED", message: "No Instagram Business Account linked to this Facebook Page. Connect Instagram in Facebook Page Settings." });
+      }
+
+      // Step 2: Create media container
+      const containerRes = await fetch(`https://graph.facebook.com/v20.0/${igAccountId}/media`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          image_url: input.imageUrl,
+          caption: input.caption,
+          access_token: accessToken,
+        }),
+      });
+      const containerData = await containerRes.json() as any;
+      if (!containerRes.ok || containerData.error) {
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: `Instagram media container error: ${containerData.error?.message ?? "Unknown"}` });
+      }
+      const containerId = containerData.id;
+
+      // Step 3: Publish the container
+      const publishRes = await fetch(`https://graph.facebook.com/v20.0/${igAccountId}/media_publish`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          creation_id: containerId,
+          access_token: accessToken,
+        }),
+      });
+      const publishData = await publishRes.json() as any;
+      if (!publishRes.ok || publishData.error) {
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: `Instagram publish error: ${publishData.error?.message ?? "Unknown"}` });
+      }
+      const igPostId = publishData.id;
+
+      // Update record
+      const db = await getDb();
+      if (db) {
+        const { socialPosts } = await import("../drizzle/schema");
+        await db.update(socialPosts)
+          .set({ igPostId, published: true, postedAt: new Date() })
+          .where(eq(socialPosts.id, input.postId));
+      }
+
+      return { success: true, igPostId };
     }),
 
   /** List saved posts */

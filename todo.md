@@ -1384,3 +1384,12 @@
 - [x] Create nightly Heartbeat cron to purge anonymous chat sessions older than 14 days — task_uid: PYf65xAPLuPmgRrgrD7YyT, fires daily at 3:00 AM UTC
 - [x] Change anonymous chat session cleanup threshold from 30 days to 14 days
 - [x] Add manual "Clean up" button to Chat Sessions page that triggers the cleanup endpoint (admin only, confirms before deleting, shows result count)
+
+## Ads Section — Facebook/Instagram Direct Posting
+- [x] Extended socialPosts schema with imageUrl, imageKey, fbPostId, igPostId, headline, postedAt columns and pushed migration
+- [x] Updated generate procedure to return AI copy + headline + imagePrompt + imageUrl in one call (structured JSON response)
+- [x] Added publishToFacebook and publishToInstagram procedures to opsRouter (full Graph API v20.0 flow)
+- [x] Updated savePost to store headline, imageUrl, imageKey
+- [x] Built /ops/Ads.tsx page: job description input, platform/tone/image toggles, AI generate, copy/headline editor, image preview, per-platform post buttons, ad history with thumbnails
+- [x] Added Ads nav item to DashboardLayout and /ops/ads route in App.tsx
+- [x] All 88 tests passing after changes

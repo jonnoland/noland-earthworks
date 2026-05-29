@@ -58,7 +58,7 @@ const NAV_ITEMS = [
   { label: "Reports",       href: "/ops/reports",        icon: TrendingUp },
   { label: "Team",          href: "/ops/team",           icon: UserPlus },
   { label: "Cost Estimator", href: "/ops/cost-estimator", icon: Calculator },
-  { label: "Social Posts",  href: "/ops/social-posts",   icon: Share2 },
+  { label: "Ads",           href: "/ops/ads",            icon: Share2 },
   { label: "Settings",      href: "/ops/settings",       icon: Settings },
 ];
 

@@ -907,6 +907,13 @@ export const socialPosts = mysqlTable("social_posts", {
   draft: text("draft").notNull(),
   platform: varchar("platform", { length: 50 }).notNull().default("both"),
   published: boolean("published").notNull().default(false),
+  imageUrl: text("imageUrl"),
+  imageKey: varchar("imageKey", { length: 500 }),
+  fbPostId: varchar("fbPostId", { length: 200 }),
+  igPostId: varchar("igPostId", { length: 200 }),
+  postedAt: timestamp("postedAt"),
+  adType: varchar("adType", { length: 50 }).default("social"),
+  headline: varchar("headline", { length: 255 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 export type SocialPost = typeof socialPosts.$inferSelect;
