@@ -1381,6 +1381,6 @@
 - [x] Apply §5c Heartbeat patches to sdk.ts and manusTypes.ts for cron auth
 - [x] Add cleanupAnonymousChatSessions DB helper to db.ts
 - [x] Add /api/scheduled/cleanup-chat-sessions Express handler in index.ts
-- [ ] Create nightly Heartbeat cron to purge anonymous chat sessions older than 30 days (requires deploy first)
+- [x] Create nightly Heartbeat cron to purge anonymous chat sessions older than 14 days — task_uid: PYf65xAPLuPmgRrgrD7YyT, fires daily at 3:00 AM UTC
 - [x] Change anonymous chat session cleanup threshold from 30 days to 14 days
 - [x] Add manual "Clean up" button to Chat Sessions page that triggers the cleanup endpoint (admin only, confirms before deleting, shows result count)

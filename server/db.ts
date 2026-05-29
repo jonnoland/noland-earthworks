@@ -550,28 +550,28 @@ export async function deleteNotification(id: number) {
 }
 
 /**
- * Deletes anonymous chat sessions (no name, no phone, no lead created) older than
- * the specified number of days. Chat messages are deleted automatically via CASCADE.
+ * Deletes anonymous chat sessions (no name, no phone, no lead created).
+ * When force=true, removes ALL anonymous sessions regardless of age (manual admin trigger).
+ * When force=false (default), only removes sessions older than olderThanDays (nightly cron).
+ * Chat messages are deleted automatically via CASCADE.
  * Returns the number of sessions deleted.
  */
-export async function cleanupAnonymousChatSessions(olderThanDays = 14): Promise<number> {
+export async function cleanupAnonymousChatSessions(olderThanDays = 14, force = false): Promise<number> {
   const db = await getDb();
   if (!db) return 0;
 
-  const cutoff = new Date(Date.now() - olderThanDays * 24 * 60 * 60 * 1000);
+  // Anonymous session conditions: no lead, no name, no phone
+  const anonymousConditions = and(
+    eq(chatSessions.leadCreated, false),
+    or(isNull(chatSessions.visitorName), eq(chatSessions.visitorName, "")),
+    or(isNull(chatSessions.visitorPhone), eq(chatSessions.visitorPhone, ""))
+  );
 
-  const result = await db
-    .delete(chatSessions)
-    .where(
-      and(
-        lt(chatSessions.createdAt, cutoff),
-        // No lead was created from this session
-        eq(chatSessions.leadCreated, false),
-        // No contact info was ever captured
-        or(isNull(chatSessions.visitorName), eq(chatSessions.visitorName, "")),
-        or(isNull(chatSessions.visitorPhone), eq(chatSessions.visitorPhone, ""))
-      )
-    );
+  const whereClause = force
+    ? anonymousConditions
+    : and(anonymousConditions, lt(chatSessions.createdAt, new Date(Date.now() - olderThanDays * 24 * 60 * 60 * 1000)));
+
+  const result = await db.delete(chatSessions).where(whereClause);
 
   // MySQL2 result is an array [ResultSetHeader, ...]; rowsAffected is in [0]
   const affected = (result as unknown as [{ affectedRows: number }])[0]?.affectedRows ?? 0;

@@ -69,7 +69,7 @@ export default function ChatSessions() {
   const [cleanupLoading, setCleanupLoading] = useState(false);
 
   async function handleCleanup() {
-    if (!confirm("Delete all anonymous chat sessions older than 14 days? This cannot be undone.")) return;
+    if (!confirm("Remove all Unknown Visitor sessions? This cannot be undone.")) return;
     setCleanupLoading(true);
     setCleanupResult(null);
     try {

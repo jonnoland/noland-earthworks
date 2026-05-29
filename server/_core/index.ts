@@ -251,7 +251,9 @@ async function startServer() {
         return;
       }
 
-      const deleted = await cleanupAnonymousChatSessions(14);
+      // Admin manual trigger: remove ALL anonymous sessions immediately
+      // Cron trigger: only remove sessions older than 14 days
+      const deleted = await cleanupAnonymousChatSessions(14, isAdmin && !isCron);
       console.log(`[Cron] cleanup-chat-sessions: deleted ${deleted} anonymous sessions`);
       res.json({ ok: true, deleted, timestamp: new Date().toISOString() });
     } catch (err: unknown) {
