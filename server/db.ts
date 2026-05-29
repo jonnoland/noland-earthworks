@@ -554,7 +554,7 @@ export async function deleteNotification(id: number) {
  * the specified number of days. Chat messages are deleted automatically via CASCADE.
  * Returns the number of sessions deleted.
  */
-export async function cleanupAnonymousChatSessions(olderThanDays = 30): Promise<number> {
+export async function cleanupAnonymousChatSessions(olderThanDays = 14): Promise<number> {
   const db = await getDb();
   if (!db) return 0;
 

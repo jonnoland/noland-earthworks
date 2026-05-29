@@ -1382,3 +1382,5 @@
 - [x] Add cleanupAnonymousChatSessions DB helper to db.ts
 - [x] Add /api/scheduled/cleanup-chat-sessions Express handler in index.ts
 - [ ] Create nightly Heartbeat cron to purge anonymous chat sessions older than 30 days (requires deploy first)
+- [x] Change anonymous chat session cleanup threshold from 30 days to 14 days
+- [x] Add manual "Clean up" button to Chat Sessions page that triggers the cleanup endpoint (admin only, confirms before deleting, shows result count)

@@ -6,7 +6,7 @@ import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import OpsDashboardLayout from "@/components/OpsDashboardLayout";
 import { trpc } from "@/lib/trpc";
-import { BotMessageSquare, User, MessageSquare, Phone, Mail, UserCheck, Clock, ChevronRight } from "lucide-react";
+import { BotMessageSquare, User, MessageSquare, Phone, Mail, UserCheck, Clock, ChevronRight, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 
@@ -65,6 +65,33 @@ export default function ChatSessions() {
     },
   });
 
+  const [cleanupResult, setCleanupResult] = useState<string | null>(null);
+  const [cleanupLoading, setCleanupLoading] = useState(false);
+
+  async function handleCleanup() {
+    if (!confirm("Delete all anonymous chat sessions older than 14 days? This cannot be undone.")) return;
+    setCleanupLoading(true);
+    setCleanupResult(null);
+    try {
+      const res = await fetch("/api/scheduled/cleanup-chat-sessions", {
+        method: "POST",
+        credentials: "include",
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setCleanupResult(`Removed ${data.deleted} anonymous session${data.deleted !== 1 ? "s" : ""}`);
+        utils.chat.listSessions.invalidate();
+        utils.chat.unreadCount.invalidate();
+      } else {
+        setCleanupResult(`Error: ${data.error ?? "Unknown error"}`);
+      }
+    } catch {
+      setCleanupResult("Request failed");
+    } finally {
+      setCleanupLoading(false);
+    }
+  }
+
   // Handle ?session=ID param from Leads page transcript link
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -92,15 +119,28 @@ export default function ChatSessions() {
               <p className="text-xs text-zinc-500">
                 {sessions.length} session{sessions.length !== 1 ? "s" : ""}
               </p>
-              {unreadCount > 0 && (
+              <div className="flex items-center gap-2">
+                {unreadCount > 0 && (
+                  <button
+                    onClick={() => markAllViewed.mutate()}
+                    disabled={markAllViewed.isPending}
+                    className="text-[11px] font-medium text-teal-400 hover:text-teal-300 disabled:opacity-50 transition-colors whitespace-nowrap">
+                    {markAllViewed.isPending ? "Marking..." : `Mark all read (${unreadCount})`}
+                  </button>
+                )}
                 <button
-                  onClick={() => markAllViewed.mutate()}
-                  disabled={markAllViewed.isPending}
-                  className="text-[11px] font-medium text-teal-400 hover:text-teal-300 disabled:opacity-50 transition-colors whitespace-nowrap">
-                  {markAllViewed.isPending ? "Marking..." : `Mark all read (${unreadCount})`}
+                  onClick={handleCleanup}
+                  disabled={cleanupLoading}
+                  title="Delete anonymous sessions older than 14 days"
+                  className="flex items-center gap-1 text-[11px] font-medium text-zinc-500 hover:text-red-400 disabled:opacity-50 transition-colors whitespace-nowrap">
+                  <Trash2 size={11} />
+                  {cleanupLoading ? "Cleaning..." : "Clean up"}
                 </button>
-              )}
+              </div>
             </div>
+            {cleanupResult && (
+              <p className="text-[11px] text-zinc-400 bg-zinc-800 rounded px-2 py-1">{cleanupResult}</p>
+            )}
             <div className="flex rounded-md overflow-hidden border border-zinc-700 text-[11px] font-medium">
               <button
                 onClick={() => setLeadsOnly(true)}

@@ -244,12 +244,14 @@ async function startServer() {
       const { cleanupAnonymousChatSessions } = await import("../db");
 
       const user = await sdk.authenticateRequest(req);
-      if (!(user as any).isCron) {
-        res.status(403).json({ error: "cron-only" });
+      const isAdmin = (user as any).role === "admin";
+      const isCron = (user as any).isCron === true;
+      if (!isCron && !isAdmin) {
+        res.status(403).json({ error: "admin or cron only" });
         return;
       }
 
-      const deleted = await cleanupAnonymousChatSessions(30);
+      const deleted = await cleanupAnonymousChatSessions(14);
       console.log(`[Cron] cleanup-chat-sessions: deleted ${deleted} anonymous sessions`);
       res.json({ ok: true, deleted, timestamp: new Date().toISOString() });
     } catch (err: unknown) {
