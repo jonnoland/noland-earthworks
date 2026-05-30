@@ -34,4 +34,9 @@ export const ENV = {
   // Noland Field mobile app PIN — protects field quote endpoints from unauthorized access.
   // Set via FIELD_APP_PIN secret. If unset, defaults to "0000" in dev; blocks access in production.
   fieldAppPin: process.env.FIELD_APP_PIN ?? "",
+  // X (Twitter) OAuth 2.0 credentials for Social AI posting integration
+  twitterClientId: process.env.TWITTER_CLIENT_ID ?? "",
+  twitterClientSecret: process.env.TWITTER_CLIENT_SECRET ?? "",
+  // Canonical X OAuth redirect URI — must match what is registered in the X Developer Portal.
+  twitterRedirectUri: process.env.TWITTER_REDIRECT_URI ?? "https://nolandearthworks.com/api/x/callback",
 };

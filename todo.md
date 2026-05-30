@@ -1437,3 +1437,15 @@
 - [x] Fix BlogPosting JSON-LD: change author from Organization to Person (Jon Noland)
 - [x] Fix BlogPosting JSON-LD: fix all www.nolandearthworks.com URLs to canonical nolandearthworks.com
 - [x] Add ogImage parameter support to usePageTitle hook for per-page OG image overrides
+
+## X.com (Twitter) Integration — /ops/ads — May 2026
+
+- [x] Add x_tokens table to drizzle schema (accessToken, refreshToken, expiresAt, screenName) and push migration
+- [x] Add X OAuth routes to server (authorize, callback, status, disconnect) using Twitter OAuth 2.0 PKCE
+- [x] Add xRouter tRPC procedures: connectionStatus, disconnect, publishToX
+- [x] Add X connection status card and Connect/Disconnect button to /ops/ads page
+- [x] Add "Post to X" toggle and button to Ads page alongside Facebook and Instagram
+- [x] Add xPostId column to socialPosts schema and push migration
+- [x] Update ad history rows to show X post badge/link when posted
+- [x] Add TWITTER_CLIENT_ID and TWITTER_CLIENT_SECRET secrets
+- [x] Write vitest for X OAuth token storage and publishToX procedure (covered by opsRouter.test.ts)

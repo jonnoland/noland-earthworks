@@ -911,6 +911,7 @@ export const socialPosts = mysqlTable("social_posts", {
   imageKey: varchar("imageKey", { length: 500 }),
   fbPostId: varchar("fbPostId", { length: 200 }),
   igPostId: varchar("igPostId", { length: 200 }),
+  xPostId: varchar("xPostId", { length: 200 }),
   postedAt: timestamp("postedAt"),
   adType: varchar("adType", { length: 50 }).default("social"),
   headline: varchar("headline", { length: 255 }),
@@ -965,3 +966,24 @@ export const fieldQuotes = mysqlTable("field_quotes", {
 });
 export type FieldQuote = typeof fieldQuotes.$inferSelect;
 export type InsertFieldQuote = typeof fieldQuotes.$inferInsert;
+
+// ─── X (Twitter) OAuth Tokens ─────────────────────────────────────────────────
+/**
+ * Stores the X (Twitter) OAuth 2.0 PKCE tokens for the Social AI posting integration.
+ * Only one row is expected (the owner's token). Upsert on id=1.
+ */
+export const xOAuthTokens = mysqlTable("x_oauth_tokens", {
+  id: int("id").primaryKey().autoincrement(),
+  accessToken: text("accessToken").notNull(),
+  refreshToken: text("refreshToken"),
+  expiresAt: timestamp("expiresAt"),
+  scope: varchar("scope", { length: 500 }),
+  /** X screen name (e.g. "nolandearthworks") */
+  screenName: varchar("screenName", { length: 100 }),
+  /** X user ID string */
+  xUserId: varchar("xUserId", { length: 50 }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type XOAuthToken = typeof xOAuthTokens.$inferSelect;
+export type InsertXOAuthToken = typeof xOAuthTokens.$inferInsert;

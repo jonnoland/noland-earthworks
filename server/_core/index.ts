@@ -12,6 +12,7 @@ import { prerenderMiddleware } from "../prerender";
 import { registerJobberRoutes } from "../jobberRoutes";
 import { registerFacebookWebhookRoutes } from "../facebookWebhookRoutes";
 import { registerGoogleRoutes } from "../googleRoutes";
+import { registerXRoutes } from "../xRoutes";
 import { registerStorageProxy } from "./storageProxy";
 import { startJobberTokenRefreshScheduler } from "../jobber";
 import { startGoogleTokenRefreshScheduler } from "../googleRoutes";
@@ -94,6 +95,8 @@ async function startServer() {
   registerFacebookWebhookRoutes(app);
   // Google Business Profile OAuth: GET /api/google/authorize, /api/google/callback, /api/google/status
   registerGoogleRoutes(app);
+  // X (Twitter) OAuth: GET /api/x/authorize, /api/x/callback, /api/x/status, POST /api/x/disconnect
+  registerXRoutes(app);
   // Start background Jobber token refresh scheduler (checks every 5 min, refreshes if within 10 min of expiry)
   startJobberTokenRefreshScheduler();
   // Start background Google token refresh scheduler (checks every 5 min, refreshes if within 10 min of expiry)

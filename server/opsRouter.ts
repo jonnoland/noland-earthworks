@@ -2763,6 +2763,102 @@ const socialPostsRouter = router({
       return { success: true, igPostId };
     }),
 
+  /** Publish a post to X (Twitter) */
+  publishToX: ownerProcedure
+    .input(z.object({
+      postId: z.number().int().positive(),
+      text: z.string(),
+      imageUrl: z.string().optional(),
+    }))
+    .mutation(async ({ input }) => {
+      const { getXAccessToken } = await import("./xRoutes");
+      const accessToken = await getXAccessToken();
+      if (!accessToken) {
+        throw new TRPCError({ code: "PRECONDITION_FAILED", message: "X account not connected. Go to Ads and connect your X account." });
+      }
+
+      let mediaId: string | undefined;
+
+      // Upload image if provided
+      if (input.imageUrl) {
+        try {
+          const imgRes = await fetch(input.imageUrl);
+          if (imgRes.ok) {
+            const imgBuffer = Buffer.from(await imgRes.arrayBuffer());
+            const contentType = imgRes.headers.get("content-type") ?? "image/jpeg";
+            const uploadRes = await fetch("https://upload.twitter.com/1.1/media/upload.json", {
+              method: "POST",
+              headers: {
+                Authorization: `Bearer ${accessToken}`,
+                "Content-Type": "application/x-www-form-urlencoded",
+              },
+              body: new URLSearchParams({
+                media_data: imgBuffer.toString("base64"),
+                media_type: contentType,
+              }).toString(),
+            });
+            const uploadData = await uploadRes.json() as any;
+            if (uploadData.media_id_string) mediaId = uploadData.media_id_string;
+          }
+        } catch (err) {
+          console.warn("[X] Image upload failed, posting text-only:", err);
+        }
+      }
+
+      // Post the tweet
+      const tweetBody: Record<string, unknown> = { text: input.text };
+      if (mediaId) tweetBody.media = { media_ids: [mediaId] };
+
+      const tweetRes = await fetch("https://api.twitter.com/2/tweets", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(tweetBody),
+      });
+      const tweetData = await tweetRes.json() as any;
+      if (!tweetRes.ok || tweetData.errors) {
+        const msg = tweetData.errors?.[0]?.message ?? tweetData.detail ?? "X post failed";
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: `X post error: ${msg}` });
+      }
+
+      const xPostId = tweetData.data?.id as string | undefined;
+
+      const db = await getDb();
+      if (db && xPostId) {
+        const { socialPosts } = await import("../drizzle/schema");
+        await db.update(socialPosts)
+          .set({ xPostId, published: true, postedAt: new Date() })
+          .where(eq(socialPosts.id, input.postId));
+      }
+
+      return { success: true, xPostId };
+    }),
+
+  /** Check X connection status */
+  xStatus: ownerProcedure.query(async () => {
+    try {
+      const db = await getDb();
+      if (!db) return { connected: false, screenName: null };
+      const { xOAuthTokens } = await import("../drizzle/schema");
+      const rows = await db.select().from(xOAuthTokens).where(eq(xOAuthTokens.id, 1)).limit(1);
+      const token = rows[0];
+      return { connected: !!token, screenName: token?.screenName ?? null };
+    } catch {
+      return { connected: false, screenName: null };
+    }
+  }),
+
+  /** Disconnect X account */
+  xDisconnect: ownerProcedure.mutation(async () => {
+    const db = await getDb();
+    if (!db) return { success: false };
+    const { xOAuthTokens } = await import("../drizzle/schema");
+    await db.delete(xOAuthTokens).where(eq(xOAuthTokens.id, 1));
+    return { success: true };
+  }),
+
   /** List saved posts */
   list: ownerProcedure.query(async ({ ctx }) => {
     const db = await getDb();

@@ -1,16 +1,15 @@
 /**
  * Ads Page — Noland Earthworks
- * AI-generated Facebook/Instagram ad copy + image with one-click posting.
- * Features: photo upload, scheduling, live FB/IG preview.
+ * AI-generated Facebook/Instagram/X ad copy + image with one-click posting.
+ * Features: photo upload, scheduling, live FB/IG preview, X.com posting.
  */
-
 import { useState, useRef } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
 import { trpc } from "@/lib/trpc";
 import {
   Sparkles, Send, Facebook, Instagram, Trash2, ExternalLink,
   ImageIcon, RefreshCw, CheckCircle2, Upload, Clock, Calendar,
-  ChevronDown, Eye,
+  ChevronDown, Eye, Twitter, Link2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -19,7 +18,7 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { format } from "date-fns";
 
-type Platform = "facebook" | "instagram" | "both";
+type Platform = "facebook" | "instagram" | "x" | "both";
 type Tone = "casual" | "professional";
 type PreviewPlatform = "facebook" | "instagram";
 type AdType = "before_after" | "problem_solution" | "education" | "seasonal_urgency" | "veteran_trust" | "reclaim_your_land" | "specific_use_case" | "general";
@@ -55,7 +54,6 @@ function SocialPreview({
   imageUrl: string | null;
 }) {
   const [tab, setTab] = useState<PreviewPlatform>(platform === "instagram" ? "instagram" : "facebook");
-
   return (
     <div className="space-y-3">
       {/* Tab switcher */}
@@ -74,59 +72,46 @@ function SocialPreview({
           </button>
         ))}
       </div>
-
       {/* Preview card */}
       {tab === "facebook" ? (
         <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm max-w-sm">
-          {/* FB Page header */}
-          <div className="flex items-center gap-2 px-3 py-2.5">
-            <div className="w-9 h-9 rounded-full bg-[#1a1a1a] flex items-center justify-center text-white text-[10px] font-bold shrink-0">NE</div>
+          <div className="flex items-center gap-2 px-4 pt-4 pb-2">
+            <div className="w-9 h-9 rounded-full bg-[#1877F2] flex items-center justify-center shrink-0">
+              <span className="text-white text-xs font-bold">NE</span>
+            </div>
             <div>
-              <p className="text-xs font-semibold text-gray-900 leading-tight">Noland Earthworks</p>
-              <p className="text-[10px] text-gray-500 leading-tight">Just now · <span className="text-gray-400">&#127760;</span></p>
+              <p className="text-[13px] font-semibold text-gray-900 leading-tight">Noland Earthworks</p>
+              <p className="text-[11px] text-gray-500">Sponsored</p>
             </div>
           </div>
-          {/* Copy */}
-          <div className="px-3 pb-2">
-            {headline && <p className="text-xs font-bold text-gray-900 mb-1">{headline}</p>}
-            <p className="text-xs text-gray-700 leading-relaxed line-clamp-4 whitespace-pre-line">{draft || "Your post copy will appear here."}</p>
+          {imageUrl && <img src={imageUrl} alt="" className="w-full aspect-video object-cover" />}
+          <div className="px-4 py-3">
+            {headline && <p className="text-[13px] font-semibold text-gray-900 mb-1">{headline}</p>}
+            <p className="text-[12px] text-gray-700 line-clamp-4 whitespace-pre-line">{draft}</p>
           </div>
-          {/* Image */}
-          {imageUrl ? (
-            <img src={imageUrl} alt="Ad" className="w-full aspect-video object-cover" />
-          ) : (
-            <div className="w-full aspect-video bg-gray-100 flex items-center justify-center">
-              <ImageIcon size={24} className="text-gray-300" />
-            </div>
-          )}
-          {/* Reactions bar */}
-          <div className="flex items-center justify-between px-3 py-2 border-t border-gray-100">
-            <span className="text-[10px] text-gray-400">&#128077; Like · &#128172; Comment · &#8594; Share</span>
+          <div className="border-t border-gray-100 px-4 py-2 flex gap-4">
+            {["Like", "Comment", "Share"].map(a => (
+              <span key={a} className="text-[11px] text-gray-500 font-medium">{a}</span>
+            ))}
           </div>
         </div>
       ) : (
-        /* Instagram preview */
         <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm max-w-xs">
-          {/* IG header */}
-          <div className="flex items-center gap-2 px-3 py-2">
-            <div className="w-7 h-7 rounded-full bg-gradient-to-tr from-[#833AB4] via-[#FD1D1D] to-[#FCAF45] p-0.5">
-              <div className="w-full h-full rounded-full bg-[#1a1a1a] flex items-center justify-center text-white text-[8px] font-bold">NE</div>
+          <div className="flex items-center gap-2 px-3 py-2.5">
+            <div className="w-7 h-7 rounded-full bg-gradient-to-tr from-[#833AB4] via-[#FD1D1D] to-[#FCAF45] flex items-center justify-center shrink-0">
+              <span className="text-white text-[9px] font-bold">NE</span>
             </div>
-            <p className="text-xs font-semibold text-gray-900">nolandearthworks</p>
+            <p className="text-[12px] font-semibold text-gray-900">nolandearthworks</p>
           </div>
-          {/* Image — square crop */}
-          {imageUrl ? (
-            <img src={imageUrl} alt="Ad" className="w-full aspect-square object-cover" />
-          ) : (
-            <div className="w-full aspect-square bg-gray-100 flex items-center justify-center">
-              <ImageIcon size={24} className="text-gray-300" />
-            </div>
-          )}
-          {/* Caption */}
-          <div className="px-3 py-2">
-            <p className="text-xs text-gray-700 leading-relaxed line-clamp-3 whitespace-pre-line">
-              <span className="font-semibold text-gray-900">nolandearthworks </span>
-              {draft || "Your caption will appear here."}
+          {imageUrl
+            ? <img src={imageUrl} alt="" className="w-full aspect-square object-cover" />
+            : <div className="w-full aspect-square bg-gray-100 flex items-center justify-center">
+                <ImageIcon size={32} className="text-gray-300" />
+              </div>
+          }
+          <div className="px-3 py-2.5">
+            <p className="text-[12px] text-gray-700 line-clamp-3 whitespace-pre-line">
+              <span className="font-semibold">nolandearthworks </span>{draft}
             </p>
           </div>
         </div>
@@ -166,6 +151,15 @@ export default function Ads() {
 
   // Active image: uploaded photo takes priority over AI-generated
   const activeImageUrl = uploadedImageUrl ?? generated?.imageUrl ?? null;
+
+  // X connection status
+  const { data: xStatus } = trpc.ops.socialPosts.xStatus.useQuery();
+  const xDisconnectMutation = trpc.ops.socialPosts.xDisconnect.useMutation({
+    onSuccess: () => {
+      utils.ops.socialPosts.xStatus.invalidate();
+      toast.success("X account disconnected.");
+    },
+  });
 
   // ─── Mutations ───────────────────────────────────────────────────────────────
   const generateMutation = trpc.ops.socialPosts.generate.useMutation({
@@ -225,6 +219,15 @@ export default function Ads() {
     onError: (err) => toast.error(`Instagram: ${err.message}`),
   });
 
+  const xMutation = trpc.ops.socialPosts.publishToX.useMutation({
+    onSuccess: (data) => {
+      utils.ops.socialPosts.list.invalidate();
+      toast.success("Posted to X.");
+      if (data.xPostId) window.open(`https://x.com/i/web/status/${data.xPostId}`, "_blank");
+    },
+    onError: (err) => toast.error(`X: ${err.message}`),
+  });
+
   const deleteMutation = trpc.ops.socialPosts.delete.useMutation({
     onSuccess: () => {
       utils.ops.socialPosts.list.invalidate();
@@ -240,7 +243,7 @@ export default function Ads() {
     generateMutation.mutate({
       jobDescription: jobDescription.trim() || undefined,
       adType,
-      platform,
+      platform: platform === "x" ? "facebook" : platform, // X uses same copy as FB
       tone,
       generateImage: withImage,
     });
@@ -284,7 +287,7 @@ export default function Ads() {
     return saved.id;
   }
 
-  async function handlePost(target: "facebook" | "instagram" | "both") {
+  async function handlePost(target: "facebook" | "instagram" | "x" | "both") {
     const postId = await ensureSaved();
     if (!postId) { toast.error("Could not save post. Try again."); return; }
     if (target === "facebook" || target === "both") {
@@ -294,6 +297,10 @@ export default function Ads() {
       if (!activeImageUrl) { toast.error("Instagram requires an image."); return; }
       igMutation.mutate({ postId, caption: editedDraft, imageUrl: activeImageUrl });
     }
+    if (target === "x") {
+      if (!xStatus?.connected) { toast.error("Connect your X account first."); return; }
+      xMutation.mutate({ postId, text: editedDraft, imageUrl: activeImageUrl ?? undefined });
+    }
   }
 
   async function handleSchedule() {
@@ -301,13 +308,13 @@ export default function Ads() {
     const postId = await ensureSaved();
     if (!postId) { toast.error("Could not save post. Try again."); return; }
     const scheduledAt = new Date(`${scheduledDate}T${scheduledTime}:00`).toISOString();
-    const platforms: ("facebook" | "instagram")[] = platform === "both"
+    const platforms: ("facebook" | "instagram")[] = (platform === "both" || platform === "x")
       ? ["facebook", "instagram"]
       : [platform as "facebook" | "instagram"];
     schedulePostMutation.mutate({ id: postId, scheduledAt, platforms });
   }
 
-  const isPosting = fbMutation.isPending || igMutation.isPending || saveMutation.isPending;
+  const isPosting = fbMutation.isPending || igMutation.isPending || xMutation.isPending || saveMutation.isPending;
 
   return (
     <DashboardLayout>
@@ -317,8 +324,35 @@ export default function Ads() {
         <div>
           <h1 className="text-2xl font-bold text-foreground">Ads</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Generate AI ad copy and images, then post directly to Facebook or Instagram.
+            Generate AI ad copy and images, then post directly to Facebook, Instagram, or X.
           </p>
+        </div>
+
+        {/* X connection banner */}
+        <div className={cn(
+          "flex items-center justify-between gap-4 rounded-xl border px-5 py-3.5 text-sm",
+          xStatus?.connected
+            ? "bg-sky-400/5 border-sky-400/20 text-sky-400"
+            : "bg-secondary border-border text-muted-foreground"
+        )}>
+          <div className="flex items-center gap-2.5">
+            <Twitter size={15} />
+            {xStatus?.connected
+              ? <span>X connected{xStatus.screenName ? ` as @${xStatus.screenName}` : ""}</span>
+              : <span>X account not connected — connect to post to X.com</span>
+            }
+          </div>
+          {xStatus?.connected ? (
+            <Button variant="ghost" size="sm" className="text-xs text-muted-foreground hover:text-red-400 h-7 px-3"
+              onClick={() => xDisconnectMutation.mutate()}>
+              Disconnect
+            </Button>
+          ) : (
+            <Button variant="outline" size="sm" className="text-xs gap-1.5 h-7 px-3"
+              onClick={() => window.location.href = "/api/x/authorize"}>
+              <Link2 size={11} /> Connect X
+            </Button>
+          )}
         </div>
 
         {/* Generator card */}
@@ -365,15 +399,15 @@ export default function Ads() {
 
           <div className="flex flex-wrap gap-4">
             {/* Platform */}
-            <div className="space-y-1.5 min-w-[160px]">
+            <div className="space-y-1.5 min-w-[200px]">
               <label className="text-sm font-medium text-foreground">Platform</label>
               <div className="flex rounded-lg border border-border overflow-hidden">
-                {(["both", "facebook", "instagram"] as Platform[]).map((p) => (
+                {(["both", "facebook", "instagram", "x"] as Platform[]).map((p) => (
                   <button key={p} onClick={() => setPlatform(p)}
-                    className={cn("flex-1 px-3 py-1.5 text-xs font-medium capitalize transition-colors",
+                    className={cn("flex-1 px-3 py-1.5 text-xs font-medium capitalize transition-colors flex items-center justify-center gap-1",
                       platform === p ? "bg-primary text-primary-foreground" : "bg-background text-muted-foreground hover:text-foreground"
                     )}>
-                    {p === "both" ? "Both" : p === "facebook" ? "FB" : "IG"}
+                    {p === "both" ? "FB+IG" : p === "facebook" ? "FB" : p === "instagram" ? "IG" : <><Twitter size={10} />X</>}
                   </button>
                 ))}
               </div>
@@ -396,106 +430,96 @@ export default function Ads() {
 
             {/* Image toggle */}
             <div className="space-y-1.5">
-              <label className="text-sm font-medium text-foreground">AI image</label>
-              <button onClick={() => setWithImage(!withImage)}
-                className={cn("flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs font-medium transition-colors",
-                  withImage ? "bg-primary/10 border-primary/30 text-primary" : "bg-background border-border text-muted-foreground"
-                )}>
-                <ImageIcon size={13} />{withImage ? "On" : "Off"}
-              </button>
+              <label className="text-sm font-medium text-foreground">Image</label>
+              <div className="flex rounded-lg border border-border overflow-hidden">
+                {([true, false] as const).map((v) => (
+                  <button key={String(v)} onClick={() => setWithImage(v)}
+                    className={cn("flex-1 px-3 py-1.5 text-xs font-medium transition-colors",
+                      withImage === v ? "bg-primary text-primary-foreground" : "bg-background text-muted-foreground hover:text-foreground"
+                    )}>
+                    {v ? "Yes" : "No"}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
 
-          <Button onClick={handleGenerate} disabled={generateMutation.isPending} className="gap-2">
+          {/* Generate button */}
+          <Button onClick={handleGenerate} disabled={generateMutation.isPending} className="gap-2 w-full sm:w-auto">
             {generateMutation.isPending
               ? <><RefreshCw size={14} className="animate-spin" /> Generating...</>
-              : <><Sparkles size={14} /> Generate Ad</>}
+              : <><Sparkles size={14} /> Generate Ad</>
+            }
           </Button>
         </div>
 
-        {/* Preview & Post card */}
+        {/* Generated result */}
         {generated && (
           <div className="bg-card border border-border rounded-xl p-6 space-y-5">
             <div className="flex items-center justify-between">
-              <h2 className="text-base font-semibold text-foreground">Preview &amp; Post</h2>
-              <div className="flex items-center gap-2">
-                <Button variant="ghost" size="sm" onClick={() => setShowPreview(!showPreview)}
-                  className={cn("gap-1.5 text-xs", showPreview ? "text-primary" : "text-muted-foreground")}>
-                  <Eye size={12} />{showPreview ? "Hide preview" : "Live preview"}
-                </Button>
-                <Button variant="ghost" size="sm" onClick={handleGenerate} disabled={generateMutation.isPending}
-                  className="gap-1.5 text-xs text-muted-foreground">
-                  <RefreshCw size={12} className={generateMutation.isPending ? "animate-spin" : ""} />Regenerate
-                </Button>
-              </div>
+              <h2 className="text-base font-semibold text-foreground">Generated Ad</h2>
+              <button onClick={() => setShowPreview(!showPreview)}
+                className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors">
+                <Eye size={13} />{showPreview ? "Hide preview" : "Preview"}
+              </button>
             </div>
 
-            <div className={cn("grid gap-6", showPreview ? "grid-cols-1 lg:grid-cols-3" : "grid-cols-1 lg:grid-cols-2")}>
-              {/* Copy editor */}
-              <div className="space-y-4">
-                <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Headline</label>
-                  <input value={editedHeadline} onChange={(e) => setEditedHeadline(e.target.value)}
-                    className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm font-semibold text-foreground focus:outline-none focus:ring-1 focus:ring-primary" />
-                </div>
-                <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Post copy</label>
-                  <Textarea value={editedDraft} onChange={(e) => setEditedDraft(e.target.value)} rows={8}
-                    className="resize-none bg-background border-border text-foreground text-sm" />
-                  <p className="text-xs text-muted-foreground text-right">{editedDraft.length} chars</p>
-                </div>
-              </div>
+            {/* Headline */}
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Headline</label>
+              <input
+                value={editedHeadline}
+                onChange={(e) => { setEditedHeadline(e.target.value); setSavedPostId(null); }}
+                className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+              />
+            </div>
 
-              {/* Image panel */}
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Image</label>
-                  <button onClick={() => fileInputRef.current?.click()}
-                    disabled={isUploading}
-                    className="flex items-center gap-1.5 text-xs text-primary hover:text-primary/80 transition-colors">
-                    {isUploading ? <><RefreshCw size={11} className="animate-spin" /> Uploading...</> : <><Upload size={11} /> Upload photo</>}
-                  </button>
-                  <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handlePhotoUpload} />
-                </div>
-
-                {activeImageUrl ? (
-                  <div className="relative group">
-                    <img src={activeImageUrl} alt="Ad image"
-                      className="w-full aspect-square object-cover rounded-xl border border-border" />
-                    {uploadedImageUrl && (
-                      <div className="absolute top-2 left-2">
-                        <Badge className="text-[10px] bg-green-400/10 text-green-400 border-green-400/20">Your photo</Badge>
-                      </div>
-                    )}
-                    <button onClick={() => { setUploadedImageUrl(null); setUploadedImageKey(null); }}
-                      className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/60 text-white rounded-full p-1"
-                      title={uploadedImageUrl ? "Remove uploaded photo" : "Remove image"}>
-                      <Trash2 size={11} />
-                    </button>
-                  </div>
-                ) : (
-                  <button onClick={() => fileInputRef.current?.click()}
-                    className="w-full aspect-square bg-secondary rounded-xl border border-dashed border-border flex flex-col items-center justify-center gap-2 text-muted-foreground hover:border-primary/40 transition-colors">
-                    <Upload size={28} className="opacity-30" />
-                    <p className="text-xs">Upload a job photo</p>
-                    <p className="text-xs opacity-60">or enable AI image above</p>
-                  </button>
-                )}
-              </div>
-
-              {/* Live preview panel */}
-              {showPreview && (
-                <div className="space-y-3">
-                  <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Live preview</label>
-                  <SocialPreview
-                    platform={platform === "instagram" ? "instagram" : "facebook"}
-                    headline={editedHeadline}
-                    draft={editedDraft}
-                    imageUrl={activeImageUrl}
-                  />
-                </div>
+            {/* Ad copy */}
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Ad copy</label>
+              <Textarea
+                value={editedDraft}
+                onChange={(e) => { setEditedDraft(e.target.value); setSavedPostId(null); }}
+                rows={6}
+                className="resize-none bg-background border-border text-foreground"
+              />
+              {platform === "x" && editedDraft.length > 280 && (
+                <p className="text-xs text-amber-400">X posts are limited to 280 characters. Current: {editedDraft.length}. Trim before posting.</p>
               )}
             </div>
+
+            {/* Image area */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Image</label>
+                <div className="flex items-center gap-2">
+                  <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handlePhotoUpload} />
+                  <button onClick={() => fileInputRef.current?.click()}
+                    className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors">
+                    <Upload size={12} />{isUploading ? "Uploading..." : "Upload photo"}
+                  </button>
+                  {uploadedImageUrl && (
+                    <button onClick={() => { setUploadedImageUrl(null); setUploadedImageKey(null); setSavedPostId(null); }}
+                      className="text-xs text-red-400 hover:underline">Remove</button>
+                  )}
+                </div>
+              </div>
+              {activeImageUrl && (
+                <img src={activeImageUrl} alt="Ad image" className="rounded-xl max-h-64 object-cover border border-border" />
+              )}
+            </div>
+
+            {/* Live preview */}
+            {showPreview && (
+              <div className="pt-2 border-t border-border">
+                <SocialPreview
+                  platform={platform === "instagram" ? "instagram" : "facebook"}
+                  headline={editedHeadline}
+                  draft={editedDraft}
+                  imageUrl={activeImageUrl}
+                />
+              </div>
+            )}
 
             {/* Post buttons */}
             <div className="flex flex-wrap gap-3 pt-2 border-t border-border">
@@ -510,6 +534,13 @@ export default function Ads() {
                   className="gap-2 bg-gradient-to-r from-[#833AB4] via-[#FD1D1D] to-[#FCAF45] text-white border-0"
                   title={!activeImageUrl ? "Instagram requires an image" : undefined}>
                   <Instagram size={14} />{igMutation.isPending ? "Posting..." : "Post to Instagram"}
+                </Button>
+              )}
+              {platform === "x" && (
+                <Button onClick={() => handlePost("x")} disabled={isPosting || !xStatus?.connected}
+                  className="gap-2 bg-black hover:bg-gray-900 text-white border-0"
+                  title={!xStatus?.connected ? "Connect your X account first" : undefined}>
+                  <Twitter size={14} />{xMutation.isPending ? "Posting..." : "Post to X"}
                 </Button>
               )}
               {platform === "both" && (
@@ -563,7 +594,7 @@ export default function Ads() {
             )}
 
             {/* Post result feedback */}
-            {(fbMutation.isSuccess || igMutation.isSuccess) && (
+            {(fbMutation.isSuccess || igMutation.isSuccess || xMutation.isSuccess) && (
               <div className="flex items-center gap-2 text-sm text-green-400 bg-green-400/5 border border-green-400/20 rounded-lg px-4 py-2.5">
                 <CheckCircle2 size={14} />
                 Posted successfully.
@@ -571,6 +602,12 @@ export default function Ads() {
                   <a href={fbMutation.data.url} target="_blank" rel="noopener noreferrer"
                     className="ml-auto flex items-center gap-1 text-xs underline">
                     View on Facebook <ExternalLink size={11} />
+                  </a>
+                )}
+                {xMutation.data?.xPostId && (
+                  <a href={`https://x.com/i/web/status/${xMutation.data.xPostId}`} target="_blank" rel="noopener noreferrer"
+                    className="ml-auto flex items-center gap-1 text-xs underline">
+                    View on X <ExternalLink size={11} />
                   </a>
                 )}
               </div>
@@ -605,6 +642,7 @@ function HistoryRow({ post, onDelete }: { post: any; onDelete: () => void }) {
   const platformLabel = post.platform === "both" ? "FB + IG"
     : post.platform === "facebook" ? "Facebook"
     : post.platform === "instagram" ? "Instagram"
+    : post.platform === "x" ? "X"
     : post.platform;
 
   const statusBadge = post.status === "scheduled"
@@ -651,7 +689,7 @@ function HistoryRow({ post, onDelete }: { post: any; onDelete: () => void }) {
           <Trash2 size={14} />
         </button>
       </div>
-      {expanded && (post.fbPostId || post.igPostId) && (
+      {expanded && (post.fbPostId || post.igPostId || post.xPostId) && (
         <div className="mt-3 ml-[4.5rem] flex flex-wrap gap-3">
           {post.fbPostId && (
             <a href={`https://www.facebook.com/${post.fbPostId}`} target="_blank" rel="noopener noreferrer"
@@ -663,6 +701,12 @@ function HistoryRow({ post, onDelete }: { post: any; onDelete: () => void }) {
             <span className="flex items-center gap-1 text-[11px] text-purple-400">
               <Instagram size={11} /> IG post ID: {post.igPostId}
             </span>
+          )}
+          {post.xPostId && (
+            <a href={`https://x.com/i/web/status/${post.xPostId}`} target="_blank" rel="noopener noreferrer"
+              className="flex items-center gap-1 text-[11px] text-sky-400 hover:underline">
+              <Twitter size={11} /> View on X <ExternalLink size={10} />
+            </a>
           )}
         </div>
       )}
