@@ -3110,6 +3110,20 @@ const socialPostsRouter = router({
       return results;
     }),
 
+  /** Cancel a scheduled post — reverts it back to draft status */
+  cancelSchedule: ownerProcedure
+    .input(z.object({ id: z.number().int().positive() }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+      const { socialPosts } = await import("../drizzle/schema");
+      const { eq, and } = await import("drizzle-orm");
+      await db.update(socialPosts)
+        .set({ status: "draft", scheduledAt: null })
+        .where(and(eq(socialPosts.id, input.id), eq(socialPosts.userId, ctx.user.id)));
+      return { success: true };
+    }),
+
   /** List saved posts */
   list: ownerProcedure.query(async ({ ctx }) => {
     const db = await getDb();

@@ -9,7 +9,7 @@ import { trpc } from "@/lib/trpc";
 import {
   Sparkles, Send, Facebook, Instagram, Trash2, ExternalLink,
   ImageIcon, RefreshCw, CheckCircle2, Upload, Clock, Calendar,
-  ChevronDown, Eye, Twitter,
+  ChevronDown, Eye, Twitter, X as XIcon, CalendarClock,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -466,7 +466,16 @@ export default function Ads() {
     onError: (err) => toast.error(err.message),
   });
 
+  const cancelScheduleMutation = trpc.ops.socialPosts.cancelSchedule.useMutation({
+    onSuccess: () => {
+      utils.ops.socialPosts.list.invalidate();
+      toast.success("Schedule cancelled. Post moved back to draft.");
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
   const { data: history = [] } = trpc.ops.socialPosts.list.useQuery();
+  const scheduledPosts = history.filter((p) => p.status === "scheduled");
 
   // ─── Handlers ────────────────────────────────────────────────────────────────
   function handleGenerate() {
@@ -1121,6 +1130,81 @@ export default function Ads() {
             )}
           </div>
         )}
+
+        {/* Scheduled Queue */}
+        <div className="bg-card border border-border rounded-xl overflow-hidden">
+          <div className="px-6 py-4 border-b border-border flex items-center justify-between">
+            <div>
+              <h2 className="text-base font-semibold text-foreground flex items-center gap-2">
+                <CalendarClock size={16} className="text-amber-400" />
+                Scheduled Queue
+              </h2>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Posts queued for automatic publishing. The scheduler runs every minute.
+              </p>
+            </div>
+            {scheduledPosts.length > 0 && (
+              <span className="text-xs font-semibold bg-amber-400/10 text-amber-400 border border-amber-400/20 px-2.5 py-1 rounded-full">
+                {scheduledPosts.length} queued
+              </span>
+            )}
+          </div>
+          {scheduledPosts.length === 0 ? (
+            <div className="px-6 py-8 text-center">
+              <CalendarClock size={28} className="text-muted-foreground opacity-30 mx-auto mb-2" />
+              <p className="text-sm text-muted-foreground">No ads scheduled.</p>
+              <p className="text-xs text-muted-foreground mt-1">Generate an ad and use the Schedule button to queue it for a future date and time.</p>
+            </div>
+          ) : (
+            <div className="divide-y divide-border">
+              {scheduledPosts.map((post) => {
+                const platformLabel = post.platform === "both" ? "FB + IG"
+                  : post.platform === "all" ? "FB + IG + X"
+                  : post.platform === "facebook" ? "Facebook"
+                  : post.platform === "instagram" ? "Instagram"
+                  : post.platform === "x" ? "X"
+                  : post.platform;
+                return (
+                  <div key={post.id} className="px-6 py-4 flex items-start gap-4">
+                    {post.imageUrl ? (
+                      <img src={post.imageUrl} alt="" className="w-12 h-12 rounded-lg object-cover border border-border flex-shrink-0" />
+                    ) : (
+                      <div className="w-12 h-12 rounded-lg bg-secondary border border-border flex items-center justify-center flex-shrink-0">
+                        <ImageIcon size={16} className="text-muted-foreground opacity-40" />
+                      </div>
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        {post.headline && (
+                          <span className="text-sm font-semibold text-foreground truncate">{post.headline}</span>
+                        )}
+                        <Badge variant="outline" className="text-[10px] shrink-0">{platformLabel}</Badge>
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{post.draft}</p>
+                      <div className="flex items-center gap-2 mt-2">
+                        <Clock size={11} className="text-amber-400 shrink-0" />
+                        <span className="text-xs font-medium text-amber-400">
+                          {post.scheduledAt
+                            ? format(new Date(post.scheduledAt), "EEE, MMM d 'at' h:mm a")
+                            : "—"}
+                        </span>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => cancelScheduleMutation.mutate({ id: post.id })}
+                      disabled={cancelScheduleMutation.isPending}
+                      className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-red-400 transition-colors px-2.5 py-1.5 rounded-lg border border-border hover:border-red-400/30 shrink-0"
+                      title="Cancel scheduled post"
+                    >
+                      <XIcon size={11} />
+                      Cancel
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
 
         {/* History */}
         {history.length > 0 && (

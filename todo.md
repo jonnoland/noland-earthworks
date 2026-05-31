@@ -1512,3 +1512,11 @@
 - [x] Add /api/scheduled/instagram-token-refresh endpoint to handle the refresh
 - [ ] Walk through Meta App Review process requirements
 - [ ] Test live Instagram post from ops dashboard
+
+## Ad Scheduling Backend + Queue UI — May 31 2026
+- [x] Create server/scheduledAdsPublisher.ts with runScheduledAdsPublisher() — finds status=scheduled posts with scheduledAt <= now and publishes to FB/IG/X
+- [x] Register POST /api/scheduled/publish-ads Express handler in server/_core/index.ts
+- [x] Add cancelSchedule tRPC mutation to opsRouter.socialPosts — resets status to draft, clears scheduledAt
+- [x] Add Scheduled Queue section to Ads page — shows queued posts with scheduled time, platform, image thumbnail, and Cancel button
+- [x] Wire cancelSchedule mutation to Cancel button in Scheduled Queue
+- [ ] Deploy site and create Heartbeat cron (manus-heartbeat create --name publish-ads --cron "0 * * * * *" --path /api/scheduled/publish-ads) to trigger every minute

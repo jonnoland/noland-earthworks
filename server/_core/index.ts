@@ -14,6 +14,7 @@ import { registerFacebookWebhookRoutes } from "../facebookWebhookRoutes";
 import { registerGoogleRoutes } from "../googleRoutes";
 import { registerXRoutes } from "../xRoutes";
 import { registerInstagramTokenRefreshRoute } from "../instagramTokenRefresh";
+import { registerScheduledAdsPublisherRoute } from "../scheduledAdsPublisher";
 import { registerStorageProxy } from "./storageProxy";
 import { startJobberTokenRefreshScheduler } from "../jobber";
 import { startGoogleTokenRefreshScheduler } from "../googleRoutes";
@@ -100,6 +101,8 @@ async function startServer() {
   registerXRoutes(app);
   // Instagram token refresh: POST /api/scheduled/instagram-token-refresh
   registerInstagramTokenRefreshRoute(app);
+  // Scheduled ads publisher: POST /api/scheduled/publish-ads
+  registerScheduledAdsPublisherRoute(app);
   // Start background Jobber token refresh scheduler (checks every 5 min, refreshes if within 10 min of expiry)
   startJobberTokenRefreshScheduler();
   // Start background Google token refresh scheduler (checks every 5 min, refreshes if within 10 min of expiry)
