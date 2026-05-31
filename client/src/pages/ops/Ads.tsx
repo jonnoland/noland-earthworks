@@ -1,15 +1,15 @@
 /**
  * Ads Page — Noland Earthworks
  * AI-generated Facebook/Instagram/X ad copy + image with one-click posting.
- * Features: photo upload, scheduling, live FB/IG preview, X.com posting.
+ * Features: per-platform copy, photo upload, scheduling, live FB/IG preview, X.com posting.
  */
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
 import { trpc } from "@/lib/trpc";
 import {
   Sparkles, Send, Facebook, Instagram, Trash2, ExternalLink,
   ImageIcon, RefreshCw, CheckCircle2, Upload, Clock, Calendar,
-  ChevronDown, Eye, Twitter, Link2,
+  ChevronDown, Eye, Twitter,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -18,7 +18,7 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { format } from "date-fns";
 
-type Platform = "facebook" | "instagram" | "x" | "both";
+type Platform = "facebook" | "instagram" | "x" | "both" | "all";
 type Tone = "casual" | "professional";
 type PreviewPlatform = "facebook" | "instagram";
 type AdType = "before_after" | "problem_solution" | "education" | "seasonal_urgency" | "veteran_trust" | "reclaim_your_land" | "specific_use_case" | "general";
@@ -41,6 +41,14 @@ interface GeneratedAd {
   imageUrl: string | null;
 }
 
+interface GeneratedAllAd {
+  facebook: { draft: string; headline: string };
+  instagram: { draft: string; headline: string };
+  x: { draft: string; headline: string };
+  imagePrompt: string;
+  imageUrl: string | null;
+}
+
 // ─── Live social preview ──────────────────────────────────────────────────────
 function SocialPreview({
   platform,
@@ -56,7 +64,6 @@ function SocialPreview({
   const [tab, setTab] = useState<PreviewPlatform>(platform === "instagram" ? "instagram" : "facebook");
   return (
     <div className="space-y-3">
-      {/* Tab switcher */}
       <div className="flex items-center gap-1 bg-secondary rounded-lg p-1 w-fit">
         {(["facebook", "instagram"] as PreviewPlatform[]).map((p) => (
           <button
@@ -72,7 +79,6 @@ function SocialPreview({
           </button>
         ))}
       </div>
-      {/* Preview card */}
       {tab === "facebook" ? (
         <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm max-w-sm">
           <div className="flex items-center gap-2 px-4 pt-4 pb-2">
@@ -119,8 +125,6 @@ function SocialPreview({
     </div>
   );
 }
-
-// ─── Main component ───────────────────────────────────────────────────────────
 
 // ─── Platform status card ─────────────────────────────────────────────────────
 function PlatformStatusCard({
@@ -179,17 +183,85 @@ function PlatformStatusCard({
   );
 }
 
+// ─── Per-platform copy panel ──────────────────────────────────────────────────
+function PlatformCopyPanel({
+  icon,
+  label,
+  accentClass,
+  draft,
+  headline,
+  onDraftChange,
+  onHeadlineChange,
+  charLimit,
+  children,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  accentClass: string;
+  draft: string;
+  headline: string;
+  onDraftChange: (v: string) => void;
+  onHeadlineChange: (v: string) => void;
+  charLimit?: number;
+  children?: React.ReactNode;
+}) {
+  return (
+    <div className={cn("rounded-xl border p-4 space-y-3", accentClass)}>
+      <div className="flex items-center gap-2">
+        {icon}
+        <span className="text-sm font-semibold">{label}</span>
+        {charLimit && (
+          <span className={cn("ml-auto text-xs font-mono", draft.length > charLimit ? "text-red-400" : "text-muted-foreground")}>
+            {draft.length}/{charLimit}
+          </span>
+        )}
+      </div>
+      <div className="space-y-2">
+        <input
+          value={headline}
+          onChange={(e) => onHeadlineChange(e.target.value)}
+          placeholder="Headline"
+          className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+        />
+        <Textarea
+          value={draft}
+          onChange={(e) => onDraftChange(e.target.value)}
+          rows={5}
+          className="resize-none bg-background border-border text-foreground"
+          placeholder="Ad copy..."
+        />
+        {charLimit && draft.length > charLimit && (
+          <p className="text-xs text-red-400">Over {charLimit}-character limit by {draft.length - charLimit} characters. Trim before posting.</p>
+        )}
+      </div>
+      {children}
+    </div>
+  );
+}
+
+// ─── Main component ───────────────────────────────────────────────────────────
 export default function Ads() {
   // Generator state
   const [jobDescription, setJobDescription] = useState("");
   const [adType, setAdType] = useState<AdType>("general");
-  const [platform, setPlatform] = useState<Platform>("both");
+  const [platform, setPlatform] = useState<Platform>("all");
   const [tone, setTone] = useState<Tone>("casual");
   const [withImage, setWithImage] = useState(true);
+
+  // Single-platform generated ad
   const [generated, setGenerated] = useState<GeneratedAd | null>(null);
   const [savedPostId, setSavedPostId] = useState<number | null>(null);
   const [editedDraft, setEditedDraft] = useState("");
   const [editedHeadline, setEditedHeadline] = useState("");
+
+  // All-platforms generated ad (separate drafts per platform)
+  const [generatedAll, setGeneratedAll] = useState<GeneratedAllAd | null>(null);
+  const [editedFbDraft, setEditedFbDraft] = useState("");
+  const [editedFbHeadline, setEditedFbHeadline] = useState("");
+  const [editedIgDraft, setEditedIgDraft] = useState("");
+  const [editedIgHeadline, setEditedIgHeadline] = useState("");
+  const [editedXDraft, setEditedXDraft] = useState("");
+  const [editedXHeadline, setEditedXHeadline] = useState("");
 
   // Photo upload state
   const [uploadedImageUrl, setUploadedImageUrl] = useState<string | null>(null);
@@ -208,9 +280,9 @@ export default function Ads() {
   const utils = trpc.useUtils();
 
   // Active image: uploaded photo takes priority over AI-generated
-  const activeImageUrl = uploadedImageUrl ?? generated?.imageUrl ?? null;
+  const activeImageUrl = uploadedImageUrl ?? (platform === "all" ? generatedAll?.imageUrl : generated?.imageUrl) ?? null;
 
-  // Live platform connection status — checks all three platforms on mount
+  // Live platform connection status
   const { data: platformStatus, isLoading: statusLoading, refetch: refetchStatus } =
     trpc.ops.platformConnectionStatus.useQuery(undefined, {
       staleTime: 5 * 60 * 1000,
@@ -224,7 +296,22 @@ export default function Ads() {
       setEditedDraft(data.draft);
       setEditedHeadline(data.headline ?? "");
       setSavedPostId(null);
-      // Clear uploaded photo when regenerating
+      setUploadedImageUrl(null);
+      setUploadedImageKey(null);
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
+  const generateAllMutation = trpc.ops.socialPosts.generateForAll.useMutation({
+    onSuccess: (data) => {
+      setGeneratedAll(data);
+      setEditedFbDraft(data.facebook.draft);
+      setEditedFbHeadline(data.facebook.headline);
+      setEditedIgDraft(data.instagram.draft);
+      setEditedIgHeadline(data.instagram.headline);
+      setEditedXDraft(data.x.draft);
+      setEditedXHeadline(data.x.headline);
+      setSavedPostId(null);
       setUploadedImageUrl(null);
       setUploadedImageKey(null);
     },
@@ -307,13 +394,22 @@ export default function Ads() {
 
   // ─── Handlers ────────────────────────────────────────────────────────────────
   function handleGenerate() {
-    generateMutation.mutate({
-      jobDescription: jobDescription.trim() || undefined,
-      adType,
-      platform: platform === "x" ? "facebook" : platform, // X uses same copy as FB
-      tone,
-      generateImage: withImage,
-    });
+    if (platform === "all") {
+      generateAllMutation.mutate({
+        jobDescription: jobDescription.trim() || undefined,
+        adType,
+        tone,
+        generateImage: withImage,
+      });
+    } else {
+      generateMutation.mutate({
+        jobDescription: jobDescription.trim() || undefined,
+        adType,
+        platform: platform as "facebook" | "instagram" | "both" | "x",
+        tone,
+        generateImage: withImage,
+      });
+    }
   }
 
   async function handlePhotoUpload(e: React.ChangeEvent<HTMLInputElement>) {
@@ -325,11 +421,7 @@ export default function Ads() {
       const reader = new FileReader();
       reader.onload = async (ev) => {
         const base64 = (ev.target?.result as string).split(",")[1];
-        await uploadPhotoMutation.mutateAsync({
-          base64,
-          mimeType: file.type,
-          filename: file.name,
-        });
+        await uploadPhotoMutation.mutateAsync({ base64, mimeType: file.type, filename: file.name });
         setIsUploading(false);
       };
       reader.readAsDataURL(file);
@@ -338,13 +430,15 @@ export default function Ads() {
     }
   }
 
-  async function ensureSaved(): Promise<number | null> {
+  async function ensureSaved(draftOverride?: string, headlineOverride?: string): Promise<number | null> {
     if (savedPostId) return savedPostId;
-    if (!generated) return null;
+    const draft = draftOverride ?? editedDraft;
+    const headline = headlineOverride ?? editedHeadline;
+    if (!draft && !generatedAll) return null;
     const saved = await saveMutation.mutateAsync({
       jobDescription,
-      draft: editedDraft,
-      headline: editedHeadline,
+      draft: draft || editedFbDraft,
+      headline: headline || editedFbHeadline,
       platform,
       imageUrl: activeImageUrl ?? undefined,
       imageKey: uploadedImageKey ?? undefined,
@@ -354,6 +448,52 @@ export default function Ads() {
     return saved.id;
   }
 
+  // Post a single platform
+  async function handlePostSingle(target: "facebook" | "instagram" | "x") {
+    const draft = target === "facebook" ? editedDraft
+      : target === "instagram" ? editedDraft
+      : editedDraft;
+    const postId = await ensureSaved(draft);
+    if (!postId) { toast.error("Could not save post. Try again."); return; }
+
+    if (target === "facebook") {
+      fbMutation.mutate({ postId, message: draft, imageUrl: activeImageUrl ?? undefined });
+    } else if (target === "instagram") {
+      if (!activeImageUrl) { toast.error("Instagram requires an image."); return; }
+      igMutation.mutate({ postId, caption: draft, imageUrl: activeImageUrl });
+    } else {
+      xMutation.mutate({ postId, text: draft, imageUrl: activeImageUrl ?? undefined });
+    }
+  }
+
+  // Post from the all-platforms mode — each platform uses its own draft
+  async function handlePostAllPlatform(target: "facebook" | "instagram" | "x" | "all") {
+    // Save using FB draft as canonical
+    const postId = await ensureSaved(editedFbDraft, editedFbHeadline);
+    if (!postId) { toast.error("Could not save post. Try again."); return; }
+
+    if (target === "all") {
+      // Post each platform with its own copy
+      fbMutation.mutate({ postId, message: editedFbDraft, imageUrl: activeImageUrl ?? undefined });
+      if (activeImageUrl) {
+        igMutation.mutate({ postId, caption: editedIgDraft, imageUrl: activeImageUrl });
+      } else {
+        toast.error("Instagram requires an image — skipped. Upload a photo to include Instagram.");
+      }
+      xMutation.mutate({ postId, text: editedXDraft, imageUrl: activeImageUrl ?? undefined });
+      return;
+    }
+    if (target === "facebook") {
+      fbMutation.mutate({ postId, message: editedFbDraft, imageUrl: activeImageUrl ?? undefined });
+    } else if (target === "instagram") {
+      if (!activeImageUrl) { toast.error("Instagram requires an image."); return; }
+      igMutation.mutate({ postId, caption: editedIgDraft, imageUrl: activeImageUrl });
+    } else {
+      xMutation.mutate({ postId, text: editedXDraft, imageUrl: activeImageUrl ?? undefined });
+    }
+  }
+
+  // Legacy single-platform post handler
   async function handlePost(target: "facebook" | "instagram" | "x" | "both" | "all") {
     const postId = await ensureSaved();
     if (!postId) { toast.error("Could not save post. Try again."); return; }
@@ -378,13 +518,16 @@ export default function Ads() {
     const postId = await ensureSaved();
     if (!postId) { toast.error("Could not save post. Try again."); return; }
     const scheduledAt = new Date(`${scheduledDate}T${scheduledTime}:00`).toISOString();
-    const platforms: ("facebook" | "instagram")[] = (platform === "both" || platform === "x")
+    const platforms: ("facebook" | "instagram")[] = (platform === "both" || platform === "x" || platform === "all")
       ? ["facebook", "instagram"]
       : [platform as "facebook" | "instagram"];
     schedulePostMutation.mutate({ id: postId, scheduledAt, platforms });
   }
 
+  const isGenerating = generateMutation.isPending || generateAllMutation.isPending;
   const isPosting = fbMutation.isPending || igMutation.isPending || xMutation.isPending || allMutation.isPending || saveMutation.isPending;
+  const hasAllGenerated = platform === "all" && generatedAll !== null;
+  const hasSingleGenerated = platform !== "all" && generated !== null;
 
   return (
     <DashboardLayout>
@@ -406,40 +549,21 @@ export default function Ads() {
               onClick={() => refetchStatus()}
               disabled={statusLoading}
               className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1.5 transition-colors disabled:opacity-50"
-              title="Refresh connection status"
             >
               <RefreshCw size={11} className={statusLoading ? "animate-spin" : ""} />
               Refresh
             </button>
           </div>
           <div className="grid grid-cols-3 gap-3">
-            <PlatformStatusCard
-              icon={<Facebook size={13} />}
-              label="Facebook"
-              loading={statusLoading}
-              ok={platformStatus?.facebook.ok}
-              handle={platformStatus?.facebook.handle ?? undefined}
-              error={platformStatus?.facebook.error ?? undefined}
-              accentClass="text-blue-400 bg-blue-400/8 border-blue-400/20"
-            />
-            <PlatformStatusCard
-              icon={<Instagram size={13} />}
-              label="Instagram"
-              loading={statusLoading}
-              ok={platformStatus?.instagram.ok}
-              handle={platformStatus?.instagram.handle ?? undefined}
-              error={platformStatus?.instagram.error ?? undefined}
-              accentClass="text-pink-400 bg-pink-400/8 border-pink-400/20"
-            />
-            <PlatformStatusCard
-              icon={<Twitter size={13} />}
-              label="X"
-              loading={statusLoading}
-              ok={platformStatus?.x.ok}
-              handle={platformStatus?.x.handle ?? undefined}
-              error={platformStatus?.x.error ?? undefined}
-              accentClass="text-sky-400 bg-sky-400/8 border-sky-400/20"
-            />
+            <PlatformStatusCard icon={<Facebook size={13} />} label="Facebook" loading={statusLoading}
+              ok={platformStatus?.facebook.ok} handle={platformStatus?.facebook.handle ?? undefined}
+              error={platformStatus?.facebook.error ?? undefined} accentClass="text-blue-400 bg-blue-400/8 border-blue-400/20" />
+            <PlatformStatusCard icon={<Instagram size={13} />} label="Instagram" loading={statusLoading}
+              ok={platformStatus?.instagram.ok} handle={platformStatus?.instagram.handle ?? undefined}
+              error={platformStatus?.instagram.error ?? undefined} accentClass="text-pink-400 bg-pink-400/8 border-pink-400/20" />
+            <PlatformStatusCard icon={<Twitter size={13} />} label="X" loading={statusLoading}
+              ok={platformStatus?.x.ok} handle={platformStatus?.x.handle ?? undefined}
+              error={platformStatus?.x.error ?? undefined} accentClass="text-sky-400 bg-sky-400/8 border-sky-400/20" />
           </div>
         </div>
 
@@ -452,17 +576,12 @@ export default function Ads() {
             <label className="text-sm font-medium text-foreground">Ad type</label>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
               {AD_TYPE_OPTIONS.map((opt) => (
-                <button
-                  key={opt.value}
-                  onClick={() => setAdType(opt.value)}
-                  title={opt.description}
-                  className={cn(
-                    "px-3 py-2 rounded-lg border text-xs font-medium text-left transition-colors leading-tight",
+                <button key={opt.value} onClick={() => setAdType(opt.value)} title={opt.description}
+                  className={cn("px-3 py-2 rounded-lg border text-xs font-medium text-left transition-colors leading-tight",
                     adType === opt.value
                       ? "bg-primary/10 border-primary/40 text-primary"
                       : "bg-background border-border text-muted-foreground hover:text-foreground hover:border-border/80"
-                  )}
-                >
+                  )}>
                   {opt.label}
                 </button>
               ))}
@@ -472,6 +591,7 @@ export default function Ads() {
             )}
           </div>
 
+          {/* Job description */}
           <div className="space-y-1.5">
             <div className="flex items-center justify-between">
               <label className="text-sm font-medium text-foreground">Job description <span className="text-muted-foreground font-normal">(optional)</span></label>
@@ -487,18 +607,27 @@ export default function Ads() {
 
           <div className="flex flex-wrap gap-4">
             {/* Platform */}
-            <div className="space-y-1.5 min-w-[200px]">
+            <div className="space-y-1.5 min-w-[240px]">
               <label className="text-sm font-medium text-foreground">Platform</label>
               <div className="flex rounded-lg border border-border overflow-hidden">
-                {(["both", "facebook", "instagram", "x"] as Platform[]).map((p) => (
-                  <button key={p} onClick={() => setPlatform(p)}
-                    className={cn("flex-1 px-3 py-1.5 text-xs font-medium capitalize transition-colors flex items-center justify-center gap-1",
-                      platform === p ? "bg-primary text-primary-foreground" : "bg-background text-muted-foreground hover:text-foreground"
+                {([
+                  { value: "all",       label: "All Three" },
+                  { value: "both",      label: "FB + IG" },
+                  { value: "facebook",  label: "FB" },
+                  { value: "instagram", label: "IG" },
+                  { value: "x",         label: "X" },
+                ] as { value: Platform; label: string }[]).map((p) => (
+                  <button key={p.value} onClick={() => setPlatform(p.value)}
+                    className={cn("flex-1 px-2 py-1.5 text-xs font-medium transition-colors flex items-center justify-center gap-1",
+                      platform === p.value ? "bg-primary text-primary-foreground" : "bg-background text-muted-foreground hover:text-foreground"
                     )}>
-                    {p === "both" ? "FB+IG" : p === "facebook" ? "FB" : p === "instagram" ? "IG" : <><Twitter size={10} />X</>}
+                    {p.label}
                   </button>
                 ))}
               </div>
+              {platform === "all" && (
+                <p className="text-xs text-muted-foreground">Generates separate, platform-optimized copy for Facebook, Instagram, and X.</p>
+              )}
             </div>
 
             {/* Tone */}
@@ -533,16 +662,158 @@ export default function Ads() {
           </div>
 
           {/* Generate button */}
-          <Button onClick={handleGenerate} disabled={generateMutation.isPending} className="gap-2 w-full sm:w-auto">
-            {generateMutation.isPending
+          <Button onClick={handleGenerate} disabled={isGenerating} className="gap-2 w-full sm:w-auto">
+            {isGenerating
               ? <><RefreshCw size={14} className="animate-spin" /> Generating...</>
-              : <><Sparkles size={14} /> Generate Ad</>
+              : <><Sparkles size={14} /> {platform === "all" ? "Generate for All Platforms" : "Generate Ad"}</>
             }
           </Button>
         </div>
 
-        {/* Generated result */}
-        {generated && (
+        {/* ─── All-platforms result ─────────────────────────────────────────── */}
+        {hasAllGenerated && generatedAll && (
+          <div className="bg-card border border-border rounded-xl p-6 space-y-5">
+            <div className="flex items-center justify-between">
+              <h2 className="text-base font-semibold text-foreground">Generated Ads — All Platforms</h2>
+            </div>
+
+            {/* Shared image */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Shared Image</label>
+                <div className="flex items-center gap-2">
+                  <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handlePhotoUpload} />
+                  <button onClick={() => fileInputRef.current?.click()}
+                    className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors">
+                    <Upload size={12} />{isUploading ? "Uploading..." : "Upload photo"}
+                  </button>
+                  {uploadedImageUrl && (
+                    <button onClick={() => { setUploadedImageUrl(null); setUploadedImageKey(null); setSavedPostId(null); }}
+                      className="text-xs text-red-400 hover:underline">Remove</button>
+                  )}
+                </div>
+              </div>
+              {activeImageUrl && (
+                <img src={activeImageUrl} alt="Ad image" className="rounded-xl max-h-48 object-cover border border-border" />
+              )}
+              {!activeImageUrl && (
+                <div className="rounded-xl border border-dashed border-border bg-secondary/30 p-6 text-center">
+                  <ImageIcon size={24} className="mx-auto text-muted-foreground opacity-40 mb-2" />
+                  <p className="text-xs text-muted-foreground">No image generated. Upload a photo or toggle Image on and regenerate.</p>
+                </div>
+              )}
+            </div>
+
+            {/* Three platform panels */}
+            <div className="grid grid-cols-1 gap-4">
+              {/* Facebook */}
+              <PlatformCopyPanel
+                icon={<Facebook size={14} className="text-blue-400" />}
+                label="Facebook"
+                accentClass="border-blue-400/20 bg-blue-400/5"
+                draft={editedFbDraft}
+                headline={editedFbHeadline}
+                onDraftChange={(v) => { setEditedFbDraft(v); setSavedPostId(null); }}
+                onHeadlineChange={(v) => { setEditedFbHeadline(v); setSavedPostId(null); }}
+              >
+                <Button onClick={() => handlePostAllPlatform("facebook")} disabled={isPosting}
+                  className="gap-2 bg-[#1877F2] hover:bg-[#166FE5] text-white border-0 w-full sm:w-auto">
+                  <Facebook size={14} />{fbMutation.isPending ? "Posting..." : "Post to Facebook"}
+                </Button>
+              </PlatformCopyPanel>
+
+              {/* Instagram */}
+              <PlatformCopyPanel
+                icon={<Instagram size={14} className="text-pink-400" />}
+                label="Instagram"
+                accentClass="border-pink-400/20 bg-pink-400/5"
+                draft={editedIgDraft}
+                headline={editedIgHeadline}
+                onDraftChange={(v) => { setEditedIgDraft(v); setSavedPostId(null); }}
+                onHeadlineChange={(v) => { setEditedIgHeadline(v); setSavedPostId(null); }}
+              >
+                <div className="space-y-1">
+                  <Button onClick={() => handlePostAllPlatform("instagram")} disabled={isPosting || !activeImageUrl}
+                    className="gap-2 bg-gradient-to-r from-[#833AB4] via-[#FD1D1D] to-[#FCAF45] text-white border-0 w-full sm:w-auto"
+                    title={!activeImageUrl ? "Instagram requires an image" : undefined}>
+                    <Instagram size={14} />{igMutation.isPending ? "Posting..." : "Post to Instagram"}
+                  </Button>
+                  {!activeImageUrl && (
+                    <p className="text-xs text-amber-400">Upload a photo to enable Instagram posting.</p>
+                  )}
+                </div>
+              </PlatformCopyPanel>
+
+              {/* X */}
+              <PlatformCopyPanel
+                icon={<Twitter size={14} className="text-sky-400" />}
+                label="X"
+                accentClass="border-sky-400/20 bg-sky-400/5"
+                draft={editedXDraft}
+                headline={editedXHeadline}
+                onDraftChange={(v) => { setEditedXDraft(v); setSavedPostId(null); }}
+                onHeadlineChange={(v) => { setEditedXHeadline(v); setSavedPostId(null); }}
+                charLimit={280}
+              >
+                <Button onClick={() => handlePostAllPlatform("x")} disabled={isPosting}
+                  className="gap-2 bg-black hover:bg-gray-900 text-white border-0 w-full sm:w-auto">
+                  <Twitter size={14} />{xMutation.isPending ? "Posting..." : "Post to X"}
+                </Button>
+              </PlatformCopyPanel>
+            </div>
+
+            {/* Post to All Three */}
+            <div className="flex flex-wrap gap-3 pt-2 border-t border-border">
+              <Button
+                onClick={() => handlePostAllPlatform("all")}
+                disabled={isPosting}
+                className="gap-2 bg-gradient-to-r from-[#1877F2] via-[#833AB4] to-black text-white border-0 hover:opacity-90"
+              >
+                <Send size={14} />{isPosting ? "Posting..." : "Post to All Three"}
+              </Button>
+              <Button variant="outline" onClick={() => setShowScheduler(!showScheduler)}
+                className={cn("gap-2", showScheduler && "border-primary/40 text-primary")}>
+                <Clock size={14} />Schedule
+              </Button>
+              <Button variant="ghost" onClick={() => saveMutation.mutate({
+                jobDescription, draft: editedFbDraft, headline: editedFbHeadline, platform: "all",
+                imageUrl: activeImageUrl ?? undefined, imageKey: uploadedImageKey ?? undefined, status: "draft",
+              })} disabled={saveMutation.isPending || !!savedPostId} className="gap-2 text-muted-foreground">
+                {savedPostId ? <><CheckCircle2 size={14} className="text-green-400" /> Saved</> : "Save draft"}
+              </Button>
+            </div>
+
+            {/* Scheduler panel */}
+            {showScheduler && (
+              <div className="bg-secondary/50 rounded-xl p-4 space-y-3 border border-border">
+                <div className="flex items-center gap-2">
+                  <Calendar size={14} className="text-primary" />
+                  <span className="text-sm font-medium text-foreground">Schedule post</span>
+                </div>
+                <div className="flex flex-wrap gap-3 items-end">
+                  <div className="space-y-1">
+                    <label className="text-xs text-muted-foreground">Date</label>
+                    <input type="date" value={scheduledDate} onChange={(e) => setScheduledDate(e.target.value)}
+                      min={new Date().toISOString().split("T")[0]}
+                      className="bg-background border border-border rounded-lg px-3 py-1.5 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary" />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-xs text-muted-foreground">Time (local)</label>
+                    <input type="time" value={scheduledTime} onChange={(e) => setScheduledTime(e.target.value)}
+                      className="bg-background border border-border rounded-lg px-3 py-1.5 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary" />
+                  </div>
+                  <Button onClick={handleSchedule} disabled={schedulePostMutation.isPending || !scheduledDate} size="sm" className="gap-1.5">
+                    <Clock size={12} />{schedulePostMutation.isPending ? "Scheduling..." : "Confirm schedule"}
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground">The post will be queued and published automatically at the scheduled time.</p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ─── Single-platform result ───────────────────────────────────────── */}
+        {hasSingleGenerated && generated && (
           <div className="bg-card border border-border rounded-xl p-6 space-y-5">
             <div className="flex items-center justify-between">
               <h2 className="text-base font-semibold text-foreground">Generated Ad</h2>
@@ -635,23 +906,14 @@ export default function Ads() {
                   <Send size={14} />{isPosting ? "Posting..." : "Post to Both"}
                 </Button>
               )}
-
-              {/* Post to All Three — always visible when content is generated */}
-              <Button
-                onClick={() => handlePost("all")}
-                disabled={isPosting}
-                className="gap-2 bg-gradient-to-r from-[#1877F2] via-[#833AB4] to-black text-white border-0 hover:opacity-90"
-                title="Post to Facebook, Instagram, and X simultaneously"
-              >
+              <Button onClick={() => handlePost("all")} disabled={isPosting}
+                className="gap-2 bg-gradient-to-r from-[#1877F2] via-[#833AB4] to-black text-white border-0 hover:opacity-90">
                 <Send size={14} />{allMutation.isPending ? "Posting to all..." : "Post to All Three"}
               </Button>
-
-              {/* Schedule button */}
               <Button variant="outline" onClick={() => setShowScheduler(!showScheduler)}
                 className={cn("gap-2", showScheduler && "border-primary/40 text-primary")}>
                 <Clock size={14} />Schedule
               </Button>
-
               <Button variant="ghost" onClick={() => saveMutation.mutate({
                 jobDescription, draft: editedDraft, headline: editedHeadline, platform,
                 imageUrl: activeImageUrl ?? undefined, imageKey: uploadedImageKey ?? undefined, status: "draft",
@@ -679,14 +941,11 @@ export default function Ads() {
                     <input type="time" value={scheduledTime} onChange={(e) => setScheduledTime(e.target.value)}
                       className="bg-background border border-border rounded-lg px-3 py-1.5 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary" />
                   </div>
-                  <Button onClick={handleSchedule} disabled={schedulePostMutation.isPending || !scheduledDate}
-                    size="sm" className="gap-1.5">
+                  <Button onClick={handleSchedule} disabled={schedulePostMutation.isPending || !scheduledDate} size="sm" className="gap-1.5">
                     <Clock size={12} />{schedulePostMutation.isPending ? "Scheduling..." : "Confirm schedule"}
                   </Button>
                 </div>
-                <p className="text-xs text-muted-foreground">
-                  The post will be queued and published automatically at the scheduled time.
-                </p>
+                <p className="text-xs text-muted-foreground">The post will be queued and published automatically at the scheduled time.</p>
               </div>
             )}
 
@@ -737,6 +996,7 @@ function HistoryRow({ post, onDelete }: { post: any; onDelete: () => void }) {
   const [expanded, setExpanded] = useState(false);
 
   const platformLabel = post.platform === "both" ? "FB + IG"
+    : post.platform === "all" ? "FB + IG + X"
     : post.platform === "facebook" ? "Facebook"
     : post.platform === "instagram" ? "Instagram"
     : post.platform === "x" ? "X"

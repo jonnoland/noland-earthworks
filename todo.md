@@ -1475,3 +1475,11 @@
 - [x] Add platformConnectionStatus tRPC procedure that live-checks Facebook, Instagram, and X credentials
 - [x] Build visual ConnectionStatusBar component in Ads.tsx showing all three platforms with green/red/amber indicators
 - [x] Replace the single X-only banner with the new three-platform status bar
+
+## Per-Platform Ad Generation
+
+- [x] Add generateForAll procedure to socialPostsRouter that returns separate FB, IG, and X drafts in one LLM call
+- [x] Update Ads.tsx platform selector to include "All Three" option that triggers the new procedure
+- [x] Show three separate editable copy panels (FB, IG, X) when "All Three" is selected
+- [x] Each panel has its own post button and character count for X
+- [x] "Post to All Three" button uses the per-platform drafts when in All Three mode

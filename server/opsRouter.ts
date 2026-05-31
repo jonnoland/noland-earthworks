@@ -2476,14 +2476,16 @@ const socialPostsRouter = router({
         "specific_use_case",  // Targets a specific job: pasture reclamation, fence line, lot clearing
         "general",            // Let AI decide the best angle
       ]).default("general"),
-      platform: z.enum(["facebook", "instagram", "both"]).default("both"),
+      platform: z.enum(["facebook", "instagram", "both", "x"]).default("both"),
       tone: z.enum(["casual", "professional"]).default("casual"),
       generateImage: z.boolean().default(true),
     }))
     .mutation(async ({ input }) => {
       const platformNote = input.platform === "both"
         ? "Write one post that works for both Facebook and Instagram."
-        : `Write a post for ${input.platform === "facebook" ? "Facebook" : "Instagram"}.`;
+        : input.platform === "x"
+          ? "Write a post for X (formerly Twitter). Keep the post body under 280 characters total. Be punchy and direct — X rewards brevity. No hashtag overload (1-2 max). End with a short CTA."
+          : `Write a post for ${input.platform === "facebook" ? "Facebook" : "Instagram"}.`;
       const toneNote = input.tone === "professional"
         ? "Tone: professional and direct, but still genuine and human."
         : "Tone: casual, warm, southern hospitality. Like a neighbor talking to a neighbor. Genuine, not salesy.";
@@ -2564,6 +2566,122 @@ const socialPostsRouter = router({
       }
 
       return { draft: parsed.draft, headline: parsed.headline, imagePrompt: parsed.imagePrompt, imageUrl };
+    }),
+
+  /** Generate separate, platform-optimized ad copy for Facebook, Instagram, and X in one call */
+  generateForAll: ownerProcedure
+    .input(z.object({
+      jobDescription: z.string().max(1000).optional(),
+      adType: z.enum([
+        "before_after", "problem_solution", "education", "seasonal_urgency",
+        "veteran_trust", "reclaim_your_land", "specific_use_case", "general",
+      ]).default("general"),
+      tone: z.enum(["casual", "professional"]).default("casual"),
+      generateImage: z.boolean().default(true),
+    }))
+    .mutation(async ({ input }) => {
+      const toneNote = input.tone === "professional"
+        ? "Tone: professional and direct, but still genuine and human."
+        : "Tone: casual, warm, southern hospitality. Like a neighbor talking to a neighbor. Genuine, not salesy.";
+
+      const adTypeInstructions: Record<string, string> = {
+        before_after: "Ad type: Before/After transformation. Open with the problem (overgrown, unusable land). Close with the result (clean, cleared, usable). This is the highest-performing format — make the contrast vivid and real.",
+        problem_solution: "Ad type: Problem/Solution. Hook with a specific problem a Middle Tennessee landowner faces. Then present forestry mulching as the clean, fast solution. Emphasize: no burn piles, no hauling, no erosion.",
+        education: "Ad type: Education. Explain what forestry mulching actually is and why it beats bush hogging or bulldozing. Keep it plain and practical.",
+        seasonal_urgency: "Ad type: Seasonal Urgency. Fall and winter are the best time to clear — dormant vegetation, firmer ground, better visibility, faster results. Encourage booking now before the calendar fills up.",
+        veteran_trust: "Ad type: Veteran-Owned Trust. Lead with the veteran-owned identity. Reliability, integrity, showing up when committed, doing the work as quoted.",
+        reclaim_your_land: "Ad type: Reclaim Your Land. Emotional angle — the landowner bought this property for a reason and it has gotten away from them. End with a low-pressure invitation to call.",
+        specific_use_case: "Ad type: Specific Use Case. Pick one specific scenario: pasture reclamation, fence line clearing, lot clearing, or right-of-way clearing.",
+        general: "Ad type: Choose the best angle based on what performs well for land clearing companies. Consider before/after, problem/solution, or veteran trust.",
+      };
+      const adTypeNote = adTypeInstructions[input.adType] ?? adTypeInstructions.general;
+
+      const jobContext = input.jobDescription
+        ? `Base the ad on this specific job or context: ${input.jobDescription}`
+        : `No specific job was provided. Draw on your knowledge of what Noland Earthworks does — forestry mulching, land clearing, brush removal, pasture reclamation, fence line clearing, right-of-way clearing in Middle & West Tennessee.`;
+
+      const competitorContext = `Competitor ad intelligence (for reference, do NOT copy — write in Jon's voice):
+- Hook style that works: "Are you a property owner in Middle Tennessee with overgrown land you haven't been able to use?"
+- Effective body: "Most people think clearing land means weeks of chainsaw work, burn piles, and hauling debris. Forestry mulching grinds it all down into nutrient-rich mulch right on the spot. No burn piles. No hauling fees. No erosion."
+- What works: specific, plain language; before/after contrast; addressing the exact problem the landowner has; low-pressure CTA.`;
+
+      const result = await invokeLLM({
+        messages: [
+          {
+            role: "system",
+            content: `You write social media ads for Jon Noland, owner of Noland Earthworks, LLC — a veteran-owned land management and forestry mulching company in Middle & West Tennessee. ${toneNote} ${adTypeNote} Rules: No emojis. No corporate jargon. No banned phrases: "solutions", "industry-leading", "best-in-class", "we are passionate", "dedicated team", "we strive to", "cutting-edge". Sound like a real person who does this work. ${competitorContext} Return JSON with three separate platform-optimized posts. Facebook: conversational, up to 150 words, 2-3 hashtags max. Instagram: visual-first, shorter (under 100 words), 3-5 relevant hashtags. X: punchy, under 280 characters total including any hashtags, 1-2 hashtags max. All three must end with a direct CTA (call, text, or visit nolandearthworks.com). Also write one image generation prompt (under 60 words) for a realistic gritty photo of land clearing work in Tennessee — no people, no logos, no text.`,
+          },
+          { role: "user", content: jobContext },
+        ],
+        response_format: {
+          type: "json_schema",
+          json_schema: {
+            name: "all_platform_ads",
+            strict: true,
+            schema: {
+              type: "object",
+              properties: {
+                facebook: {
+                  type: "object",
+                  properties: {
+                    draft: { type: "string", description: "Facebook post body" },
+                    headline: { type: "string", description: "Short headline, max 8 words" },
+                  },
+                  required: ["draft", "headline"],
+                  additionalProperties: false,
+                },
+                instagram: {
+                  type: "object",
+                  properties: {
+                    draft: { type: "string", description: "Instagram caption" },
+                    headline: { type: "string", description: "Short headline, max 8 words" },
+                  },
+                  required: ["draft", "headline"],
+                  additionalProperties: false,
+                },
+                x: {
+                  type: "object",
+                  properties: {
+                    draft: { type: "string", description: "X post, max 280 chars" },
+                    headline: { type: "string", description: "Short headline, max 8 words" },
+                  },
+                  required: ["draft", "headline"],
+                  additionalProperties: false,
+                },
+                imagePrompt: { type: "string", description: "Image generation prompt" },
+              },
+              required: ["facebook", "instagram", "x", "imagePrompt"],
+              additionalProperties: false,
+            },
+          },
+        },
+      });
+
+      let parsed: { facebook: { draft: string; headline: string }; instagram: { draft: string; headline: string }; x: { draft: string; headline: string }; imagePrompt: string };
+      try {
+        parsed = JSON.parse(result.choices?.[0]?.message?.content as string ?? "{}");
+      } catch {
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "AI returned invalid JSON. Try again." });
+      }
+      if (!parsed.facebook?.draft) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "AI did not return ad copy. Try again." });
+
+      let imageUrl: string | null = null;
+      if (input.generateImage && parsed.imagePrompt) {
+        try {
+          const imgResult = await generateImage({ prompt: parsed.imagePrompt });
+          imageUrl = imgResult.url ?? null;
+        } catch (e) {
+          console.error("[Ads] Image generation failed:", e);
+        }
+      }
+
+      return {
+        facebook: { draft: parsed.facebook.draft, headline: parsed.facebook.headline },
+        instagram: { draft: parsed.instagram.draft, headline: parsed.instagram.headline },
+        x: { draft: parsed.x.draft, headline: parsed.x.headline },
+        imagePrompt: parsed.imagePrompt,
+        imageUrl,
+      };
     }),
 
   /** Save a generated post to history */
