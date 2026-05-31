@@ -278,7 +278,23 @@ function PlatformCopyPanel({
 export default function Ads() {
   // Generator state
   const [jobDescription, setJobDescription] = useState("");
-  const [adType, setAdType] = useState<AdType>("general");
+  const [adTypes, setAdTypes] = useState<AdType[]>(["general"]);
+  function toggleAdType(val: AdType) {
+    setAdTypes(prev => {
+      if (prev.includes(val)) {
+        // Always keep at least one selected
+        if (prev.length === 1) return prev;
+        return prev.filter(v => v !== val);
+      }
+      if (prev.length >= 3) {
+        toast.error("You can select up to 3 ad types.");
+        return prev;
+      }
+      // If switching away from "general", remove it; if selecting "general", clear others
+      if (val === "general") return ["general"];
+      return prev.filter(v => v !== "general").concat(val);
+    });
+  }
   const [platform, setPlatform] = useState<Platform>("all");
   const [tone, setTone] = useState<Tone>("casual");
   const [withImage, setWithImage] = useState(true);
@@ -457,14 +473,14 @@ export default function Ads() {
     if (platform === "all") {
       generateAllMutation.mutate({
         jobDescription: jobDescription.trim() || undefined,
-        adType,
+        adTypes,
         tone,
         generateImage: withImage,
       });
     } else {
       generateMutation.mutate({
         jobDescription: jobDescription.trim() || undefined,
-        adType,
+        adTypes,
         platform: platform as "facebook" | "instagram" | "both" | "x",
         tone,
         generateImage: withImage,
@@ -643,19 +659,29 @@ export default function Ads() {
             <label className="text-sm font-medium text-foreground">Ad type</label>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
               {AD_TYPE_OPTIONS.map((opt) => (
-                <button key={opt.value} onClick={() => setAdType(opt.value)} title={opt.description}
-                  className={cn("px-3 py-2 rounded-lg border text-xs font-medium text-left transition-colors leading-tight",
-                    adType === opt.value
+                <button key={opt.value} onClick={() => toggleAdType(opt.value)} title={opt.description}
+                  className={cn("px-3 py-2 rounded-lg border text-xs font-medium text-left transition-colors leading-tight relative",
+                    adTypes.includes(opt.value)
                       ? "bg-primary/10 border-primary/40 text-primary"
                       : "bg-background border-border text-muted-foreground hover:text-foreground hover:border-border/80"
                   )}>
                   {opt.label}
+                  {adTypes.includes(opt.value) && adTypes.length > 1 && (
+                    <span className="absolute top-0.5 right-0.5 w-3.5 h-3.5 rounded-full bg-primary text-primary-foreground text-[9px] flex items-center justify-center font-bold">
+                      {adTypes.indexOf(opt.value) + 1}
+                    </span>
+                  )}
                 </button>
               ))}
             </div>
-            {adType !== "general" && (
-              <p className="text-xs text-muted-foreground">{AD_TYPE_OPTIONS.find(o => o.value === adType)?.description}</p>
-            )}
+            <div className="space-y-1">
+              {adTypes.filter(t => t !== "general").map(t => (
+                <p key={t} className="text-xs text-muted-foreground">{AD_TYPE_OPTIONS.find(o => o.value === t)?.description}</p>
+              ))}
+              {adTypes.length > 1 && (
+                <p className="text-xs text-amber-400/80">Blending {adTypes.length} ad styles into one draft.</p>
+              )}
+            </div>
           </div>
 
           {/* Job description */}
@@ -794,7 +820,7 @@ export default function Ads() {
                     disabled={regeneratePlatformMutation.isPending}
                     onClick={async () => {
                       const result = await regeneratePlatformMutation.mutateAsync({
-                        platform: "facebook", adType, tone,
+                        platform: "facebook", adTypes, tone,
                         jobDescription: jobDescription.trim() || undefined,
                       });
                       setEditedFbDraft(result.draft);
@@ -831,7 +857,7 @@ export default function Ads() {
                       disabled={regeneratePlatformMutation.isPending}
                       onClick={async () => {
                         const result = await regeneratePlatformMutation.mutateAsync({
-                          platform: "instagram", adType, tone,
+                          platform: "instagram", adTypes, tone,
                           jobDescription: jobDescription.trim() || undefined,
                         });
                         setEditedIgDraft(result.draft);
@@ -872,7 +898,7 @@ export default function Ads() {
                     disabled={regeneratePlatformMutation.isPending}
                     onClick={async () => {
                       const result = await regeneratePlatformMutation.mutateAsync({
-                        platform: "x", adType, tone,
+                        platform: "x", adTypes, tone,
                         jobDescription: jobDescription.trim() || undefined,
                       });
                       setEditedXDraft(result.draft);

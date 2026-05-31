@@ -2466,16 +2466,16 @@ const socialPostsRouter = router({
   generate: ownerProcedure
     .input(z.object({
       jobDescription: z.string().max(1000).optional(),
-      adType: z.enum([
-        "before_after",       // Before/after transformation — most effective
-        "problem_solution",   // Opens with the landowner's problem, presents mulching as the fix
-        "education",          // Explains what forestry mulching is vs. bush hogging/bulldozing
-        "seasonal_urgency",   // Fall/winter is the best time — book before the calendar fills
-        "veteran_trust",      // Leads with veteran-owned identity and reliability
-        "reclaim_your_land",  // Emotional: "You bought this land for a reason"
-        "specific_use_case",  // Targets a specific job: pasture reclamation, fence line, lot clearing
-        "general",            // Let AI decide the best angle
-      ]).default("general"),
+      adTypes: z.array(z.enum([
+        "before_after",
+        "problem_solution",
+        "education",
+        "seasonal_urgency",
+        "veteran_trust",
+        "reclaim_your_land",
+        "specific_use_case",
+        "general",
+      ])).min(1).max(3).default(["general"]),
       platform: z.enum(["facebook", "instagram", "both", "x"]).default("both"),
       tone: z.enum(["casual", "professional"]).default("casual"),
       generateImage: z.boolean().default(true),
@@ -2501,7 +2501,9 @@ const socialPostsRouter = router({
         general: "Ad type: Choose the best angle based on what performs well for land clearing companies. Consider before/after, problem/solution, or veteran trust as the top performers.",
       };
 
-      const adTypeNote = adTypeInstructions[input.adType] ?? adTypeInstructions.general;
+      const adTypeNote = input.adTypes.length === 1
+        ? (adTypeInstructions[input.adTypes[0]] ?? adTypeInstructions.general)
+        : `Blend these ${input.adTypes.length} ad styles into one cohesive post: ${input.adTypes.map((t: string) => adTypeInstructions[t] ?? '').join(' ')}`;
 
       const jobContext = input.jobDescription
         ? `Base the ad on this specific job or context: ${input.jobDescription}`
@@ -2572,10 +2574,10 @@ const socialPostsRouter = router({
   generateForAll: ownerProcedure
     .input(z.object({
       jobDescription: z.string().max(1000).optional(),
-      adType: z.enum([
+      adTypes: z.array(z.enum([
         "before_after", "problem_solution", "education", "seasonal_urgency",
         "veteran_trust", "reclaim_your_land", "specific_use_case", "general",
-      ]).default("general"),
+      ])).min(1).max(3).default(["general"]),
       tone: z.enum(["casual", "professional"]).default("casual"),
       generateImage: z.boolean().default(true),
     }))
@@ -2594,7 +2596,9 @@ const socialPostsRouter = router({
         specific_use_case: "Ad type: Specific Use Case. Pick one specific scenario: pasture reclamation, fence line clearing, lot clearing, or right-of-way clearing.",
         general: "Ad type: Choose the best angle based on what performs well for land clearing companies. Consider before/after, problem/solution, or veteran trust.",
       };
-      const adTypeNote = adTypeInstructions[input.adType] ?? adTypeInstructions.general;
+      const adTypeNote = input.adTypes.length === 1
+        ? (adTypeInstructions[input.adTypes[0]] ?? adTypeInstructions.general)
+        : `Blend these ${input.adTypes.length} ad styles into one cohesive post: ${input.adTypes.map((t: string) => adTypeInstructions[t] ?? '').join(' ')}`;
 
       const jobContext = input.jobDescription
         ? `Base the ad on this specific job or context: ${input.jobDescription}`
@@ -2687,7 +2691,7 @@ const socialPostsRouter = router({
   regeneratePlatform: ownerProcedure
     .input(z.object({
       platform: z.enum(["facebook", "instagram", "x"]),
-      adType: z.enum(["before_after", "problem_solution", "education", "seasonal_urgency", "veteran_trust", "reclaim_your_land", "specific_use_case", "general"]).default("general"),
+      adTypes: z.array(z.enum(["before_after", "problem_solution", "education", "seasonal_urgency", "veteran_trust", "reclaim_your_land", "specific_use_case", "general"])).min(1).max(3).default(["general"]),
       tone: z.enum(["professional", "casual", "urgent"]).default("casual"),
       jobDescription: z.string().optional(),
     }))
@@ -2718,7 +2722,7 @@ const socialPostsRouter = router({
         messages: [
           {
             role: "system",
-            content: `You write social media ads for Jon Noland, owner of Noland Earthworks, LLC — a veteran-owned land management and forestry mulching company in Middle & West Tennessee. ${toneMap[input.tone]} ${adTypeInstructions[input.adType]} ${platformInstructions[input.platform]} Rules: No emojis. No corporate jargon. No banned phrases: "solutions", "industry-leading", "best-in-class", "we are passionate", "dedicated team", "we strive to", "cutting-edge". Sound like a real person who does this work. Return JSON with draft (the post body) and headline (max 8 words).`,
+            content: `You write social media ads for Jon Noland, owner of Noland Earthworks, LLC — a veteran-owned land management and forestry mulching company in Middle & West Tennessee. ${toneMap[input.tone]} ${input.adTypes.length === 1 ? adTypeInstructions[input.adTypes[0]] : input.adTypes.map((t: string) => adTypeInstructions[t] ?? "").join(" ")} ${platformInstructions[input.platform]} Rules: No emojis. No corporate jargon. No banned phrases: "solutions", "industry-leading", "best-in-class", "we are passionate", "dedicated team", "we strive to", "cutting-edge". Sound like a real person who does this work. Return JSON with draft (the post body) and headline (max 8 words).`,
           },
           { role: "user", content: jobContext },
         ],

@@ -1500,3 +1500,11 @@
 - [x] Add postStatus state (idle/posting/success/error + message) per platform (fb, ig, x) in Ads.tsx
 - [x] Show inline status badge on each PlatformCopyPanel after posting (green check + "Posted", red X + error message)
 - [x] "Post to All Three" button shows per-platform status as each fires sequentially
+
+## Ads — Multi-Select Ad Types (up to 3) — May 2026
+
+- [x] Update adType state from single string to string array (max 3) in Ads.tsx
+- [x] Update ad type selector UI to toggle selection with visual count indicator
+- [x] Update generate and generateForAll procedures in opsRouter to accept adTypes array and blend them in the LLM prompt
+- [x] Update regeneratePlatform procedure to accept adTypes array
+- [x] Update all mutation calls in Ads.tsx to pass adTypes array instead of single adType
