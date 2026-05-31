@@ -1494,3 +1494,9 @@
 ## Ads — Tone Badge on Platform Panels — May 2026
 
 - [x] Add tone preview badge to each PlatformCopyPanel header in All Three mode showing Casual / Professional
+
+## Ads — Per-Platform Post Status — May 2026
+
+- [x] Add postStatus state (idle/posting/success/error + message) per platform (fb, ig, x) in Ads.tsx
+- [x] Show inline status badge on each PlatformCopyPanel after posting (green check + "Posted", red X + error message)
+- [x] "Post to All Three" button shows per-platform status as each fires sequentially

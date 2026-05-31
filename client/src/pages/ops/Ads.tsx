@@ -184,6 +184,8 @@ function PlatformStatusCard({
 }
 
 // ─── Per-platform copy panel ──────────────────────────────────────────────────
+type PanelPostStatus = { status: "idle" | "posting" | "success" | "error"; message?: string };
+
 function PlatformCopyPanel({
   icon,
   label,
@@ -194,6 +196,7 @@ function PlatformCopyPanel({
   onHeadlineChange,
   charLimit,
   tone,
+  postStatus,
   children,
 }: {
   icon: React.ReactNode;
@@ -205,11 +208,12 @@ function PlatformCopyPanel({
   onHeadlineChange: (v: string) => void;
   charLimit?: number;
   tone?: string;
+  postStatus?: PanelPostStatus;
   children?: React.ReactNode;
 }) {
   return (
     <div className={cn("rounded-xl border p-4 space-y-3", accentClass)}>
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2 flex-wrap">
         {icon}
         <span className="text-sm font-semibold">{label}</span>
         {tone && (
@@ -217,12 +221,35 @@ function PlatformCopyPanel({
             {tone}
           </span>
         )}
-        {charLimit && (
+        {/* Post status indicator */}
+        {postStatus && postStatus.status !== "idle" && (
+          <span className={cn(
+            "ml-auto flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full",
+            postStatus.status === "posting" && "bg-yellow-500/15 text-yellow-400",
+            postStatus.status === "success" && "bg-green-500/15 text-green-400",
+            postStatus.status === "error" && "bg-red-500/15 text-red-400",
+          )}>
+            {postStatus.status === "posting" && (
+              <><svg className="animate-spin h-3 w-3" viewBox="0 0 24 24" fill="none"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/></svg>Posting...</>
+            )}
+            {postStatus.status === "success" && (
+              <><svg className="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"/></svg>Posted</>
+            )}
+            {postStatus.status === "error" && (
+              <><svg className="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>{postStatus.message ?? "Error"}</>
+            )}
+          </span>
+        )}
+        {(!postStatus || postStatus.status === "idle") && charLimit && (
           <span className={cn("ml-auto text-xs font-mono", draft.length > charLimit ? "text-red-400" : "text-muted-foreground")}>
             {draft.length}/{charLimit}
           </span>
         )}
-        {charLimit && !tone && <span className="flex-1" />}
+        {postStatus && postStatus.status !== "idle" && charLimit && (
+          <span className={cn("text-xs font-mono", draft.length > charLimit ? "text-red-400" : "text-muted-foreground")}>
+            {draft.length}/{charLimit}
+          </span>
+        )}
       </div>
       <div className="space-y-2">
         <input
@@ -271,6 +298,10 @@ export default function Ads() {
   const [editedXDraft, setEditedXDraft] = useState("");
   const [editedXHeadline, setEditedXHeadline] = useState("");
 
+  // Per-platform post status (All Three mode)
+  const [fbPostStatus, setFbPostStatus] = useState<PanelPostStatus>({ status: "idle" });
+  const [igPostStatus, setIgPostStatus] = useState<PanelPostStatus>({ status: "idle" });
+  const [xPostStatus, setXPostStatus] = useState<PanelPostStatus>({ status: "idle" });
   // Photo upload state
   const [uploadedImageUrl, setUploadedImageUrl] = useState<string | null>(null);
   const [uploadedImageKey, setUploadedImageKey] = useState<string | null>(null);
@@ -326,6 +357,10 @@ export default function Ads() {
       setSavedPostId(null);
       setUploadedImageUrl(null);
       setUploadedImageKey(null);
+      // Reset post statuses for fresh generation
+      setFbPostStatus({ status: "idle" });
+      setIgPostStatus({ status: "idle" });
+      setXPostStatus({ status: "idle" });
     },
     onError: (err) => toast.error(err.message),
   });
@@ -358,29 +393,42 @@ export default function Ads() {
   });
 
   const fbMutation = trpc.ops.socialPosts.publishToFacebook.useMutation({
+    onMutate: () => setFbPostStatus({ status: "posting" }),
     onSuccess: (data) => {
       utils.ops.socialPosts.list.invalidate();
+      setFbPostStatus({ status: "success" });
       toast.success("Posted to Facebook.");
       if (data.url) window.open(data.url, "_blank");
     },
-    onError: (err) => toast.error(`Facebook: ${err.message}`),
+    onError: (err) => {
+      setFbPostStatus({ status: "error", message: err.message });
+      toast.error(`Facebook: ${err.message}`);
+    },
   });
-
   const igMutation = trpc.ops.socialPosts.publishToInstagram.useMutation({
+    onMutate: () => setIgPostStatus({ status: "posting" }),
     onSuccess: () => {
       utils.ops.socialPosts.list.invalidate();
+      setIgPostStatus({ status: "success" });
       toast.success("Posted to Instagram.");
     },
-    onError: (err) => toast.error(`Instagram: ${err.message}`),
+    onError: (err) => {
+      setIgPostStatus({ status: "error", message: err.message });
+      toast.error(`Instagram: ${err.message}`);
+    },
   });
-
   const xMutation = trpc.ops.socialPosts.publishToX.useMutation({
+    onMutate: () => setXPostStatus({ status: "posting" }),
     onSuccess: (data) => {
       utils.ops.socialPosts.list.invalidate();
+      setXPostStatus({ status: "success" });
       toast.success("Posted to X.");
       if (data.xPostId) window.open(`https://x.com/i/web/status/${data.xPostId}`, "_blank");
     },
-    onError: (err) => toast.error(`X: ${err.message}`),
+    onError: (err) => {
+      setXPostStatus({ status: "error", message: err.message });
+      toast.error(`X: ${err.message}`);
+    },
   });
 
   const allMutation = trpc.ops.socialPosts.publishToAll.useMutation({
@@ -733,6 +781,7 @@ export default function Ads() {
                 draft={editedFbDraft}
                 headline={editedFbHeadline}
                 tone={tone}
+                postStatus={fbPostStatus}
                 onDraftChange={(v) => { setEditedFbDraft(v); setSavedPostId(null); }}
                 onHeadlineChange={(v) => { setEditedFbHeadline(v); setSavedPostId(null); }}
               >
@@ -767,6 +816,7 @@ export default function Ads() {
                 draft={editedIgDraft}
                 headline={editedIgHeadline}
                 tone={tone}
+                postStatus={igPostStatus}
                 onDraftChange={(v) => { setEditedIgDraft(v); setSavedPostId(null); }}
                 onHeadlineChange={(v) => { setEditedIgHeadline(v); setSavedPostId(null); }}
               >
@@ -807,6 +857,7 @@ export default function Ads() {
                 draft={editedXDraft}
                 headline={editedXHeadline}
                 tone={tone}
+                postStatus={xPostStatus}
                 onDraftChange={(v) => { setEditedXDraft(v); setSavedPostId(null); }}
                 onHeadlineChange={(v) => { setEditedXHeadline(v); setSavedPostId(null); }}
                 charLimit={280}
