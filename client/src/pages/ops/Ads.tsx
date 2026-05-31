@@ -302,6 +302,10 @@ export default function Ads() {
     onError: (err) => toast.error(err.message),
   });
 
+  const regeneratePlatformMutation = trpc.ops.socialPosts.regeneratePlatform.useMutation({
+    onError: (err) => toast.error(err.message),
+  });
+
   const generateAllMutation = trpc.ops.socialPosts.generateForAll.useMutation({
     onSuccess: (data) => {
       setGeneratedAll(data);
@@ -518,9 +522,16 @@ export default function Ads() {
     const postId = await ensureSaved();
     if (!postId) { toast.error("Could not save post. Try again."); return; }
     const scheduledAt = new Date(`${scheduledDate}T${scheduledTime}:00`).toISOString();
-    const platforms: ("facebook" | "instagram")[] = (platform === "both" || platform === "x" || platform === "all")
-      ? ["facebook", "instagram"]
-      : [platform as "facebook" | "instagram"];
+    let platforms: ("facebook" | "instagram" | "x")[];
+    if (platform === "all") {
+      platforms = ["facebook", "instagram", "x"];
+    } else if (platform === "both") {
+      platforms = ["facebook", "instagram"];
+    } else if (platform === "x") {
+      platforms = ["x"];
+    } else {
+      platforms = [platform as "facebook" | "instagram"];
+    }
     schedulePostMutation.mutate({ id: postId, scheduledAt, platforms });
   }
 
@@ -716,10 +727,27 @@ export default function Ads() {
                 onDraftChange={(v) => { setEditedFbDraft(v); setSavedPostId(null); }}
                 onHeadlineChange={(v) => { setEditedFbHeadline(v); setSavedPostId(null); }}
               >
-                <Button onClick={() => handlePostAllPlatform("facebook")} disabled={isPosting}
-                  className="gap-2 bg-[#1877F2] hover:bg-[#166FE5] text-white border-0 w-full sm:w-auto">
-                  <Facebook size={14} />{fbMutation.isPending ? "Posting..." : "Post to Facebook"}
-                </Button>
+                <div className="flex flex-wrap gap-2">
+                  <Button onClick={() => handlePostAllPlatform("facebook")} disabled={isPosting}
+                    className="gap-2 bg-[#1877F2] hover:bg-[#166FE5] text-white border-0">
+                    <Facebook size={14} />{fbMutation.isPending ? "Posting..." : "Post to Facebook"}
+                  </Button>
+                  <Button variant="outline" size="sm"
+                    disabled={regeneratePlatformMutation.isPending}
+                    onClick={async () => {
+                      const result = await regeneratePlatformMutation.mutateAsync({
+                        platform: "facebook", adType, tone,
+                        jobDescription: jobDescription.trim() || undefined,
+                      });
+                      setEditedFbDraft(result.draft);
+                      setEditedFbHeadline(result.headline);
+                      setSavedPostId(null);
+                    }}
+                    className="gap-1.5 text-muted-foreground">
+                    <RefreshCw size={12} className={regeneratePlatformMutation.isPending ? "animate-spin" : ""} />
+                    Regenerate
+                  </Button>
+                </div>
               </PlatformCopyPanel>
 
               {/* Instagram */}
@@ -732,12 +760,29 @@ export default function Ads() {
                 onDraftChange={(v) => { setEditedIgDraft(v); setSavedPostId(null); }}
                 onHeadlineChange={(v) => { setEditedIgHeadline(v); setSavedPostId(null); }}
               >
-                <div className="space-y-1">
-                  <Button onClick={() => handlePostAllPlatform("instagram")} disabled={isPosting || !activeImageUrl}
-                    className="gap-2 bg-gradient-to-r from-[#833AB4] via-[#FD1D1D] to-[#FCAF45] text-white border-0 w-full sm:w-auto"
-                    title={!activeImageUrl ? "Instagram requires an image" : undefined}>
-                    <Instagram size={14} />{igMutation.isPending ? "Posting..." : "Post to Instagram"}
-                  </Button>
+                <div className="space-y-2">
+                  <div className="flex flex-wrap gap-2">
+                    <Button onClick={() => handlePostAllPlatform("instagram")} disabled={isPosting || !activeImageUrl}
+                      className="gap-2 bg-gradient-to-r from-[#833AB4] via-[#FD1D1D] to-[#FCAF45] text-white border-0"
+                      title={!activeImageUrl ? "Instagram requires an image" : undefined}>
+                      <Instagram size={14} />{igMutation.isPending ? "Posting..." : "Post to Instagram"}
+                    </Button>
+                    <Button variant="outline" size="sm"
+                      disabled={regeneratePlatformMutation.isPending}
+                      onClick={async () => {
+                        const result = await regeneratePlatformMutation.mutateAsync({
+                          platform: "instagram", adType, tone,
+                          jobDescription: jobDescription.trim() || undefined,
+                        });
+                        setEditedIgDraft(result.draft);
+                        setEditedIgHeadline(result.headline);
+                        setSavedPostId(null);
+                      }}
+                      className="gap-1.5 text-muted-foreground">
+                      <RefreshCw size={12} className={regeneratePlatformMutation.isPending ? "animate-spin" : ""} />
+                      Regenerate
+                    </Button>
+                  </div>
                   {!activeImageUrl && (
                     <p className="text-xs text-amber-400">Upload a photo to enable Instagram posting.</p>
                   )}
@@ -755,10 +800,28 @@ export default function Ads() {
                 onHeadlineChange={(v) => { setEditedXHeadline(v); setSavedPostId(null); }}
                 charLimit={280}
               >
-                <Button onClick={() => handlePostAllPlatform("x")} disabled={isPosting}
-                  className="gap-2 bg-black hover:bg-gray-900 text-white border-0 w-full sm:w-auto">
-                  <Twitter size={14} />{xMutation.isPending ? "Posting..." : "Post to X"}
-                </Button>
+                <div className="flex flex-wrap gap-2">
+                  <Button onClick={() => handlePostAllPlatform("x")} disabled={isPosting || editedXDraft.length > 280}
+                    className="gap-2 bg-black hover:bg-gray-900 text-white border-0"
+                    title={editedXDraft.length > 280 ? "Trim copy to under 280 characters before posting" : undefined}>
+                    <Twitter size={14} />{xMutation.isPending ? "Posting..." : "Post to X"}
+                  </Button>
+                  <Button variant="outline" size="sm"
+                    disabled={regeneratePlatformMutation.isPending}
+                    onClick={async () => {
+                      const result = await regeneratePlatformMutation.mutateAsync({
+                        platform: "x", adType, tone,
+                        jobDescription: jobDescription.trim() || undefined,
+                      });
+                      setEditedXDraft(result.draft);
+                      setEditedXHeadline(result.headline);
+                      setSavedPostId(null);
+                    }}
+                    className="gap-1.5 text-muted-foreground">
+                    <RefreshCw size={12} className={regeneratePlatformMutation.isPending ? "animate-spin" : ""} />
+                    Regenerate
+                  </Button>
+                </div>
               </PlatformCopyPanel>
             </div>
 

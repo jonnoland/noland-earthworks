@@ -1483,3 +1483,10 @@
 - [x] Show three separate editable copy panels (FB, IG, X) when "All Three" is selected
 - [x] Each panel has its own post button and character count for X
 - [x] "Post to All Three" button uses the per-platform drafts when in All Three mode
+
+## Ads — Per-Platform Enhancements — May 2026
+
+- [x] Add regeneratePlatform tRPC procedure that re-generates copy for a single platform (fb/ig/x) independently
+- [x] Add Regenerate button to each platform panel in All Three mode
+- [x] Extend scheduler panel to include X (Twitter) scheduling alongside Facebook and Instagram
+- [x] Add visual warning (red border + char count badge) on X draft panel when edited text exceeds 280 characters

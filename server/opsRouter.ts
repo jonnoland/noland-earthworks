@@ -2680,10 +2680,69 @@ const socialPostsRouter = router({
         instagram: { draft: parsed.instagram.draft, headline: parsed.instagram.headline },
         x: { draft: parsed.x.draft, headline: parsed.x.headline },
         imagePrompt: parsed.imagePrompt,
-        imageUrl,
+                imageUrl,
       };
     }),
-
+  /** Re-generate copy for a single platform without touching the other two */
+  regeneratePlatform: ownerProcedure
+    .input(z.object({
+      platform: z.enum(["facebook", "instagram", "x"]),
+      adType: z.enum(["before_after", "problem_solution", "education", "seasonal_urgency", "veteran_trust", "reclaim_your_land", "specific_use_case", "general"]).default("general"),
+      tone: z.enum(["professional", "casual", "urgent"]).default("casual"),
+      jobDescription: z.string().optional(),
+    }))
+    .mutation(async ({ input }) => {
+      const toneMap: Record<string, string> = {
+        professional: "Tone: professional and direct.",
+        casual: "Tone: casual, warm, southern hospitality — like Jon talking to a neighbor.",
+        urgent: "Tone: urgent but not pushy — the calendar is filling up.",
+      };
+      const adTypeInstructions: Record<string, string> = {
+        problem_solution: "Ad type: Problem/Solution. Hook with a specific problem a Middle Tennessee landowner faces. Then present forestry mulching as the clean, fast solution.",
+        education: "Ad type: Education. Explain what forestry mulching actually is and why it beats bush hogging or bulldozing.",
+        seasonal_urgency: "Ad type: Seasonal Urgency. Fall and winter are the best time to clear — dormant vegetation, firmer ground, better visibility.",
+        veteran_trust: "Ad type: Veteran-Owned Trust. Lead with the veteran-owned identity.",
+        reclaim_your_land: "Ad type: Reclaim Your Land. Emotional angle — the landowner bought this property for a reason and it has gotten away from them.",
+        specific_use_case: "Ad type: Specific Use Case. Pick one: pasture reclamation, fence line clearing, lot clearing, or right-of-way clearing.",
+        general: "Ad type: Choose the best angle based on what performs well for land clearing companies.",
+      };
+      const platformInstructions: Record<string, string> = {
+        facebook: "Write a Facebook post: conversational, up to 150 words, 2-3 hashtags max, end with a direct CTA (call, text, or visit nolandearthworks.com).",
+        instagram: "Write an Instagram caption: visual-first, under 100 words, 3-5 relevant hashtags, end with a direct CTA.",
+        x: "Write an X (Twitter) post: punchy, MUST be under 280 characters total including hashtags, 1-2 hashtags max, end with a direct CTA.",
+      };
+      const jobContext = input.jobDescription
+        ? `Base the ad on this specific job or context: ${input.jobDescription}`
+        : `No specific job provided. Draw on Noland Earthworks services — forestry mulching, land clearing, brush removal, pasture reclamation, fence line clearing, right-of-way clearing in Middle & West Tennessee.`;
+      const result = await invokeLLM({
+        messages: [
+          {
+            role: "system",
+            content: `You write social media ads for Jon Noland, owner of Noland Earthworks, LLC — a veteran-owned land management and forestry mulching company in Middle & West Tennessee. ${toneMap[input.tone]} ${adTypeInstructions[input.adType]} ${platformInstructions[input.platform]} Rules: No emojis. No corporate jargon. No banned phrases: "solutions", "industry-leading", "best-in-class", "we are passionate", "dedicated team", "we strive to", "cutting-edge". Sound like a real person who does this work. Return JSON with draft (the post body) and headline (max 8 words).`,
+          },
+          { role: "user", content: jobContext },
+        ],
+        response_format: {
+          type: "json_schema",
+          json_schema: {
+            name: "single_platform_ad",
+            strict: true,
+            schema: {
+              type: "object",
+              properties: {
+                draft: { type: "string", description: "Post body" },
+                headline: { type: "string", description: "Short headline, max 8 words" },
+              },
+              required: ["draft", "headline"],
+              additionalProperties: false,
+            },
+          },
+        },
+      });
+      const content = result.choices?.[0]?.message?.content ?? "{}";
+      const parsed = JSON.parse(typeof content === "string" ? content : JSON.stringify(content));
+      return { draft: parsed.draft ?? "", headline: parsed.headline ?? "" };
+    }),
   /** Save a generated post to history */
   savePost: ownerProcedure
     .input(z.object({
@@ -2738,17 +2797,21 @@ const socialPostsRouter = router({
     .input(z.object({
       id: z.number().int().positive(),
       scheduledAt: z.string(), // ISO datetime string
-      platforms: z.array(z.enum(["facebook", "instagram"])).min(1),
+      platforms: z.array(z.enum(["facebook", "instagram", "x"])).min(1),
     }))
     .mutation(async ({ ctx, input }) => {
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
       const { socialPosts } = await import("../drizzle/schema");
+      // Determine the canonical platform string for storage
+      const hasAll = input.platforms.includes("facebook") && input.platforms.includes("instagram") && input.platforms.includes("x");
+      const hasBoth = input.platforms.includes("facebook") && input.platforms.includes("instagram") && !input.platforms.includes("x");
+      const platformValue = hasAll ? "all" : hasBoth ? "both" : input.platforms[0];
       await db.update(socialPosts)
         .set({
           scheduledAt: new Date(input.scheduledAt),
           status: "scheduled",
-          platform: input.platforms.length === 2 ? "both" : input.platforms[0],
+          platform: platformValue,
         })
         .where(and(eq(socialPosts.id, input.id), eq(socialPosts.userId, ctx.user.id)));
       return { success: true };
