@@ -1508,3 +1508,7 @@
 - [x] Update generate and generateForAll procedures in opsRouter to accept adTypes array and blend them in the LLM prompt
 - [x] Update regeneratePlatform procedure to accept adTypes array
 - [x] Update all mutation calls in Ads.tsx to pass adTypes array instead of single adType
+- [x] Add automated Instagram token refresh (project-level Heartbeat cron, runs weekly, refreshes 60-day token before expiry)
+- [x] Add /api/scheduled/instagram-token-refresh endpoint to handle the refresh
+- [ ] Walk through Meta App Review process requirements
+- [ ] Test live Instagram post from ops dashboard
