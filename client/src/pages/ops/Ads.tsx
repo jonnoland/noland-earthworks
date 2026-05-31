@@ -193,6 +193,7 @@ function PlatformCopyPanel({
   onDraftChange,
   onHeadlineChange,
   charLimit,
+  tone,
   children,
 }: {
   icon: React.ReactNode;
@@ -203,6 +204,7 @@ function PlatformCopyPanel({
   onDraftChange: (v: string) => void;
   onHeadlineChange: (v: string) => void;
   charLimit?: number;
+  tone?: string;
   children?: React.ReactNode;
 }) {
   return (
@@ -210,11 +212,17 @@ function PlatformCopyPanel({
       <div className="flex items-center gap-2">
         {icon}
         <span className="text-sm font-semibold">{label}</span>
+        {tone && (
+          <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-muted text-muted-foreground uppercase tracking-wide">
+            {tone}
+          </span>
+        )}
         {charLimit && (
           <span className={cn("ml-auto text-xs font-mono", draft.length > charLimit ? "text-red-400" : "text-muted-foreground")}>
             {draft.length}/{charLimit}
           </span>
         )}
+        {charLimit && !tone && <span className="flex-1" />}
       </div>
       <div className="space-y-2">
         <input
@@ -724,6 +732,7 @@ export default function Ads() {
                 accentClass="border-blue-400/20 bg-blue-400/5"
                 draft={editedFbDraft}
                 headline={editedFbHeadline}
+                tone={tone}
                 onDraftChange={(v) => { setEditedFbDraft(v); setSavedPostId(null); }}
                 onHeadlineChange={(v) => { setEditedFbHeadline(v); setSavedPostId(null); }}
               >
@@ -757,6 +766,7 @@ export default function Ads() {
                 accentClass="border-pink-400/20 bg-pink-400/5"
                 draft={editedIgDraft}
                 headline={editedIgHeadline}
+                tone={tone}
                 onDraftChange={(v) => { setEditedIgDraft(v); setSavedPostId(null); }}
                 onHeadlineChange={(v) => { setEditedIgHeadline(v); setSavedPostId(null); }}
               >
@@ -796,6 +806,7 @@ export default function Ads() {
                 accentClass="border-sky-400/20 bg-sky-400/5"
                 draft={editedXDraft}
                 headline={editedXHeadline}
+                tone={tone}
                 onDraftChange={(v) => { setEditedXDraft(v); setSavedPostId(null); }}
                 onHeadlineChange={(v) => { setEditedXHeadline(v); setSavedPostId(null); }}
                 charLimit={280}

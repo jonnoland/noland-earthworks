@@ -1490,3 +1490,7 @@
 - [x] Add Regenerate button to each platform panel in All Three mode
 - [x] Extend scheduler panel to include X (Twitter) scheduling alongside Facebook and Instagram
 - [x] Add visual warning (red border + char count badge) on X draft panel when edited text exceeds 280 characters
+
+## Ads — Tone Badge on Platform Panels — May 2026
+
+- [x] Add tone preview badge to each PlatformCopyPanel header in All Three mode showing Casual / Professional
