@@ -228,6 +228,17 @@ export default function Ads() {
     onError: (err) => toast.error(`X: ${err.message}`),
   });
 
+  const allMutation = trpc.ops.socialPosts.publishToAll.useMutation({
+    onSuccess: (data) => {
+      utils.ops.socialPosts.list.invalidate();
+      const ok = [data.facebook?.success && "Facebook", data.instagram?.success && "Instagram", data.x?.success && "X"].filter(Boolean);
+      const fail = [!data.facebook?.success && "Facebook", !data.instagram?.success && "Instagram", !data.x?.success && "X"].filter(Boolean);
+      if (ok.length) toast.success(`Posted to ${ok.join(", ")}.`);
+      if (fail.length) toast.error(`Failed on ${fail.join(", ")} — check each platform's connection.`);
+    },
+    onError: (err) => toast.error(`Post to all failed: ${err.message}`),
+  });
+
   const deleteMutation = trpc.ops.socialPosts.delete.useMutation({
     onSuccess: () => {
       utils.ops.socialPosts.list.invalidate();
@@ -287,9 +298,13 @@ export default function Ads() {
     return saved.id;
   }
 
-  async function handlePost(target: "facebook" | "instagram" | "x" | "both") {
+  async function handlePost(target: "facebook" | "instagram" | "x" | "both" | "all") {
     const postId = await ensureSaved();
     if (!postId) { toast.error("Could not save post. Try again."); return; }
+    if (target === "all") {
+      allMutation.mutate({ postId, message: editedDraft, imageUrl: activeImageUrl ?? undefined });
+      return;
+    }
     if (target === "facebook" || target === "both") {
       fbMutation.mutate({ postId, message: editedDraft, imageUrl: activeImageUrl ?? undefined });
     }
@@ -314,7 +329,7 @@ export default function Ads() {
     schedulePostMutation.mutate({ id: postId, scheduledAt, platforms });
   }
 
-  const isPosting = fbMutation.isPending || igMutation.isPending || xMutation.isPending || saveMutation.isPending;
+  const isPosting = fbMutation.isPending || igMutation.isPending || xMutation.isPending || allMutation.isPending || saveMutation.isPending;
 
   return (
     <DashboardLayout>
@@ -548,6 +563,16 @@ export default function Ads() {
                   <Send size={14} />{isPosting ? "Posting..." : "Post to Both"}
                 </Button>
               )}
+
+              {/* Post to All Three — always visible when content is generated */}
+              <Button
+                onClick={() => handlePost("all")}
+                disabled={isPosting}
+                className="gap-2 bg-gradient-to-r from-[#1877F2] via-[#833AB4] to-black text-white border-0 hover:opacity-90"
+                title="Post to Facebook, Instagram, and X simultaneously"
+              >
+                <Send size={14} />{allMutation.isPending ? "Posting to all..." : "Post to All Three"}
+              </Button>
 
               {/* Schedule button */}
               <Button variant="outline" onClick={() => setShowScheduler(!showScheduler)}

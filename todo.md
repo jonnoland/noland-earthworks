@@ -1449,3 +1449,8 @@
 - [x] Update ad history rows to show X post badge/link when posted
 - [x] Add TWITTER_CLIENT_ID and TWITTER_CLIENT_SECRET secrets
 - [x] Write vitest for X OAuth token storage and publishToX procedure (covered by opsRouter.test.ts)
+
+## Ads — Post to All Three (FB + IG + X simultaneously)
+- [x] Add publishToAll tRPC procedure that calls FB, IG, and X in parallel and returns per-platform results
+- [x] Add "Post to All Three" button to Ads page UI (disabled if no platforms connected)
+- [x] Show per-platform success/fail badges after posting to all three

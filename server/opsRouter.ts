@@ -2859,6 +2859,135 @@ const socialPostsRouter = router({
     return { success: true };
   }),
 
+  /** Publish to Facebook, Instagram, and X simultaneously */
+  publishToAll: ownerProcedure
+    .input(z.object({
+      postId: z.number().int().positive(),
+      message: z.string(),
+      imageUrl: z.string().optional(),
+    }))
+    .mutation(async ({ input }) => {
+      const results: {
+        facebook?: { success: boolean; postId?: string; error?: string };
+        instagram?: { success: boolean; postId?: string; error?: string };
+        x?: { success: boolean; postId?: string; error?: string };
+      } = {};
+
+      // --- Facebook ---
+      try {
+        const pageId = ENV.facebookPageId;
+        const accessToken = ENV.facebookPageAccessToken;
+        if (!pageId || !accessToken) throw new Error("Facebook credentials not configured");
+        let fbPostId: string;
+        if (input.imageUrl) {
+          const r = await fetch(`https://graph.facebook.com/v20.0/${pageId}/photos`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ url: input.imageUrl, caption: input.message, access_token: accessToken }),
+          });
+          const d = await r.json() as any;
+          if (!r.ok || d.error) throw new Error(d.error?.message ?? "FB photo post failed");
+          fbPostId = d.post_id ?? d.id;
+        } else {
+          const r = await fetch(`https://graph.facebook.com/v20.0/${pageId}/feed`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ message: input.message, access_token: accessToken }),
+          });
+          const d = await r.json() as any;
+          if (!r.ok || d.error) throw new Error(d.error?.message ?? "FB feed post failed");
+          fbPostId = d.id;
+        }
+        const db = await getDb();
+        if (db) {
+          const { socialPosts } = await import("../drizzle/schema");
+          await db.update(socialPosts).set({ fbPostId, published: true, postedAt: new Date() }).where(eq(socialPosts.id, input.postId));
+        }
+        results.facebook = { success: true, postId: fbPostId };
+      } catch (err: any) {
+        results.facebook = { success: false, error: err.message ?? "Unknown error" };
+      }
+
+      // --- Instagram ---
+      try {
+        const pageId = ENV.facebookPageId;
+        const accessToken = ENV.facebookPageAccessToken;
+        if (!pageId || !accessToken) throw new Error("Facebook credentials not configured");
+        if (!input.imageUrl) throw new Error("Instagram requires an image");
+        const igAccountRes = await fetch(`https://graph.facebook.com/v20.0/${pageId}?fields=instagram_business_account&access_token=${accessToken}`);
+        const igAccountData = await igAccountRes.json() as any;
+        const igAccountId = igAccountData?.instagram_business_account?.id;
+        if (!igAccountId) throw new Error("No Instagram Business Account linked to this Facebook Page");
+        const containerRes = await fetch(`https://graph.facebook.com/v20.0/${igAccountId}/media`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ image_url: input.imageUrl, caption: input.message, access_token: accessToken }),
+        });
+        const containerData = await containerRes.json() as any;
+        if (!containerRes.ok || containerData.error) throw new Error(containerData.error?.message ?? "IG container error");
+        const publishRes = await fetch(`https://graph.facebook.com/v20.0/${igAccountId}/media_publish`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ creation_id: containerData.id, access_token: accessToken }),
+        });
+        const publishData = await publishRes.json() as any;
+        if (!publishRes.ok || publishData.error) throw new Error(publishData.error?.message ?? "IG publish error");
+        const igPostId = publishData.id;
+        const db = await getDb();
+        if (db) {
+          const { socialPosts } = await import("../drizzle/schema");
+          await db.update(socialPosts).set({ igPostId, published: true, postedAt: new Date() }).where(eq(socialPosts.id, input.postId));
+        }
+        results.instagram = { success: true, postId: igPostId };
+      } catch (err: any) {
+        results.instagram = { success: false, error: err.message ?? "Unknown error" };
+      }
+
+      // --- X ---
+      try {
+        const { getXAccessToken } = await import("./xRoutes");
+        const xToken = await getXAccessToken();
+        if (!xToken) throw new Error("X account not connected");
+        let mediaId: string | undefined;
+        if (input.imageUrl) {
+          try {
+            const imgRes = await fetch(input.imageUrl);
+            if (imgRes.ok) {
+              const imgBuffer = Buffer.from(await imgRes.arrayBuffer());
+              const contentType = imgRes.headers.get("content-type") ?? "image/jpeg";
+              const uploadRes = await fetch("https://upload.twitter.com/1.1/media/upload.json", {
+                method: "POST",
+                headers: { Authorization: `Bearer ${xToken}`, "Content-Type": "application/x-www-form-urlencoded" },
+                body: new URLSearchParams({ media_data: imgBuffer.toString("base64"), media_type: contentType }).toString(),
+              });
+              const uploadData = await uploadRes.json() as any;
+              if (uploadData.media_id_string) mediaId = uploadData.media_id_string;
+            }
+          } catch { /* post text-only if image upload fails */ }
+        }
+        const tweetBody: Record<string, unknown> = { text: input.message };
+        if (mediaId) tweetBody.media = { media_ids: [mediaId] };
+        const tweetRes = await fetch("https://api.twitter.com/2/tweets", {
+          method: "POST",
+          headers: { Authorization: `Bearer ${xToken}`, "Content-Type": "application/json" },
+          body: JSON.stringify(tweetBody),
+        });
+        const tweetData = await tweetRes.json() as any;
+        if (!tweetRes.ok || tweetData.errors) throw new Error(tweetData.errors?.[0]?.message ?? tweetData.detail ?? "X post failed");
+        const xPostId = tweetData.data?.id as string | undefined;
+        const db = await getDb();
+        if (db && xPostId) {
+          const { socialPosts } = await import("../drizzle/schema");
+          await db.update(socialPosts).set({ xPostId, published: true, postedAt: new Date() }).where(eq(socialPosts.id, input.postId));
+        }
+        results.x = { success: true, postId: xPostId };
+      } catch (err: any) {
+        results.x = { success: false, error: err.message ?? "Unknown error" };
+      }
+
+      return results;
+    }),
+
   /** List saved posts */
   list: ownerProcedure.query(async ({ ctx }) => {
     const db = await getDb();
