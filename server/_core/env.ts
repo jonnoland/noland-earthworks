@@ -34,6 +34,11 @@ export const ENV = {
   // Noland Field mobile app PIN — protects field quote endpoints from unauthorized access.
   // Set via FIELD_APP_PIN secret. If unset, defaults to "0000" in dev; blocks access in production.
   fieldAppPin: process.env.FIELD_APP_PIN ?? "",
+  // Instagram API (new Instagram Login API) — for direct Instagram content publishing
+  instagramAppId: process.env.INSTAGRAM_APP_ID ?? "2397741357399827",
+  instagramAppSecret: process.env.INSTAGRAM_APP_SECRET ?? "",
+  instagramAccessToken: process.env.INSTAGRAM_ACCESS_TOKEN ?? "",
+  instagramUserId: process.env.INSTAGRAM_USER_ID ?? "27187698034196564",
   // X (Twitter) OAuth 2.0 credentials (kept for reference, no longer used for posting)
   twitterClientId: process.env.TWITTER_CLIENT_ID ?? "",
   twitterClientSecret: process.env.TWITTER_CLIENT_SECRET ?? "",

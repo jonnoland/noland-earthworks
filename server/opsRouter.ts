@@ -2881,7 +2881,7 @@ const socialPostsRouter = router({
       return { success: true, fbPostId, url: `https://www.facebook.com/${pageId}/posts/${fbPostId.split("_")[1] ?? fbPostId}` };
     }),
 
-  /** Publish a post to Instagram (via Facebook Graph API) */
+  /** Publish a post to Instagram (via new Instagram Login API) */
   publishToInstagram: ownerProcedure
     .input(z.object({
       postId: z.number().int().positive(),
@@ -2889,24 +2889,14 @@ const socialPostsRouter = router({
       imageUrl: z.string(),
     }))
     .mutation(async ({ ctx, input }) => {
-      const pageId = ENV.facebookPageId;
-      const accessToken = ENV.facebookPageAccessToken;
-      if (!pageId || !accessToken) {
-        throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Facebook Page credentials not configured." });
+      const igUserId = ENV.instagramUserId;
+      const accessToken = ENV.instagramAccessToken;
+      if (!igUserId || !accessToken) {
+        throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Instagram credentials not configured. Set INSTAGRAM_ACCESS_TOKEN and INSTAGRAM_USER_ID." });
       }
 
-      // Step 1: Get Instagram Business Account ID from the Facebook Page
-      const igAccountRes = await fetch(
-        `https://graph.facebook.com/v20.0/${pageId}?fields=instagram_business_account&access_token=${accessToken}`
-      );
-      const igAccountData = await igAccountRes.json() as any;
-      const igAccountId = igAccountData?.instagram_business_account?.id;
-      if (!igAccountId) {
-        throw new TRPCError({ code: "PRECONDITION_FAILED", message: "No Instagram Business Account linked to this Facebook Page. Connect Instagram in Facebook Page Settings." });
-      }
-
-      // Step 2: Create media container
-      const containerRes = await fetch(`https://graph.facebook.com/v20.0/${igAccountId}/media`, {
+      // Step 1: Create media container using the new Instagram Graph API
+      const containerRes = await fetch(`https://graph.instagram.com/v21.0/${igUserId}/media`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -2921,8 +2911,8 @@ const socialPostsRouter = router({
       }
       const containerId = containerData.id;
 
-      // Step 3: Publish the container
-      const publishRes = await fetch(`https://graph.facebook.com/v20.0/${igAccountId}/media_publish`, {
+      // Step 2: Publish the container
+      const publishRes = await fetch(`https://graph.instagram.com/v21.0/${igUserId}/media_publish`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -3059,22 +3049,18 @@ const socialPostsRouter = router({
 
       // --- Instagram ---
       try {
-        const pageId = ENV.facebookPageId;
-        const accessToken = ENV.facebookPageAccessToken;
-        if (!pageId || !accessToken) throw new Error("Facebook credentials not configured");
+        const igUserId = ENV.instagramUserId;
+        const accessToken = ENV.instagramAccessToken;
+        if (!igUserId || !accessToken) throw new Error("Instagram credentials not configured. Set INSTAGRAM_ACCESS_TOKEN.");
         if (!input.imageUrl) throw new Error("Instagram requires an image");
-        const igAccountRes = await fetch(`https://graph.facebook.com/v20.0/${pageId}?fields=instagram_business_account&access_token=${accessToken}`);
-        const igAccountData = await igAccountRes.json() as any;
-        const igAccountId = igAccountData?.instagram_business_account?.id;
-        if (!igAccountId) throw new Error("No Instagram Business Account linked to this Facebook Page");
-        const containerRes = await fetch(`https://graph.facebook.com/v20.0/${igAccountId}/media`, {
+        const containerRes = await fetch(`https://graph.instagram.com/v21.0/${igUserId}/media`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ image_url: input.imageUrl, caption: input.message, access_token: accessToken }),
         });
         const containerData = await containerRes.json() as any;
         if (!containerRes.ok || containerData.error) throw new Error(containerData.error?.message ?? "IG container error");
-        const publishRes = await fetch(`https://graph.facebook.com/v20.0/${igAccountId}/media_publish`, {
+        const publishRes = await fetch(`https://graph.instagram.com/v21.0/${igUserId}/media_publish`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ creation_id: containerData.id, access_token: accessToken }),
@@ -3244,11 +3230,9 @@ export const opsRouter = router({
    * X: verifies all four OAuth 1.0a env vars are present and calls verify_credentials.
    */
   platformConnectionStatus: ownerProcedure.query(async () => {
-    // ── Facebook / Instagram ──────────────────────────────────────────────
+    // ── Facebook ─────────────────────────────────────────────────────────
     let facebookOk = false;
     let facebookHandle: string | null = null;
-    let instagramOk = false;
-    let instagramHandle: string | null = null;
     let facebookError: string | null = null;
 
     const fbToken = ENV.facebookPageAccessToken;
@@ -3257,21 +3241,12 @@ export const opsRouter = router({
     if (fbToken && fbPageId) {
       try {
         const fbRes = await fetch(
-          `https://graph.facebook.com/v20.0/${fbPageId}?fields=name,connected_instagram_account{username}&access_token=${fbToken}`
+          `https://graph.facebook.com/v20.0/${fbPageId}?fields=name&access_token=${fbToken}`
         );
         const fbData = await fbRes.json() as any;
         if (fbRes.ok && !fbData.error) {
           facebookOk = true;
           facebookHandle = fbData.name ?? null;
-          const igAccount = fbData.connected_instagram_account;
-          if (igAccount?.username) {
-            instagramOk = true;
-            instagramHandle = `@${igAccount.username}`;
-          } else {
-            // Instagram may still work for posting even without a linked IG account returned here
-            instagramOk = true;
-            instagramHandle = "@nolandearthworks";
-          }
         } else {
           facebookError = fbData.error?.message ?? "Token invalid or expired";
         }
@@ -3280,6 +3255,33 @@ export const opsRouter = router({
       }
     } else {
       facebookError = "Credentials not configured";
+    }
+
+    // ── Instagram (new Instagram Login API) ──────────────────────────────
+    let instagramOk = false;
+    let instagramHandle: string | null = null;
+    let instagramError: string | null = null;
+
+    const igToken = ENV.instagramAccessToken;
+    const igUserId = ENV.instagramUserId;
+
+    if (igToken && igUserId) {
+      try {
+        const igRes = await fetch(
+          `https://graph.instagram.com/v21.0/me?fields=id,username&access_token=${igToken}`
+        );
+        const igData = await igRes.json() as any;
+        if (igRes.ok && !igData.error) {
+          instagramOk = true;
+          instagramHandle = igData.username ? `@${igData.username}` : "@nolandearthworks";
+        } else {
+          instagramError = igData.error?.message ?? "Token invalid or expired";
+        }
+      } catch (e: any) {
+        instagramError = e.message ?? "Network error";
+      }
+    } else {
+      instagramError = "Instagram credentials not configured. Set INSTAGRAM_ACCESS_TOKEN.";
     }
 
     // ── X (Twitter) ──────────────────────────────────────────────────────
@@ -3304,7 +3306,7 @@ export const opsRouter = router({
 
     return {
       facebook: { ok: facebookOk, handle: facebookHandle, error: facebookError },
-      instagram: { ok: instagramOk, handle: instagramHandle, error: facebookError },
+      instagram: { ok: instagramOk, handle: instagramHandle, error: instagramError },
       x: { ok: xOk, handle: xHandle, error: xError },
     };
   }),
