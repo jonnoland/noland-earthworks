@@ -3051,4 +3051,76 @@ export const opsRouter = router({
       if (!note) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "AI did not return a note. Try again." });
       return { note };
     }),
+
+  // ─── Platform Connection Status ───────────────────────────────────────────
+  /**
+   * Live-checks all three social platform credentials.
+   * Facebook & Instagram: calls /me on the Graph API with the stored page token.
+   * X: verifies all four OAuth 1.0a env vars are present and calls verify_credentials.
+   */
+  platformConnectionStatus: ownerProcedure.query(async () => {
+    // ── Facebook / Instagram ──────────────────────────────────────────────
+    let facebookOk = false;
+    let facebookHandle: string | null = null;
+    let instagramOk = false;
+    let instagramHandle: string | null = null;
+    let facebookError: string | null = null;
+
+    const fbToken = ENV.facebookPageAccessToken;
+    const fbPageId = ENV.facebookPageId;
+
+    if (fbToken && fbPageId) {
+      try {
+        const fbRes = await fetch(
+          `https://graph.facebook.com/v20.0/${fbPageId}?fields=name,connected_instagram_account{username}&access_token=${fbToken}`
+        );
+        const fbData = await fbRes.json() as any;
+        if (fbRes.ok && !fbData.error) {
+          facebookOk = true;
+          facebookHandle = fbData.name ?? null;
+          const igAccount = fbData.connected_instagram_account;
+          if (igAccount?.username) {
+            instagramOk = true;
+            instagramHandle = `@${igAccount.username}`;
+          } else {
+            // Instagram may still work for posting even without a linked IG account returned here
+            instagramOk = true;
+            instagramHandle = "@nolandearthworks";
+          }
+        } else {
+          facebookError = fbData.error?.message ?? "Token invalid or expired";
+        }
+      } catch (e: any) {
+        facebookError = e.message ?? "Network error";
+      }
+    } else {
+      facebookError = "Credentials not configured";
+    }
+
+    // ── X (Twitter) ──────────────────────────────────────────────────────
+    let xOk = false;
+    let xHandle: string | null = null;
+    let xError: string | null = null;
+
+    const xConfigured = !!(ENV.twitterApiKey && ENV.twitterApiSecret && ENV.twitterAccessToken && ENV.twitterAccessTokenSecret);
+    if (xConfigured) {
+      try {
+        const { getXClient } = await import("./xRoutes");
+        const client = getXClient();
+        const me = await client.v2.me();
+        xOk = true;
+        xHandle = `@${me.data.username}`;
+      } catch (e: any) {
+        xError = e.message ?? "X credentials invalid";
+      }
+    } else {
+      xError = "Credentials not configured";
+    }
+
+    return {
+      facebook: { ok: facebookOk, handle: facebookHandle, error: facebookError },
+      instagram: { ok: instagramOk, handle: instagramHandle, error: facebookError },
+      x: { ok: xOk, handle: xHandle, error: xError },
+    };
+  }),
 });

@@ -1469,3 +1469,9 @@
 - [x] Remove disabled state from Post to X button (always enabled)
 - [x] Write vitest for X OAuth 1.0a credential presence and /api/x/status endpoint
 - [x] All 93 tests passing, TypeScript clean
+
+## Connection Status Indicator (/ops/ads)
+
+- [x] Add platformConnectionStatus tRPC procedure that live-checks Facebook, Instagram, and X credentials
+- [x] Build visual ConnectionStatusBar component in Ads.tsx showing all three platforms with green/red/amber indicators
+- [x] Replace the single X-only banner with the new three-platform status bar
