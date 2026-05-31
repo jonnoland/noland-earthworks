@@ -2763,7 +2763,7 @@ const socialPostsRouter = router({
       return { success: true, igPostId };
     }),
 
-  /** Publish a post to X (Twitter) */
+  /** Publish a post to X (Twitter) using OAuth 1.0a static credentials */
   publishToX: ownerProcedure
     .input(z.object({
       postId: z.number().int().positive(),
@@ -2771,11 +2771,9 @@ const socialPostsRouter = router({
       imageUrl: z.string().optional(),
     }))
     .mutation(async ({ input }) => {
-      const { getXAccessToken } = await import("./xRoutes");
-      const accessToken = await getXAccessToken();
-      if (!accessToken) {
-        throw new TRPCError({ code: "PRECONDITION_FAILED", message: "X account not connected. Go to Ads and connect your X account." });
-      }
+      const { getXClient } = await import("./xRoutes");
+      const client = getXClient();
+      const rwClient = client.readWrite;
 
       let mediaId: string | undefined;
 
@@ -2786,19 +2784,8 @@ const socialPostsRouter = router({
           if (imgRes.ok) {
             const imgBuffer = Buffer.from(await imgRes.arrayBuffer());
             const contentType = imgRes.headers.get("content-type") ?? "image/jpeg";
-            const uploadRes = await fetch("https://upload.twitter.com/1.1/media/upload.json", {
-              method: "POST",
-              headers: {
-                Authorization: `Bearer ${accessToken}`,
-                "Content-Type": "application/x-www-form-urlencoded",
-              },
-              body: new URLSearchParams({
-                media_data: imgBuffer.toString("base64"),
-                media_type: contentType,
-              }).toString(),
-            });
-            const uploadData = await uploadRes.json() as any;
-            if (uploadData.media_id_string) mediaId = uploadData.media_id_string;
+            const uploadedMedia = await rwClient.v1.uploadMedia(imgBuffer, { mimeType: contentType });
+            mediaId = uploadedMedia;
           }
         } catch (err) {
           console.warn("[X] Image upload failed, posting text-only:", err);
@@ -2806,24 +2793,11 @@ const socialPostsRouter = router({
       }
 
       // Post the tweet
-      const tweetBody: Record<string, unknown> = { text: input.text };
-      if (mediaId) tweetBody.media = { media_ids: [mediaId] };
+      const tweetParams: Record<string, unknown> = {};
+      if (mediaId) tweetParams.media = { media_ids: [mediaId] };
 
-      const tweetRes = await fetch("https://api.twitter.com/2/tweets", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(tweetBody),
-      });
-      const tweetData = await tweetRes.json() as any;
-      if (!tweetRes.ok || tweetData.errors) {
-        const msg = tweetData.errors?.[0]?.message ?? tweetData.detail ?? "X post failed";
-        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: `X post error: ${msg}` });
-      }
-
-      const xPostId = tweetData.data?.id as string | undefined;
+      const tweet = await rwClient.v2.tweet(input.text, tweetParams);
+      const xPostId = tweet.data?.id;
 
       const db = await getDb();
       if (db && xPostId) {
@@ -2836,26 +2810,16 @@ const socialPostsRouter = router({
       return { success: true, xPostId };
     }),
 
-  /** Check X connection status */
-  xStatus: ownerProcedure.query(async () => {
-    try {
-      const db = await getDb();
-      if (!db) return { connected: false, screenName: null };
-      const { xOAuthTokens } = await import("../drizzle/schema");
-      const rows = await db.select().from(xOAuthTokens).where(eq(xOAuthTokens.id, 1)).limit(1);
-      const token = rows[0];
-      return { connected: !!token, screenName: token?.screenName ?? null };
-    } catch {
-      return { connected: false, screenName: null };
-    }
+  /** Check X connection status — always connected via static OAuth 1.0a credentials */
+  xStatus: ownerProcedure.query(() => {
+    const configured = !!(ENV.twitterApiKey && ENV.twitterApiSecret && ENV.twitterAccessToken && ENV.twitterAccessTokenSecret);
+    return { connected: configured, screenName: configured ? "nolandearthwrks" : null };
   }),
 
-  /** Disconnect X account */
-  xDisconnect: ownerProcedure.mutation(async () => {
-    const db = await getDb();
-    if (!db) return { success: false };
-    const { xOAuthTokens } = await import("../drizzle/schema");
-    await db.delete(xOAuthTokens).where(eq(xOAuthTokens.id, 1));
+  /** Disconnect X account — no-op for static credentials (always connected) */
+  xDisconnect: ownerProcedure.mutation(() => {
+    // Static OAuth 1.0a credentials are managed via environment secrets, not per-user tokens.
+    // This procedure is kept for API compatibility but has no effect.
     return { success: true };
   }),
 
@@ -2943,11 +2907,10 @@ const socialPostsRouter = router({
         results.instagram = { success: false, error: err.message ?? "Unknown error" };
       }
 
-      // --- X ---
+      // --- X (OAuth 1.0a) ---
       try {
-        const { getXAccessToken } = await import("./xRoutes");
-        const xToken = await getXAccessToken();
-        if (!xToken) throw new Error("X account not connected");
+        const { getXClient } = await import("./xRoutes");
+        const xClient = getXClient().readWrite;
         let mediaId: string | undefined;
         if (input.imageUrl) {
           try {
@@ -2955,26 +2918,14 @@ const socialPostsRouter = router({
             if (imgRes.ok) {
               const imgBuffer = Buffer.from(await imgRes.arrayBuffer());
               const contentType = imgRes.headers.get("content-type") ?? "image/jpeg";
-              const uploadRes = await fetch("https://upload.twitter.com/1.1/media/upload.json", {
-                method: "POST",
-                headers: { Authorization: `Bearer ${xToken}`, "Content-Type": "application/x-www-form-urlencoded" },
-                body: new URLSearchParams({ media_data: imgBuffer.toString("base64"), media_type: contentType }).toString(),
-              });
-              const uploadData = await uploadRes.json() as any;
-              if (uploadData.media_id_string) mediaId = uploadData.media_id_string;
+              mediaId = await xClient.v1.uploadMedia(imgBuffer, { mimeType: contentType });
             }
           } catch { /* post text-only if image upload fails */ }
         }
-        const tweetBody: Record<string, unknown> = { text: input.message };
-        if (mediaId) tweetBody.media = { media_ids: [mediaId] };
-        const tweetRes = await fetch("https://api.twitter.com/2/tweets", {
-          method: "POST",
-          headers: { Authorization: `Bearer ${xToken}`, "Content-Type": "application/json" },
-          body: JSON.stringify(tweetBody),
-        });
-        const tweetData = await tweetRes.json() as any;
-        if (!tweetRes.ok || tweetData.errors) throw new Error(tweetData.errors?.[0]?.message ?? tweetData.detail ?? "X post failed");
-        const xPostId = tweetData.data?.id as string | undefined;
+        const tweetParams: Record<string, unknown> = {};
+        if (mediaId) tweetParams.media = { media_ids: [mediaId] };
+        const tweet = await xClient.v2.tweet(input.message, tweetParams);
+        const xPostId = tweet.data?.id;
         const db = await getDb();
         if (db && xPostId) {
           const { socialPosts } = await import("../drizzle/schema");

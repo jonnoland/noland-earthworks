@@ -1454,3 +1454,18 @@
 - [x] Add publishToAll tRPC procedure that calls FB, IG, and X in parallel and returns per-platform results
 - [x] Add "Post to All Three" button to Ads page UI (disabled if no platforms connected)
 - [x] Show per-platform success/fail badges after posting to all three
+
+## X.com OAuth 1.0a Migration — May 2026
+- [x] Switch X posting from OAuth 2.0 PKCE (browser flow) to OAuth 1.0a static credentials
+- [x] Store TWITTER_API_KEY, TWITTER_API_SECRET, TWITTER_ACCESS_TOKEN, TWITTER_ACCESS_TOKEN_SECRET as secrets
+- [x] Add OAuth 1.0a env vars to server/_core/env.ts
+- [x] Install twitter-api-v2 npm package
+- [x] Rewrite xRoutes.ts: remove PKCE flow, add getXClient() helper using twitter-api-v2
+- [x] Rewrite publishToX in opsRouter.ts to use OAuth 1.0a via getXClient()
+- [x] Rewrite publishToAll X section in opsRouter.ts to use OAuth 1.0a
+- [x] Simplify xStatus to always return connected: true (static credentials)
+- [x] Make xDisconnect a no-op (static credentials managed via secrets)
+- [x] Update Ads.tsx: remove OAuth callback handler, replace connection banner with always-connected status
+- [x] Remove disabled state from Post to X button (always enabled)
+- [x] Write vitest for X OAuth 1.0a credential presence and /api/x/status endpoint
+- [x] All 93 tests passing, TypeScript clean

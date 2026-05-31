@@ -3,7 +3,7 @@
  * AI-generated Facebook/Instagram/X ad copy + image with one-click posting.
  * Features: photo upload, scheduling, live FB/IG preview, X.com posting.
  */
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
 import { trpc } from "@/lib/trpc";
 import {
@@ -152,14 +152,8 @@ export default function Ads() {
   // Active image: uploaded photo takes priority over AI-generated
   const activeImageUrl = uploadedImageUrl ?? generated?.imageUrl ?? null;
 
-  // X connection status
-  const { data: xStatus } = trpc.ops.socialPosts.xStatus.useQuery();
-  const xDisconnectMutation = trpc.ops.socialPosts.xDisconnect.useMutation({
-    onSuccess: () => {
-      utils.ops.socialPosts.xStatus.invalidate();
-      toast.success("X account disconnected.");
-    },
-  });
+  // X is always connected via static OAuth 1.0a credentials — no browser flow needed
+  const xStatus = { connected: true, screenName: "nolandearthwrks" };
 
   // ─── Mutations ───────────────────────────────────────────────────────────────
   const generateMutation = trpc.ops.socialPosts.generate.useMutation({
@@ -313,7 +307,6 @@ export default function Ads() {
       igMutation.mutate({ postId, caption: editedDraft, imageUrl: activeImageUrl });
     }
     if (target === "x") {
-      if (!xStatus?.connected) { toast.error("Connect your X account first."); return; }
       xMutation.mutate({ postId, text: editedDraft, imageUrl: activeImageUrl ?? undefined });
     }
   }
@@ -343,31 +336,10 @@ export default function Ads() {
           </p>
         </div>
 
-        {/* X connection banner */}
-        <div className={cn(
-          "flex items-center justify-between gap-4 rounded-xl border px-5 py-3.5 text-sm",
-          xStatus?.connected
-            ? "bg-sky-400/5 border-sky-400/20 text-sky-400"
-            : "bg-secondary border-border text-muted-foreground"
-        )}>
-          <div className="flex items-center gap-2.5">
-            <Twitter size={15} />
-            {xStatus?.connected
-              ? <span>X connected{xStatus.screenName ? ` as @${xStatus.screenName}` : ""}</span>
-              : <span>X account not connected — connect to post to X.com</span>
-            }
-          </div>
-          {xStatus?.connected ? (
-            <Button variant="ghost" size="sm" className="text-xs text-muted-foreground hover:text-red-400 h-7 px-3"
-              onClick={() => xDisconnectMutation.mutate()}>
-              Disconnect
-            </Button>
-          ) : (
-            <Button variant="outline" size="sm" className="text-xs gap-1.5 h-7 px-3"
-              onClick={() => window.location.href = "/api/x/authorize"}>
-              <Link2 size={11} /> Connect X
-            </Button>
-          )}
+        {/* X connection status — always connected via static OAuth 1.0a credentials */}
+        <div className="flex items-center gap-2.5 rounded-xl border px-5 py-3.5 text-sm bg-sky-400/5 border-sky-400/20 text-sky-400">
+          <Twitter size={15} />
+          <span>X connected as @nolandearthwrks</span>
         </div>
 
         {/* Generator card */}
@@ -552,9 +524,8 @@ export default function Ads() {
                 </Button>
               )}
               {platform === "x" && (
-                <Button onClick={() => handlePost("x")} disabled={isPosting || !xStatus?.connected}
-                  className="gap-2 bg-black hover:bg-gray-900 text-white border-0"
-                  title={!xStatus?.connected ? "Connect your X account first" : undefined}>
+                <Button onClick={() => handlePost("x")} disabled={isPosting}
+                  className="gap-2 bg-black hover:bg-gray-900 text-white border-0">
                   <Twitter size={14} />{xMutation.isPending ? "Posting..." : "Post to X"}
                 </Button>
               )}
