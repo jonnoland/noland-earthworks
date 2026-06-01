@@ -4,7 +4,7 @@
  * Features: per-platform copy, photo upload, scheduling, live FB/IG preview, X.com posting.
  */
 import { useState, useRef, useMemo } from "react";
-import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend } from "recharts";
+import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend, LineChart, Line, XAxis, YAxis, CartesianGrid } from "recharts";
 import DashboardLayout from "@/components/DashboardLayout";
 import { trpc } from "@/lib/trpc";
 import {
@@ -1398,6 +1398,67 @@ export default function Ads() {
                       })}
                     </div>
                   </div>
+                </div>
+              );
+            })()}
+            {/* Spend Trend Chart */}
+            {(() => {
+              // Group spend by week (Mon–Sun) across all platforms
+              const weekMap: Record<string, number> = {};
+              spendEntries.forEach((e) => {
+                const d = new Date(e.spentAt);
+                // Normalize to Monday of that week
+                const day = d.getDay(); // 0=Sun
+                const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+                const monday = new Date(d.setDate(diff));
+                const key = monday.toISOString().slice(0, 10);
+                weekMap[key] = (weekMap[key] || 0) + e.amountCents;
+              });
+              const trendData = Object.entries(weekMap)
+                .sort(([a], [b]) => a.localeCompare(b))
+                .map(([week, cents]) => ({
+                  week: format(new Date(week), "MMM d"),
+                  spend: cents / 100,
+                }));
+              if (trendData.length < 2) return null;
+              const CustomTrendTooltip = ({ active, payload, label }: any) => {
+                if (!active || !payload?.length) return null;
+                return (
+                  <div className="bg-card border border-border rounded-lg px-3 py-2 shadow-lg">
+                    <p className="text-xs font-semibold text-foreground">{label}</p>
+                    <p className="text-xs text-muted-foreground">${payload[0].value.toFixed(2)}</p>
+                  </div>
+                );
+              };
+              return (
+                <div className="px-6 py-5 border-b border-border">
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-4">Weekly Spend Trend</p>
+                  <ResponsiveContainer width="100%" height={160}>
+                    <LineChart data={trendData} margin={{ top: 4, right: 8, left: -20, bottom: 0 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
+                      <XAxis
+                        dataKey="week"
+                        tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
+                        axisLine={false}
+                        tickLine={false}
+                      />
+                      <YAxis
+                        tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
+                        axisLine={false}
+                        tickLine={false}
+                        tickFormatter={(v) => `$${v}`}
+                      />
+                      <Tooltip content={<CustomTrendTooltip />} />
+                      <Line
+                        type="monotone"
+                        dataKey="spend"
+                        stroke="#E07B2A"
+                        strokeWidth={2}
+                        dot={{ r: 3, fill: "#E07B2A", strokeWidth: 0 }}
+                        activeDot={{ r: 5, fill: "#E07B2A" }}
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
                 </div>
               );
             })()}
