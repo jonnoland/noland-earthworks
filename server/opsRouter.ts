@@ -3243,6 +3243,53 @@ export const opsRouter = router({
    * Facebook & Instagram: calls /me on the Graph API with the stored page token.
    * X: verifies all four OAuth 1.0a env vars are present and calls verify_credentials.
    */
+  // ─── Ad Spend Tracker ──────────────────────────────────────────────────────────────────────────────
+  adSpend: router({
+    /** Return all spend entries, newest first */
+    list: ownerProcedure.query(async () => {
+      const db = await getDb();
+      if (!db) return [];
+      const { adSpend } = await import("../drizzle/schema");
+      const { desc } = await import("drizzle-orm");
+      return db.select().from(adSpend).orderBy(desc(adSpend.spentAt)).limit(500);
+    }),
+
+    /** Log a new spend entry */
+    add: ownerProcedure
+      .input(z.object({
+        platform: z.enum(["facebook", "instagram", "x", "google", "clickgrow", "other"]),
+        component: z.string().min(1).max(100),
+        amountCents: z.number().int().min(1),
+        notes: z.string().max(500).optional(),
+        spentAt: z.date(),
+      }))
+      .mutation(async ({ input }) => {
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+        const { adSpend } = await import("../drizzle/schema");
+        await db.insert(adSpend).values({
+          platform: input.platform,
+          component: input.component,
+          amountCents: input.amountCents,
+          notes: input.notes ?? null,
+          spentAt: input.spentAt,
+        });
+        return { success: true };
+      }),
+
+    /** Delete a spend entry */
+    delete: ownerProcedure
+      .input(z.object({ id: z.number().int().positive() }))
+      .mutation(async ({ input }) => {
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+        const { adSpend } = await import("../drizzle/schema");
+        const { eq } = await import("drizzle-orm");
+        await db.delete(adSpend).where(eq(adSpend.id, input.id));
+        return { success: true };
+      }),
+  }),
+
   platformConnectionStatus: ownerProcedure.query(async () => {
     // ── Facebook ─────────────────────────────────────────────────────────
     let facebookOk = false;

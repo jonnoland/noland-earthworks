@@ -10,6 +10,7 @@ import {
   Sparkles, Send, Facebook, Instagram, Trash2, ExternalLink,
   ImageIcon, RefreshCw, CheckCircle2, Upload, Clock, Calendar,
   ChevronDown, Eye, Twitter, X as XIcon, CalendarClock,
+  DollarSign, Plus, ChevronRight,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -476,6 +477,82 @@ export default function Ads() {
 
   const { data: history = [] } = trpc.ops.socialPosts.list.useQuery();
   const scheduledPosts = history.filter((p) => p.status === "scheduled");
+
+  // ─── Ad Spend Tracker state ──────────────────────────────────────────────────
+  const [showSpendModal, setShowSpendModal] = useState(false);
+  const [spendPlatform, setSpendPlatform] = useState<"facebook" | "instagram" | "x" | "google" | "clickgrow" | "other">("facebook");
+  const [spendComponent, setSpendComponent] = useState("");
+  const [spendAmount, setSpendAmount] = useState("");
+  const [spendNotes, setSpendNotes] = useState("");
+  const [spendDate, setSpendDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [expandedSpendPlatform, setExpandedSpendPlatform] = useState<string | null>(null);
+
+  const { data: spendEntries = [], refetch: refetchSpend } = trpc.ops.adSpend.list.useQuery();
+
+  const addSpendMutation = trpc.ops.adSpend.add.useMutation({
+    onSuccess: () => {
+      utils.ops.adSpend.list.invalidate();
+      toast.success("Spend logged.");
+      setShowSpendModal(false);
+      setSpendComponent("");
+      setSpendAmount("");
+      setSpendNotes("");
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
+  const deleteSpendMutation = trpc.ops.adSpend.delete.useMutation({
+    onSuccess: () => {
+      utils.ops.adSpend.list.invalidate();
+      toast.success("Entry removed.");
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
+  // Aggregate spend by platform
+  const PLATFORMS_ORDER = ["facebook", "instagram", "x", "google", "clickgrow", "other"] as const;
+  const PLATFORM_LABELS: Record<string, string> = {
+    facebook: "Facebook", instagram: "Instagram", x: "X", google: "Google", clickgrow: "ClickGrow", other: "Other",
+  };
+  const PLATFORM_COLORS: Record<string, string> = {
+    facebook: "text-blue-400", instagram: "text-pink-400", x: "text-sky-400",
+    google: "text-yellow-400", clickgrow: "text-green-400", other: "text-muted-foreground",
+  };
+  const PLATFORM_BG: Record<string, string> = {
+    facebook: "bg-blue-400/8 border-blue-400/20", instagram: "bg-pink-400/8 border-pink-400/20",
+    x: "bg-sky-400/8 border-sky-400/20", google: "bg-yellow-400/8 border-yellow-400/20",
+    clickgrow: "bg-green-400/8 border-green-400/20", other: "bg-secondary border-border",
+  };
+
+  const spendByPlatform = PLATFORMS_ORDER.reduce((acc, p) => {
+    const entries = spendEntries.filter((e) => e.platform === p);
+    const totalCents = entries.reduce((s, e) => s + e.amountCents, 0);
+    const byComponent: Record<string, number> = {};
+    entries.forEach((e) => {
+      byComponent[e.component] = (byComponent[e.component] ?? 0) + e.amountCents;
+    });
+    acc[p] = { totalCents, byComponent, entries };
+    return acc;
+  }, {} as Record<string, { totalCents: number; byComponent: Record<string, number>; entries: typeof spendEntries }>);
+
+  const grandTotalCents = spendEntries.reduce((s, e) => s + e.amountCents, 0);
+
+  function fmtDollars(cents: number) {
+    return "$" + (cents / 100).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+
+  function handleLogSpend() {
+    const cents = Math.round(parseFloat(spendAmount) * 100);
+    if (!spendComponent.trim()) { toast.error("Enter a cost component."); return; }
+    if (isNaN(cents) || cents < 1) { toast.error("Enter a valid amount."); return; }
+    addSpendMutation.mutate({
+      platform: spendPlatform,
+      component: spendComponent.trim(),
+      amountCents: cents,
+      notes: spendNotes.trim() || undefined,
+      spentAt: new Date(spendDate + "T12:00:00"),
+    });
+  }
 
   // ─── Handlers ────────────────────────────────────────────────────────────────
   function handleGenerate() {
@@ -1205,6 +1282,201 @@ export default function Ads() {
             </div>
           )}
         </div>
+
+        {/* Ad Spend Tracker */}
+        <div className="bg-card border border-border rounded-xl overflow-hidden">
+          <div className="px-6 py-4 border-b border-border flex items-center justify-between">
+            <div>
+              <h2 className="text-base font-semibold text-foreground flex items-center gap-2">
+                <DollarSign size={16} className="text-green-400" />
+                Ad Spend Tracker
+              </h2>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Track what you spend on each platform and cost component.
+              </p>
+            </div>
+            <div className="flex items-center gap-3">
+              {grandTotalCents > 0 && (
+                <span className="text-sm font-bold text-foreground">{fmtDollars(grandTotalCents)} total</span>
+              )}
+              <Button size="sm" variant="outline" className="gap-1.5" onClick={() => setShowSpendModal(true)}>
+                <Plus size={12} /> Log Spend
+              </Button>
+            </div>
+          </div>
+
+          {spendEntries.length === 0 ? (
+            <div className="px-6 py-8 text-center">
+              <DollarSign size={28} className="text-muted-foreground opacity-30 mx-auto mb-2" />
+              <p className="text-sm text-muted-foreground">No spend logged yet.</p>
+              <p className="text-xs text-muted-foreground mt-1">Click "Log Spend" to record ad costs by platform and component.</p>
+            </div>
+          ) : (
+            <div className="divide-y divide-border">
+              {PLATFORMS_ORDER.filter((p) => spendByPlatform[p].totalCents > 0).map((p) => {
+                const { totalCents, byComponent, entries } = spendByPlatform[p];
+                const isExpanded = expandedSpendPlatform === p;
+                return (
+                  <div key={p}>
+                    {/* Platform summary row */}
+                    <button
+                      onClick={() => setExpandedSpendPlatform(isExpanded ? null : p)}
+                      className="w-full px-6 py-4 flex items-center gap-4 hover:bg-secondary/30 transition-colors text-left"
+                    >
+                      <div className={cn("w-8 h-8 rounded-lg border flex items-center justify-center shrink-0", PLATFORM_BG[p])}>
+                        {p === "facebook" && <Facebook size={13} className={PLATFORM_COLORS[p]} />}
+                        {p === "instagram" && <Instagram size={13} className={PLATFORM_COLORS[p]} />}
+                        {p === "x" && <Twitter size={13} className={PLATFORM_COLORS[p]} />}
+                        {p === "google" && <span className={cn("text-[11px] font-bold", PLATFORM_COLORS[p])}>G</span>}
+                        {p === "clickgrow" && <span className={cn("text-[11px] font-bold", PLATFORM_COLORS[p])}>CG</span>}
+                        {p === "other" && <DollarSign size={13} className={PLATFORM_COLORS[p]} />}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className={cn("text-sm font-semibold", PLATFORM_COLORS[p])}>{PLATFORM_LABELS[p]}</span>
+                          <span className="text-xs text-muted-foreground">{entries.length} {entries.length === 1 ? "entry" : "entries"}</span>
+                        </div>
+                        {/* Component mini-breakdown */}
+                        <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-1">
+                          {Object.entries(byComponent).map(([comp, cents]) => (
+                            <span key={comp} className="text-[11px] text-muted-foreground">
+                              {comp}: <span className="text-foreground font-medium">{fmtDollars(cents)}</span>
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <span className="text-sm font-bold text-foreground">{fmtDollars(totalCents)}</span>
+                        <ChevronRight size={14} className={cn("text-muted-foreground transition-transform", isExpanded && "rotate-90")} />
+                      </div>
+                    </button>
+
+                    {/* Expanded entry list */}
+                    {isExpanded && (
+                      <div className="bg-secondary/20 border-t border-border divide-y divide-border/50">
+                        {entries.map((entry) => (
+                          <div key={entry.id} className="px-8 py-3 flex items-center gap-4">
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2">
+                                <span className="text-sm font-medium text-foreground">{entry.component}</span>
+                                <span className="text-xs font-bold text-foreground">{fmtDollars(entry.amountCents)}</span>
+                              </div>
+                              <div className="flex items-center gap-3 mt-0.5">
+                                <span className="text-[11px] text-muted-foreground">
+                                  {format(new Date(entry.spentAt), "MMM d, yyyy")}
+                                </span>
+                                {entry.notes && (
+                                  <span className="text-[11px] text-muted-foreground italic truncate max-w-xs">{entry.notes}</span>
+                                )}
+                              </div>
+                            </div>
+                            <button
+                              onClick={() => deleteSpendMutation.mutate({ id: entry.id })}
+                              disabled={deleteSpendMutation.isPending}
+                              className="text-muted-foreground hover:text-red-400 transition-colors p-1 shrink-0"
+                              title="Remove entry"
+                            >
+                              <Trash2 size={13} />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* Log Spend Modal */}
+        {showSpendModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+            <div className="bg-card border border-border rounded-xl shadow-xl w-full max-w-md mx-4 p-6 space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-base font-semibold text-foreground">Log Ad Spend</h3>
+                <button onClick={() => setShowSpendModal(false)} className="text-muted-foreground hover:text-foreground transition-colors">
+                  <XIcon size={16} />
+                </button>
+              </div>
+
+              {/* Platform */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Platform</label>
+                <div className="grid grid-cols-3 gap-2">
+                  {PLATFORMS_ORDER.map((p) => (
+                    <button key={p} onClick={() => setSpendPlatform(p)}
+                      className={cn(
+                        "px-3 py-2 rounded-lg border text-xs font-medium transition-colors",
+                        spendPlatform === p
+                          ? cn("border-primary/40 text-primary bg-primary/10")
+                          : "border-border text-muted-foreground hover:text-foreground bg-background"
+                      )}
+                    >
+                      {PLATFORM_LABELS[p]}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Component */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Cost Component</label>
+                <input
+                  type="text"
+                  placeholder="e.g. Boost Post, Monthly Budget, Ad Creation"
+                  value={spendComponent}
+                  onChange={(e) => setSpendComponent(e.target.value)}
+                  className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                />
+              </div>
+
+              {/* Amount + Date */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Amount ($)</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0.01"
+                    placeholder="0.00"
+                    value={spendAmount}
+                    onChange={(e) => setSpendAmount(e.target.value)}
+                    className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Date</label>
+                  <input
+                    type="date"
+                    value={spendDate}
+                    onChange={(e) => setSpendDate(e.target.value)}
+                    className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                  />
+                </div>
+              </div>
+
+              {/* Notes */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Notes (optional)</label>
+                <input
+                  type="text"
+                  placeholder="Campaign name, post reference, etc."
+                  value={spendNotes}
+                  onChange={(e) => setSpendNotes(e.target.value)}
+                  className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                />
+              </div>
+
+              <div className="flex justify-end gap-3 pt-2">
+                <Button variant="outline" size="sm" onClick={() => setShowSpendModal(false)}>Cancel</Button>
+                <Button size="sm" onClick={handleLogSpend} disabled={addSpendMutation.isPending} className="gap-1.5">
+                  <Plus size={12} />{addSpendMutation.isPending ? "Saving..." : "Log Spend"}
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* History */}
         {history.length > 0 && (

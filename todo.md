@@ -1519,4 +1519,13 @@
 - [x] Add cancelSchedule tRPC mutation to opsRouter.socialPosts — resets status to draft, clears scheduledAt
 - [x] Add Scheduled Queue section to Ads page — shows queued posts with scheduled time, platform, image thumbnail, and Cancel button
 - [x] Wire cancelSchedule mutation to Cancel button in Scheduled Queue
-- [ ] Deploy site and create Heartbeat cron (manus-heartbeat create --name publish-ads --cron "0 * * * * *" --path /api/scheduled/publish-ads) to trigger every minute
+- [x] Deploy site and create Heartbeat cron (task_uid: izHpyMhAfE9DRoF8G2gYzR) — fires every minute to publish due scheduled ads
+
+## Ad Spend Tracker — June 1 2026
+- [x] Add ad_spend table to schema (platform, component, amountCents, notes, spentAt)
+- [x] Run database migration to create ad_spend table
+- [x] Add adSpend router to opsRouter (list, add, delete procedures)
+- [x] Build Ad Spend Tracker section on /ops/ads page with per-platform cards
+- [x] Add Log Spend modal (platform, component, amount, date, notes)
+- [x] Add expandable entry list per platform with delete capability
+- [x] Show grand total and per-component breakdown inline on each platform card

@@ -924,6 +924,29 @@ export const socialPosts = mysqlTable("social_posts", {
 export type SocialPost = typeof socialPosts.$inferSelect;
 export type InsertSocialPost = typeof socialPosts.$inferInsert;
 
+// ─── Ad Spend Tracker ───────────────────────────────────────────────────────────
+/**
+ * Tracks advertising spend per platform and cost component.
+ * Jon manually logs entries; the UI aggregates totals and breakdowns per platform.
+ */
+export const adSpend = mysqlTable("ad_spend", {
+  id: int("id").autoincrement().primaryKey(),
+  /** Platform this spend belongs to */
+  platform: mysqlEnum("platform", ["facebook", "instagram", "x", "google", "clickgrow", "other"]).notNull(),
+  /** Cost component label — e.g. "Boost Post", "Promoted Post", "Monthly Budget", "Ad Creation" */
+  component: varchar("component", { length: 100 }).notNull(),
+  /** Amount in cents to avoid floating point issues */
+  amountCents: int("amountCents").notNull(),
+  /** Optional note — campaign name, post reference, etc. */
+  notes: text("notes"),
+  /** Date the spend occurred or was billed */
+  spentAt: timestamp("spentAt").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type AdSpend = typeof adSpend.$inferSelect;
+export type InsertAdSpend = typeof adSpend.$inferInsert;
+
 // ─── Field Quotes (Noland Field mobile app) ───────────────────────────────────
 /**
  * Field quotes submitted from the Noland Field mobile companion app.
