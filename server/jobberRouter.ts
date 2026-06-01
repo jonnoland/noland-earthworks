@@ -46,7 +46,8 @@ export const jobberRouter = router({
           accountName = (rows[0] as any).accountName ?? null;
           connectedAt = (rows[0] as any).createdAt ?? null;
           // Check if token is expired (with 2-minute buffer)
-          if (expiresAt && new Date(expiresAt).getTime() < Date.now() + 2 * 60 * 1000) {
+          // Subtract 2 minutes so we treat tokens expiring very soon as expired
+          if (expiresAt && new Date(expiresAt).getTime() < Date.now() - 2 * 60 * 1000) {
             tokenExpired = true;
           }
         }

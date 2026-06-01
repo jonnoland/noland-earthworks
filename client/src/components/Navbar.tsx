@@ -32,14 +32,22 @@ export default function Navbar() {
   const { user, logout } = useAuth();
   const isOwner = user?.role === "admin";
 
-  // Fetch Jobber data for notification dot — only when owner is logged in
+  // Check Jobber connection status before firing data queries
+  const { data: jobberStatus } = trpc.jobber.connectionStatus.useQuery(undefined, {
+    enabled: isOwner,
+    retry: false,
+    staleTime: 5 * 60 * 1000, // cache for 5 minutes to avoid hammering on every page load
+  });
+  const isJobberConnected = isOwner && jobberStatus?.connected === true;
+
+  // Fetch Jobber data for notification dot — only when owner is logged in AND Jobber is connected
   const { data: requestsData } = trpc.jobber.requests.useQuery(
     { first: 50 },
-    { enabled: isOwner, retry: false }
+    { enabled: isJobberConnected, retry: false }
   );
   const { data: invoicesData } = trpc.jobber.invoices.useQuery(
     { first: 100 },
-    { enabled: isOwner, retry: false }
+    { enabled: isJobberConnected, retry: false }
   );
 
   // Compute notification: open requests or overdue invoices

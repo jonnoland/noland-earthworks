@@ -113,7 +113,14 @@ export async function isJobberConnected(): Promise<boolean> {
 // ─── GraphQL helper ───────────────────────────────────────────────────────────
 
 export async function jobberGraphQL(query: string, variables?: Record<string, unknown>): Promise<unknown> {
-  const token = await getValidAccessToken();
+  let token: string;
+  try {
+    token = await getValidAccessToken();
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    // Wrap token errors in a clean message so callers get a useful TRPC error
+    throw new Error(`Jobber not connected or token expired: ${msg}`);
+  }
   const res = await fetch(JOBBER_API_URL, {
     method: "POST",
     headers: {
