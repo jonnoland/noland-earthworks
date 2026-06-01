@@ -1569,7 +1569,7 @@
 - [x] Activate LinkedIn posting when credentials are saved (publishToLinkedIn uses DB-stored token)
 
 ## Log Spend Quick-Entry + Google Ads API — June 1 2026
-- [ ] Wire onLogSpend on Google Ads and ClickGrow SpendOnlyCards to pre-select platform and open spend modal
+- [x] Wire onLogSpend on Google Ads and ClickGrow SpendOnlyCards to pre-select platform and open spend modal
 - [ ] Research Google Ads API authentication (OAuth2 + developer token + customer ID)
 - [ ] Add googleAds tRPC procedure to fetch campaign spend from Google Ads API
 - [ ] Add GOOGLE_ADS_DEVELOPER_TOKEN and GOOGLE_ADS_CUSTOMER_ID secrets
@@ -1582,3 +1582,22 @@
 - [x] Add Google to PLATFORMS_ORDER, PLATFORM_LABELS, PLATFORM_COLORS, CHART_COLORS
 - [x] Update All Four to All Five everywhere in Ads.tsx and opsRouter.ts
 - [x] Add Google spend card to Platform Connections (keep, no ClickGrow)
+
+## Ads Page Audit Fixes — June 1 2026
+
+### Critical Bugs
+- [x] Fix "Post to All Three" label on single-platform result card (line 1424) — update to current platform set
+- [x] Fix scheduled queue "all" platform label — update from "FB + IG + X" to reflect all five platforms
+- [x] Add LinkedIn post button to single-platform result card when platform === "linkedin"
+- [x] Add Google copy panel to single-platform result card when platform === "google"
+
+### UX Issues
+- [x] Replace "Copy Google Ad" button with real browser Clipboard API copy
+- [x] Redesign platform selector for mobile — too wide with 7 buttons at flex-1
+- [x] Add generate progress feedback (step label or sub-message during 8-15s AI call)
+- [ ] Add image upload affordance inside All Five panels (currently only in single-platform card)
+- [x] Add Ad History empty state with explanation text
+- [x] Separate Google Ads vs Google Business Profile in Platform Connections section
+
+### Architecture
+- [ ] Unify handlePost and handlePostAllPlatform into a single handler

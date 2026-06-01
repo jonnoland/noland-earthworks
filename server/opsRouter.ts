@@ -3489,11 +3489,36 @@ export const opsRouter = router({
       linkedinError = e.message ?? "LinkedIn check failed";
     }
 
+    // ── Google Business Profile ───────────────────────────────────────────
+    let googleOk = false;
+    let googleHandle: string | null = null;
+    let googleError: string | null = null;
+
+    try {
+      const db = await getDb();
+      if (db) {
+        const { googleOAuthTokens } = await import("../drizzle/schema");
+        const rows = await db.select().from(googleOAuthTokens).limit(1);
+        const tok = rows[0];
+        if (tok?.accessToken) {
+          googleOk = true;
+          googleHandle = tok.businessName ?? "Connected";
+        } else {
+          googleError = "Not connected. Use the Google Reviews page to connect.";
+        }
+      } else {
+        googleError = "DB unavailable";
+      }
+    } catch (e: any) {
+      googleError = e.message ?? "Google Business Profile check failed";
+    }
+
     return {
       facebook: { ok: facebookOk, handle: facebookHandle, error: facebookError },
       instagram: { ok: instagramOk, handle: instagramHandle, error: instagramError },
       x: { ok: xOk, handle: xHandle, error: xError },
       linkedin: { ok: linkedinOk, handle: linkedinHandle, error: linkedinError },
+      google: { ok: googleOk, handle: googleHandle, error: googleError },
     };
   }),
 

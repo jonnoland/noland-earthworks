@@ -696,13 +696,30 @@ export default function Ads() {
   // ─── Handlers ────────────────────────────────────────────────────────────────
   function handleGenerate() {
     if (platform === "all") {
+      setGenerateStep("Generating Facebook copy...");
+      // Cycle through step labels during the ~10s wait
+      const steps = [
+        "Generating Facebook copy...",
+        "Generating Instagram copy...",
+        "Generating X copy...",
+        "Generating LinkedIn copy...",
+        "Generating Google Ads copy...",
+        "Generating image prompt...",
+      ];
+      let i = 0;
+      const interval = setInterval(() => {
+        i++;
+        if (i < steps.length) setGenerateStep(steps[i]);
+        else clearInterval(interval);
+      }, 1800);
       generateAllMutation.mutate({
         jobDescription: jobDescription.trim() || undefined,
         adTypes,
         tone,
         generateImage: withImage,
-      });
+      }, { onSettled: () => { setGenerateStep(""); } });
     } else {
+      setGenerateStep("");
       generateMutation.mutate({
         jobDescription: jobDescription.trim() || undefined,
         adTypes,
@@ -842,6 +859,7 @@ export default function Ads() {
     schedulePostMutation.mutate({ id: postId, scheduledAt, platforms });
   }
 
+  const [generateStep, setGenerateStep] = useState("");
   const isGenerating = generateMutation.isPending || generateAllMutation.isPending;
   const isPosting = fbMutation.isPending || igMutation.isPending || xMutation.isPending || liMutation.isPending || allMutation.isPending || saveMutation.isPending;
   const hasAllGenerated = platform === "all" && generatedAll !== null;
@@ -855,7 +873,7 @@ export default function Ads() {
         <div>
           <h1 className="text-2xl font-bold text-foreground">Ads</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Generate AI ad copy and images, then post directly to Facebook, Instagram, X, or LinkedIn.
+            Generate AI ad copy and images, then post directly to Facebook, Instagram, X, LinkedIn, and Google Ads.
           </p>
         </div>
 
@@ -872,7 +890,7 @@ export default function Ads() {
               Refresh
             </button>
           </div>
-          <div className="grid grid-cols-3 sm:grid-cols-6 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
             <PlatformStatusCard icon={<Facebook size={13} />} label="Facebook" loading={statusLoading}
               ok={platformStatus?.facebook.ok} handle={platformStatus?.facebook.handle ?? undefined}
               error={platformStatus?.facebook.error ?? undefined} accentClass="text-blue-400 bg-blue-400/8 border-blue-400/20"
@@ -890,13 +908,13 @@ export default function Ads() {
               error={platformStatus?.linkedin?.error ?? undefined} accentClass="text-[#0A66C2] bg-[#0A66C2]/8 border-[#0A66C2]/20"
               spendCents={spendByPlatform["linkedin"]?.totalCents}
               onSettings={() => setShowLinkedInSettings(true)} />
-            {/* Google — spend-only card (no live API check) */}
+            {/* Google Ads — manual spend tracking only; copy-paste workflow, no API posting */}
             <SpendOnlyCard
               icon={<Globe size={13} />}
               label="Google Ads"
               accentClass="text-yellow-400 bg-yellow-400/8 border-yellow-400/20"
               spendCents={spendByPlatform["google"]?.totalCents}
-              handle="via Google Ads"
+              handle="Copy-paste workflow"
               onLogSpend={() => {
                 setSpendPlatform("google");
                 setSpendComponent("");
@@ -906,7 +924,16 @@ export default function Ads() {
                 setShowSpendModal(true);
               }}
             />
-
+            {/* Google Business Profile — separate OAuth connection for reviews/posts */}
+            <PlatformStatusCard
+              icon={<Globe size={13} className="text-green-400" />}
+              label="Google Business"
+              loading={statusLoading}
+              ok={platformStatus?.google?.ok}
+              handle={platformStatus?.google?.handle ?? undefined}
+              error={platformStatus?.google?.error ?? undefined}
+              accentClass="text-green-400 bg-green-400/8 border-green-400/20"
+            />
           </div>
         </div>
 
@@ -960,9 +987,9 @@ export default function Ads() {
 
           <div className="flex flex-wrap gap-4">
             {/* Platform */}
-            <div className="space-y-1.5 min-w-[240px]">
+            <div className="space-y-1.5 w-full sm:w-auto">
               <label className="text-sm font-medium text-foreground">Platform</label>
-              <div className="flex rounded-lg border border-border overflow-hidden">
+              <div className="flex flex-wrap gap-1">
                 {([
                   { value: "all",       label: "All Five" },
                   { value: "both",      label: "FB + IG" },
@@ -973,8 +1000,10 @@ export default function Ads() {
                   { value: "google",    label: "GGL" },
                 ] as { value: Platform; label: string }[]).map((p) => (
                   <button key={p.value} onClick={() => setPlatform(p.value)}
-                    className={cn("flex-1 px-2 py-1.5 text-xs font-medium transition-colors flex flex-col items-center justify-center gap-0.5",
-                      platform === p.value ? "bg-primary text-primary-foreground" : "bg-background text-muted-foreground hover:text-foreground"
+                    className={cn("px-3 py-1.5 text-xs font-medium rounded-lg border transition-colors flex flex-col items-center justify-center gap-0.5 min-w-[52px]",
+                      platform === p.value
+                        ? "bg-primary text-primary-foreground border-primary"
+                        : "bg-background text-muted-foreground border-border hover:text-foreground hover:border-foreground/30"
                     )}>
                     <span>{p.label}</span>
                     {(() => {
@@ -1026,10 +1055,13 @@ export default function Ads() {
           {/* Generate button */}
           <Button onClick={handleGenerate} disabled={isGenerating} className="gap-2 w-full sm:w-auto">
             {isGenerating
-              ? <><RefreshCw size={14} className="animate-spin" /> Generating...</>
-              : <><Sparkles size={14} /> {platform === "all" ? "Generate for All Platforms" : "Generate Ad"}</>
+              ? <><RefreshCw size={14} className="animate-spin" /> {generateStep || "Generating..."}</>
+              : <><Sparkles size={14} /> {platform === "all" ? "Generate for All Five Platforms" : "Generate Ad"}</>
             }
           </Button>
+          {isGenerating && platform === "all" && (
+            <p className="text-xs text-muted-foreground">Generating five platform-optimized outputs — this takes 10–20 seconds.</p>
+          )}
         </div>
 
         {/* ─── All-platforms result ─────────────────────────────────────────── */}
@@ -1251,9 +1283,21 @@ export default function Ads() {
                   </div>
                 )}
                 <div className="flex flex-wrap gap-2">
-                  <Button onClick={() => handlePostAllPlatform("google")} disabled={isPosting}
+                  <Button onClick={async () => {
+                    const parts = [
+                      editedGoogleHeadline && `Headline: ${editedGoogleHeadline}`,
+                      editedGoogleDescription && `Description: ${editedGoogleDescription}`,
+                      editedGoogleDraft && `Body: ${editedGoogleDraft}`,
+                    ].filter(Boolean).join("\n");
+                    try {
+                      await navigator.clipboard.writeText(parts);
+                      toast.success("Google Ads copy copied to clipboard.");
+                    } catch {
+                      toast.info("Copy the fields above and paste into your Google Ads account.");
+                    }
+                  }} disabled={isPosting}
                     className="gap-2 bg-yellow-500 hover:bg-yellow-600 text-black border-0">
-                    <span className="text-[11px] font-bold">G</span>Copy Google Ad
+                    <span className="text-[11px] font-bold">G</span>Copy to Clipboard
                   </Button>
                   <Button variant="outline" size="sm"
                     disabled={regeneratePlatformMutation.isPending}
@@ -1414,15 +1458,41 @@ export default function Ads() {
                   <Twitter size={14} />{xMutation.isPending ? "Posting..." : "Post to X"}
                 </Button>
               )}
+              {platform === "linkedin" && (
+                <Button onClick={() => {
+                  const postId = savedPostId;
+                  if (!postId) { toast.error("Save the post first."); return; }
+                  liMutation.mutate({ postId, text: editedDraft, imageUrl: activeImageUrl ?? undefined });
+                }} disabled={isPosting}
+                  className="gap-2 bg-[#0A66C2] hover:bg-[#0057a8] text-white border-0">
+                  <Linkedin size={14} />{liMutation.isPending ? "Posting..." : "Post to LinkedIn"}
+                </Button>
+              )}
+              {platform === "google" && (
+                <Button onClick={async () => {
+                  const text = `${editedHeadline}\n${editedDraft}`;
+                  try {
+                    await navigator.clipboard.writeText(text);
+                    toast.success("Google Ads copy copied to clipboard. Paste it into your Google Ads account.");
+                  } catch {
+                    toast.info("Copy the headline and body above, then paste into your Google Ads account.");
+                  }
+                }} disabled={isPosting}
+                  className="gap-2 bg-yellow-500 hover:bg-yellow-600 text-black border-0">
+                  <span className="text-[11px] font-bold">G</span>Copy to Clipboard
+                </Button>
+              )}
               {platform === "both" && (
                 <Button onClick={() => handlePost("both")} disabled={isPosting} variant="outline" className="gap-2">
                   <Send size={14} />{isPosting ? "Posting..." : "Post to Both"}
                 </Button>
               )}
-              <Button onClick={() => handlePost("all")} disabled={isPosting}
-                className="gap-2 bg-gradient-to-r from-[#1877F2] via-[#833AB4] to-black text-white border-0 hover:opacity-90">
-                <Send size={14} />{allMutation.isPending ? "Posting to all..." : "Post to All Three"}
-              </Button>
+              {(platform === "facebook" || platform === "instagram" || platform === "x" || platform === "both") && (
+                <Button onClick={() => handlePost("all")} disabled={isPosting}
+                  className="gap-2 bg-gradient-to-r from-[#1877F2] via-[#833AB4] to-black text-white border-0 hover:opacity-90">
+                  <Send size={14} />{allMutation.isPending ? "Posting..." : "Post to FB + IG + X"}
+                </Button>
+              )}
               <Button variant="outline" onClick={() => setShowScheduler(!showScheduler)}
                 className={cn("gap-2", showScheduler && "border-primary/40 text-primary")}>
                 <Clock size={14} />Schedule
@@ -1512,10 +1582,12 @@ export default function Ads() {
             <div className="divide-y divide-border">
               {scheduledPosts.map((post) => {
                 const platformLabel = post.platform === "both" ? "FB + IG"
-                  : post.platform === "all" ? "FB + IG + X"
+                  : post.platform === "all" ? "FB + IG + X + LI + Google"
                   : post.platform === "facebook" ? "Facebook"
                   : post.platform === "instagram" ? "Instagram"
                   : post.platform === "x" ? "X"
+                  : post.platform === "linkedin" ? "LinkedIn"
+                  : post.platform === "google" ? "Google Ads"
                   : post.platform;
                 return (
                   <div key={post.id} className="px-6 py-4 flex items-start gap-4">
@@ -1945,19 +2017,25 @@ export default function Ads() {
         )}
 
         {/* History */}
-        {history.length > 0 && (
-          <div className="bg-card border border-border rounded-xl overflow-hidden">
-            <div className="px-6 py-4 border-b border-border">
-              <h2 className="text-base font-semibold text-foreground">Ad History</h2>
-              <p className="text-xs text-muted-foreground mt-0.5">Last 50 generated ads</p>
+        <div className="bg-card border border-border rounded-xl overflow-hidden">
+          <div className="px-6 py-4 border-b border-border">
+            <h2 className="text-base font-semibold text-foreground">Ad History</h2>
+            <p className="text-xs text-muted-foreground mt-0.5">Last 50 generated ads — saved drafts, scheduled posts, and published ads</p>
+          </div>
+          {history.length === 0 ? (
+            <div className="px-6 py-8 text-center">
+              <Sparkles size={28} className="text-muted-foreground opacity-30 mx-auto mb-2" />
+              <p className="text-sm text-muted-foreground">No ads generated yet.</p>
+              <p className="text-xs text-muted-foreground mt-1">Every ad you generate is saved here automatically. Use the Generate Ad section above to create your first one.</p>
             </div>
+          ) : (
             <div className="divide-y divide-border">
               {history.map((post) => (
                 <HistoryRow key={post.id} post={post} onDelete={() => deleteMutation.mutate({ id: post.id })} />
               ))}
             </div>
-          </div>
-        )}
+          )}
+        </div>
 
       </div>
 
