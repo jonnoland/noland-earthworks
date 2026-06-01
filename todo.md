@@ -1595,12 +1595,12 @@
 - [x] Replace "Copy Google Ad" button with real browser Clipboard API copy
 - [x] Redesign platform selector for mobile — too wide with 7 buttons at flex-1
 - [x] Add generate progress feedback (step label or sub-message during 8-15s AI call)
-- [ ] Add image upload affordance inside All Five panels (currently only in single-platform card)
+- [x] Add image upload affordance inside All Five panels — resolved: shared image upload at top of All Five card confirmed by user (option 1)
 - [x] Add Ad History empty state with explanation text
 - [x] Separate Google Ads vs Google Business Profile in Platform Connections section
 
 ### Architecture
-- [ ] Unify handlePost and handlePostAllPlatform into a single handler
+- [x] Unify handlePost and handlePostAllPlatform — deferred by user; leaving as-is
 
 ## Audit Fix Pass 2 — Jun 2026
 
@@ -1617,3 +1617,6 @@
 - [x] Clean up adSpend ClickGrow enum — migrate orphaned entries to "other", remove clickgrow from enum (table was empty)
 - [x] Split ads procedures from opsRouter.ts into server/routers/ads.ts
 - [x] Update opsRouter.ts to import and merge ads router
+
+## Ad Generation Loading State — Jun 2026
+- [x] Add rich loading state to ad generation: animated progress steps, estimated time, per-platform status indicators

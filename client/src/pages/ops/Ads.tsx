@@ -694,32 +694,38 @@ export default function Ads() {
   }
 
   // ─── Handlers ────────────────────────────────────────────────────────────────
+  const ALL_FIVE_STEPS = [
+    { label: "Facebook", icon: "FB" },
+    { label: "Instagram", icon: "IG" },
+    { label: "X", icon: "X" },
+    { label: "LinkedIn", icon: "LI" },
+    { label: "Google Ads", icon: "G" },
+    { label: "Image", icon: "IMG" },
+  ];
+
   function handleGenerate() {
     if (platform === "all") {
-      setGenerateStep("Generating Facebook copy...");
-      // Cycle through step labels during the ~10s wait
-      const steps = [
-        "Generating Facebook copy...",
-        "Generating Instagram copy...",
-        "Generating X copy...",
-        "Generating LinkedIn copy...",
-        "Generating Google Ads copy...",
-        "Generating image prompt...",
-      ];
+      setGenerateStepIndex(0);
+      setGenerateStep(ALL_FIVE_STEPS[0].label);
       let i = 0;
       const interval = setInterval(() => {
         i++;
-        if (i < steps.length) setGenerateStep(steps[i]);
-        else clearInterval(interval);
-      }, 1800);
+        if (i < ALL_FIVE_STEPS.length) {
+          setGenerateStepIndex(i);
+          setGenerateStep(ALL_FIVE_STEPS[i].label);
+        } else {
+          clearInterval(interval);
+        }
+      }, 2000);
       generateAllMutation.mutate({
         jobDescription: jobDescription.trim() || undefined,
         adTypes,
         tone,
         generateImage: withImage,
-      }, { onSettled: () => { setGenerateStep(""); } });
+      }, { onSettled: () => { setGenerateStep(""); setGenerateStepIndex(0); } });
     } else {
       setGenerateStep("");
+      setGenerateStepIndex(0);
       generateMutation.mutate({
         jobDescription: jobDescription.trim() || undefined,
         adTypes,
@@ -878,6 +884,7 @@ export default function Ads() {
   }
 
   const [generateStep, setGenerateStep] = useState("");
+  const [generateStepIndex, setGenerateStepIndex] = useState(0);
   const isGenerating = generateMutation.isPending || generateAllMutation.isPending;
   const isPosting = fbMutation.isPending || igMutation.isPending || xMutation.isPending || liMutation.isPending || allMutation.isPending || saveMutation.isPending;
   const hasAllGenerated = platform === "all" && generatedAll !== null;
@@ -1073,12 +1080,68 @@ export default function Ads() {
           {/* Generate button */}
           <Button onClick={handleGenerate} disabled={isGenerating} className="gap-2 w-full sm:w-auto">
             {isGenerating
-              ? <><RefreshCw size={14} className="animate-spin" /> {generateStep || "Generating..."}</>
+              ? <><RefreshCw size={14} className="animate-spin" /> {platform === "all" ? "Generating..." : (generateStep || "Generating...")}</>
               : <><Sparkles size={14} /> {platform === "all" ? "Generate for All Five Platforms" : "Generate Ad"}</>
             }
           </Button>
+
+          {/* Rich loading state for All Five generation */}
           {isGenerating && platform === "all" && (
-            <p className="text-xs text-muted-foreground">Generating five platform-optimized outputs — this takes 10–20 seconds.</p>
+            <div className="mt-3 rounded-xl border border-border bg-muted/40 p-4 space-y-3">
+              <div className="flex items-center gap-2">
+                <RefreshCw size={13} className="animate-spin text-muted-foreground" />
+                <p className="text-xs font-medium text-muted-foreground">
+                  Writing copy for all five platforms — this takes 10–20 seconds.
+                </p>
+              </div>
+              <div className="grid grid-cols-6 gap-2">
+                {ALL_FIVE_STEPS.map((step, idx) => {
+                  const isDone = idx < generateStepIndex;
+                  const isActive = idx === generateStepIndex;
+                  return (
+                    <div
+                      key={step.label}
+                      className={[
+                        "flex flex-col items-center gap-1 rounded-lg p-2 transition-all duration-300",
+                        isDone ? "bg-green-500/10 border border-green-500/30" :
+                        isActive ? "bg-primary/10 border border-primary/40 ring-1 ring-primary/20" :
+                        "bg-muted/30 border border-border",
+                      ].join(" ")}
+                    >
+                      <span className={[
+                        "text-[10px] font-bold leading-none",
+                        isDone ? "text-green-500" : isActive ? "text-primary" : "text-muted-foreground",
+                      ].join(" ")}>
+                        {step.icon}
+                      </span>
+                      <span className={[
+                        "text-[9px] leading-none text-center",
+                        isDone ? "text-green-500" : isActive ? "text-primary" : "text-muted-foreground",
+                      ].join(" ")}>
+                        {isDone ? "Done" : isActive ? "Writing" : step.label}
+                      </span>
+                      {isDone && (
+                        <div className="w-2 h-2 rounded-full bg-green-500" />
+                      )}
+                      {isActive && (
+                        <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
+                      )}
+                      {!isDone && !isActive && (
+                        <div className="w-2 h-2 rounded-full bg-muted-foreground/30" />
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Simple loading indicator for single-platform generation */}
+          {isGenerating && platform !== "all" && (
+            <div className="mt-2 flex items-center gap-2">
+              <RefreshCw size={12} className="animate-spin text-muted-foreground" />
+              <p className="text-xs text-muted-foreground">Writing your ad copy — just a moment.</p>
+            </div>
           )}
         </div>
 
