@@ -1010,3 +1010,22 @@ export const xOAuthTokens = mysqlTable("x_oauth_tokens", {
 });
 export type XOAuthToken = typeof xOAuthTokens.$inferSelect;
 export type InsertXOAuthToken = typeof xOAuthTokens.$inferInsert;
+
+// ─── LinkedIn Credentials ─────────────────────────────────────────────────────
+/**
+ * Stores the LinkedIn OAuth 2.0 access token and author URN for organic posting.
+ * Only one row is expected (the owner's credentials). Upsert on id=1.
+ */
+export const linkedinCredentials = mysqlTable("linkedin_credentials", {
+  id: int("id").primaryKey().autoincrement(),
+  /** OAuth 2.0 access token with w_member_social scope */
+  accessToken: text("accessToken").notNull(),
+  /** Author URN, e.g. urn:li:person:abc123 or urn:li:organization:123456 */
+  authorUrn: varchar("authorUrn", { length: 200 }).notNull(),
+  /** Optional display name shown in the UI connection card */
+  displayName: varchar("displayName", { length: 200 }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type LinkedinCredential = typeof linkedinCredentials.$inferSelect;
+export type InsertLinkedinCredential = typeof linkedinCredentials.$inferInsert;

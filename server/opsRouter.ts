@@ -3020,11 +3020,61 @@ const socialPostsRouter = router({
       text: z.string(),
       imageUrl: z.string().optional(),
     }))
-    .mutation(async () => {
-      throw new TRPCError({
-        code: "PRECONDITION_FAILED",
-        message: "LinkedIn posting is not yet configured. LinkedIn API credentials (access token and author URN) must be added to enable this feature.",
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+
+      // Load credentials from DB
+      const { linkedinCredentials, socialPosts } = await import("../drizzle/schema");
+      const { eq } = await import("drizzle-orm");
+      const rows = await db.select().from(linkedinCredentials).limit(1);
+      const cred = rows[0];
+      if (!cred?.accessToken || !cred?.authorUrn) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: "LinkedIn credentials not configured. Open LinkedIn settings on the Ads page to add your access token and author URN.",
+        });
+      }
+
+      // Build the UGC post payload
+      const body: Record<string, unknown> = {
+        author: cred.authorUrn,
+        lifecycleState: "PUBLISHED",
+        specificContent: {
+          "com.linkedin.ugc.ShareContent": {
+            shareCommentary: { text: input.text },
+            shareMediaCategory: "NONE",
+          },
+        },
+        visibility: {
+          "com.linkedin.ugc.MemberNetworkVisibility": "PUBLIC",
+        },
+      };
+
+      const liRes = await fetch("https://api.linkedin.com/v2/ugcPosts", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${cred.accessToken}`,
+          "Content-Type": "application/json",
+          "X-Restli-Protocol-Version": "2.0.0",
+        },
+        body: JSON.stringify(body),
       });
+
+      const liData = await liRes.json() as any;
+      if (!liRes.ok) {
+        const msg = liData?.message ?? liData?.serviceErrorCode ?? "LinkedIn post failed";
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: `LinkedIn: ${msg}` });
+      }
+
+      const liPostId: string = liData.id ?? liData["id"] ?? "";
+
+      // Mark post as published
+      await db.update(socialPosts)
+        .set({ published: true, postedAt: new Date() })
+        .where(eq(socialPosts.id, input.postId));
+
+      return { success: true, liPostId };
     }),
 
   /** Publish to Facebook, Instagram, and X simultaneously */
@@ -3395,11 +3445,37 @@ export const opsRouter = router({
     }
 
     // ── LinkedIn ─────────────────────────────────────────────────────────
-    // LinkedIn organic posting requires OAuth 2.0 with the w_member_social scope.
-    // Credentials are not yet configured — LinkedIn is shown as "coming soon" in the UI.
-    const linkedinOk = false;
-    const linkedinHandle: string | null = null;
-    const linkedinError: string | null = "LinkedIn credentials not configured. Contact support to enable LinkedIn posting.";
+    let linkedinOk = false;
+    let linkedinHandle: string | null = null;
+    let linkedinError: string | null = null;
+
+    try {
+      const db = await getDb();
+      if (db) {
+        const { linkedinCredentials } = await import("../drizzle/schema");
+        const rows = await db.select().from(linkedinCredentials).limit(1);
+        const cred = rows[0];
+        if (cred?.accessToken && cred?.authorUrn) {
+          // Verify the token is still valid via LinkedIn profile endpoint
+          const liRes = await fetch("https://api.linkedin.com/v2/userinfo", {
+            headers: { Authorization: `Bearer ${cred.accessToken}` },
+          });
+          if (liRes.ok) {
+            const liData = await liRes.json() as any;
+            linkedinOk = true;
+            linkedinHandle = cred.displayName ?? liData.name ?? liData.sub ?? cred.authorUrn;
+          } else {
+            linkedinError = "Token invalid or expired. Re-enter credentials in LinkedIn settings.";
+          }
+        } else {
+          linkedinError = "LinkedIn credentials not configured. Click the settings icon to add your access token and author URN.";
+        }
+      } else {
+        linkedinError = "DB unavailable";
+      }
+    } catch (e: any) {
+      linkedinError = e.message ?? "LinkedIn check failed";
+    }
 
     return {
       facebook: { ok: facebookOk, handle: facebookHandle, error: facebookError },
@@ -3407,5 +3483,65 @@ export const opsRouter = router({
       x: { ok: xOk, handle: xHandle, error: xError },
       linkedin: { ok: linkedinOk, handle: linkedinHandle, error: linkedinError },
     };
+  }),
+
+  // ─── LinkedIn Settings ────────────────────────────────────────────────────────
+  /** Get stored LinkedIn credentials (returns token masked for display) */
+  getLinkedInSettings: ownerProcedure.query(async () => {
+    const db = await getDb();
+    if (!db) return null;
+    const { linkedinCredentials } = await import("../drizzle/schema");
+    const rows = await db.select().from(linkedinCredentials).limit(1);
+    const cred = rows[0];
+    if (!cred) return null;
+    return {
+      hasCredentials: true,
+      authorUrn: cred.authorUrn,
+      displayName: cred.displayName ?? null,
+      // Mask the token — only show last 6 chars
+      tokenPreview: cred.accessToken.length > 6
+        ? `...${cred.accessToken.slice(-6)}`
+        : "(set)",
+    };
+  }),
+
+  /** Save (upsert) LinkedIn credentials */
+  saveLinkedInSettings: ownerProcedure
+    .input(z.object({
+      accessToken: z.string().min(10, "Access token is required"),
+      authorUrn: z.string().min(10, "Author URN is required (e.g. urn:li:person:abc123)"),
+      displayName: z.string().max(200).optional(),
+    }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+      const { linkedinCredentials } = await import("../drizzle/schema");
+      const { eq } = await import("drizzle-orm");
+      const existing = await db.select().from(linkedinCredentials).limit(1);
+      if (existing.length > 0) {
+        await db.update(linkedinCredentials)
+          .set({
+            accessToken: input.accessToken,
+            authorUrn: input.authorUrn,
+            displayName: input.displayName ?? null,
+          })
+          .where(eq(linkedinCredentials.id, existing[0].id));
+      } else {
+        await db.insert(linkedinCredentials).values({
+          accessToken: input.accessToken,
+          authorUrn: input.authorUrn,
+          displayName: input.displayName ?? null,
+        });
+      }
+      return { success: true };
+    }),
+
+  /** Delete stored LinkedIn credentials */
+  deleteLinkedInSettings: ownerProcedure.mutation(async () => {
+    const db = await getDb();
+    if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+    const { linkedinCredentials } = await import("../drizzle/schema");
+    await db.delete(linkedinCredentials);
+    return { success: true };
   }),
 });

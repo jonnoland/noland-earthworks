@@ -1560,3 +1560,10 @@
 - [x] Add total spend summary row at top of Ad Spend Tracker (grand total + per-platform mini totals)
 - [x] Extend scheduledAdsPublisher.ts to include LinkedIn in platform expansion and publish loop
 - [x] Update schedulePost platform expansion in opsRouter.ts to map "all" to include linkedin
+
+## Platform Connections Spend + LinkedIn Settings Modal — June 1 2026
+- [x] Add LinkedIn settings modal (access token + author URN) with backend save/load via DB
+- [x] Add linkedinSettings tRPC procedures (getLinkedInSettings, saveLinkedInSettings)
+- [x] Add linkedinSettings table to drizzle schema and run db:push
+- [x] Show per-platform ad spend total on each Platform Connections card (FB, IG, X, LinkedIn)
+- [x] Activate LinkedIn posting when credentials are saved (publishToLinkedIn uses DB-stored token)

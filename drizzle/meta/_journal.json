@@ -344,6 +344,13 @@
       "when": 1780340940724,
       "tag": "0048_rainy_jasper_sitwell",
       "breakpoints": true
+    },
+    {
+      "idx": 49,
+      "version": "5",
+      "when": 1780342282822,
+      "tag": "0049_right_harpoon",
+      "breakpoints": true
     }
   ]
 }
