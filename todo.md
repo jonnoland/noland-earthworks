@@ -1624,3 +1624,7 @@
 - [x] Add Cancel button to loading state that stops generation and resets to previous screen
 - [x] Implement smooth CSS transitions for progress bar and status messages
 - [x] Add post-generation summary view that auto-appears when all platform cards complete
+
+## Jobber Connection UX — Jun 2026
+- [x] Fix Jobber 403 errors: correct inverted expiry check, add error handling in jobberGraphQL, gate Navbar queries on connectionStatus
+- [x] Add visual Jobber disconnect indicator to Navbar: amber dot on Ops button, status row in dropdown and mobile menu, links to /ops/settings to reconnect; green "connected" row when healthy

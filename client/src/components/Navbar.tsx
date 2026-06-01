@@ -4,7 +4,7 @@
  * wouter Link renders as <a> itself, so wrapping another <a> inside causes errors.
  */
 import { useState, useEffect, useRef } from "react";
-import { Menu, X, Phone, ChevronDown, LayoutDashboard, LogOut } from "lucide-react";
+import { Menu, X, Phone, ChevronDown, LayoutDashboard, LogOut, Unplug, Wifi } from "lucide-react";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { trpc } from "@/lib/trpc";
 
@@ -39,6 +39,8 @@ export default function Navbar() {
     staleTime: 5 * 60 * 1000, // cache for 5 minutes to avoid hammering on every page load
   });
   const isJobberConnected = isOwner && jobberStatus?.connected === true;
+  // Show disconnect indicator only when the status has loaded and connection is confirmed broken
+  const showJobberDisconnect = isOwner && jobberStatus !== undefined && !isJobberConnected;
 
   // Fetch Jobber data for notification dot — only when owner is logged in AND Jobber is connected
   const { data: requestsData } = trpc.jobber.requests.useQuery(
@@ -276,6 +278,23 @@ export default function Navbar() {
                 >
                   <LayoutDashboard size={13} />
                   Ops
+                  {/* Jobber disconnect indicator — shown as a small amber dot with tooltip */}
+                  {showJobberDisconnect && (
+                    <span
+                      title="Jobber disconnected — visit /ops/settings to reconnect"
+                      style={{
+                        position: "absolute",
+                        bottom: "-4px",
+                        left: "-4px",
+                        width: "10px",
+                        height: "10px",
+                        borderRadius: "9999px",
+                        background: "#f59e0b",
+                        border: "1.5px solid rgba(18,18,18,0.9)",
+                        cursor: "help",
+                      }}
+                    />
+                  )}
                   {hasNotification && (
                     <span
                       style={{
@@ -317,6 +336,52 @@ export default function Navbar() {
                       zIndex: 100,
                     }}
                   >
+                    {/* Jobber connection status row */}
+                    {showJobberDisconnect && (
+                      <a
+                        href="/ops/settings"
+                        onClick={() => setOpsDropdownOpen(false)}
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "0.5rem",
+                          padding: "0.5rem 1rem",
+                          fontFamily: "'Lato', sans-serif",
+                          fontSize: "0.72rem",
+                          fontWeight: 600,
+                          color: "#f59e0b",
+                          textDecoration: "none",
+                          borderBottom: "1px solid rgba(245,158,11,0.15)",
+                          background: "rgba(245,158,11,0.06)",
+                          letterSpacing: "0.02em",
+                        }}
+                        onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(245,158,11,0.12)"; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(245,158,11,0.06)"; }}
+                      >
+                        <Unplug size={11} />
+                        Jobber disconnected — click to reconnect
+                      </a>
+                    )}
+                    {isJobberConnected && (
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "0.5rem",
+                          padding: "0.4rem 1rem",
+                          fontFamily: "'Lato', sans-serif",
+                          fontSize: "0.7rem",
+                          fontWeight: 500,
+                          color: "rgba(34,197,94,0.85)",
+                          borderBottom: "1px solid rgba(34,197,94,0.1)",
+                          background: "rgba(34,197,94,0.04)",
+                          letterSpacing: "0.02em",
+                        }}
+                      >
+                        <Wifi size={10} />
+                        Jobber connected
+                      </div>
+                    )}
                     <a
                       href="/ops"
                       onClick={() => setOpsDropdownOpen(false)}
@@ -473,6 +538,47 @@ export default function Navbar() {
             {/* Owner-only Ops + Logout in mobile menu */}
             {isOwner && (
               <>
+                {/* Jobber status row in mobile */}
+                {showJobberDisconnect && (
+                  <a
+                    href="/ops/settings"
+                    className="text-left py-2 px-4 block"
+                    style={{
+                      fontFamily: "'Lato', sans-serif",
+                      fontWeight: 600,
+                      fontSize: "0.8rem",
+                      color: "#f59e0b",
+                      textDecoration: "none",
+                      borderBottom: "1px solid rgba(245,158,11,0.15)",
+                      background: "rgba(245,158,11,0.06)",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "0.5rem",
+                    }}
+                  >
+                    <Unplug size={13} />
+                    Jobber disconnected — tap to reconnect
+                  </a>
+                )}
+                {isJobberConnected && (
+                  <div
+                    className="text-left py-2 px-4"
+                    style={{
+                      fontFamily: "'Lato', sans-serif",
+                      fontWeight: 500,
+                      fontSize: "0.78rem",
+                      color: "rgba(34,197,94,0.85)",
+                      borderBottom: "1px solid rgba(34,197,94,0.1)",
+                      background: "rgba(34,197,94,0.04)",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "0.5rem",
+                    }}
+                  >
+                    <Wifi size={12} />
+                    Jobber connected
+                  </div>
+                )}
                 <a
                   href="/ops"
                   className="text-left py-3 px-2 block"
