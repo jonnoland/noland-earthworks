@@ -12,8 +12,10 @@ import {
   ImageIcon, RefreshCw, CheckCircle2, Upload, Clock, Calendar,
   ChevronDown, Eye, Twitter, X as XIcon, CalendarClock,
   DollarSign, Plus, ChevronRight, Linkedin, Globe, TrendingUp,
+  XCircle, CheckCheck,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Progress } from "@/components/ui/progress";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
@@ -739,28 +741,47 @@ export default function Ads() {
     },
   ];
 
-  // Elapsed seconds counter for the loading state
+  // Elapsed seconds counter and step interval refs for the loading state
   const elapsedSecRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const stepIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  // Post-generation summary flash state
+  const [showSummary, setShowSummary] = useState(false);
+  const summaryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  function handleCancel() {
+    // Stop the step ticker and elapsed timer
+    if (stepIntervalRef.current) { clearInterval(stepIntervalRef.current); stepIntervalRef.current = null; }
+    if (elapsedSecRef.current) { clearInterval(elapsedSecRef.current); elapsedSecRef.current = null; }
+    // Reset all loading state — the mutation itself cannot be cancelled server-side,
+    // but we return the UI to the idle/previous-result state immediately.
+    setGenerateStep("");
+    setGenerateStepIndex(0);
+    setElapsedSeconds(0);
+    toast.info("Generation cancelled. Any result that arrives will be discarded.");
+  }
 
   function handleGenerate() {
     if (platform === "all") {
       setGenerateStepIndex(0);
       setGenerateStep(ALL_FIVE_STEPS[0].label);
       setElapsedSeconds(0);
+      setShowSummary(false);
 
       // Elapsed-time ticker
       if (elapsedSecRef.current) clearInterval(elapsedSecRef.current);
       elapsedSecRef.current = setInterval(() => setElapsedSeconds(s => s + 1), 1000);
 
+      // Step progress ticker — stored in ref so Cancel can clear it
+      if (stepIntervalRef.current) clearInterval(stepIntervalRef.current);
       let i = 0;
-      const interval = setInterval(() => {
+      stepIntervalRef.current = setInterval(() => {
         i++;
         if (i < ALL_FIVE_STEPS.length) {
           setGenerateStepIndex(i);
           setGenerateStep(ALL_FIVE_STEPS[i].label);
         } else {
-          clearInterval(interval);
+          if (stepIntervalRef.current) { clearInterval(stepIntervalRef.current); stepIntervalRef.current = null; }
         }
       }, 2000);
       generateAllMutation.mutate({
@@ -769,11 +790,18 @@ export default function Ads() {
         tone,
         generateImage: withImage,
       }, {
+        onSuccess: () => {
+          // Brief summary flash before scrolling into results
+          setShowSummary(true);
+          if (summaryTimerRef.current) clearTimeout(summaryTimerRef.current);
+          summaryTimerRef.current = setTimeout(() => setShowSummary(false), 5000);
+        },
         onSettled: () => {
           setGenerateStep("");
           setGenerateStepIndex(0);
           setElapsedSeconds(0);
           if (elapsedSecRef.current) { clearInterval(elapsedSecRef.current); elapsedSecRef.current = null; }
+          if (stepIntervalRef.current) { clearInterval(stepIntervalRef.current); stepIntervalRef.current = null; }
         },
       });
     } else {
@@ -1130,107 +1158,185 @@ export default function Ads() {
             </div>
           </div>
 
-          {/* Generate button */}
-          <Button onClick={handleGenerate} disabled={isGenerating} className="gap-2 w-full sm:w-auto">
-            {isGenerating
-              ? <><RefreshCw size={14} className="animate-spin" /> {platform === "all" ? "Generating..." : (generateStep || "Generating...")}</>
-              : <><Sparkles size={14} /> {platform === "all" ? "Generate for All Five Platforms" : "Generate Ad"}</>
-            }
-          </Button>
+          {/* Generate + Cancel buttons */}
+          <div className="flex items-center gap-2">
+            <Button onClick={handleGenerate} disabled={isGenerating} className="gap-2 w-full sm:w-auto">
+              {isGenerating
+                ? <><RefreshCw size={14} className="animate-spin" /> {platform === "all" ? "Generating..." : (generateStep || "Generating...")}</>
+                : <><Sparkles size={14} /> {platform === "all" ? "Generate for All Five Platforms" : "Generate Ad"}</>
+              }
+            </Button>
+            {isGenerating && platform === "all" && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleCancel}
+                className="gap-1.5 text-muted-foreground hover:text-destructive hover:border-destructive transition-colors duration-200"
+              >
+                <XCircle size={13} />
+                Cancel
+              </Button>
+            )}
+          </div>
 
           {/* Rich loading state for All Five generation */}
-          {isGenerating && platform === "all" && (() => {
-            // Compute estimated remaining seconds from current step onward
-            const remainingSec = ALL_FIVE_STEPS
-              .slice(generateStepIndex)
-              .reduce((acc, s) => acc + s.estSec, 0);
-            const remainingLabel = remainingSec <= 2
-              ? "Almost done..."
-              : `~${remainingSec}s remaining`;
-            return (
-              <div className="mt-3 rounded-xl border border-border bg-muted/40 p-4 space-y-3">
-                {/* Header row */}
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <RefreshCw size={13} className="animate-spin text-muted-foreground" />
-                    <p className="text-xs font-medium text-muted-foreground">
-                      {ALL_FIVE_STEPS[generateStepIndex]?.statusMsg ?? "Finishing up..."}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <span className="text-[10px] text-muted-foreground tabular-nums">
-                      {elapsedSeconds}s elapsed
-                    </span>
-                    <span className="text-[10px] font-medium text-primary tabular-nums">
-                      {remainingLabel}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Progress bar */}
-                <div className="w-full h-1 rounded-full bg-muted overflow-hidden">
-                  <div
-                    className="h-full bg-primary rounded-full transition-all duration-700"
-                    style={{ width: `${Math.round((generateStepIndex / ALL_FIVE_STEPS.length) * 100)}%` }}
-                  />
-                </div>
-
-                {/* Per-platform step cards */}
-                <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
-                  {ALL_FIVE_STEPS.map((step, idx) => {
-                    const isDone = idx < generateStepIndex;
-                    const isActive = idx === generateStepIndex;
-                    return (
-                      <div
-                        key={step.label}
-                        className={[
-                          "flex flex-col gap-1 rounded-lg p-2.5 transition-all duration-300",
-                          isDone
-                            ? "bg-green-500/10 border border-green-500/30"
-                            : isActive
-                            ? "bg-primary/10 border border-primary/40 ring-1 ring-primary/20"
-                            : "bg-muted/30 border border-border opacity-50",
-                        ].join(" ")}
+          <div
+            className={cn(
+              "overflow-hidden transition-all duration-500 ease-in-out",
+              isGenerating && platform === "all" ? "max-h-[400px] opacity-100" : "max-h-0 opacity-0"
+            )}
+          >
+            {(() => {
+              const remainingSec = ALL_FIVE_STEPS
+                .slice(generateStepIndex)
+                .reduce((acc, s) => acc + s.estSec, 0);
+              const remainingLabel = remainingSec <= 2 ? "Almost done..." : `~${remainingSec}s remaining`;
+              const progressPct = Math.round((generateStepIndex / ALL_FIVE_STEPS.length) * 100);
+              return (
+                <div className="mt-3 rounded-xl border border-border bg-muted/40 p-4 space-y-3">
+                  {/* Header row */}
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <RefreshCw size={13} className="animate-spin text-muted-foreground" />
+                      <p
+                        key={generateStepIndex}
+                        className="text-xs font-medium text-muted-foreground animate-in fade-in slide-in-from-left-1 duration-300"
                       >
-                        {/* Platform badge + status dot */}
-                        <div className="flex items-center justify-between">
-                          <span className={[
-                            "text-[10px] font-bold leading-none",
-                            isDone ? "text-green-500" : isActive ? "text-primary" : "text-muted-foreground",
-                          ].join(" ")}>
-                            {step.icon}
+                        {ALL_FIVE_STEPS[generateStepIndex]?.statusMsg ?? "Finishing up..."}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <span className="text-[10px] text-muted-foreground tabular-nums">
+                        {elapsedSeconds}s elapsed
+                      </span>
+                      <span
+                        key={`rem-${generateStepIndex}`}
+                        className="text-[10px] font-medium text-primary tabular-nums animate-in fade-in duration-300"
+                      >
+                        {remainingLabel}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Smooth progress bar via Radix Progress primitive */}
+                  <Progress value={progressPct} className="h-1" />
+
+                  {/* Per-platform step cards */}
+                  <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
+                    {ALL_FIVE_STEPS.map((step, idx) => {
+                      const isDone = idx < generateStepIndex;
+                      const isActive = idx === generateStepIndex;
+                      return (
+                        <div
+                          key={step.label}
+                          className={cn(
+                            "flex flex-col gap-1 rounded-lg p-2.5 transition-all duration-500 ease-in-out",
+                            isDone
+                              ? "bg-green-500/10 border border-green-500/30 scale-[1.02]"
+                              : isActive
+                              ? "bg-primary/10 border border-primary/40 ring-1 ring-primary/20"
+                              : "bg-muted/30 border border-border opacity-40"
+                          )}
+                        >
+                          {/* Platform badge + status dot */}
+                          <div className="flex items-center justify-between">
+                            <span className={cn(
+                              "text-[10px] font-bold leading-none transition-colors duration-300",
+                              isDone ? "text-green-500" : isActive ? "text-primary" : "text-muted-foreground"
+                            )}>
+                              {step.icon}
+                            </span>
+                            {isDone && <div className="w-1.5 h-1.5 rounded-full bg-green-500 transition-all duration-300" />}
+                            {isActive && <div className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />}
+                            {!isDone && !isActive && <div className="w-1.5 h-1.5 rounded-full bg-muted-foreground/25" />}
+                          </div>
+
+                          {/* Platform name */}
+                          <span className={cn(
+                            "text-[9px] font-medium leading-none transition-colors duration-300",
+                            isDone ? "text-green-500" : isActive ? "text-primary" : "text-muted-foreground"
+                          )}>
+                            {step.label}
                           </span>
-                          {isDone && <div className="w-1.5 h-1.5 rounded-full bg-green-500" />}
-                          {isActive && <div className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />}
-                          {!isDone && !isActive && <div className="w-1.5 h-1.5 rounded-full bg-muted-foreground/25" />}
+
+                          {/* Status message — fades when it changes */}
+                          <span
+                            key={`${step.label}-${isDone ? "done" : isActive ? "active" : "pending"}`}
+                            className={cn(
+                              "text-[8px] leading-tight transition-all duration-300 animate-in fade-in",
+                              isDone ? "text-green-500/80" : isActive ? "text-primary/80" : "text-muted-foreground/50"
+                            )}
+                          >
+                            {isDone ? step.doneMsg : isActive ? step.statusMsg : `~${step.estSec}s`}
+                          </span>
                         </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })()}
+          </div>
 
-                        {/* Platform name */}
-                        <span className={[
-                          "text-[9px] font-medium leading-none",
-                          isDone ? "text-green-500" : isActive ? "text-primary" : "text-muted-foreground",
-                        ].join(" ")}>
-                          {step.label}
-                        </span>
-
-                        {/* Status message */}
-                        <span className={[
-                          "text-[8px] leading-tight",
-                          isDone ? "text-green-500/80" : isActive ? "text-primary/80" : "text-muted-foreground/50",
-                        ].join(" ")}>
-                          {isDone ? step.doneMsg : isActive ? step.statusMsg : `~${step.estSec}s`}
-                        </span>
-                      </div>
-                    );
-                  })}
+          {/* Post-generation summary flash */}
+          <div
+            className={cn(
+              "overflow-hidden transition-all duration-500 ease-in-out",
+              showSummary ? "max-h-40 opacity-100" : "max-h-0 opacity-0"
+            )}
+          >
+            {generatedAll && (
+              <div className="mt-3 rounded-xl border border-green-500/30 bg-green-500/5 p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex items-center gap-2">
+                    <CheckCheck size={15} className="text-green-500 shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-xs font-semibold text-green-600 dark:text-green-400">
+                        All five platforms ready
+                      </p>
+                      <p className="text-[10px] text-muted-foreground mt-0.5">
+                        FB • IG • X • LinkedIn • Google Ads — scroll down to review and post each one.
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3 shrink-0">
+                    {generatedAll.imageUrl && (
+                      <img
+                        src={generatedAll.imageUrl}
+                        alt="Generated"
+                        className="w-10 h-10 rounded-md object-cover border border-green-500/20"
+                      />
+                    )}
+                    <button
+                      onClick={() => setShowSummary(false)}
+                      className="text-muted-foreground hover:text-foreground transition-colors"
+                      aria-label="Dismiss summary"
+                    >
+                      <XIcon size={13} />
+                    </button>
+                  </div>
+                </div>
+                {/* Mini copy previews */}
+                <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                  {[
+                    { label: "Facebook", text: generatedAll.facebook.draft },
+                    { label: "Instagram", text: generatedAll.instagram.draft },
+                    { label: "X", text: generatedAll.x.draft },
+                    { label: "LinkedIn", text: generatedAll.linkedin.draft },
+                  ].map(({ label, text }) => (
+                    <div key={label} className="rounded-md bg-muted/40 px-2.5 py-1.5">
+                      <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-wide">{label}</span>
+                      <p className="text-[10px] text-foreground leading-snug mt-0.5 line-clamp-2">{text}</p>
+                    </div>
+                  ))}
                 </div>
               </div>
-            );
-          })()}
+            )}
+          </div>
 
           {/* Simple loading indicator for single-platform generation */}
           {isGenerating && platform !== "all" && (
-            <div className="mt-2 flex items-center gap-2">
+            <div className="mt-2 flex items-center gap-2 animate-in fade-in duration-300">
               <RefreshCw size={12} className="animate-spin text-muted-foreground" />
               <p className="text-xs text-muted-foreground">Writing your ad copy — just a moment.</p>
             </div>
