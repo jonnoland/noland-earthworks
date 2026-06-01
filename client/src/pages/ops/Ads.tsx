@@ -3,7 +3,8 @@
  * AI-generated Facebook/Instagram/X ad copy + image with one-click posting.
  * Features: per-platform copy, photo upload, scheduling, live FB/IG preview, X.com posting.
  */
-import { useState, useRef } from "react";
+import { useState, useRef, useMemo } from "react";
+import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend } from "recharts";
 import DashboardLayout from "@/components/DashboardLayout";
 import { trpc } from "@/lib/trpc";
 import {
@@ -1312,6 +1313,94 @@ export default function Ads() {
               <p className="text-xs text-muted-foreground mt-1">Click "Log Spend" to record ad costs by platform and component.</p>
             </div>
           ) : (
+            <>
+            {/* Spend Distribution Chart */}
+            {(() => {
+              const chartData = PLATFORMS_ORDER
+                .filter((p) => spendByPlatform[p].totalCents > 0)
+                .map((p) => ({
+                  name: PLATFORM_LABELS[p],
+                  value: spendByPlatform[p].totalCents,
+                  platform: p,
+                }));
+              const CHART_COLORS: Record<string, string> = {
+                facebook: "#60a5fa",
+                instagram: "#f472b6",
+                x: "#38bdf8",
+                google: "#facc15",
+                clickgrow: "#4ade80",
+                other: "#94a3b8",
+              };
+              const CustomTooltip = ({ active, payload }: any) => {
+                if (!active || !payload?.length) return null;
+                const d = payload[0];
+                return (
+                  <div className="bg-card border border-border rounded-lg px-3 py-2 shadow-lg">
+                    <p className="text-xs font-semibold text-foreground">{d.name}</p>
+                    <p className="text-xs text-muted-foreground">{fmtDollars(d.value)}</p>
+                    <p className="text-xs text-muted-foreground">{((d.value / grandTotalCents) * 100).toFixed(1)}%</p>
+                  </div>
+                );
+              };
+              return (
+                <div className="px-6 py-5 border-b border-border">
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-4">Spend Distribution</p>
+                  <div className="flex items-center gap-6">
+                    <div className="w-48 h-48 shrink-0">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <PieChart>
+                          <Pie
+                            data={chartData}
+                            cx="50%"
+                            cy="50%"
+                            innerRadius={52}
+                            outerRadius={76}
+                            paddingAngle={3}
+                            dataKey="value"
+                            strokeWidth={0}
+                          >
+                            {chartData.map((entry) => (
+                              <Cell key={entry.platform} fill={CHART_COLORS[entry.platform]} />
+                            ))}
+                          </Pie>
+                          <Tooltip content={<CustomTooltip />} />
+                        </PieChart>
+                      </ResponsiveContainer>
+                    </div>
+                    {/* Legend + per-platform totals */}
+                    <div className="flex-1 space-y-2">
+                      {chartData.map((entry) => {
+                        const pct = ((entry.value / grandTotalCents) * 100).toFixed(1);
+                        const barWidth = Math.max(4, (entry.value / grandTotalCents) * 100);
+                        return (
+                          <div key={entry.platform}>
+                            <div className="flex items-center justify-between mb-1">
+                              <div className="flex items-center gap-2">
+                                <span
+                                  className="w-2.5 h-2.5 rounded-full shrink-0"
+                                  style={{ backgroundColor: CHART_COLORS[entry.platform] }}
+                                />
+                                <span className="text-xs font-medium text-foreground">{entry.name}</span>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <span className="text-xs text-muted-foreground">{pct}%</span>
+                                <span className="text-xs font-semibold text-foreground w-16 text-right">{fmtDollars(entry.value)}</span>
+                              </div>
+                            </div>
+                            <div className="h-1 bg-secondary rounded-full overflow-hidden">
+                              <div
+                                className="h-full rounded-full transition-all"
+                                style={{ width: `${barWidth}%`, backgroundColor: CHART_COLORS[entry.platform] }}
+                              />
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
             <div className="divide-y divide-border">
               {PLATFORMS_ORDER.filter((p) => spendByPlatform[p].totalCents > 0).map((p) => {
                 const { totalCents, byComponent, entries } = spendByPlatform[p];
@@ -1386,6 +1475,7 @@ export default function Ads() {
                 );
               })}
             </div>
+            </>
           )}
         </div>
 
