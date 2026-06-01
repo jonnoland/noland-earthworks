@@ -912,9 +912,17 @@ export const socialPosts = mysqlTable("social_posts", {
   fbPostId: varchar("fbPostId", { length: 200 }),
   igPostId: varchar("igPostId", { length: 200 }),
   xPostId: varchar("xPostId", { length: 200 }),
+  liPostId: varchar("liPostId", { length: 200 }),
   postedAt: timestamp("postedAt"),
   adType: varchar("adType", { length: 50 }).default("social"),
   headline: varchar("headline", { length: 255 }),
+  // Per-platform draft copy for All Five mode
+  igDraft: text("igDraft"),
+  xDraft: text("xDraft"),
+  liDraft: text("liDraft"),
+  googleHeadline: varchar("googleHeadline", { length: 255 }),
+  googleDescription: varchar("googleDescription", { length: 500 }),
+  googleDraft: text("googleDraft"),
   // Scheduling: null = post immediately, set = queue for future posting
   scheduledAt: timestamp("scheduledAt"),
   // status: draft | scheduled | published | failed
@@ -932,7 +940,7 @@ export type InsertSocialPost = typeof socialPosts.$inferInsert;
 export const adSpend = mysqlTable("ad_spend", {
   id: int("id").autoincrement().primaryKey(),
   /** Platform this spend belongs to */
-  platform: mysqlEnum("platform", ["facebook", "instagram", "x", "linkedin", "google", "clickgrow", "other"]).notNull(),
+  platform: mysqlEnum("platform", ["facebook", "instagram", "x", "linkedin", "google", "other"]).notNull(),
   /** Cost component label — e.g. "Boost Post", "Promoted Post", "Monthly Budget", "Ad Creation" */
   component: varchar("component", { length: 100 }).notNull(),
   /** Amount in cents to avoid floating point issues */

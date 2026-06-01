@@ -1601,3 +1601,19 @@
 
 ### Architecture
 - [ ] Unify handlePost and handlePostAllPlatform into a single handler
+
+## Audit Fix Pass 2 — Jun 2026
+
+- [x] Fix HistoryRow "all" platform label (stale "FB + IG + X")
+- [x] Add charLimit={280} to X panel in All Five mode
+- [x] Fix stale LinkedIn panel note to reference gear icon in Platform Connections
+- [x] Fix Ads.tsx file-level comment to reflect all five platforms
+- [x] Auto-copy Google ad copy to clipboard when Post to All Five is clicked
+- [x] Add per-platform draft columns to socialPosts schema (igDraft, xDraft, liDraft, googleHeadline, googleDescription, googleDraft)
+- [x] Run db:push after schema changes
+- [x] Fix ensureSaved to persist all five platform drafts in All Five mode
+- [x] Update Ad History HistoryRow to load and display per-platform copy
+- [x] Add image upload affordance to All Five panels (shared image at top — user confirmed option 1)
+- [x] Clean up adSpend ClickGrow enum — migrate orphaned entries to "other", remove clickgrow from enum (table was empty)
+- [x] Split ads procedures from opsRouter.ts into server/routers/ads.ts
+- [x] Update opsRouter.ts to import and merge ads router

@@ -1,7 +1,7 @@
 /**
  * Ads Page — Noland Earthworks
- * AI-generated Facebook/Instagram/X ad copy + image with one-click posting.
- * Features: per-platform copy, photo upload, scheduling, live FB/IG preview, X.com posting.
+ * AI-generated ad copy for Facebook, Instagram, X, LinkedIn, and Google Ads with one-click posting.
+ * Features: per-platform copy, photo upload, scheduling, live FB/IG preview, and direct posting.
  */
 import { useState, useRef, useMemo } from "react";
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend, LineChart, Line, XAxis, YAxis, CartesianGrid } from "recharts";
@@ -753,6 +753,7 @@ export default function Ads() {
     const draft = draftOverride ?? editedDraft;
     const headline = headlineOverride ?? editedHeadline;
     if (!draft && !generatedAll) return null;
+    const isAllFive = platform === "all";
     const saved = await saveMutation.mutateAsync({
       jobDescription,
       draft: draft || editedFbDraft,
@@ -761,6 +762,15 @@ export default function Ads() {
       imageUrl: activeImageUrl ?? undefined,
       imageKey: uploadedImageKey ?? undefined,
       status: "draft",
+      // Persist per-platform drafts when in All Five mode
+      ...(isAllFive ? {
+        igDraft: editedIgDraft || undefined,
+        xDraft: editedXDraft || undefined,
+        liDraft: editedLiDraft || undefined,
+        googleHeadline: editedGoogleHeadline || undefined,
+        googleDescription: editedGoogleDescription || undefined,
+        googleDraft: editedGoogleDraft || undefined,
+      } : {}),
     });
     setSavedPostId(saved.id);
     return saved.id;
@@ -800,7 +810,15 @@ export default function Ads() {
       }
       xMutation.mutate({ postId, text: editedXDraft, imageUrl: activeImageUrl ?? undefined });
       liMutation.mutate({ postId, text: editedLiDraft, imageUrl: activeImageUrl ?? undefined });
-      toast.info("Google Ads copy generated — copy it from the Google panel and paste into your Google Ads account.");
+      // Auto-copy Google ad copy to clipboard
+      const googleCopy = [editedGoogleHeadline, editedGoogleDescription, editedGoogleDraft].filter(Boolean).join("\n");
+      if (googleCopy) {
+        navigator.clipboard.writeText(googleCopy).then(() => {
+          toast.success("Google Ads copy copied to clipboard — paste into your Google Ads account.");
+        }).catch(() => {
+          toast.info("Google Ads copy ready — copy it from the Google panel and paste into your Google Ads account.");
+        });
+      }
       return;
     }
     if (target === "facebook") {
@@ -1247,7 +1265,7 @@ export default function Ads() {
                       Regenerate
                     </Button>
                   </div>
-                  <p className="text-xs text-amber-400/80">LinkedIn posting requires API credentials. Contact support to enable direct posting.</p>
+                  <p className="text-xs text-amber-400/80">To enable direct LinkedIn posting, configure your credentials via the gear icon on the LinkedIn card in Platform Connections above.</p>
                 </div>
               </PlatformCopyPanel>
             </div>
@@ -1335,6 +1353,12 @@ export default function Ads() {
               <Button variant="ghost" onClick={() => saveMutation.mutate({
                 jobDescription, draft: editedFbDraft, headline: editedFbHeadline, platform: "all",
                 imageUrl: activeImageUrl ?? undefined, imageKey: uploadedImageKey ?? undefined, status: "draft",
+                igDraft: editedIgDraft || undefined,
+                xDraft: editedXDraft || undefined,
+                liDraft: editedLiDraft || undefined,
+                googleHeadline: editedGoogleHeadline || undefined,
+                googleDescription: editedGoogleDescription || undefined,
+                googleDraft: editedGoogleDraft || undefined,
               })} disabled={saveMutation.isPending || !!savedPostId} className="gap-2 text-muted-foreground">
                 {savedPostId ? <><CheckCircle2 size={14} className="text-green-400" /> Saved</> : "Save draft"}
               </Button>
@@ -2142,10 +2166,12 @@ function HistoryRow({ post, onDelete }: { post: any; onDelete: () => void }) {
   const [expanded, setExpanded] = useState(false);
 
   const platformLabel = post.platform === "both" ? "FB + IG"
-    : post.platform === "all" ? "FB + IG + X"
+    : post.platform === "all" ? "FB + IG + X + LI + Google"
     : post.platform === "facebook" ? "Facebook"
     : post.platform === "instagram" ? "Instagram"
     : post.platform === "x" ? "X"
+    : post.platform === "linkedin" ? "LinkedIn"
+    : post.platform === "google" ? "Google Ads"
     : post.platform;
 
   const statusBadge = post.status === "scheduled"
@@ -2192,24 +2218,65 @@ function HistoryRow({ post, onDelete }: { post: any; onDelete: () => void }) {
           <Trash2 size={14} />
         </button>
       </div>
-      {expanded && (post.fbPostId || post.igPostId || post.xPostId) && (
-        <div className="mt-3 ml-[4.5rem] flex flex-wrap gap-3">
-          {post.fbPostId && (
-            <a href={`https://www.facebook.com/${post.fbPostId}`} target="_blank" rel="noopener noreferrer"
-              className="flex items-center gap-1 text-[11px] text-blue-400 hover:underline">
-              <Facebook size={11} /> View on Facebook <ExternalLink size={10} />
-            </a>
+      {expanded && (
+        <div className="mt-3 ml-[4.5rem] space-y-3">
+          {/* Per-platform copy — shown when All Five drafts were saved */}
+          {(post.igDraft || post.xDraft || post.liDraft || post.googleHeadline) && (
+            <div className="space-y-2">
+              {post.igDraft && (
+                <div className="bg-secondary/40 rounded-lg p-3">
+                  <p className="text-[10px] font-semibold text-purple-400 mb-1 flex items-center gap-1"><Instagram size={10} /> Instagram</p>
+                  <p className="text-xs text-muted-foreground">{post.igDraft}</p>
+                </div>
+              )}
+              {post.xDraft && (
+                <div className="bg-secondary/40 rounded-lg p-3">
+                  <p className="text-[10px] font-semibold text-sky-400 mb-1 flex items-center gap-1"><Twitter size={10} /> X</p>
+                  <p className="text-xs text-muted-foreground">{post.xDraft}</p>
+                </div>
+              )}
+              {post.liDraft && (
+                <div className="bg-secondary/40 rounded-lg p-3">
+                  <p className="text-[10px] font-semibold text-blue-400 mb-1 flex items-center gap-1"><Linkedin size={10} /> LinkedIn</p>
+                  <p className="text-xs text-muted-foreground">{post.liDraft}</p>
+                </div>
+              )}
+              {post.googleHeadline && (
+                <div className="bg-secondary/40 rounded-lg p-3">
+                  <p className="text-[10px] font-semibold text-yellow-400 mb-1 flex items-center gap-1"><Globe size={10} /> Google Ads</p>
+                  {post.googleHeadline && <p className="text-xs font-medium text-foreground">{post.googleHeadline}</p>}
+                  {post.googleDescription && <p className="text-xs text-muted-foreground mt-0.5">{post.googleDescription}</p>}
+                  {post.googleDraft && <p className="text-xs text-muted-foreground mt-1">{post.googleDraft}</p>}
+                </div>
+              )}
+            </div>
           )}
-          {post.igPostId && (
-            <span className="flex items-center gap-1 text-[11px] text-purple-400">
-              <Instagram size={11} /> IG post ID: {post.igPostId}
-            </span>
-          )}
-          {post.xPostId && (
-            <a href={`https://x.com/i/web/status/${post.xPostId}`} target="_blank" rel="noopener noreferrer"
-              className="flex items-center gap-1 text-[11px] text-sky-400 hover:underline">
-              <Twitter size={11} /> View on X <ExternalLink size={10} />
-            </a>
+          {/* Post IDs / external links */}
+          {(post.fbPostId || post.igPostId || post.xPostId || post.liPostId) && (
+            <div className="flex flex-wrap gap-3">
+              {post.fbPostId && (
+                <a href={`https://www.facebook.com/${post.fbPostId}`} target="_blank" rel="noopener noreferrer"
+                  className="flex items-center gap-1 text-[11px] text-blue-400 hover:underline">
+                  <Facebook size={11} /> View on Facebook <ExternalLink size={10} />
+                </a>
+              )}
+              {post.igPostId && (
+                <span className="flex items-center gap-1 text-[11px] text-purple-400">
+                  <Instagram size={11} /> IG post ID: {post.igPostId}
+                </span>
+              )}
+              {post.xPostId && (
+                <a href={`https://x.com/i/web/status/${post.xPostId}`} target="_blank" rel="noopener noreferrer"
+                  className="flex items-center gap-1 text-[11px] text-sky-400 hover:underline">
+                  <Twitter size={11} /> View on X <ExternalLink size={10} />
+                </a>
+              )}
+              {post.liPostId && (
+                <span className="flex items-center gap-1 text-[11px] text-blue-400">
+                  <Linkedin size={11} /> LI post ID: {post.liPostId}
+                </span>
+              )}
+            </div>
           )}
         </div>
       )}
