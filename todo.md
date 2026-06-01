@@ -1510,8 +1510,8 @@
 - [x] Update all mutation calls in Ads.tsx to pass adTypes array instead of single adType
 - [x] Add automated Instagram token refresh (project-level Heartbeat cron, runs weekly, refreshes 60-day token before expiry)
 - [x] Add /api/scheduled/instagram-token-refresh endpoint to handle the refresh
-- [ ] Walk through Meta App Review process requirements
-- [ ] Test live Instagram post from ops dashboard
+- [x] Walk through Meta App Review process requirements (Meta App Review submission filled in — screencasts uploaded, API test calls made, awaiting 24hr propagation)
+- [x] Test live Instagram post from ops dashboard
 
 ## Ad Scheduling Backend + Queue UI — May 31 2026
 - [x] Create server/scheduledAdsPublisher.ts with runScheduledAdsPublisher() — finds status=scheduled posts with scheduledAt <= now and publishes to FB/IG/X
@@ -1529,3 +1529,29 @@
 - [x] Add Log Spend modal (platform, component, amount, date, notes)
 - [x] Add expandable entry list per platform with delete capability
 - [x] Show grand total and per-component breakdown inline on each platform card
+- [x] Add donut pie chart to Ad Spend Tracker showing spend distribution across platforms
+- [x] Add weekly spend trend line chart below donut chart (groups spend by week, Noland orange line, only renders with 2+ weeks of data)
+
+## LinkedIn Platform Addition — June 1 2026
+- [x] Add LinkedIn to ad_spend platform enum in schema.ts and run db:push migration
+- [x] Add linkedin to adSpend.add z.enum in opsRouter.ts
+- [x] Add linkedin to schedulePost platforms z.enum in opsRouter.ts
+- [x] Add linkedin to generateForAll LLM prompt and response schema (4-platform generation)
+- [x] Add linkedin to regeneratePlatform procedure and platformInstructions map
+- [x] Add publishToLinkedIn stub procedure (returns PRECONDITION_FAILED until credentials configured)
+- [x] Add linkedin to platformConnectionStatus return value (shows as not configured)
+- [x] Update Platform type in Ads.tsx to include "linkedin"
+- [x] Update GeneratedAllAd interface to include linkedin field
+- [x] Add liPostStatus, editedLiDraft, editedLiHeadline state variables
+- [x] Add liMutation (publishToLinkedIn) with onMutate/onSuccess/onError handlers
+- [x] Add LinkedIn platform panel (PlatformCopyPanel) in All Four mode
+- [x] Update connection status grid from 3 to 4 columns, add LinkedIn card
+- [x] Update platform selector: "All Three" → "All Four", add LI button, add spend totals under button labels
+- [x] Update "Post to All Three" button → "Post to All Four" with updated gradient
+- [x] Update PLATFORMS_ORDER, PLATFORM_LABELS, PLATFORM_COLORS, PLATFORM_BG, CHART_COLORS to include linkedin
+- [x] Update handlePostAllPlatform to fire liMutation on "all" and "linkedin" targets
+- [x] Update handleSchedule to include linkedin in platforms array for "all" and "linkedin" modes
+- [x] Update isPosting to include liMutation.isPending
+- [x] Update header description text to mention LinkedIn
+- [x] Fix spendPlatform state type to include linkedin
+- [x] All 18 test files pass (100 tests), 0 TypeScript errors

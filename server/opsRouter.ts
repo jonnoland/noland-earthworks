@@ -2613,7 +2613,7 @@ const socialPostsRouter = router({
         messages: [
           {
             role: "system",
-            content: `You write social media ads for Jon Noland, owner of Noland Earthworks, LLC — a veteran-owned land management and forestry mulching company in Middle & West Tennessee. ${toneNote} ${adTypeNote} Rules: No emojis. No corporate jargon. No banned phrases: "solutions", "industry-leading", "best-in-class", "we are passionate", "dedicated team", "we strive to", "cutting-edge". Sound like a real person who does this work. ${competitorContext} Return JSON with three separate platform-optimized posts. Facebook: conversational, up to 150 words, 2-3 hashtags max. Instagram: visual-first, shorter (under 100 words), 3-5 relevant hashtags. X: punchy, under 280 characters total including any hashtags, 1-2 hashtags max. All three must end with a direct CTA (call, text, or visit nolandearthworks.com). Also write one image generation prompt (under 60 words) for a realistic gritty photo of land clearing work in Tennessee — no people, no logos, no text.`,
+            content: `You write social media ads for Jon Noland, owner of Noland Earthworks, LLC — a veteran-owned land management and forestry mulching company in Middle & West Tennessee. ${toneNote} ${adTypeNote} Rules: No emojis. No corporate jargon. No banned phrases: "solutions", "industry-leading", "best-in-class", "we are passionate", "dedicated team", "we strive to", "cutting-edge". Sound like a real person who does this work. ${competitorContext} Return JSON with four separate platform-optimized posts. Facebook: conversational, up to 150 words, 2-3 hashtags max. Instagram: visual-first, shorter (under 100 words), 3-5 relevant hashtags. X: punchy, under 280 characters total including any hashtags, 1-2 hashtags max. LinkedIn: professional tone, up to 200 words, industry-focused, 2-3 relevant hashtags, suitable for a B2B audience of developers, property managers, and municipal contacts. All four must end with a direct CTA (call, text, or visit nolandearthworks.com). Also write one image generation prompt (under 60 words) for a realistic gritty photo of land clearing work in Tennessee — no people, no logos, no text.`,
           },
           { role: "user", content: jobContext },
         ],
@@ -2652,16 +2652,25 @@ const socialPostsRouter = router({
                   required: ["draft", "headline"],
                   additionalProperties: false,
                 },
+                linkedin: {
+                  type: "object",
+                  properties: {
+                    draft: { type: "string", description: "LinkedIn post body, up to 200 words, professional tone" },
+                    headline: { type: "string", description: "Short headline, max 8 words" },
+                  },
+                  required: ["draft", "headline"],
+                  additionalProperties: false,
+                },
                 imagePrompt: { type: "string", description: "Image generation prompt" },
               },
-              required: ["facebook", "instagram", "x", "imagePrompt"],
+              required: ["facebook", "instagram", "x", "linkedin", "imagePrompt"],
               additionalProperties: false,
             },
           },
         },
       });
 
-      let parsed: { facebook: { draft: string; headline: string }; instagram: { draft: string; headline: string }; x: { draft: string; headline: string }; imagePrompt: string };
+      let parsed: { facebook: { draft: string; headline: string }; instagram: { draft: string; headline: string }; x: { draft: string; headline: string }; linkedin: { draft: string; headline: string }; imagePrompt: string };
       try {
         parsed = JSON.parse(result.choices?.[0]?.message?.content as string ?? "{}");
       } catch {
@@ -2683,14 +2692,15 @@ const socialPostsRouter = router({
         facebook: { draft: parsed.facebook.draft, headline: parsed.facebook.headline },
         instagram: { draft: parsed.instagram.draft, headline: parsed.instagram.headline },
         x: { draft: parsed.x.draft, headline: parsed.x.headline },
+        linkedin: { draft: parsed.linkedin?.draft ?? "", headline: parsed.linkedin?.headline ?? "" },
         imagePrompt: parsed.imagePrompt,
-                imageUrl,
+        imageUrl,
       };
     }),
   /** Re-generate copy for a single platform without touching the other two */
   regeneratePlatform: ownerProcedure
     .input(z.object({
-      platform: z.enum(["facebook", "instagram", "x"]),
+      platform: z.enum(["facebook", "instagram", "x", "linkedin"]),
       adTypes: z.array(z.enum(["before_after", "problem_solution", "education", "seasonal_urgency", "veteran_trust", "reclaim_your_land", "specific_use_case", "general"])).min(1).max(3).default(["general"]),
       tone: z.enum(["professional", "casual", "urgent"]).default("casual"),
       jobDescription: z.string().optional(),
@@ -2714,6 +2724,7 @@ const socialPostsRouter = router({
         facebook: "Write a Facebook post: conversational, up to 150 words, 2-3 hashtags max, end with a direct CTA (call, text, or visit nolandearthworks.com).",
         instagram: "Write an Instagram caption: visual-first, under 100 words, 3-5 relevant hashtags, end with a direct CTA.",
         x: "Write an X (Twitter) post: punchy, MUST be under 280 characters total including hashtags, 1-2 hashtags max, end with a direct CTA.",
+        linkedin: "Write a LinkedIn post: professional tone, up to 200 words, industry-focused for developers, property managers, and municipal contacts, 2-3 relevant hashtags, end with a direct CTA (call, text, or visit nolandearthworks.com).",
       };
       const jobContext = input.jobDescription
         ? `Base the ad on this specific job or context: ${input.jobDescription}`
@@ -2801,15 +2812,15 @@ const socialPostsRouter = router({
     .input(z.object({
       id: z.number().int().positive(),
       scheduledAt: z.string(), // ISO datetime string
-      platforms: z.array(z.enum(["facebook", "instagram", "x"])).min(1),
+      platforms: z.array(z.enum(["facebook", "instagram", "x", "linkedin"])).min(1),
     }))
     .mutation(async ({ ctx, input }) => {
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
       const { socialPosts } = await import("../drizzle/schema");
       // Determine the canonical platform string for storage
-      const hasAll = input.platforms.includes("facebook") && input.platforms.includes("instagram") && input.platforms.includes("x");
-      const hasBoth = input.platforms.includes("facebook") && input.platforms.includes("instagram") && !input.platforms.includes("x");
+      const hasAll = input.platforms.includes("facebook") && input.platforms.includes("instagram") && input.platforms.includes("x") && input.platforms.includes("linkedin");
+      const hasBoth = input.platforms.includes("facebook") && input.platforms.includes("instagram") && !input.platforms.includes("x") && !input.platforms.includes("linkedin");
       const platformValue = hasAll ? "all" : hasBoth ? "both" : input.platforms[0];
       await db.update(socialPosts)
         .set({
@@ -2997,6 +3008,24 @@ const socialPostsRouter = router({
     // This procedure is kept for API compatibility but has no effect.
     return { success: true };
   }),
+
+  /**
+   * Publish a post to LinkedIn (organic UGC post).
+   * LinkedIn OAuth 2.0 with w_member_social scope is required.
+   * Credentials are not yet configured — this procedure returns a clear error until they are set.
+   */
+  publishToLinkedIn: ownerProcedure
+    .input(z.object({
+      postId: z.number().int().positive(),
+      text: z.string(),
+      imageUrl: z.string().optional(),
+    }))
+    .mutation(async () => {
+      throw new TRPCError({
+        code: "PRECONDITION_FAILED",
+        message: "LinkedIn posting is not yet configured. LinkedIn API credentials (access token and author URN) must be added to enable this feature.",
+      });
+    }),
 
   /** Publish to Facebook, Instagram, and X simultaneously */
   publishToAll: ownerProcedure
@@ -3257,7 +3286,7 @@ export const opsRouter = router({
     /** Log a new spend entry */
     add: ownerProcedure
       .input(z.object({
-        platform: z.enum(["facebook", "instagram", "x", "google", "clickgrow", "other"]),
+        platform: z.enum(["facebook", "instagram", "x", "linkedin", "google", "clickgrow", "other"]),
         component: z.string().min(1).max(100),
         amountCents: z.number().int().min(1),
         notes: z.string().max(500).optional(),
@@ -3365,10 +3394,18 @@ export const opsRouter = router({
       xError = "Credentials not configured";
     }
 
+    // ── LinkedIn ─────────────────────────────────────────────────────────
+    // LinkedIn organic posting requires OAuth 2.0 with the w_member_social scope.
+    // Credentials are not yet configured — LinkedIn is shown as "coming soon" in the UI.
+    const linkedinOk = false;
+    const linkedinHandle: string | null = null;
+    const linkedinError: string | null = "LinkedIn credentials not configured. Contact support to enable LinkedIn posting.";
+
     return {
       facebook: { ok: facebookOk, handle: facebookHandle, error: facebookError },
       instagram: { ok: instagramOk, handle: instagramHandle, error: instagramError },
       x: { ok: xOk, handle: xHandle, error: xError },
+      linkedin: { ok: linkedinOk, handle: linkedinHandle, error: linkedinError },
     };
   }),
 });

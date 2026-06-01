@@ -1,0 +1,1 @@
+ALTER TABLE `ad_spend` MODIFY COLUMN `platform` enum('facebook','instagram','x','linkedin','google','clickgrow','other') NOT NULL;

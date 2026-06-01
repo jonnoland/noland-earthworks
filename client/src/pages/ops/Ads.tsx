@@ -11,7 +11,7 @@ import {
   Sparkles, Send, Facebook, Instagram, Trash2, ExternalLink,
   ImageIcon, RefreshCw, CheckCircle2, Upload, Clock, Calendar,
   ChevronDown, Eye, Twitter, X as XIcon, CalendarClock,
-  DollarSign, Plus, ChevronRight,
+  DollarSign, Plus, ChevronRight, Linkedin,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -20,7 +20,7 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { format } from "date-fns";
 
-type Platform = "facebook" | "instagram" | "x" | "both" | "all";
+type Platform = "facebook" | "instagram" | "x" | "linkedin" | "both" | "all";
 type Tone = "casual" | "professional";
 type PreviewPlatform = "facebook" | "instagram";
 type AdType = "before_after" | "problem_solution" | "education" | "seasonal_urgency" | "veteran_trust" | "reclaim_your_land" | "specific_use_case" | "general";
@@ -47,6 +47,7 @@ interface GeneratedAllAd {
   facebook: { draft: string; headline: string };
   instagram: { draft: string; headline: string };
   x: { draft: string; headline: string };
+  linkedin: { draft: string; headline: string };
   imagePrompt: string;
   imageUrl: string | null;
 }
@@ -316,10 +317,15 @@ export default function Ads() {
   const [editedXDraft, setEditedXDraft] = useState("");
   const [editedXHeadline, setEditedXHeadline] = useState("");
 
-  // Per-platform post status (All Three mode)
+  // Per-platform post status (All Four mode)
   const [fbPostStatus, setFbPostStatus] = useState<PanelPostStatus>({ status: "idle" });
   const [igPostStatus, setIgPostStatus] = useState<PanelPostStatus>({ status: "idle" });
   const [xPostStatus, setXPostStatus] = useState<PanelPostStatus>({ status: "idle" });
+  const [liPostStatus, setLiPostStatus] = useState<PanelPostStatus>({ status: "idle" });
+
+  // LinkedIn per-platform draft state
+  const [editedLiDraft, setEditedLiDraft] = useState("");
+  const [editedLiHeadline, setEditedLiHeadline] = useState("");
   // Photo upload state
   const [uploadedImageUrl, setUploadedImageUrl] = useState<string | null>(null);
   const [uploadedImageKey, setUploadedImageKey] = useState<string | null>(null);
@@ -372,6 +378,8 @@ export default function Ads() {
       setEditedIgHeadline(data.instagram.headline);
       setEditedXDraft(data.x.draft);
       setEditedXHeadline(data.x.headline);
+      setEditedLiDraft(data.linkedin?.draft ?? "");
+      setEditedLiHeadline(data.linkedin?.headline ?? "");
       setSavedPostId(null);
       setUploadedImageUrl(null);
       setUploadedImageKey(null);
@@ -379,6 +387,7 @@ export default function Ads() {
       setFbPostStatus({ status: "idle" });
       setIgPostStatus({ status: "idle" });
       setXPostStatus({ status: "idle" });
+      setLiPostStatus({ status: "idle" });
     },
     onError: (err) => toast.error(err.message),
   });
@@ -449,6 +458,19 @@ export default function Ads() {
     },
   });
 
+  const liMutation = trpc.ops.socialPosts.publishToLinkedIn.useMutation({
+    onMutate: () => setLiPostStatus({ status: "posting" }),
+    onSuccess: () => {
+      utils.ops.socialPosts.list.invalidate();
+      setLiPostStatus({ status: "success" });
+      toast.success("Posted to LinkedIn.");
+    },
+    onError: (err) => {
+      setLiPostStatus({ status: "error", message: err.message });
+      toast.error(`LinkedIn: ${err.message}`);
+    },
+  });
+
   const allMutation = trpc.ops.socialPosts.publishToAll.useMutation({
     onSuccess: (data) => {
       utils.ops.socialPosts.list.invalidate();
@@ -481,7 +503,7 @@ export default function Ads() {
 
   // ─── Ad Spend Tracker state ──────────────────────────────────────────────────
   const [showSpendModal, setShowSpendModal] = useState(false);
-  const [spendPlatform, setSpendPlatform] = useState<"facebook" | "instagram" | "x" | "google" | "clickgrow" | "other">("facebook");
+  const [spendPlatform, setSpendPlatform] = useState<"facebook" | "instagram" | "x" | "linkedin" | "google" | "clickgrow" | "other">("facebook");
   const [spendComponent, setSpendComponent] = useState("");
   const [spendAmount, setSpendAmount] = useState("");
   const [spendNotes, setSpendNotes] = useState("");
@@ -511,17 +533,18 @@ export default function Ads() {
   });
 
   // Aggregate spend by platform
-  const PLATFORMS_ORDER = ["facebook", "instagram", "x", "google", "clickgrow", "other"] as const;
+  const PLATFORMS_ORDER = ["facebook", "instagram", "x", "linkedin", "google", "clickgrow", "other"] as const;
   const PLATFORM_LABELS: Record<string, string> = {
-    facebook: "Facebook", instagram: "Instagram", x: "X", google: "Google", clickgrow: "ClickGrow", other: "Other",
+    facebook: "Facebook", instagram: "Instagram", x: "X", linkedin: "LinkedIn", google: "Google", clickgrow: "ClickGrow", other: "Other",
   };
   const PLATFORM_COLORS: Record<string, string> = {
     facebook: "text-blue-400", instagram: "text-pink-400", x: "text-sky-400",
-    google: "text-yellow-400", clickgrow: "text-green-400", other: "text-muted-foreground",
+    linkedin: "text-[#0A66C2]", google: "text-yellow-400", clickgrow: "text-green-400", other: "text-muted-foreground",
   };
   const PLATFORM_BG: Record<string, string> = {
     facebook: "bg-blue-400/8 border-blue-400/20", instagram: "bg-pink-400/8 border-pink-400/20",
-    x: "bg-sky-400/8 border-sky-400/20", google: "bg-yellow-400/8 border-yellow-400/20",
+    x: "bg-sky-400/8 border-sky-400/20", linkedin: "bg-[#0A66C2]/8 border-[#0A66C2]/20",
+    google: "bg-yellow-400/8 border-yellow-400/20",
     clickgrow: "bg-green-400/8 border-green-400/20", other: "bg-secondary border-border",
   };
 
@@ -630,7 +653,7 @@ export default function Ads() {
   }
 
   // Post from the all-platforms mode — each platform uses its own draft
-  async function handlePostAllPlatform(target: "facebook" | "instagram" | "x" | "all") {
+  async function handlePostAllPlatform(target: "facebook" | "instagram" | "x" | "linkedin" | "all") {
     // Save using FB draft as canonical
     const postId = await ensureSaved(editedFbDraft, editedFbHeadline);
     if (!postId) { toast.error("Could not save post. Try again."); return; }
@@ -644,6 +667,7 @@ export default function Ads() {
         toast.error("Instagram requires an image — skipped. Upload a photo to include Instagram.");
       }
       xMutation.mutate({ postId, text: editedXDraft, imageUrl: activeImageUrl ?? undefined });
+      liMutation.mutate({ postId, text: editedLiDraft, imageUrl: activeImageUrl ?? undefined });
       return;
     }
     if (target === "facebook") {
@@ -651,6 +675,8 @@ export default function Ads() {
     } else if (target === "instagram") {
       if (!activeImageUrl) { toast.error("Instagram requires an image."); return; }
       igMutation.mutate({ postId, caption: editedIgDraft, imageUrl: activeImageUrl });
+    } else if (target === "linkedin") {
+      liMutation.mutate({ postId, text: editedLiDraft, imageUrl: activeImageUrl ?? undefined });
     } else {
       xMutation.mutate({ postId, text: editedXDraft, imageUrl: activeImageUrl ?? undefined });
     }
@@ -681,13 +707,15 @@ export default function Ads() {
     const postId = await ensureSaved();
     if (!postId) { toast.error("Could not save post. Try again."); return; }
     const scheduledAt = new Date(`${scheduledDate}T${scheduledTime}:00`).toISOString();
-    let platforms: ("facebook" | "instagram" | "x")[];
+    let platforms: ("facebook" | "instagram" | "x" | "linkedin")[];
     if (platform === "all") {
-      platforms = ["facebook", "instagram", "x"];
+      platforms = ["facebook", "instagram", "x", "linkedin"];
     } else if (platform === "both") {
       platforms = ["facebook", "instagram"];
     } else if (platform === "x") {
       platforms = ["x"];
+    } else if (platform === "linkedin") {
+      platforms = ["linkedin"];
     } else {
       platforms = [platform as "facebook" | "instagram"];
     }
@@ -695,7 +723,7 @@ export default function Ads() {
   }
 
   const isGenerating = generateMutation.isPending || generateAllMutation.isPending;
-  const isPosting = fbMutation.isPending || igMutation.isPending || xMutation.isPending || allMutation.isPending || saveMutation.isPending;
+  const isPosting = fbMutation.isPending || igMutation.isPending || xMutation.isPending || liMutation.isPending || allMutation.isPending || saveMutation.isPending;
   const hasAllGenerated = platform === "all" && generatedAll !== null;
   const hasSingleGenerated = platform !== "all" && generated !== null;
 
@@ -707,7 +735,7 @@ export default function Ads() {
         <div>
           <h1 className="text-2xl font-bold text-foreground">Ads</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Generate AI ad copy and images, then post directly to Facebook, Instagram, or X.
+            Generate AI ad copy and images, then post directly to Facebook, Instagram, X, or LinkedIn.
           </p>
         </div>
 
@@ -724,7 +752,7 @@ export default function Ads() {
               Refresh
             </button>
           </div>
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-4 gap-3">
             <PlatformStatusCard icon={<Facebook size={13} />} label="Facebook" loading={statusLoading}
               ok={platformStatus?.facebook.ok} handle={platformStatus?.facebook.handle ?? undefined}
               error={platformStatus?.facebook.error ?? undefined} accentClass="text-blue-400 bg-blue-400/8 border-blue-400/20" />
@@ -734,6 +762,9 @@ export default function Ads() {
             <PlatformStatusCard icon={<Twitter size={13} />} label="X" loading={statusLoading}
               ok={platformStatus?.x.ok} handle={platformStatus?.x.handle ?? undefined}
               error={platformStatus?.x.error ?? undefined} accentClass="text-sky-400 bg-sky-400/8 border-sky-400/20" />
+            <PlatformStatusCard icon={<Linkedin size={13} />} label="LinkedIn" loading={statusLoading}
+              ok={platformStatus?.linkedin?.ok} handle={platformStatus?.linkedin?.handle ?? undefined}
+              error={platformStatus?.linkedin?.error ?? undefined} accentClass="text-[#0A66C2] bg-[#0A66C2]/8 border-[#0A66C2]/20" />
           </div>
         </div>
 
@@ -791,22 +822,30 @@ export default function Ads() {
               <label className="text-sm font-medium text-foreground">Platform</label>
               <div className="flex rounded-lg border border-border overflow-hidden">
                 {([
-                  { value: "all",       label: "All Three" },
+                  { value: "all",       label: "All Four" },
                   { value: "both",      label: "FB + IG" },
                   { value: "facebook",  label: "FB" },
                   { value: "instagram", label: "IG" },
                   { value: "x",         label: "X" },
+                  { value: "linkedin",  label: "LI" },
                 ] as { value: Platform; label: string }[]).map((p) => (
                   <button key={p.value} onClick={() => setPlatform(p.value)}
-                    className={cn("flex-1 px-2 py-1.5 text-xs font-medium transition-colors flex items-center justify-center gap-1",
+                    className={cn("flex-1 px-2 py-1.5 text-xs font-medium transition-colors flex flex-col items-center justify-center gap-0.5",
                       platform === p.value ? "bg-primary text-primary-foreground" : "bg-background text-muted-foreground hover:text-foreground"
                     )}>
-                    {p.label}
+                    <span>{p.label}</span>
+                    {(() => {
+                      const platformKey = p.value === "all" ? null : p.value === "both" ? null : p.value;
+                      if (!platformKey || !spendByPlatform[platformKey]) return null;
+                      const total = spendByPlatform[platformKey].totalCents;
+                      if (total === 0) return null;
+                      return <span className="text-[9px] opacity-70">{fmtDollars(total)}</span>;
+                    })()}
                   </button>
                 ))}
               </div>
               {platform === "all" && (
-                <p className="text-xs text-muted-foreground">Generates separate, platform-optimized copy for Facebook, Instagram, and X.</p>
+                <p className="text-xs text-muted-foreground">Generates separate, platform-optimized copy for Facebook, Instagram, X, and LinkedIn.</p>
               )}
             </div>
 
@@ -998,16 +1037,54 @@ export default function Ads() {
                   </Button>
                 </div>
               </PlatformCopyPanel>
+
+              {/* LinkedIn */}
+              <PlatformCopyPanel
+                icon={<Linkedin size={14} className="text-[#0A66C2]" />}
+                label="LinkedIn"
+                accentClass="border-[#0A66C2]/20 bg-[#0A66C2]/5"
+                draft={editedLiDraft}
+                headline={editedLiHeadline}
+                tone={tone}
+                postStatus={liPostStatus}
+                onDraftChange={(v) => { setEditedLiDraft(v); setSavedPostId(null); }}
+                onHeadlineChange={(v) => { setEditedLiHeadline(v); setSavedPostId(null); }}
+              >
+                <div className="space-y-2">
+                  <div className="flex flex-wrap gap-2">
+                    <Button onClick={() => handlePostAllPlatform("linkedin")} disabled={isPosting}
+                      className="gap-2 bg-[#0A66C2] hover:bg-[#004182] text-white border-0">
+                      <Linkedin size={14} />{liMutation.isPending ? "Posting..." : "Post to LinkedIn"}
+                    </Button>
+                    <Button variant="outline" size="sm"
+                      disabled={regeneratePlatformMutation.isPending}
+                      onClick={async () => {
+                        const result = await regeneratePlatformMutation.mutateAsync({
+                          platform: "linkedin", adTypes, tone,
+                          jobDescription: jobDescription.trim() || undefined,
+                        });
+                        setEditedLiDraft(result.draft);
+                        setEditedLiHeadline(result.headline);
+                        setSavedPostId(null);
+                      }}
+                      className="gap-1.5 text-muted-foreground">
+                      <RefreshCw size={12} className={regeneratePlatformMutation.isPending ? "animate-spin" : ""} />
+                      Regenerate
+                    </Button>
+                  </div>
+                  <p className="text-xs text-amber-400/80">LinkedIn posting requires API credentials. Contact support to enable direct posting.</p>
+                </div>
+              </PlatformCopyPanel>
             </div>
 
-            {/* Post to All Three */}
+            {/* Post to All Four */}
             <div className="flex flex-wrap gap-3 pt-2 border-t border-border">
               <Button
                 onClick={() => handlePostAllPlatform("all")}
                 disabled={isPosting}
-                className="gap-2 bg-gradient-to-r from-[#1877F2] via-[#833AB4] to-black text-white border-0 hover:opacity-90"
+                className="gap-2 bg-gradient-to-r from-[#1877F2] via-[#833AB4] via-black to-[#0A66C2] text-white border-0 hover:opacity-90"
               >
-                <Send size={14} />{isPosting ? "Posting..." : "Post to All Three"}
+                <Send size={14} />{isPosting ? "Posting..." : "Post to All Four"}
               </Button>
               <Button variant="outline" onClick={() => setShowScheduler(!showScheduler)}
                 className={cn("gap-2", showScheduler && "border-primary/40 text-primary")}>
@@ -1327,6 +1404,7 @@ export default function Ads() {
                 facebook: "#60a5fa",
                 instagram: "#f472b6",
                 x: "#38bdf8",
+                linkedin: "#0A66C2",
                 google: "#facc15",
                 clickgrow: "#4ade80",
                 other: "#94a3b8",
@@ -1477,6 +1555,7 @@ export default function Ads() {
                         {p === "facebook" && <Facebook size={13} className={PLATFORM_COLORS[p]} />}
                         {p === "instagram" && <Instagram size={13} className={PLATFORM_COLORS[p]} />}
                         {p === "x" && <Twitter size={13} className={PLATFORM_COLORS[p]} />}
+                        {p === "linkedin" && <Linkedin size={13} className={PLATFORM_COLORS[p]} />}
                         {p === "google" && <span className={cn("text-[11px] font-bold", PLATFORM_COLORS[p])}>G</span>}
                         {p === "clickgrow" && <span className={cn("text-[11px] font-bold", PLATFORM_COLORS[p])}>CG</span>}
                         {p === "other" && <DollarSign size={13} className={PLATFORM_COLORS[p]} />}

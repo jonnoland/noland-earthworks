@@ -932,7 +932,7 @@ export type InsertSocialPost = typeof socialPosts.$inferInsert;
 export const adSpend = mysqlTable("ad_spend", {
   id: int("id").autoincrement().primaryKey(),
   /** Platform this spend belongs to */
-  platform: mysqlEnum("platform", ["facebook", "instagram", "x", "google", "clickgrow", "other"]).notNull(),
+  platform: mysqlEnum("platform", ["facebook", "instagram", "x", "linkedin", "google", "clickgrow", "other"]).notNull(),
   /** Cost component label — e.g. "Boost Post", "Promoted Post", "Monthly Budget", "Ad Creation" */
   component: varchar("component", { length: 100 }).notNull(),
   /** Amount in cents to avoid floating point issues */
