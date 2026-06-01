@@ -1620,3 +1620,4 @@
 
 ## Ad Generation Loading State — Jun 2026
 - [x] Add rich loading state to ad generation: animated progress steps, estimated time, per-platform status indicators
+- [x] Enhance loading state cards with platform-specific status messages, estimated time remaining, elapsed time counter, and animated progress bar

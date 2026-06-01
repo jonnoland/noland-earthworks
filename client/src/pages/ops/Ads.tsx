@@ -3,7 +3,7 @@
  * AI-generated ad copy for Facebook, Instagram, X, LinkedIn, and Google Ads with one-click posting.
  * Features: per-platform copy, photo upload, scheduling, live FB/IG preview, and direct posting.
  */
-import { useState, useRef, useMemo } from "react";
+import { useState, useRef, useMemo, useEffect } from "react";
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend, LineChart, Line, XAxis, YAxis, CartesianGrid } from "recharts";
 import DashboardLayout from "@/components/DashboardLayout";
 import { trpc } from "@/lib/trpc";
@@ -695,18 +695,64 @@ export default function Ads() {
 
   // ─── Handlers ────────────────────────────────────────────────────────────────
   const ALL_FIVE_STEPS = [
-    { label: "Facebook", icon: "FB" },
-    { label: "Instagram", icon: "IG" },
-    { label: "X", icon: "X" },
-    { label: "LinkedIn", icon: "LI" },
-    { label: "Google Ads", icon: "G" },
-    { label: "Image", icon: "IMG" },
+    {
+      label: "Facebook",
+      icon: "FB",
+      statusMsg: "Writing post copy...",
+      doneMsg: "Post copy ready",
+      estSec: 3,
+    },
+    {
+      label: "Instagram",
+      icon: "IG",
+      statusMsg: "Crafting caption...",
+      doneMsg: "Caption ready",
+      estSec: 3,
+    },
+    {
+      label: "X",
+      icon: "X",
+      statusMsg: "Trimming to 280 chars...",
+      doneMsg: "Tweet ready",
+      estSec: 2,
+    },
+    {
+      label: "LinkedIn",
+      icon: "LI",
+      statusMsg: "Writing professional copy...",
+      doneMsg: "Post ready",
+      estSec: 3,
+    },
+    {
+      label: "Google Ads",
+      icon: "G",
+      statusMsg: "Writing headline + description...",
+      doneMsg: "Ad copy ready",
+      estSec: 3,
+    },
+    {
+      label: "Image",
+      icon: "IMG",
+      statusMsg: "Generating image prompt...",
+      doneMsg: "Prompt ready",
+      estSec: 4,
+    },
   ];
+
+  // Elapsed seconds counter for the loading state
+  const elapsedSecRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
 
   function handleGenerate() {
     if (platform === "all") {
       setGenerateStepIndex(0);
       setGenerateStep(ALL_FIVE_STEPS[0].label);
+      setElapsedSeconds(0);
+
+      // Elapsed-time ticker
+      if (elapsedSecRef.current) clearInterval(elapsedSecRef.current);
+      elapsedSecRef.current = setInterval(() => setElapsedSeconds(s => s + 1), 1000);
+
       let i = 0;
       const interval = setInterval(() => {
         i++;
@@ -722,7 +768,14 @@ export default function Ads() {
         adTypes,
         tone,
         generateImage: withImage,
-      }, { onSettled: () => { setGenerateStep(""); setGenerateStepIndex(0); } });
+      }, {
+        onSettled: () => {
+          setGenerateStep("");
+          setGenerateStepIndex(0);
+          setElapsedSeconds(0);
+          if (elapsedSecRef.current) { clearInterval(elapsedSecRef.current); elapsedSecRef.current = null; }
+        },
+      });
     } else {
       setGenerateStep("");
       setGenerateStepIndex(0);
@@ -1086,55 +1139,94 @@ export default function Ads() {
           </Button>
 
           {/* Rich loading state for All Five generation */}
-          {isGenerating && platform === "all" && (
-            <div className="mt-3 rounded-xl border border-border bg-muted/40 p-4 space-y-3">
-              <div className="flex items-center gap-2">
-                <RefreshCw size={13} className="animate-spin text-muted-foreground" />
-                <p className="text-xs font-medium text-muted-foreground">
-                  Writing copy for all five platforms — this takes 10–20 seconds.
-                </p>
+          {isGenerating && platform === "all" && (() => {
+            // Compute estimated remaining seconds from current step onward
+            const remainingSec = ALL_FIVE_STEPS
+              .slice(generateStepIndex)
+              .reduce((acc, s) => acc + s.estSec, 0);
+            const remainingLabel = remainingSec <= 2
+              ? "Almost done..."
+              : `~${remainingSec}s remaining`;
+            return (
+              <div className="mt-3 rounded-xl border border-border bg-muted/40 p-4 space-y-3">
+                {/* Header row */}
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <RefreshCw size={13} className="animate-spin text-muted-foreground" />
+                    <p className="text-xs font-medium text-muted-foreground">
+                      {ALL_FIVE_STEPS[generateStepIndex]?.statusMsg ?? "Finishing up..."}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className="text-[10px] text-muted-foreground tabular-nums">
+                      {elapsedSeconds}s elapsed
+                    </span>
+                    <span className="text-[10px] font-medium text-primary tabular-nums">
+                      {remainingLabel}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Progress bar */}
+                <div className="w-full h-1 rounded-full bg-muted overflow-hidden">
+                  <div
+                    className="h-full bg-primary rounded-full transition-all duration-700"
+                    style={{ width: `${Math.round((generateStepIndex / ALL_FIVE_STEPS.length) * 100)}%` }}
+                  />
+                </div>
+
+                {/* Per-platform step cards */}
+                <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
+                  {ALL_FIVE_STEPS.map((step, idx) => {
+                    const isDone = idx < generateStepIndex;
+                    const isActive = idx === generateStepIndex;
+                    return (
+                      <div
+                        key={step.label}
+                        className={[
+                          "flex flex-col gap-1 rounded-lg p-2.5 transition-all duration-300",
+                          isDone
+                            ? "bg-green-500/10 border border-green-500/30"
+                            : isActive
+                            ? "bg-primary/10 border border-primary/40 ring-1 ring-primary/20"
+                            : "bg-muted/30 border border-border opacity-50",
+                        ].join(" ")}
+                      >
+                        {/* Platform badge + status dot */}
+                        <div className="flex items-center justify-between">
+                          <span className={[
+                            "text-[10px] font-bold leading-none",
+                            isDone ? "text-green-500" : isActive ? "text-primary" : "text-muted-foreground",
+                          ].join(" ")}>
+                            {step.icon}
+                          </span>
+                          {isDone && <div className="w-1.5 h-1.5 rounded-full bg-green-500" />}
+                          {isActive && <div className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />}
+                          {!isDone && !isActive && <div className="w-1.5 h-1.5 rounded-full bg-muted-foreground/25" />}
+                        </div>
+
+                        {/* Platform name */}
+                        <span className={[
+                          "text-[9px] font-medium leading-none",
+                          isDone ? "text-green-500" : isActive ? "text-primary" : "text-muted-foreground",
+                        ].join(" ")}>
+                          {step.label}
+                        </span>
+
+                        {/* Status message */}
+                        <span className={[
+                          "text-[8px] leading-tight",
+                          isDone ? "text-green-500/80" : isActive ? "text-primary/80" : "text-muted-foreground/50",
+                        ].join(" ")}>
+                          {isDone ? step.doneMsg : isActive ? step.statusMsg : `~${step.estSec}s`}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
-              <div className="grid grid-cols-6 gap-2">
-                {ALL_FIVE_STEPS.map((step, idx) => {
-                  const isDone = idx < generateStepIndex;
-                  const isActive = idx === generateStepIndex;
-                  return (
-                    <div
-                      key={step.label}
-                      className={[
-                        "flex flex-col items-center gap-1 rounded-lg p-2 transition-all duration-300",
-                        isDone ? "bg-green-500/10 border border-green-500/30" :
-                        isActive ? "bg-primary/10 border border-primary/40 ring-1 ring-primary/20" :
-                        "bg-muted/30 border border-border",
-                      ].join(" ")}
-                    >
-                      <span className={[
-                        "text-[10px] font-bold leading-none",
-                        isDone ? "text-green-500" : isActive ? "text-primary" : "text-muted-foreground",
-                      ].join(" ")}>
-                        {step.icon}
-                      </span>
-                      <span className={[
-                        "text-[9px] leading-none text-center",
-                        isDone ? "text-green-500" : isActive ? "text-primary" : "text-muted-foreground",
-                      ].join(" ")}>
-                        {isDone ? "Done" : isActive ? "Writing" : step.label}
-                      </span>
-                      {isDone && (
-                        <div className="w-2 h-2 rounded-full bg-green-500" />
-                      )}
-                      {isActive && (
-                        <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
-                      )}
-                      {!isDone && !isActive && (
-                        <div className="w-2 h-2 rounded-full bg-muted-foreground/30" />
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
+            );
+          })()}
 
           {/* Simple loading indicator for single-platform generation */}
           {isGenerating && platform !== "all" && (
