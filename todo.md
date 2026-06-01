@@ -1555,3 +1555,8 @@
 - [x] Update header description text to mention LinkedIn
 - [x] Fix spendPlatform state type to include linkedin
 - [x] All 18 test files pass (100 tests), 0 TypeScript errors
+
+## Spend Summary Row + LinkedIn Scheduled Publisher — June 1 2026
+- [x] Add total spend summary row at top of Ad Spend Tracker (grand total + per-platform mini totals)
+- [x] Extend scheduledAdsPublisher.ts to include LinkedIn in platform expansion and publish loop
+- [x] Update schedulePost platform expansion in opsRouter.ts to map "all" to include linkedin

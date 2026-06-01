@@ -1383,6 +1383,45 @@ export default function Ads() {
             </div>
           </div>
 
+          {/* Total Spend Summary Row — always visible */}
+          <div className="px-6 py-4 border-b border-border bg-secondary/20">
+            <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
+              {/* Grand total */}
+              <div className="flex flex-col">
+                <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Total Spend</span>
+                <span className={cn("text-xl font-bold", grandTotalCents > 0 ? "text-foreground" : "text-muted-foreground")}>
+                  {grandTotalCents > 0 ? fmtDollars(grandTotalCents) : "$0.00"}
+                </span>
+              </div>
+              {/* Divider */}
+              {grandTotalCents > 0 && <div className="h-8 w-px bg-border hidden sm:block" />}
+              {/* Per-platform mini totals */}
+              {grandTotalCents > 0 && PLATFORMS_ORDER
+                .filter((p) => spendByPlatform[p]?.totalCents > 0)
+                .map((p) => (
+                  <div key={p} className="flex items-center gap-2">
+                    <div className={cn("w-6 h-6 rounded-md border flex items-center justify-center shrink-0", PLATFORM_BG[p])}>
+                      {p === "facebook" && <Facebook size={11} className={PLATFORM_COLORS[p]} />}
+                      {p === "instagram" && <Instagram size={11} className={PLATFORM_COLORS[p]} />}
+                      {p === "x" && <Twitter size={11} className={PLATFORM_COLORS[p]} />}
+                      {p === "linkedin" && <Linkedin size={11} className={PLATFORM_COLORS[p]} />}
+                      {p === "google" && <span className={cn("text-[9px] font-bold", PLATFORM_COLORS[p])}>G</span>}
+                      {p === "clickgrow" && <span className={cn("text-[9px] font-bold", PLATFORM_COLORS[p])}>CG</span>}
+                      {p === "other" && <DollarSign size={11} className={PLATFORM_COLORS[p]} />}
+                    </div>
+                    <div className="flex flex-col leading-tight">
+                      <span className={cn("text-xs font-semibold", PLATFORM_COLORS[p])}>{PLATFORM_LABELS[p]}</span>
+                      <span className="text-xs text-muted-foreground">{fmtDollars(spendByPlatform[p].totalCents)}</span>
+                    </div>
+                  </div>
+                ))
+              }
+              {grandTotalCents === 0 && (
+                <span className="text-xs text-muted-foreground">No spend logged yet. Click "Log Spend" to get started.</span>
+              )}
+            </div>
+          </div>
+
           {spendEntries.length === 0 ? (
             <div className="px-6 py-8 text-center">
               <DollarSign size={28} className="text-muted-foreground opacity-30 mx-auto mb-2" />

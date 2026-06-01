@@ -99,6 +99,23 @@ async function publishToX(text: string, imageUrl: string | null): Promise<string
 }
 
 /**
+ * Publish a single post to LinkedIn (organic UGC post).
+ * Requires OAuth 2.0 access token with w_member_social scope and an author URN.
+ * LinkedIn credentials are not yet configured — this function throws until they are set.
+ */
+async function publishToLinkedIn(text: string, _imageUrl: string | null): Promise<string> {
+  // LinkedIn organic posting requires OAuth 2.0 credentials that are not yet configured.
+  // When credentials are available, implement the UGC Posts API:
+  //   POST https://api.linkedin.com/v2/ugcPosts
+  //   Authorization: Bearer <access_token>
+  //   Body: { author: "urn:li:person:<id>", lifecycleState: "PUBLISHED",
+  //           specificContent: { "com.linkedin.ugc.ShareContent": { shareCommentary: { text },
+  //           shareMediaCategory: "NONE" } }, visibility: { "com.linkedin.ugc.MemberNetworkVisibility": "PUBLIC" } }
+  void text;
+  throw new Error("LinkedIn credentials not configured. Add LINKEDIN_ACCESS_TOKEN and LINKEDIN_AUTHOR_URN to enable scheduled LinkedIn posting.");
+}
+
+/**
  * Core publish-ads logic. Finds due scheduled posts and publishes them.
  * Returns a summary of what was processed.
  */
@@ -134,11 +151,12 @@ export async function runScheduledAdsPublisher(): Promise<{
 
   for (const post of duePosts) {
     const platform = post.platform ?? "facebook";
-    const platforms: ("facebook" | "instagram" | "x")[] =
-      platform === "all" ? ["facebook", "instagram", "x"]
+    const platforms: ("facebook" | "instagram" | "x" | "linkedin")[] =
+      platform === "all" ? ["facebook", "instagram", "x", "linkedin"]
       : platform === "both" ? ["facebook", "instagram"]
       : platform === "x" ? ["x"]
       : platform === "instagram" ? ["instagram"]
+      : platform === "linkedin" ? ["linkedin"]
       : ["facebook"];
 
     const updates: Record<string, unknown> = {
@@ -165,6 +183,11 @@ export async function runScheduledAdsPublisher(): Promise<{
         } else if (p === "x") {
           const xPostId = await publishToX(post.draft, post.imageUrl ?? null);
           updates.xPostId = xPostId;
+        } else if (p === "linkedin") {
+          // publishToLinkedIn will throw until credentials are configured.
+          // The error is caught below and recorded as a partial failure —
+          // other platforms in the same post still publish successfully.
+          await publishToLinkedIn(post.draft, post.imageUrl ?? null);
         }
       } catch (err) {
         anyFailed = true;
