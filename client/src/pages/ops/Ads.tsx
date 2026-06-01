@@ -11,7 +11,7 @@ import {
   Sparkles, Send, Facebook, Instagram, Trash2, ExternalLink,
   ImageIcon, RefreshCw, CheckCircle2, Upload, Clock, Calendar,
   ChevronDown, Eye, Twitter, X as XIcon, CalendarClock,
-  DollarSign, Plus, ChevronRight, Linkedin,
+  DollarSign, Plus, ChevronRight, Linkedin, Globe, TrendingUp,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -207,6 +207,41 @@ function PlatformStatusCard({
         {spendLabel && <p className="text-[10px] font-medium opacity-70 mt-0.5">{spendLabel} spent</p>}
       </div>
       {SettingsGear}
+    </div>
+  );
+}
+
+// ─── Spend-only platform card (no live connection check) ───────────────────────
+function SpendOnlyCard({
+  icon,
+  label,
+  accentClass,
+  spendCents,
+  handle,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  accentClass: string;
+  spendCents?: number;
+  handle?: string;
+}) {
+  const spendLabel = spendCents && spendCents > 0
+    ? "$" + (spendCents / 100).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+    : null;
+
+  return (
+    <div className={cn("flex items-center gap-2 rounded-lg border px-3 py-2.5", accentClass)}>
+      <div className="shrink-0">{icon}</div>
+      <div className="min-w-0 flex-1">
+        <span className="text-xs font-semibold">{label}</span>
+        {handle && !spendLabel && (
+          <p className="text-[10px] opacity-60 truncate mt-0.5">{handle}</p>
+        )}
+        {spendLabel
+          ? <p className="text-[10px] font-medium opacity-90 mt-0.5">{spendLabel} spent</p>
+          : <p className="text-[10px] opacity-50 mt-0.5">No spend logged</p>
+        }
+      </div>
     </div>
   );
 }
@@ -811,7 +846,7 @@ export default function Ads() {
               Refresh
             </button>
           </div>
-          <div className="grid grid-cols-4 gap-3">
+          <div className="grid grid-cols-3 sm:grid-cols-6 gap-3">
             <PlatformStatusCard icon={<Facebook size={13} />} label="Facebook" loading={statusLoading}
               ok={platformStatus?.facebook.ok} handle={platformStatus?.facebook.handle ?? undefined}
               error={platformStatus?.facebook.error ?? undefined} accentClass="text-blue-400 bg-blue-400/8 border-blue-400/20"
@@ -829,6 +864,22 @@ export default function Ads() {
               error={platformStatus?.linkedin?.error ?? undefined} accentClass="text-[#0A66C2] bg-[#0A66C2]/8 border-[#0A66C2]/20"
               spendCents={spendByPlatform["linkedin"]?.totalCents}
               onSettings={() => setShowLinkedInSettings(true)} />
+            {/* Google — spend-only card (no live API check) */}
+            <SpendOnlyCard
+              icon={<Globe size={13} />}
+              label="Google Ads"
+              accentClass="text-yellow-400 bg-yellow-400/8 border-yellow-400/20"
+              spendCents={spendByPlatform["google"]?.totalCents}
+              handle="via Google Ads"
+            />
+            {/* ClickGrow — spend-only card (no live API check) */}
+            <SpendOnlyCard
+              icon={<TrendingUp size={13} />}
+              label="ClickGrow"
+              accentClass="text-green-400 bg-green-400/8 border-green-400/20"
+              spendCents={spendByPlatform["clickgrow"]?.totalCents}
+              handle="via ClickGrow"
+            />
           </div>
         </div>
 
