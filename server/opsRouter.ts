@@ -1837,7 +1837,7 @@ const settingsRouter = router({
       twilio: { configured: twilioConfigured, fromNumber: twilioConfigured ? ENV.twilioFromNumber : null },
       resend: { configured: resendConfigured },
       googleMaps: { active: googleMapsActive },
-      clickgrow: { note: "Managed externally via ClickGrow dashboard" },
+
       facebook: { connected: false },
       googleBusiness: { connected: false },
       quickbooks: { connected: false },
@@ -2613,7 +2613,7 @@ const socialPostsRouter = router({
         messages: [
           {
             role: "system",
-            content: `You write social media ads for Jon Noland, owner of Noland Earthworks, LLC — a veteran-owned land management and forestry mulching company in Middle & West Tennessee. ${toneNote} ${adTypeNote} Rules: No emojis. No corporate jargon. No banned phrases: "solutions", "industry-leading", "best-in-class", "we are passionate", "dedicated team", "we strive to", "cutting-edge". Sound like a real person who does this work. ${competitorContext} Return JSON with four separate platform-optimized posts. Facebook: conversational, up to 150 words, 2-3 hashtags max. Instagram: visual-first, shorter (under 100 words), 3-5 relevant hashtags. X: punchy, under 280 characters total including any hashtags, 1-2 hashtags max. LinkedIn: professional tone, up to 200 words, industry-focused, 2-3 relevant hashtags, suitable for a B2B audience of developers, property managers, and municipal contacts. All four must end with a direct CTA (call, text, or visit nolandearthworks.com). Also write one image generation prompt (under 60 words) for a realistic gritty photo of land clearing work in Tennessee — no people, no logos, no text.`,
+            content: `You write social media ads for Jon Noland, owner of Noland Earthworks, LLC — a veteran-owned land management and forestry mulching company in Middle & West Tennessee. ${toneNote} ${adTypeNote} Rules: No emojis. No corporate jargon. No banned phrases: "solutions", "industry-leading", "best-in-class", "we are passionate", "dedicated team", "we strive to", "cutting-edge". Sound like a real person who does this work. ${competitorContext} Return JSON with five separate platform-optimized posts. Facebook: conversational, up to 150 words, 2-3 hashtags max. Instagram: visual-first, shorter (under 100 words), 3-5 relevant hashtags. X: punchy, under 280 characters total including any hashtags, 1-2 hashtags max. LinkedIn: professional tone, up to 200 words, industry-focused, 2-3 relevant hashtags, suitable for a B2B audience of developers, property managers, and municipal contacts. Google: short, direct ad copy for a Google search ad — one headline (max 30 characters), one description (max 90 characters), and a brief extended description (up to 60 words) that could serve as a display ad body. All five must end with a direct CTA (call, text, or visit nolandearthworks.com). Also write one image generation prompt (under 60 words) for a realistic gritty photo of land clearing work in Tennessee — no people, no logos, no text.`,
           },
           { role: "user", content: jobContext },
         ],
@@ -2661,16 +2661,26 @@ const socialPostsRouter = router({
                   required: ["draft", "headline"],
                   additionalProperties: false,
                 },
+                google: {
+                  type: "object",
+                  properties: {
+                    draft: { type: "string", description: "Google ad extended description, up to 60 words" },
+                    headline: { type: "string", description: "Google ad headline, max 30 characters" },
+                    description: { type: "string", description: "Google ad description line, max 90 characters" },
+                  },
+                  required: ["draft", "headline", "description"],
+                  additionalProperties: false,
+                },
                 imagePrompt: { type: "string", description: "Image generation prompt" },
               },
-              required: ["facebook", "instagram", "x", "linkedin", "imagePrompt"],
+              required: ["facebook", "instagram", "x", "linkedin", "google", "imagePrompt"],
               additionalProperties: false,
             },
           },
         },
       });
 
-      let parsed: { facebook: { draft: string; headline: string }; instagram: { draft: string; headline: string }; x: { draft: string; headline: string }; linkedin: { draft: string; headline: string }; imagePrompt: string };
+      let parsed: { facebook: { draft: string; headline: string }; instagram: { draft: string; headline: string }; x: { draft: string; headline: string }; linkedin: { draft: string; headline: string }; google: { draft: string; headline: string; description: string }; imagePrompt: string };
       try {
         parsed = JSON.parse(result.choices?.[0]?.message?.content as string ?? "{}");
       } catch {
@@ -2693,6 +2703,7 @@ const socialPostsRouter = router({
         instagram: { draft: parsed.instagram.draft, headline: parsed.instagram.headline },
         x: { draft: parsed.x.draft, headline: parsed.x.headline },
         linkedin: { draft: parsed.linkedin?.draft ?? "", headline: parsed.linkedin?.headline ?? "" },
+        google: { draft: parsed.google?.draft ?? "", headline: parsed.google?.headline ?? "", description: parsed.google?.description ?? "" },
         imagePrompt: parsed.imagePrompt,
         imageUrl,
       };
@@ -2700,7 +2711,7 @@ const socialPostsRouter = router({
   /** Re-generate copy for a single platform without touching the other two */
   regeneratePlatform: ownerProcedure
     .input(z.object({
-      platform: z.enum(["facebook", "instagram", "x", "linkedin"]),
+      platform: z.enum(["facebook", "instagram", "x", "linkedin", "google"]),
       adTypes: z.array(z.enum(["before_after", "problem_solution", "education", "seasonal_urgency", "veteran_trust", "reclaim_your_land", "specific_use_case", "general"])).min(1).max(3).default(["general"]),
       tone: z.enum(["professional", "casual", "urgent"]).default("casual"),
       jobDescription: z.string().optional(),
@@ -2725,6 +2736,7 @@ const socialPostsRouter = router({
         instagram: "Write an Instagram caption: visual-first, under 100 words, 3-5 relevant hashtags, end with a direct CTA.",
         x: "Write an X (Twitter) post: punchy, MUST be under 280 characters total including hashtags, 1-2 hashtags max, end with a direct CTA.",
         linkedin: "Write a LinkedIn post: professional tone, up to 200 words, industry-focused for developers, property managers, and municipal contacts, 2-3 relevant hashtags, end with a direct CTA (call, text, or visit nolandearthworks.com).",
+        google: "Write Google Ads copy: a headline (max 30 characters), a description line (max 90 characters), and an extended description (up to 60 words) suitable for a display ad. Direct, specific, no fluff. End with a CTA.",
       };
       const jobContext = input.jobDescription
         ? `Base the ad on this specific job or context: ${input.jobDescription}`
@@ -2812,15 +2824,15 @@ const socialPostsRouter = router({
     .input(z.object({
       id: z.number().int().positive(),
       scheduledAt: z.string(), // ISO datetime string
-      platforms: z.array(z.enum(["facebook", "instagram", "x", "linkedin"])).min(1),
+      platforms: z.array(z.enum(["facebook", "instagram", "x", "linkedin", "google"])).min(1),
     }))
     .mutation(async ({ ctx, input }) => {
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
       const { socialPosts } = await import("../drizzle/schema");
       // Determine the canonical platform string for storage
-      const hasAll = input.platforms.includes("facebook") && input.platforms.includes("instagram") && input.platforms.includes("x") && input.platforms.includes("linkedin");
-      const hasBoth = input.platforms.includes("facebook") && input.platforms.includes("instagram") && !input.platforms.includes("x") && !input.platforms.includes("linkedin");
+      const hasAll = input.platforms.includes("facebook") && input.platforms.includes("instagram") && input.platforms.includes("x") && input.platforms.includes("linkedin") && input.platforms.includes("google");
+      const hasBoth = input.platforms.includes("facebook") && input.platforms.includes("instagram") && !input.platforms.includes("x") && !input.platforms.includes("linkedin") && !input.platforms.includes("google");
       const platformValue = hasAll ? "all" : hasBoth ? "both" : input.platforms[0];
       await db.update(socialPosts)
         .set({
@@ -3336,7 +3348,7 @@ export const opsRouter = router({
     /** Log a new spend entry */
     add: ownerProcedure
       .input(z.object({
-        platform: z.enum(["facebook", "instagram", "x", "linkedin", "google", "clickgrow", "other"]),
+        platform: z.enum(["facebook", "instagram", "x", "linkedin", "google", "other"]),
         component: z.string().min(1).max(100),
         amountCents: z.number().int().min(1),
         notes: z.string().max(500).optional(),

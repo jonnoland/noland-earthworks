@@ -20,7 +20,7 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { format } from "date-fns";
 
-type Platform = "facebook" | "instagram" | "x" | "linkedin" | "both" | "all";
+type Platform = "facebook" | "instagram" | "x" | "linkedin" | "google" | "both" | "all";
 type Tone = "casual" | "professional";
 type PreviewPlatform = "facebook" | "instagram";
 type AdType = "before_after" | "problem_solution" | "education" | "seasonal_urgency" | "veteran_trust" | "reclaim_your_land" | "specific_use_case" | "general";
@@ -48,6 +48,7 @@ interface GeneratedAllAd {
   instagram: { draft: string; headline: string };
   x: { draft: string; headline: string };
   linkedin: { draft: string; headline: string };
+  google: { draft: string; headline: string; description: string };
   imagePrompt: string;
   imageUrl: string | null;
 }
@@ -218,12 +219,14 @@ function SpendOnlyCard({
   accentClass,
   spendCents,
   handle,
+  onLogSpend,
 }: {
   icon: React.ReactNode;
   label: string;
   accentClass: string;
   spendCents?: number;
   handle?: string;
+  onLogSpend?: () => void;
 }) {
   const spendLabel = spendCents && spendCents > 0
     ? "$" + (spendCents / 100).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })
@@ -242,6 +245,15 @@ function SpendOnlyCard({
           : <p className="text-[10px] opacity-50 mt-0.5">No spend logged</p>
         }
       </div>
+      {onLogSpend && (
+        <button
+          onClick={onLogSpend}
+          className="shrink-0 p-0.5 rounded hover:bg-black/10 transition-colors"
+          title={`Log ${label} spend`}
+        >
+          <Plus size={11} />
+        </button>
+      )}
     </div>
   );
 }
@@ -386,6 +398,11 @@ export default function Ads() {
   // LinkedIn per-platform draft state
   const [editedLiDraft, setEditedLiDraft] = useState("");
   const [editedLiHeadline, setEditedLiHeadline] = useState("");
+  // Google per-platform draft state
+  const [editedGoogleDraft, setEditedGoogleDraft] = useState("");
+  const [editedGoogleHeadline, setEditedGoogleHeadline] = useState("");
+  const [editedGoogleDescription, setEditedGoogleDescription] = useState("");
+  const [googlePostStatus, setGooglePostStatus] = useState<PanelPostStatus>({ status: "idle" });
   // Photo upload state
   const [uploadedImageUrl, setUploadedImageUrl] = useState<string | null>(null);
   const [uploadedImageKey, setUploadedImageKey] = useState<string | null>(null);
@@ -440,6 +457,9 @@ export default function Ads() {
       setEditedXHeadline(data.x.headline);
       setEditedLiDraft(data.linkedin?.draft ?? "");
       setEditedLiHeadline(data.linkedin?.headline ?? "");
+      setEditedGoogleDraft(data.google?.draft ?? "");
+      setEditedGoogleHeadline(data.google?.headline ?? "");
+      setEditedGoogleDescription(data.google?.description ?? "");
       setSavedPostId(null);
       setUploadedImageUrl(null);
       setUploadedImageKey(null);
@@ -448,6 +468,7 @@ export default function Ads() {
       setIgPostStatus({ status: "idle" });
       setXPostStatus({ status: "idle" });
       setLiPostStatus({ status: "idle" });
+      setGooglePostStatus({ status: "idle" });
     },
     onError: (err) => toast.error(err.message),
   });
@@ -597,7 +618,7 @@ export default function Ads() {
 
   // ─── Ad Spend Tracker state ──────────────────────────────────────────────────
   const [showSpendModal, setShowSpendModal] = useState(false);
-  const [spendPlatform, setSpendPlatform] = useState<"facebook" | "instagram" | "x" | "linkedin" | "google" | "clickgrow" | "other">("facebook");
+  const [spendPlatform, setSpendPlatform] = useState<"facebook" | "instagram" | "x" | "linkedin" | "google" | "other">("facebook");
   const [spendComponent, setSpendComponent] = useState("");
   const [spendAmount, setSpendAmount] = useState("");
   const [spendNotes, setSpendNotes] = useState("");
@@ -627,19 +648,19 @@ export default function Ads() {
   });
 
   // Aggregate spend by platform
-  const PLATFORMS_ORDER = ["facebook", "instagram", "x", "linkedin", "google", "clickgrow", "other"] as const;
+  const PLATFORMS_ORDER = ["facebook", "instagram", "x", "linkedin", "google", "other"] as const;
   const PLATFORM_LABELS: Record<string, string> = {
-    facebook: "Facebook", instagram: "Instagram", x: "X", linkedin: "LinkedIn", google: "Google", clickgrow: "ClickGrow", other: "Other",
+    facebook: "Facebook", instagram: "Instagram", x: "X", linkedin: "LinkedIn", google: "Google", other: "Other",
   };
   const PLATFORM_COLORS: Record<string, string> = {
     facebook: "text-blue-400", instagram: "text-pink-400", x: "text-sky-400",
-    linkedin: "text-[#0A66C2]", google: "text-yellow-400", clickgrow: "text-green-400", other: "text-muted-foreground",
+    linkedin: "text-[#0A66C2]", google: "text-yellow-400", other: "text-muted-foreground",
   };
   const PLATFORM_BG: Record<string, string> = {
     facebook: "bg-blue-400/8 border-blue-400/20", instagram: "bg-pink-400/8 border-pink-400/20",
     x: "bg-sky-400/8 border-sky-400/20", linkedin: "bg-[#0A66C2]/8 border-[#0A66C2]/20",
     google: "bg-yellow-400/8 border-yellow-400/20",
-    clickgrow: "bg-green-400/8 border-green-400/20", other: "bg-secondary border-border",
+    other: "bg-secondary border-border",
   };
 
   const spendByPlatform = PLATFORMS_ORDER.reduce((acc, p) => {
@@ -747,7 +768,7 @@ export default function Ads() {
   }
 
   // Post from the all-platforms mode — each platform uses its own draft
-  async function handlePostAllPlatform(target: "facebook" | "instagram" | "x" | "linkedin" | "all") {
+  async function handlePostAllPlatform(target: "facebook" | "instagram" | "x" | "linkedin" | "google" | "all") {
     // Save using FB draft as canonical
     const postId = await ensureSaved(editedFbDraft, editedFbHeadline);
     if (!postId) { toast.error("Could not save post. Try again."); return; }
@@ -762,6 +783,7 @@ export default function Ads() {
       }
       xMutation.mutate({ postId, text: editedXDraft, imageUrl: activeImageUrl ?? undefined });
       liMutation.mutate({ postId, text: editedLiDraft, imageUrl: activeImageUrl ?? undefined });
+      toast.info("Google Ads copy generated — copy it from the Google panel and paste into your Google Ads account.");
       return;
     }
     if (target === "facebook") {
@@ -771,6 +793,8 @@ export default function Ads() {
       igMutation.mutate({ postId, caption: editedIgDraft, imageUrl: activeImageUrl });
     } else if (target === "linkedin") {
       liMutation.mutate({ postId, text: editedLiDraft, imageUrl: activeImageUrl ?? undefined });
+    } else if (target === "google") {
+      toast.info("Google Ads copy is ready. Copy the headline and description from the Google panel and paste into your Google Ads account.");
     } else {
       xMutation.mutate({ postId, text: editedXDraft, imageUrl: activeImageUrl ?? undefined });
     }
@@ -801,15 +825,17 @@ export default function Ads() {
     const postId = await ensureSaved();
     if (!postId) { toast.error("Could not save post. Try again."); return; }
     const scheduledAt = new Date(`${scheduledDate}T${scheduledTime}:00`).toISOString();
-    let platforms: ("facebook" | "instagram" | "x" | "linkedin")[];
+    let platforms: ("facebook" | "instagram" | "x" | "linkedin" | "google")[];
     if (platform === "all") {
-      platforms = ["facebook", "instagram", "x", "linkedin"];
+      platforms = ["facebook", "instagram", "x", "linkedin", "google"];
     } else if (platform === "both") {
       platforms = ["facebook", "instagram"];
     } else if (platform === "x") {
       platforms = ["x"];
     } else if (platform === "linkedin") {
       platforms = ["linkedin"];
+    } else if (platform === "google") {
+      platforms = ["google"];
     } else {
       platforms = [platform as "facebook" | "instagram"];
     }
@@ -871,15 +897,16 @@ export default function Ads() {
               accentClass="text-yellow-400 bg-yellow-400/8 border-yellow-400/20"
               spendCents={spendByPlatform["google"]?.totalCents}
               handle="via Google Ads"
+              onLogSpend={() => {
+                setSpendPlatform("google");
+                setSpendComponent("");
+                setSpendAmount("");
+                setSpendNotes("");
+                setSpendDate(new Date().toISOString().slice(0, 10));
+                setShowSpendModal(true);
+              }}
             />
-            {/* ClickGrow — spend-only card (no live API check) */}
-            <SpendOnlyCard
-              icon={<TrendingUp size={13} />}
-              label="ClickGrow"
-              accentClass="text-green-400 bg-green-400/8 border-green-400/20"
-              spendCents={spendByPlatform["clickgrow"]?.totalCents}
-              handle="via ClickGrow"
-            />
+
           </div>
         </div>
 
@@ -937,12 +964,13 @@ export default function Ads() {
               <label className="text-sm font-medium text-foreground">Platform</label>
               <div className="flex rounded-lg border border-border overflow-hidden">
                 {([
-                  { value: "all",       label: "All Four" },
+                  { value: "all",       label: "All Five" },
                   { value: "both",      label: "FB + IG" },
                   { value: "facebook",  label: "FB" },
                   { value: "instagram", label: "IG" },
                   { value: "x",         label: "X" },
                   { value: "linkedin",  label: "LI" },
+                  { value: "google",    label: "GGL" },
                 ] as { value: Platform; label: string }[]).map((p) => (
                   <button key={p.value} onClick={() => setPlatform(p.value)}
                     className={cn("flex-1 px-2 py-1.5 text-xs font-medium transition-colors flex flex-col items-center justify-center gap-0.5",
@@ -960,7 +988,7 @@ export default function Ads() {
                 ))}
               </div>
               {platform === "all" && (
-                <p className="text-xs text-muted-foreground">Generates separate, platform-optimized copy for Facebook, Instagram, X, and LinkedIn.</p>
+                <p className="text-xs text-muted-foreground">Generates separate, platform-optimized copy for Facebook, Instagram, X, LinkedIn, and Google Ads.</p>
               )}
             </div>
 
@@ -1192,14 +1220,69 @@ export default function Ads() {
               </PlatformCopyPanel>
             </div>
 
-            {/* Post to All Four */}
+            {/* Google Ads panel */}
+            <PlatformCopyPanel
+              icon={<span className="text-[11px] font-bold text-yellow-400">G</span>}
+              label="Google Ads"
+              accentClass="border-yellow-400/20 bg-yellow-400/5"
+              draft={editedGoogleDraft}
+              headline={editedGoogleHeadline}
+              tone={tone}
+              postStatus={googlePostStatus}
+              onDraftChange={(v) => { setEditedGoogleDraft(v); setSavedPostId(null); }}
+              onHeadlineChange={(v) => { setEditedGoogleHeadline(v); setSavedPostId(null); }}
+            >
+              <div className="space-y-2">
+                {/* Description line field */}
+                {editedGoogleDescription && (
+                  <div className="space-y-1">
+                    <label className="text-xs text-muted-foreground font-medium">Description line (max 90 chars)</label>
+                    <div className="flex items-center gap-2">
+                      <input
+                        value={editedGoogleDescription}
+                        onChange={(e) => { setEditedGoogleDescription(e.target.value); setSavedPostId(null); }}
+                        maxLength={90}
+                        className="flex-1 text-xs bg-background border border-border rounded px-2 py-1.5 text-foreground"
+                      />
+                      <span className={cn("text-[10px]", editedGoogleDescription.length > 90 ? "text-red-400" : "text-muted-foreground")}>
+                        {editedGoogleDescription.length}/90
+                      </span>
+                    </div>
+                  </div>
+                )}
+                <div className="flex flex-wrap gap-2">
+                  <Button onClick={() => handlePostAllPlatform("google")} disabled={isPosting}
+                    className="gap-2 bg-yellow-500 hover:bg-yellow-600 text-black border-0">
+                    <span className="text-[11px] font-bold">G</span>Copy Google Ad
+                  </Button>
+                  <Button variant="outline" size="sm"
+                    disabled={regeneratePlatformMutation.isPending}
+                    onClick={async () => {
+                      const result = await regeneratePlatformMutation.mutateAsync({
+                        platform: "google", adTypes, tone,
+                        jobDescription: jobDescription.trim() || undefined,
+                      });
+                      setEditedGoogleDraft(result.draft);
+                      setEditedGoogleHeadline(result.headline);
+                      setSavedPostId(null);
+                    }}
+                    className="gap-1.5 text-muted-foreground">
+                    <RefreshCw size={12} className={regeneratePlatformMutation.isPending ? "animate-spin" : ""} />
+                    Regenerate
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground">Paste the headline and description into your Google Ads account. The extended description can be used as display ad body copy.</p>
+              </div>
+            </PlatformCopyPanel>
+
+            {/* Post to All Five */}
             <div className="flex flex-wrap gap-3 pt-2 border-t border-border">
               <Button
                 onClick={() => handlePostAllPlatform("all")}
                 disabled={isPosting}
-                className="gap-2 bg-gradient-to-r from-[#1877F2] via-[#833AB4] via-black to-[#0A66C2] text-white border-0 hover:opacity-90"
+                className="gap-2 bg-gradient-to-r from-[#1877F2] via-[#833AB4] via-black via-[#0A66C2] to-yellow-500 text-white border-0 hover:opacity-90"
               >
-                <Send size={14} />{isPosting ? "Posting..." : "Post to All Four"}
+                <Send size={14} />{isPosting ? "Posting..." : "Post to All Five"}
               </Button>
               <Button variant="outline" onClick={() => setShowScheduler(!showScheduler)}
                 className={cn("gap-2", showScheduler && "border-primary/40 text-primary")}>
@@ -1521,7 +1604,7 @@ export default function Ads() {
                       {p === "x" && <Twitter size={11} className={PLATFORM_COLORS[p]} />}
                       {p === "linkedin" && <Linkedin size={11} className={PLATFORM_COLORS[p]} />}
                       {p === "google" && <span className={cn("text-[9px] font-bold", PLATFORM_COLORS[p])}>G</span>}
-                      {p === "clickgrow" && <span className={cn("text-[9px] font-bold", PLATFORM_COLORS[p])}>CG</span>}
+
                       {p === "other" && <DollarSign size={11} className={PLATFORM_COLORS[p]} />}
                     </div>
                     <div className="flex flex-col leading-tight">
@@ -1560,7 +1643,6 @@ export default function Ads() {
                 x: "#38bdf8",
                 linkedin: "#0A66C2",
                 google: "#facc15",
-                clickgrow: "#4ade80",
                 other: "#94a3b8",
               };
               const CustomTooltip = ({ active, payload }: any) => {
@@ -1711,7 +1793,7 @@ export default function Ads() {
                         {p === "x" && <Twitter size={13} className={PLATFORM_COLORS[p]} />}
                         {p === "linkedin" && <Linkedin size={13} className={PLATFORM_COLORS[p]} />}
                         {p === "google" && <span className={cn("text-[11px] font-bold", PLATFORM_COLORS[p])}>G</span>}
-                        {p === "clickgrow" && <span className={cn("text-[11px] font-bold", PLATFORM_COLORS[p])}>CG</span>}
+
                         {p === "other" && <DollarSign size={13} className={PLATFORM_COLORS[p]} />}
                       </div>
                       <div className="flex-1 min-w-0">

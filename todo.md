@@ -1567,3 +1567,18 @@
 - [x] Add linkedinSettings table to drizzle schema and run db:push
 - [x] Show per-platform ad spend total on each Platform Connections card (FB, IG, X, LinkedIn)
 - [x] Activate LinkedIn posting when credentials are saved (publishToLinkedIn uses DB-stored token)
+
+## Log Spend Quick-Entry + Google Ads API — June 1 2026
+- [ ] Wire onLogSpend on Google Ads and ClickGrow SpendOnlyCards to pre-select platform and open spend modal
+- [ ] Research Google Ads API authentication (OAuth2 + developer token + customer ID)
+- [ ] Add googleAds tRPC procedure to fetch campaign spend from Google Ads API
+- [ ] Add GOOGLE_ADS_DEVELOPER_TOKEN and GOOGLE_ADS_CUSTOMER_ID secrets
+- [ ] Update Google Ads card to show live API spend with manual-logged fallback
+
+## Remove ClickGrow + Add Google to Generate Ad — June 1 2026
+- [x] Remove ClickGrow from platform selector, spend card, PLATFORMS_ORDER, CHART_COLORS, generateForAll, schedulePost
+- [x] Remove ClickGrow from adSpend schema enum and opsRouter enum
+- [x] Add Google to generateForAll (AI copy generation), platform selector, copy panel, post stub
+- [x] Add Google to PLATFORMS_ORDER, PLATFORM_LABELS, PLATFORM_COLORS, CHART_COLORS
+- [x] Update All Four to All Five everywhere in Ads.tsx and opsRouter.ts
+- [x] Add Google spend card to Platform Connections (keep, no ClickGrow)

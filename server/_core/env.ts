@@ -49,4 +49,8 @@ export const ENV = {
   twitterApiSecret: process.env.TWITTER_API_SECRET ?? "",
   twitterAccessToken: process.env.TWITTER_ACCESS_TOKEN ?? "",
   twitterAccessTokenSecret: process.env.TWITTER_ACCESS_TOKEN_SECRET ?? "",
+  // Google Ads API — for pulling real campaign spend data
+  googleAdsDeveloperToken: process.env.GOOGLE_ADS_DEVELOPER_TOKEN ?? "",
+  googleAdsCustomerId: process.env.GOOGLE_ADS_CUSTOMER_ID ?? "",
+  googleAdsRefreshToken: process.env.GOOGLE_ADS_REFRESH_TOKEN ?? "",
 };
