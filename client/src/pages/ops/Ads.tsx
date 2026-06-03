@@ -55,6 +55,35 @@ interface GeneratedAllAd {
   imageUrl: string | null;
 }
 
+// ─── Copy helper ────────────────────────────────────────────────────────────
+const SITE_URL = "nolandearthworks.com";
+
+/** Platform-specific hashtag sets. X gets the fewest; IG gets the most. */
+const PLATFORM_HASHTAGS: Record<"facebook" | "instagram" | "x" | "linkedin", string> = {
+  facebook:  "#NolandEarthworks #LandClearing #ForestryMulching #Tennessee",
+  instagram: "#NolandEarthworks #LandClearing #ForestryMulching #Tennessee #LandManagement #VeteranOwned #MiddleTennessee",
+  x:         "#LandClearing #ForestryMulching #Tennessee",
+  linkedin:  "#NolandEarthworks #LandClearing #ForestryMulching #Tennessee #VeteranOwned",
+};
+
+/**
+ * Builds the final clipboard text for a given platform.
+ * Appends hashtags (if not already present in the draft) and the site URL.
+ * Google Ads copy is passed through unchanged — no hashtags or URL appended.
+ */
+function buildCopyText(
+  draft: string,
+  platform: "facebook" | "instagram" | "x" | "linkedin" | "google",
+): string {
+  if (platform === "google") return draft;
+  const tags = PLATFORM_HASHTAGS[platform];
+  // Only append hashtags if the draft does not already contain them
+  const hasHashtags = draft.includes("#NolandEarthworks") || draft.includes("#LandClearing");
+  const tagLine = hasHashtags ? "" : `\n\n${tags}`;
+  const urlLine = draft.includes(SITE_URL) ? "" : `\n${SITE_URL}`;
+  return `${draft}${tagLine}${urlLine}`.trim();
+}
+
 // ─── Live social preview ──────────────────────────────────────────────────────
 function SocialPreview({
   platform,
@@ -1398,7 +1427,7 @@ export default function Ads() {
                   </Button>
                   <Button variant="outline" size="sm"
                     onClick={async () => {
-                      try { await navigator.clipboard.writeText(editedFbDraft); toast.success("Facebook copy copied to clipboard."); }
+                      try { await navigator.clipboard.writeText(buildCopyText(editedFbDraft, "facebook")); toast.success("Facebook copy copied to clipboard."); }
                       catch { toast.info("Select and copy the text above manually."); }
                     }}
                     className="gap-1.5 text-muted-foreground">
@@ -1443,7 +1472,7 @@ export default function Ads() {
                     </Button>
                     <Button variant="outline" size="sm"
                       onClick={async () => {
-                        try { await navigator.clipboard.writeText(editedIgDraft); toast.success("Instagram copy copied to clipboard."); }
+                        try { await navigator.clipboard.writeText(buildCopyText(editedIgDraft, "instagram")); toast.success("Instagram copy copied to clipboard."); }
                         catch { toast.info("Select and copy the text above manually."); }
                       }}
                       className="gap-1.5 text-muted-foreground">
@@ -1492,7 +1521,7 @@ export default function Ads() {
                   </Button>
                   <Button variant="outline" size="sm"
                     onClick={async () => {
-                      try { await navigator.clipboard.writeText(editedXDraft); toast.success("X copy copied to clipboard."); }
+                      try { await navigator.clipboard.writeText(buildCopyText(editedXDraft, "x")); toast.success("X copy copied to clipboard."); }
                       catch { toast.info("Select and copy the text above manually."); }
                     }}
                     className="gap-1.5 text-muted-foreground">
@@ -1536,7 +1565,7 @@ export default function Ads() {
                     </Button>
                     <Button variant="outline" size="sm"
                       onClick={async () => {
-                        try { await navigator.clipboard.writeText(editedLiDraft); toast.success("LinkedIn copy copied to clipboard."); }
+                        try { await navigator.clipboard.writeText(buildCopyText(editedLiDraft, "linkedin")); toast.success("LinkedIn copy copied to clipboard."); }
                         catch { toast.info("Select and copy the text above manually."); }
                       }}
                       className="gap-1.5 text-muted-foreground">
@@ -1800,10 +1829,11 @@ export default function Ads() {
                 </Button>
               )}
               {/* Copy button for single-platform non-Google modes */}
-              {platform !== "google" && (
+              {platform !== "google" && platform !== "both" && (
                 <Button variant="outline" size="sm"
                   onClick={async () => {
-                    try { await navigator.clipboard.writeText(editedDraft); toast.success("Copy copied to clipboard."); }
+                    const p = platform as "facebook" | "instagram" | "x" | "linkedin";
+                    try { await navigator.clipboard.writeText(buildCopyText(editedDraft, p)); toast.success("Copy copied to clipboard."); }
                     catch { toast.info("Select and copy the text above manually."); }
                   }}
                   className="gap-1.5 text-muted-foreground">
