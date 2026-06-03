@@ -1628,3 +1628,15 @@
 ## Jobber Connection UX — Jun 2026
 - [x] Fix Jobber 403 errors: correct inverted expiry check, add error handling in jobberGraphQL, gate Navbar queries on connectionStatus
 - [x] Add visual Jobber disconnect indicator to Navbar: amber dot on Ops button, status row in dropdown and mobile menu, links to /ops/settings to reconnect; green "connected" row when healthy
+
+## LinkedIn OAuth Integration — Jun 2026
+- [ ] Add LinkedIn OAuth credentials (client ID, client secret) as secrets
+- [ ] Add linkedinTokens table to schema and push migration
+- [ ] Build LinkedIn OAuth authorize endpoint and callback handler
+- [ ] Build LinkedIn token storage, refresh, and connection status helpers
+- [ ] Add LinkedIn connection status to /ops/settings page
+- [ ] Wire LinkedIn post publishing into the Ads page (single + All Five modes)
+- [ ] Add LinkedIn connection status indicator to Navbar dropdown (alongside Jobber)
+
+## Copy Button — Jun 2026
+- [x] Add copy-to-clipboard button to each platform panel in /ops/ads (All Five mode: FB, IG, X, LI; single-platform mode: all non-Google platforms; Google already had copy-to-clipboard)

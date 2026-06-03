@@ -12,7 +12,7 @@ import {
   ImageIcon, RefreshCw, CheckCircle2, Upload, Clock, Calendar,
   ChevronDown, Eye, Twitter, X as XIcon, CalendarClock,
   DollarSign, Plus, ChevronRight, Linkedin, Globe, TrendingUp,
-  XCircle, CheckCheck,
+  XCircle, CheckCheck, Copy,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
@@ -1397,6 +1397,14 @@ export default function Ads() {
                     <Facebook size={14} />{fbMutation.isPending ? "Posting..." : "Post to Facebook"}
                   </Button>
                   <Button variant="outline" size="sm"
+                    onClick={async () => {
+                      try { await navigator.clipboard.writeText(editedFbDraft); toast.success("Facebook copy copied to clipboard."); }
+                      catch { toast.info("Select and copy the text above manually."); }
+                    }}
+                    className="gap-1.5 text-muted-foreground">
+                    <Copy size={12} />Copy
+                  </Button>
+                  <Button variant="outline" size="sm"
                     disabled={regeneratePlatformMutation.isPending}
                     onClick={async () => {
                       const result = await regeneratePlatformMutation.mutateAsync({
@@ -1432,6 +1440,14 @@ export default function Ads() {
                       className="gap-2 bg-gradient-to-r from-[#833AB4] via-[#FD1D1D] to-[#FCAF45] text-white border-0"
                       title={!activeImageUrl ? "Instagram requires an image" : undefined}>
                       <Instagram size={14} />{igMutation.isPending ? "Posting..." : "Post to Instagram"}
+                    </Button>
+                    <Button variant="outline" size="sm"
+                      onClick={async () => {
+                        try { await navigator.clipboard.writeText(editedIgDraft); toast.success("Instagram copy copied to clipboard."); }
+                        catch { toast.info("Select and copy the text above manually."); }
+                      }}
+                      className="gap-1.5 text-muted-foreground">
+                      <Copy size={12} />Copy
                     </Button>
                     <Button variant="outline" size="sm"
                       disabled={regeneratePlatformMutation.isPending}
@@ -1475,6 +1491,14 @@ export default function Ads() {
                     <Twitter size={14} />{xMutation.isPending ? "Posting..." : "Post to X"}
                   </Button>
                   <Button variant="outline" size="sm"
+                    onClick={async () => {
+                      try { await navigator.clipboard.writeText(editedXDraft); toast.success("X copy copied to clipboard."); }
+                      catch { toast.info("Select and copy the text above manually."); }
+                    }}
+                    className="gap-1.5 text-muted-foreground">
+                    <Copy size={12} />Copy
+                  </Button>
+                  <Button variant="outline" size="sm"
                     disabled={regeneratePlatformMutation.isPending}
                     onClick={async () => {
                       const result = await regeneratePlatformMutation.mutateAsync({
@@ -1509,6 +1533,14 @@ export default function Ads() {
                     <Button onClick={() => handlePostAllPlatform("linkedin")} disabled={isPosting}
                       className="gap-2 bg-[#0A66C2] hover:bg-[#004182] text-white border-0">
                       <Linkedin size={14} />{liMutation.isPending ? "Posting..." : "Post to LinkedIn"}
+                    </Button>
+                    <Button variant="outline" size="sm"
+                      onClick={async () => {
+                        try { await navigator.clipboard.writeText(editedLiDraft); toast.success("LinkedIn copy copied to clipboard."); }
+                        catch { toast.info("Select and copy the text above manually."); }
+                      }}
+                      className="gap-1.5 text-muted-foreground">
+                      <Copy size={12} />Copy
                     </Button>
                     <Button variant="outline" size="sm"
                       disabled={regeneratePlatformMutation.isPending}
@@ -1765,6 +1797,17 @@ export default function Ads() {
                 }} disabled={isPosting}
                   className="gap-2 bg-yellow-500 hover:bg-yellow-600 text-black border-0">
                   <span className="text-[11px] font-bold">G</span>Copy to Clipboard
+                </Button>
+              )}
+              {/* Copy button for single-platform non-Google modes */}
+              {platform !== "google" && (
+                <Button variant="outline" size="sm"
+                  onClick={async () => {
+                    try { await navigator.clipboard.writeText(editedDraft); toast.success("Copy copied to clipboard."); }
+                    catch { toast.info("Select and copy the text above manually."); }
+                  }}
+                  className="gap-1.5 text-muted-foreground">
+                  <Copy size={12} />Copy
                 </Button>
               )}
               {platform === "both" && (
