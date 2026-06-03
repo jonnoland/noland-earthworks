@@ -2570,4 +2570,44 @@ export const opsRouter = router({
   getLinkedInSettings: _linkedinSettingsRouter.get,
   saveLinkedInSettings: _linkedinSettingsRouter.save,
   deleteLinkedInSettings: _linkedinSettingsRouter.delete,
+
+  // ─── Copy Settings ────────────────────────────────────────────────────────────
+  getCopySettings: ownerProcedure.query(async () => {
+    const db = await getDb();
+    if (!db) return null;
+    const { copySettings } = await import("../drizzle/schema");
+    const rows = await db.select().from(copySettings).limit(1);
+    if (rows[0]) return rows[0];
+    // Return defaults if no row saved yet
+    return {
+      id: 0,
+      siteUrl: "nolandearthworks.com",
+      fbHashtags: "#NolandEarthworks #LandClearing #ForestryMulching #Tennessee",
+      igHashtags: "#NolandEarthworks #LandClearing #ForestryMulching #Tennessee #LandManagement #VeteranOwned #MiddleTennessee",
+      xHashtags: "#LandClearing #ForestryMulching #Tennessee",
+      liHashtags: "#NolandEarthworks #LandClearing #ForestryMulching #Tennessee #VeteranOwned",
+      updatedAt: new Date(),
+    };
+  }),
+
+  saveCopySettings: ownerProcedure
+    .input(z.object({
+      siteUrl: z.string().max(300),
+      fbHashtags: z.string().max(500),
+      igHashtags: z.string().max(500),
+      xHashtags: z.string().max(500),
+      liHashtags: z.string().max(500),
+    }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+      const { copySettings } = await import("../drizzle/schema");
+      const existing = await db.select().from(copySettings).limit(1);
+      if (existing.length > 0) {
+        await db.update(copySettings).set(input).where(eq(copySettings.id, existing[0].id));
+      } else {
+        await db.insert(copySettings).values(input);
+      }
+      return { success: true };
+    }),
 });

@@ -1640,3 +1640,9 @@
 
 ## Copy Button — Jun 2026
 - [x] Add copy-to-clipboard button to each platform panel in /ops/ads (All Five mode: FB, IG, X, LI; single-platform mode: all non-Google platforms; Google already had copy-to-clipboard)
+
+## Copy Settings Modal — Jun 2026
+- [x] Add copySettings table to schema (siteUrl, fbHashtags, igHashtags, xHashtags, liHashtags) and push migration
+- [x] Add getCopySettings and saveCopySettings tRPC procedures to opsRouter
+- [x] Build CopySettingsModal component in /ops/ads with per-platform hashtag inputs and site URL field
+- [x] Wire buildCopyText to load from DB settings instead of hardcoded constants

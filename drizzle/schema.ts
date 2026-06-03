@@ -1037,3 +1037,25 @@ export const linkedinCredentials = mysqlTable("linkedin_credentials", {
 });
 export type LinkedinCredential = typeof linkedinCredentials.$inferSelect;
 export type InsertLinkedinCredential = typeof linkedinCredentials.$inferInsert;
+
+// ─── Copy Settings ─────────────────────────────────────────────────────────────
+/**
+ * Stores the owner's copy-append preferences: default site URL and per-platform
+ * hashtag strings. Only one row is expected (id=1). Upsert on save.
+ */
+export const copySettings = mysqlTable("copy_settings", {
+  id: int("id").primaryKey().autoincrement(),
+  /** Default website URL appended to copied posts (e.g. nolandearthworks.com) */
+  siteUrl: varchar("siteUrl", { length: 300 }).notNull().default("nolandearthworks.com"),
+  /** Hashtag string for Facebook */
+  fbHashtags: varchar("fbHashtags", { length: 500 }).notNull().default("#NolandEarthworks #LandClearing #ForestryMulching #Tennessee"),
+  /** Hashtag string for Instagram */
+  igHashtags: varchar("igHashtags", { length: 500 }).notNull().default("#NolandEarthworks #LandClearing #ForestryMulching #Tennessee #LandManagement #VeteranOwned #MiddleTennessee"),
+  /** Hashtag string for X */
+  xHashtags: varchar("xHashtags", { length: 500 }).notNull().default("#LandClearing #ForestryMulching #Tennessee"),
+  /** Hashtag string for LinkedIn */
+  liHashtags: varchar("liHashtags", { length: 500 }).notNull().default("#NolandEarthworks #LandClearing #ForestryMulching #Tennessee #VeteranOwned"),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type CopySetting = typeof copySettings.$inferSelect;
+export type InsertCopySetting = typeof copySettings.$inferInsert;

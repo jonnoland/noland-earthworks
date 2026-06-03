@@ -12,12 +12,15 @@ import {
   ImageIcon, RefreshCw, CheckCircle2, Upload, Clock, Calendar,
   ChevronDown, Eye, Twitter, X as XIcon, CalendarClock,
   DollarSign, Plus, ChevronRight, Linkedin, Globe, TrendingUp,
-  XCircle, CheckCheck, Copy,
+  XCircle, CheckCheck, Copy, Settings,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { format } from "date-fns";
@@ -56,15 +59,15 @@ interface GeneratedAllAd {
 }
 
 // ─── Copy helper ────────────────────────────────────────────────────────────
-const SITE_URL = "nolandearthworks.com";
-
-/** Platform-specific hashtag sets. X gets the fewest; IG gets the most. */
-const PLATFORM_HASHTAGS: Record<"facebook" | "instagram" | "x" | "linkedin", string> = {
-  facebook:  "#NolandEarthworks #LandClearing #ForestryMulching #Tennessee",
-  instagram: "#NolandEarthworks #LandClearing #ForestryMulching #Tennessee #LandManagement #VeteranOwned #MiddleTennessee",
-  x:         "#LandClearing #ForestryMulching #Tennessee",
-  linkedin:  "#NolandEarthworks #LandClearing #ForestryMulching #Tennessee #VeteranOwned",
+const DEFAULT_COPY_SETTINGS = {
+  siteUrl: "nolandearthworks.com",
+  fbHashtags: "#NolandEarthworks #LandClearing #ForestryMulching #Tennessee",
+  igHashtags: "#NolandEarthworks #LandClearing #ForestryMulching #Tennessee #LandManagement #VeteranOwned #MiddleTennessee",
+  xHashtags: "#LandClearing #ForestryMulching #Tennessee",
+  liHashtags: "#NolandEarthworks #LandClearing #ForestryMulching #Tennessee #VeteranOwned",
 };
+
+type CopySettingsData = typeof DEFAULT_COPY_SETTINGS;
 
 /**
  * Builds the final clipboard text for a given platform.
@@ -74,14 +77,92 @@ const PLATFORM_HASHTAGS: Record<"facebook" | "instagram" | "x" | "linkedin", str
 function buildCopyText(
   draft: string,
   platform: "facebook" | "instagram" | "x" | "linkedin" | "google",
+  settings: CopySettingsData = DEFAULT_COPY_SETTINGS,
 ): string {
   if (platform === "google") return draft;
-  const tags = PLATFORM_HASHTAGS[platform];
-  // Only append hashtags if the draft does not already contain them
-  const hasHashtags = draft.includes("#NolandEarthworks") || draft.includes("#LandClearing");
-  const tagLine = hasHashtags ? "" : `\n\n${tags}`;
-  const urlLine = draft.includes(SITE_URL) ? "" : `\n${SITE_URL}`;
+  const tagMap: Record<"facebook" | "instagram" | "x" | "linkedin", string> = {
+    facebook: settings.fbHashtags,
+    instagram: settings.igHashtags,
+    x: settings.xHashtags,
+    linkedin: settings.liHashtags,
+  };
+  const tags = tagMap[platform];
+  const siteUrl = settings.siteUrl;
+  // Detect if draft already has hashtags or the URL
+  const firstHashtag = tags.trim().split(" ")[0];
+  const hasHashtags = firstHashtag ? draft.includes(firstHashtag) : false;
+  const tagLine = (tags && !hasHashtags) ? `\n\n${tags}` : "";
+  const urlLine = (siteUrl && !draft.includes(siteUrl)) ? `\n${siteUrl}` : "";
   return `${draft}${tagLine}${urlLine}`.trim();
+}
+
+// ─── Copy Settings Modal ──────────────────────────────────────────────────────
+function CopySettingsModal({
+  open, onClose, initial, onSave,
+}: {
+  open: boolean;
+  onClose: () => void;
+  initial: CopySettingsData;
+  onSave: (data: CopySettingsData) => void;
+}) {
+  const [form, setForm] = useState<CopySettingsData>(initial);
+  // Sync when initial changes (e.g. after DB load)
+  useEffect(() => { setForm(initial); }, [initial]);
+
+  const saveMutation = trpc.ops.saveCopySettings.useMutation({
+    onSuccess: () => {
+      toast.success("Copy settings saved.");
+      onSave(form);
+      onClose();
+    },
+    onError: (e) => toast.error(`Save failed: ${e.message}`),
+  });
+
+  const field = (label: string, key: keyof CopySettingsData, placeholder: string, hint?: string) => (
+    <div className="space-y-1.5">
+      <Label className="text-sm font-medium text-foreground">{label}</Label>
+      {hint && <p className="text-xs text-muted-foreground">{hint}</p>}
+      <Input
+        value={form[key]}
+        onChange={(e) => setForm((p) => ({ ...p, [key]: e.target.value }))}
+        placeholder={placeholder}
+        className="font-mono text-xs"
+      />
+    </div>
+  );
+
+  return (
+    <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
+      <DialogContent className="max-w-lg">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Settings size={16} className="text-primary" />
+            Copy Settings
+          </DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4 py-2">
+          {field("Default Website URL", "siteUrl", "nolandearthworks.com",
+            "Appended to every copied post (leave blank to disable)")}
+          <div className="border-t border-border pt-4 space-y-4">
+            <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Hashtags by platform</p>
+            {field("Facebook", "fbHashtags", "#LandClearing #Tennessee")}
+            {field("Instagram", "igHashtags", "#LandClearing #Tennessee #VeteranOwned")}
+            {field("X (Twitter)", "xHashtags", "#LandClearing #Tennessee")}
+            {field("LinkedIn", "liHashtags", "#LandClearing #Tennessee #VeteranOwned")}
+          </div>
+        </div>
+        <DialogFooter className="gap-2">
+          <Button variant="outline" onClick={onClose}>Cancel</Button>
+          <Button
+            onClick={() => saveMutation.mutate(form)}
+            disabled={saveMutation.isPending}
+          >
+            {saveMutation.isPending ? "Saving..." : "Save"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
 }
 
 // ─── Live social preview ──────────────────────────────────────────────────────
@@ -452,6 +533,24 @@ export default function Ads() {
 
   // Active image: uploaded photo takes priority over AI-generated
   const activeImageUrl = uploadedImageUrl ?? (platform === "all" ? generatedAll?.imageUrl : generated?.imageUrl) ?? null;
+
+  // Copy settings (persisted per-platform hashtags + site URL)
+  const { data: copySettingsData } = trpc.ops.getCopySettings.useQuery(undefined, {
+    staleTime: 10 * 60 * 1000,
+  });
+  const [copySettings, setCopySettings] = useState<CopySettingsData>(DEFAULT_COPY_SETTINGS);
+  useEffect(() => {
+    if (copySettingsData) {
+      setCopySettings({
+        siteUrl: copySettingsData.siteUrl,
+        fbHashtags: copySettingsData.fbHashtags,
+        igHashtags: copySettingsData.igHashtags,
+        xHashtags: copySettingsData.xHashtags,
+        liHashtags: copySettingsData.liHashtags,
+      });
+    }
+  }, [copySettingsData]);
+  const [copySettingsOpen, setCopySettingsOpen] = useState(false);
 
   // Live platform connection status
   const { data: platformStatus, isLoading: statusLoading, refetch: refetchStatus } =
@@ -1206,6 +1305,18 @@ export default function Ads() {
                 Cancel
               </Button>
             )}
+            {!isGenerating && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setCopySettingsOpen(true)}
+                className="gap-1.5 text-muted-foreground hover:text-foreground ml-auto"
+                title="Configure copy settings: hashtags and website URL"
+              >
+                <Settings size={13} />
+                Copy Settings
+              </Button>
+            )}
           </div>
 
           {/* Rich loading state for All Five generation */}
@@ -1427,7 +1538,7 @@ export default function Ads() {
                   </Button>
                   <Button variant="outline" size="sm"
                     onClick={async () => {
-                      try { await navigator.clipboard.writeText(buildCopyText(editedFbDraft, "facebook")); toast.success("Facebook copy copied to clipboard."); }
+                      try { await navigator.clipboard.writeText(buildCopyText(editedFbDraft, "facebook", copySettings)); toast.success("Facebook copy copied to clipboard."); }
                       catch { toast.info("Select and copy the text above manually."); }
                     }}
                     className="gap-1.5 text-muted-foreground">
@@ -1472,7 +1583,7 @@ export default function Ads() {
                     </Button>
                     <Button variant="outline" size="sm"
                       onClick={async () => {
-                        try { await navigator.clipboard.writeText(buildCopyText(editedIgDraft, "instagram")); toast.success("Instagram copy copied to clipboard."); }
+                        try { await navigator.clipboard.writeText(buildCopyText(editedIgDraft, "instagram", copySettings)); toast.success("Instagram copy copied to clipboard."); }
                         catch { toast.info("Select and copy the text above manually."); }
                       }}
                       className="gap-1.5 text-muted-foreground">
@@ -1521,7 +1632,7 @@ export default function Ads() {
                   </Button>
                   <Button variant="outline" size="sm"
                     onClick={async () => {
-                      try { await navigator.clipboard.writeText(buildCopyText(editedXDraft, "x")); toast.success("X copy copied to clipboard."); }
+                      try { await navigator.clipboard.writeText(buildCopyText(editedXDraft, "x", copySettings)); toast.success("X copy copied to clipboard."); }
                       catch { toast.info("Select and copy the text above manually."); }
                     }}
                     className="gap-1.5 text-muted-foreground">
@@ -1565,7 +1676,7 @@ export default function Ads() {
                     </Button>
                     <Button variant="outline" size="sm"
                       onClick={async () => {
-                        try { await navigator.clipboard.writeText(buildCopyText(editedLiDraft, "linkedin")); toast.success("LinkedIn copy copied to clipboard."); }
+                        try { await navigator.clipboard.writeText(buildCopyText(editedLiDraft, "linkedin", copySettings)); toast.success("LinkedIn copy copied to clipboard."); }
                         catch { toast.info("Select and copy the text above manually."); }
                       }}
                       className="gap-1.5 text-muted-foreground">
@@ -1833,7 +1944,7 @@ export default function Ads() {
                 <Button variant="outline" size="sm"
                   onClick={async () => {
                     const p = platform as "facebook" | "instagram" | "x" | "linkedin";
-                    try { await navigator.clipboard.writeText(buildCopyText(editedDraft, p)); toast.success("Copy copied to clipboard."); }
+                    try { await navigator.clipboard.writeText(buildCopyText(editedDraft, p, copySettings)); toast.success("Copy copied to clipboard."); }
                     catch { toast.info("Select and copy the text above manually."); }
                   }}
                   className="gap-1.5 text-muted-foreground">
@@ -2490,6 +2601,14 @@ export default function Ads() {
           </div>
         </div>
       )}
+
+      {/* Copy Settings Modal */}
+      <CopySettingsModal
+        open={copySettingsOpen}
+        onClose={() => setCopySettingsOpen(false)}
+        initial={copySettings}
+        onSave={(data) => setCopySettings(data)}
+      />
 
     </DashboardLayout>
   );
