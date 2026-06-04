@@ -734,7 +734,7 @@ Missing fields detected: ${localBusinessDetail}`, priority: "high" });
       const robotsText = await robotsRes.text();
       const hasSitemapRef = robotsText.toLowerCase().includes("sitemap:");
       if (hasSitemapRef) {
-        checks.push({ id: "robots_ok", category: "onpage", label: "robots.txt", status: "pass", value: "Valid + Sitemap ref", detail: "robots.txt is accessible and references the sitemap.", priority: "medium" });
+        checks.push({ id: "robots_txt_ok", category: "onpage", label: "robots.txt", status: "pass", value: "Valid + Sitemap ref", detail: "robots.txt is accessible and references the sitemap.", priority: "medium" });
       } else {
         checks.push({ id: "robots_no_sitemap", category: "onpage", label: "robots.txt", status: "warn", value: "No sitemap ref", detail: "robots.txt exists but does not reference the sitemap.", recommendation: "Add 'Sitemap: https://nolandearthworks.com/sitemap.xml' to robots.txt.", fixExample: `Add a Sitemap reference to your robots.txt.
 
