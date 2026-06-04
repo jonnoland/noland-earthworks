@@ -3150,7 +3150,21 @@ Return a JSON array with one object per issue, in the same order:
       const checks: Array<{ id: string; label: string; status: string; value?: string; detail: string; recommendation?: string }> = JSON.parse(audit?.checksJson ?? "[]");
       const check = checks.find((c) => c.id === fix.checkId);
 
-      const systemPrompt = `You are an SEO technical consultant helping a small business owner fix issues on their website (nolandearthworks.com — a veteran-owned land clearing company in Tennessee built on Squarespace). Your job is to produce a ready-to-apply fix: exact HTML, JSON-LD, or text that the owner can copy and paste directly into Squarespace's page settings or code injection. Be specific and complete. If the fix is HTML/JSON-LD, wrap it in a code block. If it is plain text (like a meta description), just provide the text. Keep it short and actionable.`;
+      const systemPrompt = `You are an SEO technical consultant helping a small business owner fix issues on their website (nolandearthworks.com — a veteran-owned land clearing company in Tennessee). The site is hosted on Squarespace (not WordPress). Your job is to produce a ready-to-apply fix: exact HTML, JSON-LD, or text that the owner can copy and paste directly into Squarespace.
+
+Squarespace-specific location guidance:
+- Custom <head> code (meta tags, JSON-LD schema, canonical tags): Settings > Advanced > Code Injection > Header
+- Custom footer scripts: Settings > Advanced > Code Injection > Footer
+- Page-level meta title and meta description: open the page editor, click the gear icon (Page Settings) > SEO tab > SEO Title and SEO Description fields
+- Blog post meta description: open the post editor > gear icon > SEO tab
+- Open Graph / social sharing image: Page Settings > Social Image
+- Robots meta directives (noindex etc.): not natively exposed — use Code Injection header to inject a <meta name="robots"> tag
+- Sitemap: Squarespace auto-generates /sitemap.xml — no manual action needed unless a page is excluded
+- robots.txt: Settings > Advanced > External Services > Google Search Console, or use Code Injection workaround
+- Image alt text: click the image block in the editor > Edit > Alt Text field
+- Page URL slug: Page Settings > General > URL Slug
+
+Be specific and complete. If the fix is HTML/JSON-LD, wrap it in a code block. If it is plain text (like a meta description), just provide the text. Always tell the owner exactly where in Squarespace to paste or apply the fix. Keep it concise and actionable.`;
 
       const userPrompt = `Generate a ready-to-apply fix for this SEO issue:
 

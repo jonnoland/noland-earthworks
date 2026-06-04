@@ -267,12 +267,12 @@ export async function runSeoAudit(targetUrl: string, googleApiKey?: string): Pro
     priority: "low",
   });
 
-  // Check for nofollow on external links
-  const nofollowExternal = externalLinks.filter((_, el) => ($(el).attr("rel") ?? "").includes("nofollow")).length;
-  if (externalLinks.length > 0 && nofollowExternal === 0) {
-    checks.push({ id: "nofollow_external", category: "links", label: "External link rel attributes", status: "warn", value: "No nofollow", detail: "External links do not have rel=\"nofollow\" or rel=\"noopener\".", recommendation: "Add rel=\"nofollow noopener\" to external links to control link equity.", priority: "low" });
+  // External link rel=noopener (security, not SEO) — only check for noopener, not nofollow
+  const noopenExternal = externalLinks.filter((_, el) => ($(el).attr("rel") ?? "").includes("noopener")).length;
+  if (externalLinks.length > 0 && noopenExternal === 0) {
+    checks.push({ id: "noopener_external", category: "links", label: "External link security (noopener)", status: "warn", value: "No noopener", detail: "External links do not have rel=\"noopener\". This is a security best practice.", recommendation: "Add rel=\"noopener noreferrer\" to external links that open in a new tab.", priority: "low" });
   } else {
-    checks.push({ id: "nofollow_ok", category: "links", label: "External link rel attributes", status: "pass", value: `${nofollowExternal} nofollow`, detail: "External links have appropriate rel attributes.", priority: "low" });
+    checks.push({ id: "noopener_ok", category: "links", label: "External link security (noopener)", status: "pass", value: `${noopenExternal} noopener`, detail: "External links have rel=\"noopener\" for security.", priority: "low" });
   }
 
   // ── Usability Checks ────────────────────────────────────────────────────────
@@ -350,11 +350,12 @@ export async function runSeoAudit(targetUrl: string, googleApiKey?: string): Pro
     checks.push({ id: "render_blocking_ok", category: "performance", label: "Render-blocking scripts", status: "pass", value: "None", detail: "No render-blocking scripts found in <head>.", priority: "medium" });
   }
 
-  // Image count (proxy for image optimization need)
-  if (totalImages > 20) {
-    checks.push({ id: "image_count", category: "performance", label: "Image count", status: "warn", value: `${totalImages} images`, detail: `${totalImages} images found — ensure all are optimized and use modern formats (WebP).`, recommendation: "Compress images and use WebP format. Implement lazy loading for below-fold images.", priority: "medium" });
-  } else {
-    checks.push({ id: "image_count_ok", category: "performance", label: "Image count", status: "pass", value: `${totalImages} images`, detail: `${totalImages} images found — manageable count.`, priority: "low" });
+  // Lazy loading for images
+  const lazyImages = $('img[loading="lazy"]').length;
+  if (totalImages > 3 && lazyImages === 0) {
+    checks.push({ id: "lazy_loading", category: "performance", label: "Image lazy loading", status: "warn", value: "None", detail: `${totalImages} images found but none use loading="lazy".`, recommendation: 'Add loading="lazy" to below-fold images to improve page load speed.', priority: "medium" });
+  } else if (totalImages > 0) {
+    checks.push({ id: "lazy_loading_ok", category: "performance", label: "Image lazy loading", status: "pass", value: `${lazyImages}/${totalImages} lazy`, detail: `${lazyImages} of ${totalImages} images use lazy loading.`, priority: "medium" });
   }
 
   // ── Social Checks ───────────────────────────────────────────────────────────
@@ -383,14 +384,98 @@ export async function runSeoAudit(targetUrl: string, googleApiKey?: string): Pro
     checks.push({ id: "twitter_card_ok", category: "social", label: "Twitter Card tags", status: "pass", value: twitterCard, detail: `Twitter Card type: ${twitterCard}.`, priority: "medium" });
   }
 
-  // Social profile links on page
-  const fbLink = $('a[href*="facebook.com"]').length > 0;
-  const igLink = $('a[href*="instagram.com"]').length > 0;
-  const socialLinksCount = [fbLink, igLink].filter(Boolean).length;
-  if (socialLinksCount === 0) {
-    checks.push({ id: "social_links_missing", category: "social", label: "Social profile links", status: "warn", value: "None", detail: "No links to social media profiles found on the page.", recommendation: "Add links to your Facebook and Instagram profiles.", priority: "low" });
+  // ── Advanced On-Page Checks ────────────────────────────────────────────────
+
+  // H1 keyword match
+  const h1Text = h1Tags.first().text().toLowerCase();
+  const h1Keywords = ["land clearing", "forestry mulching", "land management", "vegetation", "site prep"];
+  const h1HasKeyword = h1Keywords.some((k) => h1Text.includes(k));
+  if (h1Count > 0 && !h1HasKeyword) {
+    checks.push({ id: "h1_keyword", category: "onpage", label: "H1 keyword relevance", status: "warn", value: h1Text.slice(0, 60), detail: "H1 tag does not contain a primary service keyword.", recommendation: "Include a primary keyword (land clearing, forestry mulching, etc.) in the H1 heading.", priority: "high" });
+  } else if (h1Count > 0) {
+    checks.push({ id: "h1_keyword_ok", category: "onpage", label: "H1 keyword relevance", status: "pass", value: h1Text.slice(0, 60), detail: "H1 contains a primary service keyword.", priority: "high" });
+  }
+
+  // Page word count
+  const pageText = $('body').clone().find('script, style, nav, footer, header').remove().end().text();
+  const wordCount = pageText.trim().split(/\s+/).filter(Boolean).length;
+  if (wordCount < 300) {
+    checks.push({ id: "word_count_low", category: "onpage", label: "Page word count", status: "fail", value: `${wordCount} words`, detail: `Page has only ${wordCount} words — thin content is a negative ranking signal.`, recommendation: "Expand page content to at least 600 words with relevant service descriptions, FAQs, and local area context.", priority: "high" });
+  } else if (wordCount < 600) {
+    checks.push({ id: "word_count_short", category: "onpage", label: "Page word count", status: "warn", value: `${wordCount} words`, detail: `Page has ${wordCount} words — Google prefers 600+ for service pages.`, recommendation: "Add more content: service details, process explanation, FAQs, or local area context.", priority: "medium" });
   } else {
-    checks.push({ id: "social_links_ok", category: "social", label: "Social profile links", status: "pass", value: `${socialLinksCount} found`, detail: "Social media profile links found on the page.", priority: "low" });
+    checks.push({ id: "word_count_ok", category: "onpage", label: "Page word count", status: "pass", value: `${wordCount} words`, detail: `Page has ${wordCount} words — good content depth.`, priority: "medium" });
+  }
+
+  // lang attribute on html tag
+  const htmlLang = $('html').attr('lang');
+  if (!htmlLang) {
+    checks.push({ id: "lang_missing", category: "onpage", label: "HTML lang attribute", status: "warn", value: "Missing", detail: "The <html> tag does not have a lang attribute.", recommendation: 'Add lang="en" to the <html> tag: <html lang="en">.', priority: "medium" });
+  } else {
+    checks.push({ id: "lang_ok", category: "onpage", label: "HTML lang attribute", status: "pass", value: htmlLang, detail: `HTML lang attribute set to "${htmlLang}".`, priority: "medium" });
+  }
+
+  // LocalBusiness JSON-LD field validation
+  let localBusinessValid = false;
+  let localBusinessDetail = "No LocalBusiness JSON-LD block found.";
+  schemaScripts.each((_, el) => {
+    try {
+      const data = JSON.parse($(el).html() ?? "");
+      const entries = Array.isArray(data) ? data : [data];
+      for (const entry of entries) {
+        if (entry["@type"] === "LocalBusiness" || entry["@type"] === "HomeAndConstructionBusiness") {
+          const hasName = !!entry.name;
+          const hasAddress = !!entry.address;
+          const hasPhone = !!entry.telephone;
+          const hasArea = !!entry.areaServed;
+          const hasGeo = !!entry.geo;
+          const missing = [!hasName && "name", !hasAddress && "address", !hasPhone && "telephone", !hasArea && "areaServed", !hasGeo && "geo"].filter(Boolean);
+          if (missing.length === 0) {
+            localBusinessValid = true;
+            localBusinessDetail = "LocalBusiness JSON-LD has all required fields (name, address, telephone, areaServed, geo).";
+          } else {
+            localBusinessDetail = `LocalBusiness JSON-LD is missing: ${missing.join(", ")}.`;
+          }
+        }
+      }
+    } catch {}
+  });
+  if (localBusinessValid) {
+    checks.push({ id: "local_business_schema_ok", category: "onpage", label: "LocalBusiness JSON-LD validation", status: "pass", value: "Valid", detail: localBusinessDetail, priority: "high" });
+  } else {
+    checks.push({ id: "local_business_schema_invalid", category: "onpage", label: "LocalBusiness JSON-LD validation", status: schemaScripts.length > 0 ? "warn" : "fail", value: "Incomplete", detail: localBusinessDetail, recommendation: "Add or complete LocalBusiness JSON-LD with name, address, telephone, areaServed, and geo fields for local SEO.", priority: "high" });
+  }
+
+  // Sitemap.xml reachability
+  const sitemapUrl = new URL("/sitemap.xml", finalUrl).href;
+  try {
+    const sitemapRes = await fetch(sitemapUrl, { method: "HEAD", signal: AbortSignal.timeout(8000) });
+    if (sitemapRes.ok) {
+      checks.push({ id: "sitemap_ok", category: "onpage", label: "sitemap.xml", status: "pass", value: "Reachable", detail: `sitemap.xml is accessible at ${sitemapUrl}.`, priority: "high" });
+    } else {
+      checks.push({ id: "sitemap_missing", category: "onpage", label: "sitemap.xml", status: "warn", value: `HTTP ${sitemapRes.status}`, detail: `sitemap.xml returned HTTP ${sitemapRes.status}.`, recommendation: "Ensure sitemap.xml is accessible at /sitemap.xml and submitted to Google Search Console.", priority: "high" });
+    }
+  } catch {
+    checks.push({ id: "sitemap_unreachable", category: "onpage", label: "sitemap.xml", status: "warn", value: "Unreachable", detail: "Could not reach sitemap.xml — it may not exist or be blocked.", recommendation: "Create and publish a sitemap.xml at /sitemap.xml and submit it to Google Search Console.", priority: "high" });
+  }
+
+  // robots.txt reachability and content
+  const robotsUrl = new URL("/robots.txt", finalUrl).href;
+  try {
+    const robotsRes = await fetch(robotsUrl, { signal: AbortSignal.timeout(8000) });
+    if (robotsRes.ok) {
+      const robotsText = await robotsRes.text();
+      const hasSitemapRef = robotsText.toLowerCase().includes("sitemap:");
+      if (hasSitemapRef) {
+        checks.push({ id: "robots_ok", category: "onpage", label: "robots.txt", status: "pass", value: "Valid + Sitemap ref", detail: "robots.txt is accessible and references the sitemap.", priority: "medium" });
+      } else {
+        checks.push({ id: "robots_no_sitemap", category: "onpage", label: "robots.txt", status: "warn", value: "No sitemap ref", detail: "robots.txt exists but does not reference the sitemap.", recommendation: "Add 'Sitemap: https://nolandearthworks.com/sitemap.xml' to robots.txt.", priority: "medium" });
+      }
+    } else {
+      checks.push({ id: "robots_missing", category: "onpage", label: "robots.txt", status: "warn", value: `HTTP ${robotsRes.status}`, detail: `robots.txt returned HTTP ${robotsRes.status}.`, recommendation: "Create a robots.txt file at /robots.txt with a Sitemap reference.", priority: "medium" });
+    }
+  } catch {
+    checks.push({ id: "robots_unreachable", category: "onpage", label: "robots.txt", status: "warn", value: "Unreachable", detail: "Could not reach robots.txt.", recommendation: "Create a robots.txt file at /robots.txt.", priority: "medium" });
   }
 
   // ── Score Calculation ───────────────────────────────────────────────────────

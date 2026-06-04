@@ -1052,14 +1052,16 @@ export default function Seo() {
             )}
 
             {latest && (
-              <>
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-                  <Card className="bg-zinc-900 border-zinc-800 lg:col-span-1">
+              <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+                {/* ── LEFT COLUMN: Scores + History ── */}
+                <div className="space-y-4">
+                  {/* Overall score + category rings */}
+                  <Card className="bg-zinc-900 border-zinc-800">
                     <CardHeader className="pb-2">
                       <CardTitle className="text-sm font-medium text-zinc-400">Overall Score</CardTitle>
                     </CardHeader>
-                    <CardContent className="flex flex-col items-center gap-3 pt-2 pb-6">
-                      <ScoreDonut score={latest.overallScore} grade={latest.overallGrade} size={140} />
+                    <CardContent className="flex flex-col items-center gap-4 pt-2 pb-5">
+                      <ScoreDonut score={latest.overallScore} grade={latest.overallGrade} size={148} />
                       <p className="text-sm text-zinc-400">
                         {recommendations.length > 0
                           ? `${recommendations.length} recommendation${recommendations.length !== 1 ? "s" : ""} to improve`
@@ -1074,7 +1076,8 @@ export default function Seo() {
                     </CardContent>
                   </Card>
 
-                  <Card className="bg-zinc-900 border-zinc-800 lg:col-span-2">
+                  {/* Category rings */}
+                  <Card className="bg-zinc-900 border-zinc-800">
                     <CardHeader className="pb-2">
                       <CardTitle className="text-sm font-medium text-zinc-400">Category Scores</CardTitle>
                     </CardHeader>
@@ -1094,168 +1097,167 @@ export default function Seo() {
                       </div>
                     </CardContent>
                   </Card>
-                </div>
 
-                {recommendations.length > 0 && (
-                  <Card className="bg-zinc-900 border-zinc-800">
-                    <CardHeader className="pb-3">
-                      <CardTitle className="text-sm font-medium text-zinc-200 flex items-center gap-2">
-                        <TrendingUp className="w-4 h-4 text-orange-400" />
-                        Recommendations ({recommendations.length})
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-2">
-                      {recommendations.map((rec, i) => (
-                        <div key={i} className="flex items-start gap-3 p-3 rounded-lg bg-zinc-800/50 border border-zinc-700/50">
-                          <div className="mt-0.5">{priorityBadge(rec.priority as Priority)}</div>
-                          <div className="flex-1">
-                            <p className="text-sm text-zinc-200">{rec.text}</p>
-                            <p className="text-xs text-zinc-500 mt-0.5 capitalize">{CATEGORY_META[rec.category as Category]?.label ?? rec.category}</p>
+                  {/* Score history chart */}
+                  {chartData.length >= 1 && (
+                    <Card className="bg-zinc-900 border-zinc-800">
+                      <CardHeader className="pb-3">
+                        <div className="flex items-center justify-between flex-wrap gap-2">
+                          <CardTitle className="text-sm font-medium text-zinc-200 flex items-center gap-2">
+                            <TrendingUp className="w-4 h-4 text-orange-400" />
+                            SEO Score Trend
+                          </CardTitle>
+                          <div className="flex flex-wrap items-center gap-2 text-[11px] text-zinc-500">
+                            <span className="flex items-center gap-1"><span className="w-3 h-0.5 bg-orange-500 inline-block rounded" /> Overall</span>
+                            <span className="flex items-center gap-1"><span className="w-3 h-0.5 bg-green-500 inline-block rounded" /> On-Page</span>
+                            <span className="flex items-center gap-1"><span className="w-3 h-0.5 bg-blue-500 inline-block rounded" /> Perf</span>
+                            <span className="flex items-center gap-1"><span className="w-3 h-0.5 bg-purple-500 inline-block rounded" /> UX</span>
+                            <span className="flex items-center gap-1"><span className="w-3 h-0.5 bg-yellow-500 inline-block rounded" /> Links</span>
+                            <span className="flex items-center gap-1"><span className="w-3 h-0.5 bg-pink-500 inline-block rounded" /> Social</span>
                           </div>
                         </div>
-                      ))}
-                    </CardContent>
-                  </Card>
-                )}
+                        {chartData.length === 1 && (
+                          <p className="text-xs text-zinc-500 mt-1">Run more audits over time to see your score trend.</p>
+                        )}
+                      </CardHeader>
+                      <CardContent>
+                        <ResponsiveContainer width="100%" height={220}>
+                          <LineChart data={chartData} margin={{ top: 8, right: 12, left: -20, bottom: 0 }}>
+                            <CartesianGrid strokeDasharray="3 3" stroke="#27272a" />
+                            <XAxis
+                              dataKey="date"
+                              tick={{ fill: "#71717a", fontSize: 9 }}
+                              interval="preserveStartEnd"
+                            />
+                            <YAxis
+                              domain={[0, 100]}
+                              tick={{ fill: "#71717a", fontSize: 10 }}
+                              tickCount={6}
+                            />
+                            <Tooltip
+                              contentStyle={{ backgroundColor: "#18181b", border: "1px solid #3f3f46", borderRadius: 8, fontSize: 11 }}
+                              labelStyle={{ color: "#a1a1aa", marginBottom: 4 }}
+                              itemStyle={{ color: "#e4e4e7" }}
+                              formatter={(value: number, name: string) => [`${value}/100`, name]}
+                            />
+                            <ReferenceLine y={100} stroke="#22c55e" strokeDasharray="4 4" strokeOpacity={0.4}
+                              label={{ value: "Target", position: "insideTopRight", fill: "#22c55e", fontSize: 9, opacity: 0.6 }}
+                            />
+                            <ReferenceLine y={90} stroke="#3f3f46" strokeDasharray="2 4" strokeOpacity={0.5} />
+                            <ReferenceLine y={70} stroke="#3f3f46" strokeDasharray="2 4" strokeOpacity={0.5} />
+                            <Line type="monotone" dataKey="Overall" stroke="#f97316" strokeWidth={2.5}
+                              dot={{ r: 3, fill: "#f97316", strokeWidth: 0 }}
+                              activeDot={{ r: 5, fill: "#f97316" }}
+                            />
+                            <Line type="monotone" dataKey="On-Page" stroke="#22c55e" strokeWidth={1.5}
+                              dot={{ r: 2, fill: "#22c55e", strokeWidth: 0 }} activeDot={{ r: 4 }}
+                            />
+                            <Line type="monotone" dataKey="Performance" stroke="#3b82f6" strokeWidth={1.5}
+                              dot={{ r: 2, fill: "#3b82f6", strokeWidth: 0 }} activeDot={{ r: 4 }}
+                            />
+                            <Line type="monotone" dataKey="Usability" stroke="#a855f7" strokeWidth={1.5}
+                              dot={{ r: 2, fill: "#a855f7", strokeWidth: 0 }} activeDot={{ r: 4 }}
+                            />
+                            <Line type="monotone" dataKey="Links" stroke="#eab308" strokeWidth={1.5}
+                              dot={{ r: 2, fill: "#eab308", strokeWidth: 0 }} activeDot={{ r: 4 }}
+                            />
+                            <Line type="monotone" dataKey="Social" stroke="#ec4899" strokeWidth={1.5}
+                              dot={{ r: 2, fill: "#ec4899", strokeWidth: 0 }} activeDot={{ r: 4 }}
+                            />
+                          </LineChart>
+                        </ResponsiveContainer>
+                      </CardContent>
+                    </Card>
+                  )}
+                </div>
 
-                <Card className="bg-zinc-900 border-zinc-800">
-                  <CardHeader className="pb-3">
-                    <CardTitle className="text-sm font-medium text-zinc-200">Detailed Checks</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <Tabs defaultValue="onpage">
-                      <TabsList className="bg-zinc-800 mb-4 flex-wrap h-auto gap-1">
-                        {(["onpage", "links", "usability", "performance", "social"] as Category[]).map((cat) => {
-                          const catChecks = checks.filter((c) => c.category === cat);
-                          const fails = catChecks.filter((c) => c.status === "fail").length;
-                          const warns = catChecks.filter((c) => c.status === "warn").length;
-                          return (
-                            <TabsTrigger key={cat} value={cat} className="text-xs gap-1.5">
-                              {CATEGORY_META[cat].icon}
-                              {CATEGORY_META[cat].label}
-                              {fails > 0 && (
-                                <span className="bg-red-500 text-white text-[10px] rounded-full w-4 h-4 flex items-center justify-center">
-                                  {fails}
-                                </span>
-                              )}
-                              {fails === 0 && warns > 0 && (
-                                <span className="bg-amber-500 text-white text-[10px] rounded-full w-4 h-4 flex items-center justify-center">
-                                  {warns}
-                                </span>
-                              )}
-                            </TabsTrigger>
-                          );
-                        })}
-                      </TabsList>
-                      {(["onpage", "links", "usability", "performance", "social"] as Category[]).map((cat) => (
-                        <TabsContent key={cat} value={cat} className="space-y-2 mt-0">
-                          {checks
-                            .filter((c) => c.category === cat)
-                            .sort((a, b) => {
-                              const statusOrder = { fail: 0, warn: 1, pass: 2 };
-                              return statusOrder[a.status] - statusOrder[b.status];
-                            })
-                            .map((check) => (
-                              <CheckRow key={check.id} check={check} />
-                            ))}
-                          {checks.filter((c) => c.category === cat).length === 0 && (
-                            <p className="text-zinc-500 text-sm py-4 text-center">No checks in this category.</p>
-                          )}
-                        </TabsContent>
-                      ))}
-                    </Tabs>
-                  </CardContent>
-                </Card>
-
-                <FixIssuesPanel
-                  fixes={fixes}
-                  auditId={latest.id}
-                  isGenerating={generateFixes.isPending}
-                  onGenerate={() => generateFixes.mutate({ auditId: latest.id })}
-                  onUpdateStatus={(id, status) => updateFixStatus.mutate({ id, status })}
-                />
-
-                {chartData.length >= 1 && (
-                  <Card className="bg-zinc-900 border-zinc-800">
-                    <CardHeader className="pb-3">
-                      <div className="flex items-center justify-between flex-wrap gap-2">
+                {/* ── RIGHT COLUMN: Recommendations + Checks + Fix Issues ── */}
+                <div className="space-y-4">
+                  {/* Recommendations */}
+                  {recommendations.length > 0 && (
+                    <Card className="bg-zinc-900 border-zinc-800">
+                      <CardHeader className="pb-3">
                         <CardTitle className="text-sm font-medium text-zinc-200 flex items-center gap-2">
                           <TrendingUp className="w-4 h-4 text-orange-400" />
-                          SEO Score Trend
+                          Recommendations ({recommendations.length})
                         </CardTitle>
-                        <div className="flex items-center gap-3 text-[11px] text-zinc-500">
-                          <span className="flex items-center gap-1.5"><span className="w-3 h-0.5 bg-orange-500 inline-block rounded" /> Overall</span>
-                          <span className="flex items-center gap-1.5"><span className="w-3 h-0.5 bg-green-500 inline-block rounded" /> On-Page</span>
-                          <span className="flex items-center gap-1.5"><span className="w-3 h-0.5 bg-blue-500 inline-block rounded" /> Performance</span>
-                          <span className="flex items-center gap-1.5"><span className="w-3 h-0.5 bg-purple-500 inline-block rounded" /> Usability</span>
-                          <span className="flex items-center gap-1.5"><span className="w-3 h-0.5 bg-yellow-500 inline-block rounded" /> Links</span>
-                          <span className="flex items-center gap-1.5"><span className="w-3 h-0.5 bg-pink-500 inline-block rounded" /> Social</span>
-                        </div>
-                      </div>
-                      {chartData.length === 1 && (
-                        <p className="text-xs text-zinc-500 mt-1">Run more audits over time to see your score trend. Each audit after applying fixes will appear here.</p>
-                      )}
+                      </CardHeader>
+                      <CardContent className="space-y-2">
+                        {recommendations.map((rec, i) => (
+                          <div key={i} className="flex items-start gap-3 p-3 rounded-lg bg-zinc-800/50 border border-zinc-700/50">
+                            <div className="mt-0.5">{priorityBadge(rec.priority as Priority)}</div>
+                            <div className="flex-1">
+                              <p className="text-sm text-zinc-200">{rec.text}</p>
+                              <p className="text-xs text-zinc-500 mt-0.5 capitalize">{CATEGORY_META[rec.category as Category]?.label ?? rec.category}</p>
+                            </div>
+                          </div>
+                        ))}
+                      </CardContent>
+                    </Card>
+                  )}
+
+                  {/* Detailed checks */}
+                  <Card className="bg-zinc-900 border-zinc-800">
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-sm font-medium text-zinc-200">Detailed Checks</CardTitle>
                     </CardHeader>
                     <CardContent>
-                      <ResponsiveContainer width="100%" height={260}>
-                        <LineChart data={chartData} margin={{ top: 8, right: 16, left: -16, bottom: 0 }}>
-                          <CartesianGrid strokeDasharray="3 3" stroke="#27272a" />
-                          <XAxis
-                            dataKey="date"
-                            tick={{ fill: "#71717a", fontSize: 10 }}
-                            interval="preserveStartEnd"
-                          />
-                          <YAxis
-                            domain={[0, 100]}
-                            tick={{ fill: "#71717a", fontSize: 11 }}
-                            tickCount={6}
-                          />
-                          <Tooltip
-                            contentStyle={{ backgroundColor: "#18181b", border: "1px solid #3f3f46", borderRadius: 8, fontSize: 12 }}
-                            labelStyle={{ color: "#a1a1aa", marginBottom: 4 }}
-                            itemStyle={{ color: "#e4e4e7" }}
-                            formatter={(value: number, name: string) => [
-                              `${value}/100`,
-                              name,
-                            ]}
-                          />
-                          {/* Target 100 reference line */}
-                          <ReferenceLine y={100} stroke="#22c55e" strokeDasharray="4 4" strokeOpacity={0.4}
-                            label={{ value: "Target: 100", position: "insideTopRight", fill: "#22c55e", fontSize: 10, opacity: 0.6 }}
-                          />
-                          {/* Grade zones */}
-                          <ReferenceLine y={90} stroke="#3f3f46" strokeDasharray="2 4" strokeOpacity={0.5} />
-                          <ReferenceLine y={70} stroke="#3f3f46" strokeDasharray="2 4" strokeOpacity={0.5} />
-                          <Line type="monotone" dataKey="Overall" stroke="#f97316" strokeWidth={2.5}
-                            dot={{ r: 3, fill: "#f97316", strokeWidth: 0 }}
-                            activeDot={{ r: 5, fill: "#f97316" }}
-                          />
-                          <Line type="monotone" dataKey="On-Page" stroke="#22c55e" strokeWidth={1.5}
-                            dot={{ r: 2, fill: "#22c55e", strokeWidth: 0 }}
-                            activeDot={{ r: 4 }}
-                          />
-                          <Line type="monotone" dataKey="Performance" stroke="#3b82f6" strokeWidth={1.5}
-                            dot={{ r: 2, fill: "#3b82f6", strokeWidth: 0 }}
-                            activeDot={{ r: 4 }}
-                          />
-                          <Line type="monotone" dataKey="Usability" stroke="#a855f7" strokeWidth={1.5}
-                            dot={{ r: 2, fill: "#a855f7", strokeWidth: 0 }}
-                            activeDot={{ r: 4 }}
-                          />
-                          <Line type="monotone" dataKey="Links" stroke="#eab308" strokeWidth={1.5}
-                            dot={{ r: 2, fill: "#eab308", strokeWidth: 0 }}
-                            activeDot={{ r: 4 }}
-                          />
-                          <Line type="monotone" dataKey="Social" stroke="#ec4899" strokeWidth={1.5}
-                            dot={{ r: 2, fill: "#ec4899", strokeWidth: 0 }}
-                            activeDot={{ r: 4 }}
-                          />
-                        </LineChart>
-                      </ResponsiveContainer>
+                      <Tabs defaultValue="onpage">
+                        <TabsList className="bg-zinc-800 mb-4 flex-wrap h-auto gap-1">
+                          {(["onpage", "links", "usability", "performance", "social"] as Category[]).map((cat) => {
+                            const catChecks = checks.filter((c) => c.category === cat);
+                            const fails = catChecks.filter((c) => c.status === "fail").length;
+                            const warns = catChecks.filter((c) => c.status === "warn").length;
+                            return (
+                              <TabsTrigger key={cat} value={cat} className="text-xs gap-1.5">
+                                {CATEGORY_META[cat].icon}
+                                {CATEGORY_META[cat].label}
+                                {fails > 0 && (
+                                  <span className="bg-red-500 text-white text-[10px] rounded-full w-4 h-4 flex items-center justify-center">
+                                    {fails}
+                                  </span>
+                                )}
+                                {fails === 0 && warns > 0 && (
+                                  <span className="bg-amber-500 text-white text-[10px] rounded-full w-4 h-4 flex items-center justify-center">
+                                    {warns}
+                                  </span>
+                                )}
+                              </TabsTrigger>
+                            );
+                          })}
+                        </TabsList>
+                        {(["onpage", "links", "usability", "performance", "social"] as Category[]).map((cat) => (
+                          <TabsContent key={cat} value={cat} className="space-y-2 mt-0">
+                            {checks
+                              .filter((c) => c.category === cat)
+                              .sort((a, b) => {
+                                const statusOrder = { fail: 0, warn: 1, pass: 2 };
+                                return statusOrder[a.status] - statusOrder[b.status];
+                              })
+                              .map((check) => (
+                                <CheckRow key={check.id} check={check} />
+                              ))}
+                            {checks.filter((c) => c.category === cat).length === 0 && (
+                              <p className="text-zinc-500 text-sm py-4 text-center">No checks in this category.</p>
+                            )}
+                          </TabsContent>
+                        ))}
+                      </Tabs>
                     </CardContent>
                   </Card>
-                )}
-              </>
+
+                  {/* Fix Issues panel — sticky at top when scrolling */}
+                  <div className="xl:sticky xl:top-4">
+                    <FixIssuesPanel
+                      fixes={fixes}
+                      auditId={latest.id}
+                      isGenerating={generateFixes.isPending}
+                      onGenerate={() => generateFixes.mutate({ auditId: latest.id })}
+                      onUpdateStatus={(id, status) => updateFixStatus.mutate({ id, status })}
+                    />
+                  </div>
+                </div>
+              </div>
             )}
           </TabsContent>
 
