@@ -1681,6 +1681,6 @@
 
 ## SEO Audit Redesign + Checks Upgrade — Jun 2026
 - [x] Add missing high-impact SEO checks: sitemap.xml reachability, robots.txt validation, LocalBusiness JSON-LD field validation, page word count, H1 keyword match, lang attribute on html tag
-- [ ] Remove low-value checks: external nofollow, image count, social profile links
+- [x] Remove low-value checks: external nofollow, image count, social profile links
 - [x] Redesign Audit tab to two-column layout: left = grade donut + category rings + score history; right = recommendations + detailed checks + fix panel
 - [x] Add Squarespace location context to every Apply Fix snippet (where exactly to paste it in Squarespace)
