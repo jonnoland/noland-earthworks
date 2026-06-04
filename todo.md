@@ -1646,3 +1646,12 @@
 - [x] Add getCopySettings and saveCopySettings tRPC procedures to opsRouter
 - [x] Build CopySettingsModal component in /ops/ads with per-platform hashtag inputs and site URL field
 - [x] Wire buildCopyText to load from DB settings instead of hardcoded constants
+
+## SEO Section (/ops/seo) — Jun 2026
+- [x] Add seoAudits table to schema and push migration
+- [x] Build server-side SEO audit engine (cheerio HTML parser + PageSpeed Insights API + checks)
+- [x] Add runSeoAudit and getAuditHistory tRPC procedures to opsRouter
+- [x] Build /ops/seo page: overall grade donut, category score cards (On-Page, Links, Usability, Performance, Social)
+- [x] Build check items list per category with pass/warn/fail indicators and recommendations
+- [x] Add audit history trend chart
+- [x] Add /ops/seo route to App.tsx and Navbar

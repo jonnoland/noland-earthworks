@@ -1059,3 +1059,46 @@ export const copySettings = mysqlTable("copy_settings", {
 });
 export type CopySetting = typeof copySettings.$inferSelect;
 export type InsertCopySetting = typeof copySettings.$inferInsert;
+
+// ─── SEO Audits ────────────────────────────────────────────────────────────────
+/**
+ * Stores the results of each SEO audit run against nolandearthworks.com.
+ * Each row is a full snapshot: category scores, individual check results,
+ * and the overall letter grade. Audits are run on demand from /ops/seo.
+ */
+export const seoAudits = mysqlTable("seo_audits", {
+  id: int("id").primaryKey().autoincrement(),
+  /** ISO timestamp of when the audit was run */
+  auditedAt: timestamp("auditedAt").defaultNow().notNull(),
+  /** URL that was audited */
+  url: varchar("url", { length: 500 }).notNull().default("https://nolandearthworks.com"),
+  /** Overall letter grade: A+, A, A-, B+, B, B-, C, D, F */
+  overallGrade: varchar("overallGrade", { length: 4 }).notNull(),
+  /** Overall numeric score 0-100 */
+  overallScore: int("overallScore").notNull(),
+  /** On-Page SEO score 0-100 */
+  onPageScore: int("onPageScore").notNull(),
+  /** Links score 0-100 */
+  linksScore: int("linksScore").notNull(),
+  /** Usability score 0-100 */
+  usabilityScore: int("usabilityScore").notNull(),
+  /** Performance score 0-100 */
+  performanceScore: int("performanceScore").notNull(),
+  /** Social score 0-100 */
+  socialScore: int("socialScore").notNull(),
+  /** Full JSON blob of all individual check results */
+  checksJson: text("checksJson").notNull(),
+  /** JSON array of prioritized recommendations */
+  recommendationsJson: text("recommendationsJson").notNull(),
+  /** Raw page title found during audit */
+  pageTitle: varchar("pageTitle", { length: 500 }),
+  /** Raw meta description found during audit */
+  metaDescription: text("metaDescription"),
+  /** Page load time in milliseconds from PageSpeed API */
+  loadTimeMs: int("loadTimeMs"),
+  /** PageSpeed mobile score 0-100 */
+  mobileScore: int("mobileScore"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type SeoAudit = typeof seoAudits.$inferSelect;
+export type InsertSeoAudit = typeof seoAudits.$inferInsert;

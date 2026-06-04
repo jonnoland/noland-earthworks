@@ -32,6 +32,7 @@ import OpsRegister from "./pages/ops/Register";
 import CostEstimator from "./pages/ops/CostEstimator";
 import OpsSocialPosts from "./pages/ops/SocialPosts";
 import OpsAds from "./pages/ops/Ads";
+import OpsSeo from "./pages/ops/Seo";
 import OpsChatSessions from "./pages/ops/ChatSessions";
 import Home from "./pages/Home";
 import LandClearingPage from "./pages/LandClearing";
@@ -322,6 +323,9 @@ function Router() {
       </Route>
       <Route path="/ops/ads">
         <OwnerRoute><OpsAds /></OwnerRoute>
+      </Route>
+      <Route path="/ops/seo">
+        <OwnerRoute><OpsSeo /></OwnerRoute>
       </Route>
       <Route path="/ops/chat-sessions">
         <OwnerRoute><OpsChatSessions /></OwnerRoute>

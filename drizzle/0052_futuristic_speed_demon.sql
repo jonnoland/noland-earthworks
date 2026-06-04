@@ -1,0 +1,20 @@
+CREATE TABLE `seo_audits` (
+	`id` int AUTO_INCREMENT NOT NULL,
+	`auditedAt` timestamp NOT NULL DEFAULT (now()),
+	`url` varchar(500) NOT NULL DEFAULT 'https://nolandearthworks.com',
+	`overallGrade` varchar(4) NOT NULL,
+	`overallScore` int NOT NULL,
+	`onPageScore` int NOT NULL,
+	`linksScore` int NOT NULL,
+	`usabilityScore` int NOT NULL,
+	`performanceScore` int NOT NULL,
+	`socialScore` int NOT NULL,
+	`checksJson` text NOT NULL,
+	`recommendationsJson` text NOT NULL,
+	`pageTitle` varchar(500),
+	`metaDescription` text,
+	`loadTimeMs` int,
+	`mobileScore` int,
+	`createdAt` timestamp NOT NULL DEFAULT (now()),
+	CONSTRAINT `seo_audits_id` PRIMARY KEY(`id`)
+);

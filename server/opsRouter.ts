@@ -2610,4 +2610,79 @@ export const opsRouter = router({
       }
       return { success: true };
     }),
+
+  // ── SEO Audit ──────────────────────────────────────────────────────────────
+
+  /**
+   * Run a fresh SEO audit against nolandearthworks.com and persist the result.
+   * Returns the full audit result including all check items and recommendations.
+   */
+  runSeoAudit: ownerProcedure
+    .input(z.object({ url: z.string().url().optional() }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+      const { runSeoAudit } = await import("./seoAudit");
+      const { seoAudits } = await import("../drizzle/schema");
+      const targetUrl = input.url ?? "https://nolandearthworks.com";
+      const result = await runSeoAudit(targetUrl, ENV.googlePlacesApiKey ?? undefined);
+      await db.insert(seoAudits).values({
+        url: result.url,
+        auditedAt: result.auditedAt,
+        overallGrade: result.overallGrade,
+        overallScore: result.overallScore,
+        onPageScore: result.onPageScore,
+        linksScore: result.linksScore,
+        usabilityScore: result.usabilityScore,
+        performanceScore: result.performanceScore,
+        socialScore: result.socialScore,
+        checksJson: JSON.stringify(result.checks),
+        recommendationsJson: JSON.stringify(result.recommendations),
+        pageTitle: result.pageTitle ?? undefined,
+        metaDescription: result.metaDescription ?? undefined,
+        loadTimeMs: result.loadTimeMs ?? undefined,
+        mobileScore: result.mobileScore ?? undefined,
+      });
+      return result;
+    }),
+
+  /**
+   * Fetch the audit history for the given URL, most recent first.
+   * Returns lightweight rows (no full checksJson) for the history chart,
+   * plus the full latest audit for the detail view.
+   */
+  getSeoAuditHistory: ownerProcedure
+    .input(z.object({ limit: z.number().int().min(1).max(90).optional() }))
+    .query(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+      const { seoAudits } = await import("../drizzle/schema");
+      const rows = await db
+        .select()
+        .from(seoAudits)
+        .orderBy(desc(seoAudits.auditedAt))
+        .limit(input.limit ?? 30);
+      const latest = rows[0] ?? null;
+      const history = rows.map((r) => ({
+        id: r.id,
+        auditedAt: r.auditedAt,
+        overallScore: r.overallScore,
+        overallGrade: r.overallGrade,
+        onPageScore: r.onPageScore,
+        linksScore: r.linksScore,
+        usabilityScore: r.usabilityScore,
+        performanceScore: r.performanceScore,
+        socialScore: r.socialScore,
+      }));
+      return {
+        history,
+        latest: latest
+          ? {
+              ...latest,
+              checks: JSON.parse(latest.checksJson) as import("./seoAudit").SeoCheck[],
+              recommendations: JSON.parse(latest.recommendationsJson) as Array<{ priority: string; text: string; category: string }>,
+            }
+          : null,
+      };
+    }),
 });

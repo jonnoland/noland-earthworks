@@ -35,6 +35,7 @@ import {
   RefreshCw,
   Calculator,
   Share2,
+  Globe,
 } from "lucide-react";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { getLoginUrl } from "@/const";
@@ -59,6 +60,7 @@ const NAV_ITEMS = [
   { label: "Team",          href: "/ops/team",           icon: UserPlus },
   { label: "Cost Estimator", href: "/ops/cost-estimator", icon: Calculator },
   { label: "Ads",           href: "/ops/ads",            icon: Share2 },
+  { label: "SEO",           href: "/ops/seo",            icon: Globe },
   { label: "Settings",      href: "/ops/settings",       icon: Settings },
 ];
 

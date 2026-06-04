@@ -365,6 +365,13 @@
       "when": 1780503295157,
       "tag": "0051_normal_natasha_romanoff",
       "breakpoints": true
+    },
+    {
+      "idx": 52,
+      "version": "5",
+      "when": 1780587538568,
+      "tag": "0052_futuristic_speed_demon",
+      "breakpoints": true
     }
   ]
 }
