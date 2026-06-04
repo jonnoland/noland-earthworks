@@ -1684,3 +1684,13 @@
 - [x] Remove low-value checks: external nofollow, image count, social profile links
 - [x] Redesign Audit tab to two-column layout: left = grade donut + category rings + score history; right = recommendations + detailed checks + fix panel
 - [x] Add Squarespace location context to every Apply Fix snippet (where exactly to paste it in Squarespace)
+
+## SEO Detailed Checks — Fix Examples — Jun 2026
+- [ ] Add fixExample field to SeoCheck type and populate it for every failed/warned check in seoAudit.ts
+- [ ] Upgrade CheckRow component to show fix example (code block or plain text) in expanded state, with copy button
+
+## SEO Detailed Checks — Expandable Fix Examples
+
+- [x] Add fixExample field to SeoCheck interface in seoAudit.ts and Seo.tsx
+- [x] Populate fixExample for all 30+ non-passing check IDs with Squarespace-specific instructions
+- [x] Upgrade CheckRow component with expandable "How to fix" block, monospace code display, and copy-to-clipboard button

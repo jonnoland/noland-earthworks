@@ -95,6 +95,8 @@ interface SeoCheck {
   value?: string;
   detail: string;
   recommendation?: string;
+  /** Ready-to-paste code snippet or step-by-step instructions showing exactly how to fix this check. */
+  fixExample?: string;
   priority: Priority;
 }
 
@@ -555,6 +557,16 @@ const CATEGORY_META: Record<Category, { label: string; icon: React.ReactNode }> 
 
 function CheckRow({ check }: { check: SeoCheck }) {
   const [open, setOpen] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = () => {
+    if (!check.fixExample) return;
+    navigator.clipboard.writeText(check.fixExample).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  };
+
   return (
     <div className="border border-zinc-800 rounded-lg overflow-hidden">
       <button
@@ -572,12 +584,41 @@ function CheckRow({ check }: { check: SeoCheck }) {
         )}
       </button>
       {open && (
-        <div className="px-4 pb-4 pt-1 bg-zinc-900/60 border-t border-zinc-800 space-y-2">
+        <div className="px-4 pb-4 pt-2 bg-zinc-900/60 border-t border-zinc-800 space-y-3">
+          {/* Detail text */}
           <p className="text-sm text-zinc-400">{check.detail}</p>
+
+          {/* Recommendation banner */}
           {check.recommendation && (
             <div className="flex gap-2 items-start bg-amber-500/10 border border-amber-500/20 rounded-md p-3">
               <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
               <p className="text-sm text-amber-300">{check.recommendation}</p>
+            </div>
+          )}
+
+          {/* Fix example block */}
+          {check.fixExample && (
+            <div className="rounded-md border border-zinc-700 overflow-hidden">
+              {/* Header row */}
+              <div className="flex items-center justify-between px-3 py-2 bg-zinc-800/80 border-b border-zinc-700">
+                <div className="flex items-center gap-1.5">
+                  <Wrench className="w-3.5 h-3.5 text-orange-400" />
+                  <span className="text-xs font-medium text-orange-300 uppercase tracking-wide">How to fix</span>
+                </div>
+                <button
+                  onClick={(e) => { e.stopPropagation(); handleCopy(); }}
+                  className="flex items-center gap-1 text-xs text-zinc-400 hover:text-zinc-200 transition-colors px-2 py-1 rounded hover:bg-zinc-700"
+                  title="Copy to clipboard"
+                >
+                  {copied ? (
+                    <><CheckCheck className="w-3.5 h-3.5 text-green-400" /><span className="text-green-400">Copied</span></>
+                  ) : (
+                    <><Copy className="w-3.5 h-3.5" /><span>Copy</span></>
+                  )}
+                </button>
+              </div>
+              {/* Code / instructions body */}
+              <pre className="text-xs text-zinc-300 leading-relaxed p-3 overflow-x-auto whitespace-pre-wrap break-words bg-zinc-950/60 font-mono">{check.fixExample}</pre>
             </div>
           )}
         </div>
