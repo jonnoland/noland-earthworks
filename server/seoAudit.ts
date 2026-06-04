@@ -68,7 +68,7 @@ function categoryScore(checks: SeoCheck[], category: SeoCheck["category"]): numb
   return Math.round((earned / total) * 100);
 }
 
-async function fetchWithTiming(url: string): Promise<{ html: string; loadTimeMs: number; finalUrl: string }> {
+async function fetchWithPuppeteer(url: string): Promise<{ html: string; loadTimeMs: number; finalUrl: string }> {
   const start = Date.now();
   let browser;
   try {
@@ -89,7 +89,6 @@ async function fetchWithTiming(url: string): Promise<{ html: string; loadTimeMs:
     await page.setViewport({ width: 1280, height: 900 });
     const response = await page.goto(url, { waitUntil: "networkidle2", timeout: 30000 });
     const finalUrl = response?.url() ?? url;
-    // Wait for React to render — look for a meaningful DOM element
     await page.waitForSelector("body", { timeout: 10000 }).catch(() => {});
     const html = await page.content();
     const loadTimeMs = Date.now() - start;
@@ -97,6 +96,32 @@ async function fetchWithTiming(url: string): Promise<{ html: string; loadTimeMs:
   } finally {
     if (browser) await browser.close();
   }
+}
+
+async function fetchWithFallback(url: string): Promise<{ html: string; loadTimeMs: number; finalUrl: string }> {
+  // Try Puppeteer first for full React SPA rendering.
+  // Falls back to plain fetch if Chrome binary is unavailable (e.g., production server).
+  try {
+    return await fetchWithPuppeteer(url);
+  } catch (puppeteerErr) {
+    console.warn("[SEO Audit] Puppeteer unavailable, falling back to plain fetch:", (puppeteerErr as Error).message?.slice(0, 120));
+    const start = Date.now();
+    const res = await fetch(url, {
+      headers: {
+        "User-Agent": "Mozilla/5.0 (compatible; NolandEarthworksSEOBot/1.0; +https://nolandearthworks.com)",
+        Accept: "text/html,application/xhtml+xml",
+      },
+      redirect: "follow",
+      signal: AbortSignal.timeout(15000),
+    });
+    const html = await res.text();
+    const loadTimeMs = Date.now() - start;
+    return { html, loadTimeMs, finalUrl: res.url };
+  }
+}
+
+async function fetchWithTiming(url: string): Promise<{ html: string; loadTimeMs: number; finalUrl: string }> {
+  return fetchWithFallback(url);
 }
 
 async function fetchPageSpeedScore(url: string, apiKey?: string): Promise<{ mobile: number | null }> {
