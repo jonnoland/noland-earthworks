@@ -347,9 +347,48 @@ function FixIssuesPanel({
           </div>
         )}
         {isGenerating && (
-          <div className="flex items-center justify-center py-10 gap-2 text-zinc-400">
-            <Loader2 className="w-5 h-5 animate-spin" />
-            <span className="text-sm">Generating fix instructions — this may take 15-30 seconds...</span>
+          <div className="space-y-3">
+            {/* Status label */}
+            <div className="flex items-center gap-2 px-1 pb-1">
+              <Loader2 className="w-3.5 h-3.5 animate-spin text-orange-400" />
+              <span className="text-xs text-zinc-400">Researching issues and generating fix instructions…</span>
+            </div>
+            {/* Skeleton cards — one per simulated fix row */}
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div key={i} className="border border-zinc-800 rounded-lg overflow-hidden animate-pulse">
+                {/* Row header */}
+                <div className="flex items-center gap-3 px-4 py-3">
+                  <div className="w-4 h-4 rounded-full bg-zinc-700 shrink-0" />
+                  <div className="flex-1 h-3.5 bg-zinc-700 rounded" style={{ width: `${55 + (i % 3) * 15}%` }} />
+                  <div className="w-14 h-3 bg-zinc-800 rounded" />
+                  <div className="w-10 h-4 bg-zinc-800 rounded-full" />
+                </div>
+                {/* Expanded preview for first two cards */}
+                {i < 2 && (
+                  <div className="px-4 pb-4 pt-2 bg-zinc-900/40 border-t border-zinc-800 space-y-3">
+                    {/* Why This Matters skeleton */}
+                    <div className="rounded-md border border-blue-900/30 bg-blue-950/10 p-3 space-y-2">
+                      <div className="flex items-center gap-1.5">
+                        <div className="w-3.5 h-3.5 rounded bg-blue-800/50" />
+                        <div className="w-28 h-2.5 bg-blue-800/50 rounded" />
+                      </div>
+                      <div className="space-y-1.5">
+                        <div className="h-2.5 bg-zinc-700/60 rounded w-full" />
+                        <div className="h-2.5 bg-zinc-700/60 rounded w-5/6" />
+                        <div className="h-2.5 bg-zinc-700/60 rounded w-4/6" />
+                      </div>
+                    </div>
+                    {/* Fix instructions skeleton */}
+                    <div className="space-y-1.5">
+                      <div className="h-2.5 bg-zinc-700/50 rounded w-full" />
+                      <div className="h-2.5 bg-zinc-700/50 rounded w-11/12" />
+                      <div className="h-2.5 bg-zinc-700/50 rounded w-3/4" />
+                      <div className="h-2.5 bg-zinc-700/50 rounded w-5/6" />
+                    </div>
+                  </div>
+                )}
+              </div>
+            ))}
           </div>
         )}
         {!isGenerating && filtered.map((fix) => {
