@@ -2686,6 +2686,30 @@ export const opsRouter = router({
       };
     }),
 
+  // ── Clear Last Audit ────────────────────────────────────────────────────────
+
+  /**
+   * Delete the most recent SEO audit row (and its associated fixes) so the
+   * operator can start fresh without stale cached results.
+   */
+  clearLastSeoAudit: ownerProcedure.mutation(async () => {
+    const db = await getDb();
+    if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+    const { seoAudits, seoFixes } = await import("../drizzle/schema");
+    // Find the most recent audit
+    const [latest] = await db
+      .select({ id: seoAudits.id })
+      .from(seoAudits)
+      .orderBy(desc(seoAudits.auditedAt))
+      .limit(1);
+    if (!latest) return { deleted: false };
+    // Delete associated fixes first (FK constraint)
+    await db.delete(seoFixes).where(eq(seoFixes.auditId, latest.id));
+    // Delete the audit row
+    await db.delete(seoAudits).where(eq(seoAudits.id, latest.id));
+    return { deleted: true, id: latest.id };
+  }),
+
   // ── SEO Content Engine ─────────────────────────────────────────────────────
 
   /**

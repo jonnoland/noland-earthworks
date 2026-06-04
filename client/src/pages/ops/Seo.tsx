@@ -864,6 +864,16 @@ export default function Seo() {
     onError: (err) => toast.error(err.message || "Audit failed."),
   });
 
+  const clearLastAudit = trpc.ops.clearLastSeoAudit.useMutation({
+    onSuccess: (data) => {
+      utils.ops.getSeoAuditHistory.invalidate();
+      if (data.deleted) {
+        toast.success("Last audit cleared.");
+      }
+    },
+    onError: (err) => toast.error(err.message || "Failed to clear audit."),
+  });
+
   const latest = historyData?.latest ?? null;
   const history = historyData?.history ?? [];
 
@@ -1108,14 +1118,31 @@ export default function Seo() {
                   ? `Last audited ${new Date(latest.auditedAt).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}`
                   : "No audit run yet"}
               </p>
-              <Button
-                onClick={() => runAudit.mutate({ url: "https://nolandearthworks.com" })}
-                disabled={runAudit.isPending}
-                className="bg-orange-600 hover:bg-orange-500 text-white gap-2"
-              >
-                <RefreshCw className={`w-4 h-4 ${runAudit.isPending ? "animate-spin" : ""}`} />
-                {runAudit.isPending ? "Auditing..." : "Run Audit"}
-              </Button>
+              <div className="flex items-center gap-2">
+                {latest && (
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      if (confirm("Clear the last audit? This cannot be undone.")) {
+                        clearLastAudit.mutate();
+                      }
+                    }}
+                    disabled={clearLastAudit.isPending}
+                    className="border-zinc-700 text-zinc-400 hover:text-red-400 hover:border-red-700 gap-2"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                    {clearLastAudit.isPending ? "Clearing..." : "Clear Last Audit"}
+                  </Button>
+                )}
+                <Button
+                  onClick={() => runAudit.mutate({ url: "https://nolandearthworks.com" })}
+                  disabled={runAudit.isPending}
+                  className="bg-orange-600 hover:bg-orange-500 text-white gap-2"
+                >
+                  <RefreshCw className={`w-4 h-4 ${runAudit.isPending ? "animate-spin" : ""}`} />
+                  {runAudit.isPending ? "Auditing..." : "Run Audit"}
+                </Button>
+              </div>
             </div>
 
             {historyLoading && (
