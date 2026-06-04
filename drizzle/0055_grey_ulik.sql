@@ -1,0 +1,1 @@
+ALTER TABLE `seo_fixes` ADD `researchContext` text;

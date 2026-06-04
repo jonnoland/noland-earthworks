@@ -79,6 +79,8 @@ interface SeoFixRow {
   label: string;
   checkStatus: string;
   priority: string;
+  /** AI-generated research context: why this issue matters for SEO */
+  researchContext: string | null;
   aiInstructions: string;
   status: FixStatus;
   note: string | null;
@@ -390,6 +392,16 @@ function FixIssuesPanel({
               </button>
               {isExpanded && (
                 <div className="px-4 pb-4 pt-2 bg-zinc-900/60 border-t border-zinc-800 space-y-4">
+                  {/* Research context — why this issue matters */}
+                  {fix.researchContext && (
+                    <div className="rounded-md border border-blue-800/40 bg-blue-950/20 p-3 space-y-1">
+                      <div className="flex items-center gap-1.5 mb-2">
+                        <Search className="w-3.5 h-3.5 text-blue-400" />
+                        <span className="text-xs font-medium text-blue-300 uppercase tracking-wide">Why This Matters</span>
+                      </div>
+                      <p className="text-sm text-blue-100/80 leading-relaxed">{fix.researchContext}</p>
+                    </div>
+                  )}
                   {/* AI instructions */}
                   <div className="prose prose-invert prose-sm max-w-none">
                     <Streamdown>{fix.aiInstructions}</Streamdown>

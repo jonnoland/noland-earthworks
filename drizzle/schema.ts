@@ -1178,6 +1178,8 @@ export const seoFixes = mysqlTable("seo_fixes", {
   checkStatus: varchar("checkStatus", { length: 10 }).notNull(),
   /** Priority: high | medium | low */
   priority: varchar("priority", { length: 10 }).notNull(),
+  /** AI-generated research context: why this issue matters, its SEO impact, and supporting evidence */
+  researchContext: text("researchContext"),
   /** AI-generated step-by-step fix instructions in Markdown */
   aiInstructions: text("aiInstructions").notNull(),
   /** Current fix status */

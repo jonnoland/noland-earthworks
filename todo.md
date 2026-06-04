@@ -1694,3 +1694,8 @@
 - [x] Add fixExample field to SeoCheck interface in seoAudit.ts and Seo.tsx
 - [x] Populate fixExample for all 30+ non-passing check IDs with Squarespace-specific instructions
 - [x] Upgrade CheckRow component with expandable "How to fix" block, monospace code display, and copy-to-clipboard button
+
+## SEO Generate Fixes — Research-Backed Fix Instructions
+
+- [x] Upgrade generateSeoFixes LLM prompt to research each failing check and return a structured object with why_it_matters, impact, and fix_steps per item
+- [x] Update Fix Issues panel UI to display research context (why it matters, SEO impact) above the fix instructions for each item

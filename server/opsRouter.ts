@@ -2997,20 +2997,23 @@ export const opsRouter = router({
       const checksText = fixable
         .map(
           (c, i) =>
-            `${i + 1}. [${c.status.toUpperCase()}] ${c.label} (${c.category}, priority: ${c.priority})\n   Detail: ${c.detail}${c.recommendation ? `\n   Hint: ${c.recommendation}` : ""}${c.value ? `\n   Current value: ${c.value}` : ""}`
+            `${i + 1}. [${c.status.toUpperCase()}] ${c.label} (${c.category}, priority: ${c.priority})\n   Check ID: ${c.id}\n   Detail: ${c.detail}${c.recommendation ? `\n   Hint: ${c.recommendation}` : ""}${c.value ? `\n   Current value: ${c.value}` : ""}`
         )
         .join("\n\n");
 
-      const systemPrompt = `You are an SEO technical consultant helping a small business owner fix issues on their website (nolandearthworks.com — a veteran-owned land clearing company in Tennessee built on Squarespace).
+      const systemPrompt = `You are a senior SEO consultant and technical researcher helping a small business owner fix SEO issues on their Squarespace website (nolandearthworks.com — a veteran-owned land clearing and forestry mulching company in Middle & West Tennessee).
 
-For each issue listed, write clear, actionable step-by-step fix instructions. Be specific to Squarespace where relevant. Use plain language — no jargon. Each fix should be 2-5 numbered steps. If a fix requires code or exact text, provide it verbatim. If a fix is not possible on Squarespace without a developer, say so clearly.`;
+For EACH issue you must:
+1. RESEARCH the issue — explain why it matters for SEO rankings, what Google's official guidance says, and what real-world impact this specific type of issue has on local service businesses. Be specific and factual, not generic. Reference known Google ranking factors, Core Web Vitals, E-E-A-T, or local SEO best practices where relevant.
+2. WRITE FIX INSTRUCTIONS — clear, numbered, Squarespace-specific steps. Include exact code or text to paste where applicable. If a fix requires Code Injection, specify exactly where (Header, Footer, or Page-level). If a fix is not possible on Squarespace without a developer, say so clearly.
 
-      const userPrompt = `Generate fix instructions for these ${fixable.length} SEO issues found on nolandearthworks.com:
+Tone: direct, professional, no jargon. Write for a non-technical business owner who is smart but not a developer.`;
+
+      const userPrompt = `Research and generate fix instructions for these ${fixable.length} SEO issues found on nolandearthworks.com:
 
 ${checksText}
 
-Return a JSON array with one object per issue, in the same order:
-[{ "checkId": "<id>", "instructions": "<markdown fix steps>" }]`;
+Return a JSON object with a "fixes" array — one object per issue in the same order as listed above.`;
 
       const llmResponse = await invokeLLM({
         messages: [
@@ -3022,7 +3025,7 @@ Return a JSON array with one object per issue, in the same order:
           json_schema: {
             name: "seo_fixes",
             strict: true,
-            schema: {
+              schema: {
               type: "object",
               properties: {
                 fixes: {
@@ -3031,9 +3034,10 @@ Return a JSON array with one object per issue, in the same order:
                     type: "object",
                     properties: {
                       checkId: { type: "string" },
-                      instructions: { type: "string" },
+                      researchContext: { type: "string", description: "Why this issue matters for SEO: Google guidance, ranking factor impact, local SEO relevance, and real-world consequences for a service business. 2-4 sentences, factual and specific." },
+                      instructions: { type: "string", description: "Numbered, Squarespace-specific fix steps with exact code or text to paste where applicable." },
                     },
-                    required: ["checkId", "instructions"],
+                    required: ["checkId", "researchContext", "instructions"],
                     additionalProperties: false,
                   },
                 },
@@ -3045,7 +3049,7 @@ Return a JSON array with one object per issue, in the same order:
         },
       });
 
-      let fixInstructions: Array<{ checkId: string; instructions: string }> = [];
+      let fixInstructions: Array<{ checkId: string; researchContext: string; instructions: string }> = [];
       try {
         const raw = llmResponse?.choices?.[0]?.message?.content;
         const parsed = typeof raw === "string" ? JSON.parse(raw) : raw;
@@ -3059,6 +3063,7 @@ Return a JSON array with one object per issue, in the same order:
       for (const check of fixable) {
         const aiEntry = fixInstructions.find((f) => f.checkId === check.id);
         const aiInstructions = aiEntry?.instructions ?? `No specific instructions generated for this check. Review manually: ${check.detail}`;
+        const researchContext = aiEntry?.researchContext ?? null;
 
         // Check if a fix row already exists for this audit+check
         const [existing] = await db
@@ -3070,7 +3075,7 @@ Return a JSON array with one object per issue, in the same order:
         if (existing) {
           await db
             .update(seoFixes)
-            .set({ aiInstructions, checkStatus: check.status, priority: check.priority })
+            .set({ aiInstructions, researchContext, checkStatus: check.status, priority: check.priority })
             .where(eq(seoFixes.id, existing.id));
         } else {
           await db.insert(seoFixes).values({
@@ -3080,6 +3085,7 @@ Return a JSON array with one object per issue, in the same order:
             label: check.label,
             checkStatus: check.status,
             priority: check.priority,
+            researchContext,
             aiInstructions,
             status: "pending",
           });
