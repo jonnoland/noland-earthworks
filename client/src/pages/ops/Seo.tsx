@@ -1,15 +1,28 @@
 /**
- * /ops/seo — SEO Audit Dashboard
- * Modeled on SEOptimer: overall grade donut, category score rings, check items
- * with pass/warn/fail indicators, prioritized recommendations, and audit history chart.
+ * /ops/seo — SEO Hub
+ * Four tabs modeled on SEOptimer + SORO:
+ *   1. Audit       — overall grade, category rings, check items, history chart
+ *   2. Keywords    — AI keyword research, save/star, filter by intent/difficulty
+ *   3. Write       — AI article generator in Jon's brand voice
+ *   4. Content     — library of saved drafts with slide-out detail/edit panel
  */
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { trpc } from "@/lib/trpc";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { toast } from "sonner";
+import { Streamdown } from "streamdown";
 import {
   RefreshCw,
   CheckCircle2,
@@ -23,6 +36,17 @@ import {
   Smartphone,
   Zap,
   Share2,
+  Search,
+  Star,
+  Trash2,
+  FileText,
+  PenLine,
+  BookOpen,
+  X,
+  Copy,
+  CheckCheck,
+  Loader2,
+  Sparkles,
 } from "lucide-react";
 import {
   LineChart,
@@ -39,6 +63,7 @@ import {
 type CheckStatus = "pass" | "warn" | "fail";
 type Priority = "high" | "medium" | "low";
 type Category = "onpage" | "links" | "usability" | "performance" | "social";
+type ArticleStatus = "draft" | "ready" | "published";
 
 interface SeoCheck {
   id: string;
@@ -49,6 +74,33 @@ interface SeoCheck {
   detail: string;
   recommendation?: string;
   priority: Priority;
+}
+
+interface KeywordRow {
+  id: number;
+  keyword: string;
+  intent: string;
+  difficulty: string;
+  volumeRange: string | null;
+  rationale: string | null;
+  contentType: string | null;
+  saved: boolean;
+  targeted: boolean;
+  createdAt: Date;
+}
+
+interface ArticleRow {
+  id: number;
+  targetKeyword: string;
+  title: string;
+  metaDescription: string | null;
+  bodyMarkdown: string;
+  wordCount: number | null;
+  status: ArticleStatus;
+  notes: string | null;
+  keywordId: number | null;
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
@@ -85,6 +137,61 @@ function priorityBadge(priority: Priority) {
   );
 }
 
+function difficultyBadge(difficulty: string) {
+  const map: Record<string, string> = {
+    easy: "bg-green-500/15 text-green-400 border-green-500/30",
+    medium: "bg-amber-500/15 text-amber-400 border-amber-500/30",
+    hard: "bg-red-500/15 text-red-400 border-red-500/30",
+  };
+  const cls = map[difficulty.toLowerCase()] ?? "bg-zinc-500/15 text-zinc-400 border-zinc-500/30";
+  return (
+    <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded border ${cls} capitalize`}>
+      {difficulty}
+    </span>
+  );
+}
+
+function intentBadge(intent: string) {
+  const map: Record<string, string> = {
+    transactional: "bg-orange-500/15 text-orange-400 border-orange-500/30",
+    local: "bg-blue-500/15 text-blue-400 border-blue-500/30",
+    informational: "bg-purple-500/15 text-purple-400 border-purple-500/30",
+  };
+  const cls = map[intent.toLowerCase()] ?? "bg-zinc-500/15 text-zinc-400 border-zinc-500/30";
+  return (
+    <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded border ${cls} capitalize`}>
+      {intent}
+    </span>
+  );
+}
+
+function statusBadge(status: ArticleStatus) {
+  const map: Record<ArticleStatus, string> = {
+    draft: "bg-zinc-500/15 text-zinc-400 border-zinc-500/30",
+    ready: "bg-green-500/15 text-green-400 border-green-500/30",
+    published: "bg-blue-500/15 text-blue-400 border-blue-500/30",
+  };
+  return (
+    <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded border ${map[status]} capitalize`}>
+      {status}
+    </span>
+  );
+}
+
+function catGrade(score: number) {
+  if (score >= 97) return "A+";
+  if (score >= 93) return "A";
+  if (score >= 90) return "A-";
+  if (score >= 87) return "B+";
+  if (score >= 83) return "B";
+  if (score >= 80) return "B-";
+  if (score >= 77) return "C+";
+  if (score >= 73) return "C";
+  if (score >= 70) return "C-";
+  if (score >= 60) return "D";
+  return "F";
+}
+
 // ── Donut Chart (SVG) ──────────────────────────────────────────────────────────
 function ScoreDonut({ score, grade, size = 120 }: { score: number; grade: string; size?: number }) {
   const r = (size - 16) / 2;
@@ -117,7 +224,6 @@ function ScoreDonut({ score, grade, size = 120 }: { score: number; grade: string
   );
 }
 
-// ── Small ring for category cards ──────────────────────────────────────────────
 function CategoryRing({ score, grade }: { score: number; grade: string }) {
   const size = 72;
   const r = (size - 10) / 2;
@@ -149,7 +255,6 @@ function CategoryRing({ score, grade }: { score: number; grade: string }) {
   );
 }
 
-// ── Category icon map ──────────────────────────────────────────────────────────
 const CATEGORY_META: Record<Category, { label: string; icon: React.ReactNode }> = {
   onpage: { label: "On-Page SEO", icon: <Globe className="w-4 h-4" /> },
   links: { label: "Links", icon: <Link2 className="w-4 h-4" /> },
@@ -158,7 +263,6 @@ const CATEGORY_META: Record<Category, { label: string; icon: React.ReactNode }> 
   social: { label: "Social", icon: <Share2 className="w-4 h-4" /> },
 };
 
-// ── Check Item Row ─────────────────────────────────────────────────────────────
 function CheckRow({ check }: { check: SeoCheck }) {
   const [open, setOpen] = useState(false);
   return (
@@ -169,9 +273,7 @@ function CheckRow({ check }: { check: SeoCheck }) {
       >
         {statusIcon(check.status)}
         <span className="flex-1 text-sm text-zinc-200">{check.label}</span>
-        {check.value && (
-          <span className="text-xs text-zinc-400 mr-2">{check.value}</span>
-        )}
+        {check.value && <span className="text-xs text-zinc-400 mr-2">{check.value}</span>}
         {priorityBadge(check.priority)}
         {open ? (
           <ChevronUp className="w-4 h-4 text-zinc-500 ml-2 shrink-0" />
@@ -194,38 +296,194 @@ function CheckRow({ check }: { check: SeoCheck }) {
   );
 }
 
+// ── Article Detail Drawer ──────────────────────────────────────────────────────
+function ArticleDrawer({
+  article,
+  onClose,
+  onStatusChange,
+  onDelete,
+}: {
+  article: ArticleRow;
+  onClose: () => void;
+  onStatusChange: (id: number, status: ArticleStatus) => void;
+  onDelete: (id: number) => void;
+}) {
+  const [copied, setCopied] = useState(false);
+  const [editingNotes, setEditingNotes] = useState(false);
+  const [notes, setNotes] = useState(article.notes ?? "");
+  const utils = trpc.useUtils();
+
+  const updateArticle = trpc.ops.updateSeoArticle.useMutation({
+    onSuccess: () => {
+      utils.ops.listSeoArticles.invalidate();
+      setEditingNotes(false);
+      toast.success("Saved.");
+    },
+    onError: (err) => toast.error(err.message || "Failed to save."),
+  });
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(article.bodyMarkdown).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  };
+
+  const wordCount = article.wordCount ?? article.bodyMarkdown.split(/\s+/).length;
+
+  return (
+    <>
+      <div className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm" onClick={onClose} />
+      <div className="fixed right-0 top-0 bottom-0 z-50 w-full max-w-2xl bg-zinc-950 border-l border-zinc-800 shadow-2xl flex flex-col overflow-hidden">
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 py-4 border-b border-zinc-800 shrink-0">
+          <div className="flex items-center gap-2 min-w-0">
+            <FileText className="w-4 h-4 text-orange-400 shrink-0" />
+            <span className="text-sm font-semibold text-zinc-100 truncate">{article.title}</span>
+            {statusBadge(article.status)}
+          </div>
+          <button onClick={onClose} className="text-zinc-500 hover:text-zinc-200 transition-colors ml-3 shrink-0">
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        {/* Meta row */}
+        <div className="px-5 py-3 border-b border-zinc-800 shrink-0 flex flex-wrap gap-3 items-center text-xs text-zinc-500">
+          <span>Keyword: <span className="text-zinc-300">{article.targetKeyword}</span></span>
+          <span>{wordCount.toLocaleString()} words</span>
+          <span>Created {new Date(article.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}</span>
+        </div>
+
+        {/* Meta description */}
+        {article.metaDescription && (
+          <div className="px-5 py-3 border-b border-zinc-800 shrink-0 bg-zinc-900/40">
+            <p className="text-xs text-zinc-500 mb-1">Meta description</p>
+            <p className="text-sm text-zinc-300">{article.metaDescription}</p>
+          </div>
+        )}
+
+        {/* Body */}
+        <div className="flex-1 overflow-y-auto px-5 py-4">
+          <div className="prose prose-invert prose-sm max-w-none">
+            <Streamdown>{article.bodyMarkdown}</Streamdown>
+          </div>
+        </div>
+
+        {/* Notes */}
+        <div className="px-5 py-3 border-t border-zinc-800 shrink-0 bg-zinc-900/40">
+          <div className="flex items-center justify-between mb-1">
+            <p className="text-xs text-zinc-500">Notes</p>
+            {!editingNotes && (
+              <button
+                className="text-xs text-orange-400 hover:text-orange-300"
+                onClick={() => setEditingNotes(true)}
+              >
+                Edit
+              </button>
+            )}
+          </div>
+          {editingNotes ? (
+            <div className="flex gap-2">
+              <Input
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                placeholder="Add notes..."
+                className="bg-zinc-800 border-zinc-700 text-zinc-200 text-sm h-8"
+              />
+              <Button
+                size="sm"
+                className="h-8 bg-orange-600 hover:bg-orange-500 text-white"
+                onClick={() => updateArticle.mutate({ id: article.id, notes })}
+                disabled={updateArticle.isPending}
+              >
+                Save
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-8 text-zinc-400"
+                onClick={() => { setEditingNotes(false); setNotes(article.notes ?? ""); }}
+              >
+                Cancel
+              </Button>
+            </div>
+          ) : (
+            <p className="text-sm text-zinc-400">{notes || "No notes."}</p>
+          )}
+        </div>
+
+        {/* Actions */}
+        <div className="px-5 py-4 border-t border-zinc-800 shrink-0 flex flex-wrap gap-2">
+          <Button
+            size="sm"
+            variant="outline"
+            className="gap-1.5 border-zinc-700 text-zinc-300 hover:bg-zinc-800"
+            onClick={handleCopy}
+          >
+            {copied ? <CheckCheck className="w-4 h-4 text-green-400" /> : <Copy className="w-4 h-4" />}
+            {copied ? "Copied" : "Copy Markdown"}
+          </Button>
+          {article.status !== "ready" && (
+            <Button
+              size="sm"
+              className="gap-1.5 bg-green-700 hover:bg-green-600 text-white"
+              onClick={() => onStatusChange(article.id, "ready")}
+            >
+              <CheckCircle2 className="w-4 h-4" />
+              Mark Ready
+            </Button>
+          )}
+          {article.status !== "published" && (
+            <Button
+              size="sm"
+              className="gap-1.5 bg-blue-700 hover:bg-blue-600 text-white"
+              onClick={() => onStatusChange(article.id, "published")}
+            >
+              <Globe className="w-4 h-4" />
+              Mark Published
+            </Button>
+          )}
+          {article.status !== "draft" && (
+            <Button
+              size="sm"
+              variant="outline"
+              className="gap-1.5 border-zinc-700 text-zinc-400 hover:bg-zinc-800"
+              onClick={() => onStatusChange(article.id, "draft")}
+            >
+              Revert to Draft
+            </Button>
+          )}
+          <Button
+            size="sm"
+            variant="outline"
+            className="gap-1.5 border-red-800/50 text-red-400 hover:bg-red-900/20 ml-auto"
+            onClick={() => onDelete(article.id)}
+          >
+            <Trash2 className="w-4 h-4" />
+            Delete
+          </Button>
+        </div>
+      </div>
+    </>
+  );
+}
+
 // ── Main Component ─────────────────────────────────────────────────────────────
 export default function Seo() {
   const utils = trpc.useUtils();
 
+  // ── Audit ──
   const { data: historyData, isLoading: historyLoading } = trpc.ops.getSeoAuditHistory.useQuery({ limit: 30 });
   const runAudit = trpc.ops.runSeoAudit.useMutation({
     onSuccess: () => {
       utils.ops.getSeoAuditHistory.invalidate();
       toast.success("Audit complete — results saved.");
     },
-    onError: (err) => {
-      toast.error(err.message || "Audit failed.");
-    },
+    onError: (err) => toast.error(err.message || "Audit failed."),
   });
 
   const latest = historyData?.latest ?? null;
   const history = historyData?.history ?? [];
-
-  // Derive category scores and grades from latest
-  function catGrade(score: number) {
-    if (score >= 97) return "A+";
-    if (score >= 93) return "A";
-    if (score >= 90) return "A-";
-    if (score >= 87) return "B+";
-    if (score >= 83) return "B";
-    if (score >= 80) return "B-";
-    if (score >= 77) return "C+";
-    if (score >= 73) return "C";
-    if (score >= 70) return "C-";
-    if (score >= 60) return "D";
-    return "F";
-  }
 
   const categories: Array<{ key: Category; score: number }> = latest
     ? [
@@ -248,43 +506,170 @@ export default function Seo() {
     Usability: h.usabilityScore,
   }));
 
+  // ── Keywords ──
+  const [kwTopic, setKwTopic] = useState("land clearing and forestry mulching");
+  const [kwCounty, setKwCounty] = useState("Middle Tennessee");
+  const [kwCount, setKwCount] = useState(15);
+  const [kwFilter, setKwFilter] = useState<"all" | "saved">("all");
+  const [kwIntentFilter, setKwIntentFilter] = useState("all");
+  const [kwDiffFilter, setKwDiffFilter] = useState("all");
+  const [generatedKeywords, setGeneratedKeywords] = useState<Array<{
+    keyword: string; intent: string; difficulty: string; volumeRange: string; rationale: string; contentType: string;
+  }>>([]);
+  const [selectedKws, setSelectedKws] = useState<Set<number>>(new Set());
+
+  const { data: savedKeywords = [], isLoading: kwLoading } = trpc.ops.listSeoKeywords.useQuery({ savedOnly: false });
+
+  const generateKeywords = trpc.ops.generateSeoKeywords.useMutation({
+    onSuccess: (data) => {
+      setGeneratedKeywords(data);
+      toast.success(`${data.length} keyword ideas generated.`);
+    },
+    onError: (err) => toast.error(err.message || "Keyword generation failed."),
+  });
+
+  const saveKeywords = trpc.ops.saveSeoKeywords.useMutation({
+    onSuccess: (data) => {
+      utils.ops.listSeoKeywords.invalidate();
+      setGeneratedKeywords([]);
+      setSelectedKws(new Set());
+      toast.success(`${data.saved} keywords saved.`);
+    },
+    onError: (err) => toast.error(err.message || "Failed to save keywords."),
+  });
+
+  const toggleKwSaved = trpc.ops.toggleSeoKeywordSaved.useMutation({
+    onSuccess: () => utils.ops.listSeoKeywords.invalidate(),
+  });
+
+  const deleteKw = trpc.ops.deleteSeoKeyword.useMutation({
+    onSuccess: () => {
+      utils.ops.listSeoKeywords.invalidate();
+      toast.success("Keyword removed.");
+    },
+    onError: (err) => toast.error(err.message || "Failed to delete."),
+  });
+
+  const filteredSavedKws = useMemo(() => {
+    return (savedKeywords as KeywordRow[]).filter((k) => {
+      if (kwFilter === "saved" && !k.saved) return false;
+      if (kwIntentFilter !== "all" && k.intent.toLowerCase() !== kwIntentFilter) return false;
+      if (kwDiffFilter !== "all" && k.difficulty.toLowerCase() !== kwDiffFilter) return false;
+      return true;
+    });
+  }, [savedKeywords, kwFilter, kwIntentFilter, kwDiffFilter]);
+
+  const handleSaveSelected = () => {
+    const toSave = generatedKeywords.filter((_, i) => selectedKws.has(i));
+    if (toSave.length === 0) { toast.error("Select at least one keyword to save."); return; }
+    saveKeywords.mutate(toSave);
+  };
+
+  // ── Write ──
+  const [writeKeyword, setWriteKeyword] = useState("");
+  const [writeWordCount, setWriteWordCount] = useState(900);
+  const [writeArticleType, setWriteArticleType] = useState<"blog post" | "service page" | "location page" | "FAQ page">("blog post");
+  const [writeContext, setWriteContext] = useState("");
+  const [writeKeywordId, setWriteKeywordId] = useState<number | undefined>(undefined);
+
+  const generateArticle = trpc.ops.generateSeoArticle.useMutation({
+    onSuccess: () => {
+      utils.ops.listSeoArticles.invalidate();
+      toast.success("Article generated and saved to Content Library.");
+      setWriteKeyword("");
+      setWriteContext("");
+      setWriteKeywordId(undefined);
+    },
+    onError: (err) => toast.error(err.message || "Article generation failed."),
+  });
+
+  // ── Content Library ──
+  const [libStatusFilter, setLibStatusFilter] = useState<"all" | ArticleStatus>("all");
+  const [libSearch, setLibSearch] = useState("");
+  const [selectedArticle, setSelectedArticle] = useState<ArticleRow | null>(null);
+
+  const { data: articles = [], isLoading: articlesLoading } = trpc.ops.listSeoArticles.useQuery({});
+
+  const updateArticle = trpc.ops.updateSeoArticle.useMutation({
+    onSuccess: () => {
+      utils.ops.listSeoArticles.invalidate();
+      if (selectedArticle) {
+        setSelectedArticle((prev) => prev ? { ...prev } : null);
+      }
+    },
+    onError: (err) => toast.error(err.message || "Failed to update article."),
+  });
+
+  const deleteArticle = trpc.ops.deleteSeoArticle.useMutation({
+    onSuccess: () => {
+      utils.ops.listSeoArticles.invalidate();
+      setSelectedArticle(null);
+      toast.success("Article deleted.");
+    },
+    onError: (err) => toast.error(err.message || "Failed to delete article."),
+  });
+
+  const filteredArticles = useMemo(() => {
+    return (articles as ArticleRow[]).filter((a) => {
+      if (libStatusFilter !== "all" && a.status !== libStatusFilter) return false;
+      if (libSearch && !a.title.toLowerCase().includes(libSearch.toLowerCase()) && !a.targetKeyword.toLowerCase().includes(libSearch.toLowerCase())) return false;
+      return true;
+    });
+  }, [articles, libStatusFilter, libSearch]);
+
+  const handleStatusChange = (id: number, status: ArticleStatus) => {
+    updateArticle.mutate({ id, status });
+    if (selectedArticle?.id === id) {
+      setSelectedArticle((prev) => prev ? { ...prev, status } : null);
+    }
+    toast.success(`Article marked as ${status}.`);
+  };
+
+  const handleDeleteArticle = (id: number) => {
+    deleteArticle.mutate({ id });
+  };
+
   return (
     <DashboardLayout>
       <div className="p-6 space-y-6 max-w-6xl mx-auto">
-        {/* Header */}
+        {/* Page header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-zinc-100">SEO Audit</h1>
-            <p className="text-sm text-zinc-400 mt-1">
-              nolandearthworks.com &mdash;{" "}
-              {latest
-                ? `Last audited ${new Date(latest.auditedAt).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}`
-                : "No audit run yet"}
-            </p>
+            <h1 className="text-2xl font-bold text-zinc-100">SEO</h1>
+            <p className="text-sm text-zinc-400 mt-1">nolandearthworks.com</p>
           </div>
-          <Button
-            onClick={() => runAudit.mutate({ url: "https://nolandearthworks.com" })}
-            disabled={runAudit.isPending}
-            className="bg-orange-600 hover:bg-orange-500 text-white gap-2"
-          >
-            <RefreshCw className={`w-4 h-4 ${runAudit.isPending ? "animate-spin" : ""}`} />
-            {runAudit.isPending ? "Auditing..." : "Run Audit"}
-          </Button>
         </div>
 
-        {/* Loading / Empty state */}
-        {historyLoading && (
-          <div className="flex items-center justify-center py-24 text-zinc-500">
-            <RefreshCw className="w-5 h-5 animate-spin mr-2" /> Loading audit history...
-          </div>
-        )}
+        {/* Top-level tabs */}
+        <Tabs defaultValue="audit">
+          <TabsList className="bg-zinc-900 border border-zinc-800 mb-2">
+            <TabsTrigger value="audit" className="gap-1.5 text-xs">
+              <Globe className="w-3.5 h-3.5" /> Audit
+            </TabsTrigger>
+            <TabsTrigger value="keywords" className="gap-1.5 text-xs">
+              <Search className="w-3.5 h-3.5" /> Keywords
+            </TabsTrigger>
+            <TabsTrigger value="write" className="gap-1.5 text-xs">
+              <PenLine className="w-3.5 h-3.5" /> Write
+            </TabsTrigger>
+            <TabsTrigger value="content" className="gap-1.5 text-xs">
+              <BookOpen className="w-3.5 h-3.5" />
+              Content
+              {(articles as ArticleRow[]).filter((a) => a.status === "draft").length > 0 && (
+                <span className="bg-orange-500 text-white text-[10px] rounded-full w-4 h-4 flex items-center justify-center ml-0.5">
+                  {(articles as ArticleRow[]).filter((a) => a.status === "draft").length}
+                </span>
+              )}
+            </TabsTrigger>
+          </TabsList>
 
-        {!historyLoading && !latest && (
-          <Card className="bg-zinc-900 border-zinc-800">
-            <CardContent className="flex flex-col items-center justify-center py-20 gap-4">
-              <Globe className="w-12 h-12 text-zinc-600" />
-              <p className="text-zinc-400 text-center max-w-sm">
-                No audit data yet. Click <strong className="text-zinc-200">Run Audit</strong> to analyze nolandearthworks.com and get your SEO score.
+          {/* ── AUDIT TAB ── */}
+          <TabsContent value="audit" className="space-y-6 mt-0">
+            <div className="flex items-center justify-between">
+              <p className="text-sm text-zinc-400">
+                {latest
+                  ? `Last audited ${new Date(latest.auditedAt).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}`
+                  : "No audit run yet"}
               </p>
               <Button
                 onClick={() => runAudit.mutate({ url: "https://nolandearthworks.com" })}
@@ -292,170 +677,642 @@ export default function Seo() {
                 className="bg-orange-600 hover:bg-orange-500 text-white gap-2"
               >
                 <RefreshCw className={`w-4 h-4 ${runAudit.isPending ? "animate-spin" : ""}`} />
-                {runAudit.isPending ? "Auditing..." : "Run First Audit"}
+                {runAudit.isPending ? "Auditing..." : "Run Audit"}
               </Button>
-            </CardContent>
-          </Card>
-        )}
-
-        {latest && (
-          <>
-            {/* Overall + Category Scores */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-              {/* Overall grade */}
-              <Card className="bg-zinc-900 border-zinc-800 lg:col-span-1">
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-medium text-zinc-400">Overall Score</CardTitle>
-                </CardHeader>
-                <CardContent className="flex flex-col items-center gap-3 pt-2 pb-6">
-                  <ScoreDonut score={latest.overallScore} grade={latest.overallGrade} size={140} />
-                  <p className="text-sm text-zinc-400">
-                    {recommendations.length > 0
-                      ? `${recommendations.length} recommendation${recommendations.length !== 1 ? "s" : ""} to improve`
-                      : "Looking good — no critical issues"}
-                  </p>
-                  {latest.loadTimeMs && (
-                    <div className="flex gap-4 text-xs text-zinc-500">
-                      <span>Load: {(latest.loadTimeMs / 1000).toFixed(1)}s</span>
-                      {latest.mobileScore && <span>Mobile: {latest.mobileScore}/100</span>}
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-
-              {/* Category rings */}
-              <Card className="bg-zinc-900 border-zinc-800 lg:col-span-2">
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-medium text-zinc-400">Category Scores</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-5 gap-2">
-                    {categories.map(({ key, score }) => (
-                      <div key={key} className="flex flex-col items-center gap-2">
-                        <CategoryRing score={score} grade={catGrade(score)} />
-                        <div className="flex flex-col items-center gap-1">
-                          <span className="text-zinc-400">{CATEGORY_META[key].icon}</span>
-                          <span className="text-[11px] text-zinc-400 text-center leading-tight">
-                            {CATEGORY_META[key].label}
-                          </span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
             </div>
 
-            {/* Recommendations */}
-            {recommendations.length > 0 && (
+            {historyLoading && (
+              <div className="flex items-center justify-center py-24 text-zinc-500">
+                <RefreshCw className="w-5 h-5 animate-spin mr-2" /> Loading audit history...
+              </div>
+            )}
+
+            {!historyLoading && !latest && (
               <Card className="bg-zinc-900 border-zinc-800">
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-sm font-medium text-zinc-200 flex items-center gap-2">
-                    <TrendingUp className="w-4 h-4 text-orange-400" />
-                    Recommendations ({recommendations.length})
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-2">
-                  {recommendations.map((rec, i) => (
-                    <div
-                      key={i}
-                      className="flex items-start gap-3 p-3 rounded-lg bg-zinc-800/50 border border-zinc-700/50"
-                    >
-                      <div className="mt-0.5">{priorityBadge(rec.priority as Priority)}</div>
-                      <div className="flex-1">
-                        <p className="text-sm text-zinc-200">{rec.text}</p>
-                        <p className="text-xs text-zinc-500 mt-0.5 capitalize">{CATEGORY_META[rec.category as Category]?.label ?? rec.category}</p>
-                      </div>
-                    </div>
-                  ))}
+                <CardContent className="flex flex-col items-center justify-center py-20 gap-4">
+                  <Globe className="w-12 h-12 text-zinc-600" />
+                  <p className="text-zinc-400 text-center max-w-sm">
+                    No audit data yet. Click <strong className="text-zinc-200">Run Audit</strong> to analyze nolandearthworks.com and get your SEO score.
+                  </p>
+                  <Button
+                    onClick={() => runAudit.mutate({ url: "https://nolandearthworks.com" })}
+                    disabled={runAudit.isPending}
+                    className="bg-orange-600 hover:bg-orange-500 text-white gap-2"
+                  >
+                    <RefreshCw className={`w-4 h-4 ${runAudit.isPending ? "animate-spin" : ""}`} />
+                    {runAudit.isPending ? "Auditing..." : "Run First Audit"}
+                  </Button>
                 </CardContent>
               </Card>
             )}
 
-            {/* Check Details by Category */}
+            {latest && (
+              <>
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                  <Card className="bg-zinc-900 border-zinc-800 lg:col-span-1">
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-sm font-medium text-zinc-400">Overall Score</CardTitle>
+                    </CardHeader>
+                    <CardContent className="flex flex-col items-center gap-3 pt-2 pb-6">
+                      <ScoreDonut score={latest.overallScore} grade={latest.overallGrade} size={140} />
+                      <p className="text-sm text-zinc-400">
+                        {recommendations.length > 0
+                          ? `${recommendations.length} recommendation${recommendations.length !== 1 ? "s" : ""} to improve`
+                          : "No critical issues found"}
+                      </p>
+                      {latest.loadTimeMs && (
+                        <div className="flex gap-4 text-xs text-zinc-500">
+                          <span>Load: {(latest.loadTimeMs / 1000).toFixed(1)}s</span>
+                          {latest.mobileScore && <span>Mobile: {latest.mobileScore}/100</span>}
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+
+                  <Card className="bg-zinc-900 border-zinc-800 lg:col-span-2">
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-sm font-medium text-zinc-400">Category Scores</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="grid grid-cols-5 gap-2">
+                        {categories.map(({ key, score }) => (
+                          <div key={key} className="flex flex-col items-center gap-2">
+                            <CategoryRing score={score} grade={catGrade(score)} />
+                            <div className="flex flex-col items-center gap-1">
+                              <span className="text-zinc-400">{CATEGORY_META[key].icon}</span>
+                              <span className="text-[11px] text-zinc-400 text-center leading-tight">
+                                {CATEGORY_META[key].label}
+                              </span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+
+                {recommendations.length > 0 && (
+                  <Card className="bg-zinc-900 border-zinc-800">
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-sm font-medium text-zinc-200 flex items-center gap-2">
+                        <TrendingUp className="w-4 h-4 text-orange-400" />
+                        Recommendations ({recommendations.length})
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-2">
+                      {recommendations.map((rec, i) => (
+                        <div key={i} className="flex items-start gap-3 p-3 rounded-lg bg-zinc-800/50 border border-zinc-700/50">
+                          <div className="mt-0.5">{priorityBadge(rec.priority as Priority)}</div>
+                          <div className="flex-1">
+                            <p className="text-sm text-zinc-200">{rec.text}</p>
+                            <p className="text-xs text-zinc-500 mt-0.5 capitalize">{CATEGORY_META[rec.category as Category]?.label ?? rec.category}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </CardContent>
+                  </Card>
+                )}
+
+                <Card className="bg-zinc-900 border-zinc-800">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-sm font-medium text-zinc-200">Detailed Checks</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <Tabs defaultValue="onpage">
+                      <TabsList className="bg-zinc-800 mb-4 flex-wrap h-auto gap-1">
+                        {(["onpage", "links", "usability", "performance", "social"] as Category[]).map((cat) => {
+                          const catChecks = checks.filter((c) => c.category === cat);
+                          const fails = catChecks.filter((c) => c.status === "fail").length;
+                          const warns = catChecks.filter((c) => c.status === "warn").length;
+                          return (
+                            <TabsTrigger key={cat} value={cat} className="text-xs gap-1.5">
+                              {CATEGORY_META[cat].icon}
+                              {CATEGORY_META[cat].label}
+                              {fails > 0 && (
+                                <span className="bg-red-500 text-white text-[10px] rounded-full w-4 h-4 flex items-center justify-center">
+                                  {fails}
+                                </span>
+                              )}
+                              {fails === 0 && warns > 0 && (
+                                <span className="bg-amber-500 text-white text-[10px] rounded-full w-4 h-4 flex items-center justify-center">
+                                  {warns}
+                                </span>
+                              )}
+                            </TabsTrigger>
+                          );
+                        })}
+                      </TabsList>
+                      {(["onpage", "links", "usability", "performance", "social"] as Category[]).map((cat) => (
+                        <TabsContent key={cat} value={cat} className="space-y-2 mt-0">
+                          {checks
+                            .filter((c) => c.category === cat)
+                            .sort((a, b) => {
+                              const statusOrder = { fail: 0, warn: 1, pass: 2 };
+                              return statusOrder[a.status] - statusOrder[b.status];
+                            })
+                            .map((check) => (
+                              <CheckRow key={check.id} check={check} />
+                            ))}
+                          {checks.filter((c) => c.category === cat).length === 0 && (
+                            <p className="text-zinc-500 text-sm py-4 text-center">No checks in this category.</p>
+                          )}
+                        </TabsContent>
+                      ))}
+                    </Tabs>
+                  </CardContent>
+                </Card>
+
+                {chartData.length > 1 && (
+                  <Card className="bg-zinc-900 border-zinc-800">
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-sm font-medium text-zinc-200 flex items-center gap-2">
+                        <TrendingUp className="w-4 h-4 text-orange-400" />
+                        Score History
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <ResponsiveContainer width="100%" height={220}>
+                        <LineChart data={chartData} margin={{ top: 4, right: 16, left: -16, bottom: 0 }}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="#27272a" />
+                          <XAxis dataKey="date" tick={{ fill: "#71717a", fontSize: 11 }} />
+                          <YAxis domain={[0, 100]} tick={{ fill: "#71717a", fontSize: 11 }} />
+                          <Tooltip
+                            contentStyle={{ backgroundColor: "#18181b", border: "1px solid #3f3f46", borderRadius: 8 }}
+                            labelStyle={{ color: "#a1a1aa" }}
+                            itemStyle={{ color: "#e4e4e7" }}
+                          />
+                          <Legend wrapperStyle={{ fontSize: 12, color: "#a1a1aa" }} />
+                          <Line type="monotone" dataKey="Overall" stroke="#f97316" strokeWidth={2} dot={false} />
+                          <Line type="monotone" dataKey="On-Page" stroke="#22c55e" strokeWidth={1.5} dot={false} />
+                          <Line type="monotone" dataKey="Performance" stroke="#3b82f6" strokeWidth={1.5} dot={false} />
+                          <Line type="monotone" dataKey="Usability" stroke="#a855f7" strokeWidth={1.5} dot={false} />
+                        </LineChart>
+                      </ResponsiveContainer>
+                    </CardContent>
+                  </Card>
+                )}
+              </>
+            )}
+          </TabsContent>
+
+          {/* ── KEYWORDS TAB ── */}
+          <TabsContent value="keywords" className="space-y-6 mt-0">
+            {/* Generator card */}
             <Card className="bg-zinc-900 border-zinc-800">
               <CardHeader className="pb-3">
-                <CardTitle className="text-sm font-medium text-zinc-200">Detailed Checks</CardTitle>
+                <CardTitle className="text-sm font-medium text-zinc-200 flex items-center gap-2">
+                  <Sparkles className="w-4 h-4 text-orange-400" />
+                  AI Keyword Research
+                </CardTitle>
               </CardHeader>
-              <CardContent>
-                <Tabs defaultValue="onpage">
-                  <TabsList className="bg-zinc-800 mb-4 flex-wrap h-auto gap-1">
-                    {(["onpage", "links", "usability", "performance", "social"] as Category[]).map((cat) => {
-                      const catChecks = checks.filter((c) => c.category === cat);
-                      const fails = catChecks.filter((c) => c.status === "fail").length;
-                      const warns = catChecks.filter((c) => c.status === "warn").length;
-                      return (
-                        <TabsTrigger key={cat} value={cat} className="text-xs gap-1.5">
-                          {CATEGORY_META[cat].icon}
-                          {CATEGORY_META[cat].label}
-                          {fails > 0 && (
-                            <span className="bg-red-500 text-white text-[10px] rounded-full w-4 h-4 flex items-center justify-center">
-                              {fails}
-                            </span>
-                          )}
-                          {fails === 0 && warns > 0 && (
-                            <span className="bg-amber-500 text-white text-[10px] rounded-full w-4 h-4 flex items-center justify-center">
-                              {warns}
-                            </span>
-                          )}
-                        </TabsTrigger>
-                      );
-                    })}
-                  </TabsList>
-
-                  {(["onpage", "links", "usability", "performance", "social"] as Category[]).map((cat) => (
-                    <TabsContent key={cat} value={cat} className="space-y-2 mt-0">
-                      {checks
-                        .filter((c) => c.category === cat)
-                        .sort((a, b) => {
-                          const statusOrder = { fail: 0, warn: 1, pass: 2 };
-                          return statusOrder[a.status] - statusOrder[b.status];
-                        })
-                        .map((check) => (
-                          <CheckRow key={check.id} check={check} />
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <div className="sm:col-span-2 space-y-1.5">
+                    <Label className="text-xs text-zinc-400">Topic</Label>
+                    <Input
+                      value={kwTopic}
+                      onChange={(e) => setKwTopic(e.target.value)}
+                      placeholder="e.g. land clearing and forestry mulching"
+                      className="bg-zinc-800 border-zinc-700 text-zinc-200"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs text-zinc-400">Target Area</Label>
+                    <Input
+                      value={kwCounty}
+                      onChange={(e) => setKwCounty(e.target.value)}
+                      placeholder="e.g. Middle Tennessee"
+                      className="bg-zinc-800 border-zinc-700 text-zinc-200"
+                    />
+                  </div>
+                </div>
+                <div className="flex items-center gap-4">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs text-zinc-400">Count</Label>
+                    <Select value={String(kwCount)} onValueChange={(v) => setKwCount(Number(v))}>
+                      <SelectTrigger className="w-24 bg-zinc-800 border-zinc-700 text-zinc-200 h-9">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent className="bg-zinc-900 border-zinc-700">
+                        {[10, 15, 20, 25, 30].map((n) => (
+                          <SelectItem key={n} value={String(n)} className="text-zinc-200">{n}</SelectItem>
                         ))}
-                      {checks.filter((c) => c.category === cat).length === 0 && (
-                        <p className="text-zinc-500 text-sm py-4 text-center">No checks in this category.</p>
-                      )}
-                    </TabsContent>
-                  ))}
-                </Tabs>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="flex-1" />
+                  <Button
+                    onClick={() => generateKeywords.mutate({ topic: kwTopic, county: kwCounty, count: kwCount })}
+                    disabled={generateKeywords.isPending || !kwTopic.trim()}
+                    className="bg-orange-600 hover:bg-orange-500 text-white gap-2 self-end"
+                  >
+                    {generateKeywords.isPending ? (
+                      <><Loader2 className="w-4 h-4 animate-spin" /> Generating...</>
+                    ) : (
+                      <><Sparkles className="w-4 h-4" /> Generate Keywords</>
+                    )}
+                  </Button>
+                </div>
+
+                {/* Generated results */}
+                {generatedKeywords.length > 0 && (
+                  <div className="space-y-3 pt-2 border-t border-zinc-800">
+                    <div className="flex items-center justify-between">
+                      <p className="text-xs text-zinc-400">{generatedKeywords.length} keyword ideas — select to save</p>
+                      <div className="flex gap-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-7 text-xs border-zinc-700 text-zinc-400 hover:bg-zinc-800"
+                          onClick={() => setSelectedKws(new Set(generatedKeywords.map((_, i) => i)))}
+                        >
+                          Select All
+                        </Button>
+                        <Button
+                          size="sm"
+                          className="h-7 text-xs bg-orange-600 hover:bg-orange-500 text-white"
+                          onClick={handleSaveSelected}
+                          disabled={saveKeywords.isPending || selectedKws.size === 0}
+                        >
+                          {saveKeywords.isPending ? "Saving..." : `Save ${selectedKws.size > 0 ? selectedKws.size : ""} Selected`}
+                        </Button>
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      {generatedKeywords.map((kw, i) => (
+                        <div
+                          key={i}
+                          className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
+                            selectedKws.has(i)
+                              ? "bg-orange-500/10 border-orange-500/30"
+                              : "bg-zinc-800/40 border-zinc-700/50 hover:bg-zinc-800/70"
+                          }`}
+                          onClick={() => {
+                            setSelectedKws((prev) => {
+                              const next = new Set(prev);
+                              if (next.has(i)) next.delete(i); else next.add(i);
+                              return next;
+                            });
+                          }}
+                        >
+                          <div className="w-4 h-4 rounded border mt-0.5 shrink-0 flex items-center justify-center border-zinc-600">
+                            {selectedKws.has(i) && <CheckCheck className="w-3 h-3 text-orange-400" />}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex flex-wrap items-center gap-1.5 mb-1">
+                              <span className="text-sm font-medium text-zinc-200">{kw.keyword}</span>
+                              {intentBadge(kw.intent)}
+                              {difficultyBadge(kw.difficulty)}
+                              {kw.volumeRange && (
+                                <span className="text-[10px] text-zinc-500">{kw.volumeRange}/mo</span>
+                              )}
+                            </div>
+                            <p className="text-xs text-zinc-400">{kw.rationale}</p>
+                            {kw.contentType && (
+                              <p className="text-[10px] text-zinc-500 mt-0.5">Suggested: {kw.contentType}</p>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </CardContent>
             </Card>
 
-            {/* History Chart */}
-            {chartData.length > 1 && (
-              <Card className="bg-zinc-900 border-zinc-800">
-                <CardHeader className="pb-3">
+            {/* Saved keywords */}
+            <Card className="bg-zinc-900 border-zinc-800">
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
                   <CardTitle className="text-sm font-medium text-zinc-200 flex items-center gap-2">
-                    <TrendingUp className="w-4 h-4 text-orange-400" />
-                    Score History
+                    <Star className="w-4 h-4 text-orange-400" />
+                    Saved Keywords ({(savedKeywords as KeywordRow[]).length})
                   </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <ResponsiveContainer width="100%" height={220}>
-                    <LineChart data={chartData} margin={{ top: 4, right: 16, left: -16, bottom: 0 }}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#27272a" />
-                      <XAxis dataKey="date" tick={{ fill: "#71717a", fontSize: 11 }} />
-                      <YAxis domain={[0, 100]} tick={{ fill: "#71717a", fontSize: 11 }} />
-                      <Tooltip
-                        contentStyle={{ backgroundColor: "#18181b", border: "1px solid #3f3f46", borderRadius: 8 }}
-                        labelStyle={{ color: "#a1a1aa" }}
-                        itemStyle={{ color: "#e4e4e7" }}
-                      />
-                      <Legend wrapperStyle={{ fontSize: 12, color: "#a1a1aa" }} />
-                      <Line type="monotone" dataKey="Overall" stroke="#f97316" strokeWidth={2} dot={false} />
-                      <Line type="monotone" dataKey="On-Page" stroke="#22c55e" strokeWidth={1.5} dot={false} />
-                      <Line type="monotone" dataKey="Performance" stroke="#3b82f6" strokeWidth={1.5} dot={false} />
-                      <Line type="monotone" dataKey="Usability" stroke="#a855f7" strokeWidth={1.5} dot={false} />
-                    </LineChart>
-                  </ResponsiveContainer>
+                  <div className="flex gap-2">
+                    <Select value={kwIntentFilter} onValueChange={setKwIntentFilter}>
+                      <SelectTrigger className="w-32 h-7 text-xs bg-zinc-800 border-zinc-700 text-zinc-300">
+                        <SelectValue placeholder="Intent" />
+                      </SelectTrigger>
+                      <SelectContent className="bg-zinc-900 border-zinc-700">
+                        <SelectItem value="all" className="text-zinc-200 text-xs">All intents</SelectItem>
+                        <SelectItem value="transactional" className="text-zinc-200 text-xs">Transactional</SelectItem>
+                        <SelectItem value="local" className="text-zinc-200 text-xs">Local</SelectItem>
+                        <SelectItem value="informational" className="text-zinc-200 text-xs">Informational</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <Select value={kwDiffFilter} onValueChange={setKwDiffFilter}>
+                      <SelectTrigger className="w-28 h-7 text-xs bg-zinc-800 border-zinc-700 text-zinc-300">
+                        <SelectValue placeholder="Difficulty" />
+                      </SelectTrigger>
+                      <SelectContent className="bg-zinc-900 border-zinc-700">
+                        <SelectItem value="all" className="text-zinc-200 text-xs">All difficulty</SelectItem>
+                        <SelectItem value="easy" className="text-zinc-200 text-xs">Easy</SelectItem>
+                        <SelectItem value="medium" className="text-zinc-200 text-xs">Medium</SelectItem>
+                        <SelectItem value="hard" className="text-zinc-200 text-xs">Hard</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className={`h-7 text-xs border-zinc-700 ${kwFilter === "saved" ? "bg-orange-500/20 text-orange-400 border-orange-500/40" : "text-zinc-400 hover:bg-zinc-800"}`}
+                      onClick={() => setKwFilter((v) => v === "saved" ? "all" : "saved")}
+                    >
+                      <Star className="w-3 h-3 mr-1" /> Starred
+                    </Button>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {kwLoading && (
+                  <div className="flex items-center justify-center py-10 text-zinc-500">
+                    <Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading...
+                  </div>
+                )}
+                {!kwLoading && filteredSavedKws.length === 0 && (
+                  <p className="text-zinc-500 text-sm py-8 text-center">
+                    {(savedKeywords as KeywordRow[]).length === 0
+                      ? "No keywords saved yet. Generate some above and save them."
+                      : "No keywords match the current filters."}
+                  </p>
+                )}
+                <div className="space-y-2">
+                  {filteredSavedKws.map((kw) => (
+                    <div key={kw.id} className="flex items-start gap-3 p-3 rounded-lg bg-zinc-800/40 border border-zinc-700/50">
+                      <button
+                        className="mt-0.5 shrink-0"
+                        onClick={() => toggleKwSaved.mutate({ id: kw.id, saved: !kw.saved })}
+                        title={kw.saved ? "Unstar" : "Star"}
+                      >
+                        <Star className={`w-4 h-4 ${kw.saved ? "text-orange-400 fill-orange-400" : "text-zinc-600"}`} />
+                      </button>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex flex-wrap items-center gap-1.5 mb-1">
+                          <span className="text-sm font-medium text-zinc-200">{kw.keyword}</span>
+                          {intentBadge(kw.intent)}
+                          {difficultyBadge(kw.difficulty)}
+                          {kw.volumeRange && <span className="text-[10px] text-zinc-500">{kw.volumeRange}/mo</span>}
+                          {kw.targeted && (
+                            <span className="text-[10px] bg-blue-500/15 text-blue-400 border border-blue-500/30 px-1.5 py-0.5 rounded">article written</span>
+                          )}
+                        </div>
+                        {kw.rationale && <p className="text-xs text-zinc-400">{kw.rationale}</p>}
+                        {kw.contentType && <p className="text-[10px] text-zinc-500 mt-0.5">Suggested: {kw.contentType}</p>}
+                      </div>
+                      <div className="flex gap-1 shrink-0">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-7 text-xs border-zinc-700 text-zinc-400 hover:bg-zinc-800 gap-1"
+                          onClick={() => {
+                            setWriteKeyword(kw.keyword);
+                            setWriteKeywordId(kw.id);
+                            // Switch to write tab
+                            document.querySelector<HTMLButtonElement>('[data-value="write"]')?.click();
+                          }}
+                        >
+                          <PenLine className="w-3 h-3" /> Write
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-7 w-7 p-0 text-zinc-600 hover:text-red-400 hover:bg-red-900/20"
+                          onClick={() => deleteKw.mutate({ id: kw.id })}
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* ── WRITE TAB ── */}
+          <TabsContent value="write" className="space-y-6 mt-0">
+            <Card className="bg-zinc-900 border-zinc-800">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm font-medium text-zinc-200 flex items-center gap-2">
+                  <PenLine className="w-4 h-4 text-orange-400" />
+                  AI Article Generator
+                </CardTitle>
+                <p className="text-xs text-zinc-500 mt-1">
+                  Written in Jon's brand voice — direct, plain, no corporate filler. Every article targets a specific keyword and includes a CTA pointing to nolandearthworks.com.
+                </p>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-1.5">
+                  <Label className="text-xs text-zinc-400">Target Keyword <span className="text-red-400">*</span></Label>
+                  <div className="flex gap-2">
+                    <Input
+                      value={writeKeyword}
+                      onChange={(e) => { setWriteKeyword(e.target.value); setWriteKeywordId(undefined); }}
+                      placeholder="e.g. forestry mulching Middle Tennessee"
+                      className="bg-zinc-800 border-zinc-700 text-zinc-200"
+                    />
+                    {(savedKeywords as KeywordRow[]).length > 0 && (
+                      <Select
+                        value={writeKeywordId ? String(writeKeywordId) : ""}
+                        onValueChange={(v) => {
+                          const kw = (savedKeywords as KeywordRow[]).find((k) => k.id === Number(v));
+                          if (kw) { setWriteKeyword(kw.keyword); setWriteKeywordId(kw.id); }
+                        }}
+                      >
+                        <SelectTrigger className="w-44 bg-zinc-800 border-zinc-700 text-zinc-300 text-xs h-10">
+                          <SelectValue placeholder="From saved..." />
+                        </SelectTrigger>
+                        <SelectContent className="bg-zinc-900 border-zinc-700 max-h-60">
+                          {(savedKeywords as KeywordRow[]).map((kw) => (
+                            <SelectItem key={kw.id} value={String(kw.id)} className="text-zinc-200 text-xs">
+                              {kw.keyword}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs text-zinc-400">Article Type</Label>
+                    <Select value={writeArticleType} onValueChange={(v) => setWriteArticleType(v as typeof writeArticleType)}>
+                      <SelectTrigger className="bg-zinc-800 border-zinc-700 text-zinc-200">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent className="bg-zinc-900 border-zinc-700">
+                        <SelectItem value="blog post" className="text-zinc-200">Blog Post</SelectItem>
+                        <SelectItem value="service page" className="text-zinc-200">Service Page</SelectItem>
+                        <SelectItem value="location page" className="text-zinc-200">Location Page</SelectItem>
+                        <SelectItem value="FAQ page" className="text-zinc-200">FAQ Page</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs text-zinc-400">Target Word Count</Label>
+                    <Select value={String(writeWordCount)} onValueChange={(v) => setWriteWordCount(Number(v))}>
+                      <SelectTrigger className="bg-zinc-800 border-zinc-700 text-zinc-200">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent className="bg-zinc-900 border-zinc-700">
+                        <SelectItem value="500" className="text-zinc-200">~500 words (short)</SelectItem>
+                        <SelectItem value="750" className="text-zinc-200">~750 words</SelectItem>
+                        <SelectItem value="900" className="text-zinc-200">~900 words (recommended)</SelectItem>
+                        <SelectItem value="1200" className="text-zinc-200">~1,200 words</SelectItem>
+                        <SelectItem value="1500" className="text-zinc-200">~1,500 words (long-form)</SelectItem>
+                        <SelectItem value="2000" className="text-zinc-200">~2,000 words</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label className="text-xs text-zinc-400">Additional Context (optional)</Label>
+                  <Input
+                    value={writeContext}
+                    onChange={(e) => setWriteContext(e.target.value)}
+                    placeholder="e.g. focus on Williamson County, mention cedar clearing, target homeowners with 5+ acres"
+                    className="bg-zinc-800 border-zinc-700 text-zinc-200"
+                  />
+                </div>
+
+                <div className="flex items-center justify-between pt-2 border-t border-zinc-800">
+                  <p className="text-xs text-zinc-500">
+                    Articles are saved automatically to the Content Library as drafts.
+                  </p>
+                  <Button
+                    onClick={() =>
+                      generateArticle.mutate({
+                        keyword: writeKeyword,
+                        keywordId: writeKeywordId,
+                        wordCount: writeWordCount,
+                        articleType: writeArticleType,
+                        additionalContext: writeContext || undefined,
+                      })
+                    }
+                    disabled={generateArticle.isPending || !writeKeyword.trim()}
+                    className="bg-orange-600 hover:bg-orange-500 text-white gap-2"
+                  >
+                    {generateArticle.isPending ? (
+                      <><Loader2 className="w-4 h-4 animate-spin" /> Writing article...</>
+                    ) : (
+                      <><PenLine className="w-4 h-4" /> Generate Article</>
+                    )}
+                  </Button>
+                </div>
+
+                {generateArticle.isPending && (
+                  <div className="flex items-center gap-3 p-4 rounded-lg bg-orange-500/10 border border-orange-500/20">
+                    <Loader2 className="w-5 h-5 animate-spin text-orange-400 shrink-0" />
+                    <div>
+                      <p className="text-sm text-orange-300 font-medium">Writing your article...</p>
+                      <p className="text-xs text-zinc-400 mt-0.5">
+                        Generating a {writeWordCount}-word {writeArticleType} targeting "{writeKeyword}". This takes 15-30 seconds.
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Quick tips */}
+            <Card className="bg-zinc-900/50 border-zinc-800/50">
+              <CardContent className="pt-4 pb-4">
+                <p className="text-xs font-medium text-zinc-400 mb-2">Tips for better results</p>
+                <ul className="space-y-1.5 text-xs text-zinc-500">
+                  <li>Use county-level keywords like "land clearing Williamson County TN" for local SEO impact.</li>
+                  <li>Location pages (one per county) are the highest-ROI content type for local service businesses.</li>
+                  <li>Blog posts targeting informational keywords ("how does forestry mulching work") build topical authority over time.</li>
+                  <li>After generating, review in the Content Library, copy the Markdown, and paste into Squarespace's Markdown block.</li>
+                </ul>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* ── CONTENT LIBRARY TAB ── */}
+          <TabsContent value="content" className="space-y-4 mt-0">
+            <div className="flex items-center gap-3 flex-wrap">
+              <div className="relative flex-1 min-w-48">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
+                <Input
+                  value={libSearch}
+                  onChange={(e) => setLibSearch(e.target.value)}
+                  placeholder="Search articles..."
+                  className="pl-9 bg-zinc-900 border-zinc-800 text-zinc-200"
+                />
+              </div>
+              <Select value={libStatusFilter} onValueChange={(v) => setLibStatusFilter(v as typeof libStatusFilter)}>
+                <SelectTrigger className="w-36 bg-zinc-900 border-zinc-800 text-zinc-300 text-sm">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="bg-zinc-900 border-zinc-700">
+                  <SelectItem value="all" className="text-zinc-200">All statuses</SelectItem>
+                  <SelectItem value="draft" className="text-zinc-200">Draft</SelectItem>
+                  <SelectItem value="ready" className="text-zinc-200">Ready</SelectItem>
+                  <SelectItem value="published" className="text-zinc-200">Published</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-zinc-500">{filteredArticles.length} article{filteredArticles.length !== 1 ? "s" : ""}</p>
+            </div>
+
+            {articlesLoading && (
+              <div className="flex items-center justify-center py-16 text-zinc-500">
+                <Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading content library...
+              </div>
+            )}
+
+            {!articlesLoading && filteredArticles.length === 0 && (
+              <Card className="bg-zinc-900 border-zinc-800">
+                <CardContent className="flex flex-col items-center justify-center py-16 gap-3">
+                  <BookOpen className="w-10 h-10 text-zinc-600" />
+                  <p className="text-zinc-400 text-center max-w-sm text-sm">
+                    {(articles as ArticleRow[]).length === 0
+                      ? "No articles yet. Go to the Write tab to generate your first SEO article."
+                      : "No articles match the current filters."}
+                  </p>
                 </CardContent>
               </Card>
             )}
-          </>
-        )}
+
+            <div className="space-y-2">
+              {filteredArticles.map((article) => (
+                <div
+                  key={article.id}
+                  className="flex items-start gap-4 p-4 rounded-lg bg-zinc-900 border border-zinc-800 hover:border-zinc-700 cursor-pointer transition-colors"
+                  onClick={() => setSelectedArticle(article)}
+                >
+                  <FileText className="w-5 h-5 text-zinc-500 shrink-0 mt-0.5" />
+                  <div className="flex-1 min-w-0">
+                    <div className="flex flex-wrap items-center gap-2 mb-1">
+                      <span className="text-sm font-medium text-zinc-200 truncate">{article.title}</span>
+                      {statusBadge(article.status)}
+                    </div>
+                    <div className="flex flex-wrap gap-3 text-xs text-zinc-500">
+                      <span>Keyword: <span className="text-zinc-400">{article.targetKeyword}</span></span>
+                      {article.wordCount && <span>{article.wordCount.toLocaleString()} words</span>}
+                      <span>{new Date(article.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}</span>
+                    </div>
+                    {article.metaDescription && (
+                      <p className="text-xs text-zinc-500 mt-1 truncate">{article.metaDescription}</p>
+                    )}
+                  </div>
+                  <ChevronDown className="w-4 h-4 text-zinc-600 shrink-0 mt-1 -rotate-90" />
+                </div>
+              ))}
+            </div>
+          </TabsContent>
+        </Tabs>
       </div>
+
+      {/* Article detail drawer */}
+      {selectedArticle && (
+        <ArticleDrawer
+          article={selectedArticle}
+          onClose={() => setSelectedArticle(null)}
+          onStatusChange={handleStatusChange}
+          onDelete={handleDeleteArticle}
+        />
+      )}
     </DashboardLayout>
   );
 }

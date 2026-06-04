@@ -1655,3 +1655,12 @@
 - [x] Build check items list per category with pass/warn/fail indicators and recommendations
 - [x] Add audit history trend chart
 - [x] Add /ops/seo route to App.tsx and Navbar
+
+## SORO-Style SEO Content Engine (/ops/seo) — Jun 2026
+- [x] Add seoKeywords and seoArticles tables to schema and push migration
+- [x] Build keyword research tRPC procedure using AI to generate targeted keyword ideas for Middle TN land clearing
+- [x] Build AI article generator tRPC procedure using Jon's brand voice, targeting a specific keyword
+- [x] Build keyword research UI tab: generate keywords, view search intent, difficulty, and save targets
+- [x] Build article generator UI tab: select keyword, configure article settings, generate and preview draft
+- [x] Build content library UI tab: list all saved articles with status (draft/published), view, edit, delete
+- [x] Integrate all three tabs into existing /ops/seo page alongside the audit section

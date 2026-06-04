@@ -2685,4 +2685,285 @@ export const opsRouter = router({
           : null,
       };
     }),
+
+  // ── SEO Content Engine ─────────────────────────────────────────────────────
+
+  /**
+   * Generate keyword ideas for Noland Earthworks using AI.
+   * Returns 15-20 keyword suggestions with intent, difficulty, volume range, and rationale.
+   */
+  generateSeoKeywords: ownerProcedure
+    .input(z.object({
+      topic: z.string().optional(),
+      county: z.string().optional(),
+      count: z.number().int().min(5).max(30).optional(),
+    }))
+    .mutation(async ({ input }) => {
+      const topic = input.topic ?? "land clearing and forestry mulching";
+      const county = input.county ?? "Middle Tennessee";
+      const count = input.count ?? 15;
+
+      const result = await invokeLLM({
+        messages: [
+          {
+            role: "system",
+            content: `You are an SEO specialist for Noland Earthworks, LLC — a veteran-owned land clearing and forestry mulching company based in Middle Tennessee. Your job is to generate targeted keyword ideas that will drive qualified leads to the business website nolandearthworks.com. Focus on local, transactional, and informational keywords that landowners, homeowners, developers, and farmers in Tennessee would search when looking for land clearing, forestry mulching, or brush removal services. Avoid generic national keywords. Prioritize county-level and city-level local keywords, service + location combinations, and problem-aware keywords (e.g. "overgrown land clearing Nashville"). Output ONLY valid JSON.`,
+          },
+          {
+            role: "user",
+            content: `Generate ${count} keyword ideas for the topic: "${topic}" targeting the area: "${county}". For each keyword return: keyword (string), intent ("informational"|"transactional"|"local"), difficulty ("easy"|"medium"|"hard"), volumeRange (string like "50-200"), rationale (1 sentence why this keyword matters for Noland Earthworks), contentType ("service page"|"blog post"|"location page"). Return a JSON array of objects with exactly these fields.`,
+          },
+        ],
+        response_format: {
+          type: "json_schema",
+          json_schema: {
+            name: "keyword_ideas",
+            strict: true,
+            schema: {
+              type: "object",
+              properties: {
+                keywords: {
+                  type: "array",
+                  items: {
+                    type: "object",
+                    properties: {
+                      keyword: { type: "string" },
+                      intent: { type: "string" },
+                      difficulty: { type: "string" },
+                      volumeRange: { type: "string" },
+                      rationale: { type: "string" },
+                      contentType: { type: "string" },
+                    },
+                    required: ["keyword", "intent", "difficulty", "volumeRange", "rationale", "contentType"],
+                    additionalProperties: false,
+                  },
+                },
+              },
+              required: ["keywords"],
+              additionalProperties: false,
+            },
+          },
+        },
+      });
+
+      const raw = result.choices?.[0]?.message?.content as string ?? "{}";
+      let parsed: { keywords: Array<{ keyword: string; intent: string; difficulty: string; volumeRange: string; rationale: string; contentType: string }> };
+      try { parsed = JSON.parse(raw); } catch { throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "AI returned invalid JSON" }); }
+      return parsed.keywords ?? [];
+    }),
+
+  /**
+   * Save a list of keyword ideas to the seoKeywords table.
+   */
+  saveSeoKeywords: ownerProcedure
+    .input(z.array(z.object({
+      keyword: z.string().max(300),
+      intent: z.string().max(50),
+      difficulty: z.string().max(20),
+      volumeRange: z.string().max(50).optional(),
+      rationale: z.string().optional(),
+      contentType: z.string().max(100).optional(),
+    })))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+      const { seoKeywords } = await import("../drizzle/schema");
+      await db.insert(seoKeywords).values(input.map((k) => ({
+        keyword: k.keyword,
+        intent: k.intent,
+        difficulty: k.difficulty,
+        volumeRange: k.volumeRange ?? null,
+        rationale: k.rationale ?? null,
+        contentType: k.contentType ?? null,
+      })));
+      return { saved: input.length };
+    }),
+
+  /**
+   * List all saved keywords, most recent first.
+   */
+  listSeoKeywords: ownerProcedure
+    .input(z.object({ savedOnly: z.boolean().optional() }))
+    .query(async ({ input }) => {
+      const db = await getDb();
+      if (!db) return [];
+      const { seoKeywords } = await import("../drizzle/schema");
+      const rows = input.savedOnly
+        ? await db.select().from(seoKeywords).where(eq(seoKeywords.saved, true)).orderBy(desc(seoKeywords.createdAt))
+        : await db.select().from(seoKeywords).orderBy(desc(seoKeywords.createdAt));
+      return rows;
+    }),
+
+  /**
+   * Toggle the saved/starred status of a keyword.
+   */
+  toggleSeoKeywordSaved: ownerProcedure
+    .input(z.object({ id: z.number().int(), saved: z.boolean() }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+      const { seoKeywords } = await import("../drizzle/schema");
+      await db.update(seoKeywords).set({ saved: input.saved }).where(eq(seoKeywords.id, input.id));
+      return { success: true };
+    }),
+
+  /**
+   * Delete a saved keyword.
+   */
+  deleteSeoKeyword: ownerProcedure
+    .input(z.object({ id: z.number().int() }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+      const { seoKeywords } = await import("../drizzle/schema");
+      await db.delete(seoKeywords).where(eq(seoKeywords.id, input.id));
+      return { success: true };
+    }),
+
+  /**
+   * Generate a full SEO blog article targeting a specific keyword.
+   * Written in Jon's brand voice — direct, plain, no corporate filler.
+   */
+  generateSeoArticle: ownerProcedure
+    .input(z.object({
+      keyword: z.string().max(300),
+      keywordId: z.number().int().optional(),
+      wordCount: z.number().int().min(400).max(3000).optional(),
+      articleType: z.enum(["blog post", "service page", "location page", "FAQ page"]).optional(),
+      additionalContext: z.string().max(1000).optional(),
+    }))
+    .mutation(async ({ input }) => {
+      const wordCount = input.wordCount ?? 900;
+      const articleType = input.articleType ?? "blog post";
+
+      const result = await invokeLLM({
+        messages: [
+          {
+            role: "system",
+            content: `You are writing SEO content for Noland Earthworks, LLC — a veteran-owned land clearing and forestry mulching company based in Middle Tennessee. The owner is Jon Noland, a veteran who runs the business himself with a tracked forestry mulcher. The brand voice is direct, plain, confident, and grounded — like a real person who does this work, not a marketing department. Rules: no emojis, no corporate jargon, no filler phrases like "solutions" or "we strive to", no hashtag overload. Write like a landowner would talk to another landowner. Focus on practical value: what the service does, why it matters, what the customer gets. Always include the target keyword naturally in the title, first paragraph, and 2-3 subheadings. Include a clear call to action at the end pointing to nolandearthworks.com. Output ONLY valid JSON.`,
+          },
+          {
+            role: "user",
+            content: `Write a ${wordCount}-word ${articleType} targeting the keyword: "${input.keyword}". ${input.additionalContext ? `Additional context: ${input.additionalContext}` : ""} Return a JSON object with: title (string, H1, includes keyword), metaDescription (string, 150-160 chars, includes keyword), bodyMarkdown (string, full article in Markdown with H2/H3 subheadings, natural keyword usage, and a CTA at the end).`,
+          },
+        ],
+        response_format: {
+          type: "json_schema",
+          json_schema: {
+            name: "seo_article",
+            strict: true,
+            schema: {
+              type: "object",
+              properties: {
+                title: { type: "string" },
+                metaDescription: { type: "string" },
+                bodyMarkdown: { type: "string" },
+              },
+              required: ["title", "metaDescription", "bodyMarkdown"],
+              additionalProperties: false,
+            },
+          },
+        },
+      });
+
+      const raw = result.choices?.[0]?.message?.content as string ?? "{}";
+      let parsed: { title: string; metaDescription: string; bodyMarkdown: string };
+      try { parsed = JSON.parse(raw); } catch { throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "AI returned invalid JSON" }); }
+
+      // Persist to DB
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+      const { seoArticles } = await import("../drizzle/schema");
+      const wordCountActual = parsed.bodyMarkdown.split(/\s+/).length;
+      const [inserted] = await db.insert(seoArticles).values({
+        targetKeyword: input.keyword,
+        title: parsed.title,
+        metaDescription: parsed.metaDescription,
+        bodyMarkdown: parsed.bodyMarkdown,
+        wordCount: wordCountActual,
+        keywordId: input.keywordId ?? null,
+        status: "draft",
+      });
+
+      // Mark keyword as targeted if keywordId provided
+      if (input.keywordId) {
+        const { seoKeywords } = await import("../drizzle/schema");
+        await db.update(seoKeywords).set({ targeted: true }).where(eq(seoKeywords.id, input.keywordId));
+      }
+
+      // Fetch the inserted row
+      const rows = await db.select().from(seoArticles).orderBy(desc(seoArticles.createdAt)).limit(1);
+      return rows[0] ?? { ...parsed, id: 0, targetKeyword: input.keyword, wordCount: wordCountActual, status: "draft" as const, keywordId: null, notes: null, createdAt: new Date(), updatedAt: new Date() };
+    }),
+
+  /**
+   * List all saved SEO articles.
+   */
+  listSeoArticles: ownerProcedure
+    .input(z.object({ status: z.enum(["draft", "ready", "published"]).optional() }))
+    .query(async ({ input }) => {
+      const db = await getDb();
+      if (!db) return [];
+      const { seoArticles } = await import("../drizzle/schema");
+      const rows = input.status
+        ? await db.select().from(seoArticles).where(eq(seoArticles.status, input.status)).orderBy(desc(seoArticles.createdAt))
+        : await db.select().from(seoArticles).orderBy(desc(seoArticles.createdAt));
+      return rows;
+    }),
+
+  /**
+   * Get a single SEO article by ID.
+   */
+  getSeoArticle: ownerProcedure
+    .input(z.object({ id: z.number().int() }))
+    .query(async ({ input }) => {
+      const db = await getDb();
+      if (!db) return null;
+      const { seoArticles } = await import("../drizzle/schema");
+      const rows = await db.select().from(seoArticles).where(eq(seoArticles.id, input.id)).limit(1);
+      return rows[0] ?? null;
+    }),
+
+  /**
+   * Update an SEO article (status, notes, or body edits).
+   */
+  updateSeoArticle: ownerProcedure
+    .input(z.object({
+      id: z.number().int(),
+      title: z.string().max(500).optional(),
+      metaDescription: z.string().max(500).optional(),
+      bodyMarkdown: z.string().optional(),
+      status: z.enum(["draft", "ready", "published"]).optional(),
+      notes: z.string().optional(),
+    }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+      const { seoArticles } = await import("../drizzle/schema");
+      const { id, ...updates } = input;
+      const cleanUpdates: Record<string, unknown> = {};
+      if (updates.title !== undefined) cleanUpdates.title = updates.title;
+      if (updates.metaDescription !== undefined) cleanUpdates.metaDescription = updates.metaDescription;
+      if (updates.bodyMarkdown !== undefined) {
+        cleanUpdates.bodyMarkdown = updates.bodyMarkdown;
+        cleanUpdates.wordCount = updates.bodyMarkdown.split(/\s+/).length;
+      }
+      if (updates.status !== undefined) cleanUpdates.status = updates.status;
+      if (updates.notes !== undefined) cleanUpdates.notes = updates.notes;
+      await db.update(seoArticles).set(cleanUpdates).where(eq(seoArticles.id, id));
+      return { success: true };
+    }),
+
+  /**
+   * Delete an SEO article.
+   */
+  deleteSeoArticle: ownerProcedure
+    .input(z.object({ id: z.number().int() }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+      const { seoArticles } = await import("../drizzle/schema");
+      await db.delete(seoArticles).where(eq(seoArticles.id, input.id));
+      return { success: true };
+    }),
 });
