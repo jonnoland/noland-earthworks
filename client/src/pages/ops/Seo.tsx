@@ -59,8 +59,9 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip,
-  ResponsiveContainer,
   Legend,
+  ResponsiveContainer,
+  ReferenceLine,
 } from "recharts";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
@@ -808,11 +809,13 @@ export default function Seo() {
   const recommendations = latest?.recommendations ?? [];
 
   const chartData = [...history].reverse().map((h) => ({
-    date: new Date(h.auditedAt).toLocaleDateString("en-US", { month: "short", day: "numeric" }),
+    date: new Date(h.auditedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }),
     Overall: h.overallScore,
     "On-Page": h.onPageScore,
-    Performance: h.performanceScore,
+    Links: h.linksScore,
     Usability: h.usabilityScore,
+    Performance: h.performanceScore,
+    Social: h.socialScore,
   }));
 
   // ── Keywords ──
@@ -1172,30 +1175,81 @@ export default function Seo() {
                   onUpdateStatus={(id, status) => updateFixStatus.mutate({ id, status })}
                 />
 
-                {chartData.length > 1 && (
+                {chartData.length >= 1 && (
                   <Card className="bg-zinc-900 border-zinc-800">
                     <CardHeader className="pb-3">
-                      <CardTitle className="text-sm font-medium text-zinc-200 flex items-center gap-2">
-                        <TrendingUp className="w-4 h-4 text-orange-400" />
-                        Score History
-                      </CardTitle>
+                      <div className="flex items-center justify-between flex-wrap gap-2">
+                        <CardTitle className="text-sm font-medium text-zinc-200 flex items-center gap-2">
+                          <TrendingUp className="w-4 h-4 text-orange-400" />
+                          SEO Score Trend
+                        </CardTitle>
+                        <div className="flex items-center gap-3 text-[11px] text-zinc-500">
+                          <span className="flex items-center gap-1.5"><span className="w-3 h-0.5 bg-orange-500 inline-block rounded" /> Overall</span>
+                          <span className="flex items-center gap-1.5"><span className="w-3 h-0.5 bg-green-500 inline-block rounded" /> On-Page</span>
+                          <span className="flex items-center gap-1.5"><span className="w-3 h-0.5 bg-blue-500 inline-block rounded" /> Performance</span>
+                          <span className="flex items-center gap-1.5"><span className="w-3 h-0.5 bg-purple-500 inline-block rounded" /> Usability</span>
+                          <span className="flex items-center gap-1.5"><span className="w-3 h-0.5 bg-yellow-500 inline-block rounded" /> Links</span>
+                          <span className="flex items-center gap-1.5"><span className="w-3 h-0.5 bg-pink-500 inline-block rounded" /> Social</span>
+                        </div>
+                      </div>
+                      {chartData.length === 1 && (
+                        <p className="text-xs text-zinc-500 mt-1">Run more audits over time to see your score trend. Each audit after applying fixes will appear here.</p>
+                      )}
                     </CardHeader>
                     <CardContent>
-                      <ResponsiveContainer width="100%" height={220}>
-                        <LineChart data={chartData} margin={{ top: 4, right: 16, left: -16, bottom: 0 }}>
+                      <ResponsiveContainer width="100%" height={260}>
+                        <LineChart data={chartData} margin={{ top: 8, right: 16, left: -16, bottom: 0 }}>
                           <CartesianGrid strokeDasharray="3 3" stroke="#27272a" />
-                          <XAxis dataKey="date" tick={{ fill: "#71717a", fontSize: 11 }} />
-                          <YAxis domain={[0, 100]} tick={{ fill: "#71717a", fontSize: 11 }} />
-                          <Tooltip
-                            contentStyle={{ backgroundColor: "#18181b", border: "1px solid #3f3f46", borderRadius: 8 }}
-                            labelStyle={{ color: "#a1a1aa" }}
-                            itemStyle={{ color: "#e4e4e7" }}
+                          <XAxis
+                            dataKey="date"
+                            tick={{ fill: "#71717a", fontSize: 10 }}
+                            interval="preserveStartEnd"
                           />
-                          <Legend wrapperStyle={{ fontSize: 12, color: "#a1a1aa" }} />
-                          <Line type="monotone" dataKey="Overall" stroke="#f97316" strokeWidth={2} dot={false} />
-                          <Line type="monotone" dataKey="On-Page" stroke="#22c55e" strokeWidth={1.5} dot={false} />
-                          <Line type="monotone" dataKey="Performance" stroke="#3b82f6" strokeWidth={1.5} dot={false} />
-                          <Line type="monotone" dataKey="Usability" stroke="#a855f7" strokeWidth={1.5} dot={false} />
+                          <YAxis
+                            domain={[0, 100]}
+                            tick={{ fill: "#71717a", fontSize: 11 }}
+                            tickCount={6}
+                          />
+                          <Tooltip
+                            contentStyle={{ backgroundColor: "#18181b", border: "1px solid #3f3f46", borderRadius: 8, fontSize: 12 }}
+                            labelStyle={{ color: "#a1a1aa", marginBottom: 4 }}
+                            itemStyle={{ color: "#e4e4e7" }}
+                            formatter={(value: number, name: string) => [
+                              `${value}/100`,
+                              name,
+                            ]}
+                          />
+                          {/* Target 100 reference line */}
+                          <ReferenceLine y={100} stroke="#22c55e" strokeDasharray="4 4" strokeOpacity={0.4}
+                            label={{ value: "Target: 100", position: "insideTopRight", fill: "#22c55e", fontSize: 10, opacity: 0.6 }}
+                          />
+                          {/* Grade zones */}
+                          <ReferenceLine y={90} stroke="#3f3f46" strokeDasharray="2 4" strokeOpacity={0.5} />
+                          <ReferenceLine y={70} stroke="#3f3f46" strokeDasharray="2 4" strokeOpacity={0.5} />
+                          <Line type="monotone" dataKey="Overall" stroke="#f97316" strokeWidth={2.5}
+                            dot={{ r: 3, fill: "#f97316", strokeWidth: 0 }}
+                            activeDot={{ r: 5, fill: "#f97316" }}
+                          />
+                          <Line type="monotone" dataKey="On-Page" stroke="#22c55e" strokeWidth={1.5}
+                            dot={{ r: 2, fill: "#22c55e", strokeWidth: 0 }}
+                            activeDot={{ r: 4 }}
+                          />
+                          <Line type="monotone" dataKey="Performance" stroke="#3b82f6" strokeWidth={1.5}
+                            dot={{ r: 2, fill: "#3b82f6", strokeWidth: 0 }}
+                            activeDot={{ r: 4 }}
+                          />
+                          <Line type="monotone" dataKey="Usability" stroke="#a855f7" strokeWidth={1.5}
+                            dot={{ r: 2, fill: "#a855f7", strokeWidth: 0 }}
+                            activeDot={{ r: 4 }}
+                          />
+                          <Line type="monotone" dataKey="Links" stroke="#eab308" strokeWidth={1.5}
+                            dot={{ r: 2, fill: "#eab308", strokeWidth: 0 }}
+                            activeDot={{ r: 4 }}
+                          />
+                          <Line type="monotone" dataKey="Social" stroke="#ec4899" strokeWidth={1.5}
+                            dot={{ r: 2, fill: "#ec4899", strokeWidth: 0 }}
+                            activeDot={{ r: 4 }}
+                          />
                         </LineChart>
                       </ResponsiveContainer>
                     </CardContent>
