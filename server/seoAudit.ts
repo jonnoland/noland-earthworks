@@ -451,10 +451,10 @@ Squarespace: Settings → Advanced → Code Injection → Header → paste the t
 
   // Load time
   if (loadTimeMs !== null) {
-    // Note: loadTimeMs includes Puppeteer headless browser startup + networkidle2 wait,
-    // which is significantly longer than real user-perceived load time.
-    // Thresholds are adjusted accordingly (12s = fail, 8s = warn).
-    if (loadTimeMs > 12000) {
+    // Note: loadTimeMs is measured by Puppeteer waiting for networkidle2 (all network requests settle).
+    // This includes third-party scripts (Analytics, Maps, etc.) and is NOT user-perceived load time.
+    // Thresholds are adjusted: 20s = fail (genuinely broken), 14s = warn (heavy third-party load).
+    if (loadTimeMs > 20000) {
       checks.push({ id: "load_slow", category: "usability", label: "Page load time", status: "fail", value: `${(loadTimeMs / 1000).toFixed(1)}s`, detail: `Page took ${(loadTimeMs / 1000).toFixed(1)}s to load — this is slow.`, recommendation: "Optimize images, enable caching, and consider a CDN to reduce load time.", fixExample: `Page loaded in ${(loadTimeMs / 1000).toFixed(1)}s — steps to improve:
 
 1. Compress all images before uploading (use squoosh.app or TinyPNG — target under 200 KB per image)
@@ -462,7 +462,7 @@ Squarespace: Settings → Advanced → Code Injection → Header → paste the t
 3. Remove unused third-party scripts: Settings → Advanced → Code Injection
 4. Avoid autoplay videos on page load — use a click-to-play poster image instead
 5. Squarespace's built-in CDN handles most static assets automatically`, priority: "high" });
-    } else if (loadTimeMs > 8000) {
+    } else if (loadTimeMs > 14000) {
       checks.push({ id: "load_moderate", category: "usability", label: "Page load time", status: "warn", value: `${(loadTimeMs / 1000).toFixed(1)}s`, detail: `Page loaded in ${(loadTimeMs / 1000).toFixed(1)}s — acceptable but could be faster.`, recommendation: "Target under 2 seconds for optimal user experience.", fixExample: `Page loaded in ${(loadTimeMs / 1000).toFixed(1)}s — to get under 2 seconds:
 
 1. Compress images (squoosh.app or TinyPNG — target under 150 KB per image)

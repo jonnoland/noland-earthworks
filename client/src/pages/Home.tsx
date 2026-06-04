@@ -23,7 +23,7 @@ import { usePageTitle } from "@/hooks/usePageTitle";
 
 export default function Home() {
   usePageTitle(
-    "Noland Earthworks | Land Clearing & Forestry Mulching TN",
+    "Forestry Mulching & Land Clearing TN",
     "Veteran-owned forestry mulching and land clearing in Middle & West Tennessee. Free on-site estimates. Call 615-406-4819.",
     "/"
   );

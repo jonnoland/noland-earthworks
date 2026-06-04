@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 
-const SITE_NAME = "Noland Earthworks, LLC";
+const SITE_NAME = "Noland Earthworks";
 const DEFAULT_DESCRIPTION =
   "Veteran-owned land management and forestry mulching services in Middle & West Tennessee. Free estimates. Licensed & insured. Call 615-406-4819.";
 const BASE_URL = "https://nolandearthworks.com";
