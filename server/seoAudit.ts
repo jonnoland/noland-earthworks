@@ -4,6 +4,7 @@
  * then scoring it across five categories: On-Page SEO, Links, Usability, Performance, Social.
  */
 import * as cheerio from "cheerio";
+import puppeteer from "puppeteer";
 
 export type CheckStatus = "pass" | "warn" | "fail";
 
@@ -69,17 +70,33 @@ function categoryScore(checks: SeoCheck[], category: SeoCheck["category"]): numb
 
 async function fetchWithTiming(url: string): Promise<{ html: string; loadTimeMs: number; finalUrl: string }> {
   const start = Date.now();
-  const res = await fetch(url, {
-    headers: {
-      "User-Agent": "Mozilla/5.0 (compatible; NolandEarthworksSEOBot/1.0; +https://nolandearthworks.com)",
-      Accept: "text/html,application/xhtml+xml",
-    },
-    redirect: "follow",
-    signal: AbortSignal.timeout(15000),
-  });
-  const html = await res.text();
-  const loadTimeMs = Date.now() - start;
-  return { html, loadTimeMs, finalUrl: res.url };
+  let browser;
+  try {
+    browser = await puppeteer.launch({
+      headless: true,
+      args: [
+        "--no-sandbox",
+        "--disable-setuid-sandbox",
+        "--disable-dev-shm-usage",
+        "--disable-gpu",
+        "--no-first-run",
+        "--no-zygote",
+        "--single-process",
+      ],
+    });
+    const page = await browser.newPage();
+    await page.setUserAgent("Mozilla/5.0 (compatible; NolandEarthworksSEOBot/1.0; +https://nolandearthworks.com)");
+    await page.setViewport({ width: 1280, height: 900 });
+    const response = await page.goto(url, { waitUntil: "networkidle2", timeout: 30000 });
+    const finalUrl = response?.url() ?? url;
+    // Wait for React to render — look for a meaningful DOM element
+    await page.waitForSelector("body", { timeout: 10000 }).catch(() => {});
+    const html = await page.content();
+    const loadTimeMs = Date.now() - start;
+    return { html, loadTimeMs, finalUrl };
+  } finally {
+    if (browser) await browser.close();
+  }
 }
 
 async function fetchPageSpeedScore(url: string, apiKey?: string): Promise<{ mobile: number | null }> {
@@ -409,7 +426,10 @@ Squarespace: Settings → Advanced → Code Injection → Header → paste the t
 
   // Load time
   if (loadTimeMs !== null) {
-    if (loadTimeMs > 4000) {
+    // Note: loadTimeMs includes Puppeteer headless browser startup + networkidle2 wait,
+    // which is significantly longer than real user-perceived load time.
+    // Thresholds are adjusted accordingly (12s = fail, 8s = warn).
+    if (loadTimeMs > 12000) {
       checks.push({ id: "load_slow", category: "usability", label: "Page load time", status: "fail", value: `${(loadTimeMs / 1000).toFixed(1)}s`, detail: `Page took ${(loadTimeMs / 1000).toFixed(1)}s to load — this is slow.`, recommendation: "Optimize images, enable caching, and consider a CDN to reduce load time.", fixExample: `Page loaded in ${(loadTimeMs / 1000).toFixed(1)}s — steps to improve:
 
 1. Compress all images before uploading (use squoosh.app or TinyPNG — target under 200 KB per image)
@@ -417,7 +437,7 @@ Squarespace: Settings → Advanced → Code Injection → Header → paste the t
 3. Remove unused third-party scripts: Settings → Advanced → Code Injection
 4. Avoid autoplay videos on page load — use a click-to-play poster image instead
 5. Squarespace's built-in CDN handles most static assets automatically`, priority: "high" });
-    } else if (loadTimeMs > 2000) {
+    } else if (loadTimeMs > 8000) {
       checks.push({ id: "load_moderate", category: "usability", label: "Page load time", status: "warn", value: `${(loadTimeMs / 1000).toFixed(1)}s`, detail: `Page loaded in ${(loadTimeMs / 1000).toFixed(1)}s — acceptable but could be faster.`, recommendation: "Target under 2 seconds for optimal user experience.", fixExample: `Page loaded in ${(loadTimeMs / 1000).toFixed(1)}s — to get under 2 seconds:
 
 1. Compress images (squoosh.app or TinyPNG — target under 150 KB per image)
@@ -643,7 +663,9 @@ This runs before the page renders and sets lang="en" on the <html> tag.`, priori
       const data = JSON.parse($(el).html() ?? "");
       const entries = Array.isArray(data) ? data : [data];
       for (const entry of entries) {
-        if (entry["@type"] === "LocalBusiness" || entry["@type"] === "HomeAndConstructionBusiness") {
+        const entryType = entry["@type"];
+        const typeList = Array.isArray(entryType) ? entryType : [entryType];
+        if (typeList.includes("LocalBusiness") || typeList.includes("HomeAndConstructionBusiness")) {
           const hasName = !!entry.name;
           const hasAddress = !!entry.address;
           const hasPhone = !!entry.telephone;

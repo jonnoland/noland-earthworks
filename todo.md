@@ -1706,3 +1706,9 @@
 - [x] Add primary keywords (forestry mulching, land clearing, Tennessee) naturally to page content
 - [x] Expand thin pages to 600+ words with keyword-rich, on-brand copy
 - [x] Inject LocalBusiness JSON-LD structured data into the site head (already present in index.html)
+
+## SEO Audit Engine — Accuracy Fixes (Jun 4 2026)
+
+- [x] Fix LocalBusiness JSON-LD regex in seoAudit.ts so it detects the existing block in index.html
+- [x] Upgrade audit engine to use Puppeteer headless browser so React SPA content (H1, word count, links, images) is accurately audited
+- [x] Verify CDN cache cleared for title and meta description after index.html update
