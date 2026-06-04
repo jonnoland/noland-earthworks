@@ -11,7 +11,7 @@ const MULCH_HERO = "https://d2xsxph8kpxj0f.cloudfront.net/310519663484957999/Pym
 
 const data: ServicePageProps = {
   slug: "add-ons/selective-clearing",
-  title: "Selective Clearing",
+  title: "Selective Land Clearing in Tennessee",
   tagline: "Not everything needs to go. We remove the trees, brush, and problem vegetation you specify while leaving the mature timber, hardwoods, or landscape trees you want to keep.",
   heroImage: HERO,
   overviewTitle: "What Is Selective Clearing?",

@@ -11,14 +11,15 @@ const MAINTENANCE_HERO = "https://d2xsxph8kpxj0f.cloudfront.net/3105196634849579
 
 const data: ServicePageProps = {
   slug: "vegetation-management",
-  title: "Vegetation Management",
+  title: "Vegetation Management in Tennessee",
   tagline: "Strategic, ongoing control of unwanted vegetation — protecting your property, infrastructure, and land value.",
   heroImage: HERO,
   overviewTitle: "Proactive Vegetation Control",
   overviewBody: [
-    "Vegetation management is the ongoing practice of controlling unwanted plant growth to protect property, infrastructure, and land value. Unlike one-time clearing, it's a strategic, recurring service that keeps overgrowth from reclaiming your land.",
-    "Noland Earthworks provides vegetation management for a wide range of applications: fence lines, rights-of-way, utility corridors, pond banks, pastures, and commercial properties. We use mechanical methods — mulching, mowing, and cutting — to provide effective, environmentally responsible control.",
-    "Whether you're dealing with invasive species, encroaching brush, or simply maintaining cleared areas, our team develops a management plan tailored to your property's specific needs and your long-term goals.",
+    "Vegetation management is the ongoing practice of controlling unwanted plant growth to protect property, infrastructure, and land value. Unlike one-time land clearing, it's a strategic, recurring service that keeps overgrowth from reclaiming your land. In Tennessee, where cedar, privet, kudzu, and multiflora rose spread aggressively, a consistent management program is often the difference between a usable property and one that's lost to the brush.",
+    "Noland Earthworks provides vegetation management for a wide range of applications across Middle and West Tennessee: fence lines, rights-of-way, utility corridors, pond banks, pastures, and commercial properties. We use mechanical methods — forestry mulching, mowing, and cutting — to provide effective, environmentally responsible control without herbicides. The tracked mulcher handles terrain that wheeled equipment can't access, including slopes, wet ground, and areas with significant woody growth.",
+    "Whether you're dealing with invasive species encroaching on pasture, brush reclaiming a cleared right-of-way, or simply maintaining land that was cleared last season, we develop a management plan tailored to your property's specific conditions and your long-term goals. Many landowners start with a full land clearing job and then transition to a recurring vegetation management program to keep the property in shape year after year.",
+    "We work with rural landowners, farmers, ranchers, developers, and government entities throughout Tennessee. Veteran-owned and operated, Noland Earthworks brings the same standard to every visit: show up when committed, do the work as scoped, and leave the property better than we found it.",
   ],
   benefits: [
     "Prevents re-establishment of brush and invasive species",
@@ -58,6 +59,14 @@ const data: ServicePageProps = {
     {
       question: "Do you offer contracts for recurring service?",
       answer: "Yes. We offer seasonal and annual service agreements that provide priority scheduling, consistent crews, and discounted per-visit rates compared to one-time service calls. Contact us to discuss a program for your property.",
+    },
+    {
+      question: "What areas of Tennessee do you serve?",
+      answer: "We operate throughout Middle and West Tennessee, serving landowners in Maury, Williamson, Davidson, Cheatham, Dickson, Lawrence, Giles, Marshall, Bedford, Rutherford, Wilson, Sumner, Robertson, Montgomery, Stewart, Houston, Humphreys, Perry, Wayne, Lewis, and surrounding counties. If you're unsure whether we cover your area, reach out and we'll give you a straight answer.",
+    },
+    {
+      question: "How does forestry mulching help with long-term vegetation management?",
+      answer: "Forestry mulching is one of the most effective tools for vegetation management because it grinds everything — brush, saplings, vines, and small trees — into a mulch layer that suppresses future regrowth. The mulch shades the soil, reducing the germination rate of invasive seeds. Combined with follow-up visits to address re-sprouting, it's a durable and cost-effective approach to keeping land under control.",
     },
   ],
 };

@@ -12,7 +12,7 @@ const HERO = "https://d2xsxph8kpxj0f.cloudfront.net/310519663484957999/PymCzDCnS
 
 const data: ServicePageProps = {
   slug: "land-management",
-  title: "Land Management",
+  title: "Land Clearing & Management in Tennessee",
   tagline: "From overgrown pasture to construction-ready lots — full-service land management for residential, agricultural, and commercial properties across Middle & West Tennessee.",
   heroImage: HERO,
   overviewTitle: "Land Management Built Around What Your Property Needs",

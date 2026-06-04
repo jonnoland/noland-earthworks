@@ -11,7 +11,7 @@ const VEGETATION_HERO = "https://d2xsxph8kpxj0f.cloudfront.net/31051966348495799
 
 const data: ServicePageProps = {
   slug: "right-of-way-clearing",
-  title: "Right-of-Way Clearing",
+  title: "Right-of-Way Clearing in Tennessee",
   tagline: "Professional right-of-way clearing for driveways, utilities, fence lines, and access roads across Middle & West Tennessee. Fast, clean, and built to last.",
   heroImage: HERO,
   overviewTitle: "What Is Right-of-Way Clearing?",

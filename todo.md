@@ -1699,3 +1699,10 @@
 
 - [x] Upgrade generateSeoFixes LLM prompt to research each failing check and return a structured object with why_it_matters, impact, and fix_steps per item
 - [x] Update Fix Issues panel UI to display research context (why it matters, SEO impact) above the fix instructions for each item
+
+## SEO On-Site Fixes — nolandearthworks.com
+
+- [x] Add H1 tags to all public-facing pages missing them
+- [x] Add primary keywords (forestry mulching, land clearing, Tennessee) naturally to page content
+- [x] Expand thin pages to 600+ words with keyword-rich, on-brand copy
+- [x] Inject LocalBusiness JSON-LD structured data into the site head (already present in index.html)

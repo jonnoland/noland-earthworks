@@ -11,14 +11,15 @@ const SELECTIVE_HERO = "https://d2xsxph8kpxj0f.cloudfront.net/310519663484957999
 
 const data: ServicePageProps = {
   slug: "add-ons/fence-line-clearing",
-  title: "Fence Line Clearing",
+  title: "Fence Line Clearing in Tennessee",
   tagline: "Reclaim your property boundaries. We clear the overgrowth that's taken over your fence lines — trees, brush, and vines — without damaging the fence.",
   heroImage: HERO,
   overviewTitle: "What Is Fence Line Clearing?",
   overviewBody: [
-    "Fence lines are one of the most neglected areas on rural and agricultural properties. Within a few seasons, brush, saplings, and vines can completely consume a fence — making it invisible, inaccessible, and eventually structurally compromised as roots and stems push against posts and wire.",
-    "Fence line clearing removes all vegetation growing along and through your fence, restoring visibility, access, and the integrity of the fence itself. We work carefully alongside the fence to clear the overgrowth without pulling posts or damaging wire.",
-    "This service is commonly added to a larger clearing job — clearing the main property and cleaning up the fence lines in the same mobilization — but it can also be scheduled as a standalone service for properties where the fence lines are the primary concern.",
+    "Fence lines are one of the most neglected areas on rural and agricultural properties across Tennessee. Within a few seasons, brush, saplings, and vines can completely consume a fence — making it invisible, inaccessible, and eventually structurally compromised as roots and stems push against posts and wire. Cedar trees are a particularly common offender in Middle Tennessee, sending up dense thickets that swallow fence lines whole.",
+    "Fence line clearing removes all vegetation growing along and through your fence, restoring visibility, access, and the structural integrity of the fence itself. Noland Earthworks uses a tracked forestry mulcher to work alongside the fence — grinding brush, saplings, and vines into mulch without the risk of thrown debris or the need to haul anything off the property. The mulch layer stays on the ground as natural cover, suppressing future regrowth and protecting the soil.",
+    "This service is commonly added to a larger land clearing job — clearing the main property and cleaning up the fence lines in the same mobilization — but it can also be scheduled as a standalone service for properties where the fence lines are the primary concern. Many Tennessee landowners and farmers find that a single fence line clearing visit restores years of neglect and makes ongoing maintenance far more manageable.",
+    "We serve landowners, farmers, ranchers, and rural property owners throughout Middle and West Tennessee. Whether you have a quarter-mile of overgrown pasture fence or several miles of boundary line that hasn't been touched in a decade, we'll walk the property, assess what's there, and give you a straight estimate before any work begins.",
   ],
   benefits: [
     "Restores visibility and access along property boundaries",
@@ -54,6 +55,14 @@ const data: ServicePageProps = {
     {
       question: "Is this worth doing as a standalone job?",
       answer: "It depends on the total linear footage. Fence line clearing as a standalone job is most cost-effective when you have several hundred feet or more to clear. For smaller sections, it's often most efficient to combine it with another service. We'll give you an honest assessment during the estimate.",
+    },
+    {
+      question: "Do you serve my area of Tennessee?",
+      answer: "We operate throughout Middle and West Tennessee, including Maury, Williamson, Davidson, Cheatham, Dickson, Lawrence, Giles, Marshall, Bedford, Rutherford, Wilson, Sumner, Robertson, Montgomery, Stewart, Houston, Humphreys, Perry, Wayne, and Lewis counties. If you're not sure whether we cover your area, give us a call and we'll let you know.",
+    },
+    {
+      question: "What's the difference between fence line clearing and brush hogging?",
+      answer: "Brush hogging knocks vegetation down but leaves debris on the ground and doesn't handle trees or woody growth effectively. Forestry mulching grinds everything — brush, saplings, vines, and small trees — into a mulch layer that stays on-site. For fence lines with significant woody growth, the mulcher produces a cleaner, more lasting result than a bush hog.",
     },
   ],
 };

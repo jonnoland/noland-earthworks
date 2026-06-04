@@ -11,7 +11,7 @@ const MAINTENANCE_HERO = "https://d2xsxph8kpxj0f.cloudfront.net/3105196634849579
 
 const data: ServicePageProps = {
   slug: "forestry-mulching",
-  title: "Forestry Mulching",
+  title: "Forestry Mulching in Tennessee",
   tagline: "The most efficient way to clear land — one pass, no hauling, no burning. Just clean, mulched ground ready for use.",
   heroImage: HERO,
   overviewTitle: "What Is Forestry Mulching?",
