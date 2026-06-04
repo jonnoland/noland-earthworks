@@ -47,7 +47,11 @@ import {
   CheckCheck,
   Loader2,
   Sparkles,
+  Wrench,
+  Bot,
+  Send,
 } from "lucide-react";
+import { AIChatBox, type Message as ChatMessage } from "@/components/AIChatBox";
 import {
   LineChart,
   Line,
@@ -233,17 +237,37 @@ function fixStatusBadge(status: FixStatus) {
 // ── Fix Issues Panel ──────────────────────────────────────────────────────────
 function FixIssuesPanel({
   fixes,
+  auditId,
   isGenerating,
   onGenerate,
   onUpdateStatus,
 }: {
   fixes: SeoFixRow[];
+  auditId: number;
   isGenerating: boolean;
   onGenerate: () => void;
   onUpdateStatus: (id: number, status: FixStatus) => void;
 }) {
   const [expandedId, setExpandedId] = useState<number | null>(null);
   const [filter, setFilter] = useState<"all" | FixStatus>("all");
+  const [applyingFixId, setApplyingFixId] = useState<number | null>(null);
+  const [snippets, setSnippets] = useState<{ [key: number]: string }>({});
+
+  const applyFix = trpc.ops.applySeoFix.useMutation({
+    onSuccess: (data, variables) => {
+      setSnippets((prev) => ({ ...prev, [variables.fixId]: String(data.snippet) }));
+      setApplyingFixId(null);
+    },
+    onError: (err) => {
+      setApplyingFixId(null);
+      toast.error(err.message || "Failed to generate fix snippet.");
+    },
+  });
+
+  const handleApplyFix = (fixId: number) => {
+    setApplyingFixId(fixId);
+    applyFix.mutate({ fixId, auditId });
+  };
 
   const filtered = fixes.filter((f) => filter === "all" || f.status === filter);
   const resolved = fixes.filter((f) => f.status === "resolved").length;
@@ -367,17 +391,54 @@ function FixIssuesPanel({
                   <div className="prose prose-invert prose-sm max-w-none">
                     <Streamdown>{fix.aiInstructions}</Streamdown>
                   </div>
+                  {/* Apply Fix snippet */}
+                  {snippets[fix.id] && (
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <p className="text-xs font-medium text-orange-400 flex items-center gap-1.5">
+                          <Wrench className="w-3.5 h-3.5" /> Ready-to-Apply Fix
+                        </p>
+                        <button
+                          className="text-xs text-zinc-500 hover:text-zinc-300 flex items-center gap-1"
+                          onClick={() => {
+                            navigator.clipboard.writeText(snippets[fix.id]);
+                            toast.success("Copied to clipboard.");
+                          }}
+                        >
+                          <Copy className="w-3 h-3" /> Copy
+                        </button>
+                      </div>
+                      <div className="bg-zinc-950 border border-zinc-700 rounded-md p-3 text-xs text-zinc-300 font-mono whitespace-pre-wrap overflow-x-auto max-h-64">
+                        {snippets[fix.id]}
+                      </div>
+                    </div>
+                  )}
                   {/* Action buttons */}
                   <div className="flex flex-wrap gap-2 pt-1">
                     {fix.status !== "resolved" && (
-                      <Button
-                        size="sm"
-                        className="gap-1.5 bg-green-700/30 hover:bg-green-700/50 text-green-400 border border-green-700/40"
-                        variant="outline"
-                        onClick={() => onUpdateStatus(fix.id, "resolved")}
-                      >
-                        <CheckCheck className="w-3.5 h-3.5" /> Mark Resolved
-                      </Button>
+                      <>
+                        <Button
+                          size="sm"
+                          className="gap-1.5 bg-orange-700/20 hover:bg-orange-700/40 text-orange-400 border border-orange-700/40"
+                          variant="outline"
+                          disabled={applyingFixId === fix.id}
+                          onClick={() => handleApplyFix(fix.id)}
+                        >
+                          {applyingFixId === fix.id ? (
+                            <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Generating...</>
+                          ) : (
+                            <><Wrench className="w-3.5 h-3.5" /> {snippets[fix.id] ? "Regenerate Fix" : "Apply Fix"}</>
+                          )}
+                        </Button>
+                        <Button
+                          size="sm"
+                          className="gap-1.5 bg-green-700/30 hover:bg-green-700/50 text-green-400 border border-green-700/40"
+                          variant="outline"
+                          onClick={() => onUpdateStatus(fix.id, "resolved")}
+                        >
+                          <CheckCheck className="w-3.5 h-3.5" /> Mark Resolved
+                        </Button>
+                      </>
                     )}
                     {fix.status === "resolved" && (
                       <Button
@@ -877,6 +938,36 @@ export default function Seo() {
     deleteArticle.mutate({ id });
   };
 
+  // ── SEO Agent ──
+  const [agentMessages, setAgentMessages] = useState<ChatMessage[]>([]);
+
+  const seoAgent = trpc.ops.seoAgent.useMutation({
+    onSuccess: (data) => {
+      setAgentMessages((prev) => [
+        ...prev,
+        { role: "assistant" as const, content: String(data.reply) },
+      ]);
+    },
+    onError: (err) => {
+      toast.error(err.message || "Agent failed to respond.");
+    },
+  });
+
+  const handleAgentMessage = (content: string) => {
+    const newMessages: ChatMessage[] = [
+      ...agentMessages,
+      { role: "user" as const, content },
+    ];
+    setAgentMessages(newMessages);
+    seoAgent.mutate({
+      messages: newMessages.filter((m) => m.role !== "system").map((m) => ({
+        role: m.role as "user" | "assistant",
+        content: String(m.content),
+      })),
+      auditId: latest?.id,
+    });
+  };
+
   return (
     <DashboardLayout>
       <div className="p-6 space-y-6 max-w-6xl mx-auto">
@@ -908,6 +999,9 @@ export default function Seo() {
                   {(articles as ArticleRow[]).filter((a) => a.status === "draft").length}
                 </span>
               )}
+            </TabsTrigger>
+            <TabsTrigger value="agent" className="gap-1.5 text-xs">
+              <Bot className="w-3.5 h-3.5" /> Agent
             </TabsTrigger>
           </TabsList>
 
@@ -1072,6 +1166,7 @@ export default function Seo() {
 
                 <FixIssuesPanel
                   fixes={fixes}
+                  auditId={latest.id}
                   isGenerating={generateFixes.isPending}
                   onGenerate={() => generateFixes.mutate({ auditId: latest.id })}
                   onUpdateStatus={(id, status) => updateFixStatus.mutate({ id, status })}
@@ -1554,6 +1649,63 @@ export default function Seo() {
                   <ChevronDown className="w-4 h-4 text-zinc-600 shrink-0 mt-1 -rotate-90" />
                 </div>
               ))}
+            </div>
+          </TabsContent>
+
+          {/* ── AGENT TAB ── */}
+          <TabsContent value="agent" className="mt-0">
+            <div className="space-y-4">
+              {/* Context banner */}
+              <Card className="bg-zinc-900 border-zinc-800">
+                <CardContent className="py-3 px-4">
+                  <div className="flex flex-wrap items-center gap-3 text-xs text-zinc-400">
+                    <Bot className="w-4 h-4 text-orange-400 shrink-0" />
+                    <span className="font-medium text-zinc-200">SEO Agent</span>
+                    <span className="text-zinc-600">|</span>
+                    <span>Knows your site, brand voice, and current audit results.</span>
+                    {latest && (
+                      <span className="ml-auto text-zinc-500">
+                        Audit context loaded: {latest.overallScore}/100 ({latest.overallGrade})
+                      </span>
+                    )}
+                    {!latest && (
+                      <span className="ml-auto text-zinc-500">
+                        Run an audit first to give the agent full context.
+                      </span>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Chat interface */}
+              <AIChatBox
+                messages={agentMessages}
+                onSendMessage={handleAgentMessage}
+                isLoading={seoAgent.isPending}
+                height={560}
+                placeholder="Ask the SEO Agent anything — run an audit, fix a specific issue, write a meta description, plan a content strategy..."
+                emptyStateMessage="Your SEO Agent is ready. Ask it to audit your site, explain a check, write optimized copy, generate schema markup, or build a 100/100 improvement plan."
+                suggestedPrompts={[
+                  "What are the highest-priority fixes to improve my score?",
+                  "Write an optimized meta title and description for my homepage.",
+                  "Generate LocalBusiness JSON-LD schema for nolandearthworks.com.",
+                  "Build a 90-day content plan targeting Middle Tennessee land clearing keywords.",
+                  "What does my site need to rank #1 for 'land clearing Middle Tennessee'?",
+                  "Explain Core Web Vitals and how to improve them on Squarespace.",
+                ]}
+              />
+
+              {/* Clear conversation */}
+              {agentMessages.length > 0 && (
+                <div className="flex justify-end">
+                  <button
+                    className="text-xs text-zinc-600 hover:text-zinc-400 transition-colors"
+                    onClick={() => setAgentMessages([])}
+                  >
+                    Clear conversation
+                  </button>
+                </div>
+              )}
             </div>
           </TabsContent>
         </Tabs>

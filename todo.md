@@ -1671,3 +1671,10 @@
 - [x] Add markSeoFixResolved and getSeoFixes tRPC procedures
 - [x] Add "Fix Issues" button to audit results that triggers AI fix generation for all non-passing checks
 - [x] Build Fix Issues panel in audit tab: list of fixable checks with AI-generated step-by-step instructions, mark-as-resolved toggle, progress indicator
+
+## SEO In-Place Fix Application + SEO Agent — Jun 2026
+- [x] Research best SEO scoring criteria and fix sources to target 100/100 overall score
+- [x] Add "Apply Fix" button to each AI-generated fix card that generates a ready-to-paste code snippet (HTML/JSON-LD/text) with copy button
+- [x] Add seoAgent tRPC procedure: conversational AI with full audit context, brand voice, and Squarespace-specific knowledge
+- [x] Build SEO Agent tab: chat interface using AIChatBox with suggested prompts and audit context banner
+- [x] Upgrade audit engine with research-backed checks (Core Web Vitals, schema markup, canonical tags, Open Graph, structured data, robots.txt, sitemap, hreflang, etc.)

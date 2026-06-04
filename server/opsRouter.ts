@@ -3126,4 +3126,119 @@ Return a JSON array with one object per issue, in the same order:
       await db.update(seoFixes).set(updateData).where(eq(seoFixes.id, input.id));
       return { success: true };
     }),
+
+  /**
+   * Generate an "Apply Fix" snippet for a specific SEO check.
+   * Returns ready-to-use code/text the owner can paste directly into Squarespace.
+   */
+  applySeoFix: ownerProcedure
+    .input(
+      z.object({
+        fixId: z.number().int(),
+        auditId: z.number().int(),
+      })
+    )
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+      const { seoFixes, seoAudits } = await import("../drizzle/schema");
+
+      const [fix] = await db.select().from(seoFixes).where(eq(seoFixes.id, input.fixId)).limit(1);
+      if (!fix) throw new TRPCError({ code: "NOT_FOUND", message: "Fix not found." });
+
+      const [audit] = await db.select().from(seoAudits).where(eq(seoAudits.id, input.auditId)).limit(1);
+      const checks: Array<{ id: string; label: string; status: string; value?: string; detail: string; recommendation?: string }> = JSON.parse(audit?.checksJson ?? "[]");
+      const check = checks.find((c) => c.id === fix.checkId);
+
+      const systemPrompt = `You are an SEO technical consultant helping a small business owner fix issues on their website (nolandearthworks.com — a veteran-owned land clearing company in Tennessee built on Squarespace). Your job is to produce a ready-to-apply fix: exact HTML, JSON-LD, or text that the owner can copy and paste directly into Squarespace's page settings or code injection. Be specific and complete. If the fix is HTML/JSON-LD, wrap it in a code block. If it is plain text (like a meta description), just provide the text. Keep it short and actionable.`;
+
+      const userPrompt = `Generate a ready-to-apply fix for this SEO issue:
+
+Check: ${fix.label}
+Category: ${fix.category}
+Status: ${fix.checkStatus}
+Current value: ${check?.value ?? "unknown"}
+Detail: ${check?.detail ?? fix.aiInstructions}
+Recommendation: ${check?.recommendation ?? ""}
+
+Provide the exact code or text to copy-paste into Squarespace. Include brief instructions on where to paste it.`;
+
+      const llmResponse = await invokeLLM({
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userPrompt },
+        ],
+      });
+
+      const snippet = llmResponse?.choices?.[0]?.message?.content ?? "Could not generate fix snippet.";
+      return { snippet };
+    }),
+
+  /**
+   * SEO Agent — conversational AI that knows the site, audit results, and brand voice.
+   * Accepts a message history and returns the next assistant message.
+   */
+  seoAgent: ownerProcedure
+    .input(
+      z.object({
+        messages: z.array(
+          z.object({
+            role: z.enum(["user", "assistant"]),
+            content: z.string(),
+          })
+        ),
+        auditId: z.number().int().optional(),
+      })
+    )
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+
+      // Load latest audit context if available
+      let auditContext = "";
+      if (input.auditId && db) {
+        const { seoAudits } = await import("../drizzle/schema");
+        const [audit] = await db.select().from(seoAudits).where(eq(seoAudits.id, input.auditId)).limit(1);
+        if (audit) {
+          const checks: Array<{ id: string; label: string; status: string; priority: string; recommendation?: string }> = JSON.parse(audit.checksJson ?? "[]");
+          const fails = checks.filter((c) => c.status === "fail");
+          const warns = checks.filter((c) => c.status === "warn");
+          auditContext = `
+
+Current SEO audit results for nolandearthworks.com (audited ${new Date(audit.auditedAt).toLocaleDateString()}):
+- Overall score: ${audit.overallScore}/100 (${audit.overallGrade})
+- On-Page: ${audit.onPageScore}/100 | Links: ${audit.linksScore}/100 | Usability: ${audit.usabilityScore}/100 | Performance: ${audit.performanceScore}/100 | Social: ${audit.socialScore}/100
+- Failed checks (${fails.length}): ${fails.map((c) => c.label).join(", ") || "none"}
+- Warned checks (${warns.length}): ${warns.map((c) => c.label).join(", ") || "none"}`;
+        }
+      }
+
+      const systemPrompt = `You are an expert SEO agent for Noland Earthworks, LLC — a veteran-owned land clearing and forestry mulching company based in Middle Tennessee. You have deep knowledge of:
+- Local SEO for service businesses in Tennessee
+- Technical SEO (meta tags, schema markup, Core Web Vitals, Squarespace-specific implementation)
+- Content SEO (keyword targeting, blog strategy, service page optimization)
+- Google Business Profile optimization
+- The Noland Earthworks brand voice: direct, plain, confident, no corporate jargon, no emojis
+- The target audience: landowners, homeowners, developers, farmers in Middle Tennessee
+- Competitors: Middle Tennessee Land Clearing LLC, Mid State Land Clearing LLC, Grounded Land Solutions, Stribling Land Clearing & Dirtwork, Wolf Creek Land Company
+
+You can:
+1. Analyze audit results and prioritize fixes
+2. Write optimized meta titles, meta descriptions, and page copy
+3. Generate LocalBusiness JSON-LD schema markup
+4. Suggest keyword strategies and content plans
+5. Explain any SEO concept in plain language
+6. Create a step-by-step SEO improvement plan targeting 100/100
+7. Write Squarespace-specific implementation instructions
+
+Always be specific to nolandearthworks.com. Never give generic advice — tie everything back to the actual business, location, and services.${auditContext}`;
+
+      const llmMessages = [
+        { role: "system" as const, content: systemPrompt },
+        ...input.messages.map((m) => ({ role: m.role as "user" | "assistant", content: m.content })),
+      ];
+
+      const llmResponse = await invokeLLM({ messages: llmMessages });
+      const reply = llmResponse?.choices?.[0]?.message?.content ?? "I could not generate a response. Please try again.";
+      return { reply };
+    }),
 });
