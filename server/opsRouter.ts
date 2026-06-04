@@ -2966,4 +2966,164 @@ export const opsRouter = router({
       await db.delete(seoArticles).where(eq(seoArticles.id, input.id));
       return { success: true };
     }),
+
+  // ── SEO Fix Issues ──────────────────────────────────────────────────────────
+
+  /**
+   * Generate AI fix instructions for all failed/warned checks in an audit.
+   * Upserts one seoFixes row per check (idempotent — re-running regenerates instructions).
+   */
+  generateSeoFixes: ownerProcedure
+    .input(z.object({ auditId: z.number().int() }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+      const { seoAudits, seoFixes } = await import("../drizzle/schema");
+
+      // Load the audit
+      const [audit] = await db.select().from(seoAudits).where(eq(seoAudits.id, input.auditId)).limit(1);
+      if (!audit) throw new TRPCError({ code: "NOT_FOUND", message: "Audit not found." });
+
+      const checks: Array<{
+        id: string; category: string; label: string; status: string;
+        priority: string; detail: string; value?: string; recommendation?: string;
+      }> = JSON.parse(audit.checksJson ?? "[]");
+
+      // Only generate fixes for non-passing checks
+      const fixable = checks.filter((c) => c.status === "fail" || c.status === "warn");
+      if (fixable.length === 0) return { generated: 0 };
+
+      // Build a single LLM call to generate all fixes at once (structured JSON)
+      const checksText = fixable
+        .map(
+          (c, i) =>
+            `${i + 1}. [${c.status.toUpperCase()}] ${c.label} (${c.category}, priority: ${c.priority})\n   Detail: ${c.detail}${c.recommendation ? `\n   Hint: ${c.recommendation}` : ""}${c.value ? `\n   Current value: ${c.value}` : ""}`
+        )
+        .join("\n\n");
+
+      const systemPrompt = `You are an SEO technical consultant helping a small business owner fix issues on their website (nolandearthworks.com — a veteran-owned land clearing company in Tennessee built on Squarespace).
+
+For each issue listed, write clear, actionable step-by-step fix instructions. Be specific to Squarespace where relevant. Use plain language — no jargon. Each fix should be 2-5 numbered steps. If a fix requires code or exact text, provide it verbatim. If a fix is not possible on Squarespace without a developer, say so clearly.`;
+
+      const userPrompt = `Generate fix instructions for these ${fixable.length} SEO issues found on nolandearthworks.com:
+
+${checksText}
+
+Return a JSON array with one object per issue, in the same order:
+[{ "checkId": "<id>", "instructions": "<markdown fix steps>" }]`;
+
+      const llmResponse = await invokeLLM({
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userPrompt },
+        ],
+        response_format: {
+          type: "json_schema",
+          json_schema: {
+            name: "seo_fixes",
+            strict: true,
+            schema: {
+              type: "object",
+              properties: {
+                fixes: {
+                  type: "array",
+                  items: {
+                    type: "object",
+                    properties: {
+                      checkId: { type: "string" },
+                      instructions: { type: "string" },
+                    },
+                    required: ["checkId", "instructions"],
+                    additionalProperties: false,
+                  },
+                },
+              },
+              required: ["fixes"],
+              additionalProperties: false,
+            },
+          },
+        },
+      });
+
+      let fixInstructions: Array<{ checkId: string; instructions: string }> = [];
+      try {
+        const raw = llmResponse?.choices?.[0]?.message?.content;
+        const parsed = typeof raw === "string" ? JSON.parse(raw) : raw;
+        fixInstructions = parsed?.fixes ?? [];
+      } catch {
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Failed to parse AI fix instructions." });
+      }
+
+      // Upsert one row per fixable check
+      let generated = 0;
+      for (const check of fixable) {
+        const aiEntry = fixInstructions.find((f) => f.checkId === check.id);
+        const aiInstructions = aiEntry?.instructions ?? `No specific instructions generated for this check. Review manually: ${check.detail}`;
+
+        // Check if a fix row already exists for this audit+check
+        const [existing] = await db
+          .select({ id: seoFixes.id })
+          .from(seoFixes)
+          .where(and(eq(seoFixes.auditId, input.auditId), eq(seoFixes.checkId, check.id)))
+          .limit(1);
+
+        if (existing) {
+          await db
+            .update(seoFixes)
+            .set({ aiInstructions, checkStatus: check.status, priority: check.priority })
+            .where(eq(seoFixes.id, existing.id));
+        } else {
+          await db.insert(seoFixes).values({
+            auditId: input.auditId,
+            checkId: check.id,
+            category: check.category,
+            label: check.label,
+            checkStatus: check.status,
+            priority: check.priority,
+            aiInstructions,
+            status: "pending",
+          });
+        }
+        generated++;
+      }
+
+      return { generated };
+    }),
+
+  /** Get all fix rows for a given audit */
+  getSeoFixes: ownerProcedure
+    .input(z.object({ auditId: z.number().int() }))
+    .query(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+      const { seoFixes } = await import("../drizzle/schema");
+      return db
+        .select()
+        .from(seoFixes)
+        .where(eq(seoFixes.auditId, input.auditId))
+        .orderBy(seoFixes.priority, seoFixes.checkStatus);
+    }),
+
+  /** Update a fix row — status, note */
+  updateSeoFix: ownerProcedure
+    .input(
+      z.object({
+        id: z.number().int(),
+        status: z.enum(["pending", "in_progress", "resolved", "skipped"]).optional(),
+        note: z.string().max(1000).optional(),
+      })
+    )
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+      const { seoFixes } = await import("../drizzle/schema");
+      const updateData: Record<string, unknown> = {};
+      if (input.status !== undefined) {
+        updateData.status = input.status;
+        updateData.resolvedAt = input.status === "resolved" ? new Date() : null;
+      }
+      if (input.note !== undefined) updateData.note = input.note;
+      await db.update(seoFixes).set(updateData).where(eq(seoFixes.id, input.id));
+      return { success: true };
+    }),
 });

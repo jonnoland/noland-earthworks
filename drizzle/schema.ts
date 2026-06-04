@@ -1159,3 +1159,34 @@ export const seoArticles = mysqlTable("seo_articles", {
 });
 export type SeoArticle = typeof seoArticles.$inferSelect;
 export type InsertSeoArticle = typeof seoArticles.$inferInsert;
+
+/**
+ * Stores AI-generated fix instructions for SEO audit issues.
+ * Each row corresponds to one failed/warned check from an audit run.
+ */
+export const seoFixes = mysqlTable("seo_fixes", {
+  id: int("id").primaryKey().autoincrement(),
+  /** FK to the seoAudits row this fix belongs to */
+  auditId: int("auditId").notNull(),
+  /** The check ID from the audit (e.g. "title-tag", "meta-description") */
+  checkId: varchar("checkId", { length: 100 }).notNull(),
+  /** Category: onpage | links | usability | performance | social */
+  category: varchar("category", { length: 50 }).notNull(),
+  /** Human-readable label of the check */
+  label: varchar("label", { length: 300 }).notNull(),
+  /** Original check status: fail | warn */
+  checkStatus: varchar("checkStatus", { length: 10 }).notNull(),
+  /** Priority: high | medium | low */
+  priority: varchar("priority", { length: 10 }).notNull(),
+  /** AI-generated step-by-step fix instructions in Markdown */
+  aiInstructions: text("aiInstructions").notNull(),
+  /** Current fix status */
+  status: mysqlEnum("status", ["pending", "in_progress", "resolved", "skipped"]).default("pending").notNull(),
+  /** Optional note from Jon about the fix */
+  note: text("note"),
+  resolvedAt: timestamp("resolvedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type SeoFix = typeof seoFixes.$inferSelect;
+export type InsertSeoFix = typeof seoFixes.$inferInsert;

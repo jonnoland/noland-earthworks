@@ -1664,3 +1664,10 @@
 - [x] Build article generator UI tab: select keyword, configure article settings, generate and preview draft
 - [x] Build content library UI tab: list all saved articles with status (draft/published), view, edit, delete
 - [x] Integrate all three tabs into existing /ops/seo page alongside the audit section
+
+## SEO Audit Fix Issues Feature — Jun 2026
+- [x] Add seoFixes table to schema (auditId, checkId, category, label, aiInstructions, status: pending/resolved, resolvedAt) and push migration
+- [x] Add generateSeoFixes tRPC procedure: takes auditId, calls AI to generate step-by-step fix instructions per failed/warned check
+- [x] Add markSeoFixResolved and getSeoFixes tRPC procedures
+- [x] Add "Fix Issues" button to audit results that triggers AI fix generation for all non-passing checks
+- [x] Build Fix Issues panel in audit tab: list of fixable checks with AI-generated step-by-step instructions, mark-as-resolved toggle, progress indicator

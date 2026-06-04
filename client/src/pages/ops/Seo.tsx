@@ -64,6 +64,23 @@ type CheckStatus = "pass" | "warn" | "fail";
 type Priority = "high" | "medium" | "low";
 type Category = "onpage" | "links" | "usability" | "performance" | "social";
 type ArticleStatus = "draft" | "ready" | "published";
+type FixStatus = "pending" | "in_progress" | "resolved" | "skipped";
+
+interface SeoFixRow {
+  id: number;
+  auditId: number;
+  checkId: string;
+  category: string;
+  label: string;
+  checkStatus: string;
+  priority: string;
+  aiInstructions: string;
+  status: FixStatus;
+  note: string | null;
+  resolvedAt: Date | null;
+  createdAt: Date;
+  updatedAt: Date;
+}
 
 interface SeoCheck {
   id: string;
@@ -190,6 +207,217 @@ function catGrade(score: number) {
   if (score >= 70) return "C-";
   if (score >= 60) return "D";
   return "F";
+}
+
+// ── Fix Status Badge ──────────────────────────────────────────────────────────
+function fixStatusBadge(status: FixStatus) {
+  const map: Record<FixStatus, string> = {
+    pending: "bg-zinc-500/15 text-zinc-400 border-zinc-500/30",
+    in_progress: "bg-blue-500/15 text-blue-400 border-blue-500/30",
+    resolved: "bg-green-500/15 text-green-400 border-green-500/30",
+    skipped: "bg-zinc-600/15 text-zinc-500 border-zinc-600/30",
+  };
+  const labels: Record<FixStatus, string> = {
+    pending: "Pending",
+    in_progress: "In Progress",
+    resolved: "Resolved",
+    skipped: "Skipped",
+  };
+  return (
+    <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded border ${map[status]}`}>
+      {labels[status]}
+    </span>
+  );
+}
+
+// ── Fix Issues Panel ──────────────────────────────────────────────────────────
+function FixIssuesPanel({
+  fixes,
+  isGenerating,
+  onGenerate,
+  onUpdateStatus,
+}: {
+  fixes: SeoFixRow[];
+  isGenerating: boolean;
+  onGenerate: () => void;
+  onUpdateStatus: (id: number, status: FixStatus) => void;
+}) {
+  const [expandedId, setExpandedId] = useState<number | null>(null);
+  const [filter, setFilter] = useState<"all" | FixStatus>("all");
+
+  const filtered = fixes.filter((f) => filter === "all" || f.status === filter);
+  const resolved = fixes.filter((f) => f.status === "resolved").length;
+  const total = fixes.length;
+
+  return (
+    <Card className="bg-zinc-900 border-zinc-800">
+      <CardHeader className="pb-3">
+        <div className="flex items-center justify-between flex-wrap gap-3">
+          <CardTitle className="text-sm font-medium text-zinc-200 flex items-center gap-2">
+            <Sparkles className="w-4 h-4 text-orange-400" />
+            Fix Issues
+            {total > 0 && (
+              <span className="text-xs text-zinc-500 font-normal">
+                {resolved}/{total} resolved
+              </span>
+            )}
+          </CardTitle>
+          <Button
+            size="sm"
+            onClick={onGenerate}
+            disabled={isGenerating}
+            className="bg-orange-600 hover:bg-orange-500 text-white gap-2"
+          >
+            {isGenerating ? (
+              <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Generating fixes...</>
+            ) : (
+              <><Sparkles className="w-3.5 h-3.5" /> {total > 0 ? "Regenerate Fixes" : "Generate AI Fixes"}</>
+            )}
+          </Button>
+        </div>
+        {total > 0 && (
+          <div className="mt-3">
+            {/* Progress bar */}
+            <div className="w-full bg-zinc-800 rounded-full h-1.5 mb-3">
+              <div
+                className="bg-green-500 h-1.5 rounded-full transition-all duration-500"
+                style={{ width: `${total > 0 ? (resolved / total) * 100 : 0}%` }}
+              />
+            </div>
+            {/* Filter tabs */}
+            <div className="flex gap-1 flex-wrap">
+              {(["all", "pending", "in_progress", "resolved", "skipped"] as Array<"all" | FixStatus>).map((f) => {
+                const count = f === "all" ? total : fixes.filter((x) => x.status === f).length;
+                if (f !== "all" && count === 0) return null;
+                return (
+                  <button
+                    key={f}
+                    onClick={() => setFilter(f)}
+                    className={`text-[11px] px-2.5 py-1 rounded-md border transition-colors ${
+                      filter === f
+                        ? "bg-orange-600/20 border-orange-500/40 text-orange-300"
+                        : "border-zinc-700 text-zinc-500 hover:border-zinc-600 hover:text-zinc-300"
+                    }`}
+                  >
+                    {f === "all" ? "All" : f === "in_progress" ? "In Progress" : f.charAt(0).toUpperCase() + f.slice(1)}
+                    {count > 0 && <span className="ml-1 text-zinc-500">{count}</span>}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+      </CardHeader>
+      <CardContent className="space-y-2">
+        {total === 0 && !isGenerating && (
+          <div className="flex flex-col items-center justify-center py-10 gap-3 text-center">
+            <Sparkles className="w-8 h-8 text-zinc-600" />
+            <p className="text-sm text-zinc-400 max-w-sm">
+              Click <strong className="text-zinc-200">Generate AI Fixes</strong> to get step-by-step instructions for every failed and warned check in this audit.
+            </p>
+          </div>
+        )}
+        {isGenerating && (
+          <div className="flex items-center justify-center py-10 gap-2 text-zinc-400">
+            <Loader2 className="w-5 h-5 animate-spin" />
+            <span className="text-sm">Generating fix instructions — this may take 15-30 seconds...</span>
+          </div>
+        )}
+        {!isGenerating && filtered.map((fix) => {
+          const isExpanded = expandedId === fix.id;
+          return (
+            <div
+              key={fix.id}
+              className={`border rounded-lg overflow-hidden transition-colors ${
+                fix.status === "resolved"
+                  ? "border-green-800/40 bg-green-900/5"
+                  : fix.status === "skipped"
+                  ? "border-zinc-800/50 opacity-60"
+                  : "border-zinc-800"
+              }`}
+            >
+              <button
+                className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-zinc-800/40 transition-colors"
+                onClick={() => setExpandedId(isExpanded ? null : fix.id)}
+              >
+                {fix.status === "resolved" ? (
+                  <CheckCircle2 className="w-4 h-4 text-green-500 shrink-0" />
+                ) : fix.checkStatus === "fail" ? (
+                  <XCircle className="w-4 h-4 text-red-500 shrink-0" />
+                ) : (
+                  <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0" />
+                )}
+                <span className={`flex-1 text-sm ${
+                  fix.status === "resolved" ? "text-zinc-500 line-through" : "text-zinc-200"
+                }`}>
+                  {fix.label}
+                </span>
+                <span className="text-[10px] text-zinc-500 capitalize mr-1">{CATEGORY_META[fix.category as Category]?.label ?? fix.category}</span>
+                {priorityBadge(fix.priority as Priority)}
+                {fixStatusBadge(fix.status)}
+                {isExpanded ? (
+                  <ChevronUp className="w-4 h-4 text-zinc-500 ml-1 shrink-0" />
+                ) : (
+                  <ChevronDown className="w-4 h-4 text-zinc-500 ml-1 shrink-0" />
+                )}
+              </button>
+              {isExpanded && (
+                <div className="px-4 pb-4 pt-2 bg-zinc-900/60 border-t border-zinc-800 space-y-4">
+                  {/* AI instructions */}
+                  <div className="prose prose-invert prose-sm max-w-none">
+                    <Streamdown>{fix.aiInstructions}</Streamdown>
+                  </div>
+                  {/* Action buttons */}
+                  <div className="flex flex-wrap gap-2 pt-1">
+                    {fix.status !== "resolved" && (
+                      <Button
+                        size="sm"
+                        className="gap-1.5 bg-green-700/30 hover:bg-green-700/50 text-green-400 border border-green-700/40"
+                        variant="outline"
+                        onClick={() => onUpdateStatus(fix.id, "resolved")}
+                      >
+                        <CheckCheck className="w-3.5 h-3.5" /> Mark Resolved
+                      </Button>
+                    )}
+                    {fix.status === "resolved" && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="gap-1.5 border-zinc-700 text-zinc-400 hover:bg-zinc-800"
+                        onClick={() => onUpdateStatus(fix.id, "pending")}
+                      >
+                        Reopen
+                      </Button>
+                    )}
+                    {fix.status !== "in_progress" && fix.status !== "resolved" && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="gap-1.5 border-blue-700/40 text-blue-400 hover:bg-blue-900/20"
+                        onClick={() => onUpdateStatus(fix.id, "in_progress")}
+                      >
+                        Mark In Progress
+                      </Button>
+                    )}
+                    {fix.status !== "skipped" && fix.status !== "resolved" && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="gap-1.5 border-zinc-700 text-zinc-400 hover:bg-zinc-800 ml-auto"
+                        onClick={() => onUpdateStatus(fix.id, "skipped")}
+                      >
+                        Skip
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </CardContent>
+    </Card>
+  );
 }
 
 // ── Donut Chart (SVG) ──────────────────────────────────────────────────────────
@@ -484,6 +712,26 @@ export default function Seo() {
 
   const latest = historyData?.latest ?? null;
   const history = historyData?.history ?? [];
+
+  // ── Fix Issues ──
+  const { data: fixesData = [], refetch: refetchFixes } = trpc.ops.getSeoFixes.useQuery(
+    { auditId: latest?.id ?? 0 },
+    { enabled: !!latest?.id }
+  );
+  const fixes = fixesData as SeoFixRow[];
+
+  const generateFixes = trpc.ops.generateSeoFixes.useMutation({
+    onSuccess: (data) => {
+      refetchFixes();
+      toast.success(`${data.generated} fix instruction${data.generated !== 1 ? "s" : ""} generated.`);
+    },
+    onError: (err) => toast.error(err.message || "Failed to generate fixes."),
+  });
+
+  const updateFixStatus = trpc.ops.updateSeoFix.useMutation({
+    onSuccess: () => refetchFixes(),
+    onError: (err) => toast.error(err.message || "Failed to update fix."),
+  });
 
   const categories: Array<{ key: Category; score: number }> = latest
     ? [
@@ -821,6 +1069,13 @@ export default function Seo() {
                     </Tabs>
                   </CardContent>
                 </Card>
+
+                <FixIssuesPanel
+                  fixes={fixes}
+                  isGenerating={generateFixes.isPending}
+                  onGenerate={() => generateFixes.mutate({ auditId: latest.id })}
+                  onUpdateStatus={(id, status) => updateFixStatus.mutate({ id, status })}
+                />
 
                 {chartData.length > 1 && (
                   <Card className="bg-zinc-900 border-zinc-800">
