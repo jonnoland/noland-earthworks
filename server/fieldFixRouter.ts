@@ -429,23 +429,50 @@ Return ONLY valid JSON matching this exact schema — no markdown, no explanatio
 
   /** Generate (or retrieve existing) a shareable token for a diagnostic report */
   generateShareToken: adminProcedure
-    .input(z.object({ id: z.number().int() }))
+    .input(z.object({
+      id: z.number().int(),
+      expiresInDays: z.number().int().min(1).max(365).optional(),
+      forceNew: z.boolean().optional(),
+    }))
     .mutation(async ({ input }) => {
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
       const [row] = await db
-        .select({ id: fieldDiagnostics.id, shareToken: fieldDiagnostics.shareToken })
+        .select({ id: fieldDiagnostics.id, shareToken: fieldDiagnostics.shareToken, shareTokenExpiresAt: fieldDiagnostics.shareTokenExpiresAt })
         .from(fieldDiagnostics)
         .where(eq(fieldDiagnostics.id, input.id))
         .limit(1);
       if (!row) throw new TRPCError({ code: "NOT_FOUND", message: "Diagnostic not found" });
-      if (row.shareToken) return { token: row.shareToken };
+      // Reuse existing token unless forceNew or no token yet
+      if (row.shareToken && !input.forceNew) {
+        // Update expiry if provided
+        if (input.expiresInDays !== undefined) {
+          const expiresAt = new Date();
+          expiresAt.setDate(expiresAt.getDate() + input.expiresInDays);
+          await db.update(fieldDiagnostics).set({ shareTokenExpiresAt: expiresAt }).where(eq(fieldDiagnostics.id, input.id));
+        }
+        return { token: row.shareToken };
+      }
       const token = randomBytes(24).toString("hex");
+      const expiresAt = input.expiresInDays ? (() => { const d = new Date(); d.setDate(d.getDate() + input.expiresInDays!); return d; })() : null;
       await db
         .update(fieldDiagnostics)
-        .set({ shareToken: token })
+        .set({ shareToken: token, shareTokenExpiresAt: expiresAt })
         .where(eq(fieldDiagnostics.id, input.id));
       return { token };
+    }),
+
+  /** Revoke a shareable link by clearing the token */
+  revokeShareToken: adminProcedure
+    .input(z.object({ id: z.number().int() }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+      await db
+        .update(fieldDiagnostics)
+        .set({ shareToken: null, shareTokenExpiresAt: null })
+        .where(eq(fieldDiagnostics.id, input.id));
+      return { success: true };
     }),
 
   /** Public endpoint — fetch a diagnostic by share token (no auth required) */
@@ -460,6 +487,10 @@ Return ONLY valid JSON matching this exact schema — no markdown, no explanatio
         .where(eq(fieldDiagnostics.shareToken, input.token))
         .limit(1);
       if (!row) throw new TRPCError({ code: "NOT_FOUND", message: "Report not found or link expired" });
+      // Check expiry
+      if (row.shareTokenExpiresAt && new Date() > new Date(row.shareTokenExpiresAt)) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "This link has expired." });
+      }
       return {
         ...row,
         report: row.reportJson ? (JSON.parse(row.reportJson) as FixReport) : null,

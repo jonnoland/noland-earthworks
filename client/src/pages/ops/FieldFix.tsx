@@ -40,12 +40,21 @@ import {
   Link2,
   Search,
   Filter,
+  CalendarClock,
+  ShieldOff,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -662,30 +671,46 @@ function FixReportDisplay({
   onViewHistory: () => void;
 }) {
   const [toolsExpanded, setToolsExpanded] = useState(false);
-  const [copyingLink, setCopyingLink] = useState(false);
+  const [shareModalOpen, setShareModalOpen] = useState(false);
+  const [expiresInDays, setExpiresInDays] = useState<string>("30");
+  const [generatedLink, setGeneratedLink] = useState<string | null>(null);
 
   const generateToken = trpc.fieldFix.generateShareToken.useMutation();
+  const revokeToken = trpc.fieldFix.revokeShareToken.useMutation({
+    onSuccess: () => {
+      setGeneratedLink(null);
+      toast.success("Shareable link revoked.");
+    },
+    onError: (e) => toast.error(e.message),
+  });
 
   const handlePrint = () => {
     window.print();
   };
 
-  const handleCopyLink = async () => {
+  const handleGenerateLink = async () => {
     if (!reportId) {
       toast.error("Report ID not available. Try running the diagnosis again.");
       return;
     }
-    setCopyingLink(true);
     try {
-      const { token } = await generateToken.mutateAsync({ id: reportId });
+      const days = expiresInDays ? parseInt(expiresInDays) : undefined;
+      const { token } = await generateToken.mutateAsync({
+        id: reportId,
+        expiresInDays: days && !isNaN(days) ? days : undefined,
+        forceNew: true,
+      });
       const url = `${window.location.origin}/api/field-fix/shared/${token}`;
-      await navigator.clipboard.writeText(url);
-      toast.success("Shareable link copied to clipboard.");
+      setGeneratedLink(url);
     } catch {
       toast.error("Failed to generate link.");
-    } finally {
-      setCopyingLink(false);
     }
+  };
+
+  const handleCopyLink = async () => {
+    if (!generatedLink) return;
+    await navigator.clipboard.writeText(generatedLink);
+    toast.success("Link copied to clipboard.");
   };
 
   return (
@@ -874,17 +899,95 @@ function FixReportDisplay({
         </Button>
         <Button
           variant="outline"
-          onClick={handleCopyLink}
-          disabled={copyingLink || generateToken.isPending}
+          onClick={() => { setShareModalOpen(true); setGeneratedLink(null); }}
           className="gap-1.5"
         >
-          {copyingLink ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Link2 className="w-3.5 h-3.5" />}
-          Copy Shareable Link
+          <Link2 className="w-3.5 h-3.5" /> Share Report
         </Button>
         <Button variant="ghost" onClick={onViewHistory} className="gap-1.5 text-muted-foreground">
           <History className="w-3.5 h-3.5" /> View History
         </Button>
       </div>
+
+      {/* Branded print header — only visible when printing */}
+      <div className="hidden print:block mb-6 pb-4 border-b border-gray-300">
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-lg font-bold text-gray-900">Noland Earthworks, LLC</p>
+            <p className="text-sm text-gray-500">Veteran-Owned Land Management — Middle Tennessee</p>
+          </div>
+          <div className="text-right">
+            <p className="text-sm font-semibold text-gray-700">Field Fix Report</p>
+            <p className="text-xs text-gray-500">{new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric", hour: "2-digit", minute: "2-digit" })}</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Share Report Modal */}
+      <Dialog open={shareModalOpen} onOpenChange={setShareModalOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Link2 className="w-4 h-4 text-orange-400" /> Share Fix Report
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div>
+              <label className="text-xs text-muted-foreground mb-1.5 block flex items-center gap-1.5">
+                <CalendarClock className="w-3.5 h-3.5" /> Link Expiration
+              </label>
+              <select
+                value={expiresInDays}
+                onChange={(e) => setExpiresInDays(e.target.value)}
+                className="w-full h-9 rounded-md border border-input bg-background px-3 text-sm text-foreground"
+              >
+                <option value="">No expiration</option>
+                <option value="1">1 day</option>
+                <option value="3">3 days</option>
+                <option value="7">7 days</option>
+                <option value="14">14 days</option>
+                <option value="30">30 days</option>
+                <option value="90">90 days</option>
+              </select>
+            </div>
+            {generatedLink ? (
+              <div className="space-y-3">
+                <div className="rounded-md border border-green-700/40 bg-green-900/10 p-3">
+                  <p className="text-xs text-green-400 font-medium mb-1">Link generated</p>
+                  <p className="text-xs text-muted-foreground break-all font-mono">{generatedLink}</p>
+                </div>
+                <div className="flex gap-2">
+                  <Button size="sm" onClick={handleCopyLink} className="gap-1.5 flex-1">
+                    <Link2 className="w-3.5 h-3.5" /> Copy Link
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => reportId && revokeToken.mutate({ id: reportId })}
+                    disabled={revokeToken.isPending || !reportId}
+                    className="gap-1.5 border-red-700/40 text-red-400 hover:bg-red-900/20"
+                  >
+                    {revokeToken.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ShieldOff className="w-3.5 h-3.5" />}
+                    Revoke
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <Button
+                onClick={handleGenerateLink}
+                disabled={generateToken.isPending}
+                className="w-full gap-1.5"
+              >
+                {generateToken.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Link2 className="w-3.5 h-3.5" />}
+                Generate Link
+              </Button>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShareModalOpen(false)}>Close</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
@@ -892,17 +995,15 @@ function FixReportDisplay({
 // ─── Service Log Tab ──────────────────────────────────────────────────────────
 
 function ServiceLogTab({ equipmentId }: { equipmentId: number }) {
-  const [showForm, setShowForm] = useState(false);
+  const [showModal, setShowModal] = useState(false);
   const [search, setSearch] = useState("");
   const [filterType, setFilterType] = useState("all");
-  const [form, setForm] = useState({
-    serviceType: "", serviceDate: new Date().toISOString().split("T")[0],
-    hoursAtService: "", performedBy: "", notes: "", cost: "",
-  });
+  const defaultForm = { serviceType: "", serviceDate: new Date().toISOString().split("T")[0], hoursAtService: "", performedBy: "", notes: "", cost: "" };
+  const [form, setForm] = useState(defaultForm);
 
   const { data: logs = [], refetch } = trpc.fieldFix.listServiceLogs.useQuery({ equipmentId });
   const create = trpc.fieldFix.createServiceLog.useMutation({
-    onSuccess: () => { refetch(); setShowForm(false); toast.success("Service event logged."); },
+    onSuccess: () => { refetch(); setShowModal(false); setForm(defaultForm); toast.success("Service event logged."); },
     onError: (e) => toast.error(e.message),
   });
   const del = trpc.fieldFix.deleteServiceLog.useMutation({
@@ -944,15 +1045,20 @@ function ServiceLogTab({ equipmentId }: { equipmentId: number }) {
     <div>
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-sm font-semibold text-foreground">Service History</h2>
-        <Button size="sm" onClick={() => setShowForm(!showForm)} className="gap-1.5">
-          <Plus className="w-3.5 h-3.5" /> Log Service
+        <Button size="sm" onClick={() => { setForm(defaultForm); setShowModal(true); }} className="gap-1.5">
+          <Plus className="w-3.5 h-3.5" /> Add New Service
         </Button>
       </div>
 
-      {showForm && (
-        <div className="rounded-lg border border-border bg-card p-5 mb-5">
-          <h3 className="text-sm font-semibold text-foreground mb-4">Log Service Event</h3>
-          <div className="grid grid-cols-2 gap-3">
+      {/* Add New Service Modal */}
+      <Dialog open={showModal} onOpenChange={setShowModal}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Wrench className="w-4 h-4 text-orange-400" /> Log Service Event
+            </DialogTitle>
+          </DialogHeader>
+          <div className="grid grid-cols-2 gap-3 py-2">
             <div className="col-span-2">
               <label className="text-xs text-muted-foreground mb-1 block">Service Type *</label>
               <select
@@ -982,18 +1088,18 @@ function ServiceLogTab({ equipmentId }: { equipmentId: number }) {
             </div>
             <div className="col-span-2">
               <label className="text-xs text-muted-foreground mb-1 block">Notes</label>
-              <Textarea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} placeholder="Parts used, observations, etc." rows={2} />
+              <Textarea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} placeholder="Parts used, observations, etc." rows={3} />
             </div>
           </div>
-          <div className="flex gap-2 mt-4">
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setShowModal(false)}>Cancel</Button>
             <Button onClick={handleSubmit} disabled={create.isPending} className="gap-1.5">
               {create.isPending && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
               Save Entry
             </Button>
-            <Button variant="outline" onClick={() => setShowForm(false)}>Cancel</Button>
-          </div>
-        </div>
-      )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Search + filter bar */}
       {logs.length > 0 && (

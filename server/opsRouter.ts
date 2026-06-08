@@ -3219,6 +3219,124 @@ Provide the exact code or text to copy-paste into Squarespace. Include brief ins
     }),
 
   /**
+   * Apply All SEO Fixes — generates fix snippets for every unresolved fix in an audit
+   * and marks them all as resolved. Returns per-fix results for the confirmation panel.
+   */
+  applyAllSeoFixes: ownerProcedure
+    .input(
+      z.object({
+        auditId: z.number().int(),
+      })
+    )
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+      const { seoFixes, seoAudits } = await import("../drizzle/schema");
+
+      // Load audit for context
+      const [audit] = await db.select().from(seoAudits).where(eq(seoAudits.id, input.auditId)).limit(1);
+      if (!audit) throw new TRPCError({ code: "NOT_FOUND", message: "Audit not found." });
+      const checks: Array<{ id: string; label: string; status: string; value?: string; detail: string; recommendation?: string }> = JSON.parse(audit.checksJson ?? "[]");
+
+      // Load all pending/in_progress fixes for this audit
+      const pendingFixes = await db
+        .select()
+        .from(seoFixes)
+        .where(
+          and(
+            eq(seoFixes.auditId, input.auditId),
+            inArray(seoFixes.status, ["pending", "in_progress"])
+          )
+        );
+
+      if (pendingFixes.length === 0) {
+        return { results: [], message: "All fixes are already resolved." };
+      }
+
+      const systemPrompt = `You are an SEO technical consultant helping a small business owner fix issues on their website (nolandearthworks.com — a veteran-owned land clearing company in Tennessee). The site is hosted on Squarespace (not WordPress). Your job is to produce a ready-to-apply fix: exact HTML, JSON-LD, or text that the owner can copy and paste directly into Squarespace.
+
+Squarespace-specific location guidance:
+- Custom <head> code (meta tags, JSON-LD schema, canonical tags): Settings > Advanced > Code Injection > Header
+- Custom footer scripts: Settings > Advanced > Code Injection > Footer
+- Page-level meta title and meta description: open the page editor, click the gear icon (Page Settings) > SEO tab > SEO Title and SEO Description fields
+- Blog post meta description: open the post editor > gear icon > SEO tab
+- Open Graph / social sharing image: Page Settings > Social Image
+- Robots meta directives (noindex etc.): not natively exposed — use Code Injection header to inject a <meta name="robots"> tag
+- Sitemap: Squarespace auto-generates /sitemap.xml — no manual action needed unless a page is excluded
+- robots.txt: Settings > Advanced > External Services > Google Search Console, or use Code Injection workaround
+- Image alt text: click the image block in the editor > Edit > Alt Text field
+- Page URL slug: Page Settings > General > URL Slug
+
+Be specific and complete. If the fix is HTML/JSON-LD, wrap it in a code block. If it is plain text (like a meta description), just provide the text. Always tell the owner exactly where in Squarespace to paste or apply the fix. Keep it concise and actionable.`;
+
+      // Process each fix sequentially to avoid rate limits
+      const results: Array<{
+        fixId: number;
+        label: string;
+        category: string;
+        priority: string;
+        status: "applied" | "failed";
+        snippet: string;
+        error?: string;
+      }> = [];
+
+      for (const fix of pendingFixes) {
+        try {
+          const check = checks.find((c) => c.id === fix.checkId);
+          const userPrompt = `Generate a ready-to-apply fix for this SEO issue:
+
+Check: ${fix.label}
+Category: ${fix.category}
+Status: ${fix.checkStatus}
+Current value: ${check?.value ?? "unknown"}
+Detail: ${check?.detail ?? fix.aiInstructions}
+Recommendation: ${check?.recommendation ?? ""}
+
+Provide the exact code or text to copy-paste into Squarespace. Include brief instructions on where to paste it.`;
+
+          const llmResponse = await invokeLLM({
+            messages: [
+              { role: "system", content: systemPrompt },
+              { role: "user", content: userPrompt },
+            ],
+          });
+
+          const snippet = String(llmResponse?.choices?.[0]?.message?.content ?? "Could not generate fix snippet.");
+
+          // Mark as resolved in DB
+          await db
+            .update(seoFixes)
+            .set({ status: "resolved", aiInstructions: fix.aiInstructions || snippet })
+            .where(eq(seoFixes.id, fix.id));
+
+          results.push({
+            fixId: fix.id,
+            label: fix.label,
+            category: fix.category,
+            priority: fix.priority,
+            status: "applied",
+            snippet,
+          });
+        } catch (err) {
+          results.push({
+            fixId: fix.id,
+            label: fix.label,
+            category: fix.category,
+            priority: fix.priority,
+            status: "failed",
+            snippet: "",
+            error: err instanceof Error ? err.message : "Unknown error",
+          });
+        }
+      }
+
+      return {
+        results,
+        message: `Applied ${results.filter((r) => r.status === "applied").length} of ${results.length} fixes.`,
+      };
+    }),
+
+  /**
    * SEO Agent — conversational AI that knows the site, audit results, and brand voice.
    * Accepts a message history and returns the next assistant message.
    */

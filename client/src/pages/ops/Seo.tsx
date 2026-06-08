@@ -240,23 +240,52 @@ function fixStatusBadge(status: FixStatus) {
 }
 
 // ── Fix Issues Panel ──────────────────────────────────────────────────────────
+type ApplyAllResult = {
+  fixId: number;
+  label: string;
+  category: string;
+  priority: string;
+  status: "applied" | "failed";
+  snippet: string;
+  error?: string;
+};
+
 function FixIssuesPanel({
   fixes,
   auditId,
   isGenerating,
   onGenerate,
   onUpdateStatus,
+  onRefetch,
 }: {
   fixes: SeoFixRow[];
   auditId: number;
   isGenerating: boolean;
   onGenerate: () => void;
   onUpdateStatus: (id: number, status: FixStatus) => void;
+  onRefetch: () => void;
 }) {
   const [expandedId, setExpandedId] = useState<number | null>(null);
   const [filter, setFilter] = useState<"all" | FixStatus>("all");
   const [applyingFixId, setApplyingFixId] = useState<number | null>(null);
   const [snippets, setSnippets] = useState<{ [key: number]: string }>({});
+  const [applyAllResults, setApplyAllResults] = useState<ApplyAllResult[] | null>(null);
+  const [expandedResultId, setExpandedResultId] = useState<number | null>(null);
+
+  const applyAll = trpc.ops.applyAllSeoFixes.useMutation({
+    onSuccess: (data) => {
+      setApplyAllResults(data.results);
+      onRefetch();
+      const applied = data.results.filter((r) => r.status === "applied").length;
+      const failed = data.results.filter((r) => r.status === "failed").length;
+      if (failed === 0) {
+        toast.success(`All ${applied} fixes applied and marked resolved.`);
+      } else {
+        toast.warning(`${applied} applied, ${failed} failed. See results below.`);
+      }
+    },
+    onError: (err) => toast.error(err.message || "Apply All failed."),
+  });
 
   const applyFix = trpc.ops.applySeoFix.useMutation({
     onSuccess: (data, variables) => {
@@ -291,18 +320,34 @@ function FixIssuesPanel({
               </span>
             )}
           </CardTitle>
-          <Button
-            size="sm"
-            onClick={onGenerate}
-            disabled={isGenerating}
-            className="bg-orange-600 hover:bg-orange-500 text-white gap-2"
-          >
-            {isGenerating ? (
-              <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Generating fixes...</>
-            ) : (
-              <><Sparkles className="w-3.5 h-3.5" /> {total > 0 ? "Regenerate Fixes" : "Generate AI Fixes"}</>
+          <div className="flex gap-2 flex-wrap">
+            <Button
+              size="sm"
+              onClick={onGenerate}
+              disabled={isGenerating || applyAll.isPending}
+              className="bg-orange-600 hover:bg-orange-500 text-white gap-2"
+            >
+              {isGenerating ? (
+                <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Generating fixes...</>
+              ) : (
+                <><Sparkles className="w-3.5 h-3.5" /> {total > 0 ? "Regenerate Fixes" : "Generate AI Fixes"}</>
+              )}
+            </Button>
+            {total > resolved && total > 0 && (
+              <Button
+                size="sm"
+                onClick={() => applyAll.mutate({ auditId })}
+                disabled={applyAll.isPending || isGenerating}
+                className="bg-green-700 hover:bg-green-600 text-white gap-2"
+              >
+                {applyAll.isPending ? (
+                  <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Applying all...</>
+                ) : (
+                  <><CheckCheck className="w-3.5 h-3.5" /> Apply All Fixes</>
+                )}
+              </Button>
             )}
-          </Button>
+          </div>
         </div>
         {total > 0 && (
           <div className="mt-3">
@@ -531,6 +576,93 @@ function FixIssuesPanel({
           );
         })}
       </CardContent>
+
+      {/* Apply All Results Panel */}
+      {applyAllResults && applyAllResults.length > 0 && (
+        <div className="mt-4 border border-zinc-700 rounded-lg overflow-hidden">
+          <div className="flex items-center justify-between px-4 py-3 bg-zinc-800/60 border-b border-zinc-700">
+            <div className="flex items-center gap-2">
+              <CheckCircle2 className="w-4 h-4 text-green-400" />
+              <span className="text-sm font-medium text-zinc-200">Apply All — Results</span>
+              <span className="text-xs text-zinc-500">
+                {applyAllResults.filter((r) => r.status === "applied").length} applied
+                {applyAllResults.filter((r) => r.status === "failed").length > 0 && (
+                  <>, {applyAllResults.filter((r) => r.status === "failed").length} failed</>
+                )}
+              </span>
+            </div>
+            <button
+              className="text-zinc-500 hover:text-zinc-300 transition-colors"
+              onClick={() => setApplyAllResults(null)}
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+          <div className="divide-y divide-zinc-800">
+            {applyAllResults.map((result) => (
+              <div key={result.fixId} className="bg-zinc-900">
+                <button
+                  className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-zinc-800/40 transition-colors"
+                  onClick={() => setExpandedResultId(expandedResultId === result.fixId ? null : result.fixId)}
+                >
+                  {result.status === "applied" ? (
+                    <CheckCircle2 className="w-4 h-4 text-green-500 shrink-0" />
+                  ) : (
+                    <XCircle className="w-4 h-4 text-red-500 shrink-0" />
+                  )}
+                  <span className="flex-1 text-sm text-zinc-200">{result.label}</span>
+                  <span className="text-[10px] text-zinc-500 capitalize mr-2">
+                    {CATEGORY_META[result.category as Category]?.label ?? result.category}
+                  </span>
+                  {priorityBadge(result.priority as Priority)}
+                  <span className={`text-[11px] font-medium px-2 py-0.5 rounded-full ml-1 ${
+                    result.status === "applied"
+                      ? "bg-green-900/40 text-green-400"
+                      : "bg-red-900/40 text-red-400"
+                  }`}>
+                    {result.status === "applied" ? "Applied" : "Failed"}
+                  </span>
+                  {expandedResultId === result.fixId ? (
+                    <ChevronUp className="w-4 h-4 text-zinc-500 ml-1 shrink-0" />
+                  ) : (
+                    <ChevronDown className="w-4 h-4 text-zinc-500 ml-1 shrink-0" />
+                  )}
+                </button>
+                {expandedResultId === result.fixId && (
+                  <div className="px-4 pb-4 pt-2 bg-zinc-900/60 border-t border-zinc-800 space-y-3">
+                    {result.status === "failed" && result.error && (
+                      <div className="rounded-md border border-red-800/40 bg-red-950/20 p-3">
+                        <p className="text-xs text-red-300">{result.error}</p>
+                      </div>
+                    )}
+                    {result.snippet && (
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <p className="text-xs font-medium text-orange-400 flex items-center gap-1.5">
+                            <Wrench className="w-3.5 h-3.5" /> Applied Fix
+                          </p>
+                          <button
+                            className="text-xs text-zinc-500 hover:text-zinc-300 flex items-center gap-1"
+                            onClick={() => {
+                              navigator.clipboard.writeText(result.snippet);
+                              toast.success("Copied to clipboard.");
+                            }}
+                          >
+                            <Copy className="w-3 h-3" /> Copy
+                          </button>
+                        </div>
+                        <div className="bg-zinc-950 border border-zinc-700 rounded-md p-3 text-xs text-zinc-300 font-mono whitespace-pre-wrap overflow-x-auto max-h-64">
+                          {result.snippet}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </Card>
   );
 }
@@ -1373,6 +1505,7 @@ export default function Seo() {
                       isGenerating={generateFixes.isPending}
                       onGenerate={() => generateFixes.mutate({ auditId: latest.id })}
                       onUpdateStatus={(id, status) => updateFixStatus.mutate({ id, status })}
+                      onRefetch={refetchFixes}
                     />
                   </div>
                 </div>

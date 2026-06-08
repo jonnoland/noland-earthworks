@@ -1285,6 +1285,8 @@ export const fieldDiagnostics = mysqlTable("field_diagnostics", {
   confidence: int("confidence"),
   /** Random token for public shareable link access */
   shareToken: varchar("shareToken", { length: 64 }),
+  /** Optional expiration date for the shareable link */
+  shareTokenExpiresAt: timestamp("shareTokenExpiresAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 export type FieldDiagnostic = typeof fieldDiagnostics.$inferSelect;

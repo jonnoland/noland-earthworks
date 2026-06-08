@@ -1751,3 +1751,10 @@
 
 ## Sidebar Fix — June 2026
 - [x] Fix /ops sidebar: make it independently scrollable so all nav items are visible regardless of page scroll position
+
+## SEO + Field Fix Enhancements (Jun 8 2026)
+- [ ] SEO: "Apply All Fixes" button after audit generation that applies all recommended fixes in one click
+- [ ] SEO: Post-apply confirmation panel showing each fix with pass/fail status and what changed
+- [ ] Field Fix: Shareable link expiration date option + revoke button per diagnostic
+- [ ] Field Fix: Branded PDF export header with company logo and timestamp
+- [ ] Field Fix: "Add New Service" quick-entry modal button in Service Log tab
