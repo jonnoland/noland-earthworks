@@ -445,7 +445,81 @@ export default function QuotePage() {
             </div>
 
             {/* ── RIGHT: Form ── */}
-            <div className="lg:col-span-3">
+            <div className="lg:col-span-3" style={{ position: "relative" }}>
+              {/* Loading overlay — shown while submission is in flight */}
+              {submitQuote.isPending && (
+                <div
+                  style={{
+                    position: "absolute",
+                    inset: 0,
+                    zIndex: 20,
+                    backgroundColor: "rgba(18,18,18,0.88)",
+                    backdropFilter: "blur(4px)",
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: "1.25rem",
+                    borderRadius: "4px",
+                  }}
+                >
+                  {/* Pulsing ring + spinner */}
+                  <div style={{ position: "relative", width: 72, height: 72 }}>
+                    <div
+                      style={{
+                        position: "absolute",
+                        inset: 0,
+                        borderRadius: "50%",
+                        border: "2px solid rgba(224,123,42,0.25)",
+                        animation: "ping 1.4s cubic-bezier(0,0,0.2,1) infinite",
+                      }}
+                    />
+                    <div
+                      style={{
+                        position: "absolute",
+                        inset: 8,
+                        borderRadius: "50%",
+                        border: "2px solid rgba(224,123,42,0.15)",
+                        animation: "ping 1.4s cubic-bezier(0,0,0.2,1) infinite 0.3s",
+                      }}
+                    />
+                    <div
+                      style={{
+                        position: "absolute",
+                        inset: 0,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                      }}
+                    >
+                      <Loader2 size={32} style={{ color: "#E07B2A", animation: "spin 1s linear infinite" }} />
+                    </div>
+                  </div>
+                  <div
+                    style={{
+                      fontFamily: "'Oswald', sans-serif",
+                      fontWeight: 600,
+                      fontSize: "1.1rem",
+                      letterSpacing: "0.06em",
+                      textTransform: "uppercase",
+                      color: "#F0EDE6",
+                    }}
+                  >
+                    Sending Your Request
+                  </div>
+                  <div
+                    style={{
+                      fontFamily: "'Lato', sans-serif",
+                      fontWeight: 300,
+                      fontSize: "0.85rem",
+                      color: "rgba(240,237,230,0.5)",
+                    }}
+                  >
+                    Just a moment...
+                  </div>
+                </div>
+              )}
+
               {submitted ? (
                 <div
                   className="flex flex-col items-center justify-center text-center p-12"
@@ -453,9 +527,22 @@ export default function QuotePage() {
                     backgroundColor: "rgba(224,123,42,0.06)",
                     border: "1px solid rgba(224,123,42,0.3)",
                     minHeight: "480px",
+                    animation: "fadeSlideUp 0.5s ease both",
                   }}
                 >
-                  <CheckCircle size={56} style={{ color: "#E07B2A", marginBottom: "1.5rem" }} />
+                  {/* Animated success icon with pulse ring */}
+                  <div style={{ position: "relative", marginBottom: "1.75rem" }}>
+                    <div
+                      style={{
+                        position: "absolute",
+                        inset: -12,
+                        borderRadius: "50%",
+                        backgroundColor: "rgba(224,123,42,0.12)",
+                        animation: "successPulse 2s ease-in-out infinite",
+                      }}
+                    />
+                    <CheckCircle size={64} style={{ color: "#E07B2A", position: "relative", zIndex: 1 }} />
+                  </div>
                   <h2
                     style={{
                       fontFamily: "'Oswald', sans-serif",
