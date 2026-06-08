@@ -7,7 +7,8 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { getLoginUrl } from "@/const";
 
 export default function Footer() {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
+  const isAdmin = user?.role === "admin";
 
   const scrollTo = (href: string) => {
     const el = document.querySelector(href);
@@ -278,8 +279,8 @@ export default function Footer() {
                 {l.label}
               </a>
             ))}
-            {/* Owner-only ops link */}
-            {isAuthenticated ? (
+            {/* Owner-only ops link — admin only */}
+            {isAdmin ? (
               <a
                 href="/ops"
                 style={{

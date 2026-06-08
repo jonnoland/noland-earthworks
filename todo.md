@@ -1712,3 +1712,11 @@
 - [x] Fix LocalBusiness JSON-LD regex in seoAudit.ts so it detects the existing block in index.html
 - [x] Upgrade audit engine to use Puppeteer headless browser so React SPA content (H1, word count, links, images) is accurately audited
 - [x] Verify CDN cache cleared for title and meta description after index.html update
+
+## Site Audit Fixes — Jun 8 2026
+
+- [ ] Hide Ops button in Navbar from public visitors (admin-only)
+- [ ] Hide Ops Dashboard link in Footer from public visitors (admin-only)
+- [ ] Fix stats bar data: 35 counties served, 24hr quote turnaround
+- [ ] Fix "Valneer" typo on pricing page — correct spelling is Vanleer
+- [ ] Make email field required on quote form

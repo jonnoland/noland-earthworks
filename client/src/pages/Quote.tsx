@@ -668,7 +668,7 @@ export default function QuotePage() {
                   <div>
                     <label style={labelStyle}>Email Address</label>
                     <input
-                      name="email" type="email"
+                      name="email" type="email" required
                       placeholder="john@example.com"
                       value={form.email} onChange={handleChange}
                       style={inputStyle}

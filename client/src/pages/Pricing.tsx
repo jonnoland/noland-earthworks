@@ -341,15 +341,15 @@ const costFactors = [
     },
   },
   {
-    factor: "Distance from Valneer, TN",
+    factor: "Distance from Vanleer, TN",
     impact: "Low",
     detail:
       "We serve 35 counties with no travel surcharge within our normal service area.",
     icon: "MapPin",
     expanded: {
       headline: "Most of our service area has no travel surcharge",
-      body: "Our base of operations is in Valneer, TN. We serve 35 counties across Middle and West Tennessee — from Davidson and Williamson counties in the east to Shelby and Tipton in the west — with no additional travel fee. For properties outside our standard service area, we charge $3.50 per mile beyond the boundary. If you're unsure whether your property falls within our free service zone, just ask when you request your estimate.",
-      example: "A job in Humphreys County (within service area): no travel surcharge. A job in an outlying county 80 miles from Valneer: approximately $280 in travel fees added to the estimate.",
+      body: "Our base of operations is in Vanleer, TN. We serve 35 counties across Middle and West Tennessee — from Davidson and Williamson counties in the east to Shelby and Tipton in the west — with no additional travel fee. For properties outside our standard service area, we charge $3.50 per mile beyond the boundary. If you're unsure whether your property falls within our free service zone, just ask when you request your estimate.",
+      example: "A job in Humphreys County (within service area): no travel surcharge. A job in an outlying county 80 miles from Vanleer: approximately $280 in travel fees added to the estimate.",
     },
   },
 ];
