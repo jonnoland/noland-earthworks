@@ -1720,3 +1720,21 @@
 - [ ] Fix stats bar data: 35 counties served, 24hr quote turnaround
 - [ ] Fix "Valneer" typo on pricing page — correct spelling is Vanleer
 - [ ] Make email field required on quote form
+
+## Field Fix (FieldFix.ai Clone)
+- [x] DB schema: equipment table (make, model, year, serial, hours, tags, notes)
+- [x] DB schema: service_logs table (equipment_id, date, hours_at_service, service_type, notes, cost)
+- [x] DB schema: service_intervals table (equipment_id, service_type, interval_hours, last_service_hours, last_service_date, notes)
+- [x] DB schema: field_diagnostics table (equipment_id, symptoms, error_code, photo_url, report_json, created_at)
+- [x] tRPC: equipment CRUD procedures
+- [x] tRPC: service log CRUD procedures
+- [x] tRPC: service interval CRUD procedures
+- [x] tRPC: runDiagnostic procedure (LLM Fix Report generation)
+- [x] UI: /ops/field-fix page with tabs (Equipment, Diagnose, Service Log, Intervals, History)
+- [x] UI: Equipment card — make/model/year/serial/hours/tags, quick hours update
+- [x] UI: Diagnose tab — symptoms textarea, error code input, photo upload, Diagnose button
+- [x] UI: Fix Report display — confidence %, root causes ranked, fix steps (checkable), cost estimate, tools needed, safety notice
+- [x] UI: Service Log tab — log entry form + timeline list
+- [x] UI: Intervals tab — add/edit intervals with hours-based due status (overdue/due soon/ok)
+- [x] UI: History tab — past diagnostics list with summary
+- [x] Nav: Add Field Fix link to DashboardLayout sidebar

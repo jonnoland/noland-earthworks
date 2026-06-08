@@ -27,6 +27,7 @@ import OpsDistanceQuotes from "./pages/ops/DistanceQuotes";
 import OpsQuoteAnalytics from "./pages/ops/QuoteAnalytics";
 import OpsTasksPage from "./pages/ops/Tasks";
 import OpsEquipment from "./pages/ops/Equipment";
+import OpsFieldFix from "./pages/ops/FieldFix";
 import OpsTeam from "./pages/ops/Team";
 import OpsRegister from "./pages/ops/Register";
 import CostEstimator from "./pages/ops/CostEstimator";
@@ -303,6 +304,9 @@ function Router() {
       </Route>
       <Route path="/ops/equipment">
         <OwnerRoute><OpsEquipment /></OwnerRoute>
+      </Route>
+      <Route path="/ops/field-fix">
+        <OwnerRoute><OpsFieldFix /></OwnerRoute>
       </Route>
       <Route path="/ops/distance-quotes/analytics">
         <OwnerRoute><OpsQuoteAnalytics /></OwnerRoute>

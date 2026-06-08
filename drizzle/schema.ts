@@ -1192,3 +1192,98 @@ export const seoFixes = mysqlTable("seo_fixes", {
 });
 export type SeoFix = typeof seoFixes.$inferSelect;
 export type InsertSeoFix = typeof seoFixes.$inferInsert;
+
+// ─── Field Fix ────────────────────────────────────────────────────────────────
+
+/**
+ * Equipment registry — stores Jon's machines and attachments.
+ * Designed for a single-operator fleet; supports multiple machines if needed.
+ */
+export const equipment = mysqlTable("equipment", {
+  id: int("id").primaryKey().autoincrement(),
+  /** Display name / nickname, e.g. "Tracked Mulcher" */
+  name: varchar("name", { length: 200 }).notNull(),
+  make: varchar("make", { length: 100 }),
+  model: varchar("model", { length: 100 }),
+  year: int("year"),
+  serialNumber: varchar("serialNumber", { length: 100 }),
+  /** Current machine hours */
+  currentHours: int("currentHours").default(0).notNull(),
+  hoursUpdatedAt: timestamp("hoursUpdatedAt").defaultNow().notNull(),
+  /** Tags: primary, attachment, leased, financed, etc. */
+  tags: text("tags"),
+  /** Free-form notes about the machine */
+  notes: text("notes"),
+  /** Photo URL (S3 CDN) */
+  photoUrl: text("photoUrl"),
+  /** active | inactive | sold */
+  status: mysqlEnum("status", ["active", "inactive", "sold"]).default("active").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type Equipment = typeof equipment.$inferSelect;
+export type InsertEquipment = typeof equipment.$inferInsert;
+
+/**
+ * Service log — records every maintenance/service event for a machine.
+ */
+export const serviceLogs = mysqlTable("service_logs", {
+  id: int("id").primaryKey().autoincrement(),
+  equipmentId: int("equipmentId").notNull(),
+  serviceType: varchar("serviceType", { length: 100 }).notNull(),
+  serviceDate: timestamp("serviceDate").notNull(),
+  hoursAtService: int("hoursAtService"),
+  /** Who performed the service: owner, dealer, mobile tech */
+  performedBy: varchar("performedBy", { length: 200 }),
+  notes: text("notes"),
+  /** Total cost in dollars (parts + labor) */
+  cost: decimal("cost", { precision: 10, scale: 2 }),
+  /** Receipt/invoice photo URL */
+  receiptUrl: text("receiptUrl"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type ServiceLog = typeof serviceLogs.$inferSelect;
+export type InsertServiceLog = typeof serviceLogs.$inferInsert;
+
+/**
+ * Service intervals — recurring maintenance schedules per machine.
+ * Hours-based: next service due at (lastServiceHours + intervalHours).
+ */
+export const serviceIntervals = mysqlTable("service_intervals", {
+  id: int("id").primaryKey().autoincrement(),
+  equipmentId: int("equipmentId").notNull(),
+  serviceType: varchar("serviceType", { length: 100 }).notNull(),
+  /** How often (in machine hours) this service is due */
+  intervalHours: int("intervalHours").notNull(),
+  lastServiceHours: int("lastServiceHours"),
+  lastServiceDate: timestamp("lastServiceDate"),
+  notes: text("notes"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type ServiceInterval = typeof serviceIntervals.$inferSelect;
+export type InsertServiceInterval = typeof serviceIntervals.$inferInsert;
+
+/**
+ * Field diagnostics — AI-generated Fix Reports for equipment issues.
+ */
+export const fieldDiagnostics = mysqlTable("field_diagnostics", {
+  id: int("id").primaryKey().autoincrement(),
+  equipmentId: int("equipmentId"),
+  /** Plain-text symptom description from the operator */
+  symptoms: text("symptoms").notNull(),
+  /** Optional error/fault code from the machine display */
+  errorCode: varchar("errorCode", { length: 100 }),
+  /** Optional photo URL uploaded by operator */
+  photoUrl: text("photoUrl"),
+  /** Full AI Fix Report stored as JSON string */
+  reportJson: text("reportJson"),
+  /** Short headline summary of the diagnosis */
+  headline: varchar("headline", { length: 500 }),
+  /** Overall confidence percentage (0-100) */
+  confidence: int("confidence"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type FieldDiagnostic = typeof fieldDiagnostics.$inferSelect;
+export type InsertFieldDiagnostic = typeof fieldDiagnostics.$inferInsert;

@@ -31,6 +31,7 @@ import {
   CheckSquare,
   Wrench,
   BotMessageSquare,
+  Stethoscope,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/_core/hooks/useAuth";
@@ -49,6 +50,7 @@ const navItems = [
   { icon: Trophy, label: "Scoreboard", href: "/ops/scoreboard" },
   { icon: CheckSquare, label: "Tasks", href: "/ops/tasks" },
   { icon: Wrench, label: "Equipment", href: "/ops/equipment" },
+  { icon: Stethoscope, label: "Field Fix", href: "/ops/field-fix" },
 ];
 
 const bottomItems = [

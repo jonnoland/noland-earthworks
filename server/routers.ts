@@ -14,6 +14,7 @@ import { maintenanceRouter } from "./maintenanceRouter";
 import { chatRouter } from "./chatRouter";
 import { costEstimatorRouter } from "./costEstimatorRouter";
 import { fieldQuoteRouter } from "./fieldQuoteRouter";
+import { fieldFixRouter } from "./fieldFixRouter";
 import { getDb } from "./db";
 import { businessSettings } from "../drizzle/schema";
 
@@ -43,6 +44,7 @@ export const appRouter = router({
   chat: chatRouter,
   costEstimator: costEstimatorRouter,
   fieldQuote: fieldQuoteRouter,
+  fieldFix: fieldFixRouter,
 
   /**
    * Public site configuration — read-only, no auth required.
