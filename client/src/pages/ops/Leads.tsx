@@ -589,6 +589,14 @@ function LeadDetailPanel({
   const utils = trpc.useUtils();
   const { data: notes = [], isLoading: notesLoading } = trpc.ops.leads.listNotes.useQuery({ leadId: lead.id });
 
+  const deleteChatSession = trpc.chat.deleteSession.useMutation({
+    onSuccess: () => {
+      toast.success("Chat session deleted.");
+      utils.ops.leads.list.invalidate();
+    },
+    onError: (e) => toast.error(e.message || "Failed to delete chat session."),
+  });
+
   const generateFollowUp = trpc.ops.leads.generateFollowUp.useMutation({
     onSuccess: (data) => {
       setFollowUpDraft(typeof data.draft === "string" ? data.draft : String(data.draft ?? ""));
@@ -721,14 +729,28 @@ function LeadDetailPanel({
               <Calendar className="w-3.5 h-3.5" />Schedule Visit
             </button>
           </div>
-          {/* View Transcript button — only shown for chat-sourced leads */}
+          {/* Chat session actions — only shown for chat-sourced leads */}
           {lead.chatSessionId && (
-            <button
-              onClick={() => navigate(`/ops/chat-sessions?session=${lead.chatSessionId}`)}
-              className="mt-2 w-full flex items-center justify-center gap-2 bg-teal-600/15 hover:bg-teal-600/25 border border-teal-500/25 text-teal-400 text-[11px] font-semibold py-2 rounded-md transition-colors">
-              <BotMessageSquare className="w-3.5 h-3.5" />
-              View Chat Transcript
-            </button>
+            <div className="mt-2 flex gap-2">
+              <button
+                onClick={() => navigate(`/ops/chat-sessions?session=${lead.chatSessionId}`)}
+                className="flex-1 flex items-center justify-center gap-2 bg-teal-600/15 hover:bg-teal-600/25 border border-teal-500/25 text-teal-400 text-[11px] font-semibold py-2 rounded-md transition-colors">
+                <BotMessageSquare className="w-3.5 h-3.5" />
+                View Transcript
+              </button>
+              <button
+                onClick={() => {
+                  if (!confirm("Delete this chat session? This cannot be undone.")) return;
+                  deleteChatSession.mutate({ sessionId: lead.chatSessionId! });
+                }}
+                disabled={deleteChatSession.isPending}
+                title="Delete chat session"
+                className="flex items-center justify-center gap-1.5 px-3 bg-red-900/20 hover:bg-red-900/40 border border-red-700/30 text-red-400 text-[11px] font-semibold py-2 rounded-md transition-colors disabled:opacity-50">
+                {deleteChatSession.isPending
+                  ? <span className="w-3.5 h-3.5 border border-red-400 border-t-transparent rounded-full animate-spin inline-block" />
+                  : <Trash2 className="w-3.5 h-3.5" />}
+              </button>
+            </div>
           )}
         </div>
 

@@ -461,4 +461,16 @@ export const chatRouter = router({
     const deleted = await cleanupAnonymousChatSessions(14, true);
     return { deleted };
   }),
+
+  /** Delete a single chat session and its messages (cascade) */
+  deleteSession: protectedProcedure
+    .input(z.object({ sessionId: z.number().int() }))
+    .mutation(async ({ ctx, input }) => {
+      if (ctx.user.role !== "admin") throw new Error("Admin only");
+      const db = await getDb();
+      if (!db) throw new Error("Database unavailable");
+      // Messages cascade-delete via FK, so just delete the session
+      await db.delete(chatSessions).where(eq(chatSessions.id, input.sessionId));
+      return { success: true };
+    }),
 });
