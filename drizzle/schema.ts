@@ -1283,6 +1283,8 @@ export const fieldDiagnostics = mysqlTable("field_diagnostics", {
   headline: varchar("headline", { length: 500 }),
   /** Overall confidence percentage (0-100) */
   confidence: int("confidence"),
+  /** Random token for public shareable link access */
+  shareToken: varchar("shareToken", { length: 64 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 export type FieldDiagnostic = typeof fieldDiagnostics.$inferSelect;

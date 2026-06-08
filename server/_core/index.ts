@@ -141,6 +141,37 @@ async function startServer() {
 
   // Sitemap + robots.txt
   registerSitemapRoutes(app);
+
+  // Public shared Fix Report endpoint — no auth required
+  app.get("/api/field-fix/shared/:token", async (req, res) => {
+    try {
+      const { getDb } = await import("../db");
+      const db = await getDb();
+      if (!db) { res.status(503).json({ error: "Database unavailable" }); return; }
+      const { fieldDiagnostics } = await import("../../drizzle/schema");
+      const { eq } = await import("drizzle-orm");
+      const token = req.params.token;
+      if (!token || token.length < 10) { res.status(400).json({ error: "Invalid token" }); return; }
+      const [row] = await db
+        .select()
+        .from(fieldDiagnostics)
+        .where(eq(fieldDiagnostics.shareToken, token))
+        .limit(1);
+      if (!row) { res.status(404).json({ error: "Report not found" }); return; }
+      res.json({
+        id: row.id,
+        headline: row.headline,
+        confidence: row.confidence,
+        symptoms: row.symptoms,
+        errorCode: row.errorCode,
+        photoUrl: row.photoUrl,
+        report: row.reportJson ? JSON.parse(row.reportJson) : null,
+        createdAt: row.createdAt,
+      });
+    } catch (err: unknown) {
+      res.status(500).json({ error: String(err) });
+    }
+  });
   // Bot prerendering — must come before Vite/static middleware
   app.use(prerenderMiddleware);
   // One-time cleanup endpoint — delete test leads by name

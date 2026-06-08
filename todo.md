@@ -1738,3 +1738,16 @@
 - [x] UI: Intervals tab — add/edit intervals with hours-based due status (overdue/due soon/ok)
 - [x] UI: History tab — past diagnostics list with summary
 - [x] Nav: Add Field Fix link to DashboardLayout sidebar
+
+## Field Fix Enhancements — June 2026
+- [ ] Fix Report: Export as PDF (client-side generation)
+- [ ] Fix Report: Generate shareable link (save report to DB, public URL)
+- [ ] Intervals tab: Visual progress bars showing hours used vs. interval
+- [ ] Intervals tab: Color-coded status badges (green/amber/red) with percentage
+- [ ] Service Log tab: Search by keyword (service type, notes, performer)
+- [ ] Service Log tab: Filter by service type dropdown
+- [ ] History tab: Search diagnostics by symptom text or date
+- [ ] History tab: Filter by equipment (when multiple machines exist)
+
+## Sidebar Fix — June 2026
+- [x] Fix /ops sidebar: make it independently scrollable so all nav items are visible regardless of page scroll position

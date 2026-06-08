@@ -14,6 +14,7 @@ import {
   fieldDiagnostics,
 } from "../drizzle/schema";
 import { eq, desc, and } from "drizzle-orm";
+import { randomBytes } from "crypto";
 import { invokeLLM } from "./_core/llm";
 import { storagePut } from "./storage";
 
@@ -424,6 +425,45 @@ Return ONLY valid JSON matching this exact schema — no markdown, no explanatio
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
       await db.delete(fieldDiagnostics).where(eq(fieldDiagnostics.id, input.id));
       return { ok: true };
+    }),
+
+  /** Generate (or retrieve existing) a shareable token for a diagnostic report */
+  generateShareToken: adminProcedure
+    .input(z.object({ id: z.number().int() }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+      const [row] = await db
+        .select({ id: fieldDiagnostics.id, shareToken: fieldDiagnostics.shareToken })
+        .from(fieldDiagnostics)
+        .where(eq(fieldDiagnostics.id, input.id))
+        .limit(1);
+      if (!row) throw new TRPCError({ code: "NOT_FOUND", message: "Diagnostic not found" });
+      if (row.shareToken) return { token: row.shareToken };
+      const token = randomBytes(24).toString("hex");
+      await db
+        .update(fieldDiagnostics)
+        .set({ shareToken: token })
+        .where(eq(fieldDiagnostics.id, input.id));
+      return { token };
+    }),
+
+  /** Public endpoint — fetch a diagnostic by share token (no auth required) */
+  getSharedDiagnostic: adminProcedure
+    .input(z.object({ token: z.string().min(1) }))
+    .query(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+      const [row] = await db
+        .select()
+        .from(fieldDiagnostics)
+        .where(eq(fieldDiagnostics.shareToken, input.token))
+        .limit(1);
+      if (!row) throw new TRPCError({ code: "NOT_FOUND", message: "Report not found or link expired" });
+      return {
+        ...row,
+        report: row.reportJson ? (JSON.parse(row.reportJson) as FixReport) : null,
+      };
     }),
 
   // ── Photo Upload ───────────────────────────────────────────────────────────

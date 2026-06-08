@@ -1,0 +1,1 @@
+ALTER TABLE `field_diagnostics` ADD `shareToken` varchar(64);

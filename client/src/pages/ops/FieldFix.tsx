@@ -1,8 +1,14 @@
 /**
  * Field Fix — AI-powered equipment diagnostics, service logs, and maintenance intervals.
- * Modeled after FieldFix.ai. Scoped to Jon's single-operator fleet.
+ * Modeled after FieldFix.ai — scoped to Jon's single-operator fleet.
+ *
+ * Enhancements:
+ *  - Fix Report: PDF export (client-side via window.print) + shareable link (copy to clipboard)
+ *  - Intervals: Visual progress bars with color-coded status (green/amber/red)
+ *  - Service Log: Keyword search + service type filter
+ *  - History: Keyword search + date filter
  */
-import { useState, useRef } from "react";
+import { useState, useRef, useMemo } from "react";
 import { trpc } from "@/lib/trpc";
 import OpsDashboardLayout from "@/components/OpsDashboardLayout";
 import { toast } from "sonner";
@@ -30,6 +36,10 @@ import {
   Timer,
   DollarSign,
   Gauge,
+  Download,
+  Link2,
+  Search,
+  Filter,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -80,7 +90,7 @@ const SERVICE_TYPES = [
   "Other",
 ];
 
-// ─── Confidence color helper ──────────────────────────────────────────────────
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function confidenceColor(pct: number) {
   if (pct >= 80) return "bg-green-500";
@@ -88,19 +98,62 @@ function confidenceColor(pct: number) {
   return "bg-orange-500";
 }
 
-// ─── Interval status helper ───────────────────────────────────────────────────
-
+/** Returns progress percentage (0–100) clamped, plus status label and colors */
 function intervalStatus(
   currentHours: number,
   lastServiceHours: number | null | undefined,
   intervalHours: number
-): { label: string; color: string; hoursUntilDue: number | null } {
-  if (lastServiceHours == null) return { label: "No data", color: "text-muted-foreground", hoursUntilDue: null };
+): {
+  label: string;
+  badgeClass: string;
+  barClass: string;
+  textClass: string;
+  hoursUntilDue: number | null;
+  progressPct: number;
+} {
+  if (lastServiceHours == null) {
+    return {
+      label: "No data",
+      badgeClass: "border-border text-muted-foreground",
+      barClass: "bg-muted-foreground/30",
+      textClass: "text-muted-foreground",
+      hoursUntilDue: null,
+      progressPct: 0,
+    };
+  }
   const nextDue = lastServiceHours + intervalHours;
   const hoursUntilDue = nextDue - currentHours;
-  if (hoursUntilDue <= 0) return { label: "Overdue", color: "text-red-400", hoursUntilDue };
-  if (hoursUntilDue <= intervalHours * 0.1) return { label: "Due soon", color: "text-amber-400", hoursUntilDue };
-  return { label: "OK", color: "text-green-400", hoursUntilDue };
+  const hoursSinceService = currentHours - lastServiceHours;
+  const rawPct = Math.min(100, Math.max(0, (hoursSinceService / intervalHours) * 100));
+
+  if (hoursUntilDue <= 0) {
+    return {
+      label: "Overdue",
+      badgeClass: "border-red-500/40 text-red-400 bg-red-500/10",
+      barClass: "bg-red-500",
+      textClass: "text-red-400",
+      hoursUntilDue,
+      progressPct: 100,
+    };
+  }
+  if (hoursUntilDue <= intervalHours * 0.1) {
+    return {
+      label: "Due Soon",
+      badgeClass: "border-amber-500/40 text-amber-400 bg-amber-500/10",
+      barClass: "bg-amber-500",
+      textClass: "text-amber-400",
+      hoursUntilDue,
+      progressPct: rawPct,
+    };
+  }
+  return {
+    label: "OK",
+    badgeClass: "border-green-500/40 text-green-400 bg-green-500/10",
+    barClass: "bg-green-500",
+    textClass: "text-green-400",
+    hoursUntilDue,
+    progressPct: rawPct,
+  };
 }
 
 // ─── Main Component ───────────────────────────────────────────────────────────
@@ -118,13 +171,13 @@ export default function FieldFix() {
     <OpsDashboardLayout title="Field Fix" subtitle="AI diagnostics and maintenance tracking">
       <div className="p-6 max-w-5xl mx-auto">
         {/* Tab bar */}
-        <div className="flex gap-1 mb-6 border-b border-border pb-0">
+        <div className="flex gap-1 mb-6 border-b border-border pb-0 overflow-x-auto">
           {TABS.map((tab) => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
               className={cn(
-                "flex items-center gap-2 px-4 py-2.5 text-sm font-medium transition-all border-b-2 -mb-px",
+                "flex items-center gap-2 px-4 py-2.5 text-sm font-medium transition-all border-b-2 -mb-px whitespace-nowrap",
                 activeTab === tab.id
                   ? "border-primary text-primary"
                   : "border-transparent text-muted-foreground hover:text-foreground"
@@ -155,10 +208,10 @@ export default function FieldFix() {
           <IntervalsTab equipmentId={machineId} currentHours={selectedMachine?.currentHours ?? 0} />
         )}
         {activeTab === "history" && (
-          <HistoryTab equipmentId={machineId} />
+          <HistoryTab equipmentId={machineId} equipmentList={equipmentList} />
         )}
 
-        {/* No machine selected prompt for tabs that need one */}
+        {/* No machine prompt */}
         {(activeTab === "service-log" || activeTab === "intervals") && !machineId && (
           <div className="text-center py-16 text-muted-foreground">
             <Wrench className="w-10 h-10 mx-auto mb-3 opacity-30" />
@@ -289,7 +342,6 @@ function EquipmentTab({
               </div>
 
               <div className="flex items-center gap-2 shrink-0">
-                {/* Hours display + quick edit */}
                 {hoursEditId === m.id ? (
                   <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
                     <Input
@@ -344,7 +396,6 @@ function EquipmentTab({
         ))}
       </div>
 
-      {/* Add/Edit Form */}
       {showForm && (
         <div className="rounded-lg border border-border bg-card p-5">
           <h3 className="text-sm font-semibold text-foreground mb-4">
@@ -377,17 +428,17 @@ function EquipmentTab({
             </div>
             <div>
               <label className="text-xs text-muted-foreground mb-1 block">Tags (comma-separated)</label>
-              <Input value={form.tags} onChange={(e) => setForm({ ...form, tags: e.target.value })} placeholder="e.g. Primary, Financed" />
+              <Input value={form.tags} onChange={(e) => setForm({ ...form, tags: e.target.value })} placeholder="e.g. primary, tracked" />
             </div>
             <div className="col-span-2">
               <label className="text-xs text-muted-foreground mb-1 block">Notes</label>
-              <Textarea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} placeholder="Optional notes about this machine" rows={2} />
+              <Textarea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} placeholder="Any relevant notes about this machine" rows={2} />
             </div>
           </div>
           <div className="flex gap-2 mt-4">
             <Button onClick={handleSubmit} disabled={upsert.isPending} className="gap-1.5">
               {upsert.isPending && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
-              {editingId ? "Save Changes" : "Add Machine"}
+              Save Machine
             </Button>
             <Button variant="outline" onClick={() => { setShowForm(false); setEditingId(null); }}>Cancel</Button>
           </div>
@@ -405,6 +456,7 @@ function DiagnoseTab({ machine, onSwitchToHistory }: { machine: any; onSwitchToH
   const [photoDataUrl, setPhotoDataUrl] = useState<string | null>(null);
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [report, setReport] = useState<FixReport | null>(null);
+  const [reportId, setReportId] = useState<number | null>(null);
   const [completedSteps, setCompletedSteps] = useState<Set<number>>(new Set());
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -453,6 +505,7 @@ function DiagnoseTab({ machine, onSwitchToHistory }: { machine: any; onSwitchToH
     });
 
     setReport(result.report);
+    setReportId(result.id ?? null);
     setCompletedSteps(new Set());
   };
 
@@ -470,6 +523,7 @@ function DiagnoseTab({ machine, onSwitchToHistory }: { machine: any; onSwitchToH
     setPhotoDataUrl(null);
     setPhotoFile(null);
     setReport(null);
+    setReportId(null);
     setCompletedSteps(new Set());
   };
 
@@ -477,7 +531,6 @@ function DiagnoseTab({ machine, onSwitchToHistory }: { machine: any; onSwitchToH
     <div className="max-w-2xl">
       {!report ? (
         <>
-          {/* Machine context */}
           {machine && (
             <div className="flex items-center gap-3 p-3 rounded-lg bg-primary/5 border border-primary/20 mb-5">
               <Wrench className="w-4 h-4 text-primary shrink-0" />
@@ -493,7 +546,6 @@ function DiagnoseTab({ machine, onSwitchToHistory }: { machine: any; onSwitchToH
             </div>
           )}
 
-          {/* Step 1 — Photo */}
           <div className="mb-5">
             <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">
               Step 1 — Visual Context (Optional)
@@ -530,7 +582,6 @@ function DiagnoseTab({ machine, onSwitchToHistory }: { machine: any; onSwitchToH
             <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handlePhoto} />
           </div>
 
-          {/* Step 2 — Symptoms */}
           <div className="mb-5">
             <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">
               Step 2 — Describe the Problem
@@ -544,7 +595,6 @@ function DiagnoseTab({ machine, onSwitchToHistory }: { machine: any; onSwitchToH
             />
           </div>
 
-          {/* Step 3 — Error code */}
           <div className="mb-6">
             <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">
               Step 3 — Error Code (Optional)
@@ -556,7 +606,6 @@ function DiagnoseTab({ machine, onSwitchToHistory }: { machine: any; onSwitchToH
             />
           </div>
 
-          {/* Safety guardrails */}
           <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/20 mb-6">
             <p className="text-[11px] text-amber-400 font-semibold mb-1">Safety Guardrails</p>
             <ul className="text-[11px] text-muted-foreground space-y-0.5 list-disc list-inside">
@@ -581,6 +630,7 @@ function DiagnoseTab({ machine, onSwitchToHistory }: { machine: any; onSwitchToH
       ) : (
         <FixReportDisplay
           report={report}
+          reportId={reportId}
           symptoms={symptoms}
           completedSteps={completedSteps}
           onToggleStep={toggleStep}
@@ -596,6 +646,7 @@ function DiagnoseTab({ machine, onSwitchToHistory }: { machine: any; onSwitchToH
 
 function FixReportDisplay({
   report,
+  reportId,
   symptoms,
   completedSteps,
   onToggleStep,
@@ -603,6 +654,7 @@ function FixReportDisplay({
   onViewHistory,
 }: {
   report: FixReport;
+  reportId: number | null;
   symptoms: string;
   completedSteps: Set<number>;
   onToggleStep: (i: number) => void;
@@ -610,6 +662,31 @@ function FixReportDisplay({
   onViewHistory: () => void;
 }) {
   const [toolsExpanded, setToolsExpanded] = useState(false);
+  const [copyingLink, setCopyingLink] = useState(false);
+
+  const generateToken = trpc.fieldFix.generateShareToken.useMutation();
+
+  const handlePrint = () => {
+    window.print();
+  };
+
+  const handleCopyLink = async () => {
+    if (!reportId) {
+      toast.error("Report ID not available. Try running the diagnosis again.");
+      return;
+    }
+    setCopyingLink(true);
+    try {
+      const { token } = await generateToken.mutateAsync({ id: reportId });
+      const url = `${window.location.origin}/api/field-fix/shared/${token}`;
+      await navigator.clipboard.writeText(url);
+      toast.success("Shareable link copied to clipboard.");
+    } catch {
+      toast.error("Failed to generate link.");
+    } finally {
+      setCopyingLink(false);
+    }
+  };
 
   return (
     <div className="space-y-4">
@@ -788,9 +865,21 @@ function FixReportDisplay({
       </div>
 
       {/* Actions */}
-      <div className="flex gap-2 pt-2">
+      <div className="flex flex-wrap gap-2 pt-2">
         <Button variant="outline" onClick={onReset} className="gap-1.5">
           <RefreshCw className="w-3.5 h-3.5" /> New Diagnosis
+        </Button>
+        <Button variant="outline" onClick={handlePrint} className="gap-1.5">
+          <Download className="w-3.5 h-3.5" /> Save as PDF
+        </Button>
+        <Button
+          variant="outline"
+          onClick={handleCopyLink}
+          disabled={copyingLink || generateToken.isPending}
+          className="gap-1.5"
+        >
+          {copyingLink ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Link2 className="w-3.5 h-3.5" />}
+          Copy Shareable Link
         </Button>
         <Button variant="ghost" onClick={onViewHistory} className="gap-1.5 text-muted-foreground">
           <History className="w-3.5 h-3.5" /> View History
@@ -804,6 +893,8 @@ function FixReportDisplay({
 
 function ServiceLogTab({ equipmentId }: { equipmentId: number }) {
   const [showForm, setShowForm] = useState(false);
+  const [search, setSearch] = useState("");
+  const [filterType, setFilterType] = useState("all");
   const [form, setForm] = useState({
     serviceType: "", serviceDate: new Date().toISOString().split("T")[0],
     hoursAtService: "", performedBy: "", notes: "", cost: "",
@@ -832,12 +923,29 @@ function ServiceLogTab({ equipmentId }: { equipmentId: number }) {
     });
   };
 
+  const filteredLogs = useMemo(() => {
+    return logs.filter((log: any) => {
+      const matchesType = filterType === "all" || log.serviceType === filterType;
+      const q = search.toLowerCase();
+      const matchesSearch = !q || [log.serviceType, log.notes, log.performedBy]
+        .filter(Boolean)
+        .some((v: string) => v.toLowerCase().includes(q));
+      return matchesType && matchesSearch;
+    });
+  }, [logs, search, filterType]);
+
+  const usedTypes = useMemo(() => {
+    const set = new Set<string>();
+    logs.forEach((l: any) => { if (l.serviceType) set.add(l.serviceType); });
+    return Array.from(set).sort();
+  }, [logs]);
+
   return (
     <div>
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-sm font-semibold text-foreground">Service History</h2>
         <Button size="sm" onClick={() => setShowForm(!showForm)} className="gap-1.5">
-          <Plus className="w-3.5 h-3.5" /> Log Service Event
+          <Plus className="w-3.5 h-3.5" /> Log Service
         </Button>
       </div>
 
@@ -887,14 +995,45 @@ function ServiceLogTab({ equipmentId }: { equipmentId: number }) {
         </div>
       )}
 
+      {/* Search + filter bar */}
+      {logs.length > 0 && (
+        <div className="flex gap-2 mb-4">
+          <div className="relative flex-1">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+            <Input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search service type, notes, performed by..."
+              className="pl-8 h-9 text-sm"
+            />
+          </div>
+          <div className="relative">
+            <Filter className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
+            <select
+              value={filterType}
+              onChange={(e) => setFilterType(e.target.value)}
+              className="h-9 rounded-md border border-input bg-background pl-8 pr-3 text-sm text-foreground appearance-none min-w-[160px]"
+            >
+              <option value="all">All Types</option>
+              {usedTypes.map((t) => <option key={t} value={t}>{t}</option>)}
+            </select>
+          </div>
+        </div>
+      )}
+
       {logs.length === 0 ? (
         <div className="text-center py-16 text-muted-foreground border border-dashed border-border rounded-lg">
           <Clock className="w-10 h-10 mx-auto mb-3 opacity-30" />
           <p className="text-sm">No service events logged yet.</p>
         </div>
+      ) : filteredLogs.length === 0 ? (
+        <div className="text-center py-10 text-muted-foreground border border-dashed border-border rounded-lg">
+          <Search className="w-8 h-8 mx-auto mb-2 opacity-30" />
+          <p className="text-sm">No results match your search.</p>
+        </div>
       ) : (
         <div className="space-y-2">
-          {logs.map((log: any) => (
+          {filteredLogs.map((log: any) => (
             <div key={log.id} className="rounded-lg border border-border bg-card p-4 flex items-start justify-between gap-3">
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
@@ -918,6 +1057,11 @@ function ServiceLogTab({ equipmentId }: { equipmentId: number }) {
               </button>
             </div>
           ))}
+          {filteredLogs.length < logs.length && (
+            <p className="text-[11px] text-muted-foreground text-center pt-1">
+              Showing {filteredLogs.length} of {logs.length} entries
+            </p>
+          )}
         </div>
       )}
     </div>
@@ -953,6 +1097,16 @@ function IntervalsTab({ equipmentId, currentHours }: { equipmentId: number; curr
       notes: form.notes || undefined,
     });
   };
+
+  // Sort: overdue first, then due soon, then ok
+  const sortedIntervals = useMemo(() => {
+    return [...intervals].sort((a: any, b: any) => {
+      const sa = intervalStatus(currentHours, a.lastServiceHours, a.intervalHours);
+      const sb = intervalStatus(currentHours, b.lastServiceHours, b.intervalHours);
+      const order = { "Overdue": 0, "Due Soon": 1, "OK": 2, "No data": 3 };
+      return (order[sa.label as keyof typeof order] ?? 3) - (order[sb.label as keyof typeof order] ?? 3);
+    });
+  }, [intervals, currentHours]);
 
   return (
     <div>
@@ -1015,45 +1169,70 @@ function IntervalsTab({ equipmentId, currentHours }: { equipmentId: number; curr
           <p className="text-sm">No service intervals set up yet.</p>
         </div>
       ) : (
-        <div className="space-y-2">
-          {intervals.map((interval: any) => {
+        <div className="space-y-3">
+          {sortedIntervals.map((interval: any) => {
             const status = intervalStatus(currentHours, interval.lastServiceHours, interval.intervalHours);
             const nextDue = interval.lastServiceHours != null ? interval.lastServiceHours + interval.intervalHours : null;
             return (
-              <div key={interval.id} className="rounded-lg border border-border bg-card p-4 flex items-start justify-between gap-3">
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="text-sm font-semibold text-foreground">{interval.serviceType}</span>
-                    <Badge
-                      variant="outline"
-                      className={cn("text-[10px]", status.color)}
-                    >
-                      {status.label}
-                    </Badge>
+              <div key={interval.id} className="rounded-lg border border-border bg-card p-4">
+                <div className="flex items-start justify-between gap-3 mb-3">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-sm font-semibold text-foreground">{interval.serviceType}</span>
+                      <Badge
+                        variant="outline"
+                        className={cn("text-[10px] font-semibold", status.badgeClass)}
+                      >
+                        {status.label}
+                      </Badge>
+                    </div>
+                    <div className="flex items-center gap-3 mt-1 text-[11px] text-muted-foreground flex-wrap">
+                      <span>Every {interval.intervalHours.toLocaleString()} hrs</span>
+                      {interval.lastServiceHours != null && (
+                        <span>Last: {interval.lastServiceHours.toLocaleString()} hrs</span>
+                      )}
+                      {nextDue != null && (
+                        <span>Next due: {nextDue.toLocaleString()} hrs</span>
+                      )}
+                    </div>
                   </div>
-                  <div className="flex items-center gap-3 mt-1 text-[11px] text-muted-foreground flex-wrap">
-                    <span>Every {interval.intervalHours.toLocaleString()} hrs</span>
-                    {interval.lastServiceHours != null && (
-                      <span>Last: {interval.lastServiceHours.toLocaleString()} hrs</span>
-                    )}
-                    {nextDue != null && (
-                      <span>Next due: {nextDue.toLocaleString()} hrs</span>
-                    )}
-                    {status.hoursUntilDue != null && status.hoursUntilDue > 0 && (
-                      <span className={status.color}>{status.hoursUntilDue.toLocaleString()} hrs remaining</span>
-                    )}
-                    {status.hoursUntilDue != null && status.hoursUntilDue <= 0 && (
-                      <span className="text-red-400">{Math.abs(status.hoursUntilDue).toLocaleString()} hrs overdue</span>
-                    )}
-                  </div>
-                  {interval.notes && <p className="text-xs text-muted-foreground mt-1.5">{interval.notes}</p>}
+                  <button
+                    onClick={() => { if (confirm("Delete this interval?")) del.mutate({ id: interval.id }); }}
+                    className="p-1.5 rounded-md text-muted-foreground hover:text-red-400 hover:bg-red-400/10 transition-colors shrink-0"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
                 </div>
-                <button
-                  onClick={() => { if (confirm("Delete this interval?")) del.mutate({ id: interval.id }); }}
-                  className="p-1.5 rounded-md text-muted-foreground hover:text-red-400 hover:bg-red-400/10 transition-colors shrink-0"
-                >
-                  <Trash2 className="w-3.5 h-3.5" />
-                </button>
+
+                {/* Progress bar */}
+                {interval.lastServiceHours != null && (
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between text-[11px]">
+                      <span className="text-muted-foreground">
+                        {Math.min(currentHours - interval.lastServiceHours, interval.intervalHours).toLocaleString()} / {interval.intervalHours.toLocaleString()} hrs used
+                      </span>
+                      <span className={cn("font-semibold", status.textClass)}>
+                        {status.hoursUntilDue != null && status.hoursUntilDue > 0
+                          ? `${status.hoursUntilDue.toLocaleString()} hrs remaining`
+                          : status.hoursUntilDue != null && status.hoursUntilDue <= 0
+                          ? `${Math.abs(status.hoursUntilDue).toLocaleString()} hrs overdue`
+                          : ""}
+                      </span>
+                    </div>
+                    <div className="w-full h-2.5 rounded-full bg-secondary overflow-hidden">
+                      <div
+                        className={cn("h-2.5 rounded-full transition-all duration-500", status.barClass)}
+                        style={{ width: `${status.progressPct}%` }}
+                      />
+                    </div>
+                    <div className="flex justify-between text-[10px] text-muted-foreground/60">
+                      <span>{interval.lastServiceHours.toLocaleString()} hrs</span>
+                      <span>{(interval.lastServiceHours + interval.intervalHours).toLocaleString()} hrs</span>
+                    </div>
+                  </div>
+                )}
+
+                {interval.notes && <p className="text-xs text-muted-foreground mt-2">{interval.notes}</p>}
               </div>
             );
           })}
@@ -1065,16 +1244,29 @@ function IntervalsTab({ equipmentId, currentHours }: { equipmentId: number; curr
 
 // ─── History Tab ──────────────────────────────────────────────────────────────
 
-function HistoryTab({ equipmentId }: { equipmentId: number | null }) {
+function HistoryTab({ equipmentId, equipmentList }: { equipmentId: number | null; equipmentList: any[] }) {
   const { data: diagnostics = [], refetch } = trpc.fieldFix.listDiagnostics.useQuery({
     equipmentId: equipmentId ?? undefined,
-    limit: 20,
+    limit: 50,
   });
   const [expandedId, setExpandedId] = useState<number | null>(null);
+  const [search, setSearch] = useState("");
+  const [filterEquipId, setFilterEquipId] = useState("all");
   const del = trpc.fieldFix.deleteDiagnostic.useMutation({
     onSuccess: () => { refetch(); toast.success("Diagnosis removed."); },
     onError: (e) => toast.error(e.message),
   });
+
+  const filtered = useMemo(() => {
+    return diagnostics.filter((d: any) => {
+      const matchesEquip = filterEquipId === "all" || String(d.equipmentId) === filterEquipId;
+      const q = search.toLowerCase();
+      const matchesSearch = !q || [d.headline, d.symptoms, d.errorCode]
+        .filter(Boolean)
+        .some((v: string) => v.toLowerCase().includes(q));
+      return matchesEquip && matchesSearch;
+    });
+  }, [diagnostics, search, filterEquipId]);
 
   if (diagnostics.length === 0) {
     return (
@@ -1088,75 +1280,128 @@ function HistoryTab({ equipmentId }: { equipmentId: number | null }) {
   return (
     <div>
       <h2 className="text-sm font-semibold text-foreground mb-4">Diagnostic History</h2>
-      <div className="space-y-2">
-        {diagnostics.map((d: any) => {
-          const isExpanded = expandedId === d.id;
-          return (
-            <div key={d.id} className="rounded-lg border border-border bg-card overflow-hidden">
-              <button
-                className="w-full flex items-start gap-3 p-4 text-left hover:bg-secondary/10 transition-colors"
-                onClick={() => setExpandedId(isExpanded ? null : d.id)}
-              >
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="text-sm font-semibold text-foreground line-clamp-1">{d.headline || "Diagnosis"}</span>
-                    {d.confidence != null && (
-                      <Badge variant="outline" className="text-[10px]">{d.confidence}% confidence</Badge>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-3 mt-1 text-[11px] text-muted-foreground">
-                    <span>{new Date(d.createdAt).toLocaleDateString()}</span>
-                    <span className="line-clamp-1">{d.symptoms}</span>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2 shrink-0">
-                  <button
-                    onClick={(e) => { e.stopPropagation(); if (confirm("Delete this diagnosis?")) del.mutate({ id: d.id }); }}
-                    className="p-1.5 rounded-md text-muted-foreground hover:text-red-400 hover:bg-red-400/10 transition-colors"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
-                  {isExpanded ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
-                </div>
-              </button>
 
-              {isExpanded && d.report && (
-                <div className="border-t border-border p-4 bg-secondary/10">
-                  <div className="space-y-3">
-                    {/* Root causes */}
-                    {d.report.rootCauses?.length > 0 && (
-                      <div>
-                        <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">Root Causes</p>
-                        {d.report.rootCauses.map((rc: any) => (
-                          <p key={rc.rank} className="text-xs text-foreground mb-0.5">#{rc.rank} {rc.cause} — {rc.confidence}%</p>
-                        ))}
-                      </div>
-                    )}
-                    {/* Fix steps */}
-                    {d.report.fixSteps?.length > 0 && (
-                      <div>
-                        <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">Fix Steps</p>
-                        {d.report.fixSteps.map((step: string, i: number) => (
-                          <p key={i} className="text-xs text-foreground mb-0.5">{i + 1}. {step}</p>
-                        ))}
-                      </div>
-                    )}
-                    {/* Cost + time */}
-                    <div className="flex gap-4 text-xs text-muted-foreground">
-                      <span>Est. Cost: ${d.report.estimatedCostLow}–${d.report.estimatedCostHigh}</span>
-                      <span>Est. Time: {d.report.estimatedTime}</span>
-                    </div>
-                    {/* Safety */}
-                    {d.report.safetyNotice && (
-                      <p className="text-xs text-amber-400">{d.report.safetyNotice}</p>
-                    )}
-                  </div>
-                </div>
-              )}
-            </div>
-          );
-        })}
+      {/* Search + filter */}
+      <div className="flex gap-2 mb-4">
+        <div className="relative flex-1">
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+          <Input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search by symptom, headline, or error code..."
+            className="pl-8 h-9 text-sm"
+          />
+        </div>
+        {equipmentList.length > 1 && (
+          <div className="relative">
+            <Filter className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
+            <select
+              value={filterEquipId}
+              onChange={(e) => setFilterEquipId(e.target.value)}
+              className="h-9 rounded-md border border-input bg-background pl-8 pr-3 text-sm text-foreground appearance-none min-w-[160px]"
+            >
+              <option value="all">All Machines</option>
+              {equipmentList.map((m) => (
+                <option key={m.id} value={String(m.id)}>{m.name}</option>
+              ))}
+            </select>
+          </div>
+        )}
       </div>
+
+      {filtered.length === 0 ? (
+        <div className="text-center py-10 text-muted-foreground border border-dashed border-border rounded-lg">
+          <Search className="w-8 h-8 mx-auto mb-2 opacity-30" />
+          <p className="text-sm">No results match your search.</p>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {filtered.map((d: any) => {
+            const isExpanded = expandedId === d.id;
+            return (
+              <div key={d.id} className="rounded-lg border border-border bg-card overflow-hidden">
+                <button
+                  className="w-full flex items-start gap-3 p-4 text-left hover:bg-secondary/10 transition-colors"
+                  onClick={() => setExpandedId(isExpanded ? null : d.id)}
+                >
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-sm font-semibold text-foreground line-clamp-1">{d.headline || "Diagnosis"}</span>
+                      {d.confidence != null && (
+                        <Badge
+                          variant="outline"
+                          className={cn("text-[10px]", d.confidence >= 80 ? "text-green-400 border-green-500/40" : d.confidence >= 60 ? "text-amber-400 border-amber-500/40" : "text-orange-400 border-orange-500/40")}
+                        >
+                          {d.confidence}% confidence
+                        </Badge>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-3 mt-1 text-[11px] text-muted-foreground">
+                      <span>{new Date(d.createdAt).toLocaleDateString()}</span>
+                      <span className="line-clamp-1 flex-1">{d.symptoms}</span>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <button
+                      onClick={(e) => { e.stopPropagation(); if (confirm("Delete this diagnosis?")) del.mutate({ id: d.id }); }}
+                      className="p-1.5 rounded-md text-muted-foreground hover:text-red-400 hover:bg-red-400/10 transition-colors"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                    {isExpanded ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
+                  </div>
+                </button>
+
+                {isExpanded && d.report && (
+                  <div className="border-t border-border p-4 bg-secondary/10">
+                    <div className="space-y-3">
+                      {d.report.rootCauses?.length > 0 && (
+                        <div>
+                          <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">Root Causes</p>
+                          {d.report.rootCauses.map((rc: any) => (
+                            <div key={rc.rank} className="mb-2">
+                              <div className="flex items-center justify-between mb-1">
+                                <p className="text-xs text-foreground">#{rc.rank} {rc.cause}</p>
+                                <span className="text-xs text-muted-foreground">{rc.confidence}%</span>
+                              </div>
+                              <div className="w-full h-1.5 rounded-full bg-secondary">
+                                <div
+                                  className={cn("h-1.5 rounded-full", confidenceColor(rc.confidence))}
+                                  style={{ width: `${rc.confidence}%` }}
+                                />
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      {d.report.fixSteps?.length > 0 && (
+                        <div>
+                          <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">Fix Steps</p>
+                          {d.report.fixSteps.map((step: string, i: number) => (
+                            <p key={i} className="text-xs text-foreground mb-0.5">{i + 1}. {step}</p>
+                          ))}
+                        </div>
+                      )}
+                      <div className="flex gap-4 text-xs text-muted-foreground">
+                        <span>Est. Cost: ${d.report.estimatedCostLow}–${d.report.estimatedCostHigh}</span>
+                        <span>Est. Time: {d.report.estimatedTime}</span>
+                      </div>
+                      {d.report.safetyNotice && (
+                        <p className="text-xs text-amber-400">{d.report.safetyNotice}</p>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+          {filtered.length < diagnostics.length && (
+            <p className="text-[11px] text-muted-foreground text-center pt-1">
+              Showing {filtered.length} of {diagnostics.length} records
+            </p>
+          )}
+        </div>
+      )}
     </div>
   );
 }
