@@ -42,6 +42,8 @@ import {
   Filter,
   CalendarClock,
   ShieldOff,
+  Sparkles,
+  Brain,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -1183,6 +1185,15 @@ function IntervalsTab({ equipmentId, currentHours }: { equipmentId: number; curr
   });
 
   const { data: intervals = [], refetch } = trpc.fieldFix.listIntervals.useQuery({ equipmentId });
+
+  // AI #12: Equipment Maintenance Prediction
+  const [predReport, setPredReport] = useState<{ summary?: string; recommendation?: string; failureRisk?: string; predictions: { serviceType: string; hoursUntilDue?: number | null; predictedDueHours?: number; confidence?: string; reasoning: string; urgency: string }[] } | null>(null);
+  const [showPredPanel, setShowPredPanel] = useState(false);
+  const predictMaint = trpc.ops.ai.predictMaintenance.useMutation({
+    onSuccess: (data: any) => { setPredReport(data); setShowPredPanel(true); },
+    onError: (err: any) => toast.error(`Prediction failed: ${err.message}`),
+  });
+
   const upsert = trpc.fieldFix.upsertInterval.useMutation({
     onSuccess: () => { refetch(); setShowForm(false); toast.success("Interval saved."); },
     onError: (e) => toast.error(e.message),
@@ -1221,10 +1232,60 @@ function IntervalsTab({ equipmentId, currentHours }: { equipmentId: number; curr
           <h2 className="text-sm font-semibold text-foreground">Service Intervals</h2>
           <p className="text-[11px] text-muted-foreground mt-0.5">Current hours: {currentHours.toLocaleString()}</p>
         </div>
-        <Button size="sm" onClick={() => setShowForm(!showForm)} className="gap-1.5">
-          <Plus className="w-3.5 h-3.5" /> Add Interval
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            size="sm"
+            variant="outline"
+            className="gap-1.5 text-amber-400 border-amber-500/30 hover:bg-amber-500/10"
+            onClick={() => predictMaint.mutate({ equipmentId })}
+            disabled={predictMaint.isPending}
+          >
+            {predictMaint.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Brain className="w-3.5 h-3.5" />}
+            AI Predict
+          </Button>
+          <Button size="sm" onClick={() => setShowForm(!showForm)} className="gap-1.5">
+            <Plus className="w-3.5 h-3.5" /> Add Interval
+          </Button>
+        </div>
       </div>
+
+      {/* AI Maintenance Prediction Panel */}
+      {showPredPanel && predReport && (
+        <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-4 space-y-3 mb-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Brain className="w-4 h-4 text-amber-400" />
+              <span className="text-sm font-semibold text-amber-300">Maintenance Prediction</span>
+            </div>
+            <button onClick={() => setShowPredPanel(false)} className="text-muted-foreground hover:text-foreground"><X className="w-4 h-4" /></button>
+          </div>
+          {predReport.recommendation && <p className="text-xs text-foreground/80">{predReport.recommendation}</p>}
+          {predReport.failureRisk && (
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-muted-foreground">Failure risk next 100h:</span>
+              <Badge className={predReport.failureRisk === "high" ? "bg-red-500/20 text-red-400 border-red-500/30" : predReport.failureRisk === "medium" ? "bg-amber-500/20 text-amber-400 border-amber-500/30" : "bg-green-500/20 text-green-400 border-green-500/30"}>
+                {predReport.failureRisk}
+              </Badge>
+            </div>
+          )}
+          {predReport.predictions && predReport.predictions.length > 0 && (
+            <div className="space-y-2">
+              {predReport.predictions.map((p: any, i: number) => (
+                <div key={i} className="rounded-md border border-border bg-card p-3 space-y-1">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-medium text-foreground">{p.serviceType}</span>
+                    <Badge className={p.urgency === "immediate" ? "bg-red-500/20 text-red-400 border-red-500/30" : p.urgency === "soon" ? "bg-amber-500/20 text-amber-400 border-amber-500/30" : "bg-green-500/20 text-green-400 border-green-500/30"}>
+                      {p.urgency}
+                    </Badge>
+                  </div>
+                  {p.hoursUntilDue != null && <p className="text-xs text-muted-foreground">{p.hoursUntilDue}h until due</p>}
+                  <p className="text-xs text-foreground/70">{p.reasoning}</p>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {showForm && (
         <div className="rounded-lg border border-border bg-card p-5 mb-5">

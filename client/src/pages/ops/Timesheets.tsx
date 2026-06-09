@@ -16,6 +16,9 @@ import {
   Check,
   X,
   Trash2,
+  Sparkles,
+  Loader2,
+  AlertTriangle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -63,6 +66,14 @@ export default function Timesheets() {
     notes: "",
   });
   const utils = trpc.useUtils();
+
+  // AI #8: Timesheet Anomaly Detection
+  const [anomalyReport, setAnomalyReport] = useState<{ summary: string; anomalies: { crewMemberName: string; anomalyType: string; description: string; severity: string; recommendation: string }[] } | null>(null);
+  const [showAnomalyPanel, setShowAnomalyPanel] = useState(false);
+  const detectAnomalies = trpc.ops.ai.detectTimesheetAnomalies.useMutation({
+    onSuccess: (data) => { setAnomalyReport(data as any); setShowAnomalyPanel(true); },
+    onError: (err) => toast.error(`Anomaly scan failed: ${err.message}`),
+  });
 
   const queryInput = useMemo(() => ({ weekStart, status: statusFilter }), [weekStart, statusFilter]);
 
@@ -183,6 +194,16 @@ export default function Timesheets() {
           </Button>
           <Button
             size="sm"
+            variant="ghost"
+            className="text-amber-400 hover:text-amber-300 text-xs border border-amber-500/30 hover:bg-amber-500/10"
+            onClick={() => detectAnomalies.mutate()}
+            disabled={detectAnomalies.isPending}
+          >
+            {detectAnomalies.isPending ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> : <Sparkles className="h-3.5 w-3.5 mr-1" />}
+            AI Scan
+          </Button>
+          <Button
+            size="sm"
             className="bg-amber-500 hover:bg-amber-400 text-black text-xs"
             onClick={() => setShowAddModal(true)}
           >
@@ -191,6 +212,40 @@ export default function Timesheets() {
           </Button>
         </div>
       </div>
+
+      {/* AI Anomaly Report Panel */}
+      {showAnomalyPanel && anomalyReport && (
+        <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-4 space-y-3 mb-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <AlertTriangle className="w-4 h-4 text-amber-400" />
+              <span className="text-sm font-semibold text-amber-300">Timesheet Anomaly Report</span>
+            </div>
+            <button onClick={() => setShowAnomalyPanel(false)} className="text-white/40 hover:text-white"><X className="w-4 h-4" /></button>
+          </div>
+          <p className="text-xs text-white/60">{anomalyReport.summary}</p>
+          {anomalyReport.anomalies.length === 0 ? (
+            <p className="text-xs text-green-400">No anomalies detected in the last 30 days.</p>
+          ) : (
+            <div className="space-y-2">
+              {anomalyReport.anomalies.map((a, i) => (
+                <div key={i} className="rounded-md border border-white/10 bg-white/5 p-3 space-y-1">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-medium text-white">{a.crewMemberName} — {a.anomalyType}</span>
+                    <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${
+                      a.severity === "high" ? "bg-red-500/20 text-red-400" :
+                      a.severity === "medium" ? "bg-amber-500/20 text-amber-400" :
+                      "bg-green-500/20 text-green-400"
+                    }`}>{a.severity}</span>
+                  </div>
+                  <p className="text-xs text-white/60">{a.description}</p>
+                  <p className="text-xs text-white/80">{a.recommendation}</p>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Status filter tabs */}
       <div className="flex gap-1 mb-4 bg-white/5 p-1 rounded-lg w-fit">

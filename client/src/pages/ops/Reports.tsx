@@ -42,6 +42,30 @@ export default function Reports() {
     onError: (err) => toast.error(err.message || "Failed to generate insight."),
   });
 
+  // AI #9: Seasonal Forecast
+  const [forecast, setForecast] = useState<{ summary: string; months: { month: string; demandLevel: string; recommendation: string }[]; actionPlan: string } | null>(null);
+  const [showForecast, setShowForecast] = useState(false);
+  const generateForecast = trpc.ops.ai.forecastDemand.useMutation({
+    onSuccess: (data: any) => { setForecast(data); setShowForecast(true); },
+    onError: (err: any) => toast.error(`Forecast failed: ${err.message}`),
+  });
+
+  // AI #14: Ad Performance Diagnosis
+  const [adDiag, setAdDiag] = useState<{ summary: string; diagnosis: string; topIssue: string; recommendation: string; weeklyAction: string } | null>(null);
+  const [showAdDiag, setShowAdDiag] = useState(false);
+  const diagnoseAds = trpc.ops.ai.diagnoseAdPerformance.useMutation({
+    onSuccess: (data: any) => { setAdDiag(data); setShowAdDiag(true); },
+    onError: (err: any) => toast.error(`Ad diagnosis failed: ${err.message}`),
+  });
+
+  // AI #15: End-of-Day Field Summary
+  const [eodSummary, setEodSummary] = useState<string | null>(null);
+  const [showEod, setShowEod] = useState(false);
+  const generateEod = trpc.ops.ai.generateDailySummary.useMutation({
+    onSuccess: (data: any) => { setEodSummary(data.summary ?? data); setShowEod(true); },
+    onError: (err: any) => toast.error(`Summary failed: ${err.message}`),
+  });
+
   // Build monthly revenue from jobs
   const monthlyData = useMemo(() => {
     const months: Record<string, { revenue: number; count: number }> = {};
@@ -241,6 +265,81 @@ export default function Reports() {
             </div>
           </>
         )}
+
+        {/* AI #9: Seasonal Demand Forecast */}
+        <div className="ops-card p-5">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-sm font-semibold text-foreground" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>Seasonal Demand Forecast</h3>
+            <Button variant="outline" size="sm" className="h-7 text-xs gap-1.5" onClick={() => generateForecast.mutate()} disabled={generateForecast.isPending}>
+              {generateForecast.isPending ? <><Loader2 className="w-3 h-3 animate-spin" />Forecasting...</> : <><Sparkles className="w-3 h-3 text-orange-400" />Generate Forecast</>}
+            </Button>
+          </div>
+          {showForecast && forecast ? (
+            <div className="space-y-3">
+              <p className="text-xs text-foreground leading-relaxed">{forecast.summary}</p>
+              {forecast.months && forecast.months.length > 0 && (
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                  {forecast.months.map((m: any, i: number) => (
+                    <div key={i} className="rounded-md border border-border bg-secondary/20 p-2">
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-xs font-medium text-foreground">{m.month}</span>
+                        <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${
+                          m.demandLevel === "high" ? "bg-green-500/20 text-green-400" :
+                          m.demandLevel === "low" ? "bg-red-500/20 text-red-400" :
+                          "bg-amber-500/20 text-amber-400"
+                        }`}>{m.demandLevel}</span>
+                      </div>
+                      <p className="text-[11px] text-muted-foreground">{m.recommendation}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {forecast.actionPlan && <p className="text-xs text-foreground/80 italic border-t border-border pt-2 mt-2">{forecast.actionPlan}</p>}
+            </div>
+          ) : (
+            <p className="text-xs text-muted-foreground italic">Generate a 6-month demand forecast based on Tennessee seasonal patterns and your job history.</p>
+          )}
+        </div>
+
+        {/* AI #14: Ad Performance Diagnosis */}
+        <div className="ops-card p-5">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-sm font-semibold text-foreground" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>Ad Performance Diagnosis</h3>
+            <Button variant="outline" size="sm" className="h-7 text-xs gap-1.5" onClick={() => diagnoseAds.mutate()} disabled={diagnoseAds.isPending}>
+              {diagnoseAds.isPending ? <><Loader2 className="w-3 h-3 animate-spin" />Diagnosing...</> : <><Sparkles className="w-3 h-3 text-orange-400" />Diagnose Ads</>}
+            </Button>
+          </div>
+          {showAdDiag && adDiag ? (
+            <div className="space-y-2">
+              <p className="text-xs text-foreground leading-relaxed">{adDiag.diagnosis}</p>
+              {adDiag.topIssue && <div className="rounded-md bg-red-500/10 border border-red-500/20 p-2"><p className="text-xs text-red-400 font-medium">Top issue: {adDiag.topIssue}</p></div>}
+              {adDiag.recommendation && <p className="text-xs text-foreground/80">{adDiag.recommendation}</p>}
+              {adDiag.weeklyAction && <div className="rounded-md bg-green-500/10 border border-green-500/20 p-2"><p className="text-xs text-green-400">This week: {adDiag.weeklyAction}</p></div>}
+            </div>
+          ) : (
+            <p className="text-xs text-muted-foreground italic">AI reads your ad spend, leads, and conversion data to diagnose what is working and what to change this week.</p>
+          )}
+        </div>
+
+        {/* AI #15: End-of-Day Field Summary */}
+        <div className="ops-card p-5">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-sm font-semibold text-foreground" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>End-of-Day Summary</h3>
+            <Button variant="outline" size="sm" className="h-7 text-xs gap-1.5" onClick={() => generateEod.mutate()} disabled={generateEod.isPending}>
+              {generateEod.isPending ? <><Loader2 className="w-3 h-3 animate-spin" />Generating...</> : <><Sparkles className="w-3 h-3 text-orange-400" />Generate Summary</>}
+            </Button>
+          </div>
+          {showEod && eodSummary ? (
+            <div className="space-y-2">
+              <p className="text-xs text-foreground leading-relaxed whitespace-pre-line">{eodSummary}</p>
+              <Button variant="ghost" size="sm" className="h-6 text-xs gap-1 text-muted-foreground hover:text-foreground" onClick={() => { navigator.clipboard.writeText(eodSummary); toast.success("Copied."); }}>
+                <Copy className="w-3 h-3" /> Copy
+              </Button>
+            </div>
+          ) : (
+            <p className="text-xs text-muted-foreground italic">Pulls jobs completed, quotes sent, leads received, and open tasks into a 5-line field summary for today.</p>
+          )}
+        </div>
 
       </div>
     </DashboardLayout>

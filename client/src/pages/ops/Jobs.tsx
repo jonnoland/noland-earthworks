@@ -164,11 +164,33 @@ function JobDetailPanel({
   const [showInvoiceForm, setShowInvoiceForm] = useState(false);
   const [noteInput, setNoteInput] = useState("");
   const [completionNoteDraft, setCompletionNoteDraft] = useState("");
+  const [profitabilityResult, setProfitabilityResult] = useState<{ revenuePerHour?: number; hoursVariance?: string; verdict?: string; lesson?: string; summary?: string; actualHours?: number } | null>(null);
+  const [socialDraft, setSocialDraft] = useState<{ facebook?: string; instagram?: string } | null>(null);
+  const [tasksGenerated, setTasksGenerated] = useState<{ title: string; description: string }[] | null>(null);
   const utils = trpc.useUtils();
   const generateNoteMut = trpc.ops.jobs.generateCompletionNote.useMutation({
     onSuccess: (data) => setCompletionNoteDraft(data.note),
     onError: (e) => toast.error(e.message || "Failed to generate note."),
   });
+
+  // AI #5: Job Profitability Analysis (local DB jobs only)
+  const analyzeProfitability = trpc.ops.ai.analyzeJobProfitability.useMutation({
+    onSuccess: (data: any) => setProfitabilityResult(data),
+    onError: (e: any) => toast.error(`Profitability analysis failed: ${e.message}`),
+  });
+
+  // AI #10: Social Post Draft from Job
+  const draftSocial = trpc.ops.ai.draftSocialFromJob.useMutation({
+    onSuccess: (data: any) => setSocialDraft(data),
+    onError: (e: any) => toast.error(`Social draft failed: ${e.message}`),
+  });
+
+  // AI #13: Task Auto-Generation from Job Notes
+  const autoTasks = trpc.ops.ai.autoGenerateTasks.useMutation({
+    onSuccess: (data: any) => setTasksGenerated(data.tasks ?? data),
+    onError: (e: any) => toast.error(`Task generation failed: ${e.message}`),
+  });
+
   const { data: job, isLoading, error } = trpc.jobber.jobDetail.useQuery(
     { id: jobId },
     { retry: false }
@@ -397,6 +419,91 @@ function JobDetailPanel({
                           </button>
                         </div>
                       </div>
+                    )}
+                  </div>
+
+                  {/* ── AI #5: Job Profitability Analysis ── */}
+                  <div className="pt-2 border-t border-border space-y-3">
+                    <div className="flex items-center justify-between">
+                      <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Profitability Analysis</p>
+                      <button
+                        onClick={() => analyzeProfitability.mutate({ jobberJobId: jobId, jobTitle: job?.title ?? undefined, jobClient: job?.client?.name ?? undefined, jobType: job?.jobType ?? undefined, totalPrice: job?.total?.amount ?? undefined })}
+                        disabled={analyzeProfitability.isPending}
+                        className="flex items-center gap-1.5 bg-primary/10 hover:bg-primary/20 disabled:opacity-50 text-primary text-[10px] font-semibold px-2.5 py-1 rounded-md transition-colors"
+                      >
+                        {analyzeProfitability.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
+                        {analyzeProfitability.isPending ? "Analyzing..." : "Analyze"}
+                      </button>
+                    </div>
+                    {profitabilityResult && (
+                      <div className="rounded-md bg-secondary/30 border border-border p-3 space-y-1.5">
+                        {profitabilityResult.summary && <p className="text-xs text-foreground">{profitabilityResult.summary}</p>}
+                        {profitabilityResult.verdict && <p className={`text-xs font-medium ${profitabilityResult.verdict === 'profitable' ? 'text-green-400' : profitabilityResult.verdict === 'break-even' ? 'text-amber-400' : 'text-red-400'}`}>Verdict: {profitabilityResult.verdict}</p>}
+                        {profitabilityResult.revenuePerHour != null && <p className="text-xs text-muted-foreground">Revenue/hr: ${profitabilityResult.revenuePerHour?.toFixed(2)}</p>}
+                        {profitabilityResult.lesson && <p className="text-xs text-foreground/70 italic">{profitabilityResult.lesson}</p>}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* ── AI #10: Social Post Draft ── */}
+                  <div className="pt-2 border-t border-border space-y-3">
+                    <div className="flex items-center justify-between">
+                      <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Social Post Draft</p>
+                      <button
+                        onClick={() => draftSocial.mutate({ jobberJobId: jobId, jobTitle: job?.title ?? undefined, jobClient: job?.client?.name ?? undefined, jobType: job?.jobType ?? undefined })}
+                        disabled={draftSocial.isPending}
+                        className="flex items-center gap-1.5 bg-primary/10 hover:bg-primary/20 disabled:opacity-50 text-primary text-[10px] font-semibold px-2.5 py-1 rounded-md transition-colors"
+                      >
+                        {draftSocial.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
+                        {draftSocial.isPending ? "Drafting..." : "Draft Post"}
+                      </button>
+                    </div>
+                    {socialDraft && (
+                      <div className="space-y-2">
+                        {socialDraft.facebook && (
+                          <div className="rounded-md bg-secondary/30 border border-border p-3">
+                            <p className="text-[10px] text-muted-foreground mb-1 uppercase tracking-wider">Facebook</p>
+                            <p className="text-xs text-foreground whitespace-pre-line">{socialDraft.facebook}</p>
+                            <button onClick={() => { navigator.clipboard.writeText(socialDraft.facebook!); toast.success("Copied."); }} className="mt-2 flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground"><Copy className="w-3 h-3" /> Copy</button>
+                          </div>
+                        )}
+                        {socialDraft.instagram && (
+                          <div className="rounded-md bg-secondary/30 border border-border p-3">
+                            <p className="text-[10px] text-muted-foreground mb-1 uppercase tracking-wider">Instagram</p>
+                            <p className="text-xs text-foreground whitespace-pre-line">{socialDraft.instagram}</p>
+                            <button onClick={() => { navigator.clipboard.writeText(socialDraft.instagram!); toast.success("Copied."); }} className="mt-2 flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground"><Copy className="w-3 h-3" /> Copy</button>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* ── AI #13: Task Auto-Generation ── */}
+                  <div className="pt-2 border-t border-border space-y-3">
+                    <div className="flex items-center justify-between">
+                      <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Auto-Generate Tasks</p>
+                      <button
+                        onClick={() => autoTasks.mutate({ jobberJobId: jobId, jobTitle: job?.title ?? undefined, jobClient: job?.client?.name ?? undefined })}
+                        disabled={autoTasks.isPending}
+                        className="flex items-center gap-1.5 bg-primary/10 hover:bg-primary/20 disabled:opacity-50 text-primary text-[10px] font-semibold px-2.5 py-1 rounded-md transition-colors"
+                      >
+                        {autoTasks.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
+                        {autoTasks.isPending ? "Generating..." : "Generate Tasks"}
+                      </button>
+                    </div>
+                    {tasksGenerated && tasksGenerated.length > 0 && (
+                      <div className="space-y-2">
+                        {tasksGenerated.map((t, i) => (
+                          <div key={i} className="rounded-md bg-secondary/30 border border-border p-3">
+                            <p className="text-xs font-medium text-foreground">{t.title}</p>
+                            {t.description && <p className="text-xs text-muted-foreground mt-0.5">{t.description}</p>}
+                          </div>
+                        ))}
+                        <p className="text-[10px] text-muted-foreground italic">Review and add these to Tasks manually if needed.</p>
+                      </div>
+                    )}
+                    {tasksGenerated && tasksGenerated.length === 0 && (
+                      <p className="text-xs text-muted-foreground italic">No follow-up tasks found in the job notes.</p>
                     )}
                   </div>
 

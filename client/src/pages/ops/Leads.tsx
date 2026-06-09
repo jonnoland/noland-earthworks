@@ -585,6 +585,9 @@ function LeadDetailPanel({
   const [travelDist, setTravelDist] = useState<string | null>(null);
   const [followUpDraft, setFollowUpDraft] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [stageSuggestion, setStageSuggestion] = useState<{ suggestedStage: string | null; reason: string } | null>(null);
+  const [proposalDraft, setProposalDraft] = useState<{ projectDescription?: string; scopeOfWork?: string[]; inclusions?: string[]; exclusions?: string[]; siteConditions?: string; estimatedTimeline?: string; paymentTerms?: string } | null>(null);
+  const [showProposal, setShowProposal] = useState(false);
 
   const utils = trpc.useUtils();
   const { data: notes = [], isLoading: notesLoading } = trpc.ops.leads.listNotes.useQuery({ leadId: lead.id });
@@ -595,6 +598,24 @@ function LeadDetailPanel({
       utils.ops.leads.list.invalidate();
     },
     onError: (e) => toast.error(e.message || "Failed to delete chat session."),
+  });
+
+  const qualifyLead = trpc.ops.leads.qualifyLead.useMutation({
+    onSuccess: () => {
+      toast.success("Lead scored");
+      utils.ops.leads.list.invalidate();
+    },
+    onError: () => toast.error("Failed to score lead"),
+  });
+
+  const suggestStage = trpc.ops.leads.suggestStageAdvancement.useQuery(
+    { leadId: lead.id },
+    { enabled: false, retry: false }
+  );
+
+  const draftProposal = trpc.ops.ai.draftProposalFromLead.useMutation({
+    onSuccess: (data) => { setProposalDraft(data); setShowProposal(true); },
+    onError: () => toast.error("Failed to draft proposal"),
   });
 
   const generateFollowUp = trpc.ops.leads.generateFollowUp.useMutation({
@@ -857,6 +878,101 @@ function LeadDetailPanel({
                 <span className="text-[10px] text-[#444] ml-auto">from Vanleer</span>
               </div>
             </>
+          )}
+
+          {/* AI Actions Row */}
+          <div className="mx-4 mb-2 flex gap-2">
+            <button
+              onClick={() => qualifyLead.mutate({ leadId: lead.id })}
+              disabled={qualifyLead.isPending}
+              className="flex-1 flex items-center justify-center gap-1.5 bg-[#1a1a1a] hover:bg-[#222] border border-[#2a2a2a] hover:border-[#E07B2A]/40 text-[11px] text-[#aaa] hover:text-[#E07B2A] py-2 rounded-lg transition-colors disabled:opacity-50"
+            >
+              {qualifyLead.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <Brain className="w-3 h-3" />}
+              {qualifyLead.isPending ? "Scoring..." : "Score Lead"}
+            </button>
+            <button
+              onClick={async () => {
+                const r = await suggestStage.refetch();
+                if (r.data) setStageSuggestion(r.data);
+              }}
+              disabled={suggestStage.isFetching}
+              className="flex-1 flex items-center justify-center gap-1.5 bg-[#1a1a1a] hover:bg-[#222] border border-[#2a2a2a] hover:border-blue-500/40 text-[11px] text-[#aaa] hover:text-blue-400 py-2 rounded-lg transition-colors disabled:opacity-50"
+            >
+              {suggestStage.isFetching ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
+              {suggestStage.isFetching ? "Thinking..." : "Suggest Stage"}
+            </button>
+            <button
+              onClick={() => draftProposal.mutate({ leadId: lead.id })}
+              disabled={draftProposal.isPending}
+              className="flex-1 flex items-center justify-center gap-1.5 bg-[#1a1a1a] hover:bg-[#222] border border-[#2a2a2a] hover:border-green-500/40 text-[11px] text-[#aaa] hover:text-green-400 py-2 rounded-lg transition-colors disabled:opacity-50"
+            >
+              {draftProposal.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <FileText className="w-3 h-3" />}
+              {draftProposal.isPending ? "Drafting..." : "Draft Proposal"}
+            </button>
+          </div>
+
+          {/* Stage Suggestion */}
+          {stageSuggestion && (
+            <div className="mx-4 mb-3 p-3 rounded-lg border border-blue-500/20 bg-blue-500/5 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-semibold text-blue-400 uppercase tracking-wider">Stage Suggestion</span>
+                <button onClick={() => setStageSuggestion(null)} className="text-[10px] text-[#555] hover:text-[#888]"><X className="w-3 h-3" /></button>
+              </div>
+              <p className="text-xs text-[#ccc]">
+                Move to <span className="font-bold text-blue-300">{stageSuggestion.suggestedStage}</span> — {stageSuggestion.reason}
+              </p>
+              {stageSuggestion.suggestedStage && stageSuggestion.suggestedStage !== lead.stage && (
+                <button
+                  onClick={() => { onStageChange(lead.id, stageSuggestion.suggestedStage!); setStageSuggestion(null); }}
+                  className="w-full text-[11px] bg-blue-600 hover:bg-blue-700 text-white py-1.5 rounded-md transition-colors"
+                >
+                  Apply — Move to {stageSuggestion.suggestedStage}
+                </button>
+              )}
+            </div>
+          )}
+
+          {/* Proposal Draft Modal */}
+          {showProposal && proposalDraft && (
+            <div className="mx-4 mb-3 p-3 rounded-lg border border-green-500/20 bg-green-500/5 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-semibold text-green-400 uppercase tracking-wider">AI Proposal Draft</span>
+                <button onClick={() => setShowProposal(false)} className="text-[10px] text-[#555] hover:text-[#888]"><X className="w-3 h-3" /></button>
+              </div>
+              {proposalDraft.projectDescription && (
+                <div>
+                  <p className="text-[10px] text-[#555] uppercase tracking-wider mb-1">Project Description</p>
+                  <p className="text-xs text-[#ccc]">{String(proposalDraft.projectDescription ?? "")}</p>
+                </div>
+              )}
+              {Array.isArray(proposalDraft.scopeOfWork) && (
+                <div>
+                  <p className="text-[10px] text-[#555] uppercase tracking-wider mb-1">Scope of Work</p>
+                  <ul className="space-y-0.5">{(proposalDraft.scopeOfWork as string[]).map((s, i) => <li key={i} className="text-xs text-[#ccc] flex gap-1"><span className="text-green-400">&#9656;</span><span>{s}</span></li>)}</ul>
+                </div>
+              )}
+              {Array.isArray(proposalDraft.exclusions) && (
+                <div>
+                  <p className="text-[10px] text-[#555] uppercase tracking-wider mb-1">Exclusions</p>
+                  <ul className="space-y-0.5">{(proposalDraft.exclusions as string[]).map((s, i) => <li key={i} className="text-xs text-red-400 flex gap-1"><span>&#9656;</span><span>{s}</span></li>)}</ul>
+                </div>
+              )}
+              {proposalDraft.estimatedTimeline && (
+                <div>
+                  <p className="text-[10px] text-[#555] uppercase tracking-wider mb-1">Timeline</p>
+                  <p className="text-xs text-[#ccc]">{String(proposalDraft.estimatedTimeline ?? "")}</p>
+                </div>
+              )}
+              <button
+                onClick={() => {
+                  const text = `PROJECT DESCRIPTION\n${proposalDraft.projectDescription}\n\nSCOPE OF WORK\n${(proposalDraft.scopeOfWork as string[])?.join("\n- ")}\n\nEXCLUSIONS\n${(proposalDraft.exclusions as string[])?.join("\n- ")}\n\nTIMELINE\n${proposalDraft.estimatedTimeline}\n\nPAYMENT TERMS\n${proposalDraft.paymentTerms}\n\nPRICE: [TO BE DETERMINED AFTER SITE VISIT]`;
+                  navigator.clipboard.writeText(text).then(() => toast.success("Proposal copied"));
+                }}
+                className="w-full text-[11px] bg-green-700 hover:bg-green-800 text-white py-1.5 rounded-md transition-colors"
+              >
+                Copy Full Proposal
+              </button>
+            </div>
           )}
 
           {/* AI Score section */}

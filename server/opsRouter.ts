@@ -5,6 +5,7 @@
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { protectedProcedure, router } from "./_core/trpc";
+import { aiAutomationRouter } from "./aiAutomationRouter";
 import { ENV } from "./_core/env";
 import { isJobberConnected, jobberGraphQL } from "./jobber";
 import { invokeLLM } from "./_core/llm";
@@ -22,9 +23,9 @@ import {
   getPricingBenchmarks,
 } from "./db";
 import { Resend } from "resend";
-import { jobs, opsLeads, quoteSubmissions, crews, crewMembers, conversations, messages, reviews, timeEntries, distanceQuotes, businessSettings, automationSettings, serviceCatalog, messageTemplates, reminderRules, leadNotes, visitBlackoutDates, recurringBlackoutDays, aiPricingSettings, quoteDrafts, jobberTokens } from "../drizzle/schema";
+import { jobs, opsLeads, quoteSubmissions, crews, crewMembers, conversations, messages, reviews, timeEntries, distanceQuotes, businessSettings, automationSettings, serviceCatalog, messageTemplates, reminderRules, leadNotes, visitBlackoutDates, recurringBlackoutDays, aiPricingSettings, quoteDrafts, jobberTokens, socialPosts, adSpend, equipment, serviceLogs, serviceIntervals, fieldDiagnostics, ownerTasks, jobNotes } from "../drizzle/schema";
 
-import { and, desc, eq, gte, inArray, lt, like } from "drizzle-orm";
+import { and, desc, eq, gte, inArray, lt, lte, like, or, sql } from "drizzle-orm";
 
 function getResend() {
   return ENV.resendApiKey ? new Resend(ENV.resendApiKey) : null;
@@ -437,6 +438,78 @@ Write the message as if you are Jon sending a text or short email. First-person,
         .set({ stage: input.stage, updatedAt: new Date() })
         .where(and(inArray(opsLeads.id, input.ids), eq(opsLeads.userId, ctx.user.id)));
       return { updated: input.ids.length };
+    }),
+
+  // ─── AI #1: Lead Qualification Score ────────────────────────────────────────
+  qualifyLead: ownerProcedure
+    .input(z.object({ leadId: z.number().int().positive() }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+      const rows = await db.select().from(opsLeads).where(and(eq(opsLeads.id, input.leadId), eq(opsLeads.userId, ctx.user.id))).limit(1);
+      const lead = rows[0];
+      if (!lead) throw new TRPCError({ code: "NOT_FOUND", message: "Lead not found" });
+      // Fetch notes for context
+      const notes = await db.select().from(leadNotes).where(eq(leadNotes.leadId, input.leadId)).orderBy(desc(leadNotes.createdAt)).limit(5);
+      const noteText = notes.map((n) => `- ${n.content}`).join("\n") || "No notes yet.";
+      const prompt = `You are evaluating a lead for Noland Earthworks, LLC — a veteran-owned forestry mulching and land clearing company in Middle Tennessee. Score this lead 1-10 and classify as strong/marginal/weak.
+
+Lead data:
+Name: ${lead.name}
+Job type: ${lead.jobType ?? "unknown"}
+Estimated value: ${lead.estimatedValue ? "$" + lead.estimatedValue : "unknown"}
+Source: ${lead.source}
+Stage: ${lead.stage}
+Notes: ${lead.notes ?? "none"}
+Recent notes:\n${noteText}
+
+Scoring criteria:
+- 8-10 (strong): Clear job type, acreage mentioned, site visit requested, realistic budget, Middle TN location
+- 5-7 (marginal): Some info missing, vague on scope, or price-shopping signals
+- 1-4 (weak): No acreage, wants grading/hauling, very small lot, outside service area, or no response to contact
+
+Return JSON only: {"score": <1-10>, "tier": "strong"|"marginal"|"weak", "summary": "<2 sentence plain English summary>", "flags": ["<flag1>", "<flag2>"]}`;
+      const result = await invokeLLM({
+        messages: [{ role: "user", content: prompt }],
+        response_format: { type: "json_schema", json_schema: { name: "lead_score", strict: true, schema: { type: "object", properties: { score: { type: "number" }, tier: { type: "string" }, summary: { type: "string" }, flags: { type: "array", items: { type: "string" } } }, required: ["score", "tier", "summary", "flags"], additionalProperties: false } } },
+      });
+      const raw = result?.choices?.[0]?.message?.content ?? "{}";
+      let parsed: { score: number; tier: string; summary: string; flags: string[] };
+      try { parsed = JSON.parse(typeof raw === "string" ? raw : JSON.stringify(raw)); } catch { throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "AI returned invalid JSON" }); }
+      const tier = ["strong", "marginal", "weak"].includes(parsed.tier) ? parsed.tier as "strong" | "marginal" | "weak" : "marginal";
+      await db.update(opsLeads).set({ aiScore: tier, aiSummary: parsed.summary, aiFlags: JSON.stringify(parsed.flags), updatedAt: new Date() }).where(eq(opsLeads.id, input.leadId));
+      return { score: parsed.score, tier, summary: parsed.summary, flags: parsed.flags };
+    }),
+
+  // ─── AI #2: Stage Advancement Suggestion ─────────────────────────────────────
+  suggestStageAdvancement: ownerProcedure
+    .input(z.object({ leadId: z.number().int().positive() }))
+    .query(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+      const rows = await db.select().from(opsLeads).where(and(eq(opsLeads.id, input.leadId), eq(opsLeads.userId, ctx.user.id))).limit(1);
+      const lead = rows[0];
+      if (!lead) throw new TRPCError({ code: "NOT_FOUND", message: "Lead not found" });
+      const notes = await db.select().from(leadNotes).where(eq(leadNotes.leadId, input.leadId)).orderBy(desc(leadNotes.createdAt)).limit(8);
+      const noteText = notes.map((n) => `- ${n.content}`).join("\n") || "No notes.";
+      const stages = ["new", "contacted", "converted", "estimate_sent", "negotiating", "won", "lost"];
+      const prompt = `You are advising Jon Noland on his lead pipeline. Based on the lead data below, suggest the most appropriate next stage and explain why in one sentence.
+
+Current stage: ${lead.stage}
+Job type: ${lead.jobType ?? "unknown"}
+Estimated value: ${lead.estimatedValue ? "$" + lead.estimatedValue : "unknown"}
+Visit confirmed: ${lead.visitConfirmedAt ? "yes" : "no"}
+Notes:\n${noteText}
+
+Available stages: ${stages.join(", ")}
+
+Return JSON only: {"suggestedStage": "<stage>", "reason": "<one sentence>"}`;
+      const result = await invokeLLM({ messages: [{ role: "user", content: prompt }] });
+      const raw = result?.choices?.[0]?.message?.content ?? "{}";
+      try {
+        const parsed = JSON.parse(typeof raw === "string" ? raw : "{}");
+        return { suggestedStage: parsed.suggestedStage ?? null, reason: parsed.reason ?? "" };
+      } catch { return { suggestedStage: null, reason: "" }; }
     }),
 
   // ─── Facebook Webhook Utilities ───────────────────────────────────────────
@@ -1247,6 +1320,45 @@ const conversationsRouter = router({
    * AI-suggested SMS reply — generates a context-aware draft in Jon's voice
    * based on the conversation history and the lead's service type.
    */
+  // ─── AI #3: SMS Smart Reply Options (3 pre-written replies) ────────────────────
+  smartReplies: ownerProcedure
+    .input(z.object({ conversationId: z.number().int().positive() }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+      const convRows = await db.select().from(conversations).where(eq(conversations.id, input.conversationId)).limit(1);
+      const conv = convRows[0];
+      if (!conv) throw new TRPCError({ code: "NOT_FOUND", message: "Conversation not found" });
+      const recentMessages = await db.select().from(messages).where(eq(messages.conversationId, input.conversationId)).orderBy(desc(messages.sentAt)).limit(10);
+      const chronological = [...recentMessages].reverse();
+      const threadText = chronological.map((m) => { const who = m.direction === "inbound" ? conv.contactName : "Jon"; return `${who}: ${m.body}`; }).join("\n");
+      const lastInbound = chronological.filter((m) => m.direction === "inbound").at(-1);
+      if (!lastInbound) throw new TRPCError({ code: "BAD_REQUEST", message: "No inbound message to reply to." });
+      const prompt = `You are drafting 3 SMS reply options for Jon Noland, owner of Noland Earthworks, LLC — veteran-owned forestry mulching and land clearing, Middle Tennessee.
+
+Voice rules: Direct, warm, no corporate language, no emojis, 1-3 sentences max, SMS length.
+Services: forestry mulching (primary), land clearing, brush hogging. Does NOT do grading, excavation, or hauling.
+For pricing questions: say you need to see the property first and offer to schedule a site visit.
+
+Conversation:\n${threadText}\n\nLast message from ${conv.contactName}: "${lastInbound.body}"
+
+Generate 3 reply options:
+1. Direct close — move toward booking/site visit
+2. Soft follow-up — keep the door open, low pressure
+3. Information request — ask a clarifying question to qualify further
+
+Return JSON only: {"replies": [{"tone": "direct_close", "text": "..."}, {"tone": "soft_followup", "text": "..."}, {"tone": "info_request", "text": "..."}]}`;
+      const result = await invokeLLM({
+        messages: [{ role: "user", content: prompt }],
+        response_format: { type: "json_schema", json_schema: { name: "smart_replies", strict: true, schema: { type: "object", properties: { replies: { type: "array", items: { type: "object", properties: { tone: { type: "string" }, text: { type: "string" } }, required: ["tone", "text"], additionalProperties: false } } }, required: ["replies"], additionalProperties: false } } },
+      });
+      const raw = result?.choices?.[0]?.message?.content ?? "{}";
+      try {
+        const parsed = JSON.parse(typeof raw === "string" ? raw : "{}");
+        return { replies: parsed.replies ?? [] };
+      } catch { throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "AI returned invalid response" }); }
+    }),
+
   draftReply: ownerProcedure
     .input(z.object({
       conversationId: z.number().int().positive(),
@@ -2483,6 +2595,7 @@ export const opsRouter = router({
   tasks: tasksRouter,
   google: googleRouter,
   socialPosts: socialPostsRouter,
+  ai: aiAutomationRouter,
 
   generateWeeklyInsight: protectedProcedure
     .input(z.object({

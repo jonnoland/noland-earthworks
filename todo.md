@@ -1758,3 +1758,21 @@
 - [ ] Field Fix: Shareable link expiration date option + revoke button per diagnostic
 - [ ] Field Fix: Branded PDF export header with company logo and timestamp
 - [ ] Field Fix: "Add New Service" quick-entry modal button in Service Log tab
+
+## 15 AI Automation Features
+
+- [ ] AI #1: Lead qualification score (1-10) on lead card — backend procedure + UI badge
+- [ ] AI #2: Lead stage advancement suggestion — AI reads notes/chat and suggests next stage
+- [ ] AI #3: SMS smart reply — 3 pre-written reply options (direct close, soft follow-up, info request)
+- [ ] AI #4: Invoice risk flagging — AI scans open invoices, flags high-risk, pre-writes collection message
+- [ ] AI #5: Job profitability analysis — compare actual vs quoted hours, flag margin losers
+- [ ] AI #6: Proposal auto-draft from lead data — pre-fill quote from lead acreage/terrain/chat transcript
+- [ ] AI #7: Review auto-post — one-click approve and post reply to Google/Facebook
+- [ ] AI #8: Timesheet anomaly detection — flag unusual hours, duplicates, off-schedule entries
+- [ ] AI #9: Seasonal demand forecasting — 60-90 day lead/revenue projection on Scoreboard/Reports
+- [ ] AI #10: Social post auto-draft from completed job — draft FB/IG post when job marked complete
+- [ ] AI #11: Client churn detection — flag clients 12+ months inactive, draft re-engagement message
+- [ ] AI #12: Equipment maintenance prediction — AI predicts next failure from service log patterns
+- [ ] AI #13: Task auto-generation from job notes — AI creates tasks from follow-up mentions in notes
+- [ ] AI #14: Ad performance diagnosis — plain-English diagnosis of CTR/cost/conversion with one action item
+- [ ] AI #15: End-of-day field summary — AI daily summary on Dashboard (jobs, hours, quotes, leads, tasks)

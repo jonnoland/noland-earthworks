@@ -46,6 +46,8 @@ export default function Conversations() {
   const [showNewModal, setShowNewModal] = useState(false);
   const [newName, setNewName] = useState("");
   const [newPhone, setNewPhone] = useState("");
+  const [smartReplies, setSmartReplies] = useState<{ tone: string; text: string }[]>([]);
+  const [showSmartReplies, setShowSmartReplies] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const utils = trpc.useUtils();
 
@@ -80,6 +82,14 @@ export default function Conversations() {
 
   const markReadMutation = trpc.ops.conversations.markRead.useMutation({
     onSuccess: () => utils.ops.conversations.list.invalidate(),
+  });
+
+  const smartRepliesMutation = trpc.ops.conversations.smartReplies.useMutation({
+    onSuccess: (data) => {
+      setSmartReplies(data.replies ?? []);
+      setShowSmartReplies(true);
+    },
+    onError: (err) => toast.error(`Smart replies failed: ${err.message}`),
   });
 
   const draftReplyMutation = trpc.ops.conversations.draftReply.useMutation({
@@ -290,20 +300,47 @@ export default function Conversations() {
                     <Send className="h-4 w-4" />
                   </Button>
                 </div>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-7 text-xs text-amber-400/70 hover:text-amber-400 hover:bg-amber-400/10 gap-1.5 px-2"
-                  onClick={() => draftReplyMutation.mutate({ conversationId: selectedId! })}
-                  disabled={draftReplyMutation.isPending || !selectedId}
-                >
-                  {draftReplyMutation.isPending ? (
-                    <Loader2 className="h-3 w-3 animate-spin" />
-                  ) : (
-                    <Sparkles className="h-3 w-3" />
-                  )}
-                  {draftReplyMutation.isPending ? "Drafting..." : "Draft reply with AI"}
-                </Button>
+                <div className="flex gap-1">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 text-xs text-amber-400/70 hover:text-amber-400 hover:bg-amber-400/10 gap-1.5 px-2"
+                    onClick={() => draftReplyMutation.mutate({ conversationId: selectedId! })}
+                    disabled={draftReplyMutation.isPending || !selectedId}
+                  >
+                    {draftReplyMutation.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />}
+                    {draftReplyMutation.isPending ? "Drafting..." : "Draft reply"}
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 text-xs text-blue-400/70 hover:text-blue-400 hover:bg-blue-400/10 gap-1.5 px-2"
+                    onClick={() => smartRepliesMutation.mutate({ conversationId: selectedId! })}
+                    disabled={smartRepliesMutation.isPending || !selectedId}
+                  >
+                    {smartRepliesMutation.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />}
+                    {smartRepliesMutation.isPending ? "Thinking..." : "3 Smart Replies"}
+                  </Button>
+                </div>
+                {showSmartReplies && smartReplies.length > 0 && (
+                  <div className="mt-2 space-y-1.5 border border-blue-500/20 rounded-lg p-2 bg-blue-500/5">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-[10px] text-blue-400 font-semibold uppercase tracking-wider">Smart Replies</span>
+                      <button onClick={() => setShowSmartReplies(false)} className="text-[10px] text-white/30 hover:text-white/60">&#10005;</button>
+                    </div>
+                    {smartReplies.map((r, i) => (
+                      <div key={i} className="flex items-start gap-2">
+                        <button
+                          onClick={() => { setMessageText(r.text); setShowSmartReplies(false); }}
+                          className="flex-1 text-left text-xs text-white/80 bg-white/5 hover:bg-white/10 border border-white/10 rounded-md px-2.5 py-1.5 transition-colors"
+                        >
+                          <span className="block text-[9px] text-blue-400/70 uppercase tracking-wider mb-0.5">{r.tone.replace(/_/g, " ")}</span>
+                          {r.text}
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </>
           )}

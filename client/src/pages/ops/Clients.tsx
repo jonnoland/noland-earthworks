@@ -507,6 +507,14 @@ export default function OpsClients() {
   const { data, isLoading, error, refetch, isFetching } =
     trpc.jobber.clients.useQuery({ first: 100 }, { retry: false });
 
+  // AI #11: Client Churn Risk Detection
+  const [churnReport, setChurnReport] = useState<{ summary: string; atRisk: { clientName: string; monthsSinceLastJob: number; riskLevel: string; reEngagementMessage: string }[] } | null>(null);
+  const [showChurnPanel, setShowChurnPanel] = useState(false);
+  const detectChurn = trpc.ops.ai.detectChurnRisk.useMutation({
+    onSuccess: (data) => { setChurnReport(data as any); setShowChurnPanel(true); },
+    onError: (err) => toast.error(`Churn scan failed: ${err.message}`),
+  });
+
   const deleteClient = trpc.jobber.deleteClient.useMutation({
     onSuccess: () => {
       toast.success("Client deleted from Jobber.");
@@ -630,8 +638,50 @@ export default function OpsClients() {
             >
               <RefreshCw className={`w-3.5 h-3.5 ${isFetching ? "animate-spin" : ""}`} />
             </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-8 gap-1.5 text-amber-400 border-amber-500/30 hover:bg-amber-500/10"
+              onClick={() => detectChurn.mutate()}
+              disabled={detectChurn.isPending || notConnected}
+            >
+              {detectChurn.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
+              Churn Scan
+            </Button>
           </div>
         </div>
+
+        {/* AI Churn Risk Panel */}
+        {showChurnPanel && churnReport && (
+          <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Sparkles className="w-4 h-4 text-amber-400" />
+                <span className="text-sm font-semibold text-amber-300">Client Churn Risk Report</span>
+              </div>
+              <button onClick={() => setShowChurnPanel(false)} className="text-muted-foreground hover:text-foreground"><X className="w-4 h-4" /></button>
+            </div>
+            <p className="text-xs text-muted-foreground">{churnReport.summary}</p>
+            {churnReport.atRisk.length === 0 ? (
+              <p className="text-xs text-green-400">No at-risk clients detected.</p>
+            ) : (
+              <div className="space-y-2">
+                {churnReport.atRisk.map((c, i) => (
+                  <div key={i} className="rounded-md border border-border bg-card p-3 space-y-1">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-medium text-foreground">{c.clientName}</span>
+                      <Badge className={c.riskLevel === "high" ? "bg-red-500/20 text-red-400 border-red-500/30" : "bg-amber-500/20 text-amber-400 border-amber-500/30"}>
+                        {c.riskLevel} risk
+                      </Badge>
+                    </div>
+                    <p className="text-xs text-muted-foreground">{c.monthsSinceLastJob} months since last job</p>
+                    <p className="text-xs text-foreground/80 italic">"{c.reEngagementMessage}"</p>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Bulk action bar */}
         {someSelected && (

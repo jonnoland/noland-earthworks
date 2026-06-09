@@ -167,6 +167,32 @@ function ReplyModal({
 
   const isPending = googleReply.isPending || localReply.isPending;
 
+  // AI #7: Auto-post reply (suggest + post in one click)
+  const [autoPosting, setAutoPosting] = useState(false);
+  const handleAutoPost = async () => {
+    if (!target.localId) return;
+    setAutoPosting(true);
+    try {
+      // Step 1: generate draft via suggestReply
+      const result = await suggestReply.mutateAsync({ reviewerName: target.reviewerName, starRating: target.starRating, reviewText: target.reviewText, tone: "professional" });
+      const draft = result.draft;
+      if (!draft) throw new Error("No draft generated");
+      // Step 2: post via googleReply if OAuth available, otherwise save locally
+      if (target.isGoogleOAuth && target.externalId) {
+        await googleReply.mutateAsync({ localId: target.localId, externalId: target.externalId, replyText: draft });
+        toast.success("AI reply posted to Google.");
+      } else {
+        await localReply.mutateAsync({ id: target.localId, response: draft });
+        toast.success("AI reply saved.");
+      }
+      onSaved();
+    } catch (err: any) {
+      toast.error(err?.message ?? "Auto-post failed");
+    } finally {
+      setAutoPosting(false);
+    }
+  };
+
   // AI suggest / regenerate reply
   const suggestReply = trpc.ops.google.suggestReply.useMutation({
     onSuccess: ({ draft }) => {
@@ -266,10 +292,20 @@ function ReplyModal({
         </div>
 
         {/* Action buttons */}
-        <div className="flex justify-end gap-2">
+        <div className="flex justify-end gap-2 flex-wrap">
           <Button variant="outline" size="sm" className="border-white/10 text-white/60" onClick={onClose}>
             Cancel
           </Button>
+          <Button
+              size="sm"
+              variant="outline"
+              className="border-blue-500/30 text-blue-400 hover:bg-blue-500/10 disabled:opacity-50"
+              disabled={autoPosting}
+              onClick={handleAutoPost}
+            >
+              {autoPosting ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> : <Sparkles className="h-3.5 w-3.5 mr-1" />}
+              {autoPosting ? "Posting..." : "AI Auto-Post"}
+            </Button>
           <Button
             size="sm"
             className="bg-amber-500 hover:bg-amber-400 text-black disabled:opacity-50"

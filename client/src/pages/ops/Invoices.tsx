@@ -426,6 +426,27 @@ export default function OpsInvoices() {
   const { data, isLoading, error, refetch, isFetching } =
     trpc.jobber.invoices.useQuery({ first: 100 }, { retry: false });
 
+  // AI #4: Invoice Risk Flagging
+  const [riskReport, setRiskReport] = useState<{ summary: string; flags: { invoiceId: string; clientName: string; amount: number; daysOverdue: number; riskLevel: string; recommendation: string }[] } | null>(null);
+  const [showRiskPanel, setShowRiskPanel] = useState(false);
+  const flagRisks = trpc.ops.ai.flagInvoiceRisks.useMutation({
+    onSuccess: (data) => { setRiskReport(data as any); setShowRiskPanel(true); },
+    onError: (err) => toast.error(`Risk scan failed: ${err.message}`),
+  });
+  const handleRiskScan = () => {
+    const invoicesForScan = nodes.map((inv) => ({
+      id: inv.id,
+      invoiceNumber: String(inv.invoiceNumber ?? ""),
+      clientName: inv.client?.name || inv.client?.companyName || "Unknown",
+      balance: Number((inv as any).amounts?.invoiceBalance ?? 0),
+      total: Number((inv as any).amounts?.total ?? 0),
+      issuedDate: (inv as any).issuedDate ?? undefined,
+      dueDate: (inv as any).dueDate ?? undefined,
+      status: inv.invoiceStatus ?? "DRAFT",
+    }));
+    flagRisks.mutate({ jobberInvoices: invoicesForScan });
+  };
+
   const deleteInvoice = trpc.jobber.deleteInvoice.useMutation({
     onSuccess: () => {
       toast.success("Invoice deleted from Jobber.");
@@ -563,8 +584,50 @@ export default function OpsInvoices() {
             >
               <RefreshCw className={`w-3.5 h-3.5 ${isFetching ? "animate-spin" : ""}`} />
             </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-8 gap-1.5 text-amber-400 border-amber-500/30 hover:bg-amber-500/10"
+              onClick={handleRiskScan}
+              disabled={flagRisks.isPending || notConnected}
+            >
+              {flagRisks.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
+              AI Risk Scan
+            </Button>
           </div>
         </div>
+
+        {/* AI Risk Report Panel */}
+        {showRiskPanel && riskReport && (
+          <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Sparkles className="w-4 h-4 text-amber-400" />
+                <span className="text-sm font-semibold text-amber-300">Invoice Risk Report</span>
+              </div>
+              <button onClick={() => setShowRiskPanel(false)} className="text-muted-foreground hover:text-foreground"><X className="w-4 h-4" /></button>
+            </div>
+            <p className="text-xs text-muted-foreground">{riskReport.summary}</p>
+            {riskReport.flags.length === 0 ? (
+              <p className="text-xs text-green-400">No high-risk invoices detected.</p>
+            ) : (
+              <div className="space-y-2">
+                {riskReport.flags.map((flag, i) => (
+                  <div key={i} className="rounded-md border border-border bg-card p-3 space-y-1">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-medium text-foreground">{flag.clientName}</span>
+                      <Badge className={flag.riskLevel === "high" ? "bg-red-500/20 text-red-400 border-red-500/30" : flag.riskLevel === "medium" ? "bg-amber-500/20 text-amber-400 border-amber-500/30" : "bg-green-500/20 text-green-400 border-green-500/30"}>
+                        {flag.riskLevel}
+                      </Badge>
+                    </div>
+                    <p className="text-xs text-muted-foreground">${flag.amount.toLocaleString()} — {flag.daysOverdue} days overdue</p>
+                    <p className="text-xs text-foreground/80">{flag.recommendation}</p>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* KPI summary cards (only when connected) */}
         {!isLoading && !notConnected && nodes.length > 0 && (
