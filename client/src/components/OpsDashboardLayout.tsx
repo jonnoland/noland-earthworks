@@ -36,6 +36,8 @@ import {
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/_core/hooks/useAuth";
 
+const TEAM_HREF = "/ops/team";
+
 const navItems = [
   { icon: LayoutDashboard, label: "Dashboard", href: "/ops" },
   { icon: Briefcase, label: "Jobs", href: "/ops/jobs" },
@@ -51,6 +53,7 @@ const navItems = [
   { icon: CheckSquare, label: "Tasks", href: "/ops/tasks" },
   { icon: Wrench, label: "Equipment", href: "/ops/equipment" },
   { icon: Stethoscope, label: "Field Fix", href: "/ops/field-fix" },
+  { icon: Users, label: "Team", href: TEAM_HREF },
 ];
 
 const bottomItems = [
@@ -73,6 +76,13 @@ export default function DashboardLayout({ children, title, subtitle }: Dashboard
   const { data: chatUnread = 0 } = trpc.chat.unreadCount.useQuery(undefined, {
     refetchInterval: 30_000, // poll every 30s
   });
+
+  // Pending team access requests badge — owner only; silently returns 0 for non-owners
+  const { data: teamPendingData } = trpc.team.pendingCount.useQuery(undefined, {
+    refetchInterval: 60_000,
+    retry: false,
+  });
+  const teamPending = teamPendingData?.count ?? 0;
 
   const handleLogout = async () => {
     await logout();
@@ -159,10 +169,18 @@ export default function DashboardLayout({ children, title, subtitle }: Dashboard
                       {chatUnread > 99 ? "99+" : chatUnread}
                     </span>
                   )}
-                  {isActive && chatUnread === 0 && (
+                  {item.href === TEAM_HREF && teamPending > 0 && (
+                    <span className="ml-auto flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-red-500 text-white text-[10px] font-bold">
+                      {teamPending > 99 ? "99+" : teamPending}
+                    </span>
+                  )}
+                  {isActive && chatUnread === 0 && item.href !== TEAM_HREF && (
                     <span className="ml-auto w-1.5 h-1.5 rounded-full bg-primary" />
                   )}
-                  {isActive && chatUnread > 0 && item.href !== "/ops/chat-sessions" && (
+                  {isActive && item.href === TEAM_HREF && teamPending === 0 && (
+                    <span className="ml-auto w-1.5 h-1.5 rounded-full bg-primary" />
+                  )}
+                  {isActive && chatUnread > 0 && item.href !== "/ops/chat-sessions" && item.href !== TEAM_HREF && (
                     <span className="ml-auto w-1.5 h-1.5 rounded-full bg-primary" />
                   )}
                 </div>

@@ -1782,3 +1782,6 @@
 - [ ] Audit all AI buttons across /ops pages and ensure consistent loading spinner + disabled state
 - [ ] Add skeleton placeholder panels that appear while AI is generating (replace blank space)
 - [ ] Add toast success notifications for: Auto-Generate Tasks, Lead Score, Stage Suggestion, Proposal Draft, Risk Scan, Churn Scan, Anomaly Detection, Forecast, Ad Diagnosis, Daily Summary, Maintenance Prediction
+
+## Team Panel Notification Badge (Jun 8 2026)
+- [x] Add notification badge to Team nav item in sidebar showing count of pending access requests (polls every 60s, owner-only, graceful fail for non-owners)
