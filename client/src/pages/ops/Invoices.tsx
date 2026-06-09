@@ -430,7 +430,7 @@ export default function OpsInvoices() {
   const [riskReport, setRiskReport] = useState<{ summary: string; flags: { invoiceId: string; clientName: string; amount: number; daysOverdue: number; riskLevel: string; recommendation: string }[] } | null>(null);
   const [showRiskPanel, setShowRiskPanel] = useState(false);
   const flagRisks = trpc.ops.ai.flagInvoiceRisks.useMutation({
-    onSuccess: (data) => { setRiskReport(data as any); setShowRiskPanel(true); },
+    onSuccess: (data) => { setRiskReport(data as any); setShowRiskPanel(true); toast.success("Invoice risk scan complete."); },
     onError: (err) => toast.error(`Risk scan failed: ${err.message}`),
   });
   const handleRiskScan = () => {
@@ -598,6 +598,24 @@ export default function OpsInvoices() {
         </div>
 
         {/* AI Risk Report Panel */}
+        {flagRisks.isPending && (
+          <div className="rounded-lg border border-red-500/30 bg-red-500/5 p-4 space-y-3 animate-pulse">
+            <div className="flex items-center gap-2 mb-2">
+              <div className="h-4 w-4 rounded bg-red-400/20" />
+              <div className="h-3 w-36 rounded bg-red-400/20" />
+            </div>
+            <div className="h-3 w-full rounded bg-white/5" />
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="rounded-md border border-border bg-card p-3 space-y-2">
+                <div className="flex justify-between">
+                  <div className="h-3 w-1/3 rounded bg-white/10" />
+                  <div className="h-3 w-16 rounded bg-red-400/20" />
+                </div>
+                <div className="h-3 w-2/3 rounded bg-white/5" />
+              </div>
+            ))}
+          </div>
+        )}
         {showRiskPanel && riskReport && (
           <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-4 space-y-3">
             <div className="flex items-center justify-between">

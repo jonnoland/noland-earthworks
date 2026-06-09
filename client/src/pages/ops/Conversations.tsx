@@ -48,6 +48,7 @@ export default function Conversations() {
   const [newPhone, setNewPhone] = useState("");
   const [smartReplies, setSmartReplies] = useState<{ tone: string; text: string }[]>([]);
   const [showSmartReplies, setShowSmartReplies] = useState(false);
+  const [smartReplyTone, setSmartReplyTone] = useState<"balanced" | "friendly" | "professional" | "direct" | "apologetic">("balanced");
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const utils = trpc.useUtils();
 
@@ -300,7 +301,7 @@ export default function Conversations() {
                     <Send className="h-4 w-4" />
                   </Button>
                 </div>
-                <div className="flex gap-1">
+                <div className="flex flex-wrap gap-1 items-center">
                   <Button
                     variant="ghost"
                     size="sm"
@@ -311,17 +312,39 @@ export default function Conversations() {
                     {draftReplyMutation.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />}
                     {draftReplyMutation.isPending ? "Drafting..." : "Draft reply"}
                   </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-7 text-xs text-blue-400/70 hover:text-blue-400 hover:bg-blue-400/10 gap-1.5 px-2"
-                    onClick={() => smartRepliesMutation.mutate({ conversationId: selectedId! })}
-                    disabled={smartRepliesMutation.isPending || !selectedId}
-                  >
-                    {smartRepliesMutation.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />}
-                    {smartRepliesMutation.isPending ? "Thinking..." : "3 Smart Replies"}
-                  </Button>
+                  <div className="flex items-center gap-1">
+                    <select
+                      value={smartReplyTone}
+                      onChange={(e) => setSmartReplyTone(e.target.value as typeof smartReplyTone)}
+                      disabled={smartRepliesMutation.isPending || !selectedId}
+                      className="h-7 text-[10px] bg-white/5 border border-white/10 text-white/60 rounded-md px-1.5 cursor-pointer focus:outline-none focus:border-blue-500/50 disabled:opacity-40"
+                    >
+                      <option value="balanced">Balanced</option>
+                      <option value="friendly">Friendly</option>
+                      <option value="professional">Professional</option>
+                      <option value="direct">Direct</option>
+                      <option value="apologetic">Apologetic</option>
+                    </select>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 text-xs text-blue-400/70 hover:text-blue-400 hover:bg-blue-400/10 gap-1.5 px-2"
+                      onClick={() => smartRepliesMutation.mutate({ conversationId: selectedId!, preferredTone: smartReplyTone })}
+                      disabled={smartRepliesMutation.isPending || !selectedId}
+                    >
+                      {smartRepliesMutation.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />}
+                      {smartRepliesMutation.isPending ? "Thinking..." : "3 Smart Replies"}
+                    </Button>
+                  </div>
                 </div>
+                {smartRepliesMutation.isPending && (
+                  <div className="mt-2 space-y-1.5 border border-blue-500/20 rounded-lg p-2 bg-blue-500/5 animate-pulse">
+                    <div className="h-2 w-24 bg-blue-400/20 rounded mb-2" />
+                    {[1, 2, 3].map((i) => (
+                      <div key={i} className="h-10 bg-white/5 rounded-md" />
+                    ))}
+                  </div>
+                )}
                 {showSmartReplies && smartReplies.length > 0 && (
                   <div className="mt-2 space-y-1.5 border border-blue-500/20 rounded-lg p-2 bg-blue-500/5">
                     <div className="flex items-center justify-between mb-1">

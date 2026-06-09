@@ -511,7 +511,7 @@ export default function OpsClients() {
   const [churnReport, setChurnReport] = useState<{ summary: string; atRisk: { clientName: string; monthsSinceLastJob: number; riskLevel: string; reEngagementMessage: string }[] } | null>(null);
   const [showChurnPanel, setShowChurnPanel] = useState(false);
   const detectChurn = trpc.ops.ai.detectChurnRisk.useMutation({
-    onSuccess: (data) => { setChurnReport(data as any); setShowChurnPanel(true); },
+    onSuccess: (data) => { setChurnReport(data as any); setShowChurnPanel(true); toast.success("Churn risk scan complete."); },
     onError: (err) => toast.error(`Churn scan failed: ${err.message}`),
   });
 
@@ -652,6 +652,22 @@ export default function OpsClients() {
         </div>
 
         {/* AI Churn Risk Panel */}
+        {detectChurn.isPending && (
+          <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-4 space-y-3 animate-pulse">
+            <div className="flex items-center gap-2 mb-2">
+              <div className="h-4 w-4 rounded bg-amber-400/20" />
+              <div className="h-3 w-40 rounded bg-amber-400/20" />
+            </div>
+            <div className="h-3 w-full rounded bg-white/5" />
+            <div className="h-3 w-3/4 rounded bg-white/5" />
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="rounded-md border border-border bg-card p-3 space-y-2">
+                <div className="h-3 w-1/2 rounded bg-white/10" />
+                <div className="h-3 w-3/4 rounded bg-white/5" />
+              </div>
+            ))}
+          </div>
+        )}
         {showChurnPanel && churnReport && (
           <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-4 space-y-3">
             <div className="flex items-center justify-between">

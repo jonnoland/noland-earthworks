@@ -1322,7 +1322,10 @@ const conversationsRouter = router({
    */
   // ─── AI #3: SMS Smart Reply Options (3 pre-written replies) ────────────────────
   smartReplies: ownerProcedure
-    .input(z.object({ conversationId: z.number().int().positive() }))
+    .input(z.object({
+      conversationId: z.number().int().positive(),
+      preferredTone: z.enum(["balanced", "friendly", "professional", "direct", "apologetic"]).optional().default("balanced"),
+    }))
     .mutation(async ({ input }) => {
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
@@ -1334,15 +1337,23 @@ const conversationsRouter = router({
       const threadText = chronological.map((m) => { const who = m.direction === "inbound" ? conv.contactName : "Jon"; return `${who}: ${m.body}`; }).join("\n");
       const lastInbound = chronological.filter((m) => m.direction === "inbound").at(-1);
       if (!lastInbound) throw new TRPCError({ code: "BAD_REQUEST", message: "No inbound message to reply to." });
+      const toneInstructions: Record<string, string> = {
+        balanced: "Mix of direct and warm. Natural, human, not pushy.",
+        friendly: "Warm, conversational, southern hospitality. Make them feel welcome.",
+        professional: "Formal, concise, business-like. Minimal small talk.",
+        direct: "Get to the point immediately. Short, confident, action-oriented.",
+        apologetic: "Acknowledge any delay or issue first. Empathetic but still professional.",
+      };
+      const toneNote = toneInstructions[input.preferredTone] ?? toneInstructions.balanced;
       const prompt = `You are drafting 3 SMS reply options for Jon Noland, owner of Noland Earthworks, LLC — veteran-owned forestry mulching and land clearing, Middle Tennessee.
 
-Voice rules: Direct, warm, no corporate language, no emojis, 1-3 sentences max, SMS length.
+Voice rules: ${toneNote} No corporate language, no emojis, 1-3 sentences max, SMS length.
 Services: forestry mulching (primary), land clearing, brush hogging. Does NOT do grading, excavation, or hauling.
 For pricing questions: say you need to see the property first and offer to schedule a site visit.
 
 Conversation:\n${threadText}\n\nLast message from ${conv.contactName}: "${lastInbound.body}"
 
-Generate 3 reply options:
+Generate 3 reply options with the requested tone (${input.preferredTone}):
 1. Direct close — move toward booking/site visit
 2. Soft follow-up — keep the door open, low pressure
 3. Information request — ask a clarifying question to qualify further

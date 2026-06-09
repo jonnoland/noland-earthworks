@@ -1776,3 +1776,9 @@
 - [ ] AI #13: Task auto-generation from job notes — AI creates tasks from follow-up mentions in notes
 - [ ] AI #14: Ad performance diagnosis — plain-English diagnosis of CTR/cost/conversion with one action item
 - [ ] AI #15: End-of-day field summary — AI daily summary on Dashboard (jobs, hours, quotes, leads, tasks)
+
+## AI UX Enhancements (Jun 2026)
+- [ ] Add tone selector dropdown to Smart Replies in Conversations (Friendly, Professional, Direct, Apologetic)
+- [ ] Audit all AI buttons across /ops pages and ensure consistent loading spinner + disabled state
+- [ ] Add skeleton placeholder panels that appear while AI is generating (replace blank space)
+- [ ] Add toast success notifications for: Auto-Generate Tasks, Lead Score, Stage Suggestion, Proposal Draft, Risk Scan, Churn Scan, Anomaly Detection, Forecast, Ad Diagnosis, Daily Summary, Maintenance Prediction
