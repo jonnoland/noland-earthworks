@@ -82,6 +82,8 @@ export const jobberRouter = router({
   jobs: adminProcedure
     .input(z.object({ first: z.number().optional() }))
     .query(async ({ input }) => {
+      const connected = await isJobberConnected();
+      if (!connected) return { nodes: [], totalCount: 0 };
       const data = await jobberGraphQL(`
         query GetJobs($first: Int) {
           jobs(first: $first) {
@@ -102,6 +104,8 @@ export const jobberRouter = router({
   quotes: adminProcedure
     .input(z.object({ first: z.number().optional() }))
     .query(async ({ input }) => {
+      const connected = await isJobberConnected();
+      if (!connected) return { nodes: [], totalCount: 0 };
       const data = await jobberGraphQL(`
         query GetQuotes($first: Int) {
           quotes(first: $first) {
@@ -129,6 +133,8 @@ export const jobberRouter = router({
   clients: adminProcedure
     .input(z.object({ first: z.number().optional() }))
     .query(async ({ input }) => {
+      const connected = await isJobberConnected();
+      if (!connected) return { nodes: [], totalCount: 0 };
       const data = await jobberGraphQL(`
         query GetClients($first: Int) {
           clients(first: $first) {
@@ -192,6 +198,8 @@ export const jobberRouter = router({
   timesheets: adminProcedure
     .input(z.object({ first: z.number().optional() }))
     .query(async ({ input }) => {
+      const connected = await isJobberConnected();
+      if (!connected) return { nodes: [], totalCount: 0 };
       const data = await jobberGraphQL(`
         query GetTimesheets($first: Int) {
           timesheetEntries(first: $first) {
@@ -209,6 +217,8 @@ export const jobberRouter = router({
 
   // ─── Users (Crews) ───────────────────────────────────────────────────────────
   users: adminProcedure.query(async () => {
+    const connected = await isJobberConnected();
+    if (!connected) return { nodes: [] };
     const data = await jobberGraphQL(`
       query GetUsers {
         users {
@@ -226,6 +236,8 @@ export const jobberRouter = router({
   visits: adminProcedure
     .input(z.object({ first: z.number().optional() }))
     .query(async ({ input }) => {
+      const connected = await isJobberConnected();
+      if (!connected) return { nodes: [], totalCount: 0 };
       const data = await jobberGraphQL(`
         query GetVisits($first: Int) {
           visits(first: $first) {
