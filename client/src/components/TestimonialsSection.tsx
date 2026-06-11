@@ -265,7 +265,19 @@ export default function TestimonialsSection() {
             marginBottom: "3rem",
           }}
         >
-          <div className="section-label mb-4">Client Reviews</div>
+          <p
+            style={{
+              fontFamily: "'Lato', sans-serif",
+              fontWeight: 700,
+              fontSize: "0.75rem",
+              letterSpacing: "0.15em",
+              textTransform: "uppercase",
+              color: "#E07B2A",
+              marginBottom: "0.75rem",
+            }}
+          >
+            Client Reviews
+          </p>
           <h2
             style={{
               fontFamily: "'Oswald', sans-serif",
@@ -274,37 +286,80 @@ export default function TestimonialsSection() {
               letterSpacing: "0.04em",
               textTransform: "uppercase",
               color: "#F0EDE6",
+              marginBottom: "1.25rem",
             }}
           >
-            What Our Clients Say
+            What Clients Say
           </h2>
-          {/* Live rating summary */}
+          {/* Live rating summary — prominent display */}
           <div
-            className="flex items-center gap-3 mt-3"
+            className="flex items-center gap-4"
             style={{
-              fontFamily: "'Lato', sans-serif",
-              fontSize: "0.9rem",
-              color: "rgba(240,237,230,0.6)",
+              padding: "1rem 1.5rem",
+              backgroundColor: "rgba(224,123,42,0.08)",
+              border: "1px solid rgba(224,123,42,0.25)",
+              display: "inline-flex",
+              flexWrap: "wrap",
+              gap: "1rem",
             }}
           >
-            <div className="flex gap-0.5">
-              {[1, 2, 3, 4, 5].map((s) => (
-                <svg
-                  key={s}
-                  width="14"
-                  height="14"
-                  viewBox="0 0 24 24"
-                  fill={s <= Math.round(googleRating) ? "#E07B2A" : "rgba(224,123,42,0.25)"}
-                  xmlns="http://www.w3.org/2000/svg"
+            <div className="flex items-center gap-2">
+              <span
+                style={{
+                  fontFamily: "'Oswald', sans-serif",
+                  fontWeight: 700,
+                  fontSize: "2.25rem",
+                  color: "#E07B2A",
+                  lineHeight: 1,
+                }}
+              >
+                {googleRating?.toFixed(1)}
+              </span>
+              <div className="flex flex-col gap-1">
+                <div className="flex gap-0.5">
+                  {[1, 2, 3, 4, 5].map((s) => (
+                    <svg
+                      key={s}
+                      width="16"
+                      height="16"
+                      viewBox="0 0 24 24"
+                      fill={s <= Math.round(googleRating) ? "#E07B2A" : "rgba(224,123,42,0.25)"}
+                      xmlns="http://www.w3.org/2000/svg"
+                    >
+                      <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+                    </svg>
+                  ))}
+                </div>
+                <span
+                  style={{
+                    fontFamily: "'Lato', sans-serif",
+                    fontSize: "0.75rem",
+                    color: "rgba(240,237,230,0.55)",
+                    letterSpacing: "0.04em",
+                  }}
                 >
-                  <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
-                </svg>
-              ))}
+                  {googleReviewCount ? `${googleReviewCount}+ reviews on Google` : "on Google"}
+                </span>
+              </div>
             </div>
-            <span>
-              <strong style={{ color: "#F0EDE6" }}>{googleRating?.toFixed(1)}</strong>
-              {googleReviewCount ? ` from ${googleReviewCount}+ Google reviews` : " on Google"}
-            </span>
+            <div
+              style={{
+                width: "1px",
+                height: "40px",
+                backgroundColor: "rgba(224,123,42,0.2)",
+              }}
+            />
+            <div
+              style={{
+                fontFamily: "'Lato', sans-serif",
+                fontSize: "0.8125rem",
+                color: "rgba(240,237,230,0.65)",
+                maxWidth: "220px",
+                lineHeight: 1.5,
+              }}
+            >
+              Verified Google reviews from real customers across Middle Tennessee.
+            </div>
           </div>
         </div>
 

@@ -86,10 +86,23 @@ export default function HeroSection() {
               lineHeight: 1.7,
               color: "rgba(240,237,230,0.8)",
               maxWidth: "540px",
+              marginBottom: "0.75rem",
+            }}
+          >
+            I'm Jon Noland — owner, operator, and the one showing up on your property. Veteran-owned and operated out of Middle Tennessee. I run a tracked forestry mulcher and I do the work myself, every job.
+          </p>
+          <p
+            style={{
+              fontFamily: "'Lato', sans-serif",
+              fontWeight: 300,
+              fontSize: "1.125rem",
+              lineHeight: 1.7,
+              color: "rgba(240,237,230,0.8)",
+              maxWidth: "540px",
               marginBottom: "2.5rem",
             }}
           >
-            Veteran-owned and operated, serving Middle & West Tennessee. We clear overgrown land, mulch brush, and restore usable property — professionally, efficiently, and on your schedule.
+            If your land has gotten away from you — overgrown brush, cedar thickets, fence lines you can't find — I can clear it in a day and leave it looking the way land should look. No debris piles, no hauling, no burning.
           </p>
 
           {/* CTA buttons */}

@@ -554,7 +554,7 @@ export default function QuotePage() {
                       marginBottom: "1rem",
                     }}
                   >
-                    Quote Request Received
+                    Got It, {form.name.split(" ")[0]}
                   </h2>
                   <p
                     style={{
@@ -564,11 +564,23 @@ export default function QuotePage() {
                       color: "rgba(240,237,230,0.65)",
                       maxWidth: "440px",
                       lineHeight: 1.7,
+                      marginBottom: "0.75rem",
+                    }}
+                  >
+                    I'll reach out within one business day — usually the same day. We'll talk briefly about the property, and if it makes sense, I'll schedule a free on-site visit.
+                  </p>
+                  <p
+                    style={{
+                      fontFamily: "'Lato', sans-serif",
+                      fontWeight: 300,
+                      fontSize: "0.9375rem",
+                      color: "rgba(240,237,230,0.5)",
+                      maxWidth: "440px",
+                      lineHeight: 1.7,
                       marginBottom: "1.5rem",
                     }}
                   >
-                    Thank you, {form.name.split(" ")[0]}! We'll review your request and reach out within 24 hours
-                    to schedule a free on-site estimate.
+                    After the site visit, you'll have a written proposal within one to two days. No pressure, no obligation.
                   </p>
 
                   {/* Submitted details summary */}
