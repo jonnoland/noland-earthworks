@@ -473,7 +473,7 @@ export default function Blog() {
               marginBottom: "1rem",
             }}
           >
-            Land Management <span style={{ color: "#E07B2A" }}>Knowledge Base</span>
+            <span style={{ color: "#E07B2A" }}>Knowledge Base</span>
           </h1>
           <p
             style={{
