@@ -30,7 +30,7 @@ export const BLOG_POSTS = [
     category: "Methods & Equipment",
   },
   {
-    slug: "signs-its-time-for-vegetation-management",
+    slug: "signs-you-need-vegetation-management",
     title: "5 Signs It's Time for Vegetation Management on Your Property",
     meta: "Not sure if your land needs professional vegetation management? Here are five clear signs it's time to call in a forestry mulcher — and why waiting costs you more.",
     date: "April 2026",
@@ -48,7 +48,7 @@ export const BLOG_POSTS = [
     category: "Pricing & Planning",
   },
   {
-    slug: "site-prep-before-building-tennessee",
+    slug: "site-preparation-before-building-tennessee",
     title: "Site Preparation Before Building in Tennessee: What You Need to Know",
     meta: "Planning to build on raw land in Tennessee? Here's what site preparation actually involves, what forestry mulching covers, and what it doesn't.",
     date: "April 2026",
@@ -75,7 +75,7 @@ export const BLOG_POSTS = [
     category: "Methods & Equipment",
   },
   {
-    slug: "how-to-prepare-for-land-clearing-tennessee",
+    slug: "how-to-prepare-for-land-clearing",
     title: "How to Prepare for a Land Management Job in Tennessee",
     meta: "What to do before the mulcher shows up. A practical checklist for Tennessee property owners to get their land management project started on the right foot.",
     date: "May 2026",
