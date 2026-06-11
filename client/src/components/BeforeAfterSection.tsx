@@ -1,82 +1,73 @@
 /*
- * DESIGN: Heavy Equipment Grit — Before/After showcase on homepage
- * Three image pairs with project type, county, and acreage labels.
- * Hover or tap to reveal the "after" photo.
- * Placeholder images used — replace with real job photos.
+ * DESIGN: Heavy Equipment Grit — Work showcase on homepage
+ * Three image cards showing the type of work done.
+ * Images are royalty-free examples — replace with real job photos when available.
  */
-import { useState } from "react";
 import { Link } from "wouter";
 
-const HERO_IMG =
-  "https://d2xsxph8kpxj0f.cloudfront.net/310519663484957999/PymCzDCnSJzPjdkfwA7Jn6/hero-forestry-golden_b098141c.webp";
-const LAND_IMG =
-  "https://d2xsxph8kpxj0f.cloudfront.net/310519663484957999/PymCzDCnSJzPjdkfwA7Jn6/land-clearing-iPC6VzRdyjJa4bVNXaWy5n.webp";
+// Royalty-free images from Pexels (free to use under Pexels license)
+// Replace these with real job photos as they become available
+const IMG_OVERGROWN_BRUSH =
+  "/manus-storage/dense-foliage-bushes_2efa77a3.jpg";
+const IMG_FORESTRY_MACHINE =
+  "/manus-storage/forestry-mulcher-machine_f900a315.jpg";
+const IMG_CLEARED_LAND =
+  "/manus-storage/open-land-treeline_3c257c04.jpg";
+const IMG_FENCE_LINE =
+  "/manus-storage/overgrown-fence-line_3a74b356.jpg";
+const IMG_OPEN_PASTURE =
+  "/manus-storage/open-pasture-1_cbdb13b4.jpg";
+const IMG_OVERGROWN_PATH =
+  "/manus-storage/overgrown-pathway_df75b768.jpg";
 
-type Pair = {
-  before: string;
-  after: string;
+type Card = {
+  image: string;
   service: string;
-  county: string;
-  acreage: string;
-  note: string;
+  caption: string;
 };
 
-const PAIRS: Pair[] = [
+const CARDS: Card[] = [
   {
-    before: HERO_IMG,
-    after: LAND_IMG,
-    service: "Forestry Mulching",
-    county: "Williamson County",
-    acreage: "4 acres",
-    note: "Dense cedar and privet cleared in one day. Mulch layer left as ground cover.",
+    image: IMG_OVERGROWN_BRUSH,
+    service: "Before: Overgrown Property",
+    caption:
+      "Dense brush, invasive growth, and tangled understory — the kind of property that has gotten away from its owner.",
   },
   {
-    before: LAND_IMG,
-    after: HERO_IMG,
-    service: "Land Management",
-    county: "Maury County",
-    acreage: "8 acres",
-    note: "Overgrown pasture reclaimed for cattle. Fence line cleared and fence posts preserved.",
+    image: IMG_FORESTRY_MACHINE,
+    service: "Forestry Mulching in Action",
+    caption:
+      "A tracked forestry mulcher grinds through heavy vegetation. No debris piles, no hauling, no burning.",
   },
   {
-    before: HERO_IMG,
-    after: LAND_IMG,
-    service: "Forestry Mulching",
-    county: "Rutherford County",
-    acreage: "2.5 acres",
-    note: "Residential lot cleared for new construction. No debris hauled — mulch stays.",
+    image: IMG_CLEARED_LAND,
+    service: "After: Usable Land",
+    caption:
+      "Open, accessible ground with a mulch layer left in place. Ready for whatever the landowner needs it for.",
   },
 ];
 
-function PairCard({ pair }: { pair: Pair }) {
-  const [showAfter, setShowAfter] = useState(false);
-
+function WorkCard({ card }: { card: Card }) {
   return (
     <div
-      className="relative overflow-hidden cursor-pointer select-none"
+      className="relative overflow-hidden"
       style={{ borderRadius: "4px" }}
-      onMouseEnter={() => setShowAfter(true)}
-      onMouseLeave={() => setShowAfter(false)}
-      onClick={() => setShowAfter((v) => !v)}
-      aria-label={`${showAfter ? "After" : "Before"}: ${pair.service} in ${pair.county}`}
     >
       {/* Image */}
       <div className="relative" style={{ aspectRatio: "16/9" }}>
         <img
-          src={showAfter ? pair.after : pair.before}
-          alt={`${showAfter ? "After" : "Before"} — ${pair.service}, ${pair.county}`}
+          src={card.image}
+          alt={card.service}
           className="w-full h-full object-cover"
-          style={{
-            transition: "opacity 0.3s ease",
-          }}
+          loading="lazy"
         />
-        {/* Before / After badge */}
+        {/* Service badge */}
         <div
           style={{
             position: "absolute",
             top: "0.75rem",
             left: "0.75rem",
-            backgroundColor: showAfter ? "#E07B2A" : "rgba(0,0,0,0.75)",
+            backgroundColor: "rgba(0,0,0,0.75)",
             color: "#fff",
             fontFamily: "'Oswald', sans-serif",
             fontWeight: 600,
@@ -85,94 +76,30 @@ function PairCard({ pair }: { pair: Pair }) {
             textTransform: "uppercase",
             padding: "0.25rem 0.6rem",
             borderRadius: "2px",
-            transition: "background-color 0.3s ease",
           }}
         >
-          {showAfter ? "After" : "Before"}
+          {card.service}
         </div>
-        {/* Hover hint on desktop */}
-        {!showAfter && (
-          <div
-            style={{
-              position: "absolute",
-              bottom: "0.75rem",
-              right: "0.75rem",
-              backgroundColor: "rgba(0,0,0,0.6)",
-              color: "rgba(240,237,230,0.8)",
-              fontFamily: "'Lato', sans-serif",
-              fontSize: "0.7rem",
-              letterSpacing: "0.08em",
-              padding: "0.2rem 0.5rem",
-              borderRadius: "2px",
-            }}
-            className="hidden sm:block"
-          >
-            Hover to see after
-          </div>
-        )}
-        {!showAfter && (
-          <div
-            style={{
-              position: "absolute",
-              bottom: "0.75rem",
-              right: "0.75rem",
-              backgroundColor: "rgba(0,0,0,0.6)",
-              color: "rgba(240,237,230,0.8)",
-              fontFamily: "'Lato', sans-serif",
-              fontSize: "0.7rem",
-              letterSpacing: "0.08em",
-              padding: "0.2rem 0.5rem",
-              borderRadius: "2px",
-            }}
-            className="sm:hidden"
-          >
-            Tap to see after
-          </div>
-        )}
       </div>
 
-      {/* Labels */}
+      {/* Caption */}
       <div
         style={{
           backgroundColor: "#1A2A1A",
           borderTop: "1px solid rgba(224,123,42,0.2)",
-          padding: "0.75rem 1rem",
+          padding: "0.85rem 1rem",
         }}
       >
-        <div className="flex items-center justify-between gap-2 flex-wrap">
-          <span
-            style={{
-              fontFamily: "'Oswald', sans-serif",
-              fontWeight: 600,
-              fontSize: "0.85rem",
-              color: "#E07B2A",
-              letterSpacing: "0.05em",
-              textTransform: "uppercase",
-            }}
-          >
-            {pair.service}
-          </span>
-          <span
-            style={{
-              fontFamily: "'Lato', sans-serif",
-              fontSize: "0.75rem",
-              color: "rgba(240,237,230,0.5)",
-              letterSpacing: "0.08em",
-            }}
-          >
-            {pair.county} &middot; {pair.acreage}
-          </span>
-        </div>
         <p
           style={{
             fontFamily: "'Lato', sans-serif",
-            fontSize: "0.8rem",
-            color: "rgba(240,237,230,0.65)",
-            marginTop: "0.35rem",
-            lineHeight: 1.5,
+            fontSize: "0.85rem",
+            color: "rgba(240,237,230,0.7)",
+            lineHeight: 1.55,
+            margin: 0,
           }}
         >
-          {pair.note}
+          {card.caption}
         </p>
       </div>
     </div>
@@ -201,7 +128,7 @@ export default function BeforeAfterSection() {
               marginBottom: "0.5rem",
             }}
           >
-            Real Jobs. Real Results.
+            The Work
           </p>
           <h2
             style={{
@@ -213,7 +140,7 @@ export default function BeforeAfterSection() {
               marginBottom: "0.75rem",
             }}
           >
-            Before &amp; After
+            What Forestry Mulching Looks Like
           </h2>
           <p
             style={{
@@ -224,9 +151,9 @@ export default function BeforeAfterSection() {
               lineHeight: 1.6,
             }}
           >
-            Hover over any photo to see the finished result. Every job is
-            different — these are a few examples of what a tracked forestry
-            mulcher can do in a single day.
+            Overgrown land goes in, usable property comes out. A tracked
+            forestry mulcher handles dense brush, saplings, and small trees —
+            grinding everything into a mulch layer that stays on the ground.
           </p>
         </div>
 
@@ -235,8 +162,8 @@ export default function BeforeAfterSection() {
           className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"
           style={{ marginBottom: "2rem" }}
         >
-          {PAIRS.map((pair, i) => (
-            <PairCard key={i} pair={pair} />
+          {CARDS.map((card, i) => (
+            <WorkCard key={i} card={card} />
           ))}
         </div>
 

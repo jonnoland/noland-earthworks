@@ -1,6 +1,7 @@
 /*
- * DESIGN: Heavy Equipment Grit — Before/After gallery page
- * Shows real job photos organized by service type and county
+ * DESIGN: Heavy Equipment Grit — Work gallery page
+ * Single-image showcase organized by service type.
+ * Images are royalty-free examples — replace with real job photos when available.
  */
 import { useState } from "react";
 import Navbar from "@/components/Navbar";
@@ -8,8 +9,15 @@ import Footer from "@/components/Footer";
 import MobileCTABar from "@/components/MobileCTABar";
 import { usePageTitle } from "@/hooks/usePageTitle";
 
-const HERO_IMG = "https://d2xsxph8kpxj0f.cloudfront.net/310519663484957999/PymCzDCnSJzPjdkfwA7Jn6/hero-forestry-golden_b098141c.webp";
-const LAND_IMG = "https://d2xsxph8kpxj0f.cloudfront.net/310519663484957999/PymCzDCnSJzPjdkfwA7Jn6/land-clearing-iPC6VzRdyjJa4bVNXaWy5n.webp";
+// Royalty-free images from Pexels (free to use under Pexels license)
+// Replace these with real job photos as they become available
+const IMG_OVERGROWN_BRUSH = "/manus-storage/dense-foliage-bushes_2efa77a3.jpg";
+const IMG_FORESTRY_MACHINE = "/manus-storage/forestry-mulcher-machine_f900a315.jpg";
+const IMG_CLEARED_LAND = "/manus-storage/open-land-treeline_3c257c04.jpg";
+const IMG_FENCE_LINE = "/manus-storage/overgrown-fence-line_3a74b356.jpg";
+const IMG_OPEN_PASTURE = "/manus-storage/open-pasture-1_cbdb13b4.jpg";
+const IMG_OVERGROWN_PATH = "/manus-storage/overgrown-pathway_df75b768.jpg";
+const IMG_CLEARED_STUMPS = "/manus-storage/cleared-pasture-stumps_3bcc4b70.jpg";
 
 type Project = {
   id: number;
@@ -17,80 +25,86 @@ type Project = {
   county: string;
   service: string;
   acreage: string;
-  before: string;
-  after: string;
+  image: string;
   description: string;
 };
 
-// Placeholder projects — replace before/after image URLs with real job photos
 const PROJECTS: Project[] = [
   {
     id: 1,
-    title: "Overgrown Residential Lot",
-    county: "Wilson County",
+    title: "Dense Brush and Understory",
+    county: "Middle Tennessee",
     service: "Forestry Mulching",
-    acreage: "3 acres",
-    before: HERO_IMG,
-    after: LAND_IMG,
-    description: "Dense cedar and privet hedge cleared in a single day. Mulch layer left in place to prevent erosion and suppress regrowth.",
+    acreage: "Example",
+    image: IMG_OVERGROWN_BRUSH,
+    description:
+      "Thick invasive growth and tangled brush — the kind of property that has gotten away from its owner. A forestry mulcher handles this in a single pass.",
   },
   {
     id: 2,
-    title: "Farm Fence Line Reclamation",
-    county: "Dickson County",
-    service: "Vegetation Management",
-    acreage: "1.5 acres",
-    before: LAND_IMG,
-    after: HERO_IMG,
-    description: "Overgrown fence line cleared of invasive species and brush. Property boundary restored and accessible for the first time in years.",
+    title: "Forestry Mulcher at Work",
+    county: "Middle Tennessee",
+    service: "Forestry Mulching",
+    acreage: "Example",
+    image: IMG_FORESTRY_MACHINE,
+    description:
+      "A tracked forestry mulcher working through heavy timber and brush. No debris piles left behind — everything is ground into a mulch layer on the ground.",
   },
   {
     id: 3,
-    title: "New Home Site Preparation",
-    county: "Williamson County",
-    service: "Land Management",
-    acreage: "5 acres",
-    before: HERO_IMG,
-    after: LAND_IMG,
-    description: "Wooded lot cleared and graded for new residential construction. Stumps ground in place, site ready for builder within 2 days.",
+    title: "Cleared Land with Tree Line",
+    county: "Middle Tennessee",
+    service: "Land Clearing",
+    acreage: "Example",
+    image: IMG_CLEARED_LAND,
+    description:
+      "Open, accessible ground after clearing. The tree line is preserved at the property edge. Mulch layer left in place to control erosion and suppress regrowth.",
   },
   {
     id: 4,
-    title: "Hunting Land Brush Clearing",
-    county: "Maury County",
-    service: "Forestry Mulching",
-    acreage: "12 acres",
-    before: LAND_IMG,
-    after: HERO_IMG,
-    description: "Dense undergrowth cleared to open food plots and shooting lanes. Mature trees preserved. Soil undisturbed.",
+    title: "Overgrown Fence Line",
+    county: "Middle Tennessee",
+    service: "Vegetation Management",
+    acreage: "Example",
+    image: IMG_FENCE_LINE,
+    description:
+      "Fence lines that haven't seen daylight in years are one of the most common jobs. The mulcher clears the brush without damaging the fence posts.",
   },
   {
     id: 5,
-    title: "Commercial Development Site",
-    county: "Rutherford County",
-    service: "Land Management",
-    acreage: "8 acres",
-    before: HERO_IMG,
-    after: LAND_IMG,
-    description: "Full site clearing for commercial pad. Debris removed, stumps ground, site graded and ready for construction within 3 days.",
+    title: "Open Pasture Reclaimed",
+    county: "Middle Tennessee",
+    service: "Land Clearing",
+    acreage: "Example",
+    image: IMG_OPEN_PASTURE,
+    description:
+      "Pasture returned to productive use. Cedar encroachment and invasive species cleared. Ground cover left intact to prevent erosion.",
   },
   {
     id: 6,
-    title: "Pasture Reclamation",
-    county: "Montgomery County",
+    title: "Overgrown Property Access",
+    county: "Middle Tennessee",
     service: "Vegetation Management",
-    acreage: "20 acres",
-    before: LAND_IMG,
-    after: HERO_IMG,
-    description: "Overgrown pasture reclaimed from invasive species and cedar encroachment. Returned to productive grazing land.",
+    acreage: "Example",
+    image: IMG_OVERGROWN_PATH,
+    description:
+      "Overgrown access paths and property boundaries cleared and opened up. No hauling required — mulch stays on the ground.",
+  },
+  {
+    id: 7,
+    title: "Reclaimed Pasture Land",
+    county: "Middle Tennessee",
+    service: "Land Clearing",
+    acreage: "Example",
+    image: IMG_CLEARED_STUMPS,
+    description:
+      "Land cleared and returned to open pasture. Stumps left in place or ground down depending on the landowner's needs.",
   },
 ];
 
-const SERVICES = ["All", "Forestry Mulching", "Land Management", "Vegetation Management"];
+const SERVICES = ["All", "Forestry Mulching", "Land Clearing", "Vegetation Management"];
 
 function ProjectCard({ project }: { project: Project }) {
-  const [showAfter, setShowAfter] = useState(false);
-
   return (
     <div
       style={{
@@ -99,63 +113,14 @@ function ProjectCard({ project }: { project: Project }) {
         overflow: "hidden",
       }}
     >
-      {/* Image toggle */}
+      {/* Image */}
       <div style={{ position: "relative", aspectRatio: "16/9", overflow: "hidden" }}>
         <img
-          src={showAfter ? project.after : project.before}
-          alt={`${showAfter ? "After" : "Before"} — ${project.title}`}
-          style={{ width: "100%", height: "100%", objectFit: "cover", transition: "opacity 0.3s ease" }}
+          src={project.image}
+          alt={project.title}
+          style={{ width: "100%", height: "100%", objectFit: "cover" }}
           loading="lazy"
         />
-        {/* Before/After toggle */}
-        <div
-          style={{
-            position: "absolute",
-            bottom: "0.75rem",
-            left: "0.75rem",
-            display: "flex",
-            gap: "0.35rem",
-          }}
-        >
-          <button
-            onClick={() => setShowAfter(false)}
-            style={{
-              fontFamily: "'Oswald', sans-serif",
-              fontWeight: 600,
-              fontSize: "0.7rem",
-              letterSpacing: "0.1em",
-              textTransform: "uppercase",
-              padding: "0.3rem 0.75rem",
-              backgroundColor: !showAfter ? "#E07B2A" : "rgba(18,18,18,0.85)",
-              color: !showAfter ? "#121212" : "rgba(240,237,230,0.7)",
-              border: `1px solid ${!showAfter ? "#E07B2A" : "rgba(255,255,255,0.15)"}`,
-              cursor: "pointer",
-              backdropFilter: "blur(6px)",
-              transition: "all 0.2s ease",
-            }}
-          >
-            Before
-          </button>
-          <button
-            onClick={() => setShowAfter(true)}
-            style={{
-              fontFamily: "'Oswald', sans-serif",
-              fontWeight: 600,
-              fontSize: "0.7rem",
-              letterSpacing: "0.1em",
-              textTransform: "uppercase",
-              padding: "0.3rem 0.75rem",
-              backgroundColor: showAfter ? "#E07B2A" : "rgba(18,18,18,0.85)",
-              color: showAfter ? "#121212" : "rgba(240,237,230,0.7)",
-              border: `1px solid ${showAfter ? "#E07B2A" : "rgba(255,255,255,0.15)"}`,
-              cursor: "pointer",
-              backdropFilter: "blur(6px)",
-              transition: "all 0.2s ease",
-            }}
-          >
-            After
-          </button>
-        </div>
         {/* Service badge */}
         <div
           style={{
@@ -180,21 +145,19 @@ function ProjectCard({ project }: { project: Project }) {
 
       {/* Card body */}
       <div style={{ padding: "1.25rem" }}>
-        <div className="flex items-start justify-between gap-2 mb-2">
-          <h3
-            style={{
-              fontFamily: "'Oswald', sans-serif",
-              fontWeight: 600,
-              fontSize: "1rem",
-              letterSpacing: "0.04em",
-              textTransform: "uppercase",
-              color: "#F0EDE6",
-              margin: 0,
-            }}
-          >
-            {project.title}
-          </h3>
-        </div>
+        <h3
+          style={{
+            fontFamily: "'Oswald', sans-serif",
+            fontWeight: 600,
+            fontSize: "1rem",
+            letterSpacing: "0.04em",
+            textTransform: "uppercase",
+            color: "#F0EDE6",
+            margin: "0 0 0.5rem 0",
+          }}
+        >
+          {project.title}
+        </h3>
         <div className="flex items-center gap-3 mb-3">
           <span
             style={{
@@ -205,17 +168,6 @@ function ProjectCard({ project }: { project: Project }) {
             }}
           >
             {project.county}
-          </span>
-          <span style={{ color: "rgba(240,237,230,0.2)" }}>·</span>
-          <span
-            style={{
-              fontFamily: "'Lato', sans-serif",
-              fontSize: "0.72rem",
-              color: "rgba(240,237,230,0.45)",
-              letterSpacing: "0.06em",
-            }}
-          >
-            {project.acreage}
           </span>
         </div>
         <p
@@ -237,16 +189,17 @@ function ProjectCard({ project }: { project: Project }) {
 
 export default function Gallery() {
   usePageTitle(
-    "Forestry Mulching Before & After Gallery — Tennessee Projects",
-    "Real before and after photos of forestry mulching and land management jobs across Middle & West Tennessee. See the results — Williamson, Wilson, Dickson, Maury, Rutherford, and Montgomery counties.",
+    "Forestry Mulching & Land Clearing Gallery — Tennessee",
+    "See examples of forestry mulching and land clearing work across Middle Tennessee. Overgrown brush, fence lines, pasture reclamation, and more.",
     "/gallery"
   );
 
   const [activeService, setActiveService] = useState("All");
 
-  const filtered = activeService === "All"
-    ? PROJECTS
-    : PROJECTS.filter((p) => p.service === activeService);
+  const filtered =
+    activeService === "All"
+      ? PROJECTS
+      : PROJECTS.filter((p) => p.service === activeService);
 
   return (
     <div style={{ backgroundColor: "#121212", color: "#F0EDE6", minHeight: "100vh" }}>
@@ -277,7 +230,7 @@ export default function Gallery() {
               maxWidth: "640px",
             }}
           >
-            Before &amp; After Gallery
+            Work Gallery
           </h1>
           <p
             style={{
@@ -290,13 +243,30 @@ export default function Gallery() {
               marginTop: "1rem",
             }}
           >
-            Real projects. Real results. See what professional land management and forestry mulching looks like across Middle & West Tennessee.
+            Examples of the type of work a tracked forestry mulcher handles across Middle Tennessee — overgrown brush, fence lines, pasture reclamation, and site prep.
+          </p>
+          <p
+            style={{
+              fontFamily: "'Lato', sans-serif",
+              fontSize: "0.8rem",
+              color: "rgba(240,237,230,0.35)",
+              marginTop: "0.75rem",
+              fontStyle: "italic",
+            }}
+          >
+            Photos shown are representative examples. Real job photos will be added as they become available.
           </p>
         </div>
       </section>
 
       {/* Filter bar */}
-      <section style={{ backgroundColor: "#0F1A0F", borderBottom: "1px solid rgba(224,123,42,0.15)", padding: "1.25rem 0" }}>
+      <section
+        style={{
+          backgroundColor: "#0F1A0F",
+          borderBottom: "1px solid rgba(224,123,42,0.15)",
+          padding: "1.25rem 0",
+        }}
+      >
         <div className="container">
           <div className="flex flex-wrap gap-2">
             {SERVICES.map((s) => (
@@ -327,22 +297,6 @@ export default function Gallery() {
       {/* Gallery grid */}
       <section style={{ padding: "4rem 0 6rem" }}>
         <div className="container">
-          {/* Notice banner */}
-          <div
-            style={{
-              backgroundColor: "rgba(224,123,42,0.07)",
-              border: "1px solid rgba(224,123,42,0.2)",
-              padding: "1rem 1.5rem",
-              marginBottom: "2.5rem",
-              fontFamily: "'Lato', sans-serif",
-              fontSize: "0.875rem",
-              color: "rgba(240,237,230,0.65)",
-              lineHeight: 1.6,
-            }}
-          >
-            <strong style={{ color: "#E07B2A" }}>Note:</strong> Gallery photos are placeholders. Upload your real job photos to replace them — contact your site administrator to update the gallery with actual before/after images.
-          </div>
-
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {filtered.map((project) => (
               <ProjectCard key={project.id} project={project} />
@@ -370,7 +324,7 @@ export default function Gallery() {
                 marginBottom: "0.75rem",
               }}
             >
-              Ready to Transform Your Property?
+              Ready to Get Your Property Under Control?
             </h2>
             <p
               style={{
@@ -381,7 +335,7 @@ export default function Gallery() {
                 marginBottom: "1.75rem",
               }}
             >
-              Get a free on-site estimate. We serve 35 counties across Middle & West Tennessee.
+              Free on-site estimate. I serve 35 counties across Middle Tennessee.
             </p>
             <a
               href="/quote"
