@@ -149,6 +149,8 @@ export const jobberRouter = router({
   invoices: adminProcedure
     .input(z.object({ first: z.number().optional() }))
     .query(async ({ input }) => {
+      const connected = await isJobberConnected();
+      if (!connected) return { nodes: [], totalCount: 0 };
       const data = await jobberGraphQL(`
         query GetInvoices($first: Int) {
           invoices(first: $first) {
@@ -168,6 +170,8 @@ export const jobberRouter = router({
   requests: adminProcedure
     .input(z.object({ first: z.number().optional() }))
     .query(async ({ input }) => {
+      const connected = await isJobberConnected();
+      if (!connected) return { nodes: [], totalCount: 0 };
       const data = await jobberGraphQL(`
         query GetRequests($first: Int) {
           requests(first: $first) {
