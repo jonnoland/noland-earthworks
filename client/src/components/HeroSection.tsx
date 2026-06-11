@@ -102,7 +102,7 @@ export default function HeroSection() {
               marginBottom: "2.5rem",
             }}
           >
-            If your land has gotten away from you — overgrown brush, cedar thickets, fence lines you can't find — I can clear it in a day and leave it looking the way land should look. No debris piles, no hauling, no burning.
+            If your land has gotten away from you — overgrown brush, cedar thickets, fence lines you can't find — I can clear it and leave it looking the way land should look. No debris piles, no hauling, no burning.
           </p>
 
           {/* CTA buttons */}
