@@ -10,7 +10,7 @@ const features = [
     icon: <Clock size={28} />,
     title: "On-Time Delivery",
     description:
-      "We respect your schedule. Our crews show up when promised and complete projects on time.",
+      "Your schedule matters. When I commit to a start date, I show up — no subbing it out, no last-minute reschedules.",
   },
   {
     icon: <Shield size={28} />,
@@ -20,9 +20,9 @@ const features = [
   },
   {
     icon: <Wrench size={28} />,
-    title: "Experienced Operators",
+    title: "Owner-Operated Every Job",
     description:
-      "Our operators bring years of hands-on experience with a wide range of earthmoving equipment.",
+      "Every job is handled by me personally — the owner and operator. You get direct experience on your property, not a hired hand.",
   },
   {
     icon: <FileText size={28} />,
