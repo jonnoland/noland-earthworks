@@ -547,9 +547,23 @@ export const fieldQuoteRouter = router({
     }),
 
   /**
-   * Reverse geocode GPS coordinates to a human-readable address.
-   * Public — no auth required (no sensitive data returned).
+   * Returns the latest published version of the Noland Field mobile app.
+   * The mobile app calls this on startup to check if an update is available.
+   * Public — no auth required.
    */
+  latestVersion: publicProcedure
+    .query(() => {
+      // Bump this string whenever a new APK is published to GitHub Releases.
+      // Format: MAJOR.MINOR.PATCH — must match the version in noland-earthworks-mobile/package.json
+      const LATEST_VERSION = "0.3.0";
+      const GITHUB_RELEASES_URL = "https://github.com/jonnoland/noland-earthworks/releases/latest";
+      return {
+        version: LATEST_VERSION,
+        downloadUrl: GITHUB_RELEASES_URL,
+        releaseNotesUrl: GITHUB_RELEASES_URL,
+      };
+    }),
+
   reverseGeocode: publicProcedure
     .input(z.object({ lat: z.number(), lng: z.number() }))
     .query(async ({ input }) => {
