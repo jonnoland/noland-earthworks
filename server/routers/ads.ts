@@ -17,6 +17,85 @@ import { getDb } from "../db";
 import { and, desc, eq } from "drizzle-orm";
 
 /**
+ * Maps job context to the correct CAT 299D3 XE attachment for image generation.
+ * The machine is always a CAT 299D3 XE — only the attachment changes based on the job.
+ */
+function getCatAttachment(jobDescription?: string, adTypes?: string[]): string {
+  const text = `${jobDescription ?? ""} ${(adTypes ?? []).join(" ")}`.toLowerCase();
+
+  if (
+    text.includes("mulch") ||
+    text.includes("forestry") ||
+    text.includes("brush") ||
+    text.includes("cedar") ||
+    text.includes("sapling") ||
+    text.includes("tree") ||
+    text.includes("timber")
+  ) {
+    return "forestry mulcher head attachment, grinding dense brush and cedar into mulch";
+  }
+
+  if (
+    text.includes("pasture") ||
+    text.includes("reclaim") ||
+    text.includes("field") ||
+    text.includes("grass") ||
+    text.includes("hay")
+  ) {
+    return "brush cutter / rotary mulcher attachment, clearing overgrown pasture";
+  }
+
+  if (
+    text.includes("fence") ||
+    text.includes("fence line") ||
+    text.includes("property line") ||
+    text.includes("boundary")
+  ) {
+    return "forestry mulcher head attachment, clearing a fence line";
+  }
+
+  if (
+    text.includes("right of way") ||
+    text.includes("right-of-way") ||
+    text.includes("row") ||
+    text.includes("utility") ||
+    text.includes("pipeline") ||
+    text.includes("powerline")
+  ) {
+    return "forestry mulcher head attachment, clearing a right-of-way corridor";
+  }
+
+  if (
+    text.includes("lot") ||
+    text.includes("site prep") ||
+    text.includes("build") ||
+    text.includes("develop") ||
+    text.includes("subdivision")
+  ) {
+    return "land clearing bucket attachment, clearing a residential lot";
+  }
+
+  if (
+    text.includes("stump") ||
+    text.includes("root")
+  ) {
+    return "stump grinder attachment, grinding stumps";
+  }
+
+  // Default: forestry mulcher — the primary service
+  return "forestry mulcher head attachment, clearing dense overgrown brush and small trees";
+}
+
+/**
+ * Builds the image generation prompt fragment that always references
+ * the CAT 299D3 XE with the job-appropriate attachment.
+ */
+function buildImagePromptInstruction(jobDescription?: string, adTypes?: string[]): string {
+  const attachment = getCatAttachment(jobDescription, adTypes);
+  return `Also write a short image generation prompt (under 70 words) for a realistic, gritty photo of a CAT 299D3 XE compact track loader with a ${attachment}, working on a Tennessee property. Overcast or golden-hour lighting. No people, no logos, no text in the image. Photorealistic, raw, unfiltered — not staged.`;
+}
+
+/**
  * Owner-only guard — mirrors the one in opsRouter.ts.
  * Only the site owner (matched by OWNER_OPEN_ID or role=admin) can call these.
  */
@@ -83,7 +162,7 @@ export const socialPostsRouter = router({
         messages: [
           {
             role: "system",
-            content: `You write social media ads for Jon Noland, owner of Noland Earthworks, LLC — a veteran-owned land management and forestry mulching company in Middle Tennessee. ${platformNote} ${toneNote} ${adTypeNote} Rules: No emojis. No hashtag overload (max 3 relevant hashtags, only if appropriate for the platform). No corporate jargon. No banned phrases: "solutions", "industry-leading", "best-in-class", "we are passionate", "dedicated team", "we strive to", "cutting-edge". Sound like a real person who does this work — not a marketing department. End with a direct, low-pressure CTA (call, text, or visit nolandearthworks.com). Keep the post body under 150 words. Also write a short image generation prompt (under 60 words) describing a realistic, gritty photo of land clearing or forestry mulching work in Tennessee — no people, no logos, no text in the image. ${competitorContext} Return JSON: { "draft": "...", "headline": "...", "imagePrompt": "..." }`,
+            content: `You write social media ads for Jon Noland, owner of Noland Earthworks, LLC — a veteran-owned land management and forestry mulching company in Middle Tennessee. ${platformNote} ${toneNote} ${adTypeNote} Rules: No emojis. No hashtag overload (max 3 relevant hashtags, only if appropriate for the platform). No corporate jargon. No banned phrases: "solutions", "industry-leading", "best-in-class", "we are passionate", "dedicated team", "we strive to", "cutting-edge". Sound like a real person who does this work — not a marketing department. End with a direct, low-pressure CTA (call, text, or visit nolandearthworks.com). Keep the post body under 150 words. ${buildImagePromptInstruction(input.jobDescription, input.adTypes)} ${competitorContext} Return JSON: { "draft": "...", "headline": "...", "imagePrompt": "..." }`,
           },
           { role: "user", content: jobContext },
         ],
@@ -170,7 +249,7 @@ export const socialPostsRouter = router({
         messages: [
           {
             role: "system",
-            content: `You write social media ads for Jon Noland, owner of Noland Earthworks, LLC — a veteran-owned land management and forestry mulching company in Middle & West Tennessee. ${toneNote} ${adTypeNote} Rules: No emojis. No corporate jargon. No banned phrases: "solutions", "industry-leading", "best-in-class", "we are passionate", "dedicated team", "we strive to", "cutting-edge". Sound like a real person who does this work. ${competitorContext} Return JSON with five separate platform-optimized posts. Facebook: conversational, up to 150 words, 2-3 hashtags max. Instagram: visual-first, shorter (under 100 words), 3-5 relevant hashtags. X: punchy, under 280 characters total including any hashtags, 1-2 hashtags max. LinkedIn: professional tone, up to 200 words, industry-focused, 2-3 relevant hashtags, suitable for a B2B audience of developers, property managers, and municipal contacts. Google: short, direct ad copy for a Google search ad — one headline (max 30 characters), one description (max 90 characters), and a brief extended description (up to 60 words) that could serve as a display ad body. All five must end with a direct CTA (call, text, or visit nolandearthworks.com). Also write one image generation prompt (under 60 words) for a realistic gritty photo of land clearing work in Tennessee — no people, no logos, no text.`,
+            content: `You write social media ads for Jon Noland, owner of Noland Earthworks, LLC — a veteran-owned land management and forestry mulching company in Middle & West Tennessee. ${toneNote} ${adTypeNote} Rules: No emojis. No corporate jargon. No banned phrases: "solutions", "industry-leading", "best-in-class", "we are passionate", "dedicated team", "we strive to", "cutting-edge". Sound like a real person who does this work. ${competitorContext} Return JSON with five separate platform-optimized posts. Facebook: conversational, up to 150 words, 2-3 hashtags max. Instagram: visual-first, shorter (under 100 words), 3-5 relevant hashtags. X: punchy, under 280 characters total including any hashtags, 1-2 hashtags max. LinkedIn: professional tone, up to 200 words, industry-focused, 2-3 relevant hashtags, suitable for a B2B audience of developers, property managers, and municipal contacts. Google: short, direct ad copy for a Google search ad — one headline (max 30 characters), one description (max 90 characters), and a brief extended description (up to 60 words) that could serve as a display ad body. All five must end with a direct CTA (call, text, or visit nolandearthworks.com). ${buildImagePromptInstruction(input.jobDescription, input.adTypes)}`,
           },
           { role: "user", content: jobContext },
         ],
