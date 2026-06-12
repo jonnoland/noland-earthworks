@@ -76,7 +76,7 @@ interface EntryFormData {
 }
 
 const emptyForm: EntryFormData = {
-  title: "", crewName: "Crew A", date: "", startHour: 7, endHour: 17, notes: "",
+  title: "", crewName: "", date: "", startHour: 7, endHour: 17, notes: "",
 };
 
 // Jobber job shape from the jobs query
@@ -334,6 +334,9 @@ export default function Schedule() {
   // ── Local schedule entries (manual crew blocks) ──
   const { data: entries = [], isLoading: entriesLoading } = trpc.ops.schedule.list.useQuery();
 
+  // ── Crews from DB (matches Crews page) ──
+  const { data: crewList = [] } = trpc.ops.crews.list.useQuery();
+
   // ── Jobber jobs (primary job source) ──
   const {
     data: jobberData,
@@ -402,12 +405,14 @@ export default function Schedule() {
 
   const hasJobsThisWeek = weekDays.some(d => (jobberDayMap[d.key] ?? []).length > 0);
 
-  // ── Crew entries ──
+  // ── Crew entries — names sourced from DB crews, falling back to names already used in entries ──
   const crewNames = useMemo(() => {
+    const fromDb = crewList.map((c: any) => c.name as string);
     const fromEntries = Array.from(new Set(entries.map(e => e.crewName)));
-    const defaults = ["Crew A", "Crew B", "Crew C"];
-    return Array.from(new Set([...defaults, ...fromEntries])).sort();
-  }, [entries]);
+    // Merge: DB crews first, then any legacy names from existing entries not yet in DB
+    const merged = Array.from(new Set([...fromDb, ...fromEntries]));
+    return merged.length > 0 ? merged.sort() : ["Jon Noland"];
+  }, [crewList, entries]);
 
   const entryMap = useMemo(() => {
     const map: Record<string, Record<string, typeof entries>> = {};
@@ -777,12 +782,16 @@ export default function Schedule() {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-medium text-muted-foreground mb-1">Crew</label>
-                  <input
+                  <select
                     value={form.crewName}
                     onChange={e => setForm(f => ({ ...f, crewName: e.target.value }))}
-                    placeholder="Crew A"
-                    className="w-full bg-secondary/50 border border-border rounded-md px-3 py-2 text-xs text-foreground outline-none focus:border-primary/50 placeholder:text-muted-foreground/40"
-                  />
+                    className="w-full bg-secondary/50 border border-border rounded-md px-3 py-2 text-xs text-foreground outline-none focus:border-primary/50"
+                  >
+                    <option value="" disabled>Select crew...</option>
+                    {crewNames.map(name => (
+                      <option key={name} value={name}>{name}</option>
+                    ))}
+                  </select>
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-muted-foreground mb-1">Date *</label>
