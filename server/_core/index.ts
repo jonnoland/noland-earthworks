@@ -14,6 +14,7 @@ import { registerFacebookWebhookRoutes } from "../facebookWebhookRoutes";
 import { registerGoogleRoutes } from "../googleRoutes";
 import { registerXRoutes } from "../xRoutes";
 import { registerInstagramTokenRefreshRoute } from "../instagramTokenRefresh";
+import { registerStripeWebhookRoutes } from "../stripeWebhookRoutes";
 import { registerScheduledAdsPublisherRoute } from "../scheduledAdsPublisher";
 import { registerStorageProxy } from "./storageProxy";
 import { startJobberTokenRefreshScheduler } from "../jobber";
@@ -83,6 +84,9 @@ async function startServer() {
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization", "x-field-app-token", "trpc-accept"],
   }));
+
+  // Stripe webhook MUST be registered before express.json() to preserve raw body for signature verification
+  registerStripeWebhookRoutes(app);
 
   // Configure body parser with larger size limit for file uploads
   app.use(express.json({ limit: "50mb" }));

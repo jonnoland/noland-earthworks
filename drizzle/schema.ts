@@ -20,6 +20,8 @@ export const users = mysqlTable("users", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
   lastSignedIn: timestamp("lastSignedIn").defaultNow().notNull(),
+  /** Stripe Customer ID — set on first payment session creation */
+  stripeCustomerId: varchar("stripeCustomerId", { length: 64 }),
 });
 
 export type User = typeof users.$inferSelect;
@@ -1296,3 +1298,33 @@ export const fieldDiagnostics = mysqlTable("field_diagnostics", {
 });
 export type FieldDiagnostic = typeof fieldDiagnostics.$inferSelect;
 export type InsertFieldDiagnostic = typeof fieldDiagnostics.$inferInsert;
+
+// ─── Stripe Payments ─────────────────────────────────────────────────────────
+/**
+ * Tracks Stripe payment sessions for deposits and final balances.
+ * One row per payment session. jobId links to the ops jobs table.
+ * customerId links to the users table (the customer who pays).
+ */
+export const payments = mysqlTable("payments", {
+  id: int("id").primaryKey().autoincrement(),
+  /** FK to ops jobs table */
+  jobId: int("jobId").notNull(),
+  /** FK to users table — the customer making the payment */
+  customerId: int("customerId").notNull(),
+  /** deposit = initial deposit, balance = final remaining balance */
+  type: mysqlEnum("type", ["deposit", "balance"]).notNull(),
+  /** Amount in cents (e.g. 50000 = $500.00) */
+  amountCents: int("amountCents").notNull(),
+  /** pending = session created, paid = webhook confirmed, cancelled = abandoned */
+  status: mysqlEnum("status", ["pending", "paid", "cancelled"]).notNull().default("pending"),
+  /** Stripe Checkout Session ID — used to look up the session */
+  stripeSessionId: varchar("stripeSessionId", { length: 128 }).unique(),
+  /** Stripe Payment Intent ID — populated after checkout.session.completed */
+  stripePaymentIntentId: varchar("stripePaymentIntentId", { length: 128 }),
+  /** Timestamp when payment was confirmed by Stripe webhook */
+  paidAt: timestamp("paidAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type Payment = typeof payments.$inferSelect;
+export type InsertPayment = typeof payments.$inferInsert;

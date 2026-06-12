@@ -1612,44 +1612,86 @@ function IntegrationsTab() {
 }
 
 function PaymentsTab() {
-  const [enabled, setEnabled] = useState(false);
+  const { data: isConfigured, isLoading } = trpc.payment.isConfigured.useQuery();
 
   return (
     <div className="space-y-4">
       <SettingsSection
         title="Payment Settings"
-        description="Connect Stripe to accept online payments from your customers."
+        description="Accept deposits and final balance payments from customers via Stripe."
         action={
-          <button
-            onClick={() => setEnabled(v => !v)}
-            className={cn(
-              "shrink-0 w-10 h-5 rounded-full transition-colors relative",
-              enabled ? "bg-primary" : "bg-secondary border border-border"
-            )}
-          >
-            <span className={cn("absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform", enabled ? "translate-x-5" : "translate-x-0.5")} />
-          </button>
+          isLoading ? (
+            <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
+          ) : isConfigured ? (
+            <span className="flex items-center gap-1.5 text-xs font-medium text-green-400">
+              <CheckCircle2 className="w-3.5 h-3.5" />Connected
+            </span>
+          ) : (
+            <span className="flex items-center gap-1.5 text-xs font-medium text-yellow-400">
+              <AlertCircle className="w-3.5 h-3.5" />Not configured
+            </span>
+          )
         }
       >
-        <div className="border border-border rounded-lg p-5 space-y-4">
-          <p className="text-sm font-semibold text-foreground">Get paid faster with online invoices</p>
-          <p className="text-xs text-muted-foreground">Connect a free Stripe account so customers can pay your invoices by card or ACH. Money goes straight to your bank.</p>
-          <ul className="space-y-2">
-            {[
-              "Accept credit card and ACH payments",
-              "Automatic deposit to your bank account",
-              "No monthly fees — only pay when you get paid",
-            ].map(item => (
-              <li key={item} className="flex items-center gap-2 text-xs text-foreground">
-                <CheckCircle2 className="w-3.5 h-3.5 text-green-400 shrink-0" />{item}
-              </li>
-            ))}
-          </ul>
-          <button onClick={() => toast.info("Stripe integration coming soon")}
-            className="flex items-center gap-2 bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-semibold px-4 py-2.5 rounded-md transition-colors">
-            <CardIcon className="w-3.5 h-3.5" />Connect Stripe
-          </button>
-        </div>
+        {isLoading ? (
+          <div className="flex items-center justify-center py-8">
+            <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+          </div>
+        ) : isConfigured ? (
+          <div className="space-y-4">
+            <div className="border border-green-500/20 bg-green-500/5 rounded-lg p-4 space-y-3">
+              <p className="text-sm font-semibold text-foreground">Stripe is active</p>
+              <p className="text-xs text-muted-foreground">Your account is connected and ready to accept payments. Use the Payments page to send deposit and balance links to customers.</p>
+              <ul className="space-y-2">
+                {[
+                  "Send deposit links directly to customers",
+                  "Send final balance links when the job is complete",
+                  "Customers pay by card or ACH — funds go straight to your bank",
+                  "No monthly fees — only pay when you get paid",
+                ].map(item => (
+                  <li key={item} className="flex items-center gap-2 text-xs text-foreground">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-green-400 shrink-0" />{item}
+                  </li>
+                ))}
+              </ul>
+              <a
+                href="/ops/payments"
+                className="inline-flex items-center gap-2 bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-semibold px-4 py-2.5 rounded-md transition-colors"
+              >
+                <CardIcon className="w-3.5 h-3.5" />Go to Payments
+              </a>
+            </div>
+            <div className="border border-border rounded-lg p-4 space-y-2">
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Test Mode</p>
+              <p className="text-xs text-muted-foreground">Use card <span className="font-mono bg-secondary/50 px-1 py-0.5 rounded">4242 4242 4242 4242</span> with any future expiry and any CVC to test payments.</p>
+              <p className="text-xs text-muted-foreground">Claim your Stripe sandbox at <a href="https://dashboard.stripe.com" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">dashboard.stripe.com</a> to activate live mode.</p>
+            </div>
+          </div>
+        ) : (
+          <div className="border border-border rounded-lg p-5 space-y-4">
+            <p className="text-sm font-semibold text-foreground">Get paid faster with online invoices</p>
+            <p className="text-xs text-muted-foreground">Stripe keys are not yet configured. Contact support or add <span className="font-mono bg-secondary/50 px-1 rounded">STRIPE_SECRET_KEY</span> and <span className="font-mono bg-secondary/50 px-1 rounded">VITE_STRIPE_PUBLISHABLE_KEY</span> in Settings.</p>
+            <ul className="space-y-2">
+              {[
+                "Accept credit card and ACH payments",
+                "Automatic deposit to your bank account",
+                "No monthly fees — only pay when you get paid",
+              ].map(item => (
+                <li key={item} className="flex items-center gap-2 text-xs text-foreground">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-green-400 shrink-0" />{item}
+                </li>
+              ))}
+            </ul>
+            <a
+              href="https://dashboard.stripe.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-2 bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-semibold px-4 py-2.5 rounded-md transition-colors"
+            >
+              <CardIcon className="w-3.5 h-3.5" />Set Up Stripe
+            </a>
+          </div>
+        )}
       </SettingsSection>
     </div>
   );

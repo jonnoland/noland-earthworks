@@ -28,6 +28,10 @@ import OpsQuoteAnalytics from "./pages/ops/QuoteAnalytics";
 import OpsTasksPage from "./pages/ops/Tasks";
 import OpsEquipment from "./pages/ops/Equipment";
 import OpsFieldFix from "./pages/ops/FieldFix";
+import OpsPayments from "./pages/ops/Payments";
+import PaymentPortal from "./pages/portal/PaymentPortal";
+import PaymentSuccess from "./pages/portal/PaymentSuccess";
+import PaymentCancel from "./pages/portal/PaymentCancel";
 import OpsTeam from "./pages/ops/Team";
 import OpsRegister from "./pages/ops/Register";
 import CostEstimator from "./pages/ops/CostEstimator";
@@ -334,6 +338,14 @@ function Router() {
       <Route path="/ops/chat-sessions">
         <OwnerRoute><OpsChatSessions /></OwnerRoute>
       </Route>
+      <Route path="/ops/payments">
+        <OwnerRoute><OpsPayments /></OwnerRoute>
+      </Route>
+
+      {/* Customer payment portal — public routes, auth handled inside */}
+      <Route path="/portal" component={PaymentPortal} />
+      <Route path="/portal/success" component={PaymentSuccess} />
+      <Route path="/portal/cancel" component={PaymentCancel} />
 
       <Route path="/404" component={NotFound} />
       <Route component={NotFound} />

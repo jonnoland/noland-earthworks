@@ -1793,3 +1793,19 @@
 - [ ] Add deleteFieldQuote procedure to server quoteRouter
 - [ ] Wire delete button + confirmation dialog on ops Quotes page
 - [ ] Wire delete button + confirmation on companion app My Quotes page
+
+## Stripe Payment Integration
+
+- [ ] Add payments table to DB schema (jobId, customerId, stripePaymentIntentId, type: deposit|balance, amountCents, status, paidAt)
+- [ ] Add stripeCustomerId column to users table
+- [ ] Push DB migration (pnpm db:push)
+- [ ] Install stripe npm package
+- [ ] Create server/stripe.ts with Stripe client and helpers
+- [ ] Create server/paymentRouter.ts with tRPC procedures: createDepositSession, createBalanceSession, listMyPayments, getJobPaymentStatus
+- [ ] Register paymentRouter in server/routers.ts
+- [ ] Add POST /api/stripe/webhook route with raw body parser and signature verification
+- [ ] Handle checkout.session.completed webhook: update payment status, record paidAt
+- [ ] Ops UI: Payment panel on ops Jobs page — show deposit/balance status, send payment link buttons
+- [ ] Customer portal: /portal route with login guard, lists jobs with payment status, Pay Now button
+- [ ] Customer portal: /portal/success and /portal/cancel redirect pages
+- [ ] Write vitest tests for paymentRouter procedures

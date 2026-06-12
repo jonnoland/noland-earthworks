@@ -49,6 +49,10 @@ export const ENV = {
   twitterApiSecret: process.env.TWITTER_API_SECRET ?? "",
   twitterAccessToken: process.env.TWITTER_ACCESS_TOKEN ?? "",
   twitterAccessTokenSecret: process.env.TWITTER_ACCESS_TOKEN_SECRET ?? "",
+  // Stripe payment processing
+  stripeSecretKey: process.env.STRIPE_SECRET_KEY ?? "",
+  stripeWebhookSecret: process.env.STRIPE_WEBHOOK_SECRET ?? "",
+  stripePublishableKey: process.env.VITE_STRIPE_PUBLISHABLE_KEY ?? "",
   // Google Ads API — for pulling real campaign spend data
   googleAdsDeveloperToken: process.env.GOOGLE_ADS_DEVELOPER_TOKEN ?? "",
   googleAdsCustomerId: process.env.GOOGLE_ADS_CUSTOMER_ID ?? "",
