@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Search, ChevronRight, Image, RefreshCw } from "lucide-react";
+import { Search, ChevronRight, Image, RefreshCw, Trash2 } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { formatRelative } from "@/lib/utils";
 import PageHeader from "@/components/PageHeader";
@@ -9,11 +9,24 @@ import { usePullToRefresh } from "@/hooks/usePullToRefresh";
 export default function QuotesList() {
   const navigate = useNavigate();
   const [search, setSearch] = useState("");
+  const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null);
+  const [deletingId, setDeletingId] = useState<number | null>(null);
 
   const { data: quotes, isLoading, refetch } = trpc.fieldQuote.mobileList.useQuery(
     { limit: 50 },
     { retry: false }
   );
+
+  const deleteQuote = trpc.fieldQuote.mobileDelete.useMutation({
+    onSuccess: () => {
+      refetch();
+      setConfirmDeleteId(null);
+      setDeletingId(null);
+    },
+    onError: () => {
+      setDeletingId(null);
+    },
+  });
 
   const { containerRef, pullDistance, isRefreshing, threshold } = usePullToRefresh({
     onRefresh: async () => {
@@ -133,18 +146,76 @@ export default function QuotesList() {
         )}
 
         {filtered?.map((q) => (
-          <button
+          <div
             key={q.id}
+            style={{
+              position: "relative",
+              marginBottom: 10,
+            }}
+          >
+            {confirmDeleteId === q.id ? (
+              <div
+                style={{
+                  background: "oklch(0.18 0 0)",
+                  border: "1px solid oklch(0.40 0.18 25)",
+                  borderRadius: 12,
+                  padding: "14px 16px",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  gap: 12,
+                }}
+              >
+                <span style={{ color: "oklch(0.80 0.01 80)", fontSize: 13 }}>Delete this quote?</span>
+                <div style={{ display: "flex", gap: 8 }}>
+                  <button
+                    onClick={() => setConfirmDeleteId(null)}
+                    style={{
+                      background: "oklch(0.25 0 0)",
+                      border: "none",
+                      borderRadius: 8,
+                      padding: "8px 14px",
+                      color: "oklch(0.70 0.01 80)",
+                      fontSize: 13,
+                      cursor: "pointer",
+                    }}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    disabled={deletingId === q.id}
+                    onClick={() => {
+                      setDeletingId(q.id);
+                      deleteQuote.mutate({ id: q.id });
+                    }}
+                    style={{
+                      background: "oklch(0.55 0.20 25)",
+                      border: "none",
+                      borderRadius: 8,
+                      padding: "8px 14px",
+                      color: "white",
+                      fontSize: 13,
+                      fontWeight: 600,
+                      cursor: "pointer",
+                      opacity: deletingId === q.id ? 0.6 : 1,
+                    }}
+                  >
+                    {deletingId === q.id ? "Deleting..." : "Delete"}
+                  </button>
+                </div>
+              </div>
+            ) : (
+            <div style={{ display: "flex", gap: 8 }}>
+            <button
             onClick={() => navigate(`/quotes/${q.id}`)}
             style={{
-              width: "100%",
+              flex: 1,
               background: "oklch(0.18 0 0)",
               border: "1px solid oklch(0.25 0 0)",
               borderRadius: 12,
               padding: "14px 16px",
               cursor: "pointer",
               textAlign: "left",
-              marginBottom: 10,
               display: "flex",
               alignItems: "center",
               gap: 12,
@@ -216,6 +287,25 @@ export default function QuotesList() {
               <ChevronRight size={16} color="oklch(0.40 0 0)" />
             </div>
           </button>
+          <button
+            onClick={() => setConfirmDeleteId(q.id)}
+            style={{
+              background: "oklch(0.18 0 0)",
+              border: "1px solid oklch(0.25 0 0)",
+              borderRadius: 12,
+              padding: "0 14px",
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              flexShrink: 0,
+            }}
+          >
+            <Trash2 size={18} color="oklch(0.55 0.20 25)" />
+          </button>
+          </div>
+            )}
+          </div>
         ))}
       </div>
 

@@ -77,6 +77,8 @@ type Crew = {
   workingDaysPerMonth: number;
   targetMarginPct: number;
   acresPerDay: number;
+  isActive: boolean;
+  color: string;
   createdAt: Date;
   updatedAt: Date;
   members: CrewMember[];
@@ -240,6 +242,11 @@ function CrewCard({ crew, jobsToday }: { crew: Crew; jobsToday: number }) {
   const clockedInCount = crew.members.filter((m) => m.clockedIn).length;
   const totalMembers = crew.members.length;
 
+  const updateMeta = trpc.ops.crews.updateMeta.useMutation({
+    onSuccess: () => utils.ops.crews.list.invalidate(),
+    onError: (e) => toast.error(e.message || "Failed to update crew"),
+  });
+
   const updatePricing = trpc.ops.crews.updatePricing.useMutation({
     onSuccess: () => {
       utils.ops.crews.list.invalidate();
@@ -311,10 +318,38 @@ function CrewCard({ crew, jobsToday }: { crew: Crew; jobsToday: number }) {
               }`}
             />
             <span className="font-semibold text-white text-lg">{crew.name}</span>
+            {/* Active/Inactive badge */}
+            <button
+              onClick={() => updateMeta.mutate({ id: crew.id, isActive: !crew.isActive })}
+              title={crew.isActive ? "Mark inactive" : "Mark active"}
+              className={`ml-auto text-[10px] px-2 py-0.5 rounded-full font-medium border transition-colors ${
+                crew.isActive
+                  ? "bg-green-900/40 text-green-400 border-green-800 hover:bg-green-900/70"
+                  : "bg-zinc-800 text-zinc-500 border-zinc-700 hover:bg-zinc-700"
+              }`}
+            >
+              {crew.isActive ? "Active" : "Inactive"}
+            </button>
           </div>
-          <Badge variant="outline" className="ml-4 text-[11px] border-zinc-700 text-zinc-400 bg-zinc-800/50">
-            {crew.equipmentType}
-          </Badge>
+          <div className="flex items-center gap-2 mt-1 ml-4">
+            <Badge variant="outline" className="text-[11px] border-zinc-700 text-zinc-400 bg-zinc-800/50">
+              {crew.equipmentType}
+            </Badge>
+            {/* Color picker */}
+            <div className="flex items-center gap-1 ml-auto">
+              {["#f59e0b", "#3b82f6", "#a855f7", "#22c55e", "#ef4444", "#ec4899", "#14b8a6", ""].map(c => (
+                <button
+                  key={c}
+                  onClick={() => updateMeta.mutate({ id: crew.id, color: c })}
+                  title={c || "No color"}
+                  className={`w-4 h-4 rounded-full border-2 transition-transform hover:scale-110 ${
+                    crew.color === c ? "border-white scale-110" : "border-transparent"
+                  }`}
+                  style={{ backgroundColor: c || "#3f3f46" }}
+                />
+              ))}
+            </div>
+          </div>
 
           {/* Day Rate */}
           <div className="mt-4">

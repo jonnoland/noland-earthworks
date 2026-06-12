@@ -2227,6 +2227,21 @@ function WebsiteRequestsSection({
     { retry: false }
   );
 
+  const [deletingFieldId, setDeletingFieldId] = useState<number | null>(null);
+  const [confirmDeleteFieldId, setConfirmDeleteFieldId] = useState<number | null>(null);
+  const deleteFieldQuote = trpc.fieldQuote.delete.useMutation({
+    onSuccess: () => {
+      toast.success("Field quote deleted.");
+      refetchField();
+      setConfirmDeleteFieldId(null);
+      setDeletingFieldId(null);
+    },
+    onError: (err) => {
+      toast.error(`Delete failed: ${err.message}`);
+      setDeletingFieldId(null);
+    },
+  });
+
   const isRefreshing = activeTab === "requests" ? isFetching : activeTab === "field" ? fieldFetching : draftsFetching;
   const handleRefresh = () => activeTab === "requests" ? refetch() : activeTab === "field" ? refetchField() : refetchDrafts();
 
@@ -2588,20 +2603,55 @@ function WebsiteRequestsSection({
                         <p className="mt-1 text-foreground/80 whitespace-pre-wrap">{fq.aiDraftResponse}</p>
                       </details>
                     )}
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="w-full h-7 text-xs mt-1"
-                      onClick={() => onBuildQuote({
-                        clientName: fq.name,
-                        clientEmail: fq.email ?? undefined,
-                        jobType: [fq.serviceType, fq.acreage ? `${fq.acreage} acres` : null].filter(Boolean).join(" — "),
-                        message: fq.aiDraftResponse ?? undefined,
-                      })}
-                    >
-                      <Plus className="w-3 h-3 mr-1" />
-                      Build Quote in Jobber
-                    </Button>
+                    <div className="flex gap-2 mt-1">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="flex-1 h-7 text-xs"
+                        onClick={() => onBuildQuote({
+                          clientName: fq.name,
+                          clientEmail: fq.email ?? undefined,
+                          jobType: [fq.serviceType, fq.acreage ? `${fq.acreage} acres` : null].filter(Boolean).join(" — "),
+                          message: fq.aiDraftResponse ?? undefined,
+                        })}
+                      >
+                        <Plus className="w-3 h-3 mr-1" />
+                        Build Quote in Jobber
+                      </Button>
+                      {confirmDeleteFieldId === fq.id ? (
+                        <div className="flex gap-1">
+                          <Button
+                            size="sm"
+                            variant="destructive"
+                            className="h-7 text-xs px-2"
+                            disabled={deletingFieldId === fq.id}
+                            onClick={() => {
+                              setDeletingFieldId(fq.id);
+                              deleteFieldQuote.mutate({ id: fq.id });
+                            }}
+                          >
+                            {deletingFieldId === fq.id ? <Loader2 className="w-3 h-3 animate-spin" /> : "Confirm"}
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-7 text-xs px-2"
+                            onClick={() => setConfirmDeleteFieldId(null)}
+                          >
+                            Cancel
+                          </Button>
+                        </div>
+                      ) : (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive"
+                          onClick={() => setConfirmDeleteFieldId(fq.id)}
+                        >
+                          <Trash2 className="w-3 h-3" />
+                        </Button>
+                      )}
+                    </div>
                   </div>
                 );
               })}

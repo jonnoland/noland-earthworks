@@ -285,6 +285,11 @@ export const crews = mysqlTable("crews", {
   targetMarginPct: int("targetMarginPct").notNull().default(35),
   acresPerDay: int("acresPerDay").notNull().default(1),
 
+  /** Whether this crew is currently active (shown in dropdowns and schedule) */
+  isActive: boolean("isActive").notNull().default(true),
+  /** Display color for the crew (hex or tailwind color token) */
+  color: varchar("color", { length: 50 }).notNull().default(""),
+
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });

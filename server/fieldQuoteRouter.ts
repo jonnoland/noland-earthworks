@@ -521,6 +521,32 @@ export const fieldQuoteRouter = router({
     }),
 
   /**
+   * Delete a field quote — owner-only (Manus session).
+   * Used by the /ops/quotes dashboard.
+   */
+  delete: protectedProcedure
+    .input(z.object({ id: z.number() }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+      await db.delete(fieldQuotes).where(eq(fieldQuotes.id, input.id));
+      return { success: true };
+    }),
+
+  /**
+   * Delete a field quote from the mobile app — requires app token.
+   * Used by the companion app My Quotes screen.
+   */
+  mobileDelete: requireAppToken
+    .input(z.object({ id: z.number() }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+      await db.delete(fieldQuotes).where(eq(fieldQuotes.id, input.id));
+      return { success: true };
+    }),
+
+  /**
    * Reverse geocode GPS coordinates to a human-readable address.
    * Public — no auth required (no sensitive data returned).
    */

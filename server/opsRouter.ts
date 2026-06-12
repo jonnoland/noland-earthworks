@@ -1167,10 +1167,25 @@ const crewsRouter = router({
   list: ownerProcedure.query(async () => {
     const db = await getDb();
     if (!db) return [];
-    const allCrews = await db.select().from(crews).orderBy(crews.createdAt);
+    const allCrews = await db.select().from(crews).orderBy(crews.name);
     const allMembers = await db.select().from(crewMembers);
     return allCrews.map((crew) => ({ ...crew, members: allMembers.filter((m) => m.crewId === crew.id) }));
   }),
+  /** Update crew metadata: name, isActive, color */
+  updateMeta: ownerProcedure
+    .input(z.object({
+      id: z.number().int().positive(),
+      name: z.string().min(1).max(255).optional(),
+      isActive: z.boolean().optional(),
+      color: z.string().max(50).optional(),
+    }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+      const { id, ...rest } = input;
+      await db.update(crews).set(rest).where(eq(crews.id, id));
+      return { success: true };
+    }),
   create: ownerProcedure
     .input(z.object({
       name: z.string().min(1).max(255),

@@ -414,6 +414,13 @@
       "when": 1780961494447,
       "tag": "0058_mean_forge",
       "breakpoints": true
+    },
+    {
+      "idx": 59,
+      "version": "5",
+      "when": 1781290590451,
+      "tag": "0059_open_the_fury",
+      "breakpoints": true
     }
   ]
 }

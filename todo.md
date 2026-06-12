@@ -1788,3 +1788,8 @@
 
 ## Bug Fixes (Jun 2026)
 - [x] Fix client delete failure — add connection guard to deleteClient and fix isJobberConnected to detect expired tokens
+
+## Delete Field Quotes (Jun 2026)
+- [ ] Add deleteFieldQuote procedure to server quoteRouter
+- [ ] Wire delete button + confirmation dialog on ops Quotes page
+- [ ] Wire delete button + confirmation on companion app My Quotes page

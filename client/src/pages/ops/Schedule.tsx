@@ -6,7 +6,7 @@
 
 import DashboardLayout from "@/components/DashboardLayout";
 import { trpc } from "@/lib/trpc";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef } from "react";
 import {
   ChevronLeft, ChevronRight, Plus, Trash2, Loader2, X,
   Calendar, RefreshCw, ExternalLink, AlertCircle,
@@ -14,6 +14,9 @@ import {
   Sparkles, Copy,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList, CommandSeparator } from "@/components/ui/command";
+import { ChevronDown, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import {
