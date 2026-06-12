@@ -5,7 +5,7 @@
  * Outputs: low/high estimate range, per-acre breakdown, completion time,
  *          map polygon acreage tool, submit-as-lead form
  */
-import { useState, useMemo, useRef, useCallback } from "react";
+import { useState, useMemo, useRef, useCallback, useEffect } from "react";
 import { Calculator, ChevronRight, Info, Map, X, Send, Check, Share2, Download, Camera, Trash2, CalendarDays } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 
@@ -352,7 +352,7 @@ function MapPolygonModal({ onClose, onAcreageConfirm, calcState }: {
   }, []);
 
   // Init on mount
-  useState(() => { initMap(); });
+  useEffect(() => { initMap(); }, [initMap]);
 
   const handleConfirm = () => {
     if (drawnAcres === null) return;
