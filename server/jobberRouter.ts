@@ -302,6 +302,11 @@ export const jobberRouter = router({
   deleteClient: protectedProcedure
     .input(z.object({ id: z.string() }))
     .mutation(async ({ input }) => {
+      // Guard: do not attempt API call if Jobber is not connected
+      const connected = await isJobberConnected();
+      if (!connected) {
+        throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Jobber is not connected. Please reconnect from the ops dashboard." });
+      }
       // Jobber does not expose a clientDelete mutation in the public API.
       // Confirmed via introspection: clientArchive(clientId: EncodedId!) — single top-level arg.
       const archiveData = await jobberGraphQL(`

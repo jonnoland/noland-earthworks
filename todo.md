@@ -1785,3 +1785,6 @@
 
 ## Team Panel Notification Badge (Jun 8 2026)
 - [x] Add notification badge to Team nav item in sidebar showing count of pending access requests (polls every 60s, owner-only, graceful fail for non-owners)
+
+## Bug Fixes (Jun 2026)
+- [x] Fix client delete failure — add connection guard to deleteClient and fix isJobberConnected to detect expired tokens

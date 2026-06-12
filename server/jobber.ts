@@ -106,8 +106,15 @@ async function getValidAccessToken(): Promise<string> {
 export async function isJobberConnected(): Promise<boolean> {
   const db = await getDb();
   if (!db) return false;
-  const rows = await db.select().from(jobberTokens).limit(1);
-  return rows.length > 0;
+  const rows = await db.select().from(jobberTokens).orderBy(desc(jobberTokens.updatedAt)).limit(1);
+  if (rows.length === 0) return false;
+  // Consider connected only if token is not expired (with 5-min buffer for refresh)
+  // A token that is expired but has a refresh token is still usable — getValidAccessToken will refresh it.
+  // Only return false if the token is expired AND we have no way to refresh (no refreshToken).
+  const row = rows[0];
+  const isExpired = row.expiresAt.getTime() - Date.now() < 0;
+  if (isExpired && !row.refreshToken) return false;
+  return true;
 }
 
 // ─── GraphQL helper ───────────────────────────────────────────────────────────
