@@ -509,7 +509,7 @@ export default function OpsClients() {
     trpc.jobber.clients.useQuery({ first: 100 }, { retry: false });
 
   // AI #11: Client Churn Risk Detection
-  const [churnReport, setChurnReport] = useState<{ summary: string; atRisk: { clientName: string; monthsSinceLastJob: number; riskLevel: string; reEngagementMessage: string }[] } | null>(null);
+  const [churnReport, setChurnReport] = useState<{ summary: string; clients: { name: string; daysInactive: number; reEngagementMessage: string; email: string | null }[] } | null>(null);
   const [showChurnPanel, setShowChurnPanel] = useState(false);
   const detectChurn = trpc.ops.ai.detectChurnRisk.useMutation({
     onSuccess: (data) => { setChurnReport(data as any); setShowChurnPanel(true); toast.success("Churn risk scan complete."); },
@@ -682,19 +682,19 @@ export default function OpsClients() {
               <button onClick={() => setShowChurnPanel(false)} className="text-muted-foreground hover:text-foreground"><X className="w-4 h-4" /></button>
             </div>
             <p className="text-xs text-muted-foreground">{churnReport.summary}</p>
-            {churnReport.atRisk.length === 0 ? (
-              <p className="text-xs text-green-400">No at-risk clients detected.</p>
+            {churnReport.clients.length === 0 ? (
+              <p className="text-xs text-green-400">No inactive recurring clients detected.</p>
             ) : (
               <div className="space-y-2">
-                {churnReport.atRisk.map((c, i) => (
+                {churnReport.clients.map((c, i) => (
                   <div key={i} className="rounded-md border border-border bg-card p-3 space-y-1">
                     <div className="flex items-center justify-between">
-                      <span className="text-xs font-medium text-foreground">{c.clientName}</span>
-                      <Badge className={c.riskLevel === "high" ? "bg-red-500/20 text-red-400 border-red-500/30" : "bg-amber-500/20 text-amber-400 border-amber-500/30"}>
-                        {c.riskLevel} risk
+                      <span className="text-xs font-medium text-foreground">{c.name}</span>
+                      <Badge className="bg-amber-500/20 text-amber-400 border-amber-500/30">
+                        {Math.round(c.daysInactive / 30)}mo inactive
                       </Badge>
                     </div>
-                    <p className="text-xs text-muted-foreground">{c.monthsSinceLastJob} months since last job</p>
+                    {c.email && <p className="text-xs text-muted-foreground">{c.email}</p>}
                     <p className="text-xs text-foreground/80 italic">"{c.reEngagementMessage}"</p>
                   </div>
                 ))}
