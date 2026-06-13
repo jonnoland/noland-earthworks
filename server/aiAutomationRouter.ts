@@ -18,8 +18,9 @@ import { ENV } from "./_core/env";
 // ─── Owner-only guard (mirrors opsRouter pattern) ─────────────────────────────
 import { protectedProcedure } from "./_core/trpc";
 const ownerProcedure = protectedProcedure.use(({ ctx, next }) => {
-  const ownerOpenId = ENV.ownerOpenId;
-  if (!ownerOpenId || ctx.user.openId !== ownerOpenId) {
+  const isOwnerByOpenId = ENV.ownerOpenId && ctx.user.openId === ENV.ownerOpenId;
+  const isOwnerByRole = ctx.user.role === "admin";
+  if (!isOwnerByOpenId && !isOwnerByRole) {
     throw new TRPCError({ code: "FORBIDDEN", message: "Owner only" });
   }
   return next({ ctx });

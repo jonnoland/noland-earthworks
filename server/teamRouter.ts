@@ -48,7 +48,9 @@ const roleLabels: Record<string, string> = {
 
 // ─── Owner guard ─────────────────────────────────────────────────────────────
 const ownerProcedure = protectedProcedure.use(({ ctx, next }) => {
-  if (ctx.user.openId !== ENV.ownerOpenId) {
+  const isOwnerByOpenId = ENV.ownerOpenId && ctx.user.openId === ENV.ownerOpenId;
+  const isOwnerByRole = ctx.user.role === "admin";
+  if (!isOwnerByOpenId && !isOwnerByRole) {
     throw new TRPCError({ code: "FORBIDDEN", message: "Owner access required." });
   }
   return next({ ctx });
