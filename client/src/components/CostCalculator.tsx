@@ -1345,12 +1345,7 @@ export default function CostCalculator() {
                         {fmt(result.perAcreLow)} – {fmt(result.perAcreHigh)}
                       </p>
                     </div>
-                    <div style={{ backgroundColor: "rgba(255,255,255,0.04)", borderRadius: "4px", padding: "0.6rem 0.9rem", flex: 1, minWidth: "120px" }}>
-                      <p style={{ fontFamily: "'Lato', sans-serif", fontSize: "0.65rem", color: "rgba(240,237,230,0.4)", textTransform: "uppercase", letterSpacing: "0.1em", margin: "0 0 0.2rem" }}>Mobilization</p>
-                      <p style={{ fontFamily: "'Oswald', sans-serif", fontWeight: 600, fontSize: "1rem", color: "#F0EDE6", margin: 0 }}>
-                        {fmt(MOBILIZATION)} (included)
-                      </p>
-                    </div>
+
                   </div>
 
                   {/* Completion time */}

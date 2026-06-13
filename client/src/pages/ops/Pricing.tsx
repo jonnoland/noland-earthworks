@@ -804,7 +804,7 @@ export default function Pricing() {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const [mapReady, setMapReady] = useState(false);
 
-  // Mobilization surcharge tiers (per crew-day)
+  // Travel surcharge tiers (per crew-day)
   const MOB_TIERS = [
     { maxMiles: 30,  label: "Local (0–30 mi)",       surcharge: 0 },
     { maxMiles: 50,  label: "Near (31–50 mi)",        surcharge: 150 },
@@ -1135,7 +1135,7 @@ export default function Pricing() {
             </div>
             <div>
               <h3 className="text-sm font-semibold text-foreground">Distance Pricing Adjustment</h3>
-              <p className="text-xs text-muted-foreground">Calculates drive distance from Vanleer, TN and applies a mobilization surcharge to your crew-day rate</p>
+              <p className="text-xs text-muted-foreground">Calculates drive distance from Vanleer, TN and applies a travel surcharge to your crew-day rate</p>
             </div>
           </div>
 
@@ -1177,9 +1177,9 @@ export default function Pricing() {
             <p className="text-[11px] text-muted-foreground text-center -mt-4 mb-4">Loading map...</p>
           )}
 
-          {/* Mobilization Tiers Reference Table */}
+          {/* Travel Surcharge Tiers Reference Table */}
           <div className="mb-5">
-            <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide mb-2">Mobilization Surcharge Tiers (per crew-day)</p>
+            <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide mb-2">Travel Surcharge Tiers (per crew-day)</p>
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
@@ -1225,7 +1225,7 @@ export default function Pricing() {
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
                 {[
                   { label: "Drive Distance", value: `${distResult.distanceMiles} mi`, color: "text-foreground" },
-                  { label: "Mob Surcharge", value: distResult.surcharge === 0 ? "None" : `+$${distResult.surcharge}/day`, color: distResult.surcharge === 0 ? "text-green-400" : "text-yellow-400" },
+                  { label: "Travel Surcharge", value: distResult.surcharge === 0 ? "None" : `+$${distResult.surcharge}/day`, color: distResult.surcharge === 0 ? "text-green-400" : "text-yellow-400" },
                   { label: "Adjusted Day Rate", value: `$${distResult.adjustedDayRate.toFixed(0)}`, color: "text-primary" },
                   { label: `Adjusted Job Total (${crewDaysNeeded} days)`, value: `$${distResult.adjustedJobTotal.toFixed(0)}`, color: "text-primary" },
                 ].map((item, i) => (
@@ -1237,7 +1237,7 @@ export default function Pricing() {
               </div>
               {distResult.surcharge > 0 && (
                 <p className="text-[11px] text-muted-foreground mt-3">
-                  Base rate ${crewDayRate.toFixed(0)}/day + ${distResult.surcharge} mobilization = <strong className="text-primary">${distResult.adjustedDayRate.toFixed(0)}/day</strong> &bull; {jobAcres} acres @ <strong className="text-primary">${distResult.adjustedPricePerAcre.toFixed(0)}/ac</strong>
+                  Base rate ${crewDayRate.toFixed(0)}/day + ${distResult.surcharge} travel surcharge = <strong className="text-primary">${distResult.adjustedDayRate.toFixed(0)}/day</strong> &bull; {jobAcres} acres @ <strong className="text-primary">${distResult.adjustedPricePerAcre.toFixed(0)}/ac</strong>
                 </p>
               )}
               <div className="flex items-center gap-3 mt-4 pt-3 border-t border-border/50">
@@ -1817,7 +1817,7 @@ function SaveQuoteModal({
             {[
               { label: "Job Address", value: jobAddress || "—", span: true },
               { label: "Distance", value: `${distResult.distanceMiles} mi (${distResult.durationText})` },
-              { label: "Mob Surcharge", value: distResult.surcharge === 0 ? "None" : `+$${distResult.surcharge}/day` },
+              { label: "Travel Surcharge", value: distResult.surcharge === 0 ? "None" : `+$${distResult.surcharge}/day` },
               { label: "Adjusted Day Rate", value: `$${distResult.adjustedDayRate.toFixed(0)}/day` },
               { label: "Job Total", value: `$${distResult.adjustedJobTotal.toFixed(0)}` },
             ].map((item, i) => (

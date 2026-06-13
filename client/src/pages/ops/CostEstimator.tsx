@@ -49,7 +49,7 @@ export default function CostEstimator() {
   const [terrain, setTerrain] = useState<"flat" | "rolling" | "steep" | "very_steep">("rolling");
   const [vegetationDensity, setVegetationDensity] = useState<"light" | "moderate" | "heavy" | "very_heavy">("moderate");
   const [accessDifficulty, setAccessDifficulty] = useState<"easy" | "moderate" | "difficult">("easy");
-  const [mobilizationMiles, setMobilizationMiles] = useState("25");
+  const mobilizationMiles = 25; // baked in — not shown to user
   const [hasStumps, setHasStumps] = useState(false);
   const [stumpCount, setStumpCount] = useState("");
   const [notes, setNotes] = useState("");
@@ -83,7 +83,7 @@ export default function CostEstimator() {
       terrain,
       vegetationDensity,
       accessDifficulty,
-      mobilizationMiles: parseInt(mobilizationMiles) || 0,
+      mobilizationMiles: mobilizationMiles,
       hasStumps,
       stumpCount: hasStumps ? parseInt(stumpCount) || 0 : 0,
       notes: notes || undefined,
@@ -206,17 +206,7 @@ export default function CostEstimator() {
                 </Select>
               </div>
 
-              {/* Mobilization */}
-              <div className="space-y-1.5">
-                <Label className="text-zinc-300">Mobilization Distance (miles one-way)</Label>
-                <Input
-                  type="number"
-                  value={mobilizationMiles}
-                  onChange={e => setMobilizationMiles(e.target.value)}
-                  placeholder="25"
-                  className="bg-zinc-800 border-zinc-600 text-white"
-                />
-              </div>
+
 
               {/* Stumps */}
               <div className="flex items-center gap-3">
@@ -372,7 +362,7 @@ export default function CostEstimator() {
                     <CardTitle className="text-white text-sm">Cost Breakdown</CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-2">
-                    {result.breakdown.map((item, i) => (
+                    {result.breakdown.filter(item => !item.label.toLowerCase().includes('mobilization')).map((item, i) => (
                       <div key={i} className="flex items-center justify-between py-1.5 border-b border-zinc-800 last:border-0">
                         <div>
                           <span className="text-zinc-200 text-sm">{item.label}</span>

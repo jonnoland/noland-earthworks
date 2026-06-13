@@ -209,7 +209,7 @@ export default function OpsDistanceQuotes() {
                         { label: "Crew Days", value: quote.crewDaysNeeded },
                         { label: "Distance", value: `${quote.distanceMiles} mi${quote.driveDuration ? ` (${quote.driveDuration})` : ""}` },
                         { label: "Base Day Rate", value: fmt(quote.baseDayRateCents) },
-                        { label: "Mob Surcharge", value: quote.mobSurchargeCents === 0 ? "None" : `+${fmt(quote.mobSurchargeCents)}/day` },
+                        { label: "Travel Surcharge", value: quote.mobSurchargeCents === 0 ? "None" : `+${fmt(quote.mobSurchargeCents)}/day` },
                         { label: "Adjusted Day Rate", value: fmt(quote.adjustedDayRateCents) },
                         { label: "Price / Acre", value: fmt(quote.pricePerAcreCents) },
                       ].map((item, i) => (

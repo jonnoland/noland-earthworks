@@ -1809,3 +1809,4 @@
 - [ ] Customer portal: /portal route with login guard, lists jobs with payment status, Pay Now button
 - [ ] Customer portal: /portal/success and /portal/cancel redirect pages
 - [ ] Write vitest tests for paymentRouter procedures
+- [x] Remove mobilization fee as a visible line item: hide from website CostCalculator stat boxes, remove Mobilization Distance input from CostEstimator (field/ops), suppress mobilizationCost from AI breakdown display, rename "Mob Surcharge" to "Travel Surcharge" in Pricing.tsx and DistanceQuotes.tsx
