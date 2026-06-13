@@ -9,6 +9,9 @@ on:
       - '.github/workflows/android-release.yml'
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   build-release:
     name: Build Signed Release APK
@@ -76,7 +79,8 @@ jobs:
 
       - name: Decode signing keystore
         run: |
-          echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 --decode > android/app/noland-field-release.keystore
+          echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | tr -d '\n\r ' | base64 --decode > android/app/noland-field-release.keystore
+          ls -la android/app/noland-field-release.keystore
 
       - name: Build signed release APK
         run: |
@@ -125,3 +129,4 @@ jobs:
           prerelease: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+# keystore-secret-corrected: 2026-06-12
