@@ -35,6 +35,7 @@
 import type { Application, Request, Response } from "express";
 import { ENV } from "./_core/env";
 import { createOpsLead, getOwnerUser, getDb } from "./db";
+import { createJobberClientFromLead } from "./jobber";
 import { notifyOwner } from "./_core/notification";
 import { Resend } from "resend";
 import { eq } from "drizzle-orm";
@@ -280,6 +281,9 @@ async function processLead(leadgenId: string): Promise<void> {
     });
 
     console.log(`[FB Webhook] Lead created: ${name} (${leadgenId})`);
+    // Add to Jobber clients list (fire-and-forget)
+    createJobberClientFromLead({ name, email: email || undefined, phone: phone || undefined, address: address || undefined })
+      .catch(err => console.warn("[FB Webhook] Jobber client creation failed:", err));
   } catch (err) {
     console.error(`[FB Webhook] Failed to create ops lead for ${leadgenId}:`, err);
   }

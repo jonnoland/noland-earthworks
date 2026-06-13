@@ -588,6 +588,7 @@ function LeadDetailPanel({
   const [stageSuggestion, setStageSuggestion] = useState<{ suggestedStage: string | null; reason: string } | null>(null);
   const [proposalDraft, setProposalDraft] = useState<{ projectDescription?: string; scopeOfWork?: string[]; inclusions?: string[]; exclusions?: string[]; siteConditions?: string; estimatedTimeline?: string; paymentTerms?: string } | null>(null);
   const [showProposal, setShowProposal] = useState(false);
+  const [showContactModal, setShowContactModal] = useState(false);
 
   const utils = trpc.useUtils();
   const { data: notes = [], isLoading: notesLoading } = trpc.ops.leads.listNotes.useQuery({ leadId: lead.id });
@@ -692,6 +693,7 @@ function LeadDetailPanel({
   const stageBadge = KANBAN_STAGES.find(s => s.id === lead.stage)?.label ?? lead.stage;
 
   return (
+    <>
     <div className="fixed inset-y-0 right-0 z-50 flex">
       <div className="fixed inset-0 bg-black/50" onClick={onClose} />
       <div className="relative ml-auto w-full max-w-[360px] bg-[#0d0d0d] border-l border-[#222] flex flex-col overflow-hidden shadow-2xl">
@@ -1208,7 +1210,7 @@ function LeadDetailPanel({
             <ExternalLink className="w-3.5 h-3.5" />View Full Deal
           </button>
           <button
-            onClick={() => toast.info("Contact detail coming soon")}
+            onClick={() => setShowContactModal(true)}
             className="flex-1 flex items-center justify-center gap-1.5 bg-[#1a1a1a] hover:bg-[#222] border border-[#2a2a2a] text-xs text-[#aaa] px-3 py-2 rounded-md transition-colors">
             <User className="w-3.5 h-3.5" />View Contact
           </button>
@@ -1220,6 +1222,124 @@ function LeadDetailPanel({
         </div>
       </div>
     </div>
+
+    {/* Contact Detail Modal */}
+    {showContactModal && (
+      <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70" onClick={() => setShowContactModal(false)}>
+        <div className="bg-[#111] border border-[#222] rounded-xl w-full max-w-sm mx-4 shadow-2xl overflow-hidden" onClick={e => e.stopPropagation()}>
+          {/* Header */}
+          <div className="flex items-center justify-between px-5 py-4 border-b border-[#1e1e1e]">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-full bg-[#E07B2A]/20 flex items-center justify-center">
+                <User className="w-4 h-4 text-[#E07B2A]" />
+              </div>
+              <div>
+                <p className="text-sm font-bold text-white">{lead.name}</p>
+                <p className="text-xs text-[#555]">{lead.stage.charAt(0).toUpperCase() + lead.stage.slice(1)} Lead</p>
+              </div>
+            </div>
+            <button onClick={() => setShowContactModal(false)} className="p-1.5 rounded-md hover:bg-[#1e1e1e] transition-colors">
+              <X className="w-4 h-4 text-[#666]" />
+            </button>
+          </div>
+          {/* Contact Fields */}
+          <div className="p-5 space-y-3">
+            {lead.phone && (
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-lg bg-[#1a1a1a] flex items-center justify-center shrink-0">
+                  <Phone className="w-3.5 h-3.5 text-[#E07B2A]" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-xs text-[#555] mb-0.5">Phone</p>
+                  <a href={`tel:${lead.phone}`} className="text-sm text-white hover:text-[#E07B2A] transition-colors font-medium">{lead.phone}</a>
+                </div>
+              </div>
+            )}
+            {lead.email && (
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-lg bg-[#1a1a1a] flex items-center justify-center shrink-0">
+                  <Mail className="w-3.5 h-3.5 text-[#E07B2A]" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-xs text-[#555] mb-0.5">Email</p>
+                  <a href={`mailto:${lead.email}`} className="text-sm text-white hover:text-[#E07B2A] transition-colors truncate block">{lead.email}</a>
+                </div>
+              </div>
+            )}
+            {lead.address && (
+              <div className="flex items-start gap-3">
+                <div className="w-8 h-8 rounded-lg bg-[#1a1a1a] flex items-center justify-center shrink-0 mt-0.5">
+                  <MapPin className="w-3.5 h-3.5 text-[#E07B2A]" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-xs text-[#555] mb-0.5">Property Address</p>
+                  <p className="text-sm text-white leading-snug">{lead.address}</p>
+                </div>
+              </div>
+            )}
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-lg bg-[#1a1a1a] flex items-center justify-center shrink-0">
+                <ClipboardList className="w-3.5 h-3.5 text-[#E07B2A]" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-xs text-[#555] mb-0.5">Source</p>
+                <p className="text-sm text-white capitalize">{lead.source}</p>
+              </div>
+            </div>
+            {lead.jobType && (
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-lg bg-[#1a1a1a] flex items-center justify-center shrink-0">
+                  <FileText className="w-3.5 h-3.5 text-[#E07B2A]" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-xs text-[#555] mb-0.5">Job Type</p>
+                  <p className="text-sm text-white">{lead.jobType}</p>
+                </div>
+              </div>
+            )}
+            {lead.estimatedValue && (
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-lg bg-[#1a1a1a] flex items-center justify-center shrink-0">
+                  <Star className="w-3.5 h-3.5 text-[#E07B2A]" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-xs text-[#555] mb-0.5">Estimated Value</p>
+                  <p className="text-sm text-white">${Number(lead.estimatedValue).toLocaleString()}</p>
+                </div>
+              </div>
+            )}
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-lg bg-[#1a1a1a] flex items-center justify-center shrink-0">
+                <Clock className="w-3.5 h-3.5 text-[#555]" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-xs text-[#555] mb-0.5">Added</p>
+                <p className="text-sm text-[#aaa]">{new Date(lead.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}</p>
+              </div>
+            </div>
+          </div>
+          {/* Action Buttons */}
+          <div className="px-5 pb-5 flex gap-2">
+            {lead.phone && (
+              <a href={`tel:${lead.phone}`} className="flex-1 flex items-center justify-center gap-1.5 bg-[#E07B2A] hover:bg-[#c96a20] text-white text-xs font-medium px-3 py-2.5 rounded-lg transition-colors">
+                <Phone className="w-3.5 h-3.5" />Call
+              </a>
+            )}
+            {lead.email && (
+              <a href={`mailto:${lead.email}`} className="flex-1 flex items-center justify-center gap-1.5 bg-[#1a1a1a] hover:bg-[#222] border border-[#2a2a2a] text-[#aaa] text-xs font-medium px-3 py-2.5 rounded-lg transition-colors">
+                <Mail className="w-3.5 h-3.5" />Email
+              </a>
+            )}
+            {lead.phone && (
+              <a href={`sms:${lead.phone}`} className="flex-1 flex items-center justify-center gap-1.5 bg-[#1a1a1a] hover:bg-[#222] border border-[#2a2a2a] text-[#aaa] text-xs font-medium px-3 py-2.5 rounded-lg transition-colors">
+                <MessageSquare className="w-3.5 h-3.5" />Text
+              </a>
+            )}
+          </div>
+        </div>
+      </div>
+    )}
+    </>
   );
 }
 

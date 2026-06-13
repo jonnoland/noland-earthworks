@@ -493,3 +493,73 @@ export async function createJobberRequest(data: QuoteFormData): Promise<JobberRe
     requestUrl: requestData.requestCreate.request.jobberWebUri,
   };
 }
+
+/**
+ * Create (or find existing) Jobber client from a lead.
+ * Used when a new lead comes in from any source to ensure they appear in the Clients list.
+ * Returns the Jobber client ID, or null if Jobber is not connected or creation fails.
+ */
+export async function createJobberClientFromLead(data: {
+  name: string;
+  email?: string;
+  phone?: string;
+  address?: string;
+}): Promise<string | null> {
+  try {
+    const connected = await isJobberConnected();
+    if (!connected) return null;
+
+    const nameParts = data.name.trim().split(/\s+/);
+    const firstName = nameParts[0] ?? data.name;
+    const lastName = nameParts.slice(1).join(" ") || "";
+
+    // Check for existing client first to avoid duplicates
+    let clientId: string | null = null;
+    if (data.email) {
+      clientId = await findClientByEmail(data.email);
+    }
+    if (!clientId && data.phone) {
+      clientId = await findClientByPhone(data.phone);
+    }
+    if (clientId) {
+      console.log(`[Jobber] Lead already exists as client: ${clientId}`);
+      return clientId;
+    }
+
+    // Build client input
+    const clientInput: Record<string, unknown> = { firstName };
+    if (lastName) clientInput.lastName = lastName;
+    if (data.email) {
+      clientInput.emails = [{ description: "MAIN", primary: true, address: data.email }];
+    }
+    if (data.phone) {
+      clientInput.phones = [{ description: "MAIN", primary: true, number: data.phone }];
+    }
+    if (data.address) {
+      // Best-effort parse: treat the whole string as street line 1
+      clientInput.properties = [{ address: { street1: data.address } }];
+    }
+
+    const clientMutation = `
+      mutation CreateClient($input: ClientCreateInput!) {
+        clientCreate(input: $input) {
+          client { id }
+          userErrors { message }
+        }
+      }
+    `;
+    const result = await jobberGraphQL(clientMutation, { input: clientInput }) as {
+      clientCreate: { client: { id: string } | null; userErrors: Array<{ message: string }> };
+    };
+    if (!result.clientCreate.client) {
+      const errs = result.clientCreate.userErrors.map(e => e.message).join(", ");
+      console.warn(`[Jobber] createJobberClientFromLead failed: ${errs}`);
+      return null;
+    }
+    console.log(`[Jobber] Created client from lead: ${result.clientCreate.client.id}`);
+    return result.clientCreate.client.id;
+  } catch (err) {
+    console.warn("[Jobber] createJobberClientFromLead error:", err);
+    return null;
+  }
+}

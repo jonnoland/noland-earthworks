@@ -3,7 +3,7 @@ import { publicProcedure, router } from "./_core/trpc";
 import { notifyOwner } from "./_core/notification";
 import { ENV } from "./_core/env";
 import { Resend } from "resend";
-import { createJobberRequest, isJobberConnected } from "./jobber";
+import { createJobberRequest, isJobberConnected, createJobberClientFromLead } from "./jobber";
 import { createOpsLead, upsertOpsLeadByPhone, getOwnerUser, getDb } from "./db";
 import { quoteSubmissions } from "../drizzle/schema";
 import { sendOwnerSms } from "./sms";
@@ -533,6 +533,14 @@ export const quoteRouter = router({
     } catch (err) {
       console.warn("[Quote] Failed to create ops lead:", err);
     }
+
+    // Add to Jobber clients list (fire-and-forget)
+    createJobberClientFromLead({
+      name: input.name,
+      email: input.email || undefined,
+      phone: input.phone || undefined,
+      address: [input.street, input.city, input.state, input.zip].filter(Boolean).join(", ") || undefined,
+    }).catch(err => console.warn("[Quote] Jobber client creation failed:", err));
 
     return { success: true };
   }),

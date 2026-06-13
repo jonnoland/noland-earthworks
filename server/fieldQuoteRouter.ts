@@ -17,6 +17,7 @@ import { TRPCError } from "@trpc/server";
 import * as jose from "jose";
 import { router, publicProcedure, protectedProcedure } from "./_core/trpc";
 import { getDb, createOpsLead, getOwnerUser } from "./db";
+import { createJobberClientFromLead } from "./jobber";
 import { fieldQuotes } from "../drizzle/schema";
 import { storagePut } from "./storage";
 import { makeRequest } from "./_core/map";
@@ -438,6 +439,13 @@ export const fieldQuoteRouter = router({
               aiFlags: JSON.stringify(qualification.flags),
               aiDraftResponse: qualification.draftResponse,
             });
+            // Add to Jobber clients list (fire-and-forget)
+            createJobberClientFromLead({
+              name: input.name,
+              email: input.email ?? undefined,
+              phone: input.phone ?? undefined,
+              address: input.address ?? undefined,
+            }).catch(err => console.warn("[FieldQuote] Jobber client creation failed:", err));
           }
 
           // 4. Notify owner (in-app)
