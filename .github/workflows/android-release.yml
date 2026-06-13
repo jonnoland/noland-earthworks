@@ -82,13 +82,74 @@ jobs:
           echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | tr -d '\n\r ' | base64 --decode > android/app/noland-field-release.keystore
           ls -la android/app/noland-field-release.keystore
 
+      - name: Write keystore.properties
+        run: |
+          cat > android/keystore.properties << EOF
+          storeFile=../app/noland-field-release.keystore
+          storePassword=${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          keyAlias=${{ secrets.ANDROID_KEY_ALIAS }}
+          keyPassword=${{ secrets.ANDROID_KEY_PASSWORD }}
+          EOF
+
+      - name: Patch build.gradle to use signingConfigs
+        run: |
+          GRADLE_FILE="android/app/build.gradle"
+          # Inject keystore.properties loading and signingConfigs before android block
+          python3 - <<'PYEOF'
+          import re
+
+          with open('android/app/build.gradle', 'r') as f:
+              content = f.read()
+
+          # Add keystore.properties loader at the top if not present
+          props_loader = '''
+          def keystorePropertiesFile = rootProject.file("keystore.properties")
+          def keystoreProperties = new Properties()
+          if (keystorePropertiesFile.exists()) {
+              keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
+          }
+
+          '''
+
+          signing_config = '''
+              signingConfigs {
+                  release {
+                      storeFile file(keystoreProperties['storeFile'])
+                      storePassword keystoreProperties['storePassword']
+                      keyAlias keystoreProperties['keyAlias']
+                      keyPassword keystoreProperties['keyPassword']
+                      v1SigningEnabled true
+                      v2SigningEnabled true
+                  }
+              }
+          '''
+
+          # Insert props loader before 'android {' if not already there
+          if 'keystorePropertiesFile' not in content:
+              content = re.sub(r'(android\s*\{)', props_loader + r'\1', content, count=1)
+
+          # Insert signingConfigs block inside android { } before buildTypes if not present
+          if 'signingConfigs' not in content:
+              content = re.sub(r'(android\s*\{)', r'\1' + signing_config, content, count=1)
+
+          # Update release buildType to use the signing config
+          if 'signingConfig signingConfigs.release' not in content:
+              content = re.sub(
+                  r'(release\s*\{)',
+                  r'\1\n            signingConfig signingConfigs.release',
+                  content,
+                  count=1
+              )
+
+          with open('android/app/build.gradle', 'w') as f:
+              f.write(content)
+
+          print("build.gradle patched successfully")
+          PYEOF
+
       - name: Build signed release APK
         run: |
-          cd android && ./gradlew assembleRelease --no-daemon \
-            -Pandroid.injected.signing.store.file=$GITHUB_WORKSPACE/noland-earthworks-mobile/android/app/noland-field-release.keystore \
-            -Pandroid.injected.signing.store.password=${{ secrets.ANDROID_KEYSTORE_PASSWORD }} \
-            -Pandroid.injected.signing.key.alias=${{ secrets.ANDROID_KEY_ALIAS }} \
-            -Pandroid.injected.signing.key.password=${{ secrets.ANDROID_KEY_PASSWORD }}
+          cd android && ./gradlew assembleRelease --no-daemon
 
       - name: Get app version
         id: app_version
@@ -129,4 +190,3 @@ jobs:
           prerelease: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-# keystore-secret-corrected: 2026-06-12
