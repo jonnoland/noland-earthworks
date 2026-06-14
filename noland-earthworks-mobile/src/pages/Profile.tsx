@@ -24,6 +24,7 @@ function isNewerVersion(remote: string, local: string): boolean {
 export default function Profile() {
   const { logout } = useAuth();
   const [confirming, setConfirming] = useState(false);
+  const [downloading, setDownloading] = useState(false);
 
   // Biometric hook — no auto-prompt on Profile page (pass no-op onSuccess)
   const {
@@ -49,10 +50,11 @@ export default function Profile() {
     : false;
 
   function handleDownloadUpdate() {
-    if (!versionData?.downloadUrl) return;
-    // On native Android, window.open with _system opens the URL in the device browser
-    // which triggers the OS download manager for .apk files.
-    // On web/browser fallback, _blank works fine.
+    if (!versionData?.downloadUrl || downloading) return;
+    setDownloading(true);
+    // Brief spinner window so the user sees feedback before the OS takes over
+    setTimeout(() => setDownloading(false), 3000);
+    // On native Android, _system hands the URL to the OS browser/download manager
     if (Capacitor.isNativePlatform()) {
       window.open(versionData.downloadUrl, "_system");
     } else {
@@ -132,32 +134,39 @@ export default function Profile() {
             /* Update available — prominent orange card */
             <button
               onClick={handleDownloadUpdate}
+              disabled={downloading}
               style={{
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "space-between",
-                backgroundColor: "oklch(0.20 0.05 50)",
+                backgroundColor: downloading ? "oklch(0.16 0.03 50)" : "oklch(0.20 0.05 50)",
                 border: "1px solid oklch(0.65 0.18 50)",
                 borderRadius: 12,
                 padding: "16px",
                 textDecoration: "none",
                 gap: 12,
                 width: "100%",
-                cursor: "pointer",
+                cursor: downloading ? "not-allowed" : "pointer",
+                opacity: downloading ? 0.75 : 1,
+                transition: "opacity 0.2s, background-color 0.2s",
               }}
             >
               <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                <Download size={20} color="oklch(0.65 0.18 50)" />
+                {downloading ? (
+                  <RefreshCw size={20} color="oklch(0.65 0.18 50)" style={{ animation: "spin 0.8s linear infinite" }} />
+                ) : (
+                  <Download size={20} color="oklch(0.65 0.18 50)" />
+                )}
                 <div style={{ textAlign: "left" }}>
                   <p style={{ color: "oklch(0.94 0.01 80)", fontSize: 15, fontWeight: 600, margin: 0 }}>
-                    Update Available
+                    {downloading ? "Starting download..." : "Update Available"}
                   </p>
                   <p style={{ color: "oklch(0.65 0.18 50)", fontSize: 12, margin: "2px 0 0" }}>
-                    v{APP_VERSION} → v{versionData!.version} · Tap to download
+                    v{APP_VERSION} → v{versionData!.version}{downloading ? " · Opening download manager" : " · Tap to download"}
                   </p>
                 </div>
               </div>
-              <ExternalLink size={16} color="oklch(0.65 0.18 50)" />
+              {!downloading && <ExternalLink size={16} color="oklch(0.65 0.18 50)" />}
             </button>
           ) : (
             /* Up to date or loading */
