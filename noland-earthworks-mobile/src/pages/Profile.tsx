@@ -6,8 +6,10 @@ import { useAuth } from "@/hooks/useAuth";
 import { useBiometric } from "@/hooks/useBiometric";
 import { trpc } from "@/lib/trpc";
 
-// Current version of this installed build — must match package.json
-const APP_VERSION = "0.3.0";
+// Version is injected at build time from package.json via vite.config.ts define
+// This ensures the installed build always reports its true version
+declare const __APP_VERSION__: string;
+const APP_VERSION: string = typeof __APP_VERSION__ !== "undefined" ? __APP_VERSION__ : "0.3.0";
 
 /** Simple semver comparison: returns true if remote > local */
 function isNewerVersion(remote: string, local: string): boolean {

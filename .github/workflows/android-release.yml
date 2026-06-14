@@ -55,6 +55,21 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      # ── Version bump BEFORE build so the baked-in __APP_VERSION__ matches the release tag ──
+      - name: Bump patch version
+        id: app_version
+        run: |
+          node -e "
+            const fs = require('fs');
+            const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
+            const parts = pkg.version.split('.').map(Number);
+            parts[2] += 1;
+            pkg.version = parts.join('.');
+            fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2) + '\n');
+            console.log('Bumped to ' + pkg.version);
+          "
+          echo "VERSION=$(node -p \"require('./package.json').version\")" >> $GITHUB_OUTPUT
+
       - name: Build web assets
         run: pnpm build
 
@@ -100,21 +115,10 @@ jobs:
             -Pandroid.injected.signing.key.alias="${{ secrets.ANDROID_KEY_ALIAS }}" \
             -Pandroid.injected.signing.key.password="${{ secrets.ANDROID_KEY_PASSWORD }}"
 
-      - name: Bump patch version
-        id: app_version
+      - name: Rename APK with version
         run: |
-          # Increment the patch number in package.json for every automated build
-          # e.g. 0.3.0 -> 0.3.1, 0.3.1 -> 0.3.2, etc.
-          node -e "
-            const fs = require('fs');
-            const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
-            const parts = pkg.version.split('.').map(Number);
-            parts[2] += 1;
-            pkg.version = parts.join('.');
-            fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2) + '\n');
-            console.log('Bumped to ' + pkg.version);
-          "
-          echo "VERSION=$(node -p \"require('./package.json').version\")" >> $GITHUB_OUTPUT
+          mv android/app/build/outputs/apk/release/app-release.apk \
+             android/app/build/outputs/apk/release/noland-field-v${{ steps.app_version.outputs.VERSION }}.apk
 
       - name: Commit bumped version back to main
         working-directory: .
@@ -126,11 +130,6 @@ jobs:
           git push origin HEAD:main
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Rename APK with version
-        run: |
-          mv android/app/build/outputs/apk/release/app-release.apk \
-             android/app/build/outputs/apk/release/noland-field-v${{ steps.app_version.outputs.VERSION }}.apk
 
       - name: Upload release APK artifact
         uses: actions/upload-artifact@v4
