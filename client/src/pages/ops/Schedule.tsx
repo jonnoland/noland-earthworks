@@ -367,7 +367,7 @@ export default function Schedule() {
   // ── Build week days ──
   const weekDays = useMemo(() => {
     const start = getWeekStart(weekOffset);
-    return Array.from({ length: 6 }, (_, i) => {
+    return Array.from({ length: 7 }, (_, i) => {
       const d = new Date(start);
       d.setDate(start.getDate() + i);
       return {
@@ -379,7 +379,7 @@ export default function Schedule() {
     });
   }, [weekOffset]);
 
-  const weekLabel = `${weekDays[0].label} – ${weekDays[5].label}`;
+  const weekLabel = `${weekDays[0].label} – ${weekDays[6].label}`;
   const today = formatDateKey(new Date());
 
   // ── Map Jobber jobs to calendar day keys ──
