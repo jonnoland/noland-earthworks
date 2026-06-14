@@ -1,4 +1,5 @@
 import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
+import { Toaster } from "sonner";
 import BottomNav from "@/components/BottomNav";
 import SplashScreen from "@/components/SplashScreen";
 import NetworkBanner from "@/components/NetworkBanner";
@@ -9,6 +10,7 @@ import QuoteDetail from "@/pages/QuoteDetail";
 import Profile from "@/pages/Profile";
 import PinLogin from "@/pages/PinLogin";
 import { useAuth } from "@/hooks/useAuth";
+import { useUpdateCheck } from "@/hooks/useUpdateCheck";
 
 // Routes where BottomNav should be hidden (they have their own PageHeader back button)
 const HIDE_BOTTOM_NAV = ["/new-quote"];
@@ -18,6 +20,9 @@ function AppShell() {
   const hideNav =
     HIDE_BOTTOM_NAV.includes(location.pathname) ||
     location.pathname.startsWith("/quotes/");
+
+  // Fire update toast once per session if a newer version is available
+  useUpdateCheck();
 
   return (
     <div
@@ -31,6 +36,20 @@ function AppShell() {
         overflow: "hidden",
       }}
     >
+      {/* Update + general toast notifications */}
+      <Toaster
+        position="top-center"
+        toastOptions={{
+          style: {
+            background: "oklch(0.18 0 0)",
+            border: "1px solid oklch(0.28 0 0)",
+            color: "oklch(0.94 0.01 80)",
+            fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
+            fontSize: 14,
+          },
+        }}
+      />
+
       {/* Network status banner — slides in when offline */}
       <NetworkBanner />
 
