@@ -556,20 +556,66 @@ export const fieldQuoteRouter = router({
 
   /**
    * Returns the latest published version of the Noland Field mobile app.
-   * The mobile app calls this on startup to check if an update is available.
+   * Fetches live data from GitHub Releases API so the version and APK download
+   * URL are always current — no manual bumping required.
+   * Cached in-memory for 10 minutes to avoid hammering the GitHub API.
    * Public — no auth required.
    */
   latestVersion: publicProcedure
-    .query(() => {
-      // Bump this string whenever a new APK is published to GitHub Releases.
-      // Format: MAJOR.MINOR.PATCH — must match the version in noland-earthworks-mobile/package.json
-      const LATEST_VERSION = "0.3.0";
-      const GITHUB_RELEASES_URL = "https://github.com/jonnoland/noland-earthworks/releases/latest";
-      return {
-        version: LATEST_VERSION,
-        downloadUrl: GITHUB_RELEASES_URL,
-        releaseNotesUrl: GITHUB_RELEASES_URL,
-      };
+    .query(async () => {
+      const GITHUB_REPO = "jonnoland/noland-earthworks";
+      const RELEASES_PAGE = `https://github.com/${GITHUB_REPO}/releases`;
+      const FALLBACK = { version: "0.3.0", downloadUrl: RELEASES_PAGE, releaseNotesUrl: RELEASES_PAGE };
+
+      // Simple in-memory cache — avoids hitting GitHub on every app launch
+      const cache = (globalThis as any).__mobileVersionCache as
+        | { data: typeof FALLBACK; expiresAt: number }
+        | undefined;
+      if (cache && Date.now() < cache.expiresAt) return cache.data;
+
+      try {
+        // Fetch all releases and find the latest one tagged mobile-v*
+        const res = await fetch(
+          `https://api.github.com/repos/${GITHUB_REPO}/releases?per_page=20`,
+          { headers: { Accept: "application/vnd.github+json", "X-GitHub-Api-Version": "2022-11-28" } }
+        );
+        if (!res.ok) return FALLBACK;
+
+        const releases: Array<{
+          tag_name: string;
+          html_url: string;
+          assets: Array<{ name: string; browser_download_url: string }>;
+          draft: boolean;
+          prerelease: boolean;
+        }> = await res.json();
+
+        // Find the latest non-draft, non-prerelease mobile build
+        const latest = releases.find(
+          (r) => !r.draft && !r.prerelease && r.tag_name.startsWith("mobile-v")
+        );
+        if (!latest) return FALLBACK;
+
+        // Extract semver from tag like "mobile-v0.4.0-build42" → "0.4.0"
+        const versionMatch = latest.tag_name.match(/mobile-v(\d+\.\d+\.\d+)/);
+        const version = versionMatch ? versionMatch[1] : FALLBACK.version;
+
+        // Find the APK asset — prefer the named APK, fall back to any .apk
+        const apkAsset =
+          latest.assets.find((a) => a.name.startsWith("noland-field-v") && a.name.endsWith(".apk")) ??
+          latest.assets.find((a) => a.name.endsWith(".apk"));
+
+        const result = {
+          version,
+          downloadUrl: apkAsset?.browser_download_url ?? latest.html_url,
+          releaseNotesUrl: latest.html_url,
+        };
+
+        // Cache for 10 minutes
+        (globalThis as any).__mobileVersionCache = { data: result, expiresAt: Date.now() + 10 * 60 * 1000 };
+        return result;
+      } catch {
+        return FALLBACK;
+      }
     }),
 
   reverseGeocode: publicProcedure

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { ExternalLink, Info, LogOut, Fingerprint, ScanFace, Download, CheckCircle, RefreshCw } from "lucide-react";
+import { Capacitor } from "@capacitor/core";
 import PageHeader from "@/components/PageHeader";
 import { useAuth } from "@/hooks/useAuth";
 import { useBiometric } from "@/hooks/useBiometric";
@@ -44,6 +45,18 @@ export default function Profile() {
   const updateAvailable = versionData
     ? isNewerVersion(versionData.version, APP_VERSION)
     : false;
+
+  function handleDownloadUpdate() {
+    if (!versionData?.downloadUrl) return;
+    // On native Android, window.open with _system opens the URL in the device browser
+    // which triggers the OS download manager for .apk files.
+    // On web/browser fallback, _blank works fine.
+    if (Capacitor.isNativePlatform()) {
+      window.open(versionData.downloadUrl, "_system");
+    } else {
+      window.open(versionData.downloadUrl, "_blank");
+    }
+  }
 
   function handleLogoutPress() {
     if (!confirming) {
@@ -115,10 +128,8 @@ export default function Profile() {
         <div style={{ marginBottom: 20 }}>
           {updateAvailable ? (
             /* Update available — prominent orange card */
-            <a
-              href={versionData!.downloadUrl}
-              target="_blank"
-              rel="noreferrer"
+            <button
+              onClick={handleDownloadUpdate}
               style={{
                 display: "flex",
                 alignItems: "center",
@@ -129,11 +140,13 @@ export default function Profile() {
                 padding: "16px",
                 textDecoration: "none",
                 gap: 12,
+                width: "100%",
+                cursor: "pointer",
               }}
             >
               <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                 <Download size={20} color="oklch(0.65 0.18 50)" />
-                <div>
+                <div style={{ textAlign: "left" }}>
                   <p style={{ color: "oklch(0.94 0.01 80)", fontSize: 15, fontWeight: 600, margin: 0 }}>
                     Update Available
                   </p>
@@ -143,7 +156,7 @@ export default function Profile() {
                 </div>
               </div>
               <ExternalLink size={16} color="oklch(0.65 0.18 50)" />
-            </a>
+            </button>
           ) : (
             /* Up to date or loading */
             <div
