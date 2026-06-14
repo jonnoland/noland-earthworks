@@ -1132,27 +1132,27 @@ const crewsRouter = router({
     .input(z.object({
       id: z.number().int().positive(),
       // Labor
-      hoursPerDay: z.number().int().min(1).max(24).optional(),
+      hoursPerDay: z.number().min(0.5).max(24).optional(),
       crewMemberCount: z.number().int().min(1).optional(),
       memberWageCents: z.number().int().min(0).optional(),
-      burdenPct: z.number().int().min(0).max(100).optional(),
+      burdenPct: z.number().min(0).max(100).optional(),
       // Equipment
       equipmentItems: z.array(equipmentItemSchema).optional(),
       // Fuel
-      machineBurnRateGph: z.number().int().min(0).optional(),
+      machineBurnRateGph: z.number().min(0).optional(),
       fuelPriceCents: z.number().int().min(0).optional(),
       truckFuelPerDayCents: z.number().int().min(0).optional(),
       // Wear
       teethCostPerSetCents: z.number().int().min(0).optional(),
-      daysPerSet: z.number().int().min(1).optional(),
+      daysPerSet: z.number().min(0.5).optional(),
       annualMajorWearCents: z.number().int().min(0).optional(),
       miscConsumablesPerDayCents: z.number().int().min(0).optional(),
       // Overhead
       overheadItems: z.array(overheadItemSchema).optional(),
       // Scheduling
-      workingDaysPerMonth: z.number().int().min(1).max(31).optional(),
-      targetMarginPct: z.number().int().min(1).max(99).optional(),
-      acresPerDay: z.number().int().min(1).optional(),
+      workingDaysPerMonth: z.number().min(1).max(31).optional(),
+      targetMarginPct: z.number().min(1).max(99).optional(),
+      acresPerDay: z.number().min(0.5).optional(),
     }))
     .mutation(async ({ input }) => {
       const db = await getDb();
