@@ -37,8 +37,21 @@ type EstimateResult = {
   breakdown: { label: string; hours?: number; cost: number; note?: string }[];
 };
 
+type PricingTier = "low" | "mid" | "high";
+
 const fmt = (n: number) =>
   new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(n);
+
+function getRecommendedPrice(result: EstimateResult, tier: PricingTier): number {
+  if (tier === "low") return result.customerPriceLow;
+  if (tier === "high") return result.customerPriceHigh;
+  return Math.round((result.customerPriceLow + result.customerPriceHigh) / 2);
+}
+
+function getMarginAtPrice(price: number, internalCost: number): string {
+  if (internalCost <= 0 || price <= 0) return "0";
+  return ((price - internalCost) / price * 100).toFixed(0);
+}
 
 export default function CostEstimator() {
   const [result, setResult] = useState<EstimateResult | null>(null);
@@ -49,6 +62,7 @@ export default function CostEstimator() {
   const [terrain, setTerrain] = useState<"flat" | "rolling" | "steep" | "very_steep">("rolling");
   const [vegetationDensity, setVegetationDensity] = useState<"light" | "moderate" | "heavy" | "very_heavy">("moderate");
   const [accessDifficulty, setAccessDifficulty] = useState<"easy" | "moderate" | "difficult">("easy");
+  const [pricingTier, setPricingTier] = useState<PricingTier>("mid");
   const mobilizationMiles = 25; // baked in — not shown to user
   const [hasStumps, setHasStumps] = useState(false);
   const [stumpCount, setStumpCount] = useState("");
@@ -97,6 +111,18 @@ export default function CostEstimator() {
       ? "text-yellow-400"
       : "text-red-400"
     : "";
+
+  const tierLabel: Record<PricingTier, string> = {
+    low: "Low",
+    mid: "Mid",
+    high: "High",
+  };
+
+  const tierDescription: Record<PricingTier, string> = {
+    low: "Competitive rate — price-sensitive market or straightforward job",
+    mid: "Standard market rate — default for most jobs",
+    high: "Premium rate — difficult conditions, high density, or strong demand",
+  };
 
   return (
     <DashboardLayout>
@@ -206,7 +232,21 @@ export default function CostEstimator() {
                 </Select>
               </div>
 
-
+              {/* Pricing Tier */}
+              <div className="space-y-1.5">
+                <Label className="text-zinc-300">Pricing Tier</Label>
+                <Select value={pricingTier} onValueChange={v => setPricingTier(v as PricingTier)}>
+                  <SelectTrigger className="bg-zinc-800 border-zinc-600 text-white">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="low">Low — competitive / price-sensitive market</SelectItem>
+                    <SelectItem value="mid">Mid — standard market rate (default)</SelectItem>
+                    <SelectItem value="high">High — premium / difficult conditions</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-zinc-500 text-xs">{tierDescription[pricingTier]}</p>
+              </div>
 
               {/* Stumps */}
               <div className="flex items-center gap-3">
@@ -293,6 +333,45 @@ export default function CostEstimator() {
                   </CardContent>
                 </Card>
 
+                {/* Recommended quote — tier-driven, prominent */}
+                <Card className="bg-orange-950/40 border-orange-600/60">
+                  <CardContent className="pt-4 pb-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <div className="flex items-center gap-2 mb-1">
+                          <DollarSign size={14} className="text-orange-400" />
+                          <span className="text-orange-300 text-xs uppercase tracking-wide font-medium">
+                            Recommended Quote
+                          </span>
+                          <span className="px-1.5 py-0.5 rounded text-[10px] bg-orange-800/60 text-orange-200 font-semibold uppercase tracking-wide">
+                            {tierLabel[pricingTier]}
+                          </span>
+                        </div>
+                        <p className="text-orange-400 text-3xl font-bold">
+                          {fmt(getRecommendedPrice(result, pricingTier))}
+                        </p>
+                        <p className="text-zinc-400 text-xs mt-1">
+                          Full range: {fmt(result.customerPriceLow)} – {fmt(result.customerPriceHigh)}
+                        </p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-zinc-500 text-xs">Internal cost</p>
+                        <p className="text-zinc-200 text-base font-semibold">{fmt(result.totalInternalCost)}</p>
+                        <p className="text-zinc-500 text-xs mt-2">Margin at this price</p>
+                        <p className={`text-base font-semibold ${
+                          parseInt(getMarginAtPrice(getRecommendedPrice(result, pricingTier), result.totalInternalCost)) >= 35
+                            ? "text-green-400"
+                            : parseInt(getMarginAtPrice(getRecommendedPrice(result, pricingTier), result.totalInternalCost)) >= 25
+                            ? "text-yellow-400"
+                            : "text-red-400"
+                        }`}>
+                          {getMarginAtPrice(getRecommendedPrice(result, pricingTier), result.totalInternalCost)}%
+                        </p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
                 {/* Key numbers */}
                 <div className="grid grid-cols-2 gap-3">
                   <Card className="bg-zinc-900 border-zinc-700">
@@ -314,30 +393,6 @@ export default function CostEstimator() {
                       </div>
                       <p className={`text-xl font-bold ${marginColor}`}>{result.marginPct.toFixed(0)}%</p>
                       <p className="text-zinc-500 text-xs">at midpoint price</p>
-                    </CardContent>
-                  </Card>
-
-                  <Card className="bg-zinc-900 border-zinc-700">
-                    <CardContent className="pt-4 pb-3">
-                      <div className="flex items-center gap-2 mb-1">
-                        <DollarSign size={14} className="text-zinc-500" />
-                        <span className="text-zinc-400 text-xs uppercase tracking-wide">Internal cost</span>
-                      </div>
-                      <p className="text-white text-xl font-bold">{fmt(result.totalInternalCost)}</p>
-                      <p className="text-zinc-500 text-xs">your all-in cost</p>
-                    </CardContent>
-                  </Card>
-
-                  <Card className="bg-zinc-900 border-zinc-700">
-                    <CardContent className="pt-4 pb-3">
-                      <div className="flex items-center gap-2 mb-1">
-                        <DollarSign size={14} className="text-orange-400" />
-                        <span className="text-zinc-400 text-xs uppercase tracking-wide">Quote range</span>
-                      </div>
-                      <p className="text-orange-400 text-xl font-bold">
-                        {fmt(result.customerPriceLow)} – {fmt(result.customerPriceHigh)}
-                      </p>
-                      <p className="text-zinc-500 text-xs">customer-facing price</p>
                     </CardContent>
                   </Card>
                 </div>
@@ -362,28 +417,35 @@ export default function CostEstimator() {
                     <CardTitle className="text-white text-sm">Cost Breakdown</CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-2">
-                    {result.breakdown.filter(item => !item.label.toLowerCase().includes('mobilization')).map((item, i) => (
-                      <div key={i} className="flex items-center justify-between py-1.5 border-b border-zinc-800 last:border-0">
-                        <div>
-                          <span className="text-zinc-200 text-sm">{item.label}</span>
-                          {item.hours && (
-                            <span className="text-zinc-500 text-xs ml-2">({item.hours.toFixed(1)} hrs)</span>
-                          )}
-                          {item.note && (
-                            <p className="text-zinc-500 text-xs mt-0.5">{item.note}</p>
-                          )}
+                    {result.breakdown
+                      .filter(item => !item.label.toLowerCase().includes("mobilization"))
+                      .map((item, i) => (
+                        <div key={i} className="flex items-center justify-between py-1.5 border-b border-zinc-800 last:border-0">
+                          <div>
+                            <span className="text-zinc-200 text-sm">{item.label}</span>
+                            {item.hours && (
+                              <span className="text-zinc-500 text-xs ml-2">({item.hours.toFixed(1)} hrs)</span>
+                            )}
+                            {item.note && (
+                              <p className="text-zinc-500 text-xs mt-0.5">{item.note}</p>
+                            )}
+                          </div>
+                          <span className="text-zinc-200 text-sm font-medium">{fmt(item.cost)}</span>
                         </div>
-                        <span className="text-zinc-200 text-sm font-medium">{fmt(item.cost)}</span>
-                      </div>
-                    ))}
-                    <div className="flex items-center justify-between pt-2">
+                      ))}
+                    <div className="flex items-center justify-between pt-2 border-t border-zinc-700">
                       <span className="text-white font-semibold text-sm">Total Internal Cost</span>
                       <span className="text-white font-semibold text-sm">{fmt(result.totalInternalCost)}</span>
                     </div>
                     <div className="flex items-center justify-between">
-                      <span className="text-orange-400 font-semibold text-sm">Recommended Quote</span>
                       <span className="text-orange-400 font-semibold text-sm">
-                        {fmt(result.customerPriceLow)} – {fmt(result.customerPriceHigh)}
+                        Recommended Quote
+                        <span className="ml-2 px-1.5 py-0.5 rounded text-[10px] bg-orange-800/50 text-orange-200 uppercase tracking-wide">
+                          {tierLabel[pricingTier]}
+                        </span>
+                      </span>
+                      <span className="text-orange-400 font-semibold text-sm">
+                        {fmt(getRecommendedPrice(result, pricingTier))}
                       </span>
                     </div>
                   </CardContent>
