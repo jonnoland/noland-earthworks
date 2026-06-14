@@ -230,6 +230,20 @@ function QuoteDetailPanel({
     { retry: false }
   );
 
+  // Satellite map for the property address
+  const propertyAddress = quote?.property?.address
+    ? [
+        quote.property.address.street1,
+        quote.property.address.city,
+        quote.property.address.province ?? "TN",
+        quote.property.address.postalCode,
+      ].filter(Boolean).join(", ")
+    : null;
+  const { data: satData, isLoading: satLoading } = trpc.ops.quotes.satelliteImage.useQuery(
+    { address: propertyAddress ?? "" },
+    { enabled: !!propertyAddress, staleTime: 1000 * 60 * 30, retry: false }
+  );
+
   // Follow-up flag for this quote
   const { data: followUps } = trpc.jobber.quoteFollowUpList.useQuery();
   const followUp = followUps?.find((f) => f.jobberQuoteId === quoteId);
@@ -350,6 +364,40 @@ function QuoteDetailPanel({
             <X className="w-4 h-4" />
           </button>
         </div>
+
+        {/* Satellite imagery strip — shown when property address is available */}
+        {propertyAddress && (
+          <div className="relative w-full h-36 bg-secondary/20 overflow-hidden shrink-0">
+            {satLoading && (
+              <div className="absolute inset-0 flex items-center justify-center gap-2 text-[11px] text-muted-foreground">
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                Loading satellite view...
+              </div>
+            )}
+            {satData?.url && (
+              <>
+                <img
+                  src={satData.url}
+                  alt={`Satellite view of ${propertyAddress}`}
+                  className="w-full h-full object-cover"
+                  onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
+                />
+                <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/70 to-transparent px-3 py-2 flex items-end justify-between">
+                  <span className="text-[10px] text-white/80 truncate">{propertyAddress}</span>
+                  <a
+                    href={`https://maps.google.com/?q=${encodeURIComponent(propertyAddress)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-1 text-[10px] text-white/70 hover:text-white transition-colors shrink-0 ml-2"
+                  >
+                    <ExternalLink className="w-2.5 h-2.5" />
+                    View in Maps
+                  </a>
+                </div>
+              </>
+            )}
+          </div>
+        )}
 
         {/* Body */}
         <div className="flex-1 overflow-y-auto p-5 space-y-5">
