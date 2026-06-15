@@ -1817,3 +1817,11 @@
 - [x] Add AggregateRating schema to LocalBusiness JSON-LD on homepage
 - [x] Add FAQPage schema to homepage
 - [x] Create real /llms.txt server route (plain text, not SPA HTML)
+
+## Crew Assignment to Jobs (Jun 15, 2026)
+- [x] Add crewId FK column to jobs table in schema.ts
+- [x] Run db:push to migrate crewId column
+- [x] Add crewId to jobs.create input schema in opsRouter.ts
+- [x] Add ops.jobs.assignCrew procedure in opsRouter.ts
+- [x] Add crew dropdown to Add Job modal in Jobs.tsx
+- [x] Add "Assign Crews to Jobs" panel in Crews.tsx with inline crew dropdown per job

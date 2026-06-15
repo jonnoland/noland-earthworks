@@ -731,6 +731,14 @@ export default function Crews() {
   const { data: crewList = [], isLoading } = trpc.ops.crews.list.useQuery();
   const { data: jobsList = [] } = trpc.ops.jobs.list.useQuery();
 
+  const assignCrew = trpc.ops.jobs.assignCrew.useMutation({
+    onSuccess: () => {
+      utils.ops.jobs.list.invalidate();
+      toast.success("Crew assigned.");
+    },
+    onError: (e) => toast.error(e.message || "Failed to assign crew"),
+  });
+
   const today = new Date();
   const todayStr = today.toDateString();
   const jobsTodayCount = jobsList.filter(
@@ -815,6 +823,53 @@ export default function Crews() {
 
         {/* Today's jobs panel */}
         <TodaysJobsPanel jobs={jobsList as unknown as Job[]} />
+
+        {/* Job Assignments */}
+        {jobsList.length > 0 && (
+          <div className="mt-6 rounded-xl border border-zinc-800 bg-zinc-900/60 overflow-hidden">
+            <div className="px-5 py-4 border-b border-zinc-800 flex items-center gap-2">
+              <HardHat className="w-4 h-4 text-amber-400" />
+              <span className="text-sm font-semibold text-white">Assign Crews to Jobs</span>
+            </div>
+            <div className="divide-y divide-zinc-800">
+              {jobsList.map((job) => {
+                const assignedCrew = crewList.find((c) => c.id === (job as any).crewId);
+                return (
+                  <div key={job.id} className="px-5 py-3 flex items-center justify-between gap-4">
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-white truncate">{job.title ?? job.client ?? "Untitled Job"}</p>
+                      <p className="text-xs text-zinc-500 mt-0.5">
+                        {job.client ?? ""}
+                        {job.scheduledDate ? ` · ${new Date(job.scheduledDate).toLocaleDateString("en-US", { month: "short", day: "numeric" })}` : ""}
+                        {" · "}
+                        <span className={`capitalize ${
+                          job.status === "completed" ? "text-green-400" :
+                          job.status === "in_progress" ? "text-blue-400" :
+                          "text-zinc-400"
+                        }`}>{job.status?.replace("_", " ") ?? ""}</span>
+                      </p>
+                    </div>
+                    <select
+                      value={(job as any).crewId ?? ""}
+                      onChange={(e) =>
+                        assignCrew.mutate({
+                          jobId: job.id,
+                          crewId: e.target.value ? Number(e.target.value) : null,
+                        })
+                      }
+                      className="shrink-0 bg-zinc-800 border border-zinc-700 rounded-md px-2 py-1.5 text-xs text-white outline-none focus:border-amber-500 min-w-[140px]"
+                    >
+                      <option value="">No crew</option>
+                      {crewList.filter((c) => c.isActive).map((c) => (
+                        <option key={c.id} value={c.id}>{c.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Bottom quick-action bar — fixed */}

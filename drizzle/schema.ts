@@ -120,6 +120,8 @@ export const jobs = mysqlTable("jobs", {
   rescheduledAt: timestamp("rescheduledAt"),
   /** High-priority flag — shown with a flag icon on dashboard and schedule calendar */
   isHighPriority: boolean("isHighPriority").default(false).notNull(),
+  /** FK to crews — the crew assigned to this job (nullable) */
+  crewId: int("crewId"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });

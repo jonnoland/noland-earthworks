@@ -831,12 +831,14 @@ interface JobFormData {
   title: string; client: string; address: string; jobType: JobType;
   status: JobStatus; acres: string; crewDays: string; totalPrice: string; notes: string;
   clientEmail: string; scheduledDate: string; scheduledEndDate: string; isHighPriority: boolean;
+  crewId: number | null;
 }
 
 const emptyForm: JobFormData = {
   title: "", client: "", address: "", jobType: "land_clearing",
   status: "estimate", acres: "", crewDays: "", totalPrice: "", notes: "",
   clientEmail: "", scheduledDate: "", scheduledEndDate: "", isHighPriority: false,
+  crewId: null,
 };
 
 // ─── Jobs Map View ───────────────────────────────────────────────────────────
@@ -995,6 +997,11 @@ export default function Jobs() {
 
   // ── Local job create (for manually tracked jobs) ──
   const { data: catalog = [] } = trpc.ops.settings.getServiceCatalog.useQuery();
+  const { data: crewsList = [] } = trpc.ops.crews.list.useQuery();
+  const assignCrew = trpc.ops.jobs.assignCrew.useMutation({
+    onSuccess: () => { utils.ops.jobs.list.invalidate(); },
+    onError: (e) => toast.error(e.message),
+  });
   const createLocalJob = trpc.ops.jobs.create.useMutation({
     onSuccess: () => {
       toast.success("Job created locally.");
@@ -1033,6 +1040,7 @@ export default function Jobs() {
       scheduledDate: form.scheduledDate ? new Date(form.scheduledDate) : undefined,
       scheduledEndDate: form.scheduledEndDate ? new Date(form.scheduledEndDate) : undefined,
       isHighPriority: form.isHighPriority,
+      crewId: form.crewId,
     });
   };
 
@@ -1412,6 +1420,19 @@ export default function Jobs() {
                   <label className="block text-xs font-medium text-muted-foreground mb-1">Notes</label>
                   <textarea value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} placeholder="Job notes..." rows={2}
                     className="w-full bg-secondary/50 border border-border rounded-md px-3 py-2 text-xs text-foreground outline-none focus:border-primary/50 resize-none placeholder:text-muted-foreground/40" />
+                </div>
+                <div className="col-span-2">
+                  <label className="block text-xs font-medium text-muted-foreground mb-1">Assign Crew</label>
+                  <select
+                    value={form.crewId ?? ""}
+                    onChange={e => setForm(f => ({ ...f, crewId: e.target.value ? Number(e.target.value) : null }))}
+                    className="w-full bg-secondary/50 border border-border rounded-md px-3 py-2 text-xs text-foreground outline-none focus:border-primary/50"
+                  >
+                    <option value="">-- No crew assigned --</option>
+                    {crewsList.filter(c => c.isActive).map(c => (
+                      <option key={c.id} value={c.id}>{c.name}</option>
+                    ))}
+                  </select>
                 </div>
                 <div className="col-span-2">
                   <label className="flex items-center gap-2.5 cursor-pointer select-none">

@@ -62,6 +62,7 @@ const jobsRouter = router({
       scheduledDate: z.date().optional(),
       scheduledEndDate: z.date().optional(),
       isHighPriority: z.boolean().optional(),
+      crewId: z.number().int().positive().nullable().optional(),
     }))
     .mutation(({ ctx, input }) => createJob({ ...input, userId: ctx.user.id })),
   update: ownerProcedure
@@ -82,6 +83,7 @@ const jobsRouter = router({
       completedDate: z.date().optional(),
       rescheduledAt: z.date().optional(),
       isHighPriority: z.boolean().optional(),
+      crewId: z.number().int().positive().nullable().optional(),
     }))
     .mutation(async ({ ctx, input }) => {
       const { id, ...data } = input;
@@ -230,6 +232,20 @@ const jobsRouter = router({
       });
 
       return { sent: true, to: clientEmail };
+    }),
+  /** Assign or unassign a crew to a local job */
+  assignCrew: ownerProcedure
+    .input(z.object({
+      jobId: z.number().int().positive(),
+      crewId: z.number().int().positive().nullable(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+      await db.update(jobs)
+        .set({ crewId: input.crewId, updatedAt: new Date() })
+        .where(and(eq(jobs.id, input.jobId), eq(jobs.userId, ctx.user.id)));
+      return { success: true };
     }),
 });
 
