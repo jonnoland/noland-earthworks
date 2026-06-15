@@ -2762,9 +2762,43 @@ export const opsRouter = router({
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
       const { runSeoAudit } = await import("./seoAudit");
-      const { seoAudits } = await import("../drizzle/schema");
+      const { seoAudits, seoFixes } = await import("../drizzle/schema");
       const targetUrl = input.url ?? "https://nolandearthworks.com";
       const result = await runSeoAudit(targetUrl, ENV.googlePlacesApiKey ?? undefined);
+
+      // Carry forward resolved/skipped checkIds from the most recent previous audit
+      // so that issues the operator already fixed don't re-appear as recommendations
+      const [previousAudit] = await db
+        .select({ id: seoAudits.id })
+        .from(seoAudits)
+        .orderBy(desc(seoAudits.auditedAt))
+        .limit(1);
+      const resolvedCheckIds = new Set<string>();
+      if (previousAudit) {
+        const resolvedFixes = await db
+          .select({ checkId: seoFixes.checkId })
+          .from(seoFixes)
+          .where(
+            and(
+              eq(seoFixes.auditId, previousAudit.id),
+              inArray(seoFixes.status, ["resolved", "skipped"])
+            )
+          );
+        resolvedFixes.forEach((f) => resolvedCheckIds.add(f.checkId));
+      }
+
+      // Suppress checks and recommendations for already-resolved items
+      const filteredChecks = result.checks.map((c) =>
+        resolvedCheckIds.has(c.id) ? { ...c, status: "pass" as const } : c
+      );
+      // Build a lookup of check text -> checkId for matching recommendations
+      const recTextToCheckId = new Map<string, string>();
+      result.checks.forEach((c) => { if (c.recommendation) recTextToCheckId.set(c.recommendation, c.id); });
+      const filteredRecommendations = result.recommendations.filter((rec) => {
+        const checkId = recTextToCheckId.get(rec.text);
+        return !checkId || !resolvedCheckIds.has(checkId);
+      });
+
       await db.insert(seoAudits).values({
         url: result.url,
         auditedAt: result.auditedAt,
@@ -2775,14 +2809,14 @@ export const opsRouter = router({
         usabilityScore: result.usabilityScore,
         performanceScore: result.performanceScore,
         socialScore: result.socialScore,
-        checksJson: JSON.stringify(result.checks),
-        recommendationsJson: JSON.stringify(result.recommendations),
+        checksJson: JSON.stringify(filteredChecks),
+        recommendationsJson: JSON.stringify(filteredRecommendations),
         pageTitle: result.pageTitle ?? undefined,
         metaDescription: result.metaDescription ?? undefined,
         loadTimeMs: result.loadTimeMs ?? undefined,
         mobileScore: result.mobileScore ?? undefined,
       });
-      return result;
+      return { ...result, checks: filteredChecks, recommendations: filteredRecommendations };
     }),
 
   /**
