@@ -96,8 +96,83 @@ interface JobberJob {
   property?: { address?: { street1?: string | null; city?: string | null } | null } | null;
 }
 
-// ─── Draggable Jobber job banner ───────────────────────────────────────────────
+// ─── Local job shape ─────────────────────────────────────────────────────────
+interface LocalJob {
+  id: number;
+  title: string | null;
+  client: string | null;
+  status: string | null;
+  scheduledDate: Date | null;
+  crewId: number | null;
+  isHighPriority: boolean | null;
+}
 
+// ─── Draggable schedule entry card ────────────────────────────────────────────
+function DraggableEntryCard({
+  entry, crewColor, onDelete,
+}: {
+  entry: { id: number; title: string; startHour: number; endHour: number };
+  crewColor: string;
+  onDelete: () => void;
+}) {
+  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
+    id: `entry-${entry.id}`,
+  });
+  return (
+    <div
+      ref={setNodeRef}
+      {...listeners}
+      {...attributes}
+      className={cn(
+        "rounded-md border px-2 py-1.5 text-[10px] group relative cursor-grab active:cursor-grabbing select-none",
+        crewColor,
+        isDragging && "opacity-40"
+      )}
+    >
+      <div className="flex items-start gap-1">
+        <GripVertical className="w-2.5 h-2.5 opacity-40 mt-0.5 shrink-0" />
+        <div className="min-w-0 flex-1">
+          <div className="font-semibold truncate pr-4">{entry.title}</div>
+          <div className="opacity-70">{entry.startHour}:00 – {entry.endHour}:00</div>
+        </div>
+      </div>
+      <button
+        onClick={(e) => { e.stopPropagation(); onDelete(); }}
+        className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity p-0.5 rounded hover:bg-black/20"
+      >
+        <X className="w-2.5 h-2.5" />
+      </button>
+    </div>
+  );
+}
+
+// ─── Draggable local job card ──────────────────────────────────────────────────
+function DraggableLocalJobCard({ job, crewColor }: { job: LocalJob; crewColor: string }) {
+  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
+    id: `localjob-${job.id}`,
+  });
+  return (
+    <div
+      ref={setNodeRef}
+      {...listeners}
+      {...attributes}
+      className={cn(
+        "rounded-md border px-2 py-1.5 text-[10px] cursor-grab active:cursor-grabbing select-none flex items-start gap-1",
+        crewColor || "border-amber-500/40 bg-amber-500/15 text-amber-300",
+        isDragging && "opacity-40"
+      )}
+    >
+      <GripVertical className="w-2.5 h-2.5 opacity-40 mt-0.5 shrink-0" />
+      <div className="min-w-0 flex-1">
+        <div className="font-semibold truncate">{job.title || "Untitled Job"}</div>
+        {job.client && <div className="opacity-70 truncate">{job.client}</div>}
+        {job.isHighPriority && <Flag className="w-2.5 h-2.5 text-red-400 mt-0.5" />}
+      </div>
+    </div>
+  );
+}
+
+// ─── Draggable Jobber job banner ───────────────────────────────────────────────
 function DraggableJobberBanner({ job }: { job: JobberJob }) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: `jobber-${job.id}`,
@@ -132,8 +207,31 @@ function DraggableJobberBanner({ job }: { job: JobberJob }) {
   );
 }
 
-// ─── Droppable day cell ────────────────────────────────────────────────────────
+// ─── Droppable crew+day cell ──────────────────────────────────────────────────
+function DroppableCrewDayCell({
+  crewName, dayKey, children, isToday,
+}: {
+  crewName: string;
+  dayKey: string;
+  children: React.ReactNode;
+  isToday: boolean;
+}) {
+  const { setNodeRef, isOver } = useDroppable({ id: `drop-crew:${crewName}|day:${dayKey}` });
+  return (
+    <td
+      ref={setNodeRef}
+      className={cn(
+        "px-2 py-2 align-top min-w-[110px] transition-colors",
+        isToday ? "bg-primary/5" : "",
+        isOver ? "bg-amber-500/10 ring-1 ring-inset ring-amber-500/40" : ""
+      )}
+    >
+      {children}
+    </td>
+  );
+}
 
+// ─── Droppable day cell (Jobber row — day only) ────────────────────────────────
 function DroppableDayCell({
   dayKey, children, isToday,
 }: {
@@ -330,6 +428,8 @@ export default function Schedule() {
   const [showModal, setShowModal] = useState(false);
   const [form, setForm] = useState<EntryFormData>(emptyForm);
   const [draggingJobId, setDraggingJobId] = useState<string | null>(null);
+  const [draggingEntryId, setDraggingEntryId] = useState<number | null>(null);
+  const [draggingLocalJobId, setDraggingLocalJobId] = useState<number | null>(null);
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
   const utils = trpc.useUtils();
@@ -339,6 +439,14 @@ export default function Schedule() {
 
   // ── Crews from DB (matches Crews page) ──
   const { data: crewList = [] } = trpc.ops.crews.list.useQuery();
+
+  // ── Local jobs (from jobs table — show on calendar if they have a scheduledDate) ──
+  const { data: rawLocalJobs = [] } = trpc.ops.jobs.list.useQuery();
+  const localJobs = rawLocalJobs as unknown as LocalJob[];
+  const scheduledLocalJobs = useMemo(
+    () => localJobs.filter(j => j.scheduledDate),
+    [localJobs]
+  );
 
   // ── Jobber jobs (primary job source) ──
   const {
@@ -432,8 +540,47 @@ export default function Schedule() {
     return map;
   }, [entries, crewNames, weekDays]);
 
+  // ── Map local jobs to crew+day cells ──
+  const localJobMap = useMemo(() => {
+    // map[crewName][dayKey] = LocalJob[]
+    const map: Record<string, Record<string, LocalJob[]>> = {};
+    for (const crew of crewNames) {
+      map[crew] = {};
+      for (const day of weekDays) map[crew][day.key] = [];
+    }
+    // "Unassigned" bucket for jobs with a date but no crew
+    map["__unassigned__"] = {};
+    for (const day of weekDays) map["__unassigned__"][day.key] = [];
+
+    for (const job of scheduledLocalJobs) {
+      const dateKey = formatDateKey(new Date(job.scheduledDate!));
+      const assignedCrew = crewList.find((c: any) => c.id === job.crewId);
+      const crewName = assignedCrew ? (assignedCrew as any).name as string : "__unassigned__";
+      if (map[crewName]?.[dateKey] !== undefined) {
+        map[crewName][dateKey].push(job);
+      }
+    }
+    return map;
+  }, [scheduledLocalJobs, crewNames, weekDays, crewList]);
+
   const getCrewColor = (crewName: string) =>
     CREW_COLORS[crewNames.indexOf(crewName) % CREW_COLORS.length];
+
+  // ── Update mutations for drag-and-drop ──
+  const updateEntry = trpc.ops.schedule.update.useMutation({
+    onSuccess: () => utils.ops.schedule.list.invalidate(),
+    onError: (e) => toast.error(e.message || "Failed to move entry"),
+  });
+
+  const updateLocalJob = trpc.ops.jobs.update.useMutation({
+    onSuccess: () => utils.ops.jobs.list.invalidate(),
+    onError: (e) => toast.error(e.message || "Failed to move job"),
+  });
+
+  const assignCrewToJob = trpc.ops.jobs.assignCrew.useMutation({
+    onSuccess: () => utils.ops.jobs.list.invalidate(),
+    onError: (e) => toast.error(e.message || "Failed to assign crew"),
+  });
 
   // ── Mutations ──
   const createEntry = trpc.ops.schedule.create.useMutation({
@@ -467,16 +614,77 @@ export default function Schedule() {
     });
   };
 
-  // ── Drag handlers (Jobber jobs are read-only — no reschedule to DB) ──
+  // ── Drag handlers ──
   const handleDragStart = (event: DragStartEvent) => {
     const id = String(event.active.id);
     if (id.startsWith("jobber-")) setDraggingJobId(id.replace("jobber-", ""));
+    else if (id.startsWith("entry-")) setDraggingEntryId(Number(id.replace("entry-", "")));
+    else if (id.startsWith("localjob-")) setDraggingLocalJobId(Number(id.replace("localjob-", "")));
   };
 
-  const handleDragEnd = (_event: DragEndEvent) => {
+  const handleDragEnd = (event: DragEndEvent) => {
+    const activeId = String(event.active.id);
+    const overId = event.over ? String(event.over.id) : null;
+
     setDraggingJobId(null);
-    // Jobber jobs can't be rescheduled from here — they're read-only from Jobber
-    toast.info("To reschedule a Jobber job, update it in Jobber directly.");
+    setDraggingEntryId(null);
+    setDraggingLocalJobId(null);
+
+    if (!overId) return;
+
+    // Parse drop target: "drop-crew:Jon Noland|day:2025-06-16" or "drop-2025-06-16"
+    const crewDayMatch = overId.match(/^drop-crew:(.+)\|day:(.+)$/);
+    const dayOnlyMatch = overId.match(/^drop-(.+)$/);
+
+    if (activeId.startsWith("jobber-")) {
+      // Jobber jobs are read-only — can't reschedule from here
+      toast.info("To reschedule a Jobber job, update it in Jobber directly.");
+      return;
+    }
+
+    if (activeId.startsWith("entry-") && crewDayMatch) {
+      const entryId = Number(activeId.replace("entry-", ""));
+      const [, newCrew, newDay] = crewDayMatch;
+      const entry = entries.find(e => e.id === entryId);
+      if (!entry) return;
+      const currentCrew = entry.crewName;
+      const currentDay = formatDateKey(new Date(entry.date));
+      if (currentCrew === newCrew && currentDay === newDay) return;
+      updateEntry.mutate({
+        id: entryId,
+        crewName: newCrew,
+        date: new Date(newDay + "T12:00:00"),
+      });
+      toast.success(`Moved "${entry.title}" to ${newCrew} on ${new Date(newDay).toLocaleDateString("en-US", { month: "short", day: "numeric" })}`);
+      return;
+    }
+
+    if (activeId.startsWith("localjob-") && crewDayMatch) {
+      const jobId = Number(activeId.replace("localjob-", ""));
+      const [, newCrew, newDay] = crewDayMatch;
+      const job = localJobs.find(j => j.id === jobId);
+      if (!job) return;
+
+      const newCrewObj = crewList.find((c: any) => (c as any).name === newCrew);
+      const newCrewId = newCrewObj ? (newCrewObj as any).id as number : null;
+
+      // Update both date and crew in one call
+      updateLocalJob.mutate({
+        id: jobId,
+        scheduledDate: new Date(newDay + "T12:00:00"),
+        crewId: newCrewId,
+      });
+      toast.success(`Job moved to ${newCrew} on ${new Date(newDay).toLocaleDateString("en-US", { month: "short", day: "numeric" })}`);
+      return;
+    }
+
+    if (activeId.startsWith("localjob-") && dayOnlyMatch) {
+      // Dropped on Jobber row — just update the date
+      const jobId = Number(activeId.replace("localjob-", ""));
+      const newDay = dayOnlyMatch[1];
+      updateLocalJob.mutate({ id: jobId, scheduledDate: new Date(newDay + "T12:00:00") });
+      toast.success(`Job rescheduled to ${new Date(newDay).toLocaleDateString("en-US", { month: "short", day: "numeric" })}`);
+    }
   };
 
   const isLoading = entriesLoading || jobberLoading;
@@ -635,15 +843,16 @@ export default function Schedule() {
                         </td>
                         {weekDays.map(day => {
                           const dayEntries = entryMap[crew]?.[day.key] ?? [];
+                          const dayLocalJobs = localJobMap[crew]?.[day.key] ?? [];
+                          const hasContent = dayEntries.length > 0 || dayLocalJobs.length > 0;
                           return (
-                            <td
+                            <DroppableCrewDayCell
                               key={day.key}
-                              className={cn(
-                                "px-2 py-2 align-top min-w-[110px]",
-                                day.key === today ? "bg-primary/5" : ""
-                              )}
+                              crewName={crew}
+                              dayKey={day.key}
+                              isToday={day.key === today}
                             >
-                              {dayEntries.length === 0 ? (
+                              {!hasContent ? (
                                 <button
                                   onClick={() => {
                                     setForm({ ...emptyForm, crewName: crew, date: day.key });
@@ -656,28 +865,35 @@ export default function Schedule() {
                               ) : (
                                 <div className="space-y-1">
                                   {dayEntries.map(entry => (
-                                    <div
+                                    <DraggableEntryCard
                                       key={entry.id}
-                                      className={cn(
-                                        "rounded-md border px-2 py-1.5 text-[10px] group relative",
-                                        getCrewColor(crew)
-                                      )}
-                                    >
-                                      <div className="font-semibold truncate pr-4">{entry.title}</div>
-                                      <div className="opacity-70">{entry.startHour}:00 – {entry.endHour}:00</div>
-                                      <button
-                                        onClick={() => {
-                                          if (confirm("Remove this entry?")) deleteEntry.mutate({ id: entry.id });
-                                        }}
-                                        className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity p-0.5 rounded hover:bg-black/20"
-                                      >
-                                        <X className="w-2.5 h-2.5" />
-                                      </button>
-                                    </div>
+                                      entry={entry}
+                                      crewColor={getCrewColor(crew)}
+                                      onDelete={() => {
+                                        if (confirm("Remove this entry?")) deleteEntry.mutate({ id: entry.id });
+                                      }}
+                                    />
                                   ))}
+                                  {dayLocalJobs.map(job => (
+                                    <DraggableLocalJobCard
+                                      key={job.id}
+                                      job={job}
+                                      crewColor={getCrewColor(crew)}
+                                    />
+                                  ))}
+                                  {/* Add entry button when cell already has content */}
+                                  <button
+                                    onClick={() => {
+                                      setForm({ ...emptyForm, crewName: crew, date: day.key });
+                                      setShowModal(true);
+                                    }}
+                                    className="w-full h-6 rounded border border-dashed border-border/30 hover:border-primary/30 hover:bg-primary/5 transition-colors flex items-center justify-center group mt-1"
+                                  >
+                                    <Plus className="w-2.5 h-2.5 text-muted-foreground/20 group-hover:text-primary/40" />
+                                  </button>
                                 </div>
                               )}
-                            </td>
+                            </DroppableCrewDayCell>
                           );
                         })}
                       </tr>
@@ -689,6 +905,7 @@ export default function Schedule() {
 
             {/* Drag overlay */}
             <DragOverlay>
+              {/* Jobber job overlay */}
               {draggingJobId !== null && (() => {
                 const job = jobberJobs.find(j => j.id === draggingJobId);
                 if (!job) return null;
@@ -705,6 +922,43 @@ export default function Schedule() {
                       <div className="opacity-70 truncate">
                         {job.client?.name || job.client?.companyName || "—"}
                       </div>
+                    </div>
+                  </div>
+                );
+              })()}
+              {/* Schedule entry overlay */}
+              {draggingEntryId !== null && (() => {
+                const entry = entries.find(e => e.id === draggingEntryId);
+                if (!entry) return null;
+                const color = getCrewColor(entry.crewName);
+                return (
+                  <div className={cn(
+                    "rounded-md border px-2 py-1.5 text-[10px] shadow-xl cursor-grabbing flex items-start gap-1 w-36",
+                    color
+                  )}>
+                    <GripVertical className="w-2.5 h-2.5 opacity-40 mt-0.5 shrink-0" />
+                    <div className="min-w-0">
+                      <div className="font-semibold truncate">{entry.title}</div>
+                      <div className="opacity-70">{entry.startHour}:00 – {entry.endHour}:00</div>
+                    </div>
+                  </div>
+                );
+              })()}
+              {/* Local job overlay */}
+              {draggingLocalJobId !== null && (() => {
+                const job = localJobs.find(j => j.id === draggingLocalJobId);
+                if (!job) return null;
+                const assignedCrew = crewList.find((c: any) => c.id === job.crewId);
+                const color = assignedCrew ? getCrewColor((assignedCrew as any).name) : "border-amber-500/40 bg-amber-500/15 text-amber-300";
+                return (
+                  <div className={cn(
+                    "rounded-md border px-2 py-1.5 text-[10px] shadow-xl cursor-grabbing flex items-start gap-1 w-36",
+                    color
+                  )}>
+                    <GripVertical className="w-2.5 h-2.5 opacity-40 mt-0.5 shrink-0" />
+                    <div className="min-w-0">
+                      <div className="font-semibold truncate">{job.title || "Untitled Job"}</div>
+                      {job.client && <div className="opacity-70 truncate">{job.client}</div>}
                     </div>
                   </div>
                 );

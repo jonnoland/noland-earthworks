@@ -1825,3 +1825,17 @@
 - [x] Add ops.jobs.assignCrew procedure in opsRouter.ts
 - [x] Add crew dropdown to Add Job modal in Jobs.tsx
 - [x] Add "Assign Crews to Jobs" panel in Crews.tsx with inline crew dropdown per job
+
+## Drag-and-Drop Crew Scheduling (Jun 15, 2026)
+- [x] Add DraggableEntryCard component to Schedule.tsx (schedule entries draggable)
+- [x] Add DraggableLocalJobCard component to Schedule.tsx (local jobs draggable)
+- [x] Add DroppableCrewDayCell component to Schedule.tsx (crew+day drop targets)
+- [x] Update handleDragStart to track draggingEntryId and draggingLocalJobId state
+- [x] Implement handleDragEnd: persist entry moves via schedule.update, persist local job moves via jobs.update (date + crew)
+- [x] Add updateEntry, updateLocalJob, assignCrewToJob mutations to Schedule page
+- [x] Add localJobMap (crew+day keyed) to Schedule page using jobs.list query
+- [x] Replace plain <td> crew cells with DroppableCrewDayCell in calendar grid
+- [x] Replace static entry <div> cards with DraggableEntryCard in calendar grid
+- [x] Add DraggableLocalJobCard cards to each crew+day cell from localJobMap
+- [x] Update DragOverlay to handle entry and local job drag previews
+- [x] Verify TypeScript: 0 errors
