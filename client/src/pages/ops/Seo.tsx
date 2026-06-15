@@ -1040,7 +1040,21 @@ export default function Seo() {
     : [];
 
   const checks: SeoCheck[] = latest?.checks ?? [];
-  const recommendations = latest?.recommendations ?? [];
+
+  // Build a set of checkIds that have been resolved or skipped
+  const resolvedCheckIds = new Set(
+    fixes
+      .filter((f) => f.status === "resolved" || f.status === "skipped")
+      .map((f) => f.checkId)
+  );
+
+  // Filter recommendations: hide any whose matching check has been resolved/skipped
+  const allRecommendations = latest?.recommendations ?? [];
+  const recommendations = allRecommendations.filter((rec) => {
+    const matchingCheck = checks.find((c) => c.recommendation === rec.text);
+    if (!matchingCheck) return true; // no matching check found — keep it
+    return !resolvedCheckIds.has(matchingCheck.id);
+  });
 
   const chartData = [...history].reverse().map((h) => ({
     date: new Date(h.auditedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }),
@@ -1425,24 +1439,34 @@ export default function Seo() {
                 {/* ── RIGHT COLUMN: Recommendations + Checks + Fix Issues ── */}
                 <div className="space-y-4">
                   {/* Recommendations */}
-                  {recommendations.length > 0 && (
+                  {(recommendations.length > 0 || (allRecommendations.length > 0 && recommendations.length === 0)) && (
                     <Card className="bg-zinc-900 border-zinc-800">
                       <CardHeader className="pb-3">
                         <CardTitle className="text-sm font-medium text-zinc-200 flex items-center gap-2">
                           <TrendingUp className="w-4 h-4 text-orange-400" />
-                          Recommendations ({recommendations.length})
+                          Recommendations
+                          {recommendations.length > 0 && (
+                            <span className="text-zinc-500 font-normal">({recommendations.length})</span>
+                          )}
                         </CardTitle>
                       </CardHeader>
                       <CardContent className="space-y-2">
-                        {recommendations.map((rec, i) => (
-                          <div key={i} className="flex items-start gap-3 p-3 rounded-lg bg-zinc-800/50 border border-zinc-700/50">
-                            <div className="mt-0.5">{priorityBadge(rec.priority as Priority)}</div>
-                            <div className="flex-1">
-                              <p className="text-sm text-zinc-200">{rec.text}</p>
-                              <p className="text-xs text-zinc-500 mt-0.5 capitalize">{CATEGORY_META[rec.category as Category]?.label ?? rec.category}</p>
-                            </div>
+                        {recommendations.length === 0 ? (
+                          <div className="flex items-center gap-3 p-3 rounded-lg bg-green-500/10 border border-green-500/20">
+                            <CheckCircle2 className="w-4 h-4 text-green-400 shrink-0" />
+                            <p className="text-sm text-green-300">All recommendations resolved. Run a new audit to get an updated score.</p>
                           </div>
-                        ))}
+                        ) : (
+                          recommendations.map((rec, i) => (
+                            <div key={i} className="flex items-start gap-3 p-3 rounded-lg bg-zinc-800/50 border border-zinc-700/50">
+                              <div className="mt-0.5">{priorityBadge(rec.priority as Priority)}</div>
+                              <div className="flex-1">
+                                <p className="text-sm text-zinc-200">{rec.text}</p>
+                                <p className="text-xs text-zinc-500 mt-0.5 capitalize">{CATEGORY_META[rec.category as Category]?.label ?? rec.category}</p>
+                              </div>
+                            </div>
+                          ))
+                        )}
                       </CardContent>
                     </Card>
                   )}
