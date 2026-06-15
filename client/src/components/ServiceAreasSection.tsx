@@ -408,7 +408,7 @@ export default function ServiceAreasSection() {
               marginBottom: "0.75rem",
             }}
           >
-            Our Service Areas
+            Forestry Mulching &amp; Land Clearing Service Areas in Tennessee
           </h2>
           <p style={{ fontFamily: "'Lato', sans-serif", fontWeight: 300, fontSize: "1rem", color: "rgba(240,237,230,0.65)" }}>
             Noland Earthworks proudly serves 35 counties across Middle and West Tennessee.

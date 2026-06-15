@@ -52,13 +52,8 @@ export default function HeroSection() {
 
       <div className="container relative z-10 pt-24 pb-16">
         <div className="max-w-3xl">
-          {/* SEO-only h1 — visually hidden, read by search engines and screen readers */}
-          <h1 className="sr-only">
-            Forestry Mulching &amp; Land Management Services in Middle &amp; West Tennessee — Noland Earthworks
-          </h1>
-
-          {/* Main headline */}
-          <h2
+          {/* Main headline — H1 for SEO, styled to match the original design */}
+          <h1
             style={{
               fontFamily: "'Oswald', sans-serif",
               fontWeight: 700,
@@ -75,7 +70,7 @@ export default function HeroSection() {
             Been Waiting.
             <br />
             <span style={{ color: "#E07B2A" }}>Let's Bring It Back.</span>
-          </h2>
+          </h1>
 
           {/* Body copy */}
           <p

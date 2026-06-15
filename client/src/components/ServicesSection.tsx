@@ -196,7 +196,7 @@ export default function ServicesSection() {
                 color: "#F0EDE6",
               }}
             >
-              Our Services
+              Forestry Mulching &amp; Land Clearing in Tennessee
             </h2>
             <p
               style={{

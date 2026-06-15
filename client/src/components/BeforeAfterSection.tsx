@@ -29,21 +29,21 @@ type Card = {
 const CARDS: Card[] = [
   {
     image: IMG_OVERGROWN_BRUSH,
-    service: "Before: Overgrown Property",
+    service: "Before: Overgrown Property in Tennessee",
     caption:
-      "Dense brush, invasive growth, and tangled understory — the kind of property that has gotten away from its owner.",
+      "Dense brush, invasive growth, and tangled understory — the kind of property that has gotten away from its owner. This is the typical starting point before forestry mulching.",
   },
   {
     image: IMG_FORESTRY_MACHINE,
     service: "Forestry Mulching in Action",
     caption:
-      "A tracked forestry mulcher grinds through heavy vegetation. No debris piles, no hauling, no burning.",
+      "A tracked forestry mulcher grinds through heavy vegetation in Middle Tennessee. No debris piles, no hauling, no burning — just clean land clearing in a single pass.",
   },
   {
     image: IMG_CLEARED_LAND,
-    service: "After: Usable Land",
+    service: "After: Cleared Land Ready to Use",
     caption:
-      "Open, accessible ground with a mulch layer left in place. Ready for whatever the landowner needs it for.",
+      "Open, accessible ground with a mulch layer left in place after forestry mulching. Ready for pasture, development, or whatever the landowner needs.",
   },
 ];
 
@@ -140,7 +140,7 @@ export default function BeforeAfterSection() {
               marginBottom: "0.75rem",
             }}
           >
-            What Forestry Mulching Looks Like
+            What Forestry Mulching &amp; Land Clearing Looks Like
           </h2>
           <p
             style={{

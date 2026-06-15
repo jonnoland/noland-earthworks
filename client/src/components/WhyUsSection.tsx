@@ -157,7 +157,7 @@ export default function WhyUsSection() {
               color: "#F0EDE6",
             }}
           >
-            Why Choose Noland Earthworks
+            Why Choose Noland Earthworks for Land Clearing in Tennessee
           </h2>
         </div>
 

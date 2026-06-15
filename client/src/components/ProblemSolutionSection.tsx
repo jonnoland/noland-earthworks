@@ -136,6 +136,26 @@ export default function ProblemSolutionSection() {
             Get Your Free Quote Today
           </a>
         </div>
+
+        {/* Internal links to key service pages */}
+        <div
+          className="mt-10 flex flex-wrap justify-center gap-x-6 gap-y-2"
+          style={{
+            fontFamily: "'Lato', sans-serif",
+            fontSize: "0.85rem",
+            color: "rgba(240,237,230,0.45)",
+          }}
+        >
+          <span>Explore services:</span>
+          <a href="/services/forestry-mulching" style={{ color: "#E07B2A", textDecoration: "none" }}>Forestry Mulching</a>
+          <a href="/services/land-management" style={{ color: "#E07B2A", textDecoration: "none" }}>Land Clearing</a>
+          <a href="/services/vegetation-management" style={{ color: "#E07B2A", textDecoration: "none" }}>Vegetation Management</a>
+          <a href="/services/right-of-way-clearing" style={{ color: "#E07B2A", textDecoration: "none" }}>Right-of-Way Clearing</a>
+          <a href="/service-areas/williamson-county" style={{ color: "rgba(240,237,230,0.45)", textDecoration: "none" }}>Williamson County</a>
+          <a href="/service-areas/davidson-county" style={{ color: "rgba(240,237,230,0.45)", textDecoration: "none" }}>Davidson County</a>
+          <a href="/service-areas/maury-county" style={{ color: "rgba(240,237,230,0.45)", textDecoration: "none" }}>Maury County</a>
+          <a href="/service-areas/rutherford-county" style={{ color: "rgba(240,237,230,0.45)", textDecoration: "none" }}>Rutherford County</a>
+        </div>
       </div>
     </section>
   );
