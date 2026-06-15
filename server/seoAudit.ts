@@ -831,6 +831,29 @@ Squarespace should serve one automatically.
    Sitemap: https://nolandearthworks.com/sitemap.xml`, priority: "medium" });
   }
 
+  // llms.txt — AI crawler visibility signal
+  const llmsTxtUrl = new URL("/llms.txt", finalUrl).href;
+  try {
+    const llmsRes = await fetch(llmsTxtUrl, { signal: AbortSignal.timeout(8000) });
+    if (llmsRes.ok) {
+      checks.push({ id: "llms_txt_ok", category: "onpage", label: "llms.txt", status: "pass", value: "Found", detail: "llms.txt is present. AI crawlers (ChatGPT, Claude, Perplexity) can use it to understand your site.", priority: "low" });
+    } else {
+      checks.push({ id: "llms_txt_missing", category: "onpage", label: "llms.txt", status: "warn", value: `HTTP ${llmsRes.status}`, detail: "llms.txt was not found. This file helps AI search engines (ChatGPT, Claude, Perplexity) understand your site content and services.", recommendation: "Add an llms.txt file at the root of your site to improve visibility in AI-powered search results.", fixExample: `Create a file at /llms.txt with a plain-language description of your business and services.
+Example content:
+
+# Noland Earthworks
+
+Noland Earthworks is a veteran-owned land management company based in Middle Tennessee.
+Services: forestry mulching, land clearing, brush hogging.
+Service area: Middle Tennessee, including Maury, Williamson, Hickman, Lewis, and surrounding counties.
+Contact: nolandearthworks.com
+
+This file helps AI assistants accurately describe your business when users ask about land clearing in Tennessee.`, priority: "low" });
+    }
+  } catch {
+    checks.push({ id: "llms_txt_unreachable", category: "onpage", label: "llms.txt", status: "warn", value: "Unreachable", detail: "Could not reach llms.txt.", recommendation: "Add an llms.txt file at the root of your site to improve AI search visibility.", fixExample: `Create /llms.txt with a plain-language description of your business, services, and service area.`, priority: "low" });
+  }
+
   // ── Score Calculation ───────────────────────────────────────────────────────
 
   const onPageScore = categoryScore(checks, "onpage");
