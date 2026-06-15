@@ -132,6 +132,40 @@ export function registerSitemapRoutes(app: Express) {
     res.send(xml);
   });
 
+  // llms.txt — AI search engine discovery file
+  app.get("/llms.txt", (_req, res) => {
+    const content = `# Noland Earthworks, LLC
+> Veteran-owned forestry mulching and land management company serving 35 counties across Middle and West Tennessee. Specializing in tracked forestry mulching, land clearing, vegetation management, and right-of-way clearing. Owner-operated, licensed, and insured. Free on-site estimates.
+
+## Services
+
+- [Forestry Mulching](${BASE_URL}/services/forestry-mulching): Primary service. Tracked machine grinds trees, brush, and stumps into mulch in a single pass. No hauling, no burning, no bare soil.
+- [Land Clearing & Management](${BASE_URL}/services/land-management): Lot clearing, pasture reclamation, site prep, and fence line clearing for residential, agricultural, and commercial properties.
+- [Vegetation Management](${BASE_URL}/services/vegetation-management): Control invasive species, overgrowth, and unwanted vegetation on roadsides, easements, and property boundaries.
+- [Right-of-Way Clearing](${BASE_URL}/services/right-of-way-clearing): Driveway clearing, utility corridor clearing, and easement maintenance.
+- [Property Maintenance](${BASE_URL}/services/property-maintenance): Ongoing brush and vegetation control to keep land clean and usable year-round.
+
+## Service Area
+
+Middle and West Tennessee. Core counties: Davidson, Williamson, Rutherford, Wilson, Maury, Dickson, Cheatham, Robertson, Sumner, Montgomery, Bedford, Marshall, Hickman, Lewis, Perry, Wayne, and 19 more across the region.
+
+## Resources
+
+- [Blog & Resources](${BASE_URL}/blog): Guides on forestry mulching, land clearing costs, seasonal timing, and county-specific land management.
+- [Free Quote](${BASE_URL}/quote): Request a free on-site estimate.
+- [Service Areas](${BASE_URL}/#service-areas): Full list of 35 counties served.
+
+## Contact
+
+- Phone: 615-406-4819
+- Email: info@nolandearthworks.com
+- Website: ${BASE_URL}
+`;
+    res.setHeader("Content-Type", "text/plain; charset=utf-8");
+    res.setHeader("Cache-Control", "public, max-age=86400");
+    res.send(content);
+  });
+
   // robots.txt — references the sitemap
   app.get("/robots.txt", (_req, res) => {
     const content = `User-agent: *

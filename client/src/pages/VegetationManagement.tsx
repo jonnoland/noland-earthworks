@@ -73,7 +73,7 @@ const data: ServicePageProps = {
 
 export default function VegetationManagementPage() {
   usePageTitle(
-    "Vegetation Management — Brush Control & Invasive Species | Tennessee",
+    "Vegetation Management in Tennessee | Noland Earthworks",
     "Professional vegetation management, brush control, and invasive species removal across Middle & West Tennessee. Recurring maintenance or one-time clearing. Veteran-owned. Free estimates.",
     "/services/vegetation-management"
   );

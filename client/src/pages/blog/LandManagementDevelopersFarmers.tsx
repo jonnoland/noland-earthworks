@@ -4,7 +4,7 @@ export default function LandManagementDevelopersFarmers() {
   return (
     <BlogPostLayout
       title="Land Management for Developers and Farmers in Middle Tennessee"
-      pageTitle="Land Management for Developers and Farmers in Middle TN | Noland Earthworks"
+      pageTitle="Land Management for Developers in TN | Noland Earthworks"
       metaDescription="Middle Tennessee developers and farmers trust Noland Earthworks for land management, forestry mulching, and site preparation. Learn how we clear land for new construction, pasture reclamation, and agricultural use across Middle TN."
       date="May 2026"
       dateISO="2026-05-25"

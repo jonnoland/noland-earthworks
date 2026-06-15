@@ -64,7 +64,7 @@ const data: ServicePageProps = {
 
 export default function ForestryMulchingPage() {
   usePageTitle(
-    "Forestry Mulching Services — Nashville, Clarksville & Middle Tennessee",
+    "Forestry Mulching in Tennessee | Noland Earthworks",
     "Professional forestry mulching serving Nashville, Clarksville, Murfreesboro, Columbia, and 35 counties across Middle & West Tennessee. One pass clears trees, brush, and stumps. No hauling, no burning. Free on-site estimates.",
     "/services/forestry-mulching"
   );

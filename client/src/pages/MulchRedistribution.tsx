@@ -69,7 +69,7 @@ const data: ServicePageProps = {
 
 export default function MulchRedistributionPage() {
   usePageTitle(
-    "Mulch Redistribution — Tennessee Land Management Add-On | Noland Earthworks",
+    "Mulch Redistribution in Tennessee | Noland Earthworks",
     "Level and spread mulch after forestry mulching across Middle & West Tennessee. Get a cleaner, more finished result on cleared land. Free estimates.",
     "/services/add-ons/mulch-redistribution"
   );

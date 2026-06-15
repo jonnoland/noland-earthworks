@@ -130,7 +130,7 @@ const STATS = [
 
 export default function AboutPage() {
   usePageTitle(
-    "About Noland Earthworks — Veteran-Owned Land Management | Tennessee",
+    "About Noland Earthworks | Veteran-Owned, Tennessee",
     "Jon Noland is an Army veteran and owner-operator of Noland Earthworks, LLC. Veteran-owned forestry mulching and land management serving 35 counties across Middle & West Tennessee. Get a free estimate.",
     "/about"
   );

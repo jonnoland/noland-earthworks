@@ -4,7 +4,7 @@ export default function SignsVegetationManagement() {
   return (
     <BlogPostLayout
       title="5 Signs It's Time to Invest in Professional Vegetation Management"
-      pageTitle="5 Signs You Need Professional Vegetation Management | Noland Earthworks"
+      pageTitle="5 Signs You Need Vegetation Management | Noland Earthworks"
       metaDescription="Is your Tennessee property overgrown? Learn 5 clear signs it's time to hire a professional for vegetation management and land management before problems get worse."
       date="April 2026"
       dateISO="2026-04-01"

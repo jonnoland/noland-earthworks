@@ -1173,186 +1173,186 @@ function createCountyPage(slug: string, pageTitle: string, metaDesc?: string) {
 
 export const DavidsonCountyPage = createCountyPage(
   "davidson-county",
-  "Land Management & Forestry Mulching in Davidson County, TN | Noland Earthworks",
+  "Land Clearing in Davidson County, TN | Noland Earthworks",
   "Veteran-owned land management and forestry mulching in Davidson County, TN. Serving Nashville and all surrounding areas. Free estimates. Call 615-406-4819."
 );
 export const WilliamsonCountyPage = createCountyPage(
   "williamson-county",
-  "Land Management & Forestry Mulching in Williamson County, TN | Noland Earthworks",
+  "Land Clearing in Williamson County, TN | Noland Earthworks",
   "Professional land management and forestry mulching in Williamson County, TN. Serving Franklin, Brentwood, Spring Hill, and Nolensville. Free estimates."
 );
 export const RutherfordCountyPage = createCountyPage(
   "rutherford-county",
-  "Reliable Land Management & Vegetation Management in Rutherford County, TN | Noland Earthworks",
+  "Land Clearing in Rutherford County, TN | Noland Earthworks",
   "Top-rated land management and forestry mulching in Rutherford County, TN. Serving Murfreesboro, Smyrna, LaVergne, and surrounding areas. Free estimates."
 );
 export const WilsonCountyPage = createCountyPage(
   "wilson-county",
-  "Expert Land Management & Forestry Mulching in Wilson County, TN | Noland Earthworks",
+  "Land Clearing in Wilson County, TN | Noland Earthworks",
   "Expert forestry mulching and land management in Wilson County, TN. Serving Lebanon, Mt. Juliet, and surrounding areas. Veteran-owned. Free estimates."
 );
 export const SumnerCountyPage = createCountyPage(
   "sumner-county",
-  "Land Management & Forestry Mulching in Sumner County, TN | Noland Earthworks",
+  "Land Clearing in Sumner County, TN | Noland Earthworks",
   "Professional land management and forestry mulching in Sumner County, TN. Serving Hendersonville, Gallatin, Portland, and surrounding communities. Free estimates."
 );
 export const RobertsonCountyPage = createCountyPage(
   "robertson-county",
-  "Land Management & Forestry Mulching in Robertson County, TN | Noland Earthworks",
+  "Land Clearing in Robertson County, TN | Noland Earthworks",
   "Veteran-owned land management and forestry mulching in Robertson County, TN. Serving Springfield, White House, Greenbrier, and surrounding areas. Free estimates."
 );
 export const CheathamCountyPage = createCountyPage(
   "cheatham-county",
-  "Land Management & Forestry Mulching in Cheatham County, TN | Noland Earthworks",
+  "Land Clearing in Cheatham County, TN | Noland Earthworks",
   "Professional forestry mulching and land management in Cheatham County, TN. Serving Ashland City, Kingston Springs, and surrounding areas. Free estimates."
 );
 export const DicksonCountyPage = createCountyPage(
   "dickson-county",
-  "Dickson County's Trusted Forestry Mulching & Land Management Experts | Noland Earthworks",
+  "Land Clearing in Dickson County, TN | Noland Earthworks",
   "Trusted forestry mulching and land management in Dickson County, TN. Single-pass mulching near Montgomery Bell State Park and surrounding areas. Free estimates."
 );
 export const MauryCountyPage = createCountyPage(
   "maury-county",
-  "Top-Rated Land Management Services in Maury County, TN | Noland Earthworks",
+  "Land Clearing in Maury County, TN | Noland Earthworks",
   "Top-rated land management and forestry mulching in Maury County, TN. Serving Columbia, Spring Hill, and surrounding areas. Veteran-owned. Free estimates."
 );
 export const WayneCountyPage = createCountyPage(
   "wayne-county",
-  "Land Management & Forestry Mulching in Wayne County, TN | Noland Earthworks",
+  "Land Clearing in Wayne County, TN | Noland Earthworks",
   "Professional land management and forestry mulching in Wayne County, TN. Serving Waynesboro and surrounding communities. Veteran-owned. Free estimates."
 );
 export const CannonCountyPage = createCountyPage(
   "cannon-county",
-  "Land Management & Forestry Mulching in Cannon County, TN | Noland Earthworks",
+  "Land Clearing in Cannon County, TN | Noland Earthworks",
   "Veteran-owned land management and forestry mulching in Cannon County, TN. Serving Woodbury and surrounding areas. Licensed, insured. Free estimates."
 );
 export const BedfordCountyPage = createCountyPage(
   "bedford-county",
-  "Land Management & Forestry Mulching in Bedford County, TN | Noland Earthworks",
+  "Land Clearing in Bedford County, TN | Noland Earthworks",
   "Professional land management and forestry mulching in Bedford County, TN. Serving Shelbyville and surrounding communities. Veteran-owned. Free estimates."
 );
 export const MontgomeryCountyPage = createCountyPage(
   "montgomery-county",
-  "Professional Forestry Mulching & Land Management in Montgomery County, TN | Noland Earthworks",
+  "Land Clearing in Montgomery County, TN | Noland Earthworks",
   "Professional forestry mulching and land management in Montgomery County, TN. Serving Clarksville and surrounding areas. Veteran-owned. Free estimates."
 );
 export const LewisCountyPage = createCountyPage(
   "lewis-county",
-  "Land Management & Forestry Mulching in Lewis County, TN | Noland Earthworks",
+  "Land Clearing in Lewis County, TN | Noland Earthworks",
   "Veteran-owned land management and forestry mulching in Lewis County, TN. Serving Hohenwald and surrounding areas. Licensed, insured. Free estimates."
 );
 export const PerryCountyPage = createCountyPage(
   "perry-county",
-  "Land Management & Forestry Mulching in Perry County, TN | Noland Earthworks",
+  "Land Clearing in Perry County, TN | Noland Earthworks",
   "Professional land management and forestry mulching in Perry County, TN. Serving Linden and surrounding communities. Veteran-owned. Free estimates."
 );
 export const BentonCountyPage = createCountyPage(
   "benton-county",
-  "Land Management & Forestry Mulching in Benton County, TN | Noland Earthworks",
+  "Land Clearing in Benton County, TN | Noland Earthworks",
   "Veteran-owned land management and forestry mulching in Benton County, TN. Serving Camden and surrounding areas. Licensed, insured. Free estimates."
 );
 export const HickmanCountyPage = createCountyPage(
   "hickman-county",
-  "Land Management & Forestry Mulching in Hickman County, TN | Noland Earthworks",
+  "Land Clearing in Hickman County, TN | Noland Earthworks",
   "Professional forestry mulching and land management in Hickman County, TN. Serving Centerville and surrounding areas. Veteran-owned. Free estimates."
 );
 export const HoustonCountyPage = createCountyPage(
   "houston-county",
-  "Land Management & Forestry Mulching in Houston County, TN | Noland Earthworks",
+  "Land Clearing in Houston County, TN | Noland Earthworks",
   "Veteran-owned land management and forestry mulching in Houston County, TN. Serving Erin and surrounding communities. Licensed, insured. Free estimates."
 );
 export const HumphreysCountyPage = createCountyPage(
   "humphreys-county",
-  "Land Management & Forestry Mulching in Humphreys County, TN | Noland Earthworks",
+  "Land Clearing in Humphreys County, TN | Noland Earthworks",
   "Professional land management and forestry mulching in Humphreys County, TN. Serving Waverly and surrounding areas. Veteran-owned. Free estimates."
 );
 export const StewartCountyPage = createCountyPage(
   "stewart-county",
-  "Land Management & Forestry Mulching in Stewart County, TN | Noland Earthworks",
+  "Land Clearing in Stewart County, TN | Noland Earthworks",
   "Veteran-owned land management and forestry mulching in Stewart County, TN. Serving Dover and surrounding communities. Licensed, insured. Free estimates."
 );
 export const MarshallCountyPage = createCountyPage(
   "marshall-county",
-  "Land Management & Forestry Mulching in Marshall County, TN | Noland Earthworks",
+  "Land Clearing in Marshall County, TN | Noland Earthworks",
   "Professional land management and forestry mulching in Marshall County, TN. Serving Lewisburg and surrounding areas. Veteran-owned. Free estimates."
 );
 export const GilesCountyPage = createCountyPage(
   "giles-county",
-  "Land Management & Forestry Mulching in Giles County, TN | Noland Earthworks",
+  "Land Clearing in Giles County, TN | Noland Earthworks",
   "Veteran-owned land management and forestry mulching in Giles County, TN. Serving Pulaski and surrounding communities. Licensed, insured. Free estimates."
 );
 export const LincolnCountyPage = createCountyPage(
   "lincoln-county",
-  "Land Management & Forestry Mulching in Lincoln County, TN | Noland Earthworks",
+  "Land Clearing in Lincoln County, TN | Noland Earthworks",
   "Professional land management and forestry mulching in Lincoln County, TN. Serving Fayetteville and surrounding areas. Veteran-owned. Free estimates."
 );
 export const MooreCountyPage = createCountyPage(
   "moore-county",
-  "Land Management & Forestry Mulching in Moore County, TN | Noland Earthworks",
+  "Land Clearing in Moore County, TN | Noland Earthworks",
   "Veteran-owned land management and forestry mulching in Moore County, TN. Serving Lynchburg and surrounding communities. Licensed, insured. Free estimates."
 );
 export const LawrenceCountyPage = createCountyPage(
   "lawrence-county",
-  "Land Management & Forestry Mulching in Lawrence County, TN | Noland Earthworks",
+  "Land Clearing in Lawrence County, TN | Noland Earthworks",
   "Professional land management and forestry mulching in Lawrence County, TN. Serving Lawrenceburg and surrounding areas. Veteran-owned. Free estimates."
 );
 export const DeKalbCountyPage = createCountyPage(
   "dekalb-county",
-  "Land Management & Forestry Mulching in DeKalb County, TN | Noland Earthworks",
+  "Land Clearing in DeKalb County, TN | Noland Earthworks",
   "Veteran-owned land management and forestry mulching in DeKalb County, TN. Serving Smithville and surrounding communities. Licensed, insured. Free estimates."
 );
 export const SmithCountyPage = createCountyPage(
   "smith-county",
-  "Land Management & Forestry Mulching in Smith County, TN | Noland Earthworks",
+  "Land Clearing in Smith County, TN | Noland Earthworks",
   "Professional land management and forestry mulching in Smith County, TN. Serving Carthage and surrounding areas. Veteran-owned. Free estimates."
 );
 export const TrousdaleCountyPage = createCountyPage(
   "trousdale-county",
-  "Land Management & Forestry Mulching in Trousdale County, TN | Noland Earthworks",
+  "Land Clearing in Trousdale County, TN | Noland Earthworks",
   "Veteran-owned land management and forestry mulching in Trousdale County, TN. Serving Hartsville and surrounding communities. Licensed, insured. Free estimates."
 );
 export const CarrollCountyPage = createCountyPage(
   "carroll-county",
-  "Land Management & Forestry Mulching in Carroll County, TN | Noland Earthworks",
+  "Land Clearing in Carroll County, TN | Noland Earthworks",
   "Professional land management and forestry mulching in Carroll County, TN. Serving Huntingdon and surrounding areas. Veteran-owned. Free estimates."
 );
 export const ChesterCountyPage = createCountyPage(
   "chester-county",
-  "Land Management & Forestry Mulching in Chester County, TN | Noland Earthworks",
+  "Land Clearing in Chester County, TN | Noland Earthworks",
   "Veteran-owned land management and forestry mulching in Chester County, TN. Serving Henderson and surrounding communities. Licensed, insured. Free estimates."
 );
 export const DecaturCountyPage = createCountyPage(
   "decatur-county",
-  "Land Management & Forestry Mulching in Decatur County, TN | Noland Earthworks",
+  "Land Clearing in Decatur County, TN | Noland Earthworks",
   "Professional land management and forestry mulching in Decatur County, TN. Serving Decaturville and surrounding areas. Veteran-owned. Free estimates."
 );
 export const GibsonCountyPage = createCountyPage(
   "gibson-county",
-  "Land Management & Forestry Mulching in Gibson County, TN | Noland Earthworks",
+  "Land Clearing in Gibson County, TN | Noland Earthworks",
   "Veteran-owned land management and forestry mulching in Gibson County, TN. Serving Trenton and surrounding communities. Licensed, insured. Free estimates."
 );
 export const HardinCountyPage = createCountyPage(
   "hardin-county",
-  "Land Management & Forestry Mulching in Hardin County, TN | Noland Earthworks",
+  "Land Clearing in Hardin County, TN | Noland Earthworks",
   "Professional land management and forestry mulching in Hardin County, TN. Serving Savannah and surrounding areas. Veteran-owned. Free estimates."
 );
 export const HendersonCountyPage = createCountyPage(
   "henderson-county",
-  "Land Management & Forestry Mulching in Henderson County, TN | Noland Earthworks",
+  "Land Clearing in Henderson County, TN | Noland Earthworks",
   "Veteran-owned land management and forestry mulching in Henderson County, TN. Serving Lexington and surrounding communities. Licensed, insured. Free estimates."
 );
 export const HenryCountyPage = createCountyPage(
   "henry-county",
-  "Land Management & Forestry Mulching in Henry County, TN | Noland Earthworks",
+  "Land Clearing in Henry County, TN | Noland Earthworks",
   "Professional land management and forestry mulching in Henry County, TN. Serving Paris and surrounding areas. Veteran-owned. Free estimates."
 );
 export const MadisonCountyPage = createCountyPage(
   "madison-county",
-  "Land Management & Forestry Mulching in Madison County, TN | Noland Earthworks",
+  "Land Clearing in Madison County, TN | Noland Earthworks",
   "Veteran-owned land management and forestry mulching in Madison County, TN. Serving Jackson and surrounding communities. Licensed, insured. Free estimates."
 );
 export const WeakleyCountyPage = createCountyPage(
   "weakley-county",
-  "Land Management & Forestry Mulching in Weakley County, TN | Noland Earthworks",
+  "Land Clearing in Weakley County, TN | Noland Earthworks",
   "Professional land management and forestry mulching in Weakley County, TN. Serving Dresden and surrounding areas. Veteran-owned. Free estimates."
 );

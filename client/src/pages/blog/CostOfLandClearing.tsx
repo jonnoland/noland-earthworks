@@ -4,7 +4,7 @@ export default function CostOfLandClearing() {
   return (
     <BlogPostLayout
       title="How Much Does Land Management Cost in Tennessee? (2026 Guide)"
-      pageTitle="How Much Does Land Management Cost in Tennessee? (2026 Guide) | Noland Earthworks"
+      pageTitle="Land Management Costs in Tennessee | Noland Earthworks"
       metaDescription="Land clearing in Tennessee costs $1,500–$4,000 per acre. Learn what drives pricing, how forestry mulching compares to bulldozing, and how to get an accurate estimate."
       date="April 2026"
       dateISO="2026-04-01"

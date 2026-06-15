@@ -1810,3 +1810,10 @@
 - [ ] Customer portal: /portal/success and /portal/cancel redirect pages
 - [ ] Write vitest tests for paymentRouter procedures
 - [x] Remove mobilization fee as a visible line item: hide from website CostCalculator stat boxes, remove Mobilization Distance input from CostEstimator (field/ops), suppress mobilizationCost from AI breakdown display, rename "Mob Surcharge" to "Travel Surcharge" in Pricing.tsx and DistanceQuotes.tsx
+
+## SEO Improvements — June 2026
+- [x] Fix inner-page title lengths: service pages, county pages, blog posts (target ≤60 chars)
+- [x] Implement React.lazy() code splitting for all /ops routes in App.tsx
+- [x] Add AggregateRating schema to LocalBusiness JSON-LD on homepage
+- [x] Add FAQPage schema to homepage
+- [x] Create real /llms.txt server route (plain text, not SPA HTML)

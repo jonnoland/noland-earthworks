@@ -7,38 +7,45 @@ import { ThemeProvider } from "./contexts/ThemeContext";
 import ScrollToTop from "./components/ScrollToTop";
 import AIChatWidget from "./components/AIChatWidget";
 import OwnerRoute from "./components/OwnerRoute";
-import OpsDashboard from "./pages/ops/Dashboard";
-import OpsJobs from "./pages/ops/Jobs";
-import OpsLeads from "./pages/ops/Leads";
-import OpsPricing from "./pages/ops/Pricing";
-import OpsSchedule from "./pages/ops/Schedule";
-import OpsReports from "./pages/ops/Reports";
-import OpsSettings from "./pages/ops/Settings";
-import OpsClients from "./pages/ops/Clients";
-import OpsQuotes from "./pages/ops/Quotes";
-import OpsInvoices from "./pages/ops/Invoices";
-import OpsCrews from "./pages/ops/Crews";
-import CrewPricing from "./pages/ops/CrewPricing";
-import OpsConversations from "./pages/ops/Conversations";
-import OpsReviews from "./pages/ops/Reviews";
-import OpsTimesheets from "./pages/ops/Timesheets";
-import OpsScoreboard from "./pages/ops/Scoreboard";
-import OpsDistanceQuotes from "./pages/ops/DistanceQuotes";
-import OpsQuoteAnalytics from "./pages/ops/QuoteAnalytics";
-import OpsTasksPage from "./pages/ops/Tasks";
-import OpsEquipment from "./pages/ops/Equipment";
-import OpsFieldFix from "./pages/ops/FieldFix";
-import OpsPayments from "./pages/ops/Payments";
-import PaymentPortal from "./pages/portal/PaymentPortal";
-import PaymentSuccess from "./pages/portal/PaymentSuccess";
-import PaymentCancel from "./pages/portal/PaymentCancel";
-import OpsTeam from "./pages/ops/Team";
-import OpsRegister from "./pages/ops/Register";
-import CostEstimator from "./pages/ops/CostEstimator";
-import OpsSocialPosts from "./pages/ops/SocialPosts";
-import OpsAds from "./pages/ops/Ads";
-import OpsSeo from "./pages/ops/Seo";
-import OpsChatSessions from "./pages/ops/ChatSessions";
+import { lazy, Suspense } from "react";
+
+// ── Ops dashboard (lazy-loaded — never sent to public visitors) ──────────────
+const OpsDashboard       = lazy(() => import("./pages/ops/Dashboard"));
+const OpsJobs            = lazy(() => import("./pages/ops/Jobs"));
+const OpsLeads           = lazy(() => import("./pages/ops/Leads"));
+const OpsPricing         = lazy(() => import("./pages/ops/Pricing"));
+const OpsSchedule        = lazy(() => import("./pages/ops/Schedule"));
+const OpsReports         = lazy(() => import("./pages/ops/Reports"));
+const OpsSettings        = lazy(() => import("./pages/ops/Settings"));
+const OpsClients         = lazy(() => import("./pages/ops/Clients"));
+const OpsQuotes          = lazy(() => import("./pages/ops/Quotes"));
+const OpsInvoices        = lazy(() => import("./pages/ops/Invoices"));
+const OpsCrews           = lazy(() => import("./pages/ops/Crews"));
+const CrewPricing        = lazy(() => import("./pages/ops/CrewPricing"));
+const OpsConversations   = lazy(() => import("./pages/ops/Conversations"));
+const OpsReviews         = lazy(() => import("./pages/ops/Reviews"));
+const OpsTimesheets      = lazy(() => import("./pages/ops/Timesheets"));
+const OpsScoreboard      = lazy(() => import("./pages/ops/Scoreboard"));
+const OpsDistanceQuotes  = lazy(() => import("./pages/ops/DistanceQuotes"));
+const OpsQuoteAnalytics  = lazy(() => import("./pages/ops/QuoteAnalytics"));
+const OpsTasksPage       = lazy(() => import("./pages/ops/Tasks"));
+const OpsEquipment       = lazy(() => import("./pages/ops/Equipment"));
+const OpsFieldFix        = lazy(() => import("./pages/ops/FieldFix"));
+const OpsPayments        = lazy(() => import("./pages/ops/Payments"));
+const OpsTeam            = lazy(() => import("./pages/ops/Team"));
+const OpsRegister        = lazy(() => import("./pages/ops/Register"));
+const CostEstimator      = lazy(() => import("./pages/ops/CostEstimator"));
+const OpsSocialPosts     = lazy(() => import("./pages/ops/SocialPosts"));
+const OpsAds             = lazy(() => import("./pages/ops/Ads"));
+const OpsSeo             = lazy(() => import("./pages/ops/Seo"));
+const OpsChatSessions    = lazy(() => import("./pages/ops/ChatSessions"));
+
+// ── Customer payment portal (lazy-loaded) ────────────────────────────────────
+const PaymentPortal  = lazy(() => import("./pages/portal/PaymentPortal"));
+const PaymentSuccess = lazy(() => import("./pages/portal/PaymentSuccess"));
+const PaymentCancel  = lazy(() => import("./pages/portal/PaymentCancel"));
+
+// ── Public pages (eagerly loaded — fast first paint for visitors) ─────────────
 import Home from "./pages/Home";
 import LandClearingPage from "./pages/LandClearing";
 import ForestryMulchingPage from "./pages/ForestryMulching";
@@ -137,6 +144,17 @@ import {
   MadisonCountyPage,
   WeakleyCountyPage,
 } from "./pages/CountyPages";
+
+// Minimal loading fallback for lazy routes
+function OpsLoading() {
+  return (
+    <div style={{ minHeight: "100vh", backgroundColor: "#121212", display: "flex", alignItems: "center", justifyContent: "center" }}>
+      <div style={{ color: "rgba(240,237,230,0.4)", fontFamily: "'Lato', sans-serif", fontSize: "0.875rem", letterSpacing: "0.1em" }}>
+        Loading...
+      </div>
+    </div>
+  );
+}
 
 function Router() {
   return (
@@ -253,99 +271,106 @@ function Router() {
       <Route path="/service-areas/madison-county" component={MadisonCountyPage} />
       <Route path="/service-areas/weakley-county" component={WeakleyCountyPage} />
 
-      {/* Ops dashboard — owner only */}
+      {/* Ops dashboard — owner only, lazy-loaded */}
       <Route path="/ops">
-        <OwnerRoute><OpsDashboard /></OwnerRoute>
+        <Suspense fallback={<OpsLoading />}><OwnerRoute><OpsDashboard /></OwnerRoute></Suspense>
       </Route>
       <Route path="/ops/jobs">
-        <OwnerRoute><OpsJobs /></OwnerRoute>
+        <Suspense fallback={<OpsLoading />}><OwnerRoute><OpsJobs /></OwnerRoute></Suspense>
       </Route>
       <Route path="/ops/leads">
-        <OwnerRoute><OpsLeads /></OwnerRoute>
+        <Suspense fallback={<OpsLoading />}><OwnerRoute><OpsLeads /></OwnerRoute></Suspense>
       </Route>
       <Route path="/ops/pricing">
-        <OwnerRoute><OpsPricing /></OwnerRoute>
+        <Suspense fallback={<OpsLoading />}><OwnerRoute><OpsPricing /></OwnerRoute></Suspense>
       </Route>
       <Route path="/ops/schedule">
-        <OwnerRoute><OpsSchedule /></OwnerRoute>
+        <Suspense fallback={<OpsLoading />}><OwnerRoute><OpsSchedule /></OwnerRoute></Suspense>
       </Route>
       <Route path="/ops/reports">
-        <OwnerRoute><OpsReports /></OwnerRoute>
+        <Suspense fallback={<OpsLoading />}><OwnerRoute><OpsReports /></OwnerRoute></Suspense>
       </Route>
       <Route path="/ops/settings">
-        <OwnerRoute><OpsSettings /></OwnerRoute>
+        <Suspense fallback={<OpsLoading />}><OwnerRoute><OpsSettings /></OwnerRoute></Suspense>
       </Route>
       <Route path="/ops/clients">
-        <OwnerRoute><OpsClients /></OwnerRoute>
+        <Suspense fallback={<OpsLoading />}><OwnerRoute><OpsClients /></OwnerRoute></Suspense>
       </Route>
       <Route path="/ops/quotes">
-        <OwnerRoute><OpsQuotes /></OwnerRoute>
+        <Suspense fallback={<OpsLoading />}><OwnerRoute><OpsQuotes /></OwnerRoute></Suspense>
       </Route>
       <Route path="/ops/invoices">
-        <OwnerRoute><OpsInvoices /></OwnerRoute>
+        <Suspense fallback={<OpsLoading />}><OwnerRoute><OpsInvoices /></OwnerRoute></Suspense>
       </Route>
       <Route path="/ops/crews">
-        <OwnerRoute><OpsCrews /></OwnerRoute>
+        <Suspense fallback={<OpsLoading />}><OwnerRoute><OpsCrews /></OwnerRoute></Suspense>
       </Route>
       <Route path="/ops/crews/:id/pricing">
-        <OwnerRoute><CrewPricing /></OwnerRoute>
+        <Suspense fallback={<OpsLoading />}><OwnerRoute><CrewPricing /></OwnerRoute></Suspense>
       </Route>
-      {/* /ops/conversations redirects to Chat Sessions — SMS center is superseded */}
       <Route path="/ops/conversations">
-        <OwnerRoute><OpsChatSessions /></OwnerRoute>
+        <Suspense fallback={<OpsLoading />}><OwnerRoute><OpsChatSessions /></OwnerRoute></Suspense>
       </Route>
       <Route path="/ops/reviews">
-        <OwnerRoute><OpsReviews /></OwnerRoute>
+        <Suspense fallback={<OpsLoading />}><OwnerRoute><OpsReviews /></OwnerRoute></Suspense>
       </Route>
       <Route path="/ops/timesheets">
-        <OwnerRoute><OpsTimesheets /></OwnerRoute>
+        <Suspense fallback={<OpsLoading />}><OwnerRoute><OpsTimesheets /></OwnerRoute></Suspense>
       </Route>
       <Route path="/ops/scoreboard">
-        <OwnerRoute><OpsScoreboard /></OwnerRoute>
+        <Suspense fallback={<OpsLoading />}><OwnerRoute><OpsScoreboard /></OwnerRoute></Suspense>
       </Route>
       <Route path="/ops/tasks">
-        <OwnerRoute><OpsTasksPage /></OwnerRoute>
+        <Suspense fallback={<OpsLoading />}><OwnerRoute><OpsTasksPage /></OwnerRoute></Suspense>
       </Route>
       <Route path="/ops/equipment">
-        <OwnerRoute><OpsEquipment /></OwnerRoute>
+        <Suspense fallback={<OpsLoading />}><OwnerRoute><OpsEquipment /></OwnerRoute></Suspense>
       </Route>
       <Route path="/ops/field-fix">
-        <OwnerRoute><OpsFieldFix /></OwnerRoute>
+        <Suspense fallback={<OpsLoading />}><OwnerRoute><OpsFieldFix /></OwnerRoute></Suspense>
       </Route>
       <Route path="/ops/distance-quotes/analytics">
-        <OwnerRoute><OpsQuoteAnalytics /></OwnerRoute>
+        <Suspense fallback={<OpsLoading />}><OwnerRoute><OpsQuoteAnalytics /></OwnerRoute></Suspense>
       </Route>
       <Route path="/ops/distance-quotes">
-        <OwnerRoute><OpsDistanceQuotes /></OwnerRoute>
+        <Suspense fallback={<OpsLoading />}><OwnerRoute><OpsDistanceQuotes /></OwnerRoute></Suspense>
       </Route>
       <Route path="/ops/team">
-        <OwnerRoute><OpsTeam /></OwnerRoute>
+        <Suspense fallback={<OpsLoading />}><OwnerRoute><OpsTeam /></OwnerRoute></Suspense>
       </Route>
       {/* Public — no auth required, employees register here */}
-      <Route path="/ops/register" component={OpsRegister} />
+      <Route path="/ops/register">
+        <Suspense fallback={<OpsLoading />}><OpsRegister /></Suspense>
+      </Route>
       <Route path="/ops/cost-estimator">
-        <OwnerRoute><CostEstimator /></OwnerRoute>
+        <Suspense fallback={<OpsLoading />}><OwnerRoute><CostEstimator /></OwnerRoute></Suspense>
       </Route>
       <Route path="/ops/social-posts">
-        <OwnerRoute><OpsSocialPosts /></OwnerRoute>
+        <Suspense fallback={<OpsLoading />}><OwnerRoute><OpsSocialPosts /></OwnerRoute></Suspense>
       </Route>
       <Route path="/ops/ads">
-        <OwnerRoute><OpsAds /></OwnerRoute>
+        <Suspense fallback={<OpsLoading />}><OwnerRoute><OpsAds /></OwnerRoute></Suspense>
       </Route>
       <Route path="/ops/seo">
-        <OwnerRoute><OpsSeo /></OwnerRoute>
+        <Suspense fallback={<OpsLoading />}><OwnerRoute><OpsSeo /></OwnerRoute></Suspense>
       </Route>
       <Route path="/ops/chat-sessions">
-        <OwnerRoute><OpsChatSessions /></OwnerRoute>
+        <Suspense fallback={<OpsLoading />}><OwnerRoute><OpsChatSessions /></OwnerRoute></Suspense>
       </Route>
       <Route path="/ops/payments">
-        <OwnerRoute><OpsPayments /></OwnerRoute>
+        <Suspense fallback={<OpsLoading />}><OwnerRoute><OpsPayments /></OwnerRoute></Suspense>
       </Route>
 
-      {/* Customer payment portal — public routes, auth handled inside */}
-      <Route path="/portal" component={PaymentPortal} />
-      <Route path="/portal/success" component={PaymentSuccess} />
-      <Route path="/portal/cancel" component={PaymentCancel} />
+      {/* Customer payment portal — lazy-loaded */}
+      <Route path="/portal">
+        <Suspense fallback={<OpsLoading />}><PaymentPortal /></Suspense>
+      </Route>
+      <Route path="/portal/success">
+        <Suspense fallback={<OpsLoading />}><PaymentSuccess /></Suspense>
+      </Route>
+      <Route path="/portal/cancel">
+        <Suspense fallback={<OpsLoading />}><PaymentCancel /></Suspense>
+      </Route>
 
       <Route path="/404" component={NotFound} />
       <Route component={NotFound} />
