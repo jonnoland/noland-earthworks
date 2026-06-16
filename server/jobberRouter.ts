@@ -652,7 +652,7 @@ export const jobberRouter = router({
     if (!connected) return { nodes: [], totalCount: 0 };
     const data = await jobberGraphQL(`
       query GetProductsAndServices {
-        productsAndServices(first: 200) {
+        productOrServices(first: 200) {
           nodes {
             id
             name
@@ -664,13 +664,13 @@ export const jobberRouter = router({
             taxable
             visible
             durationMinutes
-            onlineBookingEnabled
+            onlineBookingsEnabled
           }
           totalCount
         }
       }
     `) as any;
-    return data.productsAndServices ?? { nodes: [], totalCount: 0 };
+    return (data as any).productOrServices ?? { nodes: [], totalCount: 0 };
   }),
 
   /** Create a new product/service in the Jobber catalog */

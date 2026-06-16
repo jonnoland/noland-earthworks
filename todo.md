@@ -1826,6 +1826,9 @@
 - [x] Add crew dropdown to Add Job modal in Jobs.tsx
 - [x] Add "Assign Crews to Jobs" panel in Crews.tsx with inline crew dropdown per job
 
+## Jobber Products & Services Fix (Jun 16, 2026)
+- [x] Fix "Jobber not connected" false positive on /ops/pricing: rename productsAndServices → productOrServices and onlineBookingEnabled → onlineBookingsEnabled in getJobberServices GraphQL query
+
 ## Drag-and-Drop Crew Scheduling (Jun 15, 2026)
 - [x] Add DraggableEntryCard component to Schedule.tsx (schedule entries draggable)
 - [x] Add DraggableLocalJobCard component to Schedule.tsx (local jobs draggable)
