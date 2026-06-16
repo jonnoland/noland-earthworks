@@ -1828,6 +1828,7 @@
 
 ## Jobber Products & Services Fix (Jun 16, 2026)
 - [x] Fix "Jobber not connected" false positive on /ops/pricing: rename productsAndServices → productOrServices and onlineBookingEnabled → onlineBookingsEnabled in getJobberServices GraphQL query
+- [x] Redesign JobberServicesCard: card-grid layout (3-col responsive), prominent price display, full description with line-clamp, category + taxable badges, hidden items dimmed
 
 ## Drag-and-Drop Crew Scheduling (Jun 15, 2026)
 - [x] Add DraggableEntryCard component to Schedule.tsx (schedule entries draggable)

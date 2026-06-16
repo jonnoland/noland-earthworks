@@ -1678,54 +1678,63 @@ function JobberServicesCard() {
       )}
 
       {!isLoading && services.length > 0 && (
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-border">
-                <th className="text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider pb-2 pr-4">Name</th>
-                <th className="text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider pb-2 pr-4">Category</th>
-                <th className="text-right text-xs font-semibold text-muted-foreground uppercase tracking-wider pb-2 pr-4">Unit Price</th>
-                <th className="text-right text-xs font-semibold text-muted-foreground uppercase tracking-wider pb-2 pr-4">Internal Cost</th>
-                <th className="text-center text-xs font-semibold text-muted-foreground uppercase tracking-wider pb-2 pr-4">Taxable</th>
-                <th className="text-center text-xs font-semibold text-muted-foreground uppercase tracking-wider pb-2">Visible</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
-              {services.map((svc: any) => (
-                <tr key={svc.id} className="hover:bg-secondary/30 transition-colors">
-                  <td className="py-2.5 pr-4">
-                    <div className="font-medium text-foreground">{svc.name}</div>
-                    {svc.description && (
-                      <div className="text-xs text-muted-foreground mt-0.5 max-w-xs truncate" title={svc.description}>
-                        {svc.description}
-                      </div>
-                    )}
-                  </td>
-                  <td className="py-2.5 pr-4">
-                    <span className="text-xs bg-secondary text-muted-foreground px-2 py-0.5 rounded">
-                      {CATEGORY_LABELS[svc.category] ?? svc.category}
-                    </span>
-                  </td>
-                  <td className="py-2.5 pr-4 text-right font-mono text-foreground">
-                    {svc.defaultUnitCost != null ? `$${Number(svc.defaultUnitCost).toFixed(2)}` : "—"}
-                  </td>
-                  <td className="py-2.5 pr-4 text-right font-mono text-muted-foreground">
-                    {svc.internalUnitCost != null ? `$${Number(svc.internalUnitCost).toFixed(2)}` : "—"}
-                  </td>
-                  <td className="py-2.5 pr-4 text-center">
-                    <span className={cn("text-xs px-1.5 py-0.5 rounded", svc.taxable ? "bg-amber-400/10 text-amber-400" : "bg-secondary text-muted-foreground")}>
-                      {svc.taxable ? "Yes" : "No"}
-                    </span>
-                  </td>
-                  <td className="py-2.5 text-center">
-                    <span className={cn("text-xs px-1.5 py-0.5 rounded", svc.visible ? "bg-green-500/10 text-green-400" : "bg-secondary text-muted-foreground")}>
-                      {svc.visible ? "Visible" : "Hidden"}
-                    </span>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
+          {services.map((svc: any) => (
+            <div
+              key={svc.id}
+              className={cn(
+                "flex flex-col gap-2 rounded-md border p-3.5 transition-colors hover:bg-secondary/20",
+                svc.visible ? "border-border" : "border-border/40 opacity-60"
+              )}
+            >
+              {/* Top row: name + visibility badge */}
+              <div className="flex items-start justify-between gap-2">
+                <div className="font-medium text-sm text-foreground leading-snug">{svc.name}</div>
+                <span className={cn(
+                  "shrink-0 text-xs px-1.5 py-0.5 rounded",
+                  svc.visible ? "bg-green-500/10 text-green-400" : "bg-secondary text-muted-foreground"
+                )}>
+                  {svc.visible ? "Visible" : "Hidden"}
+                </span>
+              </div>
+
+              {/* Description */}
+              {svc.description ? (
+                <p className="text-xs text-muted-foreground leading-relaxed line-clamp-3">{svc.description}</p>
+              ) : (
+                <p className="text-xs text-muted-foreground/40 italic">No description</p>
+              )}
+
+              {/* Bottom row: price + category + taxable */}
+              <div className="flex items-center justify-between gap-2 mt-auto pt-2 border-t border-border/50">
+                <div className="flex items-baseline gap-1">
+                  <span className="text-base font-semibold text-foreground font-mono">
+                    {svc.defaultUnitCost != null && svc.defaultUnitCost > 0
+                      ? `$${Number(svc.defaultUnitCost).toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`
+                      : "—"}
+                  </span>
+                  {svc.defaultUnitCost != null && svc.defaultUnitCost > 0 && (
+                    <span className="text-xs text-muted-foreground">unit price</span>
+                  )}
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-xs bg-secondary text-muted-foreground px-2 py-0.5 rounded">
+                    {CATEGORY_LABELS[svc.category] ?? svc.category}
+                  </span>
+                  {svc.taxable && (
+                    <span className="text-xs bg-amber-400/10 text-amber-400 px-1.5 py-0.5 rounded">Tax</span>
+                  )}
+                </div>
+              </div>
+
+              {/* Internal cost row — only show if non-zero */}
+              {svc.internalUnitCost != null && svc.internalUnitCost > 0 && (
+                <div className="text-xs text-muted-foreground">
+                  Internal cost: <span className="font-mono">${Number(svc.internalUnitCost).toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 2 })}</span>
+                </div>
+              )}
+            </div>
+          ))}
         </div>
       )}
     </div>
