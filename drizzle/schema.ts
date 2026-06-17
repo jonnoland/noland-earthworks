@@ -1330,3 +1330,38 @@ export const payments = mysqlTable("payments", {
 });
 export type Payment = typeof payments.$inferSelect;
 export type InsertPayment = typeof payments.$inferInsert;
+
+// ─── Gallery Photos ───────────────────────────────────────────────────────────
+/**
+ * Job photos uploaded via the ops gallery manager.
+ * Powers both the internal ops gallery and the public /gallery page.
+ */
+export const galleryPhotos = mysqlTable("gallery_photos", {
+  id: int("id").primaryKey().autoincrement(),
+  /** S3/CDN URL for the photo */
+  url: text("url").notNull(),
+  /** S3 key for deletion */
+  s3Key: varchar("s3Key", { length: 500 }).notNull(),
+  /** Display title shown in the gallery */
+  title: varchar("title", { length: 200 }).notNull().default(""),
+  /** Caption / description shown below the photo */
+  description: text("description"),
+  /** Service category */
+  serviceType: varchar("serviceType", { length: 100 }).notNull().default("forestry-mulching"),
+  /** Tennessee county or region */
+  county: varchar("county", { length: 100 }).notNull().default("Middle Tennessee"),
+  /** Acreage label (e.g. "3.5 acres") — free text */
+  acreage: varchar("acreage", { length: 50 }),
+  /** before = before shot, after = after shot, general = general/equipment */
+  photoType: mysqlEnum("photoType", ["before", "after", "general"]).notNull().default("general"),
+  /** Optional link to an ops job */
+  jobId: int("jobId"),
+  /** Whether to show on the public /gallery page */
+  visible: boolean("visible").notNull().default(true),
+  /** Manual sort order — lower = first */
+  sortOrder: int("sortOrder").notNull().default(0),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type GalleryPhoto = typeof galleryPhotos.$inferSelect;
+export type InsertGalleryPhoto = typeof galleryPhotos.$inferInsert;

@@ -37,6 +37,7 @@ import {
   Share2,
   Globe,
   CreditCard,
+  Images,
 } from "lucide-react";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { getLoginUrl } from "@/const";
@@ -63,6 +64,7 @@ const NAV_ITEMS = [
   { label: "Ads",           href: "/ops/ads",            icon: Share2 },
   { label: "SEO",           href: "/ops/seo",            icon: Globe },
   { label: "Payments",      href: "/ops/payments",      icon: CreditCard },
+  { label: "Gallery",       href: "/ops/gallery",        icon: Images },
   { label: "Settings",      href: "/ops/settings",       icon: Settings },
 ];
 

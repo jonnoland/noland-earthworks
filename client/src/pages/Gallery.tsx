@@ -1,110 +1,50 @@
 /*
- * DESIGN: Heavy Equipment Grit — Work gallery page
- * Single-image showcase organized by service type.
- * Images are royalty-free examples — replace with real job photos when available.
+ * Public Work Gallery — pulls live photos from the database.
+ * Photos are managed in /ops/gallery and marked visible=true to appear here.
+ * Falls back to an empty state with a CTA when no photos have been uploaded yet.
  */
 import { useState } from "react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import MobileCTABar from "@/components/MobileCTABar";
 import { usePageTitle } from "@/hooks/usePageTitle";
+import { trpc } from "@/lib/trpc";
 
-// Royalty-free images from Pexels (free to use under Pexels license)
-// Replace these with real job photos as they become available
-const IMG_OVERGROWN_BRUSH = "/manus-storage/dense-foliage-bushes_2efa77a3.jpg";
-const IMG_FORESTRY_MACHINE = "/manus-storage/forestry-mulcher-machine_f900a315.jpg";
-const IMG_CLEARED_LAND = "/manus-storage/open-land-treeline_3c257c04.jpg";
-const IMG_FENCE_LINE = "/manus-storage/overgrown-fence-line_3a74b356.jpg";
-const IMG_OPEN_PASTURE = "/manus-storage/open-pasture-1_cbdb13b4.jpg";
-const IMG_OVERGROWN_PATH = "/manus-storage/overgrown-pathway_df75b768.jpg";
-const IMG_CLEARED_STUMPS = "/manus-storage/cleared-pasture-stumps_3bcc4b70.jpg";
-
-type Project = {
-  id: number;
-  title: string;
-  county: string;
-  service: string;
-  acreage: string;
-  image: string;
-  description: string;
+const SERVICE_LABELS: Record<string, string> = {
+  "forestry-mulching": "Forestry Mulching",
+  "land-clearing": "Land Clearing",
+  "brush-hogging": "Brush Hogging",
+  "vegetation-management": "Vegetation Management",
+  "gravel-driveway": "Gravel / Driveway",
+  other: "Other",
 };
 
-const PROJECTS: Project[] = [
-  {
-    id: 1,
-    title: "Dense Brush and Understory",
-    county: "Middle Tennessee",
-    service: "Forestry Mulching",
-    acreage: "Example",
-    image: IMG_OVERGROWN_BRUSH,
-    description:
-      "Thick invasive growth and tangled brush — the kind of property that has gotten away from its owner. A forestry mulcher handles this in a single pass.",
-  },
-  {
-    id: 2,
-    title: "Forestry Mulcher at Work",
-    county: "Middle Tennessee",
-    service: "Forestry Mulching",
-    acreage: "Example",
-    image: IMG_FORESTRY_MACHINE,
-    description:
-      "A tracked forestry mulcher working through heavy timber and brush. No debris piles left behind — everything is ground into a mulch layer on the ground.",
-  },
-  {
-    id: 3,
-    title: "Cleared Land with Tree Line",
-    county: "Middle Tennessee",
-    service: "Land Clearing",
-    acreage: "Example",
-    image: IMG_CLEARED_LAND,
-    description:
-      "Open, accessible ground after clearing. The tree line is preserved at the property edge. Mulch layer left in place to control erosion and suppress regrowth.",
-  },
-  {
-    id: 4,
-    title: "Overgrown Fence Line",
-    county: "Middle Tennessee",
-    service: "Vegetation Management",
-    acreage: "Example",
-    image: IMG_FENCE_LINE,
-    description:
-      "Fence lines that haven't seen daylight in years are one of the most common jobs. The mulcher clears the brush without damaging the fence posts.",
-  },
-  {
-    id: 5,
-    title: "Open Pasture Reclaimed",
-    county: "Middle Tennessee",
-    service: "Land Clearing",
-    acreage: "Example",
-    image: IMG_OPEN_PASTURE,
-    description:
-      "Pasture returned to productive use. Cedar encroachment and invasive species cleared. Ground cover left intact to prevent erosion.",
-  },
-  {
-    id: 6,
-    title: "Overgrown Property Access",
-    county: "Middle Tennessee",
-    service: "Vegetation Management",
-    acreage: "Example",
-    image: IMG_OVERGROWN_PATH,
-    description:
-      "Overgrown access paths and property boundaries cleared and opened up. No hauling required — mulch stays on the ground.",
-  },
-  {
-    id: 7,
-    title: "Reclaimed Pasture Land",
-    county: "Middle Tennessee",
-    service: "Land Clearing",
-    acreage: "Example",
-    image: IMG_CLEARED_STUMPS,
-    description:
-      "Land cleared and returned to open pasture. Stumps left in place or ground down depending on the landowner's needs.",
-  },
+const FILTER_OPTIONS = [
+  { value: "all", label: "All Work" },
+  { value: "forestry-mulching", label: "Forestry Mulching" },
+  { value: "land-clearing", label: "Land Clearing" },
+  { value: "brush-hogging", label: "Brush Hogging" },
+  { value: "vegetation-management", label: "Vegetation Management" },
 ];
 
-const SERVICES = ["All", "Forestry Mulching", "Land Clearing", "Vegetation Management"];
+const PHOTO_TYPE_BADGE: Record<string, { label: string; color: string }> = {
+  before: { label: "Before", color: "#b91c1c" },
+  after: { label: "After", color: "#15803d" },
+  general: { label: "", color: "" },
+};
 
-function ProjectCard({ project }: { project: Project }) {
+function PhotoCard({ photo }: { photo: {
+  id: number;
+  url: string;
+  title: string;
+  description: string | null;
+  serviceType: string;
+  county: string;
+  acreage: string | null;
+  photoType: string;
+} }) {
+  const badge = PHOTO_TYPE_BADGE[photo.photoType] ?? PHOTO_TYPE_BADGE.general;
+
   return (
     <div
       style={{
@@ -116,8 +56,8 @@ function ProjectCard({ project }: { project: Project }) {
       {/* Image */}
       <div style={{ position: "relative", aspectRatio: "16/9", overflow: "hidden" }}>
         <img
-          src={project.image}
-          alt={project.title}
+          src={photo.url}
+          alt={photo.title || SERVICE_LABELS[photo.serviceType] || "Job photo"}
           style={{ width: "100%", height: "100%", objectFit: "cover" }}
           loading="lazy"
         />
@@ -139,25 +79,47 @@ function ProjectCard({ project }: { project: Project }) {
             backdropFilter: "blur(6px)",
           }}
         >
-          {project.service}
+          {SERVICE_LABELS[photo.serviceType] ?? photo.serviceType}
         </div>
+        {/* Before/After badge */}
+        {badge.label && (
+          <div
+            style={{
+              position: "absolute",
+              top: "0.75rem",
+              left: "0.75rem",
+              fontFamily: "'Lato', sans-serif",
+              fontWeight: 700,
+              fontSize: "0.65rem",
+              letterSpacing: "0.12em",
+              textTransform: "uppercase",
+              color: "#fff",
+              backgroundColor: badge.color,
+              padding: "0.25rem 0.6rem",
+            }}
+          >
+            {badge.label}
+          </div>
+        )}
       </div>
 
       {/* Card body */}
       <div style={{ padding: "1.25rem" }}>
-        <h3
-          style={{
-            fontFamily: "'Oswald', sans-serif",
-            fontWeight: 600,
-            fontSize: "1rem",
-            letterSpacing: "0.04em",
-            textTransform: "uppercase",
-            color: "#F0EDE6",
-            margin: "0 0 0.5rem 0",
-          }}
-        >
-          {project.title}
-        </h3>
+        {photo.title && (
+          <h3
+            style={{
+              fontFamily: "'Oswald', sans-serif",
+              fontWeight: 600,
+              fontSize: "1rem",
+              letterSpacing: "0.04em",
+              textTransform: "uppercase",
+              color: "#F0EDE6",
+              margin: "0 0 0.5rem 0",
+            }}
+          >
+            {photo.title}
+          </h3>
+        )}
         <div className="flex items-center gap-3 mb-3">
           <span
             style={{
@@ -167,21 +129,24 @@ function ProjectCard({ project }: { project: Project }) {
               letterSpacing: "0.06em",
             }}
           >
-            {project.county}
+            {photo.county}
+            {photo.acreage ? ` — ${photo.acreage}` : ""}
           </span>
         </div>
-        <p
-          style={{
-            fontFamily: "'Lato', sans-serif",
-            fontWeight: 300,
-            fontSize: "0.875rem",
-            lineHeight: 1.65,
-            color: "rgba(240,237,230,0.65)",
-            margin: 0,
-          }}
-        >
-          {project.description}
-        </p>
+        {photo.description && (
+          <p
+            style={{
+              fontFamily: "'Lato', sans-serif",
+              fontWeight: 300,
+              fontSize: "0.875rem",
+              lineHeight: 1.65,
+              color: "rgba(240,237,230,0.65)",
+              margin: 0,
+            }}
+          >
+            {photo.description}
+          </p>
+        )}
       </div>
     </div>
   );
@@ -194,12 +159,11 @@ export default function Gallery() {
     "/gallery"
   );
 
-  const [activeService, setActiveService] = useState("All");
+  const [activeService, setActiveService] = useState<string>("all");
 
-  const filtered =
-    activeService === "All"
-      ? PROJECTS
-      : PROJECTS.filter((p) => p.service === activeService);
+  const { data: photos = [], isLoading } = trpc.gallery.listPublic.useQuery({
+    serviceType: activeService as "all" | "forestry-mulching" | "land-clearing" | "brush-hogging" | "vegetation-management" | "gravel-driveway" | "other",
+  });
 
   return (
     <div style={{ backgroundColor: "#121212", color: "#F0EDE6", minHeight: "100vh" }}>
@@ -243,18 +207,7 @@ export default function Gallery() {
               marginTop: "1rem",
             }}
           >
-            Examples of the type of work a tracked forestry mulcher handles across Middle Tennessee — overgrown brush, fence lines, pasture reclamation, and site prep.
-          </p>
-          <p
-            style={{
-              fontFamily: "'Lato', sans-serif",
-              fontSize: "0.8rem",
-              color: "rgba(240,237,230,0.35)",
-              marginTop: "0.75rem",
-              fontStyle: "italic",
-            }}
-          >
-            Photos shown are representative examples. Real job photos will be added as they become available.
+            Real job photos from forestry mulching, land clearing, and vegetation management work across Middle Tennessee.
           </p>
         </div>
       </section>
@@ -269,10 +222,10 @@ export default function Gallery() {
       >
         <div className="container">
           <div className="flex flex-wrap gap-2">
-            {SERVICES.map((s) => (
+            {FILTER_OPTIONS.map((opt) => (
               <button
-                key={s}
-                onClick={() => setActiveService(s)}
+                key={opt.value}
+                onClick={() => setActiveService(opt.value)}
                 style={{
                   fontFamily: "'Oswald', sans-serif",
                   fontWeight: 600,
@@ -280,14 +233,14 @@ export default function Gallery() {
                   letterSpacing: "0.1em",
                   textTransform: "uppercase",
                   padding: "0.4rem 1rem",
-                  backgroundColor: activeService === s ? "#E07B2A" : "transparent",
-                  color: activeService === s ? "#121212" : "rgba(240,237,230,0.6)",
-                  border: `1px solid ${activeService === s ? "#E07B2A" : "rgba(255,255,255,0.12)"}`,
+                  backgroundColor: activeService === opt.value ? "#E07B2A" : "transparent",
+                  color: activeService === opt.value ? "#121212" : "rgba(240,237,230,0.6)",
+                  border: `1px solid ${activeService === opt.value ? "#E07B2A" : "rgba(255,255,255,0.12)"}`,
                   cursor: "pointer",
                   transition: "all 0.2s ease",
                 }}
               >
-                {s}
+                {opt.label}
               </button>
             ))}
           </div>
@@ -297,11 +250,57 @@ export default function Gallery() {
       {/* Gallery grid */}
       <section style={{ padding: "4rem 0 6rem" }}>
         <div className="container">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filtered.map((project) => (
-              <ProjectCard key={project.id} project={project} />
-            ))}
-          </div>
+          {isLoading ? (
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))",
+                gap: "1.5rem",
+              }}
+            >
+              {[1, 2, 3, 4, 5, 6].map((i) => (
+                <div
+                  key={i}
+                  style={{
+                    aspectRatio: "16/9",
+                    backgroundColor: "rgba(255,255,255,0.04)",
+                    border: "1px solid rgba(255,255,255,0.07)",
+                    animation: "pulse 1.5s ease-in-out infinite",
+                  }}
+                />
+              ))}
+            </div>
+          ) : photos.length === 0 ? (
+            <div
+              style={{
+                textAlign: "center",
+                padding: "5rem 2rem",
+                color: "rgba(240,237,230,0.4)",
+              }}
+            >
+              <p
+                style={{
+                  fontFamily: "'Oswald', sans-serif",
+                  fontSize: "1.25rem",
+                  letterSpacing: "0.06em",
+                  textTransform: "uppercase",
+                  marginBottom: "0.75rem",
+                  color: "rgba(240,237,230,0.5)",
+                }}
+              >
+                Photos Coming Soon
+              </p>
+              <p style={{ fontFamily: "'Lato', sans-serif", fontSize: "0.9rem", lineHeight: 1.6 }}>
+                Real job photos are being added. Check back soon.
+              </p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {photos.map((photo) => (
+                <PhotoCard key={photo.id} photo={photo} />
+              ))}
+            </div>
+          )}
 
           {/* CTA */}
           <div

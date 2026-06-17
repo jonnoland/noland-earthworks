@@ -1843,3 +1843,14 @@
 - [x] Add DraggableLocalJobCard cards to each crew+day cell from localJobMap
 - [x] Update DragOverlay to handle entry and local job drag previews
 - [x] Verify TypeScript: 0 errors
+
+## Gallery Upload Flow in Ops (Jun 16, 2026)
+- [x] Add galleryPhotos table to drizzle/schema.ts (id, url, key, title, description, serviceType, county, acreage, photoType before/after/general, jobId optional, visible, sortOrder, createdAt)
+- [x] Run pnpm db:push to migrate
+- [x] Build server/galleryRouter.ts with: uploadPhoto (base64→S3), listAll, listPublic, updatePhoto, deletePhoto, reorder
+- [x] Register galleryRouter in server/routers.ts
+- [x] Build client/src/pages/ops/Gallery.tsx with: drag-drop upload zone, queue with per-photo metadata fields, photo grid, edit modal, delete confirm, visibility toggle
+- [x] Register /ops/gallery route in App.tsx
+- [x] Add Gallery nav item to DashboardLayout sidebar
+- [x] Wire public /gallery page to fetch from DB instead of static array
+- [x] Verify TypeScript 0 errors
