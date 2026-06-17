@@ -1328,3 +1328,31 @@ export const payments = mysqlTable("payments", {
 });
 export type Payment = typeof payments.$inferSelect;
 export type InsertPayment = typeof payments.$inferInsert;
+
+// ─── Public Gallery ───────────────────────────────────────────────────────────
+/**
+ * Job photos for the public /gallery page and homepage work showcase.
+ * Uploaded via /ops/gallery; only published rows appear on the public site.
+ */
+export const galleryItems = mysqlTable("gallery_items", {
+  id: int("id").primaryKey().autoincrement(),
+  title: varchar("title", { length: 255 }).notNull(),
+  description: text("description"),
+  imageUrl: text("imageUrl").notNull(),
+  imageKey: varchar("imageKey", { length: 512 }),
+  service: mysqlEnum("service", [
+    "forestry_mulching",
+    "land_clearing",
+    "vegetation_management",
+  ]).notNull().default("forestry_mulching"),
+  county: varchar("county", { length: 100 }),
+  acreage: varchar("acreage", { length: 100 }),
+  photoType: mysqlEnum("photoType", ["before", "after", "in_progress", "general"]).notNull().default("general"),
+  featured: boolean("featured").notNull().default(false),
+  sortOrder: int("sortOrder").notNull().default(0),
+  published: boolean("published").notNull().default(true),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type GalleryItem = typeof galleryItems.$inferSelect;
+export type InsertGalleryItem = typeof galleryItems.$inferInsert;
