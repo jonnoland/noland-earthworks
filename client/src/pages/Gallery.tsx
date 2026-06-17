@@ -1,110 +1,19 @@
 /*
  * DESIGN: Heavy Equipment Grit — Work gallery page
- * Single-image showcase organized by service type.
- * Images are royalty-free examples — replace with real job photos when available.
+ * Published job photos from ops gallery, with stock fallback when empty.
  */
 import { useState } from "react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import MobileCTABar from "@/components/MobileCTABar";
 import { usePageTitle } from "@/hooks/usePageTitle";
-
-// Royalty-free images from Pexels (free to use under Pexels license)
-// Replace these with real job photos as they become available
-const IMG_OVERGROWN_BRUSH = "/manus-storage/dense-foliage-bushes_2efa77a3.jpg";
-const IMG_FORESTRY_MACHINE = "/manus-storage/forestry-mulcher-machine_f900a315.jpg";
-const IMG_CLEARED_LAND = "/manus-storage/open-land-treeline_3c257c04.jpg";
-const IMG_FENCE_LINE = "/manus-storage/overgrown-fence-line_3a74b356.jpg";
-const IMG_OPEN_PASTURE = "/manus-storage/open-pasture-1_cbdb13b4.jpg";
-const IMG_OVERGROWN_PATH = "/manus-storage/overgrown-pathway_df75b768.jpg";
-const IMG_CLEARED_STUMPS = "/manus-storage/cleared-pasture-stumps_3bcc4b70.jpg";
-
-type Project = {
-  id: number;
-  title: string;
-  county: string;
-  service: string;
-  acreage: string;
-  image: string;
-  description: string;
-};
-
-const PROJECTS: Project[] = [
-  {
-    id: 1,
-    title: "Dense Brush and Understory",
-    county: "Middle Tennessee",
-    service: "Forestry Mulching",
-    acreage: "Example",
-    image: IMG_OVERGROWN_BRUSH,
-    description:
-      "Thick invasive growth and tangled brush — the kind of property that has gotten away from its owner. A forestry mulcher handles this in a single pass.",
-  },
-  {
-    id: 2,
-    title: "Forestry Mulcher at Work",
-    county: "Middle Tennessee",
-    service: "Forestry Mulching",
-    acreage: "Example",
-    image: IMG_FORESTRY_MACHINE,
-    description:
-      "A tracked forestry mulcher working through heavy timber and brush. No debris piles left behind — everything is ground into a mulch layer on the ground.",
-  },
-  {
-    id: 3,
-    title: "Cleared Land with Tree Line",
-    county: "Middle Tennessee",
-    service: "Land Clearing",
-    acreage: "Example",
-    image: IMG_CLEARED_LAND,
-    description:
-      "Open, accessible ground after clearing. The tree line is preserved at the property edge. Mulch layer left in place to control erosion and suppress regrowth.",
-  },
-  {
-    id: 4,
-    title: "Overgrown Fence Line",
-    county: "Middle Tennessee",
-    service: "Vegetation Management",
-    acreage: "Example",
-    image: IMG_FENCE_LINE,
-    description:
-      "Fence lines that haven't seen daylight in years are one of the most common jobs. The mulcher clears the brush without damaging the fence posts.",
-  },
-  {
-    id: 5,
-    title: "Open Pasture Reclaimed",
-    county: "Middle Tennessee",
-    service: "Land Clearing",
-    acreage: "Example",
-    image: IMG_OPEN_PASTURE,
-    description:
-      "Pasture returned to productive use. Cedar encroachment and invasive species cleared. Ground cover left intact to prevent erosion.",
-  },
-  {
-    id: 6,
-    title: "Overgrown Property Access",
-    county: "Middle Tennessee",
-    service: "Vegetation Management",
-    acreage: "Example",
-    image: IMG_OVERGROWN_PATH,
-    description:
-      "Overgrown access paths and property boundaries cleared and opened up. No hauling required — mulch stays on the ground.",
-  },
-  {
-    id: 7,
-    title: "Reclaimed Pasture Land",
-    county: "Middle Tennessee",
-    service: "Land Clearing",
-    acreage: "Example",
-    image: IMG_CLEARED_STUMPS,
-    description:
-      "Land cleared and returned to open pasture. Stumps left in place or ground down depending on the landowner's needs.",
-  },
-];
+import { trpc } from "@/lib/trpc";
+import { resolveGalleryItems } from "@/lib/gallery";
+import type { GalleryDisplayItem } from "@shared/gallery";
 
 const SERVICES = ["All", "Forestry Mulching", "Land Clearing", "Vegetation Management"];
 
-function ProjectCard({ project }: { project: Project }) {
+function ProjectCard({ project }: { project: GalleryDisplayItem }) {
   return (
     <div
       style={{
@@ -113,7 +22,6 @@ function ProjectCard({ project }: { project: Project }) {
         overflow: "hidden",
       }}
     >
-      {/* Image */}
       <div style={{ position: "relative", aspectRatio: "16/9", overflow: "hidden" }}>
         <img
           src={project.image}
@@ -121,7 +29,6 @@ function ProjectCard({ project }: { project: Project }) {
           style={{ width: "100%", height: "100%", objectFit: "cover" }}
           loading="lazy"
         />
-        {/* Service badge */}
         <div
           style={{
             position: "absolute",
@@ -143,7 +50,6 @@ function ProjectCard({ project }: { project: Project }) {
         </div>
       </div>
 
-      {/* Card body */}
       <div style={{ padding: "1.25rem" }}>
         <h3
           style={{
@@ -168,6 +74,7 @@ function ProjectCard({ project }: { project: Project }) {
             }}
           >
             {project.county}
+            {project.acreage ? ` · ${project.acreage}` : ""}
           </span>
         </div>
         <p
@@ -190,22 +97,23 @@ function ProjectCard({ project }: { project: Project }) {
 export default function Gallery() {
   usePageTitle(
     "Forestry Mulching & Land Clearing Gallery — Tennessee",
-    "See examples of forestry mulching and land clearing work across Middle Tennessee. Overgrown brush, fence lines, pasture reclamation, and more.",
+    "See real forestry mulching and land clearing work across Middle Tennessee. Overgrown brush, fence lines, pasture reclamation, and more.",
     "/gallery"
   );
 
   const [activeService, setActiveService] = useState("All");
+  const { data: publishedItems } = trpc.gallery.listPublic.useQuery();
+  const { items: allItems, usingFallback } = resolveGalleryItems(publishedItems);
 
   const filtered =
     activeService === "All"
-      ? PROJECTS
-      : PROJECTS.filter((p) => p.service === activeService);
+      ? allItems
+      : allItems.filter((p) => p.service === activeService);
 
   return (
     <div style={{ backgroundColor: "#121212", color: "#F0EDE6", minHeight: "100vh" }}>
       <Navbar />
 
-      {/* Hero */}
       <section
         style={{
           backgroundColor: "#0a0a0a",
@@ -243,23 +151,26 @@ export default function Gallery() {
               marginTop: "1rem",
             }}
           >
-            Examples of the type of work a tracked forestry mulcher handles across Middle Tennessee — overgrown brush, fence lines, pasture reclamation, and site prep.
+            {usingFallback
+              ? "Examples of the type of work a tracked forestry mulcher handles across Middle Tennessee — overgrown brush, fence lines, pasture reclamation, and site prep."
+              : "Real job photos from forestry mulching and land clearing projects across Middle and West Tennessee."}
           </p>
-          <p
-            style={{
-              fontFamily: "'Lato', sans-serif",
-              fontSize: "0.8rem",
-              color: "rgba(240,237,230,0.35)",
-              marginTop: "0.75rem",
-              fontStyle: "italic",
-            }}
-          >
-            Photos shown are representative examples. Real job photos will be added as they become available.
-          </p>
+          {usingFallback && (
+            <p
+              style={{
+                fontFamily: "'Lato', sans-serif",
+                fontSize: "0.8rem",
+                color: "rgba(240,237,230,0.35)",
+                marginTop: "0.75rem",
+                fontStyle: "italic",
+              }}
+            >
+              Photos shown are representative examples. Real job photos will be added as they become available.
+            </p>
+          )}
         </div>
       </section>
 
-      {/* Filter bar */}
       <section
         style={{
           backgroundColor: "#0F1A0F",
@@ -294,7 +205,6 @@ export default function Gallery() {
         </div>
       </section>
 
-      {/* Gallery grid */}
       <section style={{ padding: "4rem 0 6rem" }}>
         <div className="container">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -303,7 +213,6 @@ export default function Gallery() {
             ))}
           </div>
 
-          {/* CTA */}
           <div
             style={{
               marginTop: "4rem",

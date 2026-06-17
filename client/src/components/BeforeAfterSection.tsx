@@ -1,67 +1,30 @@
 /*
  * DESIGN: Heavy Equipment Grit — Work showcase on homepage
- * Three image cards showing the type of work done.
- * Images are royalty-free examples — replace with real job photos when available.
+ * Pulls featured published photos from the gallery API, with stock fallback.
  */
 import { Link } from "wouter";
+import { trpc } from "@/lib/trpc";
+import { resolveGalleryItems } from "@/lib/gallery";
+import { galleryPhotoTypeLabel } from "@shared/gallery";
 
-// Royalty-free images from Pexels (free to use under Pexels license)
-// Replace these with real job photos as they become available
-const IMG_OVERGROWN_BRUSH =
-  "/manus-storage/dense-foliage-bushes_2efa77a3.jpg";
-const IMG_FORESTRY_MACHINE =
-  "/manus-storage/forestry-mulcher-machine_f900a315.jpg";
-const IMG_CLEARED_LAND =
-  "/manus-storage/open-land-treeline_3c257c04.jpg";
-const IMG_FENCE_LINE =
-  "/manus-storage/overgrown-fence-line_3a74b356.jpg";
-const IMG_OPEN_PASTURE =
-  "/manus-storage/open-pasture-1_cbdb13b4.jpg";
-const IMG_OVERGROWN_PATH =
-  "/manus-storage/overgrown-pathway_df75b768.jpg";
-
-type Card = {
+function WorkCard({
+  image,
+  badge,
+  caption,
+}: {
   image: string;
-  service: string;
+  badge: string;
   caption: string;
-};
-
-const CARDS: Card[] = [
-  {
-    image: IMG_OVERGROWN_BRUSH,
-    service: "Before: Overgrown Property",
-    caption:
-      "Dense brush, invasive growth, and tangled understory — the kind of property that has gotten away from its owner.",
-  },
-  {
-    image: IMG_FORESTRY_MACHINE,
-    service: "Forestry Mulching in Action",
-    caption:
-      "A tracked forestry mulcher grinds through heavy vegetation. No debris piles, no hauling, no burning.",
-  },
-  {
-    image: IMG_CLEARED_LAND,
-    service: "After: Usable Land",
-    caption:
-      "Open, accessible ground with a mulch layer left in place. Ready for whatever the landowner needs it for.",
-  },
-];
-
-function WorkCard({ card }: { card: Card }) {
+}) {
   return (
-    <div
-      className="relative overflow-hidden"
-      style={{ borderRadius: "4px" }}
-    >
-      {/* Image */}
+    <div className="relative overflow-hidden" style={{ borderRadius: "4px" }}>
       <div className="relative" style={{ aspectRatio: "16/9" }}>
         <img
-          src={card.image}
-          alt={card.service}
+          src={image}
+          alt={badge}
           className="w-full h-full object-cover"
           loading="lazy"
         />
-        {/* Service badge */}
         <div
           style={{
             position: "absolute",
@@ -78,11 +41,10 @@ function WorkCard({ card }: { card: Card }) {
             borderRadius: "2px",
           }}
         >
-          {card.service}
+          {badge}
         </div>
       </div>
 
-      {/* Caption */}
       <div
         style={{
           backgroundColor: "#1A2A1A",
@@ -99,7 +61,7 @@ function WorkCard({ card }: { card: Card }) {
             margin: 0,
           }}
         >
-          {card.caption}
+          {caption}
         </p>
       </div>
     </div>
@@ -107,6 +69,9 @@ function WorkCard({ card }: { card: Card }) {
 }
 
 export default function BeforeAfterSection() {
+  const { data: featuredItems } = trpc.gallery.listPublic.useQuery({ featuredOnly: true, limit: 3 });
+  const { items, usingFallback } = resolveGalleryItems(featuredItems, { featuredOnly: true, limit: 3 });
+
   return (
     <section
       style={{
@@ -116,7 +81,6 @@ export default function BeforeAfterSection() {
       }}
     >
       <div className="container">
-        {/* Heading */}
         <div style={{ marginBottom: "2.5rem" }}>
           <p
             style={{
@@ -155,19 +119,39 @@ export default function BeforeAfterSection() {
             forestry mulcher handles dense brush, saplings, and small trees —
             grinding everything into a mulch layer that stays on the ground.
           </p>
+          {usingFallback && (
+            <p
+              style={{
+                fontFamily: "'Lato', sans-serif",
+                fontSize: "0.8rem",
+                color: "rgba(240,237,230,0.35)",
+                marginTop: "0.75rem",
+                fontStyle: "italic",
+              }}
+            >
+              Representative examples shown — real job photos coming soon.
+            </p>
+          )}
         </div>
 
-        {/* Grid */}
         <div
           className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"
           style={{ marginBottom: "2rem" }}
         >
-          {CARDS.map((card, i) => (
-            <WorkCard key={i} card={card} />
+          {items.map((card) => (
+            <WorkCard
+              key={card.id}
+              image={card.image}
+              badge={
+                card.photoType && card.photoType !== "general"
+                  ? galleryPhotoTypeLabel(card.photoType)
+                  : card.service
+              }
+              caption={card.description || card.title}
+            />
           ))}
         </div>
 
-        {/* CTA link to full gallery */}
         <div>
           <Link
             href="/gallery"
