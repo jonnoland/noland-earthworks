@@ -276,7 +276,7 @@ export default function TestimonialsSection() {
               marginBottom: "0.75rem",
             }}
           >
-            Client Reviews
+            Reviews
           </p>
           <h2
             style={{
@@ -338,7 +338,7 @@ export default function TestimonialsSection() {
                     letterSpacing: "0.04em",
                   }}
                 >
-                  {googleReviewCount ? `${googleReviewCount}+ reviews on Google` : "on Google"}
+                  {googleReviewCount ? `${googleReviewCount}+ verified reviews` : "Verified reviews"}
                 </span>
               </div>
             </div>
@@ -358,7 +358,7 @@ export default function TestimonialsSection() {
                 lineHeight: 1.5,
               }}
             >
-              Verified Google reviews from real customers across Middle Tennessee.
+              Verified reviews from real customers across Middle Tennessee.
             </div>
           </div>
         </div>

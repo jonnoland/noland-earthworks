@@ -1854,3 +1854,12 @@
 - [x] Add Gallery nav item to DashboardLayout sidebar
 - [x] Wire public /gallery page to fetch from DB instead of static array
 - [x] Verify TypeScript 0 errors
+
+## Reviews — Homepage + Ops Page (Jun 17, 2026)
+- [ ] Fetch real Google Places reviews via Google Places API (GOOGLE_PLACES_API_KEY + GOOGLE_PLACE_ID)
+- [ ] Fetch real Facebook page reviews via Facebook Graph API (FACEBOOK_PAGE_ACCESS_TOKEN + FACEBOOK_PAGE_ID)
+- [ ] Build reviewsRouter with getGoogleReviews, getFacebookReviews, getCombinedStats procedures
+- [ ] Update homepage StatsBar to show accurate combined rating + review count labeled "Reviews" (not "Google Rating")
+- [ ] Build /ops/reviews page: combined feed of all reviews from both platforms, full review text, star rating, reviewer name, date, platform badge
+- [ ] Register /ops/reviews route in App.tsx
+- [ ] Add Reviews nav item to DashboardLayout sidebar
