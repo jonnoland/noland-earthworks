@@ -324,6 +324,7 @@ function ReplyModal({
 // ─── Main Component ────────────────────────────────────────────────────────────
 export default function Reviews() {
   const [sourceFilter, setSourceFilter] = useState<SourceFilter>("all");
+  const [starFilter, setStarFilter] = useState<number | null>(null); // null = all
   const [showAddModal, setShowAddModal] = useState(false);
   const [replyTarget, setReplyTarget] = useState<ReplyTarget | null>(null);
   const [deleteId, setDeleteId] = useState<number | null>(null);
@@ -425,10 +426,15 @@ export default function Reviews() {
   const responseRate = totalResponsible > 0 ? `${Math.round((responded / totalResponsible) * 100)}%` : "—";
 
   // Filtered live reviews
-  const filteredLive = allLiveReviews.filter((r) =>
-    sourceFilter === "all" ? true : sourceFilter === "manual" ? false : r.source === sourceFilter
-  );
+  const filteredLive = allLiveReviews.filter((r) => {
+    const matchSource = sourceFilter === "all" ? true : sourceFilter === "manual" ? false : r.source === sourceFilter;
+    const matchStar = starFilter === null ? true : starFilter === 3 ? r.rating <= 3 : r.rating === starFilter;
+    return matchSource && matchStar;
+  });
   const showManual = sourceFilter === "all" || sourceFilter === "manual";
+  const filteredManual = manualList.filter((r) =>
+    starFilter === null ? true : starFilter === 3 ? r.rating <= 3 : r.rating === starFilter
+  );
 
   const isLoading = googleOAuthLoading || liveLoading || manualLoading;
   const googleConnected = googleStatus?.connected ?? false;
@@ -475,8 +481,9 @@ export default function Reviews() {
 
       {/* Toolbar */}
       <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
-        {/* Source tabs */}
-        <div className="flex items-center gap-1 bg-white/5 rounded-lg p-1">
+        {/* Source tabs + Star filter */}
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="flex items-center gap-1 bg-white/5 rounded-lg p-1">
           {(["all", "google", "facebook", "manual"] as SourceFilter[]).map((tab) => (
             <button
               key={tab}
@@ -494,6 +501,24 @@ export default function Reviews() {
               {tab === "manual" ? ` (${manualList.length})` : ""}
             </button>
           ))}
+          </div>
+          {/* Star rating filter */}
+          <div className="flex items-center gap-1 bg-white/5 rounded-lg p-1">
+            {([null, 5, 4, 3] as (number | null)[]).map((star) => (
+              <button
+                key={star ?? "all"}
+                onClick={() => setStarFilter(star)}
+                className={cn(
+                  "px-3 py-1.5 rounded-md text-xs font-medium transition-colors",
+                  starFilter === star
+                    ? "bg-amber-500 text-black"
+                    : "text-white/50 hover:text-white"
+                )}
+              >
+                {star === null ? "All Stars" : star === 3 ? "3★ & below" : `${star}★`}
+              </button>
+            ))}
+          </div>
         </div>
 
         <div className="flex items-center gap-2">
@@ -635,7 +660,7 @@ export default function Reviews() {
       )}
 
       {/* Manual Review Table */}
-      {showManual && manualList.length > 0 && (
+      {showManual && filteredManual.length > 0 && (
         <>
           <h2 className="text-xs font-semibold text-white/40 uppercase tracking-wider mb-3">Manual Review Log</h2>
           <div className="bg-[#111] border border-white/10 rounded-xl overflow-hidden mb-6">
@@ -652,7 +677,7 @@ export default function Reviews() {
                 </tr>
               </thead>
               <tbody>
-                {manualList.map((review) => (
+                {filteredManual.map((review) => (
                   <tr key={review.id} className="border-b border-white/5 hover:bg-white/3 transition-colors">
                     <td className="px-4 py-3 text-sm text-white font-medium">{review.reviewerName}</td>
                     <td className="px-4 py-3">

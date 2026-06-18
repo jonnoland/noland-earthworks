@@ -1863,3 +1863,8 @@
 - [ ] Build /ops/reviews page: combined feed of all reviews from both platforms, full review text, star rating, reviewer name, date, platform badge
 - [ ] Register /ops/reviews route in App.tsx
 - [ ] Add Reviews nav item to DashboardLayout sidebar
+
+## Reviews UI Improvements (Jun 17, 2026)
+- [x] Add "Leave a Review" button to TestimonialsSection linking to Google Business Profile review page (already existed at https://g.page/r/CcglMAMbtQInEBM/review)
+- [x] Add platform filter (All / Google / Facebook) and star-rating filter (All / 5★ / 4★ / 3★ and below) to /ops/reviews
+- [x] Add Google and Facebook review integration section to Settings page with connection status, instructions, and action buttons
