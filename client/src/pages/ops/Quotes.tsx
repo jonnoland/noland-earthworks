@@ -736,13 +736,15 @@ type ServiceItem = {
   taxable: boolean;
   active: boolean;
 };
-type LineItem = {
+ type LineItem = {
   jobberLineItemId?: string; // present when editing an existing line item
   productOrServiceId?: string;
   name: string;
   description: string;
   quantity: number;
   unitPrice: number;
+  itemDiscountType?: "percent" | "flat";
+  itemDiscountValue?: number;
 };
 type ClientNode = {
   id: string;
@@ -1469,13 +1471,24 @@ function CreateQuoteModal({ onClose, onCreated, prefill }: CreateQuoteModalProps
   const [taxableLineItems, setTaxableLineItems] = useState<Set<number>>(new Set());
   const [discountType, setDiscountType] = useState<"percent" | "flat">("percent");
   const [discountValue, setDiscountValue] = useState<number>(0);
+  const [discountReason, setDiscountReason] = useState("");
+  // Per-item discount helper
+  function itemLineTotal(item: LineItem): number {
+    const base = item.quantity * item.unitPrice;
+    if (!item.itemDiscountValue) return base;
+    const d = item.itemDiscountType === "percent"
+      ? base * Math.min(100, Math.max(0, item.itemDiscountValue)) / 100
+      : Math.min(base, Math.max(0, item.itemDiscountValue));
+    return base - d;
+  }
+  const subtotalAfterItemDiscounts = lineItems.reduce((sum, item) => sum + itemLineTotal(item), 0);
   const discountAmount = discountType === "percent"
-    ? subtotal * Math.min(100, Math.max(0, discountValue)) / 100
-    : Math.min(subtotal, Math.max(0, discountValue));
-  const discountedSubtotal = subtotal - discountAmount;
+    ? subtotalAfterItemDiscounts * Math.min(100, Math.max(0, discountValue)) / 100
+    : Math.min(subtotalAfterItemDiscounts, Math.max(0, discountValue));
+  const discountedSubtotal = subtotalAfterItemDiscounts - discountAmount;
   const taxRate = selectedCounty ? (TN_COUNTY_TAX_RATES[selectedCounty]?.totalTax ?? 0) : 0;
   const taxableSubtotal = lineItems.reduce((sum, item, idx) =>
-    taxableLineItems.has(idx) ? sum + item.quantity * item.unitPrice : sum, 0) - discountAmount;
+    taxableLineItems.has(idx) ? sum + itemLineTotal(item) : sum, 0) - discountAmount;
   const taxAmount = Math.max(0, taxableSubtotal) * taxRate;
   const grandTotal = discountedSubtotal + taxAmount;
 
@@ -1803,12 +1816,44 @@ function CreateQuoteModal({ onClose, onCreated, prefill }: CreateQuoteModalProps
                         </div>
                       </div>
                       <div className="ml-auto text-xs font-semibold text-foreground">
-                        {formatMoney(item.quantity * item.unitPrice)}
-                      </div>
-                    </div>
-                  </div>
-                ))
-              )}
+                         {item.itemDiscountValue ? (
+                           <span className="line-through text-muted-foreground mr-1">{formatMoney(item.quantity * item.unitPrice)}</span>
+                         ) : null}
+                         {formatMoney(itemLineTotal(item))}
+                       </div>
+                     </div>
+                     {/* Per-item discount row */}
+                     <div className="flex items-center gap-2">
+                       <span className="text-[10px] text-muted-foreground whitespace-nowrap">Item discount</span>
+                       <div className="flex items-center rounded border border-border overflow-hidden">
+                         <button type="button" onClick={() => updateLineItem(idx, "itemDiscountType", "percent")}
+                           className={`px-1.5 py-0.5 text-[10px] font-medium transition-colors ${
+                             (item.itemDiscountType ?? "percent") === "percent" ? "bg-primary text-primary-foreground" : "bg-secondary/20 text-muted-foreground hover:bg-secondary/40"
+                           }`}>%</button>
+                         <button type="button" onClick={() => updateLineItem(idx, "itemDiscountType", "flat")}
+                           className={`px-1.5 py-0.5 text-[10px] font-medium transition-colors ${
+                             item.itemDiscountType === "flat" ? "bg-primary text-primary-foreground" : "bg-secondary/20 text-muted-foreground hover:bg-secondary/40"
+                           }`}>$</button>
+                       </div>
+                       <input
+                         type="number" min="0" step="0.01"
+                         value={item.itemDiscountValue || ""}
+                         placeholder="0"
+                         onChange={(e) => updateLineItem(idx, "itemDiscountValue", Math.max(0, parseFloat(e.target.value) || 0))}
+                         className="w-20 h-6 rounded border border-border bg-secondary/20 px-2 text-[11px] text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                       />
+                       {(item.itemDiscountValue ?? 0) > 0 && (
+                         <span className="text-[10px] text-green-400 ml-auto">
+                           −{formatMoney(item.itemDiscountType === "flat"
+                             ? Math.min(item.quantity * item.unitPrice, item.itemDiscountValue ?? 0)
+                             : item.quantity * item.unitPrice * Math.min(100, item.itemDiscountValue ?? 0) / 100
+                           )}
+                         </span>
+                       )}
+                     </div>
+                   </div>
+                 ))
+               )}
             </div>
 
             {/* Tax + Total bar */}
@@ -1857,59 +1902,91 @@ function CreateQuoteModal({ onClose, onCreated, prefill }: CreateQuoteModalProps
                 )}
 
                 {/* Discount */}
-                <div className="flex items-center gap-2 pt-1 border-t border-border/50">
-                  <span className="text-xs text-muted-foreground whitespace-nowrap shrink-0">Discount</span>
-                  <div className="flex items-center rounded-md border border-border overflow-hidden">
-                    <button
-                      type="button"
-                      onClick={() => setDiscountType("percent")}
-                      className={`px-2 py-1 text-[11px] font-medium transition-colors ${
-                        discountType === "percent" ? "bg-primary text-primary-foreground" : "bg-secondary/20 text-muted-foreground hover:bg-secondary/40"
-                      }`}
-                    >%</button>
-                    <button
-                      type="button"
-                      onClick={() => setDiscountType("flat")}
-                      className={`px-2 py-1 text-[11px] font-medium transition-colors ${
-                        discountType === "flat" ? "bg-primary text-primary-foreground" : "bg-secondary/20 text-muted-foreground hover:bg-secondary/40"
-                      }`}
-                    >$</button>
-                  </div>
-                  <div className="relative flex-1">
-                    {discountType === "flat" && (
-                      <span className="absolute left-2 top-1/2 -translate-y-1/2 text-[11px] text-muted-foreground pointer-events-none">$</span>
+                <div className="space-y-2 pt-1 border-t border-border/50">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-muted-foreground whitespace-nowrap shrink-0">Discount</span>
+                    <div className="flex items-center rounded-md border border-border overflow-hidden">
+                      <button
+                        type="button"
+                        onClick={() => setDiscountType("percent")}
+                        className={`px-2 py-1 text-[11px] font-medium transition-colors ${
+                          discountType === "percent" ? "bg-primary text-primary-foreground" : "bg-secondary/20 text-muted-foreground hover:bg-secondary/40"
+                        }`}
+                      >%</button>
+                      <button
+                        type="button"
+                        onClick={() => setDiscountType("flat")}
+                        className={`px-2 py-1 text-[11px] font-medium transition-colors ${
+                          discountType === "flat" ? "bg-primary text-primary-foreground" : "bg-secondary/20 text-muted-foreground hover:bg-secondary/40"
+                        }`}
+                      >$</button>
+                    </div>
+                    <div className="relative flex-1">
+                      {discountType === "flat" && (
+                        <span className="absolute left-2 top-1/2 -translate-y-1/2 text-[11px] text-muted-foreground pointer-events-none">$</span>
+                      )}
+                      <input
+                        type="number"
+                        min="0"
+                        max={discountType === "percent" ? 100 : undefined}
+                        step="0.01"
+                        value={discountValue || ""}
+                        placeholder="0"
+                        onChange={(e) => setDiscountValue(Math.max(0, parseFloat(e.target.value) || 0))}
+                        className={`w-full h-7 rounded-md border border-border bg-secondary/20 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary ${
+                          discountType === "flat" ? "pl-5 pr-2" : "px-2"
+                        }`}
+                      />
+                      {discountType === "percent" && (
+                        <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[11px] text-muted-foreground pointer-events-none">%</span>
+                      )}
+                    </div>
+                    {discountAmount > 0 && (
+                      <span className="text-xs text-green-400 whitespace-nowrap shrink-0">−{formatMoney(discountAmount)}</span>
                     )}
-                    <input
-                      type="number"
-                      min="0"
-                      max={discountType === "percent" ? 100 : undefined}
-                      step="0.01"
-                      value={discountValue || ""}
-                      placeholder="0"
-                      onChange={(e) => setDiscountValue(Math.max(0, parseFloat(e.target.value) || 0))}
-                      className={`w-full h-7 rounded-md border border-border bg-secondary/20 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary ${
-                        discountType === "flat" ? "pl-5 pr-2" : "px-2"
-                      }`}
-                    />
-                    {discountType === "percent" && (
-                      <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[11px] text-muted-foreground pointer-events-none">%</span>
-                    )}
                   </div>
-                  {discountAmount > 0 && (
-                    <span className="text-xs text-green-400 whitespace-nowrap shrink-0">−{formatMoney(discountAmount)}</span>
+                  {/* Quick-select percentage buttons */}
+                  {discountType === "percent" && (
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[10px] text-muted-foreground">Quick:</span>
+                      {[5, 10, 15, 20].map((pct) => (
+                        <button
+                          key={pct}
+                          type="button"
+                          onClick={() => setDiscountValue(pct)}
+                          className={`px-2 py-0.5 rounded text-[10px] border transition-colors ${
+                            discountValue === pct
+                              ? "bg-primary text-primary-foreground border-primary"
+                              : "bg-secondary/20 border-border text-muted-foreground hover:border-primary/50"
+                          }`}
+                        >{pct}%</button>
+                      ))}
+                    </div>
                   )}
+                  {/* Reason / promo code */}
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] text-muted-foreground whitespace-nowrap shrink-0">Reason / Code</span>
+                    <input
+                      type="text"
+                      value={discountReason}
+                      placeholder="e.g. Repeat customer, VETERAN10, referral..."
+                      onChange={(e) => setDiscountReason(e.target.value)}
+                      className="flex-1 h-7 rounded-md border border-border bg-secondary/20 px-2 text-xs text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-primary"
+                    />
+                  </div>
                 </div>
 
                 {/* Totals */}
                 <div className="space-y-1 pt-1 border-t border-border/50">
                   <div className="flex items-center justify-between">
                     <span className="text-xs text-muted-foreground">{lineItems.length} line item{lineItems.length !== 1 ? "s" : ""} — Subtotal</span>
-                    <span className="text-xs font-medium text-foreground">{formatMoney(subtotal)}</span>
+                    <span className="text-xs font-medium text-foreground">{formatMoney(subtotalAfterItemDiscounts)}</span>
                   </div>
                   {discountAmount > 0 && (
                     <div className="flex items-center justify-between">
                       <span className="text-xs text-muted-foreground">
                         Discount ({discountType === "percent" ? `${discountValue}%` : "flat"})
+                        {discountReason ? ` — ${discountReason}` : ""}
                       </span>
                       <span className="text-xs text-green-400">−{formatMoney(discountAmount)}</span>
                     </div>
