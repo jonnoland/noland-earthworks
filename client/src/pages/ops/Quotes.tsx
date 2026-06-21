@@ -1145,7 +1145,12 @@ function AIAssistPanel({ onClose, clientName, onApply }: AIAssistPanelProps) {
     onApply({
       title: `${svcName}${acresLabel}`,
       message: aiAssist.data.quoteMessage,
-      lineItems: aiAssist.data.lineItems,
+      lineItems: aiAssist.data.lineItems.map((li) => ({
+        name: li.name ?? "",
+        description: li.description ?? "",
+        quantity: Math.max(0.01, parseFloat(String(li.quantity)) || 1),
+        unitPrice: Math.max(0, parseFloat(String(li.unitPrice)) || 0),
+      })),
     });
   }
 
@@ -1450,8 +1455,8 @@ function CreateQuoteModal({ onClose, onCreated, prefill }: CreateQuoteModalProps
       lineItems: lineItems.map((item) => ({
         name: item.name,
         description: item.description || undefined,
-        quantity: item.quantity,
-        unitPrice: item.unitPrice,
+        quantity: Math.max(0.01, parseFloat(String(item.quantity)) || 1),
+        unitPrice: Math.max(0, parseFloat(String(item.unitPrice)) || 0),
         productOrServiceId: item.productOrServiceId,
       })),
     });
