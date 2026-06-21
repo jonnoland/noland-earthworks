@@ -247,6 +247,77 @@ const jobsRouter = router({
         .where(and(eq(jobs.id, input.jobId), eq(jobs.userId, ctx.user.id)));
       return { success: true };
     }),
+
+  /** Mark a job as completed — sets status to 'completed' and stamps completedDate */
+  markComplete: ownerProcedure
+    .input(z.object({ id: z.number().int().positive() }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+      await db.update(jobs)
+        .set({ status: "completed", completedDate: new Date(), updatedAt: new Date() })
+        .where(and(eq(jobs.id, input.id), eq(jobs.userId, ctx.user.id)));
+      return { success: true };
+    }),
+
+  /** Mark a job as paid — sets status to 'paid' and stamps paidDate, auto-closes matching lead */
+  markPaid: ownerProcedure
+    .input(z.object({ id: z.number().int().positive() }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+      const [job] = await db.select().from(jobs)
+        .where(and(eq(jobs.id, input.id), eq(jobs.userId, ctx.user.id)))
+        .limit(1);
+      if (!job) throw new TRPCError({ code: "NOT_FOUND", message: "Job not found" });
+      await db.update(jobs)
+        .set({ status: "paid", paidDate: new Date(), updatedAt: new Date() })
+        .where(and(eq(jobs.id, input.id), eq(jobs.userId, ctx.user.id)));
+      // Auto-close matching lead to 'won'
+      try {
+        const clientName = job.client;
+        if (clientName) {
+          const matchingLeads = await db
+            .select()
+            .from(opsLeads)
+            .where(and(eq(opsLeads.userId, ctx.user.id), like(opsLeads.name, `%${clientName}%`)))
+            .limit(5);
+          for (const lead of matchingLeads) {
+            if (lead.stage !== "won" && lead.stage !== "lost") {
+              await db.update(opsLeads).set({ stage: "won", updatedAt: new Date() })
+                .where(and(eq(opsLeads.id, lead.id), eq(opsLeads.userId, ctx.user.id)));
+            }
+          }
+        }
+      } catch (err) {
+        console.warn("[Jobs] Failed to auto-close lead on Paid:", err);
+      }
+      return { success: true };
+    }),
+
+  /** Archive a job — hides it from the active list */
+  archiveJob: ownerProcedure
+    .input(z.object({ id: z.number().int().positive() }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+      await db.update(jobs)
+        .set({ status: "archived", updatedAt: new Date() })
+        .where(and(eq(jobs.id, input.id), eq(jobs.userId, ctx.user.id)));
+      return { success: true };
+    }),
+
+  /** Unarchive a job — restores it to 'completed' status */
+  unarchiveJob: ownerProcedure
+    .input(z.object({ id: z.number().int().positive() }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+      await db.update(jobs)
+        .set({ status: "completed", updatedAt: new Date() })
+        .where(and(eq(jobs.id, input.id), eq(jobs.userId, ctx.user.id)));
+      return { success: true };
+    }),
 });
 
 // ─── Leads Router ─────────────────────────────────────────────────────────────
@@ -1121,6 +1192,223 @@ ${input.customPrompt ? `\nADJUSTMENT INSTRUCTION: ${input.customPrompt}\nApply t
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
       await db.delete(quoteDrafts).where(eq(quoteDrafts.id, input.id));
       return { success: true };
+    }),
+
+  /**
+   * AI Quote Assistant — accepts free-form job context (text + optional site photos)
+   * and returns a structured quote draft ready to populate the CreateQuoteModal.
+   *
+   * This is the "blank slate" version of analyzeSubmission: Jon describes the job
+   * in his own words (e.g. "5 acres of heavy cedar in Hickman County, steep terrain,
+   * fence line along the south edge") and optionally attaches site photos. The AI
+   * analyzes the context, infers service type / acreage / conditions, and returns
+   * the same structured output as analyzeSubmission.
+   */
+  aiAssistQuote: ownerProcedure
+    .input(z.object({
+      context: z.string().min(10).max(2000), // Jon's free-form job description
+      imageUrls: z.array(z.string().url()).max(6).default([]), // optional site photos
+      clientName: z.string().optional(),
+    }))
+    .mutation(async ({ input }) => {
+      // ─── Load pricing settings from DB ───────────────────────────────────────
+      const db = await getDb();
+      let pricingRow: typeof aiPricingSettings.$inferSelect | null = null;
+      if (db) {
+        const rows = await db.select().from(aiPricingSettings).limit(1);
+        if (rows.length === 0) {
+          await db.insert(aiPricingSettings).values({});
+          const seeded = await db.select().from(aiPricingSettings).limit(1);
+          pricingRow = seeded[0] ?? null;
+        } else {
+          pricingRow = rows[0];
+        }
+      }
+
+      // ─── Pricing constants (same as analyzeSubmission) ────────────────────────
+      const fmBase  = pricingRow?.forestryMulchingBaseRate ?? 800;
+      const lcBase  = pricingRow?.landClearingBaseRate     ?? 700;
+      const bhBase  = pricingRow?.brushHoggingBaseRate     ?? 150;
+      const rowBase = pricingRow?.rowClearingBaseRate       ?? 6;
+      const dmMult  = parseFloat(pricingRow?.densityModerateMultiplier ?? "1.25");
+      const dhMult  = parseFloat(pricingRow?.densityHeavyMultiplier    ?? "1.60");
+      const baseMobilization = pricingRow?.mobilizationFee ?? 400;
+      const stumpPerStump   = pricingRow?.stumpGrindingPerStump ?? 200;
+      const debrisPerLoad   = pricingRow?.debrisHaulingPerLoad  ?? 450;
+      const MIN_JOB = pricingRow?.minimumJobTotal ?? 1800;
+
+      // ─── Seasonal context ─────────────────────────────────────────────────────
+      const currentMonth = new Date().getMonth() + 1;
+      const isPeakSeason = currentMonth >= 10 || currentMonth <= 3;
+      const isSlowSeason = currentMonth >= 7  && currentMonth <= 9;
+      const seasonLabel = isPeakSeason ? "peak season (Oct–Mar) — dormant vegetation, firm ground" :
+                          isSlowSeason ? "slow season (Jul–Sep) — heat, potential ground saturation" :
+                          "shoulder season (Apr–Jun)";
+
+      // ─── Historical job context ───────────────────────────────────────────────
+      let jobHistoryContext = "";
+      if (db) {
+        try {
+          const recentJobs = await db.select({
+            client: jobs.client,
+            acres: jobs.acres,
+            totalPrice: jobs.totalPrice,
+            completedDate: jobs.completedDate,
+            jobType: jobs.jobType,
+          }).from(jobs)
+            .where(eq(jobs.status, "completed"))
+            .orderBy(desc(jobs.completedDate))
+            .limit(8);
+          if (recentJobs.length > 0) {
+            const lines = recentJobs.map(j => {
+              const acresStr = j.acres ? `${j.acres} acres` : "unknown acreage";
+              const priceStr = j.totalPrice ? `$${Number(j.totalPrice).toLocaleString()}` : "price not recorded";
+              const dateStr  = j.completedDate ? new Date(j.completedDate).toLocaleDateString("en-US", { month: "short", year: "numeric" }) : "";
+              return `  - ${j.jobType ?? "clearing"}: ${acresStr} @ ${priceStr}${dateStr ? ` (${dateStr})` : ""}`;
+            });
+            jobHistoryContext = `\nRecent completed jobs (use for pricing calibration):\n${lines.join("\n")}`;
+          }
+        } catch { /* non-fatal */ }
+      }
+
+      // ─── Live benchmarks ──────────────────────────────────────────────────────
+      let benchmarkContext = "";
+      try {
+        const benchmarks = await getPricingBenchmarks();
+        if (benchmarks.length > 0) {
+          const lines = benchmarks.map(b =>
+            `- ${b.serviceType}: $${b.lowPerAcre}–$${b.highPerAcre}/acre (mid: $${b.midPerAcre})`
+          );
+          benchmarkContext = `\nLive market benchmarks (Middle & West TN):\n${lines.join("\n")}`;
+        }
+      } catch { /* non-fatal */ }
+
+      // ─── Build LLM messages ───────────────────────────────────────────────────
+      const systemPrompt = `You are an expert estimator for Noland Earthworks, LLC — a veteran-owned forestry mulching and land management company in Middle and West Tennessee. Jon Noland is the owner and sole operator. He uses a tracked forestry mulcher.
+
+Your job is to read Jon's free-form job description (and any site photos he provides), infer all relevant job parameters, and return a structured JSON quote draft he can immediately use to build a Jobber quote.
+
+Pricing reference — Middle & West Tennessee market rates (2025–2026):
+- Forestry mulching base: $${fmBase}/acre (light density)
+- Land clearing base: $${lcBase}/acre (light density)
+- Brush hogging base: $${bhBase}/acre
+- Right-of-way clearing: $${rowBase}/linear foot
+- Density moderate multiplier: ${dmMult}x | Heavy: ${dhMult}x
+- Mobilization fee (standard): $${baseMobilization}
+- Stump grinding: $${stumpPerStump}/stump
+- Debris hauling: $${debrisPerLoad}/load
+- Minimum job total: $${MIN_JOB}
+- Season: ${seasonLabel}
+${benchmarkContext}
+${jobHistoryContext}
+
+Rules:
+- Infer service type, acreage, density, terrain, and access from the description and photos.
+- If photos show heavy vegetation, steep terrain, or site hazards, factor them into pricing and risk flags.
+- Line items should reflect real work components: mobilization, primary clearing (per-acre or flat), add-ons.
+- Prices in line items must be integers (no decimals).
+- The quote message MUST reference the acreage and sound like Jon wrote it — direct, professional, no fluff, no emojis.
+- Flag any risk factors visible in photos or mentioned in the description.
+- If acreage is unclear, note it in riskFlags and set siteVisitRequired: true.
+- confidence: "high" if acreage and conditions are clear; "medium" if inferred; "low" if site visit is needed.
+
+Return ONLY valid JSON with this exact structure:
+{
+  "inferredService": "forestry-mulching | land-clearing | brush-hogging | right-of-way-clearing | vegetation-management",
+  "inferredAcres": 0,
+  "inferredDensity": "light | moderate | heavy",
+  "inferredTerrain": "flat | rolling | steep",
+  "scopeNotes": "2-4 sentences describing the work in plain language",
+  "lineItems": [{"name": "...", "description": "...", "quantity": 1, "unitPrice": 0}],
+  "priceLow": 0,
+  "priceHigh": 0,
+  "estimatedDays": 1,
+  "quoteMessage": "3-5 sentences in Jon's voice, must reference the acreage",
+  "riskFlags": ["..."],
+  "siteVisitRequired": false,
+  "confidence": "high"
+}`;
+
+      // Build content array — text first, then images
+      const userContent: Array<{ type: "text"; text: string } | { type: "image_url"; image_url: { url: string; detail: "high" } }> = [
+        {
+          type: "text",
+          text: `Job description from Jon${input.clientName ? ` (client: ${input.clientName})` : ""}:\n\n${input.context}`,
+        },
+        ...input.imageUrls.map(url => ({
+          type: "image_url" as const,
+          image_url: { url, detail: "high" as const },
+        })),
+      ];
+
+      const result = await invokeLLM({
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user",   content: userContent },
+        ],
+        response_format: {
+          type: "json_schema",
+          json_schema: {
+            name: "ai_assist_quote",
+            strict: true,
+            schema: {
+              type: "object",
+              properties: {
+                inferredService:  { type: "string" },
+                inferredAcres:    { type: "number" },
+                inferredDensity:  { type: "string" },
+                inferredTerrain:  { type: "string" },
+                scopeNotes:       { type: "string" },
+                lineItems: {
+                  type: "array",
+                  items: {
+                    type: "object",
+                    properties: {
+                      name:        { type: "string" },
+                      description: { type: "string" },
+                      quantity:    { type: "number" },
+                      unitPrice:   { type: "number" },
+                    },
+                    required: ["name", "description", "quantity", "unitPrice"],
+                    additionalProperties: false,
+                  },
+                },
+                priceLow:          { type: "number" },
+                priceHigh:         { type: "number" },
+                estimatedDays:     { type: ["number", "null"] },
+                quoteMessage:      { type: "string" },
+                riskFlags:         { type: "array", items: { type: "string" } },
+                siteVisitRequired: { type: "boolean" },
+                confidence:        { type: "string", enum: ["high", "medium", "low"] },
+              },
+              required: ["inferredService", "inferredAcres", "inferredDensity", "inferredTerrain", "scopeNotes", "lineItems", "priceLow", "priceHigh", "estimatedDays", "quoteMessage", "riskFlags", "siteVisitRequired", "confidence"],
+              additionalProperties: false,
+            },
+          },
+        },
+      });
+
+      const raw = result.choices?.[0]?.message?.content;
+      if (!raw) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "AI did not return a response. Try again." });
+      try {
+        return JSON.parse(typeof raw === "string" ? raw : JSON.stringify(raw)) as {
+          inferredService: string;
+          inferredAcres: number;
+          inferredDensity: string;
+          inferredTerrain: string;
+          scopeNotes: string;
+          lineItems: { name: string; description: string; quantity: number; unitPrice: number }[];
+          priceLow: number;
+          priceHigh: number;
+          estimatedDays: number | null;
+          quoteMessage: string;
+          riskFlags: string[];
+          siteVisitRequired: boolean;
+          confidence: "high" | "medium" | "low";
+        };
+      } catch {
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "AI returned malformed JSON. Try again." });
+      }
     }),
 });
 

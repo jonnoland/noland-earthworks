@@ -1,0 +1,2 @@
+ALTER TABLE `jobs` MODIFY COLUMN `status` enum('estimate','scheduled','in_progress','completed','invoiced','paid','archived') NOT NULL DEFAULT 'estimate';--> statement-breakpoint
+ALTER TABLE `jobs` ADD `paidDate` timestamp;

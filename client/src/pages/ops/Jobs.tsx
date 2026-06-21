@@ -16,6 +16,7 @@ import {
   FileText, History, Send,
   List, Map as MapIcon,
   Sparkles, Copy,
+  Archive, CheckCheck, RotateCcw, CreditCard,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -1044,6 +1045,53 @@ export default function Jobs() {
     });
   };
 
+  // ── Local jobs query + mutations ──
+  const { data: localJobsRaw = [] } = trpc.ops.jobs.list.useQuery();
+  const [showArchived, setShowArchived] = useState(false);
+
+  const markComplete = trpc.ops.jobs.markComplete.useMutation({
+    onSuccess: () => { toast.success("Job marked complete."); utils.ops.jobs.list.invalidate(); },
+    onError: (e) => toast.error(e.message),
+  });
+  const markPaid = trpc.ops.jobs.markPaid.useMutation({
+    onSuccess: () => { toast.success("Job marked paid and moved to archive."); utils.ops.jobs.list.invalidate(); },
+    onError: (e) => toast.error(e.message),
+  });
+  const archiveJob = trpc.ops.jobs.archiveJob.useMutation({
+    onSuccess: () => { toast.success("Job archived."); utils.ops.jobs.list.invalidate(); },
+    onError: (e) => toast.error(e.message),
+  });
+  const unarchiveJob = trpc.ops.jobs.unarchiveJob.useMutation({
+    onSuccess: () => { toast.success("Job restored to active."); utils.ops.jobs.list.invalidate(); },
+    onError: (e) => toast.error(e.message),
+  });
+
+  type LocalJob = {
+    id: number;
+    title: string | null;
+    client: string | null;
+    status: string | null;
+    jobType: string | null;
+    scheduledDate: Date | null;
+    totalPrice: string | null;
+    acres: string | null;
+    completedDate: Date | null;
+    paidDate: Date | null;
+  };
+  const localJobs = localJobsRaw as LocalJob[];
+  const activeLocalJobs = useMemo(() =>
+    localJobs.filter(j => !j.status || !['completed','paid','archived'].includes(j.status)),
+    [localJobs]
+  );
+  const completedLocalJobs = useMemo(() =>
+    localJobs.filter(j => j.status === 'completed'),
+    [localJobs]
+  );
+  const archivedLocalJobs = useMemo(() =>
+    localJobs.filter(j => j.status === 'paid' || j.status === 'archived'),
+    [localJobs]
+  );
+
   // ── Derived data ──
   const notConnected =
     !isLoading &&
@@ -1301,6 +1349,230 @@ export default function Jobs() {
               </a>
             </div>
           </>
+        )}
+
+        {/* ── Locally Tracked Jobs ─────────────────────────────────────────── */}
+        {localJobs.length > 0 && (
+          <div className="space-y-4 pt-2">
+            <div className="flex items-center gap-2">
+              <CheckCheck className="w-4 h-4 text-primary" />
+              <h2 className="text-sm font-semibold text-foreground">Locally Tracked Jobs</h2>
+              <Badge variant="secondary" className="text-xs">{localJobs.length} total</Badge>
+            </div>
+
+            {/* Active local jobs */}
+            {activeLocalJobs.length > 0 && (
+              <div className="rounded-lg border border-border overflow-hidden">
+                <div className="px-4 py-2 bg-secondary/20 border-b border-border">
+                  <span className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">Active</span>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-xs">
+                    <thead>
+                      <tr className="border-b border-border">
+                        <th className="text-left px-4 py-2.5 font-medium text-muted-foreground">Title</th>
+                        <th className="text-left px-4 py-2.5 font-medium text-muted-foreground hidden sm:table-cell">Client</th>
+                        <th className="text-left px-4 py-2.5 font-medium text-muted-foreground hidden md:table-cell">Scheduled</th>
+                        <th className="text-right px-4 py-2.5 font-medium text-muted-foreground hidden lg:table-cell">Price</th>
+                        <th className="text-right px-4 py-2.5 font-medium text-muted-foreground">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {activeLocalJobs.map((job, idx) => (
+                        <tr key={job.id} className={cn(
+                          "border-b border-border last:border-0",
+                          idx % 2 === 0 ? "" : "bg-secondary/5"
+                        )}>
+                          <td className="px-4 py-3 font-medium text-foreground max-w-[180px] truncate">
+                            {job.title || "Untitled Job"}
+                          </td>
+                          <td className="px-4 py-3 text-muted-foreground hidden sm:table-cell">
+                            {job.client || "—"}
+                          </td>
+                          <td className="px-4 py-3 text-muted-foreground hidden md:table-cell">
+                            {job.scheduledDate ? formatDate(job.scheduledDate.toString()) : "—"}
+                          </td>
+                          <td className="px-4 py-3 text-right hidden lg:table-cell">
+                            <div className="flex items-center justify-end gap-1 text-foreground font-medium">
+                              <DollarSign className="w-3 h-3 text-green-500" />
+                              {job.totalPrice ? `$${Number(job.totalPrice).toLocaleString()}` : "—"}
+                            </div>
+                          </td>
+                          <td className="px-4 py-3">
+                            <div className="flex items-center justify-end gap-1.5">
+                              <button
+                                onClick={() => markComplete.mutate({ id: job.id })}
+                                disabled={markComplete.isPending}
+                                title="Mark Complete"
+                                className="flex items-center gap-1 px-2 py-1 rounded text-[10px] font-semibold bg-green-500/10 text-green-400 hover:bg-green-500/20 transition-colors disabled:opacity-50"
+                              >
+                                <CheckCircle2 className="w-3 h-3" />
+                                Complete
+                              </button>
+                              <button
+                                onClick={() => archiveJob.mutate({ id: job.id })}
+                                disabled={archiveJob.isPending}
+                                title="Archive"
+                                className="flex items-center gap-1 px-2 py-1 rounded text-[10px] font-semibold bg-secondary/50 text-muted-foreground hover:bg-secondary transition-colors disabled:opacity-50"
+                              >
+                                <Archive className="w-3 h-3" />
+                                Archive
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
+            {/* Completed (paid) local jobs */}
+            {completedLocalJobs.length > 0 && (
+              <div className="rounded-lg border border-border overflow-hidden">
+                <div className="px-4 py-2 bg-secondary/20 border-b border-border">
+                  <span className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">Completed — Awaiting Payment</span>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-xs">
+                    <thead>
+                      <tr className="border-b border-border">
+                        <th className="text-left px-4 py-2.5 font-medium text-muted-foreground">Title</th>
+                        <th className="text-left px-4 py-2.5 font-medium text-muted-foreground hidden sm:table-cell">Client</th>
+                        <th className="text-left px-4 py-2.5 font-medium text-muted-foreground hidden md:table-cell">Completed</th>
+                        <th className="text-right px-4 py-2.5 font-medium text-muted-foreground hidden lg:table-cell">Price</th>
+                        <th className="text-right px-4 py-2.5 font-medium text-muted-foreground">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {completedLocalJobs.map((job, idx) => (
+                        <tr key={job.id} className={cn(
+                          "border-b border-border last:border-0",
+                          idx % 2 === 0 ? "" : "bg-secondary/5"
+                        )}>
+                          <td className="px-4 py-3 font-medium text-foreground max-w-[180px] truncate">
+                            {job.title || "Untitled Job"}
+                          </td>
+                          <td className="px-4 py-3 text-muted-foreground hidden sm:table-cell">
+                            {job.client || "—"}
+                          </td>
+                          <td className="px-4 py-3 text-muted-foreground hidden md:table-cell">
+                            {job.completedDate ? formatDate(job.completedDate.toString()) : "—"}
+                          </td>
+                          <td className="px-4 py-3 text-right hidden lg:table-cell">
+                            <div className="flex items-center justify-end gap-1 text-foreground font-medium">
+                              <DollarSign className="w-3 h-3 text-green-500" />
+                              {job.totalPrice ? `$${Number(job.totalPrice).toLocaleString()}` : "—"}
+                            </div>
+                          </td>
+                          <td className="px-4 py-3">
+                            <div className="flex items-center justify-end gap-1.5">
+                              <button
+                                onClick={() => markPaid.mutate({ id: job.id })}
+                                disabled={markPaid.isPending}
+                                title="Mark Paid & Archive"
+                                className="flex items-center gap-1 px-2 py-1 rounded text-[10px] font-semibold bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 transition-colors disabled:opacity-50"
+                              >
+                                <CreditCard className="w-3 h-3" />
+                                Mark Paid
+                              </button>
+                              <button
+                                onClick={() => archiveJob.mutate({ id: job.id })}
+                                disabled={archiveJob.isPending}
+                                title="Archive without marking paid"
+                                className="flex items-center gap-1 px-2 py-1 rounded text-[10px] font-semibold bg-secondary/50 text-muted-foreground hover:bg-secondary transition-colors disabled:opacity-50"
+                              >
+                                <Archive className="w-3 h-3" />
+                                Archive
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
+            {/* Archived toggle */}
+            <div className="flex items-center justify-between">
+              <button
+                onClick={() => setShowArchived(v => !v)}
+                className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+              >
+                <Archive className="w-3.5 h-3.5" />
+                {showArchived ? "Hide Archived" : `Show Archived (${archivedLocalJobs.length})`}
+              </button>
+            </div>
+
+            {/* Archived list */}
+            {showArchived && archivedLocalJobs.length > 0 && (
+              <div className="rounded-lg border border-border overflow-hidden opacity-70">
+                <div className="px-4 py-2 bg-secondary/20 border-b border-border">
+                  <span className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">Archived</span>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-xs">
+                    <thead>
+                      <tr className="border-b border-border">
+                        <th className="text-left px-4 py-2.5 font-medium text-muted-foreground">Title</th>
+                        <th className="text-left px-4 py-2.5 font-medium text-muted-foreground hidden sm:table-cell">Client</th>
+                        <th className="text-left px-4 py-2.5 font-medium text-muted-foreground hidden md:table-cell">Status</th>
+                        <th className="text-right px-4 py-2.5 font-medium text-muted-foreground hidden lg:table-cell">Price</th>
+                        <th className="text-right px-4 py-2.5 font-medium text-muted-foreground">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {archivedLocalJobs.map((job, idx) => (
+                        <tr key={job.id} className={cn(
+                          "border-b border-border last:border-0",
+                          idx % 2 === 0 ? "" : "bg-secondary/5"
+                        )}>
+                          <td className="px-4 py-3 font-medium text-foreground max-w-[180px] truncate">
+                            {job.title || "Untitled Job"}
+                          </td>
+                          <td className="px-4 py-3 text-muted-foreground hidden sm:table-cell">
+                            {job.client || "—"}
+                          </td>
+                          <td className="px-4 py-3">
+                            <span className={cn(
+                              "inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium",
+                              job.status === 'paid'
+                                ? "bg-green-500/15 text-green-400"
+                                : "bg-secondary/50 text-muted-foreground"
+                            )}>
+                              {job.status === 'paid' ? 'Paid' : 'Archived'}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3 text-right hidden lg:table-cell">
+                            <div className="flex items-center justify-end gap-1 text-foreground font-medium">
+                              <DollarSign className="w-3 h-3 text-green-500" />
+                              {job.totalPrice ? `$${Number(job.totalPrice).toLocaleString()}` : "—"}
+                            </div>
+                          </td>
+                          <td className="px-4 py-3">
+                            <div className="flex items-center justify-end gap-1.5">
+                              <button
+                                onClick={() => unarchiveJob.mutate({ id: job.id })}
+                                disabled={unarchiveJob.isPending}
+                                title="Restore to active"
+                                className="flex items-center gap-1 px-2 py-1 rounded text-[10px] font-semibold bg-secondary/50 text-muted-foreground hover:bg-secondary transition-colors disabled:opacity-50"
+                              >
+                                <RotateCcw className="w-3 h-3" />
+                                Restore
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+          </div>
         )}
       </div>
 

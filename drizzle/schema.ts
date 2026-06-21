@@ -102,6 +102,7 @@ export const jobs = mysqlTable("jobs", {
     "completed",
     "invoiced",
     "paid",
+    "archived",
   ]).default("estimate").notNull(),
   acres: decimal("acres", { precision: 8, scale: 2 }),
   crewDays: decimal("crewDays", { precision: 8, scale: 2 }),
@@ -112,6 +113,8 @@ export const jobs = mysqlTable("jobs", {
   scheduledDate: timestamp("scheduledDate"),
   scheduledEndDate: timestamp("scheduledEndDate"),
   completedDate: timestamp("completedDate"),
+  /** Timestamp when the job was marked as paid */
+  paidDate: timestamp("paidDate"),
   /** Timestamp when a review request email was sent for this job */
   reviewRequestSentAt: timestamp("reviewRequestSentAt"),
   /** FK to ops_leads — explicit link used by review request agent instead of name-string match */

@@ -1868,3 +1868,27 @@
 - [x] Add "Leave a Review" button to TestimonialsSection linking to Google Business Profile review page (already existed at https://g.page/r/CcglMAMbtQInEBM/review)
 - [x] Add platform filter (All / Google / Facebook) and star-rating filter (All / 5★ / 4★ / 3★ and below) to /ops/reviews
 - [x] Add Google and Facebook review integration section to Settings page with connection status, instructions, and action buttons
+
+## LinkedIn OAuth Integration (Jun 18, 2026)
+- [ ] Create LinkedIn developer app with correct OAuth redirect URI
+- [ ] Add linkedinTokens table to drizzle schema and run db:push
+- [ ] Build server/linkedinRoutes.ts with /api/linkedin/authorize, /api/linkedin/callback, /api/linkedin/disconnect, and token refresh helper
+- [ ] Wire LinkedIn posting in ads.ts publishToLinkedIn using stored OAuth token instead of static credentials
+- [ ] Add Connect/Disconnect LinkedIn card to Settings → Integrations
+- [ ] Verify TypeScript 0 errors and save checkpoint
+
+## AI Quote Assistant (Jun 20, 2026)
+- [x] Add "AI Assist" button to new-quote form in /ops/quotes
+- [x] Build quotes.aiAssist tRPC procedure: accept context text + optional image URLs, call LLM with Noland Earthworks pricing knowledge and project instructions, return structured quote draft (line items, scope, inclusions/exclusions, estimated price, notes)
+- [x] Build AiQuoteAssistModal component: context textarea, multi-image upload (up to 5 site photos via S3), streaming LLM response with structured output, "Apply to Quote" button that populates form fields
+- [x] Ensure AI references Middle/West Tennessee rates and acreage in generated quote
+
+## Jobs Complete / Paid / Archive Flow (Jun 20, 2026)
+- [x] Add markComplete mutation to jobs router: sets status="completed", completedDate=now
+- [x] Add markPaid mutation: sets paymentStatus="paid", paidDate=now
+- [x] Add archiveJob mutation: sets status="archived"
+- [x] Add unarchiveJob mutation: sets status back to "completed"
+- [x] On /ops/jobs active list: show "Mark Complete" action on in-progress/scheduled jobs
+- [x] On /ops/jobs: once complete, show "Mark Paid" and "Archive" actions
+- [x] Add "Archived" tab/section to /ops/jobs that shows archived jobs (not in active list)
+- [x] Archived jobs show unarchive option

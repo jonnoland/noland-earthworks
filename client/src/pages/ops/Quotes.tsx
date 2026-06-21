@@ -1057,6 +1057,237 @@ type CreateQuoteModalProps = {
   };
 };
 
+// ─── AI Quote Assistant Panel ─────────────────────────────────────────────────
+
+type AIAssistPanelProps = {
+  onClose: () => void;
+  clientName?: string;
+  onApply: (result: {
+    title: string;
+    message: string;
+    lineItems: { name: string; description: string; quantity: number; unitPrice: number }[];
+  }) => void;
+};
+
+function AIAssistPanel({ onClose, clientName, onApply }: AIAssistPanelProps) {
+  const [context, setContext] = useState("");
+  const [imageUrls, setImageUrls] = useState<string[]>([]);
+  const [uploadingIdx, setUploadingIdx] = useState<number | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const aiAssist = trpc.ops.quotes.aiAssistQuote.useMutation({
+    onError: (err) => toast.error(err.message || "AI assist failed. Try again."),
+  });
+
+  async function handleImageUpload(files: FileList | null) {
+    if (!files || files.length === 0) return;
+    const toUpload = Array.from(files).slice(0, 6 - imageUrls.length);
+    for (let i = 0; i < toUpload.length; i++) {
+      const file = toUpload[i];
+      if (file.size > 10 * 1024 * 1024) { toast.error(`${file.name} exceeds 10 MB`); continue; }
+      setUploadingIdx(i);
+      try {
+        const reader = new FileReader();
+        const base64 = await new Promise<string>((res, rej) => {
+          reader.onload = () => res((reader.result as string).split(",")[1]);
+          reader.onerror = rej;
+          reader.readAsDataURL(file);
+        });
+        const resp = await fetch("/api/gallery/upload-base64", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ base64, mimeType: file.type, filename: file.name }),
+        });
+        if (!resp.ok) throw new Error("Upload failed");
+        const { url } = await resp.json() as { url: string };
+        setImageUrls(prev => [...prev, url]);
+      } catch {
+        toast.error(`Failed to upload ${file.name}`);
+      } finally {
+        setUploadingIdx(null);
+      }
+    }
+  }
+
+  async function handleRun() {
+    if (context.trim().length < 10) { toast.error("Describe the job first."); return; }
+    const result = await aiAssist.mutateAsync({ context: context.trim(), imageUrls, clientName });
+    // Map result to CreateQuoteModal fields
+    const serviceLabel: Record<string, string> = {
+      "forestry-mulching": "Forestry Mulching",
+      "land-clearing": "Land Clearing",
+      "brush-hogging": "Brush Hogging",
+      "right-of-way-clearing": "Right-of-Way Clearing",
+      "vegetation-management": "Vegetation Management",
+    };
+    const svcName = serviceLabel[result.inferredService] ?? result.inferredService;
+    const acresLabel = result.inferredAcres > 0 ? ` — ${result.inferredAcres} Acres` : "";
+    onApply({
+      title: `${svcName}${acresLabel}`,
+      message: result.quoteMessage,
+      lineItems: result.lineItems,
+    });
+  }
+
+  return (
+    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+      <div className="bg-card border border-border rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden">
+
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 py-4 border-b border-border shrink-0">
+          <div className="flex items-center gap-2.5">
+            <div className="w-7 h-7 rounded-md bg-primary/10 flex items-center justify-center">
+              <Sparkles className="w-4 h-4 text-primary" />
+            </div>
+            <div>
+              <h3 className="text-sm font-semibold text-foreground leading-tight">AI Quote Assistant</h3>
+              <p className="text-[11px] text-muted-foreground leading-tight">Describe the job — AI will draft the quote</p>
+            </div>
+          </div>
+          <button onClick={onClose} className="text-muted-foreground hover:text-foreground transition-colors p-1 rounded">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        {/* Body */}
+        <div className="flex-1 overflow-y-auto px-5 py-5 space-y-5">
+
+          {/* Context input */}
+          <div className="space-y-2">
+            <label className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
+              Job Description <span className="text-destructive">*</span>
+            </label>
+            <textarea
+              placeholder={`Describe the job in your own words. Include:\n• Location / county\n• Approximate acreage\n• Vegetation type and density (light cedar, heavy brush, etc.)\n• Terrain (flat, rolling, steep)\n• Any obstacles — fences, structures, stumps, water\n• What the customer wants done\n\nExample: "5 acres in Hickman County, heavy cedar and privet, rolling terrain, fence line on the south edge, customer wants it mulched clean."`}
+              value={context}
+              onChange={(e) => setContext(e.target.value)}
+              rows={8}
+              className="w-full rounded-lg border border-border bg-secondary/20 px-3 py-2.5 text-xs text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:ring-1 focus:ring-primary resize-none leading-relaxed"
+            />
+            <p className="text-[11px] text-muted-foreground">{context.length}/2000 characters</p>
+          </div>
+
+          {/* Photo upload */}
+          <div className="space-y-2">
+            <label className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
+              Site Photos <span className="text-muted-foreground font-normal normal-case tracking-normal">(optional — up to 6)</span>
+            </label>
+            {imageUrls.length > 0 && (
+              <div className="grid grid-cols-3 gap-2">
+                {imageUrls.map((url, i) => (
+                  <div key={i} className="relative rounded-lg overflow-hidden border border-border aspect-video bg-secondary/20">
+                    <img src={url} alt={`Site photo ${i + 1}`} className="w-full h-full object-cover" />
+                    <button
+                      onClick={() => setImageUrls(prev => prev.filter((_, idx) => idx !== i))}
+                      className="absolute top-1 right-1 w-5 h-5 rounded-full bg-black/70 flex items-center justify-center text-white hover:bg-red-600 transition-colors"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+            {imageUrls.length < 6 && (
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                disabled={uploadingIdx !== null}
+                className="w-full rounded-lg border border-dashed border-border bg-secondary/10 hover:bg-secondary/20 transition-colors py-4 flex flex-col items-center gap-1.5 text-muted-foreground hover:text-foreground"
+              >
+                {uploadingIdx !== null ? (
+                  <><Loader2 className="w-5 h-5 animate-spin" /><span className="text-xs">Uploading…</span></>
+                ) : (
+                  <><Image className="w-5 h-5" /><span className="text-xs">Click to add site photos</span><span className="text-[11px] text-muted-foreground/60">JPG, PNG, WEBP — up to 10 MB each</span></>
+                )}
+              </button>
+            )}
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp,image/heic"
+              multiple
+              className="hidden"
+              onChange={(e) => handleImageUpload(e.target.files)}
+            />
+          </div>
+
+          {/* Result preview */}
+          {aiAssist.data && (
+            <div className="rounded-lg border border-primary/30 bg-primary/5 p-4 space-y-3">
+              <div className="flex items-center gap-2">
+                <CheckCircle className="w-4 h-4 text-primary shrink-0" />
+                <p className="text-xs font-semibold text-foreground">AI Draft Ready</p>
+                <span className={`ml-auto text-[10px] font-medium px-1.5 py-0.5 rounded ${
+                  aiAssist.data.confidence === "high" ? "bg-green-500/20 text-green-400" :
+                  aiAssist.data.confidence === "medium" ? "bg-amber-500/20 text-amber-400" :
+                  "bg-red-500/20 text-red-400"
+                }`}>{aiAssist.data.confidence} confidence</span>
+              </div>
+              <div className="space-y-1 text-xs">
+                <p className="text-muted-foreground"><span className="text-foreground font-medium">Service:</span> {aiAssist.data.inferredService} — {aiAssist.data.inferredAcres} acres, {aiAssist.data.inferredDensity} density, {aiAssist.data.inferredTerrain} terrain</p>
+                <p className="text-muted-foreground"><span className="text-foreground font-medium">Price range:</span> ${aiAssist.data.priceLow.toLocaleString()} – ${aiAssist.data.priceHigh.toLocaleString()}{aiAssist.data.estimatedDays ? ` · ${aiAssist.data.estimatedDays} day${aiAssist.data.estimatedDays !== 1 ? "s" : ""} on site` : ""}</p>
+                <p className="text-muted-foreground"><span className="text-foreground font-medium">Scope:</span> {aiAssist.data.scopeNotes}</p>
+                {aiAssist.data.riskFlags.length > 0 && (
+                  <div className="flex items-start gap-1.5 mt-1">
+                    <AlertTriangle className="w-3.5 h-3.5 text-amber-400 shrink-0 mt-0.5" />
+                    <p className="text-amber-400/90 text-[11px]">{aiAssist.data.riskFlags.join(" · ")}</p>
+                  </div>
+                )}
+                {aiAssist.data.siteVisitRequired && (
+                  <p className="text-amber-400 text-[11px] font-medium">Site visit required before finalizing price.</p>
+                )}
+              </div>
+              <div className="border-t border-border pt-3">
+                <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-1.5">{aiAssist.data.lineItems.length} Line Items</p>
+                <div className="space-y-1">
+                  {aiAssist.data.lineItems.map((li, i) => (
+                    <div key={i} className="flex items-center justify-between gap-2 text-xs">
+                      <span className="text-foreground truncate">{li.name}</span>
+                      <span className="text-muted-foreground shrink-0">{li.quantity} × ${li.unitPrice.toLocaleString()}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="px-5 py-4 border-t border-border shrink-0 flex items-center justify-between gap-3">
+          <p className="text-[11px] text-muted-foreground">AI will populate the quote form. You can edit before creating.</p>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={onClose} disabled={aiAssist.isPending}>Cancel</Button>
+            {aiAssist.data ? (
+              <Button size="sm" onClick={handleRun} variant="outline" disabled={aiAssist.isPending} className="gap-1.5">
+                {aiAssist.isPending ? <><Loader2 className="w-3.5 h-3.5 animate-spin" />Running…</> : <><RefreshCw className="w-3.5 h-3.5" />Re-run</>}
+              </Button>
+            ) : null}
+            {aiAssist.data ? (
+              <Button size="sm" onClick={() => onApply({ title: `${({
+                "forestry-mulching": "Forestry Mulching",
+                "land-clearing": "Land Clearing",
+                "brush-hogging": "Brush Hogging",
+                "right-of-way-clearing": "Right-of-Way Clearing",
+                "vegetation-management": "Vegetation Management",
+              } as Record<string, string>)[aiAssist.data!.inferredService] ?? aiAssist.data!.inferredService}${aiAssist.data!.inferredAcres > 0 ? ` — ${aiAssist.data!.inferredAcres} Acres` : ""}`, message: aiAssist.data!.quoteMessage, lineItems: aiAssist.data!.lineItems })} className="gap-1.5">
+                <CheckCircle className="w-3.5 h-3.5" />
+                Apply to Quote
+              </Button>
+            ) : (
+              <Button size="sm" onClick={handleRun} disabled={aiAssist.isPending || context.trim().length < 10} className="gap-1.5 min-w-[110px]">
+                {aiAssist.isPending ? <><Loader2 className="w-3.5 h-3.5 animate-spin" />Analyzing…</> : <><Sparkles className="w-3.5 h-3.5" />Generate Draft</>}
+              </Button>
+            )}
+          </div>
+        </div>
+
+      </div>
+    </div>
+  );
+}
+
+// ─── Create Quote Modal ────────────────────────────────────────────────────────
+
 function CreateQuoteModal({ onClose, onCreated, prefill }: CreateQuoteModalProps) {
   const [title, setTitle] = useState(() => {
     if (prefill?.jobType) return prefill.jobType;
@@ -1076,6 +1307,7 @@ function CreateQuoteModal({ onClose, onCreated, prefill }: CreateQuoteModalProps
   const [serviceSearch, setServiceSearch] = useState("");
   const [showServicePicker, setShowServicePicker] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
+  const [showAIAssist, setShowAIAssist] = useState(false);
   const autoSelectedRef = useRef(false);
 
   const { data: clientsData, isLoading: clientsLoading } = trpc.jobber.clients.useQuery(
@@ -1184,6 +1416,21 @@ function CreateQuoteModal({ onClose, onCreated, prefill }: CreateQuoteModalProps
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
       <div className="bg-card border border-border rounded-xl shadow-2xl w-full max-w-4xl max-h-[92vh] flex flex-col overflow-hidden">
 
+        {/* ── AI Assist overlay ── */}
+        {showAIAssist && (
+          <AIAssistPanel
+            clientName={selectedClient?.name || selectedClient?.companyName || clientSearch || undefined}
+            onClose={() => setShowAIAssist(false)}
+            onApply={({ title: aiTitle, message: aiMessage, lineItems: aiItems }) => {
+              setTitle(aiTitle);
+              setMessage(aiMessage);
+              setLineItems(aiItems.map(li => ({ name: li.name, description: li.description, quantity: li.quantity, unitPrice: li.unitPrice })));
+              setShowAIAssist(false);
+              toast.success("AI draft applied. Review and adjust before creating.");
+            }}
+          />
+        )}
+
         {/* ── Header ── */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-border shrink-0 bg-card">
           <div className="flex items-center gap-2.5">
@@ -1195,9 +1442,20 @@ function CreateQuoteModal({ onClose, onCreated, prefill }: CreateQuoteModalProps
               <p className="text-[11px] text-muted-foreground leading-tight">Draft will be created in Jobber</p>
             </div>
           </div>
-          <button onClick={onClose} className="text-muted-foreground hover:text-foreground transition-colors p-1 rounded">
-            <X className="w-4 h-4" />
-          </button>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowAIAssist(true)}
+              className="gap-1.5 text-xs border-primary/40 text-primary hover:bg-primary/10 hover:text-primary"
+            >
+              <Sparkles className="w-3.5 h-3.5" />
+              AI Assist
+            </Button>
+            <button onClick={onClose} className="text-muted-foreground hover:text-foreground transition-colors p-1 rounded">
+              <X className="w-4 h-4" />
+            </button>
+          </div>
         </div>
 
         {/* ── Body: two-column ── */}
