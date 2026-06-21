@@ -4,6 +4,7 @@
  * Clicking a row opens a slide-out detail panel with full quote info.
  */
 import { useState, useEffect, useMemo, useRef } from "react";
+import { TN_COUNTY_TAX_RATES, TN_COUNTY_NAMES, formatTaxRate } from "@shared/tnTaxRates";
 import { Link, useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import DashboardLayout from "@/components/DashboardLayout";
@@ -1092,7 +1093,21 @@ function AIAssistPanel({ onClose, clientName, onApply }: AIAssistPanelProps) {
 
   const aiAssist = trpc.ops.quotes.aiAssistQuote.useMutation({
     onError: (err) => toast.error(err.message || "AI assist failed. Try again."),
+    onSuccess: (data) => {
+      // Seed editable draft lines from AI result
+      setEditableDraftLines(data.lineItems.map((li) => ({
+        name: li.name ?? "",
+        description: li.description ?? "",
+        quantity: Math.max(0.01, parseFloat(String(li.quantity)) || 1),
+        unitPrice: Math.max(0, parseFloat(String(li.unitPrice)) || 0),
+      })));
+    },
   });
+  const [editableDraftLines, setEditableDraftLines] = useState<Array<{ name: string; description: string; quantity: number; unitPrice: number }>>([]);
+
+  function updateDraftLine(idx: number, field: string, value: string | number) {
+    setEditableDraftLines((prev) => prev.map((li, i) => i === idx ? { ...li, [field]: value } : li));
+  }
 
   async function handleImageUpload(files: FileList | null) {
     if (!files || files.length === 0) return;
@@ -1145,12 +1160,14 @@ function AIAssistPanel({ onClose, clientName, onApply }: AIAssistPanelProps) {
     onApply({
       title: `${svcName}${acresLabel}`,
       message: aiAssist.data.quoteMessage,
-      lineItems: aiAssist.data.lineItems.map((li) => ({
-        name: li.name ?? "",
-        description: li.description ?? "",
-        quantity: Math.max(0.01, parseFloat(String(li.quantity)) || 1),
-        unitPrice: Math.max(0, parseFloat(String(li.unitPrice)) || 0),
-      })),
+      lineItems: editableDraftLines.length > 0
+        ? editableDraftLines
+        : aiAssist.data.lineItems.map((li) => ({
+            name: li.name ?? "",
+            description: li.description ?? "",
+            quantity: Math.max(0.01, parseFloat(String(li.quantity)) || 1),
+            unitPrice: Math.max(0, parseFloat(String(li.unitPrice)) || 0),
+          })),
     });
   }
 
@@ -1294,14 +1311,48 @@ function AIAssistPanel({ onClose, clientName, onApply }: AIAssistPanelProps) {
                 )}
               </div>
               <div className="border-t border-border pt-3">
-                <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-1.5">{aiAssist.data.lineItems.length} Line Items</p>
-                <div className="space-y-1">
-                  {aiAssist.data.lineItems.map((li, i) => (
-                    <div key={i} className="flex items-center justify-between gap-2 text-xs">
-                      <span className="text-foreground truncate">{li.name}</span>
-                      <span className="text-muted-foreground shrink-0">{li.quantity} × ${li.unitPrice.toLocaleString()}</span>
+                <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-2">
+                  {editableDraftLines.length} Line Items — <span className="normal-case font-normal">edit before applying</span>
+                </p>
+                <div className="space-y-2">
+                  {editableDraftLines.map((li, i) => (
+                    <div key={i} className="rounded-md border border-border/60 bg-secondary/10 p-2 space-y-1.5">
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="text"
+                          value={li.name}
+                          onChange={(e) => updateDraftLine(i, "name", e.target.value)}
+                          placeholder="Item name"
+                          className="flex-1 h-6 rounded border border-border bg-secondary/20 px-2 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                        />
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <label className="text-[10px] text-muted-foreground whitespace-nowrap">Qty</label>
+                        <input
+                          type="number" min="0.01" step="0.01"
+                          value={li.quantity}
+                          onChange={(e) => updateDraftLine(i, "quantity", parseFloat(e.target.value) || 1)}
+                          className="w-14 h-6 rounded border border-border bg-secondary/20 px-2 text-xs text-foreground text-center focus:outline-none focus:ring-1 focus:ring-primary"
+                        />
+                        <label className="text-[10px] text-muted-foreground whitespace-nowrap">Unit $</label>
+                        <input
+                          type="number" min="0" step="0.01"
+                          value={li.unitPrice}
+                          onChange={(e) => updateDraftLine(i, "unitPrice", parseFloat(e.target.value) || 0)}
+                          className="w-20 h-6 rounded border border-border bg-secondary/20 px-2 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                        />
+                        <span className="ml-auto text-xs font-medium text-foreground">
+                          ${(li.quantity * li.unitPrice).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </span>
+                      </div>
                     </div>
                   ))}
+                </div>
+                <div className="flex items-center justify-between mt-2 pt-2 border-t border-border/50">
+                  <span className="text-[10px] text-muted-foreground">Draft total</span>
+                  <span className="text-xs font-bold text-foreground">
+                    ${editableDraftLines.reduce((s, li) => s + li.quantity * li.unitPrice, 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </span>
                 </div>
               </div>
             </div>
@@ -1414,6 +1465,13 @@ function CreateQuoteModal({ onClose, onCreated, prefill }: CreateQuoteModalProps
   }, [prefill?.clientName, clientsLoading, filteredClients, clients.length]);
 
   const subtotal = lineItems.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0);
+  const [selectedCounty, setSelectedCounty] = useState("");
+  const [taxableLineItems, setTaxableLineItems] = useState<Set<number>>(new Set());
+  const taxRate = selectedCounty ? (TN_COUNTY_TAX_RATES[selectedCounty]?.totalTax ?? 0) : 0;
+  const taxableSubtotal = lineItems.reduce((sum, item, idx) =>
+    taxableLineItems.has(idx) ? sum + item.quantity * item.unitPrice : sum, 0);
+  const taxAmount = taxableSubtotal * taxRate;
+  const grandTotal = subtotal + taxAmount;
 
   function addServiceAsLineItem(svc: ServiceItem) {
     setLineItems((prev) => [
@@ -1725,9 +1783,17 @@ function CreateQuoteModal({ onClose, onCreated, prefill }: CreateQuoteModalProps
                             min="0"
                             step="0.01"
                             value={item.unitPrice}
-                            onChange={(e) => updateLineItem(idx, "unitPrice", parseFloat(e.target.value) || 0)}
-                            className="w-24 h-7 rounded-md border border-border bg-secondary/20 pl-5 pr-2 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                            onChange={(e) => {
+                              const val = parseFloat(e.target.value);
+                              updateLineItem(idx, "unitPrice", isNaN(val) ? 0 : Math.max(0, val));
+                            }}
+                            className={`w-24 h-7 rounded-md border bg-secondary/20 pl-5 pr-2 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary ${
+                              item.unitPrice < 0 ? "border-red-500 ring-1 ring-red-500" : "border-border"
+                            }`}
                           />
+                          {item.unitPrice < 0 && (
+                            <p className="absolute left-0 top-full mt-0.5 text-[10px] text-red-400 whitespace-nowrap">Must be ≥ 0</p>
+                          )}
                         </div>
                       </div>
                       <div className="ml-auto text-xs font-semibold text-foreground">
@@ -1739,13 +1805,69 @@ function CreateQuoteModal({ onClose, onCreated, prefill }: CreateQuoteModalProps
               )}
             </div>
 
-            {/* Subtotal bar */}
+            {/* Tax + Total bar */}
             {lineItems.length > 0 && (
-              <div className="px-5 py-3 border-t border-border shrink-0 bg-secondary/10 flex items-center justify-between">
-                <span className="text-xs text-muted-foreground">{lineItems.length} line item{lineItems.length !== 1 ? "s" : ""}</span>
-                <div className="flex items-center gap-2">
-                  <span className="text-xs text-muted-foreground">Subtotal</span>
-                  <span className="text-sm font-bold text-foreground">{formatMoney(subtotal)}</span>
+              <div className="px-5 py-4 border-t border-border shrink-0 bg-secondary/10 space-y-3">
+                {/* County selector */}
+                <div className="flex items-center gap-3">
+                  <label className="text-[11px] text-muted-foreground whitespace-nowrap shrink-0">Property County</label>
+                  <select
+                    value={selectedCounty}
+                    onChange={(e) => { setSelectedCounty(e.target.value); setTaxableLineItems(new Set()); }}
+                    className="flex-1 h-7 rounded-md border border-border bg-secondary/20 px-2 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                  >
+                    <option value="">-- Select county for tax reference --</option>
+                    {TN_COUNTY_NAMES.map((c) => (
+                      <option key={c} value={c}>{c} County — {formatTaxRate(TN_COUNTY_TAX_RATES[c].totalTax)} combined</option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Taxable line item toggles */}
+                {selectedCounty && (
+                  <div className="space-y-1">
+                    <p className="text-[10px] text-muted-foreground">Mark taxable line items (materials/equipment only — services on real property are generally exempt):</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {lineItems.map((item, idx) => (
+                        <button
+                          key={idx}
+                          type="button"
+                          onClick={() => setTaxableLineItems((prev) => {
+                            const next = new Set(prev);
+                            if (next.has(idx)) next.delete(idx); else next.add(idx);
+                            return next;
+                          })}
+                          className={`px-2 py-0.5 rounded text-[10px] border transition-colors ${
+                            taxableLineItems.has(idx)
+                              ? "bg-amber-500/20 border-amber-500/50 text-amber-400"
+                              : "bg-secondary/30 border-border text-muted-foreground hover:border-primary/50"
+                          }`}
+                        >
+                          {item.name || `Item ${idx + 1}`} {taxableLineItems.has(idx) ? "(taxable)" : ""}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Totals */}
+                <div className="space-y-1 pt-1 border-t border-border/50">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-muted-foreground">{lineItems.length} line item{lineItems.length !== 1 ? "s" : ""} — Subtotal</span>
+                    <span className="text-xs font-medium text-foreground">{formatMoney(subtotal)}</span>
+                  </div>
+                  {selectedCounty && taxAmount > 0 && (
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs text-muted-foreground">
+                        {selectedCounty} County Tax ({formatTaxRate(taxRate)} — state {formatTaxRate(TN_COUNTY_TAX_RATES[selectedCounty].stateTax)} + local {formatTaxRate(TN_COUNTY_TAX_RATES[selectedCounty].localTax)})
+                      </span>
+                      <span className="text-xs text-amber-400">{formatMoney(taxAmount)}</span>
+                    </div>
+                  )}
+                  <div className="flex items-center justify-between pt-1">
+                    <span className="text-xs font-semibold text-foreground">Total</span>
+                    <span className="text-sm font-bold text-foreground">{formatMoney(grandTotal)}</span>
+                  </div>
                 </div>
               </div>
             )}
