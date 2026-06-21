@@ -431,6 +431,13 @@ export default function Schedule() {
   const [draggingEntryId, setDraggingEntryId] = useState<number | null>(null);
   const [draggingLocalJobId, setDraggingLocalJobId] = useState<number | null>(null);
 
+  // Priority 6: Weather-Aware Scheduling
+  const { data: weatherJobs = [] } = trpc.ops.getJobWeatherRisk.useQuery();
+  const weatherRiskJobs = (weatherJobs as any[]).filter((j: any) => j.weatherRisk);
+
+  // Priority 9: Crew Capacity Alerts
+  const { data: capacityData } = trpc.ops.getCapacityAlerts.useQuery();
+
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
   const utils = trpc.useUtils();
 
@@ -996,6 +1003,68 @@ export default function Schedule() {
                 </div>
               ))}
             </div>
+          </div>
+        )}
+
+        {/* Priority 6: Weather Risk Alerts */}
+        {weatherRiskJobs.length > 0 && (
+          <div className="ops-card p-4 border-blue-500/30">
+            <div className="flex items-center gap-2 mb-3">
+              <AlertCircle className="w-4 h-4 text-blue-400" />
+              <h3 className="text-sm font-semibold text-foreground" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>Weather Risk</h3>
+              <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-400/10 text-blue-400 border border-blue-400/20 font-semibold">{weatherRiskJobs.length} job{weatherRiskJobs.length !== 1 ? "s" : ""}</span>
+            </div>
+            <div className="space-y-2">
+              {weatherRiskJobs.map((j: any) => (
+                <div key={j.id} className="flex items-center justify-between text-xs py-1.5 border-b border-border/40 last:border-0">
+                  <div>
+                    <span className="font-medium text-foreground">{j.title ?? j.client ?? `Job #${j.id}`}</span>
+                    {j.scheduledDate && <span className="text-muted-foreground ml-2">{new Date(j.scheduledDate).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })}</span>}
+                  </div>
+                  <span className="text-blue-400 font-semibold">{j.precipProb}% precip</span>
+                </div>
+              ))}
+            </div>
+            <p className="text-[11px] text-muted-foreground mt-2">Jobs with &gt;50% precipitation probability in the next 7 days. Consider rescheduling or notifying clients.</p>
+          </div>
+        )}
+
+        {/* Priority 9: Crew Capacity Alerts */}
+        {capacityData && (capacityData.openDays.length > 0 || capacityData.openQuotes.length > 0) && (
+          <div className="ops-card p-4 border-green-500/30">
+            <div className="flex items-center gap-2 mb-3">
+              <CheckCircle2 className="w-4 h-4 text-green-400" />
+              <h3 className="text-sm font-semibold text-foreground" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>Open Capacity</h3>
+            </div>
+            {capacityData.openDays.length > 0 && (
+              <div className="mb-3">
+                <p className="text-xs text-muted-foreground mb-1.5">Unscheduled weekdays in the next 14 days:</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {capacityData.openDays.map((d: string) => (
+                    <span key={d} className="text-[11px] px-2 py-0.5 rounded bg-green-400/10 text-green-400 border border-green-400/20">
+                      {new Date(d + "T12:00:00").toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+            {capacityData.openQuotes.length > 0 && (
+              <div>
+                <p className="text-xs text-muted-foreground mb-1.5">Open leads that could fill this capacity:</p>
+                <div className="space-y-1">
+                  {capacityData.openQuotes.slice(0, 4).map((q: any) => (
+                    <div key={q.id} className="flex items-center justify-between text-xs">
+                      <span className="font-medium text-foreground">{q.name}</span>
+                      <span className={cn("text-[10px] px-1.5 py-0.5 rounded border font-medium",
+                        q.stage === "estimate_sent" ? "bg-primary/10 text-primary border-primary/20" :
+                        q.stage === "contacted" ? "bg-sky-400/10 text-sky-400 border-sky-400/20" :
+                        "bg-blue-400/10 text-blue-400 border-blue-400/20"
+                      )}>{q.stage}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         )}
 

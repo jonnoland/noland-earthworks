@@ -67,6 +67,13 @@ export default function Timesheets() {
   });
   const utils = trpc.useUtils();
 
+  // Priority 10: Labor Cost vs. Estimate Calibration
+  const [laborCalib, setLaborCalib] = useState<string | null>(null);
+  const runLaborCalibration = trpc.ops.runLaborCalibrationScan.useMutation({
+    onSuccess: (data: any) => setLaborCalib(data.analysis ?? data.insight ?? JSON.stringify(data)),
+    onError: (err: any) => toast.error(err.message || "Calibration scan failed."),
+  });
+
   // AI #8: Timesheet Anomaly Detection
   const [anomalyReport, setAnomalyReport] = useState<{ summary: string; anomalies: { crewMemberName: string; anomalyType: string; description: string; severity: string; recommendation: string }[] } | null>(null);
   const [showAnomalyPanel, setShowAnomalyPanel] = useState(false);
@@ -204,6 +211,16 @@ export default function Timesheets() {
           </Button>
           <Button
             size="sm"
+            variant="ghost"
+            className="text-blue-400 hover:text-blue-300 text-xs border border-blue-500/30 hover:bg-blue-500/10"
+            onClick={() => runLaborCalibration.mutate()}
+            disabled={runLaborCalibration.isPending}
+          >
+            {runLaborCalibration.isPending ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> : <Sparkles className="h-3.5 w-3.5 mr-1" />}
+            Calibrate
+          </Button>
+          <Button
+            size="sm"
             className="bg-amber-500 hover:bg-amber-400 text-black text-xs"
             onClick={() => setShowAddModal(true)}
           >
@@ -244,6 +261,20 @@ export default function Timesheets() {
               ))}
             </div>
           )}
+        </div>
+      )}
+
+      {/* Priority 10: Labor Cost vs. Estimate Calibration Panel */}
+      {laborCalib && (
+        <div className="rounded-lg border border-blue-500/30 bg-blue-500/5 p-4 space-y-2 mb-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Sparkles className="w-4 h-4 text-blue-400" />
+              <span className="text-sm font-semibold text-blue-300">Labor Calibration Report</span>
+            </div>
+            <button onClick={() => setLaborCalib(null)} className="text-white/40 hover:text-white"><X className="w-4 h-4" /></button>
+          </div>
+          <p className="text-xs text-white/70 leading-relaxed whitespace-pre-line">{laborCalib}</p>
         </div>
       )}
 

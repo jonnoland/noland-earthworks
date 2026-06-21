@@ -1368,3 +1368,76 @@ export const galleryPhotos = mysqlTable("gallery_photos", {
 });
 export type GalleryPhoto = typeof galleryPhotos.$inferSelect;
 export type InsertGalleryPhoto = typeof galleryPhotos.$inferInsert;
+
+// ─── Jobber Revenue Cache ─────────────────────────────────────────────────────
+/**
+ * Caches Jobber invoice data synced to the local DB for use in Reports.
+ * Synced on demand via the syncJobberRevenue procedure.
+ */
+export const jobberRevenueCache = mysqlTable("jobber_revenue_cache", {
+  id: int("id").primaryKey().autoincrement(),
+  /** Jobber invoice ID (encoded string) */
+  invoiceId: varchar("invoiceId", { length: 256 }).notNull().unique(),
+  /** Jobber invoice number (human-readable) */
+  invoiceNumber: int("invoiceNumber"),
+  /** Invoice status: draft, awaiting_payment, paid, bad_debt, void */
+  invoiceStatus: varchar("invoiceStatus", { length: 50 }),
+  /** Total invoice amount in dollars */
+  total: decimal("total", { precision: 10, scale: 2 }).notNull().default("0"),
+  /** Outstanding balance */
+  balance: decimal("balance", { precision: 10, scale: 2 }).notNull().default("0"),
+  /** Client name snapshot */
+  clientName: varchar("clientName", { length: 255 }),
+  /** Job/subject line snapshot */
+  subject: varchar("subject", { length: 500 }),
+  /** When the invoice was issued in Jobber */
+  issuedDate: timestamp("issuedDate"),
+  /** When this row was last synced from Jobber */
+  syncedAt: timestamp("syncedAt").defaultNow().notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type JobberRevenueCache = typeof jobberRevenueCache.$inferSelect;
+export type InsertJobberRevenueCache = typeof jobberRevenueCache.$inferInsert;
+
+// ─── Morning Briefs ───────────────────────────────────────────────────────────
+/**
+ * Caches the AI-generated morning brief — one per day.
+ * Regenerated on demand or once per day by the morning brief procedure.
+ */
+export const morningBriefs = mysqlTable("morning_briefs", {
+  id: int("id").primaryKey().autoincrement(),
+  /** ISO date string YYYY-MM-DD — one row per day */
+  date: varchar("date", { length: 10 }).notNull().unique(),
+  /** AI-generated plain-English briefing text */
+  content: text("content").notNull(),
+  /** Timestamp when this brief was generated */
+  generatedAt: timestamp("generatedAt").defaultNow().notNull(),
+});
+export type MorningBrief = typeof morningBriefs.$inferSelect;
+export type InsertMorningBrief = typeof morningBriefs.$inferInsert;
+
+// ─── Review Requests ──────────────────────────────────────────────────────────
+/**
+ * Tracks review request SMS messages sent to clients after job completion.
+ */
+export const reviewRequests = mysqlTable("review_requests", {
+  id: int("id").primaryKey().autoincrement(),
+  /** FK to local jobs table — null if triggered from a Jobber job */
+  jobId: int("jobId"),
+  /** Jobber job ID string — set when triggered from a Jobber job */
+  jobberJobId: varchar("jobberJobId", { length: 256 }),
+  /** Client phone number the SMS was sent to */
+  clientPhone: varchar("clientPhone", { length: 50 }).notNull(),
+  /** Client name for display */
+  clientName: varchar("clientName", { length: 255 }),
+  /** Job description snapshot for the SMS message */
+  jobDescription: varchar("jobDescription", { length: 500 }),
+  /** Twilio message SID */
+  twilioSid: varchar("twilioSid", { length: 64 }),
+  /** sent | failed */
+  status: varchar("status", { length: 20 }).notNull().default("sent"),
+  sentAt: timestamp("sentAt").defaultNow().notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type ReviewRequest = typeof reviewRequests.$inferSelect;
+export type InsertReviewRequest = typeof reviewRequests.$inferInsert;

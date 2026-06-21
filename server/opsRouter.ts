@@ -8,6 +8,7 @@ import { protectedProcedure, router } from "./_core/trpc";
 import { aiAutomationRouter } from "./aiAutomationRouter";
 import { ENV } from "./_core/env";
 import { isJobberConnected, jobberGraphQL } from "./jobber";
+import { fetchJobberInvoices } from "./jobberApi";
 import { invokeLLM } from "./_core/llm";
 import { generateImage } from "./_core/imageGeneration";
 import { storagePut } from "./storage";
@@ -23,7 +24,7 @@ import {
   getPricingBenchmarks,
 } from "./db";
 import { Resend } from "resend";
-import { jobs, opsLeads, quoteSubmissions, crews, crewMembers, conversations, messages, reviews, timeEntries, distanceQuotes, businessSettings, automationSettings, serviceCatalog, messageTemplates, reminderRules, leadNotes, visitBlackoutDates, recurringBlackoutDays, aiPricingSettings, quoteDrafts, jobberTokens, socialPosts, adSpend, equipment, serviceLogs, serviceIntervals, fieldDiagnostics, ownerTasks, jobNotes } from "../drizzle/schema";
+import { jobs, opsLeads, quoteSubmissions, crews, crewMembers, conversations, messages, reviews, timeEntries, distanceQuotes, businessSettings, automationSettings, serviceCatalog, messageTemplates, reminderRules, leadNotes, visitBlackoutDates, recurringBlackoutDays, aiPricingSettings, quoteDrafts, jobberTokens, socialPosts, adSpend, equipment, serviceLogs, serviceIntervals, fieldDiagnostics, ownerTasks, jobNotes, jobberRevenueCache, morningBriefs, reviewRequests, chatSessions, scheduleEntries } from "../drizzle/schema";
 
 import { and, desc, eq, gte, inArray, lt, lte, like, or, sql } from "drizzle-orm";
 
@@ -3880,4 +3881,436 @@ Always be specific to nolandearthworks.com. Never give generic advice — tie ev
       const reply = llmResponse?.choices?.[0]?.message?.content ?? "I could not generate a response. Please try again.";
       return { reply };
     }),
+
+  // ─── Priority 1: Jobber Revenue Sync ──────────────────────────────────────────
+  syncJobberRevenue: ownerProcedure.mutation(async () => {
+    const db = await getDb();
+    if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable." });
+    const connected = await isJobberConnected();
+    if (!connected) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Jobber is not connected. Reconnect in Settings → Integrations." });
+    const invoicesData = await fetchJobberInvoices(100);
+    const nodes = invoicesData?.nodes ?? [];
+    let synced = 0;
+    for (const inv of nodes) {
+      const total = parseFloat(inv.amounts?.total ?? "0") || 0;
+      const balance = parseFloat(inv.amounts?.invoiceBalance ?? "0") || 0;
+      const clientName = inv.client?.companyName || inv.client?.name || "Unknown";
+      const issuedDate = inv.issuedDate ? new Date(inv.issuedDate) : null;
+      await db.insert(jobberRevenueCache).values({
+        invoiceId: inv.id,
+        invoiceNumber: inv.invoiceNumber ?? null,
+        invoiceStatus: inv.invoiceStatus ?? null,
+        total: total.toFixed(2),
+        balance: balance.toFixed(2),
+        clientName,
+        subject: inv.subject ?? null,
+        issuedDate,
+        syncedAt: new Date(),
+      }).onDuplicateKeyUpdate({
+        set: {
+          invoiceStatus: inv.invoiceStatus ?? null,
+          total: total.toFixed(2),
+          balance: balance.toFixed(2),
+          clientName,
+          subject: inv.subject ?? null,
+          issuedDate,
+          syncedAt: new Date(),
+        },
+      });
+      synced++;
+    }
+    return { synced, total: nodes.length };
+  }),
+
+  getJobberRevenue: ownerProcedure.query(async () => {
+    const db = await getDb();
+    if (!db) return { rows: [], lastSyncedAt: null };
+    const rows = await db.select().from(jobberRevenueCache).orderBy(desc(jobberRevenueCache.issuedDate));
+    const lastSyncedAt = rows.length > 0 ? rows[0].syncedAt : null;
+    return { rows, lastSyncedAt };
+  }),
+
+  // ─── Priority 2: Auto-create Lead from Chat Session ───────────────────────────
+  // (Chat sessions already auto-create leads via chatRouter — this procedure exposes
+  //  the chat sessions that produced a lead for the /ops/chat-sessions view)
+  getChatLeadSessions: ownerProcedure.query(async () => {
+    const db = await getDb();
+    if (!db) return [];
+    return db.select().from(chatSessions)
+      .where(eq(chatSessions.leadCreated, true))
+      .orderBy(desc(chatSessions.createdAt));
+  }),
+
+  // ─── Priority 3: AI Morning Brief ─────────────────────────────────────────────
+  getMorningBrief: ownerProcedure
+    .input(z.object({ forceRegenerate: z.boolean().optional() }))
+    .mutation(async ({ input, ctx }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable." });
+      const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+      // Return cached brief unless forcing regeneration
+      if (!input.forceRegenerate) {
+        const [existing] = await db.select().from(morningBriefs).where(eq(morningBriefs.date, today));
+        if (existing) return { content: existing.content, generatedAt: existing.generatedAt, cached: true };
+      }
+      // Gather data for the brief
+      const allJobs = await db.select().from(jobs).where(eq(jobs.userId, ctx.user.id));
+      const allLeads = await db.select().from(opsLeads).where(eq(opsLeads.userId, ctx.user.id));
+      const todayStart = new Date(); todayStart.setHours(0, 0, 0, 0);
+      const todayEnd = new Date(); todayEnd.setHours(23, 59, 59, 999);
+      const todayJobs = allJobs.filter(j => j.scheduledDate && j.scheduledDate >= todayStart && j.scheduledDate <= todayEnd);
+      const staleLeads = allLeads.filter(l => {
+        if (["won", "lost"].includes(l.stage)) return false;
+        const daysSince = (Date.now() - new Date(l.updatedAt).getTime()) / (1000 * 60 * 60 * 24);
+        return daysSince > 7;
+      });
+      const openLeads = allLeads.filter(l => !["won", "lost"].includes(l.stage));
+      const wonLeads = allLeads.filter(l => l.stage === "won");
+      const conversionRate = allLeads.length > 0 ? Math.round((wonLeads.length / allLeads.length) * 100) : 0;
+      const revenueTotal = allJobs.reduce((s, j) => s + Number(j.totalPrice ?? 0), 0);
+      const context = [
+        `Today is ${new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}.`,
+        todayJobs.length > 0 ? `Jobs scheduled today: ${todayJobs.map(j => `${j.title} (${j.client})`).join(", ")}.` : "No jobs scheduled for today.",
+        staleLeads.length > 0 ? `Stale leads (no activity in 7+ days): ${staleLeads.map(l => l.name).join(", ")}.` : "No stale leads.",
+        `Open leads in pipeline: ${openLeads.length}. Conversion rate: ${conversionRate}%.`,
+        `Total logged revenue: $${revenueTotal.toLocaleString()}.`,
+      ].join(" ");
+      const result = await invokeLLM({
+        messages: [
+          { role: "system", content: "You are writing a morning briefing for Jon Noland, owner-operator of Noland Earthworks, LLC — a veteran-owned land clearing and forestry mulching company in Middle Tennessee. Write a plain-English briefing of 4-6 sentences covering: what's on the schedule today, any stale leads that need a call, pipeline health, and one practical observation or action item. Sound like a straight-talking field operator reviewing his day, not a business consultant. No emojis. No filler. No corporate language." },
+          { role: "user", content: `Here is today's business snapshot:\n\n${context}\n\nWrite the morning brief.` },
+        ],
+      });
+      const content = (result.choices?.[0]?.message?.content as string ?? "").trim();
+      if (!content) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "AI did not return a brief. Try again." });
+      // Upsert today's brief
+      await db.insert(morningBriefs).values({ date: today, content, generatedAt: new Date() })
+        .onDuplicateKeyUpdate({ set: { content, generatedAt: new Date() } });
+      return { content, generatedAt: new Date(), cached: false };
+    }),
+
+  // ─── Priority 4: Quote Follow-Up Automation ────────────────────────────────────
+  getStaleQuotes: ownerProcedure.query(async () => {
+    const db = await getDb();
+    if (!db) return [];
+    const cutoff = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+    return db.select().from(quoteSubmissions)
+      .where(and(
+        eq(quoteSubmissions.jobberStatus, "synced"),
+        lt(quoteSubmissions.createdAt, cutoff),
+      ))
+      .orderBy(desc(quoteSubmissions.createdAt))
+      .limit(20);
+  }),
+
+  draftQuoteFollowUp: ownerProcedure
+    .input(z.object({
+      quoteId: z.number(),
+      clientName: z.string(),
+      service: z.string(),
+      acreage: z.string().optional(),
+      daysSinceSent: z.number(),
+    }))
+    .mutation(async ({ input }) => {
+      const result = await invokeLLM({
+        messages: [
+          { role: "system", content: "You are writing a follow-up text message for Jon Noland, owner-operator of Noland Earthworks, LLC — a veteran-owned land clearing and forestry mulching company in Middle Tennessee. Write a short, casual, warm follow-up SMS (2-3 sentences max) in Jon's voice. Reference the client by first name, mention the specific service, and ask if they have any questions or want to move forward. Sound like a real person, not a sales script. No emojis. No hashtags." },
+          { role: "user", content: `Draft a follow-up SMS for: Client: ${input.clientName}. Service: ${input.service}. ${input.acreage ? `Acreage: ${input.acreage}.` : ""} Quote sent ${input.daysSinceSent} days ago with no response.` },
+        ],
+      });
+      const draft = (result.choices?.[0]?.message?.content as string ?? "").trim();
+      return { draft };
+    }),
+
+  // ─── Priority 5: Satellite Property Analysis ──────────────────────────────────
+  analyzePropertySatellite: ownerProcedure
+    .input(z.object({
+      address: z.string(),
+      lat: z.number().optional(),
+      lng: z.number().optional(),
+    }))
+    .mutation(async ({ input }) => {
+      if (!ENV.googlePlacesApiKey) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Google Maps API key not configured." });
+      // Geocode the address if lat/lng not provided
+      let lat = input.lat;
+      let lng = input.lng;
+      if (!lat || !lng) {
+        const geoUrl = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(input.address)}&key=${ENV.googlePlacesApiKey}`;
+        const geoRes = await fetch(geoUrl);
+        const geoData = await geoRes.json() as any;
+        if (geoData.results?.[0]?.geometry?.location) {
+          lat = geoData.results[0].geometry.location.lat;
+          lng = geoData.results[0].geometry.location.lng;
+        }
+      }
+      if (!lat || !lng) throw new TRPCError({ code: "BAD_REQUEST", message: "Could not geocode address." });
+      // Fetch satellite image from Google Static Maps API
+      const mapUrl = `https://maps.googleapis.com/maps/api/staticmap?center=${lat},${lng}&zoom=17&size=640x640&maptype=satellite&key=${ENV.googlePlacesApiKey}`;
+      // Send image URL to LLM vision for analysis
+      const result = await invokeLLM({
+        messages: [
+          {
+            role: "user",
+            content: [
+              {
+                type: "image_url" as const,
+                image_url: { url: mapUrl, detail: "high" as const },
+              },
+              {
+                type: "text" as const,
+                text: `You are analyzing a satellite image of a property in Tennessee for a land clearing and forestry mulching quote. Analyze the image and provide: 1) Vegetation density (light/moderate/heavy) with brief reasoning, 2) Terrain type (flat/rolling/steep) with brief reasoning, 3) Access challenges (easy/moderate/difficult) with brief reasoning, 4) Any notable obstacles (water features, structures, rock outcrops). Keep each item to 1-2 sentences. Be practical and specific — this analysis will be used to price a land clearing job. If the image is unclear or shows an urban/suburban area, say so.`,
+              },
+            ],
+          },
+        ],
+      });
+      const analysis = (result.choices?.[0]?.message?.content as string ?? "").trim();
+      return { analysis, mapUrl, lat, lng };
+    }),
+
+  // ─── Priority 6: Weather-Aware Scheduling ─────────────────────────────────────
+  getJobWeatherRisk: ownerProcedure.query(async ({ ctx }) => {
+    const db = await getDb();
+    if (!db) return [];
+    const now = new Date();
+    const in7Days = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+    const upcomingJobs = await db.select().from(jobs)
+      .where(and(
+        eq(jobs.userId, ctx.user.id),
+        gte(jobs.scheduledDate, now),
+        lte(jobs.scheduledDate, in7Days),
+        sql`${jobs.status} NOT IN ('completed', 'paid', 'archived')`,
+      ));
+    if (upcomingJobs.length === 0) return [];
+    // Fetch weather for Vanleer, TN (37181) — default location
+    // Using Open-Meteo free API, no key required
+    const weatherUrl = `https://api.open-meteo.com/v1/forecast?latitude=36.2&longitude=-87.5&daily=precipitation_probability_max,weathercode&timezone=America/Chicago&forecast_days=7`;
+    let weatherDays: { date: string; precipProb: number; weatherCode: number }[] = [];
+    try {
+      const weatherRes = await fetch(weatherUrl);
+      const weatherData = await weatherRes.json() as any;
+      if (weatherData.daily?.time) {
+        weatherDays = weatherData.daily.time.map((date: string, i: number) => ({
+          date,
+          precipProb: weatherData.daily.precipitation_probability_max?.[i] ?? 0,
+          weatherCode: weatherData.daily.weathercode?.[i] ?? 0,
+        }));
+      }
+    } catch (_) {
+      // Weather API unavailable — return jobs without risk flags
+      return upcomingJobs.map(j => ({ ...j, precipProb: null, weatherRisk: false }));
+    }
+    return upcomingJobs.map(j => {
+      const jobDate = j.scheduledDate ? new Date(j.scheduledDate).toISOString().slice(0, 10) : null;
+      const weather = jobDate ? weatherDays.find(w => w.date === jobDate) : null;
+      const precipProb = weather?.precipProb ?? null;
+      const weatherRisk = precipProb !== null && precipProb > 50;
+      return { ...j, precipProb, weatherRisk };
+    });
+  }),
+
+  // ─── Priority 7: Review Request Automation ────────────────────────────────────
+  sendReviewRequest: ownerProcedure
+    .input(z.object({
+      jobId: z.number().optional(),
+      jobberJobId: z.string().optional(),
+      clientPhone: z.string().min(7),
+      clientName: z.string(),
+      jobDescription: z.string().optional(),
+    }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable." });
+      const googleReviewUrl = "https://g.page/r/CcglMAMbtQInEAI/review";
+      const message = `Hey ${input.clientName.split(" ")[0]}, this is Jon with Noland Earthworks. I really appreciate your business${input.jobDescription ? ` on the ${input.jobDescription} job` : ""}. If you have a moment, a Google review would mean a lot — it helps other landowners find us. Here's the link: ${googleReviewUrl}`;
+      let twilioSid: string | undefined;
+      let status = "sent";
+      if (ENV.twilioAccountSid && ENV.twilioAuthToken && ENV.twilioFromNumber) {
+        try {
+          const twilio = await import("twilio");
+          const client = twilio.default(ENV.twilioAccountSid, ENV.twilioAuthToken);
+          const msg = await client.messages.create({
+            body: message,
+            from: ENV.twilioFromNumber,
+            to: input.clientPhone,
+          });
+          twilioSid = msg.sid;
+        } catch (err: any) {
+          status = "failed";
+        }
+      } else {
+        status = "failed";
+      }
+      // Log the review request
+      await db.insert(reviewRequests).values({
+        jobId: input.jobId ?? null,
+        jobberJobId: input.jobberJobId ?? null,
+        clientPhone: input.clientPhone,
+        clientName: input.clientName,
+        jobDescription: input.jobDescription ?? null,
+        twilioSid: twilioSid ?? null,
+        status,
+        sentAt: new Date(),
+      });
+      // If triggered from a local job, stamp reviewRequestSentAt
+      if (input.jobId && status === "sent") {
+        const db2 = await getDb();
+        if (db2) await db2.update(jobs).set({ reviewRequestSentAt: new Date() }).where(eq(jobs.id, input.jobId));
+      }
+      return { status, message };
+    }),
+
+  getReviewRequests: ownerProcedure.query(async () => {
+    const db = await getDb();
+    if (!db) return [];
+    return db.select().from(reviewRequests).orderBy(desc(reviewRequests.sentAt)).limit(50);
+  }),
+
+  // ─── Priority 8: Ad Performance Feedback Loop ─────────────────────────────────
+  // (Ad performance notes are stored on the adSpend table via the existing adSpend router)
+  // This procedure reads ad spend + social post data and generates AI performance insights
+  getAdPerformanceInsight: ownerProcedure.mutation(async ({ ctx }) => {
+    const db = await getDb();
+    if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable." });
+    const spendRows = await db.select().from(adSpend).orderBy(desc(adSpend.spentAt)).limit(50);
+    const postRows = await db.select().from(socialPosts)
+      .where(eq(socialPosts.userId, ctx.user.id))
+      .orderBy(desc(socialPosts.createdAt)).limit(30);
+    if (spendRows.length === 0 && postRows.length === 0) {
+      return { insight: "No ad spend or social post data found. Log some ad spend entries to get performance insights." };
+    }
+    const spendSummary = spendRows.map(s => `${s.platform} — ${s.component}: $${(s.amountCents / 100).toFixed(2)} on ${new Date(s.spentAt).toLocaleDateString()}${s.notes ? ` (${s.notes})` : ""}`).join("\n");
+    const postSummary = postRows.map(p => `${p.platform} post on ${new Date(p.createdAt).toLocaleDateString()}: "${(p.draft ?? "").slice(0, 80)}..." — ${p.published ? "published" : "draft"}`).join("\n");
+    const result = await invokeLLM({
+      messages: [
+        { role: "system", content: "You are analyzing advertising performance data for Jon Noland, owner-operator of Noland Earthworks, LLC — a veteran-owned land clearing company in Middle Tennessee. Based on the ad spend and social post data provided, identify: 1) Which platforms are getting the most spend, 2) Any patterns in content types or timing, 3) One specific recommendation for what to do differently this week. Be direct and practical. No emojis. No filler." },
+        { role: "user", content: `Ad spend log:\n${spendSummary || "(none)"}\n\nRecent social posts:\n${postSummary || "(none)"}\n\nProvide a performance insight.` },
+      ],
+    });
+    const insight = (result.choices?.[0]?.message?.content as string ?? "").trim();
+    return { insight };
+  }),
+
+  // ─── Priority 9: Capacity Alerts and Crew Recommendations ────────────────────
+  getCapacityAlerts: ownerProcedure.query(async ({ ctx }) => {
+    const db = await getDb();
+    if (!db) return { openDays: [], openQuotes: [] };
+    const now = new Date();
+    const in14Days = new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000);
+    // Get scheduled jobs in next 14 days
+    const scheduledJobs = await db.select().from(jobs)
+      .where(and(
+        eq(jobs.userId, ctx.user.id),
+        gte(jobs.scheduledDate, now),
+        lte(jobs.scheduledDate, in14Days),
+        sql`${jobs.status} NOT IN ('completed', 'paid', 'archived')`,
+      ));
+    // Build set of days with jobs
+    const busyDays = new Set(scheduledJobs.map(j => j.scheduledDate ? new Date(j.scheduledDate).toISOString().slice(0, 10) : null).filter(Boolean));
+    // Find open weekdays in next 14 days
+    const openDays: string[] = [];
+    for (let i = 1; i <= 14; i++) {
+      const d = new Date(now.getTime() + i * 24 * 60 * 60 * 1000);
+      const dayOfWeek = d.getDay();
+      if (dayOfWeek === 0 || dayOfWeek === 6) continue; // skip weekends
+      const dateStr = d.toISOString().slice(0, 10);
+      if (!busyDays.has(dateStr)) openDays.push(dateStr);
+    }
+    // Get open quotes (new/contacted leads with estimated value)
+    const openQuotes = await db.select().from(opsLeads)
+      .where(and(
+        eq(opsLeads.userId, ctx.user.id),
+        sql`${opsLeads.stage} IN ('new', 'contacted', 'estimate_sent')`,
+      ))
+      .orderBy(desc(opsLeads.createdAt))
+      .limit(10);
+    return { openDays: openDays.slice(0, 5), openQuotes };
+  }),
+
+  getCrewRecommendation: ownerProcedure
+    .input(z.object({
+      jobType: z.string(),
+      acres: z.number().optional(),
+      terrain: z.string().optional(),
+      notes: z.string().optional(),
+    }))
+    .mutation(async ({ input }) => {
+      const result = await invokeLLM({
+        messages: [
+          { role: "system", content: "You are advising Jon Noland, owner-operator of Noland Earthworks, LLC — a veteran-owned land clearing company in Middle Tennessee. Jon runs a tracked forestry mulcher as his primary machine. Based on the job details, recommend: 1) Crew configuration (Solo Tracked Mulcher, Mulcher + Groundsman, etc.), 2) Estimated crew days needed, 3) Any equipment or logistics notes. Be brief and practical. No emojis." },
+          { role: "user", content: `Job type: ${input.jobType}. ${input.acres ? `Acreage: ${input.acres} acres.` : ""} ${input.terrain ? `Terrain: ${input.terrain}.` : ""} ${input.notes ? `Notes: ${input.notes}.` : ""}` },
+        ],
+      });
+      const recommendation = (result.choices?.[0]?.message?.content as string ?? "").trim();
+      return { recommendation };
+    }),
+
+  // ─── Priority 10: Labor Cost vs. Estimate Calibration ─────────────────────────
+  getLaborCalibration: ownerProcedure.query(async ({ ctx }) => {
+    const db = await getDb();
+    if (!db) return { jobs: [], summary: null };
+    // Get completed jobs with both crewDays estimate and actual time entries
+    const completedJobs = await db.select().from(jobs)
+      .where(and(
+        eq(jobs.userId, ctx.user.id),
+        sql`${jobs.status} IN ('completed', 'paid')`,
+        sql`${jobs.crewDays} IS NOT NULL`,
+      ))
+      .orderBy(desc(jobs.completedDate))
+      .limit(20);
+    // For each job, sum actual time entries from crew members
+    const result = await Promise.all(completedJobs.map(async (job) => {
+      const entries = await db.select().from(timeEntries)
+        .where(and(
+          eq(timeEntries.crewId, job.crewId ?? 0),
+          gte(timeEntries.clockIn, job.scheduledDate ?? new Date(0)),
+          lte(timeEntries.clockIn, job.completedDate ?? new Date()),
+        ));
+      const actualMinutes = entries.reduce((s, e) => s + (e.durationMinutes ?? 0), 0);
+      const actualDays = actualMinutes > 0 ? (actualMinutes / 60 / 9).toFixed(2) : null;
+      const estimatedDays = job.crewDays ? parseFloat(job.crewDays) : null;
+      const variancePct = estimatedDays && actualDays
+        ? Math.round(((parseFloat(actualDays) - estimatedDays) / estimatedDays) * 100)
+        : null;
+      return {
+        id: job.id,
+        title: job.title,
+        client: job.client,
+        jobType: job.jobType,
+        acres: job.acres,
+        estimatedDays,
+        actualDays: actualDays ? parseFloat(actualDays) : null,
+        variancePct,
+        completedDate: job.completedDate,
+      };
+    }));
+    // AI calibration scan
+    const jobsWithVariance = result.filter(j => j.variancePct !== null && Math.abs(j.variancePct) > 10);
+    return { jobs: result, jobsWithVariance };
+  }),
+
+  runLaborCalibrationScan: ownerProcedure.mutation(async ({ ctx }) => {
+    const db = await getDb();
+    if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable." });
+    const completedJobs = await db.select().from(jobs)
+      .where(and(
+        eq(jobs.userId, ctx.user.id),
+        sql`${jobs.status} IN ('completed', 'paid')`,
+        sql`${jobs.crewDays} IS NOT NULL`,
+      ))
+      .orderBy(desc(jobs.completedDate))
+      .limit(20);
+    if (completedJobs.length === 0) {
+      return { recommendation: "No completed jobs with crew day estimates found. Add crew day estimates to jobs to enable calibration." };
+    }
+    const jobSummary = completedJobs.map(j => `${j.jobType} — ${j.acres ?? "?"} acres — estimated ${j.crewDays} crew days`).join("\n");
+    const result = await invokeLLM({
+      messages: [
+        { role: "system", content: "You are reviewing job history for Jon Noland, owner-operator of Noland Earthworks, LLC — a veteran-owned land clearing company in Middle Tennessee. Based on the job types and estimated crew days, identify any patterns that suggest the estimates are consistently off, and provide one specific calibration recommendation. Be direct and practical. No emojis." },
+        { role: "user", content: `Completed jobs with crew day estimates:\n${jobSummary}\n\nProvide a calibration recommendation.` },
+      ],
+    });
+    const recommendation = (result.choices?.[0]?.message?.content as string ?? "").trim();
+    return { recommendation };
+  }),
 });

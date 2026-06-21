@@ -10,7 +10,7 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer, Legend
 } from "recharts";
-import { TrendingUp, BarChart2, Sparkles, Loader2, Copy, CheckCircle2 } from "lucide-react";
+import { TrendingUp, BarChart2, Sparkles, Loader2, Copy, CheckCircle2, RefreshCw, DollarSign, AlertCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
@@ -106,14 +106,100 @@ export default function Reports() {
 
   const isEmpty = jobs.length === 0 && leads.length === 0;
 
+  // Priority 8: Ad Performance Feedback Loop
+  const [adPerformanceInsight, setAdPerformanceInsight] = useState<string | null>(null);
+  const adPerformanceMutation = trpc.ops.getAdPerformanceInsight.useMutation({
+    onSuccess: (data: any) => setAdPerformanceInsight(data.insight),
+    onError: (err: any) => toast.error(err.message || "Analysis failed."),
+  });
+
+  // Priority 1: Jobber Revenue Sync
+  const { data: jobberRevData, refetch: refetchJobberRev } = trpc.ops.getJobberRevenue.useQuery();
+  const syncJobberRevMutation = trpc.ops.syncJobberRevenue.useMutation({
+    onSuccess: (data) => {
+      toast.success(`Synced ${data.synced} invoice${data.synced !== 1 ? "s" : ""} from Jobber.`);
+      refetchJobberRev();
+    },
+    onError: (err) => toast.error(err.message || "Sync failed."),
+  });
+  const jobberRows = jobberRevData?.rows ?? [];
+  const jobberTotal = jobberRows.reduce((s, r) => s + Number(r.total ?? 0), 0);
+  const jobberPaid = jobberRows.filter(r => r.invoiceStatus === "paid").reduce((s, r) => s + Number(r.total ?? 0), 0);
+  const jobberOutstanding = jobberRows.filter(r => r.invoiceStatus !== "paid").reduce((s, r) => s + Number(r.balance ?? 0), 0);
+
   return (
     <DashboardLayout title="Reports" subtitle="Financial analytics — Middle & West Tennessee">
       <div className="p-6 space-y-5">
 
+        {/* Priority 1: Jobber Revenue Sync */}
+        <div className="ops-card p-5">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h3 className="text-sm font-semibold text-foreground" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>Jobber Revenue</h3>
+              <p className="text-xs text-muted-foreground">
+                {jobberRevData?.lastSyncedAt
+                  ? `Last synced ${new Date(jobberRevData.lastSyncedAt).toLocaleString()}`
+                  : "Not yet synced — click Sync to pull Jobber invoices"}
+              </p>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-7 text-xs gap-1.5"
+              onClick={() => syncJobberRevMutation.mutate()}
+              disabled={syncJobberRevMutation.isPending}
+            >
+              {syncJobberRevMutation.isPending ? (
+                <><Loader2 className="w-3 h-3 animate-spin" />Syncing...</>
+              ) : (
+                <><RefreshCw className="w-3 h-3" />Sync Jobber</>)}
+            </Button>
+          </div>
+          {jobberRows.length > 0 ? (
+            <>
+              <div className="grid grid-cols-3 gap-3 mb-4">
+                {[
+                  { label: "Total Invoiced", value: `$${jobberTotal.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`, icon: <DollarSign className="w-3 h-3 text-primary" /> },
+                  { label: "Collected", value: `$${jobberPaid.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`, icon: <CheckCircle2 className="w-3 h-3 text-green-400" /> },
+                  { label: "Outstanding", value: `$${jobberOutstanding.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`, icon: <AlertCircle className="w-3 h-3 text-amber-400" /> },
+                ].map((stat, i) => (
+                  <div key={i} className="rounded-md bg-secondary/30 p-3">
+                    <div className="flex items-center justify-between mb-1">{stat.icon}<span className="text-[10px] text-muted-foreground">{stat.label}</span></div>
+                    <div className="text-lg font-bold text-foreground ops-metric-value">{stat.value}</div>
+                  </div>
+                ))}
+              </div>
+              <div className="space-y-1 max-h-48 overflow-y-auto">
+                {jobberRows.slice(0, 20).map((row) => (
+                  <div key={row.id} className="flex items-center justify-between text-xs py-1.5 border-b border-border/40 last:border-0">
+                    <div className="flex-1 min-w-0">
+                      <span className="font-medium text-foreground truncate block">{row.clientName ?? "—"}</span>
+                      <span className="text-muted-foreground truncate block">{row.subject ?? `Invoice #${row.invoiceNumber ?? row.id}`}</span>
+                    </div>
+                    <div className="text-right ml-3 shrink-0">
+                      <div className="font-semibold text-foreground">${Number(row.total).toLocaleString(undefined, { minimumFractionDigits: 0 })}</div>
+                      <div className={cn("text-[10px]",
+                        row.invoiceStatus === "paid" ? "text-green-400" :
+                        row.invoiceStatus === "awaiting_payment" ? "text-amber-400" :
+                        "text-muted-foreground"
+                      )}>{row.invoiceStatus ?? "—"}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </>
+          ) : (
+            <div className="text-center py-6">
+              <DollarSign className="w-8 h-8 text-muted-foreground/20 mx-auto mb-2" />
+              <p className="text-xs text-muted-foreground">No Jobber invoices synced yet. Click Sync Jobber to pull your invoice data.</p>
+            </div>
+          )}
+        </div>
+
         {/* Local data notice */}
         <div className="flex items-center gap-2 px-3 py-2 rounded-md bg-amber-500/10 border border-amber-500/20 text-amber-400 text-xs">
           <span className="font-semibold">Note:</span>
-          <span>These metrics reflect jobs and leads entered directly in this dashboard. For complete revenue data, refer to Jobber.</span>
+          <span>Charts below reflect jobs and leads entered directly in this dashboard. Jobber revenue is shown above.</span>
         </div>
 
         {/* Summary KPIs */}
@@ -318,6 +404,36 @@ export default function Reports() {
             </div>
           ) : (
             <p className="text-xs text-muted-foreground italic">AI reads your ad spend, leads, and conversion data to diagnose what is working and what to change this week.</p>
+          )}
+        </div>
+
+        {/* Priority 8: Ad Performance Feedback Loop */}
+        <div className="ops-card p-5">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <BarChart2 className="w-4 h-4 text-primary" />
+              <h3 className="text-sm font-semibold text-foreground" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>Ad Performance Feedback</h3>
+            </div>
+            <Button
+              variant="outline" size="sm" className="h-7 text-xs gap-1.5"
+              onClick={() => adPerformanceMutation.mutate()}
+              disabled={adPerformanceMutation.isPending}
+            >
+              {adPerformanceMutation.isPending
+                ? <><Loader2 className="w-3 h-3 animate-spin" />Analyzing...</>
+                : <><Sparkles className="w-3 h-3 text-orange-400" />Analyze Ads</>}
+            </Button>
+          </div>
+          {adPerformanceInsight ? (
+            <div className="space-y-2">
+              <p className="text-xs text-foreground leading-relaxed">{adPerformanceInsight}</p>
+              <Button variant="ghost" size="sm" className="h-6 text-xs gap-1 text-muted-foreground hover:text-foreground"
+                onClick={() => { navigator.clipboard.writeText(adPerformanceInsight); toast.success("Copied."); }}>
+                <Copy className="w-3 h-3" /> Copy
+              </Button>
+            </div>
+          ) : (
+            <p className="text-xs text-muted-foreground italic">Reads your ad spend log and social post history to identify patterns and give one specific recommendation for this week.</p>
           )}
         </div>
 

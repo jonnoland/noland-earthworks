@@ -15,9 +15,11 @@ import {
   Users, Clock, ArrowUpRight, MapPin, Plus, ChevronRight, Inbox,
   CalendarDays, CalendarCheck, TrendingUp, Gauge, Activity, ExternalLink, Flag,
   FileText, Receipt, AlertCircle, CheckCircle2, PhoneCall, Star, MessageSquare,
+  Sparkles, Loader2, RefreshCw,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 import { Link } from "wouter";
 
 // ─── Jobber status → local status mapping ────────────────────────────────────
@@ -230,6 +232,14 @@ interface NormalizedJob {
 
 export default function Dashboard() {
   const prevLeadCount = useRef<number | null>(null);
+
+  // ─── Priority 3: AI Morning Brief ────────────────────────────────────────
+  const [morningBrief, setMorningBrief] = useState<string | null>(null);
+  const [briefDismissed, setBriefDismissed] = useState(false);
+  const generateBriefMutation = trpc.ops.getMorningBrief.useMutation({
+    onSuccess: (data: any) => { setMorningBrief(data.content); setBriefDismissed(false); },
+    onError: (err: any) => toast.error(err.message || "Failed to generate morning brief."),
+  });
 
   // ─── Jobber data — primary source of truth ───────────────────────────────
   const { data: jobberJobsRaw, isError: jobberJobsError } = trpc.jobber.jobs.useQuery(
@@ -532,6 +542,49 @@ export default function Dashboard() {
             </div>
           </div>
         </div>
+
+        {/* Priority 3: AI Morning Brief */}
+        {!briefDismissed && (
+          <div className="ops-card p-4">
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-2">
+                <Sparkles className="w-4 h-4 text-primary" />
+                <h3 className="text-sm font-semibold text-foreground" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>Morning Brief</h3>
+                {morningBrief && <span className="text-[10px] px-1.5 py-0.5 rounded bg-green-400/10 text-green-400 border border-green-400/20 font-semibold">Ready</span>}
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-7 text-xs gap-1.5"
+                  onClick={() => generateBriefMutation.mutate({ forceRegenerate: !!morningBrief })}
+                  disabled={generateBriefMutation.isPending}
+                >
+                  {generateBriefMutation.isPending ? (
+                    <><Loader2 className="w-3 h-3 animate-spin" />Generating...</>
+                  ) : morningBrief ? (
+                    <><RefreshCw className="w-3 h-3" />Refresh</>
+                  ) : (
+                    <><Sparkles className="w-3 h-3 text-orange-400" />Generate Brief</>
+                  )}
+                </Button>
+                {morningBrief && (
+                  <button
+                    className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+                    onClick={() => setBriefDismissed(true)}
+                  >
+                    Dismiss
+                  </button>
+                )}
+              </div>
+            </div>
+            {morningBrief ? (
+              <p className="text-xs text-foreground leading-relaxed">{morningBrief}</p>
+            ) : (
+              <p className="text-xs text-muted-foreground italic">Click Generate Brief for a plain-English summary of today's schedule, stale leads, and open pipeline.</p>
+            )}
+          </div>
+        )}
 
         {/* Jobber token expiry alert banner */}
         {(jobberTokenStatus === "expired" || jobberTokenStatus === "expiring_soon") && (

@@ -16,7 +16,7 @@ import {
   FileText, History, Send,
   List, Map as MapIcon,
   Sparkles, Copy,
-  Archive, CheckCheck, RotateCcw, CreditCard,
+  Archive, CheckCheck, RotateCcw, CreditCard, Star,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -1118,6 +1118,19 @@ export default function Jobs() {
     setPendingAction(null);
   }
 
+  // Priority 7: Review Request Automation
+  const [reviewTarget, setReviewTarget] = useState<{ id: number; title: string; client: string } | null>(null);
+  const [reviewPhone, setReviewPhone] = useState("");
+  const sendReviewRequest = trpc.ops.sendReviewRequest.useMutation({
+    onSuccess: () => {
+      toast.success("Review request sent.");
+      utils.ops.jobs.list.invalidate();
+      setReviewTarget(null);
+      setReviewPhone("");
+    },
+    onError: (e: any) => toast.error(e.message || "Failed to send review request."),
+  });
+
   // ── Derived data ──
   const notConnected =
     !isLoading &&
@@ -1538,6 +1551,16 @@ export default function Jobs() {
                                 Mark Paid
                               </button>
                               <button
+                                onClick={() => {
+                                  setReviewTarget({ id: job.id, title: job.title || "Untitled Job", client: job.client || "" });
+                                }}
+                                title="Send Google Review Request"
+                                className="flex items-center gap-1 px-2 py-1 rounded text-[10px] font-semibold bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 transition-colors"
+                              >
+                                <Star className="w-3 h-3" />
+                                Review
+                              </button>
+                              <button
                                 onClick={() => setPendingAction({ type: "archive", id: job.id, title: job.title || "Untitled Job" })}
                                 title="Archive without marking paid"
                                 className="flex items-center gap-1 px-2 py-1 rounded text-[10px] font-semibold bg-secondary/50 text-muted-foreground hover:bg-secondary transition-colors"
@@ -1800,6 +1823,51 @@ export default function Jobs() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+      {/* Priority 7: Review Request Dialog */}
+      {reviewTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div className="bg-card border border-border rounded-xl shadow-2xl w-full max-w-sm p-6 space-y-4">
+            <div className="flex items-center gap-2">
+              <Star className="w-4 h-4 text-amber-400" />
+              <h3 className="text-sm font-semibold text-foreground">Send Review Request</h3>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Send a Google review request SMS to the client for <span className="font-semibold text-foreground">{reviewTarget.title}</span>.
+            </p>
+            <div className="space-y-2">
+              <label className="text-xs font-medium text-muted-foreground">Client Phone Number</label>
+              <Input
+                type="tel"
+                placeholder="(615) 555-0100"
+                value={reviewPhone}
+                onChange={e => setReviewPhone(e.target.value)}
+                className="h-8 text-xs"
+              />
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={() => { setReviewTarget(null); setReviewPhone(""); }}
+                className="flex-1 py-2 rounded-md text-xs font-semibold text-muted-foreground bg-secondary/50 hover:bg-secondary transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                disabled={!reviewPhone.trim() || sendReviewRequest.isPending}
+                onClick={() => sendReviewRequest.mutate({
+                  jobId: reviewTarget.id,
+                  clientPhone: reviewPhone.trim(),
+                  clientName: reviewTarget.client || "there",
+                  jobDescription: reviewTarget.title,
+                })}
+                className="flex-1 py-2 rounded-md text-xs font-semibold text-white bg-amber-500 hover:bg-amber-500/90 transition-all disabled:opacity-50 flex items-center justify-center gap-1.5"
+              >
+                {sendReviewRequest.isPending && <Loader2 className="w-3 h-3 animate-spin" />}
+                Send Request
+              </button>
+            </div>
           </div>
         </div>
       )}

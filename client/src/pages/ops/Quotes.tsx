@@ -1075,6 +1075,21 @@ function AIAssistPanel({ onClose, clientName, onApply }: AIAssistPanelProps) {
   const [uploadingIdx, setUploadingIdx] = useState<number | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Priority 5: Satellite Property Analysis
+  const [satAddress, setSatAddress] = useState("");
+  const [satResult, setSatResult] = useState<string | null>(null);
+  const [satMapUrl, setSatMapUrl] = useState<string | null>(null);
+  const satelliteAnalyze = trpc.ops.analyzePropertySatellite.useMutation({
+    onSuccess: (data: any) => {
+      setSatResult(data.analysis);
+      setSatMapUrl(data.mapUrl ?? null);
+      if (data.analysis) {
+        setContext(prev => prev ? `${prev}\n\nSatellite analysis: ${data.analysis}` : `Satellite analysis: ${data.analysis}`);
+      }
+    },
+    onError: (err: any) => toast.error(err.message || "Satellite analysis failed."),
+  });
+
   const aiAssist = trpc.ops.quotes.aiAssistQuote.useMutation({
     onError: (err) => toast.error(err.message || "AI assist failed. Try again."),
   });
@@ -1170,6 +1185,38 @@ function AIAssistPanel({ onClose, clientName, onApply }: AIAssistPanelProps) {
               className="w-full rounded-lg border border-border bg-secondary/20 px-3 py-2.5 text-xs text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:ring-1 focus:ring-primary resize-none leading-relaxed"
             />
             <p className="text-[11px] text-muted-foreground">{context.length}/2000 characters</p>
+          </div>
+
+          {/* Priority 5: Satellite Property Analysis */}
+          <div className="space-y-2">
+            <label className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
+              Satellite Analysis <span className="text-muted-foreground font-normal normal-case tracking-normal">(optional — enter property address)</span>
+            </label>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                placeholder="123 Farm Rd, Hickman County, TN"
+                value={satAddress}
+                onChange={e => setSatAddress(e.target.value)}
+                className="flex-1 rounded-lg border border-border bg-secondary/20 px-3 py-2 text-xs text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:ring-1 focus:ring-primary"
+              />
+              <button
+                onClick={() => { if (satAddress.trim()) satelliteAnalyze.mutate({ address: satAddress.trim() }); }}
+                disabled={!satAddress.trim() || satelliteAnalyze.isPending}
+                className="px-3 py-2 rounded-lg text-xs font-semibold bg-primary/10 text-primary hover:bg-primary/20 transition-colors disabled:opacity-50 flex items-center gap-1.5 shrink-0"
+              >
+                {satelliteAnalyze.isPending ? <><Loader2 className="w-3 h-3 animate-spin" />Analyzing</> : <><Globe className="w-3 h-3" />Analyze</>}
+              </button>
+            </div>
+            {satMapUrl && (
+              <img src={satMapUrl} alt="Satellite view" className="w-full rounded-lg border border-border object-cover max-h-40" />
+            )}
+            {satResult && (
+              <div className="rounded-lg bg-secondary/20 border border-border p-3">
+                <p className="text-xs text-foreground leading-relaxed">{satResult}</p>
+                <p className="text-[11px] text-primary mt-1">Analysis appended to job description above.</p>
+              </div>
+            )}
           </div>
 
           {/* Photo upload */}
@@ -3052,6 +3099,19 @@ export default function OpsQuotes() {
     trpc.jobber.quotes.useQuery({ first: 100 }, { retry: false });
   const { data: followUps } = trpc.jobber.quoteFollowUpList.useQuery();
 
+  // Priority 4: Stale Quote Follow-Up
+  const [showStalePanel, setShowStalePanel] = useState(false);
+  const [staleFollowUpDrafts, setStaleFollowUpDrafts] = useState<Record<number, string>>({});
+  const [draftingFor, setDraftingFor] = useState<number | null>(null);
+  const { data: staleQuotes = [] } = trpc.ops.getStaleQuotes.useQuery();
+  const draftFollowUpMutation = trpc.ops.draftQuoteFollowUp.useMutation({
+    onSuccess: (data: any, variables: any) => {
+      setStaleFollowUpDrafts(prev => ({ ...prev, [variables.quoteId]: data.draft }));
+      setDraftingFor(null);
+    },
+    onError: (err: any) => { toast.error(err.message || "Draft failed."); setDraftingFor(null); },
+  });
+
   const [, navigate] = useLocation();
 
   const deleteQuote = trpc.jobber.deleteQuote.useMutation({
@@ -3105,6 +3165,71 @@ export default function OpsQuotes() {
   return (
     <DashboardLayout title="Quotes" subtitle="Live from Jobber CRM">
       <div className="space-y-5 pb-10">
+
+        {/* Priority 4: Stale Quote Follow-Up Panel */}
+        {staleQuotes.length > 0 && (
+          <div className="ops-card p-4 border-amber-500/30">
+            <button
+              className="w-full flex items-center justify-between"
+              onClick={() => setShowStalePanel(p => !p)}
+            >
+              <div className="flex items-center gap-2">
+                <Clock className="w-4 h-4 text-amber-400" />
+                <span className="text-sm font-semibold text-foreground" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>Quotes Needing Follow-Up</span>
+                <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-400/10 text-amber-400 border border-amber-400/20 font-semibold">{staleQuotes.length}</span>
+              </div>
+              {showStalePanel ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
+            </button>
+            {showStalePanel && (
+              <div className="mt-3 space-y-3">
+                {staleQuotes.map((q: any) => {
+                  const daysSince = Math.floor((Date.now() - new Date(q.createdAt).getTime()) / (1000 * 60 * 60 * 24));
+                  const draft = staleFollowUpDrafts[q.id];
+                  return (
+                    <div key={q.id} className="rounded-md bg-secondary/20 border border-border p-3 space-y-2">
+                      <div className="flex items-start justify-between gap-2">
+                        <div>
+                          <p className="text-xs font-semibold text-foreground">{q.clientName ?? q.title ?? `Quote #${q.id}`}</p>
+                          <p className="text-[11px] text-muted-foreground">{q.service ?? "Land clearing / forestry mulching"} &middot; {daysSince} days since sent</p>
+                        </div>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-7 text-xs gap-1 shrink-0"
+                          disabled={draftingFor === q.id}
+                          onClick={() => {
+                            setDraftingFor(q.id);
+                            draftFollowUpMutation.mutate({
+                              quoteId: q.id,
+                              clientName: q.clientName ?? "there",
+                              service: q.service ?? "land clearing",
+                              acreage: q.acreage ?? undefined,
+                              daysSinceSent: daysSince,
+                            });
+                          }}
+                        >
+                          {draftingFor === q.id ? <><Loader2 className="w-3 h-3 animate-spin" />Drafting...</> : <><Sparkles className="w-3 h-3 text-orange-400" />Draft SMS</>}
+                        </Button>
+                      </div>
+                      {draft && (
+                        <div className="rounded bg-primary/5 border border-primary/20 p-2">
+                          <p className="text-xs text-foreground leading-relaxed">{draft}</p>
+                          <button
+                            className="text-[11px] text-primary hover:text-primary/80 mt-1.5 transition-colors"
+                            onClick={() => { navigator.clipboard.writeText(draft); toast.success("Copied to clipboard."); }}
+                          >
+                            Copy
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div className="flex items-center gap-2">

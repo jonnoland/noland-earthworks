@@ -1896,3 +1896,61 @@
 ## AI Assist Apply-to-Form + Job Confirmation Dialogs (Jun 20, 2026)
 - [x] AI Assist panel: parse structured AI response and add "Apply to Quote" button that populates form fields (title, description, scope, line items, price)
 - [x] Job status actions: add confirmation AlertDialog before markComplete, markPaid, archiveJob, unarchiveJob mutations fire
+
+## AI Audit Priority Features (Jun 21, 2026)
+
+### Priority 1: Jobber Revenue Sync in Reports
+- [ ] Pull Jobber invoices/revenue via GraphQL and store in jobber_revenue_cache table (invoiceId, total, status, issuedDate, clientName, jobTitle, syncedAt)
+- [ ] Add syncJobberRevenue tRPC mutation and auto-sync on Reports page load
+- [ ] Update Reports AI Insight/Forecast procedures to use combined local + Jobber revenue data
+- [ ] Add "Last synced" timestamp and manual Sync button to Reports page
+
+### Priority 2: Auto-create Lead from Chat Session
+- [ ] When chat session captures name + phone, auto-insert lead record (source="chat", chatSessionId FK)
+- [ ] Prevent duplicate leads from same session (check existing lead by phone + chatSessionId)
+- [ ] Show toast notification on chat-sessions page when lead is auto-created
+
+### Priority 3: AI Morning Brief on Dashboard
+- [ ] Add morning_briefs table (date, content, generatedAt) and push migration
+- [ ] Add morningBrief tRPC procedure: reads stale leads, open quotes age, today's jobs, win rate; calls LLM for 4-6 sentence plain-English briefing; caches once per day
+- [ ] Add MorningBrief card to /ops dashboard with Regenerate button
+
+### Priority 4: Quote Follow-Up Automation
+- [ ] Add getStaleQuotes procedure: quotes with status "awaiting_response" and age > 7 days
+- [ ] Add draftQuoteFollowUp procedure: calls LLM to draft follow-up SMS in Jon's voice (client name, job type, quote amount)
+- [ ] Add StaleQuoteAlert banner to /ops/quotes listing stale quotes with "Draft Follow-Up" button
+- [ ] Follow-up draft modal with editable text, Send via SMS, and Copy actions
+
+### Priority 5: Satellite Property Analysis for Quotes
+- [ ] Add analyzePropertySatellite tRPC procedure: fetch Google Maps Static satellite image for address, send to LLM vision to estimate vegetation density + terrain type + access challenges
+- [ ] Wire "Analyze Property" button on inbound quote requests to auto-fill cost estimator fields
+- [ ] Show satellite analysis result card below map on quote detail view
+
+### Priority 6: Weather-Aware Scheduling
+- [ ] Integrate Open-Meteo API (no key needed) — fetch 7-day precipitation forecast by lat/lng
+- [ ] Add getJobWeatherRisk procedure: for each scheduled job next 7 days, flag jobs with >50% rain probability
+- [ ] Add WeatherRiskBanner to /ops/schedule showing flagged jobs with rain probability
+- [ ] Show weather risk badge on individual job cards in schedule calendar
+
+### Priority 7: Review Request Automation Post-Job
+- [ ] Add review_requests table (jobId, clientPhone, sentAt, status) and push migration
+- [ ] Add sendReviewRequest tRPC mutation: sends personalized Twilio SMS referencing specific job; logs in review_requests
+- [ ] Add "Send Review Request" button on completed jobs in /ops/jobs
+- [ ] Auto-suggest review request in job completion confirmation dialog
+
+### Priority 8: Ad Performance Feedback Loop
+- [ ] Add performance notes fields to ad history (thumbs up/down, spend, leads)
+- [ ] Add getAdPerformanceInsight procedure: reads ad history + performance notes, calls LLM to identify best-performing angles
+- [ ] Add Performance Insights panel to /ops/ads with AI analysis and quick-log UI on ad history entries
+
+### Priority 9: AI Crew Assignment and Capacity Alerts on Schedule
+- [ ] Add getCapacityAlerts procedure: finds open calendar days in next 14 days + open quotes — surfaces as capacity gap alerts
+- [ ] Add getCrewRecommendation procedure: given job type + acreage + terrain, returns recommended crew config with reasoning
+- [ ] Add CapacityAlerts panel to /ops/schedule showing open days with matching open quotes
+- [ ] Show crew recommendation suggestion when adding a new job to schedule
+
+### Priority 10: Labor Cost vs. Estimate Calibration in Timesheets
+- [ ] Add laborVsEstimate tRPC procedure: compare actual timesheet hours vs. cost estimator projected crew days for completed jobs; return variance by job type
+- [ ] Add LaborCalibrationPanel to /ops/timesheets showing estimated vs. actual hours with variance %
+- [ ] Wire AI Scan button to run variance analysis and flag job types where actuals exceed estimates by >20%
+- [ ] Surface calibration recommendations in AI Scan output
