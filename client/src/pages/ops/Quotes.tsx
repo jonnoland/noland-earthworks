@@ -1467,11 +1467,17 @@ function CreateQuoteModal({ onClose, onCreated, prefill }: CreateQuoteModalProps
   const subtotal = lineItems.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0);
   const [selectedCounty, setSelectedCounty] = useState("");
   const [taxableLineItems, setTaxableLineItems] = useState<Set<number>>(new Set());
+  const [discountType, setDiscountType] = useState<"percent" | "flat">("percent");
+  const [discountValue, setDiscountValue] = useState<number>(0);
+  const discountAmount = discountType === "percent"
+    ? subtotal * Math.min(100, Math.max(0, discountValue)) / 100
+    : Math.min(subtotal, Math.max(0, discountValue));
+  const discountedSubtotal = subtotal - discountAmount;
   const taxRate = selectedCounty ? (TN_COUNTY_TAX_RATES[selectedCounty]?.totalTax ?? 0) : 0;
   const taxableSubtotal = lineItems.reduce((sum, item, idx) =>
-    taxableLineItems.has(idx) ? sum + item.quantity * item.unitPrice : sum, 0);
-  const taxAmount = taxableSubtotal * taxRate;
-  const grandTotal = subtotal + taxAmount;
+    taxableLineItems.has(idx) ? sum + item.quantity * item.unitPrice : sum, 0) - discountAmount;
+  const taxAmount = Math.max(0, taxableSubtotal) * taxRate;
+  const grandTotal = discountedSubtotal + taxAmount;
 
   function addServiceAsLineItem(svc: ServiceItem) {
     setLineItems((prev) => [
@@ -1850,12 +1856,64 @@ function CreateQuoteModal({ onClose, onCreated, prefill }: CreateQuoteModalProps
                   </div>
                 )}
 
+                {/* Discount */}
+                <div className="flex items-center gap-2 pt-1 border-t border-border/50">
+                  <span className="text-xs text-muted-foreground whitespace-nowrap shrink-0">Discount</span>
+                  <div className="flex items-center rounded-md border border-border overflow-hidden">
+                    <button
+                      type="button"
+                      onClick={() => setDiscountType("percent")}
+                      className={`px-2 py-1 text-[11px] font-medium transition-colors ${
+                        discountType === "percent" ? "bg-primary text-primary-foreground" : "bg-secondary/20 text-muted-foreground hover:bg-secondary/40"
+                      }`}
+                    >%</button>
+                    <button
+                      type="button"
+                      onClick={() => setDiscountType("flat")}
+                      className={`px-2 py-1 text-[11px] font-medium transition-colors ${
+                        discountType === "flat" ? "bg-primary text-primary-foreground" : "bg-secondary/20 text-muted-foreground hover:bg-secondary/40"
+                      }`}
+                    >$</button>
+                  </div>
+                  <div className="relative flex-1">
+                    {discountType === "flat" && (
+                      <span className="absolute left-2 top-1/2 -translate-y-1/2 text-[11px] text-muted-foreground pointer-events-none">$</span>
+                    )}
+                    <input
+                      type="number"
+                      min="0"
+                      max={discountType === "percent" ? 100 : undefined}
+                      step="0.01"
+                      value={discountValue || ""}
+                      placeholder="0"
+                      onChange={(e) => setDiscountValue(Math.max(0, parseFloat(e.target.value) || 0))}
+                      className={`w-full h-7 rounded-md border border-border bg-secondary/20 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary ${
+                        discountType === "flat" ? "pl-5 pr-2" : "px-2"
+                      }`}
+                    />
+                    {discountType === "percent" && (
+                      <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[11px] text-muted-foreground pointer-events-none">%</span>
+                    )}
+                  </div>
+                  {discountAmount > 0 && (
+                    <span className="text-xs text-green-400 whitespace-nowrap shrink-0">−{formatMoney(discountAmount)}</span>
+                  )}
+                </div>
+
                 {/* Totals */}
                 <div className="space-y-1 pt-1 border-t border-border/50">
                   <div className="flex items-center justify-between">
                     <span className="text-xs text-muted-foreground">{lineItems.length} line item{lineItems.length !== 1 ? "s" : ""} — Subtotal</span>
                     <span className="text-xs font-medium text-foreground">{formatMoney(subtotal)}</span>
                   </div>
+                  {discountAmount > 0 && (
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs text-muted-foreground">
+                        Discount ({discountType === "percent" ? `${discountValue}%` : "flat"})
+                      </span>
+                      <span className="text-xs text-green-400">−{formatMoney(discountAmount)}</span>
+                    </div>
+                  )}
                   {selectedCounty && taxAmount > 0 && (
                     <div className="flex items-center justify-between">
                       <span className="text-xs text-muted-foreground">
