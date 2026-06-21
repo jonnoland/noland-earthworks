@@ -1297,6 +1297,7 @@ function GoogleBusinessProfileCard() {
 function IntegrationsTab() {
   const { data: status, isLoading, refetch } = trpc.ops.settings.getIntegrationStatus.useQuery();
   const { data: jobberAuth } = trpc.jobber.getAuthUrl.useQuery();
+  const { data: googleStatus } = trpc.ops.google.connectionStatus.useQuery();
   const jobberDisconnect = trpc.jobber.disconnect.useMutation({
     onSuccess: () => { toast.success("Jobber disconnected"); refetch(); },
     onError: () => toast.error("Failed to disconnect"),
@@ -1609,7 +1610,7 @@ function IntegrationsTab() {
                   <p className="text-[11px] text-muted-foreground">Pull reviews from Google Business Profile</p>
                 </div>
               </div>
-              {(trpc.ops.google.connectionStatus.useQuery().data?.connected) ? (
+              {googleStatus?.connected ? (
                 <span className="inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full bg-green-500/15 text-green-400 border border-green-500/30">
                   <CheckCircle2 className="w-3 h-3" />Connected
                 </span>
