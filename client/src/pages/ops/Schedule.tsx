@@ -207,6 +207,56 @@ function DraggableJobberBanner({ job }: { job: JobberJob }) {
   );
 }
 
+// ─── Draggable open quote (Capacity Alerts panel) ────────────────────────────
+function DraggableQuote({ quote }: { quote: { id: number; name: string; stage: string; jobType?: string | null } }) {
+  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
+    id: `quote-${quote.id}`,
+  });
+  return (
+    <div
+      ref={setNodeRef}
+      {...listeners}
+      {...attributes}
+      className={cn(
+        "flex items-center justify-between text-xs px-2 py-1.5 rounded border cursor-grab active:cursor-grabbing select-none",
+        "bg-sky-400/5 border-sky-400/20 hover:bg-sky-400/10 transition-colors",
+        isDragging && "opacity-40"
+      )}
+    >
+      <div className="flex items-center gap-1.5 min-w-0">
+        <GripVertical className="w-3 h-3 opacity-40 shrink-0" />
+        <span className="font-medium text-foreground truncate">{quote.name}</span>
+        {quote.jobType && <span className="text-[10px] text-muted-foreground truncate">({quote.jobType})</span>}
+      </div>
+      <span className={cn(
+        "text-[10px] px-1.5 py-0.5 rounded border font-medium shrink-0 ml-2",
+        quote.stage === "estimate_sent" ? "bg-primary/10 text-primary border-primary/20" :
+        quote.stage === "contacted" ? "bg-sky-400/10 text-sky-400 border-sky-400/20" :
+        "bg-blue-400/10 text-blue-400 border-blue-400/20"
+      )}>{quote.stage.replace("_", " ")}</span>
+    </div>
+  );
+}
+
+// ─── Droppable open day badge (Capacity Alerts panel) ─────────────────────────
+function OpenDayDropTarget({ date }: { date: string }) {
+  const { setNodeRef, isOver } = useDroppable({ id: `open-day-${date}` });
+  return (
+    <span
+      ref={setNodeRef}
+      className={cn(
+        "text-[11px] px-2 py-1 rounded border cursor-pointer transition-colors select-none",
+        isOver
+          ? "bg-green-400/30 border-green-400/60 text-green-300 ring-1 ring-green-400/40"
+          : "bg-green-400/10 border-green-400/20 text-green-400"
+      )}
+    >
+      {new Date(date + "T12:00:00").toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })}
+      {isOver && <span className="ml-1 opacity-70">drop here</span>}
+    </span>
+  );
+}
+
 // ─── Droppable crew+day cell ──────────────────────────────────────────────────
 function DroppableCrewDayCell({
   crewName, dayKey, children, isToday,
@@ -430,6 +480,7 @@ export default function Schedule() {
   const [draggingJobId, setDraggingJobId] = useState<string | null>(null);
   const [draggingEntryId, setDraggingEntryId] = useState<number | null>(null);
   const [draggingLocalJobId, setDraggingLocalJobId] = useState<number | null>(null);
+  const [draggingQuoteId, setDraggingQuoteId] = useState<number | null>(null);
 
   // Priority 6: Weather-Aware Scheduling
   const { data: weatherJobs = [] } = trpc.ops.getJobWeatherRisk.useQuery();
@@ -607,6 +658,15 @@ export default function Schedule() {
     onError: (e) => toast.error(e.message),
   });
 
+  const scheduleQuote = trpc.ops.scheduleQuoteFromCapacity.useMutation({
+    onSuccess: () => {
+      utils.ops.schedule.list.invalidate();
+      utils.ops.getCapacityAlerts.invalidate();
+      toast.success("Lead scheduled and added to calendar.");
+    },
+    onError: (e) => toast.error(e.message || "Failed to schedule lead."),
+  });
+
   const closeModal = () => { setShowModal(false); setForm(emptyForm); };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -627,6 +687,7 @@ export default function Schedule() {
     if (id.startsWith("jobber-")) setDraggingJobId(id.replace("jobber-", ""));
     else if (id.startsWith("entry-")) setDraggingEntryId(Number(id.replace("entry-", "")));
     else if (id.startsWith("localjob-")) setDraggingLocalJobId(Number(id.replace("localjob-", "")));
+    else if (id.startsWith("quote-")) setDraggingQuoteId(Number(id.replace("quote-", "")));
   };
 
   const handleDragEnd = (event: DragEndEvent) => {
@@ -636,6 +697,7 @@ export default function Schedule() {
     setDraggingJobId(null);
     setDraggingEntryId(null);
     setDraggingLocalJobId(null);
+    setDraggingQuoteId(null);
 
     if (!overId) return;
 
@@ -691,6 +753,18 @@ export default function Schedule() {
       const newDay = dayOnlyMatch[1];
       updateLocalJob.mutate({ id: jobId, scheduledDate: new Date(newDay + "T12:00:00") });
       toast.success(`Job rescheduled to ${new Date(newDay).toLocaleDateString("en-US", { month: "short", day: "numeric" })}`);
+      return;
+    }
+
+    // Quote from Capacity Alerts dropped onto an open day badge
+    if (activeId.startsWith("quote-")) {
+      const leadId = Number(activeId.replace("quote-", ""));
+      // Accept drop on: open-day-{date} targets in the capacity panel
+      const openDayMatch = overId.match(/^open-day-(.+)$/);
+      const calDayMatch = crewDayMatch || dayOnlyMatch;
+      const targetDay = openDayMatch ? openDayMatch[1] : (crewDayMatch ? crewDayMatch[2] : (dayOnlyMatch ? dayOnlyMatch[1] : null));
+      if (!targetDay) return;
+      scheduleQuote.mutate({ leadId, date: targetDay });
     }
   };
 
@@ -1038,29 +1112,20 @@ export default function Schedule() {
             </div>
             {capacityData.openDays.length > 0 && (
               <div className="mb-3">
-                <p className="text-xs text-muted-foreground mb-1.5">Unscheduled weekdays in the next 14 days:</p>
+                <p className="text-xs text-muted-foreground mb-1.5">Drop a lead onto an open day to schedule it:</p>
                 <div className="flex flex-wrap gap-1.5">
                   {capacityData.openDays.map((d: string) => (
-                    <span key={d} className="text-[11px] px-2 py-0.5 rounded bg-green-400/10 text-green-400 border border-green-400/20">
-                      {new Date(d + "T12:00:00").toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })}
-                    </span>
+                    <OpenDayDropTarget key={d} date={d} />
                   ))}
                 </div>
               </div>
             )}
             {capacityData.openQuotes.length > 0 && (
               <div>
-                <p className="text-xs text-muted-foreground mb-1.5">Open leads that could fill this capacity:</p>
+                <p className="text-xs text-muted-foreground mb-1.5">Drag a lead to an open day above:</p>
                 <div className="space-y-1">
-                  {capacityData.openQuotes.slice(0, 4).map((q: any) => (
-                    <div key={q.id} className="flex items-center justify-between text-xs">
-                      <span className="font-medium text-foreground">{q.name}</span>
-                      <span className={cn("text-[10px] px-1.5 py-0.5 rounded border font-medium",
-                        q.stage === "estimate_sent" ? "bg-primary/10 text-primary border-primary/20" :
-                        q.stage === "contacted" ? "bg-sky-400/10 text-sky-400 border-sky-400/20" :
-                        "bg-blue-400/10 text-blue-400 border-blue-400/20"
-                      )}>{q.stage}</span>
-                    </div>
+                  {capacityData.openQuotes.slice(0, 6).map((q: any) => (
+                    <DraggableQuote key={q.id} quote={q} />
                   ))}
                 </div>
               </div>

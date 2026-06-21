@@ -1954,3 +1954,7 @@
 - [ ] Add LaborCalibrationPanel to /ops/timesheets showing estimated vs. actual hours with variance %
 - [ ] Wire AI Scan button to run variance analysis and flag job types where actuals exceed estimates by >20%
 - [ ] Surface calibration recommendations in AI Scan output
+
+## Capacity Alerts + Review Request Enhancements (Jun 21, 2026)
+- [ ] Capacity Alerts panel: drag open quotes from the open quotes list and drop them onto an available scheduling window to create a schedule entry
+- [ ] Review Request Automation: add configuration section in Settings (Integrations tab) to edit and save the default SMS message template (with {clientName}, {jobDescription}, {reviewLink} placeholders)

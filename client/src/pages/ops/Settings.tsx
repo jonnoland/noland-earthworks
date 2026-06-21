@@ -1319,6 +1319,21 @@ function IntegrationsTab() {
   const apiKey = "whk_ne-api-key-placeholder";
   const copy = (val: string) => { navigator.clipboard.writeText(val); toast.success("Copied to clipboard"); };
 
+  // Review Request SMS Template
+  const { data: reviewTemplateData, refetch: refetchTemplate } = trpc.ops.getReviewTemplate.useQuery();
+  const [reviewTemplate, setReviewTemplate] = useState("");
+  const [templateDirty, setTemplateDirty] = useState(false);
+  const saveTemplate = trpc.ops.saveReviewTemplate.useMutation({
+    onSuccess: () => { toast.success("SMS template saved."); setTemplateDirty(false); refetchTemplate(); },
+    onError: (e) => toast.error(e.message || "Failed to save template."),
+  });
+  // Sync fetched template into local state once loaded
+  const [templateLoaded, setTemplateLoaded] = useState(false);
+  if (reviewTemplateData && !templateLoaded) {
+    setReviewTemplate(reviewTemplateData.template);
+    setTemplateLoaded(true);
+  }
+
   if (isLoading) return <div className="flex items-center justify-center py-16"><Loader2 className="w-5 h-5 animate-spin text-muted-foreground" /></div>;
 
   const ConnectedBadge = ({ ok, label }: { ok: boolean; label?: string }) => ok ? (
@@ -1431,6 +1446,37 @@ function IntegrationsTab() {
             <p className="text-xs text-muted-foreground">TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, and TWILIO_FROM_NUMBER are not set. Add them via Settings &gt; Secrets to enable SMS.</p>
           </div>
         )}
+      </SettingsSection>
+
+      {/* ── Review Request SMS Template ── */}
+      <SettingsSection
+        title="Review Request SMS Template"
+        description="Customize the message sent to clients after job completion. Supports {clientName}, {jobDescription}, and {reviewLink} tokens."
+      >
+        <div className="space-y-3">
+          <div className="text-[11px] text-muted-foreground bg-secondary/40 border border-border rounded-md px-3 py-2 space-y-0.5">
+            <p><span className="font-mono text-primary">{'{clientName}'}</span> — replaced with the client's first name</p>
+            <p><span className="font-mono text-primary">{'{jobDescription}'}</span> — replaced with " on the [job] job" if provided, or blank</p>
+            <p><span className="font-mono text-primary">{'{reviewLink}'}</span> — replaced with your Google review link</p>
+          </div>
+          <textarea
+            className="w-full text-xs bg-secondary/40 border border-border rounded-md px-3 py-2 text-foreground placeholder:text-muted-foreground resize-none focus:outline-none focus:ring-1 focus:ring-primary/50"
+            rows={4}
+            value={reviewTemplate}
+            onChange={(e) => { setReviewTemplate(e.target.value); setTemplateDirty(true); }}
+            placeholder="Loading template..."
+          />
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] text-muted-foreground">{reviewTemplate.length}/1000 characters</span>
+            <button
+              onClick={() => saveTemplate.mutate({ template: reviewTemplate })}
+              disabled={!templateDirty || saveTemplate.isPending || reviewTemplate.length < 10}
+              className="text-xs px-3 py-1.5 rounded-md bg-primary text-primary-foreground font-medium disabled:opacity-40 hover:bg-primary/90 transition-colors"
+            >
+              {saveTemplate.isPending ? "Saving..." : "Save Template"}
+            </button>
+          </div>
+        </div>
       </SettingsSection>
 
       {/* ── Resend ── */}

@@ -22,9 +22,10 @@ import {
   getOpsLeadById, insertOwnerTask,
   getAllUsers, setUserRole,
   getPricingBenchmarks,
+  getAgentConfig, upsertAgentConfig,
 } from "./db";
 import { Resend } from "resend";
-import { jobs, opsLeads, quoteSubmissions, crews, crewMembers, conversations, messages, reviews, timeEntries, distanceQuotes, businessSettings, automationSettings, serviceCatalog, messageTemplates, reminderRules, leadNotes, visitBlackoutDates, recurringBlackoutDays, aiPricingSettings, quoteDrafts, jobberTokens, socialPosts, adSpend, equipment, serviceLogs, serviceIntervals, fieldDiagnostics, ownerTasks, jobNotes, jobberRevenueCache, morningBriefs, reviewRequests, chatSessions, scheduleEntries } from "../drizzle/schema";
+import { jobs, opsLeads, quoteSubmissions, crews, crewMembers, conversations, messages, reviews, timeEntries, distanceQuotes, businessSettings, automationSettings, serviceCatalog, messageTemplates, reminderRules, leadNotes, visitBlackoutDates, recurringBlackoutDays, aiPricingSettings, quoteDrafts, jobberTokens, socialPosts, adSpend, equipment, serviceLogs, serviceIntervals, fieldDiagnostics, ownerTasks, jobNotes, jobberRevenueCache, morningBriefs, reviewRequests, chatSessions, scheduleEntries, agentConfig } from "../drizzle/schema";
 
 import { and, desc, eq, gte, inArray, lt, lte, like, or, sql } from "drizzle-orm";
 
@@ -4122,7 +4123,16 @@ Always be specific to nolandearthworks.com. Never give generic advice — tie ev
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable." });
       const googleReviewUrl = "https://g.page/r/CcglMAMbtQInEAI/review";
-      const message = `Hey ${input.clientName.split(" ")[0]}, this is Jon with Noland Earthworks. I really appreciate your business${input.jobDescription ? ` on the ${input.jobDescription} job` : ""}. If you have a moment, a Google review would mean a lot — it helps other landowners find us. Here's the link: ${googleReviewUrl}`;
+      // Read saved SMS template from agentConfig, fall back to default
+      const DEFAULT_REVIEW_TEMPLATE = "Hey {clientName}, this is Jon with Noland Earthworks. I really appreciate your business{jobDescription}. If you have a moment, a Google review would mean a lot — it helps other landowners find us. Here's the link: {reviewLink}";
+      const savedConfig = await getAgentConfig("review_request");
+      const template = savedConfig?.smsTemplate ?? DEFAULT_REVIEW_TEMPLATE;
+      const firstName = input.clientName.split(" ")[0];
+      const jobDesc = input.jobDescription ? ` on the ${input.jobDescription} job` : "";
+      const message = template
+        .replace("{clientName}", firstName)
+        .replace("{jobDescription}", jobDesc)
+        .replace("{reviewLink}", googleReviewUrl);
       let twilioSid: string | undefined;
       let status = "sent";
       if (ENV.twilioAccountSid && ENV.twilioAuthToken && ENV.twilioFromNumber) {
@@ -4165,6 +4175,45 @@ Always be specific to nolandearthworks.com. Never give generic advice — tie ev
     if (!db) return [];
     return db.select().from(reviewRequests).orderBy(desc(reviewRequests.sentAt)).limit(50);
   }),
+
+  getReviewTemplate: ownerProcedure.query(async () => {
+    const DEFAULT_REVIEW_TEMPLATE = "Hey {clientName}, this is Jon with Noland Earthworks. I really appreciate your business{jobDescription}. If you have a moment, a Google review would mean a lot — it helps other landowners find us. Here's the link: {reviewLink}";
+    const saved = await getAgentConfig("review_request");
+    return { template: saved?.smsTemplate ?? DEFAULT_REVIEW_TEMPLATE };
+  }),
+
+  saveReviewTemplate: ownerProcedure
+    .input(z.object({ template: z.string().min(10).max(1000) }))
+    .mutation(async ({ input }) => {
+      await upsertAgentConfig("review_request", undefined, input.template);
+      return { success: true };
+    }),
+
+  scheduleQuoteFromCapacity: ownerProcedure
+    .input(z.object({
+      leadId: z.number(),
+      date: z.string(), // ISO date string YYYY-MM-DD
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable." });
+      // Fetch the lead to get its name/description
+      const lead = await getOpsLeadById(input.leadId);
+      if (!lead) throw new TRPCError({ code: "NOT_FOUND", message: "Lead not found." });
+      // Create a schedule entry for the dropped date
+      await createScheduleEntry({
+        userId: ctx.user.id,
+        title: lead.name ?? "Capacity Fill",
+        crewName: "Jon Noland",
+        date: new Date(input.date + "T12:00:00"),
+        startHour: 8,
+        endHour: 17,
+        notes: `Auto-scheduled from open lead: ${lead.name}${lead.jobType ? ` (${lead.jobType})` : ""}`,
+      });
+      // Update lead stage to "estimate_sent" to indicate it's been moved to schedule
+      await updateOpsLead(input.leadId, ctx.user.id, { stage: "estimate_sent" });
+      return { success: true };
+    }),
 
   // ─── Priority 8: Ad Performance Feedback Loop ─────────────────────────────────
   // (Ad performance notes are stored on the adSpend table via the existing adSpend router)
