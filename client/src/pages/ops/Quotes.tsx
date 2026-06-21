@@ -62,6 +62,18 @@ import {
   Image,
 } from "lucide-react";
 import { toast } from "sonner";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -1472,6 +1484,7 @@ function CreateQuoteModal({ onClose, onCreated, prefill }: CreateQuoteModalProps
   const [discountType, setDiscountType] = useState<"percent" | "flat">("percent");
   const [discountValue, setDiscountValue] = useState<number>(0);
   const [discountReason, setDiscountReason] = useState("");
+  const [discountReasonOpen, setDiscountReasonOpen] = useState(false);
   // Per-item discount helper
   function itemLineTotal(item: LineItem): number {
     const base = item.quantity * item.unitPrice;
@@ -1963,16 +1976,72 @@ function CreateQuoteModal({ onClose, onCreated, prefill }: CreateQuoteModalProps
                       ))}
                     </div>
                   )}
-                  {/* Reason / promo code */}
+                  {/* Reason / promo code — combobox */}
                   <div className="flex items-center gap-2">
                     <span className="text-[10px] text-muted-foreground whitespace-nowrap shrink-0">Reason / Code</span>
-                    <input
-                      type="text"
-                      value={discountReason}
-                      placeholder="e.g. Repeat customer, VETERAN10, referral..."
-                      onChange={(e) => setDiscountReason(e.target.value)}
-                      className="flex-1 h-7 rounded-md border border-border bg-secondary/20 px-2 text-xs text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-primary"
-                    />
+                    <Popover open={discountReasonOpen} onOpenChange={setDiscountReasonOpen}>
+                      <PopoverTrigger asChild>
+                        <div className="relative flex-1">
+                          <input
+                            type="text"
+                            value={discountReason}
+                            placeholder="e.g. Repeat customer, VETERAN10..."
+                            onChange={(e) => {
+                              setDiscountReason(e.target.value);
+                              setDiscountReasonOpen(true);
+                            }}
+                            onFocus={() => setDiscountReasonOpen(true)}
+                            className="w-full h-7 rounded-md border border-border bg-secondary/20 px-2 pr-6 text-xs text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-primary"
+                          />
+                          <ChevronDown className="absolute right-1.5 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground pointer-events-none" />
+                        </div>
+                      </PopoverTrigger>
+                      <PopoverContent
+                        className="p-0 w-64"
+                        align="start"
+                        onOpenAutoFocus={(e) => e.preventDefault()}
+                      >
+                        <Command>
+                          <CommandList>
+                            <CommandEmpty className="py-2 text-xs text-muted-foreground text-center">
+                              Press Enter to use "{discountReason || "custom text"}"
+                            </CommandEmpty>
+                            <CommandGroup heading="Common promo codes">
+                              {[
+                                "Repeat customer",
+                                "VETERAN10",
+                                "Military discount",
+                                "Senior discount",
+                                "Referral",
+                                "Neighbor referral",
+                                "First-time customer",
+                                "Seasonal promotion",
+                                "Bundle discount",
+                                "SPRING25",
+                                "FALL25",
+                              ]
+                                .filter((s) =>
+                                  !discountReason ||
+                                  s.toLowerCase().includes(discountReason.toLowerCase())
+                                )
+                                .map((suggestion) => (
+                                  <CommandItem
+                                    key={suggestion}
+                                    value={suggestion}
+                                    onSelect={() => {
+                                      setDiscountReason(suggestion);
+                                      setDiscountReasonOpen(false);
+                                    }}
+                                    className="text-xs cursor-pointer"
+                                  >
+                                    {suggestion}
+                                  </CommandItem>
+                                ))}
+                            </CommandGroup>
+                          </CommandList>
+                        </Command>
+                      </PopoverContent>
+                    </Popover>
                   </div>
                 </div>
 
