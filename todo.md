@@ -1892,3 +1892,7 @@
 - [x] On /ops/jobs: once complete, show "Mark Paid" and "Archive" actions
 - [x] Add "Archived" tab/section to /ops/jobs that shows archived jobs (not in active list)
 - [x] Archived jobs show unarchive option
+
+## AI Assist Apply-to-Form + Job Confirmation Dialogs (Jun 20, 2026)
+- [x] AI Assist panel: parse structured AI response and add "Apply to Quote" button that populates form fields (title, description, scope, line items, price)
+- [x] Job status actions: add confirmation AlertDialog before markComplete, markPaid, archiveJob, unarchiveJob mutations fire

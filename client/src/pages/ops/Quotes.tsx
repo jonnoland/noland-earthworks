@@ -1112,8 +1112,12 @@ function AIAssistPanel({ onClose, clientName, onApply }: AIAssistPanelProps) {
 
   async function handleRun() {
     if (context.trim().length < 10) { toast.error("Describe the job first."); return; }
-    const result = await aiAssist.mutateAsync({ context: context.trim(), imageUrls, clientName });
-    // Map result to CreateQuoteModal fields
+    await aiAssist.mutateAsync({ context: context.trim(), imageUrls, clientName });
+    // Result is stored in aiAssist.data — user reviews it, then clicks "Apply to Quote"
+  }
+
+  function handleApply() {
+    if (!aiAssist.data) return;
     const serviceLabel: Record<string, string> = {
       "forestry-mulching": "Forestry Mulching",
       "land-clearing": "Land Clearing",
@@ -1121,12 +1125,12 @@ function AIAssistPanel({ onClose, clientName, onApply }: AIAssistPanelProps) {
       "right-of-way-clearing": "Right-of-Way Clearing",
       "vegetation-management": "Vegetation Management",
     };
-    const svcName = serviceLabel[result.inferredService] ?? result.inferredService;
-    const acresLabel = result.inferredAcres > 0 ? ` — ${result.inferredAcres} Acres` : "";
+    const svcName = serviceLabel[aiAssist.data.inferredService] ?? aiAssist.data.inferredService;
+    const acresLabel = aiAssist.data.inferredAcres > 0 ? ` — ${aiAssist.data.inferredAcres} Acres` : "";
     onApply({
       title: `${svcName}${acresLabel}`,
-      message: result.quoteMessage,
-      lineItems: result.lineItems,
+      message: aiAssist.data.quoteMessage,
+      lineItems: aiAssist.data.lineItems,
     });
   }
 
@@ -1263,13 +1267,7 @@ function AIAssistPanel({ onClose, clientName, onApply }: AIAssistPanelProps) {
               </Button>
             ) : null}
             {aiAssist.data ? (
-              <Button size="sm" onClick={() => onApply({ title: `${({
-                "forestry-mulching": "Forestry Mulching",
-                "land-clearing": "Land Clearing",
-                "brush-hogging": "Brush Hogging",
-                "right-of-way-clearing": "Right-of-Way Clearing",
-                "vegetation-management": "Vegetation Management",
-              } as Record<string, string>)[aiAssist.data!.inferredService] ?? aiAssist.data!.inferredService}${aiAssist.data!.inferredAcres > 0 ? ` — ${aiAssist.data!.inferredAcres} Acres` : ""}`, message: aiAssist.data!.quoteMessage, lineItems: aiAssist.data!.lineItems })} className="gap-1.5">
+              <Button size="sm" onClick={handleApply} className="gap-1.5">
                 <CheckCircle className="w-3.5 h-3.5" />
                 Apply to Quote
               </Button>

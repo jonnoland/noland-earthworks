@@ -25,6 +25,16 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { MapView } from "@/components/Map";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -1048,6 +1058,13 @@ export default function Jobs() {
   // ── Local jobs query + mutations ──
   const { data: localJobsRaw = [] } = trpc.ops.jobs.list.useQuery();
   const [showArchived, setShowArchived] = useState(false);
+  type PendingAction =
+    | { type: "complete"; id: number; title: string }
+    | { type: "paid"; id: number; title: string }
+    | { type: "archive"; id: number; title: string }
+    | { type: "unarchive"; id: number; title: string }
+    | null;
+  const [pendingAction, setPendingAction] = useState<PendingAction>(null);
 
   const markComplete = trpc.ops.jobs.markComplete.useMutation({
     onSuccess: () => { toast.success("Job marked complete."); utils.ops.jobs.list.invalidate(); },
@@ -1091,6 +1108,15 @@ export default function Jobs() {
     localJobs.filter(j => j.status === 'paid' || j.status === 'archived'),
     [localJobs]
   );
+
+  function confirmAction() {
+    if (!pendingAction) return;
+    if (pendingAction.type === "complete") markComplete.mutate({ id: pendingAction.id });
+    else if (pendingAction.type === "paid") markPaid.mutate({ id: pendingAction.id });
+    else if (pendingAction.type === "archive") archiveJob.mutate({ id: pendingAction.id });
+    else if (pendingAction.type === "unarchive") unarchiveJob.mutate({ id: pendingAction.id });
+    setPendingAction(null);
+  }
 
   // ── Derived data ──
   const notConnected =
@@ -1137,6 +1163,43 @@ export default function Jobs() {
 
   return (
     <DashboardLayout title="Jobs" subtitle="Live from Jobber">
+      {/* ── Job Status Confirmation Dialog ── */}
+      <AlertDialog open={!!pendingAction} onOpenChange={(open) => { if (!open) setPendingAction(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {pendingAction?.type === "complete" && "Mark Job Complete?"}
+              {pendingAction?.type === "paid" && "Mark Job Paid?"}
+              {pendingAction?.type === "archive" && "Archive Job?"}
+              {pendingAction?.type === "unarchive" && "Restore Job?"}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {pendingAction?.type === "complete" && (
+                <>Mark <span className="font-medium text-foreground">{pendingAction.title}</span> as complete? It will move to the Completed — Awaiting Payment section.</>
+              )}
+              {pendingAction?.type === "paid" && (
+                <>Mark <span className="font-medium text-foreground">{pendingAction.title}</span> as paid? It will be archived. This action cannot be undone automatically.</>
+              )}
+              {pendingAction?.type === "archive" && (
+                <>Archive <span className="font-medium text-foreground">{pendingAction.title}</span>? It will be hidden from active lists but can be restored at any time.</>
+              )}
+              {pendingAction?.type === "unarchive" && (
+                <>Restore <span className="font-medium text-foreground">{pendingAction.title}</span> to active? It will reappear in the Completed — Awaiting Payment section.</>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmAction}>
+              {pendingAction?.type === "complete" && "Mark Complete"}
+              {pendingAction?.type === "paid" && "Mark Paid"}
+              {pendingAction?.type === "archive" && "Archive"}
+              {pendingAction?.type === "unarchive" && "Restore"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       <div className="space-y-5 pb-10">
         {/* Stats row */}
         {!isLoading && !notConnected && (
@@ -1401,19 +1464,17 @@ export default function Jobs() {
                           <td className="px-4 py-3">
                             <div className="flex items-center justify-end gap-1.5">
                               <button
-                                onClick={() => markComplete.mutate({ id: job.id })}
-                                disabled={markComplete.isPending}
+                                onClick={() => setPendingAction({ type: "complete", id: job.id, title: job.title || "Untitled Job" })}
                                 title="Mark Complete"
-                                className="flex items-center gap-1 px-2 py-1 rounded text-[10px] font-semibold bg-green-500/10 text-green-400 hover:bg-green-500/20 transition-colors disabled:opacity-50"
+                                className="flex items-center gap-1 px-2 py-1 rounded text-[10px] font-semibold bg-green-500/10 text-green-400 hover:bg-green-500/20 transition-colors"
                               >
                                 <CheckCircle2 className="w-3 h-3" />
                                 Complete
                               </button>
                               <button
-                                onClick={() => archiveJob.mutate({ id: job.id })}
-                                disabled={archiveJob.isPending}
+                                onClick={() => setPendingAction({ type: "archive", id: job.id, title: job.title || "Untitled Job" })}
                                 title="Archive"
-                                className="flex items-center gap-1 px-2 py-1 rounded text-[10px] font-semibold bg-secondary/50 text-muted-foreground hover:bg-secondary transition-colors disabled:opacity-50"
+                                className="flex items-center gap-1 px-2 py-1 rounded text-[10px] font-semibold bg-secondary/50 text-muted-foreground hover:bg-secondary transition-colors"
                               >
                                 <Archive className="w-3 h-3" />
                                 Archive
@@ -1469,19 +1530,17 @@ export default function Jobs() {
                           <td className="px-4 py-3">
                             <div className="flex items-center justify-end gap-1.5">
                               <button
-                                onClick={() => markPaid.mutate({ id: job.id })}
-                                disabled={markPaid.isPending}
+                                onClick={() => setPendingAction({ type: "paid", id: job.id, title: job.title || "Untitled Job" })}
                                 title="Mark Paid & Archive"
-                                className="flex items-center gap-1 px-2 py-1 rounded text-[10px] font-semibold bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 transition-colors disabled:opacity-50"
+                                className="flex items-center gap-1 px-2 py-1 rounded text-[10px] font-semibold bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 transition-colors"
                               >
                                 <CreditCard className="w-3 h-3" />
                                 Mark Paid
                               </button>
                               <button
-                                onClick={() => archiveJob.mutate({ id: job.id })}
-                                disabled={archiveJob.isPending}
+                                onClick={() => setPendingAction({ type: "archive", id: job.id, title: job.title || "Untitled Job" })}
                                 title="Archive without marking paid"
-                                className="flex items-center gap-1 px-2 py-1 rounded text-[10px] font-semibold bg-secondary/50 text-muted-foreground hover:bg-secondary transition-colors disabled:opacity-50"
+                                className="flex items-center gap-1 px-2 py-1 rounded text-[10px] font-semibold bg-secondary/50 text-muted-foreground hover:bg-secondary transition-colors"
                               >
                                 <Archive className="w-3 h-3" />
                                 Archive
@@ -1555,10 +1614,9 @@ export default function Jobs() {
                           <td className="px-4 py-3">
                             <div className="flex items-center justify-end gap-1.5">
                               <button
-                                onClick={() => unarchiveJob.mutate({ id: job.id })}
-                                disabled={unarchiveJob.isPending}
+                                onClick={() => setPendingAction({ type: "unarchive", id: job.id, title: job.title || "Untitled Job" })}
                                 title="Restore to active"
-                                className="flex items-center gap-1 px-2 py-1 rounded text-[10px] font-semibold bg-secondary/50 text-muted-foreground hover:bg-secondary transition-colors disabled:opacity-50"
+                                className="flex items-center gap-1 px-2 py-1 rounded text-[10px] font-semibold bg-secondary/50 text-muted-foreground hover:bg-secondary transition-colors"
                               >
                                 <RotateCcw className="w-3 h-3" />
                                 Restore
