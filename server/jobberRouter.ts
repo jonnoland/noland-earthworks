@@ -117,6 +117,13 @@ export const jobberRouter = router({
           }
         }
       `, { first: input.first ?? 50 }) as any;
+      // Normalize jobStatus to uppercase so all UI comparisons work consistently
+      if (data?.jobs?.nodes) {
+        data.jobs.nodes = data.jobs.nodes.map((j: any) => ({
+          ...j,
+          jobStatus: j.jobStatus ? String(j.jobStatus).toUpperCase().replace(/\s+/g, '_') : j.jobStatus,
+        }));
+      }
       return data.jobs;
     }),
 
