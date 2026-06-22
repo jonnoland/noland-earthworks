@@ -74,6 +74,7 @@ import {
   CommandItem,
   CommandList,
 } from "@/components/ui/command";
+import PropertyMapDrawer from "@/components/PropertyMapDrawer";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -1485,6 +1486,9 @@ function CreateQuoteModal({ onClose, onCreated, prefill }: CreateQuoteModalProps
   const [discountValue, setDiscountValue] = useState<number>(0);
   const [discountReason, setDiscountReason] = useState("");
   const [discountReasonOpen, setDiscountReasonOpen] = useState(false);
+  const [showMapDrawer, setShowMapDrawer] = useState(false);
+  const [measuredAcres, setMeasuredAcres] = useState<number | null>(null);
+  const [savedPolygon, setSavedPolygon] = useState<google.maps.LatLngLiteral[] | undefined>(undefined);
   // Per-item discount helper
   function itemLineTotal(item: LineItem): number {
     const base = item.quantity * item.unitPrice;
@@ -1664,7 +1668,7 @@ function CreateQuoteModal({ onClose, onCreated, prefill }: CreateQuoteModalProps
               )}
             </div>
 
-            {/* Title section */}
+                        {/* Title section */}
             <div className="px-5 pt-4 pb-4 border-b border-border space-y-2">
               <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Quote Title <span className="text-destructive">*</span></p>
               <Input
@@ -1674,7 +1678,45 @@ function CreateQuoteModal({ onClose, onCreated, prefill }: CreateQuoteModalProps
                 className="h-8 text-xs bg-card border-border"
               />
             </div>
-
+            {/* Property Map section */}
+            <div className="px-5 pt-4 pb-4 border-b border-border space-y-2">
+              <div className="flex items-center justify-between">
+                <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Property Map</p>
+                <div className="flex items-center gap-2">
+                  {measuredAcres !== null && (
+                    <span className="text-[10px] text-primary font-medium">{measuredAcres.toFixed(2)} acres measured</span>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => setShowMapDrawer((v) => !v)}
+                    className="text-[10px] text-primary hover:underline"
+                  >
+                    {showMapDrawer ? "Hide map" : measuredAcres !== null ? "Edit" : "Measure acreage"}
+                  </button>
+                </div>
+              </div>
+              {showMapDrawer && (
+                <PropertyMapDrawer
+                  initialAddress={selectedClient ? [selectedClient.name, selectedClient.companyName].filter(Boolean).join(" ") + " Tennessee" : undefined}
+                  initialPolygon={savedPolygon}
+                  onApply={(acres, polygon) => {
+                    setMeasuredAcres(acres);
+                    setSavedPolygon(polygon);
+                    // Auto-update title if it doesn't already mention acreage
+                    setTitle((prev) => {
+                      if (!prev) return `Forestry Mulching — ${acres.toFixed(2)} Acres`;
+                      // Replace existing acreage mention if present
+                      const updated = prev.replace(/\d+(\.\d+)?\s*[Aa]cres?/, `${acres.toFixed(2)} Acres`);
+                      if (updated !== prev) return updated;
+                      // Append if no acreage found
+                      return `${prev} — ${acres.toFixed(2)} Acres`;
+                    });
+                    toast.success(`${acres.toFixed(2)} acres applied to quote.`);
+                    setShowMapDrawer(false);
+                  }}
+                />
+              )}
+            </div>
             {/* Message section */}
             <div className="px-5 pt-4 pb-5 flex-1 space-y-2">
               <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Client Message</p>
