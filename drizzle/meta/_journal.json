@@ -456,6 +456,20 @@
       "when": 1782010616225,
       "tag": "0064_amazing_natasha_romanoff",
       "breakpoints": true
+    },
+    {
+      "idx": 65,
+      "version": "5",
+      "when": 1782132873948,
+      "tag": "0065_foamy_victor_mancha",
+      "breakpoints": true
+    },
+    {
+      "idx": 66,
+      "version": "5",
+      "when": 1782133037922,
+      "tag": "0066_colossal_wolf_cub",
+      "breakpoints": true
     }
   ]
 }

@@ -8,8 +8,8 @@ import { protectedProcedure, router } from "./_core/trpc";
 import { ENV } from "./_core/env";
 import { isJobberConnected, jobberGraphQL } from "./jobber";
 import { getDb, getJobNotes, addJobNote, deleteJobNote } from "./db";
-import { jobberTokens, leadSourceTags, quoteFollowUps } from "../drizzle/schema";
-import { sql } from "drizzle-orm";
+import { jobberTokens, leadSourceTags, quoteFollowUps, hiddenClients } from "../drizzle/schema";
+import { sql, eq, and } from "drizzle-orm";
 
 const JOBBER_AUTH_URL = "https://api.getjobber.com/api/oauth/authorize";
 
@@ -318,30 +318,40 @@ export const jobberRouter = router({
 
   // ─── Delete Mutations ───────────────────────────────────────────────────────
 
-  /** Delete (or archive) a client from Jobber */
+  /**
+   * Delete a client locally — adds the Jobber client ID to the hidden_clients table.
+   * The client is NOT touched in Jobber; it is simply filtered out of all dashboard views.
+   * This is a local-only operation and does not require a Jobber connection.
+   */
   deleteClient: protectedProcedure
-    .input(z.object({ id: z.string() }))
-    .mutation(async ({ input }) => {
-      // Guard: do not attempt API call if Jobber is not connected
-      const connected = await isJobberConnected();
-      if (!connected) {
-        throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Jobber is not connected. Please reconnect from the ops dashboard." });
+    .input(z.object({ id: z.string(), clientName: z.string().optional() }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+      // Upsert: if already hidden, this is a no-op
+      const [existing] = await db.select().from(hiddenClients)
+        .where(and(eq(hiddenClients.userId, ctx.user.id), eq(hiddenClients.jobberClientId, input.id)))
+        .limit(1);
+      if (!existing) {
+        await db.insert(hiddenClients).values({
+          userId: ctx.user.id,
+          jobberClientId: input.id,
+          clientName: input.clientName ?? null,
+          hiddenAt: new Date(),
+        });
       }
-      // Jobber does not expose a clientDelete mutation in the public API.
-      // Confirmed via introspection: clientArchive(clientId: EncodedId!) — single top-level arg.
-      const archiveData = await jobberGraphQL(`
-        mutation ArchiveClient($clientId: EncodedId!) {
-          clientArchive(clientId: $clientId) {
-            client { id }
-            userErrors { message path }
-          }
-        }
-      `, { clientId: input.id }) as any;
-      const archiveErrors = archiveData?.clientArchive?.userErrors;
-      if (archiveErrors?.length) {
-        throw new TRPCError({ code: "BAD_REQUEST", message: archiveErrors[0].message });
-      }
-      return { success: true, deletedId: archiveData?.clientArchive?.client?.id ?? input.id };
+      return { success: true, deletedId: input.id };
+    }),
+
+  /** Get the list of locally hidden Jobber client IDs for the current user */
+  getHiddenClientIds: protectedProcedure
+    .query(async ({ ctx }) => {
+      const db = await getDb();
+      if (!db) return [];
+      const rows = await db.select({ jobberClientId: hiddenClients.jobberClientId })
+        .from(hiddenClients)
+        .where(eq(hiddenClients.userId, ctx.user.id));
+      return rows.map(r => r.jobberClientId);
     }),
 
   /** Get full detail for a single Jobber quote */

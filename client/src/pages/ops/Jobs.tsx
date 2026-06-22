@@ -1070,6 +1070,16 @@ export default function Jobs() {
     onSuccess: () => { toast.success("Job marked complete."); utils.ops.jobs.list.invalidate(); },
     onError: (e) => toast.error(e.message),
   });
+  // Track which Jobber job IDs have been marked complete locally (instant UI feedback)
+  const [completedJobberIds, setCompletedJobberIds] = useState<Set<string>>(new Set());
+  const markJobberJobComplete = trpc.ops.jobs.markJobberJobComplete.useMutation({
+    onSuccess: (_data, variables) => {
+      toast.success("Job marked complete. Scoreboard updated.");
+      setCompletedJobberIds((prev) => new Set(prev).add(variables.jobberJobId));
+      utils.ops.jobs.list.invalidate();
+    },
+    onError: (e) => toast.error(e.message),
+  });
   const markPaid = trpc.ops.jobs.markPaid.useMutation({
     onSuccess: () => { toast.success("Job marked paid and moved to archive."); utils.ops.jobs.list.invalidate(); },
     onError: (e) => toast.error(e.message),
@@ -1392,17 +1402,43 @@ export default function Jobs() {
                               {formatMoney(job.total)}
                             </div>
                           </td>
-                          <td className="px-4 py-3 text-right">
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setDeleteTarget(job);
-                              }}
-                              title="Delete job"
-                              className="text-muted-foreground hover:text-red-400 transition-colors"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
+                          <td className="px-4 py-3">
+                            <div className="flex items-center justify-end gap-1.5">
+                              {completedJobberIds.has(job.id) ? (
+                                <span className="flex items-center gap-1 px-2 py-1 rounded text-[10px] font-semibold bg-green-500/10 text-green-400">
+                                  <CheckCircle2 className="w-3 h-3" />
+                                  Completed
+                                </span>
+                              ) : (
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    markJobberJobComplete.mutate({
+                                      jobberJobId: job.id,
+                                      title: job.title ?? undefined,
+                                      client: job.client?.name || job.client?.companyName || undefined,
+                                      totalPrice: job.total != null ? String(job.total) : undefined,
+                                    });
+                                  }}
+                                  disabled={markJobberJobComplete.isPending}
+                                  title="Mark job complete — records on Scoreboard"
+                                  className="flex items-center gap-1 px-2 py-1 rounded text-[10px] font-semibold bg-green-500/10 text-green-400 hover:bg-green-500/20 transition-colors disabled:opacity-50"
+                                >
+                                  <CheckCircle2 className="w-3 h-3" />
+                                  Complete
+                                </button>
+                              )}
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setDeleteTarget(job);
+                                }}
+                                title="Delete job from Jobber"
+                                className="text-muted-foreground hover:text-red-400 transition-colors p-1"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
                           </td>
                         </tr>
                       ))}

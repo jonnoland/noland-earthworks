@@ -125,6 +125,8 @@ export const jobs = mysqlTable("jobs", {
   isHighPriority: boolean("isHighPriority").default(false).notNull(),
   /** FK to crews — the crew assigned to this job (nullable) */
   crewId: int("crewId"),
+  /** Jobber job ID — set when this local record was created by marking a Jobber job complete */
+  jobberJobId: varchar("jobberJobId", { length: 120 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
@@ -1441,3 +1443,20 @@ export const reviewRequests = mysqlTable("review_requests", {
 });
 export type ReviewRequest = typeof reviewRequests.$inferSelect;
 export type InsertReviewRequest = typeof reviewRequests.$inferInsert;
+
+/**
+ * Hidden Clients — local-only list of Jobber client IDs that have been "deleted"
+ * from the ops dashboard. The client is NOT touched in Jobber; it is simply
+ * filtered out of all client list views in this dashboard.
+ */
+export const hiddenClients = mysqlTable("hidden_clients", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  /** Jobber client EncodedId */
+  jobberClientId: varchar("jobberClientId", { length: 120 }).notNull(),
+  /** Display name at time of deletion — for audit trail */
+  clientName: varchar("clientName", { length: 255 }),
+  hiddenAt: timestamp("hiddenAt").defaultNow().notNull(),
+});
+export type HiddenClient = typeof hiddenClients.$inferSelect;
+export type InsertHiddenClient = typeof hiddenClients.$inferInsert;

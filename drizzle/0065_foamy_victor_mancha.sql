@@ -1,0 +1,1 @@
+ALTER TABLE `jobs` ADD `jobberJobId` varchar(120);

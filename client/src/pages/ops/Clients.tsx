@@ -144,7 +144,7 @@ function DeleteModal({
             className="flex-1 py-2 rounded-md text-xs font-semibold text-white bg-red-600 hover:bg-red-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-1.5"
           >
             {isPending && <Loader2 className="w-3 h-3 animate-spin" />}
-            Archive in Jobber
+            Delete from Dashboard
           </button>
         </div>
       </div>
@@ -502,11 +502,20 @@ export default function OpsClients() {
   const [showBulkConfirm, setShowBulkConfirm] = useState(false);
   const [bulkPending, setBulkPending] = useState(false);
   const [detailClient, setDetailClient] = useState<ClientNode | null>(null);
-  const [archivedIds, setArchivedIds] = useState<Set<string>>(new Set());
+  // hiddenIds: persisted in DB via hidden_clients table — survives page refresh
+  const [localHiddenIds, setLocalHiddenIds] = useState<Set<string>>(new Set());
 
   const utils = trpc.useUtils();
   const { data, isLoading, error, refetch, isFetching } =
     trpc.jobber.clients.useQuery({ first: 100 }, { retry: false });
+
+  // Load persisted hidden client IDs from DB on mount
+  const { data: persistedHiddenIds } = trpc.jobber.getHiddenClientIds.useQuery(undefined, { retry: false });
+  const hiddenIds = useMemo(() => {
+    const combined = new Set(localHiddenIds);
+    (persistedHiddenIds ?? []).forEach(id => combined.add(id));
+    return combined;
+  }, [localHiddenIds, persistedHiddenIds]);
 
   // AI #11: Client Churn Risk Detection
   const [churnReport, setChurnReport] = useState<{ summary: string; clients: { name: string; daysInactive: number; reEngagementMessage: string; email: string | null }[] } | null>(null);
@@ -518,14 +527,13 @@ export default function OpsClients() {
 
   const deleteClient = trpc.jobber.deleteClient.useMutation({
     onSuccess: (_, variables) => {
-      toast.success("Client archived in Jobber.");
-      setArchivedIds((prev) => new Set(prev).add(variables.id));
+      toast.success("Client deleted from dashboard.");
+      setLocalHiddenIds((prev) => new Set(prev).add(variables.id));
       setSelected((prev) => { const next = new Set(prev); next.delete(variables.id); return next; });
-      utils.jobber.clients.invalidate();
       setDeleteTarget(null);
     },
     onError: (err) => {
-      toast.error(err.message || "Failed to archive client.");
+      toast.error(err.message || "Failed to delete client.");
       setDeleteTarget(null);
     },
   });
@@ -538,8 +546,8 @@ export default function OpsClients() {
       !data);
 
   const nodes: ClientNode[] = useMemo(
-    () => ((data as any)?.nodes ?? []).filter((c: ClientNode) => !archivedIds.has(c.id)),
-    [data, archivedIds]
+    () => ((data as any)?.nodes ?? []).filter((c: ClientNode) => !hiddenIds.has(c.id)),
+    [data, hiddenIds]
   );
 
   const filtered = useMemo(() => {
@@ -595,7 +603,7 @@ export default function OpsClients() {
       try {
         await deleteClient.mutateAsync({ id });
         successCount++;
-        setArchivedIds((prev) => new Set(prev).add(id));
+        setLocalHiddenIds((prev) => new Set(prev).add(id));
       } catch {
         failCount++;
       }
@@ -603,9 +611,8 @@ export default function OpsClients() {
     setBulkPending(false);
     setShowBulkConfirm(false);
     setSelected(new Set());
-    utils.jobber.clients.invalidate();
-    if (successCount > 0) toast.success(`${successCount} client${successCount > 1 ? "s" : ""} archived in Jobber.`);
-    if (failCount > 0) toast.error(`${failCount} archive${failCount > 1 ? "s" : ""} failed.`);
+    if (successCount > 0) toast.success(`${successCount} client${successCount > 1 ? "s" : ""} deleted from dashboard.`);
+    if (failCount > 0) toast.error(`${failCount} deletion${failCount > 1 ? "s" : ""} failed.`);
   }
 
   return (
@@ -914,22 +921,22 @@ export default function OpsClients() {
       {/* Single delete confirmation modal */}
       {deleteTarget && (
         <DeleteModal
-          title="Archive Client"
+          title="Delete Client"
           description={
             <>
-              Archive{" "}
+              Remove{" "}
               <span className="font-medium text-foreground">{getClientName(deleteTarget)}</span>{" "}
-              in Jobber. They will be removed from your active client list.
+              from this dashboard. This is a local-only action.
             </>
           }
           warning={
             <>
-          <li>Client will be hidden from active Jobber lists</li>
-                  <li>Quotes, jobs, and invoices remain accessible in Jobber</li>
-                  <li>Can be restored from Jobber's archived clients view</li>
+              <li>Client will no longer appear in this dashboard</li>
+              <li>The client record in Jobber is not affected</li>
+              <li>All quotes, jobs, and invoices remain in Jobber</li>
             </>
           }
-          onConfirm={() => deleteClient.mutate({ id: deleteTarget.id })}
+          onConfirm={() => deleteClient.mutate({ id: deleteTarget.id, clientName: getClientName(deleteTarget) })}
           onCancel={() => setDeleteTarget(null)}
           isPending={deleteClient.isPending}
         />
@@ -938,19 +945,19 @@ export default function OpsClients() {
       {/* Bulk delete confirmation modal */}
       {showBulkConfirm && (
         <DeleteModal
-          title={`Archive ${selected.size} Client${selected.size > 1 ? "s" : ""}`}
+          title={`Delete ${selected.size} Client${selected.size > 1 ? "s" : ""}`}
           description={
             <>
-              Archive{" "}
+              Remove{" "}
               <span className="font-medium text-foreground">{selected.size} selected client{selected.size > 1 ? "s" : ""}</span>{" "}
-              in Jobber. They will be removed from your active client list.
+              from this dashboard. This is a local-only action.
             </>
           }
           warning={
             <>
-          <li>Clients will be hidden from active Jobber lists</li>
-                  <li>Quotes, jobs, and invoices remain accessible in Jobber</li>
-                  <li>Can be restored from Jobber's archived clients view</li>
+              <li>Clients will no longer appear in this dashboard</li>
+              <li>Client records in Jobber are not affected</li>
+              <li>All quotes, jobs, and invoices remain in Jobber</li>
             </>
           }
           onConfirm={handleBulkDelete}

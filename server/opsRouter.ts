@@ -262,6 +262,49 @@ const jobsRouter = router({
       return { success: true };
     }),
 
+  /**
+   * Mark a Jobber job as completed locally — upserts a local jobs record with status='completed'.
+   * If a local record already exists for this Jobber job ID, updates it; otherwise creates one.
+   * This feeds the Scoreboard's "Jobs Completed" and "Recent Completed Jobs" metrics.
+   */
+  markJobberJobComplete: ownerProcedure
+    .input(z.object({
+      jobberJobId: z.string(),
+      title: z.string().optional(),
+      client: z.string().optional(),
+      totalPrice: z.string().optional(),
+      jobType: z.enum(["land_clearing", "forestry_mulching", "brush_removal", "stump_grinding", "wildfire_mitigation"]).optional(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+      // Check if a local record already exists for this Jobber job
+      const [existing] = await db.select().from(jobs)
+        .where(and(eq(jobs.userId, ctx.user.id), eq(jobs.jobberJobId, input.jobberJobId)))
+        .limit(1);
+      if (existing) {
+        await db.update(jobs)
+          .set({ status: "completed", completedDate: new Date(), updatedAt: new Date() })
+          .where(eq(jobs.id, existing.id));
+        return { success: true, id: existing.id };
+      }
+      // Create a new local record linked to this Jobber job
+      const priceNum = input.totalPrice ? parseFloat(input.totalPrice.replace(/[^0-9.]/g, "")) : null;
+      const [result] = await db.insert(jobs).values({
+        userId: ctx.user.id,
+        title: input.title || "Jobber Job",
+        client: input.client || "",
+        jobType: input.jobType ?? "land_clearing",
+        status: "completed",
+        totalPrice: priceNum != null && !isNaN(priceNum) ? String(priceNum) : null,
+        completedDate: new Date(),
+        jobberJobId: input.jobberJobId,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
+      return { success: true, id: (result as any).insertId ?? null };
+    }),
+
   /** Mark a job as paid — sets status to 'paid' and stamps paidDate, auto-closes matching lead */
   markPaid: ownerProcedure
     .input(z.object({ id: z.number().int().positive() }))
