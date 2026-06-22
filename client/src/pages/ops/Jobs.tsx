@@ -1104,8 +1104,22 @@ export default function Jobs() {
     acres: string | null;
     completedDate: Date | null;
     paidDate: Date | null;
+    jobberJobId: string | null;
   };
   const localJobs = localJobsRaw as LocalJob[];
+  // Seed completedJobberIds from DB on load so the Completed badge persists across page navigation
+  useEffect(() => {
+    const persistedIds = localJobs
+      .filter(j => j.jobberJobId && ['completed', 'paid', 'archived'].includes(j.status ?? ''))
+      .map(j => j.jobberJobId as string);
+    if (persistedIds.length > 0) {
+      setCompletedJobberIds(prev => {
+        const next = new Set(prev);
+        persistedIds.forEach(id => next.add(id));
+        return next;
+      });
+    }
+  }, [localJobsRaw]); // eslint-disable-line react-hooks/exhaustive-deps
   const activeLocalJobs = useMemo(() =>
     localJobs.filter(j => !j.status || !['completed','paid','archived'].includes(j.status)),
     [localJobs]
