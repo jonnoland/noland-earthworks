@@ -75,6 +75,13 @@ import {
   CommandList,
 } from "@/components/ui/command";
 import PropertyMapDrawer from "@/components/PropertyMapDrawer";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -1085,12 +1092,71 @@ type AIAssistPanelProps = {
   }) => void;
 };
 
+// ─── AI Assist field option lists ───────────────────────────────────────────
+const TN_COUNTIES_AI = [
+  "Bedford","Benton","Bledsoe","Blount","Bradley","Campbell","Cannon","Carroll",
+  "Carter","Cheatham","Chester","Claiborne","Clay","Cocke","Coffee","Crockett",
+  "Cumberland","Davidson","Decatur","DeKalb","Dickson","Dyer","Fayette","Fentress",
+  "Franklin","Gibson","Giles","Grainger","Greene","Grundy","Hamblen","Hamilton",
+  "Hancock","Hardeman","Hardin","Hawkins","Haywood","Henderson","Henry","Hickman",
+  "Houston","Humphreys","Jackson","Jefferson","Johnson","Knox","Lake","Lauderdale",
+  "Lawrence","Lewis","Lincoln","Loudon","McMinn","McNairy","Macon","Madison",
+  "Marion","Marshall","Maury","Meigs","Monroe","Montgomery","Moore","Morgan",
+  "Obion","Overton","Perry","Pickett","Polk","Putnam","Rhea","Roane","Robertson",
+  "Rutherford","Scott","Sequatchie","Sevier","Shelby","Smith","Stewart","Sullivan",
+  "Sumner","Tipton","Trousdale","Unicoi","Union","Van Buren","Warren","Washington",
+  "Wayne","Weakley","White","Williamson","Wilson",
+];
+const VEGETATION_OPTIONS = [
+  "Light brush / grass",
+  "Moderate brush",
+  "Heavy brush",
+  "Light cedar",
+  "Heavy cedar",
+  "Cedar and privet mix",
+  "Mixed hardwood saplings",
+  "Thick briars and vines",
+  "Overgrown fence line",
+  "Young pine thicket",
+  "Mixed cedar and hardwood",
+  "Honeysuckle and invasives",
+];
+const TERRAIN_OPTIONS = [
+  "Flat",
+  "Gently rolling",
+  "Rolling",
+  "Steep slopes",
+  "Mixed flat and rolling",
+  "Mixed rolling and steep",
+  "Creek bottom / low-lying",
+  "Hilltop / ridge",
+];
+const OBSTACLE_OPTIONS = [
+  "None",
+  "Fence lines",
+  "Fence lines and structures",
+  "Stumps",
+  "Stumps and rock",
+  "Standing water / wet areas",
+  "Structures nearby",
+  "Utilities overhead",
+  "Rock outcroppings",
+  "Multiple obstacles — see notes",
+];
+
 function AIAssistPanel({ onClose, clientName, onApply }: AIAssistPanelProps) {
+  // Structured fields
+  const [fieldCounty, setFieldCounty] = useState("");
+  const [fieldAcreage, setFieldAcreage] = useState("");
+  const [fieldVegetation, setFieldVegetation] = useState("");
+  const [fieldTerrain, setFieldTerrain] = useState("");
+  const [fieldObstacles, setFieldObstacles] = useState("");
+  const [fieldCustomerWants, setFieldCustomerWants] = useState("");
+  // Legacy context (kept for satellite analysis append)
   const [context, setContext] = useState("");
   const [imageUrls, setImageUrls] = useState<string[]>([]);
   const [uploadingIdx, setUploadingIdx] = useState<number | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-
   // Priority 5: Satellite Property Analysis
   const [satAddress, setSatAddress] = useState("");
   const [satResult, setSatResult] = useState<string | null>(null);
@@ -1155,9 +1221,23 @@ function AIAssistPanel({ onClose, clientName, onApply }: AIAssistPanelProps) {
     }
   }
 
+  // Build the context string from structured fields + free-form customer wants
+  function buildContext(): string {
+    const parts: string[] = [];
+    if (fieldCounty) parts.push(`Location: ${fieldCounty} County, TN`);
+    if (fieldAcreage) parts.push(`Approximate acreage: ${fieldAcreage} acres`);
+    if (fieldVegetation) parts.push(`Vegetation type and density: ${fieldVegetation}`);
+    if (fieldTerrain) parts.push(`Terrain: ${fieldTerrain}`);
+    if (fieldObstacles) parts.push(`Obstacles: ${fieldObstacles}`);
+    if (fieldCustomerWants.trim()) parts.push(`What the customer wants done: ${fieldCustomerWants.trim()}`);
+    if (context.trim()) parts.push(context.trim()); // satellite analysis appended here
+    return parts.join("\n");
+  }
+
   async function handleRun() {
-    if (context.trim().length < 10) { toast.error("Describe the job first."); return; }
-    await aiAssist.mutateAsync({ context: context.trim(), imageUrls, clientName });
+    const builtContext = buildContext();
+    if (builtContext.trim().length < 10) { toast.error("Fill in at least a county and acreage to get started."); return; }
+    await aiAssist.mutateAsync({ context: builtContext.trim(), imageUrls, clientName });
     // Result is stored in aiAssist.data — user reviews it, then clicks "Apply to Quote"
   }
 
@@ -1209,19 +1289,97 @@ function AIAssistPanel({ onClose, clientName, onApply }: AIAssistPanelProps) {
         {/* Body */}
         <div className="flex-1 overflow-y-auto px-5 py-5 space-y-5">
 
-          {/* Context input */}
-          <div className="space-y-2">
+          {/* Structured Job Description */}
+          <div className="space-y-3">
             <label className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
               Job Description <span className="text-destructive">*</span>
             </label>
-            <textarea
-              placeholder={`Describe the job in your own words. Include:\n• Location / county\n• Approximate acreage\n• Vegetation type and density (light cedar, heavy brush, etc.)\n• Terrain (flat, rolling, steep)\n• Any obstacles — fences, structures, stumps, water\n• What the customer wants done\n\nExample: "5 acres in Hickman County, heavy cedar and privet, rolling terrain, fence line on the south edge, customer wants it mulched clean."`}
-              value={context}
-              onChange={(e) => setContext(e.target.value)}
-              rows={8}
-              className="w-full rounded-lg border border-border bg-secondary/20 px-3 py-2.5 text-xs text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:ring-1 focus:ring-primary resize-none leading-relaxed"
-            />
-            <p className="text-[11px] text-muted-foreground">{context.length}/2000 characters</p>
+
+            {/* Row 1: County + Acreage */}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <p className="text-[10px] text-muted-foreground font-medium">Location / County</p>
+                <Select value={fieldCounty} onValueChange={setFieldCounty}>
+                  <SelectTrigger className="h-8 text-xs bg-secondary/20 border-border">
+                    <SelectValue placeholder="Select county..." />
+                  </SelectTrigger>
+                  <SelectContent className="max-h-60">
+                    {TN_COUNTIES_AI.map((c) => (
+                      <SelectItem key={c} value={c} className="text-xs">{c} County</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1">
+                <p className="text-[10px] text-muted-foreground font-medium">Approximate Acreage</p>
+                <input
+                  type="number"
+                  min="0.1"
+                  step="0.5"
+                  placeholder="e.g. 5"
+                  value={fieldAcreage}
+                  onChange={(e) => setFieldAcreage(e.target.value)}
+                  className="w-full h-8 rounded-md border border-border bg-secondary/20 px-3 text-xs text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:ring-1 focus:ring-primary"
+                />
+              </div>
+            </div>
+
+            {/* Row 2: Vegetation */}
+            <div className="space-y-1">
+              <p className="text-[10px] text-muted-foreground font-medium">Vegetation Type and Density</p>
+              <Select value={fieldVegetation} onValueChange={setFieldVegetation}>
+                <SelectTrigger className="h-8 text-xs bg-secondary/20 border-border">
+                  <SelectValue placeholder="Select vegetation type..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {VEGETATION_OPTIONS.map((v) => (
+                    <SelectItem key={v} value={v} className="text-xs">{v}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Row 3: Terrain */}
+            <div className="space-y-1">
+              <p className="text-[10px] text-muted-foreground font-medium">Terrain</p>
+              <Select value={fieldTerrain} onValueChange={setFieldTerrain}>
+                <SelectTrigger className="h-8 text-xs bg-secondary/20 border-border">
+                  <SelectValue placeholder="Select terrain type..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {TERRAIN_OPTIONS.map((t) => (
+                    <SelectItem key={t} value={t} className="text-xs">{t}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Row 4: Obstacles */}
+            <div className="space-y-1">
+              <p className="text-[10px] text-muted-foreground font-medium">Obstacles</p>
+              <Select value={fieldObstacles} onValueChange={setFieldObstacles}>
+                <SelectTrigger className="h-8 text-xs bg-secondary/20 border-border">
+                  <SelectValue placeholder="Select obstacles..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {OBSTACLE_OPTIONS.map((o) => (
+                    <SelectItem key={o} value={o} className="text-xs">{o}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Row 5: What the customer wants done — free form */}
+            <div className="space-y-1">
+              <p className="text-[10px] text-muted-foreground font-medium">What the Customer Wants Done <span className="text-destructive">*</span></p>
+              <textarea
+                placeholder={`Describe the customer's goal in plain language. e.g. "Mulch everything clean, leave the big oaks, clear the fence line on the south side."`}
+                value={fieldCustomerWants}
+                onChange={(e) => setFieldCustomerWants(e.target.value)}
+                rows={4}
+                className="w-full rounded-lg border border-border bg-secondary/20 px-3 py-2.5 text-xs text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:ring-1 focus:ring-primary resize-none leading-relaxed"
+              />
+            </div>
           </div>
 
           {/* Priority 5: Satellite Property Analysis */}
