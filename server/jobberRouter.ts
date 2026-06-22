@@ -78,6 +78,26 @@ export const jobberRouter = router({
     return { url: `${JOBBER_AUTH_URL}?${params.toString()}` };
   }),
 
+  // ─── Temporary introspection (remove after use) ───────────────────────────
+  introspectSchema: adminProcedure
+    .query(async () => {
+      const connected = await isJobberConnected();
+      if (!connected) return { fields: [] };
+      const data = await jobberGraphQL(`{
+        __schema {
+          mutationType {
+            fields(includeDeprecated: true) {
+              name
+              isDeprecated
+              deprecationReason
+            }
+          }
+        }
+      }`) as any;
+      const allFields = (data?.__schema?.mutationType?.fields ?? []) as Array<{name:string;isDeprecated:boolean;deprecationReason:string|null}>;
+      return { fields: allFields.filter((f: any) => f.name.toLowerCase().includes('quote')) };
+    }),
+
   // ─── Jobs ────────────────────────────────────────────────────────────────────
   jobs: adminProcedure
     .input(z.object({ first: z.number().optional() }))
@@ -354,7 +374,7 @@ export const jobberRouter = router({
    * Delete a quote from Jobber.
    * Attempts the native quoteDelete mutation first; if Jobber returns a
    * schema / field error (mutation not supported), falls back to archiving
-   * the quote via quoteUpdate so the button always works.
+   * the quote via quoteEdit so the button always works.
    */
   deleteQuote: adminProcedure
     .input(z.object({ id: z.string() }))
@@ -390,18 +410,18 @@ export const jobberRouter = router({
         }
       }
 
-      // --- Fallback: archive via quoteUpdate ---
+      // --- Fallback: archive via quoteEdit ---
       const archiveData = await jobberGraphQL(`
         mutation ArchiveQuote($id: EncodedId!) {
-          quoteUpdate(id: $id, attributes: { quoteStatus: ARCHIVED }) {
+          quoteEdit(quoteId: $id, attributes: { quoteStatus: ARCHIVED }) {
             quote { id quoteNumber quoteStatus }
             userErrors { message path }
           }
         }
       `, { id: input.id }) as any;
-      const archiveErrors = archiveData?.quoteUpdate?.userErrors;
+      const archiveErrors = archiveData?.quoteEdit?.userErrors;
       if (archiveErrors?.length) throw new TRPCError({ code: "BAD_REQUEST", message: archiveErrors[0].message });
-      return { success: true, method: "archive", archivedId: archiveData?.quoteUpdate?.quote?.id };
+      return { success: true, method: "archive", archivedId: archiveData?.quoteEdit?.quote?.id };
     }),
 
   /** Delete a job from Jobber */
@@ -893,15 +913,15 @@ export const jobberRouter = router({
       if (!connected) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Jobber not connected" });
       const data = await jobberGraphQL(`
         mutation UpdateQuote($id: EncodedId!, $title: String, $message: String) {
-          quoteUpdate(id: $id, attributes: { title: $title, message: $message }) {
+          quoteEdit(quoteId: $id, attributes: { title: $title, message: $message }) {
             quote { id quoteNumber title quoteStatus message }
             userErrors { message path }
           }
         }
       `, { id: input.id, title: input.title, message: input.message ?? "" }) as any;
-      const errors = data?.quoteUpdate?.userErrors;
+      const errors = data?.quoteEdit?.userErrors;
       if (errors?.length) throw new TRPCError({ code: "BAD_REQUEST", message: errors.map((e: any) => e.message).join("; ") });
-      return data?.quoteUpdate?.quote ?? null;
+      return data?.quoteEdit?.quote ?? null;
     }),
 
   /** Add a line item to an existing quote */
@@ -996,7 +1016,7 @@ export const jobberRouter = router({
       // Step 1: Mark quote as APPROVED
       const approveData = await jobberGraphQL(`
         mutation MarkQuoteApproved($id: EncodedId!) {
-          quoteUpdate(id: $id, attributes: { quoteStatus: APPROVED }) {
+          quoteEdit(quoteId: $id, attributes: { quoteStatus: APPROVED }) {
             quote { id quoteNumber title quoteStatus
               client { name companyName }
             }
@@ -1004,9 +1024,9 @@ export const jobberRouter = router({
           }
         }
       `, { id: input.id }) as any;
-      const approveErrors = approveData?.quoteUpdate?.userErrors;
+      const approveErrors = approveData?.quoteEdit?.userErrors;
       if (approveErrors?.length) throw new TRPCError({ code: "BAD_REQUEST", message: approveErrors.map((e: any) => e.message).join("; ") });
-      const quote = approveData?.quoteUpdate?.quote;
+      const quote = approveData?.quoteEdit?.quote;
 
       // Step 2: Convert the approved quote to a job
       let createdJob: { id: string; jobNumber: number; title?: string } | null = null;
@@ -1075,15 +1095,15 @@ export const jobberRouter = router({
       if (!connected) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Jobber not connected" });
       const data = await jobberGraphQL(`
         mutation RestoreQuote($id: EncodedId!) {
-          quoteUpdate(id: $id, attributes: { quoteStatus: DRAFT }) {
+          quoteEdit(quoteId: $id, attributes: { quoteStatus: DRAFT }) {
             quote { id quoteNumber quoteStatus }
             userErrors { message path }
           }
         }
       `, { id: input.id }) as any;
-      const errors = data?.quoteUpdate?.userErrors;
+      const errors = data?.quoteEdit?.userErrors;
       if (errors?.length) throw new TRPCError({ code: "BAD_REQUEST", message: errors.map((e: any) => e.message).join("; ") });
-      return data?.quoteUpdate?.quote;
+      return data?.quoteEdit?.quote;
     }),
 
   /**
