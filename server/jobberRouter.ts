@@ -528,34 +528,39 @@ export const jobberRouter = router({
   clientDetail: adminProcedure
     .input(z.object({ id: z.string() }))
     .query(async ({ input }) => {
-      const data = await jobberGraphQL(`
-        query GetClientDetail($id: EncodedId!) {
-          client(id: $id) {
-            id name companyName isLead balance createdAt
-            emails { address }
-            phones { number description }
-            billingAddress { street1 city province postalCode }
-            quotes(first: 50) {
-              nodes {
-                id quoteNumber title quoteStatus createdAt
-                amounts { subtotal total }
+      try {
+        const data = await jobberGraphQL(`
+          query GetClientDetail($id: EncodedId!) {
+            client(id: $id) {
+              id name companyName isLead createdAt
+              emails { address }
+              phones { number description }
+              billingAddress { street1 city province postalCode }
+              quotes(first: 50) {
+                nodes {
+                  id quoteNumber title quoteStatus createdAt
+                  amounts { subtotal total }
+                }
               }
-            }
-            jobs(first: 50) {
-              nodes {
-                id jobNumber title jobStatus startAt total
+              jobs(first: 50) {
+                nodes {
+                  id jobNumber title jobStatus startAt total
+                }
               }
-            }
-            invoices(first: 50) {
-              nodes {
-                id invoiceNumber title invoiceStatus dueDate
-                amounts { total invoiceBalance }
+              invoices(first: 50) {
+                nodes {
+                  id invoiceNumber subject invoiceStatus dueDate
+                  amounts { total invoiceBalance }
+                }
               }
             }
           }
-        }
-      `, { id: input.id }) as any;
-      return data.client ?? null;
+        `, { id: input.id }) as any;
+        return data.client ?? null;
+      } catch (err) {
+        console.error('[clientDetail] Jobber query failed:', err instanceof Error ? err.message : err);
+        throw err;
+      }
     }),
 
   /** Get full detail for a single Jobber job */
@@ -602,7 +607,7 @@ export const jobberRouter = router({
             }
             invoices(first: 10) {
               nodes {
-                id invoiceNumber title invoiceStatus dueDate
+                id invoiceNumber subject invoiceStatus dueDate
                 amounts { total }
               }
             }

@@ -383,7 +383,7 @@ function ClientDetailPanel({
                     >
                       <div>
                         <p className="text-xs font-medium text-foreground">
-                          {inv.title || `Invoice #${inv.invoiceNumber}`}
+                          {inv.subject || `Invoice #${inv.invoiceNumber}`}
                         </p>
                         <p className="text-[11px] text-muted-foreground">Due {formatDate(inv.dueDate)}</p>
                       </div>
