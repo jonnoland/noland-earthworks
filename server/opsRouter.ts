@@ -4759,4 +4759,22 @@ Generate a complete monthly ad campaign plan. Return ONLY valid JSON matching th
         .where(eq(adCampaigns.id, input.id)).limit(1);
       return row;
     }),
+  /**
+   * Called after a Jobber quote is created from a lead.
+   * Updates the lead stage to estimate_sent and stores the Jobber quote ID/number.
+   */
+  linkQuoteToLead: protectedProcedure
+    .input(z.object({
+      leadId: z.number().int().positive(),
+      jobberQuoteId: z.string(),
+      jobberQuoteNumber: z.number().int().optional(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      await updateOpsLead(input.leadId, ctx.user.id, {
+        stage: "estimate_sent",
+        jobberQuoteId: input.jobberQuoteId,
+        jobberQuoteNumber: input.jobberQuoteNumber ?? undefined,
+      });
+      return { ok: true };
+    }),
 });

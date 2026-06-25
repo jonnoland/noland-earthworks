@@ -1068,13 +1068,14 @@ function EditQuoteModal({ quoteId, initialTitle, initialMessage, initialLineItem
 
 type CreateQuoteModalProps = {
   onClose: () => void;
-  onCreated: () => void;
+  onCreated: (result?: { quoteId?: string; quoteNumber?: number }) => void;
   prefill?: {
     clientName?: string;
     clientPhone?: string;
     clientEmail?: string;
     clientAddress?: string;
     jobType?: string;
+    leadId?: number;
     message?: string;
     lineItems?: { name: string; description: string; quantity: number; unitPrice: number }[];
   };
@@ -1563,6 +1564,7 @@ function AIAssistPanel({ onClose, clientName, onApply }: AIAssistPanelProps) {
 // ─── Create Quote Modal ────────────────────────────────────────────────────────
 
 function CreateQuoteModal({ onClose, onCreated, prefill }: CreateQuoteModalProps) {
+  const linkQuoteToLead = trpc.ops.linkQuoteToLead.useMutation();
   const [title, setTitle] = useState(() => {
     if (prefill?.jobType) return prefill.jobType;
     return "";
@@ -1595,8 +1597,18 @@ function CreateQuoteModal({ onClose, onCreated, prefill }: CreateQuoteModalProps
 
   const createQuote = trpc.jobber.quoteCreate.useMutation({
     onSuccess: (quote) => {
-      toast.success(`Quote #${(quote as any)?.quoteNumber ?? ""} created in Jobber.`);
-      onCreated();
+      const qId = (quote as any)?.id as string | undefined;
+      const qNum = (quote as any)?.quoteNumber as number | undefined;
+      toast.success(`Quote #${qNum ?? ""} created in Jobber.`);
+      // Link the quote back to the originating lead if one was passed in
+      if (prefill?.leadId && qId) {
+        linkQuoteToLead.mutate({
+          leadId: prefill.leadId,
+          jobberQuoteId: qId,
+          jobberQuoteNumber: qNum,
+        });
+      }
+      onCreated({ quoteId: qId, quoteNumber: qNum });
       onClose();
     },
     onError: (err) => {
@@ -3691,16 +3703,19 @@ export default function OpsQuotes() {
     clientEmail?: string;
     clientAddress?: string;
     jobType?: string;
+    leadId?: number;
   } | undefined>(() => {
     if (typeof window === "undefined") return undefined;
     const p = new URLSearchParams(window.location.search);
     if (!p.get("newQuote")) return undefined;
+    const rawLeadId = p.get("leadId");
     return {
       clientName: p.get("clientName") ?? undefined,
       clientPhone: p.get("clientPhone") ?? undefined,
       clientEmail: p.get("clientEmail") ?? undefined,
       clientAddress: p.get("clientAddress") ?? undefined,
       jobType: p.get("jobType") ?? undefined,
+      leadId: rawLeadId ? parseInt(rawLeadId, 10) : undefined,
     };
   });
   // Dynamic prefill from AI analysis (overrides URL prefill)
@@ -4119,7 +4134,7 @@ export default function OpsQuotes() {
             const clean = window.location.pathname;
             window.history.replaceState({}, "", clean);
           }}
-          onCreated={() => utils.jobber.quotes.invalidate()}
+          onCreated={() => { utils.jobber.quotes.invalidate(); }}
           prefill={aiPrefill ?? createModalPrefill}
         />
       )}

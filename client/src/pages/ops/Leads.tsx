@@ -184,6 +184,8 @@ interface Lead {
   aiFlags?: string | null;
   aiDraftResponse?: string | null;
   chatSessionId?: number | null;
+  jobberQuoteId?: string | null;
+  jobberQuoteNumber?: number | null;
 }
 
 // ─── Lead Card ────────────────────────────────────────────────────────────────
@@ -736,6 +738,7 @@ function LeadDetailPanel({
               onClick={() => {
                 const params = new URLSearchParams();
                 params.set("newQuote", "1");
+                params.set("leadId", String(lead.id));
                 if (lead.name) params.set("clientName", lead.name);
                 if (lead.phone) params.set("clientPhone", lead.phone);
                 if (lead.email) params.set("clientEmail", lead.email);
@@ -752,6 +755,16 @@ function LeadDetailPanel({
               <Calendar className="w-3.5 h-3.5" />Schedule Visit
             </button>
           </div>
+          {/* Linked Jobber quote badge */}
+          {lead.jobberQuoteId && (
+            <div className="mt-2 flex items-center gap-2 px-2 py-1.5 bg-amber-500/10 border border-amber-500/25 rounded-md">
+              <FileText className="w-3 h-3 text-amber-400 shrink-0" />
+              <span className="text-[11px] text-amber-300 font-medium">
+                Quote {lead.jobberQuoteNumber ? `#${lead.jobberQuoteNumber}` : ""} linked
+              </span>
+              <span className="ml-auto text-[10px] text-[#555]">Jobber</span>
+            </div>
+          )}
           {/* Chat session actions — only shown for chat-sourced leads */}
           {lead.chatSessionId && (
             <div className="mt-2 flex gap-2">

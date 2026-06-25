@@ -484,6 +484,13 @@
       "when": 1782420171255,
       "tag": "0068_outstanding_quicksilver",
       "breakpoints": true
+    },
+    {
+      "idx": 69,
+      "version": "5",
+      "when": 1782424039003,
+      "tag": "0069_sharp_maverick",
+      "breakpoints": true
     }
   ]
 }

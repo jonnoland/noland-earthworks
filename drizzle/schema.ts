@@ -180,6 +180,10 @@ export const opsLeads = mysqlTable("ops_leads", {
   leadgenId: varchar("leadgenId", { length: 128 }),
   /** FK to chat_sessions — set when lead is created from the AI chat widget */
   chatSessionId: int("chatSessionId"),
+  /** Jobber quote ID — set when a Jobber quote is created from this lead */
+  jobberQuoteId: varchar("jobberQuoteId", { length: 120 }),
+  /** Jobber quote number (human-readable) — set when a Jobber quote is created from this lead */
+  jobberQuoteNumber: int("jobberQuoteNumber"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
