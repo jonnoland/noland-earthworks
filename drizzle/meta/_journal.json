@@ -470,6 +470,13 @@
       "when": 1782133037922,
       "tag": "0066_colossal_wolf_cub",
       "breakpoints": true
+    },
+    {
+      "idx": 67,
+      "version": "5",
+      "when": 1782414206593,
+      "tag": "0067_yellow_jane_foster",
+      "breakpoints": true
     }
   ]
 }

@@ -25,7 +25,7 @@ import {
   getAgentConfig, upsertAgentConfig,
 } from "./db";
 import { Resend } from "resend";
-import { jobs, opsLeads, quoteSubmissions, crews, crewMembers, conversations, messages, reviews, timeEntries, distanceQuotes, businessSettings, automationSettings, serviceCatalog, pricingBenchmarks, messageTemplates, reminderRules, leadNotes, visitBlackoutDates, recurringBlackoutDays, aiPricingSettings, quoteDrafts, jobberTokens, socialPosts, adSpend, equipment, serviceLogs, serviceIntervals, fieldDiagnostics, ownerTasks, jobNotes, jobberRevenueCache, morningBriefs, reviewRequests, chatSessions, scheduleEntries, agentConfig } from "../drizzle/schema";
+import { jobs, opsLeads, quoteSubmissions, crews, crewMembers, conversations, messages, reviews, timeEntries, distanceQuotes, businessSettings, automationSettings, serviceCatalog, pricingBenchmarks, messageTemplates, reminderRules, leadNotes, visitBlackoutDates, recurringBlackoutDays, aiPricingSettings, quoteDrafts, jobberTokens, socialPosts, adSpend, equipment, serviceLogs, serviceIntervals, fieldDiagnostics, ownerTasks, jobNotes, jobberRevenueCache, morningBriefs, reviewRequests, chatSessions, scheduleEntries, agentConfig, adCampaigns } from "../drizzle/schema";
 
 import { and, desc, eq, gte, inArray, lt, lte, like, or, sql } from "drizzle-orm";
 
@@ -4429,4 +4429,226 @@ Always be specific to nolandearthworks.com. Never give generic advice — tie ev
     const recommendation = (result.choices?.[0]?.message?.content as string ?? "").trim();
     return { recommendation };
   }),
+
+  // ─── Monthly Ad Campaign Planner ─────────────────────────────────────────────
+
+  /** List all campaign plans for the owner, ordered by month desc */
+  listCampaigns: ownerProcedure.query(async ({ ctx }) => {
+    const db = await getDb();
+    if (!db) return [];
+    return db.select().from(adCampaigns)
+      .where(eq(adCampaigns.userId, ctx.user.id))
+      .orderBy(desc(adCampaigns.month))
+      .limit(24);
+  }),
+
+  /** Get a single campaign by id */
+  getCampaign: ownerProcedure
+    .input(z.object({ id: z.number().int().positive() }))
+    .query(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+      const [row] = await db.select().from(adCampaigns)
+        .where(and(eq(adCampaigns.id, input.id), eq(adCampaigns.userId, ctx.user.id)))
+        .limit(1);
+      if (!row) throw new TRPCError({ code: "NOT_FOUND", message: "Campaign not found" });
+      return row;
+    }),
+
+  /** Create a blank campaign shell for a given month */
+  createCampaign: ownerProcedure
+    .input(z.object({
+      month: z.string().regex(/^\d{4}-\d{2}$/),
+      monthLabel: z.string().min(1),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+      // Prevent duplicates
+      const [existing] = await db.select().from(adCampaigns)
+        .where(and(eq(adCampaigns.userId, ctx.user.id), eq(adCampaigns.month, input.month)))
+        .limit(1);
+      if (existing) return existing;
+      const [result] = await db.insert(adCampaigns).values({
+        userId: ctx.user.id,
+        month: input.month,
+        monthLabel: input.monthLabel,
+        status: "draft",
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
+      const [row] = await db.select().from(adCampaigns)
+        .where(eq(adCampaigns.id, (result as any).insertId))
+        .limit(1);
+      return row;
+    }),
+
+  /** Save notes / status edits on a campaign */
+  updateCampaign: ownerProcedure
+    .input(z.object({
+      id: z.number().int().positive(),
+      notes: z.string().optional(),
+      status: z.enum(["draft", "active", "completed"]).optional(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+      const { id, ...data } = input;
+      await db.update(adCampaigns)
+        .set({ ...data, updatedAt: new Date() })
+        .where(and(eq(adCampaigns.id, id), eq(adCampaigns.userId, ctx.user.id)));
+      const [row] = await db.select().from(adCampaigns)
+        .where(eq(adCampaigns.id, id)).limit(1);
+      return row;
+    }),
+
+  /** Delete a campaign */
+  deleteCampaign: ownerProcedure
+    .input(z.object({ id: z.number().int().positive() }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+      await db.delete(adCampaigns)
+        .where(and(eq(adCampaigns.id, input.id), eq(adCampaigns.userId, ctx.user.id)));
+      return { success: true };
+    }),
+
+  /** AI-generate a full campaign plan for a given month */
+  generateCampaign: ownerProcedure
+    .input(z.object({
+      id: z.number().int().positive(),
+      month: z.string(),
+      monthLabel: z.string(),
+      focusNotes: z.string().optional(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+
+      // Determine season context
+      const monthNum = parseInt(input.month.split("-")[1], 10);
+      const seasonMap: Record<number, string> = {
+        1: "peak", 2: "peak", 3: "peak",
+        4: "spring", 5: "spring",
+        6: "summer", 7: "summer", 8: "summer", 9: "slow",
+        10: "peak", 11: "peak", 12: "peak",
+      };
+      const season = seasonMap[monthNum] ?? "peak";
+      const seasonDesc: Record<string, string> = {
+        peak: "peak season (Oct–Mar): dormant vegetation, firm ground, best results — highest demand period",
+        spring: "spring (Apr–May): homeowners and developers are active, warm weather, good booking window",
+        summer: "summer (Jun–Sep): hot, slower demand, ground saturation risk — focus on booking ahead for fall",
+        slow: "late summer / early fall (Sep): slowest stretch — customers waiting for cooler weather, focus on fall pre-booking",
+      };
+
+      const systemPrompt = `You are a marketing strategist for Noland Earthworks, LLC — a veteran-owned forestry mulching and land clearing company in Middle & West Tennessee. Owner: Jon Noland, sole operator.
+
+Services: Forestry mulching (primary), land clearing, brush/understory removal, ROW/trail clearing, storm cleanup.
+Equipment: Tracked forestry mulcher — handles slopes, wet ground, dense vegetation. No debris piles, no hauling, no burning.
+Target customers: Rural landowners, residential property owners with acreage, farmers reclaiming pasture, residential developers, government/municipal.
+Core differentiators: Veteran-owned, owner-operated (Jon shows up to every job), clean finish with no debris, tracked machine handles difficult terrain.
+Voice: Casual, warm, direct. Real job content. No corporate jargon. No emojis. No hashtag overload.
+Competitors: Middle Tennessee Land Clearing LLC, Mid State Land Clearing LLC, Grounded Land Solutions, Stribling Land Clearing & Dirtwork, Wolf Creek Land Company.
+
+Generate a complete monthly ad campaign plan. Return ONLY valid JSON matching this exact schema — no markdown, no commentary:
+{
+  "theme": "<short campaign theme or tagline, max 60 chars>",
+  "goal": "<1-2 sentence campaign goal>",
+  "primaryMessage": "<2-3 sentence primary message / angle for this month>",
+  "season": "${season}",
+  "adIdeas": [
+    {
+      "platform": "facebook",
+      "headline": "<headline, max 80 chars>",
+      "body": "<ad body copy, 2-4 sentences, Jon's voice>",
+      "callToAction": "<CTA text, max 25 chars>",
+      "imagePrompt": "<description of ideal before/after or job photo for this ad>"
+    },
+    {
+      "platform": "instagram",
+      "headline": "<caption hook, max 80 chars>",
+      "body": "<caption body, 2-3 sentences>",
+      "callToAction": "<CTA>",
+      "imagePrompt": "<ideal photo description>"
+    },
+    {
+      "platform": "google",
+      "headline": "<search ad headline, max 30 chars>",
+      "body": "<description line, max 90 chars>",
+      "callToAction": "Get a Free Quote",
+      "imagePrompt": ""
+    }
+  ],
+  "suggestedDates": ["<YYYY-MM-DD>", "<YYYY-MM-DD>", "<YYYY-MM-DD>", "<YYYY-MM-DD>"]
+}`;
+
+      const userPrompt = `Month: ${input.monthLabel}\nSeason context: ${seasonDesc[season]}${input.focusNotes ? `\nAdditional focus / notes from Jon: ${input.focusNotes}` : ""}\n\nGenerate a campaign plan for this month.`;
+
+      const response = await invokeLLM({
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userPrompt },
+        ],
+        response_format: {
+          type: "json_schema",
+          json_schema: {
+            name: "campaign_plan",
+            strict: true,
+            schema: {
+              type: "object",
+              properties: {
+                theme: { type: "string" },
+                goal: { type: "string" },
+                primaryMessage: { type: "string" },
+                season: { type: "string" },
+                adIdeas: {
+                  type: "array",
+                  items: {
+                    type: "object",
+                    properties: {
+                      platform: { type: "string" },
+                      headline: { type: "string" },
+                      body: { type: "string" },
+                      callToAction: { type: "string" },
+                      imagePrompt: { type: "string" },
+                    },
+                    required: ["platform", "headline", "body", "callToAction", "imagePrompt"],
+                    additionalProperties: false,
+                  },
+                },
+                suggestedDates: { type: "array", items: { type: "string" } },
+              },
+              required: ["theme", "goal", "primaryMessage", "season", "adIdeas", "suggestedDates"],
+              additionalProperties: false,
+            },
+          },
+        },
+      } as any);
+
+      const content = (response as any)?.choices?.[0]?.message?.content;
+      if (!content) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "AI returned empty response" });
+
+      const plan = JSON.parse(content) as {
+        theme: string; goal: string; primaryMessage: string; season: string;
+        adIdeas: Array<{ platform: string; headline: string; body: string; callToAction: string; imagePrompt: string }>;
+        suggestedDates: string[];
+      };
+
+      await db.update(adCampaigns)
+        .set({
+          theme: plan.theme,
+          goal: plan.goal,
+          primaryMessage: plan.primaryMessage,
+          season: plan.season,
+          adIdeas: plan.adIdeas,
+          suggestedDates: plan.suggestedDates,
+          generatedAt: new Date(),
+          updatedAt: new Date(),
+        })
+        .where(and(eq(adCampaigns.id, input.id), eq(adCampaigns.userId, ctx.user.id)));
+
+      const [row] = await db.select().from(adCampaigns)
+        .where(eq(adCampaigns.id, input.id)).limit(1);
+      return row;
+    }),
 });

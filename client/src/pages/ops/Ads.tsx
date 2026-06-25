@@ -2506,6 +2506,9 @@ export default function Ads() {
           )}
         </div>
 
+        {/* ─── Monthly Campaign Planner ─────────────────────────────────────────── */}
+        <CampaignPlanner />
+
       </div>
 
       {/* LinkedIn Settings Modal */}
@@ -2733,6 +2736,428 @@ function HistoryRow({ post, onDelete }: { post: any; onDelete: () => void }) {
           )}
         </div>
       )}
+    </div>
+  );
+}
+
+// ─── Monthly Campaign Planner ─────────────────────────────────────────────────
+interface AdIdea {
+  platform: string;
+  headline: string;
+  body: string;
+  callToAction: string;
+  imagePrompt: string;
+}
+
+const PLATFORM_META: Record<string, { label: string; color: string; icon: React.ReactNode }> = {
+  facebook: { label: "Facebook", color: "text-[#1877F2]", icon: <Facebook size={13} /> },
+  instagram: { label: "Instagram", color: "text-purple-400", icon: <Instagram size={13} /> },
+  google: { label: "Google Ads", color: "text-yellow-400", icon: <Globe size={13} /> },
+  x: { label: "X", color: "text-sky-400", icon: <Twitter size={13} /> },
+};
+
+const SEASON_BADGE: Record<string, { label: string; cls: string }> = {
+  peak: { label: "Peak Season", cls: "bg-green-400/10 text-green-400 border-green-400/20" },
+  spring: { label: "Spring", cls: "bg-emerald-400/10 text-emerald-400 border-emerald-400/20" },
+  summer: { label: "Summer", cls: "bg-amber-400/10 text-amber-400 border-amber-400/20" },
+  slow: { label: "Slow Season", cls: "bg-orange-400/10 text-orange-400 border-orange-400/20" },
+};
+
+const STATUS_BADGE: Record<string, { label: string; cls: string }> = {
+  draft: { label: "Draft", cls: "bg-secondary text-muted-foreground" },
+  active: { label: "Active", cls: "bg-green-400/10 text-green-400 border-green-400/20" },
+  completed: { label: "Completed", cls: "bg-blue-400/10 text-blue-400 border-blue-400/20" },
+};
+
+/** Generate the next N upcoming month values (YYYY-MM) starting from current month */
+function getUpcomingMonths(count = 6): { month: string; label: string }[] {
+  const result: { month: string; label: string }[] = [];
+  const now = new Date();
+  for (let i = 0; i < count; i++) {
+    const d = new Date(now.getFullYear(), now.getMonth() + i, 1);
+    const month = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+    const label = d.toLocaleDateString("en-US", { month: "long", year: "numeric" });
+    result.push({ month, label });
+  }
+  return result;
+}
+
+function CampaignPlanner() {
+  const utils = trpc.useUtils();
+  const [selectedId, setSelectedId] = useState<number | null>(null);
+  const [focusNotes, setFocusNotes] = useState("");
+  const [showFocusInput, setShowFocusInput] = useState(false);
+  const [editingNotes, setEditingNotes] = useState(false);
+  const [notesValue, setNotesValue] = useState("");
+
+  const { data: campaigns = [], isLoading } = trpc.ops.listCampaigns.useQuery();
+  const { data: selected, isLoading: loadingSelected } = trpc.ops.getCampaign.useQuery(
+    { id: selectedId! },
+    { enabled: selectedId !== null }
+  );
+
+  const createMutation = trpc.ops.createCampaign.useMutation({
+    onSuccess: (row) => {
+      utils.ops.listCampaigns.invalidate();
+      if (row) setSelectedId(row.id);
+      toast.success("Campaign created.");
+    },
+    onError: (e) => toast.error(`Failed to create: ${e.message}`),
+  });
+
+  const generateMutation = trpc.ops.generateCampaign.useMutation({
+    onSuccess: (row) => {
+      utils.ops.listCampaigns.invalidate();
+      utils.ops.getCampaign.invalidate({ id: selectedId! });
+      toast.success("Campaign plan generated.");
+      setShowFocusInput(false);
+      setFocusNotes("");
+    },
+    onError: (e) => toast.error(`Generation failed: ${e.message}`),
+  });
+
+  const updateMutation = trpc.ops.updateCampaign.useMutation({
+    onSuccess: () => {
+      utils.ops.listCampaigns.invalidate();
+      utils.ops.getCampaign.invalidate({ id: selectedId! });
+      setEditingNotes(false);
+      toast.success("Saved.");
+    },
+    onError: (e) => toast.error(`Save failed: ${e.message}`),
+  });
+
+  const deleteMutation = trpc.ops.deleteCampaign.useMutation({
+    onSuccess: () => {
+      utils.ops.listCampaigns.invalidate();
+      setSelectedId(null);
+      toast.success("Campaign deleted.");
+    },
+    onError: (e) => toast.error(`Delete failed: ${e.message}`),
+  });
+
+  const upcomingMonths = getUpcomingMonths(6);
+  const existingMonths = new Set(campaigns.map((c) => c.month));
+
+  function handleAddMonth(month: string, label: string) {
+    createMutation.mutate({ month, monthLabel: label });
+  }
+
+  function handleGenerate() {
+    if (!selected) return;
+    generateMutation.mutate({
+      id: selected.id,
+      month: selected.month,
+      monthLabel: selected.monthLabel,
+      focusNotes: focusNotes.trim() || undefined,
+    });
+  }
+
+  const adIdeas: AdIdea[] = Array.isArray(selected?.adIdeas) ? (selected.adIdeas as AdIdea[]) : [];
+  const suggestedDates: string[] = Array.isArray(selected?.suggestedDates) ? (selected.suggestedDates as string[]) : [];
+
+  return (
+    <div className="bg-card border border-border rounded-xl overflow-hidden">
+      {/* Header */}
+      <div className="px-6 py-4 border-b border-border flex items-center justify-between gap-4">
+        <div>
+          <h2 className="text-base font-semibold text-foreground flex items-center gap-2">
+            <Calendar size={15} className="text-primary" />
+            Monthly Campaign Planner
+          </h2>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            AI-generated ad campaign plans for upcoming months — theme, messaging angle, per-platform copy, and suggested posting dates.
+          </p>
+        </div>
+      </div>
+
+      <div className="flex min-h-[420px]">
+        {/* Sidebar — month list */}
+        <div className="w-52 shrink-0 border-r border-border flex flex-col">
+          <div className="px-3 py-2.5 border-b border-border">
+            <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Campaigns</p>
+          </div>
+          <div className="flex-1 overflow-y-auto divide-y divide-border">
+            {isLoading ? (
+              <div className="px-4 py-6 space-y-2">
+                {[1,2,3].map(i => <div key={i} className="h-8 bg-secondary rounded animate-pulse" />)}
+              </div>
+            ) : campaigns.length === 0 ? (
+              <div className="px-4 py-6 text-center">
+                <p className="text-xs text-muted-foreground">No campaigns yet.</p>
+                <p className="text-[11px] text-muted-foreground mt-1">Add a month below to get started.</p>
+              </div>
+            ) : (
+              campaigns.map((c) => {
+                const sb = STATUS_BADGE[c.status] ?? STATUS_BADGE.draft;
+                return (
+                  <button
+                    key={c.id}
+                    onClick={() => setSelectedId(c.id)}
+                    className={cn(
+                      "w-full text-left px-4 py-3 transition-colors hover:bg-secondary/60",
+                      selectedId === c.id ? "bg-secondary" : ""
+                    )}
+                  >
+                    <p className="text-xs font-semibold text-foreground leading-tight">{c.monthLabel}</p>
+                    <div className="flex items-center gap-1.5 mt-1">
+                      <span className={cn("text-[10px] px-1.5 py-0.5 rounded-full font-medium border", sb.cls)}>{sb.label}</span>
+                      {c.theme && <span className="text-[10px] text-muted-foreground truncate max-w-[80px]">{c.theme}</span>}
+                    </div>
+                  </button>
+                );
+              })
+            )}
+          </div>
+
+          {/* Add month quick-picks */}
+          <div className="border-t border-border px-3 py-3">
+            <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-2">Add Month</p>
+            <div className="space-y-1">
+              {upcomingMonths.filter(m => !existingMonths.has(m.month)).slice(0, 4).map(m => (
+                <button
+                  key={m.month}
+                  onClick={() => handleAddMonth(m.month, m.label)}
+                  disabled={createMutation.isPending}
+                  className="w-full flex items-center gap-1.5 text-left px-2 py-1.5 rounded-md text-[11px] text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors disabled:opacity-50"
+                >
+                  <Plus size={10} className="shrink-0" />
+                  {m.label}
+                </button>
+              ))}
+              {upcomingMonths.filter(m => !existingMonths.has(m.month)).length === 0 && (
+                <p className="text-[11px] text-muted-foreground italic">All upcoming months added.</p>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Main panel */}
+        <div className="flex-1 min-w-0 overflow-y-auto">
+          {!selectedId ? (
+            <div className="flex flex-col items-center justify-center h-full py-16 text-center px-8">
+              <Calendar size={36} className="text-muted-foreground opacity-20 mb-3" />
+              <p className="text-sm text-muted-foreground">Select a month from the list, or add one to get started.</p>
+              <p className="text-xs text-muted-foreground mt-1">The AI will generate a full campaign plan — theme, messaging angle, and ad copy for each platform.</p>
+            </div>
+          ) : loadingSelected ? (
+            <div className="p-6 space-y-3">
+              {[1,2,3,4].map(i => <div key={i} className="h-10 bg-secondary rounded animate-pulse" />)}
+            </div>
+          ) : selected ? (
+            <div className="p-6 space-y-6">
+              {/* Campaign header */}
+              <div className="flex items-start justify-between gap-4">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h3 className="text-base font-semibold text-foreground">{selected.monthLabel}</h3>
+                    {selected.season && SEASON_BADGE[selected.season] && (
+                      <Badge className={cn("text-[10px] border", SEASON_BADGE[selected.season].cls)}>
+                        {SEASON_BADGE[selected.season].label}
+                      </Badge>
+                    )}
+                    <select
+                      value={selected.status}
+                      onChange={(e) => updateMutation.mutate({ id: selected.id, status: e.target.value as any })}
+                      className="text-[11px] bg-secondary border border-border rounded px-2 py-0.5 text-foreground"
+                    >
+                      <option value="draft">Draft</option>
+                      <option value="active">Active</option>
+                      <option value="completed">Completed</option>
+                    </select>
+                  </div>
+                  {selected.theme && (
+                    <p className="text-sm text-primary font-medium mt-1 italic">"{selected.theme}"</p>
+                  )}
+                  {selected.generatedAt && (
+                    <p className="text-[11px] text-muted-foreground mt-0.5">
+                      Generated {format(new Date(selected.generatedAt), "MMM d, yyyy 'at' h:mm a")}
+                    </p>
+                  )}
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="gap-1.5 text-xs"
+                    onClick={() => setShowFocusInput(!showFocusInput)}
+                  >
+                    <Sparkles size={12} />
+                    {selected.theme ? "Regenerate" : "Generate Plan"}
+                  </Button>
+                  <button
+                    onClick={() => { if (confirm(`Delete the ${selected.monthLabel} campaign?`)) deleteMutation.mutate({ id: selected.id }); }}
+                    className="text-muted-foreground hover:text-red-400 transition-colors p-1"
+                    title="Delete campaign"
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                </div>
+              </div>
+
+              {/* Focus notes input */}
+              {showFocusInput && (
+                <div className="bg-secondary/50 border border-border rounded-xl p-4 space-y-3">
+                  <p className="text-xs font-semibold text-foreground">Optional: Tell the AI what to focus on</p>
+                  <p className="text-[11px] text-muted-foreground">
+                    Specific service, job type, upcoming event, seasonal angle, or anything else you want the campaign to emphasize.
+                    Leave blank and the AI will choose the best angle for the month.
+                  </p>
+                  <Textarea
+                    value={focusNotes}
+                    onChange={(e) => setFocusNotes(e.target.value)}
+                    placeholder="e.g. Focus on pasture reclamation for farmers. Emphasize fall booking window. Highlight the tracked machine on slopes."
+                    rows={3}
+                    className="text-sm resize-none"
+                  />
+                  <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      onClick={handleGenerate}
+                      disabled={generateMutation.isPending}
+                      className="gap-1.5"
+                    >
+                      <Sparkles size={12} />
+                      {generateMutation.isPending ? "Generating..." : "Generate Campaign Plan"}
+                    </Button>
+                    <Button size="sm" variant="outline" onClick={() => { setShowFocusInput(false); setFocusNotes(""); }}>
+                      Cancel
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              {/* No plan yet */}
+              {!selected.theme && !showFocusInput && (
+                <div className="bg-secondary/30 border border-dashed border-border rounded-xl px-6 py-10 text-center">
+                  <Sparkles size={28} className="text-muted-foreground opacity-30 mx-auto mb-3" />
+                  <p className="text-sm text-muted-foreground">No campaign plan generated yet.</p>
+                  <p className="text-xs text-muted-foreground mt-1 mb-4">Click Generate Plan to have the AI build a full campaign for {selected.monthLabel}.</p>
+                  <Button size="sm" onClick={() => setShowFocusInput(true)} className="gap-1.5">
+                    <Sparkles size={12} /> Generate Plan
+                  </Button>
+                </div>
+              )}
+
+              {/* Campaign overview */}
+              {selected.goal && (
+                <div className="space-y-3">
+                  <div className="grid grid-cols-1 gap-3">
+                    <div className="bg-secondary/40 rounded-xl p-4">
+                      <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-1">Campaign Goal</p>
+                      <p className="text-sm text-foreground">{selected.goal}</p>
+                    </div>
+                    <div className="bg-secondary/40 rounded-xl p-4">
+                      <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-1">Primary Message</p>
+                      <p className="text-sm text-foreground">{selected.primaryMessage}</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Ad ideas per platform */}
+              {adIdeas.length > 0 && (
+                <div className="space-y-3">
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Ad Copy by Platform</p>
+                  <div className="space-y-3">
+                    {adIdeas.map((idea, i) => {
+                      const meta = PLATFORM_META[idea.platform] ?? { label: idea.platform, color: "text-muted-foreground", icon: <Globe size={13} /> };
+                      return (
+                        <div key={i} className="bg-secondary/40 border border-border rounded-xl p-4 space-y-2">
+                          <div className="flex items-center gap-2">
+                            <span className={cn("flex items-center gap-1.5 text-xs font-semibold", meta.color)}>
+                              {meta.icon} {meta.label}
+                            </span>
+                            <button
+                              onClick={() => {
+                                const text = `${idea.headline}\n\n${idea.body}\n\n${idea.callToAction}`;
+                                navigator.clipboard.writeText(text);
+                                toast.success(`${meta.label} copy copied.`);
+                              }}
+                              className="ml-auto text-muted-foreground hover:text-foreground transition-colors p-0.5"
+                              title="Copy to clipboard"
+                            >
+                              <Copy size={12} />
+                            </button>
+                          </div>
+                          <p className="text-sm font-semibold text-foreground">{idea.headline}</p>
+                          <p className="text-xs text-muted-foreground whitespace-pre-line">{idea.body}</p>
+                          <div className="flex items-center justify-between pt-1">
+                            <span className="text-[11px] font-medium text-primary border border-primary/30 rounded px-2 py-0.5">{idea.callToAction}</span>
+                            {idea.imagePrompt && (
+                              <span className="text-[10px] text-muted-foreground italic truncate max-w-[55%]" title={idea.imagePrompt}>
+                                Photo: {idea.imagePrompt}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Suggested posting dates */}
+              {suggestedDates.length > 0 && (
+                <div className="space-y-2">
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Suggested Posting Dates</p>
+                  <div className="flex flex-wrap gap-2">
+                    {suggestedDates.map((d, i) => {
+                      let label = d;
+                      try { label = format(new Date(d + "T12:00:00"), "EEE, MMM d"); } catch {}
+                      return (
+                        <span key={i} className="flex items-center gap-1.5 text-xs bg-secondary border border-border rounded-lg px-3 py-1.5 text-foreground">
+                          <CalendarClock size={11} className="text-primary" />
+                          {label}
+                        </span>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Notes */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Notes</p>
+                  {!editingNotes && (
+                    <button
+                      onClick={() => { setNotesValue(selected.notes ?? ""); setEditingNotes(true); }}
+                      className="text-[11px] text-primary hover:underline"
+                    >
+                      {selected.notes ? "Edit" : "Add notes"}
+                    </button>
+                  )}
+                </div>
+                {editingNotes ? (
+                  <div className="space-y-2">
+                    <Textarea
+                      value={notesValue}
+                      onChange={(e) => setNotesValue(e.target.value)}
+                      placeholder="Notes, reminders, or changes for this campaign..."
+                      rows={3}
+                      className="text-sm resize-none"
+                    />
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        onClick={() => updateMutation.mutate({ id: selected.id, notes: notesValue })}
+                        disabled={updateMutation.isPending}
+                      >
+                        {updateMutation.isPending ? "Saving..." : "Save Notes"}
+                      </Button>
+                      <Button size="sm" variant="outline" onClick={() => setEditingNotes(false)}>Cancel</Button>
+                    </div>
+                  </div>
+                ) : selected.notes ? (
+                  <p className="text-sm text-muted-foreground whitespace-pre-line">{selected.notes}</p>
+                ) : (
+                  <p className="text-xs text-muted-foreground italic">No notes.</p>
+                )}
+              </div>
+            </div>
+          ) : null}
+        </div>
+      </div>
     </div>
   );
 }

@@ -1,4 +1,4 @@
-import { boolean, decimal, int, mysqlEnum, mysqlTable, text, timestamp, varchar } from "drizzle-orm/mysql-core";
+import { boolean, decimal, int, json, mysqlEnum, mysqlTable, text, timestamp, varchar } from "drizzle-orm/mysql-core";
 
 /**
  * Core user table backing auth flow.
@@ -1460,3 +1460,37 @@ export const hiddenClients = mysqlTable("hidden_clients", {
 });
 export type HiddenClient = typeof hiddenClients.$inferSelect;
 export type InsertHiddenClient = typeof hiddenClients.$inferInsert;
+
+/**
+ * Monthly Ad Campaigns — stores AI-generated campaign plans for upcoming months.
+ * Each row represents one month's campaign plan for a specific user.
+ */
+export const adCampaigns = mysqlTable("ad_campaigns", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  /** YYYY-MM — e.g. "2026-07" */
+  month: varchar("month", { length: 7 }).notNull(),
+  /** Display label — e.g. "July 2026" */
+  monthLabel: varchar("monthLabel", { length: 30 }).notNull(),
+  /** Season context: "peak" | "spring" | "summer" | "slow" */
+  season: varchar("season", { length: 20 }),
+  /** AI-generated campaign theme / headline */
+  theme: varchar("theme", { length: 255 }),
+  /** AI-generated campaign goal */
+  goal: text("goal"),
+  /** AI-generated primary message / angle */
+  primaryMessage: text("primaryMessage"),
+  /** JSON array of AdIdea objects: { platform, headline, body, callToAction, imagePrompt } */
+  adIdeas: json("adIdeas"),
+  /** JSON array of suggested posting dates: string[] */
+  suggestedDates: json("suggestedDates"),
+  /** User notes / edits on this campaign */
+  notes: text("notes"),
+  /** "draft" | "active" | "completed" */
+  status: varchar("status", { length: 20 }).notNull().default("draft"),
+  generatedAt: timestamp("generatedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().notNull(),
+});
+export type AdCampaign = typeof adCampaigns.$inferSelect;
+export type InsertAdCampaign = typeof adCampaigns.$inferInsert;
