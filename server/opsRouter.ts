@@ -859,11 +859,22 @@ const quotesRouter = router({
       ]);
       const isWestTn = WEST_TN_COUNTIES.has((input.county ?? "").toLowerCase());
 
-      // ─── Pricing constants — prefer DB values, fall back to 2025-2026 TN market rates ─────────────
+      // ─── Pricing constants — prefer DB values, then live benchmarks, fall back to 2025-2026 TN market rates ──
       // Sources: Mid State Land Management (Columbia TN), Bucktown Grading, HomeGuide, Angi 2026 data
-      const fmBase  = pricingRow?.forestryMulchingBaseRate ?? 800;
-      const lcBase  = pricingRow?.landClearingBaseRate     ?? 700;
-      const bhBase  = pricingRow?.brushHoggingBaseRate     ?? 150;
+      // Pull live market benchmarks to use as fallback base rates when no manual override is set
+      let benchmarkMids: Record<string, number> = {};
+      try {
+        const bRows = await getPricingBenchmarks();
+        for (const b of bRows) {
+          if (b.midPerAcre && b.midPerAcre > 0) {
+            benchmarkMids[b.serviceType.toLowerCase()] = b.midPerAcre;
+          }
+        }
+      } catch { /* non-fatal */ }
+      // Priority: 1) manual DB override  2) live benchmark mid  3) hardcoded TN market default
+      const fmBase  = pricingRow?.forestryMulchingBaseRate ?? benchmarkMids["forestry mulching"] ?? 800;
+      const lcBase  = pricingRow?.landClearingBaseRate     ?? benchmarkMids["land management"]   ?? 700;
+      const bhBase  = pricingRow?.brushHoggingBaseRate     ?? benchmarkMids["brush hogging"]     ?? 150;
       const rowBase = pricingRow?.rowClearingBaseRate       ?? 6;    // $/LF — ROW priced per linear foot
       const dmMult  = parseFloat(pricingRow?.densityModerateMultiplier ?? "1.25");
       const dhMult  = parseFloat(pricingRow?.densityHeavyMultiplier    ?? "1.60");
@@ -1270,10 +1281,19 @@ ${input.customPrompt ? `\nADJUSTMENT INSTRUCTION: ${input.customPrompt}\nApply t
         }
       }
 
-      // ─── Pricing constants (same as analyzeSubmission) ────────────────────────
-      const fmBase  = pricingRow?.forestryMulchingBaseRate ?? 800;
-      const lcBase  = pricingRow?.landClearingBaseRate     ?? 700;
-      const bhBase  = pricingRow?.brushHoggingBaseRate     ?? 150;
+      // ─── Pricing constants — prefer DB overrides, then live benchmarks, fall back to TN market defaults ──
+      let benchmarkMids2: Record<string, number> = {};
+      try {
+        const bRows2 = await getPricingBenchmarks();
+        for (const b of bRows2) {
+          if (b.midPerAcre && b.midPerAcre > 0) {
+            benchmarkMids2[b.serviceType.toLowerCase()] = b.midPerAcre;
+          }
+        }
+      } catch { /* non-fatal */ }
+      const fmBase  = pricingRow?.forestryMulchingBaseRate ?? benchmarkMids2["forestry mulching"] ?? 800;
+      const lcBase  = pricingRow?.landClearingBaseRate     ?? benchmarkMids2["land management"]   ?? 700;
+      const bhBase  = pricingRow?.brushHoggingBaseRate     ?? benchmarkMids2["brush hogging"]     ?? 150;
       const rowBase = pricingRow?.rowClearingBaseRate       ?? 6;
       const dmMult  = parseFloat(pricingRow?.densityModerateMultiplier ?? "1.25");
       const dhMult  = parseFloat(pricingRow?.densityHeavyMultiplier    ?? "1.60");
