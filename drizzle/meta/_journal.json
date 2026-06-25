@@ -477,6 +477,13 @@
       "when": 1782414206593,
       "tag": "0067_yellow_jane_foster",
       "breakpoints": true
+    },
+    {
+      "idx": 68,
+      "version": "5",
+      "when": 1782420171255,
+      "tag": "0068_outstanding_quicksilver",
+      "breakpoints": true
     }
   ]
 }

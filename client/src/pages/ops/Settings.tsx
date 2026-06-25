@@ -2186,6 +2186,10 @@ const MIDDLE_TN_DEFAULTS = {
   westTnMobilizationFee: "650",    // reflects additional 60–90 mi drive time
   stumpGrindingPerStump: 200,
   debrisHaulingPerLoad: 450,
+  postClearSeedingPerAcre: 225,
+  fenceLineClearingPerLf: 4,
+  mulchRedistributionPerAcre: 175,
+  selectiveClearingFlatRate: 200,
   volumeDiscount3to5Pct: 3,
   volumeDiscount5to10Pct: 7,
   volumeDiscount10plusPct: 10,     // reduced from 12 — protects margin on large jobs
@@ -2290,6 +2294,10 @@ function AIPricingTab() {
         // Add-on rates
         stumpGrindingPerStump: settings.stumpGrindingPerStump,
         debrisHaulingPerLoad: settings.debrisHaulingPerLoad,
+        postClearSeedingPerAcre: settings.postClearSeedingPerAcre,
+        fenceLineClearingPerLf: settings.fenceLineClearingPerLf,
+        mulchRedistributionPerAcre: settings.mulchRedistributionPerAcre,
+        selectiveClearingFlatRate: settings.selectiveClearingFlatRate,
         // Volume discounts
         volumeDiscount3to5Pct: settings.volumeDiscount3to5Pct,
         volumeDiscount5to10Pct: settings.volumeDiscount5to10Pct,
@@ -2334,6 +2342,10 @@ function AIPricingTab() {
       // Add-on rates
       stumpGrindingPerStump: Number(form.stumpGrindingPerStump),
       debrisHaulingPerLoad: Number(form.debrisHaulingPerLoad),
+      postClearSeedingPerAcre: Number(form.postClearSeedingPerAcre),
+      fenceLineClearingPerLf: Number(form.fenceLineClearingPerLf),
+      mulchRedistributionPerAcre: Number(form.mulchRedistributionPerAcre),
+      selectiveClearingFlatRate: Number(form.selectiveClearingFlatRate),
       // Volume discounts
       volumeDiscount3to5Pct: Number(form.volumeDiscount3to5Pct),
       volumeDiscount5to10Pct: Number(form.volumeDiscount5to10Pct),
@@ -2626,8 +2638,12 @@ function AIPricingTab() {
               <p className="text-[11px] text-muted-foreground mb-4">Per-unit rates for optional services. Added as line items when selected on a quote.</p>
               <div className="grid grid-cols-2 gap-4">
                 {([
-                  { label: "Stump Grinding", key: "stumpGrindingPerStump", unit: "per stump", note: "Market: $100–$200/stump" },
-                  { label: "Debris Hauling", key: "debrisHaulingPerLoad",  unit: "per load",  note: "Market: $350–$550/load" },
+                  { label: "Stump Grinding",         key: "stumpGrindingPerStump",      unit: "per stump",        note: "Market: $100\u2013$200/stump" },
+                  { label: "Debris Hauling",          key: "debrisHaulingPerLoad",       unit: "per load",         note: "Market: $350\u2013$550/load" },
+                  { label: "Post-Clear Seeding",      key: "postClearSeedingPerAcre",   unit: "per acre",         note: "Market: $150\u2013$350/acre" },
+                  { label: "Fence Line Clearing",     key: "fenceLineClearingPerLf",    unit: "per linear foot",  note: "Market: $3\u2013$6/LF" },
+                  { label: "Mulch Redistribution",    key: "mulchRedistributionPerAcre", unit: "per acre",        note: "Market: $100\u2013$250/acre" },
+                  { label: "Selective Clearing",      key: "selectiveClearingFlatRate", unit: "flat rate",        note: "Market: $150\u2013$300 flat" },
                 ] as const).map(({ label, key, unit, note }) => (
                   <div key={key}>
                     <label className="block text-xs font-medium text-foreground mb-0.5">{label}</label>

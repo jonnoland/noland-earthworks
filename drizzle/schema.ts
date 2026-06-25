@@ -756,6 +756,14 @@ export const aiPricingSettings = mysqlTable("ai_pricing_settings", {
   stumpGrindingPerStump: int("stumpGrindingPerStump").notNull().default(200),
   /** Debris hauling rate per load (USD). Used when debris hauling/removal is selected as an add-on. */
   debrisHaulingPerLoad: int("debrisHaulingPerLoad").notNull().default(450),
+  /** Post-clear seeding rate per acre (USD). Erosion control / ground cover seeding after clearing. Middle & West TN market: $150–$350/acre. */
+  postClearSeedingPerAcre: int("postClearSeedingPerAcre").notNull().default(225),
+  /** Fence line clearing rate per linear foot (USD). Reclaiming overgrown fence lines. Middle & West TN market: $3–$6/LF. */
+  fenceLineClearingPerLf: int("fenceLineClearingPerLf").notNull().default(4),
+  /** Mulch redistribution rate per acre (USD). Uniform mulch finish after forestry mulching. Middle & West TN market: $100–$250/acre. */
+  mulchRedistributionPerAcre: int("mulchRedistributionPerAcre").notNull().default(175),
+  /** Selective clearing flat rate (USD). Pre-job walkthrough + marking trees for preservation. Middle & West TN market: $150–$300 flat. */
+  selectiveClearingFlatRate: int("selectiveClearingFlatRate").notNull().default(200),
 
   // ── Volume discounts ────────────────────────────────────────────────────────
   /** Volume discount % applied to jobs 3–5 acres (integer, e.g. 3 = 3%). 0 = disabled. */

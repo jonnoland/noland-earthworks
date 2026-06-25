@@ -887,6 +887,10 @@ const quotesRouter = router({
       // ── Add-on rates from DB ────────────────────────────────────────────────
       const stumpPerStump   = pricingRow?.stumpGrindingPerStump ?? 200;
       const debrisPerLoad   = pricingRow?.debrisHaulingPerLoad  ?? 450;
+      const seedingPerAcre       = pricingRow?.postClearSeedingPerAcre     ?? 225;
+      const fenceLineClearPerLf  = pricingRow?.fenceLineClearingPerLf      ?? 4;
+      const mulchRedistPerAcre   = pricingRow?.mulchRedistributionPerAcre  ?? 175;
+      const selectiveFlatRate    = pricingRow?.selectiveClearingFlatRate   ?? 200;
 
       // ── Volume discount thresholds from DB ─────────────────────────────────
       const vd3to5   = (pricingRow?.volumeDiscount3to5Pct   ?? 3)  / 100;
@@ -1067,6 +1071,18 @@ const quotesRouter = router({
       }
       if (addOnsLower.some((a: string) => a.includes("debris") || a.includes("haul"))) {
         addOnPricingContext.push(`Debris hauling/removal: $${debrisPerLoad} per load (use this rate for haul-out line items)`);
+      }
+      if (addOnsLower.some((a: string) => a.includes("seeding") || a.includes("post-clear"))) {
+        addOnPricingContext.push(`Post-clear seeding: $${seedingPerAcre} per acre (erosion control / ground cover seeding)`);
+      }
+      if (addOnsLower.some((a: string) => a.includes("fence"))) {
+        addOnPricingContext.push(`Fence line clearing: $${fenceLineClearPerLf} per linear foot (reclaiming overgrown fence lines)`);
+      }
+      if (addOnsLower.some((a: string) => a.includes("mulch") || a.includes("redistribution"))) {
+        addOnPricingContext.push(`Mulch redistribution: $${mulchRedistPerAcre} per acre (uniform mulch finish after clearing)`);
+      }
+      if (addOnsLower.some((a: string) => a.includes("selective"))) {
+        addOnPricingContext.push(`Selective clearing: $${selectiveFlatRate} flat rate (pre-job walkthrough + tree preservation marking)`);
       }
 
       const seasonLabel = isPeakSeason ? "peak season (Oct–Mar) — dormant vegetation, firm ground" :
@@ -1336,6 +1352,10 @@ ${input.customPrompt ? `\nADJUSTMENT INSTRUCTION: ${input.customPrompt}\nApply t
       const baseMobilization = pricingRow?.mobilizationFee ?? 400;
       const stumpPerStump   = pricingRow?.stumpGrindingPerStump ?? 200;
       const debrisPerLoad   = pricingRow?.debrisHaulingPerLoad  ?? 450;
+      const seedingPerAcre       = pricingRow?.postClearSeedingPerAcre     ?? 225;
+      const fenceLineClearPerLf  = pricingRow?.fenceLineClearingPerLf      ?? 4;
+      const mulchRedistPerAcre   = pricingRow?.mulchRedistributionPerAcre  ?? 175;
+      const selectiveFlatRate    = pricingRow?.selectiveClearingFlatRate   ?? 200;
       const MIN_JOB = pricingRow?.minimumJobTotal ?? 1800;
 
       // ─── Seasonal context ─────────────────────────────────────────────────────
@@ -1398,6 +1418,10 @@ Pricing reference — Middle & West Tennessee market rates (2025–2026):
 - Mobilization fee (standard): $${baseMobilization}
 - Stump grinding: $${stumpPerStump}/stump
 - Debris hauling: $${debrisPerLoad}/load
+- Post-clear seeding: $${seedingPerAcre}/acre
+- Fence line clearing: $${fenceLineClearPerLf}/linear foot
+- Mulch redistribution: $${mulchRedistPerAcre}/acre
+- Selective clearing: $${selectiveFlatRate} flat rate
 - Minimum job total: $${MIN_JOB}
 - Season: ${seasonLabel}
 ${benchmarkContext}
@@ -2541,6 +2565,10 @@ const settingsRouter = router({
       // Add-on rates
       stumpGrindingPerStump: z.number().int().min(0).optional(),
       debrisHaulingPerLoad: z.number().int().min(0).optional(),
+      postClearSeedingPerAcre: z.number().int().min(0).optional(),
+      fenceLineClearingPerLf: z.number().int().min(0).optional(),
+      mulchRedistributionPerAcre: z.number().int().min(0).optional(),
+      selectiveClearingFlatRate: z.number().int().min(0).optional(),
       // Volume discounts
       volumeDiscount3to5Pct: z.number().int().min(0).max(50).optional(),
       volumeDiscount5to10Pct: z.number().int().min(0).max(50).optional(),
