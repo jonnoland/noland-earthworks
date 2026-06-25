@@ -17,7 +17,7 @@
 import { Resend } from "resend";
 import { and, eq, gte, isNotNull, lte, ne, or } from "drizzle-orm";
 import { getDb, getOwnerUser, insertAgentLog, getAgentConfig, upsertAgentConfig, upsertPricingBenchmark, getPendingNotifications, markNotificationAttempt, deleteNotification } from "./db";
-import { businessSettings, jobs, opsLeads, scheduleEntries } from "../drizzle/schema";
+import { businessSettings, jobs, opsLeads, scheduleEntries, serviceCatalog } from "../drizzle/schema";
 import { ENV } from "./_core/env";
 import { notifyOwner } from "./_core/notification";
 import { isJobberConnected, jobberGraphQL } from "./jobber";
@@ -699,13 +699,23 @@ export async function runDailyDigestAgent() {
  * Middle & West Tennessee. Upserts results into pricing_benchmarks table.
  */
 
-const PRICING_SERVICES = [
-  { key: "Forestry Mulching",  description: "forestry mulching per acre in Middle and West Tennessee" },
-  { key: "Land Management",    description: "land management per acre in Middle and West Tennessee" },
-  { key: "Brush/Understory",   description: "brush clearing and understory vegetation removal per acre in Middle and West Tennessee" },
-  { key: "ROW/Trail",          description: "right-of-way clearing and trail cutting per acre in Middle and West Tennessee" },
-  { key: "Storm Cleanup",      description: "storm debris cleanup and fallen tree removal per acre in Middle and West Tennessee" },
-];
+// Maps known service types to research-friendly descriptions.
+// Any service type NOT in this map gets a generic description derived from its name.
+const SERVICE_DESCRIPTIONS: Record<string, string> = {
+  "Forestry Mulching":      "forestry mulching per acre in Middle and West Tennessee",
+  "Land Management":        "land management per acre in Middle and West Tennessee",
+  "Brush/Understory":       "brush clearing and understory vegetation removal per acre in Middle and West Tennessee",
+  "ROW/Trail":              "right-of-way clearing and trail cutting per acre in Middle and West Tennessee",
+  "Storm Cleanup":          "storm debris cleanup and fallen tree removal per acre in Middle and West Tennessee",
+  "Post-Clear Seeding":     "post-clearing grass and wildflower seeding per acre in Middle and West Tennessee",
+  "Fence Line Clearing":    "fence line brush clearing per linear foot in Middle and West Tennessee",
+  "Mulch Redistribution":   "forestry mulch redistribution and spreading per acre in Middle and West Tennessee",
+  "Selective Clearing":     "selective tree and brush clearing (keeping desirable trees) per acre in Middle and West Tennessee",
+};
+
+function getServiceDescription(serviceType: string): string {
+  return SERVICE_DESCRIPTIONS[serviceType] ?? `${serviceType.toLowerCase()} services in Middle and West Tennessee`;
+}
 
 export async function runPricingUpdateAgent() {
   const AGENT_ID = "pricing_update";
@@ -719,7 +729,18 @@ export async function runPricingUpdateAgent() {
   const summaryLines: string[] = [];
 
   try {
-    for (const svc of PRICING_SERVICES) {
+    // Dynamically pull service list from the catalog so any new service is automatically included
+    const db = await getDb();
+    const catalogServices = db
+      ? (await db.select({ serviceType: serviceCatalog.serviceType }).from(serviceCatalog).orderBy(serviceCatalog.sortOrder))
+          .map(r => ({ key: r.serviceType, description: getServiceDescription(r.serviceType) }))
+      : [];
+    const pricingServices = catalogServices.length > 0 ? catalogServices : [
+      { key: "Forestry Mulching", description: getServiceDescription("Forestry Mulching") },
+      { key: "Land Management",   description: getServiceDescription("Land Management") },
+    ];
+
+    for (const svc of pricingServices) {
       try {
         const currentDate = new Date().toLocaleDateString("en-US", { month: "long", year: "numeric" });
         const prompt = `You are a market research assistant for a land management company in Tennessee. Today is ${currentDate}.
@@ -816,7 +837,7 @@ All values are USD integers. No $ signs or commas in the numbers.`;
       }
     }
 
-    const runSummary = `Updated ${updatedCount}/${PRICING_SERVICES.length} services. ${summaryLines.join(" | ")}`;
+    const runSummary = `Updated ${updatedCount}/${pricingServices.length} services. ${summaryLines.join(" | ")}`;
     await insertAgentLog({ agentId: AGENT_ID, status: "success", summary: runSummary, actionsCount: updatedCount });
 
     if (updatedCount > 0) {
