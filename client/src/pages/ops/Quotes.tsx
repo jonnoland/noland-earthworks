@@ -2421,6 +2421,8 @@ function CreateQuoteModal({ onClose, onCreated, prefill }: CreateQuoteModalProps
 type PriceBreakdown = {
   baseRate: number;
   acreage: number;
+  rawAcreage?: number;
+  minimumEnforced?: boolean;
   densityMultiplier: number;
   terrainMultiplier: number;
   accessMultiplier: number;
@@ -2806,7 +2808,12 @@ function WebsiteRequestCard({
                     </tr>
                     <tr className="border-b border-border">
                       <td className="px-3 py-1.5 text-muted-foreground">Acreage</td>
-                      <td className="px-3 py-1.5 text-right font-medium text-foreground">{analysis.priceBreakdown.acreage > 0 ? `${analysis.priceBreakdown.acreage} acres` : "Not specified"}</td>
+                      <td className="px-3 py-1.5 text-right font-medium text-foreground">
+                        {analysis.priceBreakdown.acreage > 0 ? `${analysis.priceBreakdown.acreage} acres` : "Not specified"}
+                        {analysis.priceBreakdown.minimumEnforced && (
+                          <span className="ml-1.5 text-[10px] text-amber-400 font-normal">(1-acre min applied)</span>
+                        )}
+                      </td>
                     </tr>
                     {analysis.priceBreakdown.densityMultiplier !== 1.0 && (
                       <tr className="border-b border-border">

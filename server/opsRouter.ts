@@ -963,19 +963,37 @@ const quotesRouter = router({
 
       // Parse acreage string to a number and a human-readable label
       const ACREAGE_MAP: Record<string, number> = {
+        // Legacy server-side keys
         "half-to-one": 0.75, "1-to-2": 1.5, "2-to-5": 3.5,
         "5-to-10": 7.5, "10-to-20": 15, "20+": 25,
+        // Public quote form keys (Quote.tsx)
+        "under-quarter": 0.2, "quarter-to-half": 0.375,
+        "one-to-two": 1.5, "two-to-five": 3.5,
+        "five-to-ten": 7.5, "ten-plus": 15,
+        "unsure": 0,
       };
       const ACREAGE_LABEL: Record<string, string> = {
+        // Legacy server-side keys
         "half-to-one": "approximately 0.5–1 acre",
         "1-to-2":      "approximately 1–2 acres",
         "2-to-5":      "approximately 2–5 acres",
         "5-to-10":     "approximately 5–10 acres",
         "10-to-20":    "approximately 10–20 acres",
         "20+":         "20+ acres",
+        // Public quote form keys
+        "under-quarter":   "under ¼ acre",
+        "quarter-to-half": "approximately ¼–½ acre",
+        "one-to-two":      "approximately 1–2 acres",
+        "two-to-five":     "approximately 2–5 acres",
+        "five-to-ten":     "approximately 5–10 acres",
+        "ten-plus":        "10+ acres",
+        "unsure":          "acreage not specified — site visit required",
       };
       const acreageStr = input.acreage ?? "";
-      const acres = ACREAGE_MAP[acreageStr] ?? (parseFloat(acreageStr) || 0);
+      const rawAcres = ACREAGE_MAP[acreageStr] ?? (parseFloat(acreageStr) || 0);
+      // Enforce 1-acre minimum for pricing calculations — the tracked mulcher requires
+      // full mobilization regardless of lot size; sub-1-acre jobs are priced at the 1-acre rate.
+      const acres = rawAcres > 0 ? Math.max(1, rawAcres) : 0;
       const density = input.density ?? "moderate";
       const terrain = input.terrain ?? "flat";
       const access  = input.access  ?? "easy";
@@ -1118,7 +1136,9 @@ ${jobHistoryContext}
 Rules:
 - Never publish or promise specific rates. Use the reference range as a guide only.
 - If acreage is unknown or the customer's message suggests complex conditions, flag it for a site visit.
-- Line items should reflect real work components: mobilization, primary clearing work (per-acre or flat), any add-ons.
+- MINIMUM JOB SIZE IS 1 ACRE. If the submitted acreage is under 1 acre, price it at the 1-acre rate and note in scopeNotes that the minimum job size is 1 acre — the tracked equipment requires full mobilization regardless of lot size.
+- Mobilization ($${MOBILIZATION}) MUST always appear as a separate line item named "Mobilization & Equipment Transport". Never omit it or bundle it silently into the clearing rate.
+- Line items should reflect real work components: mobilization (always first), primary clearing work (per-acre or flat), any add-ons.
 - When stump grinding or debris hauling add-ons are present, use the exact per-stump or per-load rates provided above for those line items.
 - Prices in line items should be integers (no decimals).
 - The quote message MUST reference the acreage (use "${acreageLabel}") — this is required.
@@ -1218,6 +1238,8 @@ ${input.customPrompt ? `\nADJUSTMENT INSTRUCTION: ${input.customPrompt}\nApply t
           return fmBase;
         })(),
         acreage: acres,
+        rawAcreage: rawAcres,
+        minimumEnforced: rawAcres > 0 && rawAcres < 1,
         densityMultiplier: TERRAIN_MULT[terrain] !== undefined ? (density === "light" ? 1.0 : density === "moderate" ? dmMult : dhMult) : 1.0,
         terrainMultiplier: TERRAIN_MULT[terrain] ?? 1.0,
         accessMultiplier: ACCESS_MULT[access] ?? 1.0,
@@ -1430,7 +1452,9 @@ ${jobHistoryContext}
 Rules:
 - Infer service type, acreage, density, terrain, and access from the description and photos.
 - If photos show heavy vegetation, steep terrain, or site hazards, factor them into pricing and risk flags.
-- Line items should reflect real work components: mobilization, primary clearing (per-acre or flat), add-ons.
+- MINIMUM JOB SIZE IS 1 ACRE. If inferred acreage is under 1 acre, set inferredAcres to 1.0 and note in scopeNotes that the minimum job size is 1 acre — the tracked equipment requires full mobilization regardless of lot size.
+- Mobilization ($${baseMobilization}) MUST always appear as a separate line item named "Mobilization & Equipment Transport". Never omit it or bundle it silently into the clearing rate.
+- Line items should reflect real work components: mobilization (always first), primary clearing (per-acre or flat), add-ons.
 - Prices in line items must be integers (no decimals).
 - The quote message MUST reference the acreage and sound like Jon wrote it — direct, professional, no fluff, no emojis.
 - Flag any risk factors visible in photos or mentioned in the description.
