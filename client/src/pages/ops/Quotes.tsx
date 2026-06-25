@@ -665,7 +665,7 @@ function QuoteDetailPanel({
                             onClick={() => linkQuoteToLead.mutate({
                               leadId: l.id,
                               jobberQuoteId: quoteId,
-                              jobberQuoteNumber: quote.quoteNumber ?? undefined,
+                              jobberQuoteNumber: quote.quoteNumber != null ? Number(quote.quoteNumber) : undefined,
                             })}
                             disabled={linkQuoteToLead.isPending}
                             className="w-full flex items-start gap-2 px-3 py-2 hover:bg-secondary/40 transition-colors text-left border-b border-border last:border-0 disabled:opacity-50"
