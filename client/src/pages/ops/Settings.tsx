@@ -38,6 +38,7 @@ const tabs = [
   { id: "scheduling",           label: "Scheduling",           icon: CalendarOff },
   { id: "agents",               label: "Agents",               icon: Bot },
   { id: "ai-pricing",           label: "AI Pricing",           icon: BarChart2 },
+  { id: "pricing-intelligence",   label: "Pricing Intelligence",  icon: ExternalLink, externalUrl: "https://nolanddash-ewumhc2y.manus.space" },
 ];
 
 // ─── Shared helpers ───────────────────────────────────────────────────────────
@@ -3001,21 +3002,28 @@ export default function Settings() {
               {tabs.map((tab, idx) => {
                 const Icon = tab.icon;
                 const isActive = activeTab === tab.id;
+                const isExternal = !!(tab as any).externalUrl;
                 return (
                   <div key={tab.id} className="flex items-center">
                     {idx > 0 && <span className="text-border/60 px-1 text-xs select-none">|</span>}
                     <button
-                      onClick={() => setActiveTab(tab.id)}
+                      onClick={() => {
+                        if (isExternal) {
+                          window.open((tab as any).externalUrl, "_blank", "noopener,noreferrer");
+                        } else {
+                          setActiveTab(tab.id);
+                        }
+                      }}
                       className={cn(
                         "flex items-center gap-1.5 px-3 h-11 text-xs font-medium transition-colors relative whitespace-nowrap",
-                        isActive
+                        isActive && !isExternal
                           ? "text-foreground"
                           : "text-muted-foreground hover:text-foreground"
                       )}
                     >
                       <Icon className="w-3.5 h-3.5 shrink-0" />
                       {tab.label}
-                      {isActive && (
+                      {isActive && !isExternal && (
                         <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary rounded-t-full" />
                       )}
                     </button>
