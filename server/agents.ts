@@ -700,12 +700,11 @@ export async function runDailyDigestAgent() {
  */
 
 const PRICING_SERVICES = [
+  { key: "Forestry Mulching",  description: "forestry mulching per acre in Middle and West Tennessee" },
   { key: "Land Management",    description: "land management per acre in Middle and West Tennessee" },
-  { key: "Forestry Mulching", description: "forestry mulching per acre in Middle and West Tennessee" },
-  { key: "Brush Removal",    description: "brush removal per acre in Middle and West Tennessee" },
-  { key: "Brush Hogging",    description: "brush hogging / bush hogging per acre in Middle and West Tennessee" },
-  { key: "Stump Grinding",   description: "stump grinding per stump or per hour in Middle and West Tennessee — express rates as per-stump low/mid/high" },
-  { key: "Debris Hauling",   description: "debris hauling and removal per load or per acre in Middle and West Tennessee — express rates as per-load or per-acre low/mid/high" },
+  { key: "Brush/Understory",   description: "brush clearing and understory vegetation removal per acre in Middle and West Tennessee" },
+  { key: "ROW/Trail",          description: "right-of-way clearing and trail cutting per acre in Middle and West Tennessee" },
+  { key: "Storm Cleanup",      description: "storm debris cleanup and fallen tree removal per acre in Middle and West Tennessee" },
 ];
 
 export async function runPricingUpdateAgent() {
