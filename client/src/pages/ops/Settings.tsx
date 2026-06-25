@@ -2227,7 +2227,9 @@ function AIPricingTab() {
   const { data: settings, isLoading } = trpc.ops.settings.getAIPricingSettings.useQuery();
   const { data: benchmarks, isLoading: benchmarksLoading, refetch: refetchBenchmarks } = trpc.agents.getPricingBenchmarks.useQuery();
   const { data: catalogItems, isLoading: catalogLoading } = trpc.ops.settings.getServiceCatalog.useQuery();
+  const { data: lastRun, refetch: refetchLastRun } = trpc.agents.getLastRun.useQuery({ agentId: "pricing_update" });
   const utils = trpc.useUtils();
+  const [isFetching, setIsFetching] = useState(false);
   const update = trpc.ops.settings.updateAIPricingSettings.useMutation({
     onSuccess: () => {
       toast.success("AI pricing model saved");
@@ -2237,8 +2239,30 @@ function AIPricingTab() {
   });
   const runAgent = trpc.agents.triggerRun.useMutation({
     onSuccess: () => {
-      toast.success("Pricing research started. Results will update in a moment.");
-      setTimeout(() => refetchBenchmarks(), 8000);
+      toast.success("Pricing research started — this takes about 30 seconds.");
+      setIsFetching(true);
+      // Poll every 5s for up to 60s, then refetch benchmarks and show summary
+      let attempts = 0;
+      const poll = setInterval(async () => {
+        attempts++;
+        const result = await refetchLastRun();
+        const run = result.data;
+        if (run && new Date(run.ranAt).getTime() > Date.now() - 90_000 && run.status !== "running") {
+          clearInterval(poll);
+          setIsFetching(false);
+          await refetchBenchmarks();
+          if (run.status === "success") {
+            toast.success(`Benchmarks updated — ${run.actionsCount} service${run.actionsCount !== 1 ? "s" : ""} refreshed.`);
+          } else {
+            toast.error(`Refresh completed with errors. Check the Agents tab for details.`);
+          }
+        } else if (attempts >= 12) {
+          clearInterval(poll);
+          setIsFetching(false);
+          await refetchBenchmarks();
+          toast.success("Benchmark refresh complete. Data updated.");
+        }
+      }, 5000);
     },
     onError: (e) => toast.error(`Agent run failed: ${e.message}`),
   });
@@ -2731,18 +2755,39 @@ function AIPricingTab() {
                 <p className="text-sm font-semibold text-foreground">Middle & West TN Market Benchmarks</p>
                 <p className="text-[11px] text-muted-foreground mt-1 max-w-lg">
                   AI-researched directional rates based on regional competitor data, industry forums, and cost guides.
-                  Updated daily. Not live-scraped prices — use as a reference to verify your rates are in range.
+                  Not live-scraped prices — use as a reference to verify your rates are in range.
                 </p>
+                {lastRun && (
+                  <p className="text-[11px] text-muted-foreground mt-1">
+                    Last updated:{" "}
+                    <span className={lastRun.status === "success" ? "text-green-400" : "text-amber-400"}>
+                      {new Date(lastRun.ranAt).toLocaleString("en-US", {
+                        timeZone: "America/Chicago",
+                        month: "short", day: "numeric", year: "numeric",
+                        hour: "numeric", minute: "2-digit",
+                      })}
+                    </span>
+                    {lastRun.actionsCount > 0 && (
+                      <span className="text-muted-foreground"> — {lastRun.actionsCount} service{lastRun.actionsCount !== 1 ? "s" : ""} updated</span>
+                    )}
+                  </p>
+                )}
               </div>
               <button
                 onClick={() => runAgent.mutate({ agentId: "pricing_update" })}
-                disabled={runAgent.isPending || benchmarksLoading}
+                disabled={runAgent.isPending || isFetching || benchmarksLoading}
                 className="flex items-center gap-1.5 rounded-md border border-border bg-secondary/30 px-3 py-1.5 text-xs font-medium text-foreground hover:bg-secondary/60 disabled:opacity-50 transition-colors shrink-0"
               >
-                {runAgent.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <RefreshCw className="w-3 h-3" />}
-                Refresh Now
+                {(runAgent.isPending || isFetching) ? <Loader2 className="w-3 h-3 animate-spin" /> : <RefreshCw className="w-3 h-3" />}
+                {isFetching ? "Fetching..." : "Refresh Now"}
               </button>
             </div>
+            {isFetching && (
+              <div className="flex items-center gap-2 py-3 px-3 mb-2 rounded-md bg-primary/10 border border-primary/20 text-xs text-primary">
+                <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0" />
+                Researching market rates for Middle & West Tennessee. This takes about 30 seconds...
+              </div>
+            )}
             {(benchmarksLoading || catalogLoading) && (
               <div className="flex items-center gap-2 py-4 text-xs text-muted-foreground">
                 <Loader2 className="w-3.5 h-3.5 animate-spin" />Loading benchmarks...

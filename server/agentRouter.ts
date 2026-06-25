@@ -133,4 +133,11 @@ export const agentRouter = router({
   getPricingBenchmarks: ownerProcedure.query(async () => {
     return getPricingBenchmarks();
   }),
+
+  /** Return the most recent run log for a specific agent. */
+  getLastRun: ownerProcedure
+    .input(z.object({ agentId: z.string() }))
+    .query(async ({ input }: { input: { agentId: string } }) => {
+      return getLastAgentRun(input.agentId);
+    }),
 });
