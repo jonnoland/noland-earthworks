@@ -591,8 +591,8 @@ function LeadDetailPanel({
   const [stageSuggestion, setStageSuggestion] = useState<{ suggestedStage: string | null; reason: string } | null>(null);
   const [proposalDraft, setProposalDraft] = useState<{ projectDescription?: string; scopeOfWork?: string[]; inclusions?: string[]; exclusions?: string[]; siteConditions?: string; estimatedTimeline?: string; paymentTerms?: string } | null>(null);
   const [showProposal, setShowProposal] = useState(false);
-  const [showContactModal, setShowContactModal] = useState(false);
-
+    const [showContactModal, setShowContactModal] = useState(false);
+  const [showQuotePreview, setShowQuotePreview] = useState(false);
   const utils = trpc.useUtils();
   const { data: notes = [], isLoading: notesLoading } = trpc.ops.leads.listNotes.useQuery({ leadId: lead.id });
 
@@ -783,24 +783,128 @@ function LeadDetailPanel({
               if (last && /^\d+$/.test(last)) numericId = last;
             } catch { /* ignore */ }
             return (
-              <a
-                href={`https://secure.getjobber.com/quotes/${numericId}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className={`mt-2 flex items-center gap-2 px-2 py-1.5 border rounded-md hover:opacity-80 transition-opacity cursor-pointer ${statusColor}`}
-              >
-                <FileText className="w-3 h-3 shrink-0" />
-                <span className="text-[11px] font-medium">
-                  Quote {lead.jobberQuoteNumber ? `#${lead.jobberQuoteNumber}` : ""}
-                </span>
-                {lead.estimateAmount && (
-                  <span className="text-[11px] font-bold text-white">
-                    ${Number(lead.estimateAmount).toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+              <>
+                <button
+                  onClick={() => setShowQuotePreview(true)}
+                  className={`mt-2 w-full flex items-center gap-2 px-2 py-1.5 border rounded-md hover:opacity-80 transition-opacity cursor-pointer ${statusColor}`}
+                >
+                  <FileText className="w-3 h-3 shrink-0" />
+                  <span className="text-[11px] font-medium">
+                    Quote {lead.jobberQuoteNumber ? `#${lead.jobberQuoteNumber}` : ""}
                   </span>
+                  {lead.estimateAmount && (
+                    <span className="text-[11px] font-bold text-white">
+                      ${Number(lead.estimateAmount).toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                    </span>
+                  )}
+                  <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-black/20">{statusLabel}</span>
+                  <ExternalLink className="ml-auto w-3 h-3 shrink-0 opacity-60" />
+                </button>
+                {/* Quote preview modal */}
+                {showQuotePreview && (
+                  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70" onClick={() => setShowQuotePreview(false)}>
+                    <div className="bg-[#141414] border border-[#2a2a2a] rounded-xl w-full max-w-md mx-4 max-h-[80vh] flex flex-col" onClick={e => e.stopPropagation()}>
+                      {/* Header */}
+                      <div className={`flex items-center justify-between px-4 py-3 border-b border-[#2a2a2a] rounded-t-xl ${statusColor}`}>
+                        <div className="flex items-center gap-2">
+                          <FileText className="w-4 h-4" />
+                          <span className="text-sm font-semibold">
+                            Quote {lead.jobberQuoteNumber ? `#${lead.jobberQuoteNumber}` : ""}
+                          </span>
+                          <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-black/30">{statusLabel}</span>
+                        </div>
+                        <button onClick={() => setShowQuotePreview(false)} className="text-[#666] hover:text-white transition-colors">
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+                      {/* Body */}
+                      <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3">
+                        {quoteStatusLoading ? (
+                          <div className="flex items-center justify-center py-8">
+                            <Loader2 className="w-5 h-5 animate-spin text-[#555]" />
+                          </div>
+                        ) : linkedQuote ? (
+                          <>
+                            {/* Client */}
+                            {linkedQuote.client && (
+                              <div>
+                                <p className="text-[10px] uppercase tracking-wider text-[#555] mb-1">Client</p>
+                                <p className="text-sm text-white font-medium">{linkedQuote.client.name || linkedQuote.client.companyName}</p>
+                                {linkedQuote.property?.address && (
+                                  <p className="text-[11px] text-[#666]">
+                                    {[linkedQuote.property.address.street1, linkedQuote.property.address.city, linkedQuote.property.address.province].filter(Boolean).join(", ")}
+                                  </p>
+                                )}
+                              </div>
+                            )}
+                            {/* Line items */}
+                            {linkedQuote.lineItems?.nodes?.length > 0 && (
+                              <div>
+                                <p className="text-[10px] uppercase tracking-wider text-[#555] mb-1">Line Items</p>
+                                <div className="space-y-1">
+                                  {linkedQuote.lineItems.nodes.map((item: any, i: number) => (
+                                    <div key={i} className="flex items-start justify-between gap-2 text-[11px]">
+                                      <span className="text-[#ccc] flex-1">{item.name}{item.description ? ` — ${item.description}` : ""}</span>
+                                      <span className="text-white font-semibold shrink-0">
+                                        {item.quantity !== 1 && <span className="text-[#666] mr-1">{item.quantity}×</span>}
+                                        ${Number(item.unitPrice).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                      </span>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                            {/* Amounts */}
+                            {linkedQuote.amounts && (
+                              <div className="border-t border-[#2a2a2a] pt-2 space-y-1">
+                                {linkedQuote.amounts.subtotal != null && (
+                                  <div className="flex justify-between text-[11px]">
+                                    <span className="text-[#666]">Subtotal</span>
+                                    <span className="text-[#ccc]">${Number(linkedQuote.amounts.subtotal).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                  </div>
+                                )}
+                                {linkedQuote.amounts.total != null && (
+                                  <div className="flex justify-between text-sm font-bold">
+                                    <span className="text-white">Total</span>
+                                    <span className="text-[#E07B2A]">${Number(linkedQuote.amounts.total).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                            {/* Message/notes */}
+                            {linkedQuote.message && (
+                              <div>
+                                <p className="text-[10px] uppercase tracking-wider text-[#555] mb-1">Notes</p>
+                                <p className="text-[11px] text-[#999] whitespace-pre-wrap">{linkedQuote.message}</p>
+                              </div>
+                            )}
+                          </>
+                        ) : (
+                          <p className="text-[11px] text-[#555] text-center py-4">Quote details unavailable.</p>
+                        )}
+                      </div>
+                      {/* Footer */}
+                      <div className="px-4 py-3 border-t border-[#2a2a2a] flex gap-2">
+                        <a
+                          href={`https://secure.getjobber.com/quotes/${numericId}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex-1 flex items-center justify-center gap-1.5 bg-[#1e1e1e] hover:bg-[#252525] border border-[#2a2a2a] text-[#aaa] text-[11px] font-semibold py-2 rounded-md transition-colors"
+                        >
+                          <ExternalLink className="w-3 h-3" />
+                          Open in Jobber
+                        </a>
+                        <button
+                          onClick={() => setShowQuotePreview(false)}
+                          className="px-4 bg-[#1e1e1e] hover:bg-[#252525] border border-[#2a2a2a] text-[#666] text-[11px] font-semibold py-2 rounded-md transition-colors"
+                        >
+                          Close
+                        </button>
+                      </div>
+                    </div>
+                  </div>
                 )}
-                <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-black/20">{statusLabel}</span>
-                <ExternalLink className="ml-auto w-3 h-3 shrink-0 opacity-60" />
-              </a>
+              </>
             );
           })()}
           {/* Chat session actions — only shown for chat-sourced leads */}
