@@ -4768,12 +4768,29 @@ Generate a complete monthly ad campaign plan. Return ONLY valid JSON matching th
       leadId: z.number().int().positive(),
       jobberQuoteId: z.string(),
       jobberQuoteNumber: z.number().int().optional(),
+      estimateAmount: z.number().optional(),
     }))
     .mutation(async ({ ctx, input }) => {
+      let estimateAmount = input.estimateAmount;
+      // If no amount was passed in, fetch it live from Jobber
+      if (estimateAmount == null) {
+        try {
+          const data = await jobberGraphQL(`
+            query GetQuoteTotal($id: EncodedId!) {
+              quote(id: $id) { amounts { total } }
+            }
+          `, { id: input.jobberQuoteId }) as any;
+          const raw = data?.quote?.amounts?.total;
+          if (raw != null) estimateAmount = Number(raw);
+        } catch {
+          // Non-fatal — proceed without the amount
+        }
+      }
       await updateOpsLead(input.leadId, ctx.user.id, {
         stage: "estimate_sent",
         jobberQuoteId: input.jobberQuoteId,
         jobberQuoteNumber: input.jobberQuoteNumber ?? undefined,
+        ...(estimateAmount != null ? { estimateAmount: String(estimateAmount) } : {}),
       });
       return { ok: true };
     }),

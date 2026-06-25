@@ -666,6 +666,7 @@ function QuoteDetailPanel({
                               leadId: l.id,
                               jobberQuoteId: quoteId,
                               jobberQuoteNumber: quote.quoteNumber != null ? Number(quote.quoteNumber) : undefined,
+                              estimateAmount: quote.amounts?.total != null ? Number(quote.amounts.total) : undefined,
                             })}
                             disabled={linkQuoteToLead.isPending}
                             className="w-full flex items-start gap-2 px-3 py-2 hover:bg-secondary/40 transition-colors text-left border-b border-border last:border-0 disabled:opacity-50"
@@ -1689,10 +1690,17 @@ function CreateQuoteModal({ onClose, onCreated, prefill }: CreateQuoteModalProps
       toast.success(`Quote #${qNum ?? ""} created in Jobber.`);
       // Link the quote back to the originating lead if one was passed in
       if (prefill?.leadId && qId) {
+        // Compute total from line items so the amount is stored immediately
+        const computedTotal = lineItems.reduce((sum, li) => {
+          const qty = Number(li.quantity) || 0;
+          const price = Number(li.unitPrice) || 0;
+          return sum + qty * price;
+        }, 0);
         linkQuoteToLead.mutate({
           leadId: prefill.leadId,
           jobberQuoteId: qId,
           jobberQuoteNumber: qNum,
+          estimateAmount: computedTotal > 0 ? computedTotal : undefined,
         });
       }
       onCreated({ quoteId: qId, quoteNumber: qNum });

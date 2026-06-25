@@ -186,6 +186,7 @@ interface Lead {
   chatSessionId?: number | null;
   jobberQuoteId?: string | null;
   jobberQuoteNumber?: number | null;
+  estimateAmount?: string | null;
 }
 
 // ─── Lead Card ────────────────────────────────────────────────────────────────
@@ -792,6 +793,11 @@ function LeadDetailPanel({
                 <span className="text-[11px] font-medium">
                   Quote {lead.jobberQuoteNumber ? `#${lead.jobberQuoteNumber}` : ""}
                 </span>
+                {lead.estimateAmount && (
+                  <span className="text-[11px] font-bold text-white">
+                    ${Number(lead.estimateAmount).toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                  </span>
+                )}
                 <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-black/20">{statusLabel}</span>
                 <ExternalLink className="ml-auto w-3 h-3 shrink-0 opacity-60" />
               </a>

@@ -184,6 +184,8 @@ export const opsLeads = mysqlTable("ops_leads", {
   jobberQuoteId: varchar("jobberQuoteId", { length: 120 }),
   /** Jobber quote number (human-readable) — set when a Jobber quote is created from this lead */
   jobberQuoteNumber: int("jobberQuoteNumber"),
+  /** Estimate amount from the linked Jobber quote — stored for display on the lead */
+  estimateAmount: decimal("estimateAmount", { precision: 10, scale: 2 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
