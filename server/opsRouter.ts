@@ -1177,8 +1177,43 @@ ${input.customPrompt ? `\nADJUSTMENT INSTRUCTION: ${input.customPrompt}\nApply t
 
       const raw = result.choices?.[0]?.message?.content;
       if (!raw) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "AI did not return a response. Try again." });
+      // Determine base rate source for the badge
+      const svcKeyForBadge = input.service.toLowerCase().replace(/\s+/g, "-");
+      const hasManualOverride = (() => {
+        if (svcKeyForBadge.includes("forestry") || svcKeyForBadge.includes("mulch")) return !!pricingRow?.forestryMulchingBaseRate;
+        if (svcKeyForBadge.includes("land") || svcKeyForBadge.includes("clearing")) return !!pricingRow?.landClearingBaseRate;
+        if (svcKeyForBadge.includes("brush") || svcKeyForBadge.includes("hogg")) return !!pricingRow?.brushHoggingBaseRate;
+        return false;
+      })();
+      const hasBenchmark = (() => {
+        if (svcKeyForBadge.includes("forestry") || svcKeyForBadge.includes("mulch")) return !!benchmarkMids["forestry mulching"];
+        if (svcKeyForBadge.includes("land") || svcKeyForBadge.includes("clearing")) return !!benchmarkMids["land management"];
+        if (svcKeyForBadge.includes("brush") || svcKeyForBadge.includes("hogg")) return !!benchmarkMids["brush hogging"];
+        return false;
+      })();
+      const baseRateSource: "manual" | "benchmark" | "default" =
+        hasManualOverride ? "manual" : hasBenchmark ? "benchmark" : "default";
+      // Build price breakdown object
+      const priceBreakdown = {
+        baseRate: (() => {
+          if (svcKeyForBadge.includes("forestry") || svcKeyForBadge.includes("mulch")) return fmBase;
+          if (svcKeyForBadge.includes("land") || svcKeyForBadge.includes("clearing")) return lcBase;
+          if (svcKeyForBadge.includes("brush") || svcKeyForBadge.includes("hogg")) return bhBase;
+          return fmBase;
+        })(),
+        acreage: acres,
+        densityMultiplier: TERRAIN_MULT[terrain] !== undefined ? (density === "light" ? 1.0 : density === "moderate" ? dmMult : dhMult) : 1.0,
+        terrainMultiplier: TERRAIN_MULT[terrain] ?? 1.0,
+        accessMultiplier: ACCESS_MULT[access] ?? 1.0,
+        seasonalMultiplier: seasonalMult,
+        complexityMultiplier: complexityMult,
+        volumeDiscount: vd < 1 ? Math.round((1 - vd) * 100) : 0,
+        mobilization: MOBILIZATION,
+        calculatedLow: finalLow,
+        calculatedHigh: finalHigh,
+      };
       try {
-        return JSON.parse(typeof raw === "string" ? raw : JSON.stringify(raw)) as {
+        const parsed = JSON.parse(typeof raw === "string" ? raw : JSON.stringify(raw)) as {
           scopeNotes: string;
           lineItems: { name: string; description: string; quantity: number; unitPrice: number }[];
           priceLow: number;
@@ -1189,6 +1224,7 @@ ${input.customPrompt ? `\nADJUSTMENT INSTRUCTION: ${input.customPrompt}\nApply t
           siteVisitRequired: boolean;
           confidence: "high" | "medium" | "low";
         };
+        return { ...parsed, priceBreakdown, baseRateSource };
       } catch {
         throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "AI returned malformed JSON. Try again." });
       }

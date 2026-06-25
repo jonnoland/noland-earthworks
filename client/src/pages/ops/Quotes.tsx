@@ -2418,6 +2418,19 @@ function CreateQuoteModal({ onClose, onCreated, prefill }: CreateQuoteModalProps
 }
 
 // ─── AI Quote Analysis Result type ──────────────────────────────────────────
+type PriceBreakdown = {
+  baseRate: number;
+  acreage: number;
+  densityMultiplier: number;
+  terrainMultiplier: number;
+  accessMultiplier: number;
+  seasonalMultiplier: number;
+  complexityMultiplier: number;
+  volumeDiscount: number;
+  mobilization: number;
+  calculatedLow: number;
+  calculatedHigh: number;
+};
 type AIQuoteAnalysis = {
   scopeNotes: string;
   lineItems: { name: string; description: string; quantity: number; unitPrice: number }[];
@@ -2428,6 +2441,8 @@ type AIQuoteAnalysis = {
   riskFlags: string[];
   siteVisitRequired: boolean;
   confidence: "high" | "medium" | "low";
+  priceBreakdown?: PriceBreakdown;
+  baseRateSource?: "manual" | "benchmark" | "default";
 };
 
 // ─── Website Request Card ─────────────────────────────────────────────────────
@@ -2748,6 +2763,17 @@ function WebsiteRequestCard({
             <span className={`text-[11px] font-semibold uppercase tracking-wide ${CONFIDENCE_COLORS[analysis.confidence]}`}>
               {analysis.confidence} confidence
             </span>
+            {analysis.baseRateSource && (
+              <span className={`text-[11px] font-semibold uppercase tracking-wide rounded-full px-2.5 py-0.5 ${
+                analysis.baseRateSource === "manual"
+                  ? "bg-blue-500/15 text-blue-400"
+                  : analysis.baseRateSource === "benchmark"
+                  ? "bg-emerald-500/15 text-emerald-400"
+                  : "bg-zinc-700/50 text-zinc-400"
+              }`}>
+                {analysis.baseRateSource === "manual" ? "Manual Rate" : analysis.baseRateSource === "benchmark" ? "Market Benchmark" : "Default Rate"}
+              </span>
+            )}
             {analysis.siteVisitRequired && (
               <span className="flex items-center gap-1 text-[11px] text-yellow-400 bg-yellow-500/10 rounded-full px-2.5 py-0.5">
                 <AlertTriangle className="w-3 h-3" />
@@ -2764,6 +2790,73 @@ function WebsiteRequestCard({
               {formatMoney(analysis.priceLow)} – {formatMoney(analysis.priceHigh)}
             </span>
           </div>
+          {/* Price breakdown */}
+          {analysis.priceBreakdown && (
+            <details className="group">
+              <summary className="cursor-pointer text-[11px] font-medium text-muted-foreground uppercase tracking-wide flex items-center gap-1.5 select-none hover:text-foreground transition-colors">
+                <ChevronRight className="w-3 h-3 group-open:rotate-90 transition-transform" />
+                Price Breakdown
+              </summary>
+              <div className="mt-2 rounded-md border border-border bg-secondary/20 overflow-hidden">
+                <table className="w-full text-xs">
+                  <tbody>
+                    <tr className="border-b border-border">
+                      <td className="px-3 py-1.5 text-muted-foreground">Base rate</td>
+                      <td className="px-3 py-1.5 text-right font-medium text-foreground">{formatMoney(analysis.priceBreakdown.baseRate)}/acre</td>
+                    </tr>
+                    <tr className="border-b border-border">
+                      <td className="px-3 py-1.5 text-muted-foreground">Acreage</td>
+                      <td className="px-3 py-1.5 text-right font-medium text-foreground">{analysis.priceBreakdown.acreage > 0 ? `${analysis.priceBreakdown.acreage} acres` : "Not specified"}</td>
+                    </tr>
+                    {analysis.priceBreakdown.densityMultiplier !== 1.0 && (
+                      <tr className="border-b border-border">
+                        <td className="px-3 py-1.5 text-muted-foreground">Density multiplier</td>
+                        <td className="px-3 py-1.5 text-right font-medium text-amber-400">{analysis.priceBreakdown.densityMultiplier.toFixed(2)}x</td>
+                      </tr>
+                    )}
+                    {analysis.priceBreakdown.terrainMultiplier !== 1.0 && (
+                      <tr className="border-b border-border">
+                        <td className="px-3 py-1.5 text-muted-foreground">Terrain multiplier</td>
+                        <td className="px-3 py-1.5 text-right font-medium text-amber-400">{analysis.priceBreakdown.terrainMultiplier.toFixed(2)}x</td>
+                      </tr>
+                    )}
+                    {analysis.priceBreakdown.accessMultiplier !== 1.0 && (
+                      <tr className="border-b border-border">
+                        <td className="px-3 py-1.5 text-muted-foreground">Access multiplier</td>
+                        <td className="px-3 py-1.5 text-right font-medium text-amber-400">{analysis.priceBreakdown.accessMultiplier.toFixed(2)}x</td>
+                      </tr>
+                    )}
+                    {analysis.priceBreakdown.seasonalMultiplier !== 1.0 && (
+                      <tr className="border-b border-border">
+                        <td className="px-3 py-1.5 text-muted-foreground">Seasonal adjustment</td>
+                        <td className="px-3 py-1.5 text-right font-medium text-blue-400">{analysis.priceBreakdown.seasonalMultiplier > 1 ? "+" : ""}{Math.round((analysis.priceBreakdown.seasonalMultiplier - 1) * 100)}%</td>
+                      </tr>
+                    )}
+                    {analysis.priceBreakdown.complexityMultiplier !== 1.0 && (
+                      <tr className="border-b border-border">
+                        <td className="px-3 py-1.5 text-muted-foreground">Complexity premium</td>
+                        <td className="px-3 py-1.5 text-right font-medium text-amber-400">+{Math.round((analysis.priceBreakdown.complexityMultiplier - 1) * 100)}%</td>
+                      </tr>
+                    )}
+                    {analysis.priceBreakdown.volumeDiscount > 0 && (
+                      <tr className="border-b border-border">
+                        <td className="px-3 py-1.5 text-muted-foreground">Volume discount</td>
+                        <td className="px-3 py-1.5 text-right font-medium text-green-400">−{analysis.priceBreakdown.volumeDiscount}%</td>
+                      </tr>
+                    )}
+                    <tr className="border-b border-border">
+                      <td className="px-3 py-1.5 text-muted-foreground">Mobilization</td>
+                      <td className="px-3 py-1.5 text-right font-medium text-foreground">{formatMoney(analysis.priceBreakdown.mobilization)}</td>
+                    </tr>
+                    <tr className="bg-secondary/30">
+                      <td className="px-3 py-2 font-semibold text-foreground">Calculated range</td>
+                      <td className="px-3 py-2 text-right font-semibold text-foreground">{formatMoney(analysis.priceBreakdown.calculatedLow)} – {formatMoney(analysis.priceBreakdown.calculatedHigh)}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </details>
+          )}
 
           {/* Scope notes */}
           <div>
