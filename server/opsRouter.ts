@@ -25,7 +25,7 @@ import {
   getAgentConfig, upsertAgentConfig,
 } from "./db";
 import { Resend } from "resend";
-import { jobs, opsLeads, quoteSubmissions, crews, crewMembers, conversations, messages, reviews, timeEntries, distanceQuotes, businessSettings, automationSettings, serviceCatalog, messageTemplates, reminderRules, leadNotes, visitBlackoutDates, recurringBlackoutDays, aiPricingSettings, quoteDrafts, jobberTokens, socialPosts, adSpend, equipment, serviceLogs, serviceIntervals, fieldDiagnostics, ownerTasks, jobNotes, jobberRevenueCache, morningBriefs, reviewRequests, chatSessions, scheduleEntries, agentConfig } from "../drizzle/schema";
+import { jobs, opsLeads, quoteSubmissions, crews, crewMembers, conversations, messages, reviews, timeEntries, distanceQuotes, businessSettings, automationSettings, serviceCatalog, pricingBenchmarks, messageTemplates, reminderRules, leadNotes, visitBlackoutDates, recurringBlackoutDays, aiPricingSettings, quoteDrafts, jobberTokens, socialPosts, adSpend, equipment, serviceLogs, serviceIntervals, fieldDiagnostics, ownerTasks, jobNotes, jobberRevenueCache, morningBriefs, reviewRequests, chatSessions, scheduleEntries, agentConfig } from "../drizzle/schema";
 
 import { and, desc, eq, gte, inArray, lt, lte, like, or, sql } from "drizzle-orm";
 
@@ -2360,6 +2360,30 @@ const settingsRouter = router({
           hardAcresPerDay: item.hardAcresPerDay,
           sortOrder: item.sortOrder,
         });
+      }
+      // ── Sync pricing_benchmarks to match the service catalog ──────────────
+      // 1. Ensure every catalog service has a benchmark row (placeholder if new)
+      const newServiceTypes = input.map(i => i.serviceType);
+      for (const serviceType of newServiceTypes) {
+        await db.insert(pricingBenchmarks)
+          .values({
+            serviceType,
+            lowPerAcre: 0,
+            midPerAcre: 0,
+            highPerAcre: 0,
+            region: 'Middle & West Tennessee',
+            researchSummary: null,
+            lastUpdatedAt: new Date(),
+          })
+          .onDuplicateKeyUpdate({
+            set: { serviceType }, // no-op: preserve existing benchmark data
+          });
+      }
+      // 2. Remove benchmark rows for services no longer in the catalog
+      const existingBenchmarks = await db.select({ serviceType: pricingBenchmarks.serviceType }).from(pricingBenchmarks);
+      const toDelete = existingBenchmarks.map(b => b.serviceType).filter(st => !newServiceTypes.includes(st));
+      for (const st of toDelete) {
+        await db.delete(pricingBenchmarks).where(eq(pricingBenchmarks.serviceType, st));
       }
       return { success: true };
     }),

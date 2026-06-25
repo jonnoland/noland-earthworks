@@ -2226,6 +2226,7 @@ function FieldTip({ text }: { text: string }) {
 function AIPricingTab() {
   const { data: settings, isLoading } = trpc.ops.settings.getAIPricingSettings.useQuery();
   const { data: benchmarks, isLoading: benchmarksLoading, refetch: refetchBenchmarks } = trpc.agents.getPricingBenchmarks.useQuery();
+  const { data: catalogItems, isLoading: catalogLoading } = trpc.ops.settings.getServiceCatalog.useQuery();
   const utils = trpc.useUtils();
   const update = trpc.ops.settings.updateAIPricingSettings.useMutation({
     onSuccess: () => {
@@ -2742,56 +2743,82 @@ function AIPricingTab() {
                 Refresh Now
               </button>
             </div>
-            {benchmarksLoading && (
+            {(benchmarksLoading || catalogLoading) && (
               <div className="flex items-center gap-2 py-4 text-xs text-muted-foreground">
                 <Loader2 className="w-3.5 h-3.5 animate-spin" />Loading benchmarks...
               </div>
             )}
-            {!benchmarksLoading && (!benchmarks || benchmarks.length === 0) && (
+            {!benchmarksLoading && !catalogLoading && (!catalogItems || catalogItems.length === 0) && (
               <div className="text-xs text-muted-foreground py-4">
-                No benchmark data yet. Click Refresh Now to pull current market rates.
+                No services in the Service Catalog yet. Add services there first, then click Refresh Now to pull market rates.
               </div>
             )}
-            {!benchmarksLoading && benchmarks && benchmarks.length > 0 && (
-              <div className="space-y-4">
-                <div className="rounded-md border border-border overflow-hidden">
-                  <table className="w-full text-xs">
-                    <thead>
-                      <tr className="bg-secondary/30 border-b border-border">
-                        <th className="text-left px-3 py-2.5 font-medium text-muted-foreground">Service</th>
-                        <th className="text-right px-3 py-2.5 font-medium text-muted-foreground">Low /ac</th>
-                        <th className="text-right px-3 py-2.5 font-medium text-muted-foreground">Mid /ac</th>
-                        <th className="text-right px-3 py-2.5 font-medium text-muted-foreground">High /ac</th>
-                        <th className="text-right px-3 py-2.5 font-medium text-muted-foreground">Updated</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {benchmarks.map((b) => (
-                        <tr key={b.id} className="border-b border-border last:border-0">
-                          <td className="px-3 py-2.5 font-medium text-foreground">{b.serviceType}</td>
-                          <td className="px-3 py-2.5 text-right text-muted-foreground">${b.lowPerAcre.toLocaleString()}</td>
-                          <td className="px-3 py-2.5 text-right text-foreground font-semibold">${b.midPerAcre.toLocaleString()}</td>
-                          <td className="px-3 py-2.5 text-right text-muted-foreground">${b.highPerAcre.toLocaleString()}</td>
-                          <td className="px-3 py-2.5 text-right text-[11px] text-muted-foreground">
-                            {new Date(b.lastUpdatedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
-                          </td>
+            {!benchmarksLoading && !catalogLoading && catalogItems && catalogItems.length > 0 && (() => {
+              const benchmarkMap = new Map((benchmarks ?? []).map(b => [b.serviceType, b]));
+              const rows = catalogItems.map(svc => ({
+                serviceType: svc.serviceType,
+                benchmark: benchmarkMap.get(svc.serviceType) ?? null,
+              }));
+              const hasAnyData = rows.some(r => r.benchmark && r.benchmark.midPerAcre > 0);
+              const hasNotes = rows.some(r => r.benchmark?.researchSummary);
+              return (
+                <div className="space-y-4">
+                  {!hasAnyData && (
+                    <div className="flex items-center gap-2 rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-400">
+                      <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                      No benchmark data yet for your catalog services. Click Refresh Now to pull current market rates.
+                    </div>
+                  )}
+                  <div className="rounded-md border border-border overflow-hidden">
+                    <table className="w-full text-xs">
+                      <thead>
+                        <tr className="bg-secondary/30 border-b border-border">
+                          <th className="text-left px-3 py-2.5 font-medium text-muted-foreground">Service</th>
+                          <th className="text-right px-3 py-2.5 font-medium text-muted-foreground">Low /ac</th>
+                          <th className="text-right px-3 py-2.5 font-medium text-muted-foreground">Mid /ac</th>
+                          <th className="text-right px-3 py-2.5 font-medium text-muted-foreground">High /ac</th>
+                          <th className="text-right px-3 py-2.5 font-medium text-muted-foreground">Updated</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-                {benchmarks.filter(b => b.researchSummary).length > 0 && (
-                  <div className="space-y-2 pt-1">
-                    <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">Research Notes</p>
-                    {benchmarks.filter(b => b.researchSummary).map((b) => (
-                      <div key={b.id} className="text-[11px] text-muted-foreground">
-                        <span className="font-medium text-foreground">{b.serviceType}:</span> {b.researchSummary}
-                      </div>
-                    ))}
+                      </thead>
+                      <tbody>
+                        {rows.map(({ serviceType, benchmark }) => {
+                          const hasData = benchmark && benchmark.midPerAcre > 0;
+                          return (
+                            <tr key={serviceType} className="border-b border-border last:border-0">
+                              <td className="px-3 py-2.5 font-medium text-foreground">{serviceType}</td>
+                              {hasData ? (
+                                <>
+                                  <td className="px-3 py-2.5 text-right text-muted-foreground">${benchmark.lowPerAcre.toLocaleString()}</td>
+                                  <td className="px-3 py-2.5 text-right text-foreground font-semibold">${benchmark.midPerAcre.toLocaleString()}</td>
+                                  <td className="px-3 py-2.5 text-right text-muted-foreground">${benchmark.highPerAcre.toLocaleString()}</td>
+                                  <td className="px-3 py-2.5 text-right text-[11px] text-muted-foreground">
+                                    {new Date(benchmark.lastUpdatedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                                  </td>
+                                </>
+                              ) : (
+                                <td colSpan={4} className="px-3 py-2.5 text-right text-[11px] text-muted-foreground italic">
+                                  No data yet — run Refresh
+                                </td>
+                              )}
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
                   </div>
-                )}
-              </div>
-            )}
+                  {hasNotes && (
+                    <div className="space-y-2 pt-1">
+                      <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">Research Notes</p>
+                      {rows.filter(r => r.benchmark?.researchSummary).map(({ serviceType, benchmark }) => (
+                        <div key={serviceType} className="text-[11px] text-muted-foreground">
+                          <span className="font-medium text-foreground">{serviceType}:</span> {benchmark!.researchSummary}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
           </div>
         )}
 
