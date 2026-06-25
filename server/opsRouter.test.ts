@@ -18,6 +18,21 @@ vi.mock("./db", () => ({
   createScheduleEntry: vi.fn().mockResolvedValue({}),
   updateScheduleEntry: vi.fn().mockResolvedValue({}),
   deleteScheduleEntry: vi.fn().mockResolvedValue({}),
+  // getDb returns null in test env — procedures that use it must handle null gracefully
+  getDb: vi.fn().mockResolvedValue(null),
+  getOpsLeadById: vi.fn().mockResolvedValue(null),
+  insertOwnerTask: vi.fn().mockResolvedValue({}),
+  getAllUsers: vi.fn().mockResolvedValue([]),
+  setUserRole: vi.fn().mockResolvedValue({}),
+  getPricingBenchmarks: vi.fn().mockResolvedValue([]),
+  getAgentConfig: vi.fn().mockResolvedValue(null),
+  upsertAgentConfig: vi.fn().mockResolvedValue({}),
+  getVisitBlackoutDates: vi.fn().mockResolvedValue([]),
+  addVisitBlackoutDate: vi.fn().mockResolvedValue({}),
+  removeVisitBlackoutDate: vi.fn().mockResolvedValue({}),
+  getRecurringBlackoutDays: vi.fn().mockResolvedValue([]),
+  addRecurringBlackoutDay: vi.fn().mockResolvedValue({}),
+  removeRecurringBlackoutDay: vi.fn().mockResolvedValue({}),
 }));
 
 // Mock ENV so ownerOpenId is predictable
@@ -106,5 +121,28 @@ describe("opsRouter — owner-only guard", () => {
   it("blocks a non-owner from listing schedule entries", async () => {
     const caller = createCaller(makeCtx(nonOwnerUser));
     await expect(caller.schedule.list()).rejects.toThrow(TRPCError);
+  });
+
+  it("allows the owner to call getLeadByQuoteId (returns null when DB unavailable)", async () => {
+    const caller = createCaller(makeCtx(ownerUser));
+    // getDb returns null in test env, so the procedure returns null gracefully
+    const result = await caller.getLeadByQuoteId({ jobberQuoteId: "test-quote-id" });
+    expect(result).toBeNull();
+  });
+
+  it("blocks a non-owner from calling getLeadByQuoteId", async () => {
+    const caller = createCaller(makeCtx(nonOwnerUser));
+    await expect(caller.getLeadByQuoteId({ jobberQuoteId: "test-quote-id" })).rejects.toThrow(TRPCError);
+  });
+
+  it("allows the owner to call getUnlinkedLeads (returns empty array when DB unavailable)", async () => {
+    const caller = createCaller(makeCtx(ownerUser));
+    const result = await caller.getUnlinkedLeads();
+    expect(Array.isArray(result)).toBe(true);
+  });
+
+  it("blocks a non-owner from calling getUnlinkedLeads", async () => {
+    const caller = createCaller(makeCtx(nonOwnerUser));
+    await expect(caller.getUnlinkedLeads()).rejects.toThrow(TRPCError);
   });
 });

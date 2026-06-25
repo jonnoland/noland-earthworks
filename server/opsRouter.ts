@@ -4777,4 +4777,40 @@ Generate a complete monthly ad campaign plan. Return ONLY valid JSON matching th
       });
       return { ok: true };
     }),
+  /**
+   * Returns the lead (if any) that is linked to the given Jobber quote ID.
+   * Used by the Quotes page to show the linked lead badge and prevent double-linking.
+   */
+  getLeadByQuoteId: ownerProcedure
+    .input(z.object({ jobberQuoteId: z.string() }))
+    .query(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) return null;
+      const rows = await db
+        .select()
+        .from(opsLeads)
+        .where(and(eq(opsLeads.userId, ctx.user.id), eq(opsLeads.jobberQuoteId, input.jobberQuoteId)))
+        .limit(1);
+      return rows[0] ?? null;
+    }),
+  /**
+   * Returns all leads that do NOT yet have a Jobber quote linked and are not won/lost.
+   * Used by the Quotes page "Link to Lead" picker.
+   */
+  getUnlinkedLeads: ownerProcedure
+    .query(async ({ ctx }) => {
+      const db = await getDb();
+      if (!db) return [];
+      const rows = await db
+        .select()
+        .from(opsLeads)
+        .where(and(
+          eq(opsLeads.userId, ctx.user.id),
+          sql`${opsLeads.jobberQuoteId} IS NULL`,
+          sql`${opsLeads.stage} NOT IN ('won', 'lost')`,
+        ))
+        .orderBy(desc(opsLeads.createdAt))
+        .limit(100);
+      return rows;
+    }),
 });

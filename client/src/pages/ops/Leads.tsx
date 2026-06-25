@@ -595,6 +595,12 @@ function LeadDetailPanel({
   const utils = trpc.useUtils();
   const { data: notes = [], isLoading: notesLoading } = trpc.ops.leads.listNotes.useQuery({ leadId: lead.id });
 
+  // Live Jobber quote status for the linked quote badge
+  const { data: linkedQuote, isLoading: quoteStatusLoading } = trpc.jobber.quoteDetail.useQuery(
+    { id: lead.jobberQuoteId! },
+    { enabled: !!lead.jobberQuoteId, retry: false, staleTime: 1000 * 60 * 5 }
+  );
+
   const deleteChatSession = trpc.chat.deleteSession.useMutation({
     onSuccess: () => {
       toast.success("Chat session deleted.");
@@ -755,16 +761,42 @@ function LeadDetailPanel({
               <Calendar className="w-3.5 h-3.5" />Schedule Visit
             </button>
           </div>
-          {/* Linked Jobber quote badge */}
-          {lead.jobberQuoteId && (
-            <div className="mt-2 flex items-center gap-2 px-2 py-1.5 bg-amber-500/10 border border-amber-500/25 rounded-md">
-              <FileText className="w-3 h-3 text-amber-400 shrink-0" />
-              <span className="text-[11px] text-amber-300 font-medium">
-                Quote {lead.jobberQuoteNumber ? `#${lead.jobberQuoteNumber}` : ""} linked
-              </span>
-              <span className="ml-auto text-[10px] text-[#555]">Jobber</span>
-            </div>
-          )}
+          {/* Linked Jobber quote badge — clickable with live status */}
+          {lead.jobberQuoteId && (() => {
+            const status = linkedQuote?.quoteStatus ?? null;
+            const statusColor =
+              status === "APPROVED" ? "text-green-400 border-green-500/30 bg-green-500/10" :
+              status === "ARCHIVED" ? "text-[#666] border-[#333] bg-[#111]" :
+              "text-amber-300 border-amber-500/25 bg-amber-500/10";
+            const statusLabel =
+              status === "APPROVED" ? "Approved" :
+              status === "ARCHIVED" ? "Archived" :
+              status === "DRAFT" ? "Draft" :
+              quoteStatusLoading ? "..." : "Linked";
+            // Decode Jobber base64 ID to numeric for URL
+            let numericId = lead.jobberQuoteId;
+            try {
+              const decoded = atob(lead.jobberQuoteId);
+              const parts = decoded.split("/");
+              const last = parts[parts.length - 1];
+              if (last && /^\d+$/.test(last)) numericId = last;
+            } catch { /* ignore */ }
+            return (
+              <a
+                href={`https://secure.getjobber.com/quotes/${numericId}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={`mt-2 flex items-center gap-2 px-2 py-1.5 border rounded-md hover:opacity-80 transition-opacity cursor-pointer ${statusColor}`}
+              >
+                <FileText className="w-3 h-3 shrink-0" />
+                <span className="text-[11px] font-medium">
+                  Quote {lead.jobberQuoteNumber ? `#${lead.jobberQuoteNumber}` : ""}
+                </span>
+                <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-black/20">{statusLabel}</span>
+                <ExternalLink className="ml-auto w-3 h-3 shrink-0 opacity-60" />
+              </a>
+            );
+          })()}
           {/* Chat session actions — only shown for chat-sourced leads */}
           {lead.chatSessionId && (
             <div className="mt-2 flex gap-2">

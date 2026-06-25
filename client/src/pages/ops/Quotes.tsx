@@ -354,6 +354,35 @@ function QuoteDetailPanel({
     },
   });
 
+  // ── Link to Lead ──────────────────────────────────────────────────────────
+  const [showLinkLeadPicker, setShowLinkLeadPicker] = useState(false);
+  const [leadPickerSearch, setLeadPickerSearch] = useState("");
+  // Check if this quote is already linked to a lead
+  const { data: linkedLead, isLoading: linkedLeadLoading } = trpc.ops.getLeadByQuoteId.useQuery(
+    { jobberQuoteId: quoteId },
+    { retry: false, staleTime: 1000 * 60 * 5 }
+  );
+  // Unlinked leads for the picker
+  const { data: unlinkedLeads = [] } = trpc.ops.getUnlinkedLeads.useQuery(
+    undefined,
+    { enabled: showLinkLeadPicker, retry: false }
+  );
+  const filteredLeads = unlinkedLeads.filter((l: any) => {
+    if (!leadPickerSearch) return true;
+    const q = leadPickerSearch.toLowerCase();
+    return (l.name ?? "").toLowerCase().includes(q) ||
+      (l.address ?? "").toLowerCase().includes(q);
+  });
+  const linkQuoteToLead = trpc.ops.linkQuoteToLead.useMutation({
+    onSuccess: () => {
+      toast.success("Quote linked to lead.");
+      setShowLinkLeadPicker(false);
+      utils.ops.getLeadByQuoteId.invalidate({ jobberQuoteId: quoteId });
+      utils.ops.leads.list.invalidate();
+    },
+    onError: (err) => toast.error(err.message || "Failed to link quote to lead."),
+  });
+
   return (
     <>
       {/* Backdrop */}
@@ -596,6 +625,64 @@ function QuoteDetailPanel({
         {/* Footer actions */}
         {!isLoading && quote && (
           <div className="shrink-0 border-t border-border px-5 py-4 space-y-2">
+            {/* Linked lead badge or Link to Lead button */}
+            {linkedLead ? (
+              <div className="flex items-center gap-2 px-3 py-2 bg-green-500/10 border border-green-500/25 rounded-md">
+                <User className="w-3.5 h-3.5 text-green-400 shrink-0" />
+                <span className="text-[11px] text-green-300 font-medium truncate">
+                  Linked: {linkedLead.name}
+                </span>
+                <span className="ml-auto text-[10px] text-muted-foreground shrink-0">Lead</span>
+              </div>
+            ) : (
+              <>
+                <button
+                  onClick={() => setShowLinkLeadPicker(p => !p)}
+                  className="w-full flex items-center justify-center gap-2 py-2 rounded-md text-xs font-semibold text-muted-foreground border border-border hover:border-primary hover:text-primary transition-colors"
+                >
+                  <User className="w-3.5 h-3.5" />
+                  {showLinkLeadPicker ? "Cancel" : "Link to Lead"}
+                </button>
+                {showLinkLeadPicker && (
+                  <div className="border border-border rounded-md overflow-hidden">
+                    <div className="px-3 py-2 border-b border-border bg-secondary/20">
+                      <input
+                        type="text"
+                        placeholder="Search leads..."
+                        value={leadPickerSearch}
+                        onChange={e => setLeadPickerSearch(e.target.value)}
+                        className="w-full bg-transparent text-xs text-foreground placeholder:text-muted-foreground outline-none"
+                        autoFocus
+                      />
+                    </div>
+                    <div className="max-h-48 overflow-y-auto">
+                      {filteredLeads.length === 0 ? (
+                        <p className="px-3 py-3 text-xs text-muted-foreground text-center">No unlinked leads found</p>
+                      ) : (
+                        filteredLeads.map((l: any) => (
+                          <button
+                            key={l.id}
+                            onClick={() => linkQuoteToLead.mutate({
+                              leadId: l.id,
+                              jobberQuoteId: quoteId,
+                              jobberQuoteNumber: quote.quoteNumber ?? undefined,
+                            })}
+                            disabled={linkQuoteToLead.isPending}
+                            className="w-full flex items-start gap-2 px-3 py-2 hover:bg-secondary/40 transition-colors text-left border-b border-border last:border-0 disabled:opacity-50"
+                          >
+                            <User className="w-3.5 h-3.5 text-muted-foreground mt-0.5 shrink-0" />
+                            <div className="min-w-0">
+                              <p className="text-xs font-medium text-foreground truncate">{l.name}</p>
+                              {l.address && <p className="text-[10px] text-muted-foreground truncate">{l.address}</p>}
+                            </div>
+                          </button>
+                        ))
+                      )}
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
             {/* Open in Jobber — for DRAFT or CHANGES_REQUESTED, opens quote in Jobber to send natively */}
             {(quote.quoteStatus === "DRAFT" || quote.quoteStatus === "CHANGES_REQUESTED") && (
               <button

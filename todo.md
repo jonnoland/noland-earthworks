@@ -1958,3 +1958,6 @@
 ## Capacity Alerts + Review Request Enhancements (Jun 21, 2026)
 - [ ] Capacity Alerts panel: drag open quotes from the open quotes list and drop them onto an available scheduling window to create a schedule entry
 - [ ] Review Request Automation: add configuration section in Settings (Integrations tab) to edit and save the default SMS message template (with {clientName}, {jobDescription}, {reviewLink} placeholders)
+- [x] Make linked quote badge in /ops/leads clickable with live Jobber quote status
+- [x] Add manual lead-quote linking from /ops/quotes
+- [x] Run TypeScript check and save checkpoint after quote-linking updates
