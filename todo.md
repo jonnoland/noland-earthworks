@@ -1961,3 +1961,4 @@
 - [x] Make linked quote badge in /ops/leads clickable with live Jobber quote status
 - [x] Add manual lead-quote linking from /ops/quotes
 - [x] Run TypeScript check and save checkpoint after quote-linking updates
+- [x] Wire all quoting flows (Jobs page estimated price hint) to read base rates from aiPricingSettings instead of hardcoded values

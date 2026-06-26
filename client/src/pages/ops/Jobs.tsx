@@ -1008,6 +1008,7 @@ export default function Jobs() {
 
   // ── Local job create (for manually tracked jobs) ──
   const { data: catalog = [] } = trpc.ops.settings.getServiceCatalog.useQuery();
+  const { data: aiPricing } = trpc.ops.settings.getAIPricingSettings.useQuery();
   const { data: crewsList = [] } = trpc.ops.crews.list.useQuery();
   const assignCrew = trpc.ops.jobs.assignCrew.useMutation({
     onSuccess: () => { utils.ops.jobs.list.invalidate(); },
@@ -1023,26 +1024,33 @@ export default function Jobs() {
     onError: (e) => toast.error(e.message),
   });
 
-  const PRICE_PER_ACRE: Record<string, number> = {
-    forestry_mulching: 1800, land_clearing: 1400,
-    brush_removal: 900, stump_grinding: 600, wildfire_mitigation: 1200,
-  };
-
   const estimatedPrice = useMemo(() => {
     const acres = parseFloat(form.acres);
     if (!acres || acres <= 0) return null;
+    // Base rates from AI Pricing settings (fall back to TN market defaults)
+    const fmRate = aiPricing?.forestryMulchingBaseRate ?? 2200;
+    const lcRate = aiPricing?.landClearingBaseRate     ?? 2200;
+    const bhRate = aiPricing?.brushHoggingBaseRate     ?? 175;
+    const PRICE_PER_ACRE: Record<string, number> = {
+      forestry_mulching:    fmRate,
+      land_clearing:        lcRate,
+      brush_removal:        bhRate,
+      stump_grinding:       aiPricing?.stumpGrindingPerStump ?? 600,
+      wildfire_mitigation:  fmRate,
+    };
     const catalogEntry = catalog.find(
       c => c.serviceType?.toLowerCase().replace(/[^a-z]/g, "_") === form.jobType ||
            c.serviceType?.toLowerCase().includes(form.jobType.replace(/_/g, " ").split(" ")[0])
     );
-    const DAY_RATE = 1800;
+    // Day rate: use the relevant per-acre base rate as a proxy for daily revenue
+    const dayRate = PRICE_PER_ACRE[form.jobType] ?? fmRate;
     if (catalogEntry && catalogEntry.normalAcresPerDay) {
       const days = Math.ceil(acres / Number(catalogEntry.normalAcresPerDay));
-      return Math.round(days * DAY_RATE / 100) * 100;
+      return Math.round(days * dayRate / 100) * 100;
     }
-    const rate = PRICE_PER_ACRE[form.jobType] ?? 1200;
+    const rate = PRICE_PER_ACRE[form.jobType] ?? lcRate;
     return Math.round(acres * rate / 100) * 100;
-  }, [form.acres, form.jobType, catalog]);
+  }, [form.acres, form.jobType, catalog, aiPricing]);
 
   const handleAddSubmit = (e: React.FormEvent) => {
     e.preventDefault();
