@@ -1807,9 +1807,19 @@ export default function Jobs() {
                     )}
                   </div>
                   {estimatedPrice !== null && (
-                    <p className="text-[10px] text-muted-foreground/60 mt-1">
-                      Catalog estimate for {form.acres} ac {JOB_TYPE_LABELS[form.jobType]}
-                    </p>
+                    <div className="flex items-center gap-1.5 mt-1">
+                      <Sparkles className="w-3 h-3 text-primary/60 shrink-0" />
+                      <p className="text-[10px] text-muted-foreground/60">
+                        Catalog estimate for {form.acres} ac {JOB_TYPE_LABELS[form.jobType]}
+                      </p>
+                      <span
+                        title={`Base rate: $${(aiPricing?.forestryMulchingBaseRate ?? 2200).toLocaleString()}/acre (from AI Pricing settings)`}
+                        className="ml-auto shrink-0 inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-primary/10 border border-primary/20 text-[9px] font-semibold text-primary cursor-default select-none"
+                      >
+                        <Sparkles className="w-2.5 h-2.5" />
+                        AI Pricing
+                      </span>
+                    </div>
                   )}
                 </div>
                 <div>
