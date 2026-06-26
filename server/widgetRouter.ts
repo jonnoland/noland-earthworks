@@ -2,7 +2,8 @@ import { z } from "zod";
 import { publicProcedure, router } from "./_core/trpc";
 import { ENV } from "./_core/env";
 import { notifyOwner } from "./_core/notification";
-import { getOwnerUser, createOpsLead, upsertOpsLeadByPhone, updateOpsLeadById, getVisitBlackoutDates, addVisitBlackoutDate, removeVisitBlackoutDate, getRecurringBlackoutDays } from "./db";
+import { getOwnerUser, createOpsLead, upsertOpsLeadByPhone, updateOpsLeadById, getVisitBlackoutDates, addVisitBlackoutDate, removeVisitBlackoutDate, getRecurringBlackoutDays, getDb } from "./db";
+import { aiPricingSettings } from "../drizzle/schema";
 import { Resend } from "resend";
 
 const SERVICE_LABELS: Record<string, string> = {
@@ -215,4 +216,40 @@ export const widgetRouter = router({
         return { ok: false };
       }
     }),
+
+  /**
+   * Public endpoint — no auth required.
+   * Returns the active pricing ranges for the public cost calculator.
+   * Only exposes the minimum data needed to compute estimate ranges.
+   */
+  getPublicPricingRanges: publicProcedure.query(async () => {
+    const db = await getDb();
+    if (!db) return null;
+    const rows = await db.select().from(aiPricingSettings).limit(1);
+    let row = rows[0];
+    if (!row) {
+      await db.insert(aiPricingSettings).values({});
+      const seeded = await db.select().from(aiPricingSettings).limit(1);
+      row = seeded[0];
+    }
+    if (!row) return null;
+    return {
+      forestryMulchingBaseRate:   row.forestryMulchingBaseRate,
+      landClearingBaseRate:       row.landClearingBaseRate,
+      brushHoggingBaseRate:       row.brushHoggingBaseRate,
+      rowClearingBaseRate:        row.rowClearingBaseRate,
+      mobilizationFee:            row.mobilizationFee,
+      minimumJobTotal:            row.minimumJobTotal,
+      densityModerateMultiplier:  row.densityModerateMultiplier,
+      densityHeavyMultiplier:     row.densityHeavyMultiplier,
+      terrainRollingMultiplier:   row.terrainRollingMultiplier,
+      terrainSteepMultiplier:     row.terrainSteepMultiplier,
+      accessModerateMultiplier:   row.accessModerateMultiplier,
+      accessDifficultMultiplier:  row.accessDifficultMultiplier,
+      priceRangeSpread:           row.priceRangeSpread,
+      volumeDiscount3to5Pct:      row.volumeDiscount3to5Pct,
+      volumeDiscount5to10Pct:     row.volumeDiscount5to10Pct,
+      volumeDiscount10plusPct:    row.volumeDiscount10plusPct,
+    };
+  }),
 });

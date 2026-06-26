@@ -11,55 +11,46 @@ import { trpc } from "@/lib/trpc";
 
 /* ─── Pricing model ─────────────────────────────────────────────────── */
 
-const BASE_RATES: Record<string, Record<string, [number, number]>> = {
-  "forestry-mulching": {
-    light:    [1000, 1500],
-    moderate: [1500, 2500],
-    heavy:    [2500, 4500],
-  },
-  "land-clearing": {
-    light:    [1500, 3000],
-    moderate: [3000, 6000],
-    heavy:    [6000, 12000],
-  },
-  "vegetation-management": {
-    light:    [150, 400],
-    moderate: [400, 900],
-    heavy:    [900, 2000],
-  },
-  "property-maintenance": {
-    light:    [150, 400],
-    moderate: [400, 900],
-    heavy:    [900, 2000],
-  },
-  "right-of-way-clearing": {
-    light:    [1200, 2800],
-    moderate: [1800, 3500],
-    heavy:    [2800, 5500],
-  },
-};
+type PublicPricing = {
+  forestryMulchingBaseRate: number;
+  landClearingBaseRate: number;
+  brushHoggingBaseRate: number;
+  rowClearingBaseRate: number;
+  mobilizationFee: number;
+  minimumJobTotal: number;
+  densityModerateMultiplier: string;
+  densityHeavyMultiplier: string;
+  terrainRollingMultiplier: string;
+  terrainSteepMultiplier: string;
+  accessModerateMultiplier: string;
+  accessDifficultMultiplier: string;
+  priceRangeSpread: string;
+  volumeDiscount3to5Pct: number;
+  volumeDiscount5to10Pct: number;
+  volumeDiscount10plusPct: number;
+} | null;
 
-const TERRAIN_MULT: Record<string, number> = {
-  flat: 1.0,
-  rolling: 1.1,
-  steep: 1.25,
-};
-
-const ACCESS_MULT: Record<string, number> = {
-  easy: 1.0,
-  moderate: 1.08,
-  difficult: 1.18,
-};
-
-function volumeDiscount(acres: number): number {
-  if (acres >= 10) return 0.88;
-  if (acres >= 5)  return 0.93;
-  if (acres >= 3)  return 0.97;
-  return 1.0;
+/** Build the BASE_RATES table from live pricing settings */
+function buildBaseRates(p: PublicPricing): Record<string, Record<string, [number, number]>> {
+  const spread  = parseFloat(p?.priceRangeSpread           ?? "0.15") || 0.15;
+  const dmMult  = parseFloat(p?.densityModerateMultiplier  ?? "1.25") || 1.25;
+  const dhMult  = parseFloat(p?.densityHeavyMultiplier     ?? "1.60") || 1.60;
+  const fm  = p?.forestryMulchingBaseRate ?? 2000;
+  const lc  = p?.landClearingBaseRate     ?? 2200;
+  const bh  = p?.brushHoggingBaseRate     ?? 175;
+  const row = p?.rowClearingBaseRate      ?? 6;
+  function range(base: number, mult: number): [number, number] {
+    const mid = base * mult;
+    return [Math.round(mid * (1 - spread)), Math.round(mid * (1 + spread))];
+  }
+  return {
+    "forestry-mulching":    { light: range(fm, 0.8),  moderate: range(fm, 1.0),    heavy: range(fm, dhMult)  },
+    "land-clearing":        { light: range(lc, 0.8),  moderate: range(lc, dmMult), heavy: range(lc, dhMult)  },
+    "vegetation-management":{ light: range(bh, 0.7),  moderate: range(bh, 1.0),    heavy: range(bh, 1.5)     },
+    "property-maintenance": { light: range(bh, 0.7),  moderate: range(bh, 1.0),    heavy: range(bh, 1.5)     },
+    "right-of-way-clearing":{ light: range(row * 200, 0.8), moderate: range(row * 200, 1.0), heavy: range(row * 200, dhMult) },
+  };
 }
-
-const MOBILIZATION = 350;
-const MIN_JOB = 1800;
 
 const BASE_ACRES_PER_DAY: Record<string, number> = {
   "forestry-mulching":     1.5,
@@ -97,12 +88,28 @@ function fmt(n: number): string {
   return n.toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
 }
 
-function calcEstimate(s: CalcState): { low: number; high: number; perAcreLow: number; perAcreHigh: number } | null {
+function calcEstimate(s: CalcState, pricing: PublicPricing): { low: number; high: number; perAcreLow: number; perAcreHigh: number } | null {
+  const BASE_RATES = buildBaseRates(pricing);
+  const TERRAIN_MULT: Record<string, number> = {
+    flat: 1.0,
+    rolling: parseFloat(pricing?.terrainRollingMultiplier ?? "1.15") || 1.15,
+    steep:   parseFloat(pricing?.terrainSteepMultiplier   ?? "1.40") || 1.40,
+  };
+  const ACCESS_MULT: Record<string, number> = {
+    easy:      1.0,
+    moderate:  parseFloat(pricing?.accessModerateMultiplier  ?? "1.10") || 1.10,
+    difficult: parseFloat(pricing?.accessDifficultMultiplier ?? "1.25") || 1.25,
+  };
+  const d10 = pricing ? (1 - pricing.volumeDiscount10plusPct / 100) : 0.88;
+  const d5  = pricing ? (1 - pricing.volumeDiscount5to10Pct  / 100) : 0.93;
+  const d3  = pricing ? (1 - pricing.volumeDiscount3to5Pct   / 100) : 0.97;
+  const vd = s.acres >= 10 ? d10 : s.acres >= 5 ? d5 : s.acres >= 3 ? d3 : 1.0;
+  const MOBILIZATION = pricing?.mobilizationFee ?? 350;
+  const MIN_JOB      = pricing?.minimumJobTotal  ?? 1800;
   const base = BASE_RATES[s.service]?.[s.density];
   if (!base) return null;
   const tm = TERRAIN_MULT[s.terrain] ?? 1;
   const am = ACCESS_MULT[s.access] ?? 1;
-  const vd = volumeDiscount(s.acres);
   const perAcreLow  = Math.round(base[0] * tm * am * vd);
   const perAcreHigh = Math.round(base[1] * tm * am * vd);
   const raw_low  = perAcreLow  * s.acres + MOBILIZATION;
@@ -1151,7 +1158,13 @@ export default function CostCalculator() {
     estimateLow: number; estimateHigh: number; leadId: number | null;
   } | null>(null);
 
-  const result = useMemo(() => calcEstimate(state), [state]);
+  // Fetch live pricing from the server (public endpoint, no auth required)
+  const { data: livePricing = null } = trpc.widget.getPublicPricingRanges.useQuery(undefined, {
+    staleTime: 5 * 60 * 1000, // cache for 5 minutes
+    retry: 1,
+  });
+
+  const result = useMemo(() => calcEstimate(state, livePricing), [state, livePricing]);
   const timeResult = useMemo(() => calcCompletionTime(state), [state]);
 
   const set = (key: keyof CalcState) => (val: string | number) =>
@@ -1183,7 +1196,8 @@ export default function CostCalculator() {
     { value: "difficult", label: "Difficult — narrow gate, soft ground, long haul" },
   ];
 
-  const isMinJob = result ? result.low === MIN_JOB : false;
+  const minJobThreshold = livePricing?.minimumJobTotal ?? 1800;
+  const isMinJob = result ? result.low === minJobThreshold : false;
 
   return (
     <>
