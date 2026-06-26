@@ -1151,9 +1151,18 @@ export default function CostCalculator() {
     );
   };
 
+    // Fetch live pricing from the server (public endpoint, no auth required)
+  const { data: livePricing = null } = trpc.widget.getPublicPricingRanges.useQuery(undefined, {
+    staleTime: 5 * 60 * 1000, // cache for 5 minutes
+    retry: 1,
+  });
+  const result = useMemo(() => calcEstimate(state, livePricing), [state, livePricing]);
+  const timeResult = useMemo(() => calcCompletionTime(state), [state]);
+  const minJobThreshold = livePricing?.minimumJobTotal ?? 1800;
+  const isMinJob = result ? result.low === minJobThreshold : false;
+
   // Fence line clearing uses per-LF pricing; assume ~660 LF (quarter mile) as default estimate
   const FENCE_LINE_DEFAULT_LF = 660;
-
   const ADD_ON_OPTIONS = [
     {
       key: "post-clear-seeding",
@@ -1194,23 +1203,13 @@ export default function CostCalculator() {
     .filter((a) => selectedAddOns.includes(a.label))
     .map((a) => ({ ...a, cost: a.calcCost(state.acres, livePricing) }));
 
-  const addOnTotalLow  = addOnBreakdown.reduce((sum, a) => sum + a.cost.low,  0);
+    const addOnTotalLow  = addOnBreakdown.reduce((sum, a) => sum + a.cost.low,  0);
   const addOnTotalHigh = addOnBreakdown.reduce((sum, a) => sum + a.cost.high, 0);
   const [confirmData, setConfirmData] = useState<{
     name: string; phone: string; email: string; service: string;
     acres: number; density: string; terrain: string;
     estimateLow: number; estimateHigh: number; leadId: number | null;
   } | null>(null);
-
-  // Fetch live pricing from the server (public endpoint, no auth required)
-  const { data: livePricing = null } = trpc.widget.getPublicPricingRanges.useQuery(undefined, {
-    staleTime: 5 * 60 * 1000, // cache for 5 minutes
-    retry: 1,
-  });
-
-  const result = useMemo(() => calcEstimate(state, livePricing), [state, livePricing]);
-  const timeResult = useMemo(() => calcCompletionTime(state), [state]);
-
   const set = (key: keyof CalcState) => (val: string | number) =>
     setState((prev) => ({ ...prev, [key]: val }));
 
@@ -1240,10 +1239,7 @@ export default function CostCalculator() {
     { value: "difficult", label: "Difficult — narrow gate, soft ground, long haul" },
   ];
 
-  const minJobThreshold = livePricing?.minimumJobTotal ?? 1800;
-  const isMinJob = result ? result.low === minJobThreshold : false;
-
-  return (
+    return (
     <>
       <div style={{
         backgroundColor: "#1a1a1a", border: "1px solid rgba(224,123,42,0.25)",
