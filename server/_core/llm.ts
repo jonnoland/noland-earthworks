@@ -66,6 +66,8 @@ export type InvokeParams = {
   output_schema?: OutputSchema;
   responseFormat?: ResponseFormat;
   response_format?: ResponseFormat;
+  /** Set to 0 for deterministic outputs (pricing, structured data); omit for creative tasks */
+  temperature?: number;
 };
 
 export type ToolCall = {
@@ -277,6 +279,7 @@ export async function invokeLLM(params: InvokeParams): Promise<InvokeResult> {
     output_schema,
     responseFormat,
     response_format,
+    temperature,
   } = params;
 
   const payload: Record<string, unknown> = {
@@ -299,6 +302,9 @@ export async function invokeLLM(params: InvokeParams): Promise<InvokeResult> {
   payload.max_tokens = 32768
   payload.thinking = {
     "budget_tokens": 128
+  }
+  if (typeof temperature === "number") {
+    payload.temperature = temperature;
   }
 
   const normalizedResponseFormat = normalizeResponseFormat({

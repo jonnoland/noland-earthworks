@@ -1134,7 +1134,7 @@ ${benchmarkContext}
 ${jobHistoryContext}
 
 Rules:
-- Never publish or promise specific rates. Use the reference range as a guide only.
+- The priceLow and priceHigh fields in your JSON response MUST exactly match the calculated price range provided above ($${finalLow.toLocaleString()} and $${finalHigh.toLocaleString()}). Do not adjust, round, or deviate from these values — they are the authoritative prices from the owner's pricing settings.
 - If acreage is unknown or the customer's message suggests complex conditions, flag it for a site visit.
 - MINIMUM JOB SIZE IS 1 ACRE. If the submitted acreage is under 1 acre, price it at the 1-acre rate and note in scopeNotes that the minimum job size is 1 acre — the tracked equipment requires full mobilization regardless of lot size.
 - Mobilization ($${MOBILIZATION}) MUST always appear as a separate line item named "Mobilization & Equipment Transport". Never omit it or bundle it silently into the clearing rate.
@@ -1173,6 +1173,7 @@ ${input.customPrompt ? `\nADJUSTMENT INSTRUCTION: ${input.customPrompt}\nApply t
           { role: "system", content: systemPrompt },
           { role: "user",   content: userPrompt },
         ],
+        temperature: 0,
         response_format: {
           type: "json_schema",
           json_schema: {
@@ -1495,6 +1496,7 @@ Return ONLY valid JSON with this exact structure:
           { role: "system", content: systemPrompt },
           { role: "user",   content: userContent },
         ],
+        temperature: 0,
         response_format: {
           type: "json_schema",
           json_schema: {

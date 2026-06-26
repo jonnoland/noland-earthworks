@@ -194,6 +194,7 @@ export const costEstimatorRouter = router({
             content: `Generate a detailed cost estimate for this job:\n\n${jobDescription}\n\nReturn JSON with the exact schema specified. Show all math in the breakdown notes.`,
           },
         ],
+        temperature: 0,
         response_format: {
           type: "json_schema",
           json_schema: {
