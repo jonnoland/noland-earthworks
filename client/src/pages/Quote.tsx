@@ -823,7 +823,7 @@ export default function QuotePage() {
 
                   {/* Acreage */}
                   <div>
-                    <label style={labelStyle}>Approximate Acreage</label>
+                    <label style={labelStyle}>Approximate Acreage <span style={{ fontWeight: 400, opacity: 0.65, fontSize: "0.85em", textTransform: "none", letterSpacing: 0 }}>(minimum charge is 1 acre)</span></label>
                     <select
                       name="acreage"
                       value={form.acreage} onChange={handleChange}
