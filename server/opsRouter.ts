@@ -4830,4 +4830,30 @@ Generate a complete monthly ad campaign plan. Return ONLY valid JSON matching th
         .limit(100);
       return rows;
     }),
+  /**
+   * Removes the Jobber quote link from a lead, clearing jobberQuoteId,
+   * jobberQuoteNumber, and estimateAmount. Stage is reverted to "new" if
+   * it was "estimate_sent" (i.e. only advanced because of the link).
+   */
+  unlinkQuoteFromLead: protectedProcedure
+    .input(z.object({ leadId: z.number().int().positive() }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'DB unavailable' });
+      const rows = await db
+        .select()
+        .from(opsLeads)
+        .where(and(eq(opsLeads.id, input.leadId), eq(opsLeads.userId, ctx.user.id)))
+        .limit(1);
+      const lead = rows[0];
+      if (!lead) throw new TRPCError({ code: 'NOT_FOUND', message: 'Lead not found' });
+      const revertStage = lead.stage === 'estimate_sent' ? 'new' : undefined;
+      await updateOpsLead(input.leadId, ctx.user.id, {
+        jobberQuoteId: null,
+        jobberQuoteNumber: null,
+        estimateAmount: null,
+        ...(revertStage ? { stage: revertStage } : {}),
+      });
+      return { ok: true };
+    }),
 });

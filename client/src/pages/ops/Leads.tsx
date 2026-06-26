@@ -19,7 +19,7 @@ import {
   AlarmClock, User, PhoneCall,
   ClipboardList, Star, Snowflake, RefreshCw,
   Map as MapIcon, LayoutGrid, Clock, Navigation,
-  Brain, Copy, Check, CheckCheck, Sparkles,
+  Brain, Copy, Check, CheckCheck, Sparkles, Unlink,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -593,7 +593,17 @@ function LeadDetailPanel({
   const [showProposal, setShowProposal] = useState(false);
     const [showContactModal, setShowContactModal] = useState(false);
   const [showQuotePreview, setShowQuotePreview] = useState(false);
+  const [confirmUnlink, setConfirmUnlink] = useState(false);
   const utils = trpc.useUtils();
+  const unlinkQuote = trpc.ops.unlinkQuoteFromLead.useMutation({
+    onSuccess: () => {
+      toast.success("Quote unlinked.");
+      setShowQuotePreview(false);
+      setConfirmUnlink(false);
+      utils.ops.leads.list.invalidate();
+    },
+    onError: (e) => toast.error(e.message || "Failed to unlink quote."),
+  });
   const { data: notes = [], isLoading: notesLoading } = trpc.ops.leads.listNotes.useQuery({ leadId: lead.id });
 
   // Live Jobber quote status for the linked quote badge
@@ -884,22 +894,50 @@ function LeadDetailPanel({
                         )}
                       </div>
                       {/* Footer */}
-                      <div className="px-4 py-3 border-t border-[#2a2a2a] flex gap-2">
-                        <a
-                          href={`https://secure.getjobber.com/quotes/${numericId}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="flex-1 flex items-center justify-center gap-1.5 bg-[#1e1e1e] hover:bg-[#252525] border border-[#2a2a2a] text-[#aaa] text-[11px] font-semibold py-2 rounded-md transition-colors"
-                        >
-                          <ExternalLink className="w-3 h-3" />
-                          Open in Jobber
-                        </a>
-                        <button
-                          onClick={() => setShowQuotePreview(false)}
-                          className="px-4 bg-[#1e1e1e] hover:bg-[#252525] border border-[#2a2a2a] text-[#666] text-[11px] font-semibold py-2 rounded-md transition-colors"
-                        >
-                          Close
-                        </button>
+                      <div className="px-4 py-3 border-t border-[#2a2a2a] space-y-2">
+                        {confirmUnlink ? (
+                          <div className="flex items-center gap-2">
+                            <span className="text-[11px] text-red-400 flex-1">Remove this quote from the lead?</span>
+                            <button
+                              onClick={() => unlinkQuote.mutate({ leadId: lead.id })}
+                              disabled={unlinkQuote.isPending}
+                              className="px-3 py-1.5 bg-red-600/20 hover:bg-red-600/30 border border-red-500/30 text-red-400 text-[11px] font-semibold rounded-md transition-colors disabled:opacity-50"
+                            >
+                              {unlinkQuote.isPending ? "Removing..." : "Yes, remove"}
+                            </button>
+                            <button
+                              onClick={() => setConfirmUnlink(false)}
+                              className="px-3 py-1.5 bg-[#1e1e1e] hover:bg-[#252525] border border-[#2a2a2a] text-[#666] text-[11px] font-semibold rounded-md transition-colors"
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="flex gap-2">
+                            <a
+                              href={`https://secure.getjobber.com/quotes/${numericId}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="flex-1 flex items-center justify-center gap-1.5 bg-[#1e1e1e] hover:bg-[#252525] border border-[#2a2a2a] text-[#aaa] text-[11px] font-semibold py-2 rounded-md transition-colors"
+                            >
+                              <ExternalLink className="w-3 h-3" />
+                              Open in Jobber
+                            </a>
+                            <button
+                              onClick={() => setConfirmUnlink(true)}
+                              className="px-3 py-2 bg-[#1e1e1e] hover:bg-red-600/10 border border-[#2a2a2a] hover:border-red-500/30 text-[#555] hover:text-red-400 text-[11px] font-semibold rounded-md transition-colors"
+                              title="Unlink quote from this lead"
+                            >
+                              <Unlink className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              onClick={() => setShowQuotePreview(false)}
+                              className="px-4 bg-[#1e1e1e] hover:bg-[#252525] border border-[#2a2a2a] text-[#666] text-[11px] font-semibold py-2 rounded-md transition-colors"
+                            >
+                              Close
+                            </button>
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>
