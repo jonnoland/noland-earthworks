@@ -28,6 +28,11 @@ type PublicPricing = {
   volumeDiscount3to5Pct: number;
   volumeDiscount5to10Pct: number;
   volumeDiscount10plusPct: number;
+  // Add-on rates
+  postClearSeedingPerAcre: number;
+  fenceLineClearingPerLf: number;
+  mulchRedistributionPerAcre: number;
+  selectiveClearingFlatRate: number;
 } | null;
 
 /** Build the BASE_RATES table from live pricing settings */
@@ -1146,12 +1151,51 @@ export default function CostCalculator() {
     );
   };
 
+  // Fence line clearing uses per-LF pricing; assume ~660 LF (quarter mile) as default estimate
+  const FENCE_LINE_DEFAULT_LF = 660;
+
   const ADD_ON_OPTIONS = [
-    { key: "post-clear-seeding",  label: "Post-Clear Seeding & Erosion Control" },
-    { key: "fence-line-clearing", label: "Fence Line Clearing" },
-    { key: "mulch-redistribution", label: "Mulch Redistribution" },
-    { key: "selective-clearing",  label: "Selective Clearing & Tree Preservation" },
+    {
+      key: "post-clear-seeding",
+      label: "Post-Clear Seeding & Erosion Control",
+      calcCost: (acres: number, p: PublicPricing) => {
+        const rate = p?.postClearSeedingPerAcre ?? 225;
+        return { low: Math.round(rate * 0.85 * acres), high: Math.round(rate * 1.15 * acres), unit: `/acre` };
+      },
+    },
+    {
+      key: "fence-line-clearing",
+      label: "Fence Line Clearing",
+      calcCost: (_acres: number, p: PublicPricing) => {
+        const rate = p?.fenceLineClearingPerLf ?? 4;
+        return { low: Math.round(rate * 0.85 * FENCE_LINE_DEFAULT_LF), high: Math.round(rate * 1.15 * FENCE_LINE_DEFAULT_LF), unit: ` (~${FENCE_LINE_DEFAULT_LF} LF est.)` };
+      },
+    },
+    {
+      key: "mulch-redistribution",
+      label: "Mulch Redistribution",
+      calcCost: (acres: number, p: PublicPricing) => {
+        const rate = p?.mulchRedistributionPerAcre ?? 175;
+        return { low: Math.round(rate * 0.85 * acres), high: Math.round(rate * 1.15 * acres), unit: `/acre` };
+      },
+    },
+    {
+      key: "selective-clearing",
+      label: "Selective Clearing & Tree Preservation",
+      calcCost: (_acres: number, p: PublicPricing) => {
+        const rate = p?.selectiveClearingFlatRate ?? 200;
+        return { low: Math.round(rate * 0.85), high: Math.round(rate * 1.15), unit: ` flat` };
+      },
+    },
   ];
+
+  // Compute add-on costs for selected add-ons
+  const addOnBreakdown = ADD_ON_OPTIONS
+    .filter((a) => selectedAddOns.includes(a.label))
+    .map((a) => ({ ...a, cost: a.calcCost(state.acres, livePricing) }));
+
+  const addOnTotalLow  = addOnBreakdown.reduce((sum, a) => sum + a.cost.low,  0);
+  const addOnTotalHigh = addOnBreakdown.reduce((sum, a) => sum + a.cost.high, 0);
   const [confirmData, setConfirmData] = useState<{
     name: string; phone: string; email: string; service: string;
     acres: number; density: string; terrain: string;
@@ -1284,40 +1328,49 @@ export default function CostCalculator() {
                 Add-On Services <span style={{ color: "rgba(240,237,230,0.3)", fontWeight: 400, textTransform: "none", letterSpacing: 0, fontSize: "0.65rem" }}>(optional)</span>
               </p>
               <div style={{ display: "flex", flexDirection: "column", gap: "0.4rem" }}>
-                {ADD_ON_OPTIONS.map((addon) => (
-                  <label
-                    key={addon.key}
-                    style={{
-                      display: "flex", alignItems: "center", gap: "0.6rem",
-                      cursor: "pointer", padding: "0.5rem 0.75rem", borderRadius: "4px",
-                      border: selectedAddOns.includes(addon.label)
-                        ? "1px solid rgba(224,123,42,0.45)"
-                        : "1px solid rgba(255,255,255,0.07)",
-                      backgroundColor: selectedAddOns.includes(addon.label)
-                        ? "rgba(224,123,42,0.07)"
-                        : "rgba(255,255,255,0.02)",
-                      transition: "all 0.15s ease",
-                    }}
-                    onClick={() => toggleAddOn(addon.label)}
-                  >
-                    <div style={{
-                      width: "15px", height: "15px", borderRadius: "3px", flexShrink: 0,
-                      border: selectedAddOns.includes(addon.label)
-                        ? "2px solid #E07B2A" : "2px solid rgba(255,255,255,0.22)",
-                      backgroundColor: selectedAddOns.includes(addon.label) ? "#E07B2A" : "transparent",
-                      display: "flex", alignItems: "center", justifyContent: "center",
-                    }}>
-                      {selectedAddOns.includes(addon.label) && (
-                        <svg width="9" height="7" viewBox="0 0 10 8" fill="none">
-                          <path d="M1 4L3.5 6.5L9 1" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-                        </svg>
-                      )}
-                    </div>
-                    <span style={{ fontFamily: "'Lato', sans-serif", fontSize: "0.82rem", color: "rgba(240,237,230,0.8)" }}>
-                      {addon.label}
-                    </span>
-                  </label>
-                ))}
+                {ADD_ON_OPTIONS.map((addon) => {
+                  const cost = addon.calcCost(state.acres, livePricing);
+                  const isSelected = selectedAddOns.includes(addon.label);
+                  return (
+                    <label
+                      key={addon.key}
+                      style={{
+                        display: "flex", alignItems: "center", gap: "0.6rem",
+                        cursor: "pointer", padding: "0.5rem 0.75rem", borderRadius: "4px",
+                        border: isSelected
+                          ? "1px solid rgba(224,123,42,0.45)"
+                          : "1px solid rgba(255,255,255,0.07)",
+                        backgroundColor: isSelected
+                          ? "rgba(224,123,42,0.07)"
+                          : "rgba(255,255,255,0.02)",
+                        transition: "all 0.15s ease",
+                      }}
+                      onClick={() => toggleAddOn(addon.label)}
+                    >
+                      <div style={{
+                        width: "15px", height: "15px", borderRadius: "3px", flexShrink: 0,
+                        border: isSelected
+                          ? "2px solid #E07B2A" : "2px solid rgba(255,255,255,0.22)",
+                        backgroundColor: isSelected ? "#E07B2A" : "transparent",
+                        display: "flex", alignItems: "center", justifyContent: "center",
+                      }}>
+                        {isSelected && (
+                          <svg width="9" height="7" viewBox="0 0 10 8" fill="none">
+                            <path d="M1 4L3.5 6.5L9 1" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                          </svg>
+                        )}
+                      </div>
+                      <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "space-between", gap: "0.5rem" }}>
+                        <span style={{ fontFamily: "'Lato', sans-serif", fontSize: "0.82rem", color: "rgba(240,237,230,0.8)" }}>
+                          {addon.label}
+                        </span>
+                        <span style={{ fontFamily: "'Lato', sans-serif", fontSize: "0.72rem", color: isSelected ? "#E07B2A" : "rgba(240,237,230,0.35)", whiteSpace: "nowrap" }}>
+                          +{fmt(cost.low)}–{fmt(cost.high)}{cost.unit}
+                        </span>
+                      </div>
+                    </label>
+                  );
+                })}
               </div>
             </div>
           </div>
@@ -1336,19 +1389,43 @@ export default function CostCalculator() {
                     fontSize: "0.7rem", letterSpacing: "0.14em", textTransform: "uppercase",
                     color: "rgba(240,237,230,0.45)", marginBottom: "0.5rem",
                   }}>
-                    Estimated Total
+                    {addOnBreakdown.length > 0 ? "Base Clearing Estimate" : "Estimated Total"}
                   </p>
                   <div style={{
                     fontFamily: "'Oswald', sans-serif", fontWeight: 700,
-                    fontSize: "clamp(2rem, 5vw, 2.75rem)", color: "#E07B2A",
+                    fontSize: addOnBreakdown.length > 0 ? "clamp(1.4rem, 3.5vw, 1.9rem)" : "clamp(2rem, 5vw, 2.75rem)",
+                    color: addOnBreakdown.length > 0 ? "rgba(240,237,230,0.75)" : "#E07B2A",
                     lineHeight: 1, marginBottom: "0.35rem",
                   }}>
                     {fmt(result.low)} – {fmt(result.high)}
                   </div>
                   {isMinJob && (
                     <p style={{ fontFamily: "'Lato', sans-serif", fontSize: "0.75rem", color: "rgba(240,237,230,0.45)", marginBottom: "0.75rem" }}>
-                      Minimum job rate applied ($1,800)
+                      Minimum job rate applied (${minJobThreshold.toLocaleString()})
                     </p>
+                  )}
+
+                  {/* Add-on breakdown */}
+                  {addOnBreakdown.length > 0 && (
+                    <div style={{ marginBottom: "0.75rem" }}>
+                      {addOnBreakdown.map((a) => (
+                        <div key={a.key} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0.3rem 0", borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
+                          <span style={{ fontFamily: "'Lato', sans-serif", fontSize: "0.75rem", color: "rgba(240,237,230,0.55)" }}>+ {a.label}</span>
+                          <span style={{ fontFamily: "'Lato', sans-serif", fontSize: "0.75rem", color: "rgba(224,123,42,0.8)", whiteSpace: "nowrap", marginLeft: "0.5rem" }}>
+                            {fmt(a.cost.low)}–{fmt(a.cost.high)}{a.cost.unit}
+                          </span>
+                        </div>
+                      ))}
+                      {/* Grand total */}
+                      <div style={{ marginTop: "0.6rem" }}>
+                        <p style={{ fontFamily: "'Oswald', sans-serif", fontWeight: 500, fontSize: "0.7rem", letterSpacing: "0.14em", textTransform: "uppercase", color: "rgba(240,237,230,0.45)", marginBottom: "0.3rem" }}>
+                          Estimated Total (with add-ons)
+                        </p>
+                        <div style={{ fontFamily: "'Oswald', sans-serif", fontWeight: 700, fontSize: "clamp(2rem, 5vw, 2.75rem)", color: "#E07B2A", lineHeight: 1 }}>
+                          {fmt(result.low + addOnTotalLow)} – {fmt(result.high + addOnTotalHigh)}
+                        </div>
+                      </div>
+                    </div>
                   )}
 
                   {/* Per-acre breakdown */}

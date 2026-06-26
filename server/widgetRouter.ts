@@ -250,6 +250,11 @@ export const widgetRouter = router({
       volumeDiscount3to5Pct:      row.volumeDiscount3to5Pct,
       volumeDiscount5to10Pct:     row.volumeDiscount5to10Pct,
       volumeDiscount10plusPct:    row.volumeDiscount10plusPct,
+      // Add-on rates
+      postClearSeedingPerAcre:    row.postClearSeedingPerAcre,
+      fenceLineClearingPerLf:     row.fenceLineClearingPerLf,
+      mulchRedistributionPerAcre: row.mulchRedistributionPerAcre,
+      selectiveClearingFlatRate:  row.selectiveClearingFlatRate,
     };
   }),
 });
