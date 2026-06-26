@@ -1403,7 +1403,7 @@ function AIAssistPanel({ onClose, clientName, onApply }: AIAssistPanelProps) {
                 <p className="text-[10px] text-muted-foreground font-medium">Approximate Acreage</p>
                 <input
                   type="number"
-                  min="0.1"
+                  min="1"
                   step="0.5"
                   placeholder="e.g. 5"
                   value={fieldAcreage}

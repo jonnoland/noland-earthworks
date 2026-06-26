@@ -196,6 +196,7 @@ export default function CostEstimator() {
                     onChange={e => setAcreage(e.target.value)}
                     placeholder="e.g. 5.0"
                     step="0.5"
+                    min="1"
                     className="bg-zinc-800 border-zinc-600 text-white"
                   />
                 </div>

@@ -193,7 +193,7 @@ function SelectRow({
 function AcreSlider({ value, onChange, isRow, onOpenMap }: {
   value: number; onChange: (v: number) => void; isRow?: boolean; onOpenMap: () => void;
 }) {
-  const steps = [0.5, 1, 1.5, 2, 3, 4, 5, 7, 10, 15, 20, 30, 50];
+  const steps = [1, 1.5, 2, 3, 4, 5, 7, 10, 15, 20, 30, 50];
   const idx = steps.indexOf(value);
   return (
     <div style={{ marginBottom: "1.25rem" }}>
@@ -368,7 +368,7 @@ function MapPolygonModal({ onClose, onAcreageConfirm, calcState }: {
 
   const handleConfirm = () => {
     if (drawnAcres === null) return;
-    const steps = [0.5, 1, 1.5, 2, 3, 4, 5, 7, 10, 15, 20, 30, 50];
+    const steps = [1, 1.5, 2, 3, 4, 5, 7, 10, 15, 20, 30, 50];
     const snapped = steps.reduce((prev, curr) =>
       Math.abs(curr - drawnAcres) < Math.abs(prev - drawnAcres) ? curr : prev
     );

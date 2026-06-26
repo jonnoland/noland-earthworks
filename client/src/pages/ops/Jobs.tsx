@@ -1786,7 +1786,7 @@ export default function Jobs() {
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-muted-foreground mb-1">Acres</label>
-                  <input type="number" step="0.1" value={form.acres} onChange={e => setForm(f => ({ ...f, acres: e.target.value }))} placeholder="0.0"
+                  <input type="number" step="0.1" min="1" value={form.acres} onChange={e => setForm(f => ({ ...f, acres: e.target.value }))} placeholder="1.0"
                     className="w-full bg-secondary/50 border border-border rounded-md px-3 py-2 text-xs text-foreground outline-none focus:border-primary/50 placeholder:text-muted-foreground/40" />
                 </div>
                 <div>
