@@ -1962,3 +1962,6 @@
 - [x] Add manual lead-quote linking from /ops/quotes
 - [x] Run TypeScript check and save checkpoint after quote-linking updates
 - [x] Wire all quoting flows (Jobs page estimated price hint) to read base rates from aiPricingSettings instead of hardcoded values
+- [x] Add editable price range fields (editedPriceLow/editedPriceHigh) to AI analyzer results panel in Quotes.tsx
+- [x] Add "AI Pricing" badge (amber Sparkles) to AI analyzer results panel price row
+- [x] Update saveDraft call to serialize editedPriceLow/editedPriceHigh instead of raw analysis values

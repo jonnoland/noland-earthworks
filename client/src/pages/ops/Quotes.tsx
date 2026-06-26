@@ -2607,6 +2607,8 @@ function WebsiteRequestCard({
   const [expanded, setExpanded] = useState(false);
   const [analysis, setAnalysis] = useState<AIQuoteAnalysis | null>(null);
   const [editedMessage, setEditedMessage] = useState("");
+  const [editedPriceLow, setEditedPriceLow] = useState<number>(0);
+  const [editedPriceHigh, setEditedPriceHigh] = useState<number>(0);
   const [statusIdx, setStatusIdx] = useState(0);
   const statusTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const [customPrompt, setCustomPrompt] = useState("");
@@ -2651,6 +2653,8 @@ function WebsiteRequestCard({
       if (statusTimerRef.current) clearInterval(statusTimerRef.current);
       setAnalysis(result);
       setEditedMessage(result.quoteMessage);
+      setEditedPriceLow(result.priceLow);
+      setEditedPriceHigh(result.priceHigh);
       setExpanded(true);
     },
     onError: (err) => {
@@ -2895,9 +2899,30 @@ function WebsiteRequestCard({
                 Est. {analysis.estimatedDays} day{analysis.estimatedDays !== 1 ? "s" : ""} on site
               </span>
             )}
-            <span className="ml-auto text-sm font-semibold text-foreground">
-              {formatMoney(analysis.priceLow)} – {formatMoney(analysis.priceHigh)}
-            </span>
+            <div className="ml-auto flex items-center gap-1.5">
+              <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-amber-400 bg-amber-500/10 rounded-full px-2 py-0.5">
+                <Sparkles className="w-2.5 h-2.5" />
+                AI Pricing
+              </span>
+              <span className="text-muted-foreground text-xs">$</span>
+              <input
+                type="number"
+                value={editedPriceLow}
+                onChange={(e) => setEditedPriceLow(Number(e.target.value))}
+                className="w-20 text-sm font-semibold text-foreground bg-transparent border-b border-border focus:border-primary focus:outline-none text-right"
+                min={0}
+                step={100}
+              />
+              <span className="text-muted-foreground text-xs">–  $</span>
+              <input
+                type="number"
+                value={editedPriceHigh}
+                onChange={(e) => setEditedPriceHigh(Number(e.target.value))}
+                className="w-20 text-sm font-semibold text-foreground bg-transparent border-b border-border focus:border-primary focus:outline-none text-right"
+                min={0}
+                step={100}
+              />
+            </div>
           </div>
           {/* Price breakdown */}
           {analysis.priceBreakdown && (
@@ -3094,7 +3119,7 @@ function WebsiteRequestCard({
                 service: submission.service,
                 county: submission.county,
                 acreage: submission.acreage ?? undefined,
-                aiResult: JSON.stringify({ ...analysis, quoteMessage: editedMessage }),
+                aiResult: JSON.stringify({ ...analysis, quoteMessage: editedMessage, priceLow: editedPriceLow, priceHigh: editedPriceHigh }),
               })}
             >
               {saveDraft.isPending ? (
