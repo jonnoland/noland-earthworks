@@ -496,6 +496,7 @@ export default function Ads() {
   // A/B variant mode
   const [abMode, setAbMode] = useState(false);
   const [abVariants, setAbVariants] = useState<GeneratedVariant[]>([]);
+  const [abPreviewIdx, setAbPreviewIdx] = useState<number | null>(null);
   const [selectedVariantIdx, setSelectedVariantIdx] = useState<number | null>(null);
 
   // Single-platform generated ad
@@ -532,6 +533,8 @@ export default function Ads() {
   const [uploadedImageKey, setUploadedImageKey] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  // Photos auto-attached from a job via Send to Ads
+  const [prefillPhotoUrls, setPrefillPhotoUrls] = useState<string[]>([]);
 
   // Scheduling state
   const [showScheduler, setShowScheduler] = useState(false);
@@ -549,7 +552,7 @@ export default function Ads() {
     if (!raw) return;
     sessionStorage.removeItem("ads_prefill");
     try {
-      const prefill = JSON.parse(raw) as { platform?: string; draft?: string; jobTitle?: string; jobClient?: string };
+      const prefill = JSON.parse(raw) as { platform?: string; draft?: string; jobTitle?: string; jobClient?: string; photoUrls?: string[] };
       if (prefill.platform && ["facebook", "instagram", "x", "both"].includes(prefill.platform)) {
         setPlatform(prefill.platform as Platform);
       }
@@ -558,6 +561,15 @@ export default function Ads() {
         setEditedDraft(prefill.draft);
         setEditedHeadline(prefill.jobTitle ? `${prefill.jobTitle} — Noland Earthworks` : "Noland Earthworks");
         if (prefill.jobTitle) setJobDescription(`Job: ${prefill.jobTitle}${prefill.jobClient ? ` | Client: ${prefill.jobClient}` : ""}`);
+      }
+      // Auto-attach job gallery photos
+      if (prefill.photoUrls && prefill.photoUrls.length > 0) {
+        setPrefillPhotoUrls(prefill.photoUrls);
+        // Auto-select the first photo as the active image
+        setUploadedImageUrl(prefill.photoUrls[0]);
+        setUploadedImageKey(null); // no S3 key for pre-existing gallery photos
+        toast.success(`Draft loaded with ${prefill.photoUrls.length} job photo${prefill.photoUrls.length !== 1 ? "s" : ""} attached.`);
+      } else {
         toast.success("Draft loaded from job. Edit and post when ready.");
       }
     } catch { /* ignore malformed */ }
@@ -1924,30 +1936,50 @@ export default function Ads() {
             </div>
             <div className="space-y-3">
               {abVariants.map((v, i) => (
-                <button
-                  key={i}
-                  onClick={() => selectVariant(i)}
-                  className={cn(
-                    "w-full text-left rounded-lg border p-4 transition-colors space-y-1.5",
-                    selectedVariantIdx === i
-                      ? "border-amber-500/60 bg-amber-500/10"
-                      : "border-border bg-background hover:border-border/80 hover:bg-muted/30"
-                  )}
-                >
-                  <div className="flex items-center gap-2">
-                    <span className={cn(
-                      "text-xs font-semibold px-2 py-0.5 rounded-full border",
-                      selectedVariantIdx === i ? "bg-amber-500/20 border-amber-500/40 text-amber-400" : "bg-muted border-border text-muted-foreground"
-                    )}>
-                      {v.angle}
-                    </span>
-                    {selectedVariantIdx === i && (
-                      <span className="text-xs text-amber-400 flex items-center gap-1"><CheckCircle2 size={11} /> Selected</span>
+                <div key={i} className={cn(
+                  "rounded-lg border transition-colors",
+                  selectedVariantIdx === i ? "border-amber-500/60" : "border-border"
+                )}>
+                  {/* Variant header row */}
+                  <div
+                    className={cn(
+                      "w-full text-left p-4 space-y-1.5 cursor-pointer",
+                      selectedVariantIdx === i ? "bg-amber-500/10" : "bg-background hover:bg-muted/30"
                     )}
+                    onClick={() => selectVariant(i)}
+                  >
+                    <div className="flex items-center gap-2">
+                      <span className={cn(
+                        "text-xs font-semibold px-2 py-0.5 rounded-full border",
+                        selectedVariantIdx === i ? "bg-amber-500/20 border-amber-500/40 text-amber-400" : "bg-muted border-border text-muted-foreground"
+                      )}>
+                        {v.angle}
+                      </span>
+                      {selectedVariantIdx === i && (
+                        <span className="text-xs text-amber-400 flex items-center gap-1"><CheckCircle2 size={11} /> Selected</span>
+                      )}
+                      <button
+                        onClick={(e) => { e.stopPropagation(); setAbPreviewIdx(abPreviewIdx === i ? null : i); }}
+                        className="ml-auto flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground transition-colors"
+                      >
+                        <Eye size={11} />{abPreviewIdx === i ? "Hide preview" : "Preview"}
+                      </button>
+                    </div>
+                    <p className="text-sm font-medium text-foreground">{v.headline}</p>
+                    <p className="text-xs text-muted-foreground line-clamp-3">{v.draft}</p>
                   </div>
-                  <p className="text-sm font-medium text-foreground">{v.headline}</p>
-                  <p className="text-xs text-muted-foreground line-clamp-3">{v.draft}</p>
-                </button>
+                  {/* Inline Facebook/Instagram preview */}
+                  {abPreviewIdx === i && (
+                    <div className="border-t border-border p-4 bg-secondary/20">
+                      <SocialPreview
+                        platform={platform === "instagram" ? "instagram" : "facebook"}
+                        headline={v.headline}
+                        draft={v.draft}
+                        imageUrl={activeImageUrl}
+                      />
+                    </div>
+                  )}
+                </div>
               ))}
             </div>
             {selectedVariantIdx !== null && (
@@ -2002,11 +2034,30 @@ export default function Ads() {
                     <Upload size={12} />{isUploading ? "Uploading..." : "Upload photo"}
                   </button>
                   {uploadedImageUrl && (
-                    <button onClick={() => { setUploadedImageUrl(null); setUploadedImageKey(null); setSavedPostId(null); }}
+                    <button onClick={() => { setUploadedImageUrl(null); setUploadedImageKey(null); setSavedPostId(null); setPrefillPhotoUrls([]); }}
                       className="text-xs text-red-400 hover:underline">Remove</button>
                   )}
                 </div>
               </div>
+              {/* Job photo picker — shown when photos were auto-attached from Send to Ads */}
+              {prefillPhotoUrls.length > 1 && (
+                <div className="space-y-1.5">
+                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Job Photos ({prefillPhotoUrls.length}) — click to select</p>
+                  <div className="flex gap-2 flex-wrap">
+                    {prefillPhotoUrls.map((url, i) => (
+                      <button
+                        key={i}
+                        onClick={() => { setUploadedImageUrl(url); setUploadedImageKey(null); }}
+                        className={`rounded-lg overflow-hidden border-2 transition-colors ${
+                          uploadedImageUrl === url ? "border-primary" : "border-transparent hover:border-primary/50"
+                        }`}
+                      >
+                        <img src={url} alt={`Job photo ${i + 1}`} className="w-16 h-16 object-cover" />
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
               {activeImageUrl && (
                 <img src={activeImageUrl} alt="Ad image" className="rounded-xl max-h-64 object-cover border border-border" />
               )}

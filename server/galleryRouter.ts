@@ -4,11 +4,11 @@
  * listPhotos (public) is used by the public /gallery page.
  */
 import { z } from "zod";
-import { eq, desc, asc } from "drizzle-orm";
+import { eq, desc, asc, and } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 import { adminProcedure, protectedProcedure, publicProcedure, router } from "./_core/trpc";
 import { getDb } from "./db";
-import { galleryPhotos } from "../drizzle/schema";
+import { galleryPhotos, jobs } from "../drizzle/schema";
 import { storagePut } from "./storage";
 
 const SERVICE_TYPES = [
@@ -180,6 +180,44 @@ export const galleryRouter = router({
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
       await db.delete(galleryPhotos).where(eq(galleryPhotos.id, input.id));
       return { success: true };
+    }),
+
+  /**
+   * Get photos linked to a specific job by local integer ID.
+   */
+  getByJobId: adminProcedure
+    .input(z.object({ jobId: z.number().int() }))
+    .query(async ({ input }) => {
+      const db = await getDb();
+      if (!db) return [];
+      return db
+        .select()
+        .from(galleryPhotos)
+        .where(eq(galleryPhotos.jobId, input.jobId))
+        .orderBy(asc(galleryPhotos.sortOrder), desc(galleryPhotos.createdAt));
+    }),
+
+  /**
+   * Get photos linked to a Jobber job string ID.
+   * Looks up the local job row by jobberJobId, then returns gallery photos for that local job.
+   */
+  getByJobberJobId: adminProcedure
+    .input(z.object({ jobberJobId: z.string() }))
+    .query(async ({ input }) => {
+      const db = await getDb();
+      if (!db) return [];
+      // Find the local job row that corresponds to this Jobber job
+      const [localJob] = await db
+        .select({ id: jobs.id })
+        .from(jobs)
+        .where(eq(jobs.jobberJobId, input.jobberJobId))
+        .limit(1);
+      if (!localJob) return [];
+      return db
+        .select()
+        .from(galleryPhotos)
+        .where(eq(galleryPhotos.jobId, localJob.id))
+        .orderBy(asc(galleryPhotos.sortOrder), desc(galleryPhotos.createdAt));
     }),
 
   /**

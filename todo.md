@@ -1996,3 +1996,6 @@
 - [x] Auto-repurpose job photo to ad: one-click button on completed jobs in /ops/jobs drafts before/after post for all platforms using job photo; Send to Ads navigates with prefill
 - [x] County page content generator: generateCountyPage procedure + UI in /ops/seo Write tab to bulk-generate service area page copy per county
 - [x] Fix SEO audit — removed server-side carry-forward suppression; every audit now reflects live site HTML; client-side resolved/skipped hiding preserved for workflow
+- [x] Send to Ads: auto-pull and attach job gallery photos to the ad draft so they don't need to be added manually
+- [x] County Page Content Generator: auto-generate SEO meta title and description for each generated county page (already generated; displayed in Content Library)
+- [x] A/B Ad Variant Generator: add Facebook visual preview mode showing how the ad will look before posting

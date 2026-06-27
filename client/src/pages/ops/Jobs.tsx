@@ -197,6 +197,27 @@ function JobDetailPanel({
     onError: (e: any) => toast.error(`Social draft failed: ${e.message}`),
   });
 
+  // Gallery photos linked to this Jobber job — used by Send to Ads
+  const { data: jobGalleryPhotos = [] } = trpc.gallery.getByJobberJobId.useQuery(
+    { jobberJobId: jobId },
+    { enabled: !!jobId }
+  );
+
+  const handleSendToAds = (platform: "facebook" | "instagram", draft: string) => {
+    const photoUrls = jobGalleryPhotos.map((p: any) => p.url);
+    sessionStorage.setItem(
+      "ads_prefill",
+      JSON.stringify({
+        platform,
+        draft,
+        jobTitle: job?.title ?? "",
+        jobClient: job?.client?.name ?? "",
+        photoUrls,
+      })
+    );
+    navigate("/ops/ads");
+  };
+
   // AI #13: Task Auto-Generation from Job Notes
   const autoTasks = trpc.ops.ai.autoGenerateTasks.useMutation({
     onSuccess: (data: any) => setTasksGenerated(data.tasks ?? data),
@@ -478,7 +499,7 @@ function JobDetailPanel({
                             <p className="text-xs text-foreground whitespace-pre-line">{socialDraft.facebook}</p>
                             <div className="mt-2 flex items-center gap-2">
                               <button onClick={() => { navigator.clipboard.writeText(socialDraft.facebook!); toast.success("Copied."); }} className="flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground"><Copy className="w-3 h-3" /> Copy</button>
-                              <button onClick={() => { sessionStorage.setItem("ads_prefill", JSON.stringify({ platform: "facebook", draft: socialDraft.facebook, jobTitle: job?.title ?? "", jobClient: job?.client?.name ?? "" })); navigate("/ops/ads"); }} className="flex items-center gap-1 text-[10px] text-primary hover:text-primary/80"><Send className="w-3 h-3" /> Send to Ads</button>
+                              <button onClick={() => handleSendToAds("facebook", socialDraft.facebook!)} className="flex items-center gap-1 text-[10px] text-primary hover:text-primary/80"><Send className="w-3 h-3" /> Send to Ads{jobGalleryPhotos.length > 0 && <span className="text-[9px] text-muted-foreground ml-0.5">({jobGalleryPhotos.length} photo{jobGalleryPhotos.length !== 1 ? "s" : ""})</span>}</button>
                             </div>
                           </div>
                         )}
@@ -488,7 +509,7 @@ function JobDetailPanel({
                             <p className="text-xs text-foreground whitespace-pre-line">{socialDraft.instagram}</p>
                             <div className="mt-2 flex items-center gap-2">
                               <button onClick={() => { navigator.clipboard.writeText(socialDraft.instagram!); toast.success("Copied."); }} className="flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground"><Copy className="w-3 h-3" /> Copy</button>
-                              <button onClick={() => { sessionStorage.setItem("ads_prefill", JSON.stringify({ platform: "instagram", draft: socialDraft.instagram, jobTitle: job?.title ?? "", jobClient: job?.client?.name ?? "" })); navigate("/ops/ads"); }} className="flex items-center gap-1 text-[10px] text-primary hover:text-primary/80"><Send className="w-3 h-3" /> Send to Ads</button>
+                              <button onClick={() => handleSendToAds("instagram", socialDraft.instagram!)} className="flex items-center gap-1 text-[10px] text-primary hover:text-primary/80"><Send className="w-3 h-3" /> Send to Ads{jobGalleryPhotos.length > 0 && <span className="text-[9px] text-muted-foreground ml-0.5">({jobGalleryPhotos.length} photo{jobGalleryPhotos.length !== 1 ? "s" : ""})</span>}</button>
                             </div>
                           </div>
                         )}
