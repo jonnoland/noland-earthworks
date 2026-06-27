@@ -256,6 +256,35 @@ async function startServer() {
     }
   });
 
+  // Gallery base64 upload endpoint — used by AI Quote Assistant photo uploads
+  // Accepts a single image as base64 data, stores to S3, returns CDN URL
+  app.post("/api/gallery/upload-base64", async (req, res) => {
+    try {
+      const { base64, mimeType, filename } = req.body as { base64?: string; mimeType?: string; filename?: string };
+      if (!base64 || !mimeType) {
+        res.status(400).json({ error: "base64 and mimeType are required" });
+        return;
+      }
+      const allowed = ["image/jpeg", "image/png", "image/webp", "image/heic", "image/gif"];
+      if (!allowed.includes(mimeType)) {
+        res.status(400).json({ error: "Unsupported image type" });
+        return;
+      }
+      const buffer = Buffer.from(base64, "base64");
+      if (buffer.length > 10 * 1024 * 1024) {
+        res.status(400).json({ error: "Image exceeds 10 MB" });
+        return;
+      }
+      const ext = (filename ?? "photo").split(".").pop()?.toLowerCase() ?? "jpg";
+      const safeName = `ai-assist/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+      const { url } = await storagePut(safeName, buffer, mimeType);
+      res.json({ url });
+    } catch (err) {
+      console.error("Gallery base64 upload error:", err);
+      res.status(500).json({ error: "Upload failed" });
+    }
+  });
+
   // Maps JavaScript API proxy — proxies the Google Maps JS SDK through the server
   // to avoid exposing the API key on the client. Uses GOOGLE_PLACES_API_KEY with
   // the direct Google Maps CDN (the Forge proxy requires a registered origin which

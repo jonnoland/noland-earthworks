@@ -1965,3 +1965,4 @@
 - [x] Add editable price range fields (editedPriceLow/editedPriceHigh) to AI analyzer results panel in Quotes.tsx
 - [x] Add "AI Pricing" badge (amber Sparkles) to AI analyzer results panel price row
 - [x] Update saveDraft call to serialize editedPriceLow/editedPriceHigh instead of raw analysis values
+- [x] Fix AI Quote Assistant photo upload failure — register /api/gallery/upload-base64 REST endpoint in server
