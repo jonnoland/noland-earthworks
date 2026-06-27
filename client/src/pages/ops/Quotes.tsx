@@ -60,6 +60,7 @@ import {
   CheckCircle2,
   Smartphone,
   Image,
+  Minus,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -2701,136 +2702,82 @@ function WebsiteRequestCard({
 
   return (
     <div className="rounded-lg border border-border bg-card overflow-hidden">
-      {/* Satellite imagery strip — shown when a precise address is available */}
-      {hasPreciseAddress && (
-        <div className="relative w-full h-36 bg-secondary/20 overflow-hidden">
-          {satLoading && (
-            <div className="absolute inset-0 flex items-center justify-center gap-2 text-[11px] text-muted-foreground">
-              <Loader2 className="w-3.5 h-3.5 animate-spin" />
-              Loading satellite view...
-            </div>
-          )}
-          {satData?.url && (
-            <>
-              <img
-                src={satData.url}
-                alt={`Satellite view of ${address}`}
-                className="w-full h-full object-cover"
-                onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
-              />
-              {/* Overlay: address + Google Maps link */}
-              <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/70 to-transparent px-3 py-2 flex items-end justify-between">
-                <span className="text-[10px] text-white/80 truncate">{address}</span>
-                <a
-                  href={`https://maps.google.com/?q=${encodeURIComponent(address)}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-1 text-[10px] text-white/70 hover:text-white transition-colors shrink-0 ml-2"
-                >
-                  <ExternalLink className="w-2.5 h-2.5" />
-                  View in Maps
-                </a>
-              </div>
-            </>
-          )}
-          {!satLoading && !satData?.url && (
-            <div className="absolute inset-0 flex items-center justify-center text-[11px] text-muted-foreground">
-              Satellite imagery unavailable
-            </div>
-          )}
-        </div>
-      )}
+      {/* ── Compact summary row ── */}
+      <div className="flex items-center gap-2 px-3 py-2.5 hover:bg-secondary/20 transition-colors">
+        {/* Expand / collapse toggle */}
+        <button
+          onClick={() => setExpanded((v) => !v)}
+          className={`shrink-0 w-5 h-5 rounded flex items-center justify-center border transition-colors ${
+            expanded
+              ? "bg-primary/15 border-primary/40 text-primary"
+              : "border-border text-muted-foreground hover:border-primary/40 hover:text-primary"
+          }`}
+          title={expanded ? "Collapse" : "Expand"}
+        >
+          {expanded ? <Minus className="w-3 h-3" /> : <Plus className="w-3 h-3" />}
+        </button>
 
-      {/* Card header row */}
-      <div className="flex items-start gap-3 px-4 py-3">
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-sm font-semibold text-foreground">{submission.name}</span>
-            <span className="text-[11px] text-muted-foreground bg-secondary/40 rounded-full px-2 py-0.5">
-              {submission.service}
-            </span>
-            {submission.acreage && (
-              <span className="text-[11px] text-muted-foreground">{submission.acreage} acres</span>
-            )}
-            <span className="text-[11px] text-muted-foreground">{submission.county} County</span>
-            {submission.aiScore && (
-              <TooltipProvider delayDuration={200}>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <span className={`cursor-default text-[10px] font-bold px-2 py-0.5 rounded-full border ${
-                      submission.aiScore === "strong"
-                        ? "bg-green-500/15 text-green-400 border-green-500/25"
-                        : submission.aiScore === "marginal"
-                        ? "bg-amber-500/15 text-amber-400 border-amber-500/25"
-                        : "bg-red-500/15 text-red-400 border-red-500/25"
-                    }`}>
-                      {submission.aiScore.charAt(0).toUpperCase() + submission.aiScore.slice(1)}
-                    </span>
-                  </TooltipTrigger>
-                  <TooltipContent side="bottom" className="max-w-xs text-xs space-y-1.5 p-3">
-                    {submission.aiSummary && (
-                      <p className="text-foreground">{submission.aiSummary}</p>
-                    )}
-                    {submission.aiFlags && (() => {
-                      let flags: string[] = [];
-                      try { flags = JSON.parse(submission.aiFlags); } catch { flags = [submission.aiFlags]; }
-                      return flags.length > 0 ? (
-                        <ul className="space-y-0.5">
-                          {flags.map((f, i) => (
-                            <li key={i} className="flex items-start gap-1 text-amber-400">
-                              <span className="mt-0.5 shrink-0">&#9654;</span>
-                              <span>{f}</span>
-                            </li>
-                          ))}
-                        </ul>
-                      ) : null;
-                    })()}
-                    {!submission.aiSummary && !submission.aiFlags && (
-                      <p className="text-muted-foreground">No reasoning available.</p>
-                    )}
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            )}
-          </div>
-          <div className="flex items-center gap-3 mt-1 flex-wrap">
-            <a href={`tel:${submission.phone}`} className="flex items-center gap-1 text-[11px] text-muted-foreground hover:text-primary transition-colors">
-              <Phone className="w-3 h-3" />{submission.phone}
-            </a>
-            <a href={`mailto:${submission.email}`} className="flex items-center gap-1 text-[11px] text-muted-foreground hover:text-primary transition-colors">
-              <Mail className="w-3 h-3" />{submission.email}
-            </a>
-            {address && (
-              <span className="flex items-center gap-1 text-[11px] text-muted-foreground">
-                <MapPin className="w-3 h-3" />{address}
-              </span>
-            )}
-            <span className="text-[11px] text-muted-foreground">
-              {new Date(submission.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
-            </span>
-          </div>
-          {submission.message && (
-            <p className="mt-1.5 text-[11px] text-muted-foreground italic line-clamp-2">"{submission.message}"</p>
+        {/* Name + service + county */}
+        <div className="flex-1 min-w-0 flex items-center gap-2 flex-wrap">
+          <span className="text-xs font-semibold text-foreground truncate max-w-[120px]">{submission.name}</span>
+          <span className="text-[11px] text-muted-foreground bg-secondary/40 rounded-full px-2 py-0.5 shrink-0">{submission.service}</span>
+          {submission.acreage && (
+            <span className="text-[11px] text-muted-foreground shrink-0">{submission.acreage} ac</span>
           )}
-          {addOnsList.length > 0 && (
-            <div className="flex flex-wrap gap-1 mt-1.5">
-              {addOnsList.map((a: string) => (
-                <span key={a} className="text-[10px] bg-primary/10 text-primary rounded-full px-2 py-0.5">{a}</span>
-              ))}
-            </div>
+          <span className="text-[11px] text-muted-foreground shrink-0">{submission.county} Co.</span>
+          {submission.aiScore && (
+            <TooltipProvider delayDuration={200}>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span className={`cursor-default text-[10px] font-bold px-1.5 py-0.5 rounded-full border shrink-0 ${
+                    submission.aiScore === "strong"
+                      ? "bg-green-500/15 text-green-400 border-green-500/25"
+                      : submission.aiScore === "marginal"
+                      ? "bg-amber-500/15 text-amber-400 border-amber-500/25"
+                      : "bg-red-500/15 text-red-400 border-red-500/25"
+                  }`}>
+                    {submission.aiScore.charAt(0).toUpperCase() + submission.aiScore.slice(1)}
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="max-w-xs text-xs space-y-1.5 p-3">
+                  {submission.aiSummary && (
+                    <p className="text-foreground">{submission.aiSummary}</p>
+                  )}
+                  {submission.aiFlags && (() => {
+                    let flags: string[] = [];
+                    try { flags = JSON.parse(submission.aiFlags); } catch { flags = [submission.aiFlags]; }
+                    return flags.length > 0 ? (
+                      <ul className="space-y-0.5">
+                        {flags.map((f, i) => (
+                          <li key={i} className="flex items-start gap-1 text-amber-400">
+                            <span className="mt-0.5 shrink-0">&#9654;</span>
+                            <span>{f}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : null;
+                  })()}
+                  {!submission.aiSummary && !submission.aiFlags && (
+                    <p className="text-muted-foreground">No reasoning available.</p>
+                  )}
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          )}
+          {analysis && (
+            <span className="text-[11px] font-semibold text-green-400 shrink-0">
+              ${editedPriceLow.toLocaleString()} – ${editedPriceHigh.toLocaleString()}
+            </span>
           )}
         </div>
-        {/* Actions */}
-        <div className="flex items-center gap-2 shrink-0">
-          {analysis && (
-            <button
-              onClick={() => setExpanded((v) => !v)}
-              className="flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground transition-colors"
-            >
-              {expanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
-              {expanded ? "Hide" : "Show"} Analysis
-            </button>
-          )}
+
+        {/* Date */}
+        <span className="text-[11px] text-muted-foreground shrink-0 hidden sm:block">
+          {new Date(submission.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+        </span>
+
+        {/* Quick actions */}
+        <div className="flex items-center gap-1.5 shrink-0">
           <button
             onClick={() => analyze.mutate({
               service: submission.service,
@@ -2841,21 +2788,22 @@ function WebsiteRequestCard({
               name: submission.name,
             })}
             disabled={analyze.isPending}
-            className="flex items-center gap-1.5 text-xs font-medium text-amber-400 hover:text-amber-300 disabled:opacity-50 transition-colors"
+            title={analysis ? "Re-analyze with AI" : "Analyze with AI"}
+            className="flex items-center gap-1 text-[11px] font-medium text-amber-400 hover:text-amber-300 disabled:opacity-50 transition-colors"
           >
             {analyze.isPending ? (
-              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              <><Loader2 className="w-3 h-3 animate-spin" /><span className="hidden sm:inline">{AI_STATUS_MESSAGES[statusIdx]}</span></>
             ) : (
-              <Sparkles className="w-3.5 h-3.5" />
+              <><Sparkles className="w-3 h-3" /><span className="hidden sm:inline">{analysis ? "Re-run" : "Analyze"}</span></>
             )}
-            {analyze.isPending ? AI_STATUS_MESSAGES[statusIdx] : analysis ? "Re-analyze" : "Analyze with AI"}
           </button>
           <button
             onClick={handleBuildQuote}
-            className="flex items-center gap-1.5 text-xs font-medium text-primary hover:text-primary/80 transition-colors"
+            title="Build Quote in Jobber"
+            className="flex items-center gap-1 text-[11px] font-medium text-primary hover:text-primary/80 transition-colors"
           >
-            <PlusCircle className="w-3.5 h-3.5" />
-            Build Quote
+            <PlusCircle className="w-3 h-3" />
+            <span className="hidden sm:inline">Build</span>
           </button>
           <button
             onClick={() => deleteSubmission.mutate({ id: submission.id })}
@@ -2867,6 +2815,74 @@ function WebsiteRequestCard({
           </button>
         </div>
       </div>
+
+      {/* Expanded detail panel — contact info, satellite, and AI analysis */}
+      {expanded && (
+        <div className="border-t border-border bg-secondary/5 px-4 py-3 space-y-3">
+          {/* Contact + address row */}
+          <div className="flex items-center gap-4 flex-wrap">
+            <a href={`tel:${submission.phone}`} className="flex items-center gap-1 text-[11px] text-muted-foreground hover:text-primary transition-colors">
+              <Phone className="w-3 h-3" />{submission.phone}
+            </a>
+            <a href={`mailto:${submission.email}`} className="flex items-center gap-1 text-[11px] text-muted-foreground hover:text-primary transition-colors">
+              <Mail className="w-3 h-3" />{submission.email}
+            </a>
+            {address && (
+              <span className="flex items-center gap-1 text-[11px] text-muted-foreground">
+                <MapPin className="w-3 h-3" />{address}
+              </span>
+            )}
+          </div>
+          {submission.message && (
+            <p className="text-[11px] text-muted-foreground italic">"{submission.message}"</p>
+          )}
+          {addOnsList.length > 0 && (
+            <div className="flex flex-wrap gap-1">
+              {addOnsList.map((a: string) => (
+                <span key={a} className="text-[10px] bg-primary/10 text-primary rounded-full px-2 py-0.5">{a}</span>
+              ))}
+            </div>
+          )}
+          {/* Satellite strip */}
+          {hasPreciseAddress && (
+            <div className="relative w-full h-32 rounded-md bg-secondary/20 overflow-hidden">
+              {satLoading && (
+                <div className="absolute inset-0 flex items-center justify-center gap-2 text-[11px] text-muted-foreground">
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  Loading satellite view...
+                </div>
+              )}
+              {satData?.url && (
+                <>
+                  <img
+                    src={satData.url}
+                    alt={`Satellite view of ${address}`}
+                    className="w-full h-full object-cover"
+                    onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
+                  />
+                  <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/70 to-transparent px-3 py-2 flex items-end justify-between">
+                    <span className="text-[10px] text-white/80 truncate">{address}</span>
+                    <a
+                      href={`https://maps.google.com/?q=${encodeURIComponent(address)}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-1 text-[10px] text-white/70 hover:text-white transition-colors shrink-0 ml-2"
+                    >
+                      <ExternalLink className="w-2.5 h-2.5" />
+                      View in Maps
+                    </a>
+                  </div>
+                </>
+              )}
+              {!satLoading && !satData?.url && (
+                <div className="absolute inset-0 flex items-center justify-center text-[11px] text-muted-foreground">
+                  Satellite imagery unavailable
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* AI Analysis panel */}
       {expanded && analysis && (

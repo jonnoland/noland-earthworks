@@ -1968,3 +1968,4 @@
 - [x] Fix AI Quote Assistant photo upload failure — register /api/gallery/upload-base64 REST endpoint in server
 - [x] Add "Add Manual Request" button and modal to Website Requests section in /ops/quotes — allows entering a potential client manually to use all AI tools (analyzer, satellite map, quote assistant)
 - [x] Restructure /ops/quotes into two-column grid: left 60% All Quotes table, right 40% Website Requests panel; request cards 2-col grid inside right panel
+- [x] Convert Website Requests inbound list to compact per-line rows with + expand button for full detail/AI tools panel
