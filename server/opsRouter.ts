@@ -1561,6 +1561,45 @@ Return ONLY valid JSON with this exact structure:
         throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "AI returned malformed JSON. Try again." });
       }
     }),
+
+  /**
+   * Create a manual quote submission so Jon can enter a potential client
+   * directly in the ops dashboard and use all AI tools on them.
+   * Marked with jobberStatus="skipped" so it never tries to auto-sync.
+   */
+  createManual: ownerProcedure
+    .input(z.object({
+      name: z.string().min(1, "Name is required"),
+      phone: z.string().default(""),
+      email: z.string().default(""),
+      service: z.string().min(1, "Service is required"),
+      county: z.string().min(1, "County is required"),
+      acreage: z.string().optional(),
+      street: z.string().optional(),
+      city: z.string().optional(),
+      state: z.string().optional(),
+      zip: z.string().optional(),
+      message: z.string().optional(),
+    }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+      const [inserted] = await db.insert(quoteSubmissions).values({
+        name: input.name,
+        phone: input.phone,
+        email: input.email,
+        service: input.service,
+        county: input.county,
+        acreage: input.acreage ?? null,
+        street: input.street ?? null,
+        city: input.city ?? null,
+        state: input.state ?? "TN",
+        zip: input.zip ?? null,
+        message: input.message ?? null,
+        jobberStatus: "skipped",
+      });
+      return { id: (inserted as any).insertId as number };
+    }),
 });
 
 // ─── Crews Router ─────────────────────────────────────────────────────────────

@@ -3303,6 +3303,32 @@ function WebsiteRequestsSection({
   // Track which drafts have been pushed to Jobber in this session (optimistic, before DB refetch)
   const [pushedDraftIds, setPushedDraftIds] = useState<Set<number>>(new Set());
 
+  // Manual request entry
+  const [showManualForm, setShowManualForm] = useState(false);
+  const [manualName, setManualName] = useState("");
+  const [manualPhone, setManualPhone] = useState("");
+  const [manualEmail, setManualEmail] = useState("");
+  const [manualService, setManualService] = useState("forestry-mulching");
+  const [manualCounty, setManualCounty] = useState("");
+  const [manualAcreage, setManualAcreage] = useState("");
+  const [manualStreet, setManualStreet] = useState("");
+  const [manualCity, setManualCity] = useState("");
+  const [manualZip, setManualZip] = useState("");
+  const [manualMessage, setManualMessage] = useState("");
+  const utils = trpc.useUtils();
+  const createManual = trpc.ops.quotes.createManual.useMutation({
+    onSuccess: () => {
+      toast.success("Request added.");
+      setShowManualForm(false);
+      setManualName(""); setManualPhone(""); setManualEmail("");
+      setManualService("forestry-mulching"); setManualCounty(""); setManualAcreage("");
+      setManualStreet(""); setManualCity(""); setManualZip(""); setManualMessage("");
+      utils.ops.quotes.list.invalidate();
+      setActiveTab("requests");
+    },
+    onError: (err) => toast.error(`Failed to add request: ${err.message}`),
+  });
+
   const { data: submissions, isLoading, refetch, isFetching } = trpc.ops.quotes.list.useQuery(
     { limit: 50 },
     { retry: false }
@@ -3366,14 +3392,24 @@ function WebsiteRequestsSection({
           <Globe className="w-4 h-4 text-primary" />
           <h2 className="text-base font-semibold text-foreground">Website Requests</h2>
         </div>
-        <button
-          onClick={handleRefresh}
-          disabled={isRefreshing}
-          className="text-muted-foreground hover:text-foreground transition-colors"
-          aria-label="Refresh"
-        >
-          <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? "animate-spin" : ""}`} />
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setShowManualForm(true)}
+            className="flex items-center gap-1 text-[11px] font-medium text-primary hover:text-primary/80 transition-colors"
+            title="Add a potential client manually"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            Add Manual
+          </button>
+          <button
+            onClick={handleRefresh}
+            disabled={isRefreshing}
+            className="text-muted-foreground hover:text-foreground transition-colors"
+            aria-label="Refresh"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? "animate-spin" : ""}`} />
+          </button>
+        </div>
       </div>
 
       {/* Tab switcher */}
@@ -3772,6 +3808,189 @@ function WebsiteRequestsSection({
             </div>
           )}
         </>
+      )}
+
+      {/* Manual request entry modal */}
+      {showManualForm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" onClick={(e) => { if (e.target === e.currentTarget) setShowManualForm(false); }}>
+          <div className="bg-card border border-border rounded-xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-border">
+              <div className="flex items-center gap-2">
+                <User className="w-4 h-4 text-primary" />
+                <h3 className="text-sm font-semibold text-foreground">Add Manual Request</h3>
+              </div>
+              <button onClick={() => setShowManualForm(false)} className="text-muted-foreground hover:text-foreground transition-colors">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <div className="p-5 space-y-4">
+              {/* Contact info */}
+              <div className="space-y-3">
+                <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">Contact</p>
+                <div>
+                  <label className="text-xs text-muted-foreground mb-1 block">Name <span className="text-destructive">*</span></label>
+                  <input
+                    type="text"
+                    value={manualName}
+                    onChange={(e) => setManualName(e.target.value)}
+                    placeholder="Client name"
+                    className="w-full rounded-md border border-border bg-secondary/30 px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:border-primary"
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-xs text-muted-foreground mb-1 block">Phone</label>
+                    <input
+                      type="tel"
+                      value={manualPhone}
+                      onChange={(e) => setManualPhone(e.target.value)}
+                      placeholder="615-000-0000"
+                      className="w-full rounded-md border border-border bg-secondary/30 px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:border-primary"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs text-muted-foreground mb-1 block">Email</label>
+                    <input
+                      type="email"
+                      value={manualEmail}
+                      onChange={(e) => setManualEmail(e.target.value)}
+                      placeholder="email@example.com"
+                      className="w-full rounded-md border border-border bg-secondary/30 px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:border-primary"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Job details */}
+              <div className="space-y-3">
+                <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">Job Details</p>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-xs text-muted-foreground mb-1 block">Service <span className="text-destructive">*</span></label>
+                    <select
+                      value={manualService}
+                      onChange={(e) => setManualService(e.target.value)}
+                      className="w-full rounded-md border border-border bg-secondary/30 px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary"
+                    >
+                      <option value="forestry-mulching">Forestry Mulching</option>
+                      <option value="land-clearing">Land Clearing</option>
+                      <option value="brush-hogging">Brush Hogging</option>
+                      <option value="right-of-way-clearing">Right-of-Way Clearing</option>
+                      <option value="vegetation-management">Vegetation Management</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-xs text-muted-foreground mb-1 block">County <span className="text-destructive">*</span></label>
+                    <select
+                      value={manualCounty}
+                      onChange={(e) => setManualCounty(e.target.value)}
+                      className="w-full rounded-md border border-border bg-secondary/30 px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary"
+                    >
+                      <option value="">Select county...</option>
+                      {TN_COUNTIES_AI.map((c) => (
+                        <option key={c} value={c}>{c}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+                <div>
+                  <label className="text-xs text-muted-foreground mb-1 block">Approximate Acreage</label>
+                  <input
+                    type="number"
+                    value={manualAcreage}
+                    onChange={(e) => setManualAcreage(e.target.value)}
+                    placeholder="e.g. 5"
+                    min={1}
+                    step={0.5}
+                    className="w-full rounded-md border border-border bg-secondary/30 px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:border-primary"
+                  />
+                </div>
+              </div>
+
+              {/* Property address */}
+              <div className="space-y-3">
+                <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">Property Address <span className="text-muted-foreground/50 font-normal normal-case tracking-normal">(for satellite map)</span></p>
+                <div>
+                  <label className="text-xs text-muted-foreground mb-1 block">Street</label>
+                  <input
+                    type="text"
+                    value={manualStreet}
+                    onChange={(e) => setManualStreet(e.target.value)}
+                    placeholder="123 Main St"
+                    className="w-full rounded-md border border-border bg-secondary/30 px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:border-primary"
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-xs text-muted-foreground mb-1 block">City</label>
+                    <input
+                      type="text"
+                      value={manualCity}
+                      onChange={(e) => setManualCity(e.target.value)}
+                      placeholder="Columbia"
+                      className="w-full rounded-md border border-border bg-secondary/30 px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:border-primary"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs text-muted-foreground mb-1 block">ZIP</label>
+                    <input
+                      type="text"
+                      value={manualZip}
+                      onChange={(e) => setManualZip(e.target.value)}
+                      placeholder="38401"
+                      className="w-full rounded-md border border-border bg-secondary/30 px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:border-primary"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Notes */}
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">Notes / What they need done</label>
+                <textarea
+                  value={manualMessage}
+                  onChange={(e) => setManualMessage(e.target.value)}
+                  placeholder="Describe the work needed, any special conditions, how you heard about them..."
+                  rows={3}
+                  className="w-full rounded-md border border-border bg-secondary/30 px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:border-primary resize-none"
+                />
+              </div>
+
+              <div className="flex gap-2 pt-1">
+                <button
+                  onClick={() => setShowManualForm(false)}
+                  className="flex-1 py-2 rounded-md text-xs font-semibold text-muted-foreground bg-secondary/50 hover:bg-secondary transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => {
+                    if (!manualName.trim()) { toast.error("Name is required."); return; }
+                    if (!manualCounty) { toast.error("County is required."); return; }
+                    createManual.mutate({
+                      name: manualName.trim(),
+                      phone: manualPhone.trim(),
+                      email: manualEmail.trim(),
+                      service: manualService,
+                      county: manualCounty,
+                      acreage: manualAcreage || undefined,
+                      street: manualStreet || undefined,
+                      city: manualCity || undefined,
+                      state: "TN",
+                      zip: manualZip || undefined,
+                      message: manualMessage || undefined,
+                    });
+                  }}
+                  disabled={createManual.isPending}
+                  className="flex-1 py-2 rounded-md text-xs font-semibold text-white bg-primary hover:bg-primary/90 transition-colors disabled:opacity-50 flex items-center justify-center gap-1.5"
+                >
+                  {createManual.isPending && <Loader2 className="w-3 h-3 animate-spin" />}
+                  Add Request
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Draft preview modal */}

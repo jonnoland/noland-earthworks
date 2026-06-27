@@ -1966,3 +1966,4 @@
 - [x] Add "AI Pricing" badge (amber Sparkles) to AI analyzer results panel price row
 - [x] Update saveDraft call to serialize editedPriceLow/editedPriceHigh instead of raw analysis values
 - [x] Fix AI Quote Assistant photo upload failure — register /api/gallery/upload-base64 REST endpoint in server
+- [x] Add "Add Manual Request" button and modal to Website Requests section in /ops/quotes — allows entering a potential client manually to use all AI tools (analyzer, satellite map, quote assistant)
