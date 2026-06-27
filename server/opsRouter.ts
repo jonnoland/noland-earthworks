@@ -28,6 +28,7 @@ import { Resend } from "resend";
 import { jobs, opsLeads, quoteSubmissions, crews, crewMembers, conversations, messages, reviews, timeEntries, distanceQuotes, businessSettings, automationSettings, serviceCatalog, pricingBenchmarks, messageTemplates, reminderRules, leadNotes, visitBlackoutDates, recurringBlackoutDays, aiPricingSettings, quoteDrafts, jobberTokens, socialPosts, adSpend, equipment, serviceLogs, serviceIntervals, fieldDiagnostics, ownerTasks, jobNotes, jobberRevenueCache, morningBriefs, reviewRequests, chatSessions, scheduleEntries, agentConfig, adCampaigns } from "../drizzle/schema";
 
 import { and, desc, eq, gte, inArray, lt, lte, like, or, sql } from "drizzle-orm";
+import { autoPatchSeoCheck, AUTO_PATCHABLE_CHECKS, SQUARESPACE_MANUAL_CHECKS } from "./seoAutoPatcher";
 
 function getResend() {
   return ENV.resendApiKey ? new Resend(ENV.resendApiKey) : null;
@@ -3825,8 +3826,10 @@ Return a JSON object with a "fixes" array — one object per issue in the same o
     }),
 
   /**
-   * Generate an "Apply Fix" snippet for a specific SEO check.
-   * Returns ready-to-use code/text the owner can paste directly into Squarespace.
+   * Apply Fix for a specific SEO check.
+   * - AUTO_PATCHABLE_CHECKS: directly edits client/index.html and returns autoPatched: true
+   * - SQUARESPACE_MANUAL_CHECKS: generates Squarespace instructions and returns isSquarespace: true
+   * - Other checks: generates a general fix snippet
    */
   applySeoFix: ownerProcedure
     .input(
@@ -3847,21 +3850,58 @@ Return a JSON object with a "fixes" array — one object per issue in the same o
       const checks: Array<{ id: string; label: string; status: string; value?: string; detail: string; recommendation?: string }> = JSON.parse(audit?.checksJson ?? "[]");
       const check = checks.find((c) => c.id === fix.checkId);
 
-      const systemPrompt = `You are an SEO technical consultant helping a small business owner fix issues on their website (nolandearthworks.com — a veteran-owned land clearing company in Tennessee). The site is hosted on Squarespace (not WordPress). Your job is to produce a ready-to-apply fix: exact HTML, JSON-LD, or text that the owner can copy and paste directly into Squarespace.
+      // Route: auto-patchable checks go directly to the patcher
+      if (AUTO_PATCHABLE_CHECKS.has(fix.checkId)) {
+        const patchResult = await autoPatchSeoCheck(
+          fix.checkId,
+          check?.detail ?? "",
+          check?.recommendation ?? "",
+          fix.aiInstructions ?? ""
+        );
+        if (patchResult.patched) {
+          // Mark as resolved in DB
+          await db
+            .update(seoFixes)
+            .set({ status: "resolved", aiInstructions: patchResult.description })
+            .where(eq(seoFixes.id, fix.id));
+          return {
+            snippet: patchResult.description,
+            autoPatched: true,
+            isSquarespace: false,
+            description: patchResult.description,
+          };
+        } else if (!patchResult.patched && !patchResult.manual) {
+          // Already correct — mark resolved anyway
+          await db
+            .update(seoFixes)
+            .set({ status: "resolved" })
+            .where(eq(seoFixes.id, fix.id));
+          return {
+            snippet: patchResult.reason,
+            autoPatched: true,
+            isSquarespace: false,
+            description: patchResult.reason,
+          };
+        }
+      }
+
+      // Route: Squarespace-only checks — generate manual instructions
+      const isSquarespace = SQUARESPACE_MANUAL_CHECKS.has(fix.checkId);
+
+      const systemPrompt = isSquarespace
+        ? `You are an SEO technical consultant helping a small business owner fix issues on their Squarespace website (nolandearthworks.com — a veteran-owned land clearing company in Tennessee). Your job is to produce exact, step-by-step instructions the owner can follow in Squarespace to fix this issue.
 
 Squarespace-specific location guidance:
 - Custom <head> code (meta tags, JSON-LD schema, canonical tags): Settings > Advanced > Code Injection > Header
-- Custom footer scripts: Settings > Advanced > Code Injection > Footer
-- Page-level meta title and meta description: open the page editor, click the gear icon (Page Settings) > SEO tab > SEO Title and SEO Description fields
-- Blog post meta description: open the post editor > gear icon > SEO tab
+- Page-level meta title and meta description: open the page editor, click the gear icon (Page Settings) > SEO tab
 - Open Graph / social sharing image: Page Settings > Social Image
-- Robots meta directives (noindex etc.): not natively exposed — use Code Injection header to inject a <meta name="robots"> tag
-- Sitemap: Squarespace auto-generates /sitemap.xml — no manual action needed unless a page is excluded
-- robots.txt: Settings > Advanced > External Services > Google Search Console, or use Code Injection workaround
 - Image alt text: click the image block in the editor > Edit > Alt Text field
+- H1/H2 headings: use the text block editor, select text, choose Heading 1 or Heading 2 from the format dropdown
+- Body copy / page content: edit directly in the page editor
 - Page URL slug: Page Settings > General > URL Slug
 
-Be specific and complete. If the fix is HTML/JSON-LD, wrap it in a code block. If it is plain text (like a meta description), just provide the text. Always tell the owner exactly where in Squarespace to paste or apply the fix. Keep it concise and actionable.`;
+Be specific. Tell the owner exactly where to go in Squarespace and what to type or paste. Keep it concise and actionable.`
+        : `You are an SEO technical consultant helping a small business owner fix issues on their website (nolandearthworks.com — a veteran-owned land clearing company in Tennessee). Produce a ready-to-apply fix: exact HTML, JSON-LD, or text the owner can copy and paste. Be specific and complete.`;
 
       const userPrompt = `Generate a ready-to-apply fix for this SEO issue:
 
@@ -3872,7 +3912,7 @@ Current value: ${check?.value ?? "unknown"}
 Detail: ${check?.detail ?? fix.aiInstructions}
 Recommendation: ${check?.recommendation ?? ""}
 
-Provide the exact code or text to copy-paste into Squarespace. Include brief instructions on where to paste it.`;
+${isSquarespace ? "Provide step-by-step Squarespace instructions. This cannot be auto-applied — the owner must do it manually in Squarespace." : "Provide the exact code or text to copy-paste. Include brief instructions on where to apply it."}`;
 
       const llmResponse = await invokeLLM({
         messages: [
@@ -3882,7 +3922,7 @@ Provide the exact code or text to copy-paste into Squarespace. Include brief ins
       });
 
       const snippet = llmResponse?.choices?.[0]?.message?.content ?? "Could not generate fix snippet.";
-      return { snippet };
+      return { snippet, autoPatched: false, isSquarespace };
     }),
 
   /**
@@ -3920,22 +3960,6 @@ Provide the exact code or text to copy-paste into Squarespace. Include brief ins
         return { results: [], message: "All fixes are already resolved." };
       }
 
-      const systemPrompt = `You are an SEO technical consultant helping a small business owner fix issues on their website (nolandearthworks.com — a veteran-owned land clearing company in Tennessee). The site is hosted on Squarespace (not WordPress). Your job is to produce a ready-to-apply fix: exact HTML, JSON-LD, or text that the owner can copy and paste directly into Squarespace.
-
-Squarespace-specific location guidance:
-- Custom <head> code (meta tags, JSON-LD schema, canonical tags): Settings > Advanced > Code Injection > Header
-- Custom footer scripts: Settings > Advanced > Code Injection > Footer
-- Page-level meta title and meta description: open the page editor, click the gear icon (Page Settings) > SEO tab > SEO Title and SEO Description fields
-- Blog post meta description: open the post editor > gear icon > SEO tab
-- Open Graph / social sharing image: Page Settings > Social Image
-- Robots meta directives (noindex etc.): not natively exposed — use Code Injection header to inject a <meta name="robots"> tag
-- Sitemap: Squarespace auto-generates /sitemap.xml — no manual action needed unless a page is excluded
-- robots.txt: Settings > Advanced > External Services > Google Search Console, or use Code Injection workaround
-- Image alt text: click the image block in the editor > Edit > Alt Text field
-- Page URL slug: Page Settings > General > URL Slug
-
-Be specific and complete. If the fix is HTML/JSON-LD, wrap it in a code block. If it is plain text (like a meta description), just provide the text. Always tell the owner exactly where in Squarespace to paste or apply the fix. Keep it concise and actionable.`;
-
       // Process each fix sequentially to avoid rate limits
       const results: Array<{
         fixId: number;
@@ -3944,12 +3968,51 @@ Be specific and complete. If the fix is HTML/JSON-LD, wrap it in a code block. I
         priority: string;
         status: "applied" | "failed";
         snippet: string;
+        autoPatched: boolean;
+        isSquarespace: boolean;
         error?: string;
       }> = [];
 
       for (const fix of pendingFixes) {
         try {
           const check = checks.find((c) => c.id === fix.checkId);
+
+          // Route: auto-patchable checks
+          if (AUTO_PATCHABLE_CHECKS.has(fix.checkId)) {
+            const patchResult = await autoPatchSeoCheck(
+              fix.checkId,
+              check?.detail ?? "",
+              check?.recommendation ?? "",
+              fix.aiInstructions ?? ""
+            );
+            const desc = patchResult.patched
+              ? patchResult.description
+              : !patchResult.patched && !patchResult.manual
+              ? patchResult.reason
+              : "Could not auto-patch.";
+            await db
+              .update(seoFixes)
+              .set({ status: "resolved", aiInstructions: desc })
+              .where(eq(seoFixes.id, fix.id));
+            results.push({
+              fixId: fix.id,
+              label: fix.label,
+              category: fix.category,
+              priority: fix.priority,
+              status: "applied",
+              snippet: desc,
+              autoPatched: true,
+              isSquarespace: false,
+            });
+            continue;
+          }
+
+          // Route: Squarespace-only checks
+          const isSquarespace = SQUARESPACE_MANUAL_CHECKS.has(fix.checkId);
+          const systemPrompt = isSquarespace
+            ? `You are an SEO technical consultant helping a small business owner fix issues on their Squarespace website (nolandearthworks.com). Produce exact, step-by-step Squarespace instructions. Be specific about where in Squarespace to make each change.`
+            : `You are an SEO technical consultant helping a small business owner fix issues on their website (nolandearthworks.com). Produce a ready-to-apply fix: exact HTML, JSON-LD, or text to copy and paste.`;
+
           const userPrompt = `Generate a ready-to-apply fix for this SEO issue:
 
 Check: ${fix.label}
@@ -3959,7 +4022,7 @@ Current value: ${check?.value ?? "unknown"}
 Detail: ${check?.detail ?? fix.aiInstructions}
 Recommendation: ${check?.recommendation ?? ""}
 
-Provide the exact code or text to copy-paste into Squarespace. Include brief instructions on where to paste it.`;
+${isSquarespace ? "Provide step-by-step Squarespace instructions. The owner must apply this manually." : "Provide the exact code or text to copy-paste."}`.trim();
 
           const llmResponse = await invokeLLM({
             messages: [
@@ -3970,11 +4033,13 @@ Provide the exact code or text to copy-paste into Squarespace. Include brief ins
 
           const snippet = String(llmResponse?.choices?.[0]?.message?.content ?? "Could not generate fix snippet.");
 
-          // Mark as resolved in DB
-          await db
-            .update(seoFixes)
-            .set({ status: "resolved", aiInstructions: fix.aiInstructions || snippet })
-            .where(eq(seoFixes.id, fix.id));
+          // Only mark non-Squarespace fixes as resolved automatically
+          if (!isSquarespace) {
+            await db
+              .update(seoFixes)
+              .set({ status: "resolved", aiInstructions: fix.aiInstructions || snippet })
+              .where(eq(seoFixes.id, fix.id));
+          }
 
           results.push({
             fixId: fix.id,
@@ -3983,6 +4048,8 @@ Provide the exact code or text to copy-paste into Squarespace. Include brief ins
             priority: fix.priority,
             status: "applied",
             snippet,
+            autoPatched: false,
+            isSquarespace,
           });
         } catch (err) {
           results.push({
@@ -3992,14 +4059,19 @@ Provide the exact code or text to copy-paste into Squarespace. Include brief ins
             priority: fix.priority,
             status: "failed",
             snippet: "",
+            autoPatched: false,
+            isSquarespace: false,
             error: err instanceof Error ? err.message : "Unknown error",
           });
         }
       }
 
+      const autoCount = results.filter((r) => r.autoPatched).length;
+      const squarespaceCount = results.filter((r) => r.isSquarespace).length;
+      const failedCount = results.filter((r) => r.status === "failed").length;
       return {
         results,
-        message: `Applied ${results.filter((r) => r.status === "applied").length} of ${results.length} fixes.`,
+        message: `${autoCount} fix${autoCount !== 1 ? "es" : ""} auto-applied to site. ${squarespaceCount} require${squarespaceCount === 1 ? "s" : ""} manual Squarespace action. ${failedCount > 0 ? `${failedCount} failed.` : ""}`.trim(),
       };
     }),
 

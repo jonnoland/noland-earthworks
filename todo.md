@@ -1999,3 +1999,9 @@
 - [x] Send to Ads: auto-pull and attach job gallery photos to the ad draft so they don't need to be added manually
 - [x] County Page Content Generator: auto-generate SEO meta title and description for each generated county page (already generated; displayed in Content Library)
 - [x] A/B Ad Variant Generator: add Facebook visual preview mode showing how the ad will look before posting
+
+## SEO Audit Auto-Apply (Option B)
+- [x] Map each SEO check to auto-fixable (project codebase) vs manual (Squarespace) category
+- [x] Build seoAutoPatcher.ts: patch index.html meta tags, JSON-LD schema, OG tags, robots.txt directly in project files
+- [x] Update applySeoFix procedure to route auto-fixable checks through patcher and mark truly resolved
+- [x] Update SEO UI to distinguish auto-applied vs manual-required fixes clearly

@@ -247,8 +247,29 @@ type ApplyAllResult = {
   priority: string;
   status: "applied" | "failed";
   snippet: string;
+  autoPatched: boolean;
+  isSquarespace: boolean;
   error?: string;
 };
+
+// Check IDs that are auto-patchable (must match server/seoAutoPatcher.ts)
+const AUTO_PATCHABLE_IDS = new Set([
+  "title_missing", "title_short", "title_long",
+  "meta_desc_missing", "meta_desc_short", "meta_desc_long",
+  "canonical_missing", "schema_missing", "viewport_missing",
+  "charset_missing", "og_missing", "og_incomplete",
+  "twitter_card_missing", "lang_missing",
+]);
+
+// Check IDs that require Squarespace manual action
+const SQUARESPACE_IDS = new Set([
+  "h1_missing", "h1_multiple", "h1_keyword", "h2_missing",
+  "alt_missing", "images_none", "keywords_sparse",
+  "word_count_low", "word_count_short", "internal_links",
+  "noopener_external", "load_slow", "load_moderate",
+  "page_size_large", "pagespeed_mobile", "noindex",
+  "render_blocking", "lazy_loading",
+]);
 
 function FixIssuesPanel({
   fixes,
@@ -269,19 +290,21 @@ function FixIssuesPanel({
   const [filter, setFilter] = useState<"all" | FixStatus>("all");
   const [applyingFixId, setApplyingFixId] = useState<number | null>(null);
   const [snippets, setSnippets] = useState<{ [key: number]: string }>({});
+  const [fixMeta, setFixMeta] = useState<{ [key: number]: { autoPatched: boolean; isSquarespace: boolean } }>({});
   const [applyAllResults, setApplyAllResults] = useState<ApplyAllResult[] | null>(null);
   const [expandedResultId, setExpandedResultId] = useState<number | null>(null);
 
   const applyAll = trpc.ops.applyAllSeoFixes.useMutation({
     onSuccess: (data) => {
-      setApplyAllResults(data.results);
+      setApplyAllResults(data.results as ApplyAllResult[]);
       onRefetch();
-      const applied = data.results.filter((r) => r.status === "applied").length;
+      const autoCount = data.results.filter((r) => (r as ApplyAllResult).autoPatched).length;
+      const squarespaceCount = data.results.filter((r) => (r as ApplyAllResult).isSquarespace).length;
       const failed = data.results.filter((r) => r.status === "failed").length;
       if (failed === 0) {
-        toast.success(`All ${applied} fixes applied and marked resolved.`);
+        toast.success(`${autoCount} fix${autoCount !== 1 ? "es" : ""} auto-applied. ${squarespaceCount > 0 ? `${squarespaceCount} need manual Squarespace action.` : ""}`.trim());
       } else {
-        toast.warning(`${applied} applied, ${failed} failed. See results below.`);
+        toast.warning(`${autoCount} auto-applied, ${squarespaceCount} manual, ${failed} failed.`);
       }
     },
     onError: (err) => toast.error(err.message || "Apply All failed."),
@@ -290,7 +313,12 @@ function FixIssuesPanel({
   const applyFix = trpc.ops.applySeoFix.useMutation({
     onSuccess: (data, variables) => {
       setSnippets((prev) => ({ ...prev, [variables.fixId]: String(data.snippet) }));
+      setFixMeta((prev) => ({ ...prev, [variables.fixId]: { autoPatched: !!data.autoPatched, isSquarespace: !!data.isSquarespace } }));
       setApplyingFixId(null);
+      if (data.autoPatched) {
+        onRefetch();
+        toast.success("Fix auto-applied to site. Re-run audit to confirm.");
+      }
     },
     onError: (err) => {
       setApplyingFixId(null);
@@ -465,6 +493,13 @@ function FixIssuesPanel({
                 }`}>
                   {fix.label}
                 </span>
+                {/* Fix type pill — Auto or Squarespace */}
+                {fix.status !== "resolved" && AUTO_PATCHABLE_IDS.has(fix.checkId) && (
+                  <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-green-900/40 text-green-400 border border-green-800/40 shrink-0">Auto</span>
+                )}
+                {fix.status !== "resolved" && SQUARESPACE_IDS.has(fix.checkId) && (
+                  <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-amber-900/30 text-amber-400 border border-amber-800/30 shrink-0">Squarespace</span>
+                )}
                 <span className="text-[10px] text-zinc-500 capitalize mr-1">{CATEGORY_META[fix.category as Category]?.label ?? fix.category}</span>
                 {priorityBadge(fix.priority as Priority)}
                 {fixStatusBadge(fix.status)}
@@ -490,26 +525,46 @@ function FixIssuesPanel({
                   <div className="prose prose-invert prose-sm max-w-none">
                     <Streamdown>{fix.aiInstructions}</Streamdown>
                   </div>
-                  {/* Apply Fix snippet */}
+                  {/* Apply Fix snippet or auto-applied badge */}
                   {snippets[fix.id] && (
                     <div className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <p className="text-xs font-medium text-orange-400 flex items-center gap-1.5">
-                          <Wrench className="w-3.5 h-3.5" /> Ready-to-Apply Fix
-                        </p>
-                        <button
-                          className="text-xs text-zinc-500 hover:text-zinc-300 flex items-center gap-1"
-                          onClick={() => {
-                            navigator.clipboard.writeText(snippets[fix.id]);
-                            toast.success("Copied to clipboard.");
-                          }}
-                        >
-                          <Copy className="w-3 h-3" /> Copy
-                        </button>
-                      </div>
-                      <div className="bg-zinc-950 border border-zinc-700 rounded-md p-3 text-xs text-zinc-300 font-mono whitespace-pre-wrap overflow-x-auto max-h-64">
-                        {snippets[fix.id]}
-                      </div>
+                      {fixMeta[fix.id]?.autoPatched ? (
+                        // Auto-applied: show green confirmation badge
+                        <div className="flex items-center gap-2 rounded-md border border-green-800/50 bg-green-900/20 px-3 py-2">
+                          <CheckCircle2 className="w-4 h-4 text-green-400 shrink-0" />
+                          <div>
+                            <p className="text-xs font-medium text-green-400">Auto-Applied to Site</p>
+                            <p className="text-xs text-green-300/70 mt-0.5">{snippets[fix.id]}</p>
+                          </div>
+                        </div>
+                      ) : (
+                        // Manual or Squarespace: show snippet with copy button
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between">
+                            <p className={`text-xs font-medium flex items-center gap-1.5 ${
+                              fixMeta[fix.id]?.isSquarespace ? "text-amber-400" : "text-orange-400"
+                            }`}>
+                              {fixMeta[fix.id]?.isSquarespace ? (
+                                <><AlertTriangle className="w-3.5 h-3.5" /> Manual — Apply in Squarespace</>
+                              ) : (
+                                <><Wrench className="w-3.5 h-3.5" /> Ready-to-Apply Fix</>
+                              )}
+                            </p>
+                            <button
+                              className="text-xs text-zinc-500 hover:text-zinc-300 flex items-center gap-1"
+                              onClick={() => {
+                                navigator.clipboard.writeText(snippets[fix.id]);
+                                toast.success("Copied to clipboard.");
+                              }}
+                            >
+                              <Copy className="w-3 h-3" /> Copy
+                            </button>
+                          </div>
+                          <div className="bg-zinc-950 border border-zinc-700 rounded-md p-3 text-xs text-zinc-300 font-mono whitespace-pre-wrap overflow-x-auto max-h-64">
+                            {snippets[fix.id]}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   )}
                   {/* Action buttons */}
@@ -518,25 +573,36 @@ function FixIssuesPanel({
                       <>
                         <Button
                           size="sm"
-                          className="gap-1.5 bg-orange-700/20 hover:bg-orange-700/40 text-orange-400 border border-orange-700/40"
+                          className={`gap-1.5 border ${
+                            AUTO_PATCHABLE_IDS.has(fix.checkId)
+                              ? "bg-green-700/20 hover:bg-green-700/40 text-green-400 border-green-700/40"
+                              : "bg-orange-700/20 hover:bg-orange-700/40 text-orange-400 border-orange-700/40"
+                          }`}
                           variant="outline"
                           disabled={applyingFixId === fix.id}
                           onClick={() => handleApplyFix(fix.id)}
                         >
                           {applyingFixId === fix.id ? (
-                            <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Generating...</>
+                            <><Loader2 className="w-3.5 h-3.5 animate-spin" /> {AUTO_PATCHABLE_IDS.has(fix.checkId) ? "Applying..." : "Generating..."}</>
+                          ) : fixMeta[fix.id]?.autoPatched ? (
+                            <><CheckCircle2 className="w-3.5 h-3.5" /> Re-Apply Fix</>
+                          ) : AUTO_PATCHABLE_IDS.has(fix.checkId) ? (
+                            <><Zap className="w-3.5 h-3.5" /> {snippets[fix.id] ? "Re-Apply" : "Auto-Apply Fix"}</>
                           ) : (
-                            <><Wrench className="w-3.5 h-3.5" /> {snippets[fix.id] ? "Regenerate Fix" : "Apply Fix"}</>
+                            <><Wrench className="w-3.5 h-3.5" /> {snippets[fix.id] ? "Regenerate Fix" : "Get Instructions"}</>
                           )}
                         </Button>
-                        <Button
-                          size="sm"
-                          className="gap-1.5 bg-green-700/30 hover:bg-green-700/50 text-green-400 border border-green-700/40"
-                          variant="outline"
-                          onClick={() => onUpdateStatus(fix.id, "resolved")}
-                        >
-                          <CheckCheck className="w-3.5 h-3.5" /> Mark Resolved
-                        </Button>
+                        {/* Only show Mark Resolved for Squarespace/manual fixes — auto-applied ones are already resolved */}
+                        {!fixMeta[fix.id]?.autoPatched && (
+                          <Button
+                            size="sm"
+                            className="gap-1.5 bg-green-700/30 hover:bg-green-700/50 text-green-400 border border-green-700/40"
+                            variant="outline"
+                            onClick={() => onUpdateStatus(fix.id, "resolved")}
+                          >
+                            <CheckCheck className="w-3.5 h-3.5" /> Mark Resolved
+                          </Button>
+                        )}
                       </>
                     )}
                     {fix.status === "resolved" && (
@@ -615,13 +681,16 @@ function FixIssuesPanel({
                     {CATEGORY_META[result.category as Category]?.label ?? result.category}
                   </span>
                   {priorityBadge(result.priority as Priority)}
-                  <span className={`text-[11px] font-medium px-2 py-0.5 rounded-full ml-1 ${
-                    result.status === "applied"
-                      ? "bg-green-900/40 text-green-400"
-                      : "bg-red-900/40 text-red-400"
-                  }`}>
-                    {result.status === "applied" ? "Applied" : "Failed"}
-                  </span>
+                  {/* Auto-Applied or Squarespace badge */}
+                  {result.autoPatched && (
+                    <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-green-900/40 text-green-400 border border-green-800/40 shrink-0">Auto-Applied</span>
+                  )}
+                  {result.isSquarespace && !result.autoPatched && (
+                    <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-amber-900/30 text-amber-400 border border-amber-800/30 shrink-0">Manual</span>
+                  )}
+                  {result.status === "failed" && (
+                    <span className="text-[11px] font-medium px-2 py-0.5 rounded-full ml-1 bg-red-900/40 text-red-400">Failed</span>
+                  )}
                   {expandedResultId === result.fixId ? (
                     <ChevronUp className="w-4 h-4 text-zinc-500 ml-1 shrink-0" />
                   ) : (
@@ -636,25 +705,43 @@ function FixIssuesPanel({
                       </div>
                     )}
                     {result.snippet && (
-                      <div className="space-y-2">
-                        <div className="flex items-center justify-between">
-                          <p className="text-xs font-medium text-orange-400 flex items-center gap-1.5">
-                            <Wrench className="w-3.5 h-3.5" /> Applied Fix
-                          </p>
-                          <button
-                            className="text-xs text-zinc-500 hover:text-zinc-300 flex items-center gap-1"
-                            onClick={() => {
-                              navigator.clipboard.writeText(result.snippet);
-                              toast.success("Copied to clipboard.");
-                            }}
-                          >
-                            <Copy className="w-3 h-3" /> Copy
-                          </button>
+                      result.autoPatched ? (
+                        // Auto-applied: show green confirmation
+                        <div className="flex items-center gap-2 rounded-md border border-green-800/50 bg-green-900/20 px-3 py-2">
+                          <CheckCircle2 className="w-4 h-4 text-green-400 shrink-0" />
+                          <div>
+                            <p className="text-xs font-medium text-green-400">Auto-Applied to Site</p>
+                            <p className="text-xs text-green-300/70 mt-0.5">{result.snippet}</p>
+                          </div>
                         </div>
-                        <div className="bg-zinc-950 border border-zinc-700 rounded-md p-3 text-xs text-zinc-300 font-mono whitespace-pre-wrap overflow-x-auto max-h-64">
-                          {result.snippet}
+                      ) : (
+                        // Manual/Squarespace: show snippet with copy
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between">
+                            <p className={`text-xs font-medium flex items-center gap-1.5 ${
+                              result.isSquarespace ? "text-amber-400" : "text-orange-400"
+                            }`}>
+                              {result.isSquarespace ? (
+                                <><AlertTriangle className="w-3.5 h-3.5" /> Manual — Apply in Squarespace</>
+                              ) : (
+                                <><Wrench className="w-3.5 h-3.5" /> Applied Fix</>
+                              )}
+                            </p>
+                            <button
+                              className="text-xs text-zinc-500 hover:text-zinc-300 flex items-center gap-1"
+                              onClick={() => {
+                                navigator.clipboard.writeText(result.snippet);
+                                toast.success("Copied to clipboard.");
+                              }}
+                            >
+                              <Copy className="w-3 h-3" /> Copy
+                            </button>
+                          </div>
+                          <div className="bg-zinc-950 border border-zinc-700 rounded-md p-3 text-xs text-zinc-300 font-mono whitespace-pre-wrap overflow-x-auto max-h-64">
+                            {result.snippet}
+                          </div>
                         </div>
-                      </div>
+                      )
                     )}
                   </div>
                 )}
