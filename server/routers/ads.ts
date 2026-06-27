@@ -1025,10 +1025,96 @@ export const linkedinSettingsRouter = router({
   }),
 });
 
+// ─── Ad Variant Generator ───────────────────────────────────────────────────
+export const adVariantsRouter = router({
+  generate: ownerProcedure
+    .input(z.object({
+      jobDescription: z.string().max(1000).optional(),
+      platform: z.enum(["facebook", "instagram", "both", "x"]).default("both"),
+      tone: z.enum(["casual", "professional"]).default("casual"),
+      variantCount: z.number().int().min(2).max(3).default(2),
+    }))
+    .mutation(async ({ input }) => {
+      const platformNote = input.platform === "both"
+        ? "Write one post that works for both Facebook and Instagram."
+        : input.platform === "x"
+          ? "Write a post for X (formerly Twitter). Keep under 280 characters. Be punchy and direct. 1-2 hashtags max."
+          : `Write a post for ${input.platform === "facebook" ? "Facebook" : "Instagram"}.`;
+      const toneNote = input.tone === "professional"
+        ? "Tone: professional and direct, but still genuine and human."
+        : "Tone: casual, warm, southern hospitality. Like a neighbor talking to a neighbor.";
+      const jobContext = input.jobDescription
+        ? `Base the ads on this specific job or context: ${input.jobDescription}`
+        : `No specific job. Draw on what Noland Earthworks does — forestry mulching, land clearing, brush removal, pasture reclamation, fence line clearing, right-of-way clearing in Middle Tennessee.`;
+
+      const angles = [
+        { key: "before_after", label: "Before/After", instruction: "Open with the problem (overgrown, unusable land). Close with the result (clean, cleared, usable). Make the contrast vivid and real." },
+        { key: "problem_solution", label: "Problem/Solution", instruction: "Hook with a specific problem a Middle Tennessee landowner faces. Present forestry mulching as the clean, fast solution. Emphasize: no burn piles, no hauling, no erosion." },
+        { key: "veteran_trust", label: "Veteran Trust", instruction: "Lead with the veteran-owned identity. Reliability, integrity, showing up when committed, doing the work as quoted. Speak to landowners who value that." },
+        { key: "reclaim_your_land", label: "Reclaim Your Land", instruction: "Emotional angle — the landowner bought this property for a reason and it has gotten away from them. End with a low-pressure invitation to call." },
+        { key: "education", label: "Education", instruction: "Explain what forestry mulching actually is and why it beats bush hogging or bulldozing. Target people who don't know the service exists." },
+      ];
+
+      // Pick variantCount distinct angles
+      const selected = angles.slice(0, input.variantCount);
+
+      const result = await invokeLLM({
+        messages: [
+          {
+            role: "system",
+            content: `You write social media ads for Jon Noland, owner of Noland Earthworks, LLC — a veteran-owned land management and forestry mulching company in Middle Tennessee. ${platformNote} ${toneNote} Rules: No emojis. No hashtag overload (max 3 relevant hashtags). No corporate jargon. No banned phrases: "solutions", "industry-leading", "best-in-class", "we are passionate", "dedicated team", "we strive to", "cutting-edge". Sound like a real person who does this work. End with a direct, low-pressure CTA. Keep each post body under 150 words. Return valid JSON only.`,
+          },
+          {
+            role: "user",
+            content: `${jobContext}\n\nGenerate ${input.variantCount} distinct ad variants, one for each angle below:\n${selected.map((a, i) => `Variant ${i + 1} — ${a.label}: ${a.instruction}`).join("\n")}\n\nReturn JSON: { "variants": [ { "angle": "...", "headline": "...", "draft": "...", "imagePrompt": "..." } ] }`,
+          },
+        ],
+        response_format: {
+          type: "json_schema",
+          json_schema: {
+            name: "ad_variants",
+            strict: true,
+            schema: {
+              type: "object",
+              properties: {
+                variants: {
+                  type: "array",
+                  items: {
+                    type: "object",
+                    properties: {
+                      angle: { type: "string" },
+                      headline: { type: "string" },
+                      draft: { type: "string" },
+                      imagePrompt: { type: "string" },
+                    },
+                    required: ["angle", "headline", "draft", "imagePrompt"],
+                    additionalProperties: false,
+                  },
+                },
+              },
+              required: ["variants"],
+              additionalProperties: false,
+            },
+          },
+        },
+      });
+
+      let parsed: { variants: { angle: string; headline: string; draft: string; imagePrompt: string }[] };
+      try {
+        parsed = JSON.parse(result.choices?.[0]?.message?.content as string ?? "{}");
+      } catch {
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "AI returned invalid JSON. Try again." });
+      }
+      if (!parsed.variants?.length) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "AI did not return variants. Try again." });
+      return { variants: parsed.variants };
+    }),
+});
+
 // ─── Ads router (top-level export) ───────────────────────────────────────────
 export const adsRouter = router({
   socialPosts: socialPostsRouter,
   adSpend: adSpendRouter,
   platformConnectionStatus: platformConnectionStatusProcedure,
   linkedinSettings: linkedinSettingsRouter,
+  variants: adVariantsRouter,
 });

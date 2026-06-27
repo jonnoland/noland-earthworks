@@ -48,6 +48,13 @@ interface GeneratedAd {
   imageUrl: string | null;
 }
 
+interface GeneratedVariant {
+  angle: string;
+  headline: string;
+  draft: string;
+  imagePrompt: string;
+}
+
 interface GeneratedAllAd {
   facebook: { draft: string; headline: string };
   instagram: { draft: string; headline: string };
@@ -486,6 +493,11 @@ export default function Ads() {
   const [tone, setTone] = useState<Tone>("casual");
   const [withImage, setWithImage] = useState(true);
 
+  // A/B variant mode
+  const [abMode, setAbMode] = useState(false);
+  const [abVariants, setAbVariants] = useState<GeneratedVariant[]>([]);
+  const [selectedVariantIdx, setSelectedVariantIdx] = useState<number | null>(null);
+
   // Single-platform generated ad
   const [generated, setGenerated] = useState<GeneratedAd | null>(null);
   const [savedPostId, setSavedPostId] = useState<number | null>(null);
@@ -530,6 +542,26 @@ export default function Ads() {
   const [showPreview, setShowPreview] = useState(false);
 
   const utils = trpc.useUtils();
+
+  // Prefill from Jobs page "Send to Ads" action
+  useEffect(() => {
+    const raw = sessionStorage.getItem("ads_prefill");
+    if (!raw) return;
+    sessionStorage.removeItem("ads_prefill");
+    try {
+      const prefill = JSON.parse(raw) as { platform?: string; draft?: string; jobTitle?: string; jobClient?: string };
+      if (prefill.platform && ["facebook", "instagram", "x", "both"].includes(prefill.platform)) {
+        setPlatform(prefill.platform as Platform);
+      }
+      if (prefill.draft) {
+        setGenerated({ draft: prefill.draft, headline: prefill.jobTitle ? `${prefill.jobTitle} — Noland Earthworks` : "Noland Earthworks", imagePrompt: "", imageUrl: null });
+        setEditedDraft(prefill.draft);
+        setEditedHeadline(prefill.jobTitle ? `${prefill.jobTitle} — Noland Earthworks` : "Noland Earthworks");
+        if (prefill.jobTitle) setJobDescription(`Job: ${prefill.jobTitle}${prefill.jobClient ? ` | Client: ${prefill.jobClient}` : ""}`);
+        toast.success("Draft loaded from job. Edit and post when ready.");
+      }
+    } catch { /* ignore malformed */ }
+  }, []);
 
   // Active image: uploaded photo takes priority over AI-generated
   const activeImageUrl = uploadedImageUrl ?? (platform === "all" ? generatedAll?.imageUrl : generated?.imageUrl) ?? null;
@@ -1094,10 +1126,40 @@ export default function Ads() {
 
   const [generateStep, setGenerateStep] = useState("");
   const [generateStepIndex, setGenerateStepIndex] = useState(0);
-  const isGenerating = generateMutation.isPending || generateAllMutation.isPending;
+  const variantsMutation = trpc.ops.adVariants.generate.useMutation({
+    onSuccess: (data) => {
+      setAbVariants(data.variants);
+      setSelectedVariantIdx(null);
+    },
+    onError: (err) => toast.error(err.message || "Failed to generate variants."),
+  });
+
+  const isGenerating = generateMutation.isPending || generateAllMutation.isPending || variantsMutation.isPending;
   const isPosting = fbMutation.isPending || igMutation.isPending || xMutation.isPending || liMutation.isPending || allMutation.isPending || saveMutation.isPending;
   const hasAllGenerated = platform === "all" && generatedAll !== null;
   const hasSingleGenerated = platform !== "all" && generated !== null;
+
+  function handleGenerateVariants() {
+    setAbVariants([]);
+    setSelectedVariantIdx(null);
+    setGenerated(null);
+    variantsMutation.mutate({
+      jobDescription: jobDescription.trim() || undefined,
+      platform: platform === "all" ? "both" : platform as "facebook" | "instagram" | "both" | "x",
+      tone,
+      variantCount: 3,
+    });
+  }
+
+  function selectVariant(idx: number) {
+    const v = abVariants[idx];
+    if (!v) return;
+    setSelectedVariantIdx(idx);
+    setGenerated({ draft: v.draft, headline: v.headline, imagePrompt: v.imagePrompt, imageUrl: null });
+    setEditedDraft(v.draft);
+    setEditedHeadline(v.headline);
+    setSavedPostId(null);
+  }
 
   return (
     <DashboardLayout>
@@ -1173,7 +1235,22 @@ export default function Ads() {
 
         {/* Generator card */}
         <div className="bg-card border border-border rounded-xl p-6 space-y-5">
-          <h2 className="text-base font-semibold text-foreground">Generate Ad</h2>
+          <div className="flex items-center justify-between">
+            <h2 className="text-base font-semibold text-foreground">Generate Ad</h2>
+            <button
+              onClick={() => { setAbMode(!abMode); setAbVariants([]); setSelectedVariantIdx(null); }}
+              className={cn(
+                "flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-lg border transition-colors",
+                abMode
+                  ? "bg-amber-500/15 border-amber-500/40 text-amber-400"
+                  : "bg-background border-border text-muted-foreground hover:text-foreground"
+              )}
+              title="Generate 3 angle variations and pick the best one before posting"
+            >
+              <Sparkles size={11} />
+              A/B Variants
+            </button>
+          </div>
 
           {/* Ad Type selector */}
           <div className="space-y-2">
@@ -1288,34 +1365,45 @@ export default function Ads() {
 
           {/* Generate + Cancel buttons */}
           <div className="flex items-center gap-2">
-            <Button onClick={handleGenerate} disabled={isGenerating} className="gap-2 w-full sm:w-auto">
-              {isGenerating
-                ? <><RefreshCw size={14} className="animate-spin" /> {platform === "all" ? "Generating..." : (generateStep || "Generating...")}</>
-                : <><Sparkles size={14} /> {platform === "all" ? "Generate for All Five Platforms" : "Generate Ad"}</>
-              }
-            </Button>
-            {isGenerating && platform === "all" && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleCancel}
-                className="gap-1.5 text-muted-foreground hover:text-destructive hover:border-destructive transition-colors duration-200"
-              >
-                <XCircle size={13} />
-                Cancel
+            {abMode ? (
+              <Button onClick={handleGenerateVariants} disabled={isGenerating} className="gap-2 w-full sm:w-auto bg-amber-600 hover:bg-amber-700 text-white">
+                {variantsMutation.isPending
+                  ? <><RefreshCw size={14} className="animate-spin" /> Generating 3 variants...</>
+                  : <><Sparkles size={14} /> Generate 3 Variants</>
+                }
               </Button>
-            )}
-            {!isGenerating && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setCopySettingsOpen(true)}
-                className="gap-1.5 text-muted-foreground hover:text-foreground ml-auto"
-                title="Configure copy settings: hashtags and website URL"
-              >
-                <Settings size={13} />
-                Copy Settings
-              </Button>
+            ) : (
+              <>
+                <Button onClick={handleGenerate} disabled={isGenerating} className="gap-2 w-full sm:w-auto">
+                  {isGenerating
+                    ? <><RefreshCw size={14} className="animate-spin" /> {platform === "all" ? "Generating..." : (generateStep || "Generating...")}</>
+                    : <><Sparkles size={14} /> {platform === "all" ? "Generate for All Five Platforms" : "Generate Ad"}</>
+                  }
+                </Button>
+                {isGenerating && platform === "all" && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleCancel}
+                    className="gap-1.5 text-muted-foreground hover:text-destructive hover:border-destructive transition-colors duration-200"
+                  >
+                    <XCircle size={13} />
+                    Cancel
+                  </Button>
+                )}
+                {!isGenerating && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setCopySettingsOpen(true)}
+                    className="gap-1.5 text-muted-foreground hover:text-foreground ml-auto"
+                    title="Configure copy settings: hashtags and website URL"
+                  >
+                    <Settings size={13} />
+                    Copy Settings
+                  </Button>
+                )}
+              </>
             )}
           </div>
 
@@ -1822,6 +1910,48 @@ export default function Ads() {
                 </div>
                 <p className="text-xs text-muted-foreground">The post will be queued and published automatically at the scheduled time.</p>
               </div>
+            )}
+          </div>
+        )}
+
+        {/* ─── A/B Variant Picker ─────────────────────────────────────────── */}
+        {abMode && abVariants.length > 0 && (
+          <div className="bg-card border border-amber-500/30 rounded-xl p-6 space-y-4">
+            <div className="flex items-center gap-2">
+              <Sparkles size={14} className="text-amber-400" />
+              <h2 className="text-base font-semibold text-foreground">Pick a Variant</h2>
+              <span className="text-xs text-muted-foreground ml-auto">Click a variant to load it into the editor below</span>
+            </div>
+            <div className="space-y-3">
+              {abVariants.map((v, i) => (
+                <button
+                  key={i}
+                  onClick={() => selectVariant(i)}
+                  className={cn(
+                    "w-full text-left rounded-lg border p-4 transition-colors space-y-1.5",
+                    selectedVariantIdx === i
+                      ? "border-amber-500/60 bg-amber-500/10"
+                      : "border-border bg-background hover:border-border/80 hover:bg-muted/30"
+                  )}
+                >
+                  <div className="flex items-center gap-2">
+                    <span className={cn(
+                      "text-xs font-semibold px-2 py-0.5 rounded-full border",
+                      selectedVariantIdx === i ? "bg-amber-500/20 border-amber-500/40 text-amber-400" : "bg-muted border-border text-muted-foreground"
+                    )}>
+                      {v.angle}
+                    </span>
+                    {selectedVariantIdx === i && (
+                      <span className="text-xs text-amber-400 flex items-center gap-1"><CheckCircle2 size={11} /> Selected</span>
+                    )}
+                  </div>
+                  <p className="text-sm font-medium text-foreground">{v.headline}</p>
+                  <p className="text-xs text-muted-foreground line-clamp-3">{v.draft}</p>
+                </button>
+              ))}
+            </div>
+            {selectedVariantIdx !== null && (
+              <p className="text-xs text-amber-400/80">Variant {selectedVariantIdx + 1} loaded into the editor below. Edit and post when ready.</p>
             )}
           </div>
         )}

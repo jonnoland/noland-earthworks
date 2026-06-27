@@ -20,7 +20,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -177,6 +177,7 @@ function JobDetailPanel({
   const [completionNoteDraft, setCompletionNoteDraft] = useState("");
   const [profitabilityResult, setProfitabilityResult] = useState<{ revenuePerHour?: number; hoursVariance?: string; verdict?: string; lesson?: string; summary?: string; actualHours?: number } | null>(null);
   const [socialDraft, setSocialDraft] = useState<{ facebook?: string; instagram?: string } | null>(null);
+  const [, navigate] = useLocation();
   const [tasksGenerated, setTasksGenerated] = useState<{ title: string; description: string }[] | null>(null);
   const utils = trpc.useUtils();
   const generateNoteMut = trpc.ops.jobs.generateCompletionNote.useMutation({
@@ -475,14 +476,20 @@ function JobDetailPanel({
                           <div className="rounded-md bg-secondary/30 border border-border p-3">
                             <p className="text-[10px] text-muted-foreground mb-1 uppercase tracking-wider">Facebook</p>
                             <p className="text-xs text-foreground whitespace-pre-line">{socialDraft.facebook}</p>
-                            <button onClick={() => { navigator.clipboard.writeText(socialDraft.facebook!); toast.success("Copied."); }} className="mt-2 flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground"><Copy className="w-3 h-3" /> Copy</button>
+                            <div className="mt-2 flex items-center gap-2">
+                              <button onClick={() => { navigator.clipboard.writeText(socialDraft.facebook!); toast.success("Copied."); }} className="flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground"><Copy className="w-3 h-3" /> Copy</button>
+                              <button onClick={() => { sessionStorage.setItem("ads_prefill", JSON.stringify({ platform: "facebook", draft: socialDraft.facebook, jobTitle: job?.title ?? "", jobClient: job?.client?.name ?? "" })); navigate("/ops/ads"); }} className="flex items-center gap-1 text-[10px] text-primary hover:text-primary/80"><Send className="w-3 h-3" /> Send to Ads</button>
+                            </div>
                           </div>
                         )}
                         {socialDraft.instagram && (
                           <div className="rounded-md bg-secondary/30 border border-border p-3">
                             <p className="text-[10px] text-muted-foreground mb-1 uppercase tracking-wider">Instagram</p>
                             <p className="text-xs text-foreground whitespace-pre-line">{socialDraft.instagram}</p>
-                            <button onClick={() => { navigator.clipboard.writeText(socialDraft.instagram!); toast.success("Copied."); }} className="mt-2 flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground"><Copy className="w-3 h-3" /> Copy</button>
+                            <div className="mt-2 flex items-center gap-2">
+                              <button onClick={() => { navigator.clipboard.writeText(socialDraft.instagram!); toast.success("Copied."); }} className="flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground"><Copy className="w-3 h-3" /> Copy</button>
+                              <button onClick={() => { sessionStorage.setItem("ads_prefill", JSON.stringify({ platform: "instagram", draft: socialDraft.instagram, jobTitle: job?.title ?? "", jobClient: job?.client?.name ?? "" })); navigate("/ops/ads"); }} className="flex items-center gap-1 text-[10px] text-primary hover:text-primary/80"><Send className="w-3 h-3" /> Send to Ads</button>
+                            </div>
                           </div>
                         )}
                       </div>

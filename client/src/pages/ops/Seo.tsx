@@ -1143,6 +1143,29 @@ export default function Seo() {
     onError: (err) => toast.error(err.message || "Article generation failed."),
   });
 
+  // ── County Page Generator ──
+  const TN_COUNTIES = [
+    "Williamson County", "Maury County", "Rutherford County", "Wilson County",
+    "Cheatham County", "Robertson County", "Sumner County", "Dickson County",
+    "Hickman County", "Lewis County", "Lawrence County", "Giles County",
+    "Marshall County", "Bedford County", "Coffee County", "Lincoln County",
+    "Franklin County", "Moore County", "Perry County", "Wayne County",
+    "Davidson County", "Montgomery County", "Stewart County",
+  ];
+  const [cpSelectedCounties, setCpSelectedCounties] = useState<string[]>([]);
+  const [cpService, setCpService] = useState<"forestry-mulching" | "land-clearing" | "brush-hogging" | "all">("all");
+  const [cpWordCount, setCpWordCount] = useState(600);
+  const [cpResults, setCpResults] = useState<Array<{ county: string; id: number; title: string; status: "created" | "error"; error?: string }>>([]);
+
+  const generateCountyPages = trpc.ops.generateCountyPages.useMutation({
+    onSuccess: (data) => {
+      utils.ops.listSeoArticles.invalidate();
+      setCpResults(data.results);
+      toast.success(`${data.created} county page${data.created !== 1 ? "s" : ""} generated. ${data.failed > 0 ? `${data.failed} failed.` : ""}`);
+    },
+    onError: (err) => toast.error(err.message || "County page generation failed."),
+  });
+
   // ── Content Library ──
   const [libStatusFilter, setLibStatusFilter] = useState<"all" | ArticleStatus>("all");
   const [libSearch, setLibSearch] = useState("");
@@ -1892,6 +1915,124 @@ export default function Seo() {
                         Generating a {writeWordCount}-word {writeArticleType} targeting "{writeKeyword}". This takes 15-30 seconds.
                       </p>
                     </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* County Page Generator */}
+            <Card className="bg-zinc-900 border-zinc-800">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm font-medium text-zinc-200 flex items-center gap-2">
+                  <Globe className="w-4 h-4 text-orange-400" />
+                  County Page Generator
+                </CardTitle>
+                <p className="text-xs text-zinc-500 mt-1">
+                  Bulk-generate SEO-optimized service area pages for Tennessee counties. Each page is saved as a draft in the Content Library.
+                </p>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-1.5">
+                  <Label className="text-xs text-zinc-400">Select Counties <span className="text-red-400">*</span></Label>
+                  <div className="flex flex-wrap gap-1.5 max-h-40 overflow-y-auto p-2 bg-zinc-800/50 rounded-md border border-zinc-700">
+                    {TN_COUNTIES.map((county) => (
+                      <button
+                        key={county}
+                        type="button"
+                        onClick={() => setCpSelectedCounties(prev =>
+                          prev.includes(county) ? prev.filter(c => c !== county) : [...prev, county]
+                        )}
+                        className={`px-2 py-0.5 rounded text-xs font-medium transition-colors ${
+                          cpSelectedCounties.includes(county)
+                            ? "bg-orange-500 text-white"
+                            : "bg-zinc-700 text-zinc-300 hover:bg-zinc-600"
+                        }`}
+                      >
+                        {county}
+                      </button>
+                    ))}
+                  </div>
+                  <div className="flex items-center gap-2 mt-1">
+                    <button
+                      type="button"
+                      onClick={() => setCpSelectedCounties([...TN_COUNTIES])}
+                      className="text-[10px] text-orange-400 hover:text-orange-300"
+                    >Select all</button>
+                    <span className="text-zinc-600 text-[10px]">|</span>
+                    <button
+                      type="button"
+                      onClick={() => setCpSelectedCounties([])}
+                      className="text-[10px] text-zinc-500 hover:text-zinc-400"
+                    >Clear</button>
+                    {cpSelectedCounties.length > 0 && (
+                      <span className="text-[10px] text-zinc-500">{cpSelectedCounties.length} selected</span>
+                    )}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs text-zinc-400">Service Focus</Label>
+                    <Select value={cpService} onValueChange={(v) => setCpService(v as typeof cpService)}>
+                      <SelectTrigger className="bg-zinc-800 border-zinc-700 text-zinc-200 h-9 text-xs">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent className="bg-zinc-900 border-zinc-700">
+                        <SelectItem value="all" className="text-zinc-200 text-xs">All Services</SelectItem>
+                        <SelectItem value="forestry-mulching" className="text-zinc-200 text-xs">Forestry Mulching</SelectItem>
+                        <SelectItem value="land-clearing" className="text-zinc-200 text-xs">Land Clearing</SelectItem>
+                        <SelectItem value="brush-hogging" className="text-zinc-200 text-xs">Brush Hogging</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs text-zinc-400">Word Count</Label>
+                    <Select value={String(cpWordCount)} onValueChange={(v) => setCpWordCount(Number(v))}>
+                      <SelectTrigger className="bg-zinc-800 border-zinc-700 text-zinc-200 h-9 text-xs">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent className="bg-zinc-900 border-zinc-700">
+                        <SelectItem value="400" className="text-zinc-200 text-xs">400 words</SelectItem>
+                        <SelectItem value="600" className="text-zinc-200 text-xs">600 words</SelectItem>
+                        <SelectItem value="800" className="text-zinc-200 text-xs">800 words</SelectItem>
+                        <SelectItem value="1000" className="text-zinc-200 text-xs">1000 words</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                <Button
+                  onClick={() => {
+                    if (cpSelectedCounties.length === 0) { toast.error("Select at least one county."); return; }
+                    setCpResults([]);
+                    generateCountyPages.mutate({ counties: cpSelectedCounties, service: cpService, wordCount: cpWordCount });
+                  }}
+                  disabled={generateCountyPages.isPending || cpSelectedCounties.length === 0}
+                  className="w-full bg-orange-600 hover:bg-orange-700 text-white h-9 text-xs font-semibold"
+                >
+                  {generateCountyPages.isPending ? (
+                    <><Loader2 className="w-3.5 h-3.5 animate-spin mr-2" />Generating {cpSelectedCounties.length} page{cpSelectedCounties.length !== 1 ? "s" : ""}...</>
+                  ) : (
+                    <><Sparkles className="w-3.5 h-3.5 mr-2" />Generate {cpSelectedCounties.length > 0 ? cpSelectedCounties.length : ""} County Page{cpSelectedCounties.length !== 1 ? "s" : ""}</>
+                  )}
+                </Button>
+
+                {cpResults.length > 0 && (
+                  <div className="space-y-1.5">
+                    <p className="text-[10px] uppercase tracking-wider text-zinc-500">Results</p>
+                    {cpResults.map((r) => (
+                      <div key={r.county} className={`flex items-center gap-2 rounded px-2 py-1.5 text-xs ${
+                        r.status === "created" ? "bg-green-900/30 border border-green-800/40 text-green-300" : "bg-red-900/30 border border-red-800/40 text-red-300"
+                      }`}>
+                        {r.status === "created" ? <CheckCircle2 className="w-3 h-3 shrink-0" /> : <XCircle className="w-3 h-3 shrink-0" />}
+                        <span className="font-medium">{r.county}</span>
+                        {r.status === "created" && <span className="text-zinc-400 truncate">{r.title}</span>}
+                        {r.status === "error" && <span className="text-red-400">{r.error}</span>}
+                      </div>
+                    ))}
+                    {cpResults.some(r => r.status === "created") && (
+                      <p className="text-[10px] text-zinc-500 mt-1">Pages saved to Content Library. Switch to the Content tab to review and copy Markdown.</p>
+                    )}
                   </div>
                 )}
               </CardContent>

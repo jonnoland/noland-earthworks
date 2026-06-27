@@ -3123,8 +3123,9 @@ ${toneInstructions[input.tone]}`;
 
 // ─── Social Posts Router ─────────────────────────────────────────────────────
 // Extracted to server/routers/ads.ts for maintainability
-import { socialPostsRouter as _socialPostsRouter, adSpendRouter as _adSpendRouter, platformConnectionStatusProcedure as _platformConnectionStatusProcedure, linkedinSettingsRouter as _linkedinSettingsRouter } from './routers/ads';
+import { socialPostsRouter as _socialPostsRouter, adSpendRouter as _adSpendRouter, platformConnectionStatusProcedure as _platformConnectionStatusProcedure, linkedinSettingsRouter as _linkedinSettingsRouter, adVariantsRouter as _adVariantsRouter } from './routers/ads';
 const socialPostsRouter = _socialPostsRouter;
+const adVariantsRouter = _adVariantsRouter;
 
 
 export const opsRouter = router({
@@ -3143,6 +3144,7 @@ export const opsRouter = router({
   tasks: tasksRouter,
   google: googleRouter,
   socialPosts: socialPostsRouter,
+  adVariants: adVariantsRouter,
   ai: aiAutomationRouter,
 
   generateWeeklyInsight: protectedProcedure
@@ -3288,39 +3290,9 @@ export const opsRouter = router({
       const targetUrl = input.url ?? "https://nolandearthworks.com";
       const result = await runSeoAudit(targetUrl, ENV.googlePlacesApiKey ?? undefined);
 
-      // Carry forward resolved/skipped checkIds from the most recent previous audit
-      // so that issues the operator already fixed don't re-appear as recommendations
-      const [previousAudit] = await db
-        .select({ id: seoAudits.id })
-        .from(seoAudits)
-        .orderBy(desc(seoAudits.auditedAt))
-        .limit(1);
-      const resolvedCheckIds = new Set<string>();
-      if (previousAudit) {
-        const resolvedFixes = await db
-          .select({ checkId: seoFixes.checkId })
-          .from(seoFixes)
-          .where(
-            and(
-              eq(seoFixes.auditId, previousAudit.id),
-              inArray(seoFixes.status, ["resolved", "skipped"])
-            )
-          );
-        resolvedFixes.forEach((f) => resolvedCheckIds.add(f.checkId));
-      }
-
-      // Suppress checks and recommendations for already-resolved items
-      const filteredChecks = result.checks.map((c) =>
-        resolvedCheckIds.has(c.id) ? { ...c, status: "pass" as const } : c
-      );
-      // Build a lookup of check text -> checkId for matching recommendations
-      const recTextToCheckId = new Map<string, string>();
-      result.checks.forEach((c) => { if (c.recommendation) recTextToCheckId.set(c.recommendation, c.id); });
-      const filteredRecommendations = result.recommendations.filter((rec) => {
-        const checkId = recTextToCheckId.get(rec.text);
-        return !checkId || !resolvedCheckIds.has(checkId);
-      });
-
+      // Always persist the raw live audit result — no carry-forward suppression.
+      // The live site HTML determines pass/fail; if a fix was applied, the next
+      // audit will naturally return pass because the page content changed.
       await db.insert(seoAudits).values({
         url: result.url,
         auditedAt: result.auditedAt,
@@ -3331,14 +3303,14 @@ export const opsRouter = router({
         usabilityScore: result.usabilityScore,
         performanceScore: result.performanceScore,
         socialScore: result.socialScore,
-        checksJson: JSON.stringify(filteredChecks),
-        recommendationsJson: JSON.stringify(filteredRecommendations),
+        checksJson: JSON.stringify(result.checks),
+        recommendationsJson: JSON.stringify(result.recommendations),
         pageTitle: result.pageTitle ?? undefined,
         metaDescription: result.metaDescription ?? undefined,
         loadTimeMs: result.loadTimeMs ?? undefined,
         mobileScore: result.mobileScore ?? undefined,
       });
-      return { ...result, checks: filteredChecks, recommendations: filteredRecommendations };
+      return result;
     }),
 
   /**
@@ -4097,6 +4069,88 @@ Always be specific to nolandearthworks.com. Never give generic advice — tie ev
       const llmResponse = await invokeLLM({ messages: llmMessages });
       const reply = llmResponse?.choices?.[0]?.message?.content ?? "I could not generate a response. Please try again.";
       return { reply };
+    }),
+
+  // ─── County Page Content Generator ─────────────────────────────────────────
+  /**
+   * Generate SEO-optimized service area page content for one or more Tennessee counties.
+   * Saves each as a draft seoArticle with articleType = "location page".
+   */
+  generateCountyPages: ownerProcedure
+    .input(z.object({
+      counties: z.array(z.string().min(1)).min(1).max(20),
+      service: z.enum(["forestry-mulching", "land-clearing", "brush-hogging", "all"]).default("all"),
+      wordCount: z.number().int().min(300).max(1200).default(600),
+    }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+      const { seoArticles } = await import("../drizzle/schema");
+
+      const serviceLabel = {
+        "forestry-mulching": "forestry mulching",
+        "land-clearing": "land clearing",
+        "brush-hogging": "brush hogging",
+        "all": "land clearing and forestry mulching",
+      }[input.service];
+
+      const results: Array<{ county: string; id: number; title: string; status: "created" | "error"; error?: string }> = [];
+
+      for (const county of input.counties) {
+        try {
+          const keyword = `${serviceLabel} ${county} TN`;
+          const llmResponse = await invokeLLM({
+            messages: [
+              {
+                role: "system",
+                content: `You are writing a local SEO service area page for Noland Earthworks, LLC — a veteran-owned land clearing and forestry mulching company in Middle Tennessee. The owner is Jon Noland, a veteran who runs the business himself with a tracked forestry mulcher. Brand voice: direct, plain, confident, grounded — like a real person who does this work, not a marketing department. Rules: no emojis, no corporate jargon, no filler phrases like "solutions" or "we strive to". Write like a landowner talking to another landowner. Focus on practical value. Include the target keyword naturally in the title, first paragraph, and 2-3 subheadings. End with a clear CTA pointing to nolandearthworks.com. Output ONLY valid JSON.`,
+              },
+              {
+                role: "user",
+                content: `Write a ${input.wordCount}-word location page targeting the keyword: "${keyword}". The page should describe Noland Earthworks' ${serviceLabel} services in ${county}, Tennessee. Include: what the service does, why it matters for landowners in ${county}, terrain and vegetation notes specific to Middle Tennessee, and a call to action. Return a JSON object with: title (string, H1, includes keyword), metaDescription (string, 150-160 chars, includes keyword and county name), bodyMarkdown (string, full page content in Markdown with H2/H3 subheadings, natural keyword usage, and a CTA at the end).`,
+              },
+            ],
+            response_format: {
+              type: "json_schema",
+              json_schema: {
+                name: "county_page",
+                strict: true,
+                schema: {
+                  type: "object",
+                  properties: {
+                    title: { type: "string" },
+                    metaDescription: { type: "string" },
+                    bodyMarkdown: { type: "string" },
+                  },
+                  required: ["title", "metaDescription", "bodyMarkdown"],
+                  additionalProperties: false,
+                },
+              },
+            },
+          });
+
+          const raw = llmResponse?.choices?.[0]?.message?.content;
+          const parsed = typeof raw === "string" ? JSON.parse(raw) : raw;
+          const wordCountActual = (parsed.bodyMarkdown ?? "").split(/\s+/).filter(Boolean).length;
+
+          const [inserted] = await db.insert(seoArticles).values({
+            targetKeyword: keyword,
+            title: parsed.title,
+            metaDescription: parsed.metaDescription,
+            bodyMarkdown: parsed.bodyMarkdown,
+            wordCount: wordCountActual,
+            status: "draft",
+            notes: `County page — ${county} | Service: ${serviceLabel}`,
+            keywordId: null,
+          }).$returningId();
+
+          results.push({ county, id: inserted.id, title: parsed.title, status: "created" });
+        } catch (err) {
+          results.push({ county, id: 0, title: "", status: "error", error: err instanceof Error ? err.message : "Unknown error" });
+        }
+      }
+
+      return { results, created: results.filter(r => r.status === "created").length, failed: results.filter(r => r.status === "error").length };
     }),
 
   // ─── Priority 1: Jobber Revenue Sync ──────────────────────────────────────────
