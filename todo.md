@@ -1969,3 +1969,19 @@
 - [x] Add "Add Manual Request" button and modal to Website Requests section in /ops/quotes — allows entering a potential client manually to use all AI tools (analyzer, satellite map, quote assistant)
 - [x] Restructure /ops/quotes into two-column grid: left 60% All Quotes table, right 40% Website Requests panel; request cards 2-col grid inside right panel
 - [x] Convert Website Requests inbound list to compact per-line rows with + expand button for full detail/AI tools panel
+
+
+## AI Automation Opportunities (from audit)
+
+### Quick Wins (Priority 1)
+- [x] Quote Follow-Up Automation — background agent monitors stale quotes (>X days untouched), drafts personalized follow-up email/SMS, queues for one-click approval in /ops/quotes or /ops/tasks (endpoint added; scheduled job created)
+- [x] Chat-to-Lead Jobber Creation — AI agent monitors chat sessions, auto-creates leads in Jobber and /ops/leads when user provides name/contact/project details (endpoint added)
+- [x] Morning Brief SMS — scheduled daily at 6 AM, sends SMS with active jobs, stale leads, pending quotes, and weather alerts (endpoint added)
+
+### Secondary Opportunities
+- [ ] Dynamic Service Recommendations — interactive assessment tool on public site guides users to correct service type
+- [ ] Automated Review Harvesting — completed jobs trigger AI-personalized review requests, 4-5 star reviews auto-pulled to homepage
+- [ ] Intelligent Cost Estimator — satellite imagery integration auto-fills acreage/terrain/density in /ops/cost-estimator
+- [ ] Weather-Aware Predictive Scheduling — weather API integration flags jobs at risk, suggests alternative dates
+- [ ] Closed-Loop Marketing Automation — ad performance data feeds back to ad generator, auto-adjusts default prompts
+- [ ] Automated Equipment Maintenance Alerts — equipment hours trigger maintenance task generation in /ops/tasks

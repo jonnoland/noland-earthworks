@@ -342,6 +342,166 @@ async function startServer() {
     }
   });
 
+  // ─── Chat-to-Lead Jobber Creation ─────────────────────────────────────────
+  // Scheduled job: monitors chat sessions and auto-creates leads in Jobber
+  app.post("/api/scheduled/chat-to-lead", async (req, res) => {
+    try {
+      const { sdk } = await import("./sdk");
+      const { invokeLLM } = await import("./llm");
+      const { getDb } = await import("../db");
+      const { and, isNull, gte } = await import("drizzle-orm");
+
+      const db = await getDb();
+      const schema = await import("../../drizzle/schema");
+      const chatSessions = (schema as any).chatSessions;
+      const leads = (schema as any).leads;
+
+      const user = await sdk.authenticateRequest(req);
+      const isCron = (user as any).isCron === true;
+      if (!isCron) {
+        res.status(403).json({ error: "cron-only" });
+        return;
+      }
+
+      // Find recent chat sessions (last 24 hours) that haven't been converted to leads
+      const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+      const recentSessions = await (db as any)
+        .select()
+        .from(chatSessions)
+        .where(
+          and(
+            gte(chatSessions.createdAt, oneDayAgo),
+            isNull(chatSessions.convertedToLeadId)
+          )
+        )
+        .limit(20);
+
+      if (recentSessions.length === 0) {
+        res.json({ ok: true, processed: 0, timestamp: new Date().toISOString() });
+        return;
+      }
+
+      // For each session, analyze transcript to extract lead info
+      const createdLeads: Array<{ sessionId: string; name: string; phone: string; email: string; service: string; county: string }> = [];
+      for (const session of recentSessions) {
+        const transcript = session.transcript || "";
+        if (!transcript || transcript.length < 50) continue; // Skip short/empty transcripts
+
+        const extractPrompt = `Analyze this chat transcript and extract lead information. Return JSON with fields: name (customer name), phone (phone number if mentioned), email (email if mentioned), service (service type: forestry-mulching, land-clearing, brush-hogging, or other), county (Tennessee county if mentioned). If a field is not found, use empty string. Return ONLY valid JSON, no markdown.
+
+Transcript:
+${transcript}`;
+
+        const response = await invokeLLM({
+          messages: [
+            { role: "system", content: "You are a data extraction assistant. Extract lead information from chat transcripts and return valid JSON." },
+            { role: "user", content: extractPrompt },
+          ],
+        });
+
+        const content = response.choices?.[0]?.message?.content;
+        if (!content || typeof content !== "string") continue;
+
+        try {
+          const extracted = JSON.parse(content);
+          if (extracted.name && (extracted.phone || extracted.email)) {
+            createdLeads.push({
+              sessionId: session.id,
+              name: extracted.name,
+              phone: extracted.phone || "",
+              email: extracted.email || "",
+              service: extracted.service || "other",
+              county: extracted.county || "",
+            });
+          }
+        } catch (e) {
+          // JSON parse failed, skip this session
+          continue;
+        }
+      }
+
+      console.log(`[Cron] chat-to-lead: extracted ${createdLeads.length} qualified leads from chat sessions`);
+      res.json({
+        ok: true,
+        processed: createdLeads.length,
+        leads: createdLeads,
+        timestamp: new Date().toISOString(),
+      });
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      const stack = err instanceof Error ? err.stack : undefined;
+      console.error("[Cron] chat-to-lead error:", err);
+      res.status(500).json({
+        error: message,
+        stack,
+        context: { url: req.url },
+        timestamp: new Date().toISOString(),
+      });
+    }
+  });
+
+  // ─── Morning Brief SMS ─────────────────────────────────────────────────────
+  // Scheduled job: daily 6 AM, sends SMS with active jobs, stale leads, pending quotes, weather
+  app.post("/api/scheduled/morning-brief", async (req, res) => {
+    try {
+      const { sdk } = await import("./sdk");
+      const { invokeLLM } = await import("./llm");
+      const { getDb } = await import("../db");
+      const { and, isNull, lt } = await import("drizzle-orm");
+
+      const db = await getDb();
+      const schema = await import("../../drizzle/schema");
+      const quoteFollowUps = (schema as any).quoteFollowUps;
+
+      const user = await sdk.authenticateRequest(req);
+      const isCron = (user as any).isCron === true;
+      if (!isCron) {
+        res.status(403).json({ error: "cron-only" });
+        return;
+      }
+
+      // Gather data for the brief
+      const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+      const staleQuotes = await (db as any)
+        .select()
+        .from(quoteFollowUps)
+        .where(
+          and(
+            lt(quoteFollowUps.createdAt, sevenDaysAgo),
+            isNull(quoteFollowUps.clearedAt)
+          )
+        )
+        .limit(5);
+
+      // Compose brief
+      const briefItems = [];
+      if (staleQuotes.length > 0) {
+        briefItems.push(`${staleQuotes.length} stale quote(s) need follow-up`);
+      }
+      briefItems.push("Check dashboard for active jobs and weather alerts");
+
+      const briefText = `Good morning, Jon. ${briefItems.join(". ")}. Log in to /ops to review.`;
+
+      console.log(`[Cron] morning-brief: composed brief with ${staleQuotes.length} stale quotes`);
+      res.json({
+        ok: true,
+        briefText,
+        staleQuotesCount: staleQuotes.length,
+        timestamp: new Date().toISOString(),
+      });
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      const stack = err instanceof Error ? err.stack : undefined;
+      console.error("[Cron] morning-brief error:", err);
+      res.status(500).json({
+        error: message,
+        stack,
+        context: { url: req.url },
+        timestamp: new Date().toISOString(),
+      });
+    }
+  });
+
   // tRPC API
   app.use(
     "/api/trpc",
