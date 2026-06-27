@@ -18,7 +18,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Loader2, AlertTriangle, TrendingUp, DollarSign, Clock, Eye, EyeOff } from "lucide-react";
+import { Loader2, AlertTriangle, TrendingUp, DollarSign, Clock, Eye, EyeOff, Satellite, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 
 type EstimateResult = {
@@ -68,6 +68,31 @@ export default function CostEstimator() {
   const [hasStumps, setHasStumps] = useState(false);
   const [stumpCount, setStumpCount] = useState("");
   const [notes, setNotes] = useState("");
+
+  // Satellite auto-fill
+  const [propertyAddress, setPropertyAddress] = useState("");
+  const [satelliteAnalysis, setSatelliteAnalysis] = useState<string | null>(null);
+  const [satelliteMapUrl, setSatelliteMapUrl] = useState<string | null>(null);
+
+  const analyzeProperty = trpc.ops.analyzePropertySatellite.useMutation({
+    onSuccess: (data) => {
+      setSatelliteAnalysis(data.analysis);
+      setSatelliteMapUrl(data.mapUrl);
+      // Auto-fill terrain/density/access from analysis text
+      const text = data.analysis.toLowerCase();
+      if (text.includes("steep")) setTerrain("steep");
+      else if (text.includes("rolling")) setTerrain("rolling");
+      else if (text.includes("flat")) setTerrain("flat");
+      if (text.includes("very heavy") || text.includes("thick") || text.includes("dense")) setVegetationDensity("very_heavy");
+      else if (text.includes("heavy")) setVegetationDensity("heavy");
+      else if (text.includes("moderate")) setVegetationDensity("moderate");
+      else if (text.includes("light")) setVegetationDensity("light");
+      if (text.includes("difficult")) setAccessDifficulty("difficult");
+      else if (text.includes("moderate")) setAccessDifficulty("moderate");
+      toast.success("Satellite analysis complete — fields updated.");
+    },
+    onError: (err) => toast.error(err.message || "Satellite analysis failed."),
+  });
 
   const isRowService = service === "Right-of-Way Clearing";
 
@@ -157,6 +182,53 @@ export default function CostEstimator() {
               <CardTitle className="text-white text-base">Job Details</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
+              {/* Satellite Auto-Fill */}
+              <div className="space-y-1.5">
+                <Label className="text-zinc-300 flex items-center gap-1.5">
+                  <Satellite className="w-3.5 h-3.5 text-orange-400" />
+                  Property Address <span className="text-zinc-500 font-normal">(optional — auto-fills fields)</span>
+                </Label>
+                <div className="flex gap-2">
+                  <Input
+                    value={propertyAddress}
+                    onChange={e => setPropertyAddress(e.target.value)}
+                    placeholder="e.g. 123 Hollow Rd, Vanleer, TN"
+                    className="bg-zinc-800 border-zinc-600 text-white flex-1"
+                    onKeyDown={e => {
+                      if (e.key === "Enter" && propertyAddress.trim()) {
+                        analyzeProperty.mutate({ address: propertyAddress.trim() });
+                      }
+                    }}
+                  />
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="shrink-0 border-orange-600/50 text-orange-300 hover:bg-orange-600/20"
+                    disabled={!propertyAddress.trim() || analyzeProperty.isPending}
+                    onClick={() => analyzeProperty.mutate({ address: propertyAddress.trim() })}
+                  >
+                    {analyzeProperty.isPending ? (
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    ) : (
+                      <><Sparkles className="w-3.5 h-3.5" /> Analyze</>  
+                    )}
+                  </Button>
+                </div>
+                {satelliteAnalysis && (
+                  <div className="mt-2 rounded border border-orange-600/30 bg-orange-600/5 p-2.5 space-y-2">
+                    {satelliteMapUrl && (
+                      <img
+                        src={satelliteMapUrl}
+                        alt="Satellite view"
+                        className="w-full rounded border border-zinc-700 object-cover max-h-40"
+                      />
+                    )}
+                    <p className="text-[11px] text-zinc-300 leading-relaxed whitespace-pre-wrap">{satelliteAnalysis}</p>
+                    <p className="text-[10px] text-orange-400/70">Fields auto-updated from satellite analysis. Adjust as needed.</p>
+                  </div>
+                )}
+              </div>
               {/* Service */}
               <div className="space-y-1.5">
                 <Label className="text-zinc-300">Service</Label>

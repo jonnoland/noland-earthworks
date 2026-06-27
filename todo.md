@@ -1985,3 +1985,8 @@
 - [ ] Weather-Aware Predictive Scheduling — weather API integration flags jobs at risk, suggests alternative dates
 - [ ] Closed-Loop Marketing Automation — ad performance data feeds back to ad generator, auto-adjusts default prompts
 - [ ] Automated Equipment Maintenance Alerts — equipment hours trigger maintenance task generation in /ops/tasks
+
+## AI Automation Build Pass 2 (Jun 27, 2026)
+- [x] Weather-Aware Scheduling: getJobWeatherRisk tRPC procedure using Open-Meteo API, rain risk badges on /ops/schedule job cards, WeatherRiskBanner component (already live from prior session)
+- [x] Automated Review Harvesting: sendReviewRequest tRPC mutation via Twilio SMS on completed jobs, Send Review Request button on /ops/jobs completed jobs (already live from prior session)
+- [x] Intelligent Cost Estimator satellite auto-fill: analyzePropertySatellite procedure using Google Maps Static + LLM vision to pre-fill acreage/terrain/density in /ops/cost-estimator
