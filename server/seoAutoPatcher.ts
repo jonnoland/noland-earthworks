@@ -14,10 +14,19 @@
 
 import fs from "fs";
 import path from "path";
+import { fileURLToPath } from "url";
+
+// ESM-compatible __dirname (matches the pattern used in server/index.ts)
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // Resolve the index.html path relative to this server file.
-// server/seoAutoPatcher.ts → ../client/index.html
-const INDEX_HTML_PATH = path.resolve(__dirname, "../client/index.html");
+// In production the built bundle lives in dist/, and client/index.html is
+// copied to dist/public/index.html by the Vite build.
+const INDEX_HTML_PATH =
+  process.env.NODE_ENV === "production"
+    ? path.resolve(__dirname, "public", "index.html")
+    : path.resolve(__dirname, "..", "client", "index.html");
 
 // Check IDs that can be auto-patched in client/index.html
 // These match exactly the IDs emitted by server/seoAudit.ts
