@@ -3524,7 +3524,7 @@ function WebsiteRequestsSection({
             </div>
           )}
           {!isLoading && list.length > 0 && (
-            <div className="space-y-2">
+            <div className="grid grid-cols-1 2xl:grid-cols-2 gap-2">
               {filteredList.map((sub) => (
                 <WebsiteRequestCard
                   key={sub.id}
@@ -3533,7 +3533,7 @@ function WebsiteRequestsSection({
                 />
               ))}
               {filteredList.length === 0 && (
-                <div className="flex flex-col items-center justify-center py-8 text-center gap-2">
+                <div className="col-span-full flex flex-col items-center justify-center py-8 text-center gap-2">
                   <p className="text-xs text-muted-foreground">No requests match this filter.</p>
                 </div>
               )}
@@ -4215,219 +4215,227 @@ export default function OpsQuotes() {
           </div>
         )}
 
-        {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-          <div className="flex items-center gap-2">
-            <FileText className="w-5 h-5 text-primary" />
-            <h2 className="text-base font-semibold text-foreground">All Quotes</h2>
-            {!isLoading && !notConnected && (
-              <Badge variant="secondary" className="text-xs">
-                {totalCount} total
-              </Badge>
-            )}
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="relative flex-1 sm:w-64">
-              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
-              <Input
-                placeholder="Search quotes..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="pl-8 h-8 text-xs bg-secondary/30 border-border"
-              />
-            </div>
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-8 px-2"
-              onClick={() => refetch()}
-              disabled={isFetching}
-              aria-label="Refresh"
-            >
-              <RefreshCw className={`w-3.5 h-3.5 ${isFetching ? "animate-spin" : ""}`} />
-            </Button>
-            {!notConnected && !isLoading && (
-              <Button
-                size="sm"
-                className="h-8 gap-1.5 text-xs"
-                onClick={() => setShowCreateModal(true)}
-              >
-                <PlusCircle className="w-3.5 h-3.5" />
-                New Quote
-              </Button>
-            )}
-          </div>
-        </div>
+        {/* ── Two-column grid: left = All Quotes, right = Website Requests ── */}
+        <div className="grid grid-cols-1 xl:grid-cols-5 gap-6 items-start">
 
-        {/* Status filter tabs */}
-        {!isLoading && !notConnected && statuses.length > 1 && (
-          <div className="flex flex-wrap gap-1.5">
-            {statuses.map((s) => (
-              <button
-                key={s}
-                onClick={() => setStatusFilter(s)}
-                className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
-                  statusFilter === s
-                    ? "bg-primary text-primary-foreground"
-                    : "bg-secondary/40 text-muted-foreground hover:bg-secondary/70"
-                }`}
-              >
-                {s === "ALL" ? "All" : s.replace(/_/g, " ")}
-              </button>
-            ))}
-          </div>
-        )}
+          {/* ── LEFT: All Quotes (3/5 width on xl) ── */}
+          <div className="xl:col-span-3 space-y-4">
 
-        {/* Loading */}
-        {isLoading && (
-          <div className="flex items-center justify-center py-20">
-            <RefreshCw className="w-6 h-6 animate-spin text-muted-foreground" />
-          </div>
-        )}
-
-        {/* Website Requests — AI-powered quote builder from inbound form submissions */}
-        <WebsiteRequestsSection
-          onBuildQuote={(prefill) => {
-            setAiPrefill(prefill);
-            setShowCreateModal(true);
-          }}
-        />
-
-        {/* Divider */}
-        <div className="border-t border-border pt-2" />
-
-        {/* Not connected */}
-        {!isLoading && notConnected && <NotConnectedBanner />}
-
-        {/* Table */}
-        {!isLoading && !notConnected && (
-          <>
-            {filtered.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-16 text-center gap-3">
-                <FileText className="w-10 h-10 text-muted-foreground/40" />
-                <p className="text-sm text-muted-foreground">
-                  {search || statusFilter !== "ALL"
-                    ? "No quotes match your filters."
-                    : "No quotes found in Jobber."}
-                </p>
+            {/* Header */}
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+              <div className="flex items-center gap-2">
+                <FileText className="w-5 h-5 text-primary" />
+                <h2 className="text-base font-semibold text-foreground">All Quotes</h2>
+                {!isLoading && !notConnected && (
+                  <Badge variant="secondary" className="text-xs">
+                    {totalCount} total
+                  </Badge>
+                )}
               </div>
-            ) : (
-              <div className="rounded-lg border border-border overflow-hidden">
-                <div className="overflow-x-auto">
-                  <table className="w-full text-xs">
-                    <thead>
-                      <tr className="border-b border-border bg-secondary/20">
-                        <th className="text-left px-4 py-2.5 font-medium text-muted-foreground">Quote #</th>
-                        <th className="text-left px-4 py-2.5 font-medium text-muted-foreground">Title</th>
-                        <th className="text-left px-4 py-2.5 font-medium text-muted-foreground hidden sm:table-cell">Client</th>
-                        <th className="text-right px-4 py-2.5 font-medium text-muted-foreground hidden md:table-cell">Total</th>
-                        <th className="text-left px-4 py-2.5 font-medium text-muted-foreground">Status</th>
-                        <th className="text-left px-4 py-2.5 font-medium text-muted-foreground hidden lg:table-cell">Date</th>
-                        <th className="text-right px-4 py-2.5 font-medium text-muted-foreground">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {filtered.map((quote, idx) => (
-                        <tr
-                          key={quote.id}
-                          onClick={() => setSelectedQuoteId(quote.id)}
-                          className={`border-b border-border last:border-0 hover:bg-secondary/30 transition-colors cursor-pointer ${
-                            idx % 2 === 0 ? "" : "bg-secondary/5"
-                          } ${selectedQuoteId === quote.id ? "bg-primary/5 border-l-2 border-l-primary" : ""}`}
-                        >
-                          <td className="px-4 py-3 font-mono text-muted-foreground">
-                            #{quote.quoteNumber ?? "—"}
-                          </td>
-                          <td className="px-4 py-3 font-medium text-foreground max-w-[200px] truncate">
-                            <div className="flex items-center gap-1.5">
-                              {quote.title || "Untitled Quote"}
-                              <ChevronRight className="w-3 h-3 text-muted-foreground/50 shrink-0" />
-                            </div>
-                          </td>
-                          <td className="px-4 py-3 text-muted-foreground hidden sm:table-cell">
-                            {quote.client?.name || quote.client?.companyName || "—"}
-                          </td>
-                          <td className="px-4 py-3 text-right hidden md:table-cell">
-                            <div className="flex items-center justify-end gap-1 text-foreground font-medium">
-                              <DollarSign className="w-3 h-3 text-green-500" />
-                              {formatMoney(quote.amounts?.total)}
-                            </div>
-                          </td>
-                          <td className="px-4 py-3">
-                            <StatusBadge status={quote.quoteStatus ?? "DRAFT"} />
-                          </td>
-                          <td className="px-4 py-3 text-muted-foreground hidden lg:table-cell">
-                            {formatDate(quote.createdAt)}
-                          </td>
-                          <td className="px-4 py-3 text-right">
-                            <div className="flex items-center justify-end gap-2">
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  // We need the full detail to pre-fill line items — open detail panel first
-                                  setSelectedQuoteId(quote.id);
-                                }}
-                                title="Edit quote"
-                                className="text-muted-foreground hover:text-primary transition-colors"
-                              >
-                                <Pencil className="w-3.5 h-3.5" />
-                              </button>
-                              {quote.quoteStatus === "APPROVED" && (() => {
-                                const fu = followUps?.find((f) => f.jobberQuoteId === quote.id);
-                                const jobId = fu?.jobberJobId;
-                                const jobNum = fu?.jobberJobNumber;
-                                return (
+              <div className="flex items-center gap-2">
+                <div className="relative flex-1 sm:w-56">
+                  <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+                  <Input
+                    placeholder="Search quotes..."
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    className="pl-8 h-8 text-xs bg-secondary/30 border-border"
+                  />
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-8 px-2"
+                  onClick={() => refetch()}
+                  disabled={isFetching}
+                  aria-label="Refresh"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 ${isFetching ? "animate-spin" : ""}`} />
+                </Button>
+                {!notConnected && !isLoading && (
+                  <Button
+                    size="sm"
+                    className="h-8 gap-1.5 text-xs"
+                    onClick={() => setShowCreateModal(true)}
+                  >
+                    <PlusCircle className="w-3.5 h-3.5" />
+                    New Quote
+                  </Button>
+                )}
+              </div>
+            </div>
+
+            {/* Status filter tabs */}
+            {!isLoading && !notConnected && statuses.length > 1 && (
+              <div className="flex flex-wrap gap-1.5">
+                {statuses.map((s) => (
+                  <button
+                    key={s}
+                    onClick={() => setStatusFilter(s)}
+                    className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
+                      statusFilter === s
+                        ? "bg-primary text-primary-foreground"
+                        : "bg-secondary/40 text-muted-foreground hover:bg-secondary/70"
+                    }`}
+                  >
+                    {s === "ALL" ? "All" : s.replace(/_/g, " ")}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {/* Loading */}
+            {isLoading && (
+              <div className="flex items-center justify-center py-20">
+                <RefreshCw className="w-6 h-6 animate-spin text-muted-foreground" />
+              </div>
+            )}
+
+            {/* Not connected */}
+            {!isLoading && notConnected && <NotConnectedBanner />}
+
+            {/* Table */}
+            {!isLoading && !notConnected && (
+              <>
+                {filtered.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-16 text-center gap-3">
+                    <FileText className="w-10 h-10 text-muted-foreground/40" />
+                    <p className="text-sm text-muted-foreground">
+                      {search || statusFilter !== "ALL"
+                        ? "No quotes match your filters."
+                        : "No quotes found in Jobber."}
+                    </p>
+                  </div>
+                ) : (
+                  <div className="rounded-lg border border-border overflow-hidden">
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-xs">
+                        <thead>
+                          <tr className="border-b border-border bg-secondary/20">
+                            <th className="text-left px-4 py-2.5 font-medium text-muted-foreground">Quote #</th>
+                            <th className="text-left px-4 py-2.5 font-medium text-muted-foreground">Title</th>
+                            <th className="text-left px-4 py-2.5 font-medium text-muted-foreground hidden sm:table-cell">Client</th>
+                            <th className="text-right px-4 py-2.5 font-medium text-muted-foreground hidden md:table-cell">Total</th>
+                            <th className="text-left px-4 py-2.5 font-medium text-muted-foreground">Status</th>
+                            <th className="text-left px-4 py-2.5 font-medium text-muted-foreground hidden lg:table-cell">Date</th>
+                            <th className="text-right px-4 py-2.5 font-medium text-muted-foreground">Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {filtered.map((quote, idx) => (
+                            <tr
+                              key={quote.id}
+                              onClick={() => setSelectedQuoteId(quote.id)}
+                              className={`border-b border-border last:border-0 hover:bg-secondary/30 transition-colors cursor-pointer ${
+                                idx % 2 === 0 ? "" : "bg-secondary/5"
+                              } ${selectedQuoteId === quote.id ? "bg-primary/5 border-l-2 border-l-primary" : ""}`}
+                            >
+                              <td className="px-4 py-3 font-mono text-muted-foreground">
+                                #{quote.quoteNumber ?? "—"}
+                              </td>
+                              <td className="px-4 py-3 font-medium text-foreground max-w-[200px] truncate">
+                                <div className="flex items-center gap-1.5">
+                                  {quote.title || "Untitled Quote"}
+                                  <ChevronRight className="w-3 h-3 text-muted-foreground/50 shrink-0" />
+                                </div>
+                              </td>
+                              <td className="px-4 py-3 text-muted-foreground hidden sm:table-cell">
+                                {quote.client?.name || quote.client?.companyName || "—"}
+                              </td>
+                              <td className="px-4 py-3 text-right hidden md:table-cell">
+                                <div className="flex items-center justify-end gap-1 text-foreground font-medium">
+                                  <DollarSign className="w-3 h-3 text-green-500" />
+                                  {formatMoney(quote.amounts?.total)}
+                                </div>
+                              </td>
+                              <td className="px-4 py-3">
+                                <StatusBadge status={quote.quoteStatus ?? "DRAFT"} />
+                              </td>
+                              <td className="px-4 py-3 text-muted-foreground hidden lg:table-cell">
+                                {formatDate(quote.createdAt)}
+                              </td>
+                              <td className="px-4 py-3 text-right">
+                                <div className="flex items-center justify-end gap-2">
                                   <button
                                     onClick={(e) => {
                                       e.stopPropagation();
-                                      if (jobId) {
-                                        window.open(jobberJobUrl(jobId), "_blank", "noopener,noreferrer");
-                                      } else {
-                                        // No auto-created job yet — open quote in Jobber
-                                        window.open(jobberQuoteUrl(quote.id), "_blank", "noopener,noreferrer");
-                                      }
+                                      setSelectedQuoteId(quote.id);
                                     }}
-                                    title={jobNum ? `View Job #${jobNum} in Jobber` : "Open in Jobber"}
-                                    className="text-muted-foreground hover:text-amber-400 transition-colors"
+                                    title="Edit quote"
+                                    className="text-muted-foreground hover:text-primary transition-colors"
                                   >
-                                    <Briefcase className="w-3.5 h-3.5" />
+                                    <Pencil className="w-3.5 h-3.5" />
                                   </button>
-                                );
-                              })()}
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setDeleteTarget(quote);
-                                }}
-                                title="Delete quote"
-                                className="text-muted-foreground hover:text-red-400 transition-colors"
-                              >
-                                <Trash2 className="w-3.5 h-3.5" />
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            )}
+                                  {quote.quoteStatus === "APPROVED" && (() => {
+                                    const fu = followUps?.find((f) => f.jobberQuoteId === quote.id);
+                                    const jobId = fu?.jobberJobId;
+                                    const jobNum = fu?.jobberJobNumber;
+                                    return (
+                                      <button
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          if (jobId) {
+                                            window.open(jobberJobUrl(jobId), "_blank", "noopener,noreferrer");
+                                          } else {
+                                            window.open(jobberQuoteUrl(quote.id), "_blank", "noopener,noreferrer");
+                                          }
+                                        }}
+                                        title={jobNum ? `View Job #${jobNum} in Jobber` : "Open in Jobber"}
+                                        className="text-muted-foreground hover:text-amber-400 transition-colors"
+                                      >
+                                        <Briefcase className="w-3.5 h-3.5" />
+                                      </button>
+                                    );
+                                  })()}
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setDeleteTarget(quote);
+                                    }}
+                                    title="Delete quote"
+                                    className="text-muted-foreground hover:text-red-400 transition-colors"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
 
-            {/* Jobber link */}
-            <div className="flex justify-end">
-              <a
-                href="https://secure.getjobber.com/home"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-primary transition-colors"
-              >
-                <ExternalLink className="w-3 h-3" />
-                Open in Jobber
-              </a>
+                {/* Jobber link */}
+                <div className="flex justify-end">
+                  <a
+                    href="https://secure.getjobber.com/home"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-primary transition-colors"
+                  >
+                    <ExternalLink className="w-3 h-3" />
+                    Open in Jobber
+                  </a>
+                </div>
+              </>
+            )}
+          </div>{/* end left column */}
+
+          {/* ── RIGHT: Website Requests (2/5 width on xl) — sticky so it stays in view ── */}
+          <div className="xl:col-span-2">
+            <div className="xl:sticky xl:top-4">
+              <WebsiteRequestsSection
+                onBuildQuote={(prefill) => {
+                  setAiPrefill(prefill);
+                  setShowCreateModal(true);
+                }}
+              />
             </div>
-          </>
-        )}
+          </div>{/* end right column */}
+
+        </div>{/* end two-column grid */}
       </div>
 
       {/* Quote detail slide-out panel */}
