@@ -925,7 +925,17 @@ function ArticleDrawer({
       utils.ops.listSeoArticles.invalidate();
       toast.success(`Published! Live at /blog/${data.slug}`);
     },
-    onError: (err) => toast.error(err.message || "Failed to publish."),
+    onError: (err) => {
+      // Slug collision means the article is already live — mark it published and close
+      if (err.message?.includes("already uses the slug")) {
+        updateArticle.mutate({ id: article.id, status: "published" });
+        utils.ops.listSeoArticles.invalidate();
+        toast.success("Article already published — removed from queue.");
+        onClose();
+      } else {
+        toast.error(err.message || "Failed to publish.");
+      }
+    },
   });
 
   const updateArticle = trpc.ops.updateSeoArticle.useMutation({
@@ -1344,9 +1354,16 @@ export default function Seo() {
       setPublishingId(null);
       toast.success(`Published at /blog/${data.slug}`);
     },
-    onError: (err) => {
+    onError: (err, variables) => {
       setPublishingId(null);
-      toast.error(err.message || "Failed to publish.");
+      // Slug collision means the article is already published — mark it and remove from list
+      if (err.message?.includes("already uses the slug")) {
+        updateArticle.mutate({ id: variables.id, status: "published" });
+        utils.ops.listSeoArticles.invalidate();
+        toast.success("Article already published — removed from queue.");
+      } else {
+        toast.error(err.message || "Failed to publish.");
+      }
     },
   });
 
