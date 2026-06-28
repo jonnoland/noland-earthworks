@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -302,6 +302,8 @@ export default function AiVisibility() {
   const [pendingFixType, setPendingFixType] = useState<string | null>(null);
   const [runningAllFixes, setRunningAllFixes] = useState(false);
   const [allFixesProgress, setAllFixesProgress] = useState<{ done: number; total: number } | null>(null);
+  const [refreshingAfterFix, setRefreshingAfterFix] = useState(false);
+  const refreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const { data: latestAudit, isLoading: loadingLatest } = trpc.aiVisibility.getLatest.useQuery();
   const { data: history } = trpc.aiVisibility.getHistory.useQuery();
@@ -325,6 +327,18 @@ export default function AiVisibility() {
     },
   });
 
+  const triggerRefreshAfterFix = () => {
+    // Clear any pending refresh timer
+    if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current);
+    setRefreshingAfterFix(true);
+    toast.info("Re-running audit to reflect your changes...", { duration: 4000 });
+    // Small delay so the fix result is visible before the audit spinner takes over
+    refreshTimerRef.current = setTimeout(() => {
+      setRefreshingAfterFix(false);
+      runAudit.mutate();
+    }, 2500);
+  };
+
   const applyFix = trpc.aiVisibility.applyAeoFix.useMutation({
     onSuccess: (data) => {
       setFixResults(prev => ({ ...prev, [data.fixType]: data as FixResult }));
@@ -337,6 +351,8 @@ export default function AiVisibility() {
       } else {
         toast.info(data.title);
       }
+      // Auto-refresh the audit score after any fix
+      triggerRefreshAfterFix();
     },
     onError: (err) => {
       setPendingFixType(null);
@@ -375,6 +391,8 @@ export default function AiVisibility() {
     if (autoFixable.some(r => r.fixType === "generate_blog_posts")) {
       toast.info("Blog drafts saved — view them in the SEO tab.", { duration: 6000 });
     }
+    // Auto-refresh after all fixes complete
+    triggerRefreshAfterFix();
   };
 
   // Normalize latestAudit recommendations from DB (stored as JSON, may be string[])
@@ -430,9 +448,18 @@ export default function AiVisibility() {
         </Button>
       </div>
 
+      {refreshingAfterFix && !runAudit.isPending && (
+        <div className="bg-blue-950/30 border border-blue-800/40 rounded-lg p-4 text-sm text-blue-300 flex items-center gap-2">
+          <Loader2 className="w-4 h-4 animate-spin shrink-0" />
+          Fix applied — refreshing your score in a moment...
+        </div>
+      )}
+
       {runAudit.isPending && (
         <div className="bg-amber-950/30 border border-amber-800/40 rounded-lg p-4 text-sm text-amber-300">
-          Querying AI with 10 Noland Earthworks-specific prompts. This takes 30–60 seconds...
+          {refreshingAfterFix
+            ? "Re-running audit to reflect your changes. This takes 30–60 seconds..."
+            : "Querying AI with 10 Noland Earthworks-specific prompts. This takes 30–60 seconds..."}
         </div>
       )}
 
