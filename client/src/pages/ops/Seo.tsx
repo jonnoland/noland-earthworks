@@ -1309,6 +1309,35 @@ export default function Seo() {
   });
 
   const [publishingId, setPublishingId] = useState<number | null>(null);
+  const [publishAllPending, setPublishAllPending] = useState(false);
+  const [publishAllProgress, setPublishAllProgress] = useState("");
+
+  const handlePublishAll = async () => {
+    const unpublished = filteredArticles.filter(a => a.status !== "published");
+    if (unpublished.length === 0) return;
+    setPublishAllPending(true);
+    let succeeded = 0;
+    let failed = 0;
+    for (let i = 0; i < unpublished.length; i++) {
+      const article = unpublished[i];
+      setPublishAllProgress(`${i + 1} of ${unpublished.length}`);
+      try {
+        await publishArticleInline.mutateAsync({ id: article.id });
+        succeeded++;
+      } catch {
+        failed++;
+      }
+    }
+    setPublishAllPending(false);
+    setPublishAllProgress("");
+    utils.ops.listSeoArticles.invalidate();
+    if (failed === 0) {
+      toast.success(`All ${succeeded} article${succeeded !== 1 ? "s" : ""} published.`);
+    } else {
+      toast.success(`${succeeded} published, ${failed} failed. Check individual articles for errors.`);
+    }
+  };
+
   const publishArticleInline = trpc.ops.publishSeoArticle.useMutation({
     onSuccess: (data, variables) => {
       utils.ops.listSeoArticles.invalidate();
@@ -1323,7 +1352,15 @@ export default function Seo() {
 
   const filteredArticles = useMemo(() => {
     return (articles as ArticleRow[]).filter((a) => {
-      if (libStatusFilter !== "all" && a.status !== libStatusFilter) return false;
+      // By default, hide published articles unless the filter is explicitly set to "published" or "all"
+      if (libStatusFilter === "all") {
+        // show everything
+      } else if (libStatusFilter === "published") {
+        if (a.status !== "published") return false;
+      } else {
+        // draft or ready filter — also exclude published
+        if (a.status !== libStatusFilter) return false;
+      }
       if (libSearch && !a.title.toLowerCase().includes(libSearch.toLowerCase()) && !a.targetKeyword.toLowerCase().includes(libSearch.toLowerCase())) return false;
       return true;
     });
@@ -2205,6 +2242,20 @@ export default function Seo() {
                 </SelectContent>
               </Select>
               <p className="text-xs text-zinc-500">{filteredArticles.length} article{filteredArticles.length !== 1 ? "s" : ""}</p>
+              {filteredArticles.filter(a => a.status !== "published").length > 1 && (
+                <Button
+                  size="sm"
+                  className="h-8 text-xs gap-1.5 bg-orange-600 hover:bg-orange-500 text-white ml-auto"
+                  disabled={publishAllPending}
+                  onClick={handlePublishAll}
+                >
+                  {publishAllPending ? (
+                    <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Publishing {publishAllProgress}...</>
+                  ) : (
+                    <><Rocket className="w-3.5 h-3.5" /> Publish All ({filteredArticles.filter(a => a.status !== "published").length})</>
+                  )}
+                </Button>
+              )}
             </div>
 
             {articlesLoading && (
