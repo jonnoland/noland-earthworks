@@ -38,22 +38,47 @@ import { useAuth } from "@/_core/hooks/useAuth";
 
 const TEAM_HREF = "/ops/team";
 
-const navItems = [
-  { icon: LayoutDashboard, label: "Dashboard", href: "/ops" },
-  { icon: Briefcase, label: "Jobs", href: "/ops/jobs" },
-  { icon: Users, label: "Leads", href: "/ops/leads" },
-  { icon: FileText, label: "Quotes", href: "/ops/quotes" },
-  { icon: Receipt, label: "Clients", href: "/ops/clients" },
-  { icon: CalendarDays, label: "Schedule", href: "/ops/schedule" },
-  { icon: HardHat, label: "Crews", href: "/ops/crews-hub" },
-  { icon: BotMessageSquare, label: "Chat Sessions", href: "/ops/chat-sessions" },
-  { icon: Star, label: "Reviews", href: "/ops/reviews" },
-  { icon: Megaphone, label: "Marketing", href: "/ops/marketing" },
-  { icon: BarChart3, label: "Reports", href: "/ops/reports-hub" },
-  { icon: Calculator, label: "Pricing", href: "/ops/pricing-hub" },
-  { icon: Wrench, label: "Equipment", href: "/ops/equipment-hub" },
-  { icon: Image, label: "Gallery", href: "/ops/gallery" },
-  { icon: Users, label: "Team", href: TEAM_HREF },
+const navGroups = [
+  {
+    label: "Overview",
+    items: [
+      { icon: LayoutDashboard, label: "Dashboard", href: "/ops" },
+    ],
+  },
+  {
+    label: "Field Work",
+    items: [
+      { icon: Briefcase, label: "Jobs", href: "/ops/jobs" },
+      { icon: CalendarDays, label: "Schedule", href: "/ops/schedule" },
+      { icon: HardHat, label: "Crews", href: "/ops/crews-hub" },
+      { icon: Wrench, label: "Equipment", href: "/ops/equipment-hub" },
+    ],
+  },
+  {
+    label: "Sales",
+    items: [
+      { icon: Users, label: "Leads", href: "/ops/leads" },
+      { icon: FileText, label: "Quotes", href: "/ops/quotes" },
+      { icon: Receipt, label: "Clients", href: "/ops/clients" },
+    ],
+  },
+  {
+    label: "Marketing",
+    items: [
+      { icon: Megaphone, label: "Marketing", href: "/ops/marketing" },
+      { icon: Star, label: "Reviews", href: "/ops/reviews" },
+      { icon: Image, label: "Gallery", href: "/ops/gallery" },
+    ],
+  },
+  {
+    label: "Business",
+    items: [
+      { icon: BarChart3, label: "Reports", href: "/ops/reports-hub" },
+      { icon: Calculator, label: "Pricing", href: "/ops/pricing-hub" },
+      { icon: BotMessageSquare, label: "Chat Sessions", href: "/ops/chat-sessions" },
+      { icon: Users, label: "Team", href: TEAM_HREF },
+    ],
+  },
 ];
 
 const bottomItems = [
@@ -143,56 +168,61 @@ export default function DashboardLayout({ children, title, subtitle }: Dashboard
         </div>
 
         {/* Nav */}
-        <nav className="flex-1 overflow-y-auto py-4 px-2">
-          <div className="mb-1 px-3 pb-2">
-            <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/60">
-              Operations
-            </span>
-          </div>
-          {navItems.map((item) => {
-            const isActive = location === item.href || (item.href === "/ops" && location === "/ops");
-            return (
-              <Link key={item.href} href={item.href}>
-                <div
-                  className={cn(
-                    "ops-sidebar-item flex items-center gap-3 px-3 py-2.5 rounded-md mb-0.5",
-                    "text-sm font-medium transition-all duration-150",
-                    isActive
-                      ? "active bg-sidebar-accent text-sidebar-accent-foreground"
-                      : "text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent/40"
-                  )}
-                >
-                  <item.icon className={cn("w-4 h-4 shrink-0", isActive && "text-primary")} />
-                  <span>{item.label}</span>
-                  {item.href === "/ops/chat-sessions" && chatUnread > 0 && (
-                    <span className="ml-auto flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-teal-500 text-white text-[10px] font-bold">
-                      {chatUnread > 99 ? "99+" : chatUnread}
-                    </span>
-                  )}
-                  {item.href === TEAM_HREF && teamPending > 0 && (
-                    <span className="ml-auto flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-red-500 text-white text-[10px] font-bold">
-                      {teamPending > 99 ? "99+" : teamPending}
-                    </span>
-                  )}
-                  {isActive && chatUnread === 0 && item.href !== TEAM_HREF && (
-                    <span className="ml-auto w-1.5 h-1.5 rounded-full bg-primary" />
-                  )}
-                  {isActive && item.href === TEAM_HREF && teamPending === 0 && (
-                    <span className="ml-auto w-1.5 h-1.5 rounded-full bg-primary" />
-                  )}
-                  {isActive && chatUnread > 0 && item.href !== "/ops/chat-sessions" && item.href !== TEAM_HREF && (
-                    <span className="ml-auto w-1.5 h-1.5 rounded-full bg-primary" />
-                  )}
-                </div>
-              </Link>
-            );
-          })}
+        <nav className="flex-1 overflow-y-auto py-3 px-2">
+          {navGroups.map((group) => (
+            <div key={group.label} className="mb-3">
+              <div className="mb-1 px-3 pb-1">
+                <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/50">
+                  {group.label}
+                </span>
+              </div>
+              {group.items.map((item) => {
+                const isActive = location === item.href || (item.href === "/ops" && location === "/ops");
+                return (
+                  <Link key={item.href} href={item.href}>
+                    <div
+                      className={cn(
+                        "ops-sidebar-item flex items-center gap-3 px-3 py-2.5 rounded-md mb-0.5",
+                        "text-sm font-medium transition-all duration-150",
+                        isActive
+                          ? "active bg-sidebar-accent text-sidebar-accent-foreground"
+                          : "text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent/40"
+                      )}
+                    >
+                      <item.icon className={cn("w-4 h-4 shrink-0", isActive && "text-primary")} />
+                      <span>{item.label}</span>
+                      {item.href === "/ops/chat-sessions" && chatUnread > 0 && (
+                        <span className="ml-auto flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-teal-500 text-white text-[10px] font-bold">
+                          {chatUnread > 99 ? "99+" : chatUnread}
+                        </span>
+                      )}
+                      {item.href === TEAM_HREF && teamPending > 0 && (
+                        <span className="ml-auto flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-red-500 text-white text-[10px] font-bold">
+                          {teamPending > 99 ? "99+" : teamPending}
+                        </span>
+                      )}
+                      {isActive && chatUnread === 0 && item.href !== TEAM_HREF && (
+                        <span className="ml-auto w-1.5 h-1.5 rounded-full bg-primary" />
+                      )}
+                      {isActive && item.href === TEAM_HREF && teamPending === 0 && (
+                        <span className="ml-auto w-1.5 h-1.5 rounded-full bg-primary" />
+                      )}
+                      {isActive && chatUnread > 0 && item.href !== "/ops/chat-sessions" && item.href !== TEAM_HREF && (
+                        <span className="ml-auto w-1.5 h-1.5 rounded-full bg-primary" />
+                      )}
+                    </div>
+                  </Link>
+                );
+              })}
+            </div>
+          ))}
 
-          <div className="mt-4 mb-1 px-3 pb-2">
-            <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/60">
+          <div className="mb-1 px-3 pb-1">
+            <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/50">
               Account
             </span>
           </div>
+
           {bottomItems.map((item) => {
             const isActive = location === item.href;
             return (
