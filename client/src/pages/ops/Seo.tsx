@@ -50,6 +50,8 @@ import {
   Wrench,
   Bot,
   Send,
+  Rocket,
+  ExternalLink,
 } from "lucide-react";
 import { AIChatBox, type Message as ChatMessage } from "@/components/AIChatBox";
 import {
@@ -125,6 +127,8 @@ interface ArticleRow {
   status: ArticleStatus;
   notes: string | null;
   keywordId: number | null;
+  publishedSlug: string | null;
+  publishedAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -912,7 +916,17 @@ function ArticleDrawer({
   const [copied, setCopied] = useState(false);
   const [editingNotes, setEditingNotes] = useState(false);
   const [notes, setNotes] = useState(article.notes ?? "");
+  const [publishedUrl, setPublishedUrl] = useState<string | null>(article.publishedSlug ? `/blog/${article.publishedSlug}` : null);
   const utils = trpc.useUtils();
+
+  const publishArticle = trpc.ops.publishSeoArticle.useMutation({
+    onSuccess: (data) => {
+      setPublishedUrl(data.url);
+      utils.ops.listSeoArticles.invalidate();
+      toast.success(`Published! Live at /blog/${data.slug}`);
+    },
+    onError: (err) => toast.error(err.message || "Failed to publish."),
+  });
 
   const updateArticle = trpc.ops.updateSeoArticle.useMutation({
     onSuccess: () => {
@@ -1037,12 +1051,27 @@ function ArticleDrawer({
           {article.status !== "published" && (
             <Button
               size="sm"
-              className="gap-1.5 bg-blue-700 hover:bg-blue-600 text-white"
-              onClick={() => onStatusChange(article.id, "published")}
+              className="gap-1.5 bg-orange-600 hover:bg-orange-500 text-white"
+              onClick={() => publishArticle.mutate({ id: article.id })}
+              disabled={publishArticle.isPending}
             >
-              <Globe className="w-4 h-4" />
-              Mark Published
+              {publishArticle.isPending ? (
+                <><Loader2 className="w-4 h-4 animate-spin" /> Publishing...</>
+              ) : (
+                <><Rocket className="w-4 h-4" /> Publish to Site</>
+              )}
             </Button>
+          )}
+          {publishedUrl && (
+            <a
+              href={publishedUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 text-xs text-blue-400 hover:text-blue-300 transition-colors ml-1"
+            >
+              <ExternalLink className="w-3.5 h-3.5" />
+              View live
+            </a>
           )}
           {article.status !== "draft" && (
             <Button
@@ -1277,6 +1306,19 @@ export default function Seo() {
       toast.success("Article deleted.");
     },
     onError: (err) => toast.error(err.message || "Failed to delete article."),
+  });
+
+  const [publishingId, setPublishingId] = useState<number | null>(null);
+  const publishArticleInline = trpc.ops.publishSeoArticle.useMutation({
+    onSuccess: (data, variables) => {
+      utils.ops.listSeoArticles.invalidate();
+      setPublishingId(null);
+      toast.success(`Published at /blog/${data.slug}`);
+    },
+    onError: (err) => {
+      setPublishingId(null);
+      toast.error(err.message || "Failed to publish.");
+    },
   });
 
   const filteredArticles = useMemo(() => {
@@ -2188,11 +2230,13 @@ export default function Seo() {
               {filteredArticles.map((article) => (
                 <div
                   key={article.id}
-                  className="flex items-start gap-4 p-4 rounded-lg bg-zinc-900 border border-zinc-800 hover:border-zinc-700 cursor-pointer transition-colors"
-                  onClick={() => setSelectedArticle(article)}
+                  className="flex items-start gap-4 p-4 rounded-lg bg-zinc-900 border border-zinc-800 hover:border-zinc-700 transition-colors"
                 >
-                  <FileText className="w-5 h-5 text-zinc-500 shrink-0 mt-0.5" />
-                  <div className="flex-1 min-w-0">
+                  <FileText
+                    className="w-5 h-5 text-zinc-500 shrink-0 mt-0.5 cursor-pointer"
+                    onClick={() => setSelectedArticle(article)}
+                  />
+                  <div className="flex-1 min-w-0 cursor-pointer" onClick={() => setSelectedArticle(article)}>
                     <div className="flex flex-wrap items-center gap-2 mb-1">
                       <span className="text-sm font-medium text-zinc-200 truncate">{article.title}</span>
                       {statusBadge(article.status)}
@@ -2201,12 +2245,46 @@ export default function Seo() {
                       <span>Keyword: <span className="text-zinc-400">{article.targetKeyword}</span></span>
                       {article.wordCount && <span>{article.wordCount.toLocaleString()} words</span>}
                       <span>{new Date(article.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}</span>
+                      {article.publishedSlug && (
+                        <a
+                          href={`/blog/${article.publishedSlug}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-blue-400 hover:text-blue-300 inline-flex items-center gap-0.5"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <ExternalLink className="w-3 h-3" /> View live
+                        </a>
+                      )}
                     </div>
                     {article.metaDescription && (
                       <p className="text-xs text-zinc-500 mt-1 truncate">{article.metaDescription}</p>
                     )}
                   </div>
-                  <ChevronDown className="w-4 h-4 text-zinc-600 shrink-0 mt-1 -rotate-90" />
+                  <div className="flex items-center gap-2 shrink-0">
+                    {article.status !== "published" && (
+                      <Button
+                        size="sm"
+                        className="h-7 text-xs gap-1 bg-orange-600 hover:bg-orange-500 text-white px-2.5"
+                        disabled={publishingId === article.id}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setPublishingId(article.id);
+                          publishArticleInline.mutate({ id: article.id });
+                        }}
+                      >
+                        {publishingId === article.id ? (
+                          <><Loader2 className="w-3 h-3 animate-spin" /> Publishing...</>
+                        ) : (
+                          <><Rocket className="w-3 h-3" /> Publish</>
+                        )}
+                      </Button>
+                    )}
+                    <ChevronDown
+                      className="w-4 h-4 text-zinc-600 shrink-0 -rotate-90 cursor-pointer"
+                      onClick={() => setSelectedArticle(article)}
+                    />
+                  </div>
                 </div>
               ))}
             </div>

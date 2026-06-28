@@ -1182,6 +1182,10 @@ export const seoArticles = mysqlTable("seo_articles", {
   notes: text("notes"),
   /** Link to the keyword row if applicable */
   keywordId: int("keywordId"),
+  /** URL slug used when published to the site (e.g. "forestry-mulching-middle-tennessee") */
+  publishedSlug: varchar("publishedSlug", { length: 300 }),
+  /** Timestamp when the article was published to the live site */
+  publishedAt: timestamp("publishedAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });

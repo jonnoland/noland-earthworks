@@ -2070,3 +2070,12 @@
 - [x] Section renders below the existing ServicePageLayout FAQ and above the footer
 - [x] Accordion expand/collapse with orange accent color matching site design
 - [x] Fix page title to remove duplicate "& Management" from "Land Management & Management in Tennessee"
+
+## SEO Content Library — Publish to Site — June 2026
+
+- [x] Add publishedSlug and publishedAt columns to seoArticles schema and push migration
+- [x] Add publishSeoArticle mutation to opsRouter: generates slug, writes .tsx blog post file, registers route in App.tsx, marks article as published
+- [x] Add inline Publish button to Content Library list rows (orange, shows spinner while publishing)
+- [x] Add Publish to Site button inside ArticleDrawer (orange, shows spinner while publishing)
+- [x] Show "View live" link on published articles in list and drawer
+- [x] Slug collision detection: throws CONFLICT error if another article already uses the same slug

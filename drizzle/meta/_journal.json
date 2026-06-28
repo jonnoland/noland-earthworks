@@ -505,6 +505,13 @@
       "when": 1782656773788,
       "tag": "0071_slim_johnny_storm",
       "breakpoints": true
+    },
+    {
+      "idx": 72,
+      "version": "5",
+      "when": 1782666750258,
+      "tag": "0072_lame_gamora",
+      "breakpoints": true
     }
   ]
 }

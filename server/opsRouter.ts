@@ -3659,6 +3659,152 @@ export const opsRouter = router({
       return { success: true };
     }),
 
+  /**
+   * Publish an SEO article to the live site.
+   * Generates a URL slug from the title, writes a .tsx blog post file,
+   * registers the route in App.tsx, and marks the article as published.
+   */
+  publishSeoArticle: ownerProcedure
+    .input(z.object({ id: z.number().int() }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+      const { seoArticles } = await import("../drizzle/schema");
+
+      // Load the article
+      const rows = await db.select().from(seoArticles).where(eq(seoArticles.id, input.id)).limit(1);
+      const article = rows[0];
+      if (!article) throw new TRPCError({ code: "NOT_FOUND", message: "Article not found." });
+
+      // Generate a URL-safe slug from the title
+      const slug = article.title
+        .toLowerCase()
+        .replace(/[^a-z0-9\s-]/g, "")
+        .trim()
+        .replace(/\s+/g, "-")
+        .replace(/-+/g, "-")
+        .slice(0, 80);
+
+      // Determine component name (PascalCase from slug)
+      const componentName = slug
+        .split("-")
+        .map((w: string) => w.charAt(0).toUpperCase() + w.slice(1))
+        .join("");
+
+      // Estimate read time
+      const wc = article.wordCount ?? article.bodyMarkdown.split(/\s+/).length;
+      const readTime = `${Math.max(1, Math.round(wc / 200))} min read`;
+
+      // Determine category from keyword
+      const kw = article.targetKeyword.toLowerCase();
+      const category = kw.includes("county") ? "Service Areas"
+        : kw.includes("pasture") || kw.includes("farm") ? "Property Tips"
+        : kw.includes("cost") || kw.includes("price") ? "Pricing"
+        : "Forestry Mulching";
+
+      // Escape markdown body for embedding in JSX template literal
+      const escapedMarkdown = article.bodyMarkdown
+        .replace(/\\/g, "\\\\")
+        .replace(/`/g, "\\`")
+        .replace(/\$/g, "\\$");
+
+      // Build the .tsx file content using Streamdown for markdown rendering
+      const now = new Date();
+      const monthYear = now.toLocaleString("en-US", { month: "long", year: "numeric" });
+      const isoDate = now.toISOString().split("T")[0];
+
+      const fileContent = `import BlogPostLayout from "@/components/BlogPostLayout";
+import { Streamdown } from "streamdown";
+
+const BODY = \`${escapedMarkdown}\`;
+
+export default function ${componentName}() {
+  return (
+    <BlogPostLayout
+      title="${article.title.replace(/"/g, "&quot;")}"
+      pageTitle="${article.title.replace(/"/g, "&quot;")} | Noland Earthworks"
+      metaDescription="${(article.metaDescription ?? "").replace(/"/g, "&quot;")}"
+      date="${monthYear}"
+      dateISO="${isoDate}"
+      lastUpdated="${monthYear}"
+      lastUpdatedISO="${isoDate}"
+      slug="${slug}"
+      readTime="${readTime}"
+      category="${category}"
+      keywords="${article.targetKeyword.replace(/"/g, "&quot;")}"
+    >
+      <div className="blog-content">
+        <Streamdown>{BODY}</Streamdown>
+      </div>
+    </BlogPostLayout>
+  );
+}
+`;
+
+      // Write the .tsx file
+      const fs = await import("fs");
+      const path = await import("path");
+      const blogDir = path.resolve(process.cwd(), "client/src/pages/blog");
+      const filePath = path.join(blogDir, `${componentName}.tsx`);
+
+      // Check for slug collision
+      const existing = await db.select().from(seoArticles)
+        .where(eq(seoArticles.publishedSlug, slug))
+        .limit(1);
+      if (existing.length > 0 && existing[0].id !== input.id) {
+        throw new TRPCError({ code: "CONFLICT", message: `A published article already uses the slug "${slug}". Edit the title to generate a unique slug.` });
+      }
+
+      fs.writeFileSync(filePath, fileContent, "utf-8");
+
+      // Register the route in App.tsx
+      const appPath = path.resolve(process.cwd(), "client/src/App.tsx");
+      let appContent = fs.readFileSync(appPath, "utf-8");
+
+      const importLine = `import ${componentName} from "./pages/blog/${componentName}";`;
+      const routeLine = `      <Route path="/blog/${slug}" component={${componentName}} />`;
+
+      // Only add import if not already present
+      if (!appContent.includes(importLine)) {
+        // Insert import after the last blog import
+        const lastBlogImportMatch = appContent.match(/import .+ from ".\/[^"]+\/blog\/[^"]+";/);
+        if (lastBlogImportMatch && lastBlogImportMatch.index !== undefined) {
+          const insertAt = lastBlogImportMatch.index + lastBlogImportMatch[0].length;
+          appContent = appContent.slice(0, insertAt) + importLine + "\n" + appContent.slice(insertAt);
+        } else {
+          // Fallback: add before the Router function
+          appContent = appContent.replace("function Router()", `${importLine}\nfunction Router()`);
+        }
+      }
+
+      // Only add route if not already present
+      if (!appContent.includes(routeLine)) {
+        // Insert after the last /blog/* route
+        const lastBlogRouteMatch = appContent.match(/<Route path="\/blog\/[^"]+" component=\{[^}]+\} \/>/);
+        if (lastBlogRouteMatch && lastBlogRouteMatch.index !== undefined) {
+          const insertAt = lastBlogRouteMatch.index + lastBlogRouteMatch[0].length;
+          appContent = appContent.slice(0, insertAt) + routeLine + "\n" + appContent.slice(insertAt);
+        } else {
+          // Fallback: add before closing </Switch> or </Routes>
+          appContent = appContent.replace(
+            /<Route path="\/404"/,
+            `${routeLine}\n      <Route path="/404"`
+          );
+        }
+      }
+
+      fs.writeFileSync(appPath, appContent, "utf-8");
+
+      // Update the article record
+      await db.update(seoArticles).set({
+        status: "published",
+        publishedSlug: slug,
+        publishedAt: new Date(),
+      }).where(eq(seoArticles.id, input.id));
+
+      return { success: true, slug, url: `/blog/${slug}`, componentName };
+    }),
+
   // ── SEO Fix Issues ──────────────────────────────────────────────────────────
 
   /**
