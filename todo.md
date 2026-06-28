@@ -2015,3 +2015,30 @@
 - [x] Update leadQualifier.ts to compute ballparkRange and ballparkNote via AI (total project range, not per-acre)
 - [x] Update quoteRouter.ts submit procedure to return ballparkRange and ballparkNote in response
 - [x] Update Quote.tsx confirmation screen to display ballpark range block with proper caveat framing
+
+## /ops Sidebar Restructure
+- [ ] Combine Quotes + Quote Analytics + Distance Quotes into tabbed Quotes page (/ops/quotes)
+- [ ] Combine Leads + Conversations into tabbed Leads page (/ops/leads)
+- [ ] Combine Clients + Invoices + Payments into tabbed Clients page (/ops/clients)
+- [ ] Combine Crews + Timesheets + Crew Pricing into tabbed Crews page (/ops/crews)
+- [ ] Combine Scoreboard + Reports into tabbed Reports page (/ops/reports)
+- [ ] Combine Social Posts + Ads + SEO into tabbed Marketing page (/ops/marketing)
+- [ ] Add Field Fix as tab under Equipment page (/ops/equipment)
+- [ ] Add Cost Estimator as tab under Pricing page (/ops/pricing)
+- [ ] Add Gallery to sidebar (/ops/gallery)
+- [ ] Update OpsDashboardLayout sidebar to 15-item structure with correct icons (no duplicate Users icon)
+- [ ] Update App.tsx routes for new combined pages and redirect old routes
+- [ ] Verify TypeScript clean after restructure
+
+## /ops Sidebar Restructure
+- [x] Combine Quotes + Quote Analytics + Distance Quotes into tabbed Quotes page
+- [x] Combine Leads + Conversations into tabbed Leads page (Conversations tab)
+- [x] Create ClientsHub wrapper page (Clients / Invoices / Payments tabs)
+- [x] Create CrewsHub wrapper page (Roster / Timesheets / Crew Pricing tabs)
+- [x] Create ReportsHub wrapper page (Reports / Scoreboard tabs)
+- [x] Create MarketingHub wrapper page (Social Posts / Ads / SEO tabs)
+- [x] Create EquipmentHub wrapper page (Diagnostics / Field Fix tabs)
+- [x] Create PricingHub wrapper page (Pricing / Cost Estimator tabs)
+- [x] Update OpsDashboardLayout sidebar to 15-item structure with correct icons and hub routes
+- [x] Add all hub routes to App.tsx with lazy imports and OwnerRoute guards
+- [x] Verify TypeScript clean (0 errors)

@@ -40,6 +40,12 @@ const OpsAds             = lazy(() => import("./pages/ops/Ads"));
 const OpsSeo             = lazy(() => import("./pages/ops/Seo"));
 const OpsChatSessions    = lazy(() => import("./pages/ops/ChatSessions"));
 const OpsGallery         = lazy(() => import("./pages/ops/Gallery"));
+const ClientsHub         = lazy(() => import("./pages/ops/ClientsHub"));
+const CrewsHub           = lazy(() => import("./pages/ops/CrewsHub"));
+const ReportsHub         = lazy(() => import("./pages/ops/ReportsHub"));
+const MarketingHub       = lazy(() => import("./pages/ops/MarketingHub"));
+const EquipmentHub       = lazy(() => import("./pages/ops/EquipmentHub"));
+const PricingHub         = lazy(() => import("./pages/ops/PricingHub"));
 
 // ── Customer payment portal (lazy-loaded) ────────────────────────────────────
 const PaymentPortal  = lazy(() => import("./pages/portal/PaymentPortal"));
@@ -294,7 +300,7 @@ function Router() {
       <Route path="/ops/settings">
         <Suspense fallback={<OpsLoading />}><OwnerRoute><OpsSettings /></OwnerRoute></Suspense>
       </Route>
-      <Route path="/ops/clients">
+      <Route path="/ops/clients/detail">
         <Suspense fallback={<OpsLoading />}><OwnerRoute><OpsClients /></OwnerRoute></Suspense>
       </Route>
       <Route path="/ops/quotes">
@@ -363,6 +369,28 @@ function Router() {
       </Route>
       <Route path="/ops/gallery">
         <Suspense fallback={<OpsLoading />}><OwnerRoute><OpsGallery /></OwnerRoute></Suspense>
+      </Route>
+      {/* Hub tab-wrapper routes */}
+      <Route path="/ops/clients">
+        <Suspense fallback={<OpsLoading />}><OwnerRoute><ClientsHub /></OwnerRoute></Suspense>
+      </Route>
+      <Route path="/ops/clients/:tab">
+        <Suspense fallback={<OpsLoading />}><OwnerRoute><ClientsHub /></OwnerRoute></Suspense>
+      </Route>
+      <Route path="/ops/crews-hub">
+        <Suspense fallback={<OpsLoading />}><OwnerRoute><CrewsHub /></OwnerRoute></Suspense>
+      </Route>
+      <Route path="/ops/reports-hub">
+        <Suspense fallback={<OpsLoading />}><OwnerRoute><ReportsHub /></OwnerRoute></Suspense>
+      </Route>
+      <Route path="/ops/marketing">
+        <Suspense fallback={<OpsLoading />}><OwnerRoute><MarketingHub /></OwnerRoute></Suspense>
+      </Route>
+      <Route path="/ops/equipment-hub">
+        <Suspense fallback={<OpsLoading />}><OwnerRoute><EquipmentHub /></OwnerRoute></Suspense>
+      </Route>
+      <Route path="/ops/pricing-hub">
+        <Suspense fallback={<OpsLoading />}><OwnerRoute><PricingHub /></OwnerRoute></Suspense>
       </Route>
 
       {/* Customer payment portal — lazy-loaded */}

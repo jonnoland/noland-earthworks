@@ -83,6 +83,19 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Tabs,
+  TabsList,
+  TabsTrigger,
+  TabsContent,
+} from "@/components/ui/tabs";
+import {
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip,
+  ResponsiveContainer, PieChart, Pie, Cell, Legend, ComposedChart, Line, Area,
+} from "recharts";
+import {
+  TrendingUp, ArrowLeft, Send, XCircle, MapPin as MapPinIcon,
+} from "lucide-react";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -4032,6 +4045,420 @@ function WebsiteRequestsSection({
   );
 }
 
+// ─── Distance Quotes Tab ────────────────────────────────────────────────────
+
+const DQ_STATUS_LABELS: Record<string, string> = {
+  draft: "Draft", sent: "Sent", accepted: "Accepted", declined: "Declined", expired: "Expired",
+};
+const DQ_STATUS_COLORS: Record<string, string> = {
+  draft: "bg-secondary text-muted-foreground",
+  sent: "bg-blue-900/40 text-blue-300",
+  accepted: "bg-green-900/40 text-green-400",
+  declined: "bg-red-900/40 text-red-400",
+  expired: "bg-yellow-900/40 text-yellow-400",
+};
+const DQ_STATUS_ICONS: Record<string, React.ReactNode> = {
+  draft: <FileText className="w-3 h-3" />,
+  sent: <Clock className="w-3 h-3" />,
+  accepted: <CheckCircle className="w-3 h-3" />,
+  declined: <XCircle className="w-3 h-3" />,
+  expired: <AlertTriangle className="w-3 h-3" />,
+};
+function fmtCents(cents: number) {
+  return `$${(cents / 100).toLocaleString("en-US", { maximumFractionDigits: 0 })}`;
+}
+function fmtDate(d: Date | string) {
+  return new Date(d).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+}
+
+function DistanceQuotesTab() {
+  const [filterStatus, setFilterStatus] = useState<string>("all");
+  const [expandedId, setExpandedId] = useState<number | null>(null);
+  const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null);
+  const [emailConfirmId, setEmailConfirmId] = useState<number | null>(null);
+
+  const { data: dqQuotes = [], isLoading: dqLoading, refetch: dqRefetch } = trpc.ops.distanceQuotes.list.useQuery();
+  const dqUpdateStatus = trpc.ops.distanceQuotes.updateStatus.useMutation({
+    onSuccess: () => dqRefetch(),
+    onError: (e) => toast.error(e.message),
+  });
+  const dqDelete = trpc.ops.distanceQuotes.delete.useMutation({
+    onSuccess: () => { dqRefetch(); toast.success("Quote deleted."); setDeleteConfirmId(null); },
+    onError: (e) => toast.error(e.message),
+  });
+  const dqEmail = trpc.ops.distanceQuotes.emailQuote.useMutation({
+    onSuccess: () => { dqRefetch(); toast.success("Quote emailed to client."); setEmailConfirmId(null); },
+    onError: (e) => toast.error(e.message),
+  });
+
+  const dqFiltered = filterStatus === "all" ? dqQuotes : dqQuotes.filter(q => q.status === filterStatus);
+  const dqCounts = {
+    all: dqQuotes.length,
+    draft: dqQuotes.filter(q => q.status === "draft").length,
+    sent: dqQuotes.filter(q => q.status === "sent").length,
+    accepted: dqQuotes.filter(q => q.status === "accepted").length,
+    declined: dqQuotes.filter(q => q.status === "declined").length,
+    expired: dqQuotes.filter(q => q.status === "expired").length,
+  };
+  const totalAcceptedCents = dqQuotes.filter(q => q.status === "accepted").reduce((s, q) => s + q.adjustedJobTotalCents, 0);
+
+  return (
+    <div className="space-y-5 pb-10">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-base font-semibold text-foreground">Distance Quotes</h2>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Formal quotes saved from the{" "}
+            <Link href="/ops/pricing" className="text-primary underline hover:text-primary/80 transition-colors">Distance Pricing tool</Link>
+          </p>
+        </div>
+        <Link href="/ops/pricing">
+          <button className="flex items-center gap-1.5 bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-semibold px-4 py-2 rounded-md transition-all">
+            <Plus className="w-3.5 h-3.5" /> New Quote
+          </button>
+        </Link>
+      </div>
+      {/* KPI cards */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        {[
+          { label: "Total Quotes", value: dqCounts.all, color: "text-foreground" },
+          { label: "Sent", value: dqCounts.sent, color: "text-blue-400" },
+          { label: "Accepted", value: dqCounts.accepted, color: "text-green-400" },
+          { label: "Accepted Value", value: fmtCents(totalAcceptedCents), color: "text-primary" },
+        ].map((card, i) => (
+          <div key={i} className="ops-card p-4 text-center">
+            <div className="text-[10px] text-muted-foreground uppercase tracking-wide mb-1">{card.label}</div>
+            <div className={`text-xl font-bold ${card.color}`}>{card.value}</div>
+          </div>
+        ))}
+      </div>
+      {/* Status filter */}
+      <div className="flex items-center gap-1 overflow-x-auto pb-1">
+        {(["all", "draft", "sent", "accepted", "declined", "expired"] as const).map(s => (
+          <button
+            key={s}
+            onClick={() => setFilterStatus(s)}
+            className={`flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-full whitespace-nowrap transition-all ${
+              filterStatus === s ? "bg-primary text-primary-foreground" : "bg-secondary text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            {s === "all" ? "All" : DQ_STATUS_LABELS[s]}
+            <span className="text-[10px] opacity-70">{s === "all" ? dqCounts.all : dqCounts[s as keyof typeof dqCounts]}</span>
+          </button>
+        ))}
+      </div>
+      {/* List */}
+      {dqLoading ? (
+        <div className="ops-card p-8 text-center text-sm text-muted-foreground">Loading quotes...</div>
+      ) : dqFiltered.length === 0 ? (
+        <div className="ops-card p-10 text-center">
+          <FileText className="w-8 h-8 text-muted-foreground mx-auto mb-3" />
+          <p className="text-sm text-muted-foreground">
+            {filterStatus === "all" ? "No distance quotes saved yet. Run a distance calculation on the Pricing page and click Save as Quote." : `No ${DQ_STATUS_LABELS[filterStatus].toLowerCase()} quotes.`}
+          </p>
+          <Link href="/ops/pricing">
+            <button className="mt-4 flex items-center gap-1.5 bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-semibold px-4 py-2 rounded-md transition-all mx-auto">
+              <Plus className="w-3.5 h-3.5" /> Go to Pricing Tool
+            </button>
+          </Link>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {dqFiltered.map(quote => (
+            <div key={quote.id} className="ops-card overflow-hidden">
+              <div
+                className="flex items-center gap-3 p-4 cursor-pointer hover:bg-secondary/30 transition-colors"
+                onClick={() => setExpandedId(expandedId === quote.id ? null : quote.id)}
+              >
+                <span className={`flex items-center gap-1 text-[10px] font-semibold px-2 py-1 rounded-full shrink-0 ${DQ_STATUS_COLORS[quote.status]}`}>
+                  {DQ_STATUS_ICONS[quote.status]}{DQ_STATUS_LABELS[quote.status]}
+                </span>
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-semibold text-foreground truncate">{quote.clientName}</div>
+                  <div className="flex items-center gap-1 text-[11px] text-muted-foreground mt-0.5">
+                    <MapPinIcon className="w-3 h-3 shrink-0" />
+                    <span className="truncate">{quote.jobAddress}</span>
+                  </div>
+                </div>
+                <div className="text-right shrink-0 hidden sm:block">
+                  <div className="text-sm font-bold text-primary">{fmtCents(quote.adjustedJobTotalCents)}</div>
+                  <div className="text-[11px] text-muted-foreground">{fmtDate(quote.createdAt)}</div>
+                </div>
+                <ChevronDown className={`w-4 h-4 text-muted-foreground shrink-0 transition-transform ${expandedId === quote.id ? "rotate-180" : ""}`} />
+              </div>
+              {expandedId === quote.id && (
+                <div className="border-t border-border px-4 pb-4 pt-3 space-y-4">
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    {[
+                      { label: "Job Type", value: quote.jobType },
+                      { label: "Acres", value: quote.jobAcres ?? "—" },
+                      { label: "Crew Days", value: quote.crewDaysNeeded },
+                      { label: "Distance", value: `${quote.distanceMiles} mi${quote.driveDuration ? ` (${quote.driveDuration})` : ""}` },
+                      { label: "Base Day Rate", value: fmtCents(quote.baseDayRateCents) },
+                      { label: "Travel Surcharge", value: quote.mobSurchargeCents === 0 ? "None" : `+${fmtCents(quote.mobSurchargeCents)}/day` },
+                      { label: "Adjusted Day Rate", value: fmtCents(quote.adjustedDayRateCents) },
+                      { label: "Price / Acre", value: fmtCents(quote.pricePerAcreCents) },
+                    ].map((item, i) => (
+                      <div key={i} className="bg-secondary/40 rounded-md p-2.5">
+                        <div className="text-[10px] text-muted-foreground uppercase tracking-wide mb-0.5">{item.label}</div>
+                        <div className="text-xs font-semibold text-foreground">{item.value}</div>
+                      </div>
+                    ))}
+                  </div>
+                  {(quote.clientPhone || quote.clientEmail) && (
+                    <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                      {quote.clientPhone && <span>Phone: <span className="text-foreground">{quote.clientPhone}</span></span>}
+                      {quote.clientEmail && <span>Email: <span className="text-foreground">{quote.clientEmail}</span></span>}
+                    </div>
+                  )}
+                  {quote.notes && (
+                    <div className="bg-secondary/30 rounded-md p-3 text-xs text-muted-foreground">
+                      <span className="font-semibold text-foreground">Notes: </span>{quote.notes}
+                    </div>
+                  )}
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <div className="relative group">
+                      <button className="flex items-center gap-1.5 bg-secondary hover:bg-secondary/70 text-xs font-medium px-3 py-1.5 rounded-md transition-all text-foreground">
+                        Update Status <ChevronDown className="w-3 h-3" />
+                      </button>
+                      <div className="absolute left-0 top-full mt-1 bg-card border border-border rounded-lg shadow-xl z-10 min-w-[140px] hidden group-hover:block">
+                        {(["draft", "sent", "accepted", "declined", "expired"] as const)
+                          .filter(s => s !== quote.status)
+                          .map(s => (
+                            <button
+                              key={s}
+                              onClick={() => dqUpdateStatus.mutate({ id: quote.id, status: s })}
+                              className="w-full text-left flex items-center gap-2 px-3 py-2 text-xs hover:bg-secondary/50 transition-colors text-foreground first:rounded-t-lg last:rounded-b-lg"
+                            >
+                              {DQ_STATUS_ICONS[s]}{DQ_STATUS_LABELS[s]}
+                            </button>
+                          ))}
+                      </div>
+                    </div>
+                    {quote.clientEmail && (
+                      emailConfirmId === quote.id ? (
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs text-blue-400">Email quote to {quote.clientEmail}?</span>
+                          <button onClick={() => dqEmail.mutate({ id: quote.id })} disabled={dqEmail.isPending} className="flex items-center gap-1 text-xs bg-blue-600 hover:bg-blue-500 text-white px-3 py-1.5 rounded-md transition-all disabled:opacity-50">
+                            <Send className="w-3 h-3" />{dqEmail.isPending ? "Sending..." : "Send"}
+                          </button>
+                          <button onClick={() => setEmailConfirmId(null)} className="text-xs text-muted-foreground hover:text-foreground transition-colors">Cancel</button>
+                        </div>
+                      ) : (
+                        <button onClick={() => setEmailConfirmId(quote.id)} className="flex items-center gap-1.5 text-xs text-blue-400 hover:text-blue-300 transition-colors px-2 py-1.5">
+                          <Mail className="w-3.5 h-3.5" />Email Quote
+                        </button>
+                      )
+                    )}
+                    {deleteConfirmId === quote.id ? (
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-red-400">Delete this quote?</span>
+                        <button onClick={() => dqDelete.mutate({ id: quote.id })} className="text-xs bg-red-600 hover:bg-red-500 text-white px-3 py-1.5 rounded-md transition-all">Confirm</button>
+                        <button onClick={() => setDeleteConfirmId(null)} className="text-xs text-muted-foreground hover:text-foreground transition-colors">Cancel</button>
+                      </div>
+                    ) : (
+                      <button onClick={() => setDeleteConfirmId(quote.id)} className="flex items-center gap-1.5 text-xs text-red-400 hover:text-red-300 transition-colors px-2 py-1.5">
+                        <Trash2 className="w-3.5 h-3.5" />Delete
+                      </button>
+                    )}
+                    <span className="ml-auto text-[11px] text-muted-foreground">
+                      Created {fmtDate(quote.createdAt)}
+                      {quote.sentAt ? ` · Sent ${fmtDate(quote.sentAt)}` : ""}
+                    </span>
+                  </div>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Quote Analytics Tab ──────────────────────────────────────────────────────
+
+const QA_AMBER = "#f59e0b";
+const QA_GREEN = "#22c55e";
+const QA_BLUE = "#3b82f6";
+const QA_MUTED = "#6b7280";
+const QA_STATUS_COLORS: Record<string, string> = {
+  draft: "#6b7280", sent: "#3b82f6", accepted: "#22c55e", declined: "#ef4444", expired: "#f59e0b",
+};
+const QA_JOB_TYPE_COLORS = [QA_AMBER, QA_GREEN, QA_BLUE, "#a855f7", "#ec4899", "#14b8a6"];
+
+function QaKpiCard({ label, value, sub, color = "text-foreground", icon }: { label: string; value: string | number; sub?: string; color?: string; icon?: React.ReactNode }) {
+  return (
+    <div className="ops-card p-4">
+      <div className="flex items-start justify-between mb-2">
+        <span className="text-[10px] text-muted-foreground uppercase tracking-wide">{label}</span>
+        {icon && <span className="text-muted-foreground">{icon}</span>}
+      </div>
+      <div className={`text-2xl font-bold ${color}`}>{value}</div>
+      {sub && <div className="text-[11px] text-muted-foreground mt-0.5">{sub}</div>}
+    </div>
+  );
+}
+
+const QaCustomTooltip = ({ active, payload, label }: any) => {
+  if (!active || !payload?.length) return null;
+  return (
+    <div className="bg-card border border-border rounded-lg shadow-xl px-3 py-2 text-xs">
+      <p className="font-semibold text-foreground mb-1">{label}</p>
+      {payload.map((p: any, i: number) => (
+        <p key={i} style={{ color: p.color ?? p.fill }}>
+          {p.name}: {typeof p.value === "number" && p.name?.toLowerCase().includes("revenue") ? `$${p.value.toLocaleString()}` : p.value}
+        </p>
+      ))}
+    </div>
+  );
+};
+
+function QuoteAnalyticsTab() {
+  const { data: qaData, isLoading: qaLoading } = trpc.ops.distanceQuotes.analytics.useQuery();
+
+  if (qaLoading) return <div className="flex items-center justify-center h-64 text-sm text-muted-foreground">Loading analytics...</div>;
+
+  if (!qaData || qaData.total === 0) {
+    return (
+      <div className="max-w-3xl mx-auto py-10 text-center space-y-4">
+        <TrendingUp className="w-10 h-10 text-muted-foreground mx-auto" />
+        <h2 className="text-base font-semibold text-foreground">No quote data yet</h2>
+        <p className="text-sm text-muted-foreground">Save quotes from the Distance Pricing tool to start seeing analytics here.</p>
+        <Link href="/ops/pricing">
+          <button className="bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-semibold px-4 py-2 rounded-md transition-all">Go to Pricing Tool</button>
+        </Link>
+      </div>
+    );
+  }
+
+  const qaPipelineData = [
+    { name: "Draft", value: Math.round(qaData.pipeline.draftCents / 100), fill: QA_STATUS_COLORS.draft },
+    { name: "Sent", value: Math.round(qaData.pipeline.sentCents / 100), fill: QA_STATUS_COLORS.sent },
+    { name: "Accepted", value: Math.round(qaData.pipeline.acceptedCents / 100), fill: QA_STATUS_COLORS.accepted },
+    { name: "Declined", value: Math.round(qaData.pipeline.declinedCents / 100), fill: QA_STATUS_COLORS.declined },
+  ].filter(d => d.value > 0);
+  const qaTotalPipeline = qaData.pipeline.draftCents + qaData.pipeline.sentCents + qaData.pipeline.acceptedCents + qaData.pipeline.declinedCents;
+
+  return (
+    <div className="space-y-6 pb-10">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <QaKpiCard label="Total Quotes" value={qaData.total} icon={<TrendingUp className="w-4 h-4" />} />
+        <QaKpiCard label="Overall Acceptance" value={`${qaData.overallAcceptanceRate}%`} sub={`${qaData.statusBreakdown.find(s => s.status === "accepted")?.count ?? 0} accepted`} color="text-green-400" icon={<CheckCircle className="w-4 h-4" />} />
+        <QaKpiCard label="Accepted Revenue" value={fmtCents(qaData.pipeline.acceptedCents)} sub="from accepted quotes" color="text-primary" icon={<DollarSign className="w-4 h-4" />} />
+        <QaKpiCard label="Total Pipeline" value={fmtCents(qaTotalPipeline)} sub="all statuses" icon={<MapPinIcon className="w-4 h-4" />} />
+      </div>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div className="ops-card p-4">
+          <h3 className="text-xs font-semibold text-foreground mb-4">Acceptance Rate by Job Type</h3>
+          {qaData.acceptanceByJobType.length === 0 ? <p className="text-xs text-muted-foreground text-center py-8">No data</p> : (
+            <ResponsiveContainer width="100%" height={220}>
+              <BarChart data={qaData.acceptanceByJobType} margin={{ top: 4, right: 8, left: -10, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" />
+                <XAxis dataKey="jobType" tick={{ fontSize: 10, fill: QA_MUTED }} />
+                <YAxis tick={{ fontSize: 10, fill: QA_MUTED }} unit="%" domain={[0, 100]} />
+                <RechartsTooltip content={<QaCustomTooltip />} />
+                <Bar dataKey="acceptanceRate" name="Acceptance Rate %" radius={[3, 3, 0, 0]}>
+                  {qaData.acceptanceByJobType.map((_, i) => <Cell key={i} fill={QA_JOB_TYPE_COLORS[i % QA_JOB_TYPE_COLORS.length]} />)}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          )}
+        </div>
+        <div className="ops-card p-4">
+          <h3 className="text-xs font-semibold text-foreground mb-4">Quote Status Breakdown</h3>
+          {qaData.statusBreakdown.length === 0 ? <p className="text-xs text-muted-foreground text-center py-8">No data</p> : (
+            <ResponsiveContainer width="100%" height={220}>
+              <PieChart>
+                <Pie data={qaData.statusBreakdown} dataKey="count" nameKey="status" cx="50%" cy="50%" innerRadius={55} outerRadius={85} paddingAngle={2} label={({ status, percent }: any) => `${status} ${(percent * 100).toFixed(0)}%`} labelLine={false}>
+                  {qaData.statusBreakdown.map((entry, i) => <Cell key={i} fill={QA_STATUS_COLORS[entry.status] ?? QA_MUTED} />)}
+                </Pie>
+                <RechartsTooltip formatter={(val: number, name: string) => [val, name]} />
+              </PieChart>
+            </ResponsiveContainer>
+          )}
+        </div>
+      </div>
+      <div className="ops-card p-4">
+        <h3 className="text-xs font-semibold text-foreground mb-4">Monthly Trends</h3>
+        <ResponsiveContainer width="100%" height={240}>
+          <ComposedChart data={qaData.monthlyTrends} margin={{ top: 4, right: 20, left: -10, bottom: 0 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" />
+            <XAxis dataKey="label" tick={{ fontSize: 10, fill: QA_MUTED }} />
+            <YAxis yAxisId="left" tick={{ fontSize: 10, fill: QA_MUTED }} allowDecimals={false} />
+            <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 10, fill: QA_MUTED }} tickFormatter={v => `$${v.toLocaleString()}`} />
+            <RechartsTooltip content={<QaCustomTooltip />} />
+            <Legend wrapperStyle={{ fontSize: 10 }} />
+            <Bar yAxisId="left" dataKey="created" name="Created" fill="#374151" radius={[2, 2, 0, 0]} />
+            <Bar yAxisId="left" dataKey="accepted" name="Accepted" fill={QA_GREEN} radius={[2, 2, 0, 0]} />
+            <Area yAxisId="right" type="monotone" dataKey="revenueDollars" name="Revenue $" fill={`${QA_AMBER}20`} stroke={QA_AMBER} strokeWidth={2} dot={false} />
+          </ComposedChart>
+        </ResponsiveContainer>
+      </div>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div className="ops-card p-4">
+          <h3 className="text-xs font-semibold text-foreground mb-4">Distance Distribution</h3>
+          <ResponsiveContainer width="100%" height={200}>
+            <BarChart data={qaData.distanceDistribution} margin={{ top: 4, right: 8, left: -10, bottom: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" />
+              <XAxis dataKey="range" tick={{ fontSize: 10, fill: QA_MUTED }} />
+              <YAxis tick={{ fontSize: 10, fill: QA_MUTED }} allowDecimals={false} />
+              <RechartsTooltip content={<QaCustomTooltip />} />
+              <Bar dataKey="count" name="Quotes" fill={QA_BLUE} radius={[3, 3, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+        <div className="ops-card p-4">
+          <h3 className="text-xs font-semibold text-foreground mb-4">Revenue Pipeline by Status</h3>
+          {qaPipelineData.length === 0 ? <p className="text-xs text-muted-foreground text-center py-8">No revenue data</p> : (
+            <ResponsiveContainer width="100%" height={160}>
+              <BarChart data={qaPipelineData} layout="vertical" margin={{ top: 0, right: 8, left: 0, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" horizontal={false} />
+                <XAxis type="number" tick={{ fontSize: 10, fill: QA_MUTED }} tickFormatter={v => `$${(v / 1000).toFixed(0)}k`} />
+                <YAxis type="category" dataKey="name" tick={{ fontSize: 10, fill: QA_MUTED }} width={55} />
+                <RechartsTooltip formatter={(v: number) => [`$${v.toLocaleString()}`, "Revenue"]} />
+                <Bar dataKey="value" radius={[0, 3, 3, 0]}>
+                  {qaPipelineData.map((entry, i) => <Cell key={i} fill={entry.fill} />)}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          )}
+        </div>
+      </div>
+      <div className="ops-card p-4">
+        <h3 className="text-xs font-semibold text-foreground mb-4">Job Type Performance Summary</h3>
+        <div className="overflow-x-auto">
+          <table className="w-full text-xs">
+            <thead><tr className="border-b border-border">
+              <th className="text-left py-2 pr-4 font-medium text-muted-foreground">Job Type</th>
+              <th className="text-right py-2 px-3 font-medium text-muted-foreground">Quotes</th>
+              <th className="text-right py-2 px-3 font-medium text-muted-foreground">Accepted</th>
+              <th className="text-right py-2 px-3 font-medium text-muted-foreground">Rate</th>
+              <th className="text-right py-2 px-3 font-medium text-muted-foreground">Total Value</th>
+              <th className="text-right py-2 pl-3 font-medium text-muted-foreground">Accepted Value</th>
+            </tr></thead>
+            <tbody>
+              {qaData.acceptanceByJobType.sort((a, b) => b.acceptanceRate - a.acceptanceRate).map((row, i) => (
+                <tr key={i} className="border-b border-border/50 last:border-0 hover:bg-secondary/20 transition-colors">
+                  <td className="py-2.5 pr-4 font-medium text-foreground">{row.jobType}</td>
+                  <td className="py-2.5 px-3 text-right text-muted-foreground">{row.total}</td>
+                  <td className="py-2.5 px-3 text-right text-green-400">{row.accepted}</td>
+                  <td className="py-2.5 px-3 text-right">
+                    <span className={`font-semibold ${row.acceptanceRate >= 60 ? "text-green-400" : row.acceptanceRate >= 30 ? "text-yellow-400" : "text-red-400"}`}>{row.acceptanceRate}%</span>
+                  </td>
+                  <td className="py-2.5 px-3 text-right text-muted-foreground">{fmtCents(row.totalRevenueCents)}</td>
+                  <td className="py-2.5 pl-3 text-right font-semibold text-primary">{fmtCents(row.acceptedRevenueCents)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function OpsQuotes() {
@@ -4164,7 +4591,22 @@ export default function OpsQuotes() {
   const totalCount = (data as any)?.totalCount ?? nodes.length;
 
   return (
-    <DashboardLayout title="Quotes" subtitle="Live from Jobber CRM">
+    <DashboardLayout title="Quotes" subtitle="Jobber CRM · Distance Quotes · Analytics">
+      <Tabs defaultValue="jobber" className="space-y-4">
+        <TabsList className="bg-zinc-900 border border-zinc-800">
+          <TabsTrigger value="jobber" className="gap-1.5 text-xs">
+            <FileText className="w-3.5 h-3.5" /> Jobber Quotes
+          </TabsTrigger>
+          <TabsTrigger value="distance" className="gap-1.5 text-xs">
+            <MapPin className="w-3.5 h-3.5" /> Distance Quotes
+          </TabsTrigger>
+          <TabsTrigger value="analytics" className="gap-1.5 text-xs">
+            <TrendingUp className="w-3.5 h-3.5" /> Analytics
+          </TabsTrigger>
+        </TabsList>
+
+        {/* ── JOBBER QUOTES TAB ── */}
+        <TabsContent value="jobber" className="mt-0">
       <div className="space-y-5 pb-10">
 
         {/* Priority 4: Stale Quote Follow-Up Panel */}
@@ -4453,6 +4895,19 @@ export default function OpsQuotes() {
 
         </div>{/* end two-column grid */}
       </div>
+        </TabsContent>{/* end jobber tab */}
+
+        {/* ── DISTANCE QUOTES TAB ── */}
+        <TabsContent value="distance" className="mt-0">
+          <DistanceQuotesTab />
+        </TabsContent>
+
+        {/* ── ANALYTICS TAB ── */}
+        <TabsContent value="analytics" className="mt-0">
+          <QuoteAnalyticsTab />
+        </TabsContent>
+
+      </Tabs>
 
       {/* Quote detail slide-out panel */}
       {selectedQuoteId && !editTarget && (
