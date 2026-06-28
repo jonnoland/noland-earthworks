@@ -17,6 +17,7 @@ import { fieldQuoteRouter } from "./fieldQuoteRouter";
 import { fieldFixRouter } from "./fieldFixRouter";
 import { paymentRouter } from "./paymentRouter";
 import { galleryRouter } from "./galleryRouter";
+import { aiVisibilityRouter } from "./routers/aiVisibility";
 import { getDb } from "./db";
 import { businessSettings } from "../drizzle/schema";
 
@@ -49,6 +50,7 @@ export const appRouter = router({
   fieldFix: fieldFixRouter,
   payment: paymentRouter,
   gallery: galleryRouter,
+  aiVisibility: aiVisibilityRouter,
 
   /**
    * Public site configuration — read-only, no auth required.

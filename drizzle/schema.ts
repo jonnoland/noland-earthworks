@@ -1508,3 +1508,58 @@ export const adCampaigns = mysqlTable("ad_campaigns", {
 });
 export type AdCampaign = typeof adCampaigns.$inferSelect;
 export type InsertAdCampaign = typeof adCampaigns.$inferInsert;
+
+// ─── AI Visibility Score ─────────────────────────────────────────────────────
+
+/**
+ * Stores each full AI visibility audit run.
+ * One row per audit — contains the aggregate score and per-platform breakdown.
+ */
+export const aiVisibilityAudits = mysqlTable("ai_visibility_audits", {
+  id: int("id").autoincrement().primaryKey(),
+  /** Overall score 0–100 */
+  overallScore: int("overallScore").notNull(),
+  /** JSON: { grok: number, gemini: number, perplexity: number, chatgpt: number } */
+  platformScores: text("platformScores").notNull(),
+  /** JSON: { mentions: number, positiveCount: number, neutralCount: number, negativeCount: number } */
+  mentionStats: text("mentionStats").notNull(),
+  /** JSON array of prompt results */
+  promptResults: text("promptResults").notNull(),
+  /** JSON array of AEO recommendation strings */
+  recommendations: text("recommendations").notNull(),
+  /** Share of voice vs competitors 0–100 */
+  shareOfVoice: int("shareOfVoice").notNull().default(0),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type AiVisibilityAudit = typeof aiVisibilityAudits.$inferSelect;
+export type InsertAiVisibilityAudit = typeof aiVisibilityAudits.$inferInsert;
+
+/**
+ * Individual prompt result within an audit.
+ * Stored as JSON in aiVisibilityAudits.promptResults but also queryable standalone.
+ */
+export const aiVisibilityPrompts = mysqlTable("ai_visibility_prompts", {
+  id: int("id").autoincrement().primaryKey(),
+  auditId: int("auditId").notNull(),
+  /** The prompt text sent to the AI */
+  prompt: text("prompt").notNull(),
+  /** Category: local_service | branded | competitor | use_case | general */
+  category: varchar("category", { length: 64 }).notNull(),
+  /** Which AI platform was queried: grok | gemini | perplexity | chatgpt */
+  platform: varchar("platform", { length: 32 }).notNull(),
+  /** Full AI response text */
+  response: text("response").notNull(),
+  /** Was Noland Earthworks mentioned? */
+  mentioned: boolean("mentioned").notNull().default(false),
+  /** Mention prominence: primary | secondary | none */
+  prominence: varchar("prominence", { length: 16 }).notNull().default("none"),
+  /** Sentiment: positive | neutral | negative */
+  sentiment: varchar("sentiment", { length: 16 }).notNull().default("neutral"),
+  /** Was the domain nolandearthworks.com cited? */
+  cited: boolean("cited").notNull().default(false),
+  /** Score for this individual prompt 0–100 */
+  score: int("score").notNull().default(0),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type AiVisibilityPrompt = typeof aiVisibilityPrompts.$inferSelect;
+export type InsertAiVisibilityPrompt = typeof aiVisibilityPrompts.$inferInsert;

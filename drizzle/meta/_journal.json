@@ -498,6 +498,13 @@
       "when": 1782427528963,
       "tag": "0070_condemned_trish_tilby",
       "breakpoints": true
+    },
+    {
+      "idx": 71,
+      "version": "5",
+      "when": 1782656773788,
+      "tag": "0071_slim_johnny_storm",
+      "breakpoints": true
     }
   ]
 }

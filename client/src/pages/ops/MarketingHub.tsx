@@ -1,15 +1,17 @@
 /**
- * MarketingHub — tab wrapper for Social Posts, Ads, and SEO
+ * MarketingHub — tab wrapper for Social Posts, Ads, SEO, and AI Visibility
  */
 import { useState } from "react";
 import SocialPosts from "./SocialPosts";
 import Ads from "./Ads";
 import Seo from "./Seo";
+import AiVisibility from "./AiVisibility";
 
 const TABS = [
   { value: "social", label: "Social Posts" },
   { value: "ads", label: "Ads" },
   { value: "seo", label: "SEO" },
+  { value: "ai-visibility", label: "AI Visibility" },
 ] as const;
 
 type TabValue = (typeof TABS)[number]["value"];
@@ -42,6 +44,7 @@ export default function MarketingHub() {
         {active === "social" && <SocialPosts />}
         {active === "ads" && <Ads />}
         {active === "seo" && <Seo />}
+        {active === "ai-visibility" && <AiVisibility />}
       </div>
     </div>
   );
