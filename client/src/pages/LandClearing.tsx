@@ -8,11 +8,11 @@ const FORESTRY_HERO = "https://d2xsxph8kpxj0f.cloudfront.net/310519663484957999/
 const VEGETATION_HERO = "https://d2xsxph8kpxj0f.cloudfront.net/310519663484957999/PymCzDCnSJzPjdkfwA7Jn6/vegetation-management-hnEnCRefahdbJy4xpn6UnC.webp";
 const MAINTENANCE_HERO = "https://d2xsxph8kpxj0f.cloudfront.net/310519663484957999/PymCzDCnSJzPjdkfwA7Jn6/property-maintenance-3gu7BTR6P2RKi4ZuYCNLoN.webp";
 
-const HERO = "https://d2xsxph8kpxj0f.cloudfront.net/310519663484957999/PymCzDCnSJzPjdkfwA7Jn6/land-clearing-iPC6VzRdyjJa4bVNXaWy5n.webp";
+const HERO = "https://d2xsxph8kpxj0f.cloudfront.net/310519663484957999/PymCzDCnSJzPjdkfwA7Jn6/land-management-iPC6VzRdyjJa4bVNXaWy5n.webp";
 
 const data: ServicePageProps = {
   slug: "land-management",
-  title: "Land Clearing & Management in Tennessee",
+  title: "Land Management & Management in Tennessee",
   tagline: "From overgrown pasture to construction-ready lots — full-service land management for residential, agricultural, and commercial properties across Middle & West Tennessee.",
   heroImage: HERO,
   overviewTitle: "Land Management Built Around What Your Property Needs",
@@ -66,7 +66,7 @@ const data: ServicePageProps = {
 
 export default function LandClearingPage() {
   usePageTitle(
-    "Land Clearing & Management in Tennessee | Noland Earthworks",
+    "Land Management & Management in Tennessee | Noland Earthworks",
     "Veteran-owned land management serving Nashville, Franklin, Murfreesboro, Clarksville, and 35 counties in Middle & West Tennessee. Lot clearing, pasture reclamation, site prep, and fence line clearing. Free on-site estimates.",
     "/services/land-management"
   );

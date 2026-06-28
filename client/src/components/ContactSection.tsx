@@ -316,7 +316,7 @@ export default function ContactSection() {
                     style={{ ...inputStyle, cursor: "pointer" }}
                   >
                     <option value="" style={{ backgroundColor: "#1a1a1a" }}>Select a service...</option>
-                    <option value="land-clearing" style={{ backgroundColor: "#1a1a1a" }}>Land Management</option>
+                    <option value="land-management" style={{ backgroundColor: "#1a1a1a" }}>Land Management</option>
                     <option value="forestry-mulching" style={{ backgroundColor: "#1a1a1a" }}>Forestry Mulching</option>
                     <option value="vegetation-management" style={{ backgroundColor: "#1a1a1a" }}>Vegetation Management</option>
                     <option value="property-maintenance" style={{ backgroundColor: "#1a1a1a" }}>Property Maintenance</option>

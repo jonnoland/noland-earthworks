@@ -75,7 +75,7 @@ export const BLOG_POSTS = [
     category: "Methods & Equipment",
   },
   {
-    slug: "how-to-prepare-for-land-clearing",
+    slug: "how-to-prepare-for-land-management",
     title: "How to Prepare for a Land Management Job in Tennessee",
     meta: "What to do before the mulcher shows up. A practical checklist for Tennessee property owners to get their land management project started on the right foot.",
     date: "May 2026",
@@ -414,7 +414,7 @@ const ALL_CATEGORIES = ["All", ...Array.from(new Set(BLOG_POSTS.map((p) => p.cat
 export default function Blog() {
   usePageTitle(
     "Forestry Mulching & Land Management Blog — Tennessee",
-    "Guides, pricing breakdowns, and how-to articles for Tennessee landowners. Forestry mulching, land clearing, pasture reclamation, and more from Noland Earthworks.",
+    "Guides, pricing breakdowns, and how-to articles for Tennessee landowners. Forestry mulching, land management, pasture reclamation, and more from Noland Earthworks.",
     "/blog"
   );
 

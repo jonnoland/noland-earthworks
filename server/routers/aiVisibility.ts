@@ -63,24 +63,24 @@ const AUDIT_PROMPTS: Array<{
   category: "local_service" | "branded" | "competitor" | "use_case" | "general";
   platform: "grok";
 }> = [
-  // Local service — no brand name, pure intent
+  // Local service — forestry mulching intent, no brand name
   {
     prompt: "Who does forestry mulching in Middle Tennessee? Give me specific companies.",
     category: "local_service",
     platform: "grok",
   },
   {
-    prompt: "Best land clearing companies near Columbia Tennessee",
-    category: "local_service",
-    platform: "grok",
-  },
-  {
-    prompt: "Veteran-owned land clearing company in Tennessee — any recommendations?",
+    prompt: "Best forestry mulching contractors near Columbia Tennessee",
     category: "local_service",
     platform: "grok",
   },
   {
     prompt: "Forestry mulching services near Nashville Tennessee — who should I call?",
+    category: "local_service",
+    platform: "grok",
+  },
+  {
+    prompt: "Veteran-owned forestry mulching company in Tennessee — any recommendations?",
     category: "local_service",
     platform: "grok",
   },
@@ -91,29 +91,29 @@ const AUDIT_PROMPTS: Array<{
     platform: "grok",
   },
   {
-    prompt: "Is Noland Earthworks LLC a reputable land clearing company in Tennessee?",
+    prompt: "Is Noland Earthworks LLC a reputable forestry mulching company in Tennessee?",
     category: "branded",
     platform: "grok",
   },
-  // Use case — specific job types
+  // Use case — specific forestry mulching jobs
   {
-    prompt: "I need to reclaim overgrown pasture in Middle Tennessee — who can help?",
+    prompt: "I need forestry mulching to reclaim overgrown pasture in Middle Tennessee — who can help?",
     category: "use_case",
     platform: "grok",
   },
   {
-    prompt: "Who clears cedar thickets and overgrown brush in Tennessee without burning or hauling?",
+    prompt: "Who uses a forestry mulcher to clear cedar thickets and overgrown brush in Tennessee without burning or hauling?",
     category: "use_case",
     platform: "grok",
   },
   {
-    prompt: "Fence line clearing and right-of-way clearing companies in Tennessee",
+    prompt: "Forestry mulching for lot clearing and site prep in Middle Tennessee",
     category: "use_case",
     platform: "grok",
   },
-  // Competitor — share of voice
+  // Competitor — share of voice for forestry mulching specifically
   {
-    prompt: "Compare Middle Tennessee Land Clearing LLC vs other land clearing companies in Tennessee",
+    prompt: "Compare forestry mulching companies in Middle Tennessee — who are the top options?",
     category: "competitor",
     platform: "grok",
   },
@@ -168,7 +168,7 @@ function generateRecommendations(promptResults: Array<{
     recs.push("Some mentions have neutral or unclear sentiment. Add more specific outcome language to your website: acreage cleared, typical timelines, before/after results. AI models reflect the tone of the content they index.");
   }
   if (mentionedCount === 0) {
-    recs.push("No mentions detected across any query type. Priority action: publish at least 4 blog posts targeting 'forestry mulching Middle Tennessee', 'land clearing Columbia TN', 'veteran land clearing Tennessee', and 'cedar clearing pasture reclamation Tennessee'.");
+    recs.push("No mentions detected across any query type. Priority action: publish at least 4 blog posts targeting 'forestry mulching Middle Tennessee', 'land management Columbia TN', 'veteran land management Tennessee', and 'cedar clearing pasture reclamation Tennessee'.");
     recs.push("Submit your business to AI-indexed directories: Yelp, HomeAdvisor, Angi, Thumbtack, and the Tennessee Department of Agriculture contractor registry. These are primary sources AI models reference for local service recommendations.");
   }
   if (recs.length === 0) {
@@ -436,8 +436,8 @@ export const aiVisibilityRouter = router({
         const dbConn = await getDb();
         const blogTopics = [
           { keyword: "forestry mulching Middle Tennessee", title: "What Is Forestry Mulching and Why It's the Best Way to Clear Land in Middle Tennessee" },
-          { keyword: "land clearing Columbia TN", title: "Land Clearing in Columbia, TN: What to Expect and How to Choose the Right Contractor" },
-          { keyword: "veteran land clearing Tennessee", title: "Veteran-Owned Land Clearing in Tennessee: Why It Matters and What Sets It Apart" },
+          { keyword: "land management Columbia TN", title: "Land Management in Columbia, TN: What to Expect and How to Choose the Right Contractor" },
+          { keyword: "veteran land management Tennessee", title: "Veteran-Owned Land Management in Tennessee: Why It Matters and What Sets It Apart" },
           { keyword: "cedar clearing pasture reclamation Tennessee", title: "Reclaiming Pasture from Cedar Thickets in Middle Tennessee: A Practical Guide" },
         ];
 
@@ -448,7 +448,7 @@ export const aiVisibilityRouter = router({
               messages: [
                 {
                   role: "system",
-                  content: `You are writing blog content for Noland Earthworks, LLC — a veteran-owned forestry mulching and land clearing company in Middle Tennessee. Owner is Jon Noland. Write in a direct, confident, first-person voice. No emojis. No corporate jargon. Sound like a real person who does this work. Avoid: 'solutions', 'industry-leading', 'best-in-class', 'passionate', 'dedicated team', 'cutting-edge'. Target length: 800-1000 words.`,
+                  content: `You are writing blog content for Noland Earthworks, LLC — a veteran-owned forestry mulching and land management company in Middle Tennessee. Owner is Jon Noland. Write in a direct, confident, first-person voice. No emojis. No corporate jargon. Sound like a real person who does this work. Avoid: 'solutions', 'industry-leading', 'best-in-class', 'passionate', 'dedicated team', 'cutting-edge'. Target length: 800-1000 words.`,
                 },
                 {
                   role: "user",
@@ -494,7 +494,7 @@ export const aiVisibilityRouter = router({
             },
             {
               role: "user",
-              content: `Generate a complete JSON-LD Organization schema for:\n- Name: Noland Earthworks LLC\n- URL: https://nolandearthworks.com\n- Phone: 615-406-4819\n- Email: info@nolandearthworks.com\n- Description: Veteran-owned forestry mulching and land clearing company serving 35 counties in Middle and West Tennessee\n- Services: Forestry Mulching, Land Clearing, Vegetation Management, Right-of-Way Clearing, Property Maintenance\n- Area served: Middle and West Tennessee\n- Founded: 2020\n- Owner: Jon Noland\n\nReturn only the JSON-LD script block, no explanation.`,
+              content: `Generate a complete JSON-LD Organization schema for:\n- Name: Noland Earthworks LLC\n- URL: https://nolandearthworks.com\n- Phone: 615-406-4819\n- Email: info@nolandearthworks.com\n- Description: Veteran-owned forestry mulching and land management company serving 35 counties in Middle and West Tennessee\n- Services: Forestry Mulching, Land Management, Vegetation Management, Right-of-Way Clearing, Property Maintenance\n- Area served: Middle and West Tennessee\n- Founded: 2020\n- Owner: Jon Noland\n\nReturn only the JSON-LD script block, no explanation.`,
             },
           ],
         });

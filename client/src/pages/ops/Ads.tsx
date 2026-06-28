@@ -68,10 +68,10 @@ interface GeneratedAllAd {
 // ─── Copy helper ────────────────────────────────────────────────────────────
 const DEFAULT_COPY_SETTINGS = {
   siteUrl: "nolandearthworks.com",
-  fbHashtags: "#NolandEarthworks #LandClearing #ForestryMulching #Tennessee",
-  igHashtags: "#NolandEarthworks #LandClearing #ForestryMulching #Tennessee #LandManagement #VeteranOwned #MiddleTennessee",
-  xHashtags: "#LandClearing #ForestryMulching #Tennessee",
-  liHashtags: "#NolandEarthworks #LandClearing #ForestryMulching #Tennessee #VeteranOwned",
+  fbHashtags: "#NolandEarthworks #LandManagement #ForestryMulching #Tennessee",
+  igHashtags: "#NolandEarthworks #LandManagement #ForestryMulching #Tennessee #LandManagement #VeteranOwned #MiddleTennessee",
+  xHashtags: "#LandManagement #ForestryMulching #Tennessee",
+  liHashtags: "#NolandEarthworks #LandManagement #ForestryMulching #Tennessee #VeteranOwned",
 };
 
 type CopySettingsData = typeof DEFAULT_COPY_SETTINGS;
@@ -152,10 +152,10 @@ function CopySettingsModal({
             "Appended to every copied post (leave blank to disable)")}
           <div className="border-t border-border pt-4 space-y-4">
             <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Hashtags by platform</p>
-            {field("Facebook", "fbHashtags", "#LandClearing #Tennessee")}
-            {field("Instagram", "igHashtags", "#LandClearing #Tennessee #VeteranOwned")}
-            {field("X (Twitter)", "xHashtags", "#LandClearing #Tennessee")}
-            {field("LinkedIn", "liHashtags", "#LandClearing #Tennessee #VeteranOwned")}
+            {field("Facebook", "fbHashtags", "#LandManagement #Tennessee")}
+            {field("Instagram", "igHashtags", "#LandManagement #Tennessee #VeteranOwned")}
+            {field("X (Twitter)", "xHashtags", "#LandManagement #Tennessee")}
+            {field("LinkedIn", "liHashtags", "#LandManagement #Tennessee #VeteranOwned")}
           </div>
         </div>
         <DialogFooter className="gap-2">

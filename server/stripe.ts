@@ -90,7 +90,7 @@ export async function createCheckoutSession(
           unit_amount: params.amountCents,
           product_data: {
             name: description,
-            description: "Noland Earthworks, LLC — Veteran-Owned Land Clearing",
+            description: "Noland Earthworks, LLC — Veteran-Owned Land Management",
           },
         },
         quantity: 1,

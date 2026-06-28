@@ -10,7 +10,7 @@ export default function HowToPrepareForLandClearing() {
       dateISO="2026-05-25"
       lastUpdated="May 2026"
       lastUpdatedISO="2026-05-25"
-      slug="how-to-prepare-for-land-clearing"
+      slug="how-to-prepare-for-land-management"
       readTime="10 min read"
       category="Planning & Preparation"
       relatedSlugs={["site-preparation-before-building-tennessee", "cost-of-land-management-tennessee", "best-time-to-clear-land-tennessee"]}

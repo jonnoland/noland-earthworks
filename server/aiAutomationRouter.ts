@@ -49,7 +49,7 @@ export const aiAutomationRouter = router({
           : null;
         return `Invoice ${inv.invoiceNumber ?? inv.id}: Client=${inv.clientName}, Balance=$${inv.balance}, Total=$${inv.total}, Status=${inv.status}, DaysOpen=${daysOut ?? "unknown"}`;
       }).join("\n");
-      const prompt = `You are analyzing unpaid invoices for Noland Earthworks, LLC — a small owner-operated land clearing business. Flag which invoices are at risk of non-payment and draft a firm but professional collection message for each high-risk one.
+      const prompt = `You are analyzing unpaid invoices for Noland Earthworks, LLC — a small owner-operated land management business. Flag which invoices are at risk of non-payment and draft a firm but professional collection message for each high-risk one.
 
 Risk criteria:
 - High risk: balance > $500, open > 30 days, or status suggests dispute
@@ -88,7 +88,7 @@ Return JSON only: {"risks": [{"id": "<invoice id>", "riskLevel": "high"|"medium"
         job = jobRows[0] ?? null;
       }
       if (!job) {
-        job = { title: input.jobTitle ?? "Job", client: input.jobClient ?? "Unknown", jobType: input.jobType ?? "land clearing", acres: input.acres ?? null, totalPrice: input.totalPrice ?? null, crewDays: null, notes: null, status: "completed", scheduledDate: null, completedDate: null };
+        job = { title: input.jobTitle ?? "Job", client: input.jobClient ?? "Unknown", jobType: input.jobType ?? "land management", acres: input.acres ?? null, totalPrice: input.totalPrice ?? null, crewDays: null, notes: null, status: "completed", scheduledDate: null, completedDate: null };
       }
       // Fetch time entries via crew members
       const crewRows = await db.select().from(crewMembers).limit(50);
@@ -103,7 +103,7 @@ Return JSON only: {"risks": [{"id": "<invoice id>", "riskLevel": "high"|"medium"
           ));
         totalHours = entries.reduce((sum, e) => sum + (e.durationMinutes ?? 0) / 60, 0);
       }
-      const prompt = `Analyze the profitability of this land clearing job for Noland Earthworks, LLC.
+      const prompt = `Analyze the profitability of this land management job for Noland Earthworks, LLC.
 
 Job details:
 Title: ${job.title}
@@ -273,14 +273,14 @@ Return JSON only: {"anomalies": [{"entryId": <id>, "type": "long_shift"|"duplica
         `${m}: ${d.count} jobs, $${d.revenue.toFixed(0)} revenue, ${monthlyLeads[m] ?? 0} leads`
       ).join("\n");
       const now = new Date();
-      const prompt = `You are forecasting demand for Noland Earthworks, LLC — a forestry mulching and land clearing company in Middle Tennessee.
+      const prompt = `You are forecasting demand for Noland Earthworks, LLC — a forestry mulching and land management company in Middle Tennessee.
 
 Historical monthly data (last 12 months):
 ${historyText || "No historical data yet."}
 
 Current date: ${now.toISOString().split("T")[0]}
 
-Seasonal context for Middle Tennessee land clearing:
+Seasonal context for Middle Tennessee land management:
 - Peak season: Oct-Mar (dormant vegetation, firm ground, best visibility)
 - Spring/Summer: more inquiries but heat and saturation complicate scheduling
 - Slowest: mid-summer to early fall (peak heat)
@@ -323,7 +323,7 @@ Return JSON only: {"forecast": [{"month": "YYYY-MM", "leadVolume": "low"|"medium
         }
       }
       if (!job) {
-        job = { title: input.jobTitle ?? "Job", client: input.jobClient ?? "Unknown", jobType: input.jobType ?? "land clearing", acres: input.acres ?? null, notes: null, address: "Middle Tennessee" };
+        job = { title: input.jobTitle ?? "Job", client: input.jobClient ?? "Unknown", jobType: input.jobType ?? "land management", acres: input.acres ?? null, notes: null, address: "Middle Tennessee" };
       }
       // noteText is set above in the conditional block
       const prompt = `Write a social media post for Noland Earthworks, LLC about a recently completed job.
@@ -537,7 +537,7 @@ Return JSON only: {"tasks": [{"title": "<short task title>", "description": "<on
         leadsBySource[l.source] = (leadsBySource[l.source] ?? 0) + 1;
       }
       const wonLeads = leadsThisMonth.filter((l) => l.stage === "won").length;
-      const prompt = `Diagnose ad performance for Noland Earthworks, LLC — a forestry mulching and land clearing company in Middle Tennessee.
+      const prompt = `Diagnose ad performance for Noland Earthworks, LLC — a forestry mulching and land management company in Middle Tennessee.
 
 Last 30 days:
 Total ad spend: $${totalSpend.toFixed(2)}

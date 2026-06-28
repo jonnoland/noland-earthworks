@@ -520,7 +520,7 @@ export default function CostEstimator() {
                       // Client view: show only the price, no internal numbers
                       <>
                         <div className="flex items-center justify-between py-1.5">
-                          <span className="text-zinc-200 text-sm">Forestry Mulching / Land Clearing</span>
+                          <span className="text-zinc-200 text-sm">Forestry Mulching / Land Management</span>
                           <span className="text-zinc-200 text-sm font-medium">{fmt(getRecommendedPrice(result, pricingTier))}</span>
                         </div>
                         <div className="flex items-center justify-between pt-2 border-t border-zinc-700">

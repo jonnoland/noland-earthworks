@@ -407,7 +407,7 @@ export default function AiVisibility() {
           <div>
             <h2 className="text-lg font-semibold text-white">AI Visibility Score</h2>
             <p className="text-sm text-gray-400">
-              How often Noland Earthworks appears when AI assistants answer land clearing questions
+              How often Noland Earthworks appears when AI assistants answer land management questions
             </p>
           </div>
         </div>

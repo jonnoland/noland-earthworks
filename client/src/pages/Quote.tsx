@@ -70,7 +70,7 @@ function buildPrefillNote(density: string, terrain: string, access: string): str
 
 // Maps each core service to the add-ons most relevant to it
 const ADDON_SUGGESTIONS: Record<string, string[]> = {
-  "land-clearing": ["Post-Clear Seeding & Erosion Control", "Fence Line Clearing", "Selective Clearing & Tree Preservation"],
+  "land-management": ["Post-Clear Seeding & Erosion Control", "Fence Line Clearing", "Selective Clearing & Tree Preservation"],
   "forestry-mulching": ["Mulch Redistribution", "Post-Clear Seeding & Erosion Control", "Fence Line Clearing"],
   "vegetation-management": ["Fence Line Clearing", "Post-Clear Seeding & Erosion Control"],
   "right-of-way-clearing": ["Fence Line Clearing", "Mulch Redistribution"],
@@ -590,7 +590,7 @@ export default function QuotePage() {
                   {/* Submitted details summary */}
                   {(() => {
                     const serviceLabels: Record<string, string> = {
-                      "land-clearing": "Land Management",
+                      "land-management": "Land Management",
                       "forestry-mulching": "Forestry Mulching",
                       "vegetation-management": "Vegetation Management",
                       "right-of-way-clearing": "Right-of-Way Clearing",
@@ -849,7 +849,7 @@ export default function QuotePage() {
                         onBlur={(e) => (e.target.style.borderColor = "rgba(255,255,255,0.12)")}
                       >
                         <option value="" style={{ backgroundColor: "#1a1a1a" }}>Select a service...</option>
-                        <option value="land-clearing" style={{ backgroundColor: "#1a1a1a" }}>Land Management</option>
+                        <option value="land-management" style={{ backgroundColor: "#1a1a1a" }}>Land Management</option>
                         <option value="forestry-mulching" style={{ backgroundColor: "#1a1a1a" }}>Forestry Mulching</option>
                         <option value="vegetation-management" style={{ backgroundColor: "#1a1a1a" }}>Vegetation Management</option>
                         <option value="right-of-way-clearing" style={{ backgroundColor: "#1a1a1a" }}>Right-of-Way Clearing</option>

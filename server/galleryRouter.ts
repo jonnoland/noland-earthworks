@@ -13,7 +13,7 @@ import { storagePut } from "./storage";
 
 const SERVICE_TYPES = [
   "forestry-mulching",
-  "land-clearing",
+  "land-management",
   "brush-hogging",
   "vegetation-management",
   "gravel-driveway",

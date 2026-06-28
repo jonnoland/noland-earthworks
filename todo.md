@@ -2054,3 +2054,11 @@
 - [x] Display fix result in expandable panel below recommendation using Streamdown markdown rendering
 - [x] Show "Applied" badge on auto-applied results; info badge on manual instruction results
 - [x] Toast notification on fix completion; secondary toast for blog drafts pointing to SEO tab
+
+## Branding & AI Visibility — June 2026
+
+- [x] Replace all "Land Clearing" with "Land Management" across entire codebase (193 occurrences in 40+ files)
+- [x] Replace "land-clearing" URL slugs with "land-management" throughout client and server
+- [x] Replace "LAND CLEARING" all-caps variants in headings
+- [x] Replace #LandClearing hashtag with #LandManagement in Ads.tsx and opsRouter.ts defaults
+- [x] Retune AI Visibility audit prompts to focus on Forestry Mulching as primary service (all 10 prompts now mention forestry mulching explicitly)

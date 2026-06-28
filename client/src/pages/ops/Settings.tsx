@@ -2373,7 +2373,7 @@ function AIPricingTab() {
   const previewResult = useMemo(() => {
     const baseRateMap: Record<string, number> = {
       "forestry-mulching": Number(form.forestryMulchingBaseRate) || 2000,
-      "land-clearing":     Number(form.landClearingBaseRate)     || 2200,
+      "land-management":     Number(form.landClearingBaseRate)     || 2200,
       "brush-hogging":     Number(form.brushHoggingBaseRate)     || 175,
       // ROW: stored as $/LF; calc.acres holds linear feet when ROW is selected
       "row-clearing":      Number(form.rowClearingBaseRate)      || 6,
@@ -2414,7 +2414,7 @@ function AIPricingTab() {
     const debrisTotal = calc.addLoads * (Number(form.debrisHaulingPerLoad) || 450);
     const apdMap: Record<string, number> = {
       "forestry-mulching": Number(form.apdForestryMulching) || 1.5,
-      "land-clearing":     Number(form.apdLandClearing)     || 1.2,
+      "land-management":     Number(form.apdLandClearing)     || 1.2,
       // ROW: apdRowClearing is linear feet per day (not acres/day)
       "row-clearing":      Number(form.apdRowClearing)      || 500,
       "brush-hogging":     Number(form.apdBrushHogging)     || 8.0,
@@ -2922,7 +2922,7 @@ function AIPricingTab() {
               className="w-full rounded-md border border-border bg-background px-2 py-1.5 text-xs text-foreground"
             >
               <option value="forestry-mulching">Forestry Mulching</option>
-              <option value="land-clearing">Land Management</option>
+              <option value="land-management">Land Management</option>
               <option value="brush-hogging">Brush Hogging</option>
               <option value="row-clearing">ROW Clearing</option>
             </select>

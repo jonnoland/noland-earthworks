@@ -69,7 +69,7 @@ Forestry Mulching (per acre):
   - Heavy timber / dense cedar: $2,500 – $4,500+/acre
   - Minimum job: $1,800
 
-Land Management / Land Clearing (per acre):
+Land Management / Land Management (per acre):
   - Light clearing (mostly brush, flat): $1,500 – $3,000/acre
   - Moderate clearing (mixed timber, some slope): $3,000 – $6,000/acre
   - Heavy clearing (dense timber, steep terrain): $6,000 – $12,000+/acre

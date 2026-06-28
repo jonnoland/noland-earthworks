@@ -15,7 +15,7 @@ const addOns = [
     benefit:
       "Bare ground erodes. Seeding immediately after clearing locks the soil in place, prevents runoff, and starts the land on the right path — whether that's pasture, wildlife habitat, or a clean buffer zone.",
     cta: "Add to your quote",
-    href: "/quote?service=land-clearing",
+    href: "/quote?service=land-management",
     accentColor: "#4a7c59",
     accentLight: "rgba(74,124,89,0.12)",
     accentBorder: "rgba(74,124,89,0.3)",
@@ -28,7 +28,7 @@ const addOns = [
     benefit:
       "Same machine, same mobilization, same day. Fence lines that haven't seen daylight in years get cleared while we're already on-site. Priced per linear foot — no second trip charge.",
     cta: "Add to your quote",
-    href: "/quote?service=land-clearing",
+    href: "/quote?service=land-management",
     accentColor: "#8B6914",
     accentLight: "rgba(139,105,20,0.12)",
     accentBorder: "rgba(139,105,20,0.3)",
@@ -54,7 +54,7 @@ const addOns = [
     benefit:
       "Walk the property before work starts, flag the keepers, mark the clearing boundary. Protects valuable hardwoods, prevents scope disputes, and ensures the finished property matches your vision. Consultation fee credited toward the job.",
     cta: "Add to your quote",
-    href: "/quote?service=land-clearing",
+    href: "/quote?service=land-management",
     accentColor: "#2E5E4E",
     accentLight: "rgba(46,94,78,0.12)",
     accentBorder: "rgba(46,94,78,0.3)",

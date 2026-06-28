@@ -12,7 +12,7 @@ import { trpc } from "@/lib/trpc";
 
 const SERVICE_LABELS: Record<string, string> = {
   "forestry-mulching": "Forestry Mulching",
-  "land-clearing": "Land Clearing",
+  "land-management": "Land Management",
   "brush-hogging": "Brush Hogging",
   "vegetation-management": "Vegetation Management",
   "gravel-driveway": "Gravel / Driveway",
@@ -22,7 +22,7 @@ const SERVICE_LABELS: Record<string, string> = {
 const FILTER_OPTIONS = [
   { value: "all", label: "All Work" },
   { value: "forestry-mulching", label: "Forestry Mulching" },
-  { value: "land-clearing", label: "Land Clearing" },
+  { value: "land-management", label: "Land Management" },
   { value: "brush-hogging", label: "Brush Hogging" },
   { value: "vegetation-management", label: "Vegetation Management" },
 ];
@@ -154,15 +154,15 @@ function PhotoCard({ photo }: { photo: {
 
 export default function Gallery() {
   usePageTitle(
-    "Forestry Mulching & Land Clearing Gallery — Tennessee",
-    "See examples of forestry mulching and land clearing work across Middle Tennessee. Overgrown brush, fence lines, pasture reclamation, and more.",
+    "Forestry Mulching & Land Management Gallery — Tennessee",
+    "See examples of forestry mulching and land management work across Middle Tennessee. Overgrown brush, fence lines, pasture reclamation, and more.",
     "/gallery"
   );
 
   const [activeService, setActiveService] = useState<string>("all");
 
   const { data: photos = [], isLoading } = trpc.gallery.listPublic.useQuery({
-    serviceType: activeService as "all" | "forestry-mulching" | "land-clearing" | "brush-hogging" | "vegetation-management" | "gravel-driveway" | "other",
+    serviceType: activeService as "all" | "forestry-mulching" | "land-management" | "brush-hogging" | "vegetation-management" | "gravel-driveway" | "other",
   });
 
   return (
@@ -207,7 +207,7 @@ export default function Gallery() {
               marginTop: "1rem",
             }}
           >
-            Real job photos from forestry mulching, land clearing, and vegetation management work across Middle Tennessee.
+            Real job photos from forestry mulching, land management, and vegetation management work across Middle Tennessee.
           </p>
         </div>
       </section>

@@ -5,20 +5,20 @@ import ServicePageLayout, { ServicePageProps } from "@/components/ServicePageLay
 import { usePageTitle } from "@/hooks/usePageTitle";
 
 const HERO = "https://d2xsxph8kpxj0f.cloudfront.net/310519663484957999/PymCzDCnSJzPjdkfwA7Jn6/property-maintenance-3gu7BTR6P2RKi4ZuYCNLoN.webp";
-const LAND_HERO = "https://d2xsxph8kpxj0f.cloudfront.net/310519663484957999/PymCzDCnSJzPjdkfwA7Jn6/land-clearing-iPC6VzRdyjJa4bVNXaWy5n.webp";
+const LAND_HERO = "https://d2xsxph8kpxj0f.cloudfront.net/310519663484957999/PymCzDCnSJzPjdkfwA7Jn6/land-management-iPC6VzRdyjJa4bVNXaWy5n.webp";
 const FORESTRY_HERO = "https://d2xsxph8kpxj0f.cloudfront.net/310519663484957999/PymCzDCnSJzPjdkfwA7Jn6/forestry-mulching-HhrtysAJXn8CTRW2xzcGCC.webp";
 const VEGETATION_HERO = "https://d2xsxph8kpxj0f.cloudfront.net/310519663484957999/PymCzDCnSJzPjdkfwA7Jn6/vegetation-management-hnEnCRefahdbJy4xpn6UnC.webp";
 
 const data: ServicePageProps = {
   slug: "property-maintenance",
-  title: "Property Maintenance — Land Clearing & Upkeep in Tennessee",
+  title: "Property Maintenance — Land Management & Upkeep in Tennessee",
   tagline: "Keep your land looking its best year-round with reliable, professional property maintenance from a veteran-owned team you can trust.",
   heroImage: HERO,
   overviewTitle: "Year-Round Land Stewardship",
   overviewBody: [
     "Your property is an investment — and like any investment, it requires consistent care to maintain its value and functionality. Noland Earthworks provides property maintenance services across Middle and West Tennessee that keep your land clean, accessible, and well-managed throughout the year. Whether you own a few acres of residential land or hundreds of acres of rural property, the standard is the same: show up when committed, do the work as scoped, and leave it right.",
-    "From seasonal brush clearing and storm debris cleanup to driveway maintenance and fence line clearing, we handle the recurring tasks that keep your property safe, functional, and looking the way land should look. Our primary tool is a tracked forestry mulcher — the same machine used for full land clearing jobs — which means we can handle significant brush and woody growth that a standard mower or bush hog can't touch. No hauling, no burn piles, no bare soil left behind.",
-    "We work with residential landowners, farmers, ranchers, absentee property owners, and commercial property managers throughout Tennessee. Many clients start with a one-time land clearing job and then move to a recurring maintenance program to keep the property in shape year after year. We learn the characteristics of each property over time and provide consistent service you can count on season after season.",
+    "From seasonal brush clearing and storm debris cleanup to driveway maintenance and fence line clearing, we handle the recurring tasks that keep your property safe, functional, and looking the way land should look. Our primary tool is a tracked forestry mulcher — the same machine used for full land management jobs — which means we can handle significant brush and woody growth that a standard mower or bush hog can't touch. No hauling, no burn piles, no bare soil left behind.",
+    "We work with residential landowners, farmers, ranchers, absentee property owners, and commercial property managers throughout Tennessee. Many clients start with a one-time land management job and then move to a recurring maintenance program to keep the property in shape year after year. We learn the characteristics of each property over time and provide consistent service you can count on season after season.",
     "Veteran-owned and operated, Noland Earthworks runs the business the same way it was run in the military: reliability, accountability, and no shortcuts. If we say we'll be there, we'll be there. If something comes up on the job that changes the scope, we'll tell you before we proceed. That's the standard we hold ourselves to on every maintenance visit.",
   ],
   benefits: [

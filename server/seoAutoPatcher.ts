@@ -119,8 +119,8 @@ export async function autoPatchSeoCheck(
     const codeFixMessages: Record<string, string> = {
       h1_missing: "Fixed: An H1 tag is present in the static SEO content block embedded in index.html. Google will index it on the next crawl.",
       h1_multiple: "Fixed: Only one H1 is present in the static SEO content block in index.html.",
-      h1_keyword: "Fixed: The H1 in the static SEO block contains the primary keyword (Land Clearing & Forestry Mulching in Middle & West Tennessee).",
-      h2_missing: "Fixed: Multiple H2 tags are present in the static SEO content block in index.html (Forestry Mulching, Land Clearing, Vegetation Management, Site Preparation, Service Areas, Free On-Site Estimates).",
+      h1_keyword: "Fixed: The H1 in the static SEO block contains the primary keyword (Land Management & Forestry Mulching in Middle & West Tennessee).",
+      h2_missing: "Fixed: Multiple H2 tags are present in the static SEO content block in index.html (Forestry Mulching, Land Management, Vegetation Management, Site Preparation, Service Areas, Free On-Site Estimates).",
       alt_missing: "Fixed: The hero image in the static SEO block has a descriptive alt attribute. React component images use alt attributes throughout.",
       images_none: "Fixed: A hero image with alt text is included in the static SEO content block in index.html.",
       keywords_sparse: "Fixed: The static SEO content block adds 400+ words of keyword-rich content to index.html, visible to crawlers.",
@@ -185,7 +185,7 @@ export async function autoPatchSeoCheck(
     case "title_short":
     case "title_long": {
       // Replace the <title> tag content
-      const newTitle = "Noland Earthworks | Land Clearing & Forestry Mulching | Middle & West Tennessee";
+      const newTitle = "Noland Earthworks | Land Management & Forestry Mulching | Middle & West Tennessee";
       const updated = html.replace(/<title>[^<]*<\/title>/, `<title>${newTitle}</title>`);
       if (updated !== html) {
         html = updated;
@@ -207,7 +207,7 @@ export async function autoPatchSeoCheck(
     case "meta_desc_missing":
     case "meta_desc_short":
     case "meta_desc_long": {
-      const newDesc = "Veteran-owned forestry mulching and land clearing in Middle &amp; West Tennessee. No debris piles, no hauling. Free on-site estimates. Call 615-406-4819.";
+      const newDesc = "Veteran-owned forestry mulching and land management in Middle &amp; West Tennessee. No debris piles, no hauling. Free on-site estimates. Call 615-406-4819.";
       const updated = html.replace(
         /<meta name="description"[^>]*>/,
         `<meta name="description" content="${newDesc}" />`
@@ -318,8 +318,8 @@ export async function autoPatchSeoCheck(
         const ogTags = `    <!-- Open Graph -->
     <meta property="og:type" content="website" />
     <meta property="og:url" content="https://nolandearthworks.com/" />
-    <meta property="og:title" content="Noland Earthworks, LLC — Land Clearing &amp; Forestry Mulching in Tennessee" />
-    <meta property="og:description" content="Veteran-owned land clearing and forestry mulching in Middle &amp; West Tennessee. Free estimates. Call 615-406-4819." />
+    <meta property="og:title" content="Noland Earthworks, LLC — Land Management &amp; Forestry Mulching in Tennessee" />
+    <meta property="og:description" content="Veteran-owned land management and forestry mulching in Middle &amp; West Tennessee. Free estimates. Call 615-406-4819." />
     <meta property="og:image" content="https://d2xsxph8kpxj0f.cloudfront.net/310519663484957999/PymCzDCnSJzPjdkfwA7Jn6/hero-forestry-golden_b098141c.webp" />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />`;
@@ -334,11 +334,11 @@ export async function autoPatchSeoCheck(
           changed = true;
         }
         if (!html.includes('property="og:title"')) {
-          html = html.replace('</head>', '    <meta property="og:title" content="Noland Earthworks, LLC — Land Clearing &amp; Forestry Mulching in Tennessee" />\n  </head>');
+          html = html.replace('</head>', '    <meta property="og:title" content="Noland Earthworks, LLC — Land Management &amp; Forestry Mulching in Tennessee" />\n  </head>');
           changed = true;
         }
         if (!html.includes('property="og:description"')) {
-          html = html.replace('</head>', '    <meta property="og:description" content="Veteran-owned land clearing and forestry mulching in Middle &amp; West Tennessee. Free estimates. Call 615-406-4819." />\n  </head>');
+          html = html.replace('</head>', '    <meta property="og:description" content="Veteran-owned land management and forestry mulching in Middle &amp; West Tennessee. Free estimates. Call 615-406-4819." />\n  </head>');
           changed = true;
         }
         if (!html.includes('property="og:image"')) {
@@ -360,8 +360,8 @@ export async function autoPatchSeoCheck(
       if (!html.includes('name="twitter:card"')) {
         const twitterTags = `    <!-- Twitter Card -->
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="Noland Earthworks, LLC — Land Clearing &amp; Forestry Mulching in Tennessee" />
-    <meta name="twitter:description" content="Veteran-owned land clearing and forestry mulching in Middle &amp; West Tennessee. Free estimates." />
+    <meta name="twitter:title" content="Noland Earthworks, LLC — Land Management &amp; Forestry Mulching in Tennessee" />
+    <meta name="twitter:description" content="Veteran-owned land management and forestry mulching in Middle &amp; West Tennessee. Free estimates." />
     <meta name="twitter:image" content="https://d2xsxph8kpxj0f.cloudfront.net/310519663484957999/PymCzDCnSJzPjdkfwA7Jn6/hero-forestry-golden_b098141c.webp" />`;
         html = html.replace("</head>", `${twitterTags}\n  </head>`);
         patched = true;

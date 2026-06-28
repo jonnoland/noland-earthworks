@@ -1348,7 +1348,7 @@ function AIAssistPanel({ onClose, clientName, onApply }: AIAssistPanelProps) {
     if (!aiAssist.data) return;
     const serviceLabel: Record<string, string> = {
       "forestry-mulching": "Forestry Mulching",
-      "land-clearing": "Land Clearing",
+      "land-management": "Land Management",
       "brush-hogging": "Brush Hogging",
       "right-of-way-clearing": "Right-of-Way Clearing",
       "vegetation-management": "Vegetation Management",
@@ -3902,7 +3902,7 @@ function WebsiteRequestsSection({
                       className="w-full rounded-md border border-border bg-secondary/30 px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary"
                     >
                       <option value="forestry-mulching">Forestry Mulching</option>
-                      <option value="land-clearing">Land Clearing</option>
+                      <option value="land-management">Land Management</option>
                       <option value="brush-hogging">Brush Hogging</option>
                       <option value="right-of-way-clearing">Right-of-Way Clearing</option>
                       <option value="vegetation-management">Vegetation Management</option>
@@ -4645,7 +4645,7 @@ export default function OpsQuotes() {
                             draftFollowUpMutation.mutate({
                               quoteId: q.id,
                               clientName: q.clientName ?? "there",
-                              service: q.service ?? "land clearing",
+                              service: q.service ?? "land management",
                               acreage: q.acreage ?? undefined,
                               daysSinceSent: daysSince,
                             });

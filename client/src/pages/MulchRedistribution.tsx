@@ -6,7 +6,7 @@ import { usePageTitle } from "@/hooks/usePageTitle";
 
 const HERO = "https://d2xsxph8kpxj0f.cloudfront.net/310519663484957999/PymCzDCnSJzPjdkfwA7Jn6/vegetation-management-hnEnCRefahdbJy4xpn6UnC.webp";
 const SEEDING_HERO = "https://d2xsxph8kpxj0f.cloudfront.net/310519663484957999/PymCzDCnSJzPjdkfwA7Jn6/forestry-mulching-HhrtysAJXn8CTRW2xzcGCC.webp";
-const FENCE_HERO = "https://d2xsxph8kpxj0f.cloudfront.net/310519663484957999/PymCzDCnSJzPjdkfwA7Jn6/land-clearing-iPC6VzRdyjJa4bVNXaWy5n.webp";
+const FENCE_HERO = "https://d2xsxph8kpxj0f.cloudfront.net/310519663484957999/PymCzDCnSJzPjdkfwA7Jn6/land-management-iPC6VzRdyjJa4bVNXaWy5n.webp";
 const SELECTIVE_HERO = "https://d2xsxph8kpxj0f.cloudfront.net/310519663484957999/PymCzDCnSJzPjdkfwA7Jn6/property-maintenance-3gu7BTR6P2RKi4ZuYCNLoN.webp";
 
 const data: ServicePageProps = {
@@ -18,8 +18,8 @@ const data: ServicePageProps = {
   overviewBody: [
     "Forestry mulching grinds vegetation into a mulch layer that stays on-site. In most cases, this is exactly what you want — the mulch protects soil from erosion, suppresses weed regrowth, and decomposes into organic matter over time. But in areas with dense vegetation, large-diameter trees, or heavy brush, the mulch can accumulate in thick, uneven piles that look rough, impede drainage, and make the cleared area difficult to use.",
     "Mulch redistribution is an add-on service that uses the forestry mulcher to spread and level those heavy accumulations, creating a more uniform layer across the cleared area. The result is a cleaner, more finished appearance and a surface that's easier to walk, drive, seed, or build on. It's the difference between a property that looks like it was just worked and one that looks like it's ready to use.",
-    "This service is most commonly added to land clearing and forestry mulching jobs on Tennessee properties where the cleared land will be put to immediate use — for pasture establishment, trail creation, building site prep, or simply for a property that the owner wants to present well. It's done in the same mobilization as the clearing job, so there's no additional trip charge or scheduling delay.",
-    "Noland Earthworks serves landowners throughout Middle and West Tennessee. If you're planning a land clearing project and want to discuss whether mulch redistribution makes sense for your property, we'll give you a straight assessment during the free on-site estimate.",
+    "This service is most commonly added to land management and forestry mulching jobs on Tennessee properties where the cleared land will be put to immediate use — for pasture establishment, trail creation, building site prep, or simply for a property that the owner wants to present well. It's done in the same mobilization as the clearing job, so there's no additional trip charge or scheduling delay.",
+    "Noland Earthworks serves landowners throughout Middle and West Tennessee. If you're planning a land management project and want to discuss whether mulch redistribution makes sense for your property, we'll give you a straight assessment during the free on-site estimate.",
   ],
   benefits: [
     "Levels uneven mulch accumulations for a cleaner, more finished appearance",

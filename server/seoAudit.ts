@@ -191,18 +191,18 @@ export async function runSeoAudit(targetUrl: string, googleApiKey?: string): Pro
   const titleLen = title.length;
   if (!title) {
     checks.push({ id: "title_missing", category: "onpage", label: "Title tag", status: "fail", value: "Missing", detail: "No <title> tag found.", recommendation: "Add a descriptive title tag between 50–60 characters.", fixExample: `<!-- Paste inside <head> -->
-<title>Land Clearing & Forestry Mulching | Noland Earthworks | Middle & West TN</title>
+<title>Land Management & Forestry Mulching | Noland Earthworks | Middle & West TN</title>
 
 Squarespace: Pages → (page) → gear icon → SEO tab → "SEO Page Title" field`, priority: "high" });
   } else if (titleLen < 30) {
     checks.push({ id: "title_short", category: "onpage", label: "Title tag length", status: "warn", value: `${titleLen} chars`, detail: `Title is too short (${titleLen} chars): "${title}"`, recommendation: "Expand the title to 50–60 characters with primary keywords.", fixExample: `<!-- Aim for 50–60 characters, include primary keyword + location -->
-<title>Land Clearing & Forestry Mulching | Middle & West Tennessee</title>
+<title>Land Management & Forestry Mulching | Middle & West Tennessee</title>
 
 Squarespace: Pages → (page) → gear icon → SEO tab → "SEO Page Title" field`, priority: "medium" });
   } else if (titleLen > 65) {
     checks.push({ id: "title_long", category: "onpage", label: "Title tag length", status: "warn", value: `${titleLen} chars`, detail: `Title is too long (${titleLen} chars) and may be truncated in search results.`, recommendation: "Trim the title to under 60 characters.", fixExample: `<!-- Trim to under 60 characters — Google truncates at ~60 chars -->
 <!-- Example (≤60 chars): -->
-<title>Land Clearing & Forestry Mulching | Noland Earthworks</title>
+<title>Land Management & Forestry Mulching | Noland Earthworks</title>
 
 Squarespace: Pages → (page) → gear icon → SEO tab → "SEO Page Title" field`, priority: "medium" });
   } else {
@@ -214,17 +214,17 @@ Squarespace: Pages → (page) → gear icon → SEO tab → "SEO Page Title" fie
   const descLen = metaDesc.length;
   if (!metaDesc) {
     checks.push({ id: "meta_desc_missing", category: "onpage", label: "Meta description", status: "fail", value: "Missing", detail: "No meta description tag found.", recommendation: "Add a meta description between 150–160 characters summarizing the page.", fixExample: `<!-- Paste inside <head> -->
-<meta name="description" content="Veteran-owned land clearing and forestry mulching serving Middle & West Tennessee. We clear brush, reclaim pasture, and prep sites — no debris piles, no hauling. Free estimates.">
+<meta name="description" content="Veteran-owned land management and forestry mulching serving Middle & West Tennessee. We clear brush, reclaim pasture, and prep sites — no debris piles, no hauling. Free estimates.">
 
 Squarespace: Pages → (page) → gear icon → SEO tab → "SEO Description" field`, priority: "high" });
   } else if (descLen < 70) {
     checks.push({ id: "meta_desc_short", category: "onpage", label: "Meta description length", status: "warn", value: `${descLen} chars`, detail: `Meta description is short (${descLen} chars).`, recommendation: "Expand the meta description to 150–160 characters.", fixExample: `<!-- Expand to 150–160 characters with service + location + CTA -->
-<meta name="description" content="Veteran-owned land clearing and forestry mulching serving Middle & West Tennessee. We clear brush, reclaim pasture, and prep sites — no debris piles, no hauling. Free estimates.">
+<meta name="description" content="Veteran-owned land management and forestry mulching serving Middle & West Tennessee. We clear brush, reclaim pasture, and prep sites — no debris piles, no hauling. Free estimates.">
 
 Squarespace: Pages → (page) → gear icon → SEO tab → "SEO Description" field`, priority: "medium" });
   } else if (descLen > 165) {
     checks.push({ id: "meta_desc_long", category: "onpage", label: "Meta description length", status: "warn", value: `${descLen} chars`, detail: `Meta description is too long (${descLen} chars) and may be truncated.`, recommendation: "Trim the meta description to under 160 characters.", fixExample: `<!-- Trim to 150–160 characters — Google cuts off at ~160 chars -->
-<meta name="description" content="Veteran-owned land clearing and forestry mulching in Middle & West Tennessee. No debris piles, no hauling. Free estimates — call 615-406-4819.">
+<meta name="description" content="Veteran-owned land management and forestry mulching in Middle & West Tennessee. No debris piles, no hauling. Free estimates — call 615-406-4819.">
 
 Squarespace: Pages → (page) → gear icon → SEO tab → "SEO Description" field`, priority: "medium" });
   } else {
@@ -236,12 +236,12 @@ Squarespace: Pages → (page) → gear icon → SEO tab → "SEO Description" fi
   const h1Count = h1Tags.length;
   if (h1Count === 0) {
     checks.push({ id: "h1_missing", category: "onpage", label: "H1 tag", status: "fail", value: "Missing", detail: "No H1 heading found on the page.", recommendation: "Add a single H1 tag containing your primary keyword.", fixExample: `<!-- Add one H1 per page with your primary keyword -->
-<h1>Land Clearing & Forestry Mulching in Middle & West Tennessee</h1>
+<h1>Land Management & Forestry Mulching in Middle & West Tennessee</h1>
 
 Squarespace: Edit page → click the main heading text block → change its style to Heading 1 in the text toolbar`, priority: "high" });
   } else if (h1Count > 1) {
     checks.push({ id: "h1_multiple", category: "onpage", label: "H1 tag", status: "warn", value: `${h1Count} found`, detail: `Multiple H1 tags found (${h1Count}). Best practice is one H1 per page.`, recommendation: "Consolidate to a single H1 tag.", fixExample: `<!-- Keep only ONE H1 — your primary keyword heading -->
-<h1>Land Clearing & Forestry Mulching in Middle & West Tennessee</h1>
+<h1>Land Management & Forestry Mulching in Middle & West Tennessee</h1>
 <!-- Change all other H1s to H2 or H3 -->
 
 Squarespace: Edit page → click each heading block → in the text toolbar, change any extra "Heading 1" styles to "Heading 2"`, priority: "medium" });
@@ -254,7 +254,7 @@ Squarespace: Edit page → click each heading block → in the text toolbar, cha
   if (h2Count === 0) {
     checks.push({ id: "h2_missing", category: "onpage", label: "H2 tags", status: "warn", value: "None", detail: "No H2 subheadings found.", recommendation: "Add H2 subheadings to structure your content and include secondary keywords.", fixExample: `<!-- Add H2 subheadings to break up content and include secondary keywords -->
 <h2>What Is Forestry Mulching?</h2>
-<h2>Our Land Clearing Process</h2>
+<h2>Our Land Management Process</h2>
 <h2>Service Areas in Tennessee</h2>
 
 Squarespace: Edit page → add Text blocks → format each section title as "Heading 2" in the text toolbar`, priority: "medium" });
@@ -269,12 +269,12 @@ Squarespace: Edit page → add Text blocks → format each section title as "Hea
   const totalImages = images.length;
   if (totalImages === 0) {
     checks.push({ id: "images_none", category: "onpage", label: "Image alt tags", status: "warn", value: "No images", detail: "No images found on the page.", recommendation: "Add relevant before/after job photos with descriptive alt text.", fixExample: `<!-- Add real job photos with descriptive alt text -->
-<img src="land-clearing-maury-county.jpg" alt="Land clearing job in Maury County, Tennessee — before and after">
+<img src="land-management-maury-county.jpg" alt="Land clearing job in Maury County, Tennessee — before and after">
 
 Squarespace: Edit page → click "+" to add a block → choose "Image" → upload your photo → set Alt Text in Image Settings`, priority: "low" });
   } else if (altMissing > 0) {
     checks.push({ id: "alt_missing", category: "onpage", label: "Image alt tags", status: altMissing > totalImages / 2 ? "fail" : "warn", value: `${altMissing}/${totalImages} missing`, detail: `${altMissing} of ${totalImages} images are missing alt text.`, recommendation: "Add descriptive alt text to all images for accessibility and SEO.", fixExample: `<!-- Add descriptive alt text to every image -->
-<img src="before-after-land-clearing.jpg" alt="Before and after land clearing in Maury County, Tennessee">
+<img src="before-after-land-management.jpg" alt="Before and after land management in Maury County, Tennessee">
 <img src="forestry-mulcher.jpg" alt="Tracked forestry mulcher clearing dense cedar brush in Middle Tennessee">
 
 Squarespace: Edit page → click any image block → click the image → "Image Settings" panel → fill in the "Alt Text" field`, priority: "medium" });
@@ -339,13 +339,13 @@ Squarespace: Pages → (page) → gear icon → SEO tab → uncheck "Hide this p
 
   // Keyword density — check for key terms
   const bodyText = $("body").text().toLowerCase();
-  const keyTerms = ["forestry mulching", "land clearing", "tennessee", "noland earthworks"];
+  const keyTerms = ["forestry mulching", "land management", "tennessee", "noland earthworks"];
   const foundTerms = keyTerms.filter((t) => bodyText.includes(t));
   if (foundTerms.length < 2) {
-    checks.push({ id: "keywords_sparse", category: "onpage", label: "Primary keywords", status: "warn", value: `${foundTerms.length}/${keyTerms.length} found`, detail: `Only ${foundTerms.length} of ${keyTerms.length} key terms found in body text.`, recommendation: "Ensure primary keywords (forestry mulching, land clearing, Tennessee) appear naturally in page content.", fixExample: `Key terms to include naturally in your page body text:
+    checks.push({ id: "keywords_sparse", category: "onpage", label: "Primary keywords", status: "warn", value: `${foundTerms.length}/${keyTerms.length} found`, detail: `Only ${foundTerms.length} of ${keyTerms.length} key terms found in body text.`, recommendation: "Ensure primary keywords (forestry mulching, land management, Tennessee) appear naturally in page content.", fixExample: `Key terms to include naturally in your page body text:
 
 - "forestry mulching" — use in intro paragraph and at least one subheading
-- "land clearing" — use in H1, intro, and service description
+- "land management" — use in H1, intro, and service description
 - "Tennessee" or "Middle Tennessee" / "West Tennessee" — use in location context
 - "Noland Earthworks" — use in at least one paragraph
 
@@ -565,8 +565,8 @@ For images in custom Code Blocks, add loading="lazy" to each <img> tag manually.
   if (ogCount === 0) {
     checks.push({ id: "og_missing", category: "social", label: "Open Graph tags", status: "fail", value: "None", detail: "No Open Graph tags found. Facebook and LinkedIn will not show rich previews.", recommendation: "Add og:title, og:description, og:image, and og:type tags.", fixExample: `<!-- Paste inside <head> via Squarespace Code Injection -->
 <meta property="og:type" content="website">
-<meta property="og:title" content="Land Clearing & Forestry Mulching | Noland Earthworks">
-<meta property="og:description" content="Veteran-owned land clearing and forestry mulching in Middle & West Tennessee. Free estimates — call 615-406-4819.">
+<meta property="og:title" content="Land Management & Forestry Mulching | Noland Earthworks">
+<meta property="og:description" content="Veteran-owned land management and forestry mulching in Middle & West Tennessee. Free estimates — call 615-406-4819.">
 <meta property="og:image" content="https://nolandearthworks.com/images/og-image.jpg">
 <meta property="og:url" content="https://nolandearthworks.com">
 
@@ -576,8 +576,8 @@ For og:image, upload a 1200×630 px photo to your Squarespace media library and 
     checks.push({ id: "og_incomplete", category: "social", label: "Open Graph tags", status: "warn", value: `${ogCount}/4 found`, detail: `Only ${ogCount} of 4 recommended Open Graph tags found.`, recommendation: "Add missing og:title, og:description, og:image, and og:type tags.", fixExample: `<!-- Add the missing Open Graph tags inside <head> -->
 <!-- Required set (add any that are missing): -->
 <meta property="og:type" content="website">
-<meta property="og:title" content="Land Clearing & Forestry Mulching | Noland Earthworks">
-<meta property="og:description" content="Veteran-owned land clearing and forestry mulching in Middle & West Tennessee. Free estimates.">
+<meta property="og:title" content="Land Management & Forestry Mulching | Noland Earthworks">
+<meta property="og:description" content="Veteran-owned land management and forestry mulching in Middle & West Tennessee. Free estimates.">
 <meta property="og:image" content="https://nolandearthworks.com/images/og-image.jpg">
 
 Squarespace: Settings → Advanced → Code Injection → Header → paste any missing tags above`, priority: "medium" });
@@ -591,8 +591,8 @@ Squarespace: Settings → Advanced → Code Injection → Header → paste any m
   if (!twitterCard) {
     checks.push({ id: "twitter_card_missing", category: "social", label: "Twitter Card tags", status: "warn", value: "Missing", detail: "No Twitter Card tags found.", recommendation: "Add twitter:card, twitter:title, and twitter:description tags.", fixExample: `<!-- Paste inside <head> via Squarespace Code Injection -->
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="Land Clearing & Forestry Mulching | Noland Earthworks">
-<meta name="twitter:description" content="Veteran-owned land clearing and forestry mulching in Middle & West Tennessee. Free estimates.">
+<meta name="twitter:title" content="Land Management & Forestry Mulching | Noland Earthworks">
+<meta name="twitter:description" content="Veteran-owned land management and forestry mulching in Middle & West Tennessee. Free estimates.">
 <meta name="twitter:image" content="https://nolandearthworks.com/images/og-image.jpg">
 
 Squarespace: Settings → Advanced → Code Injection → Header → paste all four tags above`, priority: "medium" });
@@ -604,16 +604,16 @@ Squarespace: Settings → Advanced → Code Injection → Header → paste all f
 
   // H1 keyword match
   const h1Text = h1Tags.first().text().toLowerCase();
-  const h1Keywords = ["land clearing", "forestry mulching", "land management", "vegetation", "site prep"];
+  const h1Keywords = ["land management", "forestry mulching", "land management", "vegetation", "site prep"];
   const h1HasKeyword = h1Keywords.some((k) => h1Text.includes(k));
   if (h1Count > 0 && !h1HasKeyword) {
-    checks.push({ id: "h1_keyword", category: "onpage", label: "H1 keyword relevance", status: "warn", value: h1Text.slice(0, 60), detail: "H1 tag does not contain a primary service keyword.", recommendation: "Include a primary keyword (land clearing, forestry mulching, etc.) in the H1 heading.", fixExample: `<!-- Update your H1 to include a primary service keyword -->
+    checks.push({ id: "h1_keyword", category: "onpage", label: "H1 keyword relevance", status: "warn", value: h1Text.slice(0, 60), detail: "H1 tag does not contain a primary service keyword.", recommendation: "Include a primary keyword (land management, forestry mulching, etc.) in the H1 heading.", fixExample: `<!-- Update your H1 to include a primary service keyword -->
 <!-- Current H1: "${h1Text.slice(0, 80)}" -->
 
 <!-- Suggested H1 examples: -->
-<h1>Land Clearing & Forestry Mulching in Middle & West Tennessee</h1>
+<h1>Land Management & Forestry Mulching in Middle & West Tennessee</h1>
 <h1>Professional Forestry Mulching — Noland Earthworks</h1>
-<h1>Tennessee Land Clearing You Can Count On</h1>
+<h1>Tennessee Land Management You Can Count On</h1>
 
 Squarespace: Edit page → click the main heading text block → update the text to include your primary keyword → ensure it is styled as Heading 1 in the toolbar`, priority: "high" });
   } else if (h1Count > 0) {
@@ -641,7 +641,7 @@ Content sections to add (each adds ~100–150 words):
    "We serve landowners across Middle and West Tennessee, including [county names]..."
 
 5. FAQ section (2–3 questions):
-   Q: How long does land clearing take?
+   Q: How long does land management take?
    Q: Do you remove the debris?
    Q: What size properties do you work on?
 
@@ -732,7 +732,7 @@ This runs before the page renders and sets lang="en" on the <html> tag.`, priori
     "longitude": -87.47
   },
   "areaServed": "Middle and West Tennessee",
-  "description": "Veteran-owned land clearing and forestry mulching serving Middle & West Tennessee."
+  "description": "Veteran-owned land management and forestry mulching serving Middle & West Tennessee."
 }
 </script>
 
@@ -844,11 +844,11 @@ Example content:
 # Noland Earthworks
 
 Noland Earthworks is a veteran-owned land management company based in Middle Tennessee.
-Services: forestry mulching, land clearing, brush hogging.
+Services: forestry mulching, land management, brush hogging.
 Service area: Middle Tennessee, including Maury, Williamson, Hickman, Lewis, and surrounding counties.
 Contact: nolandearthworks.com
 
-This file helps AI assistants accurately describe your business when users ask about land clearing in Tennessee.`, priority: "low" });
+This file helps AI assistants accurately describe your business when users ask about land management in Tennessee.`, priority: "low" });
     }
   } catch {
     checks.push({ id: "llms_txt_unreachable", category: "onpage", label: "llms.txt", status: "warn", value: "Unreachable", detail: "Could not reach llms.txt.", recommendation: "Add an llms.txt file at the root of your site to improve AI search visibility.", fixExample: `Create /llms.txt with a plain-language description of your business, services, and service area.`, priority: "low" });

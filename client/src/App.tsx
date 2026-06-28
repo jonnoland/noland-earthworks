@@ -180,7 +180,7 @@ function Router() {
       {/* Blog / Resources */}
       <Route path="/blog" component={BlogPage} />
       <Route path="/blog/cost-of-land-management-tennessee" component={CostOfLandClearing} />
-      <Route path="/blog/cost-of-land-clearing-tennessee" component={() => { window.location.replace("/blog/cost-of-land-management-tennessee"); return null; }} />
+      <Route path="/blog/cost-of-land-management-tennessee" component={() => { window.location.replace("/blog/cost-of-land-management-tennessee"); return null; }} />
       <Route path="/blog/forestry-mulching-vs-bulldozing" component={ForestryMulchingVsBulldozing} />
       <Route path="/blog/signs-you-need-vegetation-management" component={SignsVegetationManagement} />
       <Route path="/blog/best-time-to-clear-land-tennessee" component={BestTimeToClearLand} />
@@ -191,11 +191,11 @@ function Router() {
       <Route path="/blog/land-management-rutherford-county" component={LandManagementRutherfordCounty} />
       <Route path="/blog/land-management-maury-county" component={LandManagementMauryCounty} />
       <Route path="/blog/land-management-marshall-county" component={LandManagementMarshallCounty} />
-      <Route path="/blog/land-clearing-williamson-county" component={() => { window.location.replace("/blog/land-management-williamson-county"); return null; }} />
-      <Route path="/blog/land-clearing-davidson-county" component={() => { window.location.replace("/blog/land-management-davidson-county"); return null; }} />
-      <Route path="/blog/land-clearing-rutherford-county" component={() => { window.location.replace("/blog/land-management-rutherford-county"); return null; }} />
+      <Route path="/blog/land-management-williamson-county" component={() => { window.location.replace("/blog/land-management-williamson-county"); return null; }} />
+      <Route path="/blog/land-management-davidson-county" component={() => { window.location.replace("/blog/land-management-davidson-county"); return null; }} />
+      <Route path="/blog/land-management-rutherford-county" component={() => { window.location.replace("/blog/land-management-rutherford-county"); return null; }} />
       <Route path="/blog/forestry-mulching-vs-bush-hogging" component={ForestryMulchingVsBushHogging} />
-      <Route path="/blog/how-to-prepare-for-land-clearing" component={HowToPrepareForLandClearing} />
+      <Route path="/blog/how-to-prepare-for-land-management" component={HowToPrepareForLandClearing} />
       <Route path="/blog/pasture-reclamation-tennessee" component={PastureReclamationTennessee} />
       <Route path="/blog/land-management-lincoln-county" component={LandManagementLincolnCounty} />
       <Route path="/blog/land-management-wilson-county" component={LandManagementWilsonCounty} />
@@ -230,7 +230,7 @@ function Router() {
 
       {/* Service pages */}
       <Route path="/services/land-management" component={LandClearingPage} />
-      <Route path="/services/land-clearing" component={() => { window.location.replace("/services/land-management"); return null; }} />
+      <Route path="/services/land-management" component={() => { window.location.replace("/services/land-management"); return null; }} />
       <Route path="/services/forestry-mulching" component={ForestryMulchingPage} />
       <Route path="/services/vegetation-management" component={VegetationManagementPage} />
       <Route path="/services/property-maintenance" component={PropertyMaintenancePage} />

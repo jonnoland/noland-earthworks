@@ -4,7 +4,7 @@ import MobileCTABar from "@/components/MobileCTABar";
 import ServicePageLayout, { ServicePageProps } from "@/components/ServicePageLayout";
 import { usePageTitle } from "@/hooks/usePageTitle";
 
-const HERO = "https://d2xsxph8kpxj0f.cloudfront.net/310519663484957999/PymCzDCnSJzPjdkfwA7Jn6/land-clearing-iPC6VzRdyjJa4bVNXaWy5n.webp";
+const HERO = "https://d2xsxph8kpxj0f.cloudfront.net/310519663484957999/PymCzDCnSJzPjdkfwA7Jn6/land-management-iPC6VzRdyjJa4bVNXaWy5n.webp";
 const SEEDING_HERO = "https://d2xsxph8kpxj0f.cloudfront.net/310519663484957999/PymCzDCnSJzPjdkfwA7Jn6/forestry-mulching-HhrtysAJXn8CTRW2xzcGCC.webp";
 const MULCH_HERO = "https://d2xsxph8kpxj0f.cloudfront.net/310519663484957999/PymCzDCnSJzPjdkfwA7Jn6/vegetation-management-hnEnCRefahdbJy4xpn6UnC.webp";
 const SELECTIVE_HERO = "https://d2xsxph8kpxj0f.cloudfront.net/310519663484957999/PymCzDCnSJzPjdkfwA7Jn6/property-maintenance-3gu7BTR6P2RKi4ZuYCNLoN.webp";
@@ -18,7 +18,7 @@ const data: ServicePageProps = {
   overviewBody: [
     "Fence lines are one of the most neglected areas on rural and agricultural properties across Tennessee. Within a few seasons, brush, saplings, and vines can completely consume a fence — making it invisible, inaccessible, and eventually structurally compromised as roots and stems push against posts and wire. Cedar trees are a particularly common offender in Middle Tennessee, sending up dense thickets that swallow fence lines whole.",
     "Fence line clearing removes all vegetation growing along and through your fence, restoring visibility, access, and the structural integrity of the fence itself. Noland Earthworks uses a tracked forestry mulcher to work alongside the fence — grinding brush, saplings, and vines into mulch without the risk of thrown debris or the need to haul anything off the property. The mulch layer stays on the ground as natural cover, suppressing future regrowth and protecting the soil.",
-    "This service is commonly added to a larger land clearing job — clearing the main property and cleaning up the fence lines in the same mobilization — but it can also be scheduled as a standalone service for properties where the fence lines are the primary concern. Many Tennessee landowners and farmers find that a single fence line clearing visit restores years of neglect and makes ongoing maintenance far more manageable.",
+    "This service is commonly added to a larger land management job — clearing the main property and cleaning up the fence lines in the same mobilization — but it can also be scheduled as a standalone service for properties where the fence lines are the primary concern. Many Tennessee landowners and farmers find that a single fence line clearing visit restores years of neglect and makes ongoing maintenance far more manageable.",
     "We serve landowners, farmers, ranchers, and rural property owners throughout Middle and West Tennessee. Whether you have a quarter-mile of overgrown pasture fence or several miles of boundary line that hasn't been touched in a decade, we'll walk the property, assess what's there, and give you a straight estimate before any work begins.",
   ],
   benefits: [

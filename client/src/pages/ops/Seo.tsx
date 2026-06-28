@@ -1154,7 +1154,7 @@ export default function Seo() {
   }));
 
   // ── Keywords ──
-  const [kwTopic, setKwTopic] = useState("land clearing and forestry mulching");
+  const [kwTopic, setKwTopic] = useState("land management and forestry mulching");
   const [kwCounty, setKwCounty] = useState("Middle Tennessee");
   const [kwCount, setKwCount] = useState(15);
   const [kwFilter, setKwFilter] = useState<"all" | "saved">("all");
@@ -1240,7 +1240,7 @@ export default function Seo() {
     "Davidson County", "Montgomery County", "Stewart County",
   ];
   const [cpSelectedCounties, setCpSelectedCounties] = useState<string[]>([]);
-  const [cpService, setCpService] = useState<"forestry-mulching" | "land-clearing" | "brush-hogging" | "all">("all");
+  const [cpService, setCpService] = useState<"forestry-mulching" | "land-management" | "brush-hogging" | "all">("all");
   const [cpWordCount, setCpWordCount] = useState(600);
   const [cpResults, setCpResults] = useState<Array<{ county: string; id: number; title: string; status: "created" | "error"; error?: string }>>([]);
 
@@ -1664,7 +1664,7 @@ export default function Seo() {
                     <Input
                       value={kwTopic}
                       onChange={(e) => setKwTopic(e.target.value)}
-                      placeholder="e.g. land clearing and forestry mulching"
+                      placeholder="e.g. land management and forestry mulching"
                       className="bg-zinc-800 border-zinc-700 text-zinc-200"
                     />
                   </div>
@@ -2067,7 +2067,7 @@ export default function Seo() {
                       <SelectContent className="bg-zinc-900 border-zinc-700">
                         <SelectItem value="all" className="text-zinc-200 text-xs">All Services</SelectItem>
                         <SelectItem value="forestry-mulching" className="text-zinc-200 text-xs">Forestry Mulching</SelectItem>
-                        <SelectItem value="land-clearing" className="text-zinc-200 text-xs">Land Clearing</SelectItem>
+                        <SelectItem value="land-management" className="text-zinc-200 text-xs">Land Management</SelectItem>
                         <SelectItem value="brush-hogging" className="text-zinc-200 text-xs">Brush Hogging</SelectItem>
                       </SelectContent>
                     </Select>
@@ -2130,7 +2130,7 @@ export default function Seo() {
               <CardContent className="pt-4 pb-4">
                 <p className="text-xs font-medium text-zinc-400 mb-2">Tips for better results</p>
                 <ul className="space-y-1.5 text-xs text-zinc-500">
-                  <li>Use county-level keywords like "land clearing Williamson County TN" for local SEO impact.</li>
+                  <li>Use county-level keywords like "land management Williamson County TN" for local SEO impact.</li>
                   <li>Location pages (one per county) are the highest-ROI content type for local service businesses.</li>
                   <li>Blog posts targeting informational keywords ("how does forestry mulching work") build topical authority over time.</li>
                   <li>After generating, review in the Content Library, copy the Markdown, and paste into Squarespace's Markdown block.</li>
@@ -2249,8 +2249,8 @@ export default function Seo() {
                   "What are the highest-priority fixes to improve my score?",
                   "Write an optimized meta title and description for my homepage.",
                   "Generate LocalBusiness JSON-LD schema for nolandearthworks.com.",
-                  "Build a 90-day content plan targeting Middle Tennessee land clearing keywords.",
-                  "What does my site need to rank #1 for 'land clearing Middle Tennessee'?",
+                  "Build a 90-day content plan targeting Middle Tennessee land management keywords.",
+                  "What does my site need to rank #1 for 'land management Middle Tennessee'?",
                   "Explain Core Web Vitals and how to improve them on Squarespace.",
                 ]}
               />

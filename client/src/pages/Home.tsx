@@ -23,8 +23,8 @@ import { usePageTitle } from "@/hooks/usePageTitle";
 
 export default function Home() {
   usePageTitle(
-    "Forestry Mulching & Land Clearing TN",
-    "Veteran-owned forestry mulching and land clearing in Middle & West Tennessee. Free on-site estimates. Call 615-406-4819.",
+    "Forestry Mulching & Land Management TN",
+    "Veteran-owned forestry mulching and land management in Middle & West Tennessee. Free on-site estimates. Call 615-406-4819.",
     "/"
   );
   return (

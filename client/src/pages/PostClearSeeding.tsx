@@ -5,21 +5,21 @@ import ServicePageLayout, { ServicePageProps } from "@/components/ServicePageLay
 import { usePageTitle } from "@/hooks/usePageTitle";
 
 const HERO = "https://d2xsxph8kpxj0f.cloudfront.net/310519663484957999/PymCzDCnSJzPjdkfwA7Jn6/forestry-mulching-HhrtysAJXn8CTRW2xzcGCC.webp";
-const FENCE_HERO = "https://d2xsxph8kpxj0f.cloudfront.net/310519663484957999/PymCzDCnSJzPjdkfwA7Jn6/land-clearing-iPC6VzRdyjJa4bVNXaWy5n.webp";
+const FENCE_HERO = "https://d2xsxph8kpxj0f.cloudfront.net/310519663484957999/PymCzDCnSJzPjdkfwA7Jn6/land-management-iPC6VzRdyjJa4bVNXaWy5n.webp";
 const MULCH_HERO = "https://d2xsxph8kpxj0f.cloudfront.net/310519663484957999/PymCzDCnSJzPjdkfwA7Jn6/vegetation-management-hnEnCRefahdbJy4xpn6UnC.webp";
 const SELECTIVE_HERO = "https://d2xsxph8kpxj0f.cloudfront.net/310519663484957999/PymCzDCnSJzPjdkfwA7Jn6/property-maintenance-3gu7BTR6P2RKi4ZuYCNLoN.webp";
 
 const data: ServicePageProps = {
   slug: "add-ons/post-clear-seeding",
-  title: "Post-Clear Seeding — Land Clearing Add-On in Tennessee",
+  title: "Post-Clear Seeding — Land Management Add-On in Tennessee",
   tagline: "Protect your cleared land immediately — seed it right after clearing to establish ground cover, prevent erosion, and get your property working for you faster.",
   heroImage: HERO,
   overviewTitle: "Why Seed After Clearing?",
   overviewBody: [
     "Once land is cleared, bare soil is vulnerable. Without ground cover, rain washes away topsoil, erosion sets in along slopes and creek banks, and weeds move in before desirable vegetation can establish. In Tennessee, where summer rains can be heavy and slopes are common, unprotected cleared land can lose significant topsoil in a single storm. Post-clear seeding addresses all of that in one step, done immediately after the clearing work is finished.",
-    "Noland Earthworks applies a seed mix appropriate for your intended land use — whether that's pasture grass for livestock, an erosion-control cover crop, or a native wildflower and grass blend for habitat. The mulch layer left behind by forestry mulching acts as a natural seedbed, holding moisture and protecting seed until germination. This is one of the advantages of forestry mulching over traditional land clearing: the mulch that stays on-site does double duty as both erosion protection and a seedbed.",
+    "Noland Earthworks applies a seed mix appropriate for your intended land use — whether that's pasture grass for livestock, an erosion-control cover crop, or a native wildflower and grass blend for habitat. The mulch layer left behind by forestry mulching acts as a natural seedbed, holding moisture and protecting seed until germination. This is one of the advantages of forestry mulching over traditional land management: the mulch that stays on-site does double duty as both erosion protection and a seedbed.",
     "This add-on is particularly valuable on Tennessee properties with slopes, disturbed creek banks, or anywhere the landowner wants to establish a specific ground cover quickly rather than letting nature take its course. Weeds and invasive species are fast to colonize bare soil — getting desirable vegetation established first is the most effective way to prevent them from taking hold.",
-    "Post-clear seeding is done in the same mobilization as the land clearing or forestry mulching job, so there's no additional trip charge. We serve landowners throughout Middle and West Tennessee. If you're planning a clearing project, ask about seeding during your free on-site estimate and we'll recommend the right seed mix for your property and goals.",
+    "Post-clear seeding is done in the same mobilization as the land management or forestry mulching job, so there's no additional trip charge. We serve landowners throughout Middle and West Tennessee. If you're planning a clearing project, ask about seeding during your free on-site estimate and we'll recommend the right seed mix for your property and goals.",
   ],
   benefits: [
     "Establishes ground cover quickly to prevent erosion on bare soil",
@@ -62,7 +62,7 @@ const data: ServicePageProps = {
     },
     {
       question: "What areas of Tennessee do you serve for post-clear seeding?",
-      answer: "We serve landowners throughout Middle and West Tennessee, including Maury, Williamson, Davidson, Cheatham, Dickson, Lawrence, Giles, Marshall, Bedford, Rutherford, Wilson, Sumner, Robertson, Montgomery, Stewart, Houston, Humphreys, Perry, Wayne, Lewis, and surrounding counties. Post-clear seeding is available as an add-on to any land clearing or forestry mulching job in our service area.",
+      answer: "We serve landowners throughout Middle and West Tennessee, including Maury, Williamson, Davidson, Cheatham, Dickson, Lawrence, Giles, Marshall, Bedford, Rutherford, Wilson, Sumner, Robertson, Montgomery, Stewart, Houston, Humphreys, Perry, Wayne, Lewis, and surrounding counties. Post-clear seeding is available as an add-on to any land management or forestry mulching job in our service area.",
     },
   ],
 };

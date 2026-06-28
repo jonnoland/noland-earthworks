@@ -161,7 +161,7 @@ export default function AIChatWidget() {
     const allText = messages.map(m => m.content).join(" ").toLowerCase();
     const params = new URLSearchParams();
     if (allText.includes("forestry mulch")) params.set("service", "forestry-mulching");
-    else if (allText.includes("land clear") || allText.includes("land management")) params.set("service", "land-clearing");
+    else if (allText.includes("land clear") || allText.includes("land management")) params.set("service", "land-management");
     else if (allText.includes("brush hog") || allText.includes("brush hogg")) params.set("service", "brush-hogging");
     else if (allText.includes("right of way") || allText.includes("right-of-way")) params.set("service", "right-of-way-clearing");
     const qs = params.toString();

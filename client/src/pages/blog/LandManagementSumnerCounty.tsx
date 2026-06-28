@@ -55,7 +55,7 @@ export default function LandManagementSumnerCounty() {
 
       <h2>Comprehensive Land Management Services in Sumner County</h2>
 
-      <p>Sometimes, a property requires more extensive work than mulching alone. Our <a href="/services/land-clearing">land management services</a> are designed to handle larger projects, from complete site preparation to significant tree and brush removal. We work with:</p>
+      <p>Sometimes, a property requires more extensive work than mulching alone. Our <a href="/services/land-management">land management services</a> are designed to handle larger projects, from complete site preparation to significant tree and brush removal. We work with:</p>
       <ul>
         <li><strong>Homeowners:</strong> Clearing lots for new homes, expanding yards, or creating defensible space around existing structures.</li>
         <li><strong>Farmers:</strong> Reclaiming agricultural land, clearing fields for planting, or managing overgrown areas that impede operations.</li>

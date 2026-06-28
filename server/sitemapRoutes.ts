@@ -35,7 +35,7 @@ const PAGES = [
   { path: "/blog/land-management-maury-county",                            priority: "0.9", changefreq: "monthly" },
   { path: "/blog/land-management-marshall-county",                         priority: "0.9", changefreq: "monthly" },
   { path: "/blog/forestry-mulching-vs-bush-hogging",                         priority: "0.8", changefreq: "monthly" },
-  { path: "/blog/how-to-prepare-for-land-clearing",                          priority: "0.8", changefreq: "monthly" },
+  { path: "/blog/how-to-prepare-for-land-management",                          priority: "0.8", changefreq: "monthly" },
   { path: "/blog/pasture-reclamation-tennessee",                             priority: "0.8", changefreq: "monthly" },
   { path: "/blog/land-management-lincoln-county",                            priority: "0.9", changefreq: "monthly" },
   { path: "/blog/land-management-wilson-county",                             priority: "0.9", changefreq: "monthly" },
@@ -135,12 +135,12 @@ export function registerSitemapRoutes(app: Express) {
   // llms.txt — AI search engine discovery file
   app.get("/llms.txt", (_req, res) => {
     const content = `# Noland Earthworks, LLC
-> Veteran-owned forestry mulching and land management company serving 35 counties across Middle and West Tennessee. Specializing in tracked forestry mulching, land clearing, vegetation management, and right-of-way clearing. Owner-operated, licensed, and insured. Free on-site estimates.
+> Veteran-owned forestry mulching and land management company serving 35 counties across Middle and West Tennessee. Specializing in tracked forestry mulching, land management, vegetation management, and right-of-way clearing. Owner-operated, licensed, and insured. Free on-site estimates.
 
 ## Services
 
 - [Forestry Mulching](${BASE_URL}/services/forestry-mulching): Primary service. Tracked machine grinds trees, brush, and stumps into mulch in a single pass. No hauling, no burning, no bare soil.
-- [Land Clearing & Management](${BASE_URL}/services/land-management): Lot clearing, pasture reclamation, site prep, and fence line clearing for residential, agricultural, and commercial properties.
+- [Land Management & Management](${BASE_URL}/services/land-management): Lot clearing, pasture reclamation, site prep, and fence line clearing for residential, agricultural, and commercial properties.
 - [Vegetation Management](${BASE_URL}/services/vegetation-management): Control invasive species, overgrowth, and unwanted vegetation on roadsides, easements, and property boundaries.
 - [Right-of-Way Clearing](${BASE_URL}/services/right-of-way-clearing): Driveway clearing, utility corridor clearing, and easement maintenance.
 - [Property Maintenance](${BASE_URL}/services/property-maintenance): Ongoing brush and vegetation control to keep land clean and usable year-round.
@@ -151,7 +151,7 @@ Middle and West Tennessee. Core counties: Davidson, Williamson, Rutherford, Wils
 
 ## Resources
 
-- [Blog & Resources](${BASE_URL}/blog): Guides on forestry mulching, land clearing costs, seasonal timing, and county-specific land management.
+- [Blog & Resources](${BASE_URL}/blog): Guides on forestry mulching, land management costs, seasonal timing, and county-specific land management.
 - [Free Quote](${BASE_URL}/quote): Request a free on-site estimate.
 - [Service Areas](${BASE_URL}/#service-areas): Full list of 35 counties served.
 

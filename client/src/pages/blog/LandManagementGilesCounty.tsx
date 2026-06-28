@@ -52,7 +52,7 @@ export default function LandManagementGilesCounty() {
 
       <h2>Comprehensive Land Management in Giles County, Tennessee</h2>
 
-      <p>Sometimes, the scope of work goes beyond mulching. For larger trees, stumps, or significant site preparation, <a href="/services/land-clearing">land management</a> becomes necessary. This might involve:</p>
+      <p>Sometimes, the scope of work goes beyond mulching. For larger trees, stumps, or significant site preparation, <a href="/services/land-management">land management</a> becomes necessary. This might involve:</p>
 
       <ul>
         <li><strong>New Construction:</strong> Clearing land for a new home, outbuilding, or commercial development.</li>

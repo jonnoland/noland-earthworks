@@ -72,7 +72,7 @@ function getCatAttachment(jobDescription?: string, adTypes?: string[]): string {
     text.includes("develop") ||
     text.includes("subdivision")
   ) {
-    return "land clearing bucket attachment, clearing a residential lot";
+    return "land management bucket attachment, clearing a residential lot";
   }
 
   if (
@@ -144,7 +144,7 @@ export const socialPostsRouter = router({
         veteran_trust: "Ad type: Veteran-Owned Trust. Lead with the veteran-owned identity. Reliability, integrity, showing up when committed, doing the work as quoted. This is not a marketing angle — it is how the business operates. Speak to landowners who value that.",
         reclaim_your_land: "Ad type: Reclaim Your Land. Emotional angle — the landowner bought this property for a reason and it has gotten away from them. Speak to that feeling directly. Make it feel like Jon understands their situation. End with a low-pressure invitation to call.",
         specific_use_case: "Ad type: Specific Use Case. Pick one specific scenario: pasture reclamation for a farmer, fence line clearing, lot clearing for a residential developer, or right-of-way clearing. Speak directly to that landowner's situation.",
-        general: "Ad type: Choose the best angle based on what performs well for land clearing companies. Consider before/after, problem/solution, or veteran trust as the top performers.",
+        general: "Ad type: Choose the best angle based on what performs well for land management companies. Consider before/after, problem/solution, or veteran trust as the top performers.",
       };
 
       const adTypeNote = input.adTypes.length === 1
@@ -153,14 +153,14 @@ export const socialPostsRouter = router({
 
       const jobContext = input.jobDescription
         ? `Base the ad on this specific job or context: ${input.jobDescription}`
-        : `No specific job was provided. Draw on your knowledge of what Noland Earthworks does — forestry mulching, land clearing, brush removal, pasture reclamation, fence line clearing, right-of-way clearing in Middle Tennessee. Use real, specific details that a Tennessee landowner would recognize.`;
+        : `No specific job was provided. Draw on your knowledge of what Noland Earthworks does — forestry mulching, land management, brush removal, pasture reclamation, fence line clearing, right-of-way clearing in Middle Tennessee. Use real, specific details that a Tennessee landowner would recognize.`;
 
       const competitorContext = `Competitor ad intelligence (for reference, do NOT copy — write in Jon's voice):
 - Hook style that works: "Are you a property owner in Middle Tennessee with overgrown land you haven't been able to use?"
 - Effective body: "Most people think clearing land means weeks of chainsaw work, burn piles, and hauling debris. Forestry mulching grinds it all down into nutrient-rich mulch right on the spot. No burn piles. No hauling fees. No erosion."
 - Effective CTA: "Click this ad, fill out the info and we will give you a call for a quote."
 - What works: specific, plain language; before/after contrast; addressing the exact problem the landowner has; low-pressure CTA.
-- What does not work: generic "call us for land clearing"; stock images; corporate language.`;
+- What does not work: generic "call us for land management"; stock images; corporate language.`;
 
       const result = await invokeLLM({
         messages: [
@@ -180,7 +180,7 @@ export const socialPostsRouter = router({
               properties: {
                 draft: { type: "string", description: "The full post body text" },
                 headline: { type: "string", description: "Short punchy headline, max 8 words" },
-                imagePrompt: { type: "string", description: "Image generation prompt for a realistic land clearing photo" },
+                imagePrompt: { type: "string", description: "Image generation prompt for a realistic land management photo" },
               },
               required: ["draft", "headline", "imagePrompt"],
               additionalProperties: false,
@@ -234,7 +234,7 @@ export const socialPostsRouter = router({
         veteran_trust: "Ad type: Veteran-Owned Trust. Lead with the veteran-owned identity. Reliability, integrity, showing up when committed, doing the work as quoted.",
         reclaim_your_land: "Ad type: Reclaim Your Land. Emotional angle — the landowner bought this property for a reason and it has gotten away from them. End with a low-pressure invitation to call.",
         specific_use_case: "Ad type: Specific Use Case. Pick one specific scenario: pasture reclamation, fence line clearing, lot clearing, or right-of-way clearing.",
-        general: "Ad type: Choose the best angle based on what performs well for land clearing companies. Consider before/after, problem/solution, or veteran trust.",
+        general: "Ad type: Choose the best angle based on what performs well for land management companies. Consider before/after, problem/solution, or veteran trust.",
       };
       const adTypeNote = input.adTypes.length === 1
         ? (adTypeInstructions[input.adTypes[0]] ?? adTypeInstructions.general)
@@ -242,7 +242,7 @@ export const socialPostsRouter = router({
 
       const jobContext = input.jobDescription
         ? `Base the ad on this specific job or context: ${input.jobDescription}`
-        : `No specific job was provided. Draw on your knowledge of what Noland Earthworks does — forestry mulching, land clearing, brush removal, pasture reclamation, fence line clearing, right-of-way clearing in Middle & West Tennessee.`;
+        : `No specific job was provided. Draw on your knowledge of what Noland Earthworks does — forestry mulching, land management, brush removal, pasture reclamation, fence line clearing, right-of-way clearing in Middle & West Tennessee.`;
 
       const competitorContext = `Competitor ad intelligence (for reference, do NOT copy — write in Jon's voice):
 - Hook style that works: "Are you a property owner in Middle Tennessee with overgrown land you haven't been able to use?"
@@ -377,7 +377,7 @@ export const socialPostsRouter = router({
         veteran_trust: "Ad type: Veteran-Owned Trust. Lead with the veteran-owned identity.",
         reclaim_your_land: "Ad type: Reclaim Your Land. Emotional angle — the landowner bought this property for a reason and it has gotten away from them.",
         specific_use_case: "Ad type: Specific Use Case. Pick one: pasture reclamation, fence line clearing, lot clearing, or right-of-way clearing.",
-        general: "Ad type: Choose the best angle based on what performs well for land clearing companies.",
+        general: "Ad type: Choose the best angle based on what performs well for land management companies.",
       };
       const platformInstructions: Record<string, string> = {
         facebook: "Write a Facebook post: conversational, up to 150 words, 2-3 hashtags max, end with a direct CTA (call, text, or visit nolandearthworks.com).",
@@ -388,7 +388,7 @@ export const socialPostsRouter = router({
       };
       const jobContext = input.jobDescription
         ? `Base the ad on this specific job or context: ${input.jobDescription}`
-        : `No specific job provided. Draw on Noland Earthworks services — forestry mulching, land clearing, brush removal, pasture reclamation, fence line clearing, right-of-way clearing in Middle & West Tennessee.`;
+        : `No specific job provided. Draw on Noland Earthworks services — forestry mulching, land management, brush removal, pasture reclamation, fence line clearing, right-of-way clearing in Middle & West Tennessee.`;
       const result = await invokeLLM({
         messages: [
           {
@@ -1053,7 +1053,7 @@ export const adVariantsRouter = router({
         : "Tone: casual, warm, southern hospitality. Like a neighbor talking to a neighbor.";
       const jobContext = input.jobDescription
         ? `Base the ads on this specific job or context: ${input.jobDescription}`
-        : `No specific job. Draw on what Noland Earthworks does — forestry mulching, land clearing, brush removal, pasture reclamation, fence line clearing, right-of-way clearing in Middle Tennessee.`;
+        : `No specific job. Draw on what Noland Earthworks does — forestry mulching, land management, brush removal, pasture reclamation, fence line clearing, right-of-way clearing in Middle Tennessee.`;
 
       const angles = [
         { key: "before_after", label: "Before/After", instruction: "Open with the problem (overgrown, unusable land). Close with the result (clean, cleared, usable). Make the contrast vivid and real." },

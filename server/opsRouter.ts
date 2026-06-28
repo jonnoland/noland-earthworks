@@ -585,7 +585,7 @@ Write the message as if you are Jon sending a text or short email. First-person,
       // Fetch notes for context
       const notes = await db.select().from(leadNotes).where(eq(leadNotes.leadId, input.leadId)).orderBy(desc(leadNotes.createdAt)).limit(5);
       const noteText = notes.map((n) => `- ${n.content}`).join("\n") || "No notes yet.";
-      const prompt = `You are evaluating a lead for Noland Earthworks, LLC — a veteran-owned forestry mulching and land clearing company in Middle Tennessee. Score this lead 1-10 and classify as strong/marginal/weak.
+      const prompt = `You are evaluating a lead for Noland Earthworks, LLC — a veteran-owned forestry mulching and land management company in Middle Tennessee. Score this lead 1-10 and classify as strong/marginal/weak.
 
 Lead data:
 Name: ${lead.name}
@@ -901,7 +901,7 @@ const quotesRouter = router({
       // ── Production rates (acres/day) from DB ────────────────────────────────
       const BASE_APD: Record<string, number> = {
         "forestry-mulching":     parseFloat(pricingRow?.apdForestryMulching ?? "1.5"),
-        "land-clearing":         parseFloat(pricingRow?.apdLandClearing     ?? "1.2"),
+        "land-management":         parseFloat(pricingRow?.apdLandClearing     ?? "1.2"),
         "vegetation-management": 2.5,
         "property-maintenance":  2.5,
         "right-of-way-clearing": parseFloat(pricingRow?.apdRowClearing      ?? "500"),  // LF/day
@@ -931,7 +931,7 @@ const quotesRouter = router({
           moderate: [Math.round(fmBase * 1.0),   Math.round(fmBase * dmMult)],
           heavy:    [Math.round(fmBase * dmMult), Math.round(fmBase * dhMult * 1.5)],
         },
-        "land-clearing":         {
+        "land-management":         {
           light:    [Math.round(lcBase * 0.75),  Math.round(lcBase * 1.0)],
           moderate: [Math.round(lcBase * 1.0),   Math.round(lcBase * dmMult)],
           heavy:    [Math.round(lcBase * dmMult), Math.round(lcBase * dhMult * 2.0)],
@@ -1031,7 +1031,7 @@ const quotesRouter = router({
         try {
           const serviceTypeMap: Record<string, string[]> = {
             "forestry-mulching":     ["forestry_mulching"],
-            "land-clearing":         ["land_clearing"],
+            "land-management":         ["land_clearing"],
             "brush-hogging":         ["brush_removal"],
             "right-of-way-clearing": ["land_clearing", "forestry_mulching"],
             "vegetation-management": ["forestry_mulching", "land_clearing"],
@@ -1465,7 +1465,7 @@ Rules:
 
 Return ONLY valid JSON with this exact structure:
 {
-  "inferredService": "forestry-mulching | land-clearing | brush-hogging | right-of-way-clearing | vegetation-management",
+  "inferredService": "forestry-mulching | land-management | brush-hogging | right-of-way-clearing | vegetation-management",
   "inferredAcres": 0,
   "inferredDensity": "light | moderate | heavy",
   "inferredTerrain": "flat | rolling | steep",
@@ -1855,10 +1855,10 @@ const conversationsRouter = router({
         apologetic: "Acknowledge any delay or issue first. Empathetic but still professional.",
       };
       const toneNote = toneInstructions[input.preferredTone] ?? toneInstructions.balanced;
-      const prompt = `You are drafting 3 SMS reply options for Jon Noland, owner of Noland Earthworks, LLC — veteran-owned forestry mulching and land clearing, Middle Tennessee.
+      const prompt = `You are drafting 3 SMS reply options for Jon Noland, owner of Noland Earthworks, LLC — veteran-owned forestry mulching and land management, Middle Tennessee.
 
 Voice rules: ${toneNote} No corporate language, no emojis, 1-3 sentences max, SMS length.
-Services: forestry mulching (primary), land clearing, brush hogging. Does NOT do grading, excavation, or hauling.
+Services: forestry mulching (primary), land management, brush hogging. Does NOT do grading, excavation, or hauling.
 For pricing questions: say you need to see the property first and offer to schedule a site visit.
 
 Conversation:\n${threadText}\n\nLast message from ${conv.contactName}: "${lastInbound.body}"
@@ -3246,10 +3246,10 @@ export const opsRouter = router({
     return {
       id: 0,
       siteUrl: "nolandearthworks.com",
-      fbHashtags: "#NolandEarthworks #LandClearing #ForestryMulching #Tennessee",
-      igHashtags: "#NolandEarthworks #LandClearing #ForestryMulching #Tennessee #LandManagement #VeteranOwned #MiddleTennessee",
-      xHashtags: "#LandClearing #ForestryMulching #Tennessee",
-      liHashtags: "#NolandEarthworks #LandClearing #ForestryMulching #Tennessee #VeteranOwned",
+      fbHashtags: "#NolandEarthworks #LandManagement #ForestryMulching #Tennessee",
+      igHashtags: "#NolandEarthworks #LandManagement #ForestryMulching #Tennessee #LandManagement #VeteranOwned #MiddleTennessee",
+      xHashtags: "#LandManagement #ForestryMulching #Tennessee",
+      liHashtags: "#NolandEarthworks #LandManagement #ForestryMulching #Tennessee #VeteranOwned",
       updatedAt: new Date(),
     };
   }),
@@ -3391,7 +3391,7 @@ export const opsRouter = router({
       count: z.number().int().min(5).max(30).optional(),
     }))
     .mutation(async ({ input }) => {
-      const topic = input.topic ?? "land clearing and forestry mulching";
+      const topic = input.topic ?? "land management and forestry mulching";
       const county = input.county ?? "Middle Tennessee";
       const count = input.count ?? 15;
 
@@ -3399,7 +3399,7 @@ export const opsRouter = router({
         messages: [
           {
             role: "system",
-            content: `You are an SEO specialist for Noland Earthworks, LLC — a veteran-owned land clearing and forestry mulching company based in Middle Tennessee. Your job is to generate targeted keyword ideas that will drive qualified leads to the business website nolandearthworks.com. Focus on local, transactional, and informational keywords that landowners, homeowners, developers, and farmers in Tennessee would search when looking for land clearing, forestry mulching, or brush removal services. Avoid generic national keywords. Prioritize county-level and city-level local keywords, service + location combinations, and problem-aware keywords (e.g. "overgrown land clearing Nashville"). Output ONLY valid JSON.`,
+            content: `You are an SEO specialist for Noland Earthworks, LLC — a veteran-owned land management and forestry mulching company based in Middle Tennessee. Your job is to generate targeted keyword ideas that will drive qualified leads to the business website nolandearthworks.com. Focus on local, transactional, and informational keywords that landowners, homeowners, developers, and farmers in Tennessee would search when looking for land management, forestry mulching, or brush removal services. Avoid generic national keywords. Prioritize county-level and city-level local keywords, service + location combinations, and problem-aware keywords (e.g. "overgrown land management Nashville"). Output ONLY valid JSON.`,
           },
           {
             role: "user",
@@ -3532,7 +3532,7 @@ export const opsRouter = router({
         messages: [
           {
             role: "system",
-            content: `You are writing SEO content for Noland Earthworks, LLC — a veteran-owned land clearing and forestry mulching company based in Middle Tennessee. The owner is Jon Noland, a veteran who runs the business himself with a tracked forestry mulcher. The brand voice is direct, plain, confident, and grounded — like a real person who does this work, not a marketing department. Rules: no emojis, no corporate jargon, no filler phrases like "solutions" or "we strive to", no hashtag overload. Write like a landowner would talk to another landowner. Focus on practical value: what the service does, why it matters, what the customer gets. Always include the target keyword naturally in the title, first paragraph, and 2-3 subheadings. Include a clear call to action at the end pointing to nolandearthworks.com. Output ONLY valid JSON.`,
+            content: `You are writing SEO content for Noland Earthworks, LLC — a veteran-owned land management and forestry mulching company based in Middle Tennessee. The owner is Jon Noland, a veteran who runs the business himself with a tracked forestry mulcher. The brand voice is direct, plain, confident, and grounded — like a real person who does this work, not a marketing department. Rules: no emojis, no corporate jargon, no filler phrases like "solutions" or "we strive to", no hashtag overload. Write like a landowner would talk to another landowner. Focus on practical value: what the service does, why it matters, what the customer gets. Always include the target keyword naturally in the title, first paragraph, and 2-3 subheadings. Include a clear call to action at the end pointing to nolandearthworks.com. Output ONLY valid JSON.`,
           },
           {
             role: "user",
@@ -3693,7 +3693,7 @@ export const opsRouter = router({
         )
         .join("\n\n");
 
-      const systemPrompt = `You are a senior SEO consultant and technical researcher helping a small business owner fix SEO issues on their Squarespace website (nolandearthworks.com — a veteran-owned land clearing and forestry mulching company in Middle & West Tennessee).
+      const systemPrompt = `You are a senior SEO consultant and technical researcher helping a small business owner fix SEO issues on their Squarespace website (nolandearthworks.com — a veteran-owned land management and forestry mulching company in Middle & West Tennessee).
 
 For EACH issue you must:
 1. RESEARCH the issue — explain why it matters for SEO rankings, what Google's official guidance says, and what real-world impact this specific type of issue has on local service businesses. Be specific and factual, not generic. Reference known Google ranking factors, Core Web Vitals, E-E-A-T, or local SEO best practices where relevant.
@@ -3912,7 +3912,7 @@ Return a JSON object with a "fixes" array — one object per issue in the same o
       // Fallback: generate a general fix snippet via LLM
       const isSquarespace = false;
 
-      const systemPrompt = `You are an SEO technical consultant helping a small business owner fix issues on their website (nolandearthworks.com — a veteran-owned land clearing company in Tennessee). This site is fully built in React/Vite, not Squarespace. Produce a ready-to-apply fix: exact HTML, JSON-LD, or text the owner can copy and paste. Be specific and complete.`;
+      const systemPrompt = `You are an SEO technical consultant helping a small business owner fix issues on their website (nolandearthworks.com — a veteran-owned land management company in Tennessee). This site is fully built in React/Vite, not Squarespace. Produce a ready-to-apply fix: exact HTML, JSON-LD, or text the owner can copy and paste. Be specific and complete.`;
 
       const userPrompt = `Generate a ready-to-apply fix for this SEO issue:
 
@@ -4047,7 +4047,7 @@ Provide the exact code or text to copy-paste. Include brief instructions on wher
           }
 
           // Fallback: generate a general fix snippet via LLM
-          const systemPrompt = `You are an SEO technical consultant helping a small business owner fix issues on their website (nolandearthworks.com — a veteran-owned land clearing company in Tennessee). This site is fully built in React/Vite, not Squarespace. Produce a ready-to-apply fix: exact HTML, JSON-LD, or text to copy and paste.`;
+          const systemPrompt = `You are an SEO technical consultant helping a small business owner fix issues on their website (nolandearthworks.com — a veteran-owned land management company in Tennessee). This site is fully built in React/Vite, not Squarespace. Produce a ready-to-apply fix: exact HTML, JSON-LD, or text to copy and paste.`;
 
           const userPrompt = `Generate a ready-to-apply fix for this SEO issue:
 
@@ -4146,14 +4146,14 @@ Current SEO audit results for nolandearthworks.com (audited ${new Date(audit.aud
         }
       }
 
-      const systemPrompt = `You are an expert SEO agent for Noland Earthworks, LLC — a veteran-owned land clearing and forestry mulching company based in Middle Tennessee. You have deep knowledge of:
+      const systemPrompt = `You are an expert SEO agent for Noland Earthworks, LLC — a veteran-owned land management and forestry mulching company based in Middle Tennessee. You have deep knowledge of:
 - Local SEO for service businesses in Tennessee
 - Technical SEO (meta tags, schema markup, Core Web Vitals, Squarespace-specific implementation)
 - Content SEO (keyword targeting, blog strategy, service page optimization)
 - Google Business Profile optimization
 - The Noland Earthworks brand voice: direct, plain, confident, no corporate jargon, no emojis
 - The target audience: landowners, homeowners, developers, farmers in Middle Tennessee
-- Competitors: Middle Tennessee Land Clearing LLC, Mid State Land Clearing LLC, Grounded Land Solutions, Stribling Land Clearing & Dirtwork, Wolf Creek Land Company
+- Competitors: Middle Tennessee Land Management LLC, Mid State Land Management LLC, Grounded Land Solutions, Stribling Land Management & Dirtwork, Wolf Creek Land Company
 
 You can:
 1. Analyze audit results and prioritize fixes
@@ -4184,7 +4184,7 @@ Always be specific to nolandearthworks.com. Never give generic advice — tie ev
   generateCountyPages: ownerProcedure
     .input(z.object({
       counties: z.array(z.string().min(1)).min(1).max(20),
-      service: z.enum(["forestry-mulching", "land-clearing", "brush-hogging", "all"]).default("all"),
+      service: z.enum(["forestry-mulching", "land-management", "brush-hogging", "all"]).default("all"),
       wordCount: z.number().int().min(300).max(1200).default(600),
     }))
     .mutation(async ({ input }) => {
@@ -4194,9 +4194,9 @@ Always be specific to nolandearthworks.com. Never give generic advice — tie ev
 
       const serviceLabel = {
         "forestry-mulching": "forestry mulching",
-        "land-clearing": "land clearing",
+        "land-management": "land management",
         "brush-hogging": "brush hogging",
-        "all": "land clearing and forestry mulching",
+        "all": "land management and forestry mulching",
       }[input.service];
 
       const results: Array<{ county: string; id: number; title: string; status: "created" | "error"; error?: string }> = [];
@@ -4208,7 +4208,7 @@ Always be specific to nolandearthworks.com. Never give generic advice — tie ev
             messages: [
               {
                 role: "system",
-                content: `You are writing a local SEO service area page for Noland Earthworks, LLC — a veteran-owned land clearing and forestry mulching company in Middle Tennessee. The owner is Jon Noland, a veteran who runs the business himself with a tracked forestry mulcher. Brand voice: direct, plain, confident, grounded — like a real person who does this work, not a marketing department. Rules: no emojis, no corporate jargon, no filler phrases like "solutions" or "we strive to". Write like a landowner talking to another landowner. Focus on practical value. Include the target keyword naturally in the title, first paragraph, and 2-3 subheadings. End with a clear CTA pointing to nolandearthworks.com. Output ONLY valid JSON.`,
+                content: `You are writing a local SEO service area page for Noland Earthworks, LLC — a veteran-owned land management and forestry mulching company in Middle Tennessee. The owner is Jon Noland, a veteran who runs the business himself with a tracked forestry mulcher. Brand voice: direct, plain, confident, grounded — like a real person who does this work, not a marketing department. Rules: no emojis, no corporate jargon, no filler phrases like "solutions" or "we strive to". Write like a landowner talking to another landowner. Focus on practical value. Include the target keyword naturally in the title, first paragraph, and 2-3 subheadings. End with a clear CTA pointing to nolandearthworks.com. Output ONLY valid JSON.`,
               },
               {
                 role: "user",
@@ -4353,7 +4353,7 @@ Always be specific to nolandearthworks.com. Never give generic advice — tie ev
       ].join(" ");
       const result = await invokeLLM({
         messages: [
-          { role: "system", content: "You are writing a morning briefing for Jon Noland, owner-operator of Noland Earthworks, LLC — a veteran-owned land clearing and forestry mulching company in Middle Tennessee. Write a plain-English briefing of 4-6 sentences covering: what's on the schedule today, any stale leads that need a call, pipeline health, and one practical observation or action item. Sound like a straight-talking field operator reviewing his day, not a business consultant. No emojis. No filler. No corporate language." },
+          { role: "system", content: "You are writing a morning briefing for Jon Noland, owner-operator of Noland Earthworks, LLC — a veteran-owned land management and forestry mulching company in Middle Tennessee. Write a plain-English briefing of 4-6 sentences covering: what's on the schedule today, any stale leads that need a call, pipeline health, and one practical observation or action item. Sound like a straight-talking field operator reviewing his day, not a business consultant. No emojis. No filler. No corporate language." },
           { role: "user", content: `Here is today's business snapshot:\n\n${context}\n\nWrite the morning brief.` },
         ],
       });
@@ -4390,7 +4390,7 @@ Always be specific to nolandearthworks.com. Never give generic advice — tie ev
     .mutation(async ({ input }) => {
       const result = await invokeLLM({
         messages: [
-          { role: "system", content: "You are writing a follow-up text message for Jon Noland, owner-operator of Noland Earthworks, LLC — a veteran-owned land clearing and forestry mulching company in Middle Tennessee. Write a short, casual, warm follow-up SMS (2-3 sentences max) in Jon's voice. Reference the client by first name, mention the specific service, and ask if they have any questions or want to move forward. Sound like a real person, not a sales script. No emojis. No hashtags." },
+          { role: "system", content: "You are writing a follow-up text message for Jon Noland, owner-operator of Noland Earthworks, LLC — a veteran-owned land management and forestry mulching company in Middle Tennessee. Write a short, casual, warm follow-up SMS (2-3 sentences max) in Jon's voice. Reference the client by first name, mention the specific service, and ask if they have any questions or want to move forward. Sound like a real person, not a sales script. No emojis. No hashtags." },
           { role: "user", content: `Draft a follow-up SMS for: Client: ${input.clientName}. Service: ${input.service}. ${input.acreage ? `Acreage: ${input.acreage}.` : ""} Quote sent ${input.daysSinceSent} days ago with no response.` },
         ],
       });
@@ -4434,7 +4434,7 @@ Always be specific to nolandearthworks.com. Never give generic advice — tie ev
               },
               {
                 type: "text" as const,
-                text: `You are analyzing a satellite image of a property in Tennessee for a land clearing and forestry mulching quote. Analyze the image and provide: 1) Vegetation density (light/moderate/heavy) with brief reasoning, 2) Terrain type (flat/rolling/steep) with brief reasoning, 3) Access challenges (easy/moderate/difficult) with brief reasoning, 4) Any notable obstacles (water features, structures, rock outcrops). Keep each item to 1-2 sentences. Be practical and specific — this analysis will be used to price a land clearing job. If the image is unclear or shows an urban/suburban area, say so.`,
+                text: `You are analyzing a satellite image of a property in Tennessee for a land management and forestry mulching quote. Analyze the image and provide: 1) Vegetation density (light/moderate/heavy) with brief reasoning, 2) Terrain type (flat/rolling/steep) with brief reasoning, 3) Access challenges (easy/moderate/difficult) with brief reasoning, 4) Any notable obstacles (water features, structures, rock outcrops). Keep each item to 1-2 sentences. Be practical and specific — this analysis will be used to price a land management job. If the image is unclear or shows an urban/suburban area, say so.`,
               },
             ],
           },
@@ -4607,7 +4607,7 @@ Always be specific to nolandearthworks.com. Never give generic advice — tie ev
     const postSummary = postRows.map(p => `${p.platform} post on ${new Date(p.createdAt).toLocaleDateString()}: "${(p.draft ?? "").slice(0, 80)}..." — ${p.published ? "published" : "draft"}`).join("\n");
     const result = await invokeLLM({
       messages: [
-        { role: "system", content: "You are analyzing advertising performance data for Jon Noland, owner-operator of Noland Earthworks, LLC — a veteran-owned land clearing company in Middle Tennessee. Based on the ad spend and social post data provided, identify: 1) Which platforms are getting the most spend, 2) Any patterns in content types or timing, 3) One specific recommendation for what to do differently this week. Be direct and practical. No emojis. No filler." },
+        { role: "system", content: "You are analyzing advertising performance data for Jon Noland, owner-operator of Noland Earthworks, LLC — a veteran-owned land management company in Middle Tennessee. Based on the ad spend and social post data provided, identify: 1) Which platforms are getting the most spend, 2) Any patterns in content types or timing, 3) One specific recommendation for what to do differently this week. Be direct and practical. No emojis. No filler." },
         { role: "user", content: `Ad spend log:\n${spendSummary || "(none)"}\n\nRecent social posts:\n${postSummary || "(none)"}\n\nProvide a performance insight.` },
       ],
     });
@@ -4661,7 +4661,7 @@ Always be specific to nolandearthworks.com. Never give generic advice — tie ev
     .mutation(async ({ input }) => {
       const result = await invokeLLM({
         messages: [
-          { role: "system", content: "You are advising Jon Noland, owner-operator of Noland Earthworks, LLC — a veteran-owned land clearing company in Middle Tennessee. Jon runs a tracked forestry mulcher as his primary machine. Based on the job details, recommend: 1) Crew configuration (Solo Tracked Mulcher, Mulcher + Groundsman, etc.), 2) Estimated crew days needed, 3) Any equipment or logistics notes. Be brief and practical. No emojis." },
+          { role: "system", content: "You are advising Jon Noland, owner-operator of Noland Earthworks, LLC — a veteran-owned land management company in Middle Tennessee. Jon runs a tracked forestry mulcher as his primary machine. Based on the job details, recommend: 1) Crew configuration (Solo Tracked Mulcher, Mulcher + Groundsman, etc.), 2) Estimated crew days needed, 3) Any equipment or logistics notes. Be brief and practical. No emojis." },
           { role: "user", content: `Job type: ${input.jobType}. ${input.acres ? `Acreage: ${input.acres} acres.` : ""} ${input.terrain ? `Terrain: ${input.terrain}.` : ""} ${input.notes ? `Notes: ${input.notes}.` : ""}` },
         ],
       });
@@ -4730,7 +4730,7 @@ Always be specific to nolandearthworks.com. Never give generic advice — tie ev
     const jobSummary = completedJobs.map(j => `${j.jobType} — ${j.acres ?? "?"} acres — estimated ${j.crewDays} crew days`).join("\n");
     const result = await invokeLLM({
       messages: [
-        { role: "system", content: "You are reviewing job history for Jon Noland, owner-operator of Noland Earthworks, LLC — a veteran-owned land clearing company in Middle Tennessee. Based on the job types and estimated crew days, identify any patterns that suggest the estimates are consistently off, and provide one specific calibration recommendation. Be direct and practical. No emojis." },
+        { role: "system", content: "You are reviewing job history for Jon Noland, owner-operator of Noland Earthworks, LLC — a veteran-owned land management company in Middle Tennessee. Based on the job types and estimated crew days, identify any patterns that suggest the estimates are consistently off, and provide one specific calibration recommendation. Be direct and practical. No emojis." },
         { role: "user", content: `Completed jobs with crew day estimates:\n${jobSummary}\n\nProvide a calibration recommendation.` },
       ],
     });
@@ -4849,14 +4849,14 @@ Always be specific to nolandearthworks.com. Never give generic advice — tie ev
         slow: "late summer / early fall (Sep): slowest stretch — customers waiting for cooler weather, focus on fall pre-booking",
       };
 
-      const systemPrompt = `You are a marketing strategist for Noland Earthworks, LLC — a veteran-owned forestry mulching and land clearing company in Middle & West Tennessee. Owner: Jon Noland, sole operator.
+      const systemPrompt = `You are a marketing strategist for Noland Earthworks, LLC — a veteran-owned forestry mulching and land management company in Middle & West Tennessee. Owner: Jon Noland, sole operator.
 
-Services: Forestry mulching (primary), land clearing, brush/understory removal, ROW/trail clearing, storm cleanup.
+Services: Forestry mulching (primary), land management, brush/understory removal, ROW/trail clearing, storm cleanup.
 Equipment: Tracked forestry mulcher — handles slopes, wet ground, dense vegetation. No debris piles, no hauling, no burning.
 Target customers: Rural landowners, residential property owners with acreage, farmers reclaiming pasture, residential developers, government/municipal.
 Core differentiators: Veteran-owned, owner-operated (Jon shows up to every job), clean finish with no debris, tracked machine handles difficult terrain.
 Voice: Casual, warm, direct. Real job content. No corporate jargon. No emojis. No hashtag overload.
-Competitors: Middle Tennessee Land Clearing LLC, Mid State Land Clearing LLC, Grounded Land Solutions, Stribling Land Clearing & Dirtwork, Wolf Creek Land Company.
+Competitors: Middle Tennessee Land Management LLC, Mid State Land Management LLC, Grounded Land Solutions, Stribling Land Management & Dirtwork, Wolf Creek Land Company.
 
 Generate a complete monthly ad campaign plan. Return ONLY valid JSON matching this exact schema — no markdown, no commentary:
 {

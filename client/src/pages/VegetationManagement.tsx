@@ -5,7 +5,7 @@ import ServicePageLayout, { ServicePageProps } from "@/components/ServicePageLay
 import { usePageTitle } from "@/hooks/usePageTitle";
 
 const HERO = "https://d2xsxph8kpxj0f.cloudfront.net/310519663484957999/PymCzDCnSJzPjdkfwA7Jn6/vegetation-management-hnEnCRefahdbJy4xpn6UnC.webp";
-const LAND_HERO = "https://d2xsxph8kpxj0f.cloudfront.net/310519663484957999/PymCzDCnSJzPjdkfwA7Jn6/land-clearing-iPC6VzRdyjJa4bVNXaWy5n.webp";
+const LAND_HERO = "https://d2xsxph8kpxj0f.cloudfront.net/310519663484957999/PymCzDCnSJzPjdkfwA7Jn6/land-management-iPC6VzRdyjJa4bVNXaWy5n.webp";
 const FORESTRY_HERO = "https://d2xsxph8kpxj0f.cloudfront.net/310519663484957999/PymCzDCnSJzPjdkfwA7Jn6/forestry-mulching-HhrtysAJXn8CTRW2xzcGCC.webp";
 const MAINTENANCE_HERO = "https://d2xsxph8kpxj0f.cloudfront.net/310519663484957999/PymCzDCnSJzPjdkfwA7Jn6/property-maintenance-3gu7BTR6P2RKi4ZuYCNLoN.webp";
 
@@ -16,9 +16,9 @@ const data: ServicePageProps = {
   heroImage: HERO,
   overviewTitle: "Proactive Vegetation Control",
   overviewBody: [
-    "Vegetation management is the ongoing practice of controlling unwanted plant growth to protect property, infrastructure, and land value. Unlike one-time land clearing, it's a strategic, recurring service that keeps overgrowth from reclaiming your land. In Tennessee, where cedar, privet, kudzu, and multiflora rose spread aggressively, a consistent management program is often the difference between a usable property and one that's lost to the brush.",
+    "Vegetation management is the ongoing practice of controlling unwanted plant growth to protect property, infrastructure, and land value. Unlike one-time land management, it's a strategic, recurring service that keeps overgrowth from reclaiming your land. In Tennessee, where cedar, privet, kudzu, and multiflora rose spread aggressively, a consistent management program is often the difference between a usable property and one that's lost to the brush.",
     "Noland Earthworks provides vegetation management for a wide range of applications across Middle and West Tennessee: fence lines, rights-of-way, utility corridors, pond banks, pastures, and commercial properties. We use mechanical methods — forestry mulching, mowing, and cutting — to provide effective, environmentally responsible control without herbicides. The tracked mulcher handles terrain that wheeled equipment can't access, including slopes, wet ground, and areas with significant woody growth.",
-    "Whether you're dealing with invasive species encroaching on pasture, brush reclaiming a cleared right-of-way, or simply maintaining land that was cleared last season, we develop a management plan tailored to your property's specific conditions and your long-term goals. Many landowners start with a full land clearing job and then transition to a recurring vegetation management program to keep the property in shape year after year.",
+    "Whether you're dealing with invasive species encroaching on pasture, brush reclaiming a cleared right-of-way, or simply maintaining land that was cleared last season, we develop a management plan tailored to your property's specific conditions and your long-term goals. Many landowners start with a full land management job and then transition to a recurring vegetation management program to keep the property in shape year after year.",
     "We work with rural landowners, farmers, ranchers, developers, and government entities throughout Tennessee. Veteran-owned and operated, Noland Earthworks brings the same standard to every visit: show up when committed, do the work as scoped, and leave the property better than we found it.",
   ],
   benefits: [

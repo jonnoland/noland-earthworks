@@ -148,7 +148,7 @@ export default function ProblemSolutionSection() {
         >
           <span>Explore services:</span>
           <a href="/services/forestry-mulching" style={{ color: "#E07B2A", textDecoration: "none" }}>Forestry Mulching</a>
-          <a href="/services/land-management" style={{ color: "#E07B2A", textDecoration: "none" }}>Land Clearing</a>
+          <a href="/services/land-management" style={{ color: "#E07B2A", textDecoration: "none" }}>Land Management</a>
           <a href="/services/vegetation-management" style={{ color: "#E07B2A", textDecoration: "none" }}>Vegetation Management</a>
           <a href="/services/right-of-way-clearing" style={{ color: "#E07B2A", textDecoration: "none" }}>Right-of-Way Clearing</a>
           <a href="/service-areas/williamson-county" style={{ color: "rgba(240,237,230,0.45)", textDecoration: "none" }}>Williamson County</a>

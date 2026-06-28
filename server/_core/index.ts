@@ -387,7 +387,7 @@ async function startServer() {
         const transcript = session.transcript || "";
         if (!transcript || transcript.length < 50) continue; // Skip short/empty transcripts
 
-        const extractPrompt = `Analyze this chat transcript and extract lead information. Return JSON with fields: name (customer name), phone (phone number if mentioned), email (email if mentioned), service (service type: forestry-mulching, land-clearing, brush-hogging, or other), county (Tennessee county if mentioned). If a field is not found, use empty string. Return ONLY valid JSON, no markdown.
+        const extractPrompt = `Analyze this chat transcript and extract lead information. Return JSON with fields: name (customer name), phone (phone number if mentioned), email (email if mentioned), service (service type: forestry-mulching, land-management, brush-hogging, or other), county (Tennessee county if mentioned). If a field is not found, use empty string. Return ONLY valid JSON, no markdown.
 
 Transcript:
 ${transcript}`;

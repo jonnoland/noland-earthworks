@@ -5,7 +5,7 @@
 import { ArrowRight } from "lucide-react";
 import { useRef, useEffect, useState } from "react";
 
-const LAND_CLEARING = "https://d2xsxph8kpxj0f.cloudfront.net/310519663484957999/PymCzDCnSJzPjdkfwA7Jn6/land-clearing-iPC6VzRdyjJa4bVNXaWy5n.webp";
+const LAND_CLEARING = "https://d2xsxph8kpxj0f.cloudfront.net/310519663484957999/PymCzDCnSJzPjdkfwA7Jn6/land-management-iPC6VzRdyjJa4bVNXaWy5n.webp";
 const FORESTRY_MULCHING = "https://d2xsxph8kpxj0f.cloudfront.net/310519663484957999/PymCzDCnSJzPjdkfwA7Jn6/forestry-mulching-HhrtysAJXn8CTRW2xzcGCC.webp";
 const VEGETATION_MGMT = "https://d2xsxph8kpxj0f.cloudfront.net/310519663484957999/PymCzDCnSJzPjdkfwA7Jn6/vegetation-management-hnEnCRefahdbJy4xpn6UnC.webp";
 const PROPERTY_MAINT = "https://d2xsxph8kpxj0f.cloudfront.net/310519663484957999/PymCzDCnSJzPjdkfwA7Jn6/property-maintenance-3gu7BTR6P2RKi4ZuYCNLoN.webp";
@@ -196,7 +196,7 @@ export default function ServicesSection() {
                 color: "#F0EDE6",
               }}
             >
-              Forestry Mulching &amp; Land Clearing in Tennessee
+              Forestry Mulching &amp; Land Management in Tennessee
             </h2>
             <p
               style={{

@@ -40,7 +40,7 @@ export const maintenanceRouter = router({
       const buffer = Buffer.from(base64Data, "base64");
       const { url: imageUrl } = await storagePut(fileKey, buffer, mimeType);
 
-      const systemPrompt = `You are an expert heavy equipment mechanic and diagnostics specialist with deep knowledge of forestry mulchers, skid steers, track loaders, excavators, and related land-clearing machinery. 
+      const systemPrompt = `You are an expert heavy equipment mechanic and diagnostics specialist with deep knowledge of forestry mulchers, skid steers, track loaders, excavators, and related land-management machinery. 
 
 When given an image of equipment or a component, you provide:
 1. A brief identification of what you see

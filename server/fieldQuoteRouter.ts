@@ -105,7 +105,7 @@ WEAK lead (score: "weak"):
 
 SERVICES OFFERED:
 - Forestry mulching (primary)
-- Land management / land clearing / site prep
+- Land management / land management / site prep
 - Right-of-way clearing
 - Brush hogging (secondary)
 

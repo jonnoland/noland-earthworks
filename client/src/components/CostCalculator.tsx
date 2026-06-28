@@ -50,7 +50,7 @@ function buildBaseRates(p: PublicPricing): Record<string, Record<string, [number
   }
   return {
     "forestry-mulching":    { light: range(fm, 0.8),  moderate: range(fm, 1.0),    heavy: range(fm, dhMult)  },
-    "land-clearing":        { light: range(lc, 0.8),  moderate: range(lc, dmMult), heavy: range(lc, dhMult)  },
+    "land-management":        { light: range(lc, 0.8),  moderate: range(lc, dmMult), heavy: range(lc, dhMult)  },
     "vegetation-management":{ light: range(bh, 0.7),  moderate: range(bh, 1.0),    heavy: range(bh, 1.5)     },
     "property-maintenance": { light: range(bh, 0.7),  moderate: range(bh, 1.0),    heavy: range(bh, 1.5)     },
     "right-of-way-clearing":{ light: range(row * 200, 0.8), moderate: range(row * 200, 1.0), heavy: range(row * 200, dhMult) },
@@ -59,7 +59,7 @@ function buildBaseRates(p: PublicPricing): Record<string, Record<string, [number
 
 const BASE_ACRES_PER_DAY: Record<string, number> = {
   "forestry-mulching":     1.5,
-  "land-clearing":         1.0,
+  "land-management":         1.0,
   "vegetation-management": 2.0,
   "property-maintenance":  2.0,
   "right-of-way-clearing": 1.25,
@@ -378,7 +378,7 @@ function MapPolygonModal({ onClose, onAcreageConfirm, calcState }: {
 
   const SERVICE_LABELS_MAP: Record<string, string> = {
     "forestry-mulching": "Forestry Mulching",
-    "land-clearing": "Land Management",
+    "land-management": "Land Management",
     "vegetation-management": "Vegetation Management",
     "right-of-way-clearing": "Right-of-Way Clearing",
     "property-maintenance": "Property Maintenance",
@@ -688,7 +688,7 @@ function SubmitLeadModal({ state, result, addOns = [], onClose, onSuccess }: {
 
   const SERVICE_LABELS: Record<string, string> = {
     "forestry-mulching": "Forestry Mulching",
-    "land-clearing": "Land Management",
+    "land-management": "Land Management",
     "vegetation-management": "Vegetation Management",
     "right-of-way-clearing": "Right-of-Way Clearing",
     "property-maintenance": "Property Maintenance",
@@ -860,7 +860,7 @@ function SubmitLeadModal({ state, result, addOns = [], onClose, onSuccess }: {
 
 const SERVICE_LABELS_CONFIRM: Record<string, string> = {
   "forestry-mulching": "Forestry Mulching",
-  "land-clearing": "Land Management",
+  "land-management": "Land Management",
   "vegetation-management": "Vegetation Management",
   "right-of-way-clearing": "Right-of-Way Clearing",
   "property-maintenance": "Property Maintenance",
@@ -1215,7 +1215,7 @@ export default function CostCalculator() {
 
   const serviceOptions = [
     { value: "forestry-mulching",      label: "Forestry Mulching" },
-    { value: "land-clearing",          label: "Land Management" },
+    { value: "land-management",          label: "Land Management" },
     { value: "vegetation-management",  label: "Vegetation Management" },
     { value: "right-of-way-clearing",  label: "Right-of-Way Clearing" },
     { value: "property-maintenance",   label: "Property Maintenance" },

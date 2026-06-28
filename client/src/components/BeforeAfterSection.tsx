@@ -37,7 +37,7 @@ const CARDS: Card[] = [
     image: IMG_FORESTRY_MACHINE,
     service: "Forestry Mulching in Action",
     caption:
-      "A tracked forestry mulcher grinds through heavy vegetation in Middle Tennessee. No debris piles, no hauling, no burning — just clean land clearing in a single pass.",
+      "A tracked forestry mulcher grinds through heavy vegetation in Middle Tennessee. No debris piles, no hauling, no burning — just clean land management in a single pass.",
   },
   {
     image: IMG_CLEARED_LAND,
@@ -140,7 +140,7 @@ export default function BeforeAfterSection() {
               marginBottom: "0.75rem",
             }}
           >
-            What Forestry Mulching &amp; Land Clearing Looks Like
+            What Forestry Mulching &amp; Land Management Looks Like
           </h2>
           <p
             style={{
