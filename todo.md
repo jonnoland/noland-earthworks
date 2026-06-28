@@ -2005,3 +2005,8 @@
 - [x] Build seoAutoPatcher.ts: patch index.html meta tags, JSON-LD schema, OG tags, robots.txt directly in project files
 - [x] Update applySeoFix procedure to route auto-fixable checks through patcher and mark truly resolved
 - [x] Update SEO UI to distinguish auto-applied vs manual-required fixes clearly
+- [x] Add static SEO content block to index.html body (H1, H2s, hero image with alt, 400+ words, 10+ internal links) for crawler visibility
+- [x] Reclassify all formerly-Squarespace checks as code-fixed (site is fully Manus-built, not Squarespace)
+- [x] Update seoAutoPatcher.ts: CODE_FIXED_CHECKS and INFRA_CHECKS sets with informational messages
+- [x] Update opsRouter.ts applySeoFix and applyAllSeoFixes to route CODE_FIXED_CHECKS and INFRA_CHECKS through patcher
+- [x] Remove all Squarespace references from LLM prompts in opsRouter.ts

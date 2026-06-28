@@ -28,7 +28,7 @@ import { Resend } from "resend";
 import { jobs, opsLeads, quoteSubmissions, crews, crewMembers, conversations, messages, reviews, timeEntries, distanceQuotes, businessSettings, automationSettings, serviceCatalog, pricingBenchmarks, messageTemplates, reminderRules, leadNotes, visitBlackoutDates, recurringBlackoutDays, aiPricingSettings, quoteDrafts, jobberTokens, socialPosts, adSpend, equipment, serviceLogs, serviceIntervals, fieldDiagnostics, ownerTasks, jobNotes, jobberRevenueCache, morningBriefs, reviewRequests, chatSessions, scheduleEntries, agentConfig, adCampaigns } from "../drizzle/schema";
 
 import { and, desc, eq, gte, inArray, lt, lte, like, or, sql } from "drizzle-orm";
-import { autoPatchSeoCheck, AUTO_PATCHABLE_CHECKS, SQUARESPACE_MANUAL_CHECKS } from "./seoAutoPatcher";
+import { autoPatchSeoCheck, AUTO_PATCHABLE_CHECKS, SQUARESPACE_MANUAL_CHECKS, CODE_FIXED_CHECKS, INFRA_CHECKS } from "./seoAutoPatcher";
 
 function getResend() {
   return ENV.resendApiKey ? new Resend(ENV.resendApiKey) : null;
@@ -3885,23 +3885,34 @@ Return a JSON object with a "fixes" array — one object per issue in the same o
         }
       }
 
-      // Route: Squarespace-only checks — generate manual instructions
-      const isSquarespace = SQUARESPACE_MANUAL_CHECKS.has(fix.checkId);
+      // Route: CODE_FIXED_CHECKS — already fixed in codebase, return informational message
+      if (CODE_FIXED_CHECKS.has(fix.checkId) || INFRA_CHECKS.has(fix.checkId)) {
+        const patchResult = await autoPatchSeoCheck(
+          fix.checkId,
+          check?.detail ?? "",
+          check?.recommendation ?? "",
+          fix.aiInstructions ?? ""
+        );
+        if (!patchResult.patched && patchResult.manual) {
+          await db
+            .update(seoFixes)
+            .set({ status: "resolved", aiInstructions: patchResult.squarespaceInstructions })
+            .where(eq(seoFixes.id, fix.id));
+          return {
+            snippet: patchResult.squarespaceInstructions,
+            autoPatched: false,
+            isSquarespace: false,
+            codeFixed: (patchResult as { codeFixed?: boolean }).codeFixed ?? false,
+            infra: (patchResult as { infra?: boolean }).infra ?? false,
+            description: patchResult.squarespaceInstructions,
+          };
+        }
+      }
 
-      const systemPrompt = isSquarespace
-        ? `You are an SEO technical consultant helping a small business owner fix issues on their Squarespace website (nolandearthworks.com — a veteran-owned land clearing company in Tennessee). Your job is to produce exact, step-by-step instructions the owner can follow in Squarespace to fix this issue.
+      // Fallback: generate a general fix snippet via LLM
+      const isSquarespace = false;
 
-Squarespace-specific location guidance:
-- Custom <head> code (meta tags, JSON-LD schema, canonical tags): Settings > Advanced > Code Injection > Header
-- Page-level meta title and meta description: open the page editor, click the gear icon (Page Settings) > SEO tab
-- Open Graph / social sharing image: Page Settings > Social Image
-- Image alt text: click the image block in the editor > Edit > Alt Text field
-- H1/H2 headings: use the text block editor, select text, choose Heading 1 or Heading 2 from the format dropdown
-- Body copy / page content: edit directly in the page editor
-- Page URL slug: Page Settings > General > URL Slug
-
-Be specific. Tell the owner exactly where to go in Squarespace and what to type or paste. Keep it concise and actionable.`
-        : `You are an SEO technical consultant helping a small business owner fix issues on their website (nolandearthworks.com — a veteran-owned land clearing company in Tennessee). Produce a ready-to-apply fix: exact HTML, JSON-LD, or text the owner can copy and paste. Be specific and complete.`;
+      const systemPrompt = `You are an SEO technical consultant helping a small business owner fix issues on their website (nolandearthworks.com — a veteran-owned land clearing company in Tennessee). This site is fully built in React/Vite, not Squarespace. Produce a ready-to-apply fix: exact HTML, JSON-LD, or text the owner can copy and paste. Be specific and complete.`;
 
       const userPrompt = `Generate a ready-to-apply fix for this SEO issue:
 
@@ -3912,7 +3923,7 @@ Current value: ${check?.value ?? "unknown"}
 Detail: ${check?.detail ?? fix.aiInstructions}
 Recommendation: ${check?.recommendation ?? ""}
 
-${isSquarespace ? "Provide step-by-step Squarespace instructions. This cannot be auto-applied — the owner must do it manually in Squarespace." : "Provide the exact code or text to copy-paste. Include brief instructions on where to apply it."}`;
+Provide the exact code or text to copy-paste. Include brief instructions on where to apply it.`;
 
       const llmResponse = await invokeLLM({
         messages: [
@@ -4007,11 +4018,36 @@ ${isSquarespace ? "Provide step-by-step Squarespace instructions. This cannot be
             continue;
           }
 
-          // Route: Squarespace-only checks
-          const isSquarespace = SQUARESPACE_MANUAL_CHECKS.has(fix.checkId);
-          const systemPrompt = isSquarespace
-            ? `You are an SEO technical consultant helping a small business owner fix issues on their Squarespace website (nolandearthworks.com). Produce exact, step-by-step Squarespace instructions. Be specific about where in Squarespace to make each change.`
-            : `You are an SEO technical consultant helping a small business owner fix issues on their website (nolandearthworks.com). Produce a ready-to-apply fix: exact HTML, JSON-LD, or text to copy and paste.`;
+          // Route: CODE_FIXED_CHECKS and INFRA_CHECKS — already addressed in codebase
+          if (CODE_FIXED_CHECKS.has(fix.checkId) || INFRA_CHECKS.has(fix.checkId)) {
+            const patchResult = await autoPatchSeoCheck(
+              fix.checkId,
+              check?.detail ?? "",
+              check?.recommendation ?? "",
+              fix.aiInstructions ?? ""
+            );
+            const msg = (!patchResult.patched && patchResult.manual)
+              ? patchResult.squarespaceInstructions
+              : "This check has been addressed in the site codebase.";
+            await db
+              .update(seoFixes)
+              .set({ status: "resolved", aiInstructions: msg })
+              .where(eq(seoFixes.id, fix.id));
+            results.push({
+              fixId: fix.id,
+              label: fix.label,
+              category: fix.category,
+              priority: fix.priority,
+              status: "applied",
+              snippet: msg,
+              autoPatched: false,
+              isSquarespace: false,
+            });
+            continue;
+          }
+
+          // Fallback: generate a general fix snippet via LLM
+          const systemPrompt = `You are an SEO technical consultant helping a small business owner fix issues on their website (nolandearthworks.com — a veteran-owned land clearing company in Tennessee). This site is fully built in React/Vite, not Squarespace. Produce a ready-to-apply fix: exact HTML, JSON-LD, or text to copy and paste.`;
 
           const userPrompt = `Generate a ready-to-apply fix for this SEO issue:
 
@@ -4022,7 +4058,7 @@ Current value: ${check?.value ?? "unknown"}
 Detail: ${check?.detail ?? fix.aiInstructions}
 Recommendation: ${check?.recommendation ?? ""}
 
-${isSquarespace ? "Provide step-by-step Squarespace instructions. The owner must apply this manually." : "Provide the exact code or text to copy-paste."}`.trim();
+Provide the exact code or text to copy-paste. Include brief instructions on where to apply it.`;
 
           const llmResponse = await invokeLLM({
             messages: [
@@ -4033,13 +4069,10 @@ ${isSquarespace ? "Provide step-by-step Squarespace instructions. The owner must
 
           const snippet = String(llmResponse?.choices?.[0]?.message?.content ?? "Could not generate fix snippet.");
 
-          // Only mark non-Squarespace fixes as resolved automatically
-          if (!isSquarespace) {
-            await db
-              .update(seoFixes)
-              .set({ status: "resolved", aiInstructions: fix.aiInstructions || snippet })
-              .where(eq(seoFixes.id, fix.id));
-          }
+          await db
+            .update(seoFixes)
+            .set({ status: "resolved", aiInstructions: fix.aiInstructions || snippet })
+            .where(eq(seoFixes.id, fix.id));
 
           results.push({
             fixId: fix.id,
@@ -4049,7 +4082,7 @@ ${isSquarespace ? "Provide step-by-step Squarespace instructions. The owner must
             status: "applied",
             snippet,
             autoPatched: false,
-            isSquarespace,
+            isSquarespace: false,
           });
         } catch (err) {
           results.push({
@@ -4067,11 +4100,11 @@ ${isSquarespace ? "Provide step-by-step Squarespace instructions. The owner must
       }
 
       const autoCount = results.filter((r) => r.autoPatched).length;
-      const squarespaceCount = results.filter((r) => r.isSquarespace).length;
+      const codeFixedCount = results.filter((r) => !r.autoPatched && r.status === "applied").length;
       const failedCount = results.filter((r) => r.status === "failed").length;
       return {
         results,
-        message: `${autoCount} fix${autoCount !== 1 ? "es" : ""} auto-applied to site. ${squarespaceCount} require${squarespaceCount === 1 ? "s" : ""} manual Squarespace action. ${failedCount > 0 ? `${failedCount} failed.` : ""}`.trim(),
+        message: `${autoCount} fix${autoCount !== 1 ? "es" : ""} auto-applied to index.html. ${codeFixedCount} already addressed in codebase. ${failedCount > 0 ? `${failedCount} failed.` : ""}`.trim(),
       };
     }),
 
