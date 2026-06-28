@@ -26,6 +26,7 @@ import {
   ChevronDown,
   ChevronUp,
   Loader2,
+  Zap,
 } from "lucide-react";
 import { Streamdown } from "streamdown";
 
@@ -299,6 +300,8 @@ export default function AiVisibility() {
   const [auditResult, setAuditResult] = useState<AuditResult | null>(null);
   const [fixResults, setFixResults] = useState<Record<string, FixResult>>({});
   const [pendingFixType, setPendingFixType] = useState<string | null>(null);
+  const [runningAllFixes, setRunningAllFixes] = useState(false);
+  const [allFixesProgress, setAllFixesProgress] = useState<{ done: number; total: number } | null>(null);
 
   const { data: latestAudit, isLoading: loadingLatest } = trpc.aiVisibility.getLatest.useQuery();
   const { data: history } = trpc.aiVisibility.getHistory.useQuery();
@@ -344,6 +347,34 @@ export default function AiVisibility() {
   const handleFix = (fixType: AeoFixType) => {
     setPendingFixType(fixType);
     applyFix.mutate({ fixType });
+  };
+
+  const handleRunAllAutoFixes = async () => {
+    if (!displayData) return;
+    const autoFixable = displayData.recommendations.filter(r => r.autoFixable);
+    if (autoFixable.length === 0) {
+      toast.info("No auto-fixable recommendations in this audit.");
+      return;
+    }
+    setRunningAllFixes(true);
+    setAllFixesProgress({ done: 0, total: autoFixable.length });
+    let done = 0;
+    for (const rec of autoFixable) {
+      try {
+        const result = await applyFix.mutateAsync({ fixType: rec.fixType });
+        setFixResults(prev => ({ ...prev, [result.fixType]: result as FixResult }));
+      } catch (_) {
+        // individual errors are toasted by the mutation's onError
+      }
+      done++;
+      setAllFixesProgress({ done, total: autoFixable.length });
+    }
+    setRunningAllFixes(false);
+    setAllFixesProgress(null);
+    toast.success(`All ${autoFixable.length} auto-fixes applied.`);
+    if (autoFixable.some(r => r.fixType === "generate_blog_posts")) {
+      toast.info("Blog drafts saved — view them in the SEO tab.", { duration: 6000 });
+    }
   };
 
   // Normalize latestAudit recommendations from DB (stored as JSON, may be string[])
@@ -529,6 +560,34 @@ export default function AiVisibility() {
               </div>
             </CardHeader>
             <CardContent className="space-y-3">
+              {/* Run All Auto Fixes button */}
+              {displayData.recommendations.some(r => r.autoFixable) && (
+                <div className="flex items-center justify-between pb-1 border-b border-gray-800 mb-1">
+                  <span className="text-xs text-gray-500">
+                    {displayData.recommendations.filter(r => r.autoFixable).length} auto-fixable recommendation{displayData.recommendations.filter(r => r.autoFixable).length !== 1 ? "s" : ""}
+                  </span>
+                  <Button
+                    className="bg-green-700 hover:bg-green-600 text-white text-xs h-8 px-4 gap-1.5"
+                    onClick={handleRunAllAutoFixes}
+                    disabled={runningAllFixes || applyFix.isPending}
+                  >
+                    {runningAllFixes ? (
+                      <>
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        {allFixesProgress
+                          ? `Applying ${allFixesProgress.done + 1} of ${allFixesProgress.total}...`
+                          : "Working..."}
+                      </>
+                    ) : (
+                      <>
+                        <Zap className="w-3.5 h-3.5" />
+                        Run All Auto Fixes
+                      </>
+                    )}
+                  </Button>
+                </div>
+              )}
+
               {displayData.recommendations.map((rec, i) => (
                 <RecommendationRow
                   key={rec.fixType + i}
