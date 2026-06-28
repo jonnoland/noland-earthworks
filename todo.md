@@ -2010,3 +2010,8 @@
 - [x] Update seoAutoPatcher.ts: CODE_FIXED_CHECKS and INFRA_CHECKS sets with informational messages
 - [x] Update opsRouter.ts applySeoFix and applyAllSeoFixes to route CODE_FIXED_CHECKS and INFRA_CHECKS through patcher
 - [x] Remove all Squarespace references from LLM prompts in opsRouter.ts
+
+## Ballpark Range on Quote Confirmation
+- [x] Update leadQualifier.ts to compute ballparkRange and ballparkNote via AI (total project range, not per-acre)
+- [x] Update quoteRouter.ts submit procedure to return ballparkRange and ballparkNote in response
+- [x] Update Quote.tsx confirmation screen to display ballpark range block with proper caveat framing

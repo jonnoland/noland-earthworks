@@ -542,6 +542,10 @@ export const quoteRouter = router({
       address: [input.street, input.city, input.state, input.zip].filter(Boolean).join(", ") || undefined,
     }).catch(err => console.warn("[Quote] Jobber client creation failed:", err));
 
-    return { success: true };
+    return {
+      success: true,
+      ballparkRange: qualification?.ballparkRange ?? "",
+      ballparkNote: qualification?.ballparkNote ?? "",
+    };
   }),
 });

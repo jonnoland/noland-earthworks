@@ -86,6 +86,8 @@ export default function QuotePage() {
   );
   const [submitted, setSubmitted] = useState(false);
   const [selectedAddOns, setSelectedAddOns] = useState<string[]>([]);
+  const [ballparkRange, setBallparkRange] = useState("");
+  const [ballparkNote, setBallparkNote] = useState("");
 
   const toggleAddOn = (label: string) => {
     setSelectedAddOns((prev) =>
@@ -125,9 +127,11 @@ export default function QuotePage() {
   const [submitError, setSubmitError] = useState<string | null>(null);
 
   const submitQuote = trpc.quote.submit.useMutation({
-    onSuccess: () => {
+    onSuccess: (data) => {
       setSubmitted(true);
       setSubmitError(null);
+      setBallparkRange((data as any)?.ballparkRange ?? "");
+      setBallparkNote((data as any)?.ballparkNote ?? "");
     },
     onError: (err) => {
       setSubmitError(
@@ -675,6 +679,63 @@ export default function QuotePage() {
                       </div>
                     );
                   })()}
+
+                  {/* Ballpark Range Block */}
+                  {ballparkRange && (
+                    <div
+                      style={{
+                        marginBottom: "1.5rem",
+                        padding: "1.25rem 1.75rem",
+                        backgroundColor: "rgba(224,123,42,0.08)",
+                        border: "1px solid rgba(224,123,42,0.35)",
+                        borderRadius: "8px",
+                        maxWidth: "440px",
+                        width: "100%",
+                        textAlign: "center",
+                      }}
+                    >
+                      <div
+                        style={{
+                          fontFamily: "'Oswald', sans-serif",
+                          fontWeight: 400,
+                          fontSize: "0.65rem",
+                          letterSpacing: "0.2em",
+                          textTransform: "uppercase",
+                          color: "rgba(224,123,42,0.8)",
+                          marginBottom: "0.5rem",
+                        }}
+                      >
+                        Rough Project Range
+                      </div>
+                      <div
+                        style={{
+                          fontFamily: "'Oswald', sans-serif",
+                          fontWeight: 700,
+                          fontSize: "2rem",
+                          letterSpacing: "0.02em",
+                          color: "#E07B2A",
+                          marginBottom: "0.5rem",
+                          lineHeight: 1.1,
+                        }}
+                      >
+                        {ballparkRange}
+                      </div>
+                      {ballparkNote && (
+                        <p
+                          style={{
+                            fontFamily: "'Lato', sans-serif",
+                            fontWeight: 300,
+                            fontSize: "0.8rem",
+                            color: "rgba(240,237,230,0.5)",
+                            lineHeight: 1.6,
+                            margin: 0,
+                          }}
+                        >
+                          {ballparkNote}
+                        </p>
+                      )}
+                    </div>
+                  )}
 
                   {/* Google Review CTA */}
                   <div
