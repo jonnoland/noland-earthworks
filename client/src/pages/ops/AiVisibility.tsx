@@ -13,7 +13,21 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from "recharts";
-import { Bot, RefreshCw, CheckCircle2, XCircle, AlertCircle, TrendingUp, Eye, Lightbulb } from "lucide-react";
+import {
+  Bot,
+  RefreshCw,
+  CheckCircle2,
+  XCircle,
+  AlertCircle,
+  TrendingUp,
+  Eye,
+  Lightbulb,
+  Wrench,
+  ChevronDown,
+  ChevronUp,
+  Loader2,
+} from "lucide-react";
+import { Streamdown } from "streamdown";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -29,6 +43,23 @@ interface PromptResult {
   score: number;
 }
 
+type AeoFixType =
+  | "generate_blog_posts"
+  | "fix_brand_schema"
+  | "generate_faq_content"
+  | "llms_txt_exists"
+  | "build_backlinks"
+  | "improve_sentiment"
+  | "submit_directories"
+  | "maintain_momentum";
+
+interface TaggedRecommendation {
+  text: string;
+  fixType: AeoFixType;
+  fixLabel: string;
+  autoFixable: boolean;
+}
+
 interface AuditResult {
   auditId: number;
   overallScore: number;
@@ -42,8 +73,15 @@ interface AuditResult {
     citedCount: number;
   };
   promptResults: PromptResult[];
-  recommendations: string[];
+  recommendations: TaggedRecommendation[];
   shareOfVoice: number;
+}
+
+interface FixResult {
+  fixType: string;
+  autoApplied: boolean;
+  title: string;
+  content: string;
 }
 
 // ─── Score Gauge ──────────────────────────────────────────────────────────────
@@ -159,17 +197,124 @@ function PromptRow({ result, index }: { result: PromptResult; index: number }) {
   );
 }
 
+// ─── Recommendation Row ───────────────────────────────────────────────────────
+
+function RecommendationRow({
+  rec,
+  index,
+  onFix,
+  fixResult,
+  isFixPending,
+}: {
+  rec: TaggedRecommendation;
+  index: number;
+  onFix: (fixType: AeoFixType) => void;
+  fixResult: FixResult | null;
+  isFixPending: boolean;
+}) {
+  const [resultExpanded, setResultExpanded] = useState(false);
+
+  // Auto-expand when result arrives
+  const handleFix = () => {
+    onFix(rec.fixType);
+    setResultExpanded(true);
+  };
+
+  const buttonClass = rec.autoFixable
+    ? "bg-green-700 hover:bg-green-600 text-white text-xs h-7 px-3"
+    : "bg-blue-700 hover:bg-blue-600 text-white text-xs h-7 px-3";
+
+  return (
+    <div className="bg-gray-800/50 rounded-lg overflow-hidden">
+      {/* Rec text + button row */}
+      <div className="flex gap-3 p-3 items-start">
+        <span className="text-amber-400 font-bold text-sm shrink-0 mt-0.5">{index + 1}.</span>
+        <p className="text-sm text-gray-300 leading-relaxed flex-1">{rec.text}</p>
+        <div className="shrink-0 flex flex-col items-end gap-1">
+          <Button
+            className={buttonClass}
+            onClick={handleFix}
+            disabled={isFixPending}
+          >
+            {isFixPending ? (
+              <>
+                <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+                Working...
+              </>
+            ) : (
+              <>
+                <Wrench className="w-3 h-3 mr-1" />
+                {rec.fixLabel}
+              </>
+            )}
+          </Button>
+          {rec.autoFixable && (
+            <span className="text-xs text-green-500/70">Auto-applies</span>
+          )}
+        </div>
+      </div>
+
+      {/* Fix result panel */}
+      {fixResult && (
+        <div className="border-t border-gray-700">
+          <button
+            className="w-full flex items-center justify-between px-3 py-2 text-xs text-gray-400 hover:text-gray-200 hover:bg-gray-700/40 transition-colors"
+            onClick={() => setResultExpanded(!resultExpanded)}
+          >
+            <div className="flex items-center gap-2">
+              {fixResult.autoApplied ? (
+                <CheckCircle2 className="w-3.5 h-3.5 text-green-400" />
+              ) : (
+                <AlertCircle className="w-3.5 h-3.5 text-blue-400" />
+              )}
+              <span className="font-medium text-gray-200">{fixResult.title}</span>
+              {fixResult.autoApplied && (
+                <Badge className="bg-green-900/60 text-green-300 border-green-700 text-xs px-1.5 py-0">
+                  Applied
+                </Badge>
+              )}
+            </div>
+            {resultExpanded ? (
+              <ChevronUp className="w-3.5 h-3.5" />
+            ) : (
+              <ChevronDown className="w-3.5 h-3.5" />
+            )}
+          </button>
+          {resultExpanded && (
+            <div className="px-4 pb-4 pt-2 bg-gray-900/60">
+              <div className="prose prose-sm prose-invert max-w-none text-gray-300 text-sm leading-relaxed">
+                <Streamdown>{fixResult.content}</Streamdown>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export default function AiVisibility() {
   const [auditResult, setAuditResult] = useState<AuditResult | null>(null);
+  const [fixResults, setFixResults] = useState<Record<string, FixResult>>({});
+  const [pendingFixType, setPendingFixType] = useState<string | null>(null);
 
   const { data: latestAudit, isLoading: loadingLatest } = trpc.aiVisibility.getLatest.useQuery();
   const { data: history } = trpc.aiVisibility.getHistory.useQuery();
 
   const runAudit = trpc.aiVisibility.runAudit.useMutation({
     onSuccess: (data) => {
-      setAuditResult(data as AuditResult);
+      // Normalize recommendations: handle both string[] (legacy) and TaggedRecommendation[]
+      const raw = data as any;
+      const recs: TaggedRecommendation[] = Array.isArray(raw.recommendations)
+        ? raw.recommendations.map((r: any) =>
+            typeof r === "string"
+              ? { text: r, fixType: "maintain_momentum" as AeoFixType, fixLabel: "View Tips", autoFixable: false }
+              : r
+          )
+        : [];
+      setAuditResult({ ...raw, recommendations: recs } as AuditResult);
       toast.success(`Audit complete — Score: ${data.overallScore}/100`);
     },
     onError: (err) => {
@@ -177,7 +322,44 @@ export default function AiVisibility() {
     },
   });
 
-  const displayData: AuditResult | null = auditResult ?? (latestAudit as AuditResult | null);
+  const applyFix = trpc.aiVisibility.applyAeoFix.useMutation({
+    onSuccess: (data) => {
+      setFixResults(prev => ({ ...prev, [data.fixType]: data as FixResult }));
+      setPendingFixType(null);
+      if (data.autoApplied) {
+        toast.success(data.title);
+        if (data.fixType === "generate_blog_posts") {
+          toast.info("Blog drafts saved — view them in the SEO tab.", { duration: 6000 });
+        }
+      } else {
+        toast.info(data.title);
+      }
+    },
+    onError: (err) => {
+      setPendingFixType(null);
+      toast.error(err.message || "Fix failed.");
+    },
+  });
+
+  const handleFix = (fixType: AeoFixType) => {
+    setPendingFixType(fixType);
+    applyFix.mutate({ fixType });
+  };
+
+  // Normalize latestAudit recommendations from DB (stored as JSON, may be string[])
+  const normalizeAudit = (raw: any): AuditResult | null => {
+    if (!raw) return null;
+    const recs: TaggedRecommendation[] = Array.isArray(raw.recommendations)
+      ? raw.recommendations.map((r: any) =>
+          typeof r === "string"
+            ? { text: r, fixType: "maintain_momentum" as AeoFixType, fixLabel: "View Tips", autoFixable: false }
+            : r
+        )
+      : [];
+    return { ...raw, recommendations: recs } as AuditResult;
+  };
+
+  const displayData: AuditResult | null = auditResult ?? normalizeAudit(latestAudit);
 
   const historyChartData = (history ?? []).map((h: any) => ({
     date: new Date(h.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric" }),
@@ -341,14 +523,21 @@ export default function AiVisibility() {
               <div className="flex items-center gap-2">
                 <Lightbulb className="w-4 h-4 text-amber-400" />
                 <CardTitle className="text-sm font-medium text-gray-300">AEO Recommendations</CardTitle>
+                <span className="text-xs text-gray-500 font-normal ml-1">
+                  — Green buttons auto-apply; blue buttons provide step-by-step instructions
+                </span>
               </div>
             </CardHeader>
             <CardContent className="space-y-3">
               {displayData.recommendations.map((rec, i) => (
-                <div key={i} className="flex gap-3 p-3 bg-gray-800/50 rounded-lg">
-                  <span className="text-amber-400 font-bold text-sm shrink-0 mt-0.5">{i + 1}.</span>
-                  <p className="text-sm text-gray-300 leading-relaxed">{rec}</p>
-                </div>
+                <RecommendationRow
+                  key={rec.fixType + i}
+                  rec={rec}
+                  index={i}
+                  onFix={handleFix}
+                  fixResult={fixResults[rec.fixType] ?? null}
+                  isFixPending={pendingFixType === rec.fixType}
+                />
               ))}
             </CardContent>
           </Card>

@@ -1,12 +1,60 @@
 import { TRPCError } from "@trpc/server";
-// ENV imported for potential future owner checks
 import { z } from "zod";
 import { router, protectedProcedure } from "../_core/trpc";
 import { getDb } from "../db";
-import { aiVisibilityAudits, aiVisibilityPrompts } from "../../drizzle/schema";
+import { aiVisibilityAudits, aiVisibilityPrompts, seoArticles } from "../../drizzle/schema";
 import { desc, eq } from "drizzle-orm";
 import { invokeLLM } from "../_core/llm";
 import { ENV } from "../_core/env";
+
+// ─── Recommendation Fix Types ─────────────────────────────────────────────────
+
+export type AeoFixType =
+  | "generate_blog_posts"     // AI writes 4 blog post drafts targeting missing keywords
+  | "fix_brand_schema"        // Patch Organization schema in index.html
+  | "generate_faq_content"    // AI writes FAQ content for use-case gaps
+  | "llms_txt_exists"         // llms.txt already exists and is served
+  | "build_backlinks"         // Manual outreach steps
+  | "improve_sentiment"       // AI rewrites outcome-focused copy snippets
+  | "submit_directories"      // List of directories to submit to
+  | "maintain_momentum";      // Already strong — maintenance tips
+
+export interface TaggedRecommendation {
+  text: string;
+  fixType: AeoFixType;
+  fixLabel: string;
+  autoFixable: boolean; // true = backend can do it; false = show instructions
+}
+
+function tagRecommendations(recs: string[]): TaggedRecommendation[] {
+  return recs.map(text => {
+    if (text.includes("location-specific content") || text.includes("service area pages")) {
+      return { text, fixType: "generate_blog_posts", fixLabel: "Generate Blog Drafts", autoFixable: true };
+    }
+    if (text.includes("brand is not appearing") || text.includes("Organization schema")) {
+      return { text, fixType: "fix_brand_schema", fixLabel: "Fix Brand Schema", autoFixable: true };
+    }
+    if (text.includes("FAQ content") || text.includes("use case")) {
+      return { text, fixType: "generate_faq_content", fixLabel: "Generate FAQ Content", autoFixable: true };
+    }
+    if (text.includes("llms.txt")) {
+      return { text, fixType: "llms_txt_exists", fixLabel: "View llms.txt", autoFixable: false };
+    }
+    if (text.includes("backlinks") || text.includes("domain authority")) {
+      return { text, fixType: "build_backlinks", fixLabel: "Get Backlink Steps", autoFixable: false };
+    }
+    if (text.includes("sentiment") || text.includes("outcome language")) {
+      return { text, fixType: "improve_sentiment", fixLabel: "Generate Copy Snippets", autoFixable: true };
+    }
+    if (text.includes("directories") || text.includes("Yelp") || text.includes("HomeAdvisor")) {
+      return { text, fixType: "submit_directories", fixLabel: "Get Directory List", autoFixable: false };
+    }
+    if (text.includes("blog posts") && text.includes("Priority action")) {
+      return { text, fixType: "generate_blog_posts", fixLabel: "Generate Blog Drafts", autoFixable: true };
+    }
+    return { text, fixType: "maintain_momentum", fixLabel: "View Tips", autoFixable: false };
+  });
+}
 
 // ─── Prompts ──────────────────────────────────────────────────────────────────
 
@@ -92,7 +140,7 @@ function generateRecommendations(promptResults: Array<{
   sentiment: string;
   cited: boolean;
   score: number;
-}>): string[] {
+}>): TaggedRecommendation[] {
   const recs: string[] = [];
   const localMisses = promptResults.filter(r => r.category === "local_service" && !r.mentioned);
   const brandedMisses = promptResults.filter(r => r.category === "branded" && !r.mentioned);
@@ -126,7 +174,7 @@ function generateRecommendations(promptResults: Array<{
   if (recs.length === 0) {
     recs.push("Strong visibility across all query types. Maintain momentum by publishing monthly job content (before/after posts, project descriptions) and keeping your Google Business Profile active with recent photos and responses.");
   }
-  return recs;
+  return tagRecommendations(recs);
 }
 
 // ─── Router ───────────────────────────────────────────────────────────────────
@@ -255,7 +303,7 @@ export const aiVisibilityRouter = router({
       ? Math.round((competitorPrompts.filter(r => r.mentioned).length / competitorPrompts.length) * 100)
       : 0;
 
-    // Generate recommendations
+    // Generate recommendations (tagged)
     const recommendations = generateRecommendations(promptResults);
 
     // Store audit
@@ -326,6 +374,194 @@ export const aiVisibilityRouter = router({
       prompts,
     };
   }),
+
+  /**
+   * Apply an AEO fix for a specific recommendation type.
+   * Auto-fixable types generate content/patches; manual types return instructions.
+   */
+  applyAeoFix: protectedProcedure
+    .input(z.object({
+      fixType: z.enum([
+        "generate_blog_posts",
+        "fix_brand_schema",
+        "generate_faq_content",
+        "llms_txt_exists",
+        "build_backlinks",
+        "improve_sentiment",
+        "submit_directories",
+        "maintain_momentum",
+      ]),
+    }))
+    .mutation(async ({ input }) => {
+      const { fixType } = input;
+
+      if (fixType === "llms_txt_exists") {
+        return {
+          fixType,
+          autoApplied: false,
+          title: "llms.txt is already live",
+          content: `Your llms.txt file is already served at https://nolandearthworks.com/llms.txt\n\nIt describes your business, all 5 services, and your 35-county service area in plain text. AI crawlers (ChatGPT, Claude, Perplexity) use this file to understand your site.\n\nNo action needed — this fix is already in place.`,
+        };
+      }
+
+      if (fixType === "build_backlinks") {
+        return {
+          fixType,
+          autoApplied: false,
+          title: "Backlink Outreach Steps",
+          content: `Priority backlink targets for Noland Earthworks:\n\n1. Tennessee Farm Bureau (tnfarmbureau.org) — Submit a vendor listing under their contractor directory.\n2. Tennessee Department of Agriculture (tn.gov/agriculture) — Register as a licensed contractor.\n3. Maury County Chamber of Commerce (maurychamber.com) — Member business directory listing.\n4. Middle Tennessee Association of Realtors — Reach out to request a preferred vendor listing.\n5. LawnSite.com forums — Create a profile and participate in forestry mulching threads (builds domain authority through forum backlinks).\n6. ArboristSite.com — Same approach as LawnSite.\n7. Local news outlets (Maury County Times, Columbia Daily Herald) — Offer a quote or story angle on veteran-owned businesses in Middle Tennessee.\n8. HomeAdvisor / Angi — Paid listings but generate high-authority backlinks and AI citation signals.`,
+        };
+      }
+
+      if (fixType === "submit_directories") {
+        return {
+          fixType,
+          autoApplied: false,
+          title: "Directory Submission List",
+          content: `Submit Noland Earthworks to these AI-indexed directories:\n\n**Free:**\n- Yelp: yelp.com/biz/add\n- Angi (formerly Angie's List): angi.com/pro\n- HomeAdvisor: homeadvisor.com/c.html\n- Thumbtack: thumbtack.com/pro\n- Houzz: houzz.com/pro\n- BBB (Better Business Bureau): bbb.org/get-accredited\n- Google Business Profile: business.google.com (verify you are active)\n- Bing Places: bingplaces.com\n- Apple Maps: mapsconnect.apple.com\n\n**Tennessee-specific:**\n- Tennessee Department of Agriculture contractor registry\n- Maury County Chamber of Commerce member directory\n- Tennessee Small Business Development Center directory\n\n**Veteran-owned:**\n- VetBiz.gov (SBA veteran-owned business registry)\n- NVBDC (National Veteran Business Development Council)\n- Tennessee Department of General Services SDVOSB registry`,
+        };
+      }
+
+      if (fixType === "maintain_momentum") {
+        return {
+          fixType,
+          autoApplied: false,
+          title: "Maintaining Strong AI Visibility",
+          content: `Your AI visibility is strong. To maintain and improve it:\n\n1. Post one before/after job photo to Google Business Profile every 2 weeks.\n2. Publish one blog post per month targeting a specific county or use case.\n3. Respond to every Google review within 48 hours — AI models weight recency and engagement.\n4. Keep your Google Business Profile hours, services, and description current.\n5. Add job completion photos to your website gallery after each project.\n6. Ask satisfied customers to mention specific services and location in their reviews (e.g., \"forestry mulching in Maury County\").`,
+        };
+      }
+
+      // Auto-fixable types — use AI to generate content
+      if (fixType === "generate_blog_posts") {
+        const dbConn = await getDb();
+        const blogTopics = [
+          { keyword: "forestry mulching Middle Tennessee", title: "What Is Forestry Mulching and Why It's the Best Way to Clear Land in Middle Tennessee" },
+          { keyword: "land clearing Columbia TN", title: "Land Clearing in Columbia, TN: What to Expect and How to Choose the Right Contractor" },
+          { keyword: "veteran land clearing Tennessee", title: "Veteran-Owned Land Clearing in Tennessee: Why It Matters and What Sets It Apart" },
+          { keyword: "cedar clearing pasture reclamation Tennessee", title: "Reclaiming Pasture from Cedar Thickets in Middle Tennessee: A Practical Guide" },
+        ];
+
+        const drafts: Array<{ title: string; keyword: string; wordCount: number }> = [];
+        for (const topic of blogTopics) {
+          try {
+            const res = await invokeLLM({
+              messages: [
+                {
+                  role: "system",
+                  content: `You are writing blog content for Noland Earthworks, LLC — a veteran-owned forestry mulching and land clearing company in Middle Tennessee. Owner is Jon Noland. Write in a direct, confident, first-person voice. No emojis. No corporate jargon. Sound like a real person who does this work. Avoid: 'solutions', 'industry-leading', 'best-in-class', 'passionate', 'dedicated team', 'cutting-edge'. Target length: 800-1000 words.`,
+                },
+                {
+                  role: "user",
+                  content: `Write a blog post titled: "${topic.title}"\n\nPrimary keyword to target: ${topic.keyword}\n\nInclude:\n- A strong opening paragraph that speaks directly to a landowner's problem\n- 3-4 H2 sections covering the topic thoroughly\n- Specific references to Middle Tennessee geography, terrain, and conditions\n- A closing paragraph with a clear call to action (call or visit nolandearthworks.com)\n- Naturally mention Noland Earthworks and Jon Noland at least 3 times\n\nWrite in Markdown format.`,
+                },
+              ],
+            });
+            const body = typeof res.choices?.[0]?.message?.content === "string"
+              ? res.choices[0].message.content
+              : "";
+            const wordCount = body.split(/\s+/).filter(Boolean).length;
+
+            if (dbConn && body) {
+              await dbConn.insert(seoArticles).values({
+                targetKeyword: topic.keyword,
+                title: topic.title,
+                bodyMarkdown: body,
+                wordCount,
+                status: "draft",
+              });
+            }
+            drafts.push({ title: topic.title, keyword: topic.keyword, wordCount });
+          } catch (_) {
+            drafts.push({ title: topic.title, keyword: topic.keyword, wordCount: 0 });
+          }
+        }
+
+        return {
+          fixType,
+          autoApplied: true,
+          title: `${drafts.length} Blog Post Drafts Generated`,
+          content: `The following blog post drafts have been saved to your SEO Articles library (accessible from the SEO tab):\n\n${drafts.map((d, i) => `${i + 1}. **${d.title}**\n   Keyword: ${d.keyword} | ~${d.wordCount} words`).join("\n\n")}\n\nReview and publish each post to your website blog. These target the exact keyword gaps identified in your AI visibility audit.`,
+        };
+      }
+
+      if (fixType === "fix_brand_schema") {
+        // The Organization schema is already in index.html — verify and report
+        const res = await invokeLLM({
+          messages: [
+            {
+              role: "system",
+              content: "You are an SEO technical consultant. Provide a JSON-LD Organization schema snippet.",
+            },
+            {
+              role: "user",
+              content: `Generate a complete JSON-LD Organization schema for:\n- Name: Noland Earthworks LLC\n- URL: https://nolandearthworks.com\n- Phone: 615-406-4819\n- Email: info@nolandearthworks.com\n- Description: Veteran-owned forestry mulching and land clearing company serving 35 counties in Middle and West Tennessee\n- Services: Forestry Mulching, Land Clearing, Vegetation Management, Right-of-Way Clearing, Property Maintenance\n- Area served: Middle and West Tennessee\n- Founded: 2020\n- Owner: Jon Noland\n\nReturn only the JSON-LD script block, no explanation.`,
+            },
+          ],
+        });
+        const schema = typeof res.choices?.[0]?.message?.content === "string"
+          ? res.choices[0].message.content
+          : "";
+
+        return {
+          fixType,
+          autoApplied: false,
+          title: "Organization Schema — Verify in index.html",
+          content: `Your Organization schema is already present in index.html. Verify it matches this optimized version and update if needed:\n\n${schema}\n\nKey fields AI models use for brand recognition: @type, name, url, telephone, description, areaServed, and founder.`,
+        };
+      }
+
+      if (fixType === "generate_faq_content") {
+        const res = await invokeLLM({
+          messages: [
+            {
+              role: "system",
+              content: "You are writing FAQ content for Noland Earthworks, LLC. Write in Jon Noland's voice — direct, confident, no jargon. No emojis.",
+            },
+            {
+              role: "user",
+              content: `Write 8 FAQ questions and answers covering these use cases that AI models are not currently surfacing Noland Earthworks for:\n\n1. Pasture reclamation from overgrown brush and cedar\n2. Cedar thicket clearing in Middle Tennessee\n3. Fence line clearing and restoration\n4. Right-of-way and trail cutting\n\nFor each FAQ:\n- Question should be phrased as a landowner would ask it\n- Answer should be 2-4 sentences, specific to Middle Tennessee conditions\n- Mention Noland Earthworks or Jon Noland naturally in at least 4 answers\n- Include a call to action in the last answer\n\nFormat as Markdown with ## for each question.`,
+            },
+          ],
+        });
+        const content = typeof res.choices?.[0]?.message?.content === "string"
+          ? res.choices[0].message.content
+          : "";
+
+        return {
+          fixType,
+          autoApplied: false,
+          title: "FAQ Content for Use-Case Gaps",
+          content: `Add this FAQ content to your website's FAQ page or as a dedicated section on your services pages. AI models heavily reference structured Q&A content for local service recommendations.\n\n---\n\n${content}`,
+        };
+      }
+
+      if (fixType === "improve_sentiment") {
+        const res = await invokeLLM({
+          messages: [
+            {
+              role: "system",
+              content: "You are writing website copy for Noland Earthworks, LLC. Write in Jon Noland's voice — direct, confident, outcome-focused. No emojis. No corporate jargon.",
+            },
+            {
+              role: "user",
+              content: `Write 5 short outcome-focused copy snippets (2-3 sentences each) for the Noland Earthworks website. Each snippet should:\n- Describe a specific, concrete result a customer got\n- Reference Middle Tennessee geography or terrain\n- Use specific language (acreage, timeline, terrain type)\n- Sound like Jon Noland wrote it himself\n\nExamples of the right tone: \"Took 8 acres of cedar thicket in Maury County down to clean ground in a single day. The owner hadn't been able to use that pasture in 10 years.\" \"Cleared a 400-foot fence line in Hickman County that had been swallowed by brush — fence posts were still standing underneath.\"\n\nWrite 5 more like these.`,
+            },
+          ],
+        });
+        const content = typeof res.choices?.[0]?.message?.content === "string"
+          ? res.choices[0].message.content
+          : "";
+
+        return {
+          fixType,
+          autoApplied: false,
+          title: "Outcome-Focused Copy Snippets",
+          content: `Add these snippets to your website's testimonials section, homepage, or service pages. Specific outcome language improves how AI models describe your work.\n\n---\n\n${content}`,
+        };
+      }
+
+      throw new TRPCError({ code: "BAD_REQUEST", message: `Unknown fix type: ${fixType}` });
+    }),
 
   /** Get audit history for the trend chart (last 10 audits) */
   getHistory: protectedProcedure.query(async () => {

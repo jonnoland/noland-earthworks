@@ -2042,3 +2042,15 @@
 - [x] Update OpsDashboardLayout sidebar to 15-item structure with correct icons and hub routes
 - [x] Add all hub routes to App.tsx with lazy imports and OwnerRoute guards
 - [x] Verify TypeScript clean (0 errors)
+
+## AI Visibility Score — Fix Buttons — June 2026
+
+- [x] Add TaggedRecommendation type to aiVisibility.ts backend (text, fixType, fixLabel, autoFixable)
+- [x] Add tagRecommendations() helper to map recommendation strings to fix types
+- [x] Add applyAeoFix mutation to aiVisibilityRouter (8 fix types: generate_blog_posts, fix_brand_schema, generate_faq_content, llms_txt_exists, build_backlinks, improve_sentiment, submit_directories, maintain_momentum)
+- [x] Update AiVisibility.tsx to render TaggedRecommendation[] with Fix buttons per recommendation
+- [x] Green "Auto-Apply" buttons for autoFixable=true types; blue "Get Fix" buttons for autoFixable=false
+- [x] Show loading spinner on button while mutation is pending
+- [x] Display fix result in expandable panel below recommendation using Streamdown markdown rendering
+- [x] Show "Applied" badge on auto-applied results; info badge on manual instruction results
+- [x] Toast notification on fix completion; secondary toast for blog drafts pointing to SEO tab
