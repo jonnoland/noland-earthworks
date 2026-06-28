@@ -291,24 +291,35 @@ export default function AIChatWidget() {
       )}
 
       {/* Floating button — raised above sticky mobile CTA bar on small screens */}
-      <button
-        onClick={() => setIsOpen(prev => !prev)}
-        className="fixed right-4 z-50 w-14 h-14 rounded-full shadow-lg flex items-center justify-center transition-transform hover:scale-105 active:scale-95
-          bottom-[72px] lg:bottom-4"
-        style={{ backgroundColor: "#E07B2A" }}
-        aria-label={isOpen ? "Close chat" : "Open chat"}
-      >
-        {isOpen ? (
-          <X size={22} className="text-white" />
-        ) : (
-          <>
-            <MessageSquare size={22} className="text-white" />
-            {hasUnread && (
-              <span className="absolute top-1 right-1 w-3 h-3 bg-red-500 rounded-full border-2 border-white" />
-            )}
-          </>
+      <div className="fixed right-4 z-50 flex flex-col items-center gap-1.5 bottom-[108px] lg:bottom-[56px]">
+        {/* Availability label — only shown when chat is closed */}
+        {!isOpen && (
+          <div
+            className="flex items-center gap-1.5 px-2.5 py-1 rounded-full shadow-md text-xs font-semibold whitespace-nowrap"
+            style={{ backgroundColor: "#1a1a1a", color: "#d4d0c8", border: "1px solid rgba(255,255,255,0.1)" }}
+          >
+            <span className="w-2 h-2 rounded-full bg-green-400 flex-shrink-0" style={{ boxShadow: "0 0 6px #4ade80" }} />
+            We're available
+          </div>
         )}
-      </button>
+        <button
+          onClick={() => setIsOpen(prev => !prev)}
+          className="w-14 h-14 rounded-full shadow-lg flex items-center justify-center transition-transform hover:scale-105 active:scale-95"
+          style={{ backgroundColor: "#E07B2A" }}
+          aria-label={isOpen ? "Close chat" : "Open chat"}
+        >
+          {isOpen ? (
+            <X size={22} className="text-white" />
+          ) : (
+            <>
+              <MessageSquare size={22} className="text-white" />
+              {hasUnread && (
+                <span className="absolute top-1 right-1 w-3 h-3 bg-red-500 rounded-full border-2 border-white" />
+              )}
+            </>
+          )}
+        </button>
+      </div>
     </>
   );
 }
