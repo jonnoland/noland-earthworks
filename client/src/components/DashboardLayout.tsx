@@ -43,29 +43,55 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { getLoginUrl } from "@/const";
 import { Button } from "@/components/ui/button";
 
-// ─── Nav items — all 14 pages ─────────────────────────────────────────────────
+// ─── Nav groups — 5 sections ─────────────────────────────────────────────────
 
-const NAV_ITEMS = [
-  { label: "Dashboard",     href: "/ops",               icon: LayoutDashboard },
-  { label: "Crews",         href: "/ops/crews",          icon: HardHat },
-  { label: "Schedule",      href: "/ops/schedule",       icon: CalendarDays },
-  { label: "Clients",       href: "/ops/clients",        icon: Users },
-  { label: "Leads",         href: "/ops/leads",          icon: Target },
-  { label: "Quotes",        href: "/ops/quotes",         icon: FileText },
-  { label: "Jobs",          href: "/ops/jobs",           icon: Briefcase },
-  { label: "Invoices",      href: "/ops/invoices",       icon: DollarSign },
-  { label: "Chat Sessions", href: "/ops/chat-sessions",  icon: MessageSquare },
-  { label: "Reviews",       href: "/ops/reviews",        icon: Star },
-  { label: "Timesheets",    href: "/ops/timesheets",     icon: ClipboardCheck },
-  { label: "Scoreboard",    href: "/ops/scoreboard",     icon: BarChart2 },
-  { label: "Reports",       href: "/ops/reports",        icon: TrendingUp },
-  { label: "Team",          href: "/ops/team",           icon: UserPlus },
-  { label: "Cost Estimator", href: "/ops/cost-estimator", icon: Calculator },
-  { label: "Ads",           href: "/ops/ads",            icon: Share2 },
-  { label: "SEO",           href: "/ops/seo",            icon: Globe },
-  { label: "Payments",      href: "/ops/payments",      icon: CreditCard },
-  { label: "Gallery",       href: "/ops/gallery",        icon: Images },
-  { label: "Settings",      href: "/ops/settings",       icon: Settings },
+const NAV_GROUPS = [
+  {
+    label: "Overview",
+    items: [
+      { label: "Dashboard",     href: "/ops",              icon: LayoutDashboard },
+    ],
+  },
+  {
+    label: "Field Work",
+    items: [
+      { label: "Jobs",          href: "/ops/jobs",          icon: Briefcase },
+      { label: "Schedule",      href: "/ops/schedule",      icon: CalendarDays },
+      { label: "Crews",         href: "/ops/crews-hub",     icon: HardHat },
+      { label: "Equipment",     href: "/ops/equipment-hub", icon: Settings },
+    ],
+  },
+  {
+    label: "Sales",
+    items: [
+      { label: "Leads",         href: "/ops/leads",         icon: Target },
+      { label: "Quotes",        href: "/ops/quotes",        icon: FileText },
+      { label: "Clients",       href: "/ops/clients",       icon: Users },
+    ],
+  },
+  {
+    label: "Marketing",
+    items: [
+      { label: "Marketing",     href: "/ops/marketing",     icon: Share2 },
+      { label: "Reviews",       href: "/ops/reviews",       icon: Star },
+      { label: "Gallery",       href: "/ops/gallery",       icon: Images },
+    ],
+  },
+  {
+    label: "Business",
+    items: [
+      { label: "Reports",       href: "/ops/reports-hub",   icon: TrendingUp },
+      { label: "Pricing",       href: "/ops/pricing-hub",   icon: Calculator },
+      { label: "Chat Sessions", href: "/ops/chat-sessions", icon: MessageSquare },
+      { label: "Team",          href: "/ops/team",          icon: UserPlus },
+    ],
+  },
+  {
+    label: "Account",
+    items: [
+      { label: "Settings",      href: "/ops/settings",      icon: Settings },
+    ],
+  },
 ];
 
 // ─── Jobber reconnect banner ─────────────────────────────────────────────────
@@ -213,37 +239,48 @@ export default function DashboardLayout({ children, title, subtitle }: Dashboard
 
   const NavLinks = ({ onClickItem }: { onClickItem?: () => void }) => (
     <>
-      {NAV_ITEMS.map((item) => {
-        const Icon = item.icon;
-        const active = isActive(item.href);
-        const showTeamBadge = item.href === "/ops/team" && pendingCount > 0;
-        const showChatBadge = item.href === "/ops/chat-sessions" && chatUnread > 0;
-        return (
-          <Link key={item.href} href={item.href}>
-            <div
-              onClick={onClickItem}
-              className={`relative flex items-center gap-3 mx-2 my-0.5 px-2 py-2 rounded-md text-sm font-medium cursor-pointer transition-colors ${
-                active
-                  ? "bg-orange-500 text-white"
-                  : "text-muted-foreground hover:text-white hover:bg-white/5"
-              }`}
-            >
-              <Icon size={16} className="shrink-0" />
-              {!collapsed && <span className="flex-1">{item.label}</span>}
-              {showTeamBadge && (
-                <span className="ml-auto min-w-[18px] h-[18px] flex items-center justify-center rounded-full bg-red-500 text-white text-[10px] font-bold px-1">
-                  {pendingCount}
-                </span>
-              )}
-              {showChatBadge && (
-                <span className="ml-auto min-w-[18px] h-[18px] flex items-center justify-center rounded-full bg-teal-500 text-white text-[10px] font-bold px-1">
-                  {chatUnread > 99 ? "99+" : chatUnread}
-                </span>
-              )}
+      {NAV_GROUPS.map((group) => (
+        <div key={group.label} className="mb-3">
+          {!collapsed && (
+            <div className="px-3 pb-1 pt-1">
+              <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/50">
+                {group.label}
+              </span>
             </div>
-          </Link>
-        );
-      })}
+          )}
+          {group.items.map((item) => {
+            const Icon = item.icon;
+            const active = isActive(item.href);
+            const showTeamBadge = item.href === "/ops/team" && pendingCount > 0;
+            const showChatBadge = item.href === "/ops/chat-sessions" && chatUnread > 0;
+            return (
+              <Link key={item.href} href={item.href}>
+                <div
+                  onClick={onClickItem}
+                  className={`relative flex items-center gap-3 mx-2 my-0.5 px-2 py-2 rounded-md text-sm font-medium cursor-pointer transition-colors ${
+                    active
+                      ? "bg-orange-500 text-white"
+                      : "text-muted-foreground hover:text-white hover:bg-white/5"
+                  }`}
+                >
+                  <Icon size={16} className="shrink-0" />
+                  {!collapsed && <span className="flex-1">{item.label}</span>}
+                  {showTeamBadge && (
+                    <span className="ml-auto min-w-[18px] h-[18px] flex items-center justify-center rounded-full bg-red-500 text-white text-[10px] font-bold px-1">
+                      {pendingCount}
+                    </span>
+                  )}
+                  {showChatBadge && (
+                    <span className="ml-auto min-w-[18px] h-[18px] flex items-center justify-center rounded-full bg-teal-500 text-white text-[10px] font-bold px-1">
+                      {chatUnread > 99 ? "99+" : chatUnread}
+                    </span>
+                  )}
+                </div>
+              </Link>
+            );
+          })}
+        </div>
+      ))}
     </>
   );
 
@@ -420,7 +457,7 @@ export default function DashboardLayout({ children, title, subtitle }: Dashboard
 
         {/* Mobile bottom nav — first 5 items */}
         <nav className="md:hidden border-t border-[#1e1e1e] bg-[#090909] flex items-center justify-around py-2 shrink-0">
-          {NAV_ITEMS.slice(0, 5).map((item) => {
+          {NAV_GROUPS.flatMap(g => g.items).slice(0, 5).map((item) => {
             const Icon = item.icon;
             const active = isActive(item.href);
             return (
