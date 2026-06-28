@@ -2062,3 +2062,11 @@
 - [x] Replace "LAND CLEARING" all-caps variants in headings
 - [x] Replace #LandClearing hashtag with #LandManagement in Ads.tsx and opsRouter.ts defaults
 - [x] Retune AI Visibility audit prompts to focus on Forestry Mulching as primary service (all 10 prompts now mention forestry mulching explicitly)
+
+## Land Management Page — Forestry Mulching FAQ Section — June 2026
+
+- [x] Add dedicated ForestryMulchingFaqSection component to LandClearing.tsx with 10 AI-optimized Q&As
+- [x] Inject FAQPage JSON-LD schema for the forestry mulching section (separate from ServicePageLayout's existing schema)
+- [x] Section renders below the existing ServicePageLayout FAQ and above the footer
+- [x] Accordion expand/collapse with orange accent color matching site design
+- [x] Fix page title to remove duplicate "& Management" from "Land Management & Management in Tennessee"
