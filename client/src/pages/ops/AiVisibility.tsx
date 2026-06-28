@@ -87,7 +87,7 @@ interface FixResult {
 
 // ─── Score Gauge ──────────────────────────────────────────────────────────────
 
-function ScoreGauge({ score }: { score: number }) {
+function ScoreGauge({ score, delta }: { score: number; delta: number | null }) {
   const color = score >= 70 ? "#22c55e" : score >= 40 ? "#f59e0b" : "#ef4444";
   const label = score >= 70 ? "Strong" : score >= 40 ? "Moderate" : "Weak";
 
@@ -114,6 +114,31 @@ function ScoreGauge({ score }: { score: number }) {
         </div>
       </div>
       <span className="text-sm font-medium" style={{ color }}>{label} Visibility</span>
+      {delta !== null && (
+        <div
+          className="flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold"
+          style={{
+            backgroundColor: delta > 0 ? "rgba(34,197,94,0.15)" : delta < 0 ? "rgba(239,68,68,0.15)" : "rgba(107,114,128,0.15)",
+            color: delta > 0 ? "#4ade80" : delta < 0 ? "#f87171" : "#9ca3af",
+            border: `1px solid ${delta > 0 ? "rgba(34,197,94,0.3)" : delta < 0 ? "rgba(239,68,68,0.3)" : "rgba(107,114,128,0.3)"}`,
+          }}
+        >
+          {delta > 0 ? (
+            <svg viewBox="0 0 12 12" className="w-3 h-3" fill="currentColor">
+              <path d="M6 1 L11 8 H7 V11 H5 V8 H1 Z" />
+            </svg>
+          ) : delta < 0 ? (
+            <svg viewBox="0 0 12 12" className="w-3 h-3" fill="currentColor">
+              <path d="M6 11 L1 4 H5 V1 H7 V4 H11 Z" />
+            </svg>
+          ) : (
+            <svg viewBox="0 0 12 12" className="w-3 h-3" fill="currentColor">
+              <rect x="1" y="5" width="10" height="2" rx="1" />
+            </svg>
+          )}
+          {delta > 0 ? `+${delta} pts` : delta < 0 ? `${delta} pts` : "No change"}
+        </div>
+      )}
     </div>
   );
 }
@@ -304,6 +329,8 @@ export default function AiVisibility() {
   const [allFixesProgress, setAllFixesProgress] = useState<{ done: number; total: number } | null>(null);
   const [refreshingAfterFix, setRefreshingAfterFix] = useState(false);
   const refreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [scoreDelta, setScoreDelta] = useState<number | null>(null);
+  const preRefreshScoreRef = useRef<number | null>(null);
 
   const { data: latestAudit, isLoading: loadingLatest } = trpc.aiVisibility.getLatest.useQuery();
   const { data: history } = trpc.aiVisibility.getHistory.useQuery();
@@ -320,7 +347,21 @@ export default function AiVisibility() {
           )
         : [];
       setAuditResult({ ...raw, recommendations: recs } as AuditResult);
-      toast.success(`Audit complete — Score: ${data.overallScore}/100`);
+      // Compute delta if this was a post-fix refresh
+      if (preRefreshScoreRef.current !== null) {
+        const delta = data.overallScore - preRefreshScoreRef.current;
+        setScoreDelta(delta);
+        preRefreshScoreRef.current = null;
+        if (delta > 0) {
+          toast.success(`Score improved by +${delta} points — now ${data.overallScore}/100`);
+        } else if (delta === 0) {
+          toast.info(`Score unchanged at ${data.overallScore}/100 — changes may take time to reflect.`);
+        } else {
+          toast.warning(`Score shifted by ${delta} points — now ${data.overallScore}/100`);
+        }
+      } else {
+        toast.success(`Audit complete — Score: ${data.overallScore}/100`);
+      }
     },
     onError: (err) => {
       toast.error(err.message || "Audit failed.");
@@ -328,6 +369,10 @@ export default function AiVisibility() {
   });
 
   const triggerRefreshAfterFix = () => {
+    // Capture the current score before the refresh so we can compute the delta
+    const currentScore = auditResult?.overallScore ?? (latestAudit as any)?.overallScore ?? null;
+    preRefreshScoreRef.current = currentScore;
+    setScoreDelta(null);
     // Clear any pending refresh timer
     if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current);
     setRefreshingAfterFix(true);
@@ -476,7 +521,7 @@ export default function AiVisibility() {
           {/* Score Overview */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <Card className="bg-gray-900 border-gray-800 md:col-span-1 flex items-center justify-center py-6">
-              <ScoreGauge score={displayData.overallScore} />
+              <ScoreGauge score={displayData.overallScore} delta={scoreDelta} />
             </Card>
 
             <div className="md:col-span-3 grid grid-cols-2 sm:grid-cols-4 gap-4">
