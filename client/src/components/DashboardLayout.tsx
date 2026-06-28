@@ -242,7 +242,7 @@ export default function DashboardLayout({ children, title, subtitle }: Dashboard
       {NAV_GROUPS.map((group) => (
         <div key={group.label} className="mb-3">
           {!collapsed && (
-            <div className="px-3 pb-1 pt-1">
+            <div className="px-4 pb-1 pt-1">
               <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/50">
                 {group.label}
               </span>
@@ -257,7 +257,7 @@ export default function DashboardLayout({ children, title, subtitle }: Dashboard
               <Link key={item.href} href={item.href}>
                 <div
                   onClick={onClickItem}
-                  className={`relative flex items-center gap-3 mx-2 my-0.5 px-2 py-2 rounded-md text-sm font-medium cursor-pointer transition-colors ${
+                  className={`relative flex items-center gap-3 my-0.5 py-2 rounded-md text-sm font-medium cursor-pointer transition-colors ${collapsed ? 'mx-1 px-0 justify-center' : 'mx-2 px-3'} ${
                     active
                       ? "bg-orange-500 text-white"
                       : "text-muted-foreground hover:text-white hover:bg-white/5"
@@ -290,10 +290,10 @@ export default function DashboardLayout({ children, title, subtitle }: Dashboard
       {/* ── Desktop Sidebar ── */}
       <aside
         className="hidden md:flex flex-col border-r border-[#1e1e1e] bg-[#090909] transition-all duration-200 shrink-0"
-        style={{ width: collapsed ? 60 : 180 }}
+        style={{ width: collapsed ? 64 : 220 }}
       >
         {/* Logo */}
-        <div className="flex items-center justify-center border-b border-[#1e1e1e] shrink-0 overflow-hidden" style={{ height: collapsed ? 56 : 80 }}>
+        <div className="flex items-center justify-center border-b border-[#1e1e1e] shrink-0 overflow-hidden" style={{ height: 56 }}>
           {collapsed ? (
             <Link href="/">
               <img
@@ -343,7 +343,7 @@ export default function DashboardLayout({ children, title, subtitle }: Dashboard
       {mobileOpen && (
         <div className="fixed inset-0 z-50 md:hidden">
           <div className="absolute inset-0 bg-black/60" onClick={() => setMobileOpen(false)} />
-          <aside className="absolute left-0 top-0 bottom-0 w-[200px] bg-[#090909] border-r border-[#1e1e1e] flex flex-col">
+          <aside className="absolute left-0 top-0 bottom-0 w-[220px] bg-[#090909] border-r border-[#1e1e1e] flex flex-col">
             <div className="h-14 flex items-center justify-between px-4 border-b border-[#1e1e1e]">
               <div className="flex items-center">
                 <img
