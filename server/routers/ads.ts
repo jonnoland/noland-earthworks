@@ -118,7 +118,7 @@ export const socialPostsRouter = router({
         "before_after", "problem_solution", "education", "seasonal_urgency",
         "veteran_trust", "reclaim_your_land", "specific_use_case", "general",
       ])).min(1).max(3).default(["general"]),
-      platform: z.enum(["facebook", "instagram", "both", "x"]).default("both"),
+      platform: z.enum(["facebook", "instagram", "both", "x", "google", "linkedin"]).default("both"),
       tone: z.enum(["casual", "professional"]).default("casual"),
       generateImage: z.boolean().default(true),
     }))
@@ -127,7 +127,11 @@ export const socialPostsRouter = router({
         ? "Write one post that works for both Facebook and Instagram."
         : input.platform === "x"
           ? "Write a post for X (formerly Twitter). Keep the post body under 280 characters total. Be punchy and direct — X rewards brevity. No hashtag overload (1-2 max). End with a short CTA."
-          : `Write a post for ${input.platform === "facebook" ? "Facebook" : "Instagram"}.`;
+          : input.platform === "google"
+            ? "Write a Google Ads text ad. Provide: (1) a headline of 30 characters max, (2) a description of 90 characters max. Focus on the search intent — someone actively looking to clear land or hire a forestry mulcher in Tennessee. Lead with the service and location. End with a clear call to action."
+            : input.platform === "linkedin"
+              ? "Write a LinkedIn post targeting developers, project managers, and landowners in Tennessee. Professional tone. Speak to site prep, right-of-way clearing, and land development use cases."
+              : `Write a post for ${input.platform === "facebook" ? "Facebook" : "Instagram"}.`;
       const toneNote = input.tone === "professional"
         ? "Tone: professional and direct, but still genuine and human."
         : "Tone: casual, warm, southern hospitality. Like a neighbor talking to a neighbor. Genuine, not salesy.";
@@ -1030,7 +1034,7 @@ export const adVariantsRouter = router({
   generate: ownerProcedure
     .input(z.object({
       jobDescription: z.string().max(1000).optional(),
-      platform: z.enum(["facebook", "instagram", "both", "x"]).default("both"),
+      platform: z.enum(["facebook", "instagram", "both", "x", "google", "linkedin"]).default("both"),
       tone: z.enum(["casual", "professional"]).default("casual"),
       variantCount: z.number().int().min(2).max(3).default(2),
     }))
@@ -1039,7 +1043,11 @@ export const adVariantsRouter = router({
         ? "Write one post that works for both Facebook and Instagram."
         : input.platform === "x"
           ? "Write a post for X (formerly Twitter). Keep under 280 characters. Be punchy and direct. 1-2 hashtags max."
-          : `Write a post for ${input.platform === "facebook" ? "Facebook" : "Instagram"}.`;
+          : input.platform === "google"
+            ? "Write a Google Ads text ad. Headline max 30 characters, description max 90 characters. Focus on search intent — someone looking to clear land in Tennessee."
+            : input.platform === "linkedin"
+              ? "Write a LinkedIn post targeting developers and landowners in Tennessee. Professional tone."
+              : `Write a post for ${input.platform === "facebook" ? "Facebook" : "Instagram"}.`;
       const toneNote = input.tone === "professional"
         ? "Tone: professional and direct, but still genuine and human."
         : "Tone: casual, warm, southern hospitality. Like a neighbor talking to a neighbor.";

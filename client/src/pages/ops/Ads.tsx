@@ -553,7 +553,7 @@ export default function Ads() {
     sessionStorage.removeItem("ads_prefill");
     try {
       const prefill = JSON.parse(raw) as { platform?: string; draft?: string; jobTitle?: string; jobClient?: string; photoUrls?: string[] };
-      if (prefill.platform && ["facebook", "instagram", "x", "both"].includes(prefill.platform)) {
+      if (prefill.platform && ["facebook", "instagram", "x", "both", "google", "linkedin"].includes(prefill.platform)) {
         setPlatform(prefill.platform as Platform);
       }
       if (prefill.draft) {
@@ -982,7 +982,7 @@ export default function Ads() {
       generateMutation.mutate({
         jobDescription: jobDescription.trim() || undefined,
         adTypes,
-        platform: platform as "facebook" | "instagram" | "both" | "x",
+        platform: platform as "facebook" | "instagram" | "both" | "x" | "google" | "linkedin",
         tone,
         generateImage: withImage,
       });
@@ -1157,7 +1157,7 @@ export default function Ads() {
     setGenerated(null);
     variantsMutation.mutate({
       jobDescription: jobDescription.trim() || undefined,
-      platform: platform === "all" ? "both" : platform as "facebook" | "instagram" | "both" | "x",
+      platform: platform === "all" ? "both" : platform as "facebook" | "instagram" | "both" | "x" | "google" | "linkedin",
       tone,
       variantCount: 3,
     });
