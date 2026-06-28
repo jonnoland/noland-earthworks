@@ -1,4 +1,5 @@
 import { TRPCError } from "@trpc/server";
+// ENV imported for potential future owner checks
 import { z } from "zod";
 import { router, protectedProcedure } from "../_core/trpc";
 import { getDb } from "../db";
@@ -6,13 +7,6 @@ import { aiVisibilityAudits, aiVisibilityPrompts } from "../../drizzle/schema";
 import { desc, eq } from "drizzle-orm";
 import { invokeLLM } from "../_core/llm";
 import { ENV } from "../_core/env";
-
-const ownerProcedure = protectedProcedure.use(({ ctx, next }) => {
-  if (ctx.user.openId !== ENV.ownerOpenId) {
-    throw new TRPCError({ code: "FORBIDDEN", message: "Owner access only." });
-  }
-  return next({ ctx });
-});
 
 // ─── Prompts ──────────────────────────────────────────────────────────────────
 
@@ -142,7 +136,7 @@ export const aiVisibilityRouter = router({
    * Run a full AI visibility audit.
    * Queries Grok with all 10 prompts, scores each, stores results.
    */
-  runAudit: ownerProcedure.mutation(async () => {
+  runAudit: protectedProcedure.mutation(async () => {
     const promptResults: Array<{
       prompt: string;
       category: string;
@@ -306,7 +300,7 @@ export const aiVisibilityRouter = router({
   }),
 
   /** Get the latest audit result */
-  getLatest: ownerProcedure.query(async () => {
+  getLatest: protectedProcedure.query(async () => {
     const dbConn = await getDb();
     if (!dbConn) return null;
     const [latest] = await dbConn
@@ -334,7 +328,7 @@ export const aiVisibilityRouter = router({
   }),
 
   /** Get audit history for the trend chart (last 10 audits) */
-  getHistory: ownerProcedure.query(async () => {
+  getHistory: protectedProcedure.query(async () => {
     const dbConn = await getDb();
     if (!dbConn) return [];
     const audits = await dbConn
