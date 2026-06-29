@@ -5,7 +5,7 @@ export default function LandManagementSumnerCounty() {
     <BlogPostLayout
       title="Land Management in Sumner County, TN: What Property Owners Need to Know"
       pageTitle="Land Management Sumner County, TN | Noland Earthworks"
-      metaDescription="Discover essential land management practices for Sumner County, TN property owners. Learn about forestry mulching, land management, and how to maintain your land effectively."
+      metaDescription="Discover essential land management practices for Sumner County, TN property owners. Learn about forestry mulching, land management."
       date="May 2026"
       dateISO="2026-05-25"
       lastUpdated="May 2026"

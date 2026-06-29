@@ -5,7 +5,7 @@ export default function LandManagementTrousdaleCounty() {
     <BlogPostLayout
       title="Land Management in Trousdale County, TN: What Property Owners Need to Know"
       pageTitle="Land Management in Trousdale County, TN | Noland Earthworks"
-      metaDescription="Need land management in Trousdale County, TN? Noland Earthworks provides forestry mulching and land management in Hartsville and across Trousdale County, Tennessee."
+      metaDescription="Need land management in Trousdale County, TN? Noland Earthworks provides forestry mulching and land management in Hartsville and across Trousdale County."
       date="May 2026"
       dateISO="2026-05-25"
       lastUpdated="May 2026"

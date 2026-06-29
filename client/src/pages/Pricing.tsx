@@ -618,7 +618,7 @@ function CostFactorCard({ row }: { row: typeof costFactors[number] }) {
 export default function PricingPage() {
   usePageTitle(
     "Forestry Mulching & Land Management Pricing — Tennessee",
-    "How much does forestry mulching cost in Tennessee? Typical range is $1,000–4,500/acre depending on density, terrain, and acreage. Use our free estimate calculator or call for a site visit.",
+    "Forestry mulching in Tennessee ranges from $1,000–4,500/acre depending on density and terrain. Use our free estimate calculator or call for a site visit.",
     "/pricing"
   );
   return (

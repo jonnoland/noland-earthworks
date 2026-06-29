@@ -5,7 +5,7 @@ export default function SitePreparationBeforeBuilding() {
     <BlogPostLayout
       title="Site Preparation 101: What to Do Before You Build in Tennessee"
       pageTitle="Site Prep Before Building in Tennessee | Noland Earthworks"
-      metaDescription="Planning to build on Tennessee land? Learn the 5 site prep steps every landowner needs before construction starts — from clearing and grubbing to grading and erosion control."
+      metaDescription="Planning to build on Tennessee land? Learn the 5 site prep steps every landowner needs before construction starts — from clearing and grubbing to grading and."
       date="April 2026"
       dateISO="2026-04-09"
       lastUpdated="April 2026"

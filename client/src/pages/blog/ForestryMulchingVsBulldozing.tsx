@@ -5,7 +5,7 @@ export default function ForestryMulchingVsBulldozing() {
     <BlogPostLayout
       title="Forestry Mulching vs. Bulldozing: Which is Better for Your Property?"
       pageTitle="Forestry Mulching vs. Bulldozing | Noland Earthworks"
-      metaDescription="Forestry mulching vs. bulldozing: compare cost, soil impact, speed, and best use cases to decide which land management method is right for your Tennessee property."
+      metaDescription="Forestry mulching vs. bulldozing: compare cost, soil impact, speed, and best use cases to decide which land management method is right for your Tennessee."
       date="April 2026"
       dateISO="2026-04-01"
       lastUpdated="April 2026"

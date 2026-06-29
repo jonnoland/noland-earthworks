@@ -241,7 +241,7 @@ function ForestryMulchingFaqSection() {
 export default function LandClearingPage() {
   usePageTitle(
     "Land Management in Tennessee | Noland Earthworks",
-    "Veteran-owned land management serving Nashville, Franklin, Murfreesboro, Clarksville, and 35 counties in Middle & West Tennessee. Lot clearing, pasture reclamation, site prep, and fence line clearing. Free on-site estimates.",
+    "Veteran-owned land management across 35 counties in Middle & West Tennessee. Lot clearing, pasture reclamation, site prep, and fence line clearing. Free on-site estimates.",
     "/services/land-management"
   );
   return (

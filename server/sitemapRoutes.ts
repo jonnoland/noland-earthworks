@@ -140,7 +140,7 @@ export function registerSitemapRoutes(app: Express) {
 ## Services
 
 - [Forestry Mulching](${BASE_URL}/services/forestry-mulching): Primary service. Tracked machine grinds trees, brush, and stumps into mulch in a single pass. No hauling, no burning, no bare soil.
-- [Land Management & Management](${BASE_URL}/services/land-management): Lot clearing, pasture reclamation, site prep, and fence line clearing for residential, agricultural, and commercial properties.
+- [Land Management](${BASE_URL}/services/land-management): Lot clearing, pasture reclamation, site prep, and fence line clearing for residential, agricultural, and commercial properties.
 - [Vegetation Management](${BASE_URL}/services/vegetation-management): Control invasive species, overgrowth, and unwanted vegetation on roadsides, easements, and property boundaries.
 - [Right-of-Way Clearing](${BASE_URL}/services/right-of-way-clearing): Driveway clearing, utility corridor clearing, and easement maintenance.
 - [Property Maintenance](${BASE_URL}/services/property-maintenance): Ongoing brush and vegetation control to keep land clean and usable year-round.

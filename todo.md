@@ -2079,3 +2079,11 @@
 - [x] Add Publish to Site button inside ArticleDrawer (orange, shows spinner while publishing)
 - [x] Show "View live" link on published articles in list and drawer
 - [x] Slug collision detection: throws CONFLICT error if another article already uses the same slug
+
+## SEO Audit Fixes — June 2026
+
+- [x] Trim 37 blog post meta descriptions to ≤160 chars (all were 161–231 chars)
+- [x] Trim 8 service/core page meta descriptions to ≤160 chars (Forestry Mulching, Land Management, About, Pricing, Blog, Right-of-Way, Selective Clearing, Vegetation Management)
+- [x] Fix llms.txt typo: "Land Management & Management" → "Land Management"
+- [x] Add LocalBusiness + knowsAbout schema to ForestryMulching page via useEffect
+- [x] Fix /quote page: trim title (78→47 chars), trim description (170→130 chars), trim global keywords (10→5)

@@ -5,7 +5,7 @@ export default function LandManagementHumphreysCounty() {
     <BlogPostLayout
       title="Land Management in Humphreys County, TN: What Property Owners Need to Know"
       pageTitle="Land Management in Humphreys County, TN | Noland Earthworks"
-      metaDescription="Need land management in Humphreys County, TN? Noland Earthworks provides forestry mulching and land management in Waverly, McEwen, New Johnsonville and across Humphreys County."
+      metaDescription="Need land management in Humphreys County, TN? Noland Earthworks provides forestry mulching and land management in Waverly, McEwen."
       date="May 2026"
       dateISO="2026-05-25"
       lastUpdated="May 2026"

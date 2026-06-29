@@ -5,7 +5,7 @@ export default function LandManagementMadisonCounty() {
     <BlogPostLayout
       title="Land Management in Madison County, TN: What Property Owners Need to Know"
       pageTitle="Land Management in Madison County, TN | Noland Earthworks"
-      metaDescription="Need land management in Madison County, TN? Noland Earthworks provides forestry mulching and land management in Jackson, Medina, Humboldt and across Madison County."
+      metaDescription="Need land management in Madison County, TN? Noland Earthworks provides forestry mulching and land management in Jackson, Medina."
       date="May 2026"
       dateISO="2026-05-25"
       lastUpdated="May 2026"

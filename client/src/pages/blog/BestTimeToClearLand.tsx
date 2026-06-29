@@ -5,7 +5,7 @@ export default function BestTimeToClearLand() {
     <BlogPostLayout
       title="Best Time of Year to Clear Land in Middle Tennessee"
       pageTitle="Best Time of Year to Clear Land in Middle Tennessee"
-      metaDescription="Wondering when to clear land in Tennessee? Learn the best season for forestry mulching and land management in Middle Tennessee to save money and get faster results."
+      metaDescription="Wondering when to clear land in Tennessee? Learn the best season for forestry mulching and land management in Middle Tennessee to save money and get faster."
       date="April 2026"
       dateISO="2026-04-08"
       lastUpdated="April 2026"

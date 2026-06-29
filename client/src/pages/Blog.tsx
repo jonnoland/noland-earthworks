@@ -414,7 +414,7 @@ const ALL_CATEGORIES = ["All", ...Array.from(new Set(BLOG_POSTS.map((p) => p.cat
 export default function Blog() {
   usePageTitle(
     "Forestry Mulching & Land Management Blog — Tennessee",
-    "Guides, pricing breakdowns, and how-to articles for Tennessee landowners. Forestry mulching, land management, pasture reclamation, and more from Noland Earthworks.",
+    "Guides, pricing breakdowns, and how-to articles for Tennessee landowners. Forestry mulching, land management, pasture reclamation, and more.",
     "/blog"
   );
 

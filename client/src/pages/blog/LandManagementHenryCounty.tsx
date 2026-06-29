@@ -5,7 +5,7 @@ export default function LandManagementHenryCounty() {
     <BlogPostLayout
       title="Land Management in Henry County, TN: What Property Owners Need to Know"
       pageTitle="Land Management in Henry County, TN | Noland Earthworks"
-      metaDescription="Need land management in Henry County, TN? Noland Earthworks provides forestry mulching and land management in Paris, Puryear, Springville and across Henry County."
+      metaDescription="Need land management in Henry County, TN? Noland Earthworks provides forestry mulching and land management in Paris, Puryear."
       date="May 2026"
       dateISO="2026-05-25"
       lastUpdated="May 2026"

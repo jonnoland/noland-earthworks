@@ -5,7 +5,7 @@ export default function LandManagementHendersonCounty() {
     <BlogPostLayout
       title="Land Management in Henderson County, TN: What Property Owners Need to Know"
       pageTitle="Land Management in Henderson County, TN | Noland Earthworks"
-      metaDescription="Need land management in Henderson County, TN? Noland Earthworks provides forestry mulching and land management in Lexington, Sardis, Scotts Hill, and across Henderson County."
+      metaDescription="Need land management in Henderson County, TN? Noland Earthworks provides forestry mulching and land management in Lexington, Sardis, Scotts Hill."
       date="May 2026"
       dateISO="2026-05-25"
       lastUpdated="May 2026"

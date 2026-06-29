@@ -5,7 +5,7 @@ export default function ForestryMulchingVsBushHogging() {
     <BlogPostLayout
       title="Forestry Mulching vs. Bush Hogging: Understanding the Key Differences for Your Tennessee Land"
       pageTitle="Forestry Mulching vs. Bush Hogging | Noland Earthworks"
-      metaDescription="Confused about forestry mulching vs. bush hogging? Learn the crucial differences, when to use each method, and how Noland Earthworks can help clear your Tennessee land."
+      metaDescription="Confused about forestry mulching vs. bush hogging? Learn the crucial differences, when to use each method."
       date="May 2026"
       dateISO="2026-05-25"
       lastUpdated="May 2026"

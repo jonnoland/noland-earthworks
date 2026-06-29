@@ -5,7 +5,7 @@ export default function LandManagementRobertsonCounty() {
     <BlogPostLayout
       title="Land Management in Robertson County, TN: What Property Owners Need to Know"
       pageTitle="Land Management in Robertson County, TN | Noland Earthworks"
-      metaDescription="Need land management in Robertson County, TN? Noland Earthworks provides forestry mulching and land management in Springfield, Greenbrier, White House, Cross Plains, and across Robertson County."
+      metaDescription="Need land management in Robertson County, TN? Noland Earthworks provides forestry mulching and land management in Springfield, Greenbrier, White House."
       date="May 2026"
       dateISO="2026-05-25"
       lastUpdated="May 2026"

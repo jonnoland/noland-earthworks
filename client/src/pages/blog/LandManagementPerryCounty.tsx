@@ -5,7 +5,7 @@ export default function LandManagementPerryCounty() {
     <BlogPostLayout
       title="Land Management in Perry County, TN: What Property Owners Need to Know"
       pageTitle="Land Management in Perry County, TN | Noland Earthworks"
-      metaDescription="Need land management in Perry County, TN? Noland Earthworks provides forestry mulching and land management in Linden, Lobelville, and Flatwoods and across Perry County."
+      metaDescription="Need land management in Perry County, TN? Noland Earthworks provides forestry mulching and land management in Linden, Lobelville."
       date="May 2026"
       dateISO="2026-05-25"
       lastUpdated="May 2026"

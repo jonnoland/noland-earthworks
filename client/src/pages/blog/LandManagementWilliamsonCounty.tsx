@@ -5,7 +5,7 @@ export default function LandClearingWilliamsonCounty() {
     <BlogPostLayout
       title="Land Management in Williamson County, TN: What Property Owners Need to Know"
       pageTitle="Land Management in Williamson County, TN | Noland Earthworks"
-      metaDescription="Need land management in Williamson County, TN? Noland Earthworks provides forestry mulching and land management in Franklin, Brentwood, Spring Hill, Nolensville, and across Williamson County."
+      metaDescription="Need land management in Williamson County, TN? Noland Earthworks provides forestry mulching and land management in Franklin, Brentwood, Spring Hill."
       date="April 2026"
       dateISO="2026-04-12"
       lastUpdated="April 2026"

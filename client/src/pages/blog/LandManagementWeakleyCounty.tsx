@@ -5,7 +5,7 @@ export default function LandManagementWeakleyCounty() {
     <BlogPostLayout
       title="Land Management in Weakley County, TN: What Property Owners Need to Know"
       pageTitle="Land Management in Weakley County, TN | Noland Earthworks"
-      metaDescription="Need land management in Weakley County, TN? Noland Earthworks provides forestry mulching and land management in Martin, Dresden, Greenfield and across Weakley County."
+      metaDescription="Need land management in Weakley County, TN? Noland Earthworks provides forestry mulching and land management in Martin, Dresden."
       date="May 2026"
       dateISO="2026-05-25"
       lastUpdated="May 2026"

@@ -3,6 +3,7 @@ import Footer from "@/components/Footer";
 import MobileCTABar from "@/components/MobileCTABar";
 import ServicePageLayout, { ServicePageProps } from "@/components/ServicePageLayout";
 import { usePageTitle } from "@/hooks/usePageTitle";
+import { useEffect } from "react";
 
 const HERO = "https://d2xsxph8kpxj0f.cloudfront.net/310519663484957999/PymCzDCnSJzPjdkfwA7Jn6/forestry-mulching-HhrtysAJXn8CTRW2xzcGCC.webp";
 const LAND_HERO = "https://d2xsxph8kpxj0f.cloudfront.net/310519663484957999/PymCzDCnSJzPjdkfwA7Jn6/land-management-iPC6VzRdyjJa4bVNXaWy5n.webp";
@@ -65,9 +66,63 @@ const data: ServicePageProps = {
 export default function ForestryMulchingPage() {
   usePageTitle(
     "Forestry Mulching in Tennessee | Noland Earthworks",
-    "Professional forestry mulching serving Nashville, Clarksville, Murfreesboro, Columbia, and 35 counties across Middle & West Tennessee. One pass clears trees, brush, and stumps. No hauling, no burning. Free on-site estimates.",
+    "Professional forestry mulching across 35 counties in Middle & West Tennessee. One pass clears trees, brush, and stumps — no hauling, no burning. Veteran-owned. Free on-site estimates.",
     "/services/forestry-mulching"
   );
+
+  // Inject LocalBusiness schema referencing this page as the primary service
+  useEffect(() => {
+    const id = "forestry-mulching-lb-schema";
+    let el = document.getElementById(id) as HTMLScriptElement | null;
+    if (!el) {
+      el = document.createElement("script");
+      el.id = id;
+      el.type = "application/ld+json";
+      document.head.appendChild(el);
+    }
+    el.textContent = JSON.stringify({
+      "@context": "https://schema.org",
+      "@type": ["LocalBusiness", "HomeAndConstructionBusiness"],
+      "name": "Noland Earthworks, LLC",
+      "url": "https://nolandearthworks.com",
+      "telephone": "+16154064819",
+      "email": "info@nolandearthworks.com",
+      "description": "Veteran-owned forestry mulching company serving 35 counties across Middle and West Tennessee. Specializing in tracked forestry mulching — the primary service. One pass clears trees, brush, and stumps with no hauling, no burning, and no bare soil.",
+      "hasOfferCatalog": {
+        "@type": "OfferCatalog",
+        "name": "Forestry Mulching Services",
+        "itemListElement": [
+          {
+            "@type": "Offer",
+            "itemOffered": {
+              "@type": "Service",
+              "name": "Forestry Mulching",
+              "description": "Tracked forestry mulching service that grinds trees, brush, and stumps into mulch in a single pass. No hauling, no burning, no bare soil. Handles slopes, wet ground, and difficult terrain.",
+              "areaServed": "Middle and West Tennessee"
+            }
+          }
+        ]
+      },
+      "address": {
+        "@type": "PostalAddress",
+        "addressRegion": "TN",
+        "addressCountry": "US"
+      },
+      "areaServed": [
+        "Davidson County, TN", "Williamson County, TN", "Maury County, TN",
+        "Rutherford County, TN", "Wilson County, TN", "Dickson County, TN",
+        "Cheatham County, TN", "Robertson County, TN", "Sumner County, TN",
+        "Montgomery County, TN", "Bedford County, TN", "Marshall County, TN"
+      ],
+      "knowsAbout": [
+        "forestry mulching", "land management", "pasture reclamation",
+        "cedar clearing", "brush clearing", "right-of-way clearing",
+        "vegetation management", "tracked forestry mulcher"
+      ]
+    });
+    return () => { el?.remove(); };
+  }, []);
+
   return (
     <>
       <Navbar />

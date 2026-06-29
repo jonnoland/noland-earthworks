@@ -5,7 +5,7 @@ export default function LandManagementChesterCounty() {
     <BlogPostLayout
       title="Land Management in Chester County, TN: What Property Owners Need to Know"
       pageTitle="Land Management in Chester County, TN | Noland Earthworks"
-      metaDescription="Need land management in Chester County, TN? Noland Earthworks provides forestry mulching and land management in Henderson, Enville, and Jacks Creek and across Chester County."
+      metaDescription="Need land management in Chester County, TN? Noland Earthworks provides forestry mulching and land management in Henderson, Enville."
       date="May 2026"
       dateISO="2026-05-25"
       lastUpdated="May 2026"

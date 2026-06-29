@@ -6,7 +6,7 @@ export default function LandManagementGilesCounty() {
     <BlogPostLayout
       title="Land Management in Giles County, TN: Essential Insights for Property Owners"
       pageTitle="Land Management in Giles County, TN | Noland Earthworks"
-      metaDescription="Discover crucial land management insights for Giles County, TN property owners. Learn about forestry mulching, land management, and maintaining your land effectively."
+      metaDescription="Discover crucial land management insights for Giles County, TN property owners. Learn about forestry mulching, land management."
       date="May 2026"
       dateISO="2026-05-25"
       lastUpdated="May 2026"

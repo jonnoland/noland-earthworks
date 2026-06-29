@@ -5,7 +5,7 @@ export default function LandManagementWilsonCounty() {
     <BlogPostLayout
       title="Land Management in Wilson County, TN: What Property Owners Need to Know"
       pageTitle="Land Management Wilson County | Noland Earthworks"
-      metaDescription="Understand effective land management in Wilson County, TN. Learn about forestry mulching, land management, and maintaining your property in Lebanon, Mt. Juliet, and surrounding areas."
+      metaDescription="Understand effective land management in Wilson County, TN. Learn about forestry mulching, land management, and maintaining your property in Lebanon, Mt."
       date="May 2026"
       dateISO="2026-05-25"
       lastUpdated="May 2026"

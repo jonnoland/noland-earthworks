@@ -5,7 +5,7 @@ export default function LandManagementGibsonCounty() {
     <BlogPostLayout
       title="Land Management in Gibson County, TN: What Property Owners Need to Know"
       pageTitle="Land Management in Gibson County, TN | Noland Earthworks"
-      metaDescription="Need land management in Gibson County, TN? Noland Earthworks provides forestry mulching and land management in Milan, Humboldt, and Dyer and across Gibson County."
+      metaDescription="Need land management in Gibson County, TN? Noland Earthworks provides forestry mulching and land management in Milan, Humboldt."
       date="May 2026"
       dateISO="2026-05-25"
       lastUpdated="May 2026"

@@ -5,7 +5,7 @@ export default function LandClearingRutherfordCounty() {
     <BlogPostLayout
       title="Land Management in Rutherford County, TN: What Property Owners Need to Know"
       pageTitle="Land Management in Rutherford County, TN | Noland Earthworks"
-      metaDescription="Need land management in Rutherford County, TN? Noland Earthworks provides forestry mulching and land management in Murfreesboro, Smyrna, La Vergne, Eagleville, and across Rutherford County."
+      metaDescription="Need land management in Rutherford County, TN? Noland Earthworks provides forestry mulching and land management in Murfreesboro, Smyrna, La Vergne, Eagleville."
       date="April 2026"
       dateISO="2026-04-12"
       lastUpdated="April 2026"

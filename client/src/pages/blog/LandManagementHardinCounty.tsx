@@ -5,7 +5,7 @@ export default function LandManagementHardinCounty() {
     <BlogPostLayout
       title="Land Management in Hardin County, TN: What Property Owners Need to Know"
       pageTitle="Land Management in Hardin County, TN | Noland Earthworks"
-      metaDescription="Need land management in Hardin County, TN? Noland Earthworks provides forestry mulching and land management in Savannah, Counce, Shiloh and across Hardin County."
+      metaDescription="Need land management in Hardin County, TN? Noland Earthworks provides forestry mulching and land management in Savannah, Counce."
       date="May 2026"
       dateISO="2026-05-25"
       lastUpdated="May 2026"

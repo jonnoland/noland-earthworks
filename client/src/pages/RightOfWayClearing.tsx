@@ -66,7 +66,7 @@ const data: ServicePageProps = {
 export default function RightOfWayClearingPage() {
   usePageTitle(
     "Right-of-Way Clearing in Tennessee | Noland Earthworks",
-    "Professional right-of-way clearing for driveways, utility easements, pipeline corridors, and access roads across Middle & West Tennessee. Forestry mulching cuts a clean corridor in one pass. Free on-site estimates.",
+    "Right-of-way clearing for driveways, utility easements, and access roads in Middle & West Tennessee. Forestry mulching cuts a clean corridor in one pass. Free estimates.",
     "/services/right-of-way-clearing"
   );
   return (

@@ -5,7 +5,7 @@ export default function LandClearingDavidsonCounty() {
     <BlogPostLayout
       title="Land Management in Davidson County, TN: What Property Owners Need to Know"
       pageTitle="Land Management in Davidson County, TN | Noland Earthworks"
-      metaDescription="Need land management in Davidson County, TN? Noland Earthworks provides forestry mulching and land management across Nashville, Antioch, Hermitage, Bellevue, and all of Davidson County."
+      metaDescription="Need land management in Davidson County, TN? Noland Earthworks provides forestry mulching and land management across Nashville, Antioch, Hermitage, Bellevue."
       date="April 2026"
       dateISO="2026-04-12"
       lastUpdated="April 2026"

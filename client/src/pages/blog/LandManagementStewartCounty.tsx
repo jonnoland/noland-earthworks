@@ -5,7 +5,7 @@ export default function LandManagementStewartCounty() {
     <BlogPostLayout
       title="Land Management in Stewart County, TN: What Property Owners Need to Know"
       pageTitle="Land Management in Stewart County, TN | Noland Earthworks"
-      metaDescription="Need land management in Stewart County, TN? Noland Earthworks provides forestry mulching and land management in Dover, Cumberland City, Indian Mound and across Stewart County."
+      metaDescription="Need land management in Stewart County, TN? Noland Earthworks provides forestry mulching and land management in Dover, Cumberland City."
       date="May 2026"
       dateISO="2026-05-25"
       lastUpdated="May 2026"

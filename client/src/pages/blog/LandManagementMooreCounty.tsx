@@ -5,7 +5,7 @@ export default function LandManagementMooreCounty() {
     <BlogPostLayout
       title="Land Management in Moore County, TN: What Property Owners Need to Know"
       pageTitle="Land Management in Moore County, TN | Noland Earthworks"
-      metaDescription="Need land management in Moore County, TN? Noland Earthworks provides forestry mulching and land management in Lynchburg, Tullahoma, Mulberry and across Moore County."
+      metaDescription="Need land management in Moore County, TN? Noland Earthworks provides forestry mulching and land management in Lynchburg, Tullahoma."
       date="May 2026"
       dateISO="2026-05-25"
       lastUpdated="May 2026"

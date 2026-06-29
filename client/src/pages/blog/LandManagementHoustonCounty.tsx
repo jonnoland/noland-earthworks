@@ -5,7 +5,7 @@ export default function LandManagementHoustonCounty() {
     <BlogPostLayout
       title="Land Management in Houston County, TN: What Property Owners Need to Know"
       pageTitle="Land Management in Houston County, TN | Noland Earthworks"
-      metaDescription="Need land management in Houston County, TN? Noland Earthworks provides forestry mulching and land management in Erin, Tennessee Ridge, and Cumberland City and across Houston County."
+      metaDescription="Need land management in Houston County, TN? Noland Earthworks provides forestry mulching and land management in Erin, Tennessee Ridge."
       date="May 2026"
       dateISO="2026-05-25"
       lastUpdated="May 2026"
