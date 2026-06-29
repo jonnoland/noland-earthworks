@@ -2015,6 +2015,18 @@ Return ONLY the reply text — no quotes, no labels, no explanation.`;
 
       return { draft };
     }),
+  // Returns the most recent unread inbound conversation for the global toast notification
+  latestUnread: ownerProcedure.query(async () => {
+    const db = await getDb();
+    if (!db) return null;
+    const [conv] = await db
+      .select()
+      .from(conversations)
+      .where(eq(conversations.unread, true))
+      .orderBy(desc(conversations.lastMessageAt))
+      .limit(1);
+    return conv ?? null;
+  }),
 });
 // ─── Reviews Router ───────────────────────────────────────────────────────────
 const reviewsRouter = router({

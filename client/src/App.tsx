@@ -7,6 +7,7 @@ import { ThemeProvider } from "./contexts/ThemeContext";
 import ScrollToTop from "./components/ScrollToTop";
 import AIChatWidget from "./components/AIChatWidget";
 import OwnerRoute from "./components/OwnerRoute";
+import SmsToastNotifier from "./components/SmsToastNotifier";
 import { lazy, Suspense } from "react";
 
 // ── Ops dashboard (lazy-loaded — never sent to public visitors) ──────────────
@@ -421,6 +422,7 @@ function App() {
           <Router />
           <ScrollToTop />
           <AIChatWidget />
+          <SmsToastNotifier />
         </TooltipProvider>
       </ThemeProvider>
     </ErrorBoundary>

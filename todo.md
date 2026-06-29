@@ -2104,3 +2104,7 @@
 - [x] Add dedicated SMS conversation view in CRM ops panel — full chat history per customer with send reply box
 - [x] Add send-initial-outbound-SMS button on lead profile page — compose and send first text to a new lead
 - [x] Add unread message badge/indicator in CRM nav and conversations tab for new incoming customer texts
+## CRM SMS Enhancements — Round 2 (Jun 2026)
+- [x] Add AI-powered suggested reply button in SMS conversation view — generates quick response from customer's last message
+- [x] Update SMS compose modal (lead profile) to allow selecting/inserting pre-saved text message templates
+- [x] Implement global toast notification anywhere in app when new SMS arrives — click to jump to conversation

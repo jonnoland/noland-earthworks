@@ -600,6 +600,14 @@ function LeadDetailPanel({
   const [confirmUnlink, setConfirmUnlink] = useState(false);
   const [showSmsModal, setShowSmsModal] = useState(false);
   const [smsBody, setSmsBody] = useState("");
+  const [showTemplates, setShowTemplates] = useState(false);
+
+  // Load SMS templates (channel = 'sms') from the settings router
+  const { data: allTemplates = [] } = trpc.ops.settings.getMessageTemplates.useQuery(undefined, {
+    enabled: showSmsModal,
+    staleTime: 60_000,
+  });
+  const smsTemplates = allTemplates.filter((t) => t.channel === "sms" && t.body);
   const utils = trpc.useUtils();
   const unlinkQuote = trpc.ops.unlinkQuoteFromLead.useMutation({
     onSuccess: () => {
@@ -1562,10 +1570,38 @@ function LeadDetailPanel({
               <h3 className="text-white font-semibold text-sm">Send Text to {lead.name}</h3>
               <p className="text-[#888] text-xs mt-0.5">{lead.phone}</p>
             </div>
-            <button onClick={() => { setShowSmsModal(false); setSmsBody(""); }} className="text-[#555] hover:text-white transition-colors">
+            <button onClick={() => { setShowSmsModal(false); setSmsBody(""); setShowTemplates(false); }} className="text-[#555] hover:text-white transition-colors">
               <X className="w-4 h-4" />
             </button>
           </div>
+
+          {/* Template picker */}
+          {smsTemplates.length > 0 && (
+            <div className="mb-3">
+              <button
+                onClick={() => setShowTemplates((v) => !v)}
+                className="flex items-center gap-1.5 text-[10px] text-amber-400/80 hover:text-amber-400 transition-colors mb-1.5"
+              >
+                <FileText className="w-3 h-3" />
+                {showTemplates ? "Hide templates" : `Use a template (${smsTemplates.length})`}
+              </button>
+              {showTemplates && (
+                <div className="space-y-1 max-h-36 overflow-y-auto rounded-lg border border-[#2a2a2a] bg-[#111] p-1.5">
+                  {smsTemplates.map((t) => (
+                    <button
+                      key={t.id}
+                      onClick={() => { setSmsBody(t.body ?? ""); setShowTemplates(false); }}
+                      className="w-full text-left px-2.5 py-2 rounded-md hover:bg-white/5 transition-colors"
+                    >
+                      <span className="block text-[10px] text-amber-400/60 uppercase tracking-wider mb-0.5">{t.category.replace(/_/g, " ")}</span>
+                      <span className="text-xs text-white/70 line-clamp-2">{t.body}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
           <textarea
             value={smsBody}
             onChange={(e) => setSmsBody(e.target.value)}
