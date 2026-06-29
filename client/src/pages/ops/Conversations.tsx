@@ -17,6 +17,7 @@ import {
   Circle,
   Sparkles,
   Loader2,
+  UserPen,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -49,11 +50,36 @@ export default function Conversations() {
   const [smartReplies, setSmartReplies] = useState<{ tone: string; text: string }[]>([]);
   const [showSmartReplies, setShowSmartReplies] = useState(false);
   const [smartReplyTone, setSmartReplyTone] = useState<"balanced" | "friendly" | "professional" | "direct" | "apologetic">("balanced");
+
+  // Edit Lead Info modal state
+  const [showEditLead, setShowEditLead] = useState(false);
+  const [editLeadId, setEditLeadId] = useState<number | null>(null);
+  const [editLeadName, setEditLeadName] = useState("");
+  const [editLeadPhone, setEditLeadPhone] = useState("");
+  const [editLeadJobType, setEditLeadJobType] = useState("");
+  const [editLeadAddress, setEditLeadAddress] = useState("");
+  const [editLeadNotes, setEditLeadNotes] = useState("");
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const utils = trpc.useUtils();
 
   const { data: convList = [], isLoading } = trpc.ops.conversations.list.useQuery();
   const selectedConv = convList.find((c) => c.id === selectedId) ?? null;
+
+  // Look up the matching lead for the selected conversation
+  const { data: linkedLead } = trpc.ops.leads.getByPhone.useQuery(
+    { phone: selectedConv?.contactPhone ?? "" },
+    { enabled: !!selectedConv?.contactPhone }
+  );
+
+  const updateLeadMutation = trpc.ops.leads.update.useMutation({
+    onSuccess: () => {
+      setShowEditLead(false);
+      utils.ops.leads.getByPhone.invalidate({ phone: selectedConv?.contactPhone ?? "" });
+      toast.success("Lead info updated. AI replies will use the new context.");
+    },
+    onError: (err) => toast.error(`Update failed: ${err.message}`),
+  });
 
   const { data: threadMessages = [], isLoading: loadingMessages } = trpc.ops.conversations.getMessages.useQuery(
     { conversationId: selectedId! },
@@ -235,16 +261,34 @@ export default function Conversations() {
                   <p className="text-sm font-semibold text-white">{selectedConv.contactName}</p>
                   <p className="text-xs text-white/40">{selectedConv.contactPhone}</p>
                 </div>
-                <button
-                  className="text-white/30 hover:text-red-400 transition-colors"
-                  onClick={() => {
-                    if (confirm(`Delete conversation with ${selectedConv.contactName}? This cannot be undone.`)) {
-                      deleteMutation.mutate({ id: selectedConv.id });
-                    }
-                  }}
-                >
-                  <X className="h-4 w-4" />
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    className="text-white/40 hover:text-amber-400 transition-colors flex items-center gap-1 text-xs px-2 py-1 rounded border border-white/10 hover:border-amber-400/40"
+                    title="Edit lead info for better AI context"
+                    onClick={() => {
+                      setEditLeadId(linkedLead?.id ?? null);
+                      setEditLeadName(linkedLead?.name ?? selectedConv.contactName);
+                      setEditLeadPhone(linkedLead?.phone ?? selectedConv.contactPhone);
+                      setEditLeadJobType(linkedLead?.jobType ?? "");
+                      setEditLeadAddress(linkedLead?.address ?? "");
+                      setEditLeadNotes(linkedLead?.notes ?? "");
+                      setShowEditLead(true);
+                    }}
+                  >
+                    <UserPen className="h-3 w-3" />
+                    <span className="hidden sm:inline">Edit Lead</span>
+                  </button>
+                  <button
+                    className="text-white/30 hover:text-red-400 transition-colors"
+                    onClick={() => {
+                      if (confirm(`Delete conversation with ${selectedConv.contactName}? This cannot be undone.`)) {
+                        deleteMutation.mutate({ id: selectedConv.id });
+                      }
+                    }}
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
               </div>
 
               {/* Messages */}
@@ -409,6 +453,106 @@ export default function Conversations() {
                 onClick={() => createMutation.mutate({ contactName: newName.trim(), contactPhone: newPhone.trim() })}
               >
                 Start
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Edit Lead Info Modal */}
+      {showEditLead && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm">
+          <div className="bg-[#1a1a1a] border border-white/10 rounded-xl p-6 w-full max-w-md mx-4 shadow-2xl">
+            <div className="flex items-center justify-between mb-5">
+              <div>
+                <h3 className="text-white font-semibold text-base">Edit Lead Info</h3>
+                <p className="text-white/40 text-xs mt-0.5">Updates the lead profile used for AI reply context</p>
+              </div>
+              <button className="text-white/30 hover:text-white" onClick={() => setShowEditLead(false)}>
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <div className="space-y-3">
+              <div>
+                <label className="text-xs text-white/50 mb-1 block">Name</label>
+                <Input
+                  value={editLeadName}
+                  onChange={(e) => setEditLeadName(e.target.value)}
+                  placeholder="Customer name"
+                  className="bg-white/5 border-white/10 text-white placeholder:text-white/30"
+                />
+              </div>
+              <div>
+                <label className="text-xs text-white/50 mb-1 block">Phone</label>
+                <Input
+                  value={editLeadPhone}
+                  onChange={(e) => setEditLeadPhone(e.target.value)}
+                  placeholder="+1 615 555 0100"
+                  className="bg-white/5 border-white/10 text-white placeholder:text-white/30"
+                />
+              </div>
+              <div>
+                <label className="text-xs text-white/50 mb-1 block">Service Interest</label>
+                <Input
+                  value={editLeadJobType}
+                  onChange={(e) => setEditLeadJobType(e.target.value)}
+                  placeholder="e.g. Forestry mulching, 5 acres"
+                  className="bg-white/5 border-white/10 text-white placeholder:text-white/30"
+                />
+              </div>
+              <div>
+                <label className="text-xs text-white/50 mb-1 block">Property Address</label>
+                <Input
+                  value={editLeadAddress}
+                  onChange={(e) => setEditLeadAddress(e.target.value)}
+                  placeholder="123 Rural Rd, Columbia, TN"
+                  className="bg-white/5 border-white/10 text-white placeholder:text-white/30"
+                />
+              </div>
+              <div>
+                <label className="text-xs text-white/50 mb-1 block">Notes</label>
+                <textarea
+                  value={editLeadNotes}
+                  onChange={(e) => setEditLeadNotes(e.target.value)}
+                  placeholder="Terrain notes, access issues, customer preferences..."
+                  rows={3}
+                  className="w-full bg-white/5 border border-white/10 rounded-md px-3 py-2 text-sm text-white placeholder:text-white/30 resize-none focus:outline-none focus:ring-1 focus:ring-amber-500/50"
+                />
+              </div>
+            </div>
+            {!editLeadId && (
+              <p className="text-xs text-amber-400/70 mt-3">
+                No existing lead found for this number. Saving will create a new lead record.
+              </p>
+            )}
+            <div className="flex gap-2 mt-5">
+              <Button
+                variant="ghost"
+                className="flex-1 text-white/60"
+                onClick={() => setShowEditLead(false)}
+              >
+                Cancel
+              </Button>
+              <Button
+                className="flex-1 bg-amber-500 hover:bg-amber-400 text-black font-semibold"
+                disabled={!editLeadName.trim() || updateLeadMutation.isPending}
+                onClick={() => {
+                  if (editLeadId) {
+                    updateLeadMutation.mutate({
+                      id: editLeadId,
+                      name: editLeadName.trim(),
+                      phone: editLeadPhone.trim(),
+                      jobType: editLeadJobType.trim() || undefined,
+                      address: editLeadAddress.trim() || undefined,
+                      notes: editLeadNotes.trim() || undefined,
+                    });
+                  } else {
+                    // No lead exists — create one via the leads.create procedure
+                    toast.info("No lead record found. Add this contact from the Leads page first.");
+                    setShowEditLead(false);
+                  }
+                }}
+              >
+                {updateLeadMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save"}
               </Button>
             </div>
           </div>

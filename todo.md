@@ -2111,3 +2111,5 @@
 ## CRM SMS Enhancements — Round 3 (Jun 2026)
 - [x] Confirm Conversations sidebar badge updates in sync with global toast notification (both use same 30s poll)
 - [x] AI suggested reply: pull lead profile context (name, service interest, acreage, location) into draft prompt for personalized replies
+## CRM SMS Enhancements — Round 4 (Jun 2026)
+- [x] Add 'Edit Lead Info' button in conversation view header — opens inline edit modal for name, phone, jobType, address, notes; updates lead record so AI context improves immediately
