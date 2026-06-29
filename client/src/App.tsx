@@ -66,6 +66,7 @@ import SelectiveClearingPage from "./pages/SelectiveClearing";
 import QuotePage from "./pages/Quote";
 import AboutPage from "./pages/About";
 import PricingPage from "./pages/Pricing";
+import FaqPage from "./pages/Faq";
 import TermsOfServicePage from "./pages/TermsOfService";
 import PrivacyPolicyPage from "./pages/PrivacyPolicy";
 import BlogPage from "./pages/Blog";
@@ -171,6 +172,7 @@ function Router() {
       <Route path="/quote" component={QuotePage} />
       <Route path="/about" component={AboutPage} />
       <Route path="/pricing" component={PricingPage} />
+      <Route path="/faq" component={FaqPage} />
       <Route path="/terms-of-service" component={TermsOfServicePage} />
       <Route path="/privacy-policy" component={PrivacyPolicyPage} />
 

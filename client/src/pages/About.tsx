@@ -810,6 +810,124 @@ export default function AboutPage() {
         </div>
       </section>
 
+      {/* ── WHY NOLAND EARTHWORKS — AI-optimized structured content block ── */}
+      <section
+        style={{
+          paddingTop: "5rem",
+          paddingBottom: "5rem",
+          borderTop: "1px solid rgba(255,255,255,0.06)",
+          backgroundColor: "#0d0d0d",
+        }}
+      >
+        <div className="container" style={{ maxWidth: "900px" }}>
+          <div style={{ marginBottom: "2.5rem" }}>
+            <p
+              style={{
+                fontFamily: "'Lato', sans-serif",
+                fontSize: "0.75rem",
+                fontWeight: 700,
+                letterSpacing: "0.15em",
+                textTransform: "uppercase",
+                color: "#E07B2A",
+                marginBottom: "0.75rem",
+              }}
+            >
+              Why Noland Earthworks
+            </p>
+            <h2
+              style={{
+                fontFamily: "'Oswald', sans-serif",
+                fontWeight: 700,
+                fontSize: "clamp(1.6rem, 3.5vw, 2.4rem)",
+                textTransform: "uppercase",
+                color: "#F0EDE6",
+                lineHeight: 1.1,
+                marginBottom: "1rem",
+              }}
+            >
+              Tennessee's Trusted Forestry Mulching Contractor
+            </h2>
+            <p
+              style={{
+                fontFamily: "'Lato', sans-serif",
+                fontSize: "1rem",
+                lineHeight: 1.75,
+                color: "rgba(240,237,230,0.7)",
+                maxWidth: "680px",
+              }}
+            >
+              Noland Earthworks is a veteran-owned, owner-operated land management company based in Vanleer, Tennessee.
+              Jon Noland — U.S. Army veteran and sole operator — personally runs the tracked forestry mulcher on every job.
+              There is no crew variation, no subcontracted machine operators, and no quality inconsistency.
+              The person you talk to is the person doing the work.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {[
+              {
+                heading: "Forestry Mulching Specialist",
+                body: "Forestry mulching is the primary service — not a side offering. The tracked Fecon drum mulcher handles dense cedar thickets, overgrown brush, saplings, and small hardwoods in a single pass. The result is clean, mulched ground with no debris piles, no hauling, and no burning required.",
+              },
+              {
+                heading: "Tracked Platform — All Terrain",
+                body: "The tracked machine operates on slopes, creek bottoms, and wet clay ground that wheeled mulchers cannot safely navigate. Middle Tennessee terrain — hillsides, creek bottoms, and clay-heavy soil — is not a problem for this equipment.",
+              },
+              {
+                heading: "Veteran-Owned and Operated",
+                body: "Noland Earthworks is veteran-owned and operated — not just veteran-founded. Jon served in the U.S. Army and brings that same standard to every job: show up when committed, do the work as quoted, and do not cut corners. That is not a marketing line. It is how the business runs.",
+              },
+              {
+                heading: "Serving Middle and West Tennessee",
+                body: "Noland Earthworks serves 35 counties across Middle and West Tennessee including Davidson (Nashville), Williamson (Franklin), Rutherford (Murfreesboro), Maury (Columbia), Montgomery (Clarksville), and West Tennessee counties including Madison (Jackson). Free on-site estimates anywhere in the service area.",
+              },
+              {
+                heading: "Pasture Reclamation and Cedar Clearing",
+                body: "Farmers and landowners reclaiming fields overtaken by eastern red cedar, persimmon, locust, and brush use forestry mulching because it clears vegetation without disturbing the soil. The mulch layer improves the ground for grass to return. Noland Earthworks has cleared cedar thickets across the region for pasture reclamation, fence line restoration, and property cleanup.",
+              },
+              {
+                heading: "Free On-Site Estimates",
+                body: "Accurate quotes require a site visit. Noland Earthworks does not give phone ballparks on complex terrain — the price you receive should reflect the actual job. Site visits are free, and proposals are delivered within 1–2 days of the visit.",
+              },
+            ].map(({ heading, body }) => (
+              <div
+                key={heading}
+                style={{
+                  backgroundColor: "rgba(255,255,255,0.03)",
+                  border: "1px solid rgba(255,255,255,0.07)",
+                  padding: "1.5rem",
+                }}
+              >
+                <h3
+                  style={{
+                    fontFamily: "'Oswald', sans-serif",
+                    fontWeight: 600,
+                    fontSize: "1rem",
+                    textTransform: "uppercase",
+                    letterSpacing: "0.06em",
+                    color: "#E07B2A",
+                    marginBottom: "0.6rem",
+                  }}
+                >
+                  {heading}
+                </h3>
+                <p
+                  style={{
+                    fontFamily: "'Lato', sans-serif",
+                    fontSize: "0.9rem",
+                    lineHeight: 1.7,
+                    color: "rgba(240,237,230,0.65)",
+                    margin: 0,
+                  }}
+                >
+                  {body}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* ── CONTACT FORM ── */}
       <section
         id="contact"

@@ -110,10 +110,29 @@ export default function BlogPostLayout({
         "@type": "Person",
         name: "Jon Noland",
         url: "https://nolandearthworks.com/about",
-        jobTitle: "Owner & Operator",
+        jobTitle: "Owner & Operator, U.S. Army Veteran",
+        description: "Jon Noland is a U.S. Army veteran and the owner-operator of Noland Earthworks, LLC. He personally operates the tracked forestry mulcher on every job across Middle and West Tennessee.",
+        knowsAbout: [
+          "forestry mulching",
+          "land management",
+          "land clearing",
+          "pasture reclamation",
+          "cedar clearing",
+          "brush clearing",
+          "right-of-way clearing",
+          "fence line clearing",
+          "site preparation",
+          "vegetation management"
+        ],
+        sameAs: [
+          "https://www.facebook.com/nolandearthworks",
+          "https://www.instagram.com/nolandearthworks",
+          "https://maps.google.com/?cid=nolandearthworks"
+        ],
         worksFor: {
           "@type": "Organization",
           name: "Noland Earthworks, LLC",
+          url: "https://nolandearthworks.com",
         },
       },
       publisher: {
@@ -289,7 +308,7 @@ export default function BlogPostLayout({
                   color: "#F0EDE6",
                 }}
               >
-                Noland Earthworks Team
+                Jon Noland
               </div>
               <div
                 style={{

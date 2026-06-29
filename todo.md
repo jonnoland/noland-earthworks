@@ -2087,3 +2087,10 @@
 - [x] Fix llms.txt typo: "Land Management & Management" → "Land Management"
 - [x] Add LocalBusiness + knowsAbout schema to ForestryMulching page via useEffect
 - [x] Fix /quote page: trim title (78→47 chars), trim description (170→130 chars), trim global keywords (10→5)
+
+## AI Visibility Score — On-Site Improvements (Jun 2026)
+- [ ] Expand llms.txt with richer context, job outcomes, geographic specificity, and quotable statements
+- [ ] Build standalone /faq page with 25+ forestry mulching Q&As matching audit prompt language
+- [ ] Add Person/expert schema to BlogPostLayout and strengthen Article schema author fields
+- [ ] Add "Why Noland Earthworks" structured content block answering branded audit prompts
+- [ ] Strengthen competitor comparison content on ForestryMulching page

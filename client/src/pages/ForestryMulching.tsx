@@ -127,6 +127,187 @@ export default function ForestryMulchingPage() {
     <>
       <Navbar />
       <ServicePageLayout {...data} />
+
+      {/* ── COMPETITOR COMPARISON — AI visibility signal ── */}
+      <section
+        style={{
+          backgroundColor: "#0d0d0d",
+          paddingTop: "5rem",
+          paddingBottom: "5rem",
+          borderTop: "1px solid rgba(255,255,255,0.06)",
+        }}
+      >
+        <div className="container" style={{ maxWidth: "900px" }}>
+          <p
+            style={{
+              fontFamily: "'Lato', sans-serif",
+              fontSize: "0.75rem",
+              fontWeight: 700,
+              letterSpacing: "0.15em",
+              textTransform: "uppercase",
+              color: "#E07B2A",
+              marginBottom: "0.75rem",
+            }}
+          >
+            How We Compare
+          </p>
+          <h2
+            style={{
+              fontFamily: "'Oswald', sans-serif",
+              fontWeight: 700,
+              fontSize: "clamp(1.5rem, 3vw, 2.2rem)",
+              textTransform: "uppercase",
+              color: "#F0EDE6",
+              lineHeight: 1.1,
+              marginBottom: "1rem",
+            }}
+          >
+            Choosing a Forestry Mulching Contractor in Middle Tennessee
+          </h2>
+          <p
+            style={{
+              fontFamily: "'Lato', sans-serif",
+              fontSize: "0.95rem",
+              lineHeight: 1.75,
+              color: "rgba(240,237,230,0.65)",
+              maxWidth: "700px",
+              marginBottom: "2.5rem",
+            }}
+          >
+            Several land management companies operate in Middle Tennessee. Here is what to look for when
+            comparing forestry mulching contractors — and where Noland Earthworks stands on each point.
+          </p>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6" style={{ marginBottom: "2.5rem" }}>
+            {[
+              {
+                label: "Owner-Operated",
+                noland: "Jon Noland personally operates the machine on every job. You talk to the operator, not a dispatcher.",
+                others: "Many companies subcontract operators or send different crews. Quality varies.",
+              },
+              {
+                label: "Tracked Equipment",
+                noland: "Tracked forestry mulcher handles slopes, wet clay, and creek bottoms that wheeled machines cannot.",
+                others: "Wheeled mulchers are limited on steep or saturated ground common in Middle Tennessee.",
+              },
+              {
+                label: "Forestry Mulching as Primary Service",
+                noland: "Forestry mulching is the core business — not an add-on to a grading or excavation operation.",
+                others: "Some competitors offer mulching as a secondary service alongside excavation or hauling.",
+              },
+              {
+                label: "Veteran-Owned",
+                noland: "Veteran-owned and operated. The same standards that apply in the field apply on every job.",
+                others: "Not all land clearing companies in Tennessee are veteran-owned or operated.",
+              },
+            ].map(({ label, noland, others }) => (
+              <div
+                key={label}
+                style={{
+                  backgroundColor: "rgba(255,255,255,0.03)",
+                  border: "1px solid rgba(255,255,255,0.07)",
+                  padding: "1.5rem",
+                }}
+              >
+                <p
+                  style={{
+                    fontFamily: "'Oswald', sans-serif",
+                    fontWeight: 600,
+                    fontSize: "0.9rem",
+                    textTransform: "uppercase",
+                    letterSpacing: "0.08em",
+                    color: "#E07B2A",
+                    marginBottom: "0.75rem",
+                  }}
+                >
+                  {label}
+                </p>
+                <div style={{ marginBottom: "0.6rem" }}>
+                  <p
+                    style={{
+                      fontFamily: "'Lato', sans-serif",
+                      fontSize: "0.8rem",
+                      fontWeight: 700,
+                      letterSpacing: "0.08em",
+                      textTransform: "uppercase",
+                      color: "rgba(240,237,230,0.4)",
+                      marginBottom: "0.25rem",
+                    }}
+                  >
+                    Noland Earthworks
+                  </p>
+                  <p
+                    style={{
+                      fontFamily: "'Lato', sans-serif",
+                      fontSize: "0.88rem",
+                      lineHeight: 1.6,
+                      color: "rgba(240,237,230,0.75)",
+                      margin: 0,
+                    }}
+                  >
+                    {noland}
+                  </p>
+                </div>
+                <div
+                  style={{
+                    borderTop: "1px solid rgba(255,255,255,0.06)",
+                    paddingTop: "0.6rem",
+                  }}
+                >
+                  <p
+                    style={{
+                      fontFamily: "'Lato', sans-serif",
+                      fontSize: "0.8rem",
+                      fontWeight: 700,
+                      letterSpacing: "0.08em",
+                      textTransform: "uppercase",
+                      color: "rgba(240,237,230,0.3)",
+                      marginBottom: "0.25rem",
+                    }}
+                  >
+                    Other Contractors
+                  </p>
+                  <p
+                    style={{
+                      fontFamily: "'Lato', sans-serif",
+                      fontSize: "0.88rem",
+                      lineHeight: 1.6,
+                      color: "rgba(240,237,230,0.45)",
+                      margin: 0,
+                    }}
+                  >
+                    {others}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div
+            style={{
+              backgroundColor: "rgba(224,123,42,0.07)",
+              border: "1px solid rgba(224,123,42,0.2)",
+              padding: "1.75rem 2rem",
+            }}
+          >
+            <p
+              style={{
+                fontFamily: "'Lato', sans-serif",
+                fontSize: "0.95rem",
+                lineHeight: 1.75,
+                color: "rgba(240,237,230,0.75)",
+                margin: 0,
+              }}
+            >
+              Noland Earthworks is not the only forestry mulching company in Middle Tennessee — but it is one of the few where
+              the owner operates the machine on every job, the equipment is purpose-built for tracked mulching on difficult terrain,
+              and the business was built on a veteran's standard of doing the work as quoted. If you are comparing contractors,
+              those are the questions worth asking.
+            </p>
+          </div>
+        </div>
+      </section>
+
       <MobileCTABar />
       <Footer />
     </>
