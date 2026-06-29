@@ -2108,3 +2108,6 @@
 - [x] Add AI-powered suggested reply button in SMS conversation view — generates quick response from customer's last message
 - [x] Update SMS compose modal (lead profile) to allow selecting/inserting pre-saved text message templates
 - [x] Implement global toast notification anywhere in app when new SMS arrives — click to jump to conversation
+## CRM SMS Enhancements — Round 3 (Jun 2026)
+- [x] Confirm Conversations sidebar badge updates in sync with global toast notification (both use same 30s poll)
+- [x] AI suggested reply: pull lead profile context (name, service interest, acreage, location) into draft prompt for personalized replies

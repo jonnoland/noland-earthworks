@@ -782,6 +782,21 @@ Return JSON only: {"suggestedStage": "<stage>", "reason": "<one sentence>"}`;
       await db.update(conversations).set({ lastMessage: input.body, lastMessageAt: new Date() }).where(eq(conversations.id, convId));
       return { conversationId: convId, twilioSid };
     }),
+  /** Look up a lead by phone number — used to pull lead context into AI reply drafts */
+  getByPhone: ownerProcedure
+    .input(z.object({ phone: z.string().min(7) }))
+    .query(async ({ input }) => {
+      const db = await getDb();
+      if (!db) return null;
+      // Normalize: strip all non-digits, then try last 10 digits
+      const digits = input.phone.replace(/\D/g, "");
+      const last10 = digits.slice(-10);
+      const rows = await db.select().from(opsLeads)
+        .where(like(opsLeads.phone, `%${last10}%`))
+        .orderBy(desc(opsLeads.createdAt))
+        .limit(1);
+      return rows[0] ?? null;
+    }),
 });
 // ─── Schedule Router ──────────────────────────────────────────────────────────
 const scheduleRouter = router({
@@ -1909,6 +1924,18 @@ const conversationsRouter = router({
       const convRows = await db.select().from(conversations).where(eq(conversations.id, input.conversationId)).limit(1);
       const conv = convRows[0];
       if (!conv) throw new TRPCError({ code: "NOT_FOUND", message: "Conversation not found" });
+      // Look up matching lead by phone for personalization context
+      const leadDigits = conv.contactPhone.replace(/\D/g, "").slice(-10);
+      const leadRows = await db.select().from(opsLeads).where(like(opsLeads.phone, `%${leadDigits}%`)).orderBy(desc(opsLeads.createdAt)).limit(1);
+      const matchedLead = leadRows[0] ?? null;
+      const leadContext = matchedLead
+        ? [
+            matchedLead.jobType ? `Service interest: ${matchedLead.jobType}` : null,
+            matchedLead.address ? `Property location: ${matchedLead.address}` : null,
+            matchedLead.notes ? `Lead notes: ${matchedLead.notes}` : null,
+            matchedLead.aiSummary ? `AI summary: ${matchedLead.aiSummary}` : null,
+          ].filter(Boolean).join("\n")
+        : null;
       const recentMessages = await db.select().from(messages).where(eq(messages.conversationId, input.conversationId)).orderBy(desc(messages.sentAt)).limit(10);
       const chronological = [...recentMessages].reverse();
       const threadText = chronological.map((m) => { const who = m.direction === "inbound" ? conv.contactName : "Jon"; return `${who}: ${m.body}`; }).join("\n");
@@ -1922,11 +1949,12 @@ const conversationsRouter = router({
         apologetic: "Acknowledge any delay or issue first. Empathetic but still professional.",
       };
       const toneNote = toneInstructions[input.preferredTone] ?? toneInstructions.balanced;
-      const prompt = `You are drafting 3 SMS reply options for Jon Noland, owner of Noland Earthworks, LLC — veteran-owned forestry mulching and land management, Middle Tennessee.
+      const leadContextBlock = leadContext ? `\nLead profile context (use to personalize the reply):\n${leadContext}` : "";
+    const prompt = `You are drafting 3 SMS reply options for Jon Noland, owner of Noland Earthworks, LLC — veteran-owned forestry mulching and land management, Middle Tennessee.
 
 Voice rules: ${toneNote} No corporate language, no emojis, 1-3 sentences max, SMS length.
 Services: forestry mulching (primary), land management, brush hogging. Does NOT do grading, excavation, or hauling.
-For pricing questions: say you need to see the property first and offer to schedule a site visit.
+For pricing questions: say you need to see the property first and offer to schedule a site visit.${leadContextBlock}
 
 Conversation:\n${threadText}\n\nLast message from ${conv.contactName}: "${lastInbound.body}"
 
@@ -1960,6 +1988,18 @@ Return JSON only: {"replies": [{"tone": "direct_close", "text": "..."}, {"tone":
         .where(eq(conversations.id, input.conversationId)).limit(1);
       const conv = convRows[0];
       if (!conv) throw new TRPCError({ code: "NOT_FOUND", message: "Conversation not found" });
+      // Look up matching lead by phone for personalization context
+      const draftLeadDigits = conv.contactPhone.replace(/\D/g, "").slice(-10);
+      const draftLeadRows = await db.select().from(opsLeads).where(like(opsLeads.phone, `%${draftLeadDigits}%`)).orderBy(desc(opsLeads.createdAt)).limit(1);
+      const draftMatchedLead = draftLeadRows[0] ?? null;
+      const draftLeadContext = draftMatchedLead
+        ? [
+            draftMatchedLead.jobType ? `Service interest: ${draftMatchedLead.jobType}` : null,
+            draftMatchedLead.address ? `Property location: ${draftMatchedLead.address}` : null,
+            draftMatchedLead.notes ? `Lead notes: ${draftMatchedLead.notes}` : null,
+            draftMatchedLead.aiSummary ? `AI summary: ${draftMatchedLead.aiSummary}` : null,
+          ].filter(Boolean).join("\n")
+        : null;
 
       // Fetch last 10 messages for context
       const recentMessages = await db.select().from(messages)
@@ -1991,7 +2031,9 @@ Voice rules (MUST follow):
 - Always end with a clear next step or call to action
 - Sign off as "Jon" if it feels natural, but not required
 
-Context: Jon is the sole operator. He uses a tracked forestry mulcher. Services: forestry mulching (primary), land management, brush hogging. He does NOT do grading, excavation, or hauling.`;
+Context: Jon is the sole operator. He uses a tracked forestry mulcher. Services: forestry mulching (primary), land management, brush hogging. He does NOT do grading, excavation, or hauling.${
+        draftLeadContext ? `\nLead profile context (use to personalize the reply):\n${draftLeadContext}` : ""
+      }`;
 
       const userPrompt = `Draft a short SMS reply to the most recent inbound message.
 
