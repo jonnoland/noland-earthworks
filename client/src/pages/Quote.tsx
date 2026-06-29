@@ -80,8 +80,8 @@ const ADDON_SUGGESTIONS: Record<string, string[]> = {
 
 export default function QuotePage() {
   usePageTitle(
-    "Free Forestry Mulching & Land Management Quote — Tennessee",
-    "Request a free on-site estimate for forestry mulching, lot clearing, brush clearing, or land management anywhere in Middle & West Tennessee. Veteran-owned. Fast response.",
+    "Free Forestry Mulching Quote — Middle Tennessee",
+    "Request a free on-site estimate for forestry mulching or land management in Middle & West Tennessee. Veteran-owned. Fast response.",
     "/quote"
   );
   const [submitted, setSubmitted] = useState(false);
