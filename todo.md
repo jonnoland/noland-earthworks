@@ -2100,3 +2100,7 @@
 - [x] Add GET /api/twilio/status health check endpoint
 - [x] Register registerTwilioRoutes in server/_core/index.ts
 - [x] Write 16 vitest unit tests for normalizePhone and parseOwnerReply parsing logic (all passing)
+## CRM SMS Enhancements (Jun 2026)
+- [x] Add dedicated SMS conversation view in CRM ops panel — full chat history per customer with send reply box
+- [x] Add send-initial-outbound-SMS button on lead profile page — compose and send first text to a new lead
+- [x] Add unread message badge/indicator in CRM nav and conversations tab for new incoming customer texts

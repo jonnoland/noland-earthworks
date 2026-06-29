@@ -32,6 +32,7 @@ import {
   Wrench,
   BotMessageSquare,
   Image,
+  MessageSquare,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/_core/hooks/useAuth";
@@ -75,6 +76,7 @@ const navGroups = [
     items: [
       { icon: BarChart3, label: "Reports", href: "/ops/reports-hub" },
       { icon: Calculator, label: "Pricing", href: "/ops/pricing-hub" },
+      { icon: MessageSquare, label: "Conversations", href: "/ops/conversations" },
       { icon: BotMessageSquare, label: "Chat Sessions", href: "/ops/chat-sessions" },
       { icon: Users, label: "Team", href: TEAM_HREF },
     ],
@@ -100,6 +102,12 @@ export default function DashboardLayout({ children, title, subtitle }: Dashboard
   const [userOpen, setUserOpen] = useState(false);
   const { data: chatUnread = 0 } = trpc.chat.unreadCount.useQuery(undefined, {
     refetchInterval: 30_000, // poll every 30s
+  });
+
+  // Unread SMS conversations badge — polls every 30s
+  const { data: smsUnread = 0 } = trpc.ops.conversations.unreadCount.useQuery(undefined, {
+    refetchInterval: 30_000,
+    retry: false,
   });
 
   // Pending team access requests badge — owner only; silently returns 0 for non-owners
@@ -194,6 +202,11 @@ export default function DashboardLayout({ children, title, subtitle }: Dashboard
                       {item.href === "/ops/chat-sessions" && chatUnread > 0 && (
                         <span className="ml-auto flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-teal-500 text-white text-[10px] font-bold">
                           {chatUnread > 99 ? "99+" : chatUnread}
+                        </span>
+                      )}
+                      {item.href === "/ops/conversations" && smsUnread > 0 && (
+                        <span className="ml-auto flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-green-500 text-white text-[10px] font-bold">
+                          {smsUnread > 99 ? "99+" : smsUnread}
                         </span>
                       )}
                       {item.href === TEAM_HREF && teamPending > 0 && (

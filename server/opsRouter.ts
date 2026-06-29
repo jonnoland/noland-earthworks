@@ -721,10 +721,68 @@ Return JSON only: {"suggestedStage": "<stage>", "reason": "<one sentence>"}`;
       console.warn("[FB Disconnect] Graph API call failed:", err);
       // Don't throw — still mark as disconnected locally
     }
-    return { success: true };
+        return { success: true };
   }),
+  /**
+   * Send an initial outbound SMS to a lead directly from their profile.
+   * Creates or finds an existing conversation, sends the message via Twilio,
+   * and logs it to the CRM.
+   */
+  sendInitialSms: ownerProcedure
+    .input(z.object({
+      leadId: z.number().int().positive(),
+      body: z.string().min(1).max(1600),
+    }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+      // Fetch the lead
+      const lead = await getOpsLeadById(input.leadId);
+      if (!lead) throw new TRPCError({ code: "NOT_FOUND", message: "Lead not found" });
+      if (!lead.phone) throw new TRPCError({ code: "BAD_REQUEST", message: "Lead has no phone number" });
+      // Normalize phone
+      const digits = lead.phone.replace(/\D/g, "");
+      const e164 = digits.length === 10 ? `+1${digits}` : digits.length === 11 && digits.startsWith("1") ? `+${digits}` : `+${digits}`;
+      // Find or create conversation
+      const existing = await db.select().from(conversations).where(eq(conversations.contactPhone, e164)).limit(1);
+      let convId: number;
+      if (existing.length > 0) {
+        convId = existing[0].id;
+      } else {
+        const [ins] = await db.insert(conversations).values({
+          contactName: lead.name,
+          contactPhone: e164,
+          lastMessage: null,
+          lastMessageAt: null,
+          unread: false,
+        });
+        convId = (ins as unknown as { insertId: number }).insertId;
+      }
+      // Send via Twilio
+      let twilioSid: string | undefined;
+      if (ENV.twilioAccountSid && ENV.twilioAuthToken && ENV.twilioFromNumber) {
+        try {
+          const twilio = await import("twilio");
+          const client = twilio.default(ENV.twilioAccountSid, ENV.twilioAuthToken);
+          const msg = await client.messages.create({ body: input.body, from: ENV.twilioFromNumber, to: e164 });
+          twilioSid = msg.sid;
+        } catch (err) {
+          console.error("[Twilio] sendInitialSms failed:", err);
+        }
+      }
+      // Log outbound message
+      await db.insert(messages).values({
+        conversationId: convId,
+        direction: "outbound",
+        body: input.body,
+        twilioSid,
+        status: twilioSid ? "sent" : "local",
+        sentAt: new Date(),
+      });
+      await db.update(conversations).set({ lastMessage: input.body, lastMessageAt: new Date() }).where(eq(conversations.id, convId));
+      return { conversationId: convId, twilioSid };
+    }),
 });
-
 // ─── Schedule Router ──────────────────────────────────────────────────────────
 const scheduleRouter = router({
   list: ownerProcedure.query(({ ctx }) => getScheduleEntries(ctx.user.id)),
@@ -1765,6 +1823,15 @@ const conversationsRouter = router({
     const db = await getDb();
     if (!db) return [];
     return db.select().from(conversations).orderBy(desc(conversations.lastMessageAt));
+  }),
+  unreadCount: ownerProcedure.query(async () => {
+    const db = await getDb();
+    if (!db) return 0;
+    const [row] = await db
+      .select({ count: sql<number>`COUNT(*)` })
+      .from(conversations)
+      .where(eq(conversations.unread, true));
+    return Number(row?.count ?? 0);
   }),
   getMessages: ownerProcedure
     .input(z.object({ conversationId: z.number().int().positive() }))

@@ -598,6 +598,8 @@ function LeadDetailPanel({
     const [showContactModal, setShowContactModal] = useState(false);
   const [showQuotePreview, setShowQuotePreview] = useState(false);
   const [confirmUnlink, setConfirmUnlink] = useState(false);
+  const [showSmsModal, setShowSmsModal] = useState(false);
+  const [smsBody, setSmsBody] = useState("");
   const utils = trpc.useUtils();
   const unlinkQuote = trpc.ops.unlinkQuoteFromLead.useMutation({
     onSuccess: () => {
@@ -661,6 +663,17 @@ function LeadDetailPanel({
   const addNote = trpc.ops.leads.addNote.useMutation({
     onSuccess: () => { setNoteText(""); utils.ops.leads.listNotes.invalidate({ leadId: lead.id }); },
     onError: () => toast.error("Failed to add note"),
+  });
+
+  const sendInitialSms = trpc.ops.leads.sendInitialSms.useMutation({
+    onSuccess: (data) => {
+      toast.success("Text sent.");
+      setSmsBody("");
+      setShowSmsModal(false);
+      // Navigate to the conversation in the CRM
+      navigate(`/ops/conversations`);
+    },
+    onError: (err) => toast.error(`Send failed: ${err.message}`),
   });
 
   const confirmVisit = trpc.ops.leads.confirmVisit.useMutation({
@@ -750,10 +763,11 @@ function LeadDetailPanel({
               </a>
             )}
             {lead.phone && (
-              <a href={`sms:${lead.phone}`}
+              <button
+                onClick={() => setShowSmsModal(true)}
                 className="flex flex-col items-center justify-center gap-1 bg-green-600 hover:bg-green-700 text-white text-[11px] font-semibold py-2 rounded-md transition-colors">
                 <MessageSquare className="w-3.5 h-3.5" />Text
-              </a>
+              </button>
             )}
             <button
               onClick={() => {
@@ -1528,10 +1542,58 @@ function LeadDetailPanel({
               </a>
             )}
             {lead.phone && (
-              <a href={`sms:${lead.phone}`} className="flex-1 flex items-center justify-center gap-1.5 bg-[#1a1a1a] hover:bg-[#222] border border-[#2a2a2a] text-[#aaa] text-xs font-medium px-3 py-2.5 rounded-lg transition-colors">
+              <button
+                onClick={() => setShowSmsModal(true)}
+                className="flex-1 flex items-center justify-center gap-1.5 bg-[#1a1a1a] hover:bg-[#222] border border-[#2a2a2a] text-[#aaa] text-xs font-medium px-3 py-2.5 rounded-lg transition-colors">
                 <MessageSquare className="w-3.5 h-3.5" />Text
-              </a>
+              </button>
             )}
+          </div>
+        </div>
+      </div>
+    )}
+
+    {/* SMS Compose Modal */}
+    {showSmsModal && (
+      <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70">
+        <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-xl p-5 w-full max-w-sm shadow-2xl">
+          <div className="flex items-center justify-between mb-3">
+            <div>
+              <h3 className="text-white font-semibold text-sm">Send Text to {lead.name}</h3>
+              <p className="text-[#888] text-xs mt-0.5">{lead.phone}</p>
+            </div>
+            <button onClick={() => { setShowSmsModal(false); setSmsBody(""); }} className="text-[#555] hover:text-white transition-colors">
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+          <textarea
+            value={smsBody}
+            onChange={(e) => setSmsBody(e.target.value)}
+            placeholder="Type your message..."
+            rows={4}
+            maxLength={1600}
+            className="w-full bg-[#111] border border-[#2a2a2a] text-white text-sm rounded-lg px-3 py-2.5 resize-none placeholder:text-[#555] focus:outline-none focus:border-green-600/60"
+          />
+          <div className="flex items-center justify-between mt-1 mb-3">
+            <span className="text-[10px] text-[#555]">{smsBody.length}/1600</span>
+            <span className="text-[10px] text-[#555]">Sends from (888) 329-8553 via CRM</span>
+          </div>
+          <div className="flex gap-2">
+            <Button
+              variant="ghost"
+              className="flex-1 text-[#888] hover:text-white"
+              onClick={() => { setShowSmsModal(false); setSmsBody(""); }}
+            >
+              Cancel
+            </Button>
+            <Button
+              className="flex-1 bg-green-600 hover:bg-green-500 text-white gap-1.5"
+              disabled={!smsBody.trim() || sendInitialSms.isPending}
+              onClick={() => sendInitialSms.mutate({ leadId: lead.id, body: smsBody.trim() })}
+            >
+              {sendInitialSms.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
+              {sendInitialSms.isPending ? "Sending..." : "Send"}
+            </Button>
           </div>
         </div>
       </div>
