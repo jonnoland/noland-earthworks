@@ -10,6 +10,7 @@ import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
 import { prerenderMiddleware } from "../prerender";
 import { registerJobberRoutes } from "../jobberRoutes";
+import { registerTwilioRoutes } from "../twilioRoutes";
 import { registerFacebookWebhookRoutes } from "../facebookWebhookRoutes";
 import { registerGoogleRoutes } from "../googleRoutes";
 import { registerXRoutes } from "../xRoutes";
@@ -97,6 +98,8 @@ async function startServer() {
   registerOAuthRoutes(app);
   // Jobber OAuth routes: /api/jobber/authorize, /api/jobber/callback, /api/jobber/status
   registerJobberRoutes(app);
+  // Twilio SMS proxy: POST /api/twilio/inbound, POST /api/twilio/owner-reply, GET /api/twilio/status
+  registerTwilioRoutes(app);
   // Facebook Leadgen Webhook: GET /api/webhooks/facebook (verify), POST /api/webhooks/facebook (lead events)
   registerFacebookWebhookRoutes(app);
   // Google Business Profile OAuth: GET /api/google/authorize, /api/google/callback, /api/google/status

@@ -2089,8 +2089,14 @@
 - [x] Fix /quote page: trim title (78→47 chars), trim description (170→130 chars), trim global keywords (10→5)
 
 ## AI Visibility Score — On-Site Improvements (Jun 2026)
-- [ ] Expand llms.txt with richer context, job outcomes, geographic specificity, and quotable statements
-- [ ] Build standalone /faq page with 25+ forestry mulching Q&As matching audit prompt language
-- [ ] Add Person/expert schema to BlogPostLayout and strengthen Article schema author fields
-- [ ] Add "Why Noland Earthworks" structured content block answering branded audit prompts
-- [ ] Strengthen competitor comparison content on ForestryMulching page
+- [x] Expand llms.txt with richer context, job outcomes, geographic specificity, and quotable statements
+- [x] Build standalone /faq page with 25+ forestry mulching Q&As matching audit prompt language
+- [x] Add Person/expert schema to BlogPostLayout and strengthen Article schema author fields
+- [x] Add "Why Noland Earthworks" structured content block answering branded audit prompts
+- [x] Strengthen competitor comparison content on ForestryMulching page
+## Twilio SMS Proxy — Two-Way Cell Forwarding (Jun 2026)
+- [x] Write server/twilioRoutes.ts with POST /api/twilio/inbound webhook (log to CRM, forward to owner cell)
+- [x] Write POST /api/twilio/owner-reply webhook (parse reply format, send to customer via Twilio, log outbound)
+- [x] Add GET /api/twilio/status health check endpoint
+- [x] Register registerTwilioRoutes in server/_core/index.ts
+- [x] Write 16 vitest unit tests for normalizePhone and parseOwnerReply parsing logic (all passing)
