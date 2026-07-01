@@ -637,10 +637,30 @@ Notes:\n${noteText}
 Available stages: ${stages.join(", ")}
 
 Return JSON only: {"suggestedStage": "<stage>", "reason": "<one sentence>"}`;
-      const result = await invokeLLM({ messages: [{ role: "user", content: prompt }] });
+      const result = await invokeLLM({
+        messages: [{ role: "user", content: prompt }],
+        response_format: {
+          type: "json_schema",
+          json_schema: {
+            name: "stage_suggestion",
+            strict: true,
+            schema: {
+              type: "object",
+              properties: {
+                suggestedStage: { type: "string", description: "One of the available stage values" },
+                reason: { type: "string", description: "One sentence explanation" },
+              },
+              required: ["suggestedStage", "reason"],
+              additionalProperties: false,
+            },
+          },
+        },
+      });
       const raw = result?.choices?.[0]?.message?.content ?? "{}";
       try {
-        const parsed = JSON.parse(typeof raw === "string" ? raw : "{}");
+        // Strip markdown fences if present (e.g. ```json ... ```)
+        const cleaned = (typeof raw === "string" ? raw : "{}").replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "").trim();
+        const parsed = JSON.parse(cleaned);
         return { suggestedStage: parsed.suggestedStage ?? null, reason: parsed.reason ?? "" };
       } catch { return { suggestedStage: null, reason: "" }; }
     }),
