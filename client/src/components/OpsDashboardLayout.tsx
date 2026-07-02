@@ -59,7 +59,6 @@ const navGroups = [
   {
     label: "Sales",
     items: [
-      { icon: Radar, label: "Prospecting", href: "/ops/prospecting" },
       { icon: Users, label: "Leads", href: "/ops/leads" },
       { icon: FileText, label: "Quotes", href: "/ops/quotes" },
       { icon: Receipt, label: "Clients", href: "/ops/clients" },
@@ -79,6 +78,7 @@ const navGroups = [
       { icon: BarChart3, label: "Reports", href: "/ops/reports-hub" },
       { icon: Calculator, label: "Pricing", href: "/ops/pricing-hub" },
       { icon: MessageSquare, label: "Conversations", href: "/ops/conversations" },
+      { icon: Radar, label: "Prospecting", href: "/ops/prospecting" },
       { icon: BotMessageSquare, label: "Chat Sessions", href: "/ops/chat-sessions" },
       { icon: Users, label: "Team", href: TEAM_HREF },
     ],
