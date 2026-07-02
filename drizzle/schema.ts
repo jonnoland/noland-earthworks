@@ -1567,3 +1567,33 @@ export const aiVisibilityPrompts = mysqlTable("ai_visibility_prompts", {
 });
 export type AiVisibilityPrompt = typeof aiVisibilityPrompts.$inferSelect;
 export type InsertAiVisibilityPrompt = typeof aiVisibilityPrompts.$inferInsert;
+
+/**
+ * AI-discovered prospecting leads from public sources (Craigslist, Facebook groups, etc.)
+ * Populated daily by the AGENT cron job.
+ */
+export const prospectingLeads = mysqlTable("prospecting_leads", {
+  id: int("id").autoincrement().primaryKey(),
+  /** Source platform: craigslist | facebook | nextdoor | google_reviews | permits */
+  source: varchar("source", { length: 64 }).notNull(),
+  /** Direct URL to the post/listing */
+  url: text("url").notNull(),
+  /** Contact name if visible in the post */
+  contactName: varchar("contactName", { length: 255 }),
+  /** Phone or email if visible */
+  contactInfo: varchar("contactInfo", { length: 255 }),
+  /** County or city mentioned */
+  location: varchar("location", { length: 255 }),
+  /** AI summary of why this is a lead */
+  summary: text("summary").notNull(),
+  /** AI-drafted first outreach message (SMS or email) */
+  reachOutDraft: text("reachOutDraft"),
+  /** Status: new | contacted | dismissed */
+  status: varchar("status", { length: 32 }).notNull().default("new"),
+  /** Original post text snippet */
+  postSnippet: text("postSnippet"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type ProspectingLead = typeof prospectingLeads.$inferSelect;
+export type InsertProspectingLead = typeof prospectingLeads.$inferInsert;

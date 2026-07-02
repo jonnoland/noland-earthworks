@@ -2118,3 +2118,15 @@
 - [x] Add "Get More Leads" collapsible panel to /ops dashboard with AI-generated 5-step weekly action plan
 - [x] Panel uses pipeline state + current season to personalize steps (channel icons, effort tags, checkboxes)
 - [x] Add generateLeadActionPlan procedure to leadsRouter with json_schema response format
+
+## AI Lead Prospecting System (Jul 2026)
+- [ ] Apply §5c heartbeat patches to sdk.ts and manusTypes.ts for cron authentication
+- [ ] Add prospecting_leads table to drizzle schema (source, url, contactName, contactInfo, summary, status, reachOutDraft, createdAt)
+- [ ] Push DB migration for prospecting_leads table
+- [ ] Add DB helpers for prospecting_leads in server/db.ts
+- [ ] Build /api/scheduled/prospect-leads Express handler (receives prospects from AGENT cron, saves to DB)
+- [ ] Register /api/scheduled/prospect-leads in server/_core/index.ts
+- [ ] Add tRPC procedures: list, dismiss, markContacted for prospecting_leads
+- [ ] Build /ops/prospecting CRM page with prospect cards and reach-out modal
+- [ ] Add Prospecting nav item to OpsDashboardLayout sidebar
+- [ ] Save checkpoint, deploy, register AGENT cron (daily 9am CT), and verify

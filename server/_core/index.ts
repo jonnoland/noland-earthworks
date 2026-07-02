@@ -505,6 +505,79 @@ ${transcript}`;
     }
   });
 
+  // AI Prospecting: POST /api/scheduled/prospect-leads
+  // Called daily by the AGENT cron — receives an array of discovered prospects and saves them to the DB
+  app.post("/api/scheduled/prospect-leads", async (req, res) => {
+    try {
+      const { sdk } = await import("./sdk");
+      const user = await sdk.authenticateRequest(req);
+      const isCron = (user as any).isCron === true;
+      if (!isCron) {
+        res.status(403).json({ error: "cron-only" });
+        return;
+      }
+      const { getDb } = await import("../db");
+      const db = await getDb();
+      if (!db) {
+        res.status(500).json({ error: "DB unavailable" });
+        return;
+      }
+      const schema = await import("../../drizzle/schema");
+      const prospectingLeads = (schema as any).prospectingLeads;
+      const body = req.body as {
+        prospects?: Array<{
+          source: string;
+          url: string;
+          contactName?: string;
+          contactInfo?: string;
+          location?: string;
+          summary: string;
+          reachOutDraft?: string;
+          postSnippet?: string;
+        }>;
+      };
+      if (!Array.isArray(body.prospects) || body.prospects.length === 0) {
+        res.json({ ok: true, inserted: 0, message: "No prospects provided" });
+        return;
+      }
+      // Deduplicate by URL — skip any URL already in the DB
+      const { eq } = await import("drizzle-orm");
+      let inserted = 0;
+      for (const p of body.prospects) {
+        if (!p.url || !p.summary) continue;
+        const existing = await db.select({ id: prospectingLeads.id })
+          .from(prospectingLeads)
+          .where(eq(prospectingLeads.url, p.url))
+          .limit(1);
+        if (existing.length > 0) continue;
+        await db.insert(prospectingLeads).values({
+          source: p.source ?? "other",
+          url: p.url,
+          contactName: p.contactName ?? null,
+          contactInfo: p.contactInfo ?? null,
+          location: p.location ?? null,
+          summary: p.summary,
+          reachOutDraft: p.reachOutDraft ?? null,
+          postSnippet: p.postSnippet ?? null,
+          status: "new",
+        });
+        inserted++;
+      }
+      console.log(`[Cron] prospect-leads: inserted ${inserted} new prospects`);
+      res.json({ ok: true, inserted, total: body.prospects.length });
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      const stack = err instanceof Error ? err.stack : undefined;
+      console.error("[Cron] prospect-leads error:", err);
+      res.status(500).json({
+        error: message,
+        stack,
+        context: { url: req.url },
+        timestamp: new Date().toISOString(),
+      });
+    }
+  });
+
   // tRPC API
   app.use(
     "/api/trpc",

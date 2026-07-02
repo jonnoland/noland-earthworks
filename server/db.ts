@@ -577,3 +577,67 @@ export async function cleanupAnonymousChatSessions(olderThanDays = 14, force = f
   const affected = (result as unknown as [{ affectedRows: number }])[0]?.affectedRows ?? 0;
   return affected;
 }
+
+// ── Prospecting Leads ─────────────────────────────────────────────────────────
+
+export async function insertProspectingLead(data: {
+  source: string;
+  url: string;
+  contactName?: string | null;
+  contactInfo?: string | null;
+  location?: string | null;
+  summary: string;
+  reachOutDraft?: string | null;
+  postSnippet?: string | null;
+}) {
+  const db = await getDb();
+  if (!db) return null;
+  const { prospectingLeads } = await import("../drizzle/schema");
+  await db.insert(prospectingLeads).values({
+    source: data.source,
+    url: data.url,
+    contactName: data.contactName ?? null,
+    contactInfo: data.contactInfo ?? null,
+    location: data.location ?? null,
+    summary: data.summary,
+    reachOutDraft: data.reachOutDraft ?? null,
+    postSnippet: data.postSnippet ?? null,
+    status: "new",
+  });
+}
+
+export async function getProspectingLeads(status?: string) {
+  const db = await getDb();
+  if (!db) return [];
+  const { prospectingLeads } = await import("../drizzle/schema");
+  const { desc, eq } = await import("drizzle-orm");
+  const rows = status
+    ? await db.select().from(prospectingLeads).where(eq(prospectingLeads.status, status)).orderBy(desc(prospectingLeads.createdAt)).limit(100)
+    : await db.select().from(prospectingLeads).orderBy(desc(prospectingLeads.createdAt)).limit(100);
+  return rows;
+}
+
+export async function updateProspectingLeadStatus(id: number, status: string) {
+  const db = await getDb();
+  if (!db) return;
+  const { prospectingLeads } = await import("../drizzle/schema");
+  const { eq } = await import("drizzle-orm");
+  await db.update(prospectingLeads).set({ status }).where(eq(prospectingLeads.id, id));
+}
+
+export async function deleteProspectingLead(id: number) {
+  const db = await getDb();
+  if (!db) return;
+  const { prospectingLeads } = await import("../drizzle/schema");
+  const { eq } = await import("drizzle-orm");
+  await db.delete(prospectingLeads).where(eq(prospectingLeads.id, id));
+}
+
+export async function countNewProspectingLeads() {
+  const db = await getDb();
+  if (!db) return 0;
+  const { prospectingLeads } = await import("../drizzle/schema");
+  const { eq, count } = await import("drizzle-orm");
+  const result = await db.select({ count: count() }).from(prospectingLeads).where(eq(prospectingLeads.status, "new"));
+  return result[0]?.count ?? 0;
+}

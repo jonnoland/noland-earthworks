@@ -24,6 +24,7 @@ const OpsInvoices        = lazy(() => import("./pages/ops/Invoices"));
 const OpsCrews           = lazy(() => import("./pages/ops/Crews"));
 const CrewPricing        = lazy(() => import("./pages/ops/CrewPricing"));
 const OpsConversations   = lazy(() => import("./pages/ops/Conversations"));
+const OpsProspecting     = lazy(() => import("./pages/ops/Prospecting"));
 const OpsReviews         = lazy(() => import("./pages/ops/Reviews"));
 const OpsTimesheets      = lazy(() => import("./pages/ops/Timesheets"));
 const OpsScoreboard      = lazy(() => import("./pages/ops/Scoreboard"));
@@ -317,6 +318,9 @@ function Router() {
       </Route>
       <Route path="/ops/crews/:id/pricing">
         <Suspense fallback={<OpsLoading />}><OwnerRoute><CrewPricing /></OwnerRoute></Suspense>
+      </Route>
+      <Route path="/ops/prospecting">
+        <Suspense fallback={<OpsLoading />}><OwnerRoute><OpsProspecting /></OwnerRoute></Suspense>
       </Route>
       <Route path="/ops/conversations">
         <Suspense fallback={<OpsLoading />}><OwnerRoute><OpsChatSessions /></OwnerRoute></Suspense>

@@ -33,6 +33,7 @@ import {
   BotMessageSquare,
   Image,
   MessageSquare,
+  Radar,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/_core/hooks/useAuth";
@@ -58,6 +59,7 @@ const navGroups = [
   {
     label: "Sales",
     items: [
+      { icon: Radar, label: "Prospecting", href: "/ops/prospecting" },
       { icon: Users, label: "Leads", href: "/ops/leads" },
       { icon: FileText, label: "Quotes", href: "/ops/quotes" },
       { icon: Receipt, label: "Clients", href: "/ops/clients" },
@@ -110,6 +112,12 @@ export default function DashboardLayout({ children, title, subtitle }: Dashboard
     retry: false,
   });
 
+  // New AI-discovered prospecting leads badge — polls every 60s
+  const { data: prospectingNewData } = trpc.ops.prospecting.newCount.useQuery(undefined, {
+    refetchInterval: 60_000,
+    retry: false,
+  });
+  const prospectingNew = prospectingNewData?.count ?? 0;
   // Pending team access requests badge — owner only; silently returns 0 for non-owners
   const { data: teamPendingData } = trpc.team.pendingCount.useQuery(undefined, {
     refetchInterval: 60_000,
@@ -202,6 +210,11 @@ export default function DashboardLayout({ children, title, subtitle }: Dashboard
                       {item.href === "/ops/chat-sessions" && chatUnread > 0 && (
                         <span className="ml-auto flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-teal-500 text-white text-[10px] font-bold">
                           {chatUnread > 99 ? "99+" : chatUnread}
+                        </span>
+                      )}
+                      {item.href === "/ops/prospecting" && prospectingNew > 0 && (
+                        <span className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-orange-500 px-1 text-[10px] font-bold text-white">
+                          {prospectingNew > 99 ? "99+" : prospectingNew}
                         </span>
                       )}
                       {item.href === "/ops/conversations" && smsUnread > 0 && (

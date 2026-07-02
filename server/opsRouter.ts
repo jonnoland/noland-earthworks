@@ -23,6 +23,7 @@ import {
   getAllUsers, setUserRole,
   getPricingBenchmarks,
   getAgentConfig, upsertAgentConfig,
+  getProspectingLeads, updateProspectingLeadStatus, deleteProspectingLead, countNewProspectingLeads,
 } from "./db";
 import { Resend } from "resend";
 import { jobs, opsLeads, quoteSubmissions, crews, crewMembers, conversations, messages, reviews, timeEntries, distanceQuotes, businessSettings, automationSettings, serviceCatalog, pricingBenchmarks, messageTemplates, reminderRules, leadNotes, visitBlackoutDates, recurringBlackoutDays, aiPricingSettings, quoteDrafts, jobberTokens, socialPosts, adSpend, equipment, serviceLogs, serviceIntervals, fieldDiagnostics, ownerTasks, jobNotes, jobberRevenueCache, morningBriefs, reviewRequests, chatSessions, scheduleEntries, agentConfig, adCampaigns } from "../drizzle/schema";
@@ -748,6 +749,52 @@ Return JSON only: {"suggestedStage": "<stage>", "reason": "<one sentence>"}`;
    * Creates or finds an existing conversation, sends the message via Twilio,
    * and logs it to the CRM.
    */
+  sendDirectSms: ownerProcedure
+    .input(z.object({
+      phone: z.string().min(10),
+      message: z.string().min(1).max(1600),
+      contactName: z.string().optional(),
+    }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+      const digits = input.phone.replace(/\D/g, "");
+      const e164 = digits.length === 10 ? `+1${digits}` : digits.length === 11 && digits.startsWith("1") ? `+${digits}` : `+${digits}`;
+      const twilioSid = process.env.TWILIO_ACCOUNT_SID;
+      const twilioAuth = process.env.TWILIO_AUTH_TOKEN;
+      const fromNumber = process.env.TWILIO_FROM_NUMBER;
+      if (!twilioSid || !twilioAuth || !fromNumber) {
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Twilio not configured" });
+      }
+      const twilioUrl = `https://api.twilio.com/2010-04-01/Accounts/${twilioSid}/Messages.json`;
+      const params = new URLSearchParams({ To: e164, From: fromNumber, Body: input.message });
+      const resp = await fetch(twilioUrl, {
+        method: "POST",
+        headers: {
+          Authorization: "Basic " + Buffer.from(`${twilioSid}:${twilioAuth}`).toString("base64"),
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+        body: params.toString(),
+      });
+      if (!resp.ok) {
+        const err = await resp.text();
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: `Twilio error: ${err}` });
+      }
+      const twilioResult = await resp.json() as { sid?: string };
+      // Find or create conversation
+      const existing = await db.select().from(conversations).where(eq(conversations.contactPhone, e164)).limit(1);
+      let convId: number;
+      if (existing.length > 0) {
+        convId = existing[0].id;
+        await db.update(conversations).set({ lastMessage: input.message, lastMessageAt: new Date(), unread: false }).where(eq(conversations.id, convId));
+      } else {
+        const [ins] = await db.insert(conversations).values({ contactName: input.contactName ?? e164, contactPhone: e164, lastMessage: input.message, lastMessageAt: new Date(), unread: false });
+        convId = (ins as any).insertId;
+      }
+      await db.insert(messages).values({ conversationId: convId, direction: "outbound", body: input.message, twilioSid: twilioResult.sid ?? null, status: "sent", sentAt: new Date() });
+      return { ok: true, sid: twilioResult.sid };
+    }),
+
   sendInitialSms: ownerProcedure
     .input(z.object({
       leadId: z.number().int().positive(),
@@ -3352,6 +3399,38 @@ const socialPostsRouter = _socialPostsRouter;
 const adVariantsRouter = _adVariantsRouter;
 
 
+
+// ── Prospecting Leads Router ──────────────────────────────────────────────────
+
+export const prospectingRouter = router({
+  list: ownerProcedure
+    .input(z.object({ status: z.string().optional() }))
+    .query(async ({ input }) => {
+      const leads = await getProspectingLeads(input.status);
+      return leads;
+    }),
+
+  updateStatus: ownerProcedure
+    .input(z.object({ id: z.number(), status: z.enum(["new", "contacted", "dismissed"]) }))
+    .mutation(async ({ input }) => {
+      await updateProspectingLeadStatus(input.id, input.status);
+      return { ok: true };
+    }),
+
+  delete: ownerProcedure
+    .input(z.object({ id: z.number() }))
+    .mutation(async ({ input }) => {
+      await deleteProspectingLead(input.id);
+      return { ok: true };
+    }),
+
+  newCount: ownerProcedure
+    .query(async () => {
+      const count = await countNewProspectingLeads();
+      return { count };
+    }),
+});
+
 export const opsRouter = router({
   jobs: jobsRouter,
   leads: leadsRouter,
@@ -3370,6 +3449,7 @@ export const opsRouter = router({
   socialPosts: socialPostsRouter,
   adVariants: adVariantsRouter,
   ai: aiAutomationRouter,
+  prospecting: prospectingRouter,
 
   generateWeeklyInsight: protectedProcedure
     .input(z.object({
@@ -5426,3 +5506,4 @@ Generate a complete monthly ad campaign plan. Return ONLY valid JSON matching th
       return { ok: true };
     }),
 });
+
