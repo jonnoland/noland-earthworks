@@ -111,6 +111,7 @@ export default function QuotePage() {
     reason?: string;
   } | null>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [adjustedAcres, setAdjustedAcres] = useState<string>("");
 
   // Debounce parcel address input — fire lookup 1.2s after user stops typing
   useEffect(() => {
@@ -269,6 +270,12 @@ export default function QuotePage() {
       parcelOwner: parcelInfo?.owner ?? undefined,
       parcelId: parcelInfo?.parcelId ?? undefined,
       deedAcres: parcelInfo?.deedAcres ?? undefined,
+      adjustedAcres: adjustedAcres ? parseFloat(adjustedAcres) : undefined,
+      estimatedRange: (() => {
+        const effectiveAcres = adjustedAcres ? parseFloat(adjustedAcres) : (parcelInfo?.deedAcres ?? 0);
+        const est = effectiveAcres > 0 && form.service ? computeEstimate(effectiveAcres, form.service) : null;
+        return est?.range ?? "";
+      })(),
     });
   };
 
@@ -1140,8 +1147,10 @@ export default function QuotePage() {
                         onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
                         style={{ ...inputStyle, paddingRight: "2.5rem" }}
                       />
-                      <div style={{ position: "absolute", right: "0.75rem", top: "50%", transform: "translateY(-50%)", color: "rgba(240,237,230,0.35)", pointerEvents: "none" }}>
-                        {parcelQuery.isFetching || autocompleteQuery.isFetching ? <Loader2 size={15} style={{ animation: "spin 1s linear infinite" }} /> : <Search size={15} />}
+                      <div style={{ position: "absolute", right: "0.75rem", top: "50%", transform: "translateY(-50%)", color: parcelQuery.isFetching || autocompleteQuery.isFetching ? "#E07B2A" : "rgba(240,237,230,0.35)", pointerEvents: "none", transition: "color 0.2s" }}>
+                        {parcelQuery.isFetching || autocompleteQuery.isFetching
+                          ? <Loader2 size={15} className="animate-spin" />
+                          : <Search size={15} />}
                       </div>
                       {/* Autocomplete dropdown */}
                       {showSuggestions && autocompleteQuery.data && autocompleteQuery.data.suggestions.length > 0 && (
@@ -1228,9 +1237,32 @@ export default function QuotePage() {
                       </div>
                     )}
 
+                    {/* Adjusted acreage input — shown when parcel found with deed acreage */}
+                    {parcelInfo && parcelInfo.found && parcelInfo.deedAcres && parcelInfo.deedAcres > 0 && (
+                      <div style={{ marginTop: "0.75rem" }}>
+                        <label style={{ ...labelStyle, fontSize: "0.75rem", opacity: 0.7 }}>
+                          Adjusted Acreage
+                          <span style={{ color: "rgba(240,237,230,0.4)", fontSize: "0.68rem", letterSpacing: "0.08em", marginLeft: "0.4rem" }}>(if job covers only part of the parcel)</span>
+                        </label>
+                        <input
+                          type="number"
+                          min="0.1"
+                          step="0.1"
+                          placeholder={`Deed: ${parcelInfo.deedAcres?.toFixed(2)} ac — enter a smaller number if applicable`}
+                          value={adjustedAcres}
+                          onChange={(e) => setAdjustedAcres(e.target.value)}
+                          style={{ ...inputStyle, fontSize: "0.85rem" }}
+                          onFocus={(e) => (e.target.style.borderColor = "rgba(224,123,42,0.6)")}
+                          onBlur={(e) => (e.target.style.borderColor = "rgba(255,255,255,0.12)")}
+                        />
+                      </div>
+                    )}
+
                     {/* Preliminary price estimate — shown when parcel found and service selected */}
-                    {parcelInfo && parcelInfo.found && parcelInfo.deedAcres && parcelInfo.deedAcres > 0 && form.service && (() => {
-                      const est = computeEstimate(parcelInfo.deedAcres, form.service);
+                    {parcelInfo && parcelInfo.found && form.service && (() => {
+                      const effectiveAcres = adjustedAcres ? parseFloat(adjustedAcres) : (parcelInfo.deedAcres ?? 0);
+                      if (effectiveAcres <= 0) return null;
+                      const est = computeEstimate(effectiveAcres, form.service);
                       if (!est) return null;
                       return (
                         <div style={{
@@ -1242,7 +1274,7 @@ export default function QuotePage() {
                           fontFamily: "'Lato', sans-serif",
                         }}>
                           <div style={{ fontFamily: "'Oswald', sans-serif", fontSize: "0.65rem", letterSpacing: "0.18em", textTransform: "uppercase", color: "rgba(224,123,42,0.7)", marginBottom: "0.35rem" }}>
-                            Preliminary Range
+                            Preliminary Range {adjustedAcres ? `(${parseFloat(adjustedAcres).toFixed(1)} ac adjusted)` : ""}
                           </div>
                           <div style={{ fontFamily: "'Oswald', sans-serif", fontWeight: 600, fontSize: "1.4rem", color: "#E07B2A", marginBottom: "0.3rem" }}>
                             {est.range}

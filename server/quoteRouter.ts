@@ -29,6 +29,8 @@ const quoteSchema = z.object({
   parcelOwner: z.string().max(255).optional().default(""),
   parcelId: z.string().max(100).optional().default(""),
   deedAcres: z.number().optional(),
+  adjustedAcres: z.number().optional(),
+  estimatedRange: z.string().max(100).optional().default(""),
 });
 
 export type QuoteInput = z.infer<typeof quoteSchema>;
@@ -481,6 +483,8 @@ export const quoteRouter = router({
           parcelOwner: input.parcelOwner || null,
           parcelId: input.parcelId || null,
           deedAcres: input.deedAcres != null ? String(input.deedAcres) : null,
+          adjustedAcres: input.adjustedAcres != null ? String(input.adjustedAcres) : null,
+          estimatedRange: input.estimatedRange || null,
           aiScore: qualification?.score ?? null,
           aiSummary: qualification?.summary ?? null,
           aiFlags: qualification?.flags && qualification.flags.length > 0 ? JSON.stringify(qualification.flags) : null,

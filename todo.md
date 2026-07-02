@@ -2139,3 +2139,6 @@
 - [x] Add Google Places autocomplete to parcel lookup field in quote form
 - [x] Save parcel owner name and parcel ID to quote submission record
 - [x] Display preliminary price estimate inline when parcel found and service selected
+- [x] Add distinct orange loading spinner to parcel lookup address field while fetching
+- [x] Save preliminary price estimate (estimatedRange) and adjustedAcres to DB quote submission record
+- [x] Add adjusted acreage input field for partial-property jobs (overrides deed acreage in estimate)

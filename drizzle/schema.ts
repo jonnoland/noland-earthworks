@@ -238,6 +238,10 @@ export const quoteSubmissions = mysqlTable("quote_submissions", {
   parcelOwner: varchar("parcelOwner", { length: 255 }),
   parcelId: varchar("parcelId", { length: 100 }),
   deedAcres: decimal("deedAcres", { precision: 10, scale: 2 }),
+  /** User-adjusted acreage (partial-property jobs) — overrides deedAcres for estimate */
+  adjustedAcres: decimal("adjustedAcres", { precision: 10, scale: 2 }),
+  /** Preliminary price range shown on form (e.g. "$3,200 – $4,500") */
+  estimatedRange: varchar("estimatedRange", { length: 100 }),
   /** AI lead qualification */
   aiScore: mysqlEnum("aiScore", ["strong", "marginal", "weak"]),
   aiSummary: text("aiSummary"),
