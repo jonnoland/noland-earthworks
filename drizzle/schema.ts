@@ -234,6 +234,10 @@ export const quoteSubmissions = mysqlTable("quote_submissions", {
   zip: varchar("zip", { length: 20 }),
   message: text("message"),
   addOns: text("addOns"),  // JSON array of selected add-on service names
+  /** Parcel data from TN statewide parcel API */
+  parcelOwner: varchar("parcelOwner", { length: 255 }),
+  parcelId: varchar("parcelId", { length: 100 }),
+  deedAcres: decimal("deedAcres", { precision: 10, scale: 2 }),
   /** AI lead qualification */
   aiScore: mysqlEnum("aiScore", ["strong", "marginal", "weak"]),
   aiSummary: text("aiSummary"),

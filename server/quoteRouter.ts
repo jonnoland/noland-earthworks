@@ -25,6 +25,10 @@ const quoteSchema = z.object({
   zip: z.string().max(20).optional().default(""),
   message: z.string().max(2000).optional().default(""),
   addOns: z.array(z.string()).optional().default([]),
+  // Parcel data from TN statewide parcel API
+  parcelOwner: z.string().max(255).optional().default(""),
+  parcelId: z.string().max(100).optional().default(""),
+  deedAcres: z.number().optional(),
 });
 
 export type QuoteInput = z.infer<typeof quoteSchema>;
@@ -474,6 +478,9 @@ export const quoteRouter = router({
           zip: input.zip || null,
           message: input.message || null,
           addOns: input.addOns && input.addOns.length > 0 ? JSON.stringify(input.addOns) : null,
+          parcelOwner: input.parcelOwner || null,
+          parcelId: input.parcelId || null,
+          deedAcres: input.deedAcres != null ? String(input.deedAcres) : null,
           aiScore: qualification?.score ?? null,
           aiSummary: qualification?.summary ?? null,
           aiFlags: qualification?.flags && qualification.flags.length > 0 ? JSON.stringify(qualification.flags) : null,
@@ -601,6 +608,7 @@ export const quoteRouter = router({
       const tpadLink = typeof attr.LINK_TPAD === "string" ? attr.LINK_TPAD : null;
       const tpvLink = typeof attr.LINK_TPV === "string" ? attr.LINK_TPV : null;
 
+      const parcelId = typeof attr.PARCELID === "string" ? attr.PARCELID : null;
       return {
         found: true,
         lat,
@@ -610,9 +618,28 @@ export const quoteRouter = router({
         owner2,
         countyName,
         parcelAddress,
+        parcelId,
         tpadLink,
         tpvLink,
         geocodedAddress: geoData.results[0].formatted_address,
+      };
+    }),
+
+  // Google Places Autocomplete — server-side proxy so no SDK needed on the quote page
+  placesAutocomplete: publicProcedure
+    .input(z.object({ input: z.string().min(1).max(200) }))
+    .query(async ({ input }) => {
+      const apiKey = ENV.googlePlacesApiKey;
+      if (!apiKey) return { suggestions: [] };
+      const url = `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(input.input)}&components=country:us&types=address&key=${apiKey}`;
+      const res = await fetch(url);
+      if (!res.ok) return { suggestions: [] };
+      const data = await res.json() as { predictions?: Array<{ description: string; place_id: string }> };
+      return {
+        suggestions: (data.predictions ?? []).slice(0, 5).map((p) => ({
+          description: p.description,
+          placeId: p.place_id,
+        })),
       };
     }),
 });

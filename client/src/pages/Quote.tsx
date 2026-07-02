@@ -93,6 +93,10 @@ export default function QuotePage() {
   const [parcelAddress, setParcelAddress] = useState("");
   const [debouncedParcelAddress, setDebouncedParcelAddress] = useState("");
   const [parcelAutoFilled, setParcelAutoFilled] = useState(false);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [autocompleteTerm, setAutocompleteTerm] = useState("");
+  const [debouncedAutocompleteTerm, setDebouncedAutocompleteTerm] = useState("");
+  const autocompleteDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [parcelInfo, setParcelInfo] = useState<{
     found: boolean;
     deedAcres?: number | null;
@@ -100,6 +104,7 @@ export default function QuotePage() {
     owner2?: string | null;
     countyName?: string | null;
     parcelAddress?: string | null;
+    parcelId?: string | null;
     tpadLink?: string | null;
     tpvLink?: string | null;
     geocodedAddress?: string;
@@ -128,12 +133,26 @@ export default function QuotePage() {
     }
   );
 
+  // Debounce autocomplete term — 400ms
+  useEffect(() => {
+    if (autocompleteDebounceRef.current) clearTimeout(autocompleteDebounceRef.current);
+    const trimmed = autocompleteTerm.trim();
+    if (trimmed.length < 3) { setDebouncedAutocompleteTerm(""); return; }
+    autocompleteDebounceRef.current = setTimeout(() => setDebouncedAutocompleteTerm(trimmed), 400);
+    return () => { if (autocompleteDebounceRef.current) clearTimeout(autocompleteDebounceRef.current); };
+  }, [autocompleteTerm]);
+
+  const autocompleteQuery = trpc.quote.placesAutocomplete.useQuery(
+    { input: debouncedAutocompleteTerm },
+    { enabled: debouncedAutocompleteTerm.length >= 3, staleTime: 30_000, retry: false }
+  );
+
   // Auto-fill county and acreage when parcel data arrives
   useEffect(() => {
     if (!parcelQuery.data || parcelAutoFilled) return;
     const p = parcelQuery.data;
     if (!p.found) { setParcelInfo(p); return; }
-    setParcelInfo(p);
+    setParcelInfo({ ...p, parcelId: (p as { parcelId?: string | null }).parcelId ?? null });
     const updates: Partial<typeof form> = {};
     // Auto-fill county if not already set
     if (p.countyName && !form.county) {
@@ -157,6 +176,28 @@ export default function QuotePage() {
       setParcelAutoFilled(true);
     }
   }, [parcelQuery.data]);
+
+  // Compute a preliminary price estimate from deed acreage and selected service
+  function computeEstimate(acres: number, service: string): { range: string; note: string } | null {
+    if (acres <= 0) return null;
+    // Base rates per acre for Middle Tennessee (forestry mulching)
+    const baseRates: Record<string, [number, number]> = {
+      "forestry-mulching":    [650, 900],
+      "land-management":      [550, 800],
+      "vegetation-management":[500, 750],
+      "right-of-way-clearing":[600, 850],
+      "property-maintenance": [450, 700],
+      "multiple":             [700, 1000],
+    };
+    const rates = baseRates[service] ?? baseRates["forestry-mulching"];
+    const low  = Math.round(acres * rates[0] / 100) * 100;
+    const high = Math.round(acres * rates[1] / 100) * 100;
+    const fmt = (n: number) => `$${n.toLocaleString()}`;
+    return {
+      range: `${fmt(low)} – ${fmt(high)}`,
+      note: `Rough range based on ${acres.toFixed(1)} deed acres. Actual price requires a site visit and may vary based on density, terrain, and access.`,
+    };
+  }
 
   const toggleAddOn = (label: string) => {
     setSelectedAddOns((prev) =>
@@ -225,6 +266,9 @@ export default function QuotePage() {
       zip: form.zip,
       message: form.message,
       addOns: selectedAddOns,
+      parcelOwner: parcelInfo?.owner ?? undefined,
+      parcelId: parcelInfo?.parcelId ?? undefined,
+      deedAcres: parcelInfo?.deedAcres ?? undefined,
     });
   };
 
@@ -1081,16 +1125,60 @@ export default function QuotePage() {
                     <div style={{ position: "relative" }}>
                       <input
                         type="text"
-                        placeholder="Enter the property address to auto-fill parcel data"
+                        placeholder="Start typing the property address..."
                         value={parcelAddress}
-                        onChange={(e) => { setParcelAddress(e.target.value); setParcelAutoFilled(false); setParcelInfo(null); }}
+                        autoComplete="off"
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setParcelAddress(val);
+                          setAutocompleteTerm(val);
+                          setParcelAutoFilled(false);
+                          setParcelInfo(null);
+                          setShowSuggestions(true);
+                        }}
+                        onFocus={() => setShowSuggestions(true)}
+                        onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
                         style={{ ...inputStyle, paddingRight: "2.5rem" }}
-                        onFocus={(e) => (e.target.style.borderColor = "rgba(224,123,42,0.6)")}
-                        onBlur={(e) => (e.target.style.borderColor = "rgba(255,255,255,0.12)")}
                       />
                       <div style={{ position: "absolute", right: "0.75rem", top: "50%", transform: "translateY(-50%)", color: "rgba(240,237,230,0.35)", pointerEvents: "none" }}>
-                        {parcelQuery.isFetching ? <Loader2 size={15} style={{ animation: "spin 1s linear infinite" }} /> : <Search size={15} />}
+                        {parcelQuery.isFetching || autocompleteQuery.isFetching ? <Loader2 size={15} style={{ animation: "spin 1s linear infinite" }} /> : <Search size={15} />}
                       </div>
+                      {/* Autocomplete dropdown */}
+                      {showSuggestions && autocompleteQuery.data && autocompleteQuery.data.suggestions.length > 0 && (
+                        <div style={{
+                          position: "absolute", top: "100%", left: 0, right: 0, zIndex: 50,
+                          backgroundColor: "#1a1a1a", border: "1px solid rgba(224,123,42,0.35)",
+                          borderTop: "none", maxHeight: "220px", overflowY: "auto",
+                        }}>
+                          {autocompleteQuery.data.suggestions.map((s) => (
+                            <button
+                              key={s.placeId}
+                              type="button"
+                              onMouseDown={() => {
+                                setParcelAddress(s.description);
+                                setAutocompleteTerm("");
+                                setDebouncedAutocompleteTerm("");
+                                setShowSuggestions(false);
+                                setParcelAutoFilled(false);
+                                setParcelInfo(null);
+                                // Trigger parcel lookup immediately
+                                setTimeout(() => setDebouncedParcelAddress(s.description), 50);
+                              }}
+                              style={{
+                                display: "block", width: "100%", textAlign: "left",
+                                padding: "0.6rem 1rem", background: "transparent",
+                                border: "none", borderBottom: "1px solid rgba(255,255,255,0.06)",
+                                color: "rgba(240,237,230,0.85)", fontFamily: "'Lato', sans-serif",
+                                fontSize: "0.875rem", cursor: "pointer",
+                              }}
+                              onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "rgba(224,123,42,0.12)")}
+                              onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
+                            >
+                              {s.description}
+                            </button>
+                          ))}
+                        </div>
+                      )}
                     </div>
 
                     {/* Parcel result card */}
@@ -1139,6 +1227,32 @@ export default function QuotePage() {
                         )}
                       </div>
                     )}
+
+                    {/* Preliminary price estimate — shown when parcel found and service selected */}
+                    {parcelInfo && parcelInfo.found && parcelInfo.deedAcres && parcelInfo.deedAcres > 0 && form.service && (() => {
+                      const est = computeEstimate(parcelInfo.deedAcres, form.service);
+                      if (!est) return null;
+                      return (
+                        <div style={{
+                          marginTop: "0.75rem",
+                          padding: "0.875rem 1rem",
+                          background: "rgba(255,255,255,0.03)",
+                          border: "1px solid rgba(255,255,255,0.1)",
+                          borderRadius: "2px",
+                          fontFamily: "'Lato', sans-serif",
+                        }}>
+                          <div style={{ fontFamily: "'Oswald', sans-serif", fontSize: "0.65rem", letterSpacing: "0.18em", textTransform: "uppercase", color: "rgba(224,123,42,0.7)", marginBottom: "0.35rem" }}>
+                            Preliminary Range
+                          </div>
+                          <div style={{ fontFamily: "'Oswald', sans-serif", fontWeight: 600, fontSize: "1.4rem", color: "#E07B2A", marginBottom: "0.3rem" }}>
+                            {est.range}
+                          </div>
+                          <p style={{ fontSize: "0.75rem", color: "rgba(240,237,230,0.4)", margin: 0, lineHeight: 1.5 }}>
+                            {est.note}
+                          </p>
+                        </div>
+                      );
+                    })()}
 
                     {/* Not found notice */}
                     {parcelInfo && !parcelInfo.found && (

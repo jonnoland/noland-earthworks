@@ -2136,3 +2136,6 @@
 - [x] Add loading/error UI for manual Run Scan from Prospecting
 - [x] Add or update tests for manual prospecting trigger flow
 - [x] Integrate Tennessee parcel API into quote form (auto-fill county, acreage, owner, TPAD link)
+- [x] Add Google Places autocomplete to parcel lookup field in quote form
+- [x] Save parcel owner name and parcel ID to quote submission record
+- [x] Display preliminary price estimate inline when parcel found and service selected

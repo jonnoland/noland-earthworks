@@ -519,6 +519,13 @@
       "when": 1782955952520,
       "tag": "0073_noisy_lady_deathstrike",
       "breakpoints": true
+    },
+    {
+      "idx": 74,
+      "version": "5",
+      "when": 1783033451190,
+      "tag": "0074_wooden_silhouette",
+      "breakpoints": true
     }
   ]
 }
