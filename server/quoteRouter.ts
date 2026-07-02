@@ -548,4 +548,71 @@ export const quoteRouter = router({
       ballparkNote: qualification?.ballparkNote ?? "",
     };
   }),
+
+  // ─── Parcel Lookup ────────────────────────────────────────────────────────────
+  // Geocodes an address via Google, then queries the Tennessee statewide parcel
+  // feature service (free, no API key, updated monthly by the Comptroller).
+  // Returns deed acreage, owner of record, county, and a link to the TN
+  // Property Assessor page for the parcel.
+  parcelLookup: publicProcedure
+    .input(z.object({ address: z.string().min(3) }))
+    .query(async ({ input }) => {
+      // 1. Geocode the address to lat/lon using Google Maps Geocoding API
+      const geocodeUrl = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(input.address + ", Tennessee")}&key=${ENV.googlePlacesApiKey}`;
+      const geoRes = await fetch(geocodeUrl);
+      if (!geoRes.ok) throw new Error("Geocoding request failed");
+      const geoData = await geoRes.json() as {
+        status: string;
+        results: Array<{
+          geometry: { location: { lat: number; lng: number } };
+          formatted_address: string;
+          address_components: Array<{ long_name: string; short_name: string; types: string[] }>;
+        }>;
+      };
+      if (geoData.status !== "OK" || !geoData.results.length) {
+        return { found: false, reason: "Address not found" };
+      }
+      const { lat, lng } = geoData.results[0].geometry.location;
+
+      // 2. Convert lat/lon to Web Mercator (WKID 102100) for the ArcGIS query
+      const x = lng * 20037508.34 / 180;
+      const y = Math.log(Math.tan((90 + lat) * Math.PI / 360)) / Math.PI * 20037508.34;
+      const geometry = JSON.stringify({ x: Math.round(x), y: Math.round(y), spatialReference: { wkid: 102100 } });
+
+      // 3. Query the Tennessee Property Boundaries Public Use feature service
+      const parcelUrl = `https://services1.arcgis.com/YuVBSS7Y1of2Qud1/arcgis/rest/services/Tennessee_Property_Boundaries_Public_Use/FeatureServer/0/query?geometry=${encodeURIComponent(geometry)}&geometryType=esriGeometryPoint&spatialRel=esriSpatialRelIntersects&outFields=PARCELID,ADDRESS,OWNER,OWNER2,DEEDAC,COUNTY_NAME,LINK_TPAD,LINK_TPV&f=json`;
+      const parcelRes = await fetch(parcelUrl);
+      if (!parcelRes.ok) throw new Error("Parcel service request failed");
+      const parcelData = await parcelRes.json() as {
+        features?: Array<{ attributes: Record<string, unknown> }>;
+        error?: { message: string };
+      };
+      if (parcelData.error) throw new Error(`Parcel service error: ${parcelData.error.message}`);
+      if (!parcelData.features || parcelData.features.length === 0) {
+        return { found: false, reason: "No parcel found at this location" };
+      }
+
+      const attr = parcelData.features[0].attributes;
+      const deedAcres = typeof attr.DEEDAC === "number" ? attr.DEEDAC : null;
+      const owner = typeof attr.OWNER === "string" ? attr.OWNER : null;
+      const owner2 = typeof attr.OWNER2 === "string" && attr.OWNER2 ? attr.OWNER2 : null;
+      const countyName = typeof attr.COUNTY_NAME === "string" ? attr.COUNTY_NAME : null;
+      const parcelAddress = typeof attr.ADDRESS === "string" ? attr.ADDRESS : null;
+      const tpadLink = typeof attr.LINK_TPAD === "string" ? attr.LINK_TPAD : null;
+      const tpvLink = typeof attr.LINK_TPV === "string" ? attr.LINK_TPV : null;
+
+      return {
+        found: true,
+        lat,
+        lng,
+        deedAcres,
+        owner,
+        owner2,
+        countyName,
+        parcelAddress,
+        tpadLink,
+        tpvLink,
+        geocodedAddress: geoData.results[0].formatted_address,
+      };
+    }),
 });

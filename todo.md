@@ -2135,3 +2135,4 @@
 - [x] Reuse the existing prospect-leads ingestion path for manual scan results
 - [x] Add loading/error UI for manual Run Scan from Prospecting
 - [x] Add or update tests for manual prospecting trigger flow
+- [x] Integrate Tennessee parcel API into quote form (auto-fill county, acreage, owner, TPAD link)

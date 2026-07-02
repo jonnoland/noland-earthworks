@@ -2,8 +2,8 @@
  * DESIGN: Heavy Equipment Grit — standalone quote page
  * Hero banner → two-column layout: contact info left, full form right
  */
-import { useState } from "react";
-import { Phone, Mail, MapPin, Send, ArrowLeft, CheckCircle, Loader2 } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import { Phone, Mail, MapPin, Send, ArrowLeft, CheckCircle, Loader2, Search, ExternalLink, AlertCircle } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import MobileCTABar from "@/components/MobileCTABar";
@@ -88,6 +88,75 @@ export default function QuotePage() {
   const [selectedAddOns, setSelectedAddOns] = useState<string[]>([]);
   const [ballparkRange, setBallparkRange] = useState("");
   const [ballparkNote, setBallparkNote] = useState("");
+
+  // Parcel lookup state
+  const [parcelAddress, setParcelAddress] = useState("");
+  const [debouncedParcelAddress, setDebouncedParcelAddress] = useState("");
+  const [parcelAutoFilled, setParcelAutoFilled] = useState(false);
+  const [parcelInfo, setParcelInfo] = useState<{
+    found: boolean;
+    deedAcres?: number | null;
+    owner?: string | null;
+    owner2?: string | null;
+    countyName?: string | null;
+    parcelAddress?: string | null;
+    tpadLink?: string | null;
+    tpvLink?: string | null;
+    geocodedAddress?: string;
+    reason?: string;
+  } | null>(null);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Debounce parcel address input — fire lookup 1.2s after user stops typing
+  useEffect(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    const trimmed = parcelAddress.trim();
+    if (trimmed.length < 5) {
+      setDebouncedParcelAddress("");
+      return;
+    }
+    debounceRef.current = setTimeout(() => setDebouncedParcelAddress(trimmed), 1200);
+    return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
+  }, [parcelAddress]);
+
+  const parcelQuery = trpc.quote.parcelLookup.useQuery(
+    { address: debouncedParcelAddress },
+    {
+      enabled: debouncedParcelAddress.length >= 5,
+      retry: false,
+      staleTime: 5 * 60 * 1000,
+    }
+  );
+
+  // Auto-fill county and acreage when parcel data arrives
+  useEffect(() => {
+    if (!parcelQuery.data || parcelAutoFilled) return;
+    const p = parcelQuery.data;
+    if (!p.found) { setParcelInfo(p); return; }
+    setParcelInfo(p);
+    const updates: Partial<typeof form> = {};
+    // Auto-fill county if not already set
+    if (p.countyName && !form.county) {
+      const normalized = p.countyName.toLowerCase();
+      const knownCounties = [
+        "bedford","benton","cannon","carroll","cheatham","chester",
+        "davidson","decatur","dickson","gibson","giles",
+        "hardin","henderson","henry","hickman","houston","humphreys",
+        "lawrence","lewis","lincoln","madison","marshall",
+        "maury","montgomery","moore","perry","robertson","rutherford",
+        "stewart","sumner","trousdale","wayne","weakley","williamson","wilson",
+      ];
+      if (knownCounties.includes(normalized)) updates.county = normalized;
+    }
+    // Auto-fill acreage bucket if not already set
+    if (p.deedAcres && p.deedAcres > 0 && !form.acreage) {
+      updates.acreage = acresBucket(p.deedAcres);
+    }
+    if (Object.keys(updates).length > 0) {
+      setForm(prev => ({ ...prev, ...updates }));
+      setParcelAutoFilled(true);
+    }
+  }, [parcelQuery.data]);
 
   const toggleAddOn = (label: string) => {
     setSelectedAddOns((prev) =>
@@ -1001,6 +1070,83 @@ export default function QuotePage() {
                         );
                       })}
                     </div>
+                  </div>
+
+                  {/* Parcel Lookup */}
+                  <div>
+                    <label style={labelStyle}>
+                      Property Address Lookup
+                      <span style={{ color: "rgba(240,237,230,0.4)", fontSize: "0.7rem", letterSpacing: "0.08em", marginLeft: "0.5rem" }}>(auto-fills county &amp; acreage)</span>
+                    </label>
+                    <div style={{ position: "relative" }}>
+                      <input
+                        type="text"
+                        placeholder="Enter the property address to auto-fill parcel data"
+                        value={parcelAddress}
+                        onChange={(e) => { setParcelAddress(e.target.value); setParcelAutoFilled(false); setParcelInfo(null); }}
+                        style={{ ...inputStyle, paddingRight: "2.5rem" }}
+                        onFocus={(e) => (e.target.style.borderColor = "rgba(224,123,42,0.6)")}
+                        onBlur={(e) => (e.target.style.borderColor = "rgba(255,255,255,0.12)")}
+                      />
+                      <div style={{ position: "absolute", right: "0.75rem", top: "50%", transform: "translateY(-50%)", color: "rgba(240,237,230,0.35)", pointerEvents: "none" }}>
+                        {parcelQuery.isFetching ? <Loader2 size={15} style={{ animation: "spin 1s linear infinite" }} /> : <Search size={15} />}
+                      </div>
+                    </div>
+
+                    {/* Parcel result card */}
+                    {parcelInfo && parcelInfo.found && (
+                      <div style={{
+                        marginTop: "0.75rem",
+                        padding: "0.875rem 1rem",
+                        background: "rgba(224,123,42,0.08)",
+                        border: "1px solid rgba(224,123,42,0.25)",
+                        borderRadius: "2px",
+                        fontFamily: "'Lato', sans-serif",
+                        fontSize: "0.85rem",
+                        color: "rgba(240,237,230,0.85)",
+                      }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: "0.4rem", marginBottom: "0.5rem", color: "#E07B2A", fontFamily: "'Oswald', sans-serif", fontSize: "0.7rem", letterSpacing: "0.12em", textTransform: "uppercase" }}>
+                          <CheckCircle size={13} />
+                          Parcel Found — County &amp; Acreage Auto-Filled
+                        </div>
+                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.35rem 1.5rem" }}>
+                          {parcelInfo.owner && (
+                            <div><span style={{ opacity: 0.5, fontSize: "0.75rem" }}>Owner of Record</span><br />{parcelInfo.owner}{parcelInfo.owner2 ? ` / ${parcelInfo.owner2}` : ""}</div>
+                          )}
+                          {parcelInfo.deedAcres != null && parcelInfo.deedAcres > 0 && (
+                            <div><span style={{ opacity: 0.5, fontSize: "0.75rem" }}>Deed Acreage</span><br />{parcelInfo.deedAcres.toFixed(2)} acres</div>
+                          )}
+                          {parcelInfo.countyName && (
+                            <div><span style={{ opacity: 0.5, fontSize: "0.75rem" }}>County</span><br />{parcelInfo.countyName} County</div>
+                          )}
+                          {parcelInfo.parcelAddress && (
+                            <div><span style={{ opacity: 0.5, fontSize: "0.75rem" }}>Parcel Address</span><br />{parcelInfo.parcelAddress}</div>
+                          )}
+                        </div>
+                        {(parcelInfo.tpadLink || parcelInfo.tpvLink) && (
+                          <div style={{ marginTop: "0.6rem", display: "flex", gap: "1rem" }}>
+                            {parcelInfo.tpadLink && (
+                              <a href={parcelInfo.tpadLink} target="_blank" rel="noopener noreferrer" style={{ color: "#E07B2A", fontSize: "0.78rem", display: "flex", alignItems: "center", gap: "0.25rem", textDecoration: "none" }}>
+                                <ExternalLink size={11} /> TN Property Assessor
+                              </a>
+                            )}
+                            {parcelInfo.tpvLink && (
+                              <a href={parcelInfo.tpvLink} target="_blank" rel="noopener noreferrer" style={{ color: "rgba(224,123,42,0.7)", fontSize: "0.78rem", display: "flex", alignItems: "center", gap: "0.25rem", textDecoration: "none" }}>
+                                <ExternalLink size={11} /> Property Viewer
+                              </a>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Not found notice */}
+                    {parcelInfo && !parcelInfo.found && (
+                      <div style={{ marginTop: "0.5rem", display: "flex", alignItems: "center", gap: "0.4rem", color: "rgba(240,237,230,0.45)", fontSize: "0.8rem", fontFamily: "'Lato', sans-serif" }}>
+                        <AlertCircle size={13} />
+                        Parcel not found — please fill in county and acreage manually.
+                      </div>
+                    )}
                   </div>
 
                   {/* Property Address */}
