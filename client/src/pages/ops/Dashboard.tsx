@@ -15,7 +15,7 @@ import {
   Users, Clock, ArrowUpRight, MapPin, Plus, ChevronRight, Inbox,
   CalendarDays, CalendarCheck, TrendingUp, Gauge, Activity, ExternalLink, Flag,
   FileText, Receipt, AlertCircle, CheckCircle2, PhoneCall, Star, MessageSquare,
-  Sparkles, Loader2, RefreshCw,
+  Sparkles, Loader2, RefreshCw, Zap, Target, Phone, Mail, Share2, CheckSquare,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
@@ -240,6 +240,12 @@ export default function Dashboard() {
     onSuccess: (data: any) => { setMorningBrief(data.content); setBriefDismissed(false); },
     onError: (err: any) => toast.error(err.message || "Failed to generate morning brief."),
   });
+
+  // ─── Get More Leads panel ─────────────────────────────────────────────────
+  const [leadPlanVisible, setLeadPlanVisible] = useState(false);
+  const [completedSteps, setCompletedSteps] = useState<Set<number>>(new Set());
+  const { data: leadActionPlan, isFetching: leadPlanLoading, refetch: refetchLeadPlan } =
+    trpc.ops.leads.generateLeadActionPlan.useQuery(undefined, { enabled: false, retry: false });
 
   // ─── Jobber data — primary source of truth ───────────────────────────────
   const { data: jobberJobsRaw, isError: jobberJobsError } = trpc.jobber.jobs.useQuery(
@@ -1350,6 +1356,144 @@ export default function Dashboard() {
           )}
         </div>
 
+      {/* ─── Get More Leads Panel ──────────────────────────────────────────────── */}
+      <div className="mt-6 rounded-xl border border-border bg-card overflow-hidden">
+        <div
+          className="flex items-center justify-between px-5 py-4 cursor-pointer hover:bg-secondary/20 transition-colors"
+          onClick={() => setLeadPlanVisible(v => !v)}
+        >
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-md bg-primary/10">
+              <Target className="w-4 h-4 text-primary" />
+            </div>
+            <div>
+              <h3 className="text-sm font-semibold text-foreground" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
+                Get More Leads
+              </h3>
+              <p className="text-xs text-muted-foreground">
+                {leadActionPlan
+                  ? `${completedSteps.size} of ${leadActionPlan.steps.length} actions completed this week`
+                  : "AI-generated action plan based on your current pipeline and season"}
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            {leadActionPlan && completedSteps.size > 0 && (
+              <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-green-400/10 text-green-400 border border-green-400/20">
+                {completedSteps.size}/{leadActionPlan.steps.length} done
+              </span>
+            )}
+            <ChevronRight className={cn("w-4 h-4 text-muted-foreground transition-transform", leadPlanVisible && "rotate-90")} />
+          </div>
+        </div>
+
+        {leadPlanVisible && (
+          <div className="border-t border-border">
+            {/* Season context bar */}
+            {leadActionPlan?.seasonNote && (
+              <div className="px-5 py-3 bg-amber-500/5 border-b border-amber-500/10 flex items-start gap-2">
+                <Zap className="w-3.5 h-3.5 text-amber-400 shrink-0 mt-0.5" />
+                <p className="text-xs text-amber-300/80">{leadActionPlan.seasonNote}</p>
+              </div>
+            )}
+
+            {/* Generate / Refresh button */}
+            {!leadActionPlan && (
+              <div className="px-5 py-6 flex flex-col items-center gap-3">
+                <p className="text-xs text-muted-foreground text-center max-w-sm">
+                  Click below to generate a personalized 5-step lead generation plan for this week, based on your current pipeline and the time of year.
+                </p>
+                <Button
+                  size="sm"
+                  onClick={() => refetchLeadPlan()}
+                  disabled={leadPlanLoading}
+                  className="gap-2"
+                >
+                  {leadPlanLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
+                  {leadPlanLoading ? "Generating plan..." : "Generate This Week's Plan"}
+                </Button>
+              </div>
+            )}
+
+            {/* Step list */}
+            {leadActionPlan && leadActionPlan.steps.length > 0 && (
+              <div className="divide-y divide-border">
+                {leadActionPlan.steps.map((step: any, i: number) => {
+                  const done = completedSteps.has(i);
+                  const channelIcon = step.channel === "google" ? <MapPin className="w-3 h-3" />
+                    : step.channel === "facebook" || step.channel === "instagram" ? <Share2 className="w-3 h-3" />
+                    : step.channel === "phone" ? <Phone className="w-3 h-3" />
+                    : step.channel === "email" ? <Mail className="w-3 h-3" />
+                    : step.channel === "referral" ? <Users className="w-3 h-3" />
+                    : <Zap className="w-3 h-3" />;
+                  return (
+                    <div
+                      key={i}
+                      className={cn(
+                        "flex items-start gap-3 px-5 py-4 transition-colors",
+                        done ? "bg-green-500/5" : "hover:bg-secondary/20"
+                      )}
+                    >
+                      <button
+                        onClick={() => setCompletedSteps(prev => {
+                          const next = new Set(prev);
+                          if (next.has(i)) next.delete(i); else next.add(i);
+                          return next;
+                        })}
+                        className={cn(
+                          "mt-0.5 shrink-0 w-5 h-5 rounded border flex items-center justify-center transition-colors",
+                          done
+                            ? "bg-green-500 border-green-500 text-white"
+                            : "border-border hover:border-primary/60"
+                        )}
+                      >
+                        {done && <CheckSquare className="w-3 h-3" />}
+                      </button>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-0.5">
+                          <span className={cn("text-sm font-medium", done ? "line-through text-muted-foreground" : "text-foreground")}>
+                            {step.title}
+                          </span>
+                          <span className={cn(
+                            "flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded border",
+                            step.effort === "quick"
+                              ? "text-green-400 bg-green-400/10 border-green-400/20"
+                              : "text-amber-400 bg-amber-400/10 border-amber-400/20"
+                          )}>
+                            {channelIcon}
+                            {step.channel}
+                          </span>
+                          {step.effort === "quick" && (
+                            <span className="text-[10px] text-muted-foreground">&lt; 30 min</span>
+                          )}
+                        </div>
+                        <p className={cn("text-xs", done ? "text-muted-foreground/60 line-through" : "text-muted-foreground")}>
+                          {step.detail}
+                        </p>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* Refresh button when plan already loaded */}
+            {leadActionPlan && (
+              <div className="px-5 py-3 border-t border-border flex items-center justify-between">
+                <p className="text-[11px] text-muted-foreground">Plan generated based on your current pipeline</p>
+                <button
+                  onClick={() => { setCompletedSteps(new Set()); refetchLeadPlan(); }}
+                  disabled={leadPlanLoading}
+                  className="flex items-center gap-1.5 text-[11px] text-primary hover:text-primary/80 transition-colors disabled:opacity-50"
+                >
+                  {leadPlanLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : <RefreshCw className="w-3 h-3" />}
+                  Regenerate
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
       </div>
     </DashboardLayout>
   );

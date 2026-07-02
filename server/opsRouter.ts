@@ -802,6 +802,88 @@ Return JSON only: {"suggestedStage": "<stage>", "reason": "<one sentence>"}`;
       await db.update(conversations).set({ lastMessage: input.body, lastMessageAt: new Date() }).where(eq(conversations.id, convId));
       return { conversationId: convId, twilioSid };
     }),
+  /** Generate a personalized lead generation action plan based on current pipeline state and season */
+  generateLeadActionPlan: ownerProcedure
+    .query(async ({ ctx }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+      // Gather context: open leads count, recent lead sources, current month
+      const allLeads = await db.select().from(opsLeads).where(eq(opsLeads.userId, ctx.user.id)).orderBy(desc(opsLeads.createdAt)).limit(50);
+      const openLeads = allLeads.filter(l => !["won", "lost", "converted"].includes(l.stage));
+      const recentLeads = allLeads.slice(0, 10);
+      const sourceCounts: Record<string, number> = {};
+      for (const l of recentLeads) {
+        const src = l.source ?? "unknown";
+        sourceCounts[src] = (sourceCounts[src] ?? 0) + 1;
+      }
+      const topSource = Object.entries(sourceCounts).sort((a, b) => b[1] - a[1])[0]?.[0] ?? "unknown";
+      const month = new Date().toLocaleString("en-US", { month: "long" });
+      const season = ["December", "January", "February", "March"].includes(month)
+        ? "peak (dormant season — best time to work)"
+        : ["April", "May", "June"].includes(month)
+        ? "spring (high inquiry volume, wet ground risk)"
+        : ["July", "August", "September"].includes(month)
+        ? "slow (peak heat — customers often wait)"
+        : "fall (transitioning into peak season)";
+      const prompt = `You are advising Jon Noland, owner of Noland Earthworks LLC — a veteran-owned forestry mulching and land clearing company in Middle & West Tennessee. He runs the business solo with a tracked forestry mulcher. It is currently ${month} (${season}).
+
+Current pipeline: ${openLeads.length} open leads. Most leads recently came from: ${topSource.replace(/_/g, " ")}.
+
+Generate exactly 5 specific, immediately actionable lead generation steps for this week. Each step must:
+- Be concrete and doable in under 30 minutes
+- Be specific to his business (forestry mulching, land clearing, Tennessee landowners)
+- Reference real tactics (Google Business Profile, Facebook, past customers, referrals, etc.)
+- Not be generic marketing advice
+
+Return JSON only:
+{
+  "steps": [
+    { "title": "short action title", "detail": "one sentence of specific instruction", "effort": "quick|moderate", "channel": "google|facebook|instagram|phone|email|referral|other" }
+  ],
+  "seasonNote": "one sentence about why this season matters for lead gen right now"
+}`;
+      const result = await invokeLLM({
+        messages: [{ role: "user", content: prompt }],
+        response_format: {
+          type: "json_schema",
+          json_schema: {
+            name: "lead_action_plan",
+            strict: true,
+            schema: {
+              type: "object",
+              properties: {
+                steps: {
+                  type: "array",
+                  items: {
+                    type: "object",
+                    properties: {
+                      title: { type: "string" },
+                      detail: { type: "string" },
+                      effort: { type: "string" },
+                      channel: { type: "string" },
+                    },
+                    required: ["title", "detail", "effort", "channel"],
+                    additionalProperties: false,
+                  },
+                },
+                seasonNote: { type: "string" },
+              },
+              required: ["steps", "seasonNote"],
+              additionalProperties: false,
+            },
+          },
+        },
+      });
+      const raw = result?.choices?.[0]?.message?.content ?? "{}";
+      try {
+        const cleaned = (typeof raw === "string" ? raw : "{}").replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "").trim();
+        const parsed = JSON.parse(cleaned);
+        return { steps: parsed.steps ?? [], seasonNote: parsed.seasonNote ?? "", openLeadsCount: openLeads.length, topSource };
+      } catch {
+        return { steps: [], seasonNote: "", openLeadsCount: openLeads.length, topSource };
+      }
+    }),
+
   /** Look up a lead by phone number — used to pull lead context into AI reply drafts */
   getByPhone: ownerProcedure
     .input(z.object({ phone: z.string().min(7) }))

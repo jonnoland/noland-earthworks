@@ -2113,3 +2113,8 @@
 - [x] AI suggested reply: pull lead profile context (name, service interest, acreage, location) into draft prompt for personalized replies
 ## CRM SMS Enhancements — Round 4 (Jun 2026)
 - [x] Add 'Edit Lead Info' button in conversation view header — opens inline edit modal for name, phone, jobType, address, notes; updates lead record so AI context improves immediately
+
+## Get More Leads Panel (Jul 2026)
+- [x] Add "Get More Leads" collapsible panel to /ops dashboard with AI-generated 5-step weekly action plan
+- [x] Panel uses pipeline state + current season to personalize steps (channel icons, effort tags, checkboxes)
+- [x] Add generateLeadActionPlan procedure to leadsRouter with json_schema response format
