@@ -2589,6 +2589,11 @@ type QuoteSubmission = {
   aiSummary?: string | null;
   aiFlags?: string | null;
   aiDraftResponse?: string | null;
+  parcelOwner?: string | null;
+  parcelId?: string | null;
+  deedAcres?: number | string | null;
+  adjustedAcres?: number | string | null;
+  estimatedRange?: string | null;
 };
 
 // Progressive status messages shown during AI analysis
@@ -2856,6 +2861,38 @@ function WebsiteRequestCard({
               ))}
             </div>
           )}
+          {/* Parcel data row */}
+          {(submission.parcelOwner || submission.deedAcres || submission.estimatedRange) && (() => {
+            const deedAc = submission.deedAcres != null ? parseFloat(String(submission.deedAcres)) : null;
+            const adjAc = submission.adjustedAcres != null ? parseFloat(String(submission.adjustedAcres)) : null;
+            return (
+              <div className="flex items-center gap-3 flex-wrap pt-0.5">
+                {submission.parcelOwner && (
+                  <span className="flex items-center gap-1 text-[11px] text-muted-foreground">
+                    <span className="text-[10px] text-muted-foreground/60 uppercase tracking-wide">Owner:</span>
+                    {submission.parcelOwner}
+                  </span>
+                )}
+                {deedAc != null && deedAc > 0 && (
+                  <span className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                    <span className="text-[10px] text-muted-foreground/60 uppercase tracking-wide">Deed:</span>
+                    {deedAc.toFixed(2)} ac
+                    {adjAc != null && Math.abs(adjAc - deedAc) > 0.01 && (
+                      <span className="text-[10px] font-semibold bg-orange-500/15 text-orange-400 rounded-full px-2 py-0.5">
+                        Adjusted: {adjAc.toFixed(1)} ac
+                      </span>
+                    )}
+                  </span>
+                )}
+                {submission.estimatedRange && (
+                  <span className="flex items-center gap-1 text-[11px] text-muted-foreground">
+                    <span className="text-[10px] text-muted-foreground/60 uppercase tracking-wide">Est:</span>
+                    <span className="text-orange-400 font-medium">{submission.estimatedRange}</span>
+                  </span>
+                )}
+              </div>
+            );
+          })()}
           {/* Satellite strip */}
           {hasPreciseAddress && (
             <div className="relative w-full h-32 rounded-md bg-secondary/20 overflow-hidden">

@@ -112,6 +112,8 @@ export default function QuotePage() {
   } | null>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [adjustedAcres, setAdjustedAcres] = useState<string>("");
+  const [adjustedAcresError, setAdjustedAcresError] = useState<string>("");
+  const [submittedEstimate, setSubmittedEstimate] = useState<{ range: string; note: string; adjustedAcres?: number } | null>(null);
 
   // Debounce parcel address input — fire lookup 1.2s after user stops typing
   useEffect(() => {
@@ -254,6 +256,17 @@ export default function QuotePage() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitError(null);
+    if (adjustedAcresError) return;
+    // Capture the preliminary estimate before submitting so we can show it on the success screen
+    const effectiveAcresForSubmit = adjustedAcres ? parseFloat(adjustedAcres) : (parcelInfo?.deedAcres ?? 0);
+    const preSubmitEstimate = effectiveAcresForSubmit > 0 && form.service ? computeEstimate(effectiveAcresForSubmit, form.service) : null;
+    if (preSubmitEstimate) {
+      setSubmittedEstimate({
+        range: preSubmitEstimate.range,
+        note: preSubmitEstimate.note,
+        adjustedAcres: adjustedAcres ? parseFloat(adjustedAcres) : undefined,
+      });
+    }
     submitQuote.mutate({
       name: form.name,
       phone: form.phone,
@@ -857,6 +870,32 @@ export default function QuotePage() {
                     </div>
                   )}
 
+                  {/* Parcel-based preliminary estimate — shown when parcel lookup was used */}
+                  {submittedEstimate && !ballparkRange && (
+                    <div
+                      style={{
+                        marginBottom: "1.5rem",
+                        padding: "1.25rem 1.75rem",
+                        backgroundColor: "rgba(224,123,42,0.06)",
+                        border: "1px solid rgba(224,123,42,0.25)",
+                        borderRadius: "8px",
+                        maxWidth: "440px",
+                        width: "100%",
+                        textAlign: "center",
+                      }}
+                    >
+                      <div style={{ fontFamily: "'Oswald', sans-serif", fontWeight: 400, fontSize: "0.65rem", letterSpacing: "0.2em", textTransform: "uppercase", color: "rgba(224,123,42,0.7)", marginBottom: "0.5rem" }}>
+                        Preliminary Range{submittedEstimate.adjustedAcres ? ` \u2014 ${submittedEstimate.adjustedAcres.toFixed(1)} ac adjusted` : ""}
+                      </div>
+                      <div style={{ fontFamily: "'Oswald', sans-serif", fontWeight: 700, fontSize: "2rem", letterSpacing: "0.02em", color: "#E07B2A", marginBottom: "0.5rem", lineHeight: 1.1 }}>
+                        {submittedEstimate.range}
+                      </div>
+                      <p style={{ fontFamily: "'Lato', sans-serif", fontWeight: 300, fontSize: "0.8rem", color: "rgba(240,237,230,0.45)", lineHeight: 1.6, margin: 0 }}>
+                        {submittedEstimate.note}
+                      </p>
+                    </div>
+                  )}
+
                   {/* Google Review CTA */}
                   <div
                     style={{
@@ -1250,11 +1289,25 @@ export default function QuotePage() {
                           step="0.1"
                           placeholder={`Deed: ${parcelInfo.deedAcres?.toFixed(2)} ac — enter a smaller number if applicable`}
                           value={adjustedAcres}
-                          onChange={(e) => setAdjustedAcres(e.target.value)}
-                          style={{ ...inputStyle, fontSize: "0.85rem" }}
-                          onFocus={(e) => (e.target.style.borderColor = "rgba(224,123,42,0.6)")}
-                          onBlur={(e) => (e.target.style.borderColor = "rgba(255,255,255,0.12)")}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            setAdjustedAcres(val);
+                            if (val && parcelInfo.deedAcres && parseFloat(val) > parcelInfo.deedAcres) {
+                              setAdjustedAcresError(`Cannot exceed deed acreage of ${parcelInfo.deedAcres.toFixed(2)} ac`);
+                            } else {
+                              setAdjustedAcresError("");
+                            }
+                          }}
+                          style={{ ...inputStyle, fontSize: "0.85rem", borderColor: adjustedAcresError ? "rgba(239,68,68,0.7)" : undefined }}
+                          onFocus={(e) => (e.target.style.borderColor = adjustedAcresError ? "rgba(239,68,68,0.7)" : "rgba(224,123,42,0.6)")}
+                          onBlur={(e) => (e.target.style.borderColor = adjustedAcresError ? "rgba(239,68,68,0.7)" : "rgba(255,255,255,0.12)")}
                         />
+                        {adjustedAcresError && (
+                          <div style={{ display: "flex", alignItems: "center", gap: "0.35rem", marginTop: "0.35rem", color: "rgba(239,68,68,0.9)", fontSize: "0.75rem", fontFamily: "'Lato', sans-serif" }}>
+                            <AlertCircle size={12} />
+                            {adjustedAcresError}
+                          </div>
+                        )}
                       </div>
                     )}
 
