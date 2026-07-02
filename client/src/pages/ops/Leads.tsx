@@ -1806,6 +1806,18 @@ function ProspectingTab() {
     },
   });
 
+  const runScan = trpc.ops.prospecting.runScan.useMutation({
+    onSuccess: (data) => {
+      toast.success(
+        `Scan started. Results will appear here when the task finishes. View progress at manus.im`,
+        { duration: 8000 }
+      );
+      // Open the Manus task in a new tab so Jon can watch it run
+      if (data.taskUrl) window.open(data.taskUrl, "_blank");
+    },
+    onError: (err) => toast.error(`Scan failed to start: ${err.message}`),
+  });
+
   const sendSms = trpc.ops.leads.sendDirectSms.useMutation({
     onSuccess: () => {
       toast.success("Message sent.");
@@ -1847,15 +1859,30 @@ function ProspectingTab() {
             <p className="text-sm text-zinc-400">AI-discovered leads from Craigslist, Facebook, Nextdoor, and more</p>
           </div>
         </div>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => refetch()}
-          className="border-zinc-700 text-zinc-300 hover:text-white"
-        >
-          <RefreshCw className="h-4 w-4 mr-2" />
-          Refresh
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => runScan.mutate()}
+            disabled={runScan.isPending}
+            className="border-orange-700 text-orange-300 hover:text-orange-100 hover:border-orange-500"
+          >
+            {runScan.isPending ? (
+              <><RefreshCw className="h-4 w-4 mr-2 animate-spin" />Starting...</>
+            ) : (
+              <><Radar className="h-4 w-4 mr-2" />Run Scan</>
+            )}
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => refetch()}
+            className="border-zinc-700 text-zinc-300 hover:text-white"
+          >
+            <RefreshCw className="h-4 w-4 mr-2" />
+            Refresh
+          </Button>
+        </div>
       </div>
 
       {/* Info banner */}
@@ -1864,7 +1891,7 @@ function ProspectingTab() {
         <span>
           The AI scans public sources daily for people in Tennessee asking about land clearing, brush removal, or overgrown property.
           New prospects appear here automatically. Review each one, fire a reach-out message, or dismiss it.
-          The cron runs every morning — check back daily.
+          The cron runs every morning — or hit <strong>Run Scan</strong> to kick one off right now. Results appear here when the task finishes (typically 5-15 minutes).
         </span>
       </div>
 

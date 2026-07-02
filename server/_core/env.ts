@@ -53,6 +53,8 @@ export const ENV = {
   stripeSecretKey: process.env.STRIPE_SECRET_KEY ?? "",
   stripeWebhookSecret: process.env.STRIPE_WEBHOOK_SECRET ?? "",
   stripePublishableKey: process.env.VITE_STRIPE_PUBLISHABLE_KEY ?? "",
+  // Manus API key — for creating one-off prospecting tasks on demand via task.create
+  manusApiKey: process.env.MANUS_API_KEY ?? "",
   // Google Ads API — for pulling real campaign spend data
   googleAdsDeveloperToken: process.env.GOOGLE_ADS_DEVELOPER_TOKEN ?? "",
   googleAdsCustomerId: process.env.GOOGLE_ADS_CUSTOMER_ID ?? "",

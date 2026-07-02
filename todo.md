@@ -2130,3 +2130,8 @@
 - [ ] Build /ops/prospecting CRM page with prospect cards and reach-out modal
 - [ ] Add Prospecting nav item to OpsDashboardLayout sidebar
 - [ ] Save checkpoint, deploy, register AGENT cron (daily 9am CT), and verify
+- [x] Add a Run Scan button to the Prospecting tab
+- [x] Trigger prospecting on demand while keeping the scheduled AGENT cron in place
+- [x] Reuse the existing prospect-leads ingestion path for manual scan results
+- [x] Add loading/error UI for manual Run Scan from Prospecting
+- [x] Add or update tests for manual prospecting trigger flow

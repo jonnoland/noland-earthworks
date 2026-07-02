@@ -578,6 +578,71 @@ ${transcript}`;
     }
   });
 
+  // Manual prospecting scan postback — called by a one-off Manus task spawned from the Run Scan button.
+  // Authenticated by MANUS_API_KEY header instead of cron session cookie.
+  app.post("/api/scheduled/prospect-leads-manual", async (req, res) => {
+    try {
+      const { ENV } = await import("./env");
+      const apiKey = req.headers["x-manus-api-key"] as string | undefined;
+      if (!apiKey || apiKey !== ENV.manusApiKey) {
+        res.status(403).json({ error: "unauthorized" });
+        return;
+      }
+      const { getDb } = await import("../db");
+      const db = await getDb();
+      if (!db) {
+        res.status(500).json({ error: "DB unavailable" });
+        return;
+      }
+      const schema = await import("../../drizzle/schema");
+      const prospectingLeads = (schema as any).prospectingLeads;
+      const body = req.body as {
+        prospects?: Array<{
+          source: string;
+          url: string;
+          contactName?: string;
+          contactInfo?: string;
+          location?: string;
+          summary: string;
+          reachOutDraft?: string;
+          postSnippet?: string;
+        }>;
+      };
+      if (!Array.isArray(body.prospects) || body.prospects.length === 0) {
+        res.json({ ok: true, inserted: 0, message: "No prospects provided" });
+        return;
+      }
+      const { eq } = await import("drizzle-orm");
+      let inserted = 0;
+      for (const p of body.prospects) {
+        if (!p.url || !p.summary) continue;
+        const existing = await db.select({ id: prospectingLeads.id })
+          .from(prospectingLeads)
+          .where(eq(prospectingLeads.url, p.url))
+          .limit(1);
+        if (existing.length > 0) continue;
+        await db.insert(prospectingLeads).values({
+          source: p.source ?? "other",
+          url: p.url,
+          contactName: p.contactName ?? null,
+          contactInfo: p.contactInfo ?? null,
+          location: p.location ?? null,
+          summary: p.summary,
+          reachOutDraft: p.reachOutDraft ?? null,
+          postSnippet: p.postSnippet ?? null,
+          status: "new",
+        });
+        inserted++;
+      }
+      console.log(`[Manual Scan] prospect-leads-manual: inserted ${inserted} new prospects`);
+      res.json({ ok: true, inserted, total: body.prospects.length });
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      console.error("[Manual Scan] prospect-leads-manual error:", err);
+      res.status(500).json({ error: message });
+    }
+  });
+
   // tRPC API
   app.use(
     "/api/trpc",

@@ -3429,6 +3429,95 @@ export const prospectingRouter = router({
       const count = await countNewProspectingLeads();
       return { count };
     }),
+
+  // Spawn a one-off Manus task that runs the same prospecting scan as the daily AGENT cron.
+  // Results are posted back to /api/scheduled/prospect-leads-manual when the task completes.
+  runScan: ownerProcedure
+    .mutation(async ({ ctx }) => {
+      const { ENV } = await import("./_core/env");
+      if (!ENV.manusApiKey) {
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "MANUS_API_KEY is not configured" });
+      }
+
+      // Determine the base URL for the postback (production vs dev)
+      const origin = ctx.req.headers.origin as string | undefined;
+      const host = ctx.req.headers.host as string | undefined;
+      const protocol = ENV.isProduction ? "https" : "http";
+      const baseUrl = origin ?? `${protocol}://${host}`;
+      const postbackUrl = `${baseUrl}/api/scheduled/prospect-leads-manual`;
+
+      const prompt = `You are an AI lead prospecting agent for Noland Earthworks, LLC — a veteran-owned forestry mulching and land clearing company based in Middle Tennessee.
+
+Your job: Search public sources for people in Middle Tennessee who need land clearing, forestry mulching, brush removal, overgrown property cleared, or pasture reclaimed. Find real posts from real people — not business listings, not ads.
+
+SEARCH THESE SOURCES (check all of them):
+1. Craigslist Nashville services: https://nashville.craigslist.org/search/sss?query=land+clearing
+2. Craigslist Nashville farm+garden: https://nashville.craigslist.org/search/grd?query=land+clearing
+3. Craigslist Nashville general: https://nashville.craigslist.org/search/sss?query=forestry+mulching
+4. Facebook Marketplace Nashville — services section: https://www.facebook.com/marketplace/nashville/services — search for: land clearing, brush removal, forestry mulching, overgrown property. Look for people REQUESTING services (not offering them).
+5. Facebook Marketplace search: https://www.facebook.com/marketplace/search?query=land+clearing+tennessee&category_id=233 (services category)
+6. Google search: site:craigslist.org "land clearing" OR "forestry mulching" Tennessee
+7. Google search: "land clearing" OR "brush removal" "Middle Tennessee" OR "Nashville" OR "Columbia TN" -site:nolandearthworks.com
+
+FOR EACH PROSPECT FOUND, collect:
+- source: one of "craigslist", "facebook_marketplace", "facebook", "nextdoor", "google", "other"
+- url: the direct link to the post
+- contactName: person's name if visible (or null)
+- contactInfo: phone or email if visible in the post (or null)
+- location: city/county in Tennessee if mentioned
+- summary: 1-2 sentence description of what they need and why they are a good fit for Noland Earthworks
+- reachOutDraft: a short, casual, genuine outreach message Jon can send — written in Jon's voice (no emojis, no corporate language, warm and direct, mention veteran-owned, offer a free site visit). Example: "Hey [name] — saw your post about clearing that property. I run a tracked forestry mulcher out of Middle Tennessee, veteran-owned and operated. I can grind everything down to mulch — no debris piles, no burning. Happy to come take a look for free. Give me a call at 615-406-4819 or visit nolandearthworks.com."
+- postSnippet: the first 200 characters of the original post text
+
+QUALITY FILTER — only include prospects that:
+- Are in Tennessee (Middle or West TN preferred)
+- Need land clearing, forestry mulching, brush removal, pasture reclamation, overgrown lot clearing, fence line clearing, or similar
+- Are from individuals or small businesses (not large contractors already doing the work)
+- Posted within the last 60 days
+- Are NOT asking for grading, excavation, or hauling only
+
+After collecting all prospects (aim for 3-10 quality leads), POST them to the site using curl:
+
+curl -s -X POST "${postbackUrl}" \\
+  -H "Content-Type: application/json" \\
+  -H "x-manus-api-key: ${ENV.manusApiKey}" \\
+  -d '{"prospects": REPLACE_WITH_JSON_ARRAY}'
+
+The endpoint will deduplicate by URL automatically. A successful response looks like: {"ok": true, "inserted": N}
+
+If you find no qualifying prospects today, POST an empty array:
+curl -s -X POST "${postbackUrl}" \\
+  -H "Content-Type: application/json" \\
+  -H "x-manus-api-key: ${ENV.manusApiKey}" \\
+  -d '{"prospects": []}'
+
+Do not fabricate prospects. Only include real posts you actually found and visited.`;
+
+      const response = await fetch("https://api.manus.ai/v2/task.create", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-manus-api-key": ENV.manusApiKey,
+        },
+        body: JSON.stringify({
+          message: { content: prompt },
+          title: "Noland Earthworks — Manual Prospecting Scan",
+          hide_in_task_list: false,
+          interactive_mode: false,
+          locale: "en",
+        }),
+      });
+
+      if (!response.ok) {
+        const errText = await response.text();
+        console.error("[runScan] Manus task.create failed:", errText);
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: `Failed to create scan task: ${errText}` });
+      }
+
+      const data = await response.json() as { ok: boolean; task_id: string; task_url: string };
+      console.log("[runScan] Manus task created:", data.task_id, data.task_url);
+      return { ok: true, taskId: data.task_id, taskUrl: data.task_url };
+    }),
 });
 
 export const opsRouter = router({
