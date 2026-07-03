@@ -33,6 +33,7 @@ import {
   BotMessageSquare,
   Image,
   MessageSquare,
+  BookOpen,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/_core/hooks/useAuth";
@@ -78,6 +79,7 @@ const navGroups = [
       { icon: Calculator, label: "Pricing", href: "/ops/pricing-hub" },
       { icon: MessageSquare, label: "Conversations", href: "/ops/conversations" },
       { icon: BotMessageSquare, label: "Chat Sessions", href: "/ops/chat-sessions" },
+      { icon: BookOpen, label: "Resources", href: "/ops/resources" },
       { icon: Users, label: "Team", href: TEAM_HREF },
     ],
   },

@@ -2142,3 +2142,4 @@
 - [x] Add distinct orange loading spinner to parcel lookup address field while fetching
 - [x] Save preliminary price estimate (estimatedRange) and adjustedAcres to DB quote submission record
 - [x] Add adjusted acreage input field for partial-property jobs (overrides deed acreage in estimate)
+- [x] Add Resources section to /ops Business nav — 46 Brushworks documents with search, category filter, and direct download links
