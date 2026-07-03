@@ -670,6 +670,18 @@ function LeadDetailPanel({
     onError: () => toast.error("Failed to generate follow-up"),
   });
 
+  const sendFollowUp = trpc.ops.leads.sendFollowUp.useMutation({
+    onSuccess: (data) => {
+      if (data.channel === "sms") {
+        toast.success("Text sent via Twilio.");
+      } else {
+        toast.success("Email sent.");
+      }
+      utils.ops.leads.list.invalidate();
+    },
+    onError: (err) => toast.error(`Send failed: ${err.message}`),
+  });
+
   const handleCopyDraft = () => {
     if (!followUpDraft) return;
     navigator.clipboard.writeText(followUpDraft).then(() => {
@@ -1306,25 +1318,31 @@ function LeadDetailPanel({
                 <div className="flex gap-2">
                   <button
                     onClick={handleCopyDraft}
-                    className="flex-1 flex items-center justify-center gap-1.5 bg-[#1a1a1a] hover:bg-[#222] border border-[#2a2a2a] text-xs text-[#aaa] py-2 rounded-md transition-colors"
+                    className="flex items-center justify-center gap-1.5 bg-[#1a1a1a] hover:bg-[#222] border border-[#2a2a2a] text-xs text-[#aaa] py-2 px-3 rounded-md transition-colors shrink-0"
                   >
                     {copied ? <><Check className="w-3.5 h-3.5 text-green-400" />Copied</> : <><Copy className="w-3.5 h-3.5" />Copy</>}
                   </button>
                   {lead.phone && (
-                    <a
-                      href={`sms:${lead.phone}?body=${encodeURIComponent(followUpDraft)}`}
-                      className="flex-1 flex items-center justify-center gap-1.5 bg-green-600 hover:bg-green-700 text-white text-xs font-semibold py-2 rounded-md transition-colors"
+                    <button
+                      onClick={() => sendFollowUp.mutate({ leadId: lead.id, message: followUpDraft, channel: "sms" })}
+                      disabled={sendFollowUp.isPending}
+                      className="flex-1 flex items-center justify-center gap-1.5 bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white text-xs font-semibold py-2 rounded-md transition-colors"
                     >
-                      <MessageSquare className="w-3.5 h-3.5" />Send via Text
-                    </a>
+                      {sendFollowUp.isPending && sendFollowUp.variables?.channel === "sms"
+                        ? <><Loader2 className="w-3.5 h-3.5 animate-spin" />Sending...</>
+                        : <><MessageSquare className="w-3.5 h-3.5" />Send Text</>}
+                    </button>
                   )}
                   {lead.email && (
-                    <a
-                      href={`mailto:${lead.email}?subject=${encodeURIComponent("Following up — Noland Earthworks")}&body=${encodeURIComponent(followUpDraft)}`}
-                      className="flex-1 flex items-center justify-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold py-2 rounded-md transition-colors"
+                    <button
+                      onClick={() => sendFollowUp.mutate({ leadId: lead.id, message: followUpDraft, channel: "email" })}
+                      disabled={sendFollowUp.isPending}
+                      className="flex-1 flex items-center justify-center gap-1.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-xs font-semibold py-2 rounded-md transition-colors"
                     >
-                      <Mail className="w-3.5 h-3.5" />Send via Email
-                    </a>
+                      {sendFollowUp.isPending && sendFollowUp.variables?.channel === "email"
+                        ? <><Loader2 className="w-3.5 h-3.5 animate-spin" />Sending...</>
+                        : <><Mail className="w-3.5 h-3.5" />Send Email</>}
+                    </button>
                   )}
                 </div>
               </div>

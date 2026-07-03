@@ -559,6 +559,96 @@ Write the message as if you are Jon sending a text or short email. First-person,
       return { draft };
     }),
 
+  /**
+   * Send the AI-drafted follow-up message to a lead via SMS (Twilio) or email (Resend).
+   * Automatically advances the lead stage to "contacted" on success.
+   */
+  sendFollowUp: ownerProcedure
+    .input(z.object({
+      leadId: z.number().int().positive(),
+      message: z.string().min(1).max(1600),
+      channel: z.enum(["sms", "email"]),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+      const rows = await db.select().from(opsLeads)
+        .where(and(eq(opsLeads.id, input.leadId), eq(opsLeads.userId, ctx.user.id)))
+        .limit(1);
+      if (rows.length === 0) throw new TRPCError({ code: "NOT_FOUND", message: "Lead not found" });
+      const lead = rows[0];
+
+      if (input.channel === "sms") {
+        if (!lead.phone) throw new TRPCError({ code: "BAD_REQUEST", message: "Lead has no phone number" });
+        const digits = lead.phone.replace(/\D/g, "");
+        const e164 = digits.length === 10 ? `+1${digits}` : digits.length === 11 && digits.startsWith("1") ? `+${digits}` : `+${digits}`;
+        if (!ENV.twilioAccountSid || !ENV.twilioAuthToken || !ENV.twilioFromNumber) {
+          throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Twilio not configured" });
+        }
+        const twilioUrl = `https://api.twilio.com/2010-04-01/Accounts/${ENV.twilioAccountSid}/Messages.json`;
+        const params = new URLSearchParams({ To: e164, From: ENV.twilioFromNumber, Body: input.message });
+        const resp = await fetch(twilioUrl, {
+          method: "POST",
+          headers: {
+            Authorization: "Basic " + Buffer.from(`${ENV.twilioAccountSid}:${ENV.twilioAuthToken}`).toString("base64"),
+            "Content-Type": "application/x-www-form-urlencoded",
+          },
+          body: params.toString(),
+        });
+        if (!resp.ok) {
+          const err = await resp.text();
+          throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: `Twilio error: ${err}` });
+        }
+        const twilioResult = await resp.json() as { sid?: string };
+        // Log to conversations
+        const existing = await db.select().from(conversations).where(eq(conversations.contactPhone, e164)).limit(1);
+        let convId: number;
+        if (existing.length > 0) {
+          convId = existing[0].id;
+          await db.update(conversations).set({ lastMessage: input.message, lastMessageAt: new Date(), unread: false }).where(eq(conversations.id, convId));
+        } else {
+          const [ins] = await db.insert(conversations).values({ contactName: lead.name, contactPhone: e164, lastMessage: input.message, lastMessageAt: new Date(), unread: false });
+          convId = (ins as any).insertId;
+        }
+        await db.insert(messages).values({ conversationId: convId, direction: "outbound", body: input.message, twilioSid: twilioResult.sid ?? null, status: "sent", sentAt: new Date() });
+        // Advance stage to contacted if still new
+        if (lead.stage === "new") {
+          await updateOpsLead(input.leadId, ctx.user.id, { stage: "contacted" });
+        }
+        return { ok: true, channel: "sms" as const, sid: twilioResult.sid };
+      }
+
+      // email channel
+      if (!lead.email) throw new TRPCError({ code: "BAD_REQUEST", message: "Lead has no email address" });
+      const resend = getResend();
+      if (!resend) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Email service not configured" });
+      const safeMessage = input.message.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+      const emailResult = await resend.emails.send({
+        from: "Jon Noland <noreply@nolandearthworks.com>",
+        to: lead.email,
+        subject: "Following up \u2014 Noland Earthworks",
+        html: `<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;">
+          <div style="background:#1a1a1a;padding:20px 28px;">
+            <h1 style="color:#d97706;margin:0;font-size:20px;letter-spacing:1px;">NOLAND EARTHWORKS</h1>
+            <p style="color:#888;margin:4px 0 0;font-size:12px;">Veteran-Owned Land Management</p>
+          </div>
+          <div style="padding:28px;">
+            <p style="color:#333;line-height:1.7;white-space:pre-wrap;">${safeMessage}</p>
+            <hr style="border:none;border-top:1px solid #eee;margin:24px 0;">
+            <p style="color:#888;font-size:12px;margin:0;">Jon Noland &mdash; Noland Earthworks, LLC &mdash; <a href="tel:6154064819" style="color:#d97706;">615-406-4819</a> &mdash; <a href="https://nolandearthworks.com" style="color:#d97706;">nolandearthworks.com</a></p>
+          </div>
+        </div>`,
+      });
+      if (emailResult.error) {
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: `Email error: ${emailResult.error.message}` });
+      }
+      // Advance stage to contacted if still new
+      if (lead.stage === "new") {
+        await updateOpsLead(input.leadId, ctx.user.id, { stage: "contacted" });
+      }
+      return { ok: true, channel: "email" as const, emailId: emailResult.data?.id };
+    }),
+
   // ─── Bulk Operations ─────────────────────────────────────────────────────
   bulkUpdateStage: ownerProcedure
     .input(z.object({
