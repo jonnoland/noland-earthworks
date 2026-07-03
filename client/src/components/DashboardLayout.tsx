@@ -38,6 +38,8 @@ import {
   Globe,
   CreditCard,
   Images,
+  BotMessageSquare,
+  BookOpen,
 } from "lucide-react";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { getLoginUrl } from "@/const";
@@ -82,7 +84,9 @@ const NAV_GROUPS = [
     items: [
       { label: "Reports",       href: "/ops/reports-hub",   icon: TrendingUp },
       { label: "Pricing",       href: "/ops/pricing-hub",   icon: Calculator },
-      { label: "Chat Sessions", href: "/ops/chat-sessions", icon: MessageSquare },
+      { label: "Conversations", href: "/ops/conversations",  icon: MessageSquare },
+      { label: "Chat Sessions", href: "/ops/chat-sessions", icon: BotMessageSquare },
+      { label: "Resources",     href: "/ops/resources",     icon: BookOpen },
       { label: "Team",          href: "/ops/team",          icon: UserPlus },
     ],
   },
