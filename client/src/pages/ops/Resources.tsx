@@ -1,13 +1,17 @@
 /**
  * Resources — Brushworks operator resource library
  * 46 documents organized by category: Templates, Contracts, Marketing, Sales, Operations
+ * Each card has a Preview button that opens a slide-over modal.
+ * PDFs → iframe, JPGs → img, Videos → YouTube embed, PSDs → no-preview message.
  */
 import { useState } from "react";
 import OpsDashboardLayout from "@/components/OpsDashboardLayout";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Search, Download, ExternalLink, BookOpen, FileText, Megaphone, TrendingUp, Wrench } from "lucide-react";
+import {
+  Search, Download, ExternalLink, BookOpen, FileText,
+  Megaphone, TrendingUp, Wrench, Eye, X, AlertCircle,
+} from "lucide-react";
 
 type Category = "all" | "templates" | "contracts" | "marketing" | "sales" | "operations";
 
@@ -379,7 +383,152 @@ const FILE_TYPE_BADGE: Record<string, string> = {
   video: "VIDEO",
 };
 
-function ResourceCard({ resource }: { resource: Resource }) {
+// ── Extract YouTube video ID ──────────────────────────────────────────────────
+function getYouTubeId(url: string): string | null {
+  const match = url.match(/[?&]v=([^&#]+)/);
+  return match ? match[1] : null;
+}
+
+// ── Preview Modal ─────────────────────────────────────────────────────────────
+function PreviewModal({ resource, onClose }: { resource: Resource; onClose: () => void }) {
+  const fileType = resource.fileType ?? "pdf";
+  const isVideo = fileType === "video";
+  const isPsd   = fileType === "psd";
+  const isJpg   = fileType === "jpg";
+  const isPdf   = !isVideo && !isPsd && !isJpg;
+
+  const youtubeId = isVideo ? getYouTubeId(resource.url) : null;
+
+  return (
+    <div
+      className="fixed inset-0 z-[100] flex items-center justify-center p-4"
+      onClick={onClose}
+    >
+      {/* Backdrop */}
+      <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" />
+
+      {/* Modal panel */}
+      <div
+        className="relative z-10 flex flex-col bg-[#141414] border border-white/10 rounded-xl shadow-2xl w-full max-w-4xl"
+        style={{ maxHeight: "90vh" }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="flex items-start justify-between gap-4 px-5 py-4 border-b border-white/8 shrink-0">
+          <div className="min-w-0">
+            <h2 className="text-sm font-semibold text-white leading-snug">{resource.title}</h2>
+            <p className="text-xs text-white/40 mt-0.5">{resource.description}</p>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            {!isVideo && !isPsd && (
+              <a
+                href={resource.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                download
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-orange-600 hover:bg-orange-500 text-white text-xs font-medium transition-colors"
+              >
+                <Download className="w-3.5 h-3.5" />
+                Download
+              </a>
+            )}
+            {isVideo && (
+              <a
+                href={resource.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-orange-600 hover:bg-orange-500 text-white text-xs font-medium transition-colors"
+              >
+                <ExternalLink className="w-3.5 h-3.5" />
+                Open on YouTube
+              </a>
+            )}
+            {isPsd && (
+              <a
+                href={resource.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                download
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-orange-600 hover:bg-orange-500 text-white text-xs font-medium transition-colors"
+              >
+                <Download className="w-3.5 h-3.5" />
+                Download PSD
+              </a>
+            )}
+            <button
+              onClick={onClose}
+              className="p-1.5 rounded-md text-white/40 hover:text-white hover:bg-white/8 transition-colors"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+
+        {/* Preview body */}
+        <div className="flex-1 overflow-hidden rounded-b-xl" style={{ minHeight: 0 }}>
+          {isPdf && (
+            <iframe
+              src={`${resource.url}#toolbar=1&navpanes=0&scrollbar=1`}
+              className="w-full h-full"
+              style={{ height: "calc(90vh - 80px)", border: "none" }}
+              title={resource.title}
+            />
+          )}
+
+          {isJpg && (
+            <div className="flex items-center justify-center p-6 h-full overflow-auto bg-[#0e0e0e]" style={{ minHeight: 300 }}>
+              <img
+                src={resource.url}
+                alt={resource.title}
+                className="max-w-full max-h-full object-contain rounded-md"
+                style={{ maxHeight: "calc(90vh - 100px)" }}
+              />
+            </div>
+          )}
+
+          {isVideo && youtubeId && (
+            <div className="relative w-full bg-black" style={{ paddingBottom: "56.25%", height: 0 }}>
+              <iframe
+                src={`https://www.youtube.com/embed/${youtubeId}?autoplay=0&rel=0`}
+                className="absolute inset-0 w-full h-full"
+                style={{ border: "none" }}
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+                title={resource.title}
+              />
+            </div>
+          )}
+
+          {isPsd && (
+            <div className="flex flex-col items-center justify-center gap-4 py-16 px-6 text-center">
+              <AlertCircle className="w-10 h-10 text-white/20" />
+              <div>
+                <p className="text-sm font-medium text-white/60">No preview available for PSD files</p>
+                <p className="text-xs text-white/30 mt-1">
+                  Photoshop files require Adobe Photoshop or a compatible editor to open.
+                  Download the file to view and edit it.
+                </p>
+              </div>
+              <a
+                href={resource.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                download
+                className="flex items-center gap-1.5 px-4 py-2 rounded-md bg-orange-600 hover:bg-orange-500 text-white text-sm font-medium transition-colors"
+              >
+                <Download className="w-4 h-4" />
+                Download PSD File ({resource.size})
+              </a>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Resource Card ─────────────────────────────────────────────────────────────
+function ResourceCard({ resource, onPreview }: { resource: Resource; onPreview: () => void }) {
   const handleOpen = () => {
     window.open(resource.url, "_blank", "noopener,noreferrer");
   };
@@ -408,25 +557,38 @@ function ResourceCard({ resource }: { resource: Resource }) {
       <h3 className="text-sm font-semibold text-white/90 leading-snug mb-1">{resource.title}</h3>
       <p className="text-xs text-white/45 leading-relaxed flex-1 mb-4">{resource.description}</p>
 
-      {/* Download / Open button */}
-      <Button
-        size="sm"
-        onClick={handleOpen}
-        className="w-full bg-orange-600 hover:bg-orange-500 text-white text-xs font-medium h-8 gap-1.5"
-      >
-        {isVideo ? (
-          <><ExternalLink className="w-3.5 h-3.5" /> Watch Video</>
-        ) : (
-          <><Download className="w-3.5 h-3.5" /> Download</>
-        )}
-      </Button>
+      {/* Action buttons */}
+      <div className="flex gap-2">
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={onPreview}
+          className="flex-1 border-white/10 bg-white/5 hover:bg-white/10 text-white/70 hover:text-white text-xs font-medium h-8 gap-1.5"
+        >
+          <Eye className="w-3.5 h-3.5" />
+          Preview
+        </Button>
+        <Button
+          size="sm"
+          onClick={handleOpen}
+          className="flex-1 bg-orange-600 hover:bg-orange-500 text-white text-xs font-medium h-8 gap-1.5"
+        >
+          {isVideo ? (
+            <><ExternalLink className="w-3.5 h-3.5" /> Watch</>
+          ) : (
+            <><Download className="w-3.5 h-3.5" /> Download</>
+          )}
+        </Button>
+      </div>
     </div>
   );
 }
 
+// ── Page ──────────────────────────────────────────────────────────────────────
 export default function Resources() {
   const [activeCategory, setActiveCategory] = useState<Category>("all");
   const [search, setSearch] = useState("");
+  const [previewResource, setPreviewResource] = useState<Resource | null>(null);
 
   const filtered = RESOURCES.filter((r) => {
     const matchCat = activeCategory === "all" || r.category === activeCategory;
@@ -446,61 +608,75 @@ export default function Resources() {
 
   return (
     <OpsDashboardLayout title="Resources" subtitle="Brushworks operator library — templates, guides, and field tools">
-      {/* Search + filter bar */}
-      <div className="flex flex-col sm:flex-row gap-3 mb-6">
-        <div className="relative flex-1 max-w-sm">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30" />
-          <Input
-            placeholder="Search resources..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-9 bg-[#1a1a1a] border-white/10 text-white placeholder:text-white/30 h-9 text-sm"
-          />
+      <div className="p-6">
+        {/* Search + filter bar */}
+        <div className="flex flex-col sm:flex-row gap-3 mb-6">
+          <div className="relative flex-1 max-w-sm">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30" />
+            <Input
+              placeholder="Search resources..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="pl-9 bg-[#1a1a1a] border-white/10 text-white placeholder:text-white/30 h-9 text-sm"
+            />
+          </div>
+
+          <div className="flex flex-wrap gap-1.5">
+            {CATEGORY_FILTERS.map(({ value, label }) => (
+              <button
+                key={value}
+                onClick={() => setActiveCategory(value)}
+                className={`px-3 py-1.5 rounded text-xs font-medium transition-colors ${
+                  activeCategory === value
+                    ? "bg-orange-600 text-white"
+                    : "bg-[#1a1a1a] border border-white/10 text-white/50 hover:text-white/80 hover:border-white/20"
+                }`}
+              >
+                {label}
+                <span className={`ml-1.5 text-[10px] ${activeCategory === value ? "text-orange-200" : "text-white/30"}`}>
+                  {counts[value]}
+                </span>
+              </button>
+            ))}
+          </div>
         </div>
 
-        <div className="flex flex-wrap gap-1.5">
-          {CATEGORY_FILTERS.map(({ value, label }) => (
+        {/* Results count */}
+        <p className="text-xs text-white/30 mb-4">
+          {filtered.length} {filtered.length === 1 ? "resource" : "resources"}{search ? ` matching "${search}"` : ""}
+        </p>
+
+        {/* Grid */}
+        {filtered.length > 0 ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+            {filtered.map((resource) => (
+              <ResourceCard
+                key={resource.url}
+                resource={resource}
+                onPreview={() => setPreviewResource(resource)}
+              />
+            ))}
+          </div>
+        ) : (
+          <div className="flex flex-col items-center justify-center py-20 text-center">
+            <BookOpen className="w-10 h-10 text-white/15 mb-3" />
+            <p className="text-sm text-white/40">No resources match your search.</p>
             <button
-              key={value}
-              onClick={() => setActiveCategory(value)}
-              className={`px-3 py-1.5 rounded text-xs font-medium transition-colors ${
-                activeCategory === value
-                  ? "bg-orange-600 text-white"
-                  : "bg-[#1a1a1a] border border-white/10 text-white/50 hover:text-white/80 hover:border-white/20"
-              }`}
+              onClick={() => { setSearch(""); setActiveCategory("all"); }}
+              className="mt-3 text-xs text-orange-400 hover:text-orange-300 underline"
             >
-              {label}
-              <span className={`ml-1.5 text-[10px] ${activeCategory === value ? "text-orange-200" : "text-white/30"}`}>
-                {counts[value]}
-              </span>
+              Clear filters
             </button>
-          ))}
-        </div>
+          </div>
+        )}
       </div>
 
-      {/* Results count */}
-      <p className="text-xs text-white/30 mb-4">
-        {filtered.length} {filtered.length === 1 ? "resource" : "resources"} {search ? `matching "${search}"` : ""}
-      </p>
-
-      {/* Grid */}
-      {filtered.length > 0 ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
-          {filtered.map((resource) => (
-            <ResourceCard key={resource.url} resource={resource} />
-          ))}
-        </div>
-      ) : (
-        <div className="flex flex-col items-center justify-center py-20 text-center">
-          <BookOpen className="w-10 h-10 text-white/15 mb-3" />
-          <p className="text-sm text-white/40">No resources match your search.</p>
-          <button
-            onClick={() => { setSearch(""); setActiveCategory("all"); }}
-            className="mt-3 text-xs text-orange-400 hover:text-orange-300 underline"
-          >
-            Clear filters
-          </button>
-        </div>
+      {/* Preview modal */}
+      {previewResource && (
+        <PreviewModal
+          resource={previewResource}
+          onClose={() => setPreviewResource(null)}
+        />
       )}
     </OpsDashboardLayout>
   );
