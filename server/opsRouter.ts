@@ -423,6 +423,40 @@ const leadsRouter = router({
       return { success: true };
     }),
 
+  // ─── Save AI Quote to Lead Profile ─────────────────────────────────────────
+  saveAiQuote: ownerProcedure
+    .input(z.object({
+      leadId: z.number().int().positive(),
+      service:          z.string(),
+      estimatedAcres:   z.number().nullable(),
+      estimateLow:      z.number(),
+      estimateHigh:     z.number(),
+      mobilizationNote: z.string(),
+      reasoning:        z.string(),
+      missingInfo:      z.array(z.string()),
+      confidence:       z.enum(["high", "medium", "low"]),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const { leadId, ...quoteData } = input;
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+      await db.update(opsLeads)
+        .set({
+          aiQuoteData: JSON.stringify({ ...quoteData, savedAt: new Date().toISOString() }),
+          aiQuoteSavedAt: new Date(),
+          updatedAt: new Date(),
+        })
+        .where(and(eq(opsLeads.id, leadId), eq(opsLeads.userId, ctx.user.id)));
+      // Also add a system note to the lead's activity log
+      await db.insert(leadNotes).values({
+        leadId,
+        userId: ctx.user.id,
+        type: "system",
+        content: `AI Quote saved: ${quoteData.service} — $${quoteData.estimateLow.toLocaleString()}–$${quoteData.estimateHigh.toLocaleString()}${quoteData.estimatedAcres ? ` (${quoteData.estimatedAcres} acres est.)` : ""} — ${quoteData.confidence} confidence`,
+      });
+      return { success: true };
+    }),
+
   confirmVisit: ownerProcedure
     .input(z.object({ leadId: z.number().int().positive() }))
     .mutation(async ({ ctx, input }) => {

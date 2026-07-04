@@ -187,6 +187,10 @@ export const opsLeads = mysqlTable("ops_leads", {
   jobberQuoteNumber: int("jobberQuoteNumber"),
   /** Estimate amount from the linked Jobber quote — stored for display on the lead */
   estimateAmount: decimal("estimateAmount", { precision: 10, scale: 2 }),
+  /** Saved AI quote estimate — JSON blob with service, estimateLow, estimateHigh, reasoning, etc. */
+  aiQuoteData: text("aiQuoteData"),
+  /** Timestamp when the AI quote was last saved to this lead */
+  aiQuoteSavedAt: timestamp("aiQuoteSavedAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });

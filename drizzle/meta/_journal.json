@@ -547,6 +547,13 @@
       "when": 1783129016412,
       "tag": "0077_misty_misty_knight",
       "breakpoints": true
+    },
+    {
+      "idx": 78,
+      "version": "5",
+      "when": 1783134346850,
+      "tag": "0078_parched_surge",
+      "breakpoints": true
     }
   ]
 }

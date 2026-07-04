@@ -23,7 +23,7 @@ import {
   ClipboardList, Star, Snowflake, RefreshCw,
   Map as MapIcon, LayoutGrid, Clock, Navigation,
   Brain, Copy, Check, CheckCheck, Sparkles, Unlink,
-  Send, Radar, CheckCircle, Info,
+  Send, Radar, CheckCircle, Info, Save, CheckCircle2,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -638,6 +638,26 @@ function LeadDetailPanel({
   const [aqAccess, setAqAccess] = useState("easy");
   const [aqMiles, setAqMiles] = useState("");
 
+  // Editable result fields (populated from AI result, user can adjust before saving)
+  const [editService, setEditService] = useState("");
+  const [editAcres, setEditAcres] = useState("");
+  const [editLow, setEditLow] = useState("");
+  const [editHigh, setEditHigh] = useState("");
+  const [editReasoning, setEditReasoning] = useState("");
+  const [editMobNote, setEditMobNote] = useState("");
+  const [quoteSaved, setQuoteSaved] = useState(false);
+
+  // Populate edit fields when AI result arrives
+  const populateEditFields = (r: NonNullable<typeof aiQuoteResult>) => {
+    setEditService(r.service);
+    setEditAcres(r.estimatedAcres != null ? String(r.estimatedAcres) : "");
+    setEditLow(String(r.estimateLow));
+    setEditHigh(String(r.estimateHigh));
+    setEditReasoning(r.reasoning);
+    setEditMobNote(r.mobilizationNote);
+    setQuoteSaved(false);
+  };
+
   // Load SMS templates (channel = 'sms') from the settings router
   const { data: allTemplates = [] } = trpc.ops.settings.getMessageTemplates.useQuery(undefined, {
     enabled: showSmsModal,
@@ -717,9 +737,60 @@ function LeadDetailPanel({
   };
 
   const aiQuoteMutation = trpc.ops.ai.quoteFromLead.useMutation({
-    onSuccess: (data) => { setAiQuoteResult(data); },
+    onSuccess: (data) => { setAiQuoteResult(data); populateEditFields(data); },
     onError: () => toast.error("AI quote analysis failed"),
   });
+
+  const saveAiQuoteMutation = trpc.ops.leads.saveAiQuote.useMutation({
+    onSuccess: () => {
+      setQuoteSaved(true);
+      toast.success("Quote saved to lead profile");
+      utils.ops.leads.listNotes.invalidate({ leadId: lead.id });
+      utils.ops.leads.list.invalidate();
+    },
+    onError: () => toast.error("Failed to save quote"),
+  });
+
+  const handleSaveAiQuote = () => {
+    if (!aiQuoteResult) return;
+    saveAiQuoteMutation.mutate({
+      leadId: lead.id,
+      service: editService || aiQuoteResult.service,
+      estimatedAcres: editAcres ? parseFloat(editAcres) : aiQuoteResult.estimatedAcres,
+      estimateLow: editLow ? parseFloat(editLow) : aiQuoteResult.estimateLow,
+      estimateHigh: editHigh ? parseFloat(editHigh) : aiQuoteResult.estimateHigh,
+      mobilizationNote: editMobNote,
+      reasoning: editReasoning,
+      missingInfo: aiQuoteResult.missingInfo,
+      confidence: aiQuoteResult.confidence,
+    });
+  };
+
+  const buildEmailDraft = () => {
+    const svc = editService || aiQuoteResult?.service || "";
+    const low = editLow ? parseFloat(editLow) : (aiQuoteResult?.estimateLow ?? 0);
+    const high = editHigh ? parseFloat(editHigh) : (aiQuoteResult?.estimateHigh ?? 0);
+    const acres = editAcres || (aiQuoteResult?.estimatedAcres ? String(aiQuoteResult.estimatedAcres) : null);
+    const mobNote = editMobNote || aiQuoteResult?.mobilizationNote || "";
+    return `Subject: Noland Earthworks — Preliminary Estimate for Your Property
+
+Hi ${lead.name},
+
+Thank you for reaching out. Based on the information you provided, here is a preliminary estimate for your project:
+
+Service: ${svc}
+${acres ? `Estimated acreage: ${acres} acres\n` : ""}Estimated range: $${low.toLocaleString()} – $${high.toLocaleString()}${mobNote ? `\nTravel: ${mobNote}` : ""}
+
+Please keep in mind this is a general estimate based on the details available. An accurate quote requires a site visit so I can assess the terrain, vegetation density, and access conditions firsthand.
+
+If you would like to schedule a site visit, reply to this email or give me a call at (615) 406-4819. I will get back to you the same day.
+
+Jon Noland
+Noland Earthworks, LLC
+Veteran-Owned and Operated
+(615) 406-4819
+nolandearthworks.com`;
+  };
 
   const runAiQuote = () => {
     aiQuoteMutation.mutate({
@@ -1309,10 +1380,11 @@ function LeadDetailPanel({
 
               {/* Result */}
               {aiQuoteResult && (
-                <div className="space-y-2 pt-1 border-t border-amber-500/15">
-                  {/* Estimate range */}
+                <div className="space-y-3 pt-2 border-t border-amber-500/15">
+
+                  {/* Header row: service + confidence badge */}
                   <div className="flex items-center justify-between">
-                    <span className="text-[11px] text-[#888]">{aiQuoteResult.service}</span>
+                    <p className="text-[10px] text-[#555] uppercase tracking-wider">AI Quote Result</p>
                     <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full border ${
                       aiQuoteResult.confidence === "high"
                         ? "bg-green-500/15 text-green-400 border-green-500/25"
@@ -1321,23 +1393,68 @@ function LeadDetailPanel({
                         : "bg-red-500/15 text-red-400 border-red-500/25"
                     }`}>{aiQuoteResult.confidence} confidence</span>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xl font-bold text-white">
-                      ${aiQuoteResult.estimateLow.toLocaleString()} – ${aiQuoteResult.estimateHigh.toLocaleString()}
-                    </span>
-                    {aiQuoteResult.estimatedAcres && (
-                      <span className="text-[11px] text-[#666]">{aiQuoteResult.estimatedAcres} acres est.</span>
-                    )}
+
+                  {/* Editable fields */}
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="col-span-2">
+                      <p className="text-[10px] text-[#555] uppercase tracking-wider mb-1">Service</p>
+                      <input
+                        type="text"
+                        value={editService}
+                        onChange={e => setEditService(e.target.value)}
+                        className="w-full bg-[#111] border border-[#2a2a2a] rounded px-2 py-1.5 text-[11px] text-white focus:outline-none focus:border-amber-500/50"
+                      />
+                    </div>
+                    <div>
+                      <p className="text-[10px] text-[#555] uppercase tracking-wider mb-1">Low ($)</p>
+                      <input
+                        type="number" min="0"
+                        value={editLow}
+                        onChange={e => setEditLow(e.target.value)}
+                        className="w-full bg-[#111] border border-[#2a2a2a] rounded px-2 py-1.5 text-[11px] text-white focus:outline-none focus:border-amber-500/50"
+                      />
+                    </div>
+                    <div>
+                      <p className="text-[10px] text-[#555] uppercase tracking-wider mb-1">High ($)</p>
+                      <input
+                        type="number" min="0"
+                        value={editHigh}
+                        onChange={e => setEditHigh(e.target.value)}
+                        className="w-full bg-[#111] border border-[#2a2a2a] rounded px-2 py-1.5 text-[11px] text-white focus:outline-none focus:border-amber-500/50"
+                      />
+                    </div>
+                    <div>
+                      <p className="text-[10px] text-[#555] uppercase tracking-wider mb-1">Acres (est.)</p>
+                      <input
+                        type="number" min="0" step="0.1"
+                        value={editAcres}
+                        onChange={e => setEditAcres(e.target.value)}
+                        placeholder="—"
+                        className="w-full bg-[#111] border border-[#2a2a2a] rounded px-2 py-1.5 text-[11px] text-white placeholder:text-[#444] focus:outline-none focus:border-amber-500/50"
+                      />
+                    </div>
+                    <div>
+                      <p className="text-[10px] text-[#555] uppercase tracking-wider mb-1">Travel note</p>
+                      <input
+                        type="text"
+                        value={editMobNote}
+                        onChange={e => setEditMobNote(e.target.value)}
+                        placeholder="—"
+                        className="w-full bg-[#111] border border-[#2a2a2a] rounded px-2 py-1.5 text-[11px] text-white placeholder:text-[#444] focus:outline-none focus:border-amber-500/50"
+                      />
+                    </div>
+                    <div className="col-span-2">
+                      <p className="text-[10px] text-[#555] uppercase tracking-wider mb-1">Reasoning</p>
+                      <textarea
+                        rows={3}
+                        value={editReasoning}
+                        onChange={e => setEditReasoning(e.target.value)}
+                        className="w-full bg-[#111] border border-[#2a2a2a] rounded px-2 py-1.5 text-[11px] text-white resize-none focus:outline-none focus:border-amber-500/50"
+                      />
+                    </div>
                   </div>
-                  {aiQuoteResult.mobilizationNote && (
-                    <p className="text-[11px] text-amber-300/70">{aiQuoteResult.mobilizationNote}</p>
-                  )}
-                  {/* Reasoning */}
-                  <div>
-                    <p className="text-[10px] text-[#555] uppercase tracking-wider mb-1">Reasoning</p>
-                    <p className="text-[11px] text-[#aaa] leading-relaxed">{aiQuoteResult.reasoning}</p>
-                  </div>
-                  {/* Missing info flags */}
+
+                  {/* Missing info flags (read-only) */}
                   {Array.isArray(aiQuoteResult.missingInfo) && aiQuoteResult.missingInfo.length > 0 && (
                     <div>
                       <p className="text-[10px] text-[#555] uppercase tracking-wider mb-1">Missing Info</p>
@@ -1348,16 +1465,54 @@ function LeadDetailPanel({
                       </div>
                     </div>
                   )}
-                  {/* Copy button */}
-                  <button
-                    onClick={() => {
-                      const text = `AI QUOTE ESTIMATE — ${aiQuoteResult.service}\nRange: $${aiQuoteResult.estimateLow.toLocaleString()} – $${aiQuoteResult.estimateHigh.toLocaleString()}${aiQuoteResult.estimatedAcres ? ` (${aiQuoteResult.estimatedAcres} acres est.)` : ""}\n\nReasoning: ${aiQuoteResult.reasoning}${aiQuoteResult.mobilizationNote ? `\n\nTravel: ${aiQuoteResult.mobilizationNote}` : ""}${aiQuoteResult.missingInfo?.length ? `\n\nMissing info needed:\n- ${aiQuoteResult.missingInfo.join("\n- ")}` : ""}`;
-                      navigator.clipboard.writeText(text).then(() => toast.success("Quote estimate copied"));
-                    }}
-                    className="w-full text-[11px] bg-[#1a1a1a] hover:bg-[#222] border border-[#2a2a2a] text-[#aaa] py-1.5 rounded-md transition-colors flex items-center justify-center gap-1.5"
-                  >
-                    <Copy className="w-3 h-3" /> Copy Estimate
-                  </button>
+
+                  {/* Action buttons */}
+                  <div className="grid grid-cols-2 gap-2">
+                    {/* Save to Lead */}
+                    <button
+                      onClick={handleSaveAiQuote}
+                      disabled={saveAiQuoteMutation.isPending || quoteSaved}
+                      className={`flex items-center justify-center gap-1.5 text-[11px] font-semibold py-2 rounded-md transition-colors ${
+                        quoteSaved
+                          ? "bg-green-600/20 border border-green-500/30 text-green-400 cursor-default"
+                          : "bg-amber-600 hover:bg-amber-700 disabled:opacity-60 text-white"
+                      }`}
+                    >
+                      {saveAiQuoteMutation.isPending ? (
+                        <Loader2 className="w-3 h-3 animate-spin" />
+                      ) : quoteSaved ? (
+                        <CheckCircle2 className="w-3 h-3" />
+                      ) : (
+                        <Save className="w-3 h-3" />
+                      )}
+                      {quoteSaved ? "Saved" : "Save to Lead"}
+                    </button>
+
+                    {/* Email Draft */}
+                    <button
+                      onClick={() => {
+                        navigator.clipboard.writeText(buildEmailDraft()).then(() => toast.success("Email draft copied to clipboard"));
+                      }}
+                      className="flex items-center justify-center gap-1.5 text-[11px] bg-[#1a1a1a] hover:bg-[#222] border border-[#2a2a2a] text-[#aaa] py-2 rounded-md transition-colors"
+                    >
+                      <Mail className="w-3 h-3" /> Email Draft
+                    </button>
+
+                    {/* Copy raw estimate */}
+                    <button
+                      onClick={() => {
+                        const low = editLow ? parseFloat(editLow) : aiQuoteResult.estimateLow;
+                        const high = editHigh ? parseFloat(editHigh) : aiQuoteResult.estimateHigh;
+                        const svc = editService || aiQuoteResult.service;
+                        const acres = editAcres || (aiQuoteResult.estimatedAcres ? String(aiQuoteResult.estimatedAcres) : null);
+                        const text = `AI QUOTE ESTIMATE — ${svc}\nRange: $${low.toLocaleString()} – $${high.toLocaleString()}${acres ? ` (${acres} acres est.)` : ""}\n\nReasoning: ${editReasoning || aiQuoteResult.reasoning}${editMobNote ? `\n\nTravel: ${editMobNote}` : ""}${aiQuoteResult.missingInfo?.length ? `\n\nMissing info needed:\n- ${aiQuoteResult.missingInfo.join("\n- ")}` : ""}`;
+                        navigator.clipboard.writeText(text).then(() => toast.success("Quote estimate copied"));
+                      }}
+                      className="col-span-2 flex items-center justify-center gap-1.5 text-[11px] bg-[#1a1a1a] hover:bg-[#222] border border-[#2a2a2a] text-[#aaa] py-1.5 rounded-md transition-colors"
+                    >
+                      <Copy className="w-3 h-3" /> Copy Raw Estimate
+                    </button>
+                  </div>
                 </div>
               )}
             </div>
