@@ -327,6 +327,12 @@ export default function DashboardLayout({ children, title, subtitle }: Dashboard
           <JobberPill collapsed={collapsed} />
         </div>
 
+        {/* Version indicator */}
+        {!collapsed && (
+          <div className="px-3 pb-2 text-[10px] text-muted-foreground/40 leading-tight" title={`Built: ${new Date(__BUILD_TIME__).toLocaleString()}`}>
+            v{__APP_VERSION__} &middot; {new Date(__BUILD_TIME__).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+          </div>
+        )}
         {/* Collapse toggle */}
         <div className="p-2 border-t border-[#1e1e1e]">
           <button
@@ -363,6 +369,9 @@ export default function DashboardLayout({ children, title, subtitle }: Dashboard
             <nav className="flex-1 py-2 overflow-y-auto">
               <NavLinks onClickItem={() => setMobileOpen(false)} />
             </nav>
+            <div className="px-4 pb-3 pt-2 text-[10px] text-muted-foreground/40 border-t border-[#1e1e1e]" title={`Built: ${new Date(__BUILD_TIME__).toLocaleString()}`}>
+              v{__APP_VERSION__} &middot; {new Date(__BUILD_TIME__).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+            </div>
           </aside>
         </div>
       )}
