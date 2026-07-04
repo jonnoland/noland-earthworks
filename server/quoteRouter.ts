@@ -511,6 +511,8 @@ export const quoteRouter = router({
           "Brush Removal": "brush_removal",
           "Stump Grinding": "stump_grinding",
           "Wildfire Mitigation": "wildfire_mitigation",
+          "Trail Cutting": "trail_cutting",
+          "trail-cutting": "trail_cutting",
         };
         const address = [input.street, input.city, input.state, input.zip]
           .filter(Boolean)

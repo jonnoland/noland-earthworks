@@ -356,6 +356,7 @@ const SERVICE_LINE_ITEMS: Record<string, string> = {
   "Forestry Mulching": "Forestry Mulching",
   "Vegetation Management": "Vegetation Management",
   "Property Maintenance": "Property Maintenance",
+  "Trail Cutting": "Trail Cutting",
   "Multiple Services": "Multiple Services",
 };
 

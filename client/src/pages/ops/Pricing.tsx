@@ -658,6 +658,7 @@ function PricingBenchmarksCard() {
     { serviceType: "Brush Hogging",    lowPerAcre: 75,  midPerAcre: 125,  highPerAcre: 200,  researchSummary: null, lastUpdatedAt: null },
     { serviceType: "Stump Grinding",   lowPerAcre: 75,  midPerAcre: 150,  highPerAcre: 300,  researchSummary: "Per stump. Size, root spread, and access affect cost.", lastUpdatedAt: null },
     { serviceType: "Debris Hauling",   lowPerAcre: 250, midPerAcre: 450,  highPerAcre: 750,  researchSummary: "Per load. Volume, haul distance, and dump fees are primary variables.", lastUpdatedAt: null },
+    { serviceType: "Trail Cutting",     lowPerAcre: 700, midPerAcre: 850,  highPerAcre: 1000, researchSummary: "Per effective acre (length × width ÷ 43,560). Minimum job floor applies. Dense vegetation and slope increase rate.", lastUpdatedAt: null },
   ];
 
   const rows = benchmarks.length > 0 ? benchmarks : FALLBACK_ROWS;
@@ -1305,6 +1306,7 @@ const WEBSITE_SERVICES = [
   { name: "Fence Line Clearing",                   keywords: ["fence", "fenceline"],                            websiteLow: 1.50, websiteHigh: 12, unit: "per linear ft" },
   { name: "Mulch Redistribution",                  keywords: ["mulch redistrib", "redistrib", "ground cover"],  websiteLow: 150, websiteHigh: 900, unit: "per hour" },
   { name: "Selective Clearing & Tree Preservation", keywords: ["selective", "tree preservation", "precision"],  websiteLow: 150, websiteHigh: 500, unit: "flat fee" },
+  { name: "Trail Cutting",                            keywords: ["trail", "trail cutting", "trail cut"],         websiteLow: 500, websiteHigh: 5000, unit: "per job" },
 ];
 
 function matchJobberToWebsite(jobberName: string) {

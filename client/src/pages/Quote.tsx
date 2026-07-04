@@ -75,6 +75,7 @@ const ADDON_SUGGESTIONS: Record<string, string[]> = {
   "vegetation-management": ["Fence Line Clearing", "Post-Clear Seeding & Erosion Control"],
   "right-of-way-clearing": ["Fence Line Clearing", "Mulch Redistribution"],
   "property-maintenance": ["Post-Clear Seeding & Erosion Control", "Fence Line Clearing"],
+  "trail-cutting": ["Mulch Redistribution", "Post-Clear Seeding & Erosion Control", "Selective Clearing & Tree Preservation"],
   "multiple": ["Post-Clear Seeding & Erosion Control", "Fence Line Clearing", "Mulch Redistribution", "Selective Clearing & Tree Preservation"],
 };
 
@@ -190,6 +191,7 @@ export default function QuotePage() {
       "vegetation-management":[500, 750],
       "right-of-way-clearing":[600, 850],
       "property-maintenance": [450, 700],
+      "trail-cutting":        [700, 1000],
       "multiple":             [700, 1000],
     };
     const rates = baseRates[service] ?? baseRates["forestry-mulching"];
@@ -226,6 +228,8 @@ export default function QuotePage() {
       service, county, acreage,
       street: "", city, state, zip: "",
       message,
+      trailLinearFeet: "",
+      trailWidth: "",
     };
   })();
 
@@ -278,7 +282,14 @@ export default function QuotePage() {
       city: form.city,
       state: form.state || "TN",
       zip: form.zip,
-      message: form.message,
+      message: [
+        form.message,
+        form.service === "trail-cutting" && form.trailLinearFeet ? `Trail Length: ${parseFloat(form.trailLinearFeet).toLocaleString()} linear feet` : "",
+        form.service === "trail-cutting" && form.trailWidth && form.trailWidth !== "other" ? `Trail Width: ${form.trailWidth} ft` : "",
+        form.service === "trail-cutting" && form.trailLinearFeet && form.trailWidth && form.trailWidth !== "other"
+          ? `Effective Acreage: ${((parseFloat(form.trailLinearFeet) * parseFloat(form.trailWidth)) / 43560).toFixed(2)} acres`
+          : "",
+      ].filter(Boolean).join("\n"),
       addOns: selectedAddOns,
       parcelOwner: parcelInfo?.owner ?? undefined,
       parcelId: parcelInfo?.parcelId ?? undefined,
@@ -728,6 +739,7 @@ export default function QuotePage() {
                       "vegetation-management": "Vegetation Management",
                       "right-of-way-clearing": "Right-of-Way Clearing",
                       "property-maintenance": "Property Maintenance",
+                      "trail-cutting": "Trail Cutting",
                       "multiple": "Multiple Services",
                     };
                     const acreageLabels: Record<string, string> = {
@@ -1013,6 +1025,7 @@ export default function QuotePage() {
                         <option value="vegetation-management" style={{ backgroundColor: "#1a1a1a" }}>Vegetation Management</option>
                         <option value="right-of-way-clearing" style={{ backgroundColor: "#1a1a1a" }}>Right-of-Way Clearing</option>
                         <option value="property-maintenance" style={{ backgroundColor: "#1a1a1a" }}>Property Maintenance</option>
+                        <option value="trail-cutting" style={{ backgroundColor: "#1a1a1a" }}>Trail Cutting</option>
                         <option value="multiple" style={{ backgroundColor: "#1a1a1a" }}>Multiple Services</option>
                       </select>
                     </div>
@@ -1062,6 +1075,69 @@ export default function QuotePage() {
                       <option value="unsure" style={{ backgroundColor: "#1a1a1a" }}>Not sure</option>
                     </select>
                   </div>
+
+                  {/* Trail-specific fields — only shown when Trail Cutting is selected */}
+                  {form.service === "trail-cutting" && (
+                    <div style={{ padding: "1rem", background: "rgba(224,123,42,0.05)", border: "1px solid rgba(224,123,42,0.2)", borderRadius: "4px" }}>
+                      <div style={{ fontFamily: "'Oswald', sans-serif", fontSize: "0.68rem", letterSpacing: "0.14em", textTransform: "uppercase", color: "rgba(224,123,42,0.8)", marginBottom: "0.75rem" }}>Trail Details</div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <label style={labelStyle}>Approximate Length <span style={{ color: "rgba(240,237,230,0.4)", fontSize: "0.7rem", letterSpacing: "0.08em" }}>(linear feet)</span></label>
+                          <input
+                            type="number"
+                            name="trailLinearFeet"
+                            min="0"
+                            step="50"
+                            placeholder="e.g. 2000"
+                            value={form.trailLinearFeet}
+                            onChange={handleChange}
+                            style={inputStyle}
+                            onFocus={(e) => (e.target.style.borderColor = "rgba(224,123,42,0.6)")}
+                            onBlur={(e) => (e.target.style.borderColor = "rgba(255,255,255,0.12)")}
+                          />
+                        </div>
+                        <div>
+                          <label style={labelStyle}>Trail Width <span style={{ color: "rgba(240,237,230,0.4)", fontSize: "0.7rem", letterSpacing: "0.08em" }}>(feet)</span></label>
+                          <select
+                            name="trailWidth"
+                            value={form.trailWidth}
+                            onChange={handleChange}
+                            style={{ ...inputStyle, cursor: "pointer" }}
+                            onFocus={(e) => (e.target.style.borderColor = "rgba(224,123,42,0.6)")}
+                            onBlur={(e) => (e.target.style.borderColor = "rgba(255,255,255,0.12)")}
+                          >
+                            <option value="" style={{ backgroundColor: "#1a1a1a" }}>Select width...</option>
+                            <option value="6" style={{ backgroundColor: "#1a1a1a" }}>6 ft — Foot/ATV path</option>
+                            <option value="8" style={{ backgroundColor: "#1a1a1a" }}>8 ft — ATV / UTV</option>
+                            <option value="10" style={{ backgroundColor: "#1a1a1a" }}>10 ft — Standard trail</option>
+                            <option value="12" style={{ backgroundColor: "#1a1a1a" }}>12 ft — Wide trail / access road</option>
+                            <option value="16" style={{ backgroundColor: "#1a1a1a" }}>16 ft — Equipment access</option>
+                            <option value="other" style={{ backgroundColor: "#1a1a1a" }}>Other (describe below)</option>
+                          </select>
+                        </div>
+                      </div>
+                      {form.trailLinearFeet && form.trailWidth && form.trailWidth !== "other" && (() => {
+                        const lf = parseFloat(form.trailLinearFeet);
+                        const w  = parseFloat(form.trailWidth);
+                        if (!lf || !w) return null;
+                        const acres = (lf * w) / 43560;
+                        const low  = Math.round(acres * 700 / 100) * 100;
+                        const high = Math.round(acres * 1000 / 100) * 100;
+                        const minFloor = 500;
+                        return (
+                          <div style={{ marginTop: "0.75rem", padding: "0.75rem 1rem", background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "2px", fontFamily: "'Lato', sans-serif" }}>
+                            <div style={{ fontFamily: "'Oswald', sans-serif", fontSize: "0.65rem", letterSpacing: "0.18em", textTransform: "uppercase", color: "rgba(224,123,42,0.7)", marginBottom: "0.25rem" }}>Preliminary Range</div>
+                            <div style={{ fontFamily: "'Oswald', sans-serif", fontWeight: 600, fontSize: "1.3rem", color: "#E07B2A" }}>
+                              ${Math.max(minFloor, low).toLocaleString()} – ${Math.max(minFloor, high).toLocaleString()}
+                            </div>
+                            <p style={{ fontSize: "0.72rem", color: "rgba(240,237,230,0.4)", margin: "0.3rem 0 0", lineHeight: 1.5 }}>
+                              Based on {lf.toLocaleString()} ft × {w} ft = {acres.toFixed(2)} effective acres. Actual price requires a site visit.
+                            </p>
+                          </div>
+                        );
+                      })()}
+                    </div>
+                  )}
 
                   {/* Add-On Services */}
                   <div>
