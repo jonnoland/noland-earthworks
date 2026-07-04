@@ -187,24 +187,24 @@ export default function QuotePage() {
     if (service === "trail-cutting") {
       const lf = trailLf && trailLf > 0 ? trailLf : (acres > 0 ? acres * 43560 / 10 : 0);
       if (lf <= 0) return null;
-      // $1.50–$3.50/lf — standard 10ft trail in Middle TN. $500 minimum.
-      const low  = Math.max(500, Math.round(lf * 1.50 / 50) * 50);
-      const high = Math.max(500, Math.round(lf * 3.50 / 50) * 50);
+      // $2.00–$4.00/lf — standard trail in Middle TN. $500 minimum.
+      const low  = Math.max(500, Math.round(lf * 2.00 / 50) * 50);
+      const high = Math.max(500, Math.round(lf * 4.00 / 50) * 50);
       const fmt = (n: number) => `$${n.toLocaleString()}`;
       return {
         range: `${fmt(low)} – ${fmt(high)}`,
-        note: `Rough range based on ${lf.toLocaleString()} linear feet at $1.50–$3.50/lf. Width, terrain, and vegetation density affect final price. $500 minimum applies.`,
+        note: `Rough range based on ${lf.toLocaleString()} linear feet at $2.00–$4.00/lf. Width, terrain, and vegetation density affect final price. $500 minimum applies.`,
       };
     }
     if (acres <= 0) return null;
     // Base rates per acre for Middle Tennessee
     const baseRates: Record<string, [number, number]> = {
-      "forestry-mulching":    [650, 900],
-      "land-management":      [550, 800],
-      "vegetation-management":[500, 750],
-      "right-of-way-clearing":[600, 850],
-      "property-maintenance": [450, 700],
-      "multiple":             [700, 1000],
+      "forestry-mulching":    [650, 1200],  // matches AI default $2,000/ac mid
+      "land-management":      [550, 1000],  // matches AI default $2,200/ac mid
+      "vegetation-management":[500, 900],   // matches AI default $1,800/ac mid
+      "right-of-way-clearing":[600, 1100],  // matches AI default $2,400/ac mid
+      "property-maintenance": [150, 350],   // brush hogging rate
+      "multiple":             [650, 1200],
     };
     const rates = baseRates[service] ?? baseRates["forestry-mulching"];
     const low  = Math.round(acres * rates[0] / 100) * 100;

@@ -1310,7 +1310,7 @@ const WEBSITE_SERVICES = [
   { name: "Fence Line Clearing",                   keywords: ["fence", "fenceline"],                            websiteLow: 1.50, websiteHigh: 12, unit: "per linear ft" },
   { name: "Mulch Redistribution",                  keywords: ["mulch redistrib", "redistrib", "ground cover"],  websiteLow: 150, websiteHigh: 900, unit: "per hour" },
   { name: "Selective Clearing & Tree Preservation", keywords: ["selective", "tree preservation", "precision"],  websiteLow: 150, websiteHigh: 500, unit: "flat fee" },
-  { name: "Trail Cutting",                            keywords: ["trail", "trail cutting", "trail cut"],         websiteLow: 1.50, websiteHigh: 4, unit: "per linear ft" },
+  { name: "Trail Cutting",                            keywords: ["trail", "trail cutting", "trail cut"],         websiteLow: 600, websiteHigh: 1100, unit: "per effective acre" },
 ];
 
 function matchJobberToWebsite(jobberName: string) {

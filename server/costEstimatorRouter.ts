@@ -120,11 +120,12 @@ TRAVEL SURCHARGE (one-way miles from Vanleer, TN — flat fee, not per-mile):
 - 100+ miles: $750
 
 MARKET RATES (Middle Tennessee, 2025–2026):
-- Forestry mulching: $800–$1,800/acre depending on conditions
-- Land clearing (heavy): $1,200–$2,500/acre
-- Brush hogging: $60–$120/acre
-- ROW clearing: $4–$8/linear foot
-- Trail cutting: $2.00–$3.00/linear ft (flat), $2.40–$3.60/lf (sloped +20%), $2.80–$4.20/lf (rocky +40%); $500 minimum; standard width 6–16 ft; quote in linear feet NOT acres
+- Forestry mulching: $650–$1,200/acre (light-moderate); $1,200–$2,000+/acre (dense cedar/hardwood or steep terrain)
+- Land management / land clearing: $550–$1,000/acre; heavy clearing $1,200–$2,500/acre
+- Vegetation management: $500–$900/acre
+- ROW clearing: $600–$1,100/acre (effective acres — length × width ÷ 43,560)
+- Trail cutting: $2.00–$4.00/lf (flat), $2.40–$4.80/lf (sloped +20%), $2.80–$5.60/lf (rocky +40%); quote in effective acres (length × width ÷ 43,560) OR linear feet; $500 minimum; standard width 6–16 ft
+- Brush hogging: $150–$350/acre
 - Stump grinding: $150–$250/stump
 
 REQUIRED BREAKDOWN — you MUST include one line item per cost component below. Do not combine or omit any:
