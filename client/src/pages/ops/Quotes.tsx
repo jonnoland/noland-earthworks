@@ -1349,9 +1349,11 @@ function AIAssistPanel({ onClose, clientName, onApply }: AIAssistPanelProps) {
     const serviceLabel: Record<string, string> = {
       "forestry-mulching": "Forestry Mulching",
       "land-management": "Land Management",
-      "brush-hogging": "Brush Hogging",
-      "right-of-way-clearing": "Right-of-Way Clearing",
       "vegetation-management": "Vegetation Management",
+      "right-of-way-clearing": "Right-of-Way Clearing",
+      "trail-cutting": "Trail Cutting",
+      "brush-hogging": "Brush Hogging / Property Maintenance",
+      "stump-grinding": "Stump Grinding Only",
     };
     const svcName = serviceLabel[aiAssist.data.inferredService] ?? aiAssist.data.inferredService;
     const acresLabel = aiAssist.data.inferredAcres > 0 ? ` — ${aiAssist.data.inferredAcres} Acres` : "";
@@ -3940,9 +3942,11 @@ function WebsiteRequestsSection({
                     >
                       <option value="forestry-mulching">Forestry Mulching</option>
                       <option value="land-management">Land Management</option>
-                      <option value="brush-hogging">Brush Hogging</option>
-                      <option value="right-of-way-clearing">Right-of-Way Clearing</option>
                       <option value="vegetation-management">Vegetation Management</option>
+                      <option value="right-of-way-clearing">Right-of-Way Clearing</option>
+                      <option value="trail-cutting">Trail Cutting</option>
+                      <option value="brush-hogging">Brush Hogging / Property Maintenance</option>
+                      <option value="stump-grinding">Stump Grinding Only</option>
                     </select>
                   </div>
                   <div>

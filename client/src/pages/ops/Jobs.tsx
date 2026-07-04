@@ -856,13 +856,15 @@ function JobDetailPanel({
 const JOB_TYPE_LABELS: Record<string, string> = {
   land_clearing: "Land Management",
   forestry_mulching: "Forestry Mulching",
-  brush_removal: "Brush Removal",
-  stump_grinding: "Stump Grinding",
-  wildfire_mitigation: "Wildfire Mitigation",
+  vegetation_management: "Vegetation Management",
+  right_of_way_clearing: "Right-of-Way Clearing",
   trail_cutting: "Trail Cutting",
+  brush_removal: "Brush Hogging / Property Maintenance",
+  stump_grinding: "Stump Grinding Only",
+  wildfire_mitigation: "Wildfire Mitigation",
 };
 
-const JOB_TYPE_OPTIONS = ["land_clearing", "forestry_mulching", "brush_removal", "stump_grinding", "wildfire_mitigation", "trail_cutting"] as const;
+const JOB_TYPE_OPTIONS = ["land_clearing", "forestry_mulching", "vegetation_management", "right_of_way_clearing", "trail_cutting", "brush_removal", "stump_grinding", "wildfire_mitigation"] as const;
 const STATUS_OPTIONS = ["estimate", "scheduled", "in_progress", "completed", "invoiced", "paid"] as const;
 type JobType = typeof JOB_TYPE_OPTIONS[number];
 type JobStatus = typeof STATUS_OPTIONS[number];

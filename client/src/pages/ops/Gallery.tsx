@@ -41,8 +41,11 @@ import {
 type ServiceType =
   | "forestry-mulching"
   | "land-management"
-  | "brush-hogging"
   | "vegetation-management"
+  | "right-of-way-clearing"
+  | "trail-cutting"
+  | "brush-hogging"
+  | "stump-grinding"
   | "gravel-driveway"
   | "other";
 
@@ -51,8 +54,11 @@ type PhotoType = "before" | "after" | "general";
 const SERVICE_LABELS: Record<ServiceType, string> = {
   "forestry-mulching": "Forestry Mulching",
   "land-management": "Land Management",
-  "brush-hogging": "Brush Hogging",
   "vegetation-management": "Vegetation Management",
+  "right-of-way-clearing": "Right-of-Way Clearing",
+  "trail-cutting": "Trail Cutting",
+  "brush-hogging": "Brush Hogging / Property Maintenance",
+  "stump-grinding": "Stump Grinding",
   "gravel-driveway": "Gravel / Driveway",
   other: "Other",
 };

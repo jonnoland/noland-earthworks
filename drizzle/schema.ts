@@ -91,10 +91,12 @@ export const jobs = mysqlTable("jobs", {
   jobType: mysqlEnum("jobType", [
     "land_clearing",
     "forestry_mulching",
+    "vegetation_management",
+    "right_of_way_clearing",
+    "trail_cutting",
     "brush_removal",
     "stump_grinding",
     "wildfire_mitigation",
-    "trail_cutting",
   ]).default("land_clearing").notNull(),
   status: mysqlEnum("status", [
     "estimate",

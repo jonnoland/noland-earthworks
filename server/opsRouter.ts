@@ -57,7 +57,7 @@ const jobsRouter = router({
       title: z.string().min(1),
       client: z.string().min(1),
       address: z.string().optional(),
-      jobType: z.enum(["land_clearing", "forestry_mulching", "brush_removal", "stump_grinding", "wildfire_mitigation", "trail_cutting"]).default("land_clearing"),
+      jobType: z.enum(["land_clearing", "forestry_mulching", "vegetation_management", "right_of_way_clearing", "trail_cutting", "brush_removal", "stump_grinding", "wildfire_mitigation"]).default("land_clearing"),
       status: z.enum(["estimate", "scheduled", "in_progress", "completed", "invoiced", "paid"]).default("estimate"),
       acres: z.string().optional(),
       crewDays: z.string().optional(),
@@ -75,7 +75,7 @@ const jobsRouter = router({
       title: z.string().min(1).optional(),
       client: z.string().min(1).optional(),
       address: z.string().optional(),
-      jobType: z.enum(["land_clearing", "forestry_mulching", "brush_removal", "stump_grinding", "wildfire_mitigation", "trail_cutting"]).optional(),
+      jobType: z.enum(["land_clearing", "forestry_mulching", "vegetation_management", "right_of_way_clearing", "trail_cutting", "brush_removal", "stump_grinding", "wildfire_mitigation"]).optional(),
       status: z.enum(["estimate", "scheduled", "in_progress", "completed", "invoiced", "paid"]).optional(),
       acres: z.string().optional(),
       crewDays: z.string().optional(),
@@ -275,7 +275,7 @@ const jobsRouter = router({
       title: z.string().optional(),
       client: z.string().optional(),
       totalPrice: z.string().optional(),
-      jobType: z.enum(["land_clearing", "forestry_mulching", "brush_removal", "stump_grinding", "wildfire_mitigation", "trail_cutting"]).optional(),
+      jobType: z.enum(["land_clearing", "forestry_mulching", "vegetation_management", "right_of_way_clearing", "trail_cutting", "brush_removal", "stump_grinding", "wildfire_mitigation"]).optional(),
     }))
     .mutation(async ({ ctx, input }) => {
       const db = await getDb();
@@ -516,7 +516,7 @@ const leadsRouter = router({
       title: z.string().min(1).optional(),
       client: z.string().min(1).optional(),
       address: z.string().optional(),
-      jobType: z.enum(["land_clearing", "forestry_mulching", "brush_removal", "stump_grinding", "wildfire_mitigation", "trail_cutting"]).optional(),
+      jobType: z.enum(["land_clearing", "forestry_mulching", "vegetation_management", "right_of_way_clearing", "trail_cutting", "brush_removal", "stump_grinding", "wildfire_mitigation"]).optional(),
       notes: z.string().optional(),
     }))
     .mutation(async ({ ctx, input }) => {
@@ -526,13 +526,16 @@ const leadsRouter = router({
         .where(and(eq(opsLeads.id, input.leadId), eq(opsLeads.userId, ctx.user.id))).limit(1);
       if (leadRows.length === 0) throw new Error("Lead not found");
       const lead = leadRows[0];
-      const jobTypeMap: Record<string, "land_clearing" | "forestry_mulching" | "brush_removal" | "stump_grinding" | "wildfire_mitigation" | "trail_cutting"> = {
+      const jobTypeMap: Record<string, "land_clearing" | "forestry_mulching" | "vegetation_management" | "right_of_way_clearing" | "trail_cutting" | "brush_removal" | "stump_grinding" | "wildfire_mitigation"> = {
         "Land Management": "land_clearing", "land_clearing": "land_clearing",
         "Forestry Mulching": "forestry_mulching", "forestry_mulching": "forestry_mulching",
-        "Brush Removal": "brush_removal", "brush_removal": "brush_removal",
-        "Stump Grinding": "stump_grinding", "stump_grinding": "stump_grinding",
-        "Wildfire Mitigation": "wildfire_mitigation", "wildfire_mitigation": "wildfire_mitigation",
+        "Vegetation Management": "vegetation_management", "vegetation_management": "vegetation_management",
+        "Right-of-Way Clearing": "right_of_way_clearing", "right_of_way_clearing": "right_of_way_clearing",
+        "ROW Clearing": "right_of_way_clearing",
         "Trail Cutting": "trail_cutting", "trail_cutting": "trail_cutting",
+        "Brush Hogging": "brush_removal", "Brush Removal": "brush_removal", "brush_removal": "brush_removal",
+        "Stump Grinding": "stump_grinding", "Stump Grinding Only": "stump_grinding", "stump_grinding": "stump_grinding",
+        "Wildfire Mitigation": "wildfire_mitigation", "wildfire_mitigation": "wildfire_mitigation",
       };
       const resolvedJobType = input.jobType ?? (lead.jobType ? (jobTypeMap[lead.jobType] ?? "land_clearing") : "land_clearing");
       const newJobData = {
@@ -1378,10 +1381,12 @@ const quotesRouter = router({
         try {
           const serviceTypeMap: Record<string, string[]> = {
             "forestry-mulching":     ["forestry_mulching"],
-            "land-management":         ["land_clearing"],
+            "land-management":       ["land_clearing"],
+            "vegetation-management": ["vegetation_management", "forestry_mulching", "land_clearing"],
+            "right-of-way-clearing": ["right_of_way_clearing", "land_clearing", "forestry_mulching"],
+            "trail-cutting":         ["trail_cutting"],
             "brush-hogging":         ["brush_removal"],
-            "right-of-way-clearing": ["land_clearing", "forestry_mulching"],
-            "vegetation-management": ["forestry_mulching", "land_clearing"],
+            "stump-grinding":        ["stump_grinding"],
             "property-maintenance":  ["brush_removal", "land_clearing"],
           };
           const jobTypes = serviceTypeMap[svcKey] ?? ["land_clearing"];
@@ -1812,7 +1817,7 @@ Rules:
 
 Return ONLY valid JSON with this exact structure:
 {
-  "inferredService": "forestry-mulching | land-management | brush-hogging | right-of-way-clearing | vegetation-management",
+  "inferredService": "forestry-mulching | land-management | vegetation-management | right-of-way-clearing | trail-cutting | brush-hogging | stump-grinding",
   "inferredAcres": 0,
   "inferredDensity": "light | moderate | heavy",
   "inferredTerrain": "flat | rolling | steep",
