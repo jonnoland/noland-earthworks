@@ -182,16 +182,28 @@ export default function QuotePage() {
   }, [parcelQuery.data]);
 
   // Compute a preliminary price estimate from deed acreage and selected service
-  function computeEstimate(acres: number, service: string): { range: string; note: string } | null {
+  // For trail cutting, trailLf (linear feet) is used directly when available
+  function computeEstimate(acres: number, service: string, trailLf?: number): { range: string; note: string } | null {
+    if (service === "trail-cutting") {
+      const lf = trailLf && trailLf > 0 ? trailLf : (acres > 0 ? acres * 43560 / 10 : 0);
+      if (lf <= 0) return null;
+      // $1.50–$3.50/lf — standard 10ft trail in Middle TN. $500 minimum.
+      const low  = Math.max(500, Math.round(lf * 1.50 / 50) * 50);
+      const high = Math.max(500, Math.round(lf * 3.50 / 50) * 50);
+      const fmt = (n: number) => `$${n.toLocaleString()}`;
+      return {
+        range: `${fmt(low)} – ${fmt(high)}`,
+        note: `Rough range based on ${lf.toLocaleString()} linear feet at $1.50–$3.50/lf. Width, terrain, and vegetation density affect final price. $500 minimum applies.`,
+      };
+    }
     if (acres <= 0) return null;
-    // Base rates per acre for Middle Tennessee (forestry mulching)
+    // Base rates per acre for Middle Tennessee
     const baseRates: Record<string, [number, number]> = {
       "forestry-mulching":    [650, 900],
       "land-management":      [550, 800],
       "vegetation-management":[500, 750],
       "right-of-way-clearing":[600, 850],
       "property-maintenance": [450, 700],
-      "trail-cutting":        [700, 1000],
       "multiple":             [700, 1000],
     };
     const rates = baseRates[service] ?? baseRates["forestry-mulching"];
@@ -294,7 +306,8 @@ export default function QuotePage() {
     if (adjustedAcresError) return;
     // Capture the preliminary estimate before submitting so we can show it on the success screen
     const effectiveAcresForSubmit = adjustedAcres ? parseFloat(adjustedAcres) : (parcelInfo?.deedAcres ?? 0);
-    const preSubmitEstimate = effectiveAcresForSubmit > 0 && form.service ? computeEstimate(effectiveAcresForSubmit, form.service) : null;
+    const trailLfForSubmit = form.service === "trail-cutting" && form.trailLinearFeet ? parseFloat(form.trailLinearFeet) : undefined;
+    const preSubmitEstimate = (effectiveAcresForSubmit > 0 || trailLfForSubmit) && form.service ? computeEstimate(effectiveAcresForSubmit, form.service, trailLfForSubmit) : null;
     if (preSubmitEstimate) {
       setSubmittedEstimate({
         range: preSubmitEstimate.range,
@@ -329,7 +342,8 @@ export default function QuotePage() {
       adjustedAcres: adjustedAcres ? parseFloat(adjustedAcres) : undefined,
       estimatedRange: (() => {
         const effectiveAcres = adjustedAcres ? parseFloat(adjustedAcres) : (parcelInfo?.deedAcres ?? 0);
-        const est = effectiveAcres > 0 && form.service ? computeEstimate(effectiveAcres, form.service) : null;
+        const trailLf = form.service === "trail-cutting" && form.trailLinearFeet ? parseFloat(form.trailLinearFeet) : undefined;
+        const est = (effectiveAcres > 0 || trailLf) && form.service ? computeEstimate(effectiveAcres, form.service, trailLf) : null;
         return est?.range ?? "";
       })(),
     });
@@ -1622,8 +1636,9 @@ export default function QuotePage() {
                     {/* Preliminary price estimate — shown when parcel found and service selected */}
                     {parcelInfo && parcelInfo.found && form.service && (() => {
                       const effectiveAcres = adjustedAcres ? parseFloat(adjustedAcres) : (parcelInfo.deedAcres ?? 0);
-                      if (effectiveAcres <= 0) return null;
-                      const est = computeEstimate(effectiveAcres, form.service);
+                      const trailLfVal = form.service === "trail-cutting" && form.trailLinearFeet ? parseFloat(form.trailLinearFeet) : undefined;
+                      if (effectiveAcres <= 0 && !trailLfVal) return null;
+                      const est = computeEstimate(effectiveAcres, form.service, trailLfVal);
                       if (!est) return null;
                       return (
                         <div style={{

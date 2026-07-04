@@ -650,15 +650,18 @@ function PricingBenchmarksCard() {
     onError: (e: any) => toast.error(e.message),
   });
 
-  // Static fallback rows shown when DB has no data yet
+  // Static fallback rows shown when DB has no data yet — aligned to service_catalog (10 services)
   const FALLBACK_ROWS = [
-    { serviceType: "Land Management",    lowPerAcre: 400, midPerAcre: 650,  highPerAcre: 1000, researchSummary: null, lastUpdatedAt: null },
-    { serviceType: "Forestry Mulching", lowPerAcre: 500, midPerAcre: 800,  highPerAcre: 1200, researchSummary: null, lastUpdatedAt: null },
-    { serviceType: "Brush Removal",    lowPerAcre: 250, midPerAcre: 400,  highPerAcre: 600,  researchSummary: null, lastUpdatedAt: null },
-    { serviceType: "Brush Hogging",    lowPerAcre: 75,  midPerAcre: 125,  highPerAcre: 200,  researchSummary: null, lastUpdatedAt: null },
-    { serviceType: "Stump Grinding",   lowPerAcre: 75,  midPerAcre: 150,  highPerAcre: 300,  researchSummary: "Per stump. Size, root spread, and access affect cost.", lastUpdatedAt: null },
-    { serviceType: "Debris Hauling",   lowPerAcre: 250, midPerAcre: 450,  highPerAcre: 750,  researchSummary: "Per load. Volume, haul distance, and dump fees are primary variables.", lastUpdatedAt: null },
-    { serviceType: "Trail Cutting",     lowPerAcre: 700, midPerAcre: 850,  highPerAcre: 1000, researchSummary: "Per effective acre (length × width ÷ 43,560). Minimum job floor applies. Dense vegetation and slope increase rate.", lastUpdatedAt: null },
+    { serviceType: "Forestry Mulching",   lowPerAcre: 650,  midPerAcre: 800,  highPerAcre: 1200, researchSummary: "Per acre. Primary service. Dense cedar/hardwood and steep terrain push toward high end. Peak season (Oct\u2013Mar) supports higher rates.", lastUpdatedAt: null },
+    { serviceType: "Land Management",    lowPerAcre: 550,  midPerAcre: 700,  highPerAcre: 1000, researchSummary: "Per acre. Ongoing or multi-phase land management. Rate depends on scope, vegetation type, and frequency.", lastUpdatedAt: null },
+    { serviceType: "Brush/Understory",   lowPerAcre: 350,  midPerAcre: 500,  highPerAcre: 750,  researchSummary: "Per acre. Light-to-moderate brush and understory clearing. Lower density than full forestry mulching.", lastUpdatedAt: null },
+    { serviceType: "ROW/Trail",          lowPerAcre: 600,  midPerAcre: 800,  highPerAcre: 1100, researchSummary: "Per acre for right-of-way corridor clearing. Linear constraint increases passes per unit area vs. open field.", lastUpdatedAt: null },
+    { serviceType: "Trail Cutting",      lowPerAcre: 2,    midPerAcre: 3,    highPerAcre: 4,    researchSummary: "Per linear foot. Width (6\u201316 ft), terrain, and vegetation density are primary variables. $500 minimum applies.", lastUpdatedAt: null },
+    { serviceType: "Storm Cleanup",      lowPerAcre: 400,  midPerAcre: 650,  highPerAcre: 1200, researchSummary: "Per acre. Fallen timber, debris, and downed brush removal after storm events. Highly variable by damage severity.", lastUpdatedAt: null },
+    { serviceType: "Post-Clear Seeding", lowPerAcre: 150,  midPerAcre: 300,  highPerAcre: 600,  researchSummary: "Per acre. Grass/wildflower seeding and erosion control after clearing. Seed mix and site prep affect cost.", lastUpdatedAt: null },
+    { serviceType: "Fence Line Clearing",lowPerAcre: 2,    midPerAcre: 4,    highPerAcre: 8,    researchSummary: "Per linear foot. Overgrown fence line brush removal. Density and fence condition affect rate.", lastUpdatedAt: null },
+    { serviceType: "Mulch Redistribution",lowPerAcre: 150, midPerAcre: 250,  highPerAcre: 450,  researchSummary: "Per acre or per hour. Spreading and leveling mulch left by forestry mulcher. Typically an add-on.", lastUpdatedAt: null },
+    { serviceType: "Selective Clearing", lowPerAcre: 400,  midPerAcre: 650,  highPerAcre: 1000, researchSummary: "Per acre. Precision clearing that preserves desirable trees. More time-intensive than full clearing.", lastUpdatedAt: null },
   ];
 
   const rows = benchmarks.length > 0 ? benchmarks : FALLBACK_ROWS;
@@ -1307,7 +1310,7 @@ const WEBSITE_SERVICES = [
   { name: "Fence Line Clearing",                   keywords: ["fence", "fenceline"],                            websiteLow: 1.50, websiteHigh: 12, unit: "per linear ft" },
   { name: "Mulch Redistribution",                  keywords: ["mulch redistrib", "redistrib", "ground cover"],  websiteLow: 150, websiteHigh: 900, unit: "per hour" },
   { name: "Selective Clearing & Tree Preservation", keywords: ["selective", "tree preservation", "precision"],  websiteLow: 150, websiteHigh: 500, unit: "flat fee" },
-  { name: "Trail Cutting",                            keywords: ["trail", "trail cutting", "trail cut"],         websiteLow: 500, websiteHigh: 5000, unit: "per job" },
+  { name: "Trail Cutting",                            keywords: ["trail", "trail cutting", "trail cut"],         websiteLow: 1.50, websiteHigh: 4, unit: "per linear ft" },
 ];
 
 function matchJobberToWebsite(jobberName: string) {

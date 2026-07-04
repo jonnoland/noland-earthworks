@@ -84,11 +84,13 @@ Property Maintenance / Brush Hogging (per acre):
   - Brush control: $400 – $900/acre
   - Full reclamation: $900 – $2,000+/acre
 
-Trail Cutting (per effective acre — length × width ÷ 43,560 sq ft):
-  - Flat terrain, light brush: $700 – $850/effective acre
-  - Sloped terrain (+20%): $840 – $1,020/effective acre
-  - Rocky terrain (+40%): $980 – $1,400/effective acre
+Trail Cutting (per linear foot — primary quoting unit; standard trail width 6–16 ft):
+  - Flat terrain, light brush: $2.00 – $3.00/linear ft
+  - Sloped terrain (+20%): $2.40 – $3.60/linear ft
+  - Rocky terrain (+40%): $2.80 – $4.20/linear ft
   - Minimum job: $500
+  - Example: 1,000 linear ft × 10 ft wide × $2.50/lf = $2,500
+  - Effective acreage (for reference): length × width ÷ 43,560 sq ft
 
 Add-ons:
   - Post-clear seeding: $150 – $700/acre
