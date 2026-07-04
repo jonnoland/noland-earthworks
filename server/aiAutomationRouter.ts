@@ -720,10 +720,44 @@ Return JSON only:
   "confidence": "high" | "medium" | "low"
 }`;
 
-      const result = await invokeLLM({ messages: [{ role: "user", content: prompt }] });
-      const raw = result?.choices?.[0]?.message?.content ?? "{}";
+      const result = await invokeLLM({
+        messages: [{ role: "user", content: prompt }],
+        temperature: 0,
+        response_format: {
+          type: "json_schema",
+          json_schema: {
+            name: "lead_quote_estimate",
+            strict: true,
+            schema: {
+              type: "object",
+              properties: {
+                service:          { type: "string",  description: "Inferred service name" },
+                estimatedAcres:   { type: ["number", "null"], description: "Estimated acreage, null if not determinable" },
+                estimateLow:      { type: "number",  description: "Low end of price estimate in USD" },
+                estimateHigh:     { type: "number",  description: "High end of price estimate in USD" },
+                mobilizationNote: { type: "string",  description: "Brief travel surcharge note, empty string if not applicable" },
+                reasoning:        { type: "string",  description: "2-4 sentences explaining inferences and modifiers applied" },
+                missingInfo:      { type: "array", items: { type: "string" }, description: "List of missing data points that would improve the estimate" },
+                confidence:       { type: "string",  enum: ["high", "medium", "low"], description: "Confidence level based on available info" },
+              },
+              required: ["service", "estimatedAcres", "estimateLow", "estimateHigh", "mobilizationNote", "reasoning", "missingInfo", "confidence"],
+              additionalProperties: false,
+            },
+          },
+        },
+      });
+      const content = result?.choices?.[0]?.message?.content;
+      if (!content) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Empty LLM response" });
       try {
-        const parsed = JSON.parse(typeof raw === "string" ? raw : "{}");
+        // content may be a string or an array of content blocks (thinking mode)
+        const raw = typeof content === "string"
+          ? content
+          : Array.isArray(content)
+            ? (content as Array<{ type: string; text?: string }>).find(b => b.type === "text")?.text ?? "{}"
+            : JSON.stringify(content);
+        // Strip markdown code fences if present
+        const cleaned = raw.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/i, "").trim();
+        const parsed = JSON.parse(cleaned);
         return parsed as {
           service: string;
           estimatedAcres: number | null;
