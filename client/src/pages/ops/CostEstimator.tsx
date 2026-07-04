@@ -95,6 +95,11 @@ export default function CostEstimator() {
   });
 
   const isRowService = service === "Right-of-Way Clearing";
+  const isTrailService = service === "Trail Cutting";
+
+  // Trail Cutting specific inputs
+  const [trailWidth, setTrailWidth] = useState("10");
+  const [trailAddOns, setTrailAddOns] = useState<string[]>([]);
 
   const estimate = trpc.costEstimator.estimate.useMutation({
     onSuccess: (data) => {
@@ -247,6 +252,25 @@ export default function CostEstimator() {
                   </SelectContent>
                 </Select>
               </div>
+
+              {/* Trail Cutting — width selector */}
+              {isTrailService && (
+                <div className="space-y-1.5">
+                  <Label className="text-zinc-300">Trail Width</Label>
+                  <Select value={trailWidth} onValueChange={setTrailWidth}>
+                    <SelectTrigger className="bg-zinc-800 border-zinc-600 text-white">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="6">6 ft — Foot / ATV path</SelectItem>
+                      <SelectItem value="8">8 ft — ATV / UTV</SelectItem>
+                      <SelectItem value="10">10 ft — Standard trail</SelectItem>
+                      <SelectItem value="12">12 ft — Wide trail / access road</SelectItem>
+                      <SelectItem value="16">16 ft — Equipment access</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
 
               {/* Acreage or Linear Feet */}
               {isRowService ? (
@@ -508,6 +532,102 @@ export default function CostEstimator() {
                     </CardContent>
                   </Card>
                 )}
+
+                {/* Trail Cutting — terrain & add-on visual breakdown */}
+                {isTrailService && !clientView && (() => {
+                  const terrainMultiplier = terrain === "steep" ? 1.2 : terrain === "very_steep" ? 1.4 : terrain === "rolling" ? 1.1 : 1.0;
+                  const baseAcres = parseFloat(acreage) || 0;
+                  const baseRate = 850; // mid-point per acre
+                  const basePrice = Math.max(500, baseAcres * baseRate);
+                  const terrainAdj = basePrice * (terrainMultiplier - 1);
+                  const addOnCosts: Record<string, number> = {
+                    "Mulch Redistribution": Math.round(baseAcres * 80),
+                    "Post-Clear Seeding & Erosion Control": Math.round(baseAcres * 120),
+                    "Selective Clearing & Tree Preservation": Math.round(baseAcres * 150),
+                  };
+                  const selectedAddOnTotal = trailAddOns.reduce((s, a) => s + (addOnCosts[a] || 0), 0);
+                  const totalWithAddOns = basePrice + terrainAdj + selectedAddOnTotal;
+                  const trailWidthNum = parseFloat(trailWidth) || 10;
+                  const linearFeetEquiv = baseAcres > 0 ? Math.round((baseAcres * 43560) / trailWidthNum) : 0;
+
+                  return (
+                    <Card className="bg-zinc-900 border-orange-600/40">
+                      <CardHeader className="pb-2">
+                        <CardTitle className="text-orange-400 text-sm">Trail Cutting Price Breakdown</CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-3">
+                        {/* Geometry summary */}
+                        {baseAcres > 0 && (
+                          <div className="bg-zinc-800/60 rounded p-2.5 text-xs text-zinc-400 space-y-0.5">
+                            <div className="flex justify-between">
+                              <span>Effective acreage</span>
+                              <span className="text-white font-medium">{baseAcres.toFixed(2)} ac</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span>Trail width</span>
+                              <span className="text-white font-medium">{trailWidthNum} ft</span>
+                            </div>
+                            {linearFeetEquiv > 0 && (
+                              <div className="flex justify-between">
+                                <span>Approx. linear footage</span>
+                                <span className="text-white font-medium">{linearFeetEquiv.toLocaleString()} ft</span>
+                              </div>
+                            )}
+                          </div>
+                        )}
+
+                        {/* Base rate */}
+                        <div className="flex items-center justify-between py-1.5 border-b border-zinc-800">
+                          <span className="text-zinc-300 text-sm">Base rate ({baseAcres.toFixed(2)} ac @ $850/ac)</span>
+                          <span className="text-zinc-200 text-sm font-medium">{fmt(basePrice)}</span>
+                        </div>
+
+                        {/* Terrain adjustment */}
+                        <div className="flex items-center justify-between py-1.5 border-b border-zinc-800">
+                          <div>
+                            <span className="text-zinc-300 text-sm">Terrain adjustment</span>
+                            <p className="text-zinc-500 text-xs">
+                              {terrain === "flat" ? "Flat — no adjustment" :
+                               terrain === "rolling" ? "Rolling — +10%" :
+                               terrain === "steep" ? "Steep — +20%" :
+                               "Very steep — +40%"}
+                            </p>
+                          </div>
+                          <span className={`text-sm font-medium ${terrainAdj > 0 ? "text-yellow-400" : "text-zinc-500"}`}>
+                            {terrainAdj > 0 ? `+${fmt(terrainAdj)}` : "—"}
+                          </span>
+                        </div>
+
+                        {/* Add-on checkboxes */}
+                        <div className="space-y-1.5">
+                          <p className="text-zinc-400 text-xs uppercase tracking-wide">Add-Ons</p>
+                          {Object.entries(addOnCosts).map(([label, cost]) => (
+                            <label key={label} className="flex items-center justify-between gap-3 cursor-pointer py-1.5 px-2 rounded hover:bg-zinc-800/50 transition-colors">
+                              <div className="flex items-center gap-2">
+                                <input
+                                  type="checkbox"
+                                  checked={trailAddOns.includes(label)}
+                                  onChange={() => setTrailAddOns(prev =>
+                                    prev.includes(label) ? prev.filter(a => a !== label) : [...prev, label]
+                                  )}
+                                  className="w-3.5 h-3.5 accent-orange-500"
+                                />
+                                <span className="text-zinc-300 text-sm">{label}</span>
+                              </div>
+                              <span className="text-zinc-400 text-sm">+{fmt(cost)}</span>
+                            </label>
+                          ))}
+                        </div>
+
+                        {/* Total */}
+                        <div className="flex items-center justify-between pt-2 border-t border-orange-600/30">
+                          <span className="text-orange-400 font-semibold text-sm">Adjusted Total</span>
+                          <span className="text-orange-400 font-semibold text-sm">{fmt(totalWithAddOns)}</span>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })()}
 
                 {/* Line-item breakdown — full detail in internal view, price-only in client view */}
                 <Card className="bg-zinc-900 border-zinc-700">

@@ -234,6 +234,36 @@ export default function QuotePage() {
     };
   })();
 
+  // Trail area calculator state — multi-segment trail builder
+  const [trailSegments, setTrailSegments] = useState<{ id: number; length: string; width: string }[]>([{ id: 1, length: "", width: "" }]);
+  const [calcOpen, setCalcOpen] = useState(false);
+  const nextSegId = useRef(2);
+
+  const addSegment = () => {
+    setTrailSegments(s => [...s, { id: nextSegId.current++, length: "", width: "" }]);
+  };
+  const removeSegment = (id: number) => {
+    setTrailSegments(s => s.filter(seg => seg.id !== id));
+  };
+  const updateSegment = (id: number, field: "length" | "width", val: string) => {
+    setTrailSegments(s => s.map(seg => seg.id === id ? { ...seg, [field]: val } : seg));
+  };
+  const calcTotalLf = () => trailSegments.reduce((sum, seg) => {
+    const l = parseFloat(seg.length) || 0;
+    return sum + l;
+  }, 0);
+  const calcTotalAcres = () => trailSegments.reduce((sum, seg) => {
+    const l = parseFloat(seg.length) || 0;
+    const w = parseFloat(seg.width) || 0;
+    return sum + (l * w) / 43560;
+  }, 0);
+  const applyCalcToForm = () => {
+    const totalLf = calcTotalLf();
+    if (totalLf > 0) {
+      setForm(f => ({ ...f, trailLinearFeet: String(Math.round(totalLf)) }));
+    }
+  };
+
   const [form, setForm] = useState(initialForm);
 
   const handleChange = (
@@ -1127,6 +1157,111 @@ export default function QuotePage() {
                             <option value="other" style={{ backgroundColor: "#1a1a1a" }}>Other (describe below)</option>
                           </select>
                         </div>
+                      </div>
+
+                      {/* Area Calculator — collapsible multi-segment tool */}
+                      <div style={{ marginBottom: "1rem" }}>
+                        <button
+                          type="button"
+                          onClick={() => setCalcOpen(o => !o)}
+                          style={{
+                            display: "flex", alignItems: "center", gap: "0.4rem",
+                            background: "none", border: "none", cursor: "pointer",
+                            fontFamily: "'Oswald', sans-serif", fontSize: "0.68rem",
+                            letterSpacing: "0.14em", textTransform: "uppercase",
+                            color: "rgba(224,123,42,0.75)", padding: 0,
+                          }}
+                        >
+                          <svg width="10" height="10" viewBox="0 0 10 10" fill="none" style={{ transform: calcOpen ? "rotate(90deg)" : "rotate(0deg)", transition: "transform 0.15s" }}>
+                            <path d="M3 2L7 5L3 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                          </svg>
+                          Calculate My Trail Acreage
+                        </button>
+
+                        {calcOpen && (
+                          <div style={{ marginTop: "0.75rem", padding: "0.85rem", background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: "3px" }}>
+                            <p style={{ fontFamily: "'Lato', sans-serif", fontSize: "0.75rem", color: "rgba(240,237,230,0.45)", margin: "0 0 0.75rem" }}>Add each trail segment separately — useful when your trail has multiple legs or varying widths.</p>
+
+                            {trailSegments.map((seg, idx) => (
+                              <div key={seg.id} style={{ display: "grid", gridTemplateColumns: "1fr 1fr auto", gap: "0.5rem", marginBottom: "0.5rem", alignItems: "end" }}>
+                                <div>
+                                  {idx === 0 && <label style={{ ...labelStyle, fontSize: "0.65rem" }}>Length (ft)</label>}
+                                  <input
+                                    type="number" min="0" step="50" placeholder="e.g. 1500"
+                                    value={seg.length}
+                                    onChange={e => updateSegment(seg.id, "length", e.target.value)}
+                                    style={{ ...inputStyle, fontSize: "0.85rem", padding: "0.5rem 0.75rem" }}
+                                    onFocus={e => (e.target.style.borderColor = "rgba(224,123,42,0.6)")}
+                                    onBlur={e => (e.target.style.borderColor = "rgba(255,255,255,0.12)")}
+                                  />
+                                </div>
+                                <div>
+                                  {idx === 0 && <label style={{ ...labelStyle, fontSize: "0.65rem" }}>Width (ft)</label>}
+                                  <input
+                                    type="number" min="0" step="1" placeholder="e.g. 10"
+                                    value={seg.width}
+                                    onChange={e => updateSegment(seg.id, "width", e.target.value)}
+                                    style={{ ...inputStyle, fontSize: "0.85rem", padding: "0.5rem 0.75rem" }}
+                                    onFocus={e => (e.target.style.borderColor = "rgba(224,123,42,0.6)")}
+                                    onBlur={e => (e.target.style.borderColor = "rgba(255,255,255,0.12)")}
+                                  />
+                                </div>
+                                <button
+                                  type="button"
+                                  onClick={() => removeSegment(seg.id)}
+                                  disabled={trailSegments.length === 1}
+                                  style={{
+                                    background: "none", border: "1px solid rgba(255,255,255,0.1)",
+                                    color: trailSegments.length === 1 ? "rgba(255,255,255,0.2)" : "rgba(240,100,80,0.7)",
+                                    cursor: trailSegments.length === 1 ? "default" : "pointer",
+                                    borderRadius: "2px", padding: "0.5rem 0.6rem", fontSize: "0.8rem",
+                                    lineHeight: 1,
+                                  }}
+                                  title="Remove segment"
+                                >✕</button>
+                              </div>
+                            ))}
+
+                            <div style={{ display: "flex", gap: "0.5rem", marginTop: "0.75rem", alignItems: "center" }}>
+                              <button
+                                type="button"
+                                onClick={addSegment}
+                                style={{
+                                  background: "none", border: "1px solid rgba(224,123,42,0.35)",
+                                  color: "rgba(224,123,42,0.8)", cursor: "pointer",
+                                  fontFamily: "'Oswald', sans-serif", fontSize: "0.68rem",
+                                  letterSpacing: "0.1em", textTransform: "uppercase",
+                                  padding: "0.45rem 0.85rem", borderRadius: "2px",
+                                }}
+                              >+ Add Segment</button>
+
+                              {calcTotalLf() > 0 && (
+                                <div style={{ flex: 1, fontFamily: "'Lato', sans-serif", fontSize: "0.78rem", color: "rgba(240,237,230,0.6)" }}>
+                                  Total: <strong style={{ color: "#E07B2A" }}>{calcTotalLf().toLocaleString()} ft</strong>
+                                  {calcTotalAcres() > 0 && (
+                                    <span> &nbsp;/&nbsp; <strong style={{ color: "#E07B2A" }}>{calcTotalAcres().toFixed(2)} ac</strong></span>
+                                  )}
+                                </div>
+                              )}
+
+                              {calcTotalLf() > 0 && (
+                                <button
+                                  type="button"
+                                  onClick={applyCalcToForm}
+                                  style={{
+                                    background: "rgba(224,123,42,0.15)", border: "1px solid rgba(224,123,42,0.5)",
+                                    color: "#E07B2A", cursor: "pointer",
+                                    fontFamily: "'Oswald', sans-serif", fontSize: "0.68rem",
+                                    letterSpacing: "0.1em", textTransform: "uppercase",
+                                    padding: "0.45rem 0.85rem", borderRadius: "2px",
+                                  }}
+                                >
+                                  Apply to Form
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        )}
                       </div>
 
                       {/* Row 2: Terrain Type */}

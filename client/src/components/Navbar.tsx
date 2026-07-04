@@ -15,6 +15,7 @@ const serviceLinks = [
   { label: "Forestry Mulching", href: "/services/forestry-mulching" },
   { label: "Vegetation Management", href: "/services/vegetation-management" },
   { label: "Right-of-Way Clearing", href: "/services/right-of-way-clearing" },
+  { label: "Trail Cutting", href: "/services/trail-cutting" },
   { label: "Property Maintenance", href: "/services/property-maintenance" },
   { label: "Post-Clear Seeding", href: "/services/add-ons/post-clear-seeding", isAddon: true },
   { label: "Fence Line Clearing", href: "/services/add-ons/fence-line-clearing", isAddon: true },
