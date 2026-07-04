@@ -2173,7 +2173,9 @@ const MIDDLE_TN_DEFAULTS = {
   forestryMulchingBaseRate: 2000,  // raised from 1800 — market mid for tracked machine
   landClearingBaseRate: 2200,
   brushHoggingBaseRate: 175,
-  rowClearingBaseRate: 6,           // $6/LF — Middle & West TN market rate
+  rowClearingBaseRate: 2400,        // $/acre — ROW clearing effective acreage
+  trailCuttingBaseRate: 2600,       // $/acre — trail cutting effective acreage
+  vegetationMgmtBaseRate: 1800,     // $/acre — vegetation management
   mobilizationFee: 450,
   minimumJobTotal: 1200,
   densityModerateMultiplier: "1.25",
@@ -2195,7 +2197,9 @@ const MIDDLE_TN_DEFAULTS = {
   volumeDiscount10plusPct: 10,     // reduced from 12 — protects margin on large jobs
   apdForestryMulching: "1.5",
   apdLandClearing: "1.2",
-  apdRowClearing: "500",          // LF/day — not acres/day; ROW priced per linear foot
+  apdRowClearing: "1.2",           // acres/day — ROW clearing effective acreage
+  apdTrailCutting: "1.0",          // acres/day — trail cutting (slower due to linear constraint)
+  apdVegetationMgmt: "2.0",        // acres/day — vegetation management
   apdBrushHogging: "8.0",
   seasonalPeakUpliftPct: 0,
   seasonalSlowReductionPct: 0,
@@ -2281,6 +2285,8 @@ function AIPricingTab() {
         landClearingBaseRate: settings.landClearingBaseRate,
         brushHoggingBaseRate: settings.brushHoggingBaseRate,
         rowClearingBaseRate: settings.rowClearingBaseRate,
+        trailCuttingBaseRate: (settings as any).trailCuttingBaseRate ?? 2600,
+        vegetationMgmtBaseRate: (settings as any).vegetationMgmtBaseRate ?? 1800,
         mobilizationFee: settings.mobilizationFee,
         minimumJobTotal: settings.minimumJobTotal,
         densityModerateMultiplier: settings.densityModerateMultiplier,
@@ -2306,6 +2312,8 @@ function AIPricingTab() {
         apdForestryMulching: settings.apdForestryMulching,
         apdLandClearing: settings.apdLandClearing,
         apdRowClearing: settings.apdRowClearing,
+        apdTrailCutting: (settings as any).apdTrailCutting ?? "1.0",
+        apdVegetationMgmt: (settings as any).apdVegetationMgmt ?? "2.0",
         apdBrushHogging: settings.apdBrushHogging,
         // Seasonal adjustment
         seasonalPeakUpliftPct: settings.seasonalPeakUpliftPct,
@@ -2329,6 +2337,8 @@ function AIPricingTab() {
       landClearingBaseRate: Number(form.landClearingBaseRate),
       brushHoggingBaseRate: Number(form.brushHoggingBaseRate),
       rowClearingBaseRate: Number(form.rowClearingBaseRate),
+      trailCuttingBaseRate: Number(form.trailCuttingBaseRate),
+      vegetationMgmtBaseRate: Number(form.vegetationMgmtBaseRate),
       mobilizationFee: Number(form.mobilizationFee),
       minimumJobTotal: Number(form.minimumJobTotal),
       densityModerateMultiplier: String(form.densityModerateMultiplier),
@@ -2354,6 +2364,8 @@ function AIPricingTab() {
       apdForestryMulching: String(form.apdForestryMulching),
       apdLandClearing: String(form.apdLandClearing),
       apdRowClearing: String(form.apdRowClearing),
+      apdTrailCutting: String(form.apdTrailCutting),
+      apdVegetationMgmt: String(form.apdVegetationMgmt),
       apdBrushHogging: String(form.apdBrushHogging),
       // Seasonal adjustment
       seasonalPeakUpliftPct: Number(form.seasonalPeakUpliftPct),
@@ -2366,17 +2378,18 @@ function AIPricingTab() {
   // ── Live preview calculator ──────────────────────────────────────────────
   // Mirrors the core math in analyzeSubmission so the preview stays in sync
   // NOTE: must be declared BEFORE any early returns to satisfy React rules of hooks
-  const [calc, setCalc] = useState({ service: "forestry-mulching", acres: 5, density: "moderate", terrain: "flat", access: "easy", addStumps: 0, addLoads: 0 });
+  const [calc, setCalc] = useState({ service: "forestry-mulching", acres: 5, density: "moderate", terrain: "flat", access: "easy", addStumps: 0, addLoads: 0, addSeeding: false, addFenceLine: 0 });
   // ── Section tab state — MUST be declared before any early returns ──────────
   const [activeSection, setActiveSection] = useState<"rates" | "modifiers" | "addons" | "production" | "benchmarks">("rates");
 
   const previewResult = useMemo(() => {
     const baseRateMap: Record<string, number> = {
-      "forestry-mulching": Number(form.forestryMulchingBaseRate) || 2000,
+      "forestry-mulching":   Number(form.forestryMulchingBaseRate) || 2000,
       "land-management":     Number(form.landClearingBaseRate)     || 2200,
-      "brush-hogging":     Number(form.brushHoggingBaseRate)     || 175,
-      // ROW: stored as $/LF; calc.acres holds linear feet when ROW is selected
-      "row-clearing":      Number(form.rowClearingBaseRate)      || 6,
+      "brush-hogging":       Number(form.brushHoggingBaseRate)     || 175,
+      "row-clearing":        Number(form.rowClearingBaseRate)      || 2400,  // $/effective acre
+      "trail-cutting":       Number(form.trailCuttingBaseRate)     || 2600,  // $/effective acre
+      "vegetation-mgmt":     Number(form.vegetationMgmtBaseRate)   || 1800,
     };
     const densityMult: Record<string, number> = {
       light:    1.0,
@@ -2389,39 +2402,41 @@ function AIPricingTab() {
       steep:   Number(form.terrainSteepMultiplier)   || 1.40,
     };
     const accessMult: Record<string, number> = {
-      easy:     1.0,
-      moderate: Number(form.accessModerateMultiplier)  || 1.10,
+      easy:      1.0,
+      moderate:  Number(form.accessModerateMultiplier)  || 1.10,
       difficult: Number(form.accessDifficultMultiplier) || 1.25,
     };
-    const vd3 = (Number(form.volumeDiscount3to5Pct)  || 0) / 100;
-    const vd5 = (Number(form.volumeDiscount5to10Pct) || 0) / 100;
+    const vd3  = (Number(form.volumeDiscount3to5Pct)   || 0) / 100;
+    const vd5  = (Number(form.volumeDiscount5to10Pct)  || 0) / 100;
     const vd10 = (Number(form.volumeDiscount10plusPct) || 0) / 100;
     const vd = calc.acres >= 10 ? (1 - vd10) : calc.acres >= 5 ? (1 - vd5) : calc.acres >= 3 ? (1 - vd3) : 1.0;
-    const mob = Number(form.mobilizationFee) || 450;
-    const minJob = Number(form.minimumJobTotal) || 1200;
+    const mob    = Number(form.mobilizationFee)  || 450;
+    const minJob = Number(form.minimumJobTotal)  || 1200;
     const spread = Number(form.priceRangeSpread) || 0.15;
-    // For ROW clearing, calc.acres holds linear feet; multiply $/LF directly
-    // For all other services, multiply $/acre by acreage
     const base = (baseRateMap[calc.service] ?? 2000) * calc.acres;
     const dm = densityMult[calc.density] ?? 1;
     const tm = terrainMult[calc.terrain] ?? 1;
-    const am = accessMult[calc.access] ?? 1;
+    const am = accessMult[calc.access]   ?? 1;
     const raw = (base + mob) * dm * tm * am * vd;
-    const mid = Math.max(minJob, Math.round(raw));
-    const low = Math.max(minJob, Math.round(mid * (1 - spread)));
+    const mid  = Math.max(minJob, Math.round(raw));
+    const low  = Math.max(minJob, Math.round(mid * (1 - spread)));
     const high = Math.round(mid * (1 + spread));
-    const stumpTotal = calc.addStumps * (Number(form.stumpGrindingPerStump) || 200);
-    const debrisTotal = calc.addLoads * (Number(form.debrisHaulingPerLoad) || 450);
+    const stumpTotal    = calc.addStumps * (Number(form.stumpGrindingPerStump)   || 200);
+    const debrisTotal   = calc.addLoads  * (Number(form.debrisHaulingPerLoad)    || 450);
+    const seedingTotal  = calc.addSeeding ? Math.round(calc.acres * (Number(form.postClearSeedingPerAcre) || 225)) : 0;
+    const fenceTotal    = calc.addFenceLine * (Number(form.fenceLineClearingPerLf) || 4);
     const apdMap: Record<string, number> = {
       "forestry-mulching": Number(form.apdForestryMulching) || 1.5,
-      "land-management":     Number(form.apdLandClearing)     || 1.2,
-      // ROW: apdRowClearing is linear feet per day (not acres/day)
-      "row-clearing":      Number(form.apdRowClearing)      || 500,
+      "land-management":   Number(form.apdLandClearing)     || 1.2,
+      "row-clearing":      Number(form.apdRowClearing)      || 1.2,
+      "trail-cutting":     Number(form.apdTrailCutting)     || 1.0,
+      "vegetation-mgmt":   Number(form.apdVegetationMgmt)   || 2.0,
       "brush-hogging":     Number(form.apdBrushHogging)     || 8.0,
     };
     const apd = apdMap[calc.service] ?? 1.5;
     const estDays = calc.acres > 0 ? Math.max(1, Math.ceil(calc.acres / apd)) : 1;
-    return { low: low + stumpTotal + debrisTotal, mid: mid + stumpTotal + debrisTotal, high: high + stumpTotal + debrisTotal, estDays, stumpTotal, debrisTotal };
+    const addonsTotal = stumpTotal + debrisTotal + seedingTotal + fenceTotal;
+    return { low: low + addonsTotal, mid: mid + addonsTotal, high: high + addonsTotal, estDays, stumpTotal, debrisTotal, seedingTotal, fenceTotal };
   }, [form, calc]);
 
   if (isLoading) {
@@ -2923,23 +2938,27 @@ function AIPricingTab() {
             >
               <option value="forestry-mulching">Forestry Mulching</option>
               <option value="land-management">Land Management</option>
-              <option value="brush-hogging">Brush Hogging</option>
+              <option value="vegetation-mgmt">Vegetation Management</option>
               <option value="row-clearing">ROW Clearing</option>
+              <option value="trail-cutting">Trail Cutting</option>
+              <option value="brush-hogging">Brush Hogging</option>
             </select>
           </div>
 
-          {/* Acres / Linear Feet */}
+          {/* Acres (effective acres for ROW/Trail) */}
           <div className="space-y-1">
             <label className="text-[11px] font-medium text-muted-foreground">
-              {calc.service === 'row-clearing' ? 'Linear Feet' : 'Acres'}
+              {(calc.service === 'row-clearing' || calc.service === 'trail-cutting') ? 'Effective Acres' : 'Acres'}
             </label>
             <input
-              type="number" min={calc.service === 'row-clearing' ? 100 : 0.5} max={calc.service === 'row-clearing' ? 50000 : 100} step={calc.service === 'row-clearing' ? 100 : 0.5}
+              type="number" min={0.1} max={100} step={0.1}
               value={calc.acres}
               onChange={e => setCalc(c => ({ ...c, acres: parseFloat(e.target.value) || 0 }))}
               className="w-full rounded-md border border-border bg-background px-2 py-1.5 text-xs text-foreground"
             />
-            {calc.service === 'row-clearing' && <p className="text-[10px] text-muted-foreground">e.g. 1,000 LF = approx. 0.5 ac corridor</p>}
+            {(calc.service === 'row-clearing' || calc.service === 'trail-cutting') && (
+              <p className="text-[10px] text-muted-foreground">Length (ft) × Width (ft) ÷ 43,560 = effective acres</p>
+            )}
           </div>
 
           {/* Density / Terrain / Access */}
@@ -2986,6 +3005,24 @@ function AIPricingTab() {
                 className="w-full rounded-md border border-border bg-background px-2 py-1.5 text-xs text-foreground"
               />
             </div>
+            <div className="space-y-1">
+              <label className="text-[11px] font-medium text-muted-foreground">Fence Line (LF)</label>
+              <input type="number" min={0} step={50}
+                value={calc.addFenceLine}
+                onChange={e => setCalc(c => ({ ...c, addFenceLine: parseInt(e.target.value) || 0 }))}
+                className="w-full rounded-md border border-border bg-background px-2 py-1.5 text-xs text-foreground"
+              />
+            </div>
+            <div className="space-y-1 flex flex-col justify-end">
+              <label className="flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground cursor-pointer">
+                <input type="checkbox"
+                  checked={calc.addSeeding}
+                  onChange={e => setCalc(c => ({ ...c, addSeeding: e.target.checked }))}
+                  className="rounded"
+                />
+                Post-Clear Seeding
+              </label>
+            </div>
           </div>
 
           {/* Result */}
@@ -3016,6 +3053,18 @@ function AIPricingTab() {
               <div className="flex justify-between text-[11px] text-muted-foreground">
                 <span>Debris hauling</span>
                 <span>+${previewResult.debrisTotal.toLocaleString()}</span>
+              </div>
+            )}
+            {previewResult.seedingTotal > 0 && (
+              <div className="flex justify-between text-[11px] text-muted-foreground">
+                <span>Post-clear seeding</span>
+                <span>+${previewResult.seedingTotal.toLocaleString()}</span>
+              </div>
+            )}
+            {previewResult.fenceTotal > 0 && (
+              <div className="flex justify-between text-[11px] text-muted-foreground">
+                <span>Fence line clearing</span>
+                <span>+${previewResult.fenceTotal.toLocaleString()}</span>
               </div>
             )}
           </div>

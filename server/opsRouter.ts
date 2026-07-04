@@ -2979,6 +2979,8 @@ const settingsRouter = router({
       landClearingBaseRate: z.number().int().min(0).optional(),
       brushHoggingBaseRate: z.number().int().min(0).optional(),
       rowClearingBaseRate: z.number().int().min(0).optional(),
+      trailCuttingBaseRate: z.number().int().min(0).optional(),
+      vegetationMgmtBaseRate: z.number().int().min(0).optional(),
       mobilizationFee: z.number().int().min(0).optional(),
       minimumJobTotal: z.number().int().min(0).optional(),
       densityModerateMultiplier: z.string().optional(),
@@ -3004,6 +3006,8 @@ const settingsRouter = router({
       apdForestryMulching: z.string().optional(),
       apdLandClearing: z.string().optional(),
       apdRowClearing: z.string().optional(),
+      apdTrailCutting: z.string().optional(),
+      apdVegetationMgmt: z.string().optional(),
       apdBrushHogging: z.string().optional(),
       // Seasonal adjustment
       seasonalPeakUpliftPct: z.number().int().min(0).max(50).optional(),
