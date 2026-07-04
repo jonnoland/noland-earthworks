@@ -1280,34 +1280,109 @@ export default function QuotePage() {
 
                       {/* Row 2: Terrain Type */}
                       <div style={{ marginBottom: "1rem" }}>
-                        <label style={labelStyle}>Terrain Type</label>
-                        <div style={{ display: "flex", gap: "0.5rem", marginTop: "0.4rem" }}>
-                          {(["flat", "sloped", "rocky"] as const).map((t) => (
-                            <button
-                              key={t}
-                              type="button"
-                              onClick={() => setForm(f => ({ ...f, trailTerrain: f.trailTerrain === t ? "" : t }))}
-                              style={{
-                                flex: 1,
-                                padding: "0.55rem 0",
-                                fontFamily: "'Oswald', sans-serif",
-                                fontSize: "0.75rem",
-                                letterSpacing: "0.1em",
-                                textTransform: "uppercase",
-                                border: form.trailTerrain === t ? "1px solid #E07B2A" : "1px solid rgba(255,255,255,0.12)",
-                                background: form.trailTerrain === t ? "rgba(224,123,42,0.15)" : "rgba(255,255,255,0.03)",
-                                color: form.trailTerrain === t ? "#E07B2A" : "rgba(240,237,230,0.6)",
-                                cursor: "pointer",
-                                borderRadius: "2px",
-                                transition: "all 0.15s ease",
-                              }}
-                            >
-                              {t === "flat" ? "Flat" : t === "sloped" ? "Sloped" : "Rocky"}
-                              {t === "sloped" && <span style={{ fontSize: "0.6rem", display: "block", opacity: 0.7, marginTop: "1px" }}>+20%</span>}
-                              {t === "rocky" && <span style={{ fontSize: "0.6rem", display: "block", opacity: 0.7, marginTop: "1px" }}>+40%</span>}
-                            </button>
-                          ))}
+                        <div style={{ display: "flex", alignItems: "center", gap: "0.4rem", marginBottom: "0.4rem" }}>
+                          <label style={{ ...labelStyle, marginBottom: 0 }}>Terrain Type</label>
+                          <div style={{ position: "relative", display: "inline-flex", alignItems: "center" }} className="terrain-info-wrap">
+                            <Info size={13} style={{ color: "rgba(224,123,42,0.7)", cursor: "pointer" }} />
+                            <div className="terrain-tooltip" style={{
+                              position: "absolute",
+                              left: "50%",
+                              bottom: "calc(100% + 8px)",
+                              transform: "translateX(-50%)",
+                              width: "260px",
+                              background: "#1a1a1a",
+                              border: "1px solid rgba(224,123,42,0.3)",
+                              borderRadius: "4px",
+                              padding: "0.75rem",
+                              zIndex: 50,
+                              pointerEvents: "none",
+                              opacity: 0,
+                              transition: "opacity 0.15s ease",
+                            }}>
+                              <div style={{ fontFamily: "'Oswald', sans-serif", fontSize: "0.65rem", letterSpacing: "0.15em", textTransform: "uppercase", color: "#E07B2A", marginBottom: "0.5rem" }}>Terrain Guide</div>
+                              <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+                                <div>
+                                  <div style={{ fontFamily: "'Oswald', sans-serif", fontSize: "0.7rem", letterSpacing: "0.1em", textTransform: "uppercase", color: "#F0EDE6", marginBottom: "2px" }}>Flat</div>
+                                  <div style={{ fontFamily: "'Lato', sans-serif", fontSize: "0.75rem", color: "rgba(240,237,230,0.65)", lineHeight: 1.4 }}>Level ground with little to no slope. Easy machine access throughout the trail path.</div>
+                                </div>
+                                <div style={{ borderTop: "1px solid rgba(255,255,255,0.07)", paddingTop: "0.5rem" }}>
+                                  <div style={{ fontFamily: "'Oswald', sans-serif", fontSize: "0.7rem", letterSpacing: "0.1em", textTransform: "uppercase", color: "#F0EDE6", marginBottom: "2px" }}>Sloped <span style={{ color: "rgba(224,123,42,0.8)" }}>+20%</span></div>
+                                  <div style={{ fontFamily: "'Lato', sans-serif", fontSize: "0.75rem", color: "rgba(240,237,230,0.65)", lineHeight: 1.4 }}>Noticeable grade — hillsides, ridge lines, or terrain that requires the machine to work at an angle. Slows production and increases wear.</div>
+                                </div>
+                                <div style={{ borderTop: "1px solid rgba(255,255,255,0.07)", paddingTop: "0.5rem" }}>
+                                  <div style={{ fontFamily: "'Oswald', sans-serif", fontSize: "0.7rem", letterSpacing: "0.1em", textTransform: "uppercase", color: "#F0EDE6", marginBottom: "2px" }}>Rocky <span style={{ color: "rgba(224,123,42,0.8)" }}>+40%</span></div>
+                                  <div style={{ fontFamily: "'Lato', sans-serif", fontSize: "0.75rem", color: "rgba(240,237,230,0.65)", lineHeight: 1.4 }}>Significant rock outcroppings, ledge rock, or embedded boulders along the trail path. Increases equipment wear and slows cutting speed considerably.</div>
+                                </div>
+                              </div>
+                              <div style={{ position: "absolute", bottom: "-5px", left: "50%", transform: "translateX(-50%)", width: 0, height: 0, borderLeft: "5px solid transparent", borderRight: "5px solid transparent", borderTop: "5px solid rgba(224,123,42,0.3)" }} />
+                            </div>
+                          </div>
                         </div>
+                        <style>{`.terrain-info-wrap:hover .terrain-tooltip { opacity: 1 !important; }`}</style>
+                        <div style={{ display: "flex", gap: "0.5rem" }}>
+                          {(["flat", "sloped", "rocky"] as const).map((t) => {
+                            const tooltips: Record<string, string> = {
+                              flat: "Level ground — easy machine access throughout",
+                              sloped: "Noticeable grade or hillside — slows production (+20% to estimate)",
+                              rocky: "Rock outcroppings or embedded boulders — increases wear and slows cutting (+40% to estimate)",
+                            };
+                            return (
+                              <div key={t} style={{ flex: 1, position: "relative" }} className={`terrain-btn-wrap terrain-btn-${t}`}>
+                                <button
+                                  type="button"
+                                  title={tooltips[t]}
+                                  onClick={() => setForm(f => ({ ...f, trailTerrain: f.trailTerrain === t ? "" : t }))}
+                                  style={{
+                                    width: "100%",
+                                    padding: "0.55rem 0",
+                                    fontFamily: "'Oswald', sans-serif",
+                                    fontSize: "0.75rem",
+                                    letterSpacing: "0.1em",
+                                    textTransform: "uppercase",
+                                    border: form.trailTerrain === t ? "1px solid #E07B2A" : "1px solid rgba(255,255,255,0.12)",
+                                    background: form.trailTerrain === t ? "rgba(224,123,42,0.15)" : "rgba(255,255,255,0.03)",
+                                    color: form.trailTerrain === t ? "#E07B2A" : "rgba(240,237,230,0.6)",
+                                    cursor: "pointer",
+                                    borderRadius: "2px",
+                                    transition: "all 0.15s ease",
+                                  }}
+                                >
+                                  {t === "flat" ? "Flat" : t === "sloped" ? "Sloped" : "Rocky"}
+                                  {t === "sloped" && <span style={{ fontSize: "0.6rem", display: "block", opacity: 0.7, marginTop: "1px" }}>+20%</span>}
+                                  {t === "rocky" && <span style={{ fontSize: "0.6rem", display: "block", opacity: 0.7, marginTop: "1px" }}>+40%</span>}
+                                </button>
+                                <div className={`terrain-btn-tooltip-${t}`} style={{
+                                  position: "absolute",
+                                  bottom: "calc(100% + 8px)",
+                                  left: "50%",
+                                  transform: "translateX(-50%)",
+                                  width: "180px",
+                                  background: "#1a1a1a",
+                                  border: "1px solid rgba(255,255,255,0.12)",
+                                  borderRadius: "4px",
+                                  padding: "0.5rem 0.65rem",
+                                  fontFamily: "'Lato', sans-serif",
+                                  fontSize: "0.72rem",
+                                  color: "rgba(240,237,230,0.75)",
+                                  lineHeight: 1.4,
+                                  zIndex: 50,
+                                  pointerEvents: "none",
+                                  opacity: 0,
+                                  transition: "opacity 0.15s ease",
+                                  whiteSpace: "normal",
+                                }}>{tooltips[t]}<div style={{ position: "absolute", bottom: "-5px", left: "50%", transform: "translateX(-50%)", width: 0, height: 0, borderLeft: "5px solid transparent", borderRight: "5px solid transparent", borderTop: "5px solid rgba(255,255,255,0.12)" }} /></div>
+                                <style>{`.terrain-btn-wrap.terrain-btn-${t}:hover .terrain-btn-tooltip-${t} { opacity: 1 !important; }`}</style>
+                              </div>
+                            );
+                          })}
+                        </div>
+                        {form.trailTerrain && (
+                          <div style={{ marginTop: "0.5rem", fontFamily: "'Lato', sans-serif", fontSize: "0.75rem", color: "rgba(240,237,230,0.5)", lineHeight: 1.4 }}>
+                            {form.trailTerrain === "flat" && "Level ground — standard rate applies."}
+                            {form.trailTerrain === "sloped" && "Sloped terrain adds approximately 20% to the base rate due to reduced production speed."}
+                            {form.trailTerrain === "rocky" && "Rocky terrain adds approximately 40% to the base rate due to increased equipment wear and slower cutting."}
+                          </div>
+                        )}
                       </div>
 
                       {/* Row 3: Inline add-on checkboxes */}
