@@ -631,4 +631,111 @@ Return JSON only: {"summary": "<5-line summary>", "topPriority": "<single most i
         };
       } catch { return { summary: "Summary unavailable.", topPriority: "", stats: {} }; }
     }),
+
+  // ─── AI Quote Analysis from Lead Data ────────────────────────────────────────
+  // Analyzes lead info and returns a general quote estimate with reasoning.
+  // The result is displayed inline in the LeadDetailPanel — not saved to the DB.
+  quoteFromLead: ownerProcedure
+    .input(z.object({
+      leadId: z.number().int().positive(),
+      // Optional overrides the user can adjust in the panel before running
+      service:           z.string().optional(),
+      acreage:           z.number().min(0.1).max(500).optional(),
+      terrain:           z.enum(["flat", "rolling", "steep", "very_steep"]).optional(),
+      vegetationDensity: z.enum(["light", "moderate", "heavy", "very_heavy"]).optional(),
+      accessDifficulty:  z.enum(["easy", "moderate", "difficult"]).optional(),
+      mobilizationMiles: z.number().min(0).max(300).optional(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+
+      const leadRows = await db
+        .select()
+        .from(opsLeads)
+        .where(and(eq(opsLeads.id, input.leadId), eq(opsLeads.userId, ctx.user.id)))
+        .limit(1);
+      const lead = leadRows[0];
+      if (!lead) throw new TRPCError({ code: "NOT_FOUND", message: "Lead not found" });
+
+      const notes = await db
+        .select()
+        .from(leadNotes)
+        .where(eq(leadNotes.leadId, input.leadId))
+        .orderBy(desc(leadNotes.createdAt))
+        .limit(10);
+      const noteText = notes.map((n) => `- ${n.content}`).join("\n") || "No notes.";
+
+      // Build override context if the user adjusted any inputs
+      const overrides: string[] = [];
+      if (input.service)           overrides.push(`Service override: ${input.service}`);
+      if (input.acreage)           overrides.push(`Acreage override: ${input.acreage} acres`);
+      if (input.terrain)           overrides.push(`Terrain override: ${input.terrain}`);
+      if (input.vegetationDensity) overrides.push(`Vegetation density override: ${input.vegetationDensity}`);
+      if (input.accessDifficulty)  overrides.push(`Access difficulty override: ${input.accessDifficulty}`);
+      if (input.mobilizationMiles) overrides.push(`Mobilization miles override: ${input.mobilizationMiles} miles`);
+      const overrideBlock = overrides.length > 0 ? `\n\nUser-provided adjustments:\n${overrides.join("\n")}` : "";
+
+      const prompt = `You are the internal cost estimator for Noland Earthworks, LLC — a veteran-owned land clearing company in Middle Tennessee.
+
+Analyze the lead below and produce a general quote estimate. Use your knowledge of current Middle Tennessee market rates for forestry mulching, land clearing, brush hogging, trail cutting, and vegetation management.
+
+Lead data:
+Name: ${lead.name}
+Job type: ${lead.jobType ?? "not specified"}
+Address: ${lead.address ?? "not provided"}
+Notes: ${lead.notes ?? "none"}
+Lead notes:\n${noteText}
+Estimated value (if set by user): ${lead.estimatedValue ? "$" + lead.estimatedValue : "not set"}${overrideBlock}
+
+Pricing context (Middle TN, 2024-2025):
+- Forestry mulching: $650–$1,200/acre (light to heavy density)
+- Land management / vegetation management: $500–$1,000/acre
+- Right-of-way clearing: $600–$1,100/acre
+- Trail cutting: $2–$4/linear ft or $600–$1,100/effective acre
+- Brush hogging: $150–$350/acre
+- Stump grinding: $150–$400/stump depending on size
+- Mobilization surcharge: $0 within 30 mi, $150 at 31-50 mi, $300 at 51-75 mi, $500 at 76-100 mi, $750 at 100+ mi
+- Minimum job total: $1,800
+
+Modifiers that increase price: steep terrain (+15-25%), very steep (+30-40%), heavy density (+15-20%), very heavy (+25-35%), difficult access (+10-15%), large stumps, rocky ground.
+
+Instructions:
+1. Infer the most likely service type from the job type and notes.
+2. Estimate the acreage range if not stated (use context clues like lot size, property type, or typical job sizes).
+3. Apply appropriate modifiers based on any terrain, density, or access clues in the notes.
+4. Produce a low and high estimate in dollars.
+5. Explain your reasoning briefly — what you inferred and why.
+6. Flag any information that is missing and would change the estimate significantly.
+
+Return JSON only:
+{
+  "service": "<inferred service name>",
+  "estimatedAcres": <number or null>,
+  "estimateLow": <number>,
+  "estimateHigh": <number>,
+  "mobilizationNote": "<brief note on travel surcharge if applicable>",
+  "reasoning": "<2-4 sentences explaining what you inferred and why>",
+  "missingInfo": ["<item1>", "<item2>"],
+  "confidence": "high" | "medium" | "low"
+}`;
+
+      const result = await invokeLLM({ messages: [{ role: "user", content: prompt }] });
+      const raw = result?.choices?.[0]?.message?.content ?? "{}";
+      try {
+        const parsed = JSON.parse(typeof raw === "string" ? raw : "{}");
+        return parsed as {
+          service: string;
+          estimatedAcres: number | null;
+          estimateLow: number;
+          estimateHigh: number;
+          mobilizationNote: string;
+          reasoning: string;
+          missingInfo: string[];
+          confidence: "high" | "medium" | "low";
+        };
+      } catch {
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "AI returned invalid response" });
+      }
+    }),
 });

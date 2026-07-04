@@ -612,6 +612,32 @@ function LeadDetailPanel({
   const [smsBody, setSmsBody] = useState("");
   const [showTemplates, setShowTemplates] = useState(false);
 
+  // AI Quote state
+  const [showAiQuote, setShowAiQuote] = useState(false);
+  const [aiQuoteResult, setAiQuoteResult] = useState<{
+    service: string; estimatedAcres: number | null;
+    estimateLow: number; estimateHigh: number;
+    mobilizationNote: string; reasoning: string;
+    missingInfo: string[]; confidence: "high" | "medium" | "low";
+  } | null>(null);
+  // Map jobType string to estimator service slug
+  const inferServiceSlug = (jobType: string | null | undefined): string => {
+    const jt = (jobType ?? "").toLowerCase();
+    if (jt.includes("mulch"))      return "forestry-mulching";
+    if (jt.includes("trail"))      return "trail-cutting";
+    if (jt.includes("stump"))      return "stump-grinding-only";
+    if (jt.includes("brush") || jt.includes("hog")) return "property-maintenance";
+    if (jt.includes("row") || jt.includes("right")) return "right-of-way-clearing";
+    if (jt.includes("vegetation")) return "vegetation-management";
+    return "land-management";
+  };
+  const [aqService, setAqService] = useState(() => inferServiceSlug(lead.jobType));
+  const [aqAcreage, setAqAcreage] = useState("");
+  const [aqTerrain, setAqTerrain] = useState("flat");
+  const [aqDensity, setAqDensity] = useState("moderate");
+  const [aqAccess, setAqAccess] = useState("easy");
+  const [aqMiles, setAqMiles] = useState("");
+
   // Load SMS templates (channel = 'sms') from the settings router
   const { data: allTemplates = [] } = trpc.ops.settings.getMessageTemplates.useQuery(undefined, {
     enabled: showSmsModal,
@@ -687,6 +713,23 @@ function LeadDetailPanel({
     navigator.clipboard.writeText(followUpDraft).then(() => {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
+    });
+  };
+
+  const aiQuoteMutation = trpc.ops.ai.quoteFromLead.useMutation({
+    onSuccess: (data) => { setAiQuoteResult(data); },
+    onError: () => toast.error("AI quote analysis failed"),
+  });
+
+  const runAiQuote = () => {
+    aiQuoteMutation.mutate({
+      leadId: lead.id,
+      service: aqService || undefined,
+      acreage: aqAcreage ? parseFloat(aqAcreage) : undefined,
+      terrain: aqTerrain as "flat" | "rolling" | "steep" | "very_steep",
+      vegetationDensity: aqDensity as "light" | "moderate" | "heavy" | "very_heavy",
+      accessDifficulty: aqAccess as "easy" | "moderate" | "difficult",
+      mobilizationMiles: aqMiles ? parseFloat(aqMiles) : undefined,
     });
   };
 
@@ -1153,6 +1196,172 @@ function LeadDetailPanel({
               {draftProposal.isPending ? "Drafting..." : "Draft Proposal"}
             </button>
           </div>
+
+          {/* AI Quote button — full-width row below the 3-button row */}
+          <div className="mx-4 mb-3">
+            <button
+              onClick={() => { setShowAiQuote(v => !v); setAiQuoteResult(null); }}
+              className={`w-full flex items-center justify-center gap-1.5 border text-[11px] py-2 rounded-lg transition-colors ${
+                showAiQuote
+                  ? "bg-amber-500/15 border-amber-500/40 text-amber-300"
+                  : "bg-[#1a1a1a] hover:bg-[#222] border-[#2a2a2a] hover:border-amber-500/40 text-[#aaa] hover:text-amber-400"
+              }`}
+            >
+              <Radar className="w-3 h-3" />
+              {showAiQuote ? "Hide AI Quote" : "AI Quote Estimate"}
+            </button>
+          </div>
+
+          {/* AI Quote Panel */}
+          {showAiQuote && (
+            <div className="mx-4 mb-3 p-3 rounded-lg border border-amber-500/20 bg-amber-500/5 space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-semibold text-amber-400 uppercase tracking-wider">AI Quote Analysis</span>
+                <button onClick={() => { setShowAiQuote(false); setAiQuoteResult(null); }} className="text-[10px] text-[#555] hover:text-[#888]"><X className="w-3 h-3" /></button>
+              </div>
+
+              {/* Adjustable inputs */}
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <p className="text-[10px] text-[#555] uppercase tracking-wider mb-1">Service</p>
+                  <select
+                    value={aqService}
+                    onChange={e => setAqService(e.target.value)}
+                    className="w-full bg-[#111] border border-[#2a2a2a] rounded px-2 py-1.5 text-[11px] text-white focus:outline-none focus:border-amber-500/50"
+                  >
+                    <option value="forestry-mulching">Forestry Mulching</option>
+                    <option value="land-management">Land Management</option>
+                    <option value="vegetation-management">Vegetation Management</option>
+                    <option value="right-of-way-clearing">ROW Clearing</option>
+                    <option value="trail-cutting">Trail Cutting</option>
+                    <option value="property-maintenance">Brush Hogging</option>
+                    <option value="stump-grinding-only">Stump Grinding</option>
+                  </select>
+                </div>
+                <div>
+                  <p className="text-[10px] text-[#555] uppercase tracking-wider mb-1">Acreage (optional)</p>
+                  <input
+                    type="number" min="0.1" max="500" step="0.5"
+                    value={aqAcreage}
+                    onChange={e => setAqAcreage(e.target.value)}
+                    placeholder="AI will infer"
+                    className="w-full bg-[#111] border border-[#2a2a2a] rounded px-2 py-1.5 text-[11px] text-white placeholder:text-[#444] focus:outline-none focus:border-amber-500/50"
+                  />
+                </div>
+                <div>
+                  <p className="text-[10px] text-[#555] uppercase tracking-wider mb-1">Terrain</p>
+                  <select
+                    value={aqTerrain}
+                    onChange={e => setAqTerrain(e.target.value)}
+                    className="w-full bg-[#111] border border-[#2a2a2a] rounded px-2 py-1.5 text-[11px] text-white focus:outline-none focus:border-amber-500/50"
+                  >
+                    <option value="flat">Flat / Rolling</option>
+                    <option value="rolling">Moderate Slope</option>
+                    <option value="steep">Steep / Wet</option>
+                    <option value="very_steep">Very Steep / Rocky</option>
+                  </select>
+                </div>
+                <div>
+                  <p className="text-[10px] text-[#555] uppercase tracking-wider mb-1">Density</p>
+                  <select
+                    value={aqDensity}
+                    onChange={e => setAqDensity(e.target.value)}
+                    className="w-full bg-[#111] border border-[#2a2a2a] rounded px-2 py-1.5 text-[11px] text-white focus:outline-none focus:border-amber-500/50"
+                  >
+                    <option value="light">Light</option>
+                    <option value="moderate">Moderate</option>
+                    <option value="heavy">Heavy</option>
+                    <option value="very_heavy">Very Heavy</option>
+                  </select>
+                </div>
+                <div>
+                  <p className="text-[10px] text-[#555] uppercase tracking-wider mb-1">Access</p>
+                  <select
+                    value={aqAccess}
+                    onChange={e => setAqAccess(e.target.value)}
+                    className="w-full bg-[#111] border border-[#2a2a2a] rounded px-2 py-1.5 text-[11px] text-white focus:outline-none focus:border-amber-500/50"
+                  >
+                    <option value="easy">Easy</option>
+                    <option value="moderate">Moderate</option>
+                    <option value="difficult">Difficult</option>
+                  </select>
+                </div>
+                <div>
+                  <p className="text-[10px] text-[#555] uppercase tracking-wider mb-1">Drive (miles)</p>
+                  <input
+                    type="number" min="0" max="300" step="1"
+                    value={aqMiles}
+                    onChange={e => setAqMiles(e.target.value)}
+                    placeholder={travelDist ? travelDist.replace(/ mi.*/, "") : "0"}
+                    className="w-full bg-[#111] border border-[#2a2a2a] rounded px-2 py-1.5 text-[11px] text-white placeholder:text-[#444] focus:outline-none focus:border-amber-500/50"
+                  />
+                </div>
+              </div>
+
+              <button
+                onClick={runAiQuote}
+                disabled={aiQuoteMutation.isPending}
+                className="w-full flex items-center justify-center gap-1.5 bg-amber-600 hover:bg-amber-700 disabled:opacity-60 text-white text-[11px] font-semibold py-2 rounded-md transition-colors"
+              >
+                {aiQuoteMutation.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <Radar className="w-3 h-3" />}
+                {aiQuoteMutation.isPending ? "Analyzing..." : "Run AI Quote"}
+              </button>
+
+              {/* Result */}
+              {aiQuoteResult && (
+                <div className="space-y-2 pt-1 border-t border-amber-500/15">
+                  {/* Estimate range */}
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] text-[#888]">{aiQuoteResult.service}</span>
+                    <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full border ${
+                      aiQuoteResult.confidence === "high"
+                        ? "bg-green-500/15 text-green-400 border-green-500/25"
+                        : aiQuoteResult.confidence === "medium"
+                        ? "bg-amber-500/15 text-amber-400 border-amber-500/25"
+                        : "bg-red-500/15 text-red-400 border-red-500/25"
+                    }`}>{aiQuoteResult.confidence} confidence</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xl font-bold text-white">
+                      ${aiQuoteResult.estimateLow.toLocaleString()} – ${aiQuoteResult.estimateHigh.toLocaleString()}
+                    </span>
+                    {aiQuoteResult.estimatedAcres && (
+                      <span className="text-[11px] text-[#666]">{aiQuoteResult.estimatedAcres} acres est.</span>
+                    )}
+                  </div>
+                  {aiQuoteResult.mobilizationNote && (
+                    <p className="text-[11px] text-amber-300/70">{aiQuoteResult.mobilizationNote}</p>
+                  )}
+                  {/* Reasoning */}
+                  <div>
+                    <p className="text-[10px] text-[#555] uppercase tracking-wider mb-1">Reasoning</p>
+                    <p className="text-[11px] text-[#aaa] leading-relaxed">{aiQuoteResult.reasoning}</p>
+                  </div>
+                  {/* Missing info flags */}
+                  {Array.isArray(aiQuoteResult.missingInfo) && aiQuoteResult.missingInfo.length > 0 && (
+                    <div>
+                      <p className="text-[10px] text-[#555] uppercase tracking-wider mb-1">Missing Info</p>
+                      <div className="flex flex-wrap gap-1">
+                        {aiQuoteResult.missingInfo.map((item, i) => (
+                          <span key={i} className="text-[10px] px-1.5 py-0.5 rounded bg-red-500/10 text-red-400 border border-red-500/20">{item}</span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {/* Copy button */}
+                  <button
+                    onClick={() => {
+                      const text = `AI QUOTE ESTIMATE — ${aiQuoteResult.service}\nRange: $${aiQuoteResult.estimateLow.toLocaleString()} – $${aiQuoteResult.estimateHigh.toLocaleString()}${aiQuoteResult.estimatedAcres ? ` (${aiQuoteResult.estimatedAcres} acres est.)` : ""}\n\nReasoning: ${aiQuoteResult.reasoning}${aiQuoteResult.mobilizationNote ? `\n\nTravel: ${aiQuoteResult.mobilizationNote}` : ""}${aiQuoteResult.missingInfo?.length ? `\n\nMissing info needed:\n- ${aiQuoteResult.missingInfo.join("\n- ")}` : ""}`;
+                      navigator.clipboard.writeText(text).then(() => toast.success("Quote estimate copied"));
+                    }}
+                    className="w-full text-[11px] bg-[#1a1a1a] hover:bg-[#222] border border-[#2a2a2a] text-[#aaa] py-1.5 rounded-md transition-colors flex items-center justify-center gap-1.5"
+                  >
+                    <Copy className="w-3 h-3" /> Copy Estimate
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Stage Suggestion */}
           {stageSuggestion && (
