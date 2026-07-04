@@ -13,6 +13,7 @@ const SERVICE_LABELS: Record<string, string> = {
   "right-of-way-clearing": "Right-of-Way Clearing",
   "property-maintenance": "Property Maintenance",
   "trail-cutting": "Trail Cutting",
+  "stump-grinding-only": "Stump Grinding Only",
 };
 
 function getResend() {
@@ -40,6 +41,13 @@ export const widgetRouter = router({
         estimateHigh: z.number(),
         message: z.string().max(500).optional(),
         addOns: z.array(z.string()).optional().default([]),
+        // Trail Cutting extras
+        linearFeet: z.number().positive().optional(),
+        trailWidth: z.string().optional(),
+        // ROW extras
+        rowWidth: z.number().positive().optional(),
+        // Stump grinding
+        stumpCount: z.number().int().positive().optional(),
       })
     )
     .mutation(async ({ input }) => {
@@ -47,8 +55,11 @@ export const widgetRouter = router({
       const notes = [
         `Rough estimate submitted from the Pricing page calculator.`,
         `Service: ${svcLabel}`,
-        `Acreage: ${input.acres} acres`,
-        `Vegetation density: ${input.density}`,
+        input.service === "trail-cutting" && input.linearFeet ? `Linear feet: ${input.linearFeet} LF` : `Acreage: ${input.acres} acres`,
+        input.trailWidth ? `Trail width: ${input.trailWidth}` : "",
+        input.service === "right-of-way-clearing" && input.rowWidth ? `ROW width: ${input.rowWidth} ft` : "",
+        input.service === "stump-grinding-only" && input.stumpCount ? `Stump count: ${input.stumpCount} stumps` : "",
+        input.service !== "stump-grinding-only" ? `Vegetation density: ${input.density}` : "",
         `Terrain: ${input.terrain}`,
         `Site access: ${input.access}`,
         `Estimate range: $${input.estimateLow.toLocaleString()} – $${input.estimateHigh.toLocaleString()}`,
@@ -93,7 +104,7 @@ export const widgetRouter = router({
         await resend.emails.send({
           from: "Noland Earthworks <noreply@nolandearthworks.com>",
           to: ["quotes@nolandearthworks.com"],
-          subject: `New Estimate Lead: ${input.name} \u2014 ${svcLabel} (${input.acres} acres)`,
+          subject: `New Estimate Lead: ${input.name} \u2014 ${svcLabel} (${input.service === "trail-cutting" && input.linearFeet ? input.linearFeet + " LF" : input.acres + " acres"})`,
           html: `
             <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;background:#fff;">
               <div style="background:#1a1a1a;padding:24px 32px;">
@@ -107,7 +118,10 @@ export const widgetRouter = router({
                   <tr><td style="padding:8px 0;color:#888;">Phone</td><td style="padding:8px 0;color:#1a1a1a;font-weight:600;"><a href="tel:${input.phone}" style="color:#d97706;">${input.phone}</a></td></tr>
                   ${input.email ? `<tr><td style="padding:8px 0;color:#888;">Email</td><td style="padding:8px 0;color:#1a1a1a;">${input.email}</td></tr>` : ""}
                   <tr><td style="padding:8px 0;color:#888;">Service</td><td style="padding:8px 0;color:#1a1a1a;">${svcLabel}</td></tr>
-                  <tr><td style="padding:8px 0;color:#888;">Acreage</td><td style="padding:8px 0;color:#1a1a1a;">${input.acres} acres</td></tr>
+                  ${input.service === "trail-cutting" && input.linearFeet ? `<tr><td style="padding:8px 0;color:#888;">Linear Feet</td><td style="padding:8px 0;color:#1a1a1a;">${input.linearFeet} LF</td></tr>` : `<tr><td style="padding:8px 0;color:#888;">Acreage</td><td style="padding:8px 0;color:#1a1a1a;">${input.acres} acres</td></tr>`}
+                  ${input.trailWidth ? `<tr><td style="padding:8px 0;color:#888;">Trail Width</td><td style="padding:8px 0;color:#1a1a1a;">${input.trailWidth}</td></tr>` : ""}
+                  ${input.rowWidth ? `<tr><td style="padding:8px 0;color:#888;">ROW Width</td><td style="padding:8px 0;color:#1a1a1a;">${input.rowWidth} ft</td></tr>` : ""}
+                  ${input.stumpCount ? `<tr><td style="padding:8px 0;color:#888;">Stump Count</td><td style="padding:8px 0;color:#1a1a1a;">${input.stumpCount} stumps</td></tr>` : ""}
                   <tr><td style="padding:8px 0;color:#888;">Density</td><td style="padding:8px 0;color:#1a1a1a;">${input.density}</td></tr>
                   <tr><td style="padding:8px 0;color:#888;">Terrain</td><td style="padding:8px 0;color:#1a1a1a;">${input.terrain}</td></tr>
                   <tr><td style="padding:8px 0;color:#888;">Site Access</td><td style="padding:8px 0;color:#1a1a1a;">${input.access}</td></tr>
@@ -255,6 +269,10 @@ export const widgetRouter = router({
       fenceLineClearingPerLf:     row.fenceLineClearingPerLf,
       mulchRedistributionPerAcre: row.mulchRedistributionPerAcre,
       selectiveClearingFlatRate:  row.selectiveClearingFlatRate,
+      stumpGrindingPerStump:      row.stumpGrindingPerStump,
+      // Trail cutting & vegetation management
+      trailCuttingBaseRate:       row.trailCuttingBaseRate,
+      vegetationMgmtBaseRate:     row.vegetationMgmtBaseRate,
     };
   }),
 });

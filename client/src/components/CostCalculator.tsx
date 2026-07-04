@@ -16,6 +16,8 @@ type PublicPricing = {
   landClearingBaseRate: number;
   brushHoggingBaseRate: number;
   rowClearingBaseRate: number;
+  trailCuttingBaseRate: number;
+  vegetationMgmtBaseRate: number;
   mobilizationFee: number;
   minimumJobTotal: number;
   densityModerateMultiplier: string;
@@ -33,6 +35,7 @@ type PublicPricing = {
   fenceLineClearingPerLf: number;
   mulchRedistributionPerAcre: number;
   selectiveClearingFlatRate: number;
+  stumpGrindingPerStump: number;
 } | null;
 
 /** Build the BASE_RATES table from live pricing settings */
@@ -40,29 +43,34 @@ function buildBaseRates(p: PublicPricing): Record<string, Record<string, [number
   const spread  = parseFloat(p?.priceRangeSpread           ?? "0.15") || 0.15;
   const dmMult  = parseFloat(p?.densityModerateMultiplier  ?? "1.25") || 1.25;
   const dhMult  = parseFloat(p?.densityHeavyMultiplier     ?? "1.60") || 1.60;
-  const fm  = p?.forestryMulchingBaseRate ?? 2000;
-  const lc  = p?.landClearingBaseRate     ?? 2200;
-  const bh  = p?.brushHoggingBaseRate     ?? 175;
-  const row = p?.rowClearingBaseRate      ?? 6;
+  const fm   = p?.forestryMulchingBaseRate ?? 2000;
+  const lc   = p?.landClearingBaseRate     ?? 2200;
+  const bh   = p?.brushHoggingBaseRate     ?? 175;
+  const row  = p?.rowClearingBaseRate      ?? 2400;
+  const trail = p?.trailCuttingBaseRate    ?? 2600;
+  const veg  = p?.vegetationMgmtBaseRate   ?? 1800;
   function range(base: number, mult: number): [number, number] {
     const mid = base * mult;
     return [Math.round(mid * (1 - spread)), Math.round(mid * (1 + spread))];
   }
   return {
-    "forestry-mulching":    { light: range(fm, 0.8),  moderate: range(fm, 1.0),    heavy: range(fm, dhMult)  },
-    "land-management":        { light: range(lc, 0.8),  moderate: range(lc, dmMult), heavy: range(lc, dhMult)  },
-    "vegetation-management":{ light: range(bh, 0.7),  moderate: range(bh, 1.0),    heavy: range(bh, 1.5)     },
-    "property-maintenance": { light: range(bh, 0.7),  moderate: range(bh, 1.0),    heavy: range(bh, 1.5)     },
-    "right-of-way-clearing":{ light: range(row * 200, 0.8), moderate: range(row * 200, 1.0), heavy: range(row * 200, dhMult) },
+    "forestry-mulching":    { light: range(fm, 0.8),   moderate: range(fm, 1.0),    heavy: range(fm, dhMult)  },
+    "land-management":      { light: range(lc, 0.8),   moderate: range(lc, dmMult), heavy: range(lc, dhMult)  },
+    "vegetation-management":{ light: range(veg, 0.8),  moderate: range(veg, 1.0),   heavy: range(veg, dhMult) },
+    "property-maintenance": { light: range(bh, 0.7),   moderate: range(bh, 1.0),    heavy: range(bh, 1.5)     },
+    "right-of-way-clearing":{ light: range(row, 0.8),  moderate: range(row, 1.0),   heavy: range(row, dhMult) },
+    "trail-cutting":        { light: range(trail, 0.8),moderate: range(trail, 1.0), heavy: range(trail, dhMult) },
   };
 }
 
 const BASE_ACRES_PER_DAY: Record<string, number> = {
   "forestry-mulching":     1.5,
-  "land-management":         1.0,
+  "land-management":       1.0,
   "vegetation-management": 2.0,
   "property-maintenance":  2.0,
-  "right-of-way-clearing": 1.25,
+  "right-of-way-clearing": 1.2,
+  "trail-cutting":         1.0,
+  "stump-grinding-only":   0,   // stump grinding is per-stump, not per-acre
 };
 
 const DENSITY_PROD_MULT: Record<string, number> = {
@@ -85,6 +93,13 @@ interface CalcState {
   density: string;
   terrain: string;
   access: string;
+  // Trail Cutting
+  linearFeet: number;
+  trailWidth: string;
+  // ROW Clearing
+  rowWidth: number;
+  // Stump Grinding
+  stumpCount: number;
 }
 
 /* ─── Helpers ───────────────────────────────────────────────────────── */
@@ -93,7 +108,22 @@ function fmt(n: number): string {
   return n.toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
 }
 
-function calcEstimate(s: CalcState, pricing: PublicPricing): { low: number; high: number; perAcreLow: number; perAcreHigh: number } | null {
+function calcEstimate(s: CalcState, pricing: PublicPricing): { low: number; high: number; perAcreLow: number; perAcreHigh: number; unit: string } | null {
+  const MOBILIZATION = pricing?.mobilizationFee ?? 450;
+  const MIN_JOB      = pricing?.minimumJobTotal  ?? 1200;
+
+  // ── Stump Grinding Only ──────────────────────────────────────────────
+  if (s.service === "stump-grinding-only") {
+    if (s.stumpCount < 1) return null;
+    const rate = pricing?.stumpGrindingPerStump ?? 200;
+    const spread = parseFloat(pricing?.priceRangeSpread ?? "0.15") || 0.15;
+    const rawLow  = Math.round(rate * (1 - spread) * s.stumpCount) + MOBILIZATION;
+    const rawHigh = Math.round(rate * (1 + spread) * s.stumpCount) + MOBILIZATION;
+    const low  = Math.max(MIN_JOB, Math.round(rawLow  / 50) * 50);
+    const high = Math.max(MIN_JOB, Math.round(rawHigh / 50) * 50);
+    return { low, high, perAcreLow: Math.round(rate * (1 - spread)), perAcreHigh: Math.round(rate * (1 + spread)), unit: "per stump" };
+  }
+
   const BASE_RATES = buildBaseRates(pricing);
   const TERRAIN_MULT: Record<string, number> = {
     flat: 1.0,
@@ -105,23 +135,35 @@ function calcEstimate(s: CalcState, pricing: PublicPricing): { low: number; high
     moderate:  parseFloat(pricing?.accessModerateMultiplier  ?? "1.10") || 1.10,
     difficult: parseFloat(pricing?.accessDifficultMultiplier ?? "1.25") || 1.25,
   };
+
+  // ── Trail Cutting — use LF if provided, else effective acres ─────────
+  let effectiveAcres = s.acres;
+  if (s.service === "trail-cutting" && s.linearFeet > 0 && s.trailWidth) {
+    const widthFt = parseFloat(s.trailWidth) || 10;
+    effectiveAcres = Math.max(0.1, Math.round((s.linearFeet * widthFt / 43560) * 100) / 100);
+  }
+
+  // ── ROW Clearing — use LF × width if provided ────────────────────────
+  if (s.service === "right-of-way-clearing" && s.linearFeet > 0 && s.rowWidth > 0) {
+    effectiveAcres = Math.max(0.1, Math.round((s.linearFeet * s.rowWidth / 43560) * 100) / 100);
+  }
+
   const d10 = pricing ? (1 - pricing.volumeDiscount10plusPct / 100) : 0.88;
   const d5  = pricing ? (1 - pricing.volumeDiscount5to10Pct  / 100) : 0.93;
   const d3  = pricing ? (1 - pricing.volumeDiscount3to5Pct   / 100) : 0.97;
-  const vd = s.acres >= 10 ? d10 : s.acres >= 5 ? d5 : s.acres >= 3 ? d3 : 1.0;
-  const MOBILIZATION = pricing?.mobilizationFee ?? 350;
-  const MIN_JOB      = pricing?.minimumJobTotal  ?? 1800;
+  const vd = effectiveAcres >= 10 ? d10 : effectiveAcres >= 5 ? d5 : effectiveAcres >= 3 ? d3 : 1.0;
+
   const base = BASE_RATES[s.service]?.[s.density];
   if (!base) return null;
   const tm = TERRAIN_MULT[s.terrain] ?? 1;
   const am = ACCESS_MULT[s.access] ?? 1;
   const perAcreLow  = Math.round(base[0] * tm * am * vd);
   const perAcreHigh = Math.round(base[1] * tm * am * vd);
-  const raw_low  = perAcreLow  * s.acres + MOBILIZATION;
-  const raw_high = perAcreHigh * s.acres + MOBILIZATION;
+  const raw_low  = perAcreLow  * effectiveAcres + MOBILIZATION;
+  const raw_high = perAcreHigh * effectiveAcres + MOBILIZATION;
   const low  = Math.max(MIN_JOB, Math.round(raw_low  / 50) * 50);
   const high = Math.max(MIN_JOB, Math.round(raw_high / 50) * 50);
-  return { low, high, perAcreLow, perAcreHigh };
+  return { low, high, perAcreLow, perAcreHigh, unit: "per acre" };
 }
 
 function calcCompletionTime(s: CalcState): { low: string; high: string; days: number } | null {
@@ -377,11 +419,13 @@ function MapPolygonModal({ onClose, onAcreageConfirm, calcState }: {
   };
 
   const SERVICE_LABELS_MAP: Record<string, string> = {
-    "forestry-mulching": "Forestry Mulching",
-    "land-management": "Land Management",
+    "forestry-mulching":     "Forestry Mulching",
+    "land-management":       "Land Management",
     "vegetation-management": "Vegetation Management",
     "right-of-way-clearing": "Right-of-Way Clearing",
-    "property-maintenance": "Property Maintenance",
+    "trail-cutting":         "Trail Cutting",
+    "property-maintenance":  "Brush Hogging / Property Maintenance",
+    "stump-grinding-only":   "Stump Grinding Only",
   };
 
   const handleShare = () => {
@@ -670,6 +714,11 @@ function SubmitLeadModal({ state, result, addOns = [], onClose, onSuccess }: {
       estimateHigh: result.high,
       message: (message.trim() || "") + photoNote || undefined,
       addOns: addOns.length > 0 ? addOns : undefined,
+      // Service-specific extras
+      linearFeet: state.linearFeet > 0 ? state.linearFeet : undefined,
+      trailWidth: state.trailWidth || undefined,
+      rowWidth: state.rowWidth > 0 ? state.rowWidth : undefined,
+      stumpCount: state.service === "stump-grinding-only" && state.stumpCount > 0 ? state.stumpCount : undefined,
     });
   };
 
@@ -687,11 +736,13 @@ function SubmitLeadModal({ state, result, addOns = [], onClose, onSuccess }: {
   };
 
   const SERVICE_LABELS: Record<string, string> = {
-    "forestry-mulching": "Forestry Mulching",
-    "land-management": "Land Management",
+    "forestry-mulching":     "Forestry Mulching",
+    "land-management":       "Land Management",
     "vegetation-management": "Vegetation Management",
     "right-of-way-clearing": "Right-of-Way Clearing",
-    "property-maintenance": "Property Maintenance",
+    "trail-cutting":         "Trail Cutting",
+    "property-maintenance":  "Brush Hogging / Property Maintenance",
+    "stump-grinding-only":   "Stump Grinding Only",
   };
 
   return (
@@ -859,11 +910,13 @@ function SubmitLeadModal({ state, result, addOns = [], onClose, onSuccess }: {
 /* ─── Confirmation Overlay ─────────────────────────────────────────── */
 
 const SERVICE_LABELS_CONFIRM: Record<string, string> = {
-  "forestry-mulching": "Forestry Mulching",
-  "land-management": "Land Management",
+  "forestry-mulching":     "Forestry Mulching",
+  "land-management":       "Land Management",
   "vegetation-management": "Vegetation Management",
   "right-of-way-clearing": "Right-of-Way Clearing",
-  "property-maintenance": "Property Maintenance",
+  "trail-cutting":         "Trail Cutting",
+  "property-maintenance":  "Brush Hogging / Property Maintenance",
+  "stump-grinding-only":   "Stump Grinding Only",
 };
 
 function ConfirmationOverlay({ data, onClose }: {
@@ -1140,6 +1193,10 @@ export default function CostCalculator() {
     density: "moderate",
     terrain: "flat",
     access: "easy",
+    linearFeet: 0,
+    trailWidth: "10",
+    rowWidth: 0,
+    stumpCount: 1,
   });
   const [showMap, setShowMap] = useState(false);
   const [showLeadForm, setShowLeadForm] = useState(false);
@@ -1198,13 +1255,6 @@ export default function CostCalculator() {
     },
   ];
 
-  // Compute add-on costs for selected add-ons
-  const addOnBreakdown = ADD_ON_OPTIONS
-    .filter((a) => selectedAddOns.includes(a.label))
-    .map((a) => ({ ...a, cost: a.calcCost(state.acres, livePricing) }));
-
-    const addOnTotalLow  = addOnBreakdown.reduce((sum, a) => sum + a.cost.low,  0);
-  const addOnTotalHigh = addOnBreakdown.reduce((sum, a) => sum + a.cost.high, 0);
   const [confirmData, setConfirmData] = useState<{
     name: string; phone: string; email: string; service: string;
     acres: number; density: string; terrain: string;
@@ -1214,12 +1264,42 @@ export default function CostCalculator() {
     setState((prev) => ({ ...prev, [key]: val }));
 
   const serviceOptions = [
-    { value: "forestry-mulching",      label: "Forestry Mulching" },
-    { value: "land-management",          label: "Land Management" },
-    { value: "vegetation-management",  label: "Vegetation Management" },
-    { value: "right-of-way-clearing",  label: "Right-of-Way Clearing" },
-    { value: "property-maintenance",   label: "Property Maintenance" },
+    { value: "forestry-mulching",     label: "Forestry Mulching" },
+    { value: "land-management",       label: "Land Management" },
+    { value: "vegetation-management", label: "Vegetation Management" },
+    { value: "right-of-way-clearing", label: "Right-of-Way Clearing" },
+    { value: "trail-cutting",         label: "Trail Cutting" },
+    { value: "property-maintenance",  label: "Brush Hogging / Property Maintenance" },
+    { value: "stump-grinding-only",   label: "Stump Grinding Only" },
   ];
+
+  const isTrailService  = state.service === "trail-cutting";
+  const isRowService    = state.service === "right-of-way-clearing";
+  const isStumpService  = state.service === "stump-grinding-only";
+
+  // Compute effective acres for add-on pricing (trail/ROW use LF-derived acres)
+  const effectiveAcresForAddOns = useMemo(() => {
+    if (isTrailService && state.linearFeet > 0 && state.trailWidth) {
+      return Math.max(0.1, Math.round(state.linearFeet * parseFloat(state.trailWidth) / 43560 * 100) / 100);
+    }
+    if (isRowService && state.linearFeet > 0 && state.rowWidth > 0) {
+      return Math.max(0.1, Math.round(state.linearFeet * state.rowWidth / 43560 * 100) / 100);
+    }
+    return state.acres;
+  }, [isTrailService, isRowService, state.linearFeet, state.trailWidth, state.rowWidth, state.acres]);
+
+  // Filter add-ons: stump grinding service only shows selective clearing; others show all
+  const visibleAddOns = isStumpService
+    ? ADD_ON_OPTIONS.filter((a) => a.key === "selective-clearing")
+    : ADD_ON_OPTIONS;
+
+  // Compute add-on costs for selected add-ons
+  const addOnBreakdown = visibleAddOns
+    .filter((a) => selectedAddOns.includes(a.label))
+    .map((a) => ({ ...a, cost: a.calcCost(effectiveAcresForAddOns, livePricing) }));
+
+  const addOnTotalLow  = addOnBreakdown.reduce((sum, a) => sum + a.cost.low,  0);
+  const addOnTotalHigh = addOnBreakdown.reduce((sum, a) => sum + a.cost.high, 0);
 
   const densityOptions = [
     { value: "light",    label: "Light — thin brush, saplings, open canopy" },
@@ -1277,28 +1357,136 @@ export default function CostCalculator() {
             <SelectRow
               label="Service Type"
               value={state.service}
-              onChange={set("service")}
+              onChange={(v) => setState(prev => ({ ...prev, service: v, linearFeet: 0, rowWidth: 0, stumpCount: 1 }))}
               options={serviceOptions}
             />
-            <AcreSlider
-              value={state.acres}
-              onChange={(v) => set("acres")(v)}
-              isRow={state.service === "right-of-way-clearing"}
-              onOpenMap={() => setShowMap(true)}
-            />
-            <SelectRow
-              label={state.service === "right-of-way-clearing" ? "Corridor Condition" : "Vegetation Density"}
-              hint={state.service === "right-of-way-clearing"
-                ? "Light = recently maintained or new corridor; Heavy = years of neglect, mature trees"
-                : "The biggest cost driver — how thick and tall is the growth?"}
-              value={state.density}
-              onChange={set("density")}
-              options={state.service === "right-of-way-clearing" ? [
-                { value: "light",    label: "Light — recently cleared or maintained corridor" },
-                { value: "moderate", label: "Moderate — established brush, trees up to 8\u2033 diameter" },
-                { value: "heavy",    label: "Heavy — overgrown, mature trees encroaching, years of neglect" },
-              ] : densityOptions}
-            />
+
+            {/* ── Stump Grinding: stump count input ── */}
+            {isStumpService && (
+              <div style={{ marginBottom: "1.25rem" }}>
+                <label style={{ display: "block", fontFamily: "'Oswald', sans-serif", fontWeight: 500, fontSize: "0.8rem", letterSpacing: "0.1em", textTransform: "uppercase", color: "rgba(240,237,230,0.7)", marginBottom: "0.4rem" }}>
+                  Number of Stumps
+                </label>
+                <input
+                  type="number" min={1} step={1}
+                  value={state.stumpCount || ""}
+                  onChange={(e) => set("stumpCount")(Math.max(1, parseInt(e.target.value) || 1))}
+                  placeholder="e.g. 5"
+                  style={{ width: "100%", padding: "0.65rem 0.9rem", backgroundColor: "#111", border: "1px solid rgba(255,255,255,0.12)", borderRadius: "4px", color: "#F0EDE6", fontFamily: "'Lato', sans-serif", fontSize: "0.9rem", outline: "none", boxSizing: "border-box" }}
+                  onFocus={(e) => { e.currentTarget.style.borderColor = "rgba(224,123,42,0.5)"; }}
+                  onBlur={(e) => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.12)"; }}
+                />
+                <p style={{ fontFamily: "'Lato', sans-serif", fontSize: "0.7rem", color: "rgba(240,237,230,0.35)", margin: "0.3rem 0 0" }}>
+                  Estimate based on average stump size. Large stumps (&gt;24") may be quoted separately.
+                </p>
+              </div>
+            )}
+
+            {/* ── Trail Cutting: LF + width ── */}
+            {isTrailService && (
+              <>
+                <div style={{ marginBottom: "1.25rem" }}>
+                  <label style={{ display: "block", fontFamily: "'Oswald', sans-serif", fontWeight: 500, fontSize: "0.8rem", letterSpacing: "0.1em", textTransform: "uppercase", color: "rgba(240,237,230,0.7)", marginBottom: "0.4rem" }}>
+                    Trail Length (linear feet) <span style={{ color: "rgba(240,237,230,0.35)", fontWeight: 400, textTransform: "none", letterSpacing: 0, fontSize: "0.75rem" }}>(optional)</span>
+                  </label>
+                  <input
+                    type="number" min={0} step={100}
+                    value={state.linearFeet || ""}
+                    onChange={(e) => set("linearFeet")(Math.max(0, parseFloat(e.target.value) || 0))}
+                    placeholder="e.g. 2640 (half mile)"
+                    style={{ width: "100%", padding: "0.65rem 0.9rem", backgroundColor: "#111", border: "1px solid rgba(255,255,255,0.12)", borderRadius: "4px", color: "#F0EDE6", fontFamily: "'Lato', sans-serif", fontSize: "0.9rem", outline: "none", boxSizing: "border-box" }}
+                    onFocus={(e) => { e.currentTarget.style.borderColor = "rgba(224,123,42,0.5)"; }}
+                    onBlur={(e) => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.12)"; }}
+                  />
+                  {state.linearFeet > 0 && state.trailWidth && (
+                    <p style={{ fontFamily: "'Lato', sans-serif", fontSize: "0.7rem", color: "#E07B2A", margin: "0.3rem 0 0" }}>
+                      {state.linearFeet} LF × {state.trailWidth} ft = {Math.round(state.linearFeet * parseFloat(state.trailWidth) / 43560 * 100) / 100} effective acres
+                    </p>
+                  )}
+                </div>
+                <SelectRow
+                  label="Trail Width"
+                  hint="Wider trails take longer per linear foot"
+                  value={state.trailWidth}
+                  onChange={set("trailWidth")}
+                  options={[
+                    { value: "6",  label: "6 ft — narrow foot trail" },
+                    { value: "8",  label: "8 ft — standard foot trail" },
+                    { value: "10", label: "10 ft — ATV / utility trail" },
+                    { value: "12", label: "12 ft — equipment access trail" },
+                    { value: "16", label: "16 ft — wide equipment corridor" },
+                  ]}
+                />
+              </>
+            )}
+
+            {/* ── ROW Clearing: LF + corridor width ── */}
+            {isRowService && (
+              <>
+                <div style={{ marginBottom: "1.25rem" }}>
+                  <label style={{ display: "block", fontFamily: "'Oswald', sans-serif", fontWeight: 500, fontSize: "0.8rem", letterSpacing: "0.1em", textTransform: "uppercase", color: "rgba(240,237,230,0.7)", marginBottom: "0.4rem" }}>
+                    Corridor Length (linear feet) <span style={{ color: "rgba(240,237,230,0.35)", fontWeight: 400, textTransform: "none", letterSpacing: 0, fontSize: "0.75rem" }}>(optional)</span>
+                  </label>
+                  <input
+                    type="number" min={0} step={100}
+                    value={state.linearFeet || ""}
+                    onChange={(e) => set("linearFeet")(Math.max(0, parseFloat(e.target.value) || 0))}
+                    placeholder="e.g. 1320 (quarter mile)"
+                    style={{ width: "100%", padding: "0.65rem 0.9rem", backgroundColor: "#111", border: "1px solid rgba(255,255,255,0.12)", borderRadius: "4px", color: "#F0EDE6", fontFamily: "'Lato', sans-serif", fontSize: "0.9rem", outline: "none", boxSizing: "border-box" }}
+                    onFocus={(e) => { e.currentTarget.style.borderColor = "rgba(224,123,42,0.5)"; }}
+                    onBlur={(e) => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.12)"; }}
+                  />
+                </div>
+                <div style={{ marginBottom: "1.25rem" }}>
+                  <label style={{ display: "block", fontFamily: "'Oswald', sans-serif", fontWeight: 500, fontSize: "0.8rem", letterSpacing: "0.1em", textTransform: "uppercase", color: "rgba(240,237,230,0.7)", marginBottom: "0.4rem" }}>
+                    Corridor Width (feet) <span style={{ color: "rgba(240,237,230,0.35)", fontWeight: 400, textTransform: "none", letterSpacing: 0, fontSize: "0.75rem" }}>(optional)</span>
+                  </label>
+                  <input
+                    type="number" min={0} step={5}
+                    value={state.rowWidth || ""}
+                    onChange={(e) => set("rowWidth")(Math.max(0, parseFloat(e.target.value) || 0))}
+                    placeholder="e.g. 30"
+                    style={{ width: "100%", padding: "0.65rem 0.9rem", backgroundColor: "#111", border: "1px solid rgba(255,255,255,0.12)", borderRadius: "4px", color: "#F0EDE6", fontFamily: "'Lato', sans-serif", fontSize: "0.9rem", outline: "none", boxSizing: "border-box" }}
+                    onFocus={(e) => { e.currentTarget.style.borderColor = "rgba(224,123,42,0.5)"; }}
+                    onBlur={(e) => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.12)"; }}
+                  />
+                  {state.linearFeet > 0 && state.rowWidth > 0 && (
+                    <p style={{ fontFamily: "'Lato', sans-serif", fontSize: "0.7rem", color: "#E07B2A", margin: "0.3rem 0 0" }}>
+                      {state.linearFeet} LF × {state.rowWidth} ft = {Math.round(state.linearFeet * state.rowWidth / 43560 * 100) / 100} effective acres
+                    </p>
+                  )}
+                </div>
+              </>
+            )}
+
+            {/* ── Acreage slider (hidden for stump grinding) ── */}
+            {!isStumpService && (
+              <AcreSlider
+                value={state.acres}
+                onChange={(v) => set("acres")(v)}
+                isRow={isRowService}
+                onOpenMap={() => setShowMap(true)}
+              />
+            )}
+
+            {/* ── Vegetation density (hidden for stump grinding) ── */}
+            {!isStumpService && (
+              <SelectRow
+                label={isRowService ? "Corridor Condition" : isTrailService ? "Trail Condition" : "Vegetation Density"}
+                hint={isRowService
+                  ? "Light = recently maintained or new corridor; Heavy = years of neglect, mature trees"
+                  : isTrailService
+                  ? "Light = open woods, few obstacles; Heavy = dense brush, downed timber"
+                  : "The biggest cost driver — how thick and tall is the growth?"}
+                value={state.density}
+                onChange={set("density")}
+                options={(isRowService || isTrailService) ? [
+                  { value: "light",    label: "Light \u2014 recently cleared or open corridor" },
+                  { value: "moderate", label: "Moderate \u2014 established brush, trees up to 8\u2033" },
+                  { value: "heavy",    label: "Heavy \u2014 overgrown, mature trees, years of neglect" },
+                ] : densityOptions}
+              />
+            )}
             <SelectRow
               label="Terrain"
               hint="Steeper slopes and wet ground slow equipment"
@@ -1324,8 +1512,8 @@ export default function CostCalculator() {
                 Add-On Services <span style={{ color: "rgba(240,237,230,0.3)", fontWeight: 400, textTransform: "none", letterSpacing: 0, fontSize: "0.65rem" }}>(optional)</span>
               </p>
               <div style={{ display: "flex", flexDirection: "column", gap: "0.4rem" }}>
-                {ADD_ON_OPTIONS.map((addon) => {
-                  const cost = addon.calcCost(state.acres, livePricing);
+                {visibleAddOns.map((addon) => {
+                  const cost = addon.calcCost(effectiveAcresForAddOns, livePricing);
                   const isSelected = selectedAddOns.includes(addon.label);
                   return (
                     <label
@@ -1424,16 +1612,17 @@ export default function CostCalculator() {
                     </div>
                   )}
 
-                  {/* Per-acre breakdown */}
-                  <div style={{ display: "flex", gap: "1rem", flexWrap: "wrap", marginBottom: "1.25rem" }}>
-                    <div style={{ backgroundColor: "rgba(255,255,255,0.04)", borderRadius: "4px", padding: "0.6rem 0.9rem", flex: 1, minWidth: "120px" }}>
-                      <p style={{ fontFamily: "'Lato', sans-serif", fontSize: "0.65rem", color: "rgba(240,237,230,0.4)", textTransform: "uppercase", letterSpacing: "0.1em", margin: "0 0 0.2rem" }}>Per Acre</p>
-                      <p style={{ fontFamily: "'Oswald', sans-serif", fontWeight: 600, fontSize: "1rem", color: "#F0EDE6", margin: 0 }}>
-                        {fmt(result.perAcreLow)} – {fmt(result.perAcreHigh)}
-                      </p>
+                  {/* Per-unit breakdown — hide for stump grinding */}
+                  {!isStumpService && (
+                    <div style={{ display: "flex", gap: "1rem", flexWrap: "wrap", marginBottom: "1.25rem" }}>
+                      <div style={{ backgroundColor: "rgba(255,255,255,0.04)", borderRadius: "4px", padding: "0.6rem 0.9rem", flex: 1, minWidth: "120px" }}>
+                        <p style={{ fontFamily: "'Lato', sans-serif", fontSize: "0.65rem", color: "rgba(240,237,230,0.4)", textTransform: "uppercase", letterSpacing: "0.1em", margin: "0 0 0.2rem" }}>Per Acre</p>
+                        <p style={{ fontFamily: "'Oswald', sans-serif", fontWeight: 600, fontSize: "1rem", color: "#F0EDE6", margin: 0 }}>
+                          {fmt(result.perAcreLow)} – {fmt(result.perAcreHigh)}
+                        </p>
+                      </div>
                     </div>
-
-                  </div>
+                  )}
 
                   {/* Completion time */}
                   {timeResult && (
