@@ -3,7 +3,7 @@
  * Hero banner → two-column layout: contact info left, full form right
  */
 import { useState, useEffect, useRef } from "react";
-import { Phone, Mail, MapPin, Send, ArrowLeft, CheckCircle, Loader2, Search, ExternalLink, AlertCircle } from "lucide-react";
+import { Phone, Mail, MapPin, Send, ArrowLeft, CheckCircle, Loader2, Search, ExternalLink, AlertCircle, Info } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import MobileCTABar from "@/components/MobileCTABar";
@@ -230,6 +230,7 @@ export default function QuotePage() {
       message,
       trailLinearFeet: "",
       trailWidth: "",
+      trailTerrain: "",
     };
   })();
 
@@ -289,6 +290,7 @@ export default function QuotePage() {
         form.service === "trail-cutting" && form.trailLinearFeet && form.trailWidth && form.trailWidth !== "other"
           ? `Effective Acreage: ${((parseFloat(form.trailLinearFeet) * parseFloat(form.trailWidth)) / 43560).toFixed(2)} acres`
           : "",
+        form.service === "trail-cutting" && form.trailTerrain ? `Terrain Type: ${form.trailTerrain.charAt(0).toUpperCase() + form.trailTerrain.slice(1)}` : "",
       ].filter(Boolean).join("\n"),
       addOns: selectedAddOns,
       parcelOwner: parcelInfo?.owner ?? undefined,
@@ -1077,10 +1079,20 @@ export default function QuotePage() {
                   </div>
 
                   {/* Trail-specific fields — only shown when Trail Cutting is selected */}
-                  {form.service === "trail-cutting" && (
+                  {form.service === "trail-cutting" && (() => {
+                    // Terrain multipliers: flat = 1.0, sloped = 1.2, rocky = 1.4
+                    const terrainMultiplier = form.trailTerrain === "sloped" ? 1.2 : form.trailTerrain === "rocky" ? 1.4 : 1.0;
+                    const trailAddOns = [
+                      { key: "mulch-redistribution", label: "Mulch Redistribution" },
+                      { key: "post-clear-seeding", label: "Post-Clear Seeding & Erosion Control" },
+                      { key: "selective-clearing", label: "Selective Clearing & Tree Preservation" },
+                    ];
+                    return (
                     <div style={{ padding: "1rem", background: "rgba(224,123,42,0.05)", border: "1px solid rgba(224,123,42,0.2)", borderRadius: "4px" }}>
                       <div style={{ fontFamily: "'Oswald', sans-serif", fontSize: "0.68rem", letterSpacing: "0.14em", textTransform: "uppercase", color: "rgba(224,123,42,0.8)", marginBottom: "0.75rem" }}>Trail Details</div>
-                      <div className="grid grid-cols-2 gap-4">
+
+                      {/* Row 1: Length + Width */}
+                      <div className="grid grid-cols-2 gap-4" style={{ marginBottom: "1rem" }}>
                         <div>
                           <label style={labelStyle}>Approximate Length <span style={{ color: "rgba(240,237,230,0.4)", fontSize: "0.7rem", letterSpacing: "0.08em" }}>(linear feet)</span></label>
                           <input
@@ -1116,28 +1128,113 @@ export default function QuotePage() {
                           </select>
                         </div>
                       </div>
+
+                      {/* Row 2: Terrain Type */}
+                      <div style={{ marginBottom: "1rem" }}>
+                        <label style={labelStyle}>Terrain Type</label>
+                        <div style={{ display: "flex", gap: "0.5rem", marginTop: "0.4rem" }}>
+                          {(["flat", "sloped", "rocky"] as const).map((t) => (
+                            <button
+                              key={t}
+                              type="button"
+                              onClick={() => setForm(f => ({ ...f, trailTerrain: f.trailTerrain === t ? "" : t }))}
+                              style={{
+                                flex: 1,
+                                padding: "0.55rem 0",
+                                fontFamily: "'Oswald', sans-serif",
+                                fontSize: "0.75rem",
+                                letterSpacing: "0.1em",
+                                textTransform: "uppercase",
+                                border: form.trailTerrain === t ? "1px solid #E07B2A" : "1px solid rgba(255,255,255,0.12)",
+                                background: form.trailTerrain === t ? "rgba(224,123,42,0.15)" : "rgba(255,255,255,0.03)",
+                                color: form.trailTerrain === t ? "#E07B2A" : "rgba(240,237,230,0.6)",
+                                cursor: "pointer",
+                                borderRadius: "2px",
+                                transition: "all 0.15s ease",
+                              }}
+                            >
+                              {t === "flat" ? "Flat" : t === "sloped" ? "Sloped" : "Rocky"}
+                              {t === "sloped" && <span style={{ fontSize: "0.6rem", display: "block", opacity: 0.7, marginTop: "1px" }}>+20%</span>}
+                              {t === "rocky" && <span style={{ fontSize: "0.6rem", display: "block", opacity: 0.7, marginTop: "1px" }}>+40%</span>}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Row 3: Inline add-on checkboxes */}
+                      <div style={{ marginBottom: "1rem" }}>
+                        <label style={{ ...labelStyle, marginBottom: "0.4rem", display: "block" }}>Common Add-Ons <span style={{ color: "rgba(240,237,230,0.4)", fontSize: "0.7rem", letterSpacing: "0.08em" }}>(Optional)</span></label>
+                        <div style={{ display: "flex", flexDirection: "column", gap: "0.4rem" }}>
+                          {trailAddOns.map((addon) => (
+                            <label
+                              key={addon.key}
+                              style={{
+                                display: "flex",
+                                alignItems: "center",
+                                gap: "0.6rem",
+                                cursor: "pointer",
+                                padding: "0.5rem 0.75rem",
+                                borderRadius: "3px",
+                                border: selectedAddOns.includes(addon.label)
+                                  ? "1px solid rgba(224,123,42,0.5)"
+                                  : "1px solid rgba(255,255,255,0.07)",
+                                backgroundColor: selectedAddOns.includes(addon.label)
+                                  ? "rgba(224,123,42,0.08)"
+                                  : "rgba(255,255,255,0.02)",
+                                transition: "all 0.15s ease",
+                              }}
+                              onClick={() => toggleAddOn(addon.label)}
+                            >
+                              <div style={{
+                                width: "15px", height: "15px", borderRadius: "3px", flexShrink: 0,
+                                border: selectedAddOns.includes(addon.label) ? "2px solid #E07B2A" : "2px solid rgba(255,255,255,0.25)",
+                                backgroundColor: selectedAddOns.includes(addon.label) ? "#E07B2A" : "transparent",
+                                display: "flex", alignItems: "center", justifyContent: "center",
+                              }}>
+                                {selectedAddOns.includes(addon.label) && (
+                                  <svg width="9" height="7" viewBox="0 0 10 8" fill="none">
+                                    <path d="M1 4L3.5 6.5L9 1" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                                  </svg>
+                                )}
+                              </div>
+                              <span style={{ fontFamily: "'Lato', sans-serif", fontSize: "0.85rem", color: "rgba(240,237,230,0.85)" }}>{addon.label}</span>
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Preliminary range — shown when length + width filled */}
                       {form.trailLinearFeet && form.trailWidth && form.trailWidth !== "other" && (() => {
                         const lf = parseFloat(form.trailLinearFeet);
                         const w  = parseFloat(form.trailWidth);
                         if (!lf || !w) return null;
                         const acres = (lf * w) / 43560;
-                        const low  = Math.round(acres * 700 / 100) * 100;
-                        const high = Math.round(acres * 1000 / 100) * 100;
+                        const baseLow  = Math.round(acres * 700 * terrainMultiplier / 100) * 100;
+                        const baseHigh = Math.round(acres * 1000 * terrainMultiplier / 100) * 100;
                         const minFloor = 500;
+                        const low  = Math.max(minFloor, baseLow);
+                        const high = Math.max(minFloor, baseHigh);
                         return (
-                          <div style={{ marginTop: "0.75rem", padding: "0.75rem 1rem", background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "2px", fontFamily: "'Lato', sans-serif" }}>
-                            <div style={{ fontFamily: "'Oswald', sans-serif", fontSize: "0.65rem", letterSpacing: "0.18em", textTransform: "uppercase", color: "rgba(224,123,42,0.7)", marginBottom: "0.25rem" }}>Preliminary Range</div>
+                          <div style={{ padding: "0.75rem 1rem", background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "2px", fontFamily: "'Lato', sans-serif" }}>
+                            <div style={{ fontFamily: "'Oswald', sans-serif", fontSize: "0.65rem", letterSpacing: "0.18em", textTransform: "uppercase", color: "rgba(224,123,42,0.7)", marginBottom: "0.25rem" }}>Preliminary Range{form.trailTerrain ? ` — ${form.trailTerrain.charAt(0).toUpperCase() + form.trailTerrain.slice(1)} terrain` : ""}</div>
                             <div style={{ fontFamily: "'Oswald', sans-serif", fontWeight: 600, fontSize: "1.3rem", color: "#E07B2A" }}>
-                              ${Math.max(minFloor, low).toLocaleString()} – ${Math.max(minFloor, high).toLocaleString()}
+                              ${low.toLocaleString()} – ${high.toLocaleString()}
                             </div>
-                            <p style={{ fontSize: "0.72rem", color: "rgba(240,237,230,0.4)", margin: "0.3rem 0 0", lineHeight: 1.5 }}>
-                              Based on {lf.toLocaleString()} ft × {w} ft = {acres.toFixed(2)} effective acres. Actual price requires a site visit.
+                            <p style={{ fontSize: "0.72rem", color: "rgba(240,237,230,0.4)", margin: "0.3rem 0 0", lineHeight: 1.5, display: "flex", alignItems: "flex-start", gap: "0.3rem" }}>
+                              <span
+                                title={`Effective acreage = length (${lf.toLocaleString()} ft) × width (${w} ft) ÷ 43,560 sq ft per acre = ${acres.toFixed(2)} acres. Rate: $700–$1,000/acre${terrainMultiplier > 1 ? ` × ${terrainMultiplier} terrain factor` : ""}. $500 minimum applies.`}
+                                style={{ display: "inline-flex", alignItems: "center", gap: "0.2rem", cursor: "help", color: "rgba(224,123,42,0.6)" }}
+                              >
+                                <Info size={11} />
+                              </span>
+                              {lf.toLocaleString()} ft × {w} ft = {acres.toFixed(2)} effective acres{form.trailTerrain && form.trailTerrain !== "flat" ? ` (${form.trailTerrain} terrain adjustment applied)` : ""}. Actual price requires a site visit.
                             </p>
                           </div>
                         );
                       })()}
                     </div>
-                  )}
+                    );
+                  })()}
 
                   {/* Add-On Services */}
                   <div>
