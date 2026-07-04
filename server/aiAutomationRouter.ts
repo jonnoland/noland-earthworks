@@ -720,10 +720,12 @@ Return JSON only:
   "confidence": "high" | "medium" | "low"
 }`;
 
-      const result = await invokeLLM({
-        messages: [{ role: "user", content: prompt }],
-        temperature: 0,
-        response_format: {
+      let result;
+      try {
+        result = await invokeLLM({
+          messages: [{ role: "user", content: prompt }],
+          temperature: 0,
+          response_format: {
           type: "json_schema",
           json_schema: {
             name: "lead_quote_estimate",
@@ -732,7 +734,7 @@ Return JSON only:
               type: "object",
               properties: {
                 service:          { type: "string",  description: "Inferred service name" },
-                estimatedAcres:   { type: ["number", "null"], description: "Estimated acreage, null if not determinable" },
+                estimatedAcres:   { type: "number", description: "Estimated acreage in acres. Use 0 if not determinable from the available information." },
                 estimateLow:      { type: "number",  description: "Low end of price estimate in USD" },
                 estimateHigh:     { type: "number",  description: "High end of price estimate in USD" },
                 mobilizationNote: { type: "string",  description: "Brief travel surcharge note, empty string if not applicable" },
@@ -744,10 +746,17 @@ Return JSON only:
               additionalProperties: false,
             },
           },
-        },
-      });
+          },
+        });
+      } catch (llmErr) {
+        console.error("[quoteFromLead] LLM invocation failed:", llmErr);
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: `LLM call failed: ${(llmErr as Error).message}` });
+      }
       const content = result?.choices?.[0]?.message?.content;
-      if (!content) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Empty LLM response" });
+      if (!content) {
+        console.error("[quoteFromLead] Empty LLM response. Full result:", JSON.stringify(result).slice(0, 500));
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Empty LLM response" });
+      }
       try {
         // content may be a string or an array of content blocks (thinking mode)
         const raw = typeof content === "string"
@@ -758,9 +767,9 @@ Return JSON only:
         // Strip markdown code fences if present
         const cleaned = raw.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/i, "").trim();
         const parsed = JSON.parse(cleaned);
-        return parsed as {
+        const result = parsed as {
           service: string;
-          estimatedAcres: number | null;
+          estimatedAcres: number;
           estimateLow: number;
           estimateHigh: number;
           mobilizationNote: string;
@@ -768,7 +777,10 @@ Return JSON only:
           missingInfo: string[];
           confidence: "high" | "medium" | "low";
         };
-      } catch {
+        // Normalize 0 to null for display purposes
+        return { ...result, estimatedAcres: result.estimatedAcres > 0 ? result.estimatedAcres : null };
+      } catch (parseErr) {
+        console.error("[quoteFromLead] JSON parse error:", parseErr, "raw content:", typeof content === "string" ? content.slice(0, 200) : JSON.stringify(content).slice(0, 200));
         throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "AI returned invalid response" });
       }
     }),
