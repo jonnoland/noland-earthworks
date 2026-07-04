@@ -25,6 +25,14 @@ const estimatorInputSchema = z.object({
   stumpCount: z.number().min(0).max(500).default(0),
   notes: z.string().max(1000).optional(),
   leadId: z.number().optional(),
+  // Trail Cutting specific
+  trailWidth: z.number().min(4).max(40).optional(),
+  trailAddOns: z.array(z.string()).optional(),
+  // ROW Clearing specific
+  rowWidth: z.number().min(4).max(200).optional(),
+  // Universal add-ons
+  addOns: z.array(z.string()).optional(),
+  fenceLineLF: z.number().min(0).max(50000).optional(),
 });
 
 // ─── Pricing constants (keep in sync with DEFAULT_CONFIG in Pricing.tsx) ──────
@@ -175,16 +183,42 @@ export const costEstimatorRouter = router({
       const travelSurcharge = getTravelSurcharge(input.mobilizationMiles);
       const mobTierLabel = MOB_TIERS.find(t => input.mobilizationMiles <= t.maxMiles)?.label ?? "Long-Haul (100+ mi)";
 
+      // Compute effective acres for ROW and Trail Cutting when LF + width are provided
+      let effectiveAcresNote = "";
+      if (input.service === "Right-of-Way Clearing" && input.linearFeet && input.rowWidth) {
+        const ea = (input.linearFeet * input.rowWidth) / 43560;
+        effectiveAcresNote = `Effective acres (${input.linearFeet} LF × ${input.rowWidth} ft wide ÷ 43,560): ${ea.toFixed(3)} acres`;
+      }
+      if (input.service === "Trail Cutting" && input.acreage && input.trailWidth) {
+        const lf = Math.round((input.acreage * 43560) / input.trailWidth);
+        effectiveAcresNote = `Trail geometry: ${input.acreage} effective acres × 43,560 ÷ ${input.trailWidth} ft wide ≈ ${lf.toLocaleString()} linear feet`;
+      }
+
+      const addOnLines: string[] = [];
+      if (input.trailAddOns && input.trailAddOns.length > 0) {
+        addOnLines.push(`Trail add-ons requested: ${input.trailAddOns.join(", ")}`);
+      }
+      if (input.addOns && input.addOns.length > 0) {
+        addOnLines.push(`Add-ons requested: ${input.addOns.join(", ")}`);
+      }
+      if (input.fenceLineLF && input.fenceLineLF > 0) {
+        addOnLines.push(`Fence line clearing: ${input.fenceLineLF} linear feet (price separately at $1.50–$12/lf depending on density)`);
+      }
+
       const jobDescription = [
         `Service: ${input.service}`,
         input.acreage ? `Acreage: ${input.acreage} acres` : "",
         input.linearFeet ? `Linear feet: ${input.linearFeet} LF` : "",
+        input.trailWidth ? `Trail width: ${input.trailWidth} ft` : "",
+        input.rowWidth ? `ROW width: ${input.rowWidth} ft` : "",
+        effectiveAcresNote,
         `Terrain: ${input.terrain.replace("_", " ")}`,
         `Vegetation density: ${input.vegetationDensity.replace("_", " ")}`,
         `Access difficulty: ${input.accessDifficulty}`,
         `Distance from Vanleer, TN: ${input.mobilizationMiles} miles one-way`,
         `Travel surcharge tier: ${mobTierLabel} — flat surcharge: $${travelSurcharge}`,
         input.hasStumps && input.stumpCount > 0 ? `Stumps to grind: ${input.stumpCount}` : "",
+        ...addOnLines,
         input.notes ? `Additional notes: ${input.notes}` : "",
       ].filter(Boolean).join("\n");
 

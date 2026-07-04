@@ -1,8 +1,8 @@
 /**
  * AI Job Cost Estimator — Internal ops tool
  * Enter job details, get a full internal cost breakdown vs customer price range.
+ * All 6 services, all modifiers, mobilization miles, universal add-ons.
  */
-
 import { useState } from "react";
 import { trpc } from "@/lib/trpc";
 import DashboardLayout from "@/components/DashboardLayout";
@@ -18,7 +18,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Loader2, AlertTriangle, TrendingUp, DollarSign, Clock, Eye, EyeOff, Satellite, Sparkles } from "lucide-react";
+import { Loader2, AlertTriangle, TrendingUp, DollarSign, Clock, Eye, EyeOff, Satellite, Sparkles, Info } from "lucide-react";
 import { toast } from "sonner";
 
 type EstimateResult = {
@@ -53,9 +53,21 @@ function getMarginAtPrice(price: number, internalCost: number): string {
   return ((price - internalCost) / price * 100).toFixed(0);
 }
 
+// ─── Universal add-on options ─────────────────────────────────────────────────
+const UNIVERSAL_ADDONS = [
+  { label: "Post-Clear Seeding & Erosion Control", hint: "$150–$700/acre" },
+  { label: "Mulch Redistribution", hint: "$150–$900/hr" },
+  { label: "Selective Clearing & Tree Preservation", hint: "$150–$500 flat" },
+];
+
+const TRAIL_ADDONS = [
+  { label: "Mulch Redistribution", hint: "redistribute cut material" },
+  { label: "Post-Clear Seeding & Erosion Control", hint: "$150–$700/acre" },
+  { label: "Selective Clearing & Tree Preservation", hint: "preserve specific trees" },
+];
+
 export default function CostEstimator() {
   const [result, setResult] = useState<EstimateResult | null>(null);
-
   const [service, setService] = useState("Forestry Mulching");
   const [acreage, setAcreage] = useState("");
   const [linearFeet, setLinearFeet] = useState("");
@@ -64,10 +76,21 @@ export default function CostEstimator() {
   const [accessDifficulty, setAccessDifficulty] = useState<"easy" | "moderate" | "difficult">("easy");
   const [pricingTier, setPricingTier] = useState<PricingTier>("mid");
   const [clientView, setClientView] = useState(false);
-  const mobilizationMiles = 25; // baked in — not shown to user
+  const [mobilizationMiles, setMobilizationMiles] = useState("25");
   const [hasStumps, setHasStumps] = useState(false);
   const [stumpCount, setStumpCount] = useState("");
   const [notes, setNotes] = useState("");
+
+  // Trail Cutting specific
+  const [trailWidth, setTrailWidth] = useState("10");
+  const [trailAddOns, setTrailAddOns] = useState<string[]>([]);
+
+  // ROW Clearing specific
+  const [rowWidth, setRowWidth] = useState("20");
+
+  // Universal add-ons
+  const [addOns, setAddOns] = useState<string[]>([]);
+  const [fenceLineLF, setFenceLineLF] = useState("");
 
   // Satellite auto-fill
   const [propertyAddress, setPropertyAddress] = useState("");
@@ -78,7 +101,6 @@ export default function CostEstimator() {
     onSuccess: (data) => {
       setSatelliteAnalysis(data.analysis);
       setSatelliteMapUrl(data.mapUrl);
-      // Auto-fill terrain/density/access from analysis text
       const text = data.analysis.toLowerCase();
       if (text.includes("steep")) setTerrain("steep");
       else if (text.includes("rolling")) setTerrain("rolling");
@@ -96,18 +118,11 @@ export default function CostEstimator() {
 
   const isRowService = service === "Right-of-Way Clearing";
   const isTrailService = service === "Trail Cutting";
-
-  // Trail Cutting specific inputs
-  const [trailWidth, setTrailWidth] = useState("10");
-  const [trailAddOns, setTrailAddOns] = useState<string[]>([]);
+  const isBrushHogging = service === "Brush Hogging";
 
   const estimate = trpc.costEstimator.estimate.useMutation({
-    onSuccess: (data) => {
-      setResult(data);
-    },
-    onError: (err) => {
-      toast.error(err.message || "Something went wrong. Try again.");
-    },
+    onSuccess: (data) => setResult(data),
+    onError: (err) => toast.error(err.message || "Something went wrong. Try again."),
   });
 
   const handleSubmit = () => {
@@ -124,36 +139,48 @@ export default function CostEstimator() {
     estimate.mutate({
       service,
       acreage: !isRowService && acreage ? parseFloat(acreage) : undefined,
-      linearFeet: isRowService && linearFeet ? parseInt(linearFeet) : undefined,
+      linearFeet: (isRowService || isTrailService) && linearFeet ? parseInt(linearFeet) : undefined,
       terrain,
       vegetationDensity,
       accessDifficulty,
-      mobilizationMiles: mobilizationMiles,
+      mobilizationMiles: parseFloat(mobilizationMiles) || 0,
       hasStumps,
       stumpCount: hasStumps ? parseInt(stumpCount) || 0 : 0,
       notes: notes || undefined,
+      trailWidth: isTrailService ? parseFloat(trailWidth) : undefined,
+      trailAddOns: isTrailService && trailAddOns.length > 0 ? trailAddOns : undefined,
+      rowWidth: isRowService ? parseFloat(rowWidth) : undefined,
+      addOns: !isTrailService && addOns.length > 0 ? addOns : undefined,
+      fenceLineLF: fenceLineLF ? parseInt(fenceLineLF) : undefined,
     });
   };
 
-  const marginColor = result
-    ? result.marginPct >= 45
-      ? "text-green-400"
-      : result.marginPct >= 35
-      ? "text-yellow-400"
-      : "text-red-400"
-    : "";
-
-  const tierLabel: Record<PricingTier, string> = {
-    low: "Low",
-    mid: "Mid",
-    high: "High",
+  const toggleAddOn = (label: string, list: string[], setter: (v: string[]) => void) => {
+    setter(list.includes(label) ? list.filter(a => a !== label) : [...list, label]);
   };
 
+  const marginColor = result
+    ? result.marginPct >= 45 ? "text-green-400"
+    : result.marginPct >= 35 ? "text-yellow-400"
+    : "text-red-400"
+    : "";
+
+  const tierLabel: Record<PricingTier, string> = { low: "Low", mid: "Mid", high: "High" };
   const tierDescription: Record<PricingTier, string> = {
     low: "Competitive rate — price-sensitive market or straightforward job",
     mid: "Standard market rate — default for most jobs",
     high: "Premium rate — difficult conditions, high density, or strong demand",
   };
+
+  // Effective acres display for ROW
+  const rowEffectiveAcres = isRowService && linearFeet && rowWidth
+    ? ((parseInt(linearFeet) * parseFloat(rowWidth)) / 43560).toFixed(3)
+    : null;
+
+  // Linear feet equivalent for Trail Cutting
+  const trailLfEquiv = isTrailService && acreage && trailWidth
+    ? Math.round((parseFloat(acreage) * 43560) / parseFloat(trailWidth))
+    : null;
 
   return (
     <DashboardLayout>
@@ -181,12 +208,13 @@ export default function CostEstimator() {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Input form */}
+          {/* ── Input form ─────────────────────────────────────────────────────── */}
           <Card className="bg-zinc-900 border-zinc-700">
             <CardHeader>
               <CardTitle className="text-white text-base">Job Details</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
+
               {/* Satellite Auto-Fill */}
               <div className="space-y-1.5">
                 <Label className="text-zinc-300 flex items-center gap-1.5">
@@ -216,7 +244,7 @@ export default function CostEstimator() {
                     {analyzeProperty.isPending ? (
                       <Loader2 className="w-3.5 h-3.5 animate-spin" />
                     ) : (
-                      <><Sparkles className="w-3.5 h-3.5" /> Analyze</>  
+                      <><Sparkles className="w-3.5 h-3.5" /> Analyze</>
                     )}
                   </Button>
                 </div>
@@ -234,66 +262,115 @@ export default function CostEstimator() {
                   </div>
                 )}
               </div>
+
               {/* Service */}
               <div className="space-y-1.5">
                 <Label className="text-zinc-300">Service</Label>
-                <Select value={service} onValueChange={setService}>
+                <Select value={service} onValueChange={v => { setService(v); setAddOns([]); setTrailAddOns([]); }}>
                   <SelectTrigger className="bg-zinc-800 border-zinc-600 text-white">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="Forestry Mulching">Forestry Mulching</SelectItem>
                     <SelectItem value="Land Management">Land Management</SelectItem>
-                    <SelectItem value="Site Preparation">Site Preparation</SelectItem>
+                    <SelectItem value="Vegetation Management">Vegetation Management</SelectItem>
                     <SelectItem value="Right-of-Way Clearing">Right-of-Way Clearing</SelectItem>
                     <SelectItem value="Trail Cutting">Trail Cutting</SelectItem>
                     <SelectItem value="Brush Hogging">Brush Hogging</SelectItem>
-                    <SelectItem value="Stump Grinding">Stump Grinding Only</SelectItem>
+                    <SelectItem value="Stump Grinding Only">Stump Grinding Only</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
 
-              {/* Trail Cutting — width selector */}
+              {/* Trail Cutting — width + linear feet */}
               {isTrailService && (
-                <div className="space-y-1.5">
-                  <Label className="text-zinc-300">Trail Width</Label>
-                  <Select value={trailWidth} onValueChange={setTrailWidth}>
-                    <SelectTrigger className="bg-zinc-800 border-zinc-600 text-white">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="6">6 ft — Foot / ATV path</SelectItem>
-                      <SelectItem value="8">8 ft — ATV / UTV</SelectItem>
-                      <SelectItem value="10">10 ft — Standard trail</SelectItem>
-                      <SelectItem value="12">12 ft — Wide trail / access road</SelectItem>
-                      <SelectItem value="16">16 ft — Equipment access</SelectItem>
-                    </SelectContent>
-                  </Select>
+                <div className="space-y-3 rounded border border-orange-600/30 bg-orange-600/5 p-3">
+                  <p className="text-orange-400 text-xs font-semibold uppercase tracking-wide">Trail Details</p>
+                  <div className="space-y-1.5">
+                    <Label className="text-zinc-300">Trail Width</Label>
+                    <Select value={trailWidth} onValueChange={setTrailWidth}>
+                      <SelectTrigger className="bg-zinc-800 border-zinc-600 text-white">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="6">6 ft — Foot / ATV path</SelectItem>
+                        <SelectItem value="8">8 ft — ATV / UTV</SelectItem>
+                        <SelectItem value="10">10 ft — Standard trail</SelectItem>
+                        <SelectItem value="12">12 ft — Wide trail / access road</SelectItem>
+                        <SelectItem value="16">16 ft — Equipment access</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-zinc-300">Linear Feet <span className="text-zinc-500 font-normal">(optional — if known)</span></Label>
+                    <Input
+                      type="number"
+                      value={linearFeet}
+                      onChange={e => setLinearFeet(e.target.value)}
+                      placeholder="e.g. 2640"
+                      className="bg-zinc-800 border-zinc-600 text-white"
+                    />
+                  </div>
+                  {trailLfEquiv && (
+                    <p className="text-zinc-400 text-xs">
+                      <Info className="inline w-3 h-3 mr-1 text-orange-400" />
+                      {acreage} effective acres at {trailWidth} ft wide ≈ {trailLfEquiv.toLocaleString()} linear feet
+                    </p>
+                  )}
                 </div>
               )}
 
-              {/* Acreage or Linear Feet */}
-              {isRowService ? (
-                <div className="space-y-1.5">
-                  <Label className="text-zinc-300">Linear Feet</Label>
-                  <Input
-                    type="number"
-                    value={linearFeet}
-                    onChange={e => setLinearFeet(e.target.value)}
-                    placeholder="e.g. 1320"
-                    className="bg-zinc-800 border-zinc-600 text-white"
-                  />
+              {/* ROW Clearing — linear feet + width */}
+              {isRowService && (
+                <div className="space-y-3 rounded border border-orange-600/30 bg-orange-600/5 p-3">
+                  <p className="text-orange-400 text-xs font-semibold uppercase tracking-wide">ROW Details</p>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1.5">
+                      <Label className="text-zinc-300">Linear Feet</Label>
+                      <Input
+                        type="number"
+                        value={linearFeet}
+                        onChange={e => setLinearFeet(e.target.value)}
+                        placeholder="e.g. 1320"
+                        className="bg-zinc-800 border-zinc-600 text-white"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-zinc-300">ROW Width (ft)</Label>
+                      <Input
+                        type="number"
+                        value={rowWidth}
+                        onChange={e => setRowWidth(e.target.value)}
+                        placeholder="e.g. 20"
+                        className="bg-zinc-800 border-zinc-600 text-white"
+                      />
+                    </div>
+                  </div>
+                  {rowEffectiveAcres && (
+                    <p className="text-zinc-400 text-xs">
+                      <Info className="inline w-3 h-3 mr-1 text-orange-400" />
+                      {linearFeet} LF × {rowWidth} ft ÷ 43,560 = <strong className="text-white">{rowEffectiveAcres} effective acres</strong>
+                    </p>
+                  )}
                 </div>
-              ) : (
+              )}
+
+              {/* Acreage — shown for all non-ROW services */}
+              {!isRowService && (
                 <div className="space-y-1.5">
-                  <Label className="text-zinc-300">Acreage</Label>
+                  <Label className="text-zinc-300">
+                    {isTrailService ? "Effective Acres" : "Acreage"}
+                    {isTrailService && (
+                      <span className="text-zinc-500 font-normal ml-1">(length × width ÷ 43,560)</span>
+                    )}
+                  </Label>
                   <Input
                     type="number"
                     value={acreage}
                     onChange={e => setAcreage(e.target.value)}
-                    placeholder="e.g. 5.0"
-                    step="0.5"
-                    min="1"
+                    placeholder={isTrailService ? "e.g. 0.25" : "e.g. 5.0"}
+                    step={isTrailService ? "0.01" : "0.5"}
+                    min="0.01"
                     className="bg-zinc-800 border-zinc-600 text-white"
                   />
                 </div>
@@ -315,23 +392,25 @@ export default function CostEstimator() {
                 </Select>
               </div>
 
-              {/* Vegetation density */}
-              <div className="space-y-1.5">
-                <Label className="text-zinc-300">Vegetation Density</Label>
-                <Select value={vegetationDensity} onValueChange={v => setVegetationDensity(v as typeof vegetationDensity)}>
-                  <SelectTrigger className="bg-zinc-800 border-zinc-600 text-white">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="light">Light (grass, small brush)</SelectItem>
-                    <SelectItem value="moderate">Moderate (mixed brush, saplings)</SelectItem>
-                    <SelectItem value="heavy">Heavy (dense brush, small trees)</SelectItem>
-                    <SelectItem value="very_heavy">Very Heavy (thick cedar, hardwood)</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+              {/* Vegetation density — not shown for stump grinding only */}
+              {service !== "Stump Grinding Only" && (
+                <div className="space-y-1.5">
+                  <Label className="text-zinc-300">Vegetation Density</Label>
+                  <Select value={vegetationDensity} onValueChange={v => setVegetationDensity(v as typeof vegetationDensity)}>
+                    <SelectTrigger className="bg-zinc-800 border-zinc-600 text-white">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="light">Light (grass, small brush)</SelectItem>
+                      <SelectItem value="moderate">Moderate (mixed brush, saplings)</SelectItem>
+                      <SelectItem value="heavy">Heavy (dense brush, small trees)</SelectItem>
+                      <SelectItem value="very_heavy">Very Heavy (thick cedar, hardwood)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
 
-              {/* Access difficulty */}
+              {/* Site Access */}
               <div className="space-y-1.5">
                 <Label className="text-zinc-300">Site Access</Label>
                 <Select value={accessDifficulty} onValueChange={v => setAccessDifficulty(v as typeof accessDifficulty)}>
@@ -344,6 +423,33 @@ export default function CostEstimator() {
                     <SelectItem value="difficult">Difficult (no road, narrow access, locked gate)</SelectItem>
                   </SelectContent>
                 </Select>
+              </div>
+
+              {/* Mobilization Miles */}
+              <div className="space-y-1.5">
+                <Label className="text-zinc-300 flex items-center gap-1.5">
+                  Distance from Vanleer, TN
+                  <span className="text-zinc-500 font-normal">(one-way miles)</span>
+                </Label>
+                <Input
+                  type="number"
+                  value={mobilizationMiles}
+                  onChange={e => setMobilizationMiles(e.target.value)}
+                  placeholder="e.g. 25"
+                  min="0"
+                  max="300"
+                  className="bg-zinc-800 border-zinc-600 text-white"
+                />
+                <p className="text-zinc-500 text-xs">
+                  {(() => {
+                    const mi = parseFloat(mobilizationMiles) || 0;
+                    if (mi <= 30) return "Local (0–30 mi) — no travel surcharge";
+                    if (mi <= 50) return "Near (31–50 mi) — +$150 surcharge";
+                    if (mi <= 75) return "Regional (51–75 mi) — +$300 surcharge";
+                    if (mi <= 100) return "Extended (76–100 mi) — +$500 surcharge";
+                    return "Long-Haul (100+ mi) — +$750 surcharge";
+                  })()}
+                </p>
               </div>
 
               {/* Pricing Tier */}
@@ -388,6 +494,61 @@ export default function CostEstimator() {
                 </div>
               )}
 
+              {/* Trail Cutting add-ons */}
+              {isTrailService && (
+                <div className="space-y-2">
+                  <Label className="text-zinc-300">Trail Add-Ons</Label>
+                  {TRAIL_ADDONS.map(({ label, hint }) => (
+                    <label key={label} className="flex items-center gap-2 cursor-pointer py-1 px-2 rounded hover:bg-zinc-800/50 transition-colors">
+                      <input
+                        type="checkbox"
+                        checked={trailAddOns.includes(label)}
+                        onChange={() => toggleAddOn(label, trailAddOns, setTrailAddOns)}
+                        className="w-3.5 h-3.5 accent-orange-500"
+                      />
+                      <span className="text-zinc-300 text-sm">{label}</span>
+                      <span className="text-zinc-500 text-xs ml-auto">{hint}</span>
+                    </label>
+                  ))}
+                </div>
+              )}
+
+              {/* Universal add-ons — shown for non-trail services */}
+              {!isTrailService && !isBrushHogging && service !== "Stump Grinding Only" && (
+                <div className="space-y-2">
+                  <Label className="text-zinc-300">Add-Ons</Label>
+                  {UNIVERSAL_ADDONS.map(({ label, hint }) => (
+                    <label key={label} className="flex items-center gap-2 cursor-pointer py-1 px-2 rounded hover:bg-zinc-800/50 transition-colors">
+                      <input
+                        type="checkbox"
+                        checked={addOns.includes(label)}
+                        onChange={() => toggleAddOn(label, addOns, setAddOns)}
+                        className="w-3.5 h-3.5 accent-orange-500"
+                      />
+                      <span className="text-zinc-300 text-sm">{label}</span>
+                      <span className="text-zinc-500 text-xs ml-auto">{hint}</span>
+                    </label>
+                  ))}
+                </div>
+              )}
+
+              {/* Fence Line LF — shown for all clearing services */}
+              {!isBrushHogging && service !== "Stump Grinding Only" && (
+                <div className="space-y-1.5">
+                  <Label className="text-zinc-300 flex items-center gap-1.5">
+                    Fence Line Clearing
+                    <span className="text-zinc-500 font-normal">(linear feet, if applicable)</span>
+                  </Label>
+                  <Input
+                    type="number"
+                    value={fenceLineLF}
+                    onChange={e => setFenceLineLF(e.target.value)}
+                    placeholder="e.g. 500"
+                    className="bg-zinc-800 border-zinc-600 text-white"
+                  />
+                </div>
+              )}
+
               {/* Notes */}
               <div className="space-y-1.5">
                 <Label className="text-zinc-300">Additional notes (optional)</Label>
@@ -418,7 +579,7 @@ export default function CostEstimator() {
             </CardContent>
           </Card>
 
-          {/* Results */}
+          {/* ── Results ──────────────────────────────────────────────────────── */}
           <div className="space-y-4">
             {!result && !estimate.isPending && (
               <Card className="bg-zinc-900 border-zinc-700">
@@ -447,7 +608,7 @@ export default function CostEstimator() {
                   </CardContent>
                 </Card>
 
-                {/* Recommended quote — tier-driven, prominent */}
+                {/* Recommended quote */}
                 <Card className="bg-orange-950/40 border-orange-600/60">
                   <CardContent className="pt-4 pb-4">
                     <div className="flex items-center justify-between">
@@ -492,7 +653,7 @@ export default function CostEstimator() {
                   </CardContent>
                 </Card>
 
-                {/* Key numbers — time always shown, margin only in internal view */}
+                {/* Key numbers */}
                 <div className="grid grid-cols-2 gap-3">
                   <Card className="bg-zinc-900 border-zinc-700">
                     <CardContent className="pt-4 pb-3">
@@ -533,11 +694,11 @@ export default function CostEstimator() {
                   </Card>
                 )}
 
-                {/* Trail Cutting — terrain & add-on visual breakdown */}
+                {/* Trail Cutting visual breakdown */}
                 {isTrailService && !clientView && (() => {
                   const terrainMultiplier = terrain === "steep" ? 1.2 : terrain === "very_steep" ? 1.4 : terrain === "rolling" ? 1.1 : 1.0;
                   const baseAcres = parseFloat(acreage) || 0;
-                  const baseRate = 850; // mid-point per acre
+                  const baseRate = 850;
                   const basePrice = Math.max(500, baseAcres * baseRate);
                   const terrainAdj = basePrice * (terrainMultiplier - 1);
                   const addOnCosts: Record<string, number> = {
@@ -556,7 +717,6 @@ export default function CostEstimator() {
                         <CardTitle className="text-orange-400 text-sm">Trail Cutting Price Breakdown</CardTitle>
                       </CardHeader>
                       <CardContent className="space-y-3">
-                        {/* Geometry summary */}
                         {baseAcres > 0 && (
                           <div className="bg-zinc-800/60 rounded p-2.5 text-xs text-zinc-400 space-y-0.5">
                             <div className="flex justify-between">
@@ -575,14 +735,10 @@ export default function CostEstimator() {
                             )}
                           </div>
                         )}
-
-                        {/* Base rate */}
                         <div className="flex items-center justify-between py-1.5 border-b border-zinc-800">
                           <span className="text-zinc-300 text-sm">Base rate ({baseAcres.toFixed(2)} ac @ $850/ac)</span>
                           <span className="text-zinc-200 text-sm font-medium">{fmt(basePrice)}</span>
                         </div>
-
-                        {/* Terrain adjustment */}
                         <div className="flex items-center justify-between py-1.5 border-b border-zinc-800">
                           <div>
                             <span className="text-zinc-300 text-sm">Terrain adjustment</span>
@@ -597,29 +753,17 @@ export default function CostEstimator() {
                             {terrainAdj > 0 ? `+${fmt(terrainAdj)}` : "—"}
                           </span>
                         </div>
-
-                        {/* Add-on checkboxes */}
-                        <div className="space-y-1.5">
-                          <p className="text-zinc-400 text-xs uppercase tracking-wide">Add-Ons</p>
-                          {Object.entries(addOnCosts).map(([label, cost]) => (
-                            <label key={label} className="flex items-center justify-between gap-3 cursor-pointer py-1.5 px-2 rounded hover:bg-zinc-800/50 transition-colors">
-                              <div className="flex items-center gap-2">
-                                <input
-                                  type="checkbox"
-                                  checked={trailAddOns.includes(label)}
-                                  onChange={() => setTrailAddOns(prev =>
-                                    prev.includes(label) ? prev.filter(a => a !== label) : [...prev, label]
-                                  )}
-                                  className="w-3.5 h-3.5 accent-orange-500"
-                                />
+                        {trailAddOns.length > 0 && (
+                          <div className="space-y-1.5">
+                            <p className="text-zinc-400 text-xs uppercase tracking-wide">Selected Add-Ons</p>
+                            {trailAddOns.map(label => (
+                              <div key={label} className="flex items-center justify-between py-1 px-2">
                                 <span className="text-zinc-300 text-sm">{label}</span>
+                                <span className="text-zinc-400 text-sm">+{fmt(addOnCosts[label] || 0)}</span>
                               </div>
-                              <span className="text-zinc-400 text-sm">+{fmt(cost)}</span>
-                            </label>
-                          ))}
-                        </div>
-
-                        {/* Total */}
+                            ))}
+                          </div>
+                        )}
                         <div className="flex items-center justify-between pt-2 border-t border-orange-600/30">
                           <span className="text-orange-400 font-semibold text-sm">Adjusted Total</span>
                           <span className="text-orange-400 font-semibold text-sm">{fmt(totalWithAddOns)}</span>
@@ -629,7 +773,7 @@ export default function CostEstimator() {
                   );
                 })()}
 
-                {/* Line-item breakdown — full detail in internal view, price-only in client view */}
+                {/* Line-item breakdown */}
                 <Card className="bg-zinc-900 border-zinc-700">
                   <CardHeader className="pb-2">
                     <CardTitle className="text-white text-sm">
@@ -638,10 +782,9 @@ export default function CostEstimator() {
                   </CardHeader>
                   <CardContent className="space-y-2">
                     {clientView ? (
-                      // Client view: show only the price, no internal numbers
                       <>
                         <div className="flex items-center justify-between py-1.5">
-                          <span className="text-zinc-200 text-sm">Forestry Mulching / Land Management</span>
+                          <span className="text-zinc-200 text-sm">{service}</span>
                           <span className="text-zinc-200 text-sm font-medium">{fmt(getRecommendedPrice(result, pricingTier))}</span>
                         </div>
                         <div className="flex items-center justify-between pt-2 border-t border-zinc-700">
@@ -650,7 +793,6 @@ export default function CostEstimator() {
                         </div>
                       </>
                     ) : (
-                      // Internal view: full breakdown with notes
                       <>
                         {result.breakdown
                           .filter(item => !item.label.toLowerCase().includes("mobilization"))

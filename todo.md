@@ -2143,3 +2143,16 @@
 - [x] Save preliminary price estimate (estimatedRange) and adjustedAcres to DB quote submission record
 - [x] Add adjusted acreage input field for partial-property jobs (overrides deed acreage in estimate)
 - [x] Add Resources section to /ops Business nav — 46 Brushworks documents with search, category filter, and direct download links
+
+## Cost Estimator Audit (Jul 2026)
+
+- [x] Rename "Site Preparation" to "Vegetation Management" in CostEstimator service select
+- [x] Add Trail Cutting: pass linearFeet to the router when Trail Cutting is selected (currently only acreage is passed)
+- [x] Add Trail Cutting: pass trailWidth to the router and include it in the AI job description
+- [x] Add Trail Cutting: pass trailAddOns to the router and include them in the AI job description
+- [x] Add ROW Clearing: add ROW width input so effective acres can be calculated from LF × width
+- [x] Add universal add-on modifiers for all services: Post-Clear Seeding, Fence Line Clearing, Mulch Redistribution, Selective Clearing
+- [x] Fix client view label — hardcoded "Forestry Mulching / Land Management" should show the selected service name
+- [x] Add mobilization miles input to the UI (currently hardcoded to 25 miles)
+- [x] Add "Vegetation Management" market rate to COST_SYSTEM_PROMPT in costEstimatorRouter (already present but verify)
+- [x] Add fence line LF add-on input to the estimator form
