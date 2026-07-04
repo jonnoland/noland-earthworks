@@ -23,7 +23,7 @@ import {
   ClipboardList, Star, Snowflake, RefreshCw,
   Map as MapIcon, LayoutGrid, Clock, Navigation,
   Brain, Copy, Check, CheckCheck, Sparkles, Unlink,
-  Send, Radar, CheckCircle, Info, Save, CheckCircle2,
+  Send, Radar, CheckCircle, Info, Save, CheckCircle2, Facebook,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -2130,6 +2130,7 @@ function ProspectingTabTrigger() {
 const PROSPECT_SOURCE_LABELS: Record<string, string> = {
   craigslist: "Craigslist",
   facebook: "Facebook",
+  facebook_marketplace: "FB Marketplace",
   nextdoor: "Nextdoor",
   google_reviews: "Google Reviews",
   permits: "Permit Filings",
@@ -2139,6 +2140,7 @@ const PROSPECT_SOURCE_LABELS: Record<string, string> = {
 const PROSPECT_SOURCE_COLORS: Record<string, string> = {
   craigslist: "bg-purple-900/40 text-purple-300 border-purple-700",
   facebook: "bg-blue-900/40 text-blue-300 border-blue-700",
+  facebook_marketplace: "bg-blue-900/40 text-blue-300 border-blue-700",
   nextdoor: "bg-green-900/40 text-green-300 border-green-700",
   google_reviews: "bg-yellow-900/40 text-yellow-300 border-yellow-700",
   permits: "bg-orange-900/40 text-orange-300 border-orange-700",
@@ -2214,6 +2216,21 @@ function ProspectingTab() {
   function openReachOut(p: Prospect) {
     setReachOutTarget(p);
     setReachOutText(p.reachOutDraft ?? "");
+  }
+
+  function handleFacebookReachOut() {
+    if (!reachOutTarget || !reachOutText.trim()) return;
+    // Copy the message to clipboard
+    navigator.clipboard.writeText(reachOutText.trim()).then(() => {
+      toast.success("Message copied. Opening Facebook post — paste it as a comment.", { duration: 5000 });
+    }).catch(() => {
+      toast.info("Opening Facebook post. Copy your message manually.");
+    });
+    // Open the original post in a new tab
+    window.open(reachOutTarget.url, "_blank", "noopener,noreferrer");
+    // Mark as contacted
+    updateStatus.mutate({ id: reachOutTarget.id, status: "contacted" });
+    setReachOutTarget(null);
   }
 
   function handleSend() {
@@ -2450,6 +2467,12 @@ function ProspectingTab() {
                 <span className="text-zinc-300 font-medium">Contact:</span> {reachOutTarget.contactInfo}
               </p>
             )}
+            {reachOutTarget && (reachOutTarget.source === "facebook" || reachOutTarget.source === "facebook_marketplace") && (
+              <div className="flex items-start gap-2 rounded-md border border-blue-800/50 bg-blue-900/20 px-3 py-2 text-xs text-blue-300">
+                <Facebook className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+                <span>Facebook prospect — use <strong>Post on Facebook</strong> to open the original post and paste your message as a comment.</span>
+              </div>
+            )}
             <p className="text-xs text-zinc-500">
               Edit the AI-drafted message below before sending. If a phone number is detected in the contact info, it will be sent via SMS from your (888) number.
             </p>
@@ -2462,7 +2485,7 @@ function ProspectingTab() {
             />
             <p className="text-xs text-zinc-500 text-right">{reachOutText.length} / 160 chars</p>
           </div>
-          <DialogFooter className="gap-2">
+          <DialogFooter className="gap-2 flex-wrap">
             <Button
               variant="outline"
               onClick={() => setReachOutTarget(null)}
@@ -2470,12 +2493,22 @@ function ProspectingTab() {
             >
               Cancel
             </Button>
+            {reachOutTarget && (reachOutTarget.source === "facebook" || reachOutTarget.source === "facebook_marketplace") && (
+              <Button
+                onClick={handleFacebookReachOut}
+                disabled={!reachOutText.trim()}
+                className="bg-blue-700 hover:bg-blue-600 text-white"
+              >
+                <Facebook className="h-4 w-4 mr-2" />
+                Post on Facebook
+              </Button>
+            )}
             <Button
               onClick={handleSend}
               disabled={!reachOutText.trim() || sendSms.isPending}
               className="bg-orange-600 hover:bg-orange-700 text-white"
             >
-              {sendSms.isPending ? "Sending..." : "Send Message"}
+              {sendSms.isPending ? "Sending..." : "Send via SMS"}
             </Button>
           </DialogFooter>
         </DialogContent>
