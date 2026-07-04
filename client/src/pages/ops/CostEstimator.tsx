@@ -3,7 +3,7 @@
  * Enter job details, get a full internal cost breakdown vs customer price range.
  * All 6 services, all modifiers, mobilization miles, universal add-ons.
  */
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { trpc } from "@/lib/trpc";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -18,7 +18,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Loader2, AlertTriangle, TrendingUp, DollarSign, Clock, Eye, EyeOff, Satellite, Sparkles, Info } from "lucide-react";
+import { Loader2, AlertTriangle, TrendingUp, DollarSign, Clock, Eye, EyeOff, Satellite, Sparkles, Info, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
 
 type EstimateResult = {
@@ -51,6 +51,113 @@ function getRecommendedPrice(result: EstimateResult, tier: PricingTier): number 
 function getMarginAtPrice(price: number, internalCost: number): string {
   if (internalCost <= 0 || price <= 0) return "0";
   return ((price - internalCost) / price * 100).toFixed(0);
+}
+
+// ─── Loading animation steps ─────────────────────────────────────────────────
+const LOADING_STEPS = [
+  { label: "Reading job details",            duration: 1200 },
+  { label: "Calculating machine hours",      duration: 1600 },
+  { label: "Applying terrain & density",     duration: 1400 },
+  { label: "Computing fuel & wear costs",    duration: 1500 },
+  { label: "Checking travel surcharge",      duration: 1000 },
+  { label: "Running market rate comparison", duration: 1800 },
+  { label: "Calculating gross margin",       duration: 1200 },
+  { label: "Finalizing estimate",            duration: 1000 },
+];
+
+function EstimateLoadingPanel({ service }: { service: string }) {
+  const [stepIndex, setStepIndex] = useState(0);
+  const [completedSteps, setCompletedSteps] = useState<number[]>([]);
+  const [dots, setDots] = useState("");
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Cycle through steps
+  useEffect(() => {
+    let current = 0;
+    const advance = () => {
+      if (current < LOADING_STEPS.length - 1) {
+        setCompletedSteps(prev => [...prev, current]);
+        current++;
+        setStepIndex(current);
+        timerRef.current = setTimeout(advance, LOADING_STEPS[current].duration);
+      }
+    };
+    timerRef.current = setTimeout(advance, LOADING_STEPS[0].duration);
+    return () => { if (timerRef.current) clearTimeout(timerRef.current); };
+  }, []);
+
+  // Animated dots on current step
+  useEffect(() => {
+    const id = setInterval(() => setDots(d => d.length >= 3 ? "" : d + "."), 400);
+    return () => clearInterval(id);
+  }, []);
+
+  const progress = Math.round(((completedSteps.length) / LOADING_STEPS.length) * 100);
+
+  return (
+    <Card className="bg-zinc-900 border-zinc-700 overflow-hidden">
+      {/* Progress bar */}
+      <div className="h-0.5 bg-zinc-800">
+        <div
+          className="h-full bg-orange-500 transition-all duration-700 ease-out"
+          style={{ width: `${progress}%` }}
+        />
+      </div>
+      <CardContent className="pt-6 pb-6 space-y-5">
+        {/* Header */}
+        <div className="text-center space-y-1">
+          <div className="flex items-center justify-center gap-2 mb-3">
+            <div className="relative">
+              <div className="w-10 h-10 rounded-full border-2 border-orange-500/30 flex items-center justify-center">
+                <Loader2 size={20} className="text-orange-500 animate-spin" />
+              </div>
+              <div className="absolute inset-0 rounded-full border-2 border-orange-500/10 animate-ping" />
+            </div>
+          </div>
+          <p className="text-white font-semibold text-sm">
+            Generating estimate for <span className="text-orange-400">{service}</span>
+          </p>
+          <p className="text-zinc-500 text-xs">AI is analyzing your job — this takes 10–20 seconds</p>
+        </div>
+
+        {/* Step list */}
+        <div className="space-y-2">
+          {LOADING_STEPS.map((step, i) => {
+            const isDone = completedSteps.includes(i);
+            const isActive = i === stepIndex;
+            return (
+              <div
+                key={i}
+                className={`flex items-center gap-2.5 px-3 py-2 rounded transition-all duration-300 ${
+                  isActive ? "bg-orange-600/10 border border-orange-600/25" :
+                  isDone  ? "opacity-50" : "opacity-25"
+                }`}
+              >
+                {isDone ? (
+                  <CheckCircle2 size={14} className="text-green-400 shrink-0" />
+                ) : isActive ? (
+                  <Loader2 size={14} className="text-orange-400 animate-spin shrink-0" />
+                ) : (
+                  <div className="w-3.5 h-3.5 rounded-full border border-zinc-600 shrink-0" />
+                )}
+                <span className={`text-sm ${
+                  isActive ? "text-orange-200 font-medium" :
+                  isDone  ? "text-zinc-400" : "text-zinc-600"
+                }`}>
+                  {step.label}{isActive ? dots : ""}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Progress percentage */}
+        <div className="text-center">
+          <span className="text-zinc-500 text-xs tabular-nums">{progress}% complete</span>
+        </div>
+      </CardContent>
+    </Card>
+  );
 }
 
 // ─── Universal add-on options ─────────────────────────────────────────────────
@@ -591,12 +698,7 @@ export default function CostEstimator() {
             )}
 
             {estimate.isPending && (
-              <Card className="bg-zinc-900 border-zinc-700">
-                <CardContent className="py-12 text-center text-zinc-400">
-                  <Loader2 size={32} className="mx-auto mb-3 animate-spin text-orange-500" />
-                  <p>AI is calculating your cost estimate...</p>
-                </CardContent>
-              </Card>
+              <EstimateLoadingPanel service={service} />
             )}
 
             {result && (
