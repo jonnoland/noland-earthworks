@@ -859,9 +859,10 @@ const JOB_TYPE_LABELS: Record<string, string> = {
   brush_removal: "Brush Removal",
   stump_grinding: "Stump Grinding",
   wildfire_mitigation: "Wildfire Mitigation",
+  trail_cutting: "Trail Cutting",
 };
 
-const JOB_TYPE_OPTIONS = ["land_clearing", "forestry_mulching", "brush_removal", "stump_grinding", "wildfire_mitigation"] as const;
+const JOB_TYPE_OPTIONS = ["land_clearing", "forestry_mulching", "brush_removal", "stump_grinding", "wildfire_mitigation", "trail_cutting"] as const;
 const STATUS_OPTIONS = ["estimate", "scheduled", "in_progress", "completed", "invoiced", "paid"] as const;
 type JobType = typeof JOB_TYPE_OPTIONS[number];
 type JobStatus = typeof STATUS_OPTIONS[number];
@@ -1065,6 +1066,7 @@ export default function Jobs() {
       brush_removal:        bhRate,
       stump_grinding:       aiPricing?.stumpGrindingPerStump ?? 600,
       wildfire_mitigation:  fmRate,
+      trail_cutting:        850,
     };
     const catalogEntry = catalog.find(
       c => c.serviceType?.toLowerCase().replace(/[^a-z]/g, "_") === form.jobType ||

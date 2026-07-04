@@ -1090,6 +1090,7 @@ export default function Pricing() {
                 <option>Brush Removal</option>
                 <option>Brush Hogging</option>
                 <option>Right-of-Way Clearing</option>
+                <option>Trail Cutting</option>
                 <option>Site Preparation</option>
               </select>
             </div>

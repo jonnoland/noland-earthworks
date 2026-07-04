@@ -94,6 +94,7 @@ export const jobs = mysqlTable("jobs", {
     "brush_removal",
     "stump_grinding",
     "wildfire_mitigation",
+    "trail_cutting",
   ]).default("land_clearing").notNull(),
   status: mysqlEnum("status", [
     "estimate",

@@ -124,6 +124,7 @@ MARKET RATES (Middle Tennessee, 2025–2026):
 - Land clearing (heavy): $1,200–$2,500/acre
 - Brush hogging: $60–$120/acre
 - ROW clearing: $4–$8/linear foot
+- Trail cutting: $700–$1,000/effective acre (length × width ÷ 43,560 sq ft = effective acres); $500 minimum; sloped terrain +20%, rocky +40%
 - Stump grinding: $150–$250/stump
 
 REQUIRED BREAKDOWN — you MUST include one line item per cost component below. Do not combine or omit any:

@@ -12,6 +12,7 @@ const SERVICE_LABELS: Record<string, string> = {
   "vegetation-management": "Vegetation Management",
   "right-of-way-clearing": "Right-of-Way Clearing",
   "property-maintenance": "Property Maintenance",
+  "trail-cutting": "Trail Cutting",
 };
 
 function getResend() {

@@ -51,6 +51,7 @@ SERVICES OFFERED:
 - Forestry mulching (primary — grinds brush/saplings/small trees into mulch, no debris piles)
 - Land clearing / site prep
 - Right-of-way clearing
+- Trail cutting (linear clearing for hiking, hunting, or equipment access trails)
 - Brush hogging (secondary, lower margin)
 - Stump grinding (add-on)
 
@@ -82,6 +83,12 @@ Property Maintenance / Brush Hogging (per acre):
   - Pasture/field maintenance: $150 – $400/acre
   - Brush control: $400 – $900/acre
   - Full reclamation: $900 – $2,000+/acre
+
+Trail Cutting (per effective acre — length × width ÷ 43,560 sq ft):
+  - Flat terrain, light brush: $700 – $850/effective acre
+  - Sloped terrain (+20%): $840 – $1,020/effective acre
+  - Rocky terrain (+40%): $980 – $1,400/effective acre
+  - Minimum job: $500
 
 Add-ons:
   - Post-clear seeding: $150 – $700/acre

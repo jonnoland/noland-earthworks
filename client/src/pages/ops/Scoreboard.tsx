@@ -70,6 +70,7 @@ const JOB_TYPE_LABELS: Record<string, string> = {
   brush_removal: "Brush Removal",
   stump_grinding: "Stump Grinding",
   wildfire_mitigation: "Wildfire Mitigation",
+  trail_cutting: "Trail Cutting",
 };
 
 export default function Scoreboard() {

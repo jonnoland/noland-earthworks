@@ -241,6 +241,7 @@ export default function CostEstimator() {
                     <SelectItem value="Land Management">Land Management</SelectItem>
                     <SelectItem value="Site Preparation">Site Preparation</SelectItem>
                     <SelectItem value="Right-of-Way Clearing">Right-of-Way Clearing</SelectItem>
+                    <SelectItem value="Trail Cutting">Trail Cutting</SelectItem>
                     <SelectItem value="Brush Hogging">Brush Hogging</SelectItem>
                     <SelectItem value="Stump Grinding">Stump Grinding Only</SelectItem>
                   </SelectContent>

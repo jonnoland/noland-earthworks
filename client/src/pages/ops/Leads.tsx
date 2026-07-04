@@ -1717,7 +1717,7 @@ function AddLeadModal({ onClose, onCreate }: { onClose: () => void; onCreate: (f
             <label className="text-[11px] font-semibold uppercase tracking-wider text-[#555]">Job Type</label>
             <select value={form.jobType} onChange={set("jobType")}
               className="mt-1 w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-md px-3 py-2 text-xs text-white focus:outline-none focus:border-[#E07B2A]/50">
-              {["Land Management", "Forestry Mulching", "Brush Removal", "Stump Grinding", "Wildfire Mitigation"].map(t => (
+              {["Land Management", "Forestry Mulching", "Brush Removal", "Stump Grinding", "Wildfire Mitigation", "Trail Cutting"].map(t => (
                 <option key={t} value={t}>{t}</option>
               ))}
             </select>

@@ -1,0 +1,1 @@
+ALTER TABLE `jobs` MODIFY COLUMN `jobType` enum('land_clearing','forestry_mulching','brush_removal','stump_grinding','wildfire_mitigation','trail_cutting') NOT NULL DEFAULT 'land_clearing';
