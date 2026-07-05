@@ -1615,6 +1615,8 @@ export const prospectingLeads = mysqlTable("prospecting_leads", {
   status: varchar("status", { length: 32 }).notNull().default("new"),
   /** Original post text snippet */
   postSnippet: text("postSnippet"),
+  /** Facebook profile URL of the poster — used to build Messenger deep link */
+  profileUrl: text("profileUrl"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });

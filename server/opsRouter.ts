@@ -3602,6 +3602,7 @@ FOR EACH PROSPECT FOUND, collect:
 - summary: 1-2 sentence description of what they need and why they are a good fit for Noland Earthworks
 - reachOutDraft: a short, casual, genuine outreach message Jon can send — written in Jon's voice (no emojis, no corporate language, warm and direct, mention veteran-owned, offer a free site visit). Example: "Hey [name] — saw your post about clearing that property. I run a tracked forestry mulcher out of Middle Tennessee, veteran-owned and operated. I can grind everything down to mulch — no debris piles, no burning. Happy to come take a look for free. Give me a call at 615-406-4819 or visit nolandearthworks.com."
 - postSnippet: the first 200 characters of the original post text
+- profileUrl: for Facebook and Facebook Marketplace prospects ONLY — the URL of the poster's Facebook profile page (e.g., https://www.facebook.com/username or https://www.facebook.com/profile.php?id=12345). Navigate to the post and click the poster's name to get their profile URL. Set to null for Craigslist and other non-Facebook sources.
 
 QUALITY FILTER — only include prospects that:
 - Are in Tennessee (Middle or West TN preferred)

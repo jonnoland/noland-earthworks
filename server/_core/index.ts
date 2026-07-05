@@ -534,6 +534,7 @@ ${transcript}`;
           summary: string;
           reachOutDraft?: string;
           postSnippet?: string;
+          profileUrl?: string;
         }>;
       };
       if (!Array.isArray(body.prospects) || body.prospects.length === 0) {
@@ -559,6 +560,7 @@ ${transcript}`;
           summary: p.summary,
           reachOutDraft: p.reachOutDraft ?? null,
           postSnippet: p.postSnippet ?? null,
+          profileUrl: p.profileUrl ?? null,
           status: "new",
         });
         inserted++;
@@ -606,6 +608,7 @@ ${transcript}`;
           summary: string;
           reachOutDraft?: string;
           postSnippet?: string;
+          profileUrl?: string;
         }>;
       };
       if (!Array.isArray(body.prospects) || body.prospects.length === 0) {
@@ -630,6 +633,7 @@ ${transcript}`;
           summary: p.summary,
           reachOutDraft: p.reachOutDraft ?? null,
           postSnippet: p.postSnippet ?? null,
+          profileUrl: p.profileUrl ?? null,
           status: "new",
         });
         inserted++;

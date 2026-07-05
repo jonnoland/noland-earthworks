@@ -2160,6 +2160,7 @@ interface Prospect {
   reachOutDraft: string | null;
   status: string;
   postSnippet: string | null;
+  profileUrl?: string | null;
   createdAt: Date;
 }
 
@@ -2229,6 +2230,30 @@ function ProspectingTab() {
     // Open the original post in a new tab
     window.open(reachOutTarget.url, "_blank", "noopener,noreferrer");
     // Mark as contacted
+    updateStatus.mutate({ id: reachOutTarget.id, status: "contacted" });
+    setReachOutTarget(null);
+  }
+
+  function handleMessengerReachOut() {
+    if (!reachOutTarget?.profileUrl) return;
+    // Derive m.me link from profile URL
+    // Handles: https://www.facebook.com/username, https://www.facebook.com/profile.php?id=12345
+    let messengerUrl: string;
+    try {
+      const parsed = new URL(reachOutTarget.profileUrl);
+      const idParam = parsed.searchParams.get("id");
+      if (idParam) {
+        messengerUrl = `https://m.me/${idParam}`;
+      } else {
+        // Extract last path segment as username
+        const segments = parsed.pathname.replace(/\/+$/, "").split("/");
+        const username = segments[segments.length - 1];
+        messengerUrl = username ? `https://m.me/${username}` : reachOutTarget.profileUrl;
+      }
+    } catch {
+      messengerUrl = reachOutTarget.profileUrl;
+    }
+    window.open(messengerUrl, "_blank", "noopener,noreferrer");
     updateStatus.mutate({ id: reachOutTarget.id, status: "contacted" });
     setReachOutTarget(null);
   }
@@ -2502,6 +2527,36 @@ function ProspectingTab() {
                 <Facebook className="h-4 w-4 mr-2" />
                 Post on Facebook
               </Button>
+            )}
+            {reachOutTarget && (reachOutTarget.source === "facebook" || reachOutTarget.source === "facebook_marketplace") && (
+              reachOutTarget.profileUrl ? (
+                <Button
+                  onClick={handleMessengerReachOut}
+                  className="bg-indigo-700 hover:bg-indigo-600 text-white"
+                >
+                  <MessageSquare className="h-4 w-4 mr-2" />
+                  Send via Messenger
+                </Button>
+              ) : (
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <span>
+                        <Button
+                          disabled
+                          className="bg-indigo-900/50 text-indigo-400/50 cursor-not-allowed"
+                        >
+                          <MessageSquare className="h-4 w-4 mr-2" />
+                          Send via Messenger
+                        </Button>
+                      </span>
+                    </TooltipTrigger>
+                    <TooltipContent side="top" className="bg-zinc-800 text-zinc-200 border-zinc-700">
+                      Profile URL not available — run a new scan to capture it
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              )
             )}
             <Button
               onClick={handleSend}

@@ -589,6 +589,7 @@ export async function insertProspectingLead(data: {
   summary: string;
   reachOutDraft?: string | null;
   postSnippet?: string | null;
+  profileUrl?: string | null;
 }) {
   const db = await getDb();
   if (!db) return null;
@@ -602,6 +603,7 @@ export async function insertProspectingLead(data: {
     summary: data.summary,
     reachOutDraft: data.reachOutDraft ?? null,
     postSnippet: data.postSnippet ?? null,
+    profileUrl: data.profileUrl ?? null,
     status: "new",
   });
 }
