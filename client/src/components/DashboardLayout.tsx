@@ -44,6 +44,73 @@ import {
 import { useAuth } from "@/_core/hooks/useAuth";
 import { getLoginUrl } from "@/const";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+
+// ─── Changelog entries — edit this array to update the changelog ─────────────
+const CHANGELOG: { version: string; date: string; items: string[] }[] = [
+  {
+    version: "1.0.16",
+    date: "Jul 4, 2026",
+    items: [
+      "Added Send via Messenger button to Facebook prospect Reach Out modal",
+      "Prospecting scan now captures poster Facebook profile URL for Messenger deep links",
+      "Messenger button shows disabled state with tooltip when profile URL is unavailable",
+    ],
+  },
+  {
+    version: "1.0.15",
+    date: "Jul 4, 2026",
+    items: [
+      "Added Post on Facebook button to prospect Reach Out modal for FB and FB Marketplace leads",
+      "Added Facebook Marketplace source label and color to prospecting tab",
+    ],
+  },
+  {
+    version: "1.0.14",
+    date: "Jul 4, 2026",
+    items: [
+      "Added version indicator to sidebar (desktop and mobile) showing build timestamp",
+      "Added Vegetation Management, Right-of-Way Clearing, Trail Cutting, and Stump Grinding to all service dropdowns",
+    ],
+  },
+  {
+    version: "1.0.13",
+    date: "Jul 4, 2026",
+    items: [
+      "AI Quote panel in Lead Detail: editable fields, Save to Lead, and Email Draft copy button",
+      "Fixed Gemini JSON schema compatibility for AI quote generation",
+    ],
+  },
+  {
+    version: "1.0.12",
+    date: "Jul 4, 2026",
+    items: [
+      "Added AI Quote Estimate button to Lead Detail panel",
+      "Quote uses lead data, Middle TN market rates, and terrain/density modifiers",
+    ],
+  },
+  {
+    version: "1.0.11",
+    date: "Jul 4, 2026",
+    items: [
+      "Public /pricing estimate tool: added Trail Cutting, ROW Clearing, Stump Grinding Only",
+      "Service-specific add-on filtering on public estimate form",
+    ],
+  },
+  {
+    version: "1.0.10",
+    date: "Jul 4, 2026",
+    items: [
+      "Cost Estimator loading animation with 8 sequential status steps",
+      "Added mobilization miles, ROW width, fence line LF, and universal add-ons to Cost Estimator",
+    ],
+  },
+];
 
 // ─── Nav groups — 5 sections ─────────────────────────────────────────────────
 
@@ -198,6 +265,7 @@ export default function DashboardLayout({ children, title, subtitle }: Dashboard
   const [mobileOpen, setMobileOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
   const [userOpen, setUserOpen] = useState(false);
+  const [changelogOpen, setChangelogOpen] = useState(false);
 
   // Pending team registration count for badge
   const { data: pendingData } = trpc.team.pendingCount.useQuery(undefined, {
@@ -327,11 +395,15 @@ export default function DashboardLayout({ children, title, subtitle }: Dashboard
           <JobberPill collapsed={collapsed} />
         </div>
 
-        {/* Version indicator */}
+        {/* Version indicator — clickable to open changelog */}
         {!collapsed && (
-          <div className="px-3 pb-2 text-[10px] text-muted-foreground/40 leading-tight" title={`Built: ${new Date(__BUILD_TIME__).toLocaleString()}`}>
+          <button
+            onClick={() => setChangelogOpen(true)}
+            className="px-3 pb-2 text-[10px] text-muted-foreground/40 leading-tight hover:text-muted-foreground/70 transition-colors text-left"
+            title={`Built: ${new Date(__BUILD_TIME__).toLocaleString()} — Click to view changelog`}
+          >
             v{__APP_VERSION__} &middot; {new Date(__BUILD_TIME__).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
-          </div>
+          </button>
         )}
         {/* Collapse toggle */}
         <div className="p-2 border-t border-[#1e1e1e]">
@@ -369,9 +441,13 @@ export default function DashboardLayout({ children, title, subtitle }: Dashboard
             <nav className="flex-1 py-2 overflow-y-auto">
               <NavLinks onClickItem={() => setMobileOpen(false)} />
             </nav>
-            <div className="px-4 pb-3 pt-2 text-[10px] text-muted-foreground/40 border-t border-[#1e1e1e]" title={`Built: ${new Date(__BUILD_TIME__).toLocaleString()}`}>
+            <button
+              onClick={() => { setMobileOpen(false); setChangelogOpen(true); }}
+              className="px-4 pb-3 pt-2 text-[10px] text-muted-foreground/40 border-t border-[#1e1e1e] hover:text-muted-foreground/70 transition-colors text-left w-full"
+              title={`Built: ${new Date(__BUILD_TIME__).toLocaleString()} — Click to view changelog`}
+            >
               v{__APP_VERSION__} &middot; {new Date(__BUILD_TIME__).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
-            </div>
+            </button>
           </aside>
         </div>
       )}
@@ -486,6 +562,35 @@ export default function DashboardLayout({ children, title, subtitle }: Dashboard
           })}
         </nav>
       </div>
+
+      {/* ─── Changelog Modal ─────────────────────────────────────────────────────────────────────────────────── */}
+      <Dialog open={changelogOpen} onOpenChange={setChangelogOpen}>
+        <DialogContent className="bg-[#0f0f0f] border-[#1e1e1e] text-white max-w-lg max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-white text-base font-semibold">What's New</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-5 pt-1">
+            {CHANGELOG.map((entry) => (
+              <div key={entry.version} className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <span className="text-[11px] font-bold text-orange-400 bg-orange-400/10 border border-orange-400/20 px-2 py-0.5 rounded">
+                    v{entry.version}
+                  </span>
+                  <span className="text-[11px] text-zinc-500">{entry.date}</span>
+                </div>
+                <ul className="space-y-1">
+                  {entry.items.map((item, i) => (
+                    <li key={i} className="flex items-start gap-2 text-sm text-zinc-300">
+                      <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-zinc-600 shrink-0" />
+                      {item}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
