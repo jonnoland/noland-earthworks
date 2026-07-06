@@ -1316,8 +1316,18 @@ function IntegrationsTab() {
   });
 
   const [apiKeyVisible, setApiKeyVisible] = useState(false);
+  const [showZapierGuide, setShowZapierGuide] = useState(false);
   const webhookUrl = `${window.location.origin}/api/webhooks/leads`;
-  const apiKey = "whk_ne-api-key-placeholder";
+  const { data: webhookKeyData, refetch: refetchWebhookKey } = trpc.ops.settings.getWebhookKey.useQuery();
+  const apiKey = webhookKeyData?.key ?? "";
+  const regenerateKey = trpc.ops.settings.regenerateWebhookKey.useMutation({
+    onSuccess: (data) => { toast.success("New API key generated"); refetchWebhookKey(); },
+    onError: (e) => toast.error(`Failed to regenerate: ${e.message}`),
+  });
+  const testWebhook = trpc.ops.settings.testWebhookConnection.useMutation({
+    onSuccess: () => toast.success("Test lead sent — check the Leads board"),
+    onError: (e) => toast.error(`Test failed: ${e.message}`),
+  });
   const copy = (val: string) => { navigator.clipboard.writeText(val); toast.success("Copied to clipboard"); };
 
   // Review Request SMS Template
@@ -1533,10 +1543,11 @@ function IntegrationsTab() {
       {/* ── Webhook ── */}
       <SettingsSection
         title="Zapier / Make Webhook"
-        description="Connect any lead source to your pipeline. No coding required."
+        description="Connect Facebook Lead Ads (or any source) to your pipeline. No coding required."
         action={<span className="text-[11px] bg-primary/20 text-primary border border-primary/30 px-2 py-0.5 rounded-full font-semibold">Recommended</span>}
       >
-        <div className="space-y-3">
+        <div className="space-y-4">
+          {/* Credentials */}
           <div className="space-y-2">
             <div>
               <label className="text-[11px] text-muted-foreground uppercase tracking-wider">Webhook URL</label>
@@ -1551,17 +1562,131 @@ function IntegrationsTab() {
               <label className="text-[11px] text-muted-foreground uppercase tracking-wider">API Key</label>
               <div className="flex gap-2 mt-1">
                 <code className="flex-1 bg-secondary/60 border border-border rounded px-3 py-2 text-xs font-mono text-foreground truncate">
-                  {apiKeyVisible ? apiKey : apiKey.slice(0, 8) + "..."}
+                  {apiKeyVisible ? apiKey : (apiKey ? apiKey.slice(0, 8) + "..." : "Loading...")}
                 </code>
                 <button onClick={() => setApiKeyVisible(v => !v)} className="shrink-0 p-2 bg-secondary border border-border rounded hover:bg-secondary/80 transition-colors">
                   {apiKeyVisible ? <EyeOff className="w-3.5 h-3.5 text-muted-foreground" /> : <Eye className="w-3.5 h-3.5 text-muted-foreground" />}
                 </button>
-                <button onClick={() => copy(apiKey)} className="shrink-0 p-2 bg-secondary border border-border rounded hover:bg-secondary/80 transition-colors">
+                <button onClick={() => copy(apiKey)} disabled={!apiKey} className="shrink-0 p-2 bg-secondary border border-border rounded hover:bg-secondary/80 transition-colors disabled:opacity-40">
                   <Copy className="w-3.5 h-3.5 text-muted-foreground" />
                 </button>
               </div>
             </div>
           </div>
+
+          {/* Action buttons */}
+          <div className="flex items-center gap-2 flex-wrap">
+            <button
+              onClick={() => testWebhook.mutate()}
+              disabled={testWebhook.isPending || !apiKey}
+              className="flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-md bg-blue-600 hover:bg-blue-700 text-white transition-colors disabled:opacity-50"
+            >
+              {testWebhook.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <PlayCircle className="w-3 h-3" />}
+              Send Test Lead
+            </button>
+            <button
+              onClick={() => {
+                if (confirm("Generate a new API key? Your existing Zapier zap will stop working until you update it with the new key.")) {
+                  regenerateKey.mutate();
+                }
+              }}
+              disabled={regenerateKey.isPending}
+              className="flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-md bg-secondary border border-border hover:bg-secondary/80 text-muted-foreground transition-colors disabled:opacity-50"
+            >
+              {regenerateKey.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <RefreshCw className="w-3 h-3" />}
+              Regenerate Key
+            </button>
+          </div>
+
+          {/* Setup guide toggle */}
+          <button
+            onClick={() => setShowZapierGuide(v => !v)}
+            className="flex items-center gap-1.5 text-xs text-primary hover:text-primary/80 transition-colors"
+          >
+            <ChevronDown className={`w-3.5 h-3.5 transition-transform ${showZapierGuide ? "rotate-180" : ""}`} />
+            {showZapierGuide ? "Hide setup guide" : "Show Zapier setup guide"}
+          </button>
+
+          {/* Step-by-step guide */}
+          {showZapierGuide && (
+            <div className="border border-border rounded-lg overflow-hidden">
+              <div className="bg-secondary/40 px-4 py-3 border-b border-border">
+                <h4 className="text-sm font-semibold text-foreground">Zapier Setup — Facebook Lead Ads</h4>
+                <p className="text-[11px] text-muted-foreground mt-0.5">Follow these steps to automatically send Facebook leads into your pipeline.</p>
+              </div>
+              <div className="divide-y divide-border">
+                {[
+                  {
+                    step: 1,
+                    title: "Create a new Zap",
+                    body: "Log in to Zapier and click \"Create Zap\". Name it something like \"Facebook Lead Ads → Noland Earthworks\".",
+                  },
+                  {
+                    step: 2,
+                    title: "Set the trigger: Facebook Lead Ads",
+                    body: "Search for \"Facebook Lead Ads\" as the trigger app. Choose the trigger event \"New Lead\". Connect your Facebook account and select the Noland Earthworks page and the specific ad form you want to capture leads from.",
+                  },
+                  {
+                    step: 3,
+                    title: "Set the action: Webhooks by Zapier",
+                    body: "Search for \"Webhooks by Zapier\" as the action app. Choose \"POST\" as the action event.",
+                  },
+                  {
+                    step: 4,
+                    title: "Configure the webhook action",
+                    body: null,
+                    table: [
+                      { field: "URL", value: webhookUrl },
+                      { field: "Payload Type", value: "JSON" },
+                      { field: "Header: x-api-key", value: apiKeyVisible ? apiKey : (apiKey ? apiKey.slice(0, 8) + "..." : "(your API key above)") },
+                    ],
+                  },
+                  {
+                    step: 5,
+                    title: "Map the form fields in the Data section",
+                    body: "In the \"Data\" section, map your Facebook form fields to these keys:",
+                    table: [
+                      { field: "first_name", value: "First Name (from Facebook)" },
+                      { field: "last_name", value: "Last Name (from Facebook)" },
+                      { field: "phone", value: "Phone Number (from Facebook)" },
+                      { field: "email", value: "Email (from Facebook)" },
+                      { field: "location", value: "City / County / Address field" },
+                      { field: "acres", value: "Acreage field (if on your form)" },
+                      { field: "ad_name", value: "Ad Name (Zapier meta field)" },
+                      { field: "source", value: "facebook" },
+                    ],
+                  },
+                  {
+                    step: 6,
+                    title: "Test and activate",
+                    body: "Run the Zapier test. Then click \"Send Test Lead\" above to verify a test lead appears in your Leads board. Once confirmed, turn the Zap on.",
+                  },
+                ].map(({ step, title, body, table }) => (
+                  <div key={step} className="px-4 py-3 flex gap-3">
+                    <div className="shrink-0 w-5 h-5 rounded-full bg-primary/20 text-primary text-[10px] font-bold flex items-center justify-center mt-0.5">{step}</div>
+                    <div className="space-y-1.5 min-w-0">
+                      <p className="text-xs font-semibold text-foreground">{title}</p>
+                      {body && <p className="text-[11px] text-muted-foreground leading-relaxed">{body}</p>}
+                      {table && (
+                        <div className="mt-2 rounded border border-border overflow-hidden">
+                          <table className="w-full text-[11px]">
+                            <tbody>
+                              {table.map(({ field, value }) => (
+                                <tr key={field} className="border-b border-border last:border-0">
+                                  <td className="px-2.5 py-1.5 font-mono text-primary/80 bg-secondary/30 w-2/5 align-top">{field}</td>
+                                  <td className="px-2.5 py-1.5 text-muted-foreground break-all">{value}</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </SettingsSection>
 

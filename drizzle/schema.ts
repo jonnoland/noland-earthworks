@@ -469,6 +469,8 @@ export const businessSettings = mysqlTable("business_settings", {
   promoBannerText: varchar("promoBannerText", { length: 300 }).default(""),
   /** Accent color for the banner: 'orange' | 'green' | 'blue' | 'red' */
   promoBannerColor: varchar("promoBannerColor", { length: 20 }).default("orange"),
+  /** Zapier / webhook API key — auto-generated on first use, used to authenticate POST /api/webhooks/leads */
+  webhookApiKey: varchar("webhookApiKey", { length: 64 }),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
 export type BusinessSettings = typeof businessSettings.$inferSelect;

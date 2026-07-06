@@ -568,6 +568,13 @@
       "when": 1783222396062,
       "tag": "0080_loud_mulholland_black",
       "breakpoints": true
+    },
+    {
+      "idx": 81,
+      "version": "5",
+      "when": 1783350847255,
+      "tag": "0081_wide_snowbird",
+      "breakpoints": true
     }
   ]
 }

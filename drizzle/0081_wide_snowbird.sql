@@ -1,0 +1,1 @@
+ALTER TABLE `business_settings` ADD `webhookApiKey` varchar(64);

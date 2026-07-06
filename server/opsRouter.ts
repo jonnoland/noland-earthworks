@@ -3065,6 +3065,73 @@ const settingsRouter = router({
       }
       return { success: true };
     }),
+  // ── Zapier Webhook Key ─────────────────────────────────────────────────────
+  getWebhookKey: ownerProcedure.query(async () => {
+    const db = await getDb();
+    if (!db) return null;
+    let rows = await db.select({ id: businessSettings.id, webhookApiKey: businessSettings.webhookApiKey }).from(businessSettings).limit(1);
+    if (rows.length === 0) {
+      await db.insert(businessSettings).values({});
+      rows = await db.select({ id: businessSettings.id, webhookApiKey: businessSettings.webhookApiKey }).from(businessSettings).limit(1);
+    }
+    let key = rows[0]?.webhookApiKey;
+    if (!key) {
+      const { randomBytes } = await import("crypto");
+      key = "whk_" + randomBytes(20).toString("hex");
+      await db.update(businessSettings).set({ webhookApiKey: key }).where(eq(businessSettings.id, rows[0].id));
+    }
+    return { key };
+  }),
+
+  regenerateWebhookKey: ownerProcedure.mutation(async () => {
+    const db = await getDb();
+    if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+    const { randomBytes } = await import("crypto");
+    const key = "whk_" + randomBytes(20).toString("hex");
+    const rows = await db.select({ id: businessSettings.id }).from(businessSettings).limit(1);
+    if (rows.length === 0) {
+      await db.insert(businessSettings).values({ webhookApiKey: key });
+    } else {
+      await db.update(businessSettings).set({ webhookApiKey: key }).where(eq(businessSettings.id, rows[0].id));
+    }
+    return { key };
+  }),
+
+  testWebhookConnection: ownerProcedure.mutation(async () => {
+    const db = await getDb();
+    if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+    const rows = await db.select({ webhookApiKey: businessSettings.webhookApiKey }).from(businessSettings).limit(1);
+    const key = rows[0]?.webhookApiKey;
+    if (!key) throw new TRPCError({ code: "BAD_REQUEST", message: "No webhook key configured. Reload the page to auto-generate one." });
+    const testPayload = {
+      first_name: "Test",
+      last_name: "Lead",
+      phone: "(615) 555-0100",
+      email: "test@zapier-test.com",
+      location: "Middle Tennessee",
+      source: "meta_ads",
+      ad_name: "Test Ad",
+      acres: "5",
+      vegetation: "Mixed brush and cedar",
+      pain: "Reclaim pasture",
+      timeline: "Within 30 days",
+      _test: true,
+    };
+    // Use the deployed production URL for the webhook call
+    const webhookBase = process.env.NODE_ENV === "production"
+      ? "https://nolandearth-pymczdcn.manus.space"
+      : "http://localhost:" + (process.env.PORT ?? "3000");
+    const res = await fetch(`${webhookBase}/api/webhooks/leads`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-api-key": key },
+      body: JSON.stringify(testPayload),
+    });
+    if (!res.ok) {
+      const text = await res.text();
+      throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: `Webhook test failed (${res.status}): ${text}` });
+    }
+    return { success: true };
+  }),
 });
 
 // ─── Blackout Dates Router ────────────────────────────────────────────────────
@@ -3651,10 +3718,10 @@ Do not fabricate prospects. Only include real posts you actually found and visit
 
       const data = await response.json() as { ok: boolean; task_id: string; task_url: string };
       console.log("[runScan] Manus task created:", data.task_id, data.task_url);
-      return { ok: true, taskId: data.task_id, taskUrl: data.task_url };
+            return { ok: true, taskId: data.task_id, taskUrl: data.task_url };
     }),
-});
 
+});
 export const opsRouter = router({
   jobs: jobsRouter,
   leads: leadsRouter,

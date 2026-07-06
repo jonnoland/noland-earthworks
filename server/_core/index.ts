@@ -12,6 +12,7 @@ import { prerenderMiddleware } from "../prerender";
 import { registerJobberRoutes } from "../jobberRoutes";
 import { registerTwilioRoutes } from "../twilioRoutes";
 import { registerFacebookWebhookRoutes } from "../facebookWebhookRoutes";
+import { registerZapierWebhookRoutes } from "../zapierWebhookRoutes";
 import { registerGoogleRoutes } from "../googleRoutes";
 import { registerXRoutes } from "../xRoutes";
 import { registerInstagramTokenRefreshRoute } from "../instagramTokenRefresh";
@@ -83,7 +84,7 @@ async function startServer() {
     },
     credentials: true,
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization", "x-field-app-token", "trpc-accept"],
+    allowedHeaders: ["Content-Type", "Authorization", "x-field-app-token", "trpc-accept", "x-api-key"],
   }));
 
   // Stripe webhook MUST be registered before express.json() to preserve raw body for signature verification
@@ -102,6 +103,8 @@ async function startServer() {
   registerTwilioRoutes(app);
   // Facebook Leadgen Webhook: GET /api/webhooks/facebook (verify), POST /api/webhooks/facebook (lead events)
   registerFacebookWebhookRoutes(app);
+  // Zapier / Make webhook: POST /api/webhooks/leads
+  registerZapierWebhookRoutes(app);
   // Google Business Profile OAuth: GET /api/google/authorize, /api/google/callback, /api/google/status
   registerGoogleRoutes(app);
   // X (Twitter) OAuth: GET /api/x/authorize, /api/x/callback, /api/x/status, POST /api/x/disconnect
