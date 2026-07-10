@@ -3628,7 +3628,57 @@ export const prospectingRouter = router({
       return leads;
     }),
 
-  updateStatus: ownerProcedure
+  // Batch insert prospects — called by the Manus prospecting agent task.
+  // Uses ownerProcedure (session cookie) instead of the cron-only /api/scheduled/* path.
+  insertBatch: ownerProcedure
+    .input(z.object({
+      prospects: z.array(z.object({
+        source: z.string(),
+        url: z.string(),
+        contactName: z.string().optional().nullable(),
+        contactInfo: z.string().optional().nullable(),
+        location: z.string().optional().nullable(),
+        summary: z.string(),
+        reachOutDraft: z.string().optional().nullable(),
+        postSnippet: z.string().optional().nullable(),
+        profileUrl: z.string().optional().nullable(),
+        marginTier: z.string().optional().nullable(),
+        estimatedAcres: z.string().optional().nullable(),
+        notes: z.string().optional().nullable(),
+      })),
+    }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+      const { eq } = await import("drizzle-orm");
+      let inserted = 0;
+      for (const p of input.prospects) {
+        if (!p.url || !p.summary) continue;
+        const existing = await db.select({ id: prospectingLeads.id })
+          .from(prospectingLeads)
+          .where(eq(prospectingLeads.url, p.url))
+          .limit(1);
+        if (existing.length > 0) continue;
+        await db.insert(prospectingLeads).values({
+          source: p.source ?? "other",
+          url: p.url,
+          contactName: p.contactName ?? null,
+          contactInfo: p.contactInfo ?? null,
+          location: p.location ?? null,
+          summary: p.summary,
+          reachOutDraft: p.reachOutDraft ?? null,
+          postSnippet: p.postSnippet ?? null,
+          profileUrl: p.profileUrl ?? null,
+          marginTier: p.marginTier ?? null,
+          estimatedAcres: p.estimatedAcres ?? null,
+          notes: p.notes ?? null,
+          status: "new",
+        });
+        inserted++;
+      }
+      return { ok: true, inserted, total: input.prospects.length };
+    }),
+    updateStatus: ownerProcedure
     .input(z.object({ id: z.number(), status: z.enum(["new", "contacted", "dismissed"]) }))
     .mutation(async ({ input }) => {
       await updateProspectingLeadStatus(input.id, input.status);
