@@ -18,7 +18,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Loader2, AlertTriangle, TrendingUp, DollarSign, Clock, Eye, EyeOff, Satellite, Sparkles, Info, CheckCircle2 } from "lucide-react";
+import { Loader2, AlertTriangle, TrendingUp, DollarSign, Clock, Eye, EyeOff, Satellite, Sparkles, Info, CheckCircle2, BookmarkPlus } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { toast } from "sonner";
 
 type EstimateResult = {
@@ -232,6 +239,25 @@ export default function CostEstimator() {
     onError: (err) => toast.error(err.message || "Something went wrong. Try again."),
   });
 
+  // ── Save to Lead ─────────────────────────────────────────────────────────
+  const [saveLeadOpen, setSaveLeadOpen] = useState(false);
+  const [selectedLeadId, setSelectedLeadId] = useState<number | null>(null);
+  const { data: leadsData } = trpc.ops.leads.list.useQuery(undefined, { enabled: saveLeadOpen });
+  const updateLead = trpc.ops.leads.update.useMutation({
+    onSuccess: () => {
+      setSaveLeadOpen(false);
+      setSelectedLeadId(null);
+      toast.success("Estimate saved to lead.");
+    },
+    onError: (err) => toast.error(err.message || "Failed to save to lead."),
+  });
+  const handleSaveToLead = () => {
+    if (!result || !selectedLeadId) return;
+    const price = getRecommendedPrice(result, pricingTier);
+    const noteEntry = `[Cost Estimator — ${new Date().toLocaleDateString("en-US")}]\nService: ${service}\nAcreage: ${acreage || (linearFeet + " lf")}\nInternal cost: $${result.totalInternalCost.toLocaleString()}\nRecommended quote (${pricingTier}): $${price.toLocaleString()}\nMargin: ${result.marginPct.toFixed(0)}%`;
+    updateLead.mutate({ id: selectedLeadId, estimatedValue: price.toString(), notes: noteEntry });
+  };
+
   const handleSubmit = () => {
     if (!service) return;
     if (!isRowService && !acreage) {
@@ -300,6 +326,14 @@ export default function CostEstimator() {
             </p>
           </div>
           {result && (
+            <div className="flex items-center gap-2">
+            <button
+              onClick={() => setSaveLeadOpen(true)}
+              className="flex items-center gap-2 px-3 py-1.5 rounded text-sm font-medium border transition-colors bg-zinc-800 border-zinc-600 text-zinc-300 hover:bg-zinc-700"
+            >
+              <BookmarkPlus size={14} />
+              Save to Lead
+            </button>
             <button
               onClick={() => setClientView(v => !v)}
               className={`flex items-center gap-2 px-3 py-1.5 rounded text-sm font-medium border transition-colors ${
@@ -311,6 +345,7 @@ export default function CostEstimator() {
               {clientView ? <EyeOff size={14} /> : <Eye size={14} />}
               {clientView ? "Client View" : "Internal View"}
             </button>
+            </div>
           )}
         </div>
 
@@ -936,6 +971,40 @@ export default function CostEstimator() {
           </div>
         </div>
       </div>
+      {/* ── Save to Lead dialog ─────────────────────────────────────────────── */}
+      <Dialog open={saveLeadOpen} onOpenChange={setSaveLeadOpen}>
+        <DialogContent className="bg-zinc-900 border-zinc-700 text-white">
+          <DialogHeader>
+            <DialogTitle className="text-white">Save Estimate to Lead</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            <p className="text-zinc-400 text-sm">Select the lead to attach this estimate to. The estimated value and a cost summary will be saved to the lead record.</p>
+            <select
+              value={selectedLeadId ?? ""}
+              onChange={e => setSelectedLeadId(e.target.value ? Number(e.target.value) : null)}
+              className="w-full bg-zinc-800 border border-zinc-600 text-white rounded px-3 py-2 text-sm"
+            >
+              <option value="">-- Select a lead --</option>
+              {(leadsData ?? []).map((lead: { id: number; name: string; stage: string }) => (
+                <option key={lead.id} value={lead.id}>
+                  {lead.name} ({lead.stage})
+                </option>
+              ))}
+            </select>
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setSaveLeadOpen(false)} className="text-zinc-400">Cancel</Button>
+            <Button
+              onClick={handleSaveToLead}
+              disabled={!selectedLeadId || updateLead.isPending}
+              style={{ backgroundColor: "#E07B2A" }}
+            >
+              {updateLead.isPending ? <Loader2 size={14} className="animate-spin mr-2" /> : null}
+              Save to Lead
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </DashboardLayout>
   );
 }

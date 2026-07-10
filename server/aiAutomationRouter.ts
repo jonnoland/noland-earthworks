@@ -162,9 +162,18 @@ Write a complete proposal with these sections:
 7. Payment Terms (standard: 50% deposit, balance on completion)
 
 Voice: Professional, direct, plain language. No filler. Sound like a real contractor, not a template.
-Do NOT include a price — leave a placeholder: [PRICE TO BE DETERMINED AFTER SITE VISIT]
 
-Return JSON only: {"projectDescription": "...", "scopeOfWork": ["...", "..."], "inclusions": ["...", "..."], "exclusions": ["...", "..."], "siteConditions": "...", "estimatedTimeline": "...", "paymentTerms": "..."}`;
+Pricing guidance (for ballparkRange only — internal use, not for the proposal body):
+Forestry Mulching: $1,000–$1,500/acre (light), $1,500–$2,500/acre (moderate), $2,500–$4,500+/acre (heavy)
+Land Clearing: $1,500–$3,000/acre (light), $3,000–$6,000/acre (moderate), $6,000–$12,000+/acre (heavy)
+Brush Hogging: $150–$400/acre (maintenance), $400–$900/acre (brush control), $900–$2,000+/acre (reclamation)
+Minimum job: $1,800. Mobilization: $0 within 30 mi, $150 at 31–50 mi, $300 at 51–75 mi, $500 at 76–100 mi.
+
+If the lead data contains enough information to estimate a ballpark range (acreage, service type, general density), populate ballparkRange with a rough total dollar range (e.g., "$3,500–$6,000"). If there is not enough information, set ballparkRange to "" (empty string). Always set ballparkNote to one sentence explaining it is a rough estimate pending a site visit.
+
+Do NOT include a price in the proposal body sections — leave a placeholder: [PRICE TO BE DETERMINED AFTER SITE VISIT]
+
+Return JSON only: {"projectDescription": "...", "scopeOfWork": ["...", "..."], "inclusions": ["...", "..."], "exclusions": ["...", "..."], "siteConditions": "...", "estimatedTimeline": "...", "paymentTerms": "...", "ballparkRange": "...", "ballparkNote": "..."}`;
       const result = await invokeLLM({ messages: [{ role: "user", content: prompt }] });
       const raw = result?.choices?.[0]?.message?.content ?? "{}";
       try {
@@ -688,17 +697,37 @@ Notes: ${lead.notes ?? "none"}
 Lead notes:\n${noteText}
 Estimated value (if set by user): ${lead.estimatedValue ? "$" + lead.estimatedValue : "not set"}${overrideBlock}
 
-Pricing context (Middle TN, 2024-2025):
-- Forestry mulching: $650–$1,200/acre (light to heavy density)
-- Land management / vegetation management: $500–$1,000/acre
-- Right-of-way clearing: $600–$1,100/acre
-- Trail cutting: $2–$4/linear ft or $600–$1,100/effective acre
-- Brush hogging: $150–$350/acre
-- Stump grinding: $150–$400/stump depending on size
-- Mobilization surcharge: $0 within 30 mi, $150 at 31-50 mi, $300 at 51-75 mi, $500 at 76-100 mi, $750 at 100+ mi
-- Minimum job total: $1,800
+Pricing context (Middle TN, current market rates):
+Forestry Mulching (per acre):
+- Light brush / saplings under 4": $1,000–$1,500/acre
+- Moderate growth, trees up to 8": $1,500–$2,500/acre
+- Heavy timber / dense cedar: $2,500–$4,500+/acre
+- Minimum job: $1,800
+Land Management / Land Clearing (per acre):
+- Light clearing (mostly brush, flat): $1,500–$3,000/acre
+- Moderate clearing (mixed timber, some slope): $3,000–$6,000/acre
+- Heavy clearing (dense timber, steep terrain): $6,000–$12,000+/acre
+Vegetation Management / Right-of-Way (per acre):
+- Light ROW: $1,200–$2,500/acre
+- Overgrown ROW: $2,500–$5,500+/acre
+Brush Hogging (per acre):
+- Pasture/field maintenance: $150–$400/acre
+- Brush control: $400–$900/acre
+- Full reclamation: $900–$2,000+/acre
+Trail Cutting:
+- Flat terrain, light brush: $2.00–$4.00/linear ft
+- Sloped terrain (+20%): $2.40–$4.80/linear ft
+- Rocky terrain (+40%): $2.80–$5.60/linear ft
+- Minimum job: $500
+Stump grinding: $150–$400/stump or $500–$1,200/acre
+Mobilization surcharge: $0 within 30 mi, $150 at 31–50 mi, $300 at 51–75 mi, $500 at 76–100 mi, $750 at 100+ mi
+Modifiers that increase price: steep terrain (+15–25%), very steep (+30–40%), heavy density (+15–20%), very heavy (+25–35%), difficult access (+10–15%), large stumps, rocky ground.
 
-Modifiers that increase price: steep terrain (+15-25%), very steep (+30-40%), heavy density (+15-20%), very heavy (+25-35%), difficult access (+10-15%), large stumps, rocky ground.
+INTERNAL COST FLOOR (for flagging only — do not include in customer-facing output):
+- Owner's internal daily operating cost: ~$1,047/day (labor + equipment + fuel + overhead)
+- Minimum viable job at 30% margin: ~$1,500
+- Absolute minimum job total: $1,800
+- If estimateLow falls below $1,800, add "Estimate near or below minimum — verify acreage and scope before quoting" to missingInfo.
 
 Instructions:
 1. Infer the most likely service type from the job type and notes.

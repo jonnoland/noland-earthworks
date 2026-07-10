@@ -3677,6 +3677,9 @@ QUALITY FILTER — only include prospects that:
 - Are from individuals or small businesses (not large contractors already doing the work)
 - Posted within the last 60 days
 - Are NOT asking for grading, excavation, or hauling only
+- Have at least 1 acre of work (skip suburban quarter-acre lots, small residential yards, and anything under 0.5 acres unless the post clearly describes dense overgrowth or difficult terrain that justifies mobilization)
+- Are NOT already completed or already have a contractor hired
+- Do NOT involve tree removal requiring an arborist (large trees, hazard trees, stump-only jobs without clearing context)
 
 After collecting all prospects (aim for 3-10 quality leads), POST them to the site using curl:
 
