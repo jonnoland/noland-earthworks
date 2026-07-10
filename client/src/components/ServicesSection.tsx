@@ -1,14 +1,23 @@
 /*
  * DESIGN: Heavy Equipment Grit — 2x2 card grid with image backgrounds, hover reveal
  * Dark cards with amber accent borders on hover
+ * Forestry Mulching: Primary Service badge (pulse), CTA button, benefits tooltip
  */
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, CheckCircle2 } from "lucide-react";
 import { useRef, useEffect, useState } from "react";
 
 const LAND_CLEARING = "https://d2xsxph8kpxj0f.cloudfront.net/310519663484957999/PymCzDCnSJzPjdkfwA7Jn6/land-management-iPC6VzRdyjJa4bVNXaWy5n.webp";
 const FORESTRY_MULCHING = "https://d2xsxph8kpxj0f.cloudfront.net/310519663484957999/PymCzDCnSJzPjdkfwA7Jn6/forestry-mulching-HhrtysAJXn8CTRW2xzcGCC.webp";
 const VEGETATION_MGMT = "https://d2xsxph8kpxj0f.cloudfront.net/310519663484957999/PymCzDCnSJzPjdkfwA7Jn6/vegetation-management-hnEnCRefahdbJy4xpn6UnC.webp";
 const PROPERTY_MAINT = "https://d2xsxph8kpxj0f.cloudfront.net/310519663484957999/PymCzDCnSJzPjdkfwA7Jn6/property-maintenance-3gu7BTR6P2RKi4ZuYCNLoN.webp";
+
+const PRIMARY_BENEFITS = [
+  "No debris piles, no hauling, no burning",
+  "Single machine — one operator, one pass",
+  "Mulch stays on-site as natural ground cover",
+  "Works on slopes and wet ground",
+  "Faster and cleaner than traditional clearing",
+];
 
 const services = [
   {
@@ -45,6 +54,7 @@ function ServiceCard({ title, description, image, href, index, isPrimary }: {
   title: string; description: string; image: string; href: string; index: number; isPrimary?: boolean;
 }) {
   const [hovered, setHovered] = useState(false);
+  const [showBenefits, setShowBenefits] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const [visible, setVisible] = useState(false);
 
@@ -77,15 +87,16 @@ function ServiceCard({ title, description, image, href, index, isPrimary }: {
         cursor: "default",
       }}
       onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
+      onMouseLeave={() => { setHovered(false); setShowBenefits(false); }}
     >
-      {/* Clickable overlay */}
+      {/* Clickable overlay — sits below interactive elements */}
       <a
         href={href}
         className="absolute inset-0 z-10"
         aria-label={`Learn more about ${title}`}
         style={{ display: "block" }}
       />
+
       {/* Background image */}
       <div
         className="absolute inset-0 transition-transform duration-500"
@@ -102,7 +113,7 @@ function ServiceCard({ title, description, image, href, index, isPrimary }: {
         className="absolute inset-0 transition-opacity duration-300"
         style={{
           background: hovered
-            ? "linear-gradient(to top, rgba(10,10,10,0.95) 0%, rgba(10,10,10,0.6) 60%, rgba(10,10,10,0.2) 100%)"
+            ? "linear-gradient(to top, rgba(10,10,10,0.97) 0%, rgba(10,10,10,0.65) 55%, rgba(10,10,10,0.2) 100%)"
             : "linear-gradient(to top, rgba(10,10,10,0.85) 0%, rgba(10,10,10,0.45) 60%, rgba(10,10,10,0.15) 100%)",
         }}
       />
@@ -117,24 +128,129 @@ function ServiceCard({ title, description, image, href, index, isPrimary }: {
         }}
       />
 
-      {/* Primary Service badge */}
+      {/* Primary Service badge with pulse animation */}
+      {isPrimary && (
+        <>
+          <style>{`
+            @keyframes badgePulse {
+              0%, 100% { box-shadow: 0 0 0 0 rgba(224,123,42,0.55); }
+              50% { box-shadow: 0 0 0 6px rgba(224,123,42,0); }
+            }
+            .primary-badge {
+              animation: badgePulse 2.4s ease-in-out infinite;
+            }
+            .primary-badge:hover {
+              animation: none;
+              background-color: rgba(224,123,42,1) !important;
+              transform: scale(1.05);
+            }
+          `}</style>
+          <div
+            className="primary-badge absolute top-4 right-4 z-20"
+            style={{
+              backgroundColor: "rgba(224,123,42,0.92)",
+              color: "#121212",
+              fontFamily: "'Oswald', sans-serif",
+              fontWeight: 700,
+              fontSize: "0.6rem",
+              letterSpacing: "0.18em",
+              textTransform: "uppercase",
+              padding: "0.3rem 0.65rem",
+              borderRadius: "2px",
+              lineHeight: 1,
+              transition: "transform 0.15s ease, background-color 0.15s ease",
+              cursor: "default",
+            }}
+          >
+            Primary Service
+          </div>
+        </>
+      )}
+
+      {/* Benefits expandable panel — primary card only */}
       {isPrimary && (
         <div
-          className="absolute top-4 right-4 z-20"
+          className="absolute z-20"
           style={{
-            backgroundColor: "rgba(224,123,42,0.92)",
-            color: "#121212",
-            fontFamily: "'Oswald', sans-serif",
-            fontWeight: 700,
-            fontSize: "0.6rem",
-            letterSpacing: "0.18em",
-            textTransform: "uppercase",
-            padding: "0.3rem 0.65rem",
-            borderRadius: "2px",
-            lineHeight: 1,
+            top: "3.5rem",
+            right: "1rem",
           }}
         >
-          Primary Service
+          {/* Why Primary? toggle button */}
+          <button
+            onClick={(e) => { e.preventDefault(); e.stopPropagation(); setShowBenefits(v => !v); }}
+            style={{
+              backgroundColor: showBenefits ? "rgba(224,123,42,0.18)" : "rgba(0,0,0,0.45)",
+              border: "1px solid rgba(224,123,42,0.4)",
+              color: "#E07B2A",
+              fontFamily: "'Oswald', sans-serif",
+              fontWeight: 500,
+              fontSize: "0.58rem",
+              letterSpacing: "0.14em",
+              textTransform: "uppercase",
+              padding: "0.25rem 0.55rem",
+              borderRadius: "2px",
+              cursor: "pointer",
+              transition: "background-color 0.2s ease",
+              display: "flex",
+              alignItems: "center",
+              gap: "0.3rem",
+              lineHeight: 1,
+            }}
+          >
+            Why Primary?
+          </button>
+
+          {/* Benefits dropdown */}
+          {showBenefits && (
+            <div
+              style={{
+                position: "absolute",
+                top: "calc(100% + 6px)",
+                right: 0,
+                width: "220px",
+                backgroundColor: "rgba(10,10,10,0.96)",
+                border: "1px solid rgba(224,123,42,0.35)",
+                borderRadius: "3px",
+                padding: "0.85rem 1rem",
+              }}
+            >
+              <div style={{
+                fontFamily: "'Oswald', sans-serif",
+                fontWeight: 600,
+                fontSize: "0.65rem",
+                letterSpacing: "0.14em",
+                textTransform: "uppercase",
+                color: "#E07B2A",
+                marginBottom: "0.6rem",
+              }}>
+                Why Forestry Mulching
+              </div>
+              <ul style={{ listStyle: "none", margin: 0, padding: 0 }}>
+                {PRIMARY_BENEFITS.map((b) => (
+                  <li
+                    key={b}
+                    style={{
+                      display: "flex",
+                      alignItems: "flex-start",
+                      gap: "0.45rem",
+                      marginBottom: "0.45rem",
+                      fontFamily: "'Lato', sans-serif",
+                      fontSize: "0.75rem",
+                      lineHeight: 1.45,
+                      color: "rgba(240,237,230,0.82)",
+                    }}
+                  >
+                    <CheckCircle2
+                      size={11}
+                      style={{ color: "#E07B2A", flexShrink: 0, marginTop: "2px" }}
+                    />
+                    {b}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
         </div>
       )}
 
@@ -168,19 +284,61 @@ function ServiceCard({ title, description, image, href, index, isPrimary }: {
         >
           {description}
         </p>
+
+        {/* CTA row — primary card gets a solid button, others get text link */}
         <div
-          className="flex items-center gap-2 transition-opacity duration-300"
-          style={{
-            opacity: hovered ? 1 : 0,
-            fontFamily: "'Oswald', sans-serif",
-            fontWeight: 500,
-            fontSize: "0.8rem",
-            letterSpacing: "0.12em",
-            textTransform: "uppercase",
-            color: "#E07B2A",
-          }}
+          className="flex items-center gap-3 transition-opacity duration-300"
+          style={{ opacity: hovered ? 1 : 0 }}
         >
-          Learn More <ArrowRight size={14} />
+          {isPrimary ? (
+            <a
+              href="/quote"
+              onClick={(e) => e.stopPropagation()}
+              style={{
+                position: "relative",
+                zIndex: 20,
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "0.4rem",
+                backgroundColor: "#E07B2A",
+                color: "#121212",
+                fontFamily: "'Oswald', sans-serif",
+                fontWeight: 700,
+                fontSize: "0.72rem",
+                letterSpacing: "0.14em",
+                textTransform: "uppercase",
+                padding: "0.55rem 1rem",
+                borderRadius: "2px",
+                textDecoration: "none",
+                transition: "background-color 0.15s ease, transform 0.15s ease",
+                lineHeight: 1,
+              }}
+              onMouseEnter={(e) => {
+                (e.currentTarget as HTMLAnchorElement).style.backgroundColor = "#c96e24";
+                (e.currentTarget as HTMLAnchorElement).style.transform = "translateY(-1px)";
+              }}
+              onMouseLeave={(e) => {
+                (e.currentTarget as HTMLAnchorElement).style.backgroundColor = "#E07B2A";
+                (e.currentTarget as HTMLAnchorElement).style.transform = "translateY(0)";
+              }}
+            >
+              Get a Free Estimate <ArrowRight size={12} />
+            </a>
+          ) : (
+            <div
+              className="flex items-center gap-2"
+              style={{
+                fontFamily: "'Oswald', sans-serif",
+                fontWeight: 500,
+                fontSize: "0.8rem",
+                letterSpacing: "0.12em",
+                textTransform: "uppercase",
+                color: "#E07B2A",
+              }}
+            >
+              Learn More <ArrowRight size={14} />
+            </div>
+          )}
         </div>
       </div>
     </div>

@@ -55,6 +55,15 @@ import {
 // ─── Changelog entries — edit this array to update the changelog ─────────────
 const CHANGELOG: { version: string; date: string; items: string[] }[] = [
   {
+    version: "1.0.26",
+    date: "Jul 10, 2026",
+    items: [
+      "Homepage: Forestry Mulching badge now pulses with an amber glow animation to draw attention",
+      "Homepage: 'Get a Free Estimate' CTA button added to Forestry Mulching card on hover",
+      "Homepage: 'Why Primary?' expandable button on Forestry Mulching card reveals 5 key benefits",
+    ],
+  },
+  {
     version: "1.0.25",
     date: "Jul 10, 2026",
     items: [
