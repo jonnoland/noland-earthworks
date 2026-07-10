@@ -614,6 +614,14 @@ function LeadDetailPanel({
 
   // AI Quote state
   const [showAiQuote, setShowAiQuote] = useState(false);
+  // Lead Qualifier structured inputs
+  const [showQualifierInputs, setShowQualifierInputs] = useState(false);
+  const [qlAcreage, setQlAcreage] = useState("");
+  const [qlDensity, setQlDensity] = useState<"light"|"moderate"|"heavy"|"very_heavy">("moderate");
+  const [qlTerrain, setQlTerrain] = useState<"flat"|"rolling"|"steep"|"very_steep">("flat");
+  const [qlAccess, setQlAccess] = useState<"easy"|"moderate"|"difficult">("easy");
+  const [qlStumps, setQlStumps] = useState<boolean | undefined>(undefined);
+  const [qlStructures, setQlStructures] = useState<boolean | undefined>(undefined);
   const [aiQuoteResult, setAiQuoteResult] = useState<{
     service: string; estimatedAcres: number | null;
     estimateLow: number; estimateHigh: number;
@@ -1238,14 +1246,84 @@ nolandearthworks.com`;
           )}
 
           {/* AI Actions Row */}
+          {/* Lead Qualifier — expandable structured inputs */}
+          {showQualifierInputs && (
+            <div className="mx-4 mb-2 bg-[#0f0f0f] border border-[#E07B2A]/30 rounded-lg p-3 space-y-2">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-[#E07B2A]/70">Site Data (optional — improves score accuracy)</p>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="text-[10px] text-[#666] block mb-0.5">Acreage</label>
+                  <input
+                    type="number" min="0.1" step="0.5" placeholder="e.g. 3.5"
+                    value={qlAcreage}
+                    onChange={e => setQlAcreage(e.target.value)}
+                    className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded px-2 py-1 text-[11px] text-white placeholder-[#444] focus:outline-none focus:border-[#E07B2A]/50"
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] text-[#666] block mb-0.5">Vegetation Density</label>
+                  <select value={qlDensity} onChange={e => setQlDensity(e.target.value as any)}
+                    className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded px-2 py-1 text-[11px] text-white focus:outline-none focus:border-[#E07B2A]/50">
+                    <option value="light">Light</option>
+                    <option value="moderate">Moderate</option>
+                    <option value="heavy">Heavy</option>
+                    <option value="very_heavy">Very Heavy</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="text-[10px] text-[#666] block mb-0.5">Terrain</label>
+                  <select value={qlTerrain} onChange={e => setQlTerrain(e.target.value as any)}
+                    className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded px-2 py-1 text-[11px] text-white focus:outline-none focus:border-[#E07B2A]/50">
+                    <option value="flat">Flat</option>
+                    <option value="rolling">Rolling</option>
+                    <option value="steep">Steep</option>
+                    <option value="very_steep">Very Steep</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="text-[10px] text-[#666] block mb-0.5">Access</label>
+                  <select value={qlAccess} onChange={e => setQlAccess(e.target.value as any)}
+                    className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded px-2 py-1 text-[11px] text-white focus:outline-none focus:border-[#E07B2A]/50">
+                    <option value="easy">Easy</option>
+                    <option value="moderate">Moderate</option>
+                    <option value="difficult">Difficult</option>
+                  </select>
+                </div>
+              </div>
+              <div className="flex gap-3">
+                <label className="flex items-center gap-1.5 text-[11px] text-[#888] cursor-pointer">
+                  <input type="checkbox" checked={qlStumps === true} onChange={e => setQlStumps(e.target.checked ? true : undefined)}
+                    className="accent-[#E07B2A]" />
+                  Stumps present
+                </label>
+                <label className="flex items-center gap-1.5 text-[11px] text-[#888] cursor-pointer">
+                  <input type="checkbox" checked={qlStructures === true} onChange={e => setQlStructures(e.target.checked ? true : undefined)}
+                    className="accent-[#E07B2A]" />
+                  Near structures / fencing
+                </label>
+              </div>
+            </div>
+          )}
           <div className="mx-4 mb-2 flex gap-2">
             <button
-              onClick={() => qualifyLead.mutate({ leadId: lead.id })}
+              onClick={() => {
+                if (!showQualifierInputs) { setShowQualifierInputs(true); return; }
+                qualifyLead.mutate({
+                  leadId: lead.id,
+                  acreage: qlAcreage ? parseFloat(qlAcreage) : undefined,
+                  vegetationDensity: qlDensity,
+                  terrain: qlTerrain,
+                  accessDifficulty: qlAccess,
+                  hasStumps: qlStumps,
+                  nearStructures: qlStructures,
+                });
+                setShowQualifierInputs(false);
+              }}
               disabled={qualifyLead.isPending}
               className="flex-1 flex items-center justify-center gap-1.5 bg-[#1a1a1a] hover:bg-[#222] border border-[#2a2a2a] hover:border-[#E07B2A]/40 text-[11px] text-[#aaa] hover:text-[#E07B2A] py-2 rounded-lg transition-colors disabled:opacity-50"
             >
               {qualifyLead.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <Brain className="w-3 h-3" />}
-              {qualifyLead.isPending ? "Scoring..." : "Score Lead"}
+              {qualifyLead.isPending ? "Scoring..." : showQualifierInputs ? "Run Score" : "Score Lead"}
             </button>
             <button
               onClick={async () => {
@@ -2168,6 +2246,7 @@ interface Prospect {
 
 function ProspectingTab() {
   const [filter, setFilter] = useState<"all" | ProspectStatus>("all");
+  const [marginFilter, setMarginFilter] = useState<"all" | "high" | "medium" | "low">("all");
   const [reachOutTarget, setReachOutTarget] = useState<Prospect | null>(null);
   const [reachOutText, setReachOutText] = useState("");
 
@@ -2203,6 +2282,16 @@ function ProspectingTab() {
       if (data.taskUrl) window.open(data.taskUrl, "_blank");
     },
     onError: (err) => toast.error(`Scan failed to start: ${err.message}`),
+  });
+
+  const convertToLead = trpc.ops.prospecting.convertToLead.useMutation({
+    onSuccess: () => {
+      toast.success("Prospect added to your lead pipeline.");
+      utils.ops.prospecting.list.invalidate();
+      utils.ops.prospecting.newCount.invalidate();
+      utils.ops.leads.list.invalidate();
+    },
+    onError: (err) => toast.error(err.message || "Failed to convert prospect."),
   });
 
   const sendSms = trpc.ops.leads.sendDirectSms.useMutation({
@@ -2273,6 +2362,10 @@ function ProspectingTab() {
   const newCount = prospects.filter((p) => p.status === "new").length;
   const contactedCount = prospects.filter((p) => p.status === "contacted").length;
   const dismissedCount = prospects.filter((p) => p.status === "dismissed").length;
+  const highMarginCount = prospects.filter((p) => p.marginTier === "high" && p.status !== "dismissed").length;
+  const filteredProspects = marginFilter === "all"
+    ? prospects
+    : prospects.filter((p) => p.marginTier === marginFilter);
 
   return (
     <div className="p-6 space-y-6 max-w-5xl mx-auto">
@@ -2322,7 +2415,7 @@ function ProspectingTab() {
       </div>
 
       {/* Stats row */}
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-4 gap-4">
         <div className="rounded-lg border border-zinc-700 bg-zinc-800/60 p-4 text-center">
           <div className="text-2xl font-bold text-orange-400">{newCount}</div>
           <div className="text-xs text-zinc-400 mt-1">New</div>
@@ -2335,24 +2428,59 @@ function ProspectingTab() {
           <div className="text-2xl font-bold text-zinc-400">{dismissedCount}</div>
           <div className="text-xs text-zinc-400 mt-1">Dismissed</div>
         </div>
+        <div
+          className={cn(
+            "rounded-lg border p-4 text-center cursor-pointer transition-colors",
+            highMarginCount > 0
+              ? "border-green-700/60 bg-green-900/20 hover:bg-green-900/30"
+              : "border-zinc-700 bg-zinc-800/60"
+          )}
+          onClick={() => setMarginFilter(marginFilter === "high" ? "all" : "high")}
+          title="Click to filter high-margin prospects"
+        >
+          <div className={cn("text-2xl font-bold", highMarginCount > 0 ? "text-green-400" : "text-zinc-500")}>{highMarginCount}</div>
+          <div className="text-xs text-zinc-400 mt-1">High Margin</div>
+        </div>
       </div>
 
       {/* Filter tabs */}
-      <div className="flex gap-2">
-        {(["all", "new", "contacted", "dismissed"] as const).map((f) => (
-          <button
-            key={f}
-            onClick={() => setFilter(f)}
-            className={cn(
-              "px-3 py-1.5 rounded-md text-sm font-medium transition-colors",
-              filter === f
-                ? "bg-orange-500 text-white"
-                : "bg-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-700"
-            )}
-          >
-            {f.charAt(0).toUpperCase() + f.slice(1)}
-          </button>
-        ))}
+      <div className="flex flex-wrap gap-2 items-center">
+        <div className="flex gap-1.5">
+          {(["all", "new", "contacted", "dismissed"] as const).map((f) => (
+            <button
+              key={f}
+              onClick={() => setFilter(f)}
+              className={cn(
+                "px-3 py-1.5 rounded-md text-sm font-medium transition-colors",
+                filter === f
+                  ? "bg-orange-500 text-white"
+                  : "bg-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-700"
+              )}
+            >
+              {f.charAt(0).toUpperCase() + f.slice(1)}
+            </button>
+          ))}
+        </div>
+        <div className="h-4 w-px bg-zinc-700 mx-1" />
+        <div className="flex gap-1.5">
+          {(["all", "high", "medium", "low"] as const).map((m) => (
+            <button
+              key={m}
+              onClick={() => setMarginFilter(m)}
+              className={cn(
+                "px-3 py-1.5 rounded-md text-xs font-medium transition-colors",
+                marginFilter === m
+                  ? m === "high" ? "bg-green-600 text-white"
+                    : m === "medium" ? "bg-amber-600 text-white"
+                    : m === "low" ? "bg-zinc-600 text-white"
+                    : "bg-orange-500 text-white"
+                  : "bg-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-700"
+              )}
+            >
+              {m === "all" ? "All Margins" : m.charAt(0).toUpperCase() + m.slice(1) + " Margin"}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Prospect list */}
@@ -2367,9 +2495,14 @@ function ProspectingTab() {
               : `No ${filter} prospects.`}
           </p>
         </div>
+      ) : filteredProspects.length === 0 ? (
+        <div className="rounded-lg border border-zinc-700 bg-zinc-800/40 p-10 text-center">
+          <Radar className="h-10 w-10 text-zinc-600 mx-auto mb-3" />
+          <p className="text-zinc-400 text-sm">No prospects match the current filters.</p>
+        </div>
       ) : (
         <div className="space-y-3">
-          {(prospects as Prospect[]).map((p) => (
+          {(filteredProspects as Prospect[]).map((p) => (
             <Card
               key={p.id}
               className={cn(
@@ -2496,6 +2629,17 @@ function ProspectingTab() {
                       Restore
                     </Button>
                   )}
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => convertToLead.mutate({ id: p.id })}
+                    disabled={convertToLead.isPending}
+                    className="border-blue-700/60 text-blue-300 hover:text-blue-100 hover:border-blue-500 h-8 text-xs"
+                    title="Add this prospect to your lead pipeline"
+                  >
+                    {convertToLead.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5 mr-1" />}
+                    Add to Leads
+                  </Button>
                   <Button
                     size="sm"
                     variant="ghost"

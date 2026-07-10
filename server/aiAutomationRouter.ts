@@ -10,7 +10,7 @@ import { getDb } from "./db";
 import {
   jobs, opsLeads, quoteSubmissions, reviews, timeEntries, crewMembers,
   socialPosts, adSpend, equipment, serviceLogs, serviceIntervals,
-  fieldDiagnostics, ownerTasks, jobNotes, leadNotes,
+  fieldDiagnostics, ownerTasks, jobNotes, leadNotes, aiPricingSettings,
 } from "../drizzle/schema";
 import { and, desc, eq, gte, lt, lte, inArray, or, sql } from "drizzle-orm";
 import { ENV } from "./_core/env";
@@ -142,8 +142,26 @@ Return JSON only: {"revenuePerHour": <number or null>, "hoursVariance": "<over/u
       if (!lead) throw new TRPCError({ code: "NOT_FOUND", message: "Lead not found" });
       const notes = await db.select().from(leadNotes).where(eq(leadNotes.leadId, input.leadId)).orderBy(desc(leadNotes.createdAt)).limit(10);
       const noteText = notes.map((n) => `- ${n.content}`).join("\n") || "No notes.";
-      const prompt = `Draft a professional proposal for Noland Earthworks, LLC based on the lead data below.
+            // ── Pull live rates from aiPricingSettings for consistent ballpark guidance ───────
+      let dpPr: typeof aiPricingSettings.$inferSelect | null = null;
+      try {
+        const dpRows = await db.select().from(aiPricingSettings).limit(1);
+        dpPr = dpRows[0] ?? null;
+        if (!dpPr) {
+          await db.insert(aiPricingSettings).values({});
+          dpPr = (await db.select().from(aiPricingSettings).limit(1))[0] ?? null;
+        }
+      } catch (err) {
+        console.warn("[draftProposal] Failed to load aiPricingSettings:", err);
+      }
+      const dpFm  = dpPr?.forestryMulchingBaseRate ?? 2000;
+      const dpLc  = dpPr?.landClearingBaseRate     ?? 2200;
+      const dpBh  = dpPr?.brushHoggingBaseRate     ?? 175;
+      const dpMin = dpPr?.minimumJobTotal          ?? 1800;
+      const dpDm  = parseFloat(dpPr?.densityModerateMultiplier ?? "1.25");
+      const dpDh  = parseFloat(dpPr?.densityHeavyMultiplier    ?? "1.60");
 
+      const prompt = `Draft a professional proposal for Noland Earthworks, LLC based on the lead data below.
 Lead:
 Name: ${lead.name}
 Job type: ${lead.jobType ?? "unknown"}
@@ -151,7 +169,6 @@ Address: ${lead.address ?? "not provided"}
 Estimated value: ${lead.estimatedValue ? "$" + lead.estimatedValue : "not set"}
 Notes: ${lead.notes ?? "none"}
 Lead notes:\n${noteText}
-
 Write a complete proposal with these sections:
 1. Project Description (2-3 sentences)
 2. Scope of Work (bullet list, specific)
@@ -160,19 +177,14 @@ Write a complete proposal with these sections:
 5. Site Conditions & Assumptions
 6. Estimated Timeline
 7. Payment Terms (standard: 50% deposit, balance on completion)
-
 Voice: Professional, direct, plain language. No filler. Sound like a real contractor, not a template.
-
-Pricing guidance (for ballparkRange only — internal use, not for the proposal body):
-Forestry Mulching: $1,000–$1,500/acre (light), $1,500–$2,500/acre (moderate), $2,500–$4,500+/acre (heavy)
-Land Clearing: $1,500–$3,000/acre (light), $3,000–$6,000/acre (moderate), $6,000–$12,000+/acre (heavy)
-Brush Hogging: $150–$400/acre (maintenance), $400–$900/acre (brush control), $900–$2,000+/acre (reclamation)
-Minimum job: $1,800. Mobilization: $0 within 30 mi, $150 at 31–50 mi, $300 at 51–75 mi, $500 at 76–100 mi.
-
-If the lead data contains enough information to estimate a ballpark range (acreage, service type, general density), populate ballparkRange with a rough total dollar range (e.g., "$3,500–$6,000"). If there is not enough information, set ballparkRange to "" (empty string). Always set ballparkNote to one sentence explaining it is a rough estimate pending a site visit.
-
+Pricing guidance (for ballparkRange only — internal use, NOT for the proposal body — use owner's live rates):
+Forestry Mulching: $${Math.round(dpFm*0.75)}–$${dpFm}/acre (light), $${dpFm}–$${Math.round(dpFm*dpDm)}/acre (moderate), $${Math.round(dpFm*dpDm)}–$${Math.round(dpFm*dpDh*1.5)}+/acre (heavy)
+Land Clearing: $${Math.round(dpLc*0.75)}–$${dpLc}/acre (light), $${dpLc}–$${Math.round(dpLc*dpDm)}/acre (moderate), $${Math.round(dpLc*dpDm)}–$${Math.round(dpLc*dpDh*2)}+/acre (heavy)
+Brush Hogging: $${Math.round(dpBh*0.85)}–$${dpBh}/acre (maintenance), $${dpBh}–$${Math.round(dpBh*2)}/acre (brush control), $${Math.round(dpBh*2)}–$${Math.round(dpBh*3)}+/acre (reclamation)
+Minimum job: $${dpMin}. Mobilization: $0 within 30 mi, $150 at 31–50 mi, $300 at 51–75 mi, $500 at 76–100 mi.
+IMPORTANT: Only populate ballparkRange if the lead data explicitly states acreage AND service type AND gives enough density/terrain context to produce a credible number. If any of those three are missing or ambiguous, set ballparkRange to "" (empty string). A wrong ballpark is worse than no ballpark — it can lose the job. Always set ballparkNote to one sentence explaining it is a rough estimate pending a site visit.
 Do NOT include a price in the proposal body sections — leave a placeholder: [PRICE TO BE DETERMINED AFTER SITE VISIT]
-
 Return JSON only: {"projectDescription": "...", "scopeOfWork": ["...", "..."], "inclusions": ["...", "..."], "exclusions": ["...", "..."], "siteConditions": "...", "estimatedTimeline": "...", "paymentTerms": "...", "ballparkRange": "...", "ballparkNote": "..."}`;
       const result = await invokeLLM({ messages: [{ role: "user", content: prompt }] });
       const raw = result?.choices?.[0]?.message?.content ?? "{}";
@@ -683,11 +695,48 @@ Return JSON only: {"summary": "<5-line summary>", "topPriority": "<single most i
       if (input.vegetationDensity) overrides.push(`Vegetation density override: ${input.vegetationDensity}`);
       if (input.accessDifficulty)  overrides.push(`Access difficulty override: ${input.accessDifficulty}`);
       if (input.mobilizationMiles) overrides.push(`Mobilization miles override: ${input.mobilizationMiles} miles`);
-      const overrideBlock = overrides.length > 0 ? `\n\nUser-provided adjustments:\n${overrides.join("\n")}` : "";
+            const overrideBlock = overrides.length > 0 ? `\n\nUser-provided adjustments:\n${overrides.join("\n")}` : "";
+
+      // ── Pull live rates from aiPricingSettings DB table ──────────────────────
+      let pr: typeof aiPricingSettings.$inferSelect | null = null;
+      try {
+        const prRows = await db.select().from(aiPricingSettings).limit(1);
+        if (prRows.length > 0) {
+          pr = prRows[0];
+        } else {
+          await db.insert(aiPricingSettings).values({});
+          const seeded = await db.select().from(aiPricingSettings).limit(1);
+          pr = seeded[0] ?? null;
+        }
+      } catch (err) {
+        console.warn("[quoteFromLead] Failed to load aiPricingSettings, using defaults:", err);
+      }
+      const fmBase   = pr?.forestryMulchingBaseRate ?? 2000;
+      const lcBase   = pr?.landClearingBaseRate     ?? 2200;
+      const bhBase   = pr?.brushHoggingBaseRate     ?? 175;
+      const vmBase   = pr?.vegetationMgmtBaseRate   ?? 1800;
+      const dmMult   = parseFloat(pr?.densityModerateMultiplier ?? "1.25");
+      const dhMult   = parseFloat(pr?.densityHeavyMultiplier    ?? "1.60");
+      const tsMult   = parseFloat(pr?.terrainSteepMultiplier    ?? "1.40");
+      const minJob   = pr?.minimumJobTotal ?? 1800;
+      const stumpPer = pr?.stumpGrindingPerStump ?? 200;
+      const fmLight     = Math.round(fmBase * 0.75);
+      const fmModHigh   = Math.round(fmBase * dmMult);
+      const fmHeavyHigh = Math.round(fmBase * dhMult * 1.5);
+      const lcLight     = Math.round(lcBase * 0.75);
+      const lcModHigh   = Math.round(lcBase * dmMult);
+      const lcHeavyHigh = Math.round(lcBase * dhMult * 2.0);
+      const bhLight     = Math.round(bhBase * 0.85);
+      const bhHeavy     = Math.round(bhBase * 3.0);
+      const vmLight     = Math.round(vmBase * 0.70);
+      const vmHeavy     = Math.round(vmBase * dhMult);
+      const steepPct    = Math.round((tsMult - 1) * 100);
+      const modDensPct  = Math.round((dmMult - 1) * 100);
+      const heavyDensPct = Math.round((dhMult - 1) * 100);
 
       const prompt = `You are the internal cost estimator for Noland Earthworks, LLC — a veteran-owned land clearing company in Middle Tennessee.
 
-Analyze the lead below and produce a general quote estimate. Use your knowledge of current Middle Tennessee market rates for forestry mulching, land clearing, brush hogging, trail cutting, and vegetation management.
+Analyze the lead below and produce a general quote estimate using the EXACT pricing rates provided below (pulled from the owner's live pricing configuration — do not substitute generic market rates).
 
 Lead data:
 Name: ${lead.name}
@@ -697,37 +746,38 @@ Notes: ${lead.notes ?? "none"}
 Lead notes:\n${noteText}
 Estimated value (if set by user): ${lead.estimatedValue ? "$" + lead.estimatedValue : "not set"}${overrideBlock}
 
-Pricing context (Middle TN, current market rates):
+CURRENT PRICING (owner's live configuration — use these exact numbers):
 Forestry Mulching (per acre):
-- Light brush / saplings under 4": $1,000–$1,500/acre
-- Moderate growth, trees up to 8": $1,500–$2,500/acre
-- Heavy timber / dense cedar: $2,500–$4,500+/acre
-- Minimum job: $1,800
+- Light brush / saplings: $${fmLight}–$${fmBase}/acre
+- Moderate growth: $${fmBase}–$${fmModHigh}/acre
+- Heavy timber / dense cedar: $${fmModHigh}–$${fmHeavyHigh}+/acre
+- Minimum job: $${minJob}
 Land Management / Land Clearing (per acre):
-- Light clearing (mostly brush, flat): $1,500–$3,000/acre
-- Moderate clearing (mixed timber, some slope): $3,000–$6,000/acre
-- Heavy clearing (dense timber, steep terrain): $6,000–$12,000+/acre
-Vegetation Management / Right-of-Way (per acre):
-- Light ROW: $1,200–$2,500/acre
-- Overgrown ROW: $2,500–$5,500+/acre
+- Light clearing (mostly brush, flat): $${lcLight}–$${lcBase}/acre
+- Moderate clearing (mixed timber, some slope): $${lcBase}–$${lcModHigh}/acre
+- Heavy clearing (dense timber, steep terrain): $${lcModHigh}–$${lcHeavyHigh}+/acre
+Vegetation Management (per acre):
+- Light: $${vmLight}–$${vmBase}/acre
+- Heavy: $${vmBase}–$${vmHeavy}+/acre
 Brush Hogging (per acre):
-- Pasture/field maintenance: $150–$400/acre
-- Brush control: $400–$900/acre
-- Full reclamation: $900–$2,000+/acre
+- Pasture/field maintenance: $${bhLight}–$${bhBase}/acre
+- Brush control / reclamation: $${bhBase}–$${bhHeavy}+/acre
 Trail Cutting:
 - Flat terrain, light brush: $2.00–$4.00/linear ft
 - Sloped terrain (+20%): $2.40–$4.80/linear ft
 - Rocky terrain (+40%): $2.80–$5.60/linear ft
 - Minimum job: $500
-Stump grinding: $150–$400/stump or $500–$1,200/acre
+Stump grinding: $${stumpPer}/stump
 Mobilization surcharge: $0 within 30 mi, $150 at 31–50 mi, $300 at 51–75 mi, $500 at 76–100 mi, $750 at 100+ mi
-Modifiers that increase price: steep terrain (+15–25%), very steep (+30–40%), heavy density (+15–20%), very heavy (+25–35%), difficult access (+10–15%), large stumps, rocky ground.
+Terrain modifiers: rolling +15%, steep +${steepPct}%, very steep +50%
+Density modifiers: moderate +${modDensPct}%, heavy +${heavyDensPct}%, very heavy +35%
+Access modifiers: moderate +10%, difficult +25%
 
 INTERNAL COST FLOOR (for flagging only — do not include in customer-facing output):
 - Owner's internal daily operating cost: ~$1,047/day (labor + equipment + fuel + overhead)
 - Minimum viable job at 30% margin: ~$1,500
-- Absolute minimum job total: $1,800
-- If estimateLow falls below $1,800, add "Estimate near or below minimum — verify acreage and scope before quoting" to missingInfo.
+- Absolute minimum job total: $${minJob}
+- If estimateLow falls below $${minJob}, add "Estimate near or below minimum — verify acreage and scope before quoting" to missingInfo.
 
 Instructions:
 1. Infer the most likely service type from the job type and notes.

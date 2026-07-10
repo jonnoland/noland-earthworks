@@ -26,7 +26,8 @@ import {
   getProspectingLeads, updateProspectingLeadStatus, deleteProspectingLead, countNewProspectingLeads,
 } from "./db";
 import { Resend } from "resend";
-import { jobs, opsLeads, quoteSubmissions, crews, crewMembers, conversations, messages, reviews, timeEntries, distanceQuotes, businessSettings, automationSettings, serviceCatalog, pricingBenchmarks, messageTemplates, reminderRules, leadNotes, visitBlackoutDates, recurringBlackoutDays, aiPricingSettings, quoteDrafts, jobberTokens, socialPosts, adSpend, equipment, serviceLogs, serviceIntervals, fieldDiagnostics, ownerTasks, jobNotes, jobberRevenueCache, morningBriefs, reviewRequests, chatSessions, scheduleEntries, agentConfig, adCampaigns } from "../drizzle/schema";
+import { jobs, opsLeads, quoteSubmissions, crews, crewMembers, conversations, messages, reviews, timeEntries, distanceQuotes, businessSettings, automationSettings, serviceCatalog, pricingBenchmarks, messageTemplates, reminderRules, leadNotes, visitBlackoutDates, recurringBlackoutDays, aiPricingSettings, quoteDrafts, jobberTokens, socialPosts, adSpend, equipment, serviceLogs, serviceIntervals, fieldDiagnostics, ownerTasks, jobNotes, jobberRevenueCache, morningBriefs, reviewRequests, chatSessions,
+ scheduleEntries, agentConfig, adCampaigns, prospectingLeads } from "../drizzle/schema";
 
 import { and, desc, eq, gte, inArray, lt, lte, like, or, sql } from "drizzle-orm";
 import { autoPatchSeoCheck, AUTO_PATCHABLE_CHECKS, SQUARESPACE_MANUAL_CHECKS, CODE_FIXED_CHECKS, INFRA_CHECKS } from "./seoAutoPatcher";
@@ -703,8 +704,17 @@ Write the message as if you are Jon sending a text or short email. First-person,
     }),
 
   // ─── AI #1: Lead Qualification Score ────────────────────────────────────────
-  qualifyLead: ownerProcedure
-    .input(z.object({ leadId: z.number().int().positive() }))
+    qualifyLead: ownerProcedure
+    .input(z.object({
+      leadId: z.number().int().positive(),
+      // Optional structured site data — improves score accuracy when provided
+      acreage:           z.number().min(0.1).max(500).optional(),
+      vegetationDensity: z.enum(["light", "moderate", "heavy", "very_heavy"]).optional(),
+      terrain:           z.enum(["flat", "rolling", "steep", "very_steep"]).optional(),
+      accessDifficulty:  z.enum(["easy", "moderate", "difficult"]).optional(),
+      hasStumps:         z.boolean().optional(),
+      nearStructures:    z.boolean().optional(),
+    }))
     .mutation(async ({ ctx, input }) => {
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
@@ -714,8 +724,16 @@ Write the message as if you are Jon sending a text or short email. First-person,
       // Fetch notes for context
       const notes = await db.select().from(leadNotes).where(eq(leadNotes.leadId, input.leadId)).orderBy(desc(leadNotes.createdAt)).limit(5);
       const noteText = notes.map((n) => `- ${n.content}`).join("\n") || "No notes yet.";
+      // Build structured site data block if any overrides were provided
+      const siteLines: string[] = [];
+      if (input.acreage)           siteLines.push(`Acreage (confirmed): ${input.acreage} acres`);
+      if (input.vegetationDensity) siteLines.push(`Vegetation density: ${input.vegetationDensity.replace("_", " ")}`);
+      if (input.terrain)           siteLines.push(`Terrain: ${input.terrain.replace("_", " ")}`);
+      if (input.accessDifficulty)  siteLines.push(`Access difficulty: ${input.accessDifficulty}`);
+      if (input.hasStumps !== undefined) siteLines.push(`Stumps present: ${input.hasStumps ? "yes" : "no"}`);
+      if (input.nearStructures !== undefined) siteLines.push(`Near structures/fencing/utilities: ${input.nearStructures ? "yes" : "no"}`);
+      const siteBlock = siteLines.length > 0 ? `\nConfirmed site data (from owner):\n${siteLines.join("\n")}` : "";
       const prompt = `You are evaluating a lead for Noland Earthworks, LLC — a veteran-owned forestry mulching and land management company in Middle Tennessee. Score this lead 1-10 and classify as strong/marginal/weak.
-
 Lead data:
 Name: ${lead.name}
 Job type: ${lead.jobType ?? "unknown"}
@@ -723,13 +741,12 @@ Estimated value: ${lead.estimatedValue ? "$" + lead.estimatedValue : "unknown"}
 Source: ${lead.source}
 Stage: ${lead.stage}
 Notes: ${lead.notes ?? "none"}
-Recent notes:\n${noteText}
-
+Recent notes:\n${noteText}${siteBlock}
 Scoring criteria:
-- 8-10 (strong): Clear job type, acreage mentioned, site visit requested, realistic budget, Middle TN location
-- 5-7 (marginal): Some info missing, vague on scope, or price-shopping signals
-- 1-4 (weak): No acreage, wants grading/hauling, very small lot, outside service area, or no response to contact
-
+- 8-10 (strong): Clear job type, acreage known (2+ acres), accessible terrain, realistic budget, Middle TN location, site visit confirmed or requested
+- 5-7 (marginal): Some info missing, acreage vague or under 1 acre, moderate complexity, or price-shopping signals
+- 1-4 (weak): No acreage, wants grading/hauling/excavation, very small suburban lot, outside service area, near structures with no clearance plan, or no response to contact
+When confirmed site data is provided above, weight it heavily — it is more reliable than notes.
 Return JSON only: {"score": <1-10>, "tier": "strong"|"marginal"|"weak", "summary": "<2 sentence plain English summary>", "flags": ["<flag1>", "<flag2>"]}`;
       const result = await invokeLLM({
         messages: [{ role: "user", content: prompt }],
@@ -3631,6 +3648,42 @@ export const prospectingRouter = router({
       return { count };
     }),
 
+  // Convert a prospecting lead into a full ops lead
+  convertToLead: ownerProcedure
+    .input(z.object({ id: z.number() }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+      const rows = await db.select().from(prospectingLeads).where(eq(prospectingLeads.id, input.id)).limit(1);
+      const p = rows[0];
+      if (!p) throw new TRPCError({ code: "NOT_FOUND", message: "Prospect not found" });
+      // Map source
+      const srcMap: Record<string, string> = {
+        facebook: "facebook", facebook_marketplace: "facebook",
+        craigslist: "other", nextdoor: "other", google: "google",
+      };
+      const mappedSource = (srcMap[p.source] ?? "other") as "google" | "facebook" | "referral" | "website" | "direct" | "other";
+      // Build notes from prospect data
+      const noteParts: string[] = [];
+      if (p.summary) noteParts.push(`AI Summary: ${p.summary}`);
+      if (p.estimatedAcres) noteParts.push(`Estimated acreage: ${p.estimatedAcres} ac`);
+      if (p.marginTier) noteParts.push(`Margin tier: ${p.marginTier}`);
+      if (p.url) noteParts.push(`Source post: ${p.url}`);
+      const notes = noteParts.join("\n");
+      const newLead = await createOpsLead({
+        userId: ctx.user.id,
+        name: p.contactName ?? "Prospect (from scan)",
+        phone: p.contactInfo?.match(/\+?[\d\s\-().]{10,}/)?.[0] ?? undefined,
+        address: p.location ?? undefined,
+        source: mappedSource,
+        stage: "new",
+        jobType: "Forestry Mulching / Land Clearing",
+        notes,
+      });
+      // Mark prospect as contacted so it doesn't show as new
+      await updateProspectingLeadStatus(input.id, "contacted");
+      return { ok: true, leadId: (newLead as any)?.insertId ?? null };
+    }),
   // Spawn a one-off Manus task that runs the same prospecting scan as the daily AGENT cron.
   // Results are posted back to /api/scheduled/prospect-leads-manual when the task completes.
   runScan: ownerProcedure
@@ -3672,11 +3725,11 @@ FOR EACH PROSPECT FOUND, collect:
 - profileUrl: for Facebook and Facebook Marketplace prospects ONLY — the URL of the poster's Facebook profile page (e.g., https://www.facebook.com/username or https://www.facebook.com/profile.php?id=12345). Navigate to the post and click the poster's name to get their profile URL. Set to null for Craigslist and other non-Facebook sources.
 - estimatedAcres: your best estimate of the acreage involved based on the post (e.g., "5", "2-3", "10+"). Set to null if the post gives no indication of size.
 - marginTier: your estimated profit margin tier for this job. Use these rules:
-  * "high" — 3+ acres, dense vegetation (heavy brush, cedar, overgrown timber), accessible terrain, no major obstacles mentioned. These jobs run at 55%+ margin.
-  * "medium" — 1-3 acres OR moderate conditions (some slope, mixed vegetation, partial access issues). These run at 35-54% margin.
-  * "low" — under 1 acre, very small suburban lot, significant access problems, or scope is unclear/risky (steep slopes, standing water, near structures). These run below 35% margin.
+  * "high" — 4+ acres of dense vegetation (heavy brush, cedar, overgrown timber) on accessible terrain with no major obstacles. At $1,047/day internal cost and 1-2 acres/day productivity, a 4-acre job at $6,000+ yields 55%+ margin.
+  * "medium" — 2-4 acres OR moderate conditions (some slope, mixed vegetation, partial access issues). These typically yield 35-54% margin. Example: 3 acres at $4,500 = ~43% margin.
+  * "low" — under 2 acres, very small suburban lot, significant access problems, steep slopes, standing water, near structures, or scope is unclear. These run below 35% margin. Example: 1 acre at $2,000 = ~28% margin.
   * null — post gives truly insufficient information to score (no size, no description of vegetation or terrain).
-  Reference: Noland Earthworks internal daily cost is approximately $620/day, productivity is 1-2 acres/day on typical terrain. A 3-acre job at $2,800 yields ~55% margin; a 1-acre job at $800 yields ~22%.
+  Reference: Noland Earthworks internal daily cost is $1,047/day (labor + equipment + fuel + wear), productivity is 1-2 acres/day on typical terrain. Minimum viable job at 30% margin requires ~$1,500 total. Minimum job total is $1,800.
 
 QUALITY FILTER — only include prospects that:
 - Are in Tennessee (Middle or West TN preferred)
@@ -5094,13 +5147,28 @@ Always be specific to nolandearthworks.com. Never give generic advice — tie ev
       const wonLeads = allLeads.filter(l => l.stage === "won");
       const conversionRate = allLeads.length > 0 ? Math.round((wonLeads.length / allLeads.length) * 100) : 0;
       const revenueTotal = allJobs.reduce((s, j) => s + Number(j.totalPrice ?? 0), 0);
+      const completedJobs = allJobs.filter(j => j.status === "completed");
+      const avgRevenuePerJob = completedJobs.length > 0
+        ? Math.round(completedJobs.reduce((s, j) => s + Number(j.totalPrice ?? 0), 0) / completedJobs.length)
+        : 0;
+      // Internal cost floor: $1,047/day. Estimate days per job from revenue at avg $2,000/acre, 1.5 acres/day.
+      const COST_PER_DAY = 1047;
+      const estimatedMarginPct = avgRevenuePerJob > 0
+        ? Math.round(((avgRevenuePerJob - COST_PER_DAY) / avgRevenuePerJob) * 100)
+        : 0;
+      const highMarginLeads = allLeads.filter(l => {
+        const mt = ((l as any).marginTier ?? "").toLowerCase();
+        return (mt === "high" || mt === "high margin") && !["won","lost"].includes(l.stage);
+      });
       const context = [
         `Today is ${new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}.`,
         todayJobs.length > 0 ? `Jobs scheduled today: ${todayJobs.map(j => `${j.title} (${j.client})`).join(", ")}.` : "No jobs scheduled for today.",
         staleLeads.length > 0 ? `Stale leads (no activity in 7+ days): ${staleLeads.map(l => l.name).join(", ")}.` : "No stale leads.",
         `Open leads in pipeline: ${openLeads.length}. Conversion rate: ${conversionRate}%.`,
+        highMarginLeads.length > 0 ? `High-margin prospects in pipeline: ${highMarginLeads.length} (prioritize follow-up on these).` : "",
         `Total logged revenue: $${revenueTotal.toLocaleString()}.`,
-      ].join(" ");
+        completedJobs.length > 0 ? `Average revenue per completed job: $${avgRevenuePerJob.toLocaleString()} (~${estimatedMarginPct}% estimated gross margin at $1,047/day cost floor).` : "",
+      ].filter(Boolean).join(" ");
       const result = await invokeLLM({
         messages: [
           { role: "system", content: "You are writing a morning briefing for Jon Noland, owner-operator of Noland Earthworks, LLC — a veteran-owned land management and forestry mulching company in Middle Tennessee. Write a plain-English briefing of 4-6 sentences covering: what's on the schedule today, any stale leads that need a call, pipeline health, and one practical observation or action item. Sound like a straight-talking field operator reviewing his day, not a business consultant. No emojis. No filler. No corporate language." },

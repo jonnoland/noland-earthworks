@@ -55,6 +55,22 @@ import {
 // ─── Changelog entries — edit this array to update the changelog ─────────────
 const CHANGELOG: { version: string; date: string; items: string[] }[] = [
   {
+    version: "1.0.20",
+    date: "Jul 9, 2026",
+    items: [
+      "AI quoting accuracy: 7 issues fixed across the full stack",
+      "Prospecting cost floor corrected to $1,047/day — margin tier thresholds recalibrated",
+      "Cost Estimator minimum job floor raised from $800 to $1,800",
+      "AI Quote panel now pulls live rates from your DB pricing settings",
+      "Draft Proposal pricing tightened — ballpark ranges now DB-driven",
+      "Lead Qualifier: first click expands structured site inputs (acreage, density, terrain, access)",
+      "Morning Brief now includes avg revenue per job, estimated gross margin %, and high-margin prospect count",
+      "Prospecting: Add to Leads button — one click promotes a prospect into your lead pipeline",
+      "Prospecting: Margin tier filter row (All / High / Medium / Low) added below status filters",
+      "Prospecting: High Margin stat card added to stats row — click to filter instantly",
+    ],
+  },
+  {
     version: "1.0.19",
     date: "Jul 9, 2026",
     items: [

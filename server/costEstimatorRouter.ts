@@ -107,7 +107,7 @@ WEAR & CONSUMABLES:
 
 TOTAL INTERNAL COST PER DAY: $1,046.81
 TARGET GROSS MARGIN: 30% (customer price = total cost ÷ 0.70)
-MINIMUM JOB VALUE: $800
+MINIMUM JOB VALUE: $1,800
 
 PRODUCTIVITY RATES (acres per 8-hour day):
 - Light vegetation, flat: 2.5 acres/day

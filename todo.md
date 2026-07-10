@@ -2168,3 +2168,22 @@
 - [x] Show estimated acreage (~X ac) on prospect cards when available
 - [x] Add v1.0.17, v1.0.18, v1.0.19 entries to CHANGELOG in DashboardLayout.tsx
 - [x] Bump version to 1.0.19 in package.json
+
+## AI/Quoting Accuracy Fixes + Prospecting Enhancements (Jul 10, 2026)
+
+### Priority 1 — Cost Floor & Rate Accuracy
+- [x] Fix prospecting scan prompt: update cost floor from $620/day to $1,047/day and recalibrate HIGH/MED/LOW margin tier thresholds
+- [x] Fix Cost Estimator minimum job floor: change $800 to $1,800
+- [x] Wire AI Quote panel (quoteFromLead) to pull live rates from aiPricingSettings DB table instead of hardcoded prompt values
+### Priority 2 — Proposal & Qualifier Improvements
+- [x] Fix Draft Proposal: suppress unreliable ballparkRange or tie it to Distance Quote rate table
+- [x] Add structured add-on checklist to AI Assist Quote panel (stump count, debris loads, seeding, fence line)
+- [x] Add acreage and density structured inputs to Lead Qualifier (Score Lead)
+- [x] Add margin-per-job data to Morning Brief
+### Prospecting Section Enhancements
+- [x] Add quick-filter buttons for margin tier (ALL / HIGH / MED / LOW)
+- [ ] Add sort controls (newest / highest margin / most acres)
+- [x] Add one-click "Add to Leads" button on each prospect card
+- [x] Add outreach status tracking (new / contacted / dismissed) per prospect with color coding
+- [ ] Add bulk dismiss for low-margin or already-contacted prospects
+- [x] Add High Margin stat card to stats row (clickable filter)
