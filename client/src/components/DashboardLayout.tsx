@@ -55,6 +55,16 @@ import {
 // ─── Changelog entries — edit this array to update the changelog ─────────────
 const CHANGELOG: { version: string; date: string; items: string[] }[] = [
   {
+    version: "1.0.24",
+    date: "Jul 10, 2026",
+    items: [
+      "SEO: All meta descriptions, FAQ answers, and JSON-LD author schema updated to Land Management terminology",
+      "SEO: Blog post CostOfLandClearing metaDescription corrected from 'Land clearing' to 'Land management'",
+      "SEO: FAQ answers updated — 'land clearing method' and 'land clearing' exclusions now read 'land management'",
+      "SEO: BlogPostLayout author JSON-LD knowsAbout array updated to remove 'land clearing' entry",
+    ],
+  },
+  {
     version: "1.0.23",
     date: "Jul 10, 2026",
     items: [

@@ -22,7 +22,7 @@ const FAQ_DATA: FaqCategory[] = [
       {
         question: "What is forestry mulching?",
         answer:
-          "Forestry mulching is a land clearing method that uses a purpose-built machine equipped with a high-speed drum mulcher to grind trees, brush, saplings, vines, and stumps directly into mulch on the ground. The mulch stays in place as natural ground cover — it does not need to be hauled away, burned, or piled. The result is clean, usable land with no erosion, no debris, and no secondary cleanup required.",
+          "Forestry mulching is a land management method that uses a purpose-built machine equipped with a high-speed drum mulcher to grind trees, brush, saplings, vines, and stumps directly into mulch on the ground. The mulch stays in place as natural ground cover — it does not need to be hauled away, burned, or piled. The result is clean, usable land with no erosion, no debris, and no secondary cleanup required.",
       },
       {
         question: "How is forestry mulching different from bush hogging?",
@@ -127,7 +127,7 @@ const FAQ_DATA: FaqCategory[] = [
       {
         question: "Does clearing include grading or leveling?",
         answer:
-          "No. Forestry mulching and land clearing do not include grading, leveling, or excavation. These are separate scopes of work. If you need grading after clearing, we can refer you to a grading contractor. We are upfront about this so there are no surprises.",
+          "No. Forestry mulching and land management do not include grading, leveling, or excavation. These are separate scopes of work. If you need grading after clearing, we can refer you to a grading contractor. We are upfront about this so there are no surprises.",
       },
       {
         question: "Does clearing include debris hauling?",

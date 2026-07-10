@@ -115,7 +115,7 @@ export default function BlogPostLayout({
         knowsAbout: [
           "forestry mulching",
           "land management",
-          "land clearing",
+          "land management services",
           "pasture reclamation",
           "cedar clearing",
           "brush clearing",
