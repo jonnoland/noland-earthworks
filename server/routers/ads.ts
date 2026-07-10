@@ -17,65 +17,84 @@ import { and, desc, eq } from "drizzle-orm";
 
 /**
  * Curated stock photo pool — real forestry mulching machines in diverse settings.
- * Each entry has a URL (served from the project CDN) and tags for context-aware selection.
+ * Each entry has a URL (served from the project CDN), context tags, and a brand tag.
  * Photos show different machine brands/colors, terrain types, and vegetation scenarios
  * so ads never look like the same machine with a swapped background.
+ *
+ * brand: lowercase brand name matching the preferredMachineBrand setting, or null if unknown/mixed.
  */
-const STOCK_PHOTO_POOL: Array<{ url: string; tags: string[]; description: string }> = [
+export const STOCK_PHOTO_POOL: Array<{ url: string; tags: string[]; brand: string | null; description: string }> = [
   {
     url: "/manus-storage/mulcher-woods-01_471e0187.jpg",
     tags: ["woods", "trees", "forestry", "mulch", "brush", "cedar", "general"],
-    description: "Tracked compact loader with forestry mulcher working in a wooded area, bare winter trees",
+    brand: "takeuchi",
+    description: "Takeuchi tracked compact loader with forestry mulcher working in a wooded area, bare winter trees",
   },
   {
     url: "/manus-storage/mulcher-saplings-02_83c8a3a8.jpg",
     tags: ["saplings", "trees", "forestry", "brush", "cedar", "general"],
+    brand: null,
     description: "Compact track loader pushing through dense saplings and small trees",
   },
   {
     url: "/manus-storage/mulcher-dense-brush-03_956d24e5.png",
     tags: ["brush", "dense", "overgrown", "fence", "general", "reclaim"],
+    brand: null,
     description: "Mulcher working through dense green brush and vegetation",
   },
   {
     url: "/manus-storage/mulcher-slope-04_4a35422e.jpg",
     tags: ["slope", "hillside", "terrain", "forestry", "general"],
+    brand: null,
     description: "Large red tracked forestry mulcher on a steep hillside slope in autumn",
   },
   {
     url: "/manus-storage/mulcher-cat-lot-06_8e170358.webp",
-    tags: ["lot", "site prep", "build", "develop", "cat", "cleared", "general"],
+    tags: ["lot", "site prep", "build", "develop", "cleared", "general"],
+    brand: "cat",
     description: "CAT 279D3 compact track loader with mulcher head on freshly cleared lot, summer",
   },
   {
     url: "/manus-storage/mulcher-field-07_4fd8100e.webp",
     tags: ["field", "pasture", "reclaim", "open", "general"],
+    brand: null,
     description: "Red tracked mulcher in a large open field with mulched ground cover",
   },
   {
     url: "/manus-storage/mulcher-invasive-08_cc96e8b1.jpg",
     tags: ["invasive", "lot", "cleared", "site prep", "general", "reclaim"],
+    brand: "kubota",
     description: "Orange Kubota tracked mulcher on a cleared lot with tree line in background, summer sky",
   },
   {
     url: "/manus-storage/mulcher-row-09_c660f63a.jpg",
     tags: ["row", "right-of-way", "fence", "road", "brush", "general"],
+    brand: "bobcat",
     description: "White Bobcat compact track loader clearing brush along a roadside right-of-way",
   },
 ];
 
 /**
- * Selects a stock photo from the pool based on job context.
- * Scores each photo by how many of its tags match keywords in the job description and ad types.
- * Among equally-scored candidates, picks randomly to ensure variety across ads.
+ * Selects a stock photo from the pool based on job context and optional brand preference.
+ *
+ * Scoring:
+ *  +2 per matching context tag
+ *  +3 if the photo's brand matches preferredBrand (strong boost so preferred equipment rises to top)
+ *
+ * Among equally-scored candidates, picks randomly to ensure variety.
  */
-function pickStockPhoto(jobDescription?: string, adTypes?: string[]): string {
+function pickStockPhoto(
+  jobDescription?: string,
+  adTypes?: string[],
+  preferredBrand?: string | null,
+): string {
   const text = `${jobDescription ?? ""} ${(adTypes ?? []).join(" ")}`.toLowerCase();
 
-  const scored = STOCK_PHOTO_POOL.map((photo) => ({
-    photo,
-    score: photo.tags.filter((tag) => text.includes(tag)).length,
-  }));
+  const scored = STOCK_PHOTO_POOL.map((photo) => {
+    const contextScore = photo.tags.filter((tag) => text.includes(tag)).length * 2;
+    const brandBoost = preferredBrand && photo.brand === preferredBrand ? 3 : 0;
+    return { photo, score: contextScore + brandBoost };
+  });
 
   const maxScore = Math.max(...scored.map((s) => s.score));
   const candidates = scored.filter((s) => s.score === maxScore).map((s) => s.photo);
@@ -207,10 +226,18 @@ export const socialPostsRouter = router({
       if (!parsed.draft) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "AI did not return ad copy. Try again." });
 
       // Use a real stock photo from the curated pool instead of AI-generated imagery.
-      // pickStockPhoto scores photos by context tags and picks randomly among top matches
-      // so each ad gets a different machine/setting rather than the same machine every time.
+      // Fetch the owner's preferred machine brand to boost matching photos in selection.
+      let preferredBrand: string | null = null;
+      try {
+        const db = await getDb();
+        if (db) {
+          const { businessSettings } = await import("../../drizzle/schema");
+          const bizRows = await db.select({ preferredMachineBrand: businessSettings.preferredMachineBrand }).from(businessSettings).limit(1);
+          preferredBrand = bizRows[0]?.preferredMachineBrand ?? null;
+        }
+      } catch { /* non-fatal: fall back to context-only selection */ }
       const imageUrl: string | null = input.generateImage
-        ? pickStockPhoto(input.jobDescription, input.adTypes)
+        ? pickStockPhoto(input.jobDescription, input.adTypes, preferredBrand)
         : null;
 
       return { draft: parsed.draft, headline: parsed.headline, imagePrompt: parsed.imagePrompt, imageUrl };
@@ -341,9 +368,18 @@ export const socialPostsRouter = router({
       }
       if (!parsed.facebook?.draft) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "AI did not return ad copy. Try again." });
 
-      // Use real stock photo from the curated pool — context-aware, randomized among top matches.
+      // Use real stock photo from the curated pool — context-aware, with brand preference boost.
+      let preferredBrandAll: string | null = null;
+      try {
+        const db = await getDb();
+        if (db) {
+          const { businessSettings } = await import("../../drizzle/schema");
+          const bizRows = await db.select({ preferredMachineBrand: businessSettings.preferredMachineBrand }).from(businessSettings).limit(1);
+          preferredBrandAll = bizRows[0]?.preferredMachineBrand ?? null;
+        }
+      } catch { /* non-fatal */ }
       const imageUrl: string | null = input.generateImage
-        ? pickStockPhoto(input.jobDescription, input.adTypes)
+        ? pickStockPhoto(input.jobDescription, input.adTypes, preferredBrandAll)
         : null;
 
       return {
@@ -419,6 +455,14 @@ export const socialPostsRouter = router({
       const parsed = JSON.parse(typeof content === "string" ? content : JSON.stringify(content));
       return { draft: parsed.draft ?? "", headline: parsed.headline ?? "" };
     }),
+
+  /**
+   * Returns the full stock photo pool so the frontend can render a preview
+   * and let the user manually swap to any photo in the pool.
+   */
+  getPhotoPool: ownerProcedure.query(() => {
+    return STOCK_PHOTO_POOL.map((p) => ({ url: p.url, description: p.description, brand: p.brand }));
+  }),
 
   /** Save a generated post to history */
   savePost: ownerProcedure

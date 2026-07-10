@@ -1,0 +1,1 @@
+ALTER TABLE `business_settings` ADD `preferredMachineBrand` varchar(30);

@@ -286,6 +286,7 @@ function GeneralTab() {
     promoBannerText: "",
     promoBannerColor: "orange" as "orange" | "green" | "blue" | "red",
   });
+  const [preferredMachineBrand, setPreferredMachineBrand] = useState<string | null>(null);
   const [licInput, setLicInput] = useState("");
 
   useEffect(() => {
@@ -309,6 +310,7 @@ function GeneralTab() {
         promoBannerText: biz.promoBannerText ?? "",
         promoBannerColor: (biz.promoBannerColor ?? "orange") as "orange" | "green" | "blue" | "red",
       });
+      setPreferredMachineBrand(biz.preferredMachineBrand ?? null);
     }
   }, [biz]);
 
@@ -470,6 +472,39 @@ function GeneralTab() {
           )}
           <SaveButton
             onClick={() => update.mutate(banner)}
+            loading={update.isPending}
+          />
+        </div>
+      </SettingsSection>
+
+      <SettingsSection
+        title="Ad Photo Preferences"
+        description="When generating ads, the system picks from a pool of real forestry mulching stock photos. Set your preferred equipment brand to prioritize photos that match your actual machine."
+      >
+        <div className="space-y-4">
+          <FieldRow
+            label="Preferred Machine Brand"
+            hint="Photos matching this brand score higher during auto-selection. Leave blank to let the system pick based on job context only."
+          >
+            <div className="flex gap-2 flex-wrap">
+              {([null, "cat", "kubota", "takeuchi", "bobcat", "deere", "other"] as const).map((brand) => (
+                <button
+                  key={brand ?? "none"}
+                  onClick={() => setPreferredMachineBrand(brand)}
+                  className={cn(
+                    "px-3 py-1.5 rounded-md text-xs font-medium border transition-all capitalize",
+                    preferredMachineBrand === brand
+                      ? "border-primary bg-primary/20 text-primary"
+                      : "border-border bg-secondary/50 text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  {brand === null ? "No preference" : brand.toUpperCase()}
+                </button>
+              ))}
+            </div>
+          </FieldRow>
+          <SaveButton
+            onClick={() => update.mutate({ preferredMachineBrand: preferredMachineBrand as any })}
             loading={update.isPending}
           />
         </div>
