@@ -37,7 +37,7 @@ export const STOCK_PHOTO_POOL: Array<{ url: string; tags: string[]; brand: strin
     description: "Compact track loader pushing through dense saplings and small trees",
   },
   {
-    url: "/manus-storage/mulcher-dense-brush-03_f7dd7135.png",
+    url: "/manus-storage/mulcher-dense-brush-03_202106dc.jpg",
     tags: ["brush", "dense", "overgrown", "fence", "general", "reclaim"],
     brand: null,
     description: "Mulcher working through dense green brush and vegetation",
@@ -49,13 +49,13 @@ export const STOCK_PHOTO_POOL: Array<{ url: string; tags: string[]; brand: strin
     description: "Large red tracked forestry mulcher on a steep hillside slope in autumn",
   },
   {
-    url: "/manus-storage/mulcher-cat-lot-06_4ed5a33c.webp",
+    url: "/manus-storage/mulcher-cat-lot-06_dc8ba8e9.jpg",
     tags: ["lot", "site prep", "build", "develop", "cleared", "general"],
     brand: "cat",
     description: "CAT 279D3 compact track loader with mulcher head on freshly cleared lot, summer",
   },
   {
-    url: "/manus-storage/mulcher-field-07_6320d814.webp",
+    url: "/manus-storage/mulcher-field-07_eb802c1b.jpg",
     tags: ["field", "pasture", "reclaim", "open", "general"],
     brand: null,
     description: "Red tracked mulcher in a large open field with mulched ground cover",
