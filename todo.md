@@ -2244,3 +2244,6 @@
 - [x] Build routePlanner tRPC procedures: planRoute (Google Directions + weigh station matching), saveRoute, getSavedRoutes, deleteRoute
 - [x] Build WeighStationPlanner page at /ops/route-planner with Google Maps, route overlay, weigh station markers, saved routes panel
 - [x] Wire WeighStationPlanner into ops sidebar under Field Work
+- [x] Add weighStationStatus tRPC procedure: scrape coopsareopen.com for TN station open/closed status with timestamp
+- [x] Add dieselPrice tRPC procedure: fetch current TN diesel price from EIA public API
+- [x] Update WeighStationPlanner UI: open/closed badge on each weigh station marker and card, fuel cost estimator panel with adjustable MPG input

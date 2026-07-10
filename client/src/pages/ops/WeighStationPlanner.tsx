@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, useEffect } from "react";
+import { useState, useRef, useCallback, useEffect, useMemo } from "react";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,6 +19,8 @@ import {
   ChevronUp,
   AlertTriangle,
   CheckCircle,
+  Fuel,
+  CircleDot,
 } from "lucide-react";
 
 // Default origin: Vanleer, TN
@@ -74,11 +76,43 @@ export default function WeighStationPlanner() {
   const directionsRendererRef = useRef<google.maps.DirectionsRenderer | null>(null);
   const markersRef = useRef<google.maps.Marker[]>([]);
 
+  const [mpg, setMpg] = useState(9);
+
   const planRoute = trpc.routePlanner.planRoute.useMutation();
   const saveRoute = trpc.routePlanner.saveRoute.useMutation();
   const deleteRoute = trpc.routePlanner.deleteRoute.useMutation();
   const { data: savedRoutes, refetch: refetchSaved } =
     trpc.routePlanner.getSavedRoutes.useQuery();
+  const { data: stationStatus } = trpc.routePlanner.weighStationStatus.useQuery();
+  const { data: dieselData } = trpc.routePlanner.dieselPrice.useQuery();
+
+  // Build a normalized name -> status map from coopsareopen data
+  const statusMap = useMemo(() => {
+    const map: Record<string, "open" | "closed" | "unknown"> = {};
+    if (!stationStatus?.stations) return map;
+    for (const s of stationStatus.stations) {
+      // Normalize: lowercase, strip punctuation
+      const key = s.name.toLowerCase().replace(/[^a-z0-9]/g, "");
+      map[key] = s.status;
+    }
+    return map;
+  }, [stationStatus]);
+
+  // Look up open/closed for a station by matching normalized name
+  const getStationStatus = useCallback(
+    (stationName: string): "open" | "closed" | "unknown" => {
+      const key = stationName.toLowerCase().replace(/[^a-z0-9]/g, "");
+      // Try exact match first
+      if (statusMap[key]) return statusMap[key];
+      // Try partial match (station name may be longer in our dataset)
+      const entries = Object.entries(statusMap) as Array<[string, "open" | "closed" | "unknown"]>;
+      for (const [k, v] of entries) {
+        if (key.includes(k) || k.includes(key)) return v;
+      }
+      return "unknown";
+    },
+    [statusMap]
+  );
 
   // Clear map markers and directions
   const clearMap = useCallback(() => {
@@ -160,6 +194,10 @@ export default function WeighStationPlanner() {
 
       // Weigh station markers
       route.weighStations.forEach((station) => {
+        const stStatus = getStationStatus(station.name);
+        const statusColor = stStatus === "open" ? "#16A34A" : stStatus === "closed" ? "#DC2626" : "#9CA3AF";
+        const statusText = stStatus === "open" ? "Open" : stStatus === "closed" ? "Closed" : "Status unknown";
+
         const marker = new google.maps.Marker({
           position: { lat: station.lat, lng: station.lng },
           map,
@@ -169,8 +207,8 @@ export default function WeighStationPlanner() {
             scale: 7,
             fillColor: station.prepassEligible ? "#2563EB" : "#F59E0B",
             fillOpacity: 1,
-            strokeColor: "#fff",
-            strokeWeight: 1.5,
+            strokeColor: stStatus === "open" ? "#16A34A" : stStatus === "closed" ? "#DC2626" : "#fff",
+            strokeWeight: stStatus !== "unknown" ? 2.5 : 1.5,
           },
           zIndex: 8,
         });
@@ -181,7 +219,8 @@ export default function WeighStationPlanner() {
               <strong>${station.name}</strong><br/>
               ${station.highway} ${station.direction} — MM ${station.milepost ?? "N/A"}<br/>
               ${station.city}, ${station.state}<br/>
-              ${station.prepassEligible ? '<span style="color:#2563EB">✓ PrePass/Drivewyze eligible</span>' : '<span style="color:#D97706">No bypass program</span>'}
+              ${station.prepassEligible ? '<span style="color:#2563EB">✓ PrePass/Drivewyze eligible</span>' : '<span style="color:#D97706">No bypass program</span>'}<br/>
+              <span style="color:${statusColor};font-weight:600">● ${statusText}</span>
               ${station.notes ? `<br/><em>${station.notes}</em>` : ""}
               ${station.phone ? `<br/>📞 ${station.phone}` : ""}
             </div>
@@ -270,6 +309,26 @@ export default function WeighStationPlanner() {
       toast.error("Failed to delete route");
     }
   };
+
+  const statusBadge = (status: "open" | "closed" | "unknown") => {
+    if (status === "open") return "bg-green-500/20 text-green-300 border-green-500/30";
+    if (status === "closed") return "bg-red-500/20 text-red-300 border-red-500/30";
+    return "bg-white/10 text-white/40 border-white/10";
+  };
+
+  const statusLabel = (status: "open" | "closed" | "unknown") => {
+    if (status === "open") return "Open";
+    if (status === "closed") return "Closed";
+    return "Status unknown";
+  };
+
+  // Fuel cost calculation
+  const fuelCost = useMemo(() => {
+    if (!plannedRoute || !dieselData) return null;
+    const gallons = plannedRoute.distanceMiles / mpg;
+    const cost = gallons * dieselData.pricePerGallon;
+    return { gallons: gallons.toFixed(1), cost: cost.toFixed(2) };
+  }, [plannedRoute, dieselData, mpg]);
 
   const directionColor = (dir: string) => {
     if (dir === "NB" || dir === "EB") return "bg-blue-500/20 text-blue-300 border-blue-500/30";
@@ -378,6 +437,53 @@ export default function WeighStationPlanner() {
                 </div>
               </div>
 
+              {/* Fuel cost estimator */}
+              <div className="bg-white/5 rounded-lg p-3 space-y-2 border border-white/10">
+                <div className="flex items-center gap-2 mb-1">
+                  <Fuel className="w-4 h-4 text-amber-500 flex-shrink-0" />
+                  <span className="text-sm font-semibold text-white">Diesel Cost Estimate</span>
+                </div>
+                {dieselData ? (
+                  <>
+                    <div className="flex items-center justify-between text-xs text-white/50">
+                      <span>Diesel price ({dieselData.region})</span>
+                      <span className="text-white font-medium">${dieselData.pricePerGallon.toFixed(3)}/gal</span>
+                    </div>
+                    <div className="flex items-center justify-between text-xs text-white/50">
+                      <span>MPG</span>
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          onClick={() => setMpg((m) => Math.max(1, m - 1))}
+                          className="w-5 h-5 rounded bg-white/10 hover:bg-white/20 text-white text-xs flex items-center justify-center"
+                        >-</button>
+                        <span className="text-white font-medium w-5 text-center">{mpg}</span>
+                        <button
+                          onClick={() => setMpg((m) => Math.min(30, m + 1))}
+                          className="w-5 h-5 rounded bg-white/10 hover:bg-white/20 text-white text-xs flex items-center justify-center"
+                        >+</button>
+                      </div>
+                    </div>
+                    {fuelCost && (
+                      <>
+                        <div className="flex items-center justify-between text-xs text-white/50">
+                          <span>Est. gallons</span>
+                          <span className="text-white font-medium">{fuelCost.gallons} gal</span>
+                        </div>
+                        <div className="flex items-center justify-between border-t border-white/10 pt-2 mt-1">
+                          <span className="text-xs font-semibold text-white/70">Est. fuel cost</span>
+                          <span className="text-base font-bold text-amber-400">${fuelCost.cost}</span>
+                        </div>
+                      </>
+                    )}
+                    <p className="text-[10px] text-white/30 mt-1">
+                      {dieselData.source === "fallback" ? "Est. price (EIA unavailable)" : `Source: EIA · ${dieselData.region}`}{dieselData.period ? ` · ${dieselData.period}` : ""}
+                    </p>
+                  </>
+                ) : (
+                  <p className="text-xs text-white/40">Loading diesel price...</p>
+                )}
+              </div>
+
               {/* Save form */}
               {showSaveForm && (
                 <div className="space-y-2 bg-white/5 rounded-lg p-3">
@@ -401,9 +507,16 @@ export default function WeighStationPlanner() {
               {/* Weigh station list */}
               {plannedRoute.weighStations.length > 0 ? (
                 <div className="space-y-2">
-                  <h3 className="text-xs font-semibold text-white/60 uppercase tracking-wide">
-                    Weigh Stations Along Route
-                  </h3>
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-xs font-semibold text-white/60 uppercase tracking-wide">
+                      Weigh Stations Along Route
+                    </h3>
+                    {stationStatus?.fetchedAt && (
+                      <span className="text-[10px] text-white/30">
+                        Status: coopsareopen.com
+                      </span>
+                    )}
+                  </div>
                   {plannedRoute.weighStations.map((station) => (
                     <div
                       key={station.id}
@@ -436,6 +549,20 @@ export default function WeighStationPlanner() {
                           >
                             {station.direction}
                           </Badge>
+                          {(() => {
+                            const st = getStationStatus(station.name);
+                            if (st !== "unknown") {
+                              return (
+                                <Badge
+                                  variant="outline"
+                                  className={`text-xs ${statusBadge(st)}`}
+                                >
+                                  {statusLabel(st)}
+                                </Badge>
+                              );
+                            }
+                            return null;
+                          })()}
                           {expandedStation === station.id ? (
                             <ChevronUp className="w-3.5 h-3.5 text-white/40" />
                           ) : (
@@ -562,6 +689,18 @@ export default function WeighStationPlanner() {
               <div className="flex items-center gap-2">
                 <div className="w-3 h-3 rounded-full bg-amber-500 flex-shrink-0" />
                 Weigh station — no bypass program
+              </div>
+              <div className="border-t border-white/10 pt-1.5 mt-1 space-y-1.5">
+                <div className="text-white/30 text-[10px] uppercase tracking-wide mb-1">Open/Closed Status (marker border)</div>
+                <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 rounded-full border-2 border-green-500 bg-transparent flex-shrink-0" />
+                  Station reported open
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 rounded-full border-2 border-red-500 bg-transparent flex-shrink-0" />
+                  Station reported closed
+                </div>
+                <p className="text-[10px] text-white/25 mt-1">Status: coopsareopen.com (crowdsourced){stationStatus?.fetchedAt ? ` · updated ${new Date(stationStatus.fetchedAt).toLocaleTimeString()}` : ""}</p>
               </div>
             </div>
           </div>

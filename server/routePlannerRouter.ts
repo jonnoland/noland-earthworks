@@ -249,4 +249,123 @@ export const routePlannerRouter = router({
   getAllStations: adminProcedure.query(async () => {
     return WEIGH_STATIONS;
   }),
+
+  /**
+   * Scrape coopsareopen.com for TN weigh station open/closed status.
+   * Returns a map of station name (normalized) -> { status, updatedAt }
+   */
+  weighStationStatus: adminProcedure.query(async () => {
+    try {
+      const res = await fetch(
+        "https://www.coopsareopen.com/tennessee-weigh-stations.html",
+        {
+          headers: {
+            "User-Agent":
+              "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+            Accept: "text/html,application/xhtml+xml",
+          },
+          signal: AbortSignal.timeout(10_000),
+        }
+      );
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const html = await res.text();
+
+      // Parse the table: Name | Highway | Mile | Location
+      // Status is embedded in row class or text (open/closed)
+      const rows: Array<{
+        name: string;
+        highway: string;
+        milepost: string;
+        status: "open" | "closed" | "unknown";
+      }> = [];
+
+      // Extract table rows via regex (no DOM in Node)
+      const tableMatch = html.match(/<table[^>]*>([\s\S]*?)<\/table>/i);
+      if (tableMatch) {
+        const rowMatches = Array.from(tableMatch[1].matchAll(/<tr[^>]*class="([^"]*?)"[^>]*>([\s\S]*?)<\/tr>/gi));
+        for (const rowMatch of rowMatches) {
+          const rowClass = rowMatch[1].toLowerCase();
+          const rowHtml = rowMatch[2];
+          const cells = Array.from(rowHtml.matchAll(/<td[^>]*>([\s\S]*?)<\/td>/gi)).map(
+            (m) => m[1].replace(/<[^>]+>/g, "").trim()
+          );
+          if (cells.length >= 2 && cells[0]) {
+            const status: "open" | "closed" | "unknown" = rowClass.includes("open")
+              ? "open"
+              : rowClass.includes("closed")
+              ? "closed"
+              : "unknown";
+            rows.push({
+              name: cells[0],
+              highway: cells[1] || "",
+              milepost: cells[2] || "",
+              status,
+            });
+          }
+        }
+      }
+
+      return {
+        stations: rows,
+        fetchedAt: new Date().toISOString(),
+        source: "coopsareopen.com",
+      };
+    } catch (err) {
+      console.warn("[Route Planner] weighStationStatus fetch failed:", err);
+      return {
+        stations: [],
+        fetchedAt: new Date().toISOString(),
+        source: "coopsareopen.com",
+        error: "Status data temporarily unavailable",
+      };
+    }
+  }),
+
+  /**
+   * Fetch current diesel price for PADD 1C (Lower Atlantic — covers TN)
+   * from the EIA public API. No API key required with DEMO_KEY for low-volume use.
+   */
+  dieselPrice: adminProcedure.query(async () => {
+    try {
+      const url = new URL("https://api.eia.gov/v2/petroleum/pri/gnd/data/");
+      url.searchParams.set("api_key", "DEMO_KEY");
+      url.searchParams.set("frequency", "weekly");
+      url.searchParams.append("data[0]", "value");
+      url.searchParams.append("facets[duoarea][]", "R1Z"); // PADD 1C Lower Atlantic (TN)
+      url.searchParams.append("facets[product][]", "EPD2DXL0"); // Ultra Low Sulfur Diesel
+      url.searchParams.append("sort[0][column]", "period");
+      url.searchParams.append("sort[0][direction]", "desc");
+      url.searchParams.set("length", "1");
+
+      const res = await fetch(url.toString(), {
+        signal: AbortSignal.timeout(10_000),
+      });
+      if (!res.ok) throw new Error(`EIA HTTP ${res.status}`);
+      const json = (await res.json()) as {
+        response: { data: Array<{ period: string; value: string; "area-name": string }> };
+      };
+
+      const record = json.response?.data?.[0];
+      if (!record) throw new Error("No data returned");
+
+      return {
+        pricePerGallon: parseFloat(record.value),
+        period: record.period,
+        region: record["area-name"],
+        fetchedAt: new Date().toISOString(),
+        source: "EIA.gov",
+      };
+    } catch (err) {
+      console.warn("[Route Planner] dieselPrice fetch failed:", err);
+      // Fallback to a reasonable estimate
+      return {
+        pricePerGallon: 3.85,
+        period: null,
+        region: "Tennessee (estimate)",
+        fetchedAt: new Date().toISOString(),
+        source: "fallback",
+        error: "Live price temporarily unavailable — using estimate",
+      };
+    }
+  }),
 });
