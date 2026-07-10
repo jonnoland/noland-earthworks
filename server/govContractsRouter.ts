@@ -410,38 +410,90 @@ Tone: direct, professional, no fluff. Mention veteran-owned status once. Do not 
         coverLetter = `${company.ownerName}\n${company.companyName}\n${company.address}, ${company.city}, ${company.state} ${company.zip}\n${company.phone} | ${company.email}\n\n${today}\n\n${input.contactName || "Contracting Officer"}\n${input.agency}\n\nRe: ${input.solicitationNumber ? `Solicitation #${input.solicitationNumber} — ` : ""}${input.title}\n\nPlease find enclosed our response to the above-referenced solicitation. ${company.companyName} is a veteran-owned and operated forestry mulching company based in ${company.city}, ${company.state}, registered in SAM.gov with CAGE Code ${company.cageCode} and UEI ${company.uniqueEntityId}. We are fully capable of performing the described scope of work and welcome the opportunity to serve ${input.agency}.\n\nRespectfully,\n${company.ownerName}\nOwner/Operator\n${company.companyName}`;
       }
 
-      // Build pricing worksheet scaffold
-      const pricingWorksheet = [
-        `PRICING WORKSHEET`,
-        `Solicitation: ${input.solicitationNumber ? `#${input.solicitationNumber} — ` : ""}${input.title}`,
-        `Agency: ${input.agency}`,
-        `Date: ${today}`,
-        ``,
-        `Vendor: ${company.companyName}`,
-        `CAGE Code: ${company.cageCode}`,
-        `UEI: ${company.uniqueEntityId}`,
-        ``,
-        `LINE ITEMS`,
-        `────────────────────────────────────────────────────────────`,
-        `CLIN 0001  Forestry Mulching / Land Clearing`,
-        `           Unit: Acre   Qty: ___   Unit Price: $___   Total: $___`,
-        ``,
-        `CLIN 0002  Mobilization / Demobilization (if applicable)`,
-        `           Unit: LS    Qty: 1     Unit Price: $___   Total: $___`,
-        ``,
-        `CLIN 0003  Site Inspection / Pre-Work Assessment (if applicable)`,
-        `           Unit: LS    Qty: 1     Unit Price: $___   Total: $___`,
-        ``,
-        `────────────────────────────────────────────────────────────`,
-        `TOTAL BID PRICE:  $___________________`,
-        ``,
-        `NOTES`,
-        `- All prices are firm-fixed-price unless otherwise specified in the solicitation.`,
-        `- Pricing includes operator labor, equipment, fuel, and standard consumables.`,
-        `- Pricing excludes: stump grinding below grade, grading, hauling, or burning.`,
-        `- Site visit required prior to final pricing on complex terrain.`,
-        `- Payment terms: Net 30 from invoice date.`,
-      ].join("\n");
+      // Build AI-completed pricing worksheet
+      let pricingWorksheet = "";
+      try {
+        const pricingPrompt = `You are a federal government contract pricing specialist helping a small veteran-owned forestry mulching company bid on a federal solicitation.
+
+Company: ${company.companyName} (single operator, owner-operated, veteran-owned small business)
+Equipment: One tracked forestry mulcher — handles dense brush, saplings, small trees, slopes, wet ground
+Location: ${company.city}, ${company.state}
+CAGE Code: ${company.cageCode}
+UEI: ${company.uniqueEntityId}
+
+Solicitation: ${input.title}
+Agency: ${input.agency}
+NAICS: ${input.naics.map(n => `${n.code} — ${n.label}`).join(", ") || "115310 — Support Activities for Forestry"}
+Place of Performance: ${[input.city, input.state].filter(Boolean).join(", ") || "Tennessee region"}
+Set-Aside: ${input.setAside || "None specified"}
+Deadline: ${input.responseDeadline || "Not specified"}
+
+Pricing context:
+- Federal government contracts for forestry mulching / land clearing in Tennessee and surrounding states typically range from $800 to $2,500 per acre depending on terrain, density, and access.
+- Mobilization for government contracts in this region typically runs $1,500 to $4,500 depending on distance.
+- Site inspection / pre-work assessment is typically $500 to $1,500 as a lump sum.
+- Government contracts often have multiple option years — price conservatively for base year, slightly higher for options.
+- Veteran-owned small businesses can price 5-15% above the lowest competitive bid and still win on set-aside contracts.
+- Maximize profit while remaining competitive: aim for the upper-middle range of market rates, not the lowest.
+
+Generate a COMPLETED pricing worksheet with specific dollar amounts filled in. Use your knowledge of current federal contract rates for this type of work in this region. Include:
+1. A header block with solicitation info and vendor credentials
+2. 3-4 CLIN line items with specific unit prices, estimated quantities, and calculated totals
+3. A total bid price
+4. A brief pricing rationale section (2-3 sentences) explaining the basis for the pricing
+5. Standard notes section
+
+Format the output as plain text, suitable for copying into a bid response. Use consistent column alignment. Do not use markdown. Fill in all dollar amounts — do not leave blanks.`;
+
+        const pricingResult = await invokeLLM({
+          messages: [
+            { role: "system", content: "You are a federal contract pricing specialist. Generate completed pricing worksheets with specific, competitive dollar amounts. Never leave blanks. Use plain text formatting only." },
+            { role: "user", content: pricingPrompt },
+          ],
+        });
+        pricingWorksheet = (pricingResult?.choices?.[0]?.message?.content as string) ?? "";
+      } catch (err) {
+        console.error("[GovContracts] LLM pricing worksheet failed:", err);
+      }
+
+      // Fallback if AI fails
+      if (!pricingWorksheet) {
+        pricingWorksheet = [
+          `PRICING WORKSHEET`,
+          `Solicitation: ${input.solicitationNumber ? `#${input.solicitationNumber} — ` : ""}${input.title}`,
+          `Agency: ${input.agency}`,
+          `Date: ${today}`,
+          ``,
+          `Vendor: ${company.companyName}`,
+          `CAGE Code: ${company.cageCode}`,
+          `UEI: ${company.uniqueEntityId}`,
+          ``,
+          `LINE ITEMS`,
+          `────────────────────────────────────────────────────────────`,
+          `CLIN 0001  Forestry Mulching / Land Clearing`,
+          `           Unit: Acre   Qty: ___   Unit Price: $1,800   Total: $___`,
+          ``,
+          `CLIN 0002  Mobilization / Demobilization`,
+          `           Unit: LS    Qty: 1     Unit Price: $2,500    Total: $2,500`,
+          ``,
+          `CLIN 0003  Site Inspection / Pre-Work Assessment`,
+          `           Unit: LS    Qty: 1     Unit Price: $750      Total: $750`,
+          ``,
+          `────────────────────────────────────────────────────────────`,
+          `TOTAL BID PRICE:  $___________________`,
+          ``,
+          `PRICING RATIONALE`,
+          `Unit pricing reflects current federal contract rates for forestry mulching in Tennessee ($1,500–$2,200/acre).`,
+          `Mobilization based on estimated distance from Vanleer, TN to place of performance.`,
+          ``,
+          `NOTES`,
+          `- All prices are firm-fixed-price unless otherwise specified in the solicitation.`,
+          `- Pricing includes operator labor, equipment, fuel, and standard consumables.`,
+          `- Pricing excludes: stump grinding below grade, grading, hauling, or burning.`,
+          `- Site visit required prior to final pricing on complex terrain.`,
+          `- Payment terms: Net 30 from invoice date.`,
+        ].join("\n");
+      }
 
       return {
         company,
