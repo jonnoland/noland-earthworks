@@ -2256,8 +2256,10 @@ function ProspectingTab() {
   const [editTarget, setEditTarget] = useState<Prospect | null>(null);
   const [editAcres, setEditAcres] = useState("");
   const [editMarginTier, setEditMarginTier] = useState<"high" | "medium" | "low" | "">("")
-  // AI draft result modal
-  const [draftModal, setDraftModal] = useState<{ leadId: number | null; draft: string } | null>(null);
+  const [editNotes, setEditNotes] = useState("");
+  // AI draft result modal — includes prospectId for Regenerate
+  const [draftModal, setDraftModal] = useState<{ leadId: number | null; prospectId: number | null; draft: string } | null>(null);
+  const [isRegenerating, setIsRegenerating] = useState(false);
 
   const { data: prospects = [], isLoading, refetch } = trpc.ops.prospecting.list.useQuery(
     { status: filter === "all" ? undefined : filter },
@@ -2299,7 +2301,7 @@ function ProspectingTab() {
       utils.ops.prospecting.newCount.invalidate();
       utils.ops.leads.list.invalidate();
       if (data.aiDraft) {
-        setDraftModal({ leadId: data.leadId ?? null, draft: data.aiDraft });
+        setDraftModal({ leadId: data.leadId ?? null, prospectId: null, draft: data.aiDraft });
       } else {
         toast.success("Prospect added to your lead pipeline.");
       }
@@ -2314,6 +2316,17 @@ function ProspectingTab() {
       toast.success("Prospect updated.");
     },
     onError: (err) => toast.error(err.message || "Update failed."),
+  });
+
+  const regenerateDraftMutation = trpc.ops.prospecting.regenerateDraft.useMutation({
+    onSuccess: (data) => {
+      setDraftModal((prev) => prev ? { ...prev, draft: data.draft } : null);
+      setIsRegenerating(false);
+    },
+    onError: (err) => {
+      toast.error(err.message || "Regenerate failed.");
+      setIsRegenerating(false);
+    },
   });
 
   const sendSms = trpc.ops.leads.sendDirectSms.useMutation({
@@ -2397,14 +2410,58 @@ function ProspectingTab() {
     }
   }
 
+  // Bulk carousel state — queue of {prospectId, draft} items to review sequentially
+  const [bulkQueue, setBulkQueue] = useState<{ prospectId: number; name: string; draft: string }[]>([]);
+  const [bulkQueueIdx, setBulkQueueIdx] = useState(0);
+  const [bulkQueueTotal, setBulkQueueTotal] = useState(0);
+  const [isBulkGenerating, setIsBulkGenerating] = useState(false);
+
   async function bulkPromote() {
     const ids = Array.from(selectedIds);
+    if (ids.length === 0) return;
+    setIsBulkGenerating(true);
+    setBulkMode(false);
+    const queue: { prospectId: number; name: string; draft: string }[] = [];
     for (const id of ids) {
-      await convertToLead.mutateAsync({ id }).catch(() => {});
+      try {
+        const data = await convertToLead.mutateAsync({ id });
+        if (data.aiDraft) {
+          const p = prospects.find((x) => x.id === id);
+          queue.push({ prospectId: id, name: p?.contactName ?? `Prospect #${id}`, draft: data.aiDraft });
+        }
+      } catch { /* skip failed */ }
     }
     setSelectedIds(new Set());
-    setBulkMode(false);
-    toast.success(`${ids.length} prospect${ids.length > 1 ? "s" : ""} added to leads.`);
+    setIsBulkGenerating(false);
+    if (queue.length > 0) {
+      setBulkQueue(queue);
+      setBulkQueueIdx(0);
+      setBulkQueueTotal(queue.length);
+      // Open the draft modal with the first item
+      setDraftModal({ leadId: null, prospectId: queue[0].prospectId, draft: queue[0].draft });
+    } else {
+      toast.success(`${ids.length} prospect${ids.length > 1 ? "s" : ""} added to leads.`);
+    }
+  }
+
+  function advanceBulkQueue(updatedDraft: string) {
+    // Save the current draft edit back to the queue
+    const updatedQueue = bulkQueue.map((item, i) =>
+      i === bulkQueueIdx ? { ...item, draft: updatedDraft } : item
+    );
+    setBulkQueue(updatedQueue);
+    const nextIdx = bulkQueueIdx + 1;
+    if (nextIdx < updatedQueue.length) {
+      setBulkQueueIdx(nextIdx);
+      setDraftModal({ leadId: null, prospectId: updatedQueue[nextIdx].prospectId, draft: updatedQueue[nextIdx].draft });
+    } else {
+      // Done with all
+      setBulkQueue([]);
+      setBulkQueueIdx(0);
+      setBulkQueueTotal(0);
+      setDraftModal(null);
+      toast.success(`${updatedQueue.length} lead${updatedQueue.length > 1 ? "s" : ""} added. Drafts ready to send.`);
+    }
   }
 
   async function bulkDismiss() {
@@ -2558,6 +2615,14 @@ function ProspectingTab() {
         </div>
       </div>
 
+      {/* Bulk generating overlay */}
+      {isBulkGenerating && (
+        <div className="flex items-center gap-3 rounded-lg border border-blue-700/40 bg-blue-900/20 px-4 py-3">
+          <Loader2 className="h-4 w-4 animate-spin text-blue-400" />
+          <span className="text-sm text-blue-300">Generating AI drafts and adding leads…</span>
+        </div>
+      )}
+
       {/* Bulk action bar */}
       {bulkMode && (
         <div className="flex items-center gap-3 rounded-lg border border-blue-700/40 bg-blue-900/10 px-4 py-3">
@@ -2575,10 +2640,10 @@ function ProspectingTab() {
               <Button
                 size="sm"
                 onClick={bulkPromote}
-                disabled={convertToLead.isPending}
+                disabled={convertToLead.isPending || isBulkGenerating}
                 className="bg-blue-600 hover:bg-blue-700 text-white h-7 text-xs"
               >
-                {convertToLead.isPending ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <Plus className="h-3 w-3 mr-1" />}
+                {convertToLead.isPending || isBulkGenerating ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <Plus className="h-3 w-3 mr-1" />}
                 Add to Leads
               </Button>
               <Button
@@ -2913,6 +2978,16 @@ function ProspectingTab() {
                 ))}
               </div>
             </div>
+            <div className="space-y-1">
+              <label className="text-xs text-zinc-400 font-medium">Notes</label>
+              <Textarea
+                value={editNotes}
+                onChange={(e) => setEditNotes(e.target.value)}
+                placeholder="Extra context, follow-up details, or anything relevant before promoting…"
+                rows={3}
+                className="bg-zinc-800 border-zinc-600 text-white text-sm resize-none placeholder:text-zinc-500"
+              />
+            </div>
           </div>
           <DialogFooter className="gap-2">
             <Button variant="outline" onClick={() => setEditTarget(null)} className="border-zinc-600 text-zinc-300">Cancel</Button>
@@ -2923,6 +2998,7 @@ function ProspectingTab() {
                   id: editTarget.id,
                   estimatedAcres: editAcres || undefined,
                   marginTier: editMarginTier || undefined,
+                  notes: editNotes || undefined,
                 });
               }}
               disabled={updateProspect.isPending}
@@ -2934,22 +3010,68 @@ function ProspectingTab() {
         </DialogContent>
       </Dialog>
 
-      {/* AI Draft Outreach modal */}
-      <Dialog open={!!draftModal} onOpenChange={(open) => { if (!open) setDraftModal(null); }}>
+      {/* AI Draft Outreach modal — with Regenerate, queue progress, and Next/Done navigation */}
+      <Dialog open={!!draftModal} onOpenChange={(open) => { if (!open) { setDraftModal(null); setBulkQueue([]); setBulkQueueIdx(0); setBulkQueueTotal(0); } }}>
         <DialogContent className="bg-zinc-900 border-zinc-700 text-white max-w-lg">
           <DialogHeader>
-            <DialogTitle className="text-white">Prospect Added — AI Draft Outreach</DialogTitle>
+            <div className="flex items-center justify-between">
+              <DialogTitle className="text-white">
+                {bulkQueueTotal > 1
+                  ? `Draft Outreach — ${bulkQueueIdx + 1} of ${bulkQueueTotal}`
+                  : "Prospect Added — AI Draft Outreach"}
+              </DialogTitle>
+              {bulkQueueTotal > 1 && (
+                <span className="text-xs text-zinc-500">{bulkQueue[bulkQueueIdx]?.name}</span>
+              )}
+            </div>
           </DialogHeader>
           <div className="space-y-3 py-2">
-            <p className="text-xs text-zinc-400">Lead created. Here is an AI-drafted first-contact message based on what this prospect posted. Edit it before sending.</p>
+            <p className="text-xs text-zinc-400">
+              {bulkQueueTotal > 1
+                ? `Review and edit each draft before confirming. ${bulkQueueTotal - bulkQueueIdx - 1} remaining after this one.`
+                : "Lead created. Here is an AI-drafted first-contact message based on what this prospect posted. Edit it before sending."}
+            </p>
+            {/* Queue progress bar */}
+            {bulkQueueTotal > 1 && (
+              <div className="w-full bg-zinc-700 rounded-full h-1">
+                <div
+                  className="bg-orange-500 h-1 rounded-full transition-all"
+                  style={{ width: `${((bulkQueueIdx + 1) / bulkQueueTotal) * 100}%` }}
+                />
+              </div>
+            )}
             <Textarea
               value={draftModal?.draft ?? ""}
               onChange={(e) => setDraftModal((prev) => prev ? { ...prev, draft: e.target.value } : null)}
               rows={7}
               className="bg-zinc-800 border-zinc-600 text-white text-sm resize-none"
+              disabled={isRegenerating}
             />
+            {isRegenerating && (
+              <div className="flex items-center gap-2 text-xs text-zinc-400">
+                <Loader2 className="h-3 w-3 animate-spin" />
+                Generating a new variation…
+              </div>
+            )}
           </div>
-          <DialogFooter className="gap-2">
+          <DialogFooter className="flex flex-wrap gap-2">
+            {/* Regenerate button */}
+            {draftModal?.prospectId != null && (
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={isRegenerating}
+                onClick={() => {
+                  if (!draftModal?.prospectId) return;
+                  setIsRegenerating(true);
+                  regenerateDraftMutation.mutate({ id: draftModal.prospectId });
+                }}
+                className="border-zinc-600 text-zinc-300 mr-auto"
+              >
+                {isRegenerating ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <RefreshCw className="h-3 w-3 mr-1" />}
+                Regenerate
+              </Button>
+            )}
             <Button
               variant="outline"
               onClick={() => {
@@ -2957,10 +3079,22 @@ function ProspectingTab() {
                 toast.success("Message copied to clipboard.");
               }}
               className="border-zinc-600 text-zinc-300"
+              disabled={isRegenerating}
             >
               Copy
             </Button>
-            <Button onClick={() => setDraftModal(null)} className="bg-orange-600 hover:bg-orange-700 text-white">Done</Button>
+            {/* Next or Done depending on queue position */}
+            {bulkQueueTotal > 1 ? (
+              <Button
+                onClick={() => advanceBulkQueue(draftModal?.draft ?? "")}
+                disabled={isRegenerating}
+                className="bg-orange-600 hover:bg-orange-700 text-white"
+              >
+                {bulkQueueIdx + 1 < bulkQueueTotal ? "Next" : "Done"}
+              </Button>
+            ) : (
+              <Button onClick={() => setDraftModal(null)} disabled={isRegenerating} className="bg-orange-600 hover:bg-orange-700 text-white">Done</Button>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>

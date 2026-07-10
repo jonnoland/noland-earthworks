@@ -3720,6 +3720,7 @@ Return only the message text, no preamble.`;
       id: z.number(),
       estimatedAcres: z.string().optional(),
       marginTier: z.enum(["high", "medium", "low"]).optional(),
+      notes: z.string().optional(),
     }))
     .mutation(async ({ input }) => {
       const db = await getDb();
@@ -3727,9 +3728,48 @@ Return only the message text, no preamble.`;
       const updates: Record<string, unknown> = {};
       if (input.estimatedAcres !== undefined) updates.estimatedAcres = input.estimatedAcres;
       if (input.marginTier !== undefined) updates.marginTier = input.marginTier;
+      if (input.notes !== undefined) updates.notes = input.notes;
       if (Object.keys(updates).length === 0) return { ok: true };
       await db.update(prospectingLeads).set(updates).where(eq(prospectingLeads.id, input.id));
       return { ok: true };
+    }),
+
+  // Regenerate an AI outreach draft for a single prospect
+  regenerateDraft: ownerProcedure
+    .input(z.object({ id: z.number() }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+      const rows = await db.select().from(prospectingLeads).where(eq(prospectingLeads.id, input.id)).limit(1);
+      const p = rows[0];
+      if (!p) throw new TRPCError({ code: "NOT_FOUND", message: "Prospect not found" });
+      const outreachPrompt = `You are writing a first-contact outreach message for Jon Noland, owner of Noland Earthworks LLC — a veteran-owned forestry mulching and land clearing company in Middle Tennessee.
+
+Prospect details:
+- Name: ${p.contactName ?? "(unknown)"}
+- Location: ${p.location ?? "Middle Tennessee"}
+- Source: ${p.source}
+- What they posted: ${p.postSnippet ?? p.summary}
+- AI summary: ${p.summary}
+- Estimated acreage: ${p.estimatedAcres ?? "unknown"}
+- Margin tier: ${p.marginTier ?? "unknown"}
+
+Write a SHORT, casual first-contact message from Jon. Rules:
+- Casual, warm, southern — not corporate or salesy
+- 3-4 sentences max
+- Reference what they actually posted about (brush, overgrown land, clearing, etc.)
+- Mention forestry mulching specifically if relevant
+- End with a clear, low-pressure CTA (happy to come take a look, give me a call, etc.)
+- No emojis. No hashtags. No filler phrases like "I'd love to help" or "we're passionate about"
+- Sign off as Jon with Noland Earthworks and phone number placeholder [PHONE]
+- Write a DIFFERENT variation than you would normally produce — vary the opening line and tone slightly
+
+Return only the message text, no preamble.`;
+      const result = await invokeLLM({ messages: [{ role: "user", content: outreachPrompt }] });
+      const raw = result?.choices?.[0]?.message?.content;
+      const draft = typeof raw === "string" ? raw : null;
+      if (!draft) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "AI did not return a draft" });
+      return { draft };
     }),
   // Spawn a one-off Manus task that runs the same prospecting scan as the daily AGENT cron.
   // Results are posted back to /api/scheduled/prospect-leads-manual when the task completes.

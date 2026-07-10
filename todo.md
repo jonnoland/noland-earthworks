@@ -2192,3 +2192,8 @@
 - [x] Add to Leads: auto-generate AI draft outreach message based on prospect details when promoting
 - [x] Add bulk selection to Prospecting tab (checkboxes, select all, promote selected, dismiss selected)
 - [x] Add quick-edit modal on prospect card click to adjust estimated acreage and margin tier before promoting
+
+## Prospecting UX Enhancements — Round 3 (Jul 10, 2026)
+- [x] AI Draft modal: add Regenerate button to get a new message variation without closing the modal
+- [x] Bulk promote: carousel/queue review system — review and edit each AI draft sequentially before confirming
+- [x] Quick-Edit modal: add Notes textarea to capture extra context before promoting to a lead

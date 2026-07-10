@@ -1,0 +1,1 @@
+ALTER TABLE `prospecting_leads` ADD `notes` text;

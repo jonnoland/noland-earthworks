@@ -1629,6 +1629,8 @@ export const prospectingLeads = mysqlTable("prospecting_leads", {
   marginTier: varchar("marginTier", { length: 16 }),
   /** AI-estimated acreage inferred from the post (may be null if not mentioned) */
   estimatedAcres: varchar("estimatedAcres", { length: 32 }),
+  /** User-entered notes / extra context about this prospect */
+  notes: text("notes"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });

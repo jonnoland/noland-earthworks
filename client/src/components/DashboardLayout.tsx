@@ -55,6 +55,17 @@ import {
 // ─── Changelog entries — edit this array to update the changelog ─────────────
 const CHANGELOG: { version: string; date: string; items: string[] }[] = [
   {
+    version: "1.0.22",
+    date: "Jul 9, 2026",
+    items: [
+      "Prospecting: Regenerate button in AI Draft Outreach modal — get a new message variation instantly",
+      "Prospecting: Bulk promote now uses a sequential carousel — review and edit each draft before confirming",
+      "Prospecting: Queue progress bar shows position (e.g. Draft 2 of 5) and prospect name during bulk review",
+      "Prospecting: Quick-Edit modal now includes a Notes field for extra context before promoting",
+      "DB: notes column added to prospecting_leads table",
+    ],
+  },
+  {
     version: "1.0.21",
     date: "Jul 10, 2026",
     items: [
