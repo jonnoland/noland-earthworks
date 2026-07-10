@@ -590,6 +590,8 @@ export async function insertProspectingLead(data: {
   reachOutDraft?: string | null;
   postSnippet?: string | null;
   profileUrl?: string | null;
+  marginTier?: string | null;
+  estimatedAcres?: string | null;
 }) {
   const db = await getDb();
   if (!db) return null;
@@ -604,6 +606,8 @@ export async function insertProspectingLead(data: {
     reachOutDraft: data.reachOutDraft ?? null,
     postSnippet: data.postSnippet ?? null,
     profileUrl: data.profileUrl ?? null,
+    marginTier: data.marginTier ?? null,
+    estimatedAcres: data.estimatedAcres ?? null,
     status: "new",
   });
 }

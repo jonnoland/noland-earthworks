@@ -3670,6 +3670,13 @@ FOR EACH PROSPECT FOUND, collect:
 - reachOutDraft: a short, casual, genuine outreach message Jon can send — written in Jon's voice (no emojis, no corporate language, warm and direct, mention veteran-owned, offer a free site visit). Example: "Hey [name] — saw your post about clearing that property. I run a tracked forestry mulcher out of Middle Tennessee, veteran-owned and operated. I can grind everything down to mulch — no debris piles, no burning. Happy to come take a look for free. Give me a call at 615-406-4819 or visit nolandearthworks.com."
 - postSnippet: the first 200 characters of the original post text
 - profileUrl: for Facebook and Facebook Marketplace prospects ONLY — the URL of the poster's Facebook profile page (e.g., https://www.facebook.com/username or https://www.facebook.com/profile.php?id=12345). Navigate to the post and click the poster's name to get their profile URL. Set to null for Craigslist and other non-Facebook sources.
+- estimatedAcres: your best estimate of the acreage involved based on the post (e.g., "5", "2-3", "10+"). Set to null if the post gives no indication of size.
+- marginTier: your estimated profit margin tier for this job. Use these rules:
+  * "high" — 3+ acres, dense vegetation (heavy brush, cedar, overgrown timber), accessible terrain, no major obstacles mentioned. These jobs run at 55%+ margin.
+  * "medium" — 1-3 acres OR moderate conditions (some slope, mixed vegetation, partial access issues). These run at 35-54% margin.
+  * "low" — under 1 acre, very small suburban lot, significant access problems, or scope is unclear/risky (steep slopes, standing water, near structures). These run below 35% margin.
+  * null — post gives truly insufficient information to score (no size, no description of vegetation or terrain).
+  Reference: Noland Earthworks internal daily cost is approximately $620/day, productivity is 1-2 acres/day on typical terrain. A 3-acre job at $2,800 yields ~55% margin; a 1-acre job at $800 yields ~22%.
 
 QUALITY FILTER — only include prospects that:
 - Are in Tennessee (Middle or West TN preferred)

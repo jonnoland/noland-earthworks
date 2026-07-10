@@ -575,6 +575,13 @@
       "when": 1783350847255,
       "tag": "0081_wide_snowbird",
       "breakpoints": true
+    },
+    {
+      "idx": 82,
+      "version": "5",
+      "when": 1783649665561,
+      "tag": "0082_nosy_master_chief",
+      "breakpoints": true
     }
   ]
 }

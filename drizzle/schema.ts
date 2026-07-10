@@ -1619,6 +1619,16 @@ export const prospectingLeads = mysqlTable("prospecting_leads", {
   postSnippet: text("postSnippet"),
   /** Facebook profile URL of the poster — used to build Messenger deep link */
   profileUrl: text("profileUrl"),
+  /**
+   * AI-estimated profit margin tier based on inferred acreage, density, and terrain.
+   * Values: "high" | "medium" | "low" | null (null = insufficient info to score)
+   * high   = estimated margin ≥ 55% (dense veg, 3+ acres, accessible terrain)
+   * medium = estimated margin 35–54%
+   * low    = estimated margin < 35% or too much uncertainty
+   */
+  marginTier: varchar("marginTier", { length: 16 }),
+  /** AI-estimated acreage inferred from the post (may be null if not mentioned) */
+  estimatedAcres: varchar("estimatedAcres", { length: 32 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });

@@ -55,6 +55,38 @@ import {
 // ─── Changelog entries — edit this array to update the changelog ─────────────
 const CHANGELOG: { version: string; date: string; items: string[] }[] = [
   {
+    version: "1.0.19",
+    date: "Jul 9, 2026",
+    items: [
+      "Prospecting scan now scores each prospect with a margin tier (High / Medium / Low)",
+      "HIGH MARGIN badge (green) highlights 3+ acre, dense-vegetation jobs at 55%+ estimated margin",
+      "MED MARGIN badge (amber) marks 1-3 acre or moderate-condition jobs at 35-54% margin",
+      "LOW MARGIN badge (gray) flags under-1-acre or high-uncertainty jobs",
+      "Estimated acreage shown on each prospect card when inferred from the post",
+      "High-margin prospect cards highlighted with green border for quick scanning",
+    ],
+  },
+  {
+    version: "1.0.18",
+    date: "Jul 8, 2026",
+    items: [
+      "AI Quote prompt updated with current 2025 per-acre rates and cost floor awareness",
+      "Proposal draft now includes optional ballpark range when acreage is known",
+      "Prospecting scan now explicitly rejects suburban lots under 1 acre",
+      "Pricing unified across AI Quote, Lead Qualifier, and Field Quote tools",
+      "Cost Estimator: Save to Lead button persists estimate to a lead record",
+    ],
+  },
+  {
+    version: "1.0.17",
+    date: "Jul 7, 2026",
+    items: [
+      "Added Rentals tab under Field Work — opens nolandequip rental site in new tab",
+      "Added Zapier/Facebook Lead Ads webhook integration with setup guide in Settings",
+      "Webhook API key auto-generated, stored securely, and regeneratable",
+    ],
+  },
+  {
     version: "1.0.16",
     date: "Jul 4, 2026",
     items: [

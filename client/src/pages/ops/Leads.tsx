@@ -2161,6 +2161,8 @@ interface Prospect {
   status: string;
   postSnippet: string | null;
   profileUrl?: string | null;
+  marginTier?: string | null;
+  estimatedAcres?: string | null;
   createdAt: Date;
 }
 
@@ -2368,7 +2370,17 @@ function ProspectingTab() {
       ) : (
         <div className="space-y-3">
           {(prospects as Prospect[]).map((p) => (
-            <Card key={p.id} className="border-zinc-700 bg-zinc-800/60">
+            <Card
+              key={p.id}
+              className={cn(
+                "border bg-zinc-800/60",
+                p.marginTier === "high"
+                  ? "border-green-600/60 shadow-[0_0_0_1px_rgba(22,163,74,0.25)]"
+                  : p.marginTier === "medium"
+                  ? "border-amber-600/40"
+                  : "border-zinc-700"
+              )}
+            >
               <CardHeader className="pb-2">
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex items-center gap-2 flex-wrap">
@@ -2388,6 +2400,27 @@ function ProspectingTab() {
                     )}
                     {p.status === "dismissed" && (
                       <Badge className="bg-zinc-700 text-zinc-400 border-zinc-600 text-xs">Dismissed</Badge>
+                    )}
+                    {/* Margin tier badge */}
+                    {p.marginTier === "high" && (
+                      <span className="text-xs font-semibold px-2 py-0.5 rounded border bg-green-900/40 text-green-300 border-green-700">
+                        HIGH MARGIN
+                      </span>
+                    )}
+                    {p.marginTier === "medium" && (
+                      <span className="text-xs font-semibold px-2 py-0.5 rounded border bg-amber-900/30 text-amber-300 border-amber-700">
+                        MED MARGIN
+                      </span>
+                    )}
+                    {p.marginTier === "low" && (
+                      <span className="text-xs font-medium px-2 py-0.5 rounded border bg-zinc-800 text-zinc-400 border-zinc-600">
+                        LOW MARGIN
+                      </span>
+                    )}
+                    {p.estimatedAcres && (
+                      <span className="flex items-center gap-1 text-xs text-zinc-400">
+                        ~{p.estimatedAcres} ac
+                      </span>
                     )}
                     {p.location && (
                       <span className="flex items-center gap-1 text-xs text-zinc-400">

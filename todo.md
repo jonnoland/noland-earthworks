@@ -2156,3 +2156,15 @@
 - [x] Add mobilization miles input to the UI (currently hardcoded to 25 miles)
 - [x] Add "Vegetation Management" market rate to COST_SYSTEM_PROMPT in costEstimatorRouter (already present but verify)
 - [x] Add fence line LF add-on input to the estimator form
+## Margin Tier Scoring (Jul 9, 2026)
+- [x] Add marginTier (varchar 16) and estimatedAcres (varchar 32) columns to prospecting_leads table
+- [x] Run pnpm db:push — migration 0082_nosy_master_chief.sql applied successfully
+- [x] Update scan prompt in opsRouter.ts to instruct AI to output marginTier and estimatedAcres per prospect
+- [x] Update insertProspectingLead in server/db.ts to accept and persist marginTier and estimatedAcres
+- [x] Update both postback endpoints in server/_core/index.ts to pass marginTier and estimatedAcres through to DB insert
+- [x] Add marginTier and estimatedAcres to Prospect interface in client/src/pages/ops/Leads.tsx
+- [x] Add HIGH MARGIN (green), MED MARGIN (amber), LOW MARGIN (gray) badges to prospect cards
+- [x] Add green border highlight to high-margin prospect cards
+- [x] Show estimated acreage (~X ac) on prospect cards when available
+- [x] Add v1.0.17, v1.0.18, v1.0.19 entries to CHANGELOG in DashboardLayout.tsx
+- [x] Bump version to 1.0.19 in package.json
