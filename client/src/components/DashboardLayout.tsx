@@ -55,6 +55,15 @@ import {
 // ─── Changelog entries — edit this array to update the changelog ─────────────
 const CHANGELOG: { version: string; date: string; items: string[] }[] = [
   {
+    version: "1.0.27",
+    date: "Jul 10, 2026",
+    items: [
+      "Homepage: 'Why Primary?' benefits panel is now tap-to-toggle — stays open until you tap outside or press Close (mobile-friendly)",
+      "Homepage: 'Get a Free Estimate' CTA button now links directly to the quote form with Forestry Mulching pre-selected",
+      "Homepage: Stronger ambient amber glow on the Forestry Mulching primary card (28px rest, 48px hover)",
+    ],
+  },
+  {
     version: "1.0.26",
     date: "Jul 10, 2026",
     items: [

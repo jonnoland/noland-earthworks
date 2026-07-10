@@ -2,6 +2,11 @@
  * DESIGN: Heavy Equipment Grit — 2x2 card grid with image backgrounds, hover reveal
  * Dark cards with amber accent borders on hover
  * Forestry Mulching: Primary Service badge (pulse), CTA button, benefits tooltip
+ *
+ * v1.0.27 changes:
+ * - Benefits panel: tap-to-toggle (no close on mouse-off) for mobile compatibility
+ * - CTA button: links to /quote?service=forestry-mulching to pre-select service
+ * - Primary card: stronger ambient amber glow on the card wrapper
  */
 import { ArrowRight, CheckCircle2 } from "lucide-react";
 import { useRef, useEffect, useState } from "react";
@@ -54,9 +59,11 @@ function ServiceCard({ title, description, image, href, index, isPrimary }: {
   title: string; description: string; image: string; href: string; index: number; isPrimary?: boolean;
 }) {
   const [hovered, setHovered] = useState(false);
+  // showBenefits is tap-to-toggle — does NOT auto-close on mouse-off
   const [showBenefits, setShowBenefits] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const [visible, setVisible] = useState(false);
+  const benefitsRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -66,6 +73,22 @@ function ServiceCard({ title, description, image, href, index, isPrimary }: {
     if (ref.current) observer.observe(ref.current);
     return () => observer.disconnect();
   }, []);
+
+  // Close benefits panel when clicking outside of it
+  useEffect(() => {
+    if (!showBenefits) return;
+    const handler = (e: MouseEvent | TouchEvent) => {
+      if (benefitsRef.current && !benefitsRef.current.contains(e.target as Node)) {
+        setShowBenefits(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    document.addEventListener("touchstart", handler);
+    return () => {
+      document.removeEventListener("mousedown", handler);
+      document.removeEventListener("touchstart", handler);
+    };
+  }, [showBenefits]);
 
   return (
     <div
@@ -77,17 +100,18 @@ function ServiceCard({ title, description, image, href, index, isPrimary }: {
         transform: visible ? "translateY(0)" : "translateY(32px)",
         transition: `opacity 0.5s ease ${index * 0.1}s, transform 0.5s ease ${index * 0.1}s`,
         border: isPrimary
-          ? hovered ? "1px solid rgba(224,123,42,0.9)" : "1px solid rgba(224,123,42,0.45)"
+          ? hovered ? "1px solid rgba(224,123,42,1)" : "1px solid rgba(224,123,42,0.55)"
           : hovered ? "1px solid rgba(224,123,42,0.6)" : "1px solid rgba(255,255,255,0.06)",
+        // Stronger ambient glow on primary card
         boxShadow: isPrimary
           ? hovered
-            ? "0 0 32px rgba(224,123,42,0.25), inset 0 0 0 1px rgba(224,123,42,0.15)"
-            : "0 0 18px rgba(224,123,42,0.12), inset 0 0 0 1px rgba(224,123,42,0.08)"
+            ? "0 0 48px rgba(224,123,42,0.35), 0 0 16px rgba(224,123,42,0.2), inset 0 0 0 1px rgba(224,123,42,0.2)"
+            : "0 0 28px rgba(224,123,42,0.2), 0 0 8px rgba(224,123,42,0.1), inset 0 0 0 1px rgba(224,123,42,0.1)"
           : undefined,
         cursor: "default",
       }}
       onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => { setHovered(false); setShowBenefits(false); }}
+      onMouseLeave={() => setHovered(false)}
     >
       {/* Clickable overlay — sits below interactive elements */}
       <a
@@ -167,20 +191,18 @@ function ServiceCard({ title, description, image, href, index, isPrimary }: {
         </>
       )}
 
-      {/* Benefits expandable panel — primary card only */}
+      {/* Benefits expandable panel — tap-to-toggle, closes on outside click/tap */}
       {isPrimary && (
         <div
+          ref={benefitsRef}
           className="absolute z-20"
-          style={{
-            top: "3.5rem",
-            right: "1rem",
-          }}
+          style={{ top: "3.5rem", right: "1rem" }}
         >
           {/* Why Primary? toggle button */}
           <button
             onClick={(e) => { e.preventDefault(); e.stopPropagation(); setShowBenefits(v => !v); }}
             style={{
-              backgroundColor: showBenefits ? "rgba(224,123,42,0.18)" : "rgba(0,0,0,0.45)",
+              backgroundColor: showBenefits ? "rgba(224,123,42,0.18)" : "rgba(0,0,0,0.55)",
               border: "1px solid rgba(224,123,42,0.4)",
               color: "#E07B2A",
               fontFamily: "'Oswald', sans-serif",
@@ -188,7 +210,7 @@ function ServiceCard({ title, description, image, href, index, isPrimary }: {
               fontSize: "0.58rem",
               letterSpacing: "0.14em",
               textTransform: "uppercase",
-              padding: "0.25rem 0.55rem",
+              padding: "0.3rem 0.6rem",
               borderRadius: "2px",
               cursor: "pointer",
               transition: "background-color 0.2s ease",
@@ -196,12 +218,16 @@ function ServiceCard({ title, description, image, href, index, isPrimary }: {
               alignItems: "center",
               gap: "0.3rem",
               lineHeight: 1,
+              // Ensure tappable on mobile
+              minHeight: "32px",
+              minWidth: "80px",
+              touchAction: "manipulation",
             }}
           >
             Why Primary?
           </button>
 
-          {/* Benefits dropdown */}
+          {/* Benefits dropdown — stays open until outside tap/click */}
           {showBenefits && (
             <div
               style={{
@@ -209,10 +235,11 @@ function ServiceCard({ title, description, image, href, index, isPrimary }: {
                 top: "calc(100% + 6px)",
                 right: 0,
                 width: "220px",
-                backgroundColor: "rgba(10,10,10,0.96)",
+                backgroundColor: "rgba(10,10,10,0.97)",
                 border: "1px solid rgba(224,123,42,0.35)",
                 borderRadius: "3px",
                 padding: "0.85rem 1rem",
+                zIndex: 30,
               }}
             >
               <div style={{
@@ -249,6 +276,27 @@ function ServiceCard({ title, description, image, href, index, isPrimary }: {
                   </li>
                 ))}
               </ul>
+              {/* Close button for mobile */}
+              <button
+                onClick={(e) => { e.preventDefault(); e.stopPropagation(); setShowBenefits(false); }}
+                style={{
+                  marginTop: "0.5rem",
+                  width: "100%",
+                  backgroundColor: "rgba(224,123,42,0.1)",
+                  border: "1px solid rgba(224,123,42,0.25)",
+                  color: "rgba(240,237,230,0.55)",
+                  fontFamily: "'Oswald', sans-serif",
+                  fontSize: "0.58rem",
+                  letterSpacing: "0.12em",
+                  textTransform: "uppercase",
+                  padding: "0.3rem",
+                  borderRadius: "2px",
+                  cursor: "pointer",
+                  touchAction: "manipulation",
+                }}
+              >
+                Close
+              </button>
             </div>
           )}
         </div>
@@ -292,7 +340,7 @@ function ServiceCard({ title, description, image, href, index, isPrimary }: {
         >
           {isPrimary ? (
             <a
-              href="/quote"
+              href="/quote?service=forestry-mulching"
               onClick={(e) => e.stopPropagation()}
               style={{
                 position: "relative",
@@ -312,6 +360,7 @@ function ServiceCard({ title, description, image, href, index, isPrimary }: {
                 textDecoration: "none",
                 transition: "background-color 0.15s ease, transform 0.15s ease",
                 lineHeight: 1,
+                touchAction: "manipulation",
               }}
               onMouseEnter={(e) => {
                 (e.currentTarget as HTMLAnchorElement).style.backgroundColor = "#c96e24";
