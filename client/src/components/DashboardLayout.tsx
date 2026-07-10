@@ -55,6 +55,15 @@ import {
 // ─── Changelog entries — edit this array to update the changelog ─────────────
 const CHANGELOG: { version: string; date: string; items: string[] }[] = [
   {
+    version: "1.0.25",
+    date: "Jul 10, 2026",
+    items: [
+      "Homepage: Forestry Mulching service card now shows a 'Primary Service' badge in the top-right corner",
+      "Homepage: Forestry Mulching card has a persistent amber border and subtle glow to distinguish it from other service cards",
+      "Homepage: Amber top accent bar on Forestry Mulching card is always visible (not hover-only) and slightly thicker",
+    ],
+  },
+  {
     version: "1.0.24",
     date: "Jul 10, 2026",
     items: [

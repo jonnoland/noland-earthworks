@@ -41,8 +41,8 @@ const services = [
   },
 ];
 
-function ServiceCard({ title, description, image, href, index }: {
-  title: string; description: string; image: string; href: string; index: number;
+function ServiceCard({ title, description, image, href, index, isPrimary }: {
+  title: string; description: string; image: string; href: string; index: number; isPrimary?: boolean;
 }) {
   const [hovered, setHovered] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -66,7 +66,14 @@ function ServiceCard({ title, description, image, href, index }: {
         opacity: visible ? 1 : 0,
         transform: visible ? "translateY(0)" : "translateY(32px)",
         transition: `opacity 0.5s ease ${index * 0.1}s, transform 0.5s ease ${index * 0.1}s`,
-        border: hovered ? "1px solid rgba(224,123,42,0.6)" : "1px solid rgba(255,255,255,0.06)",
+        border: isPrimary
+          ? hovered ? "1px solid rgba(224,123,42,0.9)" : "1px solid rgba(224,123,42,0.45)"
+          : hovered ? "1px solid rgba(224,123,42,0.6)" : "1px solid rgba(255,255,255,0.06)",
+        boxShadow: isPrimary
+          ? hovered
+            ? "0 0 32px rgba(224,123,42,0.25), inset 0 0 0 1px rgba(224,123,42,0.15)"
+            : "0 0 18px rgba(224,123,42,0.12), inset 0 0 0 1px rgba(224,123,42,0.08)"
+          : undefined,
         cursor: "default",
       }}
       onMouseEnter={() => setHovered(true)}
@@ -102,12 +109,34 @@ function ServiceCard({ title, description, image, href, index }: {
 
       {/* Amber top accent bar */}
       <div
-        className="absolute top-0 left-0 right-0 h-0.5 transition-opacity duration-300"
+        className="absolute top-0 left-0 right-0 transition-all duration-300"
         style={{
           backgroundColor: "#E07B2A",
-          opacity: hovered ? 1 : 0,
+          height: isPrimary ? "3px" : "2px",
+          opacity: isPrimary ? 1 : hovered ? 1 : 0,
         }}
       />
+
+      {/* Primary Service badge */}
+      {isPrimary && (
+        <div
+          className="absolute top-4 right-4 z-20"
+          style={{
+            backgroundColor: "rgba(224,123,42,0.92)",
+            color: "#121212",
+            fontFamily: "'Oswald', sans-serif",
+            fontWeight: 700,
+            fontSize: "0.6rem",
+            letterSpacing: "0.18em",
+            textTransform: "uppercase",
+            padding: "0.3rem 0.65rem",
+            borderRadius: "2px",
+            lineHeight: 1,
+          }}
+        >
+          Primary Service
+        </div>
+      )}
 
       {/* Content */}
       <div className="absolute bottom-0 left-0 right-0 p-6">
@@ -218,7 +247,7 @@ export default function ServicesSection() {
         {/* 2x2 grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {services.map((s, i) => (
-            <ServiceCard key={s.title} {...s} index={i} />
+            <ServiceCard key={s.title} {...s} index={i} isPrimary={s.title === "Forestry Mulching"} />
           ))}
         </div>
 
