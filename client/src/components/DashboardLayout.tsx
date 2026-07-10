@@ -55,6 +55,15 @@ import {
 // ─── Changelog entries — edit this array to update the changelog ─────────────
 const CHANGELOG: { version: string; date: string; items: string[] }[] = [
   {
+    version: "1.0.21",
+    date: "Jul 10, 2026",
+    items: [
+      "Prospecting: AI draft outreach message auto-generated when promoting a prospect to a lead",
+      "Prospecting: Bulk select mode — select multiple prospects, promote or dismiss in one action",
+      "Prospecting: Quick-edit modal on each card — adjust estimated acreage and margin tier before promoting",
+    ],
+  },
+  {
     version: "1.0.20",
     date: "Jul 9, 2026",
     items: [

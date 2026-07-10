@@ -2187,3 +2187,8 @@
 - [x] Add outreach status tracking (new / contacted / dismissed) per prospect with color coding
 - [ ] Add bulk dismiss for low-margin or already-contacted prospects
 - [x] Add High Margin stat card to stats row (clickable filter)
+
+## Prospecting UX Enhancements — Round 2 (Jul 10, 2026)
+- [x] Add to Leads: auto-generate AI draft outreach message based on prospect details when promoting
+- [x] Add bulk selection to Prospecting tab (checkboxes, select all, promote selected, dismiss selected)
+- [x] Add quick-edit modal on prospect card click to adjust estimated acreage and margin tier before promoting

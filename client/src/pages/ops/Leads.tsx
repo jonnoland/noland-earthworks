@@ -23,7 +23,7 @@ import {
   ClipboardList, Star, Snowflake, RefreshCw,
   Map as MapIcon, LayoutGrid, Clock, Navigation,
   Brain, Copy, Check, CheckCheck, Sparkles, Unlink,
-  Send, Radar, CheckCircle, Info, Save, CheckCircle2, Facebook,
+  Send, Radar, CheckCircle, Info, Save, CheckCircle2, Facebook, Pencil,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -2249,6 +2249,15 @@ function ProspectingTab() {
   const [marginFilter, setMarginFilter] = useState<"all" | "high" | "medium" | "low">("all");
   const [reachOutTarget, setReachOutTarget] = useState<Prospect | null>(null);
   const [reachOutText, setReachOutText] = useState("");
+  // Bulk selection
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+  const [bulkMode, setBulkMode] = useState(false);
+  // Quick-edit modal
+  const [editTarget, setEditTarget] = useState<Prospect | null>(null);
+  const [editAcres, setEditAcres] = useState("");
+  const [editMarginTier, setEditMarginTier] = useState<"high" | "medium" | "low" | "">("")
+  // AI draft result modal
+  const [draftModal, setDraftModal] = useState<{ leadId: number | null; draft: string } | null>(null);
 
   const { data: prospects = [], isLoading, refetch } = trpc.ops.prospecting.list.useQuery(
     { status: filter === "all" ? undefined : filter },
@@ -2285,13 +2294,26 @@ function ProspectingTab() {
   });
 
   const convertToLead = trpc.ops.prospecting.convertToLead.useMutation({
-    onSuccess: () => {
-      toast.success("Prospect added to your lead pipeline.");
+    onSuccess: (data) => {
       utils.ops.prospecting.list.invalidate();
       utils.ops.prospecting.newCount.invalidate();
       utils.ops.leads.list.invalidate();
+      if (data.aiDraft) {
+        setDraftModal({ leadId: data.leadId ?? null, draft: data.aiDraft });
+      } else {
+        toast.success("Prospect added to your lead pipeline.");
+      }
     },
     onError: (err) => toast.error(err.message || "Failed to convert prospect."),
+  });
+
+  const updateProspect = trpc.ops.prospecting.updateProspect.useMutation({
+    onSuccess: () => {
+      utils.ops.prospecting.list.invalidate();
+      setEditTarget(null);
+      toast.success("Prospect updated.");
+    },
+    onError: (err) => toast.error(err.message || "Update failed."),
   });
 
   const sendSms = trpc.ops.leads.sendDirectSms.useMutation({
@@ -2359,6 +2381,48 @@ function ProspectingTab() {
     sendSms.mutate({ phone, message: reachOutText.trim(), contactName: reachOutTarget.contactName ?? undefined });
   }
 
+  function toggleSelect(id: number) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }
+
+  function toggleSelectAll() {
+    if (selectedIds.size === filteredProspects.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(filteredProspects.map((p) => p.id)));
+    }
+  }
+
+  async function bulkPromote() {
+    const ids = Array.from(selectedIds);
+    for (const id of ids) {
+      await convertToLead.mutateAsync({ id }).catch(() => {});
+    }
+    setSelectedIds(new Set());
+    setBulkMode(false);
+    toast.success(`${ids.length} prospect${ids.length > 1 ? "s" : ""} added to leads.`);
+  }
+
+  async function bulkDismiss() {
+    const ids = Array.from(selectedIds);
+    for (const id of ids) {
+      await updateStatus.mutateAsync({ id, status: "dismissed" }).catch(() => {});
+    }
+    setSelectedIds(new Set());
+    setBulkMode(false);
+    toast.success(`${ids.length} prospect${ids.length > 1 ? "s" : ""} dismissed.`);
+  }
+
+  function openQuickEdit(p: Prospect) {
+    setEditTarget(p);
+    setEditAcres(p.estimatedAcres ?? "");
+    setEditMarginTier((p.marginTier as "high" | "medium" | "low" | "") ?? "");
+  }
+
   const newCount = prospects.filter((p) => p.status === "new").length;
   const contactedCount = prospects.filter((p) => p.status === "contacted").length;
   const dismissedCount = prospects.filter((p) => p.status === "dismissed").length;
@@ -2391,6 +2455,17 @@ function ProspectingTab() {
             ) : (
               <><Radar className="h-4 w-4 mr-2" />Run Scan</>
             )}
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => { setBulkMode((v) => !v); setSelectedIds(new Set()); }}
+            className={cn(
+              "border-zinc-700 text-zinc-300 hover:text-white",
+              bulkMode && "border-blue-600 text-blue-300 bg-blue-900/20"
+            )}
+          >
+            {bulkMode ? "Cancel Select" : "Select"}
           </Button>
           <Button
             variant="outline"
@@ -2483,6 +2558,43 @@ function ProspectingTab() {
         </div>
       </div>
 
+      {/* Bulk action bar */}
+      {bulkMode && (
+        <div className="flex items-center gap-3 rounded-lg border border-blue-700/40 bg-blue-900/10 px-4 py-3">
+          <input
+            type="checkbox"
+            checked={selectedIds.size === filteredProspects.length && filteredProspects.length > 0}
+            onChange={toggleSelectAll}
+            className="w-4 h-4 accent-blue-500 cursor-pointer"
+          />
+          <span className="text-sm text-blue-300">
+            {selectedIds.size === 0 ? "Select prospects below" : `${selectedIds.size} selected`}
+          </span>
+          {selectedIds.size > 0 && (
+            <>
+              <Button
+                size="sm"
+                onClick={bulkPromote}
+                disabled={convertToLead.isPending}
+                className="bg-blue-600 hover:bg-blue-700 text-white h-7 text-xs"
+              >
+                {convertToLead.isPending ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <Plus className="h-3 w-3 mr-1" />}
+                Add to Leads
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={bulkDismiss}
+                disabled={updateStatus.isPending}
+                className="border-zinc-600 text-zinc-300 hover:text-white h-7 text-xs"
+              >
+                Dismiss
+              </Button>
+            </>
+          )}
+        </div>
+      )}
+
       {/* Prospect list */}
       {isLoading ? (
         <div className="text-zinc-400 text-sm py-8 text-center">Loading prospects...</div>
@@ -2516,7 +2628,15 @@ function ProspectingTab() {
             >
               <CardHeader className="pb-2">
                 <div className="flex items-start justify-between gap-3">
-                  <div className="flex items-center gap-2 flex-wrap">
+                  {bulkMode && (
+                    <input
+                      type="checkbox"
+                      checked={selectedIds.has(p.id)}
+                      onChange={() => toggleSelect(p.id)}
+                      className="mt-1 w-4 h-4 accent-blue-500 cursor-pointer shrink-0"
+                    />
+                  )}
+                  <div className="flex items-center gap-2 flex-wrap flex-1">
                     <span
                       className={cn(
                         "text-xs font-medium px-2 py-0.5 rounded border",
@@ -2562,15 +2682,24 @@ function ProspectingTab() {
                       </span>
                     )}
                   </div>
-                  <a
-                    href={p.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-zinc-400 hover:text-orange-400 transition-colors shrink-0"
-                    title="View original post"
-                  >
-                    <ExternalLink className="h-4 w-4" />
-                  </a>
+                  <div className="flex items-center gap-1 shrink-0">
+                    <button
+                      onClick={() => openQuickEdit(p)}
+                      title="Quick-edit acreage and margin tier"
+                      className="p-1 rounded text-zinc-500 hover:text-blue-400 transition-colors"
+                    >
+                      <Pencil className="h-3.5 w-3.5" />
+                    </button>
+                    <a
+                      href={p.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="p-1 text-zinc-400 hover:text-orange-400 transition-colors"
+                      title="View original post"
+                    >
+                      <ExternalLink className="h-4 w-4" />
+                    </a>
+                  </div>
                 </div>
                 {p.contactName && (
                   <CardTitle className="text-base text-white mt-1">{p.contactName}</CardTitle>
@@ -2742,6 +2871,96 @@ function ProspectingTab() {
             >
               {sendSms.isPending ? "Sending..." : "Send via SMS"}
             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Quick-edit modal */}
+      <Dialog open={!!editTarget} onOpenChange={(open) => { if (!open) setEditTarget(null); }}>
+        <DialogContent className="bg-zinc-900 border-zinc-700 text-white max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="text-white">Edit Prospect Details</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-1">
+              <label className="text-xs text-zinc-400 font-medium">Estimated Acreage</label>
+              <input
+                type="text"
+                value={editAcres}
+                onChange={(e) => setEditAcres(e.target.value)}
+                placeholder="e.g. 3.5"
+                className="w-full rounded-md border border-zinc-600 bg-zinc-800 px-3 py-2 text-sm text-white placeholder:text-zinc-500 focus:outline-none focus:ring-1 focus:ring-orange-500"
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs text-zinc-400 font-medium">Margin Tier</label>
+              <div className="flex gap-2">
+                {(["high", "medium", "low"] as const).map((tier) => (
+                  <button
+                    key={tier}
+                    onClick={() => setEditMarginTier(tier)}
+                    className={cn(
+                      "flex-1 rounded-md border px-3 py-2 text-xs font-semibold transition-colors",
+                      editMarginTier === tier
+                        ? tier === "high" ? "border-green-600 bg-green-900/40 text-green-300"
+                          : tier === "medium" ? "border-amber-600 bg-amber-900/30 text-amber-300"
+                          : "border-zinc-500 bg-zinc-700 text-zinc-300"
+                        : "border-zinc-700 bg-zinc-800 text-zinc-500 hover:border-zinc-500"
+                    )}
+                  >
+                    {tier.charAt(0).toUpperCase() + tier.slice(1)}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setEditTarget(null)} className="border-zinc-600 text-zinc-300">Cancel</Button>
+            <Button
+              onClick={() => {
+                if (!editTarget) return;
+                updateProspect.mutate({
+                  id: editTarget.id,
+                  estimatedAcres: editAcres || undefined,
+                  marginTier: editMarginTier || undefined,
+                });
+              }}
+              disabled={updateProspect.isPending}
+              className="bg-orange-600 hover:bg-orange-700 text-white"
+            >
+              {updateProspect.isPending ? "Saving..." : "Save"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* AI Draft Outreach modal */}
+      <Dialog open={!!draftModal} onOpenChange={(open) => { if (!open) setDraftModal(null); }}>
+        <DialogContent className="bg-zinc-900 border-zinc-700 text-white max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="text-white">Prospect Added — AI Draft Outreach</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            <p className="text-xs text-zinc-400">Lead created. Here is an AI-drafted first-contact message based on what this prospect posted. Edit it before sending.</p>
+            <Textarea
+              value={draftModal?.draft ?? ""}
+              onChange={(e) => setDraftModal((prev) => prev ? { ...prev, draft: e.target.value } : null)}
+              rows={7}
+              className="bg-zinc-800 border-zinc-600 text-white text-sm resize-none"
+            />
+          </div>
+          <DialogFooter className="gap-2">
+            <Button
+              variant="outline"
+              onClick={() => {
+                if (draftModal?.draft) navigator.clipboard.writeText(draftModal.draft);
+                toast.success("Message copied to clipboard.");
+              }}
+              className="border-zinc-600 text-zinc-300"
+            >
+              Copy
+            </Button>
+            <Button onClick={() => setDraftModal(null)} className="bg-orange-600 hover:bg-orange-700 text-white">Done</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

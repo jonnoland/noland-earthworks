@@ -3663,6 +3663,34 @@ export const prospectingRouter = router({
         craigslist: "other", nextdoor: "other", google: "google",
       };
       const mappedSource = (srcMap[p.source] ?? "other") as "google" | "facebook" | "referral" | "website" | "direct" | "other";
+      // Generate AI draft outreach message based on prospect details
+      let aiDraftResponse: string | null = null;
+      try {
+        const outreachPrompt = `You are writing a first-contact outreach message for Jon Noland, owner of Noland Earthworks LLC — a veteran-owned forestry mulching and land clearing company in Middle Tennessee.
+
+Prospect details:
+- Name: ${p.contactName ?? "(unknown)"}
+- Location: ${p.location ?? "Middle Tennessee"}
+- Source: ${p.source}
+- What they posted: ${p.postSnippet ?? p.summary}
+- AI summary: ${p.summary}
+- Estimated acreage: ${p.estimatedAcres ?? "unknown"}
+- Margin tier: ${p.marginTier ?? "unknown"}
+
+Write a short, casual first-contact message from Jon. Rules:
+- Casual, warm, southern — not corporate or salesy
+- 3-4 sentences max
+- Reference what they actually posted about (brush, overgrown land, clearing, etc.)
+- Mention forestry mulching specifically if relevant
+- End with a clear, low-pressure CTA (happy to come take a look, give me a call, etc.)
+- No emojis. No hashtags. No filler phrases like "I'd love to help" or "we're passionate about"
+- Sign off as Jon with Noland Earthworks and phone number placeholder [PHONE]
+
+Return only the message text, no preamble.`;
+        const result = await invokeLLM({ messages: [{ role: "user", content: outreachPrompt }] });
+        const raw = result?.choices?.[0]?.message?.content;
+        aiDraftResponse = typeof raw === "string" ? raw : null;
+      } catch { /* non-fatal — proceed without draft */ }
       // Build notes from prospect data
       const noteParts: string[] = [];
       if (p.summary) noteParts.push(`AI Summary: ${p.summary}`);
@@ -3679,10 +3707,29 @@ export const prospectingRouter = router({
         stage: "new",
         jobType: "Forestry Mulching / Land Clearing",
         notes,
+        aiDraftResponse: aiDraftResponse ?? undefined,
       });
       // Mark prospect as contacted so it doesn't show as new
       await updateProspectingLeadStatus(input.id, "contacted");
-      return { ok: true, leadId: (newLead as any)?.insertId ?? null };
+      return { ok: true, leadId: (newLead as any)?.insertId ?? null, aiDraft: aiDraftResponse };
+    }),
+
+  // Update a prospecting lead's estimated acreage and/or margin tier (quick-edit)
+  updateProspect: ownerProcedure
+    .input(z.object({
+      id: z.number(),
+      estimatedAcres: z.string().optional(),
+      marginTier: z.enum(["high", "medium", "low"]).optional(),
+    }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+      const updates: Record<string, unknown> = {};
+      if (input.estimatedAcres !== undefined) updates.estimatedAcres = input.estimatedAcres;
+      if (input.marginTier !== undefined) updates.marginTier = input.marginTier;
+      if (Object.keys(updates).length === 0) return { ok: true };
+      await db.update(prospectingLeads).set(updates).where(eq(prospectingLeads.id, input.id));
+      return { ok: true };
     }),
   // Spawn a one-off Manus task that runs the same prospecting scan as the daily AGENT cron.
   // Results are posted back to /api/scheduled/prospect-leads-manual when the task completes.
