@@ -2237,3 +2237,5 @@
 - [x] AI-complete the Pricing Worksheet in bidPrep: generate competitive government-rate unit prices, quantities, and total bid with rationale per line item
 - [x] Filter out expired contracts from gov-contracts listing (do not show status=Inactive/Expired)
 - [x] In bidPrep mutation, fetch the SAM.gov opportunity page to extract scope of work and pass it to AI pricing/capability prompts
+- [x] Add tnStateContracts tRPC procedure to govContractsRouter: scrape TN CPO ITB page, filter by land-clearing keywords, return structured results
+- [x] Add TN State tab to GovContracts page with filtered ITB results and static reference links (TDOT Bid Lettings, TVA Supplier Portal, GO-BID)

@@ -709,4 +709,137 @@ Format the output as plain text, suitable for copying into a bid response. Use c
         pricingWorksheet,
       };
     }),
+
+  /**
+   * Scrape the Tennessee CPO Invitations to Bid (ITB) page and return
+   * bids that match land-clearing / forestry / vegetation keywords.
+   * Falls back to returning all active bids if no keyword matches.
+   */
+  tnStateContracts: adminProcedure.query(async () => {
+    const ITB_URL =
+      "https://www.tn.gov/generalservices/procurement/central-procurement-office--cpo-/supplier-information/invitations-to-bid--itb-.html";
+    const RFP_URL =
+      "https://www.tn.gov/generalservices/procurement/central-procurement-office--cpo-/supplier-information/request-for-proposals--rfp--opportunities1.html";
+
+    const KEYWORDS = [
+      "land clearing", "land management", "clearing", "brush",
+      "mowing", "vegetation", "forestry", "mulch", "site prep",
+      "right-of-way", "row clearing", "tree", "timber", "grubbing",
+      "invasive", "weed control", "aquatic weed", "reelfoot",
+      "trail", "park", "wildlife", "conservation", "habitat",
+    ];
+
+    type TnBid = {
+      eventId: string;
+      eventName: string;
+      agency: string;
+      startDate: string;
+      dueDate: string;
+      isRelevant: boolean;
+      matchedKeywords: string[];
+      source: "ITB" | "RFP";
+    };
+
+    async function scrapePage(url: string, source: "ITB" | "RFP"): Promise<TnBid[]> {
+      try {
+        const res = await fetch(url, {
+          headers: {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+            "Accept": "text/html,application/xhtml+xml",
+          },
+          signal: AbortSignal.timeout(15000),
+        });
+        if (!res.ok) {
+          console.warn(`[TN State] ${source} page returned ${res.status}`);
+          return [];
+        }
+        const html = await res.text();
+        const $ = cheerio.load(html);
+        const bids: TnBid[] = [];
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        // The TN CPO page uses a table with rows containing event info
+        $("table tr").each((_, row) => {
+          const cells = $(row).find("td");
+          if (cells.length < 3) return;
+
+          // Extract text from each cell
+          const cell0 = $(cells[0]).text().trim(); // Event ID + docs
+          const cell1 = $(cells[1]).text().trim(); // Dates
+          const cell2 = $(cells[2]).text().trim(); // Event Name
+
+          if (!cell2 || cell2.length < 3) return;
+
+          // Parse dates from cell1 — format: "MM/DD/YYYY\nMM/DD/YYYY"
+          const dateMatches = cell1.match(/(\d{2}\/\d{2}\/\d{4})/g) ?? [];
+          const startDate = dateMatches[0] ?? "";
+          const dueDate = dateMatches[1] ?? "";
+
+          // Skip expired bids
+          if (dueDate) {
+            const due = new Date(dueDate);
+            if (!isNaN(due.getTime()) && due < today) return;
+          }
+
+          // Extract event ID
+          const eventIdMatch = cell0.match(/Event\s+([\d\-]+)/i);
+          const eventId = eventIdMatch ? eventIdMatch[1] : "";
+
+          // Determine agency from event ID prefix (first 3 digits = agency code)
+          const agencyCode = eventId.split("-")[0]?.replace(/^0+/, "") ?? "";
+          const AGENCY_MAP: Record<string, string> = {
+            "321": "General Services",
+            "328": "Wildlife Resources (TWRA)",
+            "327": "Environment & Conservation (TDEC)",
+            "329": "Finance & Administration",
+            "344": "Military",
+            "349": "Safety",
+            "401": "Transportation (TDOT)",
+            "331": "Education",
+            "342": "Correction",
+            "341": "Human Services",
+          };
+          const agency = AGENCY_MAP[agencyCode] ?? `Agency ${agencyCode}`;
+
+          // Check keyword relevance
+          const nameLower = cell2.toLowerCase();
+          const matchedKeywords = KEYWORDS.filter((kw) => nameLower.includes(kw));
+          const isRelevant = matchedKeywords.length > 0;
+
+          bids.push({
+            eventId,
+            eventName: cell2.replace(/\s*-\s*UPDATED.*$/i, "").replace(/\s*-\s*_UPDATED_.*$/i, "").trim(),
+            agency,
+            startDate,
+            dueDate,
+            isRelevant,
+            matchedKeywords,
+            source,
+          });
+        });
+
+        return bids;
+      } catch (err) {
+        console.error(`[TN State] Failed to scrape ${source}:`, err);
+        return [];
+      }
+    }
+
+    const [itbBids, rfpBids] = await Promise.all([
+      scrapePage(ITB_URL, "ITB"),
+      scrapePage(RFP_URL, "RFP"),
+    ]);
+
+    const allBids = [...itbBids, ...rfpBids];
+    const relevantBids = allBids.filter((b) => b.isRelevant);
+
+    return {
+      relevantBids,
+      allBids,
+      totalCount: allBids.length,
+      relevantCount: relevantBids.length,
+      scrapedAt: new Date().toISOString(),
+    };
+  }),
 });

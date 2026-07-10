@@ -7,7 +7,7 @@
  * AI capability statement, and pricing worksheet for any listed opportunity.
  */
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
 import { trpc } from "@/lib/trpc";
 import { Badge } from "@/components/ui/badge";
@@ -385,9 +385,11 @@ function BidPrepModal({
 
 // ── Main component ────────────────────────────────────────────────────────────
 export default function GovContracts() {
+  const [activeTab, setActiveTab] = useState<"federal" | "tn-state">("federal");
   const [naicsFilter, setNaicsFilter] = useState<string>("all");
   const [page, setPage] = useState(0);
   const [selectedOpp, setSelectedOpp] = useState<Opportunity | null>(null);
+  const [showAllTn, setShowAllTn] = useState(false);
 
   const { data, isLoading, isFetching, refetch } = trpc.govContracts.search.useQuery(
     { naicsFilter, page },
@@ -407,13 +409,240 @@ export default function GovContracts() {
     setPage(0);
   };
 
+  const tnQuery = trpc.govContracts.tnStateContracts.useQuery(undefined, {
+    enabled: activeTab === "tn-state",
+    staleTime: 10 * 60 * 1000,
+    retry: 1,
+  });
+
+  const tnBids = useMemo(() => {
+    if (!tnQuery.data) return [];
+    const { relevantBids, allBids } = tnQuery.data;
+    if (showAllTn) return allBids;
+    return relevantBids.length > 0 ? relevantBids : allBids;
+  }, [tnQuery.data, showAllTn]);
+
   return (
     <DashboardLayout
       title="Government Contracts"
-      subtitle="Active federal solicitations relevant to land clearing and forestry mulching"
+      subtitle="Active solicitations within 150 miles of Vanleer, TN"
     >
       <div className="space-y-6">
 
+        {/* ── Top-level Federal / TN State tabs ── */}
+        <div className="flex gap-1 p-1 rounded-lg bg-zinc-900 border border-zinc-800 w-fit">
+          <button
+            onClick={() => setActiveTab("federal")}
+            className={`px-4 py-1.5 text-sm rounded-md font-medium transition-colors ${
+              activeTab === "federal"
+                ? "bg-amber-600 text-white"
+                : "text-zinc-400 hover:text-white"
+            }`}
+          >
+            Federal (SAM.gov)
+          </button>
+          <button
+            onClick={() => setActiveTab("tn-state")}
+            className={`px-4 py-1.5 text-sm rounded-md font-medium transition-colors ${
+              activeTab === "tn-state"
+                ? "bg-amber-600 text-white"
+                : "text-zinc-400 hover:text-white"
+            }`}
+          >
+            TN State
+          </button>
+        </div>
+
+        {/* ── TN State tab content ── */}
+        {activeTab === "tn-state" && (
+          <div className="space-y-5">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex items-center gap-2">
+                <Landmark size={18} className="text-amber-500 shrink-0" />
+                <p className="text-sm text-muted-foreground">
+                  Scraped from{" "}
+                  <a href="https://www.tn.gov/generalservices/procurement/central-procurement-office--cpo-/supplier-information/invitations-to-bid--itb-.html" target="_blank" rel="noopener noreferrer" className="text-amber-500 hover:underline">
+                    TN CPO ITB
+                  </a>
+                  {" "}&amp;{" "}
+                  <a href="https://www.tn.gov/generalservices/procurement/central-procurement-office--cpo-/supplier-information/request-for-proposals--rfp--opportunities1.html" target="_blank" rel="noopener noreferrer" className="text-amber-500 hover:underline">
+                    RFP
+                  </a>
+                  {" "}— filtered to land clearing, forestry, and vegetation keywords.
+                </p>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => tnQuery.refetch()}
+                disabled={tnQuery.isFetching}
+                className="border-zinc-700 text-zinc-300 hover:text-white shrink-0"
+              >
+                <RefreshCw size={13} className={tnQuery.isFetching ? "animate-spin mr-1.5" : "mr-1.5"} />
+                Refresh
+              </Button>
+            </div>
+
+            {/* Loading */}
+            {tnQuery.isLoading && (
+              <div className="space-y-3">
+                {[1, 2, 3].map(i => (
+                  <div key={i} className="rounded-lg border border-zinc-800 bg-zinc-900/50 p-4 animate-pulse">
+                    <div className="h-4 bg-zinc-800 rounded w-3/4 mb-2" />
+                    <div className="h-3 bg-zinc-800 rounded w-1/2" />
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Error */}
+            {tnQuery.error && (
+              <div className="flex items-center gap-2 p-3 rounded-lg bg-red-950/40 border border-red-800/40 text-red-400 text-sm">
+                <AlertTriangle size={15} className="shrink-0" />
+                <span>TN CPO page temporarily unavailable. Try refreshing.</span>
+              </div>
+            )}
+
+            {/* Results */}
+            {!tnQuery.isLoading && !tnQuery.error && tnQuery.data && (
+              <>
+                {/* Stats bar */}
+                <div className="flex flex-wrap gap-3 items-center">
+                  <span className="text-xs text-muted-foreground">
+                    {tnQuery.data.relevantCount > 0
+                      ? <><span className="text-amber-400 font-medium">{tnQuery.data.relevantCount}</span> keyword-matched bid{tnQuery.data.relevantCount !== 1 ? "s" : ""} out of {tnQuery.data.totalCount} active
+                      </>
+                      : <>{tnQuery.data.totalCount} active bids (no keyword matches — showing all)</>}
+                  </span>
+                  {tnQuery.data.relevantCount > 0 && (
+                    <button
+                      onClick={() => setShowAllTn(v => !v)}
+                      className="text-xs text-amber-500 hover:text-amber-400 underline"
+                    >
+                      {showAllTn ? "Show relevant only" : `Show all ${tnQuery.data.totalCount}`}
+                    </button>
+                  )}
+                  <span className="text-xs text-zinc-600 ml-auto">
+                    Last scraped: {new Date(tnQuery.data.scrapedAt).toLocaleTimeString()}
+                  </span>
+                </div>
+
+                {/* Empty */}
+                {tnBids.length === 0 && (
+                  <div className="text-center py-12 text-muted-foreground">
+                    <Landmark size={28} className="mx-auto mb-3 opacity-30" />
+                    <p className="text-sm">No active TN state bids found.</p>
+                    <p className="text-xs mt-1">Check back later or view the TN CPO portal directly.</p>
+                  </div>
+                )}
+
+                {/* Bid cards */}
+                {tnBids.length > 0 && (
+                  <div className="space-y-3">
+                    {tnBids.map((bid, idx) => {
+                      const dueDate = bid.dueDate ? new Date(bid.dueDate) : null;
+                      const daysLeft = dueDate ? Math.ceil((dueDate.getTime() - Date.now()) / 86400000) : null;
+                      return (
+                        <div
+                          key={`${bid.eventId}-${idx}`}
+                          className={`rounded-lg border bg-zinc-900/60 p-4 transition-colors hover:bg-zinc-900 ${
+                            bid.isRelevant ? "border-amber-700/50" : "border-zinc-800"
+                          }`}
+                        >
+                          <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2 mb-2">
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <h3 className="text-sm font-medium text-white leading-snug">{bid.eventName}</h3>
+                                {bid.isRelevant && (
+                                  <Badge className="text-[10px] bg-amber-800/60 text-amber-300 border-amber-700/50 shrink-0">Relevant</Badge>
+                                )}
+                              </div>
+                              {bid.eventId && (
+                                <p className="text-[11px] text-zinc-500 mt-0.5">Event #{bid.eventId} &middot; {bid.source}</p>
+                              )}
+                            </div>
+                            <div className="shrink-0">
+                              <DeadlineBadge days={daysLeft} />
+                            </div>
+                          </div>
+
+                          <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-zinc-400 mb-3">
+                            <span className="flex items-center gap-1">
+                              <Building2 size={11} className="shrink-0" />
+                              {bid.agency}
+                            </span>
+                            {bid.startDate && (
+                              <span className="flex items-center gap-1">
+                                <Clock size={11} className="shrink-0" />
+                                Posted {bid.startDate}
+                              </span>
+                            )}
+                            {bid.dueDate && (
+                              <span className="flex items-center gap-1">
+                                <Clock size={11} className="shrink-0" />
+                                Due {bid.dueDate}
+                              </span>
+                            )}
+                          </div>
+
+                          {bid.matchedKeywords.length > 0 && (
+                            <div className="flex flex-wrap gap-1 mb-3">
+                              {bid.matchedKeywords.slice(0, 5).map(kw => (
+                                <span key={kw} className="text-[10px] px-1.5 py-0.5 rounded border border-zinc-700 text-zinc-400">
+                                  {kw}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+
+                          <div className="flex items-center justify-between pt-2 border-t border-zinc-800/60">
+                            <a
+                              href={`https://hub.edison.tn.gov/psc/fsprd/SUPPLIER/ERP/c/SCP_PUBLIC_MENU_FL.SCP_PUB_BID_CMP_FL.GBL?BIDID=${bid.eventId}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1.5 text-xs text-amber-500 hover:text-amber-400 font-medium"
+                            >
+                              View on TN Edison
+                              <ExternalLink size={11} />
+                            </a>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </>
+            )}
+
+            {/* Reference portals */}
+            <div className="pt-4 border-t border-zinc-800">
+              <h2 className="text-sm font-semibold text-zinc-300 mb-3">Additional TN State Portals</h2>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {[
+                  { name: "TN CPO Invitations to Bid", url: "https://www.tn.gov/generalservices/procurement/central-procurement-office--cpo-/supplier-information/invitations-to-bid--itb-.html", note: "Full ITB listing — all active state bids" },
+                  { name: "TDOT Contracts & Letting", url: "https://www.tn.gov/tdot/business-with-tdot/contracts-and-letting.html", note: "ROW clearing and vegetation management" },
+                  { name: "TVA Procurement", url: "https://www.tva.com/about-tva/procurement", note: "Vegetation management and ROW contracts" },
+                  { name: "GO-BID Vendor Registration", url: "https://www.gobidtn.com", note: "Free TN vendor certification — get bid notifications" },
+                  { name: "TWRA Procurement", url: "https://www.tn.gov/wildlife/about-twra/procurement.html", note: "Wildlife Resources — habitat and land management" },
+                  { name: "TDEC Procurement", url: "https://www.tn.gov/environment/about-tdec/tdec-procurement.html", note: "Environment & Conservation solicitations" },
+                ].map(p => (
+                  <a key={p.name} href={p.url} target="_blank" rel="noopener noreferrer"
+                    className="flex flex-col gap-1 p-3 rounded-lg border border-zinc-800 bg-zinc-900/40 hover:border-zinc-600 hover:bg-zinc-900 transition-colors">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium text-white">{p.name}</span>
+                      <ExternalLink size={12} className="text-zinc-500 shrink-0" />
+                    </div>
+                    <span className="text-xs text-zinc-500">{p.note}</span>
+                  </a>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ── Federal tab content ── */}
+        {activeTab === "federal" && (
+          <>
         {/* ── Header bar ── */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-center gap-2">
@@ -666,6 +895,8 @@ export default function GovContracts() {
             These are pre-filled in every bid package generated by this tool.
           </p>
         </div>
+          </>
+        )}
 
       </div>
 
