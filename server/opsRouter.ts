@@ -1017,13 +1017,13 @@ Return JSON only: {"suggestedStage": "<stage>", "reason": "<one sentence>"}`;
         : ["July", "August", "September"].includes(month)
         ? "slow (peak heat — customers often wait)"
         : "fall (transitioning into peak season)";
-      const prompt = `You are advising Jon Noland, owner of Noland Earthworks LLC — a veteran-owned forestry mulching and land clearing company in Middle & West Tennessee. He runs the business solo with a tracked forestry mulcher. It is currently ${month} (${season}).
+      const prompt = `You are advising Jon Noland, owner of Noland Earthworks LLC — a veteran-owned forestry mulching and land management company in Middle & West Tennessee. He runs the business solo with a tracked forestry mulcher. It is currently ${month} (${season}).
 
 Current pipeline: ${openLeads.length} open leads. Most leads recently came from: ${topSource.replace(/_/g, " ")}.
 
 Generate exactly 5 specific, immediately actionable lead generation steps for this week. Each step must:
 - Be concrete and doable in under 30 minutes
-- Be specific to his business (forestry mulching, land clearing, Tennessee landowners)
+- Be specific to his business (forestry mulching, land management, Tennessee landowners)
 - Reference real tactics (Google Business Profile, Facebook, past customers, referrals, etc.)
 - Not be generic marketing advice
 
@@ -1255,7 +1255,6 @@ const quotesRouter = router({
       // ── Add-on rates from DB ────────────────────────────────────────────────
       const stumpPerStump   = pricingRow?.stumpGrindingPerStump ?? 200;
       const debrisPerLoad   = pricingRow?.debrisHaulingPerLoad  ?? 450;
-      const seedingPerAcre       = pricingRow?.postClearSeedingPerAcre     ?? 225;
       const fenceLineClearPerLf  = pricingRow?.fenceLineClearingPerLf      ?? 4;
       const mulchRedistPerAcre   = pricingRow?.mulchRedistributionPerAcre  ?? 175;
       const selectiveFlatRate    = pricingRow?.selectiveClearingFlatRate   ?? 200;
@@ -1459,9 +1458,6 @@ const quotesRouter = router({
       }
       if (addOnsLower.some((a: string) => a.includes("debris") || a.includes("haul"))) {
         addOnPricingContext.push(`Debris hauling/removal: $${debrisPerLoad} per load (use this rate for haul-out line items)`);
-      }
-      if (addOnsLower.some((a: string) => a.includes("seeding") || a.includes("post-clear"))) {
-        addOnPricingContext.push(`Post-clear seeding: $${seedingPerAcre} per acre (erosion control / ground cover seeding)`);
       }
       if (addOnsLower.some((a: string) => a.includes("fence"))) {
         addOnPricingContext.push(`Fence line clearing: $${fenceLineClearPerLf} per linear foot (reclaiming overgrown fence lines)`);
@@ -1745,7 +1741,6 @@ ${input.customPrompt ? `\nADJUSTMENT INSTRUCTION: ${input.customPrompt}\nApply t
       const baseMobilization = pricingRow?.mobilizationFee ?? 400;
       const stumpPerStump   = pricingRow?.stumpGrindingPerStump ?? 200;
       const debrisPerLoad   = pricingRow?.debrisHaulingPerLoad  ?? 450;
-      const seedingPerAcre       = pricingRow?.postClearSeedingPerAcre     ?? 225;
       const fenceLineClearPerLf  = pricingRow?.fenceLineClearingPerLf      ?? 4;
       const mulchRedistPerAcre   = pricingRow?.mulchRedistributionPerAcre  ?? 175;
       const selectiveFlatRate    = pricingRow?.selectiveClearingFlatRate   ?? 200;
@@ -1811,7 +1806,6 @@ Pricing reference — Middle & West Tennessee market rates (2025–2026):
 - Mobilization fee (standard): $${baseMobilization}
 - Stump grinding: $${stumpPerStump}/stump
 - Debris hauling: $${debrisPerLoad}/load
-- Post-clear seeding: $${seedingPerAcre}/acre
 - Fence line clearing: $${fenceLineClearPerLf}/linear foot
 - Mulch redistribution: $${mulchRedistPerAcre}/acre
 - Selective clearing: $${selectiveFlatRate} flat rate
@@ -3716,7 +3710,7 @@ export const prospectingRouter = router({
       // Generate AI draft outreach message based on prospect details
       let aiDraftResponse: string | null = null;
       try {
-        const outreachPrompt = `You are writing a first-contact outreach message for Jon Noland, owner of Noland Earthworks LLC — a veteran-owned forestry mulching and land clearing company in Middle Tennessee.
+        const outreachPrompt = `You are writing a first-contact outreach message for Jon Noland, owner of Noland Earthworks LLC — a veteran-owned forestry mulching and land management company in Middle Tennessee.
 
 Prospect details:
 - Name: ${p.contactName ?? "(unknown)"}
@@ -3755,7 +3749,7 @@ Return only the message text, no preamble.`;
         address: p.location ?? undefined,
         source: mappedSource,
         stage: "new",
-        jobType: "Forestry Mulching / Land Clearing",
+        jobType: "Forestry Mulching / Land Management",
         notes,
         aiDraftResponse: aiDraftResponse ?? undefined,
       });
@@ -3793,7 +3787,7 @@ Return only the message text, no preamble.`;
       const rows = await db.select().from(prospectingLeads).where(eq(prospectingLeads.id, input.id)).limit(1);
       const p = rows[0];
       if (!p) throw new TRPCError({ code: "NOT_FOUND", message: "Prospect not found" });
-      const outreachPrompt = `You are writing a first-contact outreach message for Jon Noland, owner of Noland Earthworks LLC — a veteran-owned forestry mulching and land clearing company in Middle Tennessee.
+      const outreachPrompt = `You are writing a first-contact outreach message for Jon Noland, owner of Noland Earthworks LLC — a veteran-owned forestry mulching and land management company in Middle Tennessee.
 
 Prospect details:
 - Name: ${p.contactName ?? "(unknown)"}
@@ -3837,7 +3831,7 @@ Return only the message text, no preamble.`;
       const baseUrl = origin ?? `${protocol}://${host}`;
       const postbackUrl = `${baseUrl}/api/scheduled/prospect-leads-manual`;
 
-      const prompt = `You are an AI lead prospecting agent for Noland Earthworks, LLC — a veteran-owned forestry mulching and land clearing company based in Middle Tennessee.
+      const prompt = `You are an AI lead prospecting agent for Noland Earthworks, LLC — a veteran-owned forestry mulching and land management company based in Middle Tennessee.
 
 Your job: Search public sources for people in Middle Tennessee who need land clearing, forestry mulching, brush removal, overgrown property cleared, or pasture reclaimed. Find real posts from real people — not business listings, not ads.
 

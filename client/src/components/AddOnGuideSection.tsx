@@ -4,22 +4,9 @@
  * Sits below ServicesSection on the homepage.
  */
 import { useRef, useEffect, useState } from "react";
-import { ArrowRight, Sprout, Fence, Layers, TreePine } from "lucide-react";
+import { ArrowRight, Fence, Layers, TreePine } from "lucide-react";
 
 const addOns = [
-  {
-    icon: Sprout,
-    title: "Post-Clear Seeding",
-    subtitle: "Erosion Control & Ground Cover",
-    when: "After any land management or forestry mulching job",
-    benefit:
-      "Bare ground erodes. Seeding immediately after clearing locks the soil in place, prevents runoff, and starts the land on the right path — whether that's pasture, wildlife habitat, or a clean buffer zone.",
-    cta: "Add to your quote",
-    href: "/quote?service=land-management",
-    accentColor: "#4a7c59",
-    accentLight: "rgba(74,124,89,0.12)",
-    accentBorder: "rgba(74,124,89,0.3)",
-  },
   {
     icon: Fence,
     title: "Fence Line Clearing",

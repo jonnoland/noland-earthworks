@@ -198,7 +198,7 @@ export default function ForestryMulchingPage() {
               {
                 label: "Veteran-Owned",
                 noland: "Veteran-owned and operated. The same standards that apply in the field apply on every job.",
-                others: "Not all land clearing companies in Tennessee are veteran-owned or operated.",
+                others: "Not all land management companies in Tennessee are veteran-owned or operated.",
               },
             ].map(({ label, noland, others }) => (
               <div

@@ -180,7 +180,7 @@ Write a complete proposal with these sections:
 Voice: Professional, direct, plain language. No filler. Sound like a real contractor, not a template.
 Pricing guidance (for ballparkRange only — internal use, NOT for the proposal body — use owner's live rates):
 Forestry Mulching: $${Math.round(dpFm*0.75)}–$${dpFm}/acre (light), $${dpFm}–$${Math.round(dpFm*dpDm)}/acre (moderate), $${Math.round(dpFm*dpDm)}–$${Math.round(dpFm*dpDh*1.5)}+/acre (heavy)
-Land Clearing: $${Math.round(dpLc*0.75)}–$${dpLc}/acre (light), $${dpLc}–$${Math.round(dpLc*dpDm)}/acre (moderate), $${Math.round(dpLc*dpDm)}–$${Math.round(dpLc*dpDh*2)}+/acre (heavy)
+Land Management: $${Math.round(dpLc*0.75)}–$${dpLc}/acre (light), $${dpLc}–$${Math.round(dpLc*dpDm)}/acre (moderate), $${Math.round(dpLc*dpDm)}–$${Math.round(dpLc*dpDh*2)}+/acre (heavy)
 Brush Hogging: $${Math.round(dpBh*0.85)}–$${dpBh}/acre (maintenance), $${dpBh}–$${Math.round(dpBh*2)}/acre (brush control), $${Math.round(dpBh*2)}–$${Math.round(dpBh*3)}+/acre (reclamation)
 Minimum job: $${dpMin}. Mobilization: $0 within 30 mi, $150 at 31–50 mi, $300 at 51–75 mi, $500 at 76–100 mi.
 IMPORTANT: Only populate ballparkRange if the lead data explicitly states acreage AND service type AND gives enough density/terrain context to produce a credible number. If any of those three are missing or ambiguous, set ballparkRange to "" (empty string). A wrong ballpark is worse than no ballpark — it can lose the job. Always set ballparkNote to one sentence explaining it is a rough estimate pending a site visit.
@@ -734,7 +734,7 @@ Return JSON only: {"summary": "<5-line summary>", "topPriority": "<single most i
       const modDensPct  = Math.round((dmMult - 1) * 100);
       const heavyDensPct = Math.round((dhMult - 1) * 100);
 
-      const prompt = `You are the internal cost estimator for Noland Earthworks, LLC — a veteran-owned land clearing company in Middle Tennessee.
+      const prompt = `You are the internal cost estimator for Noland Earthworks, LLC — a veteran-owned forestry mulching and land management company in Middle Tennessee.
 
 Analyze the lead below and produce a general quote estimate using the EXACT pricing rates provided below (pulled from the owner's live pricing configuration — do not substitute generic market rates).
 
@@ -752,7 +752,7 @@ Forestry Mulching (per acre):
 - Moderate growth: $${fmBase}–$${fmModHigh}/acre
 - Heavy timber / dense cedar: $${fmModHigh}–$${fmHeavyHigh}+/acre
 - Minimum job: $${minJob}
-Land Management / Land Clearing (per acre):
+Land Management (per acre):
 - Light clearing (mostly brush, flat): $${lcLight}–$${lcBase}/acre
 - Moderate clearing (mixed timber, some slope): $${lcBase}–$${lcModHigh}/acre
 - Heavy clearing (dense timber, steep terrain): $${lcModHigh}–$${lcHeavyHigh}+/acre

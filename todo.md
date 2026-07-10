@@ -2197,3 +2197,33 @@
 - [x] AI Draft modal: add Regenerate button to get a new message variation without closing the modal
 - [x] Bulk promote: carousel/queue review system — review and edit each AI draft sequentially before confirming
 - [x] Quick-Edit modal: add Notes textarea to capture extra context before promoting to a lead
+
+## Content/Branding Fixes (Jul 10, 2026)
+- [ ] ServicesSection: move Forestry Mulching to first position (currently second after Land Management)
+- [ ] Navbar: move Forestry Mulching to first position in services dropdown
+- [ ] ServicesSection: remove Post-Clear Seeding from add-ons list
+- [ ] Navbar: remove Post-Clear Seeding from add-ons dropdown
+- [ ] App.tsx: remove PostClearSeeding route, redirect /services/add-ons/post-clear-seeding to /services/forestry-mulching
+- [ ] PostClearSeeding.tsx: page can remain but route redirects away (or delete page)
+- [ ] Pricing.tsx: remove Post-Clear Seeding service card
+- [ ] Quote.tsx: remove Post-Clear Seeding from all add-on arrays
+- [ ] CostCalculator.tsx: remove Post-Clear Seeding add-on option
+- [ ] AddOnGuideSection.tsx: remove Post-Clear Seeding card
+- [ ] FenceLineClearing.tsx: remove Post-Clear Seeding from related services
+- [ ] MulchRedistribution.tsx: remove Post-Clear Seeding from related services
+- [ ] SelectiveClearing.tsx: remove Post-Clear Seeding from related services
+- [ ] sitemapRoutes.ts: remove post-clear-seeding URL
+- [ ] ops/Settings.tsx: remove Post-Clear Seeding from pricing settings and calculator preview
+- [ ] ops/CostEstimator.tsx: remove Post-Clear Seeding from add-on options
+- [ ] ops/Pricing.tsx: remove Post-Clear Seeding from benchmark table
+- [ ] agents.ts: remove Post-Clear Seeding from service pricing list
+- [ ] leadQualifier.ts: remove post-clear seeding from rate reference
+- [ ] widgetRouter.ts: remove postClearSeedingPerAcre from widget response
+- [ ] opsRouter.ts: remove seeding add-on pricing context from quote prompts
+- [ ] aiAutomationRouter.ts: update company description from "land clearing" to "land management"
+- [ ] opsRouter.ts: update all AI prompt descriptions from "land clearing" to "land management"
+- [ ] Faq.tsx: update "land clearing" contextual references to "land management"
+- [ ] ForestryMulching.tsx: update competitor comparison line from "land clearing companies" to "land management companies"
+- [ ] BlogPostLayout.tsx: update "land clearing" keyword to "land management"
+- [ ] Leads.tsx (prospecting description): update "land clearing" to "land management"
+- [ ] Prospecting.tsx: update "land clearing" to "land management"

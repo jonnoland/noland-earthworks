@@ -70,13 +70,13 @@ function buildPrefillNote(density: string, terrain: string, access: string): str
 
 // Maps each core service to the add-ons most relevant to it
 const ADDON_SUGGESTIONS: Record<string, string[]> = {
-  "land-management": ["Post-Clear Seeding & Erosion Control", "Fence Line Clearing", "Selective Clearing & Tree Preservation"],
-  "forestry-mulching": ["Mulch Redistribution", "Post-Clear Seeding & Erosion Control", "Fence Line Clearing"],
-  "vegetation-management": ["Fence Line Clearing", "Post-Clear Seeding & Erosion Control"],
+  "land-management": ["Fence Line Clearing", "Selective Clearing & Tree Preservation", "Mulch Redistribution"],
+  "forestry-mulching": ["Mulch Redistribution", "Fence Line Clearing", "Selective Clearing & Tree Preservation"],
+  "vegetation-management": ["Fence Line Clearing", "Mulch Redistribution"],
   "right-of-way-clearing": ["Fence Line Clearing", "Mulch Redistribution"],
-  "property-maintenance": ["Post-Clear Seeding & Erosion Control", "Fence Line Clearing"],
-  "trail-cutting": ["Mulch Redistribution", "Post-Clear Seeding & Erosion Control", "Selective Clearing & Tree Preservation"],
-  "multiple": ["Post-Clear Seeding & Erosion Control", "Fence Line Clearing", "Mulch Redistribution", "Selective Clearing & Tree Preservation"],
+  "property-maintenance": ["Fence Line Clearing", "Selective Clearing & Tree Preservation"],
+  "trail-cutting": ["Mulch Redistribution", "Selective Clearing & Tree Preservation", "Fence Line Clearing"],
+  "multiple": ["Fence Line Clearing", "Mulch Redistribution", "Selective Clearing & Tree Preservation"],
 };
 
 export default function QuotePage() {
@@ -1128,7 +1128,6 @@ export default function QuotePage() {
                     const terrainMultiplier = form.trailTerrain === "sloped" ? 1.2 : form.trailTerrain === "rocky" ? 1.4 : 1.0;
                     const trailAddOns = [
                       { key: "mulch-redistribution", label: "Mulch Redistribution" },
-                      { key: "post-clear-seeding", label: "Post-Clear Seeding & Erosion Control" },
                       { key: "selective-clearing", label: "Selective Clearing & Tree Preservation" },
                     ];
                     return (
@@ -1472,7 +1471,6 @@ export default function QuotePage() {
                     <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
                       {((): { key: string; label: string }[] => {
                         const all = [
-                          { key: "post-clear-seeding", label: "Post-Clear Seeding & Erosion Control" },
                           { key: "fence-line-clearing", label: "Fence Line Clearing" },
                           { key: "mulch-redistribution", label: "Mulch Redistribution" },
                           { key: "selective-clearing", label: "Selective Clearing & Tree Preservation" },

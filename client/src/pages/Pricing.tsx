@@ -155,35 +155,6 @@ const services = [
     href: "/services/property-maintenance",
   },
   {
-    id: "post-clear-seeding",
-    name: "Post-Clear Seeding & Erosion Control",
-    tagline: "Protect bare ground after clearing",
-    icon: "🌱",
-    description:
-      "Broadcast seeding, erosion blanket installation, and ground cover application following land management or forestry mulching. Keeps topsoil in place and establishes ground cover before the next rain.",
-    priceUnit: "per acre",
-    tiers: [
-      {
-        label: "Broadcast Seeding",
-        range: "$150 – $350 / acre",
-        detail: "Seed mix selected for terrain and intended use — pasture, wildlife, or erosion control",
-      },
-      {
-        label: "Seeding + Erosion Blanket",
-        range: "$350 – $700 / acre",
-        detail: "Seed plus biodegradable erosion control blanket on slopes and drainage areas",
-      },
-      {
-        label: "Full Site Stabilization",
-        range: "$700 – $1,500 / acre",
-        detail: "Comprehensive seeding, blanket, and straw mulch application for high-erosion or steep sites",
-      },
-    ],
-    note: "Best scheduled immediately after clearing while ground is freshly worked. Seed mix varies by intended land use — pasture, wildlife habitat, or erosion control.",
-    href: "/services/post-clear-seeding",
-    isAddon: true,
-  },
-  {
     id: "fence-line-clearing",
     name: "Fence Line Clearing",
     tagline: "Reclaim your boundaries without a second mobilization",

@@ -2540,7 +2540,7 @@ function ProspectingTab() {
       <div className="flex items-start gap-3 rounded-lg border border-zinc-700 bg-zinc-800/50 p-4 text-sm text-zinc-300">
         <Info className="h-4 w-4 mt-0.5 shrink-0 text-orange-400" />
         <span>
-          The AI scans public sources daily for people in Tennessee asking about land clearing, brush removal, or overgrown property.
+          The AI scans public sources daily for people in Tennessee asking about land management, forestry mulching, brush removal, or overgrown property.
           New prospects appear here automatically. Review each one, fire a reach-out message, or dismiss it.
           The cron runs every morning — or hit <strong>Run Scan</strong> to kick one off right now. Results appear here when the task finishes (typically 5-15 minutes).
         </span>

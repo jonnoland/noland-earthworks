@@ -129,7 +129,7 @@ TRAVEL SURCHARGE (one-way miles from Vanleer, TN — flat fee, not per-mile):
 
 MARKET RATES (Middle Tennessee, 2025–2026):
 - Forestry mulching: $650–$1,200/acre (light-moderate); $1,200–$2,000+/acre (dense cedar/hardwood or steep terrain)
-- Land management / land clearing: $550–$1,000/acre; heavy clearing $1,200–$2,500/acre
+- Land management: $550–$1,000/acre; heavy clearing $1,200–$2,500/acre
 - Vegetation management: $500–$900/acre
 - ROW clearing: $600–$1,100/acre (effective acres — length × width ÷ 43,560)
 - Trail cutting: $2.00–$4.00/lf (flat), $2.40–$4.80/lf (sloped +20%), $2.80–$5.60/lf (rocky +40%); quote in effective acres (length × width ÷ 43,560) OR linear feet; $500 minimum; standard width 6–16 ft

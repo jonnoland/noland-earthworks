@@ -1222,14 +1222,6 @@ export default function CostCalculator() {
   const FENCE_LINE_DEFAULT_LF = 660;
   const ADD_ON_OPTIONS = [
     {
-      key: "post-clear-seeding",
-      label: "Post-Clear Seeding & Erosion Control",
-      calcCost: (acres: number, p: PublicPricing) => {
-        const rate = p?.postClearSeedingPerAcre ?? 225;
-        return { low: Math.round(rate * 0.85 * acres), high: Math.round(rate * 1.15 * acres), unit: `/acre` };
-      },
-    },
-    {
       key: "fence-line-clearing",
       label: "Fence Line Clearing",
       calcCost: (_acres: number, p: PublicPricing) => {

@@ -12,18 +12,18 @@ const PROPERTY_MAINT = "https://d2xsxph8kpxj0f.cloudfront.net/310519663484957999
 
 const services = [
   {
-    title: "Land Management",
-    href: "/services/land-management",
-    description:
-      "Professional land management services for residential and commercial properties. We safely remove trees, brush, stumps, and debris to prepare your land for development, agriculture, or landscaping.",
-    image: LAND_CLEARING,
-  },
-  {
     title: "Forestry Mulching",
     href: "/services/forestry-mulching",
     description:
-      "Efficient forestry mulching that grinds trees and vegetation into mulch on-site. Perfect for land management, fire prevention, and creating usable space without the mess of traditional clearing.",
+      "Our primary service. A single tracked machine grinds trees, brush, and vegetation into mulch on-site — no debris piles, no hauling, no burning. Faster, cleaner, and better for the land than traditional clearing.",
     image: FORESTRY_MULCHING,
+  },
+  {
+    title: "Land Management",
+    href: "/services/land-management",
+    description:
+      "Professional land management services for residential and commercial properties. We clear brush, trees, and overgrowth to prepare your land for development, agriculture, or recreational use.",
+    image: LAND_CLEARING,
   },
   {
     title: "Vegetation Management",
@@ -233,7 +233,6 @@ export default function ServicesSection() {
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
             {[
-              { title: "Post-Clear Seeding", desc: "Erosion control and ground cover seeding immediately after clearing.", href: "/services/post-clear-seeding" },
               { title: "Fence Line Clearing", desc: "Reclaim overgrown boundaries — priced per linear foot, same mobilization.", href: "/services/fence-line-clearing" },
               { title: "Mulch Redistribution", desc: "Uniform mulch finish after forestry mulching — drainage channels, buffers, bare spots.", href: "/services/mulch-redistribution" },
               { title: "Selective Clearing", desc: "Pre-job walkthrough to flag trees for preservation and mark clearing boundaries.", href: "/services/selective-clearing" },

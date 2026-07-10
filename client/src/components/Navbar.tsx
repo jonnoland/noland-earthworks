@@ -11,13 +11,12 @@ import { trpc } from "@/lib/trpc";
 const LOGO_URL = "https://d2xsxph8kpxj0f.cloudfront.net/310519663484957999/PymCzDCnSJzPjdkfwA7Jn6/noland-logo-transparent_783e5c7b.png";
 
 const serviceLinks = [
-  { label: "Land Management", href: "/services/land-management" },
   { label: "Forestry Mulching", href: "/services/forestry-mulching" },
+  { label: "Land Management", href: "/services/land-management" },
   { label: "Vegetation Management", href: "/services/vegetation-management" },
   { label: "Right-of-Way Clearing", href: "/services/right-of-way-clearing" },
   { label: "Trail Cutting", href: "/services/trail-cutting" },
   { label: "Property Maintenance", href: "/services/property-maintenance" },
-  { label: "Post-Clear Seeding", href: "/services/add-ons/post-clear-seeding", isAddon: true },
   { label: "Fence Line Clearing", href: "/services/add-ons/fence-line-clearing", isAddon: true },
   { label: "Mulch Redistribution", href: "/services/add-ons/mulch-redistribution", isAddon: true },
   { label: "Selective Clearing", href: "/services/add-ons/selective-clearing", isAddon: true },

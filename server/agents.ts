@@ -708,7 +708,6 @@ const SERVICE_DESCRIPTIONS: Record<string, string> = {
   "ROW/Trail":              "right-of-way corridor clearing per acre in Middle and West Tennessee",
   "Trail Cutting":          "trail cutting per linear foot (10-ft standard trail width) in Middle and West Tennessee — report low/mid/high as dollars per linear foot, not per acre",
   "Storm Cleanup":          "storm debris cleanup and fallen tree removal per acre in Middle and West Tennessee",
-  "Post-Clear Seeding":     "post-clearing grass and wildflower seeding per acre in Middle and West Tennessee",
   "Fence Line Clearing":    "fence line brush clearing per linear foot in Middle and West Tennessee",
   "Mulch Redistribution":   "forestry mulch redistribution and spreading per acre in Middle and West Tennessee",
   "Selective Clearing":     "selective tree and brush clearing (keeping desirable trees) per acre in Middle and West Tennessee",

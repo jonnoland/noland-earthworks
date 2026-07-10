@@ -63,7 +63,6 @@ import ForestryMulchingPage from "./pages/ForestryMulching";
 import VegetationManagementPage from "./pages/VegetationManagement";
 import PropertyMaintenancePage from "./pages/PropertyMaintenance";
 import RightOfWayClearingPage from "./pages/RightOfWayClearing";
-import PostClearSeedingPage from "./pages/PostClearSeeding";
 import FenceLineClearingPage from "./pages/FenceLineClearing";
 import MulchRedistributionPage from "./pages/MulchRedistribution";
 import SelectiveClearingPage from "./pages/SelectiveClearing";
@@ -244,7 +243,7 @@ function Router() {
       <Route path="/services/right-of-way-clearing" component={RightOfWayClearingPage} />
       <Route path="/services/trail-cutting" component={TrailCuttingPage} />
       {/* Add-On service pages */}
-      <Route path="/services/add-ons/post-clear-seeding" component={PostClearSeedingPage} />
+      <Route path="/services/add-ons/post-clear-seeding" component={() => { window.location.replace("/services/forestry-mulching"); return null; }} />
       <Route path="/services/add-ons/fence-line-clearing" component={FenceLineClearingPage} />
       <Route path="/services/add-ons/mulch-redistribution" component={MulchRedistributionPage} />
       <Route path="/services/add-ons/selective-clearing" component={SelectiveClearingPage} />

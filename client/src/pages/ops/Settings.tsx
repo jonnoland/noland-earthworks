@@ -2503,7 +2503,7 @@ function AIPricingTab() {
   // ── Live preview calculator ──────────────────────────────────────────────
   // Mirrors the core math in analyzeSubmission so the preview stays in sync
   // NOTE: must be declared BEFORE any early returns to satisfy React rules of hooks
-  const [calc, setCalc] = useState({ service: "forestry-mulching", acres: 5, density: "moderate", terrain: "flat", access: "easy", addStumps: 0, addLoads: 0, addSeeding: false, addFenceLine: 0 });
+  const [calc, setCalc] = useState({ service: "forestry-mulching", acres: 5, density: "moderate", terrain: "flat", access: "easy", addStumps: 0, addLoads: 0, addFenceLine: 0 });
   // ── Section tab state — MUST be declared before any early returns ──────────
   const [activeSection, setActiveSection] = useState<"rates" | "modifiers" | "addons" | "production" | "benchmarks">("rates");
 
@@ -2548,7 +2548,7 @@ function AIPricingTab() {
     const high = Math.round(mid * (1 + spread));
     const stumpTotal    = calc.addStumps * (Number(form.stumpGrindingPerStump)   || 200);
     const debrisTotal   = calc.addLoads  * (Number(form.debrisHaulingPerLoad)    || 450);
-    const seedingTotal  = calc.addSeeding ? Math.round(calc.acres * (Number(form.postClearSeedingPerAcre) || 225)) : 0;
+    const seedingTotal  = 0;
     const fenceTotal    = calc.addFenceLine * (Number(form.fenceLineClearingPerLf) || 4);
     const apdMap: Record<string, number> = {
       "forestry-mulching": Number(form.apdForestryMulching) || 1.5,
@@ -2560,8 +2560,8 @@ function AIPricingTab() {
     };
     const apd = apdMap[calc.service] ?? 1.5;
     const estDays = calc.acres > 0 ? Math.max(1, Math.ceil(calc.acres / apd)) : 1;
-    const addonsTotal = stumpTotal + debrisTotal + seedingTotal + fenceTotal;
-    return { low: low + addonsTotal, mid: mid + addonsTotal, high: high + addonsTotal, estDays, stumpTotal, debrisTotal, seedingTotal, fenceTotal };
+    const addonsTotal = stumpTotal + debrisTotal + fenceTotal;
+    return { low: low + addonsTotal, mid: mid + addonsTotal, high: high + addonsTotal, estDays, stumpTotal, debrisTotal, fenceTotal };
   }, [form, calc]);
 
   if (isLoading) {
@@ -2780,7 +2780,6 @@ function AIPricingTab() {
                 {([
                   { label: "Stump Grinding",         key: "stumpGrindingPerStump",      unit: "per stump",        note: "Market: $100\u2013$200/stump" },
                   { label: "Debris Hauling",          key: "debrisHaulingPerLoad",       unit: "per load",         note: "Market: $350\u2013$550/load" },
-                  { label: "Post-Clear Seeding",      key: "postClearSeedingPerAcre",   unit: "per acre",         note: "Market: $150\u2013$350/acre" },
                   { label: "Fence Line Clearing",     key: "fenceLineClearingPerLf",    unit: "per linear foot",  note: "Market: $3\u2013$6/LF" },
                   { label: "Mulch Redistribution",    key: "mulchRedistributionPerAcre", unit: "per acre",        note: "Market: $100\u2013$250/acre" },
                   { label: "Selective Clearing",      key: "selectiveClearingFlatRate", unit: "flat rate",        note: "Market: $150\u2013$300 flat" },
@@ -3138,16 +3137,7 @@ function AIPricingTab() {
                 className="w-full rounded-md border border-border bg-background px-2 py-1.5 text-xs text-foreground"
               />
             </div>
-            <div className="space-y-1 flex flex-col justify-end">
-              <label className="flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground cursor-pointer">
-                <input type="checkbox"
-                  checked={calc.addSeeding}
-                  onChange={e => setCalc(c => ({ ...c, addSeeding: e.target.checked }))}
-                  className="rounded"
-                />
-                Post-Clear Seeding
-              </label>
-            </div>
+
           </div>
 
           {/* Result */}
@@ -3178,12 +3168,6 @@ function AIPricingTab() {
               <div className="flex justify-between text-[11px] text-muted-foreground">
                 <span>Debris hauling</span>
                 <span>+${previewResult.debrisTotal.toLocaleString()}</span>
-              </div>
-            )}
-            {previewResult.seedingTotal > 0 && (
-              <div className="flex justify-between text-[11px] text-muted-foreground">
-                <span>Post-clear seeding</span>
-                <span>+${previewResult.seedingTotal.toLocaleString()}</span>
               </div>
             )}
             {previewResult.fenceTotal > 0 && (

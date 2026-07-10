@@ -152,7 +152,7 @@ const FAQ_DATA: FaqCategory[] = [
       {
         question: "Is Noland Earthworks licensed and insured?",
         answer:
-          "Yes. Noland Earthworks is fully licensed and insured. We carry the coverage required for commercial land clearing and forestry mulching work in Tennessee.",
+          "Yes. Noland Earthworks is fully licensed and insured. We carry the coverage required for commercial land management and forestry mulching work in Tennessee.",
       },
       {
         question: "What counties do you serve?",

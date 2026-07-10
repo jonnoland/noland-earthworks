@@ -55,6 +55,17 @@ import {
 // ─── Changelog entries — edit this array to update the changelog ─────────────
 const CHANGELOG: { version: string; date: string; items: string[] }[] = [
   {
+    version: "1.0.23",
+    date: "Jul 10, 2026",
+    items: [
+      "Branding: Forestry Mulching confirmed as primary service across all pages, nav, and AI prompts",
+      "Branding: All 'Land Clearing' references updated to 'Land Management' site-wide",
+      "Services: Post-Clear Seeding removed from all service listings, add-on menus, calculators, and AI prompts",
+      "SEO: /services/add-ons/post-clear-seeding now redirects to Forestry Mulching page",
+      "AI: All server-side prompts updated to reflect correct service terminology",
+    ],
+  },
+  {
     version: "1.0.22",
     date: "Jul 9, 2026",
     items: [
