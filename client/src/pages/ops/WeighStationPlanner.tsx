@@ -77,6 +77,7 @@ export default function WeighStationPlanner() {
   const markersRef = useRef<google.maps.Marker[]>([]);
 
   const [mpg, setMpg] = useState(9);
+  const [showOpenOnly, setShowOpenOnly] = useState(false);
 
   const planRoute = trpc.routePlanner.planRoute.useMutation();
   const saveRoute = trpc.routePlanner.saveRoute.useMutation();
@@ -192,8 +193,12 @@ export default function WeighStationPlanner() {
       });
       markersRef.current.push(destMarker);
 
-      // Weigh station markers
-      route.weighStations.forEach((station) => {
+      // Weigh station markers (respects showOpenOnly filter via closure)
+      const stationsToShow = showOpenOnly
+        ? route.weighStations.filter((s) => getStationStatus(s.name) === "open")
+        : route.weighStations;
+
+      stationsToShow.forEach((station) => {
         const stStatus = getStationStatus(station.name);
         const statusColor = stStatus === "open" ? "#16A34A" : stStatus === "closed" ? "#DC2626" : "#9CA3AF";
         const statusText = stStatus === "open" ? "Open" : stStatus === "closed" ? "Closed" : "Status unknown";
@@ -241,15 +246,15 @@ export default function WeighStationPlanner() {
       );
       map.fitBounds(bounds, 60);
     },
-    [clearMap]
+    [clearMap, showOpenOnly, getStationStatus]
   );
 
-  // Re-draw when map becomes ready and we have a route
+  // Re-draw when map becomes ready and we have a route, or when open-only filter changes
   useEffect(() => {
     if (mapReady && plannedRoute) {
       drawRouteOnMap(plannedRoute);
     }
-  }, [mapReady, plannedRoute, drawRouteOnMap]);
+  }, [mapReady, plannedRoute, drawRouteOnMap, showOpenOnly]);
 
   const handlePlanRoute = async () => {
     if (!destination.trim()) {
@@ -511,13 +516,29 @@ export default function WeighStationPlanner() {
                     <h3 className="text-xs font-semibold text-white/60 uppercase tracking-wide">
                       Weigh Stations Along Route
                     </h3>
-                    {stationStatus?.fetchedAt && (
-                      <span className="text-[10px] text-white/30">
-                        Status: coopsareopen.com
-                      </span>
-                    )}
+                    <div className="flex items-center gap-2">
+                      {stationStatus?.fetchedAt && (
+                        <span className="text-[10px] text-white/30">
+                          coopsareopen.com
+                        </span>
+                      )}
+                      <button
+                        onClick={() => setShowOpenOnly((v) => !v)}
+                        className={`flex items-center gap-1.5 text-[10px] font-medium px-2 py-0.5 rounded-full border transition-colors ${
+                          showOpenOnly
+                            ? "bg-green-500/20 text-green-300 border-green-500/40"
+                            : "bg-white/5 text-white/40 border-white/15 hover:text-white/60"
+                        }`}
+                        title={showOpenOnly ? "Showing open stations only — click to show all" : "Click to show open stations only"}
+                      >
+                        <span className={`w-2 h-2 rounded-full flex-shrink-0 ${showOpenOnly ? "bg-green-400" : "bg-white/30"}`} />
+                        {showOpenOnly ? "Open only" : "All stations"}
+                      </button>
+                    </div>
                   </div>
-                  {plannedRoute.weighStations.map((station) => (
+                  {plannedRoute.weighStations
+                    .filter((station) => !showOpenOnly || getStationStatus(station.name) === "open")
+                    .map((station) => (
                     <div
                       key={station.id}
                       className="bg-white/5 rounded-lg border border-white/10 overflow-hidden"
