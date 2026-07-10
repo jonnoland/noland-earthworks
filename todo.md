@@ -2228,3 +2228,6 @@
 - [ ] Leads.tsx (prospecting description): update "land clearing" to "land management"
 - [ ] Prospecting.tsx: update "land clearing" to "land management"
 - [x] Fix Jobber 403 Cloudflare IP-block: add graceful try/catch to all 8 read-query procedures so homepage and Ops pages return empty results instead of 500 errors when Jobber API is unreachable
+- [x] Build govContractsRouter.ts tRPC procedure to fetch SAM.gov opportunities via public search API
+- [x] Build /ops/sales/government-contracts page with live SAM.gov opportunity feed, filters, and state portal links
+- [x] Wire Government Contracts into ops/sales navigation

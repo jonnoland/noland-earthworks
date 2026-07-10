@@ -41,6 +41,7 @@ import {
   BotMessageSquare,
   BookOpen,
   Truck,
+  Landmark,
 } from "lucide-react";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { getLoginUrl } from "@/const";
@@ -54,6 +55,24 @@ import {
 
 // ─── Changelog entries — edit this array to update the changelog ─────────────
 const CHANGELOG: { version: string; date: string; items: string[] }[] = [
+  {
+    version: "1.0.30",
+    date: "Jul 10, 2026",
+    items: [
+      "Gov Contracts: New section under Sales — live federal solicitation feed from SAM.gov",
+      "Gov Contracts: Filtered to land clearing / forestry NAICS codes (115310, 238910, 561730, 562910, 237990) within ~150 miles of Vanleer",
+      "Gov Contracts: NAICS and state filter dropdowns, urgency badges, contact info, and direct SAM.gov links",
+      "Gov Contracts: State portal panel with links to TN eProcurement, TDOT, TVA, KY, AL, and USACE Huntsville",
+      "Gov Contracts: SAM.gov registration guidance with correct NAICS codes for bidding",
+    ],
+  },
+  {
+    version: "1.0.29",
+    date: "Jul 10, 2026",
+    items: [
+      "Resources: Page title updated to Noland Earthworks Operator Library",
+    ],
+  },
   {
     version: "1.0.27",
     date: "Jul 10, 2026",
@@ -254,6 +273,7 @@ const NAV_GROUPS = [
       { label: "Leads",         href: "/ops/leads",         icon: Target },
       { label: "Quotes",        href: "/ops/quotes",        icon: FileText },
       { label: "Clients",       href: "/ops/clients",       icon: Users },
+      { label: "Gov Contracts",  href: "/ops/gov-contracts",  icon: Landmark },
     ],
   },
   {
