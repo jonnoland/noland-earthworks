@@ -8,6 +8,20 @@
  */
 import type { Express, Request, Response } from "express";
 import { ENV } from "./_core/env";
+import { storageGet } from "./storage";
+
+/**
+ * Resolves a potentially relative /manus-storage/* path to a fully-qualified
+ * presigned S3 URL that external APIs (Facebook, Instagram, X) can fetch.
+ */
+async function resolvePublicImageUrl(url: string): Promise<string> {
+  if (!url) return url;
+  if (url.startsWith("http://") || url.startsWith("https://")) return url;
+  const key = url.replace(/^\/manus-storage\//, "");
+  if (!key) return url;
+  const { url: presignedUrl } = await storageGet(key);
+  return presignedUrl;
+}
 
 /** Publish a single post to Facebook. Returns the fbPostId on success. */
 async function publishToFacebook(
@@ -19,10 +33,11 @@ async function publishToFacebook(
   if (!pageId || !accessToken) throw new Error("Facebook credentials not configured");
 
   if (imageUrl) {
+    const resolvedUrl = await resolvePublicImageUrl(imageUrl);
     const res = await fetch(`https://graph.facebook.com/v20.0/${pageId}/photos`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ url: imageUrl, caption: draft, access_token: accessToken }),
+      body: JSON.stringify({ url: resolvedUrl, caption: draft, access_token: accessToken }),
     });
     const data = await res.json() as any;
     if (!res.ok || data.error) throw new Error(data.error?.message ?? "Facebook photo post failed");
@@ -49,10 +64,11 @@ async function publishToInstagram(
   if (!igUserId || !accessToken) throw new Error("Instagram credentials not configured");
 
   // Step 1: Create media container
+  const resolvedUrl = await resolvePublicImageUrl(imageUrl);
   const containerRes = await fetch(`https://graph.instagram.com/v21.0/${igUserId}/media`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ image_url: imageUrl, caption, access_token: accessToken }),
+    body: JSON.stringify({ image_url: resolvedUrl, caption, access_token: accessToken }),
   });
   const containerData = await containerRes.json() as any;
   if (!containerRes.ok || containerData.error) {
@@ -81,7 +97,8 @@ async function publishToX(text: string, imageUrl: string | null): Promise<string
   let mediaId: string | undefined;
   if (imageUrl) {
     try {
-      const imgRes = await fetch(imageUrl);
+      const resolvedUrl = await resolvePublicImageUrl(imageUrl);
+      const imgRes = await fetch(resolvedUrl);
       if (imgRes.ok) {
         const imgBuffer = Buffer.from(await imgRes.arrayBuffer());
         const contentType = imgRes.headers.get("content-type") ?? "image/jpeg";
