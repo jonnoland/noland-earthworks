@@ -104,27 +104,32 @@ export const jobberRouter = router({
     .query(async ({ input }) => {
       const connected = await isJobberConnected();
       if (!connected) return { nodes: [], totalCount: 0 };
-      const data = await jobberGraphQL(`
-        query GetJobs($first: Int) {
-          jobs(first: $first) {
-            nodes {
-              id jobNumber title jobStatus jobType total
-              startAt endAt completedAt createdAt
-              client { id name companyName phones { number } }
-              property { address { street1 city province postalCode } }
+      try {
+        const data = await jobberGraphQL(`
+          query GetJobs($first: Int) {
+            jobs(first: $first) {
+              nodes {
+                id jobNumber title jobStatus jobType total
+                startAt endAt completedAt createdAt
+                client { id name companyName phones { number } }
+                property { address { street1 city province postalCode } }
+              }
+              totalCount
             }
-            totalCount
           }
+        `, { first: input.first ?? 50 }) as any;
+        // Normalize jobStatus to uppercase so all UI comparisons work consistently
+        if (data?.jobs?.nodes) {
+          data.jobs.nodes = data.jobs.nodes.map((j: any) => ({
+            ...j,
+            jobStatus: j.jobStatus ? String(j.jobStatus).toUpperCase().replace(/\s+/g, '_') : j.jobStatus,
+          }));
         }
-      `, { first: input.first ?? 50 }) as any;
-      // Normalize jobStatus to uppercase so all UI comparisons work consistently
-      if (data?.jobs?.nodes) {
-        data.jobs.nodes = data.jobs.nodes.map((j: any) => ({
-          ...j,
-          jobStatus: j.jobStatus ? String(j.jobStatus).toUpperCase().replace(/\s+/g, '_') : j.jobStatus,
-        }));
+        return data.jobs;
+      } catch (err) {
+        console.warn('[Jobber] jobs query failed:', err instanceof Error ? err.message : String(err));
+        return { nodes: [], totalCount: 0 };
       }
-      return data.jobs;
     }),
 
   // ─── Quotes ──────────────────────────────────────────────────────────────────
@@ -133,27 +138,32 @@ export const jobberRouter = router({
     .query(async ({ input }) => {
       const connected = await isJobberConnected();
       if (!connected) return { nodes: [], totalCount: 0 };
-      const data = await jobberGraphQL(`
-        query GetQuotes($first: Int) {
-          quotes(first: $first) {
-            nodes {
-              id quoteNumber title quoteStatus createdAt
-              amounts { subtotal total }
-              client { id name companyName phones { number } }
-              property { address { street1 city province postalCode } }
+      try {
+        const data = await jobberGraphQL(`
+          query GetQuotes($first: Int) {
+            quotes(first: $first) {
+              nodes {
+                id quoteNumber title quoteStatus createdAt
+                amounts { subtotal total }
+                client { id name companyName phones { number } }
+                property { address { street1 city province postalCode } }
+              }
+              totalCount
             }
-            totalCount
           }
+        `, { first: input.first ?? 50 }) as any;
+        // Normalize quoteStatus to uppercase so all UI comparisons work consistently
+        if (data?.quotes?.nodes) {
+          data.quotes.nodes = data.quotes.nodes.map((q: any) => ({
+            ...q,
+            quoteStatus: q.quoteStatus ? String(q.quoteStatus).toUpperCase() : q.quoteStatus,
+          }));
         }
-      `, { first: input.first ?? 50 }) as any;
-      // Normalize quoteStatus to uppercase so all UI comparisons work consistently
-      if (data?.quotes?.nodes) {
-        data.quotes.nodes = data.quotes.nodes.map((q: any) => ({
-          ...q,
-          quoteStatus: q.quoteStatus ? String(q.quoteStatus).toUpperCase() : q.quoteStatus,
-        }));
+        return data.quotes;
+      } catch (err) {
+        console.warn('[Jobber] quotes query failed:', err instanceof Error ? err.message : String(err));
+        return { nodes: [], totalCount: 0 };
       }
-      return data.quotes;
     }),
 
   // ─── Clients ─────────────────────────────────────────────────────────────────
@@ -162,20 +172,25 @@ export const jobberRouter = router({
     .query(async ({ input }) => {
       const connected = await isJobberConnected();
       if (!connected) return { nodes: [], totalCount: 0 };
-      const data = await jobberGraphQL(`
-        query GetClients($first: Int) {
-          clients(first: $first) {
-            nodes {
-              id name companyName isLead balance createdAt
-              emails { address }
-              phones { number description }
-              billingAddress { street1 city province postalCode }
+      try {
+        const data = await jobberGraphQL(`
+          query GetClients($first: Int) {
+            clients(first: $first) {
+              nodes {
+                id name companyName isLead balance createdAt
+                emails { address }
+                phones { number description }
+                billingAddress { street1 city province postalCode }
+              }
+              totalCount
             }
-            totalCount
           }
-        }
-      `, { first: input.first ?? 100 }) as any;
-      return data.clients;
+        `, { first: input.first ?? 100 }) as any;
+        return data.clients;
+      } catch (err) {
+        console.warn('[Jobber] clients query failed:', err instanceof Error ? err.message : String(err));
+        return { nodes: [], totalCount: 0 };
+      }
     }),
 
   // ─── Invoices ────────────────────────────────────────────────────────────────
@@ -184,19 +199,24 @@ export const jobberRouter = router({
     .query(async ({ input }) => {
       const connected = await isJobberConnected();
       if (!connected) return { nodes: [], totalCount: 0 };
-      const data = await jobberGraphQL(`
-        query GetInvoices($first: Int) {
-          invoices(first: $first) {
-            nodes {
-              id invoiceNumber invoiceStatus dueDate issuedDate createdAt subject
-              amounts { subtotal total invoiceBalance }
-              client { id name companyName }
+      try {
+        const data = await jobberGraphQL(`
+          query GetInvoices($first: Int) {
+            invoices(first: $first) {
+              nodes {
+                id invoiceNumber invoiceStatus dueDate issuedDate createdAt subject
+                amounts { subtotal total invoiceBalance }
+                client { id name companyName }
+              }
+              totalCount
             }
-            totalCount
           }
-        }
-      `, { first: input.first ?? 50 }) as any;
-      return data.invoices;
+        `, { first: input.first ?? 50 }) as any;
+        return data.invoices;
+      } catch (err) {
+        console.warn('[Jobber] invoices query failed:', err instanceof Error ? err.message : String(err));
+        return { nodes: [], totalCount: 0 };
+      }
     }),
 
   // ─── Requests (Leads) ────────────────────────────────────────────────────────
@@ -205,20 +225,25 @@ export const jobberRouter = router({
     .query(async ({ input }) => {
       const connected = await isJobberConnected();
       if (!connected) return { nodes: [], totalCount: 0 };
-      const data = await jobberGraphQL(`
-        query GetRequests($first: Int) {
-          requests(first: $first) {
-            nodes {
-              id title requestStatus source createdAt
-              contactName phone email
-              client { id name companyName }
-              property { address { street1 city province postalCode } }
+      try {
+        const data = await jobberGraphQL(`
+          query GetRequests($first: Int) {
+            requests(first: $first) {
+              nodes {
+                id title requestStatus source createdAt
+                contactName phone email
+                client { id name companyName }
+                property { address { street1 city province postalCode } }
+              }
+              totalCount
             }
-            totalCount
           }
-        }
-      `, { first: input.first ?? 50 }) as any;
-      return data.requests;
+        `, { first: input.first ?? 50 }) as any;
+        return data.requests;
+      } catch (err) {
+        console.warn('[Jobber] requests query failed:', err instanceof Error ? err.message : String(err));
+        return { nodes: [], totalCount: 0 };
+      }
     }),
 
   // ─── Timesheets ──────────────────────────────────────────────────────────────
@@ -227,36 +252,46 @@ export const jobberRouter = router({
     .query(async ({ input }) => {
       const connected = await isJobberConnected();
       if (!connected) return { nodes: [], totalCount: 0 };
-      const data = await jobberGraphQL(`
-        query GetTimesheets($first: Int) {
-          timesheetEntries(first: $first) {
-            nodes {
-              id startAt endAt note durationInSeconds
-              user { id name }
-              job { id jobNumber title }
+      try {
+        const data = await jobberGraphQL(`
+          query GetTimesheets($first: Int) {
+            timesheetEntries(first: $first) {
+              nodes {
+                id startAt endAt note durationInSeconds
+                user { id name }
+                job { id jobNumber title }
+              }
+              totalCount
             }
-            totalCount
           }
-        }
-      `, { first: input.first ?? 100 }) as any;
-      return data.timesheetEntries;
+        `, { first: input.first ?? 100 }) as any;
+        return data.timesheetEntries;
+      } catch (err) {
+        console.warn('[Jobber] timesheets query failed:', err instanceof Error ? err.message : String(err));
+        return { nodes: [], totalCount: 0 };
+      }
     }),
 
   // ─── Users (Crews) ───────────────────────────────────────────────────────────
   users: adminProcedure.query(async () => {
     const connected = await isJobberConnected();
     if (!connected) return { nodes: [] };
-    const data = await jobberGraphQL(`
-      query GetUsers {
-        users {
-          nodes {
-            id name status isAccountOwner
-            email { raw }
+    try {
+      const data = await jobberGraphQL(`
+        query GetUsers {
+          users {
+            nodes {
+              id name status isAccountOwner
+              email { raw }
+            }
           }
         }
-      }
-    `) as any;
-    return data.users;
+      `) as any;
+      return data.users;
+    } catch (err) {
+      console.warn('[Jobber] users query failed:', err instanceof Error ? err.message : String(err));
+      return { nodes: [] };
+    }
   }),
 
   // ─── Visits (Schedule) ───────────────────────────────────────────────────────
@@ -265,19 +300,24 @@ export const jobberRouter = router({
     .query(async ({ input }) => {
       const connected = await isJobberConnected();
       if (!connected) return { nodes: [], totalCount: 0 };
-      const data = await jobberGraphQL(`
-        query GetVisits($first: Int) {
-          visits(first: $first) {
-            nodes {
-              id title startAt endAt status
-              job { id jobNumber title client { name } }
-              assignedUsers { nodes { id name } }
+      try {
+        const data = await jobberGraphQL(`
+          query GetVisits($first: Int) {
+            visits(first: $first) {
+              nodes {
+                id title startAt endAt status
+                job { id jobNumber title client { name } }
+                assignedUsers { nodes { id name } }
+              }
+              totalCount
             }
-            totalCount
           }
-        }
-      `, { first: input.first ?? 100 }) as any;
-      return data.visits;
+        `, { first: input.first ?? 100 }) as any;
+        return data.visits;
+      } catch (err) {
+        console.warn('[Jobber] visits query failed:', err instanceof Error ? err.message : String(err));
+        return { nodes: [], totalCount: 0 };
+      }
     }),
 
   // ─── Lead Source Tracking ─────────────────────────────────────────────────

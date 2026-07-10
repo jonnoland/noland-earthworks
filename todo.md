@@ -2227,3 +2227,4 @@
 - [ ] BlogPostLayout.tsx: update "land clearing" keyword to "land management"
 - [ ] Leads.tsx (prospecting description): update "land clearing" to "land management"
 - [ ] Prospecting.tsx: update "land clearing" to "land management"
+- [x] Fix Jobber 403 Cloudflare IP-block: add graceful try/catch to all 8 read-query procedures so homepage and Ops pages return empty results instead of 500 errors when Jobber API is unreachable

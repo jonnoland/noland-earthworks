@@ -139,7 +139,13 @@ export async function jobberGraphQL(query: string, variables?: Record<string, un
   });
   if (!res.ok) {
     const text = await res.text();
-    throw new Error(`Jobber GraphQL HTTP error: ${res.status} ${text}`);
+    // Detect Cloudflare WAF block — the response body contains Cloudflare HTML.
+    // This is an infrastructure-level block (IP-based), not an auth error.
+    // Throw a clean, short error so the caller can handle it gracefully.
+    if (res.status === 403 && text.includes('Cloudflare')) {
+      throw new Error('Jobber API blocked by Cloudflare (IP-level block). Please reconnect from the Ops dashboard.');
+    }
+    throw new Error(`Jobber GraphQL HTTP error: ${res.status} ${text.slice(0, 200)}`);
   }
   const json = await res.json() as { data?: unknown; errors?: Array<{ message: string }> };
   if (json.errors && json.errors.length > 0) {
