@@ -93,8 +93,142 @@ async function fetchSamOpportunityScope(samLink: string): Promise<string> {
 
 const SAM_SEARCH_URL = "https://sam.gov/api/prod/sgs/v1/search/";
 
-// States within ~150 miles of Vanleer, TN
-const NEARBY_STATES = new Set(["TN", "KY", "AL", "MS", "AR", "VA", "NC", "GA", "MO"]);
+// Vanleer, TN coordinates (37181)
+const VANLEER_LAT = 36.2534;
+const VANLEER_LNG = -87.5334;
+const MAX_RADIUS_MILES = 150;
+
+// Approximate lat/lng for major TN cities and nearby cities used in SAM.gov place-of-performance
+// Used to estimate distance when only city+state is available
+const CITY_COORDS: Record<string, [number, number]> = {
+  // Tennessee
+  "nashville": [36.1627, -86.7816],
+  "memphis": [35.1495, -90.0490],
+  "knoxville": [35.9606, -83.9207],
+  "chattanooga": [35.0456, -85.3097],
+  "clarksville": [36.5298, -87.3595],
+  "murfreesboro": [35.8456, -86.3903],
+  "franklin": [35.9251, -86.8689],
+  "jackson": [35.6145, -88.8139],
+  "johnson city": [36.3134, -82.3535],
+  "bartlett": [35.2045, -89.8742],
+  "hendersonville": [36.3048, -86.6200],
+  "kingsport": [36.5484, -82.5618],
+  "collierville": [35.0420, -89.6645],
+  "smyrna": [35.9826, -86.5186],
+  "columbia": [35.6151, -87.0353],
+  "spring hill": [35.7512, -86.9300],
+  "brentwood": [36.0331, -86.7828],
+  "germantown": [35.0870, -89.8101],
+  "cookeville": [36.1628, -85.5016],
+  "gallatin": [36.3884, -86.4469],
+  "lebanon": [36.2081, -86.2911],
+  "dickson": [36.0773, -87.3878],
+  "lawrenceburg": [35.2423, -87.3317],
+  "shelbyville": [35.4834, -86.4603],
+  "tullahoma": [35.3620, -86.2094],
+  "dyersburg": [36.0345, -89.3845],
+  "paris": [36.3020, -88.3267],
+  "union city": [36.4242, -89.0570],
+  "martin": [36.3431, -88.8512],
+  "morristown": [36.2134, -83.2952],
+  "bristol": [36.5951, -82.1882],
+  "maryville": [35.7565, -83.9710],
+  "cleveland": [35.1595, -84.8766],
+  "athens": [35.4428, -84.5930],
+  "mcminnville": [35.6834, -85.7697],
+  "pulaski": [35.2001, -87.0317],
+  "fayetteville": [35.1517, -86.5672],
+  "winchester": [35.1859, -86.1119],
+  "lewisburg": [35.4487, -86.7886],
+  "linden": [35.6148, -87.8417],
+  "waverly": [36.0837, -87.7964],
+  "camden": [36.0584, -88.0995],
+  "huntingdon": [36.0001, -88.4270],
+  "centerville": [35.7784, -87.4664],
+  "charlotte": [36.1773, -87.3394],
+  "dover": [36.4851, -87.8336],
+  "erin": [36.3187, -87.6953],
+  "hohenwald": [35.5487, -87.5511],
+  "waynesboro": [35.3187, -87.7614],
+  "savannah": [35.2270, -88.2503],
+  "selmer": [35.1701, -88.5945],
+  "bolivar": [35.2548, -88.9995],
+  "henderson": [35.4384, -88.6417],
+  "lexington": [35.6512, -88.3928],
+  "trenton": [35.9812, -88.9417],
+  "humboldt": [35.8212, -88.9120],
+  "milan": [35.9198, -88.7584],
+  "vanleer": [36.2534, -87.5334],
+  "ashland city": [36.2812, -87.0636],
+  "springfield": [36.5087, -86.8850],
+  "white house": [36.4712, -86.6528],
+  "portland": [36.5812, -86.5128],
+  "goodlettsville": [36.3226, -86.7136],
+  "la vergne": [36.0151, -86.5811],
+  "mount juliet": [36.2001, -86.5189],
+  "crossville": [35.9487, -85.0269],
+  "livingston": [36.3812, -85.3228],
+  "sparta": [35.9262, -85.4647],
+  // Nearby out-of-state cities within 150 miles
+  "hopkinsville": [36.8656, -87.4886],  // KY ~90mi
+  "bowling green": [36.9903, -86.4436], // KY ~120mi
+  "paducah": [37.0834, -88.5998],       // KY ~130mi
+  "huntsville": [34.7304, -86.5861],    // AL ~140mi
+  "muscle shoals": [34.7448, -87.6677], // AL ~100mi
+  "florence": [34.7998, -87.6773],      // AL ~100mi
+  "decatur": [34.6059, -86.9833],       // AL ~120mi
+  "corinth": [34.9343, -88.5223],       // MS ~130mi
+};
+
+/**
+ * Haversine distance in miles between two lat/lng points.
+ */
+function haversineDistanceMiles(lat1: number, lng1: number, lat2: number, lng2: number): number {
+  const R = 3958.8; // Earth radius in miles
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLng = (lng2 - lng1) * Math.PI / 180;
+  const a = Math.sin(dLat / 2) ** 2 +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLng / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+/**
+ * Returns true if the opportunity's place of performance is within 150 miles of Vanleer, TN.
+ * Strategy:
+ *   1. Must be in TN (or no state specified — defaults to include).
+ *   2. If a city is listed, check its approximate coordinates against the 150-mile radius.
+ *   3. If only state=TN and no city, include it (all of TN fits within 150 miles of Vanleer).
+ */
+function isWithin150MilesOfVanleer(result: SamResult): boolean {
+  const pops = result.placeOfPerformance ?? [];
+
+  // No place of performance listed — include (could be TN)
+  if (!pops.length || pops.every(p => !p.state?.code)) return true;
+
+  return pops.some(pop => {
+    const stateCode = pop.state?.code?.toUpperCase();
+
+    // Must be TN
+    if (stateCode && stateCode !== "TN") {
+      // Allow nearby out-of-state cities that are within 150 miles
+      const cityKey = pop.city?.name?.toLowerCase().trim() ?? "";
+      const coords = CITY_COORDS[cityKey];
+      if (!coords) return false;
+      return haversineDistanceMiles(VANLEER_LAT, VANLEER_LNG, coords[0], coords[1]) <= MAX_RADIUS_MILES;
+    }
+
+    // State is TN — check city distance if available
+    const cityKey = pop.city?.name?.toLowerCase().trim() ?? "";
+    if (cityKey && CITY_COORDS[cityKey]) {
+      const [lat, lng] = CITY_COORDS[cityKey];
+      return haversineDistanceMiles(VANLEER_LAT, VANLEER_LNG, lat, lng) <= MAX_RADIUS_MILES;
+    }
+
+    // TN with no recognizable city — include (all TN is within 150 miles)
+    return stateCode === "TN";
+  });
+}
 
 // NAICS codes relevant to land clearing / forestry mulching
 const TARGET_NAICS = new Set(["115310", "561730", "238910", "562910", "237990", "333120"]);
@@ -182,12 +316,8 @@ function isRelevantByKeyword(title: string): boolean {
   return RELEVANT_KEYWORDS.some(kw => lower.includes(kw.toLowerCase()));
 }
 
-function isNearbyState(result: SamResult): boolean {
-  const pops = result.placeOfPerformance ?? [];
-  // If no place of performance listed, include it (could be TN)
-  if (!pops.length || pops.every(p => !p.state?.code)) return true;
-  return pops.some(p => p.state?.code && NEARBY_STATES.has(p.state.code.toUpperCase()));
-}
+// Legacy alias kept for any remaining references
+const isNearbyState = isWithin150MilesOfVanleer;
 
 function hasRelevantNaics(result: SamResult): boolean {
   const naics = result.naics ?? [];
@@ -241,7 +371,6 @@ export const govContractsRouter = router({
   search: adminProcedure
     .input(z.object({
       naicsFilter: z.string().optional(), // e.g. "115310" or "all"
-      stateFilter: z.string().optional(), // e.g. "TN" or "all"
       page: z.number().min(0).default(0),
     }))
     .query(async ({ input }) => {
@@ -291,16 +420,8 @@ export const govContractsRouter = router({
           );
         }
 
-        // Apply state filter
-        if (input.stateFilter && input.stateFilter !== "all") {
-          filtered = filtered.filter(r => {
-            const pops = r.placeOfPerformance ?? [];
-            return pops.some(p => p.state?.code?.toUpperCase() === input.stateFilter!.toUpperCase());
-          });
-        } else {
-          // Default: only nearby states
-          filtered = filtered.filter(isNearbyState);
-        }
+        // Always apply 150-mile Vanleer radius filter (TN-focused)
+        filtered = filtered.filter(isWithin150MilesOfVanleer);
 
         // Sort: active deadlines first, then by posted date
         filtered.sort((a, b) => {

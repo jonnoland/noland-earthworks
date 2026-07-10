@@ -386,12 +386,11 @@ function BidPrepModal({
 // ── Main component ────────────────────────────────────────────────────────────
 export default function GovContracts() {
   const [naicsFilter, setNaicsFilter] = useState<string>("all");
-  const [stateFilter, setStateFilter] = useState<string>("all");
   const [page, setPage] = useState(0);
   const [selectedOpp, setSelectedOpp] = useState<Opportunity | null>(null);
 
   const { data, isLoading, isFetching, refetch } = trpc.govContracts.search.useQuery(
-    { naicsFilter, stateFilter, page },
+    { naicsFilter, page },
     {
       retry: 1,
       staleTime: 5 * 60 * 1000,
@@ -424,7 +423,7 @@ export default function GovContracts() {
               <a href="https://sam.gov" target="_blank" rel="noopener noreferrer" className="text-amber-500 hover:underline">
                 SAM.gov
               </a>
-              {" "}— filtered to TN and nearby states within ~150 miles of Vanleer.
+              {" "}— active solicitations within 150 miles of Vanleer, TN.
             </p>
           </div>
           <Button
@@ -454,25 +453,6 @@ export default function GovContracts() {
                     {code} — {label}{naicsCounts[code] ? ` (${naicsCounts[code]})` : ""}
                   </SelectItem>
                 ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-muted-foreground">State:</span>
-            <Select value={stateFilter} onValueChange={(v) => { setStateFilter(v); handleFilterChange(); }}>
-              <SelectTrigger className="h-8 w-[140px] text-xs border-zinc-700 bg-zinc-900">
-                <SelectValue placeholder="All states" />
-              </SelectTrigger>
-              <SelectContent className="bg-zinc-900 border-zinc-700">
-                <SelectItem value="all" className="text-xs">All states</SelectItem>
-                {Object.entries(stateCounts)
-                  .sort((a, b) => b[1] - a[1])
-                  .map(([code, count]) => (
-                    <SelectItem key={code} value={code} className="text-xs">
-                      {code} ({count})
-                    </SelectItem>
-                  ))}
               </SelectContent>
             </Select>
           </div>
