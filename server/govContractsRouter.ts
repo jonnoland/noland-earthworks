@@ -20,6 +20,76 @@ import { invokeLLM } from "./_core/llm";
 import { ENV } from "./_core/env";
 import { getDb } from "./db";
 import { businessSettings } from "../drizzle/schema";
+import * as cheerio from "cheerio";
+
+/**
+ * Fetch a SAM.gov opportunity page and extract the scope of work / description text.
+ * SAM.gov renders content server-side so a plain fetch is sufficient.
+ */
+async function fetchSamOpportunityScope(samLink: string): Promise<string> {
+  try {
+    const res = await fetch(samLink, {
+      headers: {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        "Accept-Language": "en-US,en;q=0.9",
+      },
+      redirect: "follow",
+      signal: AbortSignal.timeout(12000),
+    });
+    if (!res.ok) {
+      console.warn(`[GovContracts] SAM.gov page fetch returned ${res.status} for ${samLink}`);
+      return "";
+    }
+    const html = await res.text();
+    const $ = cheerio.load(html);
+
+    // Remove script/style noise
+    $("script, style, nav, header, footer").remove();
+
+    // SAM.gov opportunity pages render key content in these selectors
+    const scopeSelectors = [
+      "[class*='description']",
+      "[class*='Description']",
+      "[class*='statement-of-work']",
+      "[class*='scope']",
+      "[class*='Scope']",
+      "[id*='description']",
+      "[id*='scope']",
+      ".opportunity-description",
+      ".opp-description",
+      "sam-opportunity-description",
+      "[data-testid*='description']",
+    ];
+
+    let scopeText = "";
+    for (const sel of scopeSelectors) {
+      const el = $(sel);
+      if (el.length && el.text().trim().length > 100) {
+        scopeText = el.text().trim();
+        break;
+      }
+    }
+
+    // Fallback: grab the largest text block on the page
+    if (!scopeText) {
+      let bestLen = 0;
+      $("p, div, section").each((_, el) => {
+        const text = $(el).clone().children().remove().end().text().trim();
+        if (text.length > bestLen && text.length < 8000) {
+          bestLen = text.length;
+          scopeText = text;
+        }
+      });
+    }
+
+    // Trim to 3000 chars to keep prompts manageable
+    return scopeText.slice(0, 3000);
+  } catch (err) {
+    console.warn("[GovContracts] Failed to fetch SAM.gov opportunity page:", (err as Error).message?.slice(0, 120));
+    return "";
+  }
+}
 
 const SAM_SEARCH_URL = "https://sam.gov/api/prod/sgs/v1/search/";
 
@@ -202,10 +272,17 @@ export const govContractsRouter = router({
           }
         }
 
-        // Filter: must be relevant by keyword OR by NAICS code
-        let filtered = allResults.filter(r =>
-          isRelevantByKeyword(r.title) || hasRelevantNaics(r)
-        );
+        // Filter: must be relevant by keyword OR by NAICS code, and not expired/canceled
+        const now = new Date();
+        let filtered = allResults.filter(r => {
+          if (r.isCanceled) return false;
+          // Drop expired — response deadline is in the past
+          if (r.responseDate) {
+            const deadline = new Date(r.responseDate);
+            if (deadline < now) return false;
+          }
+          return isRelevantByKeyword(r.title) || hasRelevantNaics(r);
+        });
 
         // Apply NAICS filter if specified
         if (input.naicsFilter && input.naicsFilter !== "all") {
@@ -336,6 +413,12 @@ export const govContractsRouter = router({
         year: "numeric", month: "long", day: "numeric",
       });
 
+      // Fetch the actual scope of work from the SAM.gov opportunity page
+      const scopeOfWork = await fetchSamOpportunityScope(input.samLink);
+      const scopeContext = scopeOfWork
+        ? `\n\nACTUAL SCOPE OF WORK (extracted from SAM.gov opportunity page):\n${scopeOfWork}`
+        : "";
+
       // Build AI prompt for capability statement
       const primaryNaics = input.naics[0];
       const naicsLabel = primaryNaics
@@ -366,10 +449,10 @@ Core capabilities:
 
 Write a professional capability statement (3 short paragraphs, plain language, no jargon or buzzwords) that:
 1. Opens with who we are and what we do
-2. Describes our specific capability for this solicitation
+2. Describes our specific capability for this solicitation — if scope of work is provided below, reference the specific tasks described
 3. Closes with our veteran status, reliability, and contact info
 
-Keep it under 250 words. Do not use bullet points. Do not use phrases like 'industry-leading', 'passionate about', 'dedicated team', or 'cutting-edge'.`;
+Keep it under 250 words. Do not use bullet points. Do not use phrases like 'industry-leading', 'passionate about', 'dedicated team', or 'cutting-edge'.${scopeContext}`;
 
       let capabilityStatement = "";
       let coverLetter = "";
@@ -396,7 +479,7 @@ Solicitation: ${input.solicitationNumber ? `#${input.solicitationNumber} — ` :
 Deadline: ${input.responseDeadline || "As specified"}
 From: ${company.ownerName}, ${company.companyName}
 
-Tone: direct, professional, no fluff. Mention veteran-owned status once. Do not use buzzwords.`;
+Tone: direct, professional, no fluff. Mention veteran-owned status once. Do not use buzzwords.${scopeContext}`;
 
         const coverResult = await invokeLLM({
           messages: [
@@ -435,8 +518,9 @@ Pricing context:
 - Government contracts often have multiple option years — price conservatively for base year, slightly higher for options.
 - Veteran-owned small businesses can price 5-15% above the lowest competitive bid and still win on set-aside contracts.
 - Maximize profit while remaining competitive: aim for the upper-middle range of market rates, not the lowest.
+- If the scope of work below specifies acreage, number of acres, or specific quantities — use those exact numbers in your line items.${scopeContext}
 
-Generate a COMPLETED pricing worksheet with specific dollar amounts filled in. Use your knowledge of current federal contract rates for this type of work in this region. Include:
+Generate a COMPLETED pricing worksheet with specific dollar amounts filled in. Use your knowledge of current federal contract rates for this type of work in this region. If actual scope details are provided above, use them to set accurate quantities. Include:
 1. A header block with solicitation info and vendor credentials
 2. 3-4 CLIN line items with specific unit prices, estimated quantities, and calculated totals
 3. A total bid price

@@ -2235,3 +2235,5 @@
 - [x] Build bidPrep mutation in govContractsRouter.ts: AI-generated capability statement + pre-filled bid cover sheet
 - [x] Build Prepare Bid modal on GovContracts page with cover sheet, capability statement, pricing worksheet, copy/print actions
 - [x] AI-complete the Pricing Worksheet in bidPrep: generate competitive government-rate unit prices, quantities, and total bid with rationale per line item
+- [x] Filter out expired contracts from gov-contracts listing (do not show status=Inactive/Expired)
+- [x] In bidPrep mutation, fetch the SAM.gov opportunity page to extract scope of work and pass it to AI pricing/capability prompts
