@@ -16,6 +16,10 @@
 
 import { z } from "zod";
 import { adminProcedure, router } from "./_core/trpc";
+import { invokeLLM } from "./_core/llm";
+import { ENV } from "./_core/env";
+import { getDb } from "./db";
+import { businessSettings } from "../drizzle/schema";
 
 const SAM_SEARCH_URL = "https://sam.gov/api/prod/sgs/v1/search/";
 
@@ -135,6 +139,28 @@ function getAgencyName(result: SamResult): string {
   const subTier = hierarchy.find(h => h.level === 2);
   const dept = hierarchy.find(h => h.level === 1);
   return subTier?.name ?? dept?.name ?? "Federal Agency";
+}
+
+// ── Company info helper ─────────────────────────────────────────────────────
+async function getCompanyInfo() {
+  const db = await getDb();
+  const rows = db
+    ? await db.select().from(businessSettings).limit(1)
+    : [];
+  const s = rows[0];
+  return {
+    companyName: s?.companyName ?? "Noland Earthworks, LLC",
+    ownerName: "Jon M. Noland",
+    phone: s?.phone ?? "(615) 406-4819",
+    email: s?.email ?? "jonnoland@nolandearthworks.com",
+    address: s?.address ?? "93 Halliburton Road",
+    city: s?.city ?? "Vanleer",
+    state: s?.state ?? "Tennessee",
+    zip: s?.zip ?? "37181",
+    website: s?.website ?? "https://www.nolandearthworks.com",
+    cageCode: ENV.cageCode || "17VJ2",
+    uniqueEntityId: ENV.uniqueEntityId || "G6E8E4SDM2K4",
+  };
 }
 
 export const govContractsRouter = router({
@@ -282,5 +308,148 @@ export const govContractsRouter = router({
           error: err instanceof Error ? err.message : "Failed to fetch opportunities",
         };
       }
+    }),
+
+  /**
+   * Generate a bid preparation package for a specific SAM.gov opportunity.
+   * Returns a pre-filled cover sheet, AI-generated capability statement,
+   * and a pricing worksheet scaffold.
+   */
+  bidPrep: adminProcedure
+    .input(z.object({
+      opportunityId: z.string(),
+      title: z.string(),
+      agency: z.string(),
+      solicitationNumber: z.string().nullable(),
+      naics: z.array(z.object({ code: z.string(), label: z.string() })),
+      responseDeadline: z.string().nullable(),
+      state: z.string().nullable(),
+      city: z.string().nullable(),
+      setAside: z.string().nullable(),
+      contactName: z.string().nullable(),
+      contactEmail: z.string().nullable(),
+      samLink: z.string(),
+    }))
+    .mutation(async ({ input }) => {
+      const company = await getCompanyInfo();
+      const today = new Date().toLocaleDateString("en-US", {
+        year: "numeric", month: "long", day: "numeric",
+      });
+
+      // Build AI prompt for capability statement
+      const primaryNaics = input.naics[0];
+      const naicsLabel = primaryNaics
+        ? `${primaryNaics.code} — ${primaryNaics.label}`
+        : "Land Clearing / Forestry Services";
+
+      const prompt = `You are writing a federal government contract capability statement for a small veteran-owned business.
+
+Company: ${company.companyName}
+Owner: ${company.ownerName} (Veteran, U.S. Army)
+Location: ${company.city}, ${company.state}
+CAGE Code: ${company.cageCode}
+Unique Entity ID: ${company.uniqueEntityId}
+Website: ${company.website}
+
+Solicitation: ${input.title}
+Agency: ${input.agency}
+NAICS: ${naicsLabel}
+Place of Performance: ${[input.city, input.state].filter(Boolean).join(", ") || "Tennessee region"}
+Set-Aside: ${input.setAside || "None specified"}
+
+Core capabilities:
+- Forestry mulching: tracked mulcher grinds brush, saplings, and small trees into mulch left on site. No debris hauling, no burning.
+- Land clearing and right-of-way clearing on challenging terrain including slopes and wet ground.
+- Site preparation for development, pasture reclamation, fence line clearing, trail cutting.
+- Single-operator company — owner performs all work personally, ensuring consistent quality and accountability.
+- Veteran-owned and operated. Registered in SAM.gov with active CAGE code.
+
+Write a professional capability statement (3 short paragraphs, plain language, no jargon or buzzwords) that:
+1. Opens with who we are and what we do
+2. Describes our specific capability for this solicitation
+3. Closes with our veteran status, reliability, and contact info
+
+Keep it under 250 words. Do not use bullet points. Do not use phrases like 'industry-leading', 'passionate about', 'dedicated team', or 'cutting-edge'.`;
+
+      let capabilityStatement = "";
+      let coverLetter = "";
+
+      try {
+        const llmResult = await invokeLLM({
+          messages: [
+            { role: "system", content: "You are a professional government contract writer for a small veteran-owned business. Write in plain, direct language. No corporate jargon." },
+            { role: "user", content: prompt },
+          ],
+        });
+        capabilityStatement = (llmResult?.choices?.[0]?.message?.content as string) ?? "";
+      } catch (err) {
+        console.error("[GovContracts] LLM capability statement failed:", err);
+        capabilityStatement = `${company.companyName} is a veteran-owned forestry mulching and land clearing company based in ${company.city}, ${company.state}. Owner-operated by ${company.ownerName}, a U.S. Army veteran. We specialize in forestry mulching, right-of-way clearing, and site preparation using a tracked forestry mulcher capable of handling dense vegetation, steep slopes, and wet ground conditions. CAGE Code: ${company.cageCode}. UEI: ${company.uniqueEntityId}.`;
+      }
+
+      // Build cover letter
+      try {
+        const coverPrompt = `Write a brief, professional cover letter (1 short paragraph, under 80 words) for a federal solicitation response.
+
+To: ${input.contactName || "Contracting Officer"}, ${input.agency}
+Solicitation: ${input.solicitationNumber ? `#${input.solicitationNumber} — ` : ""}${input.title}
+Deadline: ${input.responseDeadline || "As specified"}
+From: ${company.ownerName}, ${company.companyName}
+
+Tone: direct, professional, no fluff. Mention veteran-owned status once. Do not use buzzwords.`;
+
+        const coverResult = await invokeLLM({
+          messages: [
+            { role: "system", content: "You write concise federal contract cover letters for small businesses. Plain language only." },
+            { role: "user", content: coverPrompt },
+          ],
+        });
+        coverLetter = (coverResult?.choices?.[0]?.message?.content as string) ?? "";
+      } catch (err) {
+        console.error("[GovContracts] LLM cover letter failed:", err);
+        coverLetter = `${company.ownerName}\n${company.companyName}\n${company.address}, ${company.city}, ${company.state} ${company.zip}\n${company.phone} | ${company.email}\n\n${today}\n\n${input.contactName || "Contracting Officer"}\n${input.agency}\n\nRe: ${input.solicitationNumber ? `Solicitation #${input.solicitationNumber} — ` : ""}${input.title}\n\nPlease find enclosed our response to the above-referenced solicitation. ${company.companyName} is a veteran-owned and operated forestry mulching company based in ${company.city}, ${company.state}, registered in SAM.gov with CAGE Code ${company.cageCode} and UEI ${company.uniqueEntityId}. We are fully capable of performing the described scope of work and welcome the opportunity to serve ${input.agency}.\n\nRespectfully,\n${company.ownerName}\nOwner/Operator\n${company.companyName}`;
+      }
+
+      // Build pricing worksheet scaffold
+      const pricingWorksheet = [
+        `PRICING WORKSHEET`,
+        `Solicitation: ${input.solicitationNumber ? `#${input.solicitationNumber} — ` : ""}${input.title}`,
+        `Agency: ${input.agency}`,
+        `Date: ${today}`,
+        ``,
+        `Vendor: ${company.companyName}`,
+        `CAGE Code: ${company.cageCode}`,
+        `UEI: ${company.uniqueEntityId}`,
+        ``,
+        `LINE ITEMS`,
+        `────────────────────────────────────────────────────────────`,
+        `CLIN 0001  Forestry Mulching / Land Clearing`,
+        `           Unit: Acre   Qty: ___   Unit Price: $___   Total: $___`,
+        ``,
+        `CLIN 0002  Mobilization / Demobilization (if applicable)`,
+        `           Unit: LS    Qty: 1     Unit Price: $___   Total: $___`,
+        ``,
+        `CLIN 0003  Site Inspection / Pre-Work Assessment (if applicable)`,
+        `           Unit: LS    Qty: 1     Unit Price: $___   Total: $___`,
+        ``,
+        `────────────────────────────────────────────────────────────`,
+        `TOTAL BID PRICE:  $___________________`,
+        ``,
+        `NOTES`,
+        `- All prices are firm-fixed-price unless otherwise specified in the solicitation.`,
+        `- Pricing includes operator labor, equipment, fuel, and standard consumables.`,
+        `- Pricing excludes: stump grinding below grade, grading, hauling, or burning.`,
+        `- Site visit required prior to final pricing on complex terrain.`,
+        `- Payment terms: Net 30 from invoice date.`,
+      ].join("\n");
+
+      return {
+        company,
+        today,
+        opportunity: input,
+        coverLetter,
+        capabilityStatement,
+        pricingWorksheet,
+      };
     }),
 });

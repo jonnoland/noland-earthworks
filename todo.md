@@ -2231,3 +2231,6 @@
 - [x] Build govContractsRouter.ts tRPC procedure to fetch SAM.gov opportunities via public search API
 - [x] Build /ops/sales/government-contracts page with live SAM.gov opportunity feed, filters, and state portal links
 - [x] Wire Government Contracts into ops/sales navigation
+- [x] Store CAGE_CODE and UNIQUE_ENTITY_ID as project secrets
+- [x] Build bidPrep mutation in govContractsRouter.ts: AI-generated capability statement + pre-filled bid cover sheet
+- [x] Build Prepare Bid modal on GovContracts page with cover sheet, capability statement, pricing worksheet, copy/print actions

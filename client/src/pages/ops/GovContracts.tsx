@@ -2,6 +2,9 @@
  * GovContracts — Federal contract opportunity feed for Noland Earthworks.
  * Pulls active solicitations from SAM.gov filtered to land clearing / forestry
  * mulching NAICS codes within ~150 miles of Vanleer, TN.
+ *
+ * Includes a "Prepare Bid" workflow that generates a pre-filled cover letter,
+ * AI capability statement, and pricing worksheet for any listed opportunity.
  */
 
 import { useState } from "react";
@@ -17,6 +20,15 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Textarea } from "@/components/ui/textarea";
+import {
   ExternalLink,
   RefreshCw,
   AlertTriangle,
@@ -28,7 +40,13 @@ import {
   ChevronLeft,
   ChevronRight,
   Landmark,
+  FileText,
+  Copy,
+  Printer,
+  Loader2,
+  CheckCircle2,
 } from "lucide-react";
+import { toast } from "sonner";
 
 // ── NAICS reference labels ────────────────────────────────────────────────────
 const NAICS_LABELS: Record<string, string> = {
@@ -79,6 +97,28 @@ const STATE_PORTALS = [
   },
 ];
 
+// ── Types ─────────────────────────────────────────────────────────────────────
+type Opportunity = {
+  id: string;
+  title: string;
+  solicitationNumber: string | null;
+  agency: string;
+  type: string;
+  naics: { code: string; label: string }[];
+  postedDate: string | null;
+  responseDeadline: string | null;
+  daysUntilDeadline: number | null;
+  isUrgent: boolean;
+  isExpired: boolean;
+  state: string | null;
+  city: string | null;
+  setAside: string | null;
+  contactName: string | null;
+  contactEmail: string | null;
+  contactPhone: string | null;
+  samLink: string;
+};
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function DeadlineBadge({ days }: { days: number | null }) {
   if (days === null) return <span className="text-xs text-muted-foreground">No deadline listed</span>;
@@ -101,17 +141,260 @@ function NaicsBadge({ code }: { code: string }) {
   );
 }
 
+// ── Bid Prep Modal ─────────────────────────────────────────────────────────────
+function BidPrepModal({
+  opportunity,
+  onClose,
+}: {
+  opportunity: Opportunity;
+  onClose: () => void;
+}) {
+  const [activeTab, setActiveTab] = useState("cover");
+
+  const bidPrep = trpc.govContracts.bidPrep.useMutation();
+
+  // Auto-trigger on mount
+  const [triggered, setTriggered] = useState(false);
+  if (!triggered) {
+    setTriggered(true);
+    bidPrep.mutate({
+      opportunityId: opportunity.id,
+      title: opportunity.title,
+      agency: opportunity.agency,
+      solicitationNumber: opportunity.solicitationNumber,
+      naics: opportunity.naics,
+      responseDeadline: opportunity.responseDeadline,
+      state: opportunity.state,
+      city: opportunity.city,
+      setAside: opportunity.setAside,
+      contactName: opportunity.contactName,
+      contactEmail: opportunity.contactEmail,
+      samLink: opportunity.samLink,
+    });
+  }
+
+  const data = bidPrep.data;
+  const isLoading = bidPrep.isPending;
+
+  function copyToClipboard(text: string, label: string) {
+    navigator.clipboard.writeText(text).then(() => {
+      toast.success(`${label} copied to clipboard`);
+    });
+  }
+
+  function printSection(text: string, title: string) {
+    const win = window.open("", "_blank");
+    if (!win) return;
+    win.document.write(`
+      <html><head><title>${title}</title>
+      <style>
+        body { font-family: Arial, sans-serif; font-size: 13px; line-height: 1.6; padding: 40px; max-width: 700px; margin: 0 auto; }
+        pre { white-space: pre-wrap; font-family: inherit; }
+        h2 { font-size: 16px; margin-bottom: 16px; }
+      </style>
+      </head><body>
+      <h2>${title}</h2>
+      <pre>${text.replace(/</g, "&lt;").replace(/>/g, "&gt;")}</pre>
+      </body></html>
+    `);
+    win.document.close();
+    win.print();
+  }
+
+  const tabs = [
+    { id: "cover", label: "Cover Letter", field: "coverLetter" as const },
+    { id: "capability", label: "Capability Statement", field: "capabilityStatement" as const },
+    { id: "pricing", label: "Pricing Worksheet", field: "pricingWorksheet" as const },
+  ];
+
+  return (
+    <Dialog open onOpenChange={onClose}>
+      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto bg-zinc-950 border-zinc-800 text-white">
+        <DialogHeader>
+          <DialogTitle className="text-base font-semibold leading-snug pr-6">
+            Bid Preparation Package
+          </DialogTitle>
+          <DialogDescription className="text-xs text-zinc-400 leading-snug">
+            {opportunity.title}
+            {opportunity.solicitationNumber && (
+              <span className="ml-1 text-zinc-500">· Sol. #{opportunity.solicitationNumber}</span>
+            )}
+          </DialogDescription>
+        </DialogHeader>
+
+        {/* Opportunity summary bar */}
+        <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-zinc-400 pb-3 border-b border-zinc-800">
+          <span className="flex items-center gap-1"><Building2 size={11} />{opportunity.agency}</span>
+          {(opportunity.city || opportunity.state) && (
+            <span className="flex items-center gap-1">
+              <MapPin size={11} />
+              {[opportunity.city, opportunity.state].filter(Boolean).join(", ")}
+            </span>
+          )}
+          {opportunity.responseDeadline && (
+            <span className="flex items-center gap-1">
+              <Clock size={11} />
+              Deadline: {opportunity.responseDeadline}
+            </span>
+          )}
+          {opportunity.setAside && (
+            <span className="text-amber-500 font-medium">{opportunity.setAside}</span>
+          )}
+          <a
+            href={opportunity.samLink}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-1 text-amber-500 hover:text-amber-400 ml-auto"
+          >
+            View on SAM.gov <ExternalLink size={10} />
+          </a>
+        </div>
+
+        {/* Loading state */}
+        {isLoading && (
+          <div className="flex flex-col items-center justify-center py-16 gap-3 text-zinc-400">
+            <Loader2 size={28} className="animate-spin text-amber-500" />
+            <p className="text-sm">Generating bid package — this takes about 15 seconds...</p>
+            <p className="text-xs text-zinc-500">AI is writing your capability statement and cover letter.</p>
+          </div>
+        )}
+
+        {/* Error state */}
+        {bidPrep.isError && (
+          <div className="flex items-center gap-2 p-3 rounded-lg bg-red-950/40 border border-red-800/40 text-red-400 text-sm">
+            <AlertTriangle size={15} className="shrink-0" />
+            <span>Failed to generate bid package. Try again.</span>
+            <Button
+              variant="outline"
+              size="sm"
+              className="ml-auto border-red-800 text-red-400"
+              onClick={() => bidPrep.mutate({
+                opportunityId: opportunity.id,
+                title: opportunity.title,
+                agency: opportunity.agency,
+                solicitationNumber: opportunity.solicitationNumber,
+                naics: opportunity.naics,
+                responseDeadline: opportunity.responseDeadline,
+                state: opportunity.state,
+                city: opportunity.city,
+                setAside: opportunity.setAside,
+                contactName: opportunity.contactName,
+                contactEmail: opportunity.contactEmail,
+                samLink: opportunity.samLink,
+              })}
+            >
+              Retry
+            </Button>
+          </div>
+        )}
+
+        {/* Content tabs */}
+        {data && (
+          <>
+            {/* Credentials bar */}
+            <div className="flex flex-wrap gap-4 p-3 rounded-lg bg-zinc-900 border border-zinc-800 text-xs">
+              <div>
+                <span className="text-zinc-500">Company</span>
+                <span className="ml-2 text-zinc-200">{data.company.companyName}</span>
+              </div>
+              <div>
+                <span className="text-zinc-500">CAGE</span>
+                <span className="ml-2 text-amber-400 font-mono">{data.company.cageCode}</span>
+              </div>
+              <div>
+                <span className="text-zinc-500">UEI</span>
+                <span className="ml-2 text-amber-400 font-mono">{data.company.uniqueEntityId}</span>
+              </div>
+              <div className="flex items-center gap-1 text-green-400 ml-auto">
+                <CheckCircle2 size={12} />
+                <span>SAM.gov Registered</span>
+              </div>
+            </div>
+
+            <Tabs value={activeTab} onValueChange={setActiveTab}>
+              <TabsList className="bg-zinc-900 border border-zinc-800 w-full">
+                {tabs.map(t => (
+                  <TabsTrigger
+                    key={t.id}
+                    value={t.id}
+                    className="flex-1 text-xs data-[state=active]:bg-zinc-800 data-[state=active]:text-white"
+                  >
+                    {t.label}
+                  </TabsTrigger>
+                ))}
+              </TabsList>
+
+              {tabs.map(t => (
+                <TabsContent key={t.id} value={t.id} className="mt-3 space-y-2">
+                  <div className="flex justify-end gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-7 text-xs border-zinc-700 text-zinc-300 hover:text-white"
+                      onClick={() => copyToClipboard(data[t.field] as string, t.label)}
+                    >
+                      <Copy size={11} className="mr-1" />
+                      Copy
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-7 text-xs border-zinc-700 text-zinc-300 hover:text-white"
+                      onClick={() => printSection(data[t.field] as string, t.label)}
+                    >
+                      <Printer size={11} className="mr-1" />
+                      Print
+                    </Button>
+                  </div>
+                  <Textarea
+                    value={data[t.field] as string}
+                    readOnly
+                    className="min-h-[280px] font-mono text-xs bg-zinc-900 border-zinc-700 text-zinc-200 resize-y"
+                  />
+                  {t.id === "cover" && (
+                    <p className="text-[11px] text-zinc-500">
+                      Review and personalize before submitting. Add your signature block if required by the solicitation.
+                    </p>
+                  )}
+                  {t.id === "pricing" && (
+                    <p className="text-[11px] text-zinc-500">
+                      Fill in quantities and unit prices based on your site assessment. Do not submit pricing without reviewing the full solicitation for required CLIN structure.
+                    </p>
+                  )}
+                </TabsContent>
+              ))}
+            </Tabs>
+
+            {/* Submission reminder */}
+            <div className="rounded-lg border border-zinc-800 bg-zinc-900/30 p-3 text-xs text-zinc-400 space-y-1">
+              <p className="font-medium text-zinc-300">Submission Reminder</p>
+              <p>
+                All federal bid submissions must be made through{" "}
+                <a href={opportunity.samLink} target="_blank" rel="noopener noreferrer" className="text-amber-500 hover:underline">
+                  SAM.gov
+                </a>{" "}
+                or as directed in the solicitation. Log in with your SAM.gov account, navigate to the opportunity, and upload your response before the deadline.
+              </p>
+            </div>
+          </>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 // ── Main component ────────────────────────────────────────────────────────────
 export default function GovContracts() {
   const [naicsFilter, setNaicsFilter] = useState<string>("all");
   const [stateFilter, setStateFilter] = useState<string>("all");
   const [page, setPage] = useState(0);
+  const [selectedOpp, setSelectedOpp] = useState<Opportunity | null>(null);
 
   const { data, isLoading, isFetching, refetch } = trpc.govContracts.search.useQuery(
     { naicsFilter, stateFilter, page },
     {
       retry: 1,
-      staleTime: 5 * 60 * 1000, // cache for 5 minutes
+      staleTime: 5 * 60 * 1000,
     }
   );
 
@@ -136,20 +419,13 @@ export default function GovContracts() {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-center gap-2">
             <Landmark size={18} className="text-amber-500 shrink-0" />
-            <div>
-              <p className="text-sm text-muted-foreground">
-                Live feed from{" "}
-                <a
-                  href="https://sam.gov"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-amber-500 hover:underline"
-                >
-                  SAM.gov
-                </a>
-                {" "}— filtered to TN and nearby states within ~150 miles of Vanleer.
-              </p>
-            </div>
+            <p className="text-sm text-muted-foreground">
+              Live feed from{" "}
+              <a href="https://sam.gov" target="_blank" rel="noopener noreferrer" className="text-amber-500 hover:underline">
+                SAM.gov
+              </a>
+              {" "}— filtered to TN and nearby states within ~150 miles of Vanleer.
+            </p>
           </div>
           <Button
             variant="outline"
@@ -167,10 +443,7 @@ export default function GovContracts() {
         <div className="flex flex-wrap gap-3 items-center">
           <div className="flex items-center gap-2">
             <span className="text-xs text-muted-foreground">NAICS:</span>
-            <Select
-              value={naicsFilter}
-              onValueChange={(v) => { setNaicsFilter(v); handleFilterChange(); }}
-            >
+            <Select value={naicsFilter} onValueChange={(v) => { setNaicsFilter(v); handleFilterChange(); }}>
               <SelectTrigger className="h-8 w-[240px] text-xs border-zinc-700 bg-zinc-900">
                 <SelectValue placeholder="All NAICS codes" />
               </SelectTrigger>
@@ -178,8 +451,7 @@ export default function GovContracts() {
                 <SelectItem value="all" className="text-xs">All NAICS codes</SelectItem>
                 {Object.entries(NAICS_LABELS).map(([code, label]) => (
                   <SelectItem key={code} value={code} className="text-xs">
-                    {code} — {label}
-                    {naicsCounts[code] ? ` (${naicsCounts[code]})` : ""}
+                    {code} — {label}{naicsCounts[code] ? ` (${naicsCounts[code]})` : ""}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -188,10 +460,7 @@ export default function GovContracts() {
 
           <div className="flex items-center gap-2">
             <span className="text-xs text-muted-foreground">State:</span>
-            <Select
-              value={stateFilter}
-              onValueChange={(v) => { setStateFilter(v); handleFilterChange(); }}
-            >
+            <Select value={stateFilter} onValueChange={(v) => { setStateFilter(v); handleFilterChange(); }}>
               <SelectTrigger className="h-8 w-[140px] text-xs border-zinc-700 bg-zinc-900">
                 <SelectValue placeholder="All states" />
               </SelectTrigger>
@@ -240,7 +509,7 @@ export default function GovContracts() {
         )}
 
         {/* ── Empty state ── */}
-        {!isLoading && !data?.error && opportunities.length === 0 && (
+        {!isLoading && !(data as any)?.error && opportunities.length === 0 && (
           <div className="text-center py-16 text-muted-foreground">
             <Landmark size={32} className="mx-auto mb-3 opacity-30" />
             <p className="text-sm">No active opportunities found for the selected filters.</p>
@@ -292,9 +561,7 @@ export default function GovContracts() {
                     </span>
                   )}
                   {opp.responseDeadline && (
-                    <span>
-                      Deadline: {opp.responseDeadline}
-                    </span>
+                    <span>Deadline: {opp.responseDeadline}</span>
                   )}
                   {opp.type && (
                     <span className="text-zinc-500">{opp.type}</span>
@@ -304,7 +571,6 @@ export default function GovContracts() {
                   )}
                 </div>
 
-                {/* NAICS codes */}
                 {opp.naics.length > 0 && (
                   <div className="flex flex-wrap gap-1 mb-3">
                     {opp.naics.map(n => (
@@ -313,34 +579,43 @@ export default function GovContracts() {
                   </div>
                 )}
 
-                {/* Contact info */}
                 {(opp.contactName || opp.contactEmail || opp.contactPhone) && (
                   <div className="flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-zinc-500 mb-3">
                     {opp.contactName && <span>{opp.contactName}</span>}
                     {opp.contactEmail && (
                       <a href={`mailto:${opp.contactEmail}`} className="flex items-center gap-1 hover:text-amber-400">
-                        <Mail size={10} />
-                        {opp.contactEmail}
+                        <Mail size={10} />{opp.contactEmail}
                       </a>
                     )}
                     {opp.contactPhone && (
                       <span className="flex items-center gap-1">
-                        <Phone size={10} />
-                        {opp.contactPhone}
+                        <Phone size={10} />{opp.contactPhone}
                       </span>
                     )}
                   </div>
                 )}
 
-                <a
-                  href={opp.samLink}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1.5 text-xs text-amber-500 hover:text-amber-400 font-medium"
-                >
-                  View on SAM.gov
-                  <ExternalLink size={11} />
-                </a>
+                <div className="flex items-center gap-3">
+                  <a
+                    href={opp.samLink}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 text-xs text-amber-500 hover:text-amber-400 font-medium"
+                  >
+                    View on SAM.gov
+                    <ExternalLink size={11} />
+                  </a>
+                  {!opp.isExpired && (
+                    <Button
+                      size="sm"
+                      className="h-7 text-xs bg-amber-600 hover:bg-amber-500 text-white"
+                      onClick={() => setSelectedOpp(opp)}
+                    >
+                      <FileText size={11} className="mr-1.5" />
+                      Prepare Bid
+                    </Button>
+                  )}
+                </div>
               </div>
             ))}
           </div>
@@ -377,9 +652,7 @@ export default function GovContracts() {
 
         {/* ── State & Municipal Portals ── */}
         <div className="pt-4 border-t border-zinc-800">
-          <h2 className="text-sm font-semibold text-zinc-300 mb-3">
-            State &amp; Municipal Portals
-          </h2>
+          <h2 className="text-sm font-semibold text-zinc-300 mb-3">State &amp; Municipal Portals</h2>
           <p className="text-xs text-muted-foreground mb-4">
             State and county contracts are not on SAM.gov. Check these portals directly for
             TN eProcurement, TDOT right-of-way work, and TVA vegetation management contracts.
@@ -407,22 +680,22 @@ export default function GovContracts() {
         <div className="rounded-lg border border-zinc-800 bg-zinc-900/30 p-4 text-xs text-zinc-400 space-y-1">
           <p className="font-medium text-zinc-300">SAM.gov Registration</p>
           <p>
-            To bid on federal contracts you must have an active SAM.gov registration (free) and a CAGE code.
-            Registration takes 1–3 business days. Your NAICS codes to register:{" "}
-            <span className="text-zinc-300">115310, 238910, 561730</span>.
+            Active SAM.gov registration confirmed — CAGE Code{" "}
+            <span className="text-amber-400 font-mono">17VJ2</span>, UEI{" "}
+            <span className="text-amber-400 font-mono">G6E8E4SDM2K4</span>.
+            These are pre-filled in every bid package generated by this tool.
           </p>
-          <a
-            href="https://sam.gov/content/entity-registration"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-1 text-amber-500 hover:text-amber-400 font-medium mt-1"
-          >
-            Register on SAM.gov
-            <ExternalLink size={10} />
-          </a>
         </div>
 
       </div>
+
+      {/* ── Bid Prep Modal ── */}
+      {selectedOpp && (
+        <BidPrepModal
+          opportunity={selectedOpp}
+          onClose={() => setSelectedOpp(null)}
+        />
+      )}
     </DashboardLayout>
   );
 }

@@ -55,6 +55,9 @@ export const ENV = {
   stripePublishableKey: process.env.VITE_STRIPE_PUBLISHABLE_KEY ?? "",
   // Manus API key — for creating one-off prospecting tasks on demand via task.create
   manusApiKey: process.env.MANUS_API_KEY ?? "",
+  // SAM.gov federal contracting credentials
+  cageCode: process.env.CAGE_CODE ?? "",
+  uniqueEntityId: process.env.UNIQUE_ENTITY_ID ?? "",
   // Google Ads API — for pulling real campaign spend data
   googleAdsDeveloperToken: process.env.GOOGLE_ADS_DEVELOPER_TOKEN ?? "",
   googleAdsCustomerId: process.env.GOOGLE_ADS_CUSTOMER_ID ?? "",
