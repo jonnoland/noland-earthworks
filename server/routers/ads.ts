@@ -11,88 +11,97 @@ import { z } from "zod";
 import { protectedProcedure, router } from "../_core/trpc";
 import { ENV } from "../_core/env";
 import { invokeLLM } from "../_core/llm";
-import { generateImage } from "../_core/imageGeneration";
 import { storagePut } from "../storage";
 import { getDb } from "../db";
 import { and, desc, eq } from "drizzle-orm";
 
 /**
- * Maps job context to the correct CAT 299D3 XE attachment for image generation.
- * The machine is always a CAT 299D3 XE — only the attachment changes based on the job.
+ * Curated stock photo pool — real forestry mulching machines in diverse settings.
+ * Each entry has a URL (served from the project CDN) and tags for context-aware selection.
+ * Photos show different machine brands/colors, terrain types, and vegetation scenarios
+ * so ads never look like the same machine with a swapped background.
  */
-function getCatAttachment(jobDescription?: string, adTypes?: string[]): string {
+const STOCK_PHOTO_POOL: Array<{ url: string; tags: string[]; description: string }> = [
+  {
+    url: "/manus-storage/mulcher-woods-01_471e0187.jpg",
+    tags: ["woods", "trees", "forestry", "mulch", "brush", "cedar", "general"],
+    description: "Tracked compact loader with forestry mulcher working in a wooded area, bare winter trees",
+  },
+  {
+    url: "/manus-storage/mulcher-saplings-02_83c8a3a8.jpg",
+    tags: ["saplings", "trees", "forestry", "brush", "cedar", "general"],
+    description: "Compact track loader pushing through dense saplings and small trees",
+  },
+  {
+    url: "/manus-storage/mulcher-dense-brush-03_956d24e5.png",
+    tags: ["brush", "dense", "overgrown", "fence", "general", "reclaim"],
+    description: "Mulcher working through dense green brush and vegetation",
+  },
+  {
+    url: "/manus-storage/mulcher-slope-04_4a35422e.jpg",
+    tags: ["slope", "hillside", "terrain", "forestry", "general"],
+    description: "Large red tracked forestry mulcher on a steep hillside slope in autumn",
+  },
+  {
+    url: "/manus-storage/mulcher-cat-lot-06_8e170358.webp",
+    tags: ["lot", "site prep", "build", "develop", "cat", "cleared", "general"],
+    description: "CAT 279D3 compact track loader with mulcher head on freshly cleared lot, summer",
+  },
+  {
+    url: "/manus-storage/mulcher-field-07_4fd8100e.webp",
+    tags: ["field", "pasture", "reclaim", "open", "general"],
+    description: "Red tracked mulcher in a large open field with mulched ground cover",
+  },
+  {
+    url: "/manus-storage/mulcher-invasive-08_cc96e8b1.jpg",
+    tags: ["invasive", "lot", "cleared", "site prep", "general", "reclaim"],
+    description: "Orange Kubota tracked mulcher on a cleared lot with tree line in background, summer sky",
+  },
+  {
+    url: "/manus-storage/mulcher-row-09_c660f63a.jpg",
+    tags: ["row", "right-of-way", "fence", "road", "brush", "general"],
+    description: "White Bobcat compact track loader clearing brush along a roadside right-of-way",
+  },
+];
+
+/**
+ * Selects a stock photo from the pool based on job context.
+ * Scores each photo by how many of its tags match keywords in the job description and ad types.
+ * Among equally-scored candidates, picks randomly to ensure variety across ads.
+ */
+function pickStockPhoto(jobDescription?: string, adTypes?: string[]): string {
   const text = `${jobDescription ?? ""} ${(adTypes ?? []).join(" ")}`.toLowerCase();
 
-  if (
-    text.includes("mulch") ||
-    text.includes("forestry") ||
-    text.includes("brush") ||
-    text.includes("cedar") ||
-    text.includes("sapling") ||
-    text.includes("tree") ||
-    text.includes("timber")
-  ) {
-    return "forestry mulcher head attachment, grinding dense brush and cedar into mulch";
-  }
+  const scored = STOCK_PHOTO_POOL.map((photo) => ({
+    photo,
+    score: photo.tags.filter((tag) => text.includes(tag)).length,
+  }));
 
-  if (
-    text.includes("pasture") ||
-    text.includes("reclaim") ||
-    text.includes("field") ||
-    text.includes("grass") ||
-    text.includes("hay")
-  ) {
-    return "brush cutter / rotary mulcher attachment, clearing overgrown pasture";
-  }
+  const maxScore = Math.max(...scored.map((s) => s.score));
+  const candidates = scored.filter((s) => s.score === maxScore).map((s) => s.photo);
 
-  if (
-    text.includes("fence") ||
-    text.includes("fence line") ||
-    text.includes("property line") ||
-    text.includes("boundary")
-  ) {
-    return "forestry mulcher head attachment, clearing a fence line";
-  }
-
-  if (
-    text.includes("right of way") ||
-    text.includes("right-of-way") ||
-    text.includes("row") ||
-    text.includes("utility") ||
-    text.includes("pipeline") ||
-    text.includes("powerline")
-  ) {
-    return "forestry mulcher head attachment, clearing a right-of-way corridor";
-  }
-
-  if (
-    text.includes("lot") ||
-    text.includes("site prep") ||
-    text.includes("build") ||
-    text.includes("develop") ||
-    text.includes("subdivision")
-  ) {
-    return "land management bucket attachment, clearing a residential lot";
-  }
-
-  if (
-    text.includes("stump") ||
-    text.includes("root")
-  ) {
-    return "stump grinder attachment, grinding stumps";
-  }
-
-  // Default: forestry mulcher — the primary service
-  return "forestry mulcher head attachment, clearing dense overgrown brush and small trees";
+  // Random pick among equally-matched candidates for variety
+  return candidates[Math.floor(Math.random() * candidates.length)].url;
 }
 
 /**
- * Builds the image generation prompt fragment that always references
- * the CAT 299D3 XE with the job-appropriate attachment.
+ * Builds the image prompt instruction for the LLM — now asks for a descriptive
+ * caption/alt text rather than a generation prompt, since we use stock photos.
+ * Kept for backward compatibility with the JSON schema; imagePrompt is still
+ * returned but used as alt text / caption context, not passed to generateImage.
  */
 function buildImagePromptInstruction(jobDescription?: string, adTypes?: string[]): string {
-  const attachment = getCatAttachment(jobDescription, adTypes);
-  return `Also write a short image generation prompt (under 70 words) for a realistic, gritty photo of a CAT 299D3 XE compact track loader with a ${attachment}, working on a Tennessee property. Overcast or golden-hour lighting. No people, no logos, no text in the image. Photorealistic, raw, unfiltered — not staged.`;
+  const text = `${jobDescription ?? ""} ${(adTypes ?? []).join(" ")}`.toLowerCase();
+  const scenario = text.includes("pasture") || text.includes("reclaim") || text.includes("field")
+    ? "pasture reclamation"
+    : text.includes("fence") || text.includes("boundary")
+    ? "fence line clearing"
+    : text.includes("right of way") || text.includes("row") || text.includes("utility")
+    ? "right-of-way clearing"
+    : text.includes("lot") || text.includes("site prep") || text.includes("develop")
+    ? "lot clearing and site prep"
+    : "forestry mulching and land clearing";
+  return `Also write a short image alt text (under 20 words) describing a forestry mulcher working on a Tennessee ${scenario} job. Be specific and visual.`;
 }
 
 /**
@@ -197,15 +206,12 @@ export const socialPostsRouter = router({
       }
       if (!parsed.draft) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "AI did not return ad copy. Try again." });
 
-      let imageUrl: string | null = null;
-      if (input.generateImage && parsed.imagePrompt) {
-        try {
-          const imgResult = await generateImage({ prompt: parsed.imagePrompt });
-          imageUrl = imgResult.url ?? null;
-        } catch (e) {
-          console.error("[Ads] Image generation failed:", e);
-        }
-      }
+      // Use a real stock photo from the curated pool instead of AI-generated imagery.
+      // pickStockPhoto scores photos by context tags and picks randomly among top matches
+      // so each ad gets a different machine/setting rather than the same machine every time.
+      const imageUrl: string | null = input.generateImage
+        ? pickStockPhoto(input.jobDescription, input.adTypes)
+        : null;
 
       return { draft: parsed.draft, headline: parsed.headline, imagePrompt: parsed.imagePrompt, imageUrl };
     }),
@@ -335,15 +341,10 @@ export const socialPostsRouter = router({
       }
       if (!parsed.facebook?.draft) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "AI did not return ad copy. Try again." });
 
-      let imageUrl: string | null = null;
-      if (input.generateImage && parsed.imagePrompt) {
-        try {
-          const imgResult = await generateImage({ prompt: parsed.imagePrompt });
-          imageUrl = imgResult.url ?? null;
-        } catch (e) {
-          console.error("[Ads] Image generation failed:", e);
-        }
-      }
+      // Use real stock photo from the curated pool — context-aware, randomized among top matches.
+      const imageUrl: string | null = input.generateImage
+        ? pickStockPhoto(input.jobDescription, input.adTypes)
+        : null;
 
       return {
         facebook: { draft: parsed.facebook.draft, headline: parsed.facebook.headline },
