@@ -607,7 +607,7 @@ export default function Resources() {
   };
 
   return (
-    <OpsDashboardLayout title="Resources" subtitle="Brushworks operator library — templates, guides, and field tools">
+    <OpsDashboardLayout title="Noland Earthworks Operator Library" subtitle="Templates, guides, and field tools">
       <div className="p-6">
         {/* Search + filter bar */}
         <div className="flex flex-col sm:flex-row gap-3 mb-6">
