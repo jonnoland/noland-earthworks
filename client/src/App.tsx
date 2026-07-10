@@ -51,6 +51,7 @@ const PricingHub         = lazy(() => import("./pages/ops/PricingHub"));
 const OpsResources       = lazy(() => import("./pages/ops/Resources"));
 const OpsRentals         = lazy(() => import("./pages/ops/Rentals"));
 const OpsGovContracts    = lazy(() => import("./pages/ops/GovContracts"));
+const OpsRoutePlanner    = lazy(() => import("./pages/ops/WeighStationPlanner"));
 
 // ── Customer payment portal (lazy-loaded) ────────────────────────────────────
 const PaymentPortal  = lazy(() => import("./pages/portal/PaymentPortal"));
@@ -411,6 +412,9 @@ function Router() {
       </Route>
       <Route path="/ops/gov-contracts">
         <Suspense fallback={<OpsLoading />}><OwnerRoute><OpsGovContracts /></OwnerRoute></Suspense>
+      </Route>
+      <Route path="/ops/route-planner">
+        <Suspense fallback={<OpsLoading />}><OwnerRoute><OpsRoutePlanner /></OwnerRoute></Suspense>
       </Route>
 
       {/* Customer payment portal — lazy-loaded */}

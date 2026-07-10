@@ -1636,3 +1636,34 @@ export const prospectingLeads = mysqlTable("prospecting_leads", {
 });
 export type ProspectingLead = typeof prospectingLeads.$inferSelect;
 export type InsertProspectingLead = typeof prospectingLeads.$inferInsert;
+
+/**
+ * Saved routes for the weigh station route planner.
+ * Each row stores a named route with origin, destination, and cached weigh station data.
+ */
+export const savedRoutes = mysqlTable("saved_routes", {
+  id: int("id").autoincrement().primaryKey(),
+  /** Display name for the route (e.g., "Vanleer to Clarksville job") */
+  name: varchar("name", { length: 255 }).notNull(),
+  /** Origin address as entered by the user */
+  originAddress: text("originAddress").notNull(),
+  /** Destination address as entered by the user */
+  destinationAddress: text("destinationAddress").notNull(),
+  /** Origin lat/lng as JSON string: {"lat": 36.25, "lng": -87.53} */
+  originLatLng: text("originLatLng"),
+  /** Destination lat/lng as JSON string */
+  destinationLatLng: text("destinationLatLng"),
+  /** Total route distance in miles */
+  distanceMiles: varchar("distanceMiles", { length: 32 }),
+  /** Estimated drive time (e.g., "1 hr 23 min") */
+  durationText: varchar("durationText", { length: 64 }),
+  /** JSON array of weigh station IDs found along this route */
+  weighStationIds: text("weighStationIds"),
+  /** Optional user notes about this route */
+  notes: text("notes"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type SavedRoute = typeof savedRoutes.$inferSelect;
+export type InsertSavedRoute = typeof savedRoutes.$inferInsert;

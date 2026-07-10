@@ -1,0 +1,597 @@
+import { useState, useRef, useCallback, useEffect } from "react";
+import { trpc } from "@/lib/trpc";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
+import { MapView } from "@/components/Map";
+import { toast } from "sonner";
+import {
+  MapPin,
+  Navigation,
+  Scale,
+  Save,
+  Trash2,
+  Clock,
+  Route,
+  ChevronDown,
+  ChevronUp,
+  AlertTriangle,
+  CheckCircle,
+} from "lucide-react";
+
+// Default origin: Vanleer, TN
+const DEFAULT_ORIGIN = "Vanleer, TN 37181";
+
+interface PlannedRoute {
+  distanceMiles: number;
+  durationText: string;
+  originLatLng: { lat: number; lng: number };
+  destinationLatLng: { lat: number; lng: number };
+  bounds: {
+    northeast: { lat: number; lng: number };
+    southwest: { lat: number; lng: number };
+  };
+  weighStations: Array<{
+    id: string;
+    name: string;
+    state: string;
+    highway: string;
+    direction: string;
+    milepost: number | null;
+    lat: number;
+    lng: number;
+    city: string;
+    phone?: string;
+    prepassEligible: boolean;
+    notes?: string;
+  }>;
+  stationCount: number;
+}
+
+interface SavedRoute {
+  id: number;
+  name: string;
+  originAddress: string;
+  destinationAddress: string;
+  distanceMiles: string | null;
+  durationText: string | null;
+  weighStationIds: string[];
+  notes: string | null;
+  createdAt: Date;
+}
+
+export default function WeighStationPlanner() {
+  const [origin, setOrigin] = useState(DEFAULT_ORIGIN);
+  const [destination, setDestination] = useState("");
+  const [routeName, setRouteName] = useState("");
+  const [plannedRoute, setPlannedRoute] = useState<PlannedRoute | null>(null);
+  const [showSaveForm, setShowSaveForm] = useState(false);
+  const [expandedStation, setExpandedStation] = useState<string | null>(null);
+  const [mapReady, setMapReady] = useState(false);
+  const mapRef = useRef<google.maps.Map | null>(null);
+  const directionsRendererRef = useRef<google.maps.DirectionsRenderer | null>(null);
+  const markersRef = useRef<google.maps.Marker[]>([]);
+
+  const planRoute = trpc.routePlanner.planRoute.useMutation();
+  const saveRoute = trpc.routePlanner.saveRoute.useMutation();
+  const deleteRoute = trpc.routePlanner.deleteRoute.useMutation();
+  const { data: savedRoutes, refetch: refetchSaved } =
+    trpc.routePlanner.getSavedRoutes.useQuery();
+
+  // Clear map markers and directions
+  const clearMap = useCallback(() => {
+    markersRef.current.forEach((m) => m.setMap(null));
+    markersRef.current = [];
+    if (directionsRendererRef.current) {
+      directionsRendererRef.current.setMap(null);
+      directionsRendererRef.current = null;
+    }
+  }, []);
+
+  // Draw route and weigh station markers on the map
+  const drawRouteOnMap = useCallback(
+    (route: PlannedRoute) => {
+      if (!mapRef.current) return;
+      const map = mapRef.current;
+
+      clearMap();
+
+      // Use Google Directions Service to render the route visually
+      const directionsService = new google.maps.DirectionsService();
+      const directionsRenderer = new google.maps.DirectionsRenderer({
+        suppressMarkers: true,
+        polylineOptions: {
+          strokeColor: "#D97706",
+          strokeWeight: 5,
+          strokeOpacity: 0.85,
+        },
+      });
+      directionsRenderer.setMap(map);
+      directionsRendererRef.current = directionsRenderer;
+
+      directionsService.route(
+        {
+          origin: route.originLatLng,
+          destination: route.destinationLatLng,
+          travelMode: google.maps.TravelMode.DRIVING,
+        },
+        (result, status) => {
+          if (status === "OK" && result) {
+            directionsRenderer.setDirections(result);
+          }
+        }
+      );
+
+      // Origin marker
+      const originMarker = new google.maps.Marker({
+        position: route.originLatLng,
+        map,
+        title: "Origin",
+        icon: {
+          path: google.maps.SymbolPath.CIRCLE,
+          scale: 10,
+          fillColor: "#16A34A",
+          fillOpacity: 1,
+          strokeColor: "#fff",
+          strokeWeight: 2,
+        },
+        zIndex: 10,
+      });
+      markersRef.current.push(originMarker);
+
+      // Destination marker
+      const destMarker = new google.maps.Marker({
+        position: route.destinationLatLng,
+        map,
+        title: "Destination",
+        icon: {
+          path: google.maps.SymbolPath.CIRCLE,
+          scale: 10,
+          fillColor: "#DC2626",
+          fillOpacity: 1,
+          strokeColor: "#fff",
+          strokeWeight: 2,
+        },
+        zIndex: 10,
+      });
+      markersRef.current.push(destMarker);
+
+      // Weigh station markers
+      route.weighStations.forEach((station) => {
+        const marker = new google.maps.Marker({
+          position: { lat: station.lat, lng: station.lng },
+          map,
+          title: station.name,
+          icon: {
+            path: google.maps.SymbolPath.BACKWARD_CLOSED_ARROW,
+            scale: 7,
+            fillColor: station.prepassEligible ? "#2563EB" : "#F59E0B",
+            fillOpacity: 1,
+            strokeColor: "#fff",
+            strokeWeight: 1.5,
+          },
+          zIndex: 8,
+        });
+
+        const infoWindow = new google.maps.InfoWindow({
+          content: `
+            <div style="font-family:sans-serif;font-size:13px;max-width:220px">
+              <strong>${station.name}</strong><br/>
+              ${station.highway} ${station.direction} — MM ${station.milepost ?? "N/A"}<br/>
+              ${station.city}, ${station.state}<br/>
+              ${station.prepassEligible ? '<span style="color:#2563EB">✓ PrePass/Drivewyze eligible</span>' : '<span style="color:#D97706">No bypass program</span>'}
+              ${station.notes ? `<br/><em>${station.notes}</em>` : ""}
+              ${station.phone ? `<br/>📞 ${station.phone}` : ""}
+            </div>
+          `,
+        });
+
+        marker.addListener("click", () => {
+          infoWindow.open(map, marker);
+        });
+
+        markersRef.current.push(marker);
+      });
+
+      // Fit bounds
+      const bounds = new google.maps.LatLngBounds(
+        route.bounds.southwest,
+        route.bounds.northeast
+      );
+      map.fitBounds(bounds, 60);
+    },
+    [clearMap]
+  );
+
+  // Re-draw when map becomes ready and we have a route
+  useEffect(() => {
+    if (mapReady && plannedRoute) {
+      drawRouteOnMap(plannedRoute);
+    }
+  }, [mapReady, plannedRoute, drawRouteOnMap]);
+
+  const handlePlanRoute = async () => {
+    if (!destination.trim()) {
+      toast.error("Enter a destination address");
+      return;
+    }
+    try {
+      const result = await planRoute.mutateAsync({
+        origin: origin.trim(),
+        destination: destination.trim(),
+      });
+      setPlannedRoute(result as PlannedRoute);
+      setShowSaveForm(false);
+      if (mapReady) drawRouteOnMap(result as PlannedRoute);
+      toast.success(
+        `Route planned — ${result.stationCount} weigh station${result.stationCount !== 1 ? "s" : ""} along the way`
+      );
+    } catch (err: any) {
+      toast.error(err.message ?? "Failed to plan route");
+    }
+  };
+
+  const handleSaveRoute = async () => {
+    if (!routeName.trim() || !plannedRoute) return;
+    try {
+      await saveRoute.mutateAsync({
+        name: routeName.trim(),
+        originAddress: origin,
+        destinationAddress: destination,
+        originLatLng: plannedRoute.originLatLng,
+        destinationLatLng: plannedRoute.destinationLatLng,
+        distanceMiles: plannedRoute.distanceMiles.toString(),
+        durationText: plannedRoute.durationText,
+        weighStationIds: plannedRoute.weighStations.map((s) => s.id),
+      });
+      toast.success("Route saved");
+      setShowSaveForm(false);
+      setRouteName("");
+      refetchSaved();
+    } catch {
+      toast.error("Failed to save route");
+    }
+  };
+
+  const handleLoadSaved = (route: SavedRoute) => {
+    setOrigin(route.originAddress);
+    setDestination(route.destinationAddress);
+    toast.info("Addresses loaded — click Plan Route to re-run");
+  };
+
+  const handleDeleteSaved = async (id: number) => {
+    try {
+      await deleteRoute.mutateAsync({ id });
+      toast.success("Route deleted");
+      refetchSaved();
+    } catch {
+      toast.error("Failed to delete route");
+    }
+  };
+
+  const directionColor = (dir: string) => {
+    if (dir === "NB" || dir === "EB") return "bg-blue-500/20 text-blue-300 border-blue-500/30";
+    return "bg-orange-500/20 text-orange-300 border-orange-500/30";
+  };
+
+  return (
+    <div className="flex flex-col h-full min-h-screen bg-[#121212] text-[#F0EDE6]">
+      {/* Header */}
+      <div className="px-6 pt-6 pb-4 border-b border-white/10">
+        <div className="flex items-center gap-3 mb-1">
+          <Route className="w-6 h-6 text-amber-500" />
+          <h1 className="text-2xl font-bold tracking-tight">Weigh Station Route Planner</h1>
+        </div>
+        <p className="text-sm text-white/50">
+          Plan routes to job sites and see every weigh station along the way. Markers show
+          PrePass/Drivewyze bypass eligibility.
+        </p>
+      </div>
+
+      <div className="flex flex-col lg:flex-row flex-1 gap-0 overflow-hidden">
+        {/* Left panel — inputs + results */}
+        <div className="w-full lg:w-96 flex-shrink-0 flex flex-col border-r border-white/10 overflow-y-auto">
+          {/* Route inputs */}
+          <div className="p-5 space-y-3 border-b border-white/10">
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-white/60 uppercase tracking-wide">
+                Origin
+              </label>
+              <Input
+                value={origin}
+                onChange={(e) => setOrigin(e.target.value)}
+                placeholder="Vanleer, TN 37181"
+                className="bg-white/5 border-white/15 text-white placeholder:text-white/30"
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-white/60 uppercase tracking-wide">
+                Destination
+              </label>
+              <Input
+                value={destination}
+                onChange={(e) => setDestination(e.target.value)}
+                placeholder="Job site address or city"
+                className="bg-white/5 border-white/15 text-white placeholder:text-white/30"
+                onKeyDown={(e) => e.key === "Enter" && handlePlanRoute()}
+              />
+            </div>
+            <Button
+              onClick={handlePlanRoute}
+              disabled={planRoute.isPending}
+              className="w-full bg-amber-600 hover:bg-amber-500 text-white font-semibold"
+            >
+              {planRoute.isPending ? (
+                <span className="flex items-center gap-2">
+                  <Navigation className="w-4 h-4 animate-pulse" /> Planning...
+                </span>
+              ) : (
+                <span className="flex items-center gap-2">
+                  <Navigation className="w-4 h-4" /> Plan Route
+                </span>
+              )}
+            </Button>
+          </div>
+
+          {/* Route summary */}
+          {plannedRoute && (
+            <div className="p-5 border-b border-white/10 space-y-4">
+              <div className="flex items-center justify-between">
+                <h2 className="font-semibold text-white">Route Summary</h2>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-amber-400 hover:text-amber-300 h-7 px-2"
+                  onClick={() => setShowSaveForm(!showSaveForm)}
+                >
+                  <Save className="w-3.5 h-3.5 mr-1" />
+                  Save
+                </Button>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="bg-white/5 rounded-lg p-3 text-center">
+                  <div className="text-xl font-bold text-amber-400">
+                    {plannedRoute.distanceMiles}
+                  </div>
+                  <div className="text-xs text-white/50">miles</div>
+                </div>
+                <div className="bg-white/5 rounded-lg p-3 text-center">
+                  <div className="text-xl font-bold text-amber-400">
+                    {plannedRoute.durationText}
+                  </div>
+                  <div className="text-xs text-white/50">drive time</div>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 bg-white/5 rounded-lg p-3">
+                <Scale className="w-4 h-4 text-amber-500 flex-shrink-0" />
+                <div>
+                  <span className="font-semibold text-white">
+                    {plannedRoute.stationCount}
+                  </span>{" "}
+                  <span className="text-white/70 text-sm">
+                    weigh station{plannedRoute.stationCount !== 1 ? "s" : ""} on this route
+                  </span>
+                </div>
+              </div>
+
+              {/* Save form */}
+              {showSaveForm && (
+                <div className="space-y-2 bg-white/5 rounded-lg p-3">
+                  <Input
+                    value={routeName}
+                    onChange={(e) => setRouteName(e.target.value)}
+                    placeholder="Route name (e.g., Vanleer to Clarksville)"
+                    className="bg-white/10 border-white/15 text-white placeholder:text-white/30 text-sm"
+                  />
+                  <Button
+                    size="sm"
+                    onClick={handleSaveRoute}
+                    disabled={!routeName.trim() || saveRoute.isPending}
+                    className="w-full bg-green-700 hover:bg-green-600 text-white"
+                  >
+                    {saveRoute.isPending ? "Saving..." : "Save Route"}
+                  </Button>
+                </div>
+              )}
+
+              {/* Weigh station list */}
+              {plannedRoute.weighStations.length > 0 ? (
+                <div className="space-y-2">
+                  <h3 className="text-xs font-semibold text-white/60 uppercase tracking-wide">
+                    Weigh Stations Along Route
+                  </h3>
+                  {plannedRoute.weighStations.map((station) => (
+                    <div
+                      key={station.id}
+                      className="bg-white/5 rounded-lg border border-white/10 overflow-hidden"
+                    >
+                      <button
+                        className="w-full text-left p-3 flex items-start justify-between gap-2 hover:bg-white/5 transition-colors"
+                        onClick={() =>
+                          setExpandedStation(
+                            expandedStation === station.id ? null : station.id
+                          )
+                        }
+                      >
+                        <div className="flex items-start gap-2 min-w-0">
+                          <Scale className="w-4 h-4 text-amber-500 mt-0.5 flex-shrink-0" />
+                          <div className="min-w-0">
+                            <div className="text-sm font-medium text-white truncate">
+                              {station.name}
+                            </div>
+                            <div className="text-xs text-white/50">
+                              {station.highway} · MM {station.milepost ?? "N/A"} ·{" "}
+                              {station.city}, {station.state}
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-1.5 flex-shrink-0">
+                          <Badge
+                            variant="outline"
+                            className={`text-xs ${directionColor(station.direction)}`}
+                          >
+                            {station.direction}
+                          </Badge>
+                          {expandedStation === station.id ? (
+                            <ChevronUp className="w-3.5 h-3.5 text-white/40" />
+                          ) : (
+                            <ChevronDown className="w-3.5 h-3.5 text-white/40" />
+                          )}
+                        </div>
+                      </button>
+
+                      {expandedStation === station.id && (
+                        <div className="px-3 pb-3 space-y-2 border-t border-white/10 pt-2">
+                          <div className="flex items-center gap-2">
+                            {station.prepassEligible ? (
+                              <CheckCircle className="w-3.5 h-3.5 text-blue-400" />
+                            ) : (
+                              <AlertTriangle className="w-3.5 h-3.5 text-amber-400" />
+                            )}
+                            <span className="text-xs text-white/70">
+                              {station.prepassEligible
+                                ? "PrePass / Drivewyze bypass eligible"
+                                : "No bypass program — must enter if open"}
+                            </span>
+                          </div>
+                          {station.notes && (
+                            <p className="text-xs text-white/50 italic">{station.notes}</p>
+                          )}
+                          {station.phone && (
+                            <p className="text-xs text-white/50">
+                              <span className="text-white/40">Phone:</span> {station.phone}
+                            </p>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="flex items-center gap-2 text-sm text-green-400 bg-green-900/20 rounded-lg p-3">
+                  <CheckCircle className="w-4 h-4" />
+                  No weigh stations detected on this route.
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Saved routes */}
+          {savedRoutes && savedRoutes.length > 0 && (
+            <div className="p-5 space-y-3">
+              <h2 className="text-sm font-semibold text-white/60 uppercase tracking-wide">
+                Saved Routes
+              </h2>
+              {savedRoutes.map((route) => (
+                <div
+                  key={route.id}
+                  className="bg-white/5 rounded-lg border border-white/10 p-3 space-y-2"
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <div className="font-medium text-sm text-white truncate">
+                        {route.name}
+                      </div>
+                      <div className="text-xs text-white/40 truncate">
+                        {route.originAddress} → {route.destinationAddress}
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => handleDeleteSaved(route.id)}
+                      className="text-white/30 hover:text-red-400 transition-colors flex-shrink-0"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                  <div className="flex items-center gap-3 text-xs text-white/50">
+                    {route.distanceMiles && (
+                      <span className="flex items-center gap-1">
+                        <MapPin className="w-3 h-3" />
+                        {route.distanceMiles} mi
+                      </span>
+                    )}
+                    {route.durationText && (
+                      <span className="flex items-center gap-1">
+                        <Clock className="w-3 h-3" />
+                        {route.durationText}
+                      </span>
+                    )}
+                    {route.weighStationIds.length > 0 && (
+                      <span className="flex items-center gap-1">
+                        <Scale className="w-3 h-3" />
+                        {route.weighStationIds.length} station
+                        {route.weighStationIds.length !== 1 ? "s" : ""}
+                      </span>
+                    )}
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="w-full h-7 text-xs border-white/15 text-white/70 hover:text-white bg-transparent"
+                    onClick={() => handleLoadSaved(route as SavedRoute)}
+                  >
+                    Load Addresses
+                  </Button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Legend */}
+          <div className="p-5 mt-auto border-t border-white/10">
+            <h3 className="text-xs font-semibold text-white/40 uppercase tracking-wide mb-2">
+              Map Legend
+            </h3>
+            <div className="space-y-1.5 text-xs text-white/50">
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded-full bg-green-600 flex-shrink-0" />
+                Origin
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded-full bg-red-600 flex-shrink-0" />
+                Destination
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded-full bg-blue-500 flex-shrink-0" />
+                Weigh station — PrePass/Drivewyze eligible
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded-full bg-amber-500 flex-shrink-0" />
+                Weigh station — no bypass program
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Right panel — map */}
+        <div className="flex-1 min-h-[400px] lg:min-h-0 relative">
+          <MapView
+            onMapReady={(map) => {
+              mapRef.current = map;
+              setMapReady(true);
+              // Default view: Middle Tennessee
+              map.setCenter({ lat: 36.25, lng: -87.53 });
+              map.setZoom(8);
+            }}
+            className="w-full h-full min-h-[400px]"
+          />
+          {!plannedRoute && (
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+              <div className="bg-black/60 backdrop-blur-sm rounded-xl px-6 py-4 text-center border border-white/10">
+                <Scale className="w-8 h-8 text-amber-500 mx-auto mb-2" />
+                <p className="text-white font-medium text-sm">Enter a destination and click Plan Route</p>
+                <p className="text-white/40 text-xs mt-1">
+                  Weigh stations will appear on the map along your route
+                </p>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}

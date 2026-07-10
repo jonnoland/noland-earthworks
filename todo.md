@@ -2239,3 +2239,8 @@
 - [x] In bidPrep mutation, fetch the SAM.gov opportunity page to extract scope of work and pass it to AI pricing/capability prompts
 - [x] Add tnStateContracts tRPC procedure to govContractsRouter: scrape TN CPO ITB page, filter by land-clearing keywords, return structured results
 - [x] Add TN State tab to GovContracts page with filtered ITB results and static reference links (TDOT Bid Lettings, TVA Supplier Portal, GO-BID)
+- [x] Build weigh station dataset (TN + surrounding states) with lat/lng, name, direction, bypass hours
+- [x] Add weighStationRoutes table to drizzle schema for saved routes
+- [x] Build routePlanner tRPC procedures: planRoute (Google Directions + weigh station matching), saveRoute, getSavedRoutes, deleteRoute
+- [x] Build WeighStationPlanner page at /ops/route-planner with Google Maps, route overlay, weigh station markers, saved routes panel
+- [x] Wire WeighStationPlanner into ops sidebar under Field Work

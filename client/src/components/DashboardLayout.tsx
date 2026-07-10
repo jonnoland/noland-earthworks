@@ -42,6 +42,7 @@ import {
   BookOpen,
   Truck,
   Landmark,
+  Route,
 } from "lucide-react";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { getLoginUrl } from "@/const";
@@ -265,6 +266,7 @@ const NAV_GROUPS = [
       { label: "Crews",         href: "/ops/crews-hub",     icon: HardHat },
       { label: "Equipment",     href: "/ops/equipment-hub", icon: Settings },
       { label: "Rentals",        href: "/ops/rentals",       icon: Truck },
+      { label: "Route Planner",  href: "/ops/route-planner", icon: Route },
     ],
   },
   {
