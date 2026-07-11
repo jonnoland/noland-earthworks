@@ -11,10 +11,73 @@ import { z } from "zod";
 import { protectedProcedure, router } from "../_core/trpc";
 import { ENV } from "../_core/env";
 import { invokeLLM } from "../_core/llm";
-import { generateImage } from "../_core/imageGeneration";
-import { storagePut } from "../storage";
+import { storagePut, storageGet } from "../storage";
 import { getDb } from "../db";
 import { and, desc, eq } from "drizzle-orm";
+
+/**
+ * Curated stock photo pool — real forestry mulching machines in diverse settings.
+ * All files are JPEG. URLs are /manus-storage/* paths served via the internal proxy.
+ */
+export const STOCK_PHOTO_POOL: Array<{ url: string; tags: string[]; brand: string | null; description: string }> = [
+  { url: "/manus-storage/mulcher-woods-01_8d716f19.jpg", tags: ["woods", "trees", "forestry", "mulch", "brush", "cedar", "general"], brand: "takeuchi", description: "Takeuchi tracked loader in wooded area, bare winter trees" },
+  { url: "/manus-storage/mulcher-saplings-02_77917022.jpg", tags: ["saplings", "trees", "forestry", "brush", "cedar", "general"], brand: null, description: "Compact track loader pushing through dense saplings" },
+  { url: "/manus-storage/mulcher-dense-brush-03_202106dc.jpg", tags: ["brush", "dense", "overgrown", "fence", "general", "reclaim"], brand: null, description: "Mulcher working through dense green brush" },
+  { url: "/manus-storage/mulcher-slope-04_8c84d273.jpg", tags: ["slope", "hillside", "terrain", "forestry", "general"], brand: null, description: "Large red tracked mulcher on steep hillside, autumn" },
+  { url: "/manus-storage/mulcher-cat-lot-06_dc8ba8e9.jpg", tags: ["lot", "site prep", "build", "develop", "cleared", "general"], brand: "cat", description: "CAT 279D3 compact track loader on freshly cleared lot" },
+  { url: "/manus-storage/mulcher-field-07_eb802c1b.jpg", tags: ["field", "pasture", "reclaim", "open", "general"], brand: null, description: "Red tracked mulcher in large open field" },
+  { url: "/manus-storage/mulcher-invasive-08_da8a3269.jpg", tags: ["invasive", "lot", "cleared", "site prep", "general", "reclaim"], brand: "kubota", description: "Orange Kubota tracked mulcher on cleared lot" },
+  { url: "/manus-storage/mulcher-row-09_95c0bb87.jpg", tags: ["row", "right-of-way", "fence", "road", "brush", "general"], brand: "bobcat", description: "White Bobcat clearing brush along roadside right-of-way" },
+];
+
+/** Pick a stock photo based on job context and optional brand preference. */
+function pickStockPhoto(jobDescription?: string, adTypes?: string[], preferredBrand?: string | null): string {
+  const text = `${jobDescription ?? ""} ${(adTypes ?? []).join(" ")}`.toLowerCase();
+  const scored = STOCK_PHOTO_POOL.map(p => {
+    let score = p.tags.filter(t => text.includes(t)).length * 2;
+    if (preferredBrand && p.brand === preferredBrand.toLowerCase()) score += 3;
+    return { p, score };
+  });
+  const max = Math.max(...scored.map(s => s.score));
+  const candidates = scored.filter(s => s.score === max);
+  return candidates[Math.floor(Math.random() * candidates.length)].p.url;
+}
+
+/**
+ * Downloads an image from a /manus-storage/* path using the internal storage API
+ * and returns the raw bytes + content-type. Used to upload images to external
+ * social platforms (Facebook, Instagram) that cannot access private storage URLs.
+ */
+async function fetchImageAsBuffer(url: string): Promise<{ buffer: Buffer; contentType: string }> {
+  let fetchUrl = url;
+  if (!url.startsWith("http")) {
+    // Resolve internal /manus-storage/* path to a presigned URL
+    const key = url.replace(/^\/manus-storage\//, "");
+    const { url: presigned } = await storageGet(key);
+    fetchUrl = presigned;
+  }
+  const res = await fetch(fetchUrl);
+  if (!res.ok) throw new Error(`Image fetch failed: ${res.status} ${res.statusText}`);
+  const buffer = Buffer.from(await res.arrayBuffer());
+  const contentType = res.headers.get("content-type") ?? "image/jpeg";
+  return { buffer, contentType };
+}
+
+/**
+ * Posts an image to Facebook using multipart form upload (bytes, not URL).
+ * This works regardless of whether the image is in a private or public bucket.
+ */
+async function postPhotoToFacebook(pageId: string, accessToken: string, caption: string, imageBuffer: Buffer, contentType: string): Promise<string> {
+  const form = new FormData();
+  const blob = new Blob([new Uint8Array(imageBuffer)], { type: contentType });
+  form.append("source", blob, "photo.jpg");
+  form.append("caption", caption);
+  form.append("access_token", accessToken);
+  const res = await fetch(`https://graph.facebook.com/v20.0/${pageId}/photos`, { method: "POST", body: form });
+  const data = await res.json() as any;
+  if (!res.ok || data.error) throw new Error(`Facebook API error: ${data.error?.message ?? "Unknown error"}`);
+  return data.post_id ?? data.id;
+}
 
 /**
  * Maps job context to the correct CAT 299D3 XE attachment for image generation.
@@ -198,13 +261,8 @@ export const socialPostsRouter = router({
       if (!parsed.draft) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "AI did not return ad copy. Try again." });
 
       let imageUrl: string | null = null;
-      if (input.generateImage && parsed.imagePrompt) {
-        try {
-          const imgResult = await generateImage({ prompt: parsed.imagePrompt });
-          imageUrl = imgResult.url ?? null;
-        } catch (e) {
-          console.error("[Ads] Image generation failed:", e);
-        }
+      if (input.generateImage) {
+        imageUrl = pickStockPhoto(input.jobDescription, input.adTypes);
       }
 
       return { draft: parsed.draft, headline: parsed.headline, imagePrompt: parsed.imagePrompt, imageUrl };
@@ -336,13 +394,8 @@ export const socialPostsRouter = router({
       if (!parsed.facebook?.draft) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "AI did not return ad copy. Try again." });
 
       let imageUrl: string | null = null;
-      if (input.generateImage && parsed.imagePrompt) {
-        try {
-          const imgResult = await generateImage({ prompt: parsed.imagePrompt });
-          imageUrl = imgResult.url ?? null;
-        } catch (e) {
-          console.error("[Ads] Image generation failed:", e);
-        }
+      if (input.generateImage) {
+        imageUrl = pickStockPhoto(input.jobDescription, input.adTypes);
       }
 
       return {
@@ -516,16 +569,8 @@ export const socialPostsRouter = router({
 
       let fbPostId: string;
       if (input.imageUrl) {
-        const photoRes = await fetch(`https://graph.facebook.com/v20.0/${pageId}/photos`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ url: input.imageUrl, caption: input.message, access_token: accessToken }),
-        });
-        const photoData = await photoRes.json() as any;
-        if (!photoRes.ok || photoData.error) {
-          throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: `Facebook API error: ${photoData.error?.message ?? "Unknown error"}` });
-        }
-        fbPostId = photoData.post_id ?? photoData.id;
+        const { buffer, contentType } = await fetchImageAsBuffer(input.imageUrl);
+        fbPostId = await postPhotoToFacebook(pageId, accessToken, input.message, buffer, contentType);
       } else {
         const feedRes = await fetch(`https://graph.facebook.com/v20.0/${pageId}/feed`, {
           method: "POST",
@@ -562,10 +607,15 @@ export const socialPostsRouter = router({
         throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Instagram credentials not configured. Set INSTAGRAM_ACCESS_TOKEN and INSTAGRAM_USER_ID." });
       }
 
+      // Instagram requires a publicly accessible URL — upload image bytes to our storage first
+      const { buffer: igBuf, contentType: igCt } = await fetchImageAsBuffer(input.imageUrl);
+      const igKey = `ads/ig-temp/${Date.now()}-post.jpg`;
+      const { url: igPublicUrl } = await storagePut(igKey, igBuf, igCt);
+
       const containerRes = await fetch(`https://graph.instagram.com/v21.0/${igUserId}/media`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ image_url: input.imageUrl, caption: input.caption, access_token: accessToken }),
+        body: JSON.stringify({ image_url: igPublicUrl, caption: input.caption, access_token: accessToken }),
       });
       const containerData = await containerRes.json() as any;
       if (!containerRes.ok || containerData.error) {
@@ -722,14 +772,8 @@ export const socialPostsRouter = router({
         if (!pageId || !accessToken) throw new Error("Facebook credentials not configured");
         let fbPostId: string;
         if (input.imageUrl) {
-          const r = await fetch(`https://graph.facebook.com/v20.0/${pageId}/photos`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ url: input.imageUrl, caption: input.message, access_token: accessToken }),
-          });
-          const d = await r.json() as any;
-          if (!r.ok || d.error) throw new Error(d.error?.message ?? "FB photo post failed");
-          fbPostId = d.post_id ?? d.id;
+          const { buffer: fbBuf, contentType: fbCt } = await fetchImageAsBuffer(input.imageUrl);
+          fbPostId = await postPhotoToFacebook(pageId, accessToken, input.message, fbBuf, fbCt);
         } else {
           const r = await fetch(`https://graph.facebook.com/v20.0/${pageId}/feed`, {
             method: "POST",
@@ -756,10 +800,13 @@ export const socialPostsRouter = router({
         const accessToken = ENV.instagramAccessToken;
         if (!igUserId || !accessToken) throw new Error("Instagram credentials not configured. Set INSTAGRAM_ACCESS_TOKEN.");
         if (!input.imageUrl) throw new Error("Instagram requires an image");
+        const { buffer: igBuf2, contentType: igCt2 } = await fetchImageAsBuffer(input.imageUrl);
+        const igKey2 = `ads/ig-temp/${Date.now()}-all.jpg`;
+        const { url: igPublicUrl2 } = await storagePut(igKey2, igBuf2, igCt2);
         const containerRes = await fetch(`https://graph.instagram.com/v21.0/${igUserId}/media`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ image_url: input.imageUrl, caption: input.message, access_token: accessToken }),
+          body: JSON.stringify({ image_url: igPublicUrl2, caption: input.message, access_token: accessToken }),
         });
         const containerData = await containerRes.json() as any;
         if (!containerRes.ok || containerData.error) throw new Error(containerData.error?.message ?? "IG container error");

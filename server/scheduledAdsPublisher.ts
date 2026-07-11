@@ -8,8 +8,27 @@
  */
 import type { Express, Request, Response } from "express";
 import { ENV } from "./_core/env";
+import { storageGet, storagePut } from "./storage";
 
-/** Publish a single post to Facebook. Returns the fbPostId on success. */
+/**
+ * Downloads an image from a /manus-storage/* path or any URL and returns raw bytes.
+ * Needed because external APIs (Facebook, Instagram) cannot access private storage URLs.
+ */
+async function fetchImageAsBuffer(url: string): Promise<{ buffer: Buffer; contentType: string }> {
+  let fetchUrl = url;
+  if (!url.startsWith("http")) {
+    const key = url.replace(/^\/manus-storage\//, "");
+    const { url: presigned } = await storageGet(key);
+    fetchUrl = presigned;
+  }
+  const res = await fetch(fetchUrl);
+  if (!res.ok) throw new Error(`Image fetch failed: ${res.status} ${res.statusText}`);
+  const buffer = Buffer.from(await res.arrayBuffer());
+  const contentType = res.headers.get("content-type") ?? "image/jpeg";
+  return { buffer, contentType };
+}
+
+/** Publish a single post to Facebook using multipart upload (works with private storage). */
 async function publishToFacebook(
   draft: string,
   imageUrl: string | null,
@@ -19,11 +38,12 @@ async function publishToFacebook(
   if (!pageId || !accessToken) throw new Error("Facebook credentials not configured");
 
   if (imageUrl) {
-    const res = await fetch(`https://graph.facebook.com/v20.0/${pageId}/photos`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ url: imageUrl, caption: draft, access_token: accessToken }),
-    });
+    const { buffer, contentType } = await fetchImageAsBuffer(imageUrl);
+    const form = new FormData();
+    form.append("source", new Blob([new Uint8Array(buffer)], { type: contentType }), "photo.jpg");
+    form.append("caption", draft);
+    form.append("access_token", accessToken);
+    const res = await fetch(`https://graph.facebook.com/v20.0/${pageId}/photos`, { method: "POST", body: form });
     const data = await res.json() as any;
     if (!res.ok || data.error) throw new Error(data.error?.message ?? "Facebook photo post failed");
     return data.post_id ?? data.id;
@@ -39,7 +59,7 @@ async function publishToFacebook(
   }
 }
 
-/** Publish a single post to Instagram. Returns the igPostId on success. */
+/** Publish a single post to Instagram. Re-uploads image to get a public URL first. */
 async function publishToInstagram(
   caption: string,
   imageUrl: string,
@@ -48,11 +68,16 @@ async function publishToInstagram(
   const accessToken = ENV.instagramAccessToken;
   if (!igUserId || !accessToken) throw new Error("Instagram credentials not configured");
 
+  // Re-upload to storage to get a public URL Instagram can fetch
+  const { buffer, contentType } = await fetchImageAsBuffer(imageUrl);
+  const igKey = `ads/ig-temp/${Date.now()}-sched.jpg`;
+  const { url: publicUrl } = await storagePut(igKey, buffer, contentType);
+
   // Step 1: Create media container
   const containerRes = await fetch(`https://graph.instagram.com/v21.0/${igUserId}/media`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ image_url: imageUrl, caption, access_token: accessToken }),
+    body: JSON.stringify({ image_url: publicUrl, caption, access_token: accessToken }),
   });
   const containerData = await containerRes.json() as any;
   if (!containerRes.ok || containerData.error) {
@@ -72,7 +97,7 @@ async function publishToInstagram(
   return publishData.id;
 }
 
-/** Publish a single post to X (Twitter). Returns the xPostId on success. */
+/** Publish a single post to X (Twitter). Downloads image server-side before upload. */
 async function publishToX(text: string, imageUrl: string | null): Promise<string> {
   const { getXClient } = await import("./xRoutes");
   const client = getXClient();
@@ -81,12 +106,8 @@ async function publishToX(text: string, imageUrl: string | null): Promise<string
   let mediaId: string | undefined;
   if (imageUrl) {
     try {
-      const imgRes = await fetch(imageUrl);
-      if (imgRes.ok) {
-        const imgBuffer = Buffer.from(await imgRes.arrayBuffer());
-        const contentType = imgRes.headers.get("content-type") ?? "image/jpeg";
-        mediaId = await rwClient.v1.uploadMedia(imgBuffer, { mimeType: contentType });
-      }
+      const { buffer, contentType } = await fetchImageAsBuffer(imageUrl);
+      mediaId = await rwClient.v1.uploadMedia(buffer, { mimeType: contentType });
     } catch (err) {
       console.warn("[ScheduledAds] X image upload failed, posting text-only:", err);
     }
