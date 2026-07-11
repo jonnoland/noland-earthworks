@@ -19,15 +19,19 @@ import { and, desc, eq } from "drizzle-orm";
  * Curated stock photo pool — real forestry mulching machines in diverse settings.
  * All files are JPEG. URLs are /manus-storage/* paths served via the internal proxy.
  */
+// All photos are JPEG and confirmed uploaded to storage.
 export const STOCK_PHOTO_POOL: Array<{ url: string; tags: string[]; brand: string | null; description: string }> = [
-  { url: "/manus-storage/mulcher-woods-01_8d716f19.jpg", tags: ["woods", "trees", "forestry", "mulch", "brush", "cedar", "general"], brand: "takeuchi", description: "Takeuchi tracked loader in wooded area, bare winter trees" },
-  { url: "/manus-storage/mulcher-saplings-02_77917022.jpg", tags: ["saplings", "trees", "forestry", "brush", "cedar", "general"], brand: null, description: "Compact track loader pushing through dense saplings" },
-  { url: "/manus-storage/mulcher-dense-brush-03_202106dc.jpg", tags: ["brush", "dense", "overgrown", "fence", "general", "reclaim"], brand: null, description: "Mulcher working through dense green brush" },
-  { url: "/manus-storage/mulcher-slope-04_8c84d273.jpg", tags: ["slope", "hillside", "terrain", "forestry", "general"], brand: null, description: "Large red tracked mulcher on steep hillside, autumn" },
-  { url: "/manus-storage/mulcher-cat-lot-06_dc8ba8e9.jpg", tags: ["lot", "site prep", "build", "develop", "cleared", "general"], brand: "cat", description: "CAT 279D3 compact track loader on freshly cleared lot" },
-  { url: "/manus-storage/mulcher-field-07_eb802c1b.jpg", tags: ["field", "pasture", "reclaim", "open", "general"], brand: null, description: "Red tracked mulcher in large open field" },
-  { url: "/manus-storage/mulcher-invasive-08_da8a3269.jpg", tags: ["invasive", "lot", "cleared", "site prep", "general", "reclaim"], brand: "kubota", description: "Orange Kubota tracked mulcher on cleared lot" },
-  { url: "/manus-storage/mulcher-row-09_95c0bb87.jpg", tags: ["row", "right-of-way", "fence", "road", "brush", "general"], brand: "bobcat", description: "White Bobcat clearing brush along roadside right-of-way" },
+  { url: "/manus-storage/mulcher-woods-dark-01_2a4a4caa.jpg", tags: ["woods", "trees", "forestry", "mulch", "brush", "cedar", "general"], brand: null, description: "Dark tracked mulcher working through wooded area" },
+  { url: "/manus-storage/mulcher-woods-02_5dfdc8c7.jpg", tags: ["woods", "trees", "forestry", "brush", "cedar", "general"], brand: "cat", description: "CAT mulcher in spring woodland clearing" },
+  { url: "/manus-storage/mulcher-yellow-brush-03_44097b62.jpg", tags: ["brush", "dense", "overgrown", "general", "reclaim", "saplings"], brand: null, description: "Yellow loader with mulcher head pushing through dry dense brush" },
+  { url: "/manus-storage/mulcher-bobcat-woods-04_b68a8c6a.jpg", tags: ["woods", "trees", "forestry", "general", "lot", "site prep"], brand: "bobcat", description: "White Bobcat compact loader clearing wooded area" },
+  { url: "/manus-storage/mulcher-slope-dense-05_b6e2976c.jpg", tags: ["slope", "hillside", "terrain", "dense", "brush", "general"], brand: null, description: "Orange/black mulcher on steep slope through dense green brush" },
+  { url: "/manus-storage/mulcher-cat-trees-06_037d311c.jpg", tags: ["woods", "trees", "forestry", "lot", "general", "site prep"], brand: "cat", description: "CAT mulcher working through tree farm, open woodland" },
+  { url: "/manus-storage/mulcher-terex-07_7ac7d3c9.jpg", tags: ["field", "pasture", "reclaim", "open", "general", "brush"], brand: null, description: "White Terex mulcher in open field, dusty conditions" },
+  { url: "/manus-storage/mulcher-robotic-slope-08_d8cf9e33.jpg", tags: ["slope", "hillside", "terrain", "forestry", "general", "steep"], brand: null, description: "Orange robotic tracked mulcher on steep slope, dramatic lighting" },
+  { url: "/manus-storage/mulcher-invasive-09_c8464421.jpg", tags: ["invasive", "lot", "cleared", "site prep", "general", "reclaim", "brush"], brand: null, description: "Orange mulcher clearing invasive species, open site" },
+  { url: "/manus-storage/mulcher-fae-slope-10_b8d4fccc.jpg", tags: ["slope", "hillside", "terrain", "row", "right-of-way", "general"], brand: null, description: "FAE tracked mulcher on dry hillside slope" },
+  { url: "/manus-storage/mulcher-field-01_8d6708fa.jpg", tags: ["field", "pasture", "reclaim", "open", "general", "wide"], brand: null, description: "Red mulcher in wide open NW Missouri field, blue sky" },
 ];
 
 /** Pick a stock photo based on job context and optional brand preference. */
@@ -895,6 +899,11 @@ export const socialPostsRouter = router({
         .where(and(eq(socialPosts.id, input.id), eq(socialPosts.userId, ctx.user.id)));
       return { success: true };
     }),
+
+  /** Return the full stock photo pool so the frontend can render a swap UI */
+  getPhotoPool: ownerProcedure.query(() => {
+    return STOCK_PHOTO_POOL.map((p) => ({ url: p.url, brand: p.brand, description: p.description }));
+  }),
 });
 
 // ─── Ad Spend sub-router ──────────────────────────────────────────────────────

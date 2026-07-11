@@ -2792,6 +2792,8 @@ const settingsRouter = router({
       promoBannerEnabled: z.boolean().optional(),
       promoBannerText: z.string().max(300).optional(),
       promoBannerColor: z.enum(["orange", "green", "blue", "red"]).optional(),
+      /** Preferred equipment brand for ad stock photo selection */
+      preferredMachineBrand: z.enum(["cat", "kubota", "takeuchi", "bobcat", "deere", "other"]).nullable().optional(),
     }))
     .mutation(async ({ input }) => {
       const db = await getDb();

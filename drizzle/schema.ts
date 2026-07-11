@@ -471,6 +471,12 @@ export const businessSettings = mysqlTable("business_settings", {
   promoBannerColor: varchar("promoBannerColor", { length: 20 }).default("orange"),
   /** Zapier / webhook API key — auto-generated on first use, used to authenticate POST /api/webhooks/leads */
   webhookApiKey: varchar("webhookApiKey", { length: 64 }),
+  /**
+   * Preferred equipment brand for ad stock photo selection.
+   * When set, photos tagged with this brand score higher in pickStockPhoto.
+   * Values: 'cat' | 'kubota' | 'takeuchi' | 'bobcat' | 'deere' | 'other' | null
+   */
+  preferredMachineBrand: varchar("preferredMachineBrand", { length: 30 }),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
 export type BusinessSettings = typeof businessSettings.$inferSelect;

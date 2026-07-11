@@ -578,6 +578,12 @@ export default function Ads() {
   // Active image: uploaded photo takes priority over AI-generated
   const activeImageUrl = uploadedImageUrl ?? (platform === "all" ? generatedAll?.imageUrl : generated?.imageUrl) ?? null;
 
+  // Stock photo swap state — null means use the auto-selected image
+  const [showPhotoSwapper, setShowPhotoSwapper] = useState(false);
+  const { data: photoPool } = trpc.ops.socialPosts.getPhotoPool.useQuery(undefined, {
+    staleTime: Infinity, // pool never changes at runtime
+  });
+
   // Copy settings (persisted per-platform hashtags + site URL)
   const { data: copySettingsData } = trpc.ops.getCopySettings.useQuery(undefined, {
     staleTime: 10 * 60 * 1000,
@@ -2028,17 +2034,65 @@ export default function Ads() {
               <div className="flex items-center justify-between">
                 <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Image</label>
                 <div className="flex items-center gap-2">
+                  {/* Swap stock photo button — shown when an auto-selected stock photo is active */}
+                  {!uploadedImageUrl && activeImageUrl && photoPool && photoPool.length > 1 && (
+                    <button
+                      onClick={() => setShowPhotoSwapper(!showPhotoSwapper)}
+                      className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                    >
+                      <RefreshCw size={12} />{showPhotoSwapper ? "Close swap" : "Swap photo"}
+                    </button>
+                  )}
                   <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handlePhotoUpload} />
                   <button onClick={() => fileInputRef.current?.click()}
                     className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors">
                     <Upload size={12} />{isUploading ? "Uploading..." : "Upload photo"}
                   </button>
                   {uploadedImageUrl && (
-                    <button onClick={() => { setUploadedImageUrl(null); setUploadedImageKey(null); setSavedPostId(null); setPrefillPhotoUrls([]); }}
+                    <button onClick={() => { setUploadedImageUrl(null); setUploadedImageKey(null); setSavedPostId(null); setPrefillPhotoUrls([]); setShowPhotoSwapper(false); }}
                       className="text-xs text-red-400 hover:underline">Remove</button>
                   )}
                 </div>
               </div>
+
+              {/* Stock photo swapper — thumbnail grid from the curated pool */}
+              {showPhotoSwapper && photoPool && (
+                <div className="space-y-2">
+                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Stock Photos — click to use</p>
+                  <div className="grid grid-cols-4 gap-2">
+                    {photoPool.map((photo, i) => (
+                      <button
+                        key={i}
+                        title={photo.description}
+                        onClick={() => {
+                          // Override the auto-selected image by setting it as the uploaded URL
+                          // (uploadedImageUrl takes priority in activeImageUrl derivation)
+                          setUploadedImageUrl(photo.url);
+                          setUploadedImageKey(null);
+                          setSavedPostId(null);
+                          setShowPhotoSwapper(false);
+                        }}
+                        className={`rounded-lg overflow-hidden border-2 transition-colors ${
+                          activeImageUrl === photo.url ? "border-primary" : "border-transparent hover:border-primary/50"
+                        }`}
+                      >
+                        <img
+                          src={photo.url}
+                          alt={photo.description}
+                          className="w-full aspect-square object-cover"
+                          loading="lazy"
+                        />
+                        {photo.brand && (
+                          <span className="block text-[9px] text-center text-muted-foreground py-0.5 capitalize bg-secondary/60">
+                            {photo.brand}
+                          </span>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {/* Job photo picker — shown when photos were auto-attached from Send to Ads */}
               {prefillPhotoUrls.length > 1 && (
                 <div className="space-y-1.5">
@@ -2058,8 +2112,22 @@ export default function Ads() {
                   </div>
                 </div>
               )}
+
               {activeImageUrl && (
-                <img src={activeImageUrl} alt="Ad image" className="rounded-xl max-h-64 object-cover border border-border" />
+                <div className="space-y-1">
+                  <img src={activeImageUrl} alt="Ad image" className="rounded-xl max-h-64 w-full object-cover border border-border" />
+                  {!uploadedImageUrl && generated?.imageUrl && (
+                    <p className="text-[10px] text-muted-foreground text-right">
+                      Auto-selected stock photo — click "Swap photo" to choose a different one
+                    </p>
+                  )}
+                </div>
+              )}
+              {!activeImageUrl && (
+                <div className="rounded-xl border border-dashed border-border bg-secondary/30 p-6 text-center">
+                  <ImageIcon size={24} className="mx-auto text-muted-foreground opacity-40 mb-2" />
+                  <p className="text-xs text-muted-foreground">No image. Toggle Image on and regenerate, or upload a photo.</p>
+                </div>
               )}
             </div>
 

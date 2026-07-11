@@ -2247,3 +2247,7 @@
 - [x] Add weighStationStatus tRPC procedure: scrape coopsareopen.com for TN station open/closed status with timestamp
 - [x] Add dieselPrice tRPC procedure: fetch current TN diesel price from EIA public API
 - [x] Update WeighStationPlanner UI: open/closed badge on each weigh station marker and card, fuel cost estimator panel with adjustable MPG input
+- [x] Replace AI-only ad machine images with a curated pool of forestry mulching stock photos
+- [x] Update ads generator to select varied forestry mulching stock photos by job context instead of repeating one machine with different backgrounds
+- [x] Add stock photo preview panel to Ads page: show auto-selected photo after generation, with prev/next swap buttons to cycle through the full pool
+- [x] Add machine brand preference setting to Ops Settings: dropdown to select preferred equipment brand (CAT, Kubota, Takeuchi, Bobcat, Other), stored in DB, used to boost matching photos in ad selection
