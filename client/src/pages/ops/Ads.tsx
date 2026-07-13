@@ -46,6 +46,7 @@ interface GeneratedAd {
   headline: string;
   imagePrompt: string;
   imageUrl: string | null;
+  imageDisplayUrl: string | null;
 }
 
 interface GeneratedVariant {
@@ -63,6 +64,7 @@ interface GeneratedAllAd {
   google: { draft: string; headline: string; description: string };
   imagePrompt: string;
   imageUrl: string | null;
+  imageDisplayUrl: string | null;
 }
 
 // ─── Copy helper ────────────────────────────────────────────────────────────
@@ -557,7 +559,7 @@ export default function Ads() {
         setPlatform(prefill.platform as Platform);
       }
       if (prefill.draft) {
-        setGenerated({ draft: prefill.draft, headline: prefill.jobTitle ? `${prefill.jobTitle} — Noland Earthworks` : "Noland Earthworks", imagePrompt: "", imageUrl: null });
+        setGenerated({ draft: prefill.draft, headline: prefill.jobTitle ? `${prefill.jobTitle} — Noland Earthworks` : "Noland Earthworks", imagePrompt: "", imageUrl: null, imageDisplayUrl: null });
         setEditedDraft(prefill.draft);
         setEditedHeadline(prefill.jobTitle ? `${prefill.jobTitle} — Noland Earthworks` : "Noland Earthworks");
         if (prefill.jobTitle) setJobDescription(`Job: ${prefill.jobTitle}${prefill.jobClient ? ` | Client: ${prefill.jobClient}` : ""}`);
@@ -576,12 +578,15 @@ export default function Ads() {
   }, []);
 
   // Active image: uploaded photo takes priority over AI-generated
+  // imageUrl = internal /manus-storage/* path (used for posting — server resolves it)
+  // imageDisplayUrl = presigned URL returned by server (used for <img> display in browser)
   const activeImageUrl = uploadedImageUrl ?? (platform === "all" ? generatedAll?.imageUrl : generated?.imageUrl) ?? null;
+  const activeDisplayUrl = uploadedImageUrl ?? (platform === "all" ? generatedAll?.imageDisplayUrl : generated?.imageDisplayUrl) ?? null;
 
   // Stock photo swap state — null means use the auto-selected image
   const [showPhotoSwapper, setShowPhotoSwapper] = useState(false);
   const { data: photoPool } = trpc.ops.socialPosts.getPhotoPool.useQuery(undefined, {
-    staleTime: Infinity, // pool never changes at runtime
+    staleTime: 5 * 60 * 1000, // presigned URLs expire, refresh every 5 min
   });
 
   // Copy settings (persisted per-platform hashtags + site URL)
@@ -1173,7 +1178,7 @@ export default function Ads() {
     const v = abVariants[idx];
     if (!v) return;
     setSelectedVariantIdx(idx);
-    setGenerated({ draft: v.draft, headline: v.headline, imagePrompt: v.imagePrompt, imageUrl: null });
+    setGenerated({ draft: v.draft, headline: v.headline, imagePrompt: v.imagePrompt, imageUrl: null, imageDisplayUrl: null });
     setEditedDraft(v.draft);
     setEditedHeadline(v.headline);
     setSavedPostId(null);
@@ -2065,8 +2070,8 @@ export default function Ads() {
                         key={i}
                         title={photo.description}
                         onClick={() => {
-                          // Override the auto-selected image by setting it as the uploaded URL
-                          // (uploadedImageUrl takes priority in activeImageUrl derivation)
+                          // Store the internal /manus-storage/* URL for posting (server resolves it)
+                          // The server will fetch bytes server-side so the internal path is fine
                           setUploadedImageUrl(photo.url);
                           setUploadedImageKey(null);
                           setSavedPostId(null);
@@ -2077,7 +2082,7 @@ export default function Ads() {
                         }`}
                       >
                         <img
-                          src={photo.url}
+                          src={photo.displayUrl ?? photo.url}
                           alt={photo.description}
                           className="w-full aspect-square object-cover"
                           loading="lazy"
@@ -2115,7 +2120,7 @@ export default function Ads() {
 
               {activeImageUrl && (
                 <div className="space-y-1">
-                  <img src={activeImageUrl} alt="Ad image" className="rounded-xl max-h-64 w-full object-cover border border-border" />
+                  <img src={activeDisplayUrl ?? activeImageUrl} alt="Ad image" className="rounded-xl max-h-64 w-full object-cover border border-border" />
                   {!uploadedImageUrl && generated?.imageUrl && (
                     <p className="text-[10px] text-muted-foreground text-right">
                       Auto-selected stock photo — click "Swap photo" to choose a different one

@@ -265,11 +265,23 @@ export const socialPostsRouter = router({
       if (!parsed.draft) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "AI did not return ad copy. Try again." });
 
       let imageUrl: string | null = null;
+      let imageDisplayUrl: string | null = null;
       if (input.generateImage) {
         imageUrl = pickStockPhoto(input.jobDescription, input.adTypes);
+        if (imageUrl?.startsWith("/manus-storage/")) {
+          try {
+            const key = imageUrl.replace(/^\/manus-storage\//, "");
+            const { url } = await storageGet(key);
+            imageDisplayUrl = url;
+          } catch {
+            imageDisplayUrl = imageUrl;
+          }
+        } else {
+          imageDisplayUrl = imageUrl;
+        }
       }
 
-      return { draft: parsed.draft, headline: parsed.headline, imagePrompt: parsed.imagePrompt, imageUrl };
+      return { draft: parsed.draft, headline: parsed.headline, imagePrompt: parsed.imagePrompt, imageUrl, imageDisplayUrl };
     }),
 
   /** Generate separate, platform-optimized ad copy for all five platforms in one call */
@@ -398,8 +410,20 @@ export const socialPostsRouter = router({
       if (!parsed.facebook?.draft) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "AI did not return ad copy. Try again." });
 
       let imageUrl: string | null = null;
+      let imageDisplayUrl: string | null = null;
       if (input.generateImage) {
         imageUrl = pickStockPhoto(input.jobDescription, input.adTypes);
+        if (imageUrl?.startsWith("/manus-storage/")) {
+          try {
+            const key = imageUrl.replace(/^\/manus-storage\//, "");
+            const { url } = await storageGet(key);
+            imageDisplayUrl = url;
+          } catch {
+            imageDisplayUrl = imageUrl;
+          }
+        } else {
+          imageDisplayUrl = imageUrl;
+        }
       }
 
       return {
@@ -410,6 +434,7 @@ export const socialPostsRouter = router({
         google: { draft: parsed.google?.draft ?? "", headline: parsed.google?.headline ?? "", description: parsed.google?.description ?? "" },
         imagePrompt: parsed.imagePrompt,
         imageUrl,
+        imageDisplayUrl,
       };
     }),
 
@@ -900,9 +925,24 @@ export const socialPostsRouter = router({
       return { success: true };
     }),
 
-  /** Return the full stock photo pool so the frontend can render a swap UI */
-  getPhotoPool: ownerProcedure.query(() => {
-    return STOCK_PHOTO_POOL.map((p) => ({ url: p.url, brand: p.brand, description: p.description }));
+  /** Return the full stock photo pool with presigned display URLs for the frontend */
+  getPhotoPool: ownerProcedure.query(async () => {
+    const resolved = await Promise.all(
+      STOCK_PHOTO_POOL.map(async (p) => {
+        let displayUrl = p.url;
+        try {
+          if (p.url.startsWith("/manus-storage/")) {
+            const key = p.url.replace(/^\/manus-storage\//, "");
+            const { url } = await storageGet(key);
+            displayUrl = url;
+          }
+        } catch {
+          // Fall back to the internal path — display will fail but posting still works
+        }
+        return { url: p.url, displayUrl, brand: p.brand, description: p.description };
+      })
+    );
+    return resolved;
   }),
 });
 
