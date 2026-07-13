@@ -17,21 +17,20 @@ import { and, desc, eq } from "drizzle-orm";
 
 /**
  * Curated stock photo pool — real forestry mulching machines in diverse settings.
- * All files are JPEG. URLs are /manus-storage/* paths served via the internal proxy.
+ * All files are JPEG. URLs are permanent public CDN URLs (no auth required).
  */
-// All photos are JPEG and confirmed uploaded to storage.
 export const STOCK_PHOTO_POOL: Array<{ url: string; tags: string[]; brand: string | null; description: string }> = [
-  { url: "/manus-storage/mulcher-woods-dark-01_2a4a4caa.jpg", tags: ["woods", "trees", "forestry", "mulch", "brush", "cedar", "general"], brand: null, description: "Dark tracked mulcher working through wooded area" },
-  { url: "/manus-storage/mulcher-woods-02_5dfdc8c7.jpg", tags: ["woods", "trees", "forestry", "brush", "cedar", "general"], brand: "cat", description: "CAT mulcher in spring woodland clearing" },
-  { url: "/manus-storage/mulcher-yellow-brush-03_44097b62.jpg", tags: ["brush", "dense", "overgrown", "general", "reclaim", "saplings"], brand: null, description: "Yellow loader with mulcher head pushing through dry dense brush" },
-  { url: "/manus-storage/mulcher-bobcat-woods-04_b68a8c6a.jpg", tags: ["woods", "trees", "forestry", "general", "lot", "site prep"], brand: "bobcat", description: "White Bobcat compact loader clearing wooded area" },
-  { url: "/manus-storage/mulcher-slope-dense-05_b6e2976c.jpg", tags: ["slope", "hillside", "terrain", "dense", "brush", "general"], brand: null, description: "Orange/black mulcher on steep slope through dense green brush" },
-  { url: "/manus-storage/mulcher-cat-trees-06_037d311c.jpg", tags: ["woods", "trees", "forestry", "lot", "general", "site prep"], brand: "cat", description: "CAT mulcher working through tree farm, open woodland" },
-  { url: "/manus-storage/mulcher-terex-07_7ac7d3c9.jpg", tags: ["field", "pasture", "reclaim", "open", "general", "brush"], brand: null, description: "White Terex mulcher in open field, dusty conditions" },
-  { url: "/manus-storage/mulcher-robotic-slope-08_d8cf9e33.jpg", tags: ["slope", "hillside", "terrain", "forestry", "general", "steep"], brand: null, description: "Orange robotic tracked mulcher on steep slope, dramatic lighting" },
-  { url: "/manus-storage/mulcher-invasive-09_c8464421.jpg", tags: ["invasive", "lot", "cleared", "site prep", "general", "reclaim", "brush"], brand: null, description: "Orange mulcher clearing invasive species, open site" },
-  { url: "/manus-storage/mulcher-fae-slope-10_b8d4fccc.jpg", tags: ["slope", "hillside", "terrain", "row", "right-of-way", "general"], brand: null, description: "FAE tracked mulcher on dry hillside slope" },
-  { url: "/manus-storage/mulcher-field-01_8d6708fa.jpg", tags: ["field", "pasture", "reclaim", "open", "general", "wide"], brand: null, description: "Red mulcher in wide open NW Missouri field, blue sky" },
+  { url: "https://files.manuscdn.com/user_upload_by_module/session_file/310519663484957999/QiodsoYcXHtJabcv.jpg", tags: ["woods", "trees", "forestry", "mulch", "brush", "cedar", "general"], brand: "takeuchi", description: "Takeuchi tracked mulcher working through wooded area" },
+  { url: "https://files.manuscdn.com/user_upload_by_module/session_file/310519663484957999/aRISdWBRuGXTExCB.jpg", tags: ["woods", "trees", "forestry", "brush", "cedar", "saplings", "general"], brand: null, description: "Compact loader mulcher pushing through dense saplings" },
+  { url: "https://files.manuscdn.com/user_upload_by_module/session_file/310519663484957999/LtZNHbjaEFnEGENh.jpg", tags: ["row", "right-of-way", "brush", "general"], brand: null, description: "Mulcher on right-of-way clearing" },
+  { url: "https://files.manuscdn.com/user_upload_by_module/session_file/310519663484957999/JUYMuBnidStmlGuC.jpg", tags: ["field", "pasture", "reclaim", "open", "general", "wide"], brand: null, description: "Red mulcher in wide open field, blue sky" },
+  { url: "https://files.manuscdn.com/user_upload_by_module/session_file/310519663484957999/WAZazzjcFrVltfHJ.jpg", tags: ["brush", "dense", "overgrown", "general", "reclaim", "saplings"], brand: null, description: "Yellow loader with mulcher head pushing through dry dense brush" },
+  { url: "https://files.manuscdn.com/user_upload_by_module/session_file/310519663484957999/pmUmSiKhsnNBCoOW.jpg", tags: ["slope", "hillside", "terrain", "row", "right-of-way", "general"], brand: null, description: "FAE tracked mulcher on dry hillside slope" },
+  { url: "https://files.manuscdn.com/user_upload_by_module/session_file/310519663484957999/GivYnMHwetfnhimZ.jpg", tags: ["brush", "dense", "mulch", "forestry", "general"], brand: null, description: "Fecon Bull Hog mulcher head working through brush" },
+  { url: "https://files.manuscdn.com/user_upload_by_module/session_file/310519663484957999/uheDZTBsafUTqWcT.jpg", tags: ["brush", "dense", "overgrown", "general", "reclaim"], brand: null, description: "FAE tracked mulcher working through overgrown brush" },
+  { url: "https://files.manuscdn.com/user_upload_by_module/session_file/310519663484957999/dbTIGFKpInxonyIw.jpg", tags: ["woods", "trees", "forestry", "lot", "general", "site prep"], brand: "cat", description: "CAT mulcher in spring woodland clearing" },
+  { url: "https://files.manuscdn.com/user_upload_by_module/session_file/310519663484957999/unkRuyKtCOgaFRqY.jpg", tags: ["lot", "cleared", "site prep", "general", "reclaim", "ranch"], brand: "cat", description: "CAT mulcher clearing ranch/lot area with trees" },
+  { url: "https://files.manuscdn.com/user_upload_by_module/session_file/310519663484957999/GRuAxgdbCiUOraWs.jpg", tags: ["slope", "hillside", "terrain", "forestry", "general", "steep"], brand: null, description: "Machine on steep slope forestry work" },
 ];
 
 /** Pick a stock photo based on job context and optional brand preference. */
@@ -53,9 +52,10 @@ function pickStockPhoto(jobDescription?: string, adTypes?: string[], preferredBr
  * social platforms (Facebook, Instagram) that cannot access private storage URLs.
  */
 async function fetchImageAsBuffer(url: string): Promise<{ buffer: Buffer; contentType: string }> {
+  // All stock photos are public CDN URLs; user-uploaded photos come from storagePut which returns a URL.
+  // If somehow a /manus-storage/ path slips through, resolve it via storageGet.
   let fetchUrl = url;
   if (!url.startsWith("http")) {
-    // Resolve internal /manus-storage/* path to a presigned URL
     const key = url.replace(/^\/manus-storage\//, "");
     const { url: presigned } = await storageGet(key);
     fetchUrl = presigned;
@@ -265,21 +265,11 @@ export const socialPostsRouter = router({
       if (!parsed.draft) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "AI did not return ad copy. Try again." });
 
       let imageUrl: string | null = null;
-      let imageDisplayUrl: string | null = null;
       if (input.generateImage) {
         imageUrl = pickStockPhoto(input.jobDescription, input.adTypes);
-        if (imageUrl?.startsWith("/manus-storage/")) {
-          try {
-            const key = imageUrl.replace(/^\/manus-storage\//, "");
-            const { url } = await storageGet(key);
-            imageDisplayUrl = url;
-          } catch {
-            imageDisplayUrl = imageUrl;
-          }
-        } else {
-          imageDisplayUrl = imageUrl;
-        }
       }
+      // imageDisplayUrl === imageUrl because all stock photos are now permanent public CDN URLs
+      const imageDisplayUrl = imageUrl;
 
       return { draft: parsed.draft, headline: parsed.headline, imagePrompt: parsed.imagePrompt, imageUrl, imageDisplayUrl };
     }),
@@ -410,21 +400,11 @@ export const socialPostsRouter = router({
       if (!parsed.facebook?.draft) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "AI did not return ad copy. Try again." });
 
       let imageUrl: string | null = null;
-      let imageDisplayUrl: string | null = null;
       if (input.generateImage) {
         imageUrl = pickStockPhoto(input.jobDescription, input.adTypes);
-        if (imageUrl?.startsWith("/manus-storage/")) {
-          try {
-            const key = imageUrl.replace(/^\/manus-storage\//, "");
-            const { url } = await storageGet(key);
-            imageDisplayUrl = url;
-          } catch {
-            imageDisplayUrl = imageUrl;
-          }
-        } else {
-          imageDisplayUrl = imageUrl;
-        }
       }
+      // imageDisplayUrl === imageUrl because all stock photos are now permanent public CDN URLs
+      const imageDisplayUrl = imageUrl;
 
       return {
         facebook: { draft: parsed.facebook.draft, headline: parsed.facebook.headline },
@@ -926,23 +906,9 @@ export const socialPostsRouter = router({
     }),
 
   /** Return the full stock photo pool with presigned display URLs for the frontend */
-  getPhotoPool: ownerProcedure.query(async () => {
-    const resolved = await Promise.all(
-      STOCK_PHOTO_POOL.map(async (p) => {
-        let displayUrl = p.url;
-        try {
-          if (p.url.startsWith("/manus-storage/")) {
-            const key = p.url.replace(/^\/manus-storage\//, "");
-            const { url } = await storageGet(key);
-            displayUrl = url;
-          }
-        } catch {
-          // Fall back to the internal path — display will fail but posting still works
-        }
-        return { url: p.url, displayUrl, brand: p.brand, description: p.description };
-      })
-    );
-    return resolved;
+  getPhotoPool: ownerProcedure.query(() => {
+    // All stock photos are permanent public CDN URLs — no presigning needed
+    return STOCK_PHOTO_POOL.map(p => ({ url: p.url, displayUrl: p.url, brand: p.brand, description: p.description }));
   }),
 });
 
