@@ -2271,3 +2271,8 @@
 ## AI FB Outreach Generator (v1.0.48)
 - [x] Add generateFbOutreach tRPC procedure to prospectingRouter: takes prospect id, uses invokeLLM to write a short personalized Facebook Messenger message using prospect summary, notes, location, acreage, margin tier, and post snippet
 - [x] Add "AI Message" button next to "Message on FB" on each prospect card; clicking opens a modal that auto-generates the message, shows a loading state, then displays an editable textarea with Regenerate and Copy buttons
+
+## AI FB Outreach Modal Enhancements (v1.0.49)
+- [x] Add tone selector dropdown (Casual, Professional, Urgent) to AI message modal; pass tone to generateFbOutreach procedure and adjust LLM prompt accordingly
+- [x] Add Save to Notes button in modal that appends the final generated message to the prospect's notes field with a timestamp prefix
+- [x] Auto-replace [PHONE] placeholder in generated message with OWNER_PHONE env var on the server before returning (falls back to Twilio from number, then hardcoded 615-406-4819)

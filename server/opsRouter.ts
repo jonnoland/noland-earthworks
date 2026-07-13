@@ -3984,15 +3984,21 @@ Do not fabricate prospects. Only include real posts you actually found and visit
       return rows.map(r => ({ source: r.source, count: Number(r.count) }));
     }),
 
-  // Generate a personalized Facebook Messenger outreach message using the prospect's full context
+    // Generate a personalized Facebook Messenger outreach message using the prospect's full context
   generateFbOutreach: ownerProcedure
-    .input(z.object({ id: z.number() }))
+    .input(z.object({
+      id: z.number(),
+      tone: z.enum(["casual", "professional", "urgent"]).default("casual"),
+    }))
     .mutation(async ({ input }) => {
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
       const rows = await db.select().from(prospectingLeads).where(eq(prospectingLeads.id, input.id)).limit(1);
       const p = rows[0];
       if (!p) throw new TRPCError({ code: "NOT_FOUND", message: "Prospect not found" });
+
+      // Resolve owner phone — use OWNER_PHONE env, fall back to Twilio from number
+      const ownerPhone = ENV.ownerPhone || ENV.twilioFromNumber || "615-406-4819";
 
       const contextParts: string[] = [];
       if (p.contactName) contextParts.push(`Name: ${p.contactName}`);
@@ -4004,28 +4010,55 @@ Do not fabricate prospects. Only include real posts you actually found and visit
       if (p.notes) contextParts.push(`Additional notes: ${p.notes}`);
       contextParts.push(`Source: ${p.source}`);
 
-      const prompt = `You are writing a short, personalized Facebook Messenger outreach message for Jon Noland, owner of Noland Earthworks LLC — a veteran-owned forestry mulching and land management company in Middle Tennessee.
+      const toneInstructions: Record<string, string> = {
+        casual: "Casual, warm, southern — conversational and friendly. 2-3 sentences max. Low-pressure.",
+        professional: "Professional and respectful, but still approachable and direct. 3-4 sentences. Clearly state who you are and what you offer. Still personal, not corporate.",
+        urgent: "Convey a sense of timeliness — mention that you have availability soon or that the season is ideal for this kind of work. Still friendly, not pushy. 2-3 sentences.",
+      };
+
+      const prompt = `You are writing a personalized Facebook Messenger outreach message for Jon Noland, owner of Noland Earthworks LLC — a veteran-owned forestry mulching and land management company in Middle Tennessee.
 
 Prospect context:
 ${contextParts.join("\n")}
 
-Write a SHORT, casual first-contact Facebook Messenger message from Jon. Rules:
-- Casual, warm, southern — not corporate or salesy
-- 2-3 sentences maximum — this is a Messenger message, not an email
+Tone: ${input.tone}
+Tone instructions: ${toneInstructions[input.tone]}
+
+Rules that apply to ALL tones:
 - Reference something specific from what they posted or their situation (brush, overgrown land, acreage, location, etc.)
 - Mention forestry mulching if relevant to their situation
 - End with a low-pressure offer to come take a look or give them a call
 - No emojis. No hashtags. No filler phrases like "I'd love to help" or "we're passionate about"
-- Sign off as Jon, Noland Earthworks, with phone number placeholder [PHONE]
+- Use the phone number placeholder [PHONE] in the sign-off
 - Make it feel like a real person reached out, not a bot
-- If notes are provided, incorporate any relevant details from the notes
+- If notes are provided, incorporate any relevant details
 Return only the message text, no preamble or explanation.`;
 
       const result = await invokeLLM({ messages: [{ role: "user", content: prompt }] });
       const raw = result?.choices?.[0]?.message?.content;
-      const message = typeof raw === "string" ? raw.trim() : null;
+      let message = typeof raw === "string" ? raw.trim() : null;
       if (!message) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "AI did not return a message. Try again." });
+
+      // Auto-replace [PHONE] with the owner's real phone number
+      message = message.replace(/\[PHONE\]/gi, ownerPhone);
+
       return { message };
+    }),
+
+  // Append a message to the prospect's notes field (used by Save to Notes in the AI modal)
+  appendToNotes: ownerProcedure
+    .input(z.object({ id: z.number(), text: z.string().min(1) }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+      const rows = await db.select({ notes: prospectingLeads.notes }).from(prospectingLeads).where(eq(prospectingLeads.id, input.id)).limit(1);
+      const existing = rows[0]?.notes ?? "";
+      const timestamp = new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+      const appended = existing
+        ? `${existing}\n\n[AI Draft ${timestamp}]\n${input.text}`
+        : `[AI Draft ${timestamp}]\n${input.text}`;
+      await db.update(prospectingLeads).set({ notes: appended }).where(eq(prospectingLeads.id, input.id));
+      return { ok: true };
     }),
 });
 export const opsRouter = router({

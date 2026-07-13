@@ -124,6 +124,7 @@ export default function Prospecting() {
   const [fbOutreachTarget, setFbOutreachTarget] = useState<Prospect | null>(null);
   const [fbOutreachText, setFbOutreachText] = useState("");
   const [fbOutreachGeneratingId, setFbOutreachGeneratingId] = useState<number | null>(null);
+  const [fbOutreachTone, setFbOutreachTone] = useState<"casual" | "professional" | "urgent">("casual");
 
   const { data: prospects = [], isLoading, refetch } = trpc.ops.prospecting.list.useQuery(
     { status: filter === "all" ? undefined : filter },
@@ -198,7 +199,7 @@ export default function Prospecting() {
   });
 
   const generateFbOutreach = trpc.ops.prospecting.generateFbOutreach.useMutation({
-    onSuccess: (res, vars) => {
+    onSuccess: (res) => {
       setFbOutreachText(res.message);
       setFbOutreachGeneratingId(null);
     },
@@ -208,11 +209,19 @@ export default function Prospecting() {
     },
   });
 
+  const appendToNotes = trpc.ops.prospecting.appendToNotes.useMutation({
+    onSuccess: () => {
+      invalidateAll();
+      toast.success("Message saved to notes.");
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
   function openFbOutreach(p: Prospect) {
     setFbOutreachTarget(p);
     setFbOutreachText("");
     setFbOutreachGeneratingId(p.id);
-    generateFbOutreach.mutate({ id: p.id });
+    generateFbOutreach.mutate({ id: p.id, tone: fbOutreachTone });
   }
 
   const sendSms = trpc.ops.leads.sendDirectSms.useMutation({
@@ -787,10 +796,34 @@ export default function Prospecting() {
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-3">
+            {/* Tone selector */}
+            <div className="flex items-center gap-3">
+              <label className="text-xs text-zinc-400 shrink-0">Tone</label>
+              <div className="flex gap-1.5">
+                {(["casual", "professional", "urgent"] as const).map((t) => (
+                  <button
+                    key={t}
+                    onClick={() => setFbOutreachTone(t)}
+                    className={cn(
+                      "px-3 py-1 rounded text-xs font-medium transition-colors border",
+                      fbOutreachTone === t
+                        ? t === "casual" ? "bg-blue-700 border-blue-600 text-white"
+                          : t === "professional" ? "bg-zinc-600 border-zinc-500 text-white"
+                          : "bg-red-800 border-red-700 text-white"
+                        : "bg-zinc-800 border-zinc-700 text-zinc-400 hover:text-white hover:bg-zinc-700"
+                    )}
+                  >
+                    {t.charAt(0).toUpperCase() + t.slice(1)}
+                  </button>
+                ))}
+              </div>
+            </div>
+
             <p className="text-xs text-zinc-400">
               AI-generated based on the prospect&apos;s post, summary, location, acreage, and notes.
-              Edit before sending. Replace <span className="font-mono text-zinc-300">[PHONE]</span> with your number.
+              Your phone number is filled in automatically.
             </p>
+
             {generateFbOutreach.isPending ? (
               <div className="flex items-center gap-2 py-6 text-zinc-400 text-sm">
                 <Sparkles className="h-4 w-4 animate-pulse text-purple-400" />
@@ -809,7 +842,7 @@ export default function Prospecting() {
               <p className="text-xs text-zinc-500 text-right">{fbOutreachText.length} chars</p>
             )}
           </div>
-          <DialogFooter className="gap-2">
+          <DialogFooter className="gap-2 flex-wrap">
             <Button
               variant="outline"
               onClick={() => { setFbOutreachTarget(null); setFbOutreachText(""); }}
@@ -825,13 +858,26 @@ export default function Prospecting() {
                     if (fbOutreachTarget) {
                       setFbOutreachText("");
                       setFbOutreachGeneratingId(fbOutreachTarget.id);
-                      generateFbOutreach.mutate({ id: fbOutreachTarget.id });
+                      generateFbOutreach.mutate({ id: fbOutreachTarget.id, tone: fbOutreachTone });
                     }
                   }}
                   className="border-purple-700 text-purple-300 hover:text-white"
                 >
                   <Sparkles className="h-3.5 w-3.5 mr-1.5" />
                   Regenerate
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    if (fbOutreachTarget) {
+                      appendToNotes.mutate({ id: fbOutreachTarget.id, text: fbOutreachText });
+                    }
+                  }}
+                  disabled={appendToNotes.isPending}
+                  className="border-zinc-600 text-zinc-300 hover:text-white"
+                >
+                  <Pencil className="h-3.5 w-3.5 mr-1.5" />
+                  {appendToNotes.isPending ? "Saving..." : "Save to Notes"}
                 </Button>
                 <Button
                   onClick={() => {
