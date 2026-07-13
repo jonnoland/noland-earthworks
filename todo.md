@@ -2276,3 +2276,7 @@
 - [x] Add tone selector dropdown (Casual, Professional, Urgent) to AI message modal; pass tone to generateFbOutreach procedure and adjust LLM prompt accordingly
 - [x] Add Save to Notes button in modal that appends the final generated message to the prospect's notes field with a timestamp prefix
 - [x] Auto-replace [PHONE] placeholder in generated message with OWNER_PHONE env var on the server before returning (falls back to Twilio from number, then hardcoded 615-406-4819)
+
+## AI FB Outreach Modal UX (v1.0.50)
+- [x] Replace the plain loading text with a skeleton animation (5 shimmer lines of varying widths) inside the modal while the AI is generating
+- [x] Add optional custom instructions input field below the tone selector; value passed to generateFbOutreach and injected into LLM prompt as "Additional instructions from Jon"

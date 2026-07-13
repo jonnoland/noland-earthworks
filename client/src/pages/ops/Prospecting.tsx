@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Radar,
   ExternalLink,
@@ -125,6 +126,7 @@ export default function Prospecting() {
   const [fbOutreachText, setFbOutreachText] = useState("");
   const [fbOutreachGeneratingId, setFbOutreachGeneratingId] = useState<number | null>(null);
   const [fbOutreachTone, setFbOutreachTone] = useState<"casual" | "professional" | "urgent">("casual");
+  const [fbCustomInstructions, setFbCustomInstructions] = useState("");
 
   const { data: prospects = [], isLoading, refetch } = trpc.ops.prospecting.list.useQuery(
     { status: filter === "all" ? undefined : filter },
@@ -221,7 +223,7 @@ export default function Prospecting() {
     setFbOutreachTarget(p);
     setFbOutreachText("");
     setFbOutreachGeneratingId(p.id);
-    generateFbOutreach.mutate({ id: p.id, tone: fbOutreachTone });
+    generateFbOutreach.mutate({ id: p.id, tone: fbOutreachTone, customInstructions: fbCustomInstructions.trim() || undefined });
   }
 
   const sendSms = trpc.ops.leads.sendDirectSms.useMutation({
@@ -819,15 +821,34 @@ export default function Prospecting() {
               </div>
             </div>
 
+            {/* Optional custom instructions */}
+            <div className="space-y-1">
+              <label className="text-xs text-zinc-400">Custom instructions <span className="text-zinc-600">(optional)</span></label>
+              <Input
+                value={fbCustomInstructions}
+                onChange={(e) => setFbCustomInstructions(e.target.value)}
+                placeholder="e.g. mention we have availability next week, keep it under 3 sentences"
+                maxLength={500}
+                className="bg-zinc-800 border-zinc-600 text-white text-xs h-8 placeholder:text-zinc-600"
+              />
+            </div>
+
             <p className="text-xs text-zinc-400">
               AI-generated based on the prospect&apos;s post, summary, location, acreage, and notes.
               Your phone number is filled in automatically.
             </p>
 
             {generateFbOutreach.isPending ? (
-              <div className="flex items-center gap-2 py-6 text-zinc-400 text-sm">
-                <Sparkles className="h-4 w-4 animate-pulse text-purple-400" />
-                Writing personalized message...
+              <div className="space-y-2 py-2">
+                <div className="flex items-center gap-2 mb-3 text-zinc-500 text-xs">
+                  <Sparkles className="h-3.5 w-3.5 animate-pulse text-purple-400" />
+                  Writing personalized message...
+                </div>
+                <Skeleton className="h-4 w-full bg-zinc-700/60" />
+                <Skeleton className="h-4 w-5/6 bg-zinc-700/60" />
+                <Skeleton className="h-4 w-4/6 bg-zinc-700/60" />
+                <Skeleton className="h-4 w-full bg-zinc-700/60 mt-2" />
+                <Skeleton className="h-4 w-3/4 bg-zinc-700/60" />
               </div>
             ) : (
               <Textarea
@@ -858,7 +879,7 @@ export default function Prospecting() {
                     if (fbOutreachTarget) {
                       setFbOutreachText("");
                       setFbOutreachGeneratingId(fbOutreachTarget.id);
-                      generateFbOutreach.mutate({ id: fbOutreachTarget.id, tone: fbOutreachTone });
+                      generateFbOutreach.mutate({ id: fbOutreachTarget.id, tone: fbOutreachTone, customInstructions: fbCustomInstructions.trim() || undefined });
                     }
                   }}
                   className="border-purple-700 text-purple-300 hover:text-white"

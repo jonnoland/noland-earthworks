@@ -3989,6 +3989,7 @@ Do not fabricate prospects. Only include real posts you actually found and visit
     .input(z.object({
       id: z.number(),
       tone: z.enum(["casual", "professional", "urgent"]).default("casual"),
+      customInstructions: z.string().max(500).optional(),
     }))
     .mutation(async ({ input }) => {
       const db = await getDb();
@@ -4032,6 +4033,7 @@ Rules that apply to ALL tones:
 - Use the phone number placeholder [PHONE] in the sign-off
 - Make it feel like a real person reached out, not a bot
 - If notes are provided, incorporate any relevant details
+${input.customInstructions ? `\nAdditional instructions from Jon: ${input.customInstructions}` : ""}
 Return only the message text, no preamble or explanation.`;
 
       const result = await invokeLLM({ messages: [{ role: "user", content: prompt }] });
