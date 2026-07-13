@@ -132,6 +132,9 @@ export default function Prospecting() {
   const [fbSaveTemplateName, setFbSaveTemplateName] = useState("");
   const [fbShowSaveTemplate, setFbShowSaveTemplate] = useState(false);
   const [fbShowTemplateMenu, setFbShowTemplateMenu] = useState(false);
+  const [fbEditingTemplateId, setFbEditingTemplateId] = useState<number | null>(null);
+  const [fbEditTemplateName, setFbEditTemplateName] = useState("");
+  const [fbEditTemplateInstructions, setFbEditTemplateInstructions] = useState("");
 
   const { data: prospects = [], isLoading, refetch } = trpc.ops.prospecting.list.useQuery(
     { status: filter === "all" ? undefined : filter },
@@ -230,6 +233,14 @@ export default function Prospecting() {
   });
   const deleteOutreachTemplate = trpc.ops.prospecting.deleteOutreachTemplate.useMutation({
     onSuccess: () => utils.ops.prospecting.listOutreachTemplates.invalidate(),
+    onError: (err) => toast.error(err.message),
+  });
+  const updateOutreachTemplate = trpc.ops.prospecting.updateOutreachTemplate.useMutation({
+    onSuccess: () => {
+      utils.ops.prospecting.listOutreachTemplates.invalidate();
+      setFbEditingTemplateId(null);
+      toast.success("Template updated.");
+    },
     onError: (err) => toast.error(err.message),
   });
 
@@ -865,21 +876,64 @@ export default function Prospecting() {
                           <p className="text-xs text-zinc-500 px-3 py-2">No saved templates yet.</p>
                         ) : (
                           outreachTemplates.map((t) => (
-                            <div key={t.id} className="flex items-center justify-between px-3 py-1.5 hover:bg-zinc-700 group">
-                              <button
-                                type="button"
-                                className="text-xs text-zinc-300 text-left flex-1 truncate"
-                                onClick={() => { setFbCustomInstructions(t.instructions); setFbShowTemplateMenu(false); }}
-                              >
-                                {t.name}
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => deleteOutreachTemplate.mutate({ id: t.id })}
-                                className="text-zinc-600 hover:text-red-400 ml-2 opacity-0 group-hover:opacity-100"
-                              >
-                                <X className="h-3 w-3" />
-                              </button>
+                            <div key={t.id}>
+                              {fbEditingTemplateId === t.id ? (
+                                <div className="px-3 py-2 space-y-1.5 border-b border-zinc-700">
+                                  <Input
+                                    value={fbEditTemplateName}
+                                    onChange={(e) => setFbEditTemplateName(e.target.value)}
+                                    placeholder="Template name"
+                                    maxLength={120}
+                                    className="bg-zinc-700 border-zinc-600 text-white text-xs h-6 placeholder:text-zinc-500"
+                                  />
+                                  <Input
+                                    value={fbEditTemplateInstructions}
+                                    onChange={(e) => setFbEditTemplateInstructions(e.target.value)}
+                                    placeholder="Instructions"
+                                    maxLength={500}
+                                    className="bg-zinc-700 border-zinc-600 text-white text-xs h-6 placeholder:text-zinc-500"
+                                  />
+                                  <div className="flex items-center gap-1.5">
+                                    <Button
+                                      size="sm"
+                                      disabled={!fbEditTemplateName.trim() || !fbEditTemplateInstructions.trim() || updateOutreachTemplate.isPending}
+                                      onClick={() => updateOutreachTemplate.mutate({ id: t.id, name: fbEditTemplateName.trim(), instructions: fbEditTemplateInstructions.trim() })}
+                                      className="h-6 text-xs bg-purple-700 hover:bg-purple-600 text-white px-2"
+                                    >
+                                      {updateOutreachTemplate.isPending ? "Saving..." : "Save"}
+                                    </Button>
+                                    <button type="button" onClick={() => setFbEditingTemplateId(null)} className="text-xs text-zinc-500 hover:text-zinc-300">
+                                      Cancel
+                                    </button>
+                                  </div>
+                                </div>
+                              ) : (
+                                <div className="flex items-center justify-between px-3 py-1.5 hover:bg-zinc-700 group">
+                                  <button
+                                    type="button"
+                                    className="text-xs text-zinc-300 text-left flex-1 truncate"
+                                    onClick={() => { setFbCustomInstructions(t.instructions); setFbShowTemplateMenu(false); }}
+                                  >
+                                    {t.name}
+                                  </button>
+                                  <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100">
+                                    <button
+                                      type="button"
+                                      onClick={() => { setFbEditingTemplateId(t.id); setFbEditTemplateName(t.name); setFbEditTemplateInstructions(t.instructions); }}
+                                      className="text-zinc-500 hover:text-blue-400"
+                                    >
+                                      <Pencil className="h-3 w-3" />
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => deleteOutreachTemplate.mutate({ id: t.id })}
+                                      className="text-zinc-600 hover:text-red-400 ml-0.5"
+                                    >
+                                      <X className="h-3 w-3" />
+                                    </button>
+                                  </div>
+                                </div>
+                              )}
                             </div>
                           ))
                         )}
@@ -946,9 +1000,9 @@ export default function Prospecting() {
               </div>
             ) : (
               <div className="space-y-2">
-                {/* Variation selector tabs */}
+                {/* Variation selector tabs + Regenerate */}
                 {fbOutreachVariations.length > 1 && (
-                  <div className="flex items-center gap-1.5">
+                  <div className="flex items-center gap-1.5 flex-wrap">
                     {fbOutreachVariations.map((_, idx) => (
                       <button
                         key={idx}
@@ -964,7 +1018,23 @@ export default function Prospecting() {
                         Option {idx + 1}
                       </button>
                     ))}
-                    <span className="text-xs text-zinc-600 ml-1">Select a variation to edit</span>
+                    <button
+                      type="button"
+                      disabled={generateFbOutreach.isPending}
+                      onClick={() => {
+                        if (fbOutreachTarget) {
+                          setFbOutreachVariations([]);
+                          setFbOutreachText("");
+                          setFbOutreachSelectedIdx(0);
+                          setFbOutreachGeneratingId(fbOutreachTarget.id);
+                          generateFbOutreach.mutate({ id: fbOutreachTarget.id, tone: fbOutreachTone, customInstructions: fbCustomInstructions.trim() || undefined });
+                        }
+                      }}
+                      className="ml-auto flex items-center gap-1 text-xs px-2.5 py-1 rounded border border-purple-800 text-purple-400 hover:bg-purple-900/40 hover:text-purple-300 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                    >
+                      <RefreshCw className="h-3 w-3" />
+                      Regenerate
+                    </button>
                   </div>
                 )}
                 <Textarea

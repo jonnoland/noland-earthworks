@@ -2288,3 +2288,8 @@
 - [x] Add listOutreachTemplates, saveOutreachTemplate, deleteOutreachTemplate procedures to prospectingRouter
 - [x] Add Save as template button next to custom instructions label; shows inline name input + Save button
 - [x] Add Load template dropdown next to custom instructions label; lists saved templates, click to load, hover X to delete
+
+## AI FB Outreach — Regenerate & Edit Template (v1.0.52)
+- [x] Add Regenerate button next to the Option 1/2/3 variation tabs; clicking it clears variations and fires a new generateFbOutreach call (purple border, RefreshCw icon, ml-auto right-aligned)
+- [x] Add updateOutreachTemplate server procedure (id, name, instructions)
+- [x] Add Edit button (Pencil icon, blue hover) on each saved template row; clicking it expands an inline edit form with name + instructions inputs and Save/Cancel buttons; collapses on save or cancel

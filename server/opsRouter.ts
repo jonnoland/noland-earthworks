@@ -4101,6 +4101,22 @@ Return only the message text, no preamble or explanation.`;
       await db.delete(outreachTemplates).where(eq(outreachTemplates.id, input.id));
       return { ok: true };
     }),
+
+  // Update an existing outreach instruction template (name and/or instructions)
+  updateOutreachTemplate: ownerProcedure
+    .input(z.object({
+      id: z.number(),
+      name: z.string().min(1).max(120),
+      instructions: z.string().min(1).max(500),
+    }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+      await db.update(outreachTemplates)
+        .set({ name: input.name, instructions: input.instructions })
+        .where(eq(outreachTemplates.id, input.id));
+      return { ok: true };
+    }),
 });
 export const opsRouter = router({
   jobs: jobsRouter,
