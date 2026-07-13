@@ -1637,6 +1637,21 @@ export const prospectingLeads = mysqlTable("prospecting_leads", {
   estimatedAcres: varchar("estimatedAcres", { length: 32 }),
   /** User-entered notes / extra context about this prospect */
   notes: text("notes"),
+  /**
+   * AI-detected urgency flag — true when the post contains urgency keywords
+   * ("ASAP", "this week", "already got quotes", "need it done", etc.)
+   */
+  urgencyFlag: boolean("urgencyFlag").notNull().default(false),
+  /**
+   * When set, this prospect has been soft-archived (auto-archive after 30 days or manual).
+   * Archived prospects are hidden by default but can be restored.
+   */
+  archivedAt: timestamp("archivedAt"),
+  /**
+   * Timestamp of the last outreach action (set when status changes to "contacted").
+   * Used to surface follow-up reminders after 72 hours of no response.
+   */
+  lastContactedAt: timestamp("lastContactedAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });

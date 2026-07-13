@@ -1,9 +1,11 @@
 /**
  * Prospecting — AI-discovered leads from public sources
- * Populated daily by the AGENT cron job (Craigslist, Facebook groups, Nextdoor, Google reviews, permit filings)
- * Jon reviews each prospect, dismisses irrelevant ones, and fires a one-click reach-out draft.
+ * v1.0.47: Full rewrite with 12 improvements across 3 tiers:
+ *   Tier 1: Margin tier badge, acreage, FB Messenger link, inline notes, lead age, urgency flag
+ *   Tier 2: Follow-up reminders, Convert to Lead button
+ *   Tier 3: Sort, source stats, bulk dismiss, archived tab, auto-archive display
  */
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -17,6 +19,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
 import {
   Radar,
   ExternalLink,
@@ -27,6 +30,16 @@ import {
   MapPin,
   RefreshCw,
   Info,
+  Flame,
+  ArrowUpDown,
+  Archive,
+  ArchiveRestore,
+  UserPlus,
+  Pencil,
+  X,
+  Check,
+  AlertTriangle,
+  Facebook,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -48,7 +61,15 @@ const SOURCE_COLORS: Record<string, string> = {
   other: "bg-zinc-800 text-zinc-300 border-zinc-600",
 };
 
+const MARGIN_COLORS: Record<string, string> = {
+  high: "bg-green-900/40 text-green-300 border-green-700",
+  medium: "bg-yellow-900/40 text-yellow-300 border-yellow-700",
+  low: "bg-red-900/40 text-red-300 border-red-700",
+};
+
 type ProspectStatus = "new" | "contacted" | "dismissed";
+type SortKey = "age" | "margin" | "source" | "location";
+type TabView = "active" | "archived";
 
 interface Prospect {
   id: number;
@@ -61,33 +82,113 @@ interface Prospect {
   reachOutDraft: string | null;
   status: string;
   postSnippet: string | null;
+  profileUrl: string | null;
+  marginTier: string | null;
+  estimatedAcres: string | null;
+  notes: string | null;
+  urgencyFlag: boolean;
+  archivedAt: Date | null;
+  lastContactedAt: Date | null;
   createdAt: Date;
+}
+
+function daysSince(date: Date): number {
+  return Math.floor((Date.now() - new Date(date).getTime()) / (1000 * 60 * 60 * 24));
+}
+
+function hoursSince(date: Date): number {
+  return Math.floor((Date.now() - new Date(date).getTime()) / (1000 * 60 * 60));
+}
+
+function buildMessengerLink(profileUrl: string): string {
+  const match = profileUrl.match(/facebook\.com\/(?:profile\.php\?id=(\d+)|([^/?#]+))/i);
+  if (match) {
+    const id = match[1] ?? match[2];
+    if (id) return `https://m.me/${id}`;
+  }
+  return profileUrl;
 }
 
 export default function Prospecting() {
   const [filter, setFilter] = useState<"all" | ProspectStatus>("all");
+  const [tabView, setTabView] = useState<TabView>("active");
+  const [sortKey, setSortKey] = useState<SortKey>("age");
   const [reachOutTarget, setReachOutTarget] = useState<Prospect | null>(null);
   const [reachOutText, setReachOutText] = useState("");
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+  const [editingNotesId, setEditingNotesId] = useState<number | null>(null);
+  const [notesEditValue, setNotesEditValue] = useState("");
+  const [convertingId, setConvertingId] = useState<number | null>(null);
 
   const { data: prospects = [], isLoading, refetch } = trpc.ops.prospecting.list.useQuery(
     { status: filter === "all" ? undefined : filter },
     { refetchInterval: 60_000 }
   );
 
+  const { data: sourceStats = [] } = trpc.ops.prospecting.getSourceStats.useQuery(undefined, {
+    refetchInterval: 120_000,
+  });
+
   const utils = trpc.useUtils();
 
+  function invalidateAll() {
+    utils.ops.prospecting.list.invalidate();
+    utils.ops.prospecting.newCount.invalidate();
+    utils.ops.prospecting.getSourceStats.invalidate();
+  }
+
   const updateStatus = trpc.ops.prospecting.updateStatus.useMutation({
-    onSuccess: () => {
-      utils.ops.prospecting.list.invalidate();
-      utils.ops.prospecting.newCount.invalidate();
-    },
+    onSuccess: invalidateAll,
   });
 
   const deleteLead = trpc.ops.prospecting.delete.useMutation({
     onSuccess: () => {
-      utils.ops.prospecting.list.invalidate();
-      utils.ops.prospecting.newCount.invalidate();
+      invalidateAll();
       toast.success("Prospect removed.");
+    },
+  });
+
+  const archiveLead = trpc.ops.prospecting.archiveLead.useMutation({
+    onSuccess: () => {
+      invalidateAll();
+      toast.success("Prospect archived.");
+    },
+  });
+
+  const restoreArchivedLead = trpc.ops.prospecting.restoreArchivedLead.useMutation({
+    onSuccess: () => {
+      invalidateAll();
+      toast.success("Prospect restored.");
+    },
+  });
+
+  const bulkDismiss = trpc.ops.prospecting.bulkDismiss.useMutation({
+    onSuccess: (res) => {
+      invalidateAll();
+      setSelectedIds(new Set());
+      toast.success(`${res.count} prospect${res.count === 1 ? "" : "s"} dismissed.`);
+    },
+  });
+
+  const updateProspect = trpc.ops.prospecting.updateProspect.useMutation({
+    onSuccess: () => {
+      invalidateAll();
+      setEditingNotesId(null);
+    },
+  });
+
+  const convertToLead = trpc.ops.prospecting.convertToLead.useMutation({
+    onSuccess: (res) => {
+      invalidateAll();
+      setConvertingId(null);
+      toast.success("Prospect converted to lead. Check the Leads tab.");
+      if (res.aiDraft) {
+        toast.info("AI outreach draft attached to the new lead.");
+      }
+    },
+    onError: (err) => {
+      setConvertingId(null);
+      toast.error(err.message);
     },
   });
 
@@ -111,15 +212,64 @@ export default function Prospecting() {
     if (!reachOutTarget || !reachOutText.trim()) return;
     const phone = reachOutTarget.contactInfo?.match(/\+?[\d\s\-().]{10,}/)?.[0];
     if (!phone) {
-      toast.error("No phone number found for this prospect. Copy the message and reach out manually.");
+      toast.error("No phone number found. Copy the message and reach out manually.");
       return;
     }
     sendSms.mutate({ phone, message: reachOutText.trim(), contactName: reachOutTarget.contactName ?? undefined });
   }
 
-  const newCount = prospects.filter((p) => p.status === "new").length;
-  const contactedCount = prospects.filter((p) => p.status === "contacted").length;
-  const dismissedCount = prospects.filter((p) => p.status === "dismissed").length;
+  function toggleSelect(id: number) {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  function startEditNotes(p: Prospect) {
+    setEditingNotesId(p.id);
+    setNotesEditValue(p.notes ?? "");
+  }
+
+  function saveNotes(id: number) {
+    updateProspect.mutate({ id, notes: notesEditValue });
+  }
+
+  const allProspects = prospects as Prospect[];
+  const activeProspects = allProspects.filter(p => !p.archivedAt);
+  const archivedProspects = allProspects.filter(p => !!p.archivedAt);
+
+  const followUpReminders = useMemo(() =>
+    activeProspects.filter(p =>
+      p.status === "contacted" &&
+      p.lastContactedAt &&
+      hoursSince(p.lastContactedAt) >= 72
+    ),
+    [activeProspects]
+  );
+
+  const sortedActive = useMemo(() => {
+    const list = [...activeProspects];
+    const marginOrder: Record<string, number> = { high: 0, medium: 1, low: 2 };
+    switch (sortKey) {
+      case "margin":
+        return list.sort((a, b) => (marginOrder[a.marginTier ?? ""] ?? 3) - (marginOrder[b.marginTier ?? ""] ?? 3));
+      case "source":
+        return list.sort((a, b) => a.source.localeCompare(b.source));
+      case "location":
+        return list.sort((a, b) => (a.location ?? "").localeCompare(b.location ?? ""));
+      case "age":
+      default:
+        return list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    }
+  }, [activeProspects, sortKey]);
+
+  const displayList = tabView === "archived" ? archivedProspects : sortedActive;
+
+  const newCount = activeProspects.filter(p => p.status === "new").length;
+  const contactedCount = activeProspects.filter(p => p.status === "contacted").length;
+  const dismissedCount = activeProspects.filter(p => p.status === "dismissed").length;
 
   return (
     <div className="p-6 space-y-6 max-w-5xl mx-auto">
@@ -153,6 +303,31 @@ export default function Prospecting() {
         </span>
       </div>
 
+      {/* Follow-up reminders */}
+      {followUpReminders.length > 0 && (
+        <div className="rounded-lg border border-amber-700 bg-amber-900/20 p-4 space-y-2">
+          <div className="flex items-center gap-2 text-amber-300 font-medium text-sm">
+            <AlertTriangle className="h-4 w-4" />
+            Follow-up needed ({followUpReminders.length})
+          </div>
+          {followUpReminders.map(p => (
+            <div key={p.id} className="flex items-center justify-between text-sm">
+              <span className="text-amber-200">
+                {p.contactName ?? "Unknown"} &mdash; {p.location ?? p.source} &mdash; contacted {hoursSince(p.lastContactedAt!)}h ago
+              </span>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => openReachOut(p)}
+                className="border-amber-700 text-amber-300 hover:text-white h-7 text-xs"
+              >
+                Follow Up
+              </Button>
+            </div>
+          ))}
+        </div>
+      )}
+
       {/* Stats row */}
       <div className="grid grid-cols-3 gap-4">
         <div className="rounded-lg border border-zinc-700 bg-zinc-800/60 p-4 text-center">
@@ -169,151 +344,401 @@ export default function Prospecting() {
         </div>
       </div>
 
-      {/* Filter tabs */}
-      <div className="flex gap-2">
-        {(["all", "new", "contacted", "dismissed"] as const).map((f) => (
+      {/* Source performance mini-stats */}
+      {sourceStats.length > 0 && (
+        <div className="flex flex-wrap gap-2">
+          {sourceStats.map(s => (
+            <span
+              key={s.source}
+              className={cn(
+                "text-xs font-medium px-2 py-1 rounded border",
+                SOURCE_COLORS[s.source] ?? SOURCE_COLORS.other
+              )}
+            >
+              {SOURCE_LABELS[s.source] ?? s.source}: {s.count}
+            </span>
+          ))}
+        </div>
+      )}
+
+      {/* Tab view: Active / Archived */}
+      <div className="flex items-center justify-between gap-4 flex-wrap">
+        <div className="flex gap-2">
           <button
-            key={f}
-            onClick={() => setFilter(f)}
+            onClick={() => setTabView("active")}
             className={cn(
               "px-3 py-1.5 rounded-md text-sm font-medium transition-colors",
-              filter === f
+              tabView === "active"
                 ? "bg-orange-500 text-white"
                 : "bg-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-700"
             )}
           >
-            {f.charAt(0).toUpperCase() + f.slice(1)}
+            Active ({activeProspects.length})
           </button>
-        ))}
+          <button
+            onClick={() => setTabView("archived")}
+            className={cn(
+              "px-3 py-1.5 rounded-md text-sm font-medium transition-colors",
+              tabView === "archived"
+                ? "bg-zinc-600 text-white"
+                : "bg-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-700"
+            )}
+          >
+            Archived ({archivedProspects.length})
+          </button>
+        </div>
+
+        {tabView === "active" && (
+          <div className="flex items-center gap-2 flex-wrap">
+            <div className="flex gap-1">
+              {(["all", "new", "contacted", "dismissed"] as const).map((f) => (
+                <button
+                  key={f}
+                  onClick={() => setFilter(f)}
+                  className={cn(
+                    "px-2.5 py-1 rounded text-xs font-medium transition-colors",
+                    filter === f
+                      ? "bg-orange-500/80 text-white"
+                      : "bg-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-700"
+                  )}
+                >
+                  {f.charAt(0).toUpperCase() + f.slice(1)}
+                </button>
+              ))}
+            </div>
+            <div className="flex items-center gap-1 bg-zinc-800 border border-zinc-700 rounded px-2 py-1">
+              <ArrowUpDown className="h-3 w-3 text-zinc-400" />
+              <select
+                value={sortKey}
+                onChange={e => setSortKey(e.target.value as SortKey)}
+                className="bg-transparent text-xs text-zinc-300 outline-none cursor-pointer"
+              >
+                <option value="age">Newest</option>
+                <option value="margin">Margin</option>
+                <option value="source">Source</option>
+                <option value="location">Location</option>
+              </select>
+            </div>
+          </div>
+        )}
       </div>
+
+      {/* Bulk dismiss bar */}
+      {selectedIds.size > 0 && tabView === "active" && (
+        <div className="flex items-center justify-between rounded-lg border border-zinc-600 bg-zinc-800/80 px-4 py-2">
+          <span className="text-sm text-zinc-300">{selectedIds.size} selected</span>
+          <div className="flex gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setSelectedIds(new Set())}
+              className="border-zinc-600 text-zinc-400 h-7 text-xs"
+            >
+              Clear
+            </Button>
+            <Button
+              size="sm"
+              onClick={() => bulkDismiss.mutate({ ids: Array.from(selectedIds) })}
+              disabled={bulkDismiss.isPending}
+              className="bg-zinc-700 hover:bg-zinc-600 text-white h-7 text-xs"
+            >
+              Dismiss Selected
+            </Button>
+          </div>
+        </div>
+      )}
 
       {/* Prospect list */}
       {isLoading ? (
         <div className="text-zinc-400 text-sm py-8 text-center">Loading prospects...</div>
-      ) : prospects.length === 0 ? (
+      ) : displayList.length === 0 ? (
         <div className="rounded-lg border border-zinc-700 bg-zinc-800/40 p-10 text-center">
           <Radar className="h-10 w-10 text-zinc-600 mx-auto mb-3" />
           <p className="text-zinc-400 text-sm">
-            {filter === "all"
+            {tabView === "archived"
+              ? "No archived prospects."
+              : filter === "all"
               ? "No prospects yet. The AI cron runs daily — check back tomorrow morning."
               : `No ${filter} prospects.`}
           </p>
         </div>
       ) : (
         <div className="space-y-3">
-          {(prospects as Prospect[]).map((p) => (
-            <Card key={p.id} className="border-zinc-700 bg-zinc-800/60">
-              <CardHeader className="pb-2">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span
-                      className={cn(
-                        "text-xs font-medium px-2 py-0.5 rounded border",
-                        SOURCE_COLORS[p.source] ?? SOURCE_COLORS.other
+          {displayList.map((p) => {
+            const ageDays = daysSince(p.createdAt);
+            const isStale = ageDays >= 14;
+            const isSelected = selectedIds.has(p.id);
+            const messengerUrl = p.profileUrl ? buildMessengerLink(p.profileUrl) : null;
+
+            return (
+              <Card
+                key={p.id}
+                className={cn(
+                  "border-zinc-700 bg-zinc-800/60 transition-colors",
+                  isSelected && "border-orange-600/60 bg-zinc-800/80",
+                  p.urgencyFlag && "border-l-2 border-l-red-500"
+                )}
+              >
+                <CardHeader className="pb-2">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      {tabView === "active" && (
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          onChange={() => toggleSelect(p.id)}
+                          className="rounded border-zinc-600 bg-zinc-700 text-orange-500 cursor-pointer"
+                        />
                       )}
-                    >
-                      {SOURCE_LABELS[p.source] ?? p.source}
-                    </span>
-                    {p.status === "new" && (
-                      <Badge className="bg-orange-500/20 text-orange-300 border-orange-700 text-xs">New</Badge>
-                    )}
-                    {p.status === "contacted" && (
-                      <Badge className="bg-green-500/20 text-green-300 border-green-700 text-xs">Contacted</Badge>
-                    )}
-                    {p.status === "dismissed" && (
-                      <Badge className="bg-zinc-700 text-zinc-400 border-zinc-600 text-xs">Dismissed</Badge>
-                    )}
-                    {p.location && (
-                      <span className="flex items-center gap-1 text-xs text-zinc-400">
-                        <MapPin className="h-3 w-3" />
-                        {p.location}
+
+                      <span
+                        className={cn(
+                          "text-xs font-medium px-2 py-0.5 rounded border",
+                          SOURCE_COLORS[p.source] ?? SOURCE_COLORS.other
+                        )}
+                      >
+                        {SOURCE_LABELS[p.source] ?? p.source}
                       </span>
+
+                      {p.marginTier && (
+                        <span
+                          className={cn(
+                            "text-xs font-medium px-2 py-0.5 rounded border",
+                            MARGIN_COLORS[p.marginTier] ?? "bg-zinc-800 text-zinc-400 border-zinc-600"
+                          )}
+                        >
+                          {p.marginTier.toUpperCase()}
+                        </span>
+                      )}
+
+                      {p.urgencyFlag && (
+                        <span className="flex items-center gap-1 text-xs font-medium text-red-400 bg-red-900/30 border border-red-700 px-2 py-0.5 rounded">
+                          <Flame className="h-3 w-3" />
+                          Urgent
+                        </span>
+                      )}
+
+                      {p.status === "new" && (
+                        <Badge className="bg-orange-500/20 text-orange-300 border-orange-700 text-xs">New</Badge>
+                      )}
+                      {p.status === "contacted" && (
+                        <Badge className="bg-green-500/20 text-green-300 border-green-700 text-xs">Contacted</Badge>
+                      )}
+                      {p.status === "dismissed" && (
+                        <Badge className="bg-zinc-700 text-zinc-400 border-zinc-600 text-xs">Dismissed</Badge>
+                      )}
+
+                      {(p.location || p.estimatedAcres) && (
+                        <span className="flex items-center gap-1 text-xs text-zinc-400">
+                          <MapPin className="h-3 w-3" />
+                          {[p.location, p.estimatedAcres ? `~${p.estimatedAcres} ac` : null].filter(Boolean).join(" \u00b7 ")}
+                        </span>
+                      )}
+
+                      <span className={cn("text-xs", isStale ? "text-amber-400 font-medium" : "text-zinc-500")}>
+                        {ageDays === 0 ? "Today" : `${ageDays}d ago`}
+                        {isStale && " (stale)"}
+                      </span>
+                    </div>
+
+                    <a
+                      href={p.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-zinc-400 hover:text-orange-400 transition-colors shrink-0"
+                      title="View original post"
+                    >
+                      <ExternalLink className="h-4 w-4" />
+                    </a>
+                  </div>
+
+                  {p.contactName && (
+                    <CardTitle className="text-base text-white mt-1">{p.contactName}</CardTitle>
+                  )}
+                  {p.contactInfo && (
+                    <p className="text-xs text-zinc-400">{p.contactInfo}</p>
+                  )}
+                </CardHeader>
+
+                <CardContent className="space-y-3">
+                  <p className="text-sm text-zinc-200">{p.summary}</p>
+
+                  {p.postSnippet && (
+                    <blockquote className="border-l-2 border-zinc-600 pl-3 text-xs text-zinc-400 italic">
+                      &ldquo;{p.postSnippet.length > 200 ? p.postSnippet.slice(0, 200) + "\u2026" : p.postSnippet}&rdquo;
+                    </blockquote>
+                  )}
+
+                  {/* Inline notes */}
+                  <div className="space-y-1">
+                    {editingNotesId === p.id ? (
+                      <div className="flex gap-2 items-start">
+                        <Input
+                          value={notesEditValue}
+                          onChange={e => setNotesEditValue(e.target.value)}
+                          placeholder="Add notes..."
+                          className="bg-zinc-700 border-zinc-600 text-white text-xs h-8 flex-1"
+                          onKeyDown={e => {
+                            if (e.key === "Enter") saveNotes(p.id);
+                            if (e.key === "Escape") setEditingNotesId(null);
+                          }}
+                          autoFocus
+                        />
+                        <Button
+                          size="sm"
+                          onClick={() => saveNotes(p.id)}
+                          disabled={updateProspect.isPending}
+                          className="bg-green-700 hover:bg-green-600 text-white h-8 w-8 p-0"
+                        >
+                          <Check className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => setEditingNotesId(null)}
+                          className="text-zinc-400 h-8 w-8 p-0"
+                        >
+                          <X className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => startEditNotes(p)}
+                        className="flex items-center gap-1.5 text-xs text-zinc-500 hover:text-zinc-300 transition-colors"
+                      >
+                        <Pencil className="h-3 w-3" />
+                        {p.notes ? (
+                          <span className="text-zinc-300">{p.notes}</span>
+                        ) : (
+                          <span>Add notes</span>
+                        )}
+                      </button>
                     )}
                   </div>
-                  <a
-                    href={p.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-zinc-400 hover:text-orange-400 transition-colors shrink-0"
-                    title="View original post"
-                  >
-                    <ExternalLink className="h-4 w-4" />
-                  </a>
-                </div>
-                {p.contactName && (
-                  <CardTitle className="text-base text-white mt-1">{p.contactName}</CardTitle>
-                )}
-                {p.contactInfo && (
-                  <p className="text-xs text-zinc-400">{p.contactInfo}</p>
-                )}
-              </CardHeader>
-              <CardContent className="space-y-3">
-                {/* AI summary */}
-                <p className="text-sm text-zinc-200">{p.summary}</p>
 
-                {/* Original post snippet */}
-                {p.postSnippet && (
-                  <blockquote className="border-l-2 border-zinc-600 pl-3 text-xs text-zinc-400 italic">
-                    "{p.postSnippet.length > 200 ? p.postSnippet.slice(0, 200) + "…" : p.postSnippet}"
-                  </blockquote>
-                )}
+                  {/* Action row */}
+                  <div className="flex items-center gap-2 flex-wrap pt-1">
+                    {tabView === "archived" ? (
+                      <>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => restoreArchivedLead.mutate({ id: p.id })}
+                          disabled={restoreArchivedLead.isPending}
+                          className="border-zinc-600 text-zinc-300 hover:text-white h-8 text-xs"
+                        >
+                          <ArchiveRestore className="h-3.5 w-3.5 mr-1.5" />
+                          Restore
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => deleteLead.mutate({ id: p.id })}
+                          className="text-zinc-500 hover:text-red-400 h-8 text-xs ml-auto"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </>
+                    ) : (
+                      <>
+                        {p.status !== "contacted" && (
+                          <Button
+                            size="sm"
+                            onClick={() => openReachOut(p)}
+                            className="bg-orange-600 hover:bg-orange-700 text-white h-8 text-xs"
+                          >
+                            <MessageSquare className="h-3.5 w-3.5 mr-1.5" />
+                            Reach Out
+                          </Button>
+                        )}
 
-                {/* Action row */}
-                <div className="flex items-center gap-2 flex-wrap pt-1">
-                  {p.status !== "contacted" && (
-                    <Button
-                      size="sm"
-                      onClick={() => openReachOut(p)}
-                      className="bg-orange-600 hover:bg-orange-700 text-white h-8 text-xs"
-                    >
-                      <MessageSquare className="h-3.5 w-3.5 mr-1.5" />
-                      Reach Out
-                    </Button>
-                  )}
-                  {p.status === "new" && (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => updateStatus.mutate({ id: p.id, status: "contacted" })}
-                      className="border-zinc-600 text-zinc-300 hover:text-white h-8 text-xs"
-                    >
-                      <CheckCircle className="h-3.5 w-3.5 mr-1.5" />
-                      Mark Contacted
-                    </Button>
-                  )}
-                  {p.status !== "dismissed" && (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => updateStatus.mutate({ id: p.id, status: "dismissed" })}
-                      className="border-zinc-600 text-zinc-400 hover:text-zinc-200 h-8 text-xs"
-                    >
-                      <Clock className="h-3.5 w-3.5 mr-1.5" />
-                      Dismiss
-                    </Button>
-                  )}
-                  {p.status === "dismissed" && (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => updateStatus.mutate({ id: p.id, status: "new" })}
-                      className="border-zinc-600 text-zinc-400 hover:text-zinc-200 h-8 text-xs"
-                    >
-                      Restore
-                    </Button>
-                  )}
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={() => deleteLead.mutate({ id: p.id })}
-                    className="text-zinc-500 hover:text-red-400 h-8 text-xs ml-auto"
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+                        {messengerUrl && (
+                          <a href={messengerUrl} target="_blank" rel="noopener noreferrer">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="border-blue-700 text-blue-300 hover:text-white h-8 text-xs"
+                            >
+                              <Facebook className="h-3.5 w-3.5 mr-1.5" />
+                              Message on FB
+                            </Button>
+                          </a>
+                        )}
+
+                        {p.status === "new" && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => updateStatus.mutate({ id: p.id, status: "contacted" })}
+                            className="border-zinc-600 text-zinc-300 hover:text-white h-8 text-xs"
+                          >
+                            <CheckCircle className="h-3.5 w-3.5 mr-1.5" />
+                            Mark Contacted
+                          </Button>
+                        )}
+
+                        {p.status !== "dismissed" && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => updateStatus.mutate({ id: p.id, status: "dismissed" })}
+                            className="border-zinc-600 text-zinc-400 hover:text-zinc-200 h-8 text-xs"
+                          >
+                            <Clock className="h-3.5 w-3.5 mr-1.5" />
+                            Dismiss
+                          </Button>
+                        )}
+
+                        {p.status === "dismissed" && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => updateStatus.mutate({ id: p.id, status: "new" })}
+                            className="border-zinc-600 text-zinc-400 hover:text-zinc-200 h-8 text-xs"
+                          >
+                            Restore
+                          </Button>
+                        )}
+
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => {
+                            setConvertingId(p.id);
+                            convertToLead.mutate({ id: p.id });
+                          }}
+                          disabled={convertingId === p.id && convertToLead.isPending}
+                          className="border-green-700 text-green-300 hover:text-white h-8 text-xs"
+                        >
+                          <UserPlus className="h-3.5 w-3.5 mr-1.5" />
+                          {convertingId === p.id && convertToLead.isPending ? "Converting..." : "Convert to Lead"}
+                        </Button>
+
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => archiveLead.mutate({ id: p.id })}
+                          className="text-zinc-500 hover:text-zinc-300 h-8 text-xs"
+                          title="Archive prospect"
+                        >
+                          <Archive className="h-3.5 w-3.5" />
+                        </Button>
+
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => deleteLead.mutate({ id: p.id })}
+                          className="text-zinc-500 hover:text-red-400 h-8 text-xs ml-auto"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
       )}
 
@@ -322,7 +747,7 @@ export default function Prospecting() {
         <DialogContent className="bg-zinc-900 border-zinc-700 text-white max-w-lg">
           <DialogHeader>
             <DialogTitle className="text-white">
-              Reach Out — {reachOutTarget?.contactName ?? "Prospect"}
+              Reach Out &mdash; {reachOutTarget?.contactName ?? "Prospect"}
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-3">

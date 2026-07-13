@@ -31,6 +31,7 @@ import { jobs, opsLeads, quoteSubmissions, crews, crewMembers, conversations, me
 
 import { and, desc, eq, gte, inArray, lt, lte, like, or, sql } from "drizzle-orm";
 import { autoPatchSeoCheck, AUTO_PATCHABLE_CHECKS, SQUARESPACE_MANUAL_CHECKS, CODE_FIXED_CHECKS, INFRA_CHECKS } from "./seoAutoPatcher";
+import { notifyOwner } from "./_core/notification";
 
 function getResend() {
   return ENV.resendApiKey ? new Resend(ENV.resendApiKey) : null;
@@ -3655,6 +3656,11 @@ export const prospectingRouter = router({
           .where(eq(prospectingLeads.url, p.url))
           .limit(1);
         if (existing.length > 0) continue;
+        // Detect urgency keywords in snippet or summary
+        const urgencyKeywords = /\b(asap|urgent|this week|need it done|already got quotes|getting quotes|need quotes|ready to start|start soon|need someone|call me|reach out|as soon as possible|immediately|right away|this weekend|this month)\b/i;
+        const textToScan = [p.postSnippet ?? "", p.summary ?? ""].join(" ");
+        const urgencyFlag = urgencyKeywords.test(textToScan);
+        const isHighMargin = (p.marginTier ?? "").toLowerCase() === "high";
         await db.insert(prospectingLeads).values({
           source: p.source ?? "other",
           url: p.url,
@@ -3668,16 +3674,31 @@ export const prospectingRouter = router({
           marginTier: p.marginTier ?? null,
           estimatedAcres: p.estimatedAcres ?? null,
           notes: p.notes ?? null,
+          urgencyFlag,
           status: "new",
         });
         inserted++;
+        // Notify owner for high-margin or urgent prospects
+        if (isHighMargin || urgencyFlag) {
+          const label = isHighMargin && urgencyFlag ? "HIGH margin + URGENT" : isHighMargin ? "HIGH margin" : "URGENT";
+          try {
+            await notifyOwner({
+              title: `New ${label} prospect — ${p.location ?? p.source}`,
+              content: `${p.contactName ? p.contactName + " — " : ""}${p.summary.slice(0, 200)}${p.estimatedAcres ? ` (~${p.estimatedAcres} ac)` : ""}`,
+            });
+          } catch { /* non-fatal */ }
+        }
       }
       return { ok: true, inserted, total: input.prospects.length };
     }),
     updateStatus: ownerProcedure
     .input(z.object({ id: z.number(), status: z.enum(["new", "contacted", "dismissed"]) }))
     .mutation(async ({ input }) => {
-      await updateProspectingLeadStatus(input.id, input.status);
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+      const updates: Record<string, unknown> = { status: input.status, updatedAt: new Date() };
+      if (input.status === "contacted") updates.lastContactedAt = new Date();
+      await db.update(prospectingLeads).set(updates).where(eq(prospectingLeads.id, input.id));
       return { ok: true };
     }),
 
@@ -3912,11 +3933,56 @@ Do not fabricate prospects. Only include real posts you actually found and visit
         throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: `Failed to create scan task: ${errText}` });
       }
 
-      const data = await response.json() as { ok: boolean; task_id: string; task_url: string };
+            const data = await response.json() as { ok: boolean; task_id: string; task_url: string };
       console.log("[runScan] Manus task created:", data.task_id, data.task_url);
             return { ok: true, taskId: data.task_id, taskUrl: data.task_url };
     }),
 
+  // Soft-archive a prospect (hides it from default view but can be restored)
+  archiveLead: ownerProcedure
+    .input(z.object({ id: z.number() }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+      await db.update(prospectingLeads).set({ archivedAt: new Date(), updatedAt: new Date() }).where(eq(prospectingLeads.id, input.id));
+      return { ok: true };
+    }),
+
+  // Restore a soft-archived prospect back to active
+  restoreArchivedLead: ownerProcedure
+    .input(z.object({ id: z.number() }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+      await db.update(prospectingLeads).set({ archivedAt: null, updatedAt: new Date() }).where(eq(prospectingLeads.id, input.id));
+      return { ok: true };
+    }),
+
+  // Dismiss multiple prospects at once
+  bulkDismiss: ownerProcedure
+    .input(z.object({ ids: z.array(z.number()) }))
+    .mutation(async ({ input }) => {
+      if (input.ids.length === 0) return { ok: true, count: 0 };
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+      await db.update(prospectingLeads)
+        .set({ status: "dismissed", updatedAt: new Date() })
+        .where(inArray(prospectingLeads.id, input.ids));
+      return { ok: true, count: input.ids.length };
+    }),
+
+  // Count prospects grouped by source (for source performance mini-stats)
+  getSourceStats: ownerProcedure
+    .query(async () => {
+      const db = await getDb();
+      if (!db) return [];
+      const { count: countFn } = await import("drizzle-orm");
+      const rows = await db
+        .select({ source: prospectingLeads.source, count: countFn(prospectingLeads.id) })
+        .from(prospectingLeads)
+        .groupBy(prospectingLeads.source);
+      return rows.map(r => ({ source: r.source, count: Number(r.count) }));
+    }),
 });
 export const opsRouter = router({
   jobs: jobsRouter,

@@ -603,6 +603,13 @@
       "when": 1783714584815,
       "tag": "0085_shocking_harpoon",
       "breakpoints": true
+    },
+    {
+      "idx": 86,
+      "version": "5",
+      "when": 1783957770101,
+      "tag": "0086_flat_arclight",
+      "breakpoints": true
     }
   ]
 }

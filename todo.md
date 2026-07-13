@@ -2251,3 +2251,19 @@
 - [x] Update ads generator to select varied forestry mulching stock photos by job context instead of repeating one machine with different backgrounds
 - [x] Add stock photo preview panel to Ads page: show auto-selected photo after generation, with prev/next swap buttons to cycle through the full pool
 - [x] Add machine brand preference setting to Ops Settings: dropdown to select preferred equipment brand (CAT, Kubota, Takeuchi, Bobcat, Other), stored in DB, used to boost matching photos in ad selection
+
+## Prospecting Tab Improvements (v1.0.47)
+- [x] Schema: add urgencyFlag (boolean), archivedAt (timestamp), lastContactedAt (timestamp) columns to prospectingLeads
+- [x] Tier 1: Display margin tier badge (HIGH/MED/LOW) prominently on each prospect card with color coding
+- [x] Tier 1: Show estimated acreage on each prospect card next to location
+- [x] Tier 1: Add "Message on Facebook" button for prospects with profileUrl stored (m.me/ deep link)
+- [x] Tier 1: Expose notes field inline on each card with one-click edit
+- [x] Tier 1: Show lead age in days with staleness warning after 14 days
+- [x] Tier 1: Urgency flag indicator on cards (red Urgent badge + left border accent)
+- [x] Tier 2: Owner alert (push notification) when scan finds a high-margin or urgent prospect
+- [x] Tier 2: Follow-up reminder section at top of list for contacted prospects with no update in 72+ hours
+- [x] Tier 2: Convert to Lead button — promote prospect to full ops lead with outreach pre-filled
+- [x] Tier 3: Sort options — by margin tier, age, source, location
+- [x] Tier 3: Source performance mini-stats row (counts per source)
+- [x] Tier 3: Bulk dismiss for cleaning out low-quality leads (checkbox selection + bulk action bar)
+- [x] Tier 3: Archived tab with restore button; archive button on active cards
