@@ -2293,3 +2293,10 @@
 - [x] Add Regenerate button next to the Option 1/2/3 variation tabs; clicking it clears variations and fires a new generateFbOutreach call (purple border, RefreshCw icon, ml-auto right-aligned)
 - [x] Add updateOutreachTemplate server procedure (id, name, instructions)
 - [x] Add Edit button (Pencil icon, blue hover) on each saved template row; clicking it expands an inline edit form with name + instructions inputs and Save/Cancel buttons; collapses on save or cancel
+
+## Site Visit Request Feature (v1.0.53)
+- [x] Add generateSiteVisitRequest procedure to leadsRouter: takes lead id + tone + customInstructions, uses invokeLLM to write a professional outreach message explaining a site visit is required before accurate pricing; auto-fills customer name, location, service type, notes, AI summary from lead record; includes Jon's phone number from OWNER_PHONE env
+- [x] Add appendLeadNote procedure to leadsRouter: appends timestamped note to lead's notes field
+- [x] Add "Site Visit Req" button (teal, Sparkles icon) to the 5-column action grid in the lead detail panel; auto-generates a Professional tone message on open
+- [x] Site Visit Request modal: tone selector (Professional / Casual / Urgent), custom instructions field (Enter to regenerate), skeleton loader while generating, editable textarea, Regenerate button, Copy button, Send SMS button, Log as Contacted checkbox
+- [x] On Send SMS: marks lead as contacted, appends "Site visit request sent via SMS" note to lead record

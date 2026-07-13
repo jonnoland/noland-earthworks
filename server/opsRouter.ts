@@ -15,7 +15,7 @@ import { storagePut } from "./storage";
 import {
   getDb,
   getJobs, createJob, updateJob, deleteJob,
-  getOpsLeads, createOpsLead, updateOpsLead, deleteOpsLead,
+  getOpsLeads, createOpsLead, updateOpsLead, updateOpsLeadById, deleteOpsLead,
   getScheduleEntries, createScheduleEntry, updateScheduleEntry, deleteScheduleEntry,
   getVisitBlackoutDates, addVisitBlackoutDate, removeVisitBlackoutDate,
   getRecurringBlackoutDays, addRecurringBlackoutDay, removeRecurringBlackoutDay,
@@ -1091,6 +1091,98 @@ Return JSON only:
         .orderBy(desc(opsLeads.createdAt))
         .limit(1);
       return rows[0] ?? null;
+    }),
+
+  /**
+   * Generate a personalized site visit request message for a lead.
+   * Explains that accurate pricing requires an in-person site assessment.
+   * Returns a message ready to copy or send via SMS.
+   */
+  generateSiteVisitRequest: ownerProcedure
+    .input(z.object({
+      leadId: z.number().int().positive(),
+      tone: z.enum(["professional", "casual", "urgent"]).default("professional"),
+      customInstructions: z.string().max(500).optional(),
+    }))
+    .mutation(async ({ input }) => {
+      const lead = await getOpsLeadById(input.leadId);
+      if (!lead) throw new TRPCError({ code: "NOT_FOUND", message: "Lead not found" });
+
+      const ownerPhone = process.env.OWNER_PHONE ||
+        process.env.TWILIO_FROM_NUMBER?.replace(/^\+1/, "") ||
+        "615-406-4819";
+
+      const toneGuide = {
+        professional: "Write in a professional, direct, plain-spoken tone. No fluff. Sound like a working landowner who does this daily.",
+        casual: "Write casually with warmth and southern hospitality. Be genuine, relatable, and human — not corporate or robotic.",
+        urgent: "Write with a sense of urgency — convey that conditions are ideal right now and you want to get on the calendar soon. Still friendly, not pushy.",
+      }[input.tone];
+
+      const context = [
+        lead.name ? `Customer name: ${lead.name}` : null,
+        lead.address ? `Location/address: ${lead.address}` : null,
+        lead.jobType ? `Service requested: ${lead.jobType}` : null,
+        lead.notes ? `Notes from inquiry: ${lead.notes}` : null,
+        lead.aiSummary ? `AI summary: ${lead.aiSummary}` : null,
+        lead.estimatedValue ? `Estimated value: $${lead.estimatedValue}` : null,
+      ].filter(Boolean).join("\n");
+
+      const systemPrompt = `You are writing a short outreach message on behalf of Jon Noland, owner-operator of Noland Earthworks LLC — a veteran-owned forestry mulching company in Middle Tennessee. Jon does all the work himself.
+
+${toneGuide}
+
+Key points to communicate:
+- You received their inquiry and appreciate them reaching out.
+- Before you can give accurate pricing, you need to see the property in person. Every job is different — terrain, vegetation density, slope, access, and proximity to structures all affect the price.
+- A site visit is free, quick, and lets you give them a real number instead of a guess.
+- Ask them to reach out to schedule a time that works.
+- Include Jon's phone number: ${ownerPhone}
+
+Rules:
+- 3-5 sentences maximum. No emojis. No hashtags. No corporate language.
+- Reference something specific from their inquiry if available.
+- End with a clear, low-pressure call to action.
+- Do NOT give any pricing or estimates.
+- Sound like a real person, not a business template.`;
+
+      const userPrompt = `Write a site visit request message for this lead:\n${context}${
+        input.customInstructions ? `\n\nAdditional instructions: ${input.customInstructions}` : ""
+      }`;
+
+      const result = await invokeLLM({
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userPrompt },
+        ],
+      });
+
+      let message = (result.choices?.[0]?.message?.content as string ?? "").trim();
+      // Replace any [PHONE] placeholders
+      message = message.replace(/\[PHONE\]/gi, ownerPhone);
+
+      return { message, leadName: lead.name, leadPhone: lead.phone ?? null };
+    }),
+
+  /**
+   * Append a note to a lead record (used to log site visit request sends).
+   */
+  appendLeadNote: ownerProcedure
+    .input(z.object({
+      leadId: z.number().int().positive(),
+      note: z.string().min(1).max(1000),
+    }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+      const lead = await getOpsLeadById(input.leadId);
+      if (!lead) throw new TRPCError({ code: "NOT_FOUND", message: "Lead not found" });
+      const existing = lead.notes ?? "";
+      const timestamp = new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+      const updated = existing
+        ? `${existing}\n\n[${timestamp}] ${input.note}`
+        : `[${timestamp}] ${input.note}`;
+      await updateOpsLeadById(input.leadId, { notes: updated });
+      return { ok: true };
     }),
 });
 // ─── Schedule Router ──────────────────────────────────────────────────────────

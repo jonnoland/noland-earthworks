@@ -611,6 +611,12 @@ function LeadDetailPanel({
   const [showSmsModal, setShowSmsModal] = useState(false);
   const [smsBody, setSmsBody] = useState("");
   const [showTemplates, setShowTemplates] = useState(false);
+  // Site visit request state
+  const [showSiteVisitModal, setShowSiteVisitModal] = useState(false);
+  const [siteVisitTone, setSiteVisitTone] = useState<"professional" | "casual" | "urgent">("professional");
+  const [siteVisitMessage, setSiteVisitMessage] = useState("");
+  const [siteVisitCustom, setSiteVisitCustom] = useState("");
+  const [siteVisitLogContact, setSiteVisitLogContact] = useState(true);
 
   // AI Quote state
   const [showAiQuote, setShowAiQuote] = useState(false);
@@ -828,6 +834,18 @@ nolandearthworks.com`;
     onError: (err) => toast.error(`Send failed: ${err.message}`),
   });
 
+  const generateSiteVisitRequest = trpc.ops.leads.generateSiteVisitRequest.useMutation({
+    onSuccess: (data) => {
+      setSiteVisitMessage(data.message);
+    },
+    onError: (err) => toast.error(`Generation failed: ${err.message}`),
+  });
+  const appendLeadNote = trpc.ops.leads.appendLeadNote.useMutation({
+    onSuccess: () => {
+      utils.ops.leads.list.invalidate();
+    },
+    onError: (err) => toast.error(`Failed to save note: ${err.message}`),
+  });
   const confirmVisit = trpc.ops.leads.confirmVisit.useMutation({
     onSuccess: () => {
       toast.success(lead.email ? "Visit confirmed. Confirmation email sent to visitor." : "Visit confirmed.");
@@ -907,7 +925,7 @@ nolandearthworks.com`;
           </div>
 
           {/* Action row */}
-          <div className="grid grid-cols-4 gap-1.5">
+          <div className="grid grid-cols-5 gap-1.5">
             {lead.phone && (
               <a href={`tel:${lead.phone}`}
                 className="flex flex-col items-center justify-center gap-1 bg-blue-600 hover:bg-blue-700 text-white text-[11px] font-semibold py-2 rounded-md transition-colors">
@@ -940,6 +958,18 @@ nolandearthworks.com`;
               onClick={() => { navigate("/ops/schedule"); toast.info("Schedule a site visit from the Schedule page"); }}
               className="flex flex-col items-center justify-center gap-1 bg-[#1e1e1e] hover:bg-[#252525] border border-[#2a2a2a] text-[11px] text-[#aaa] py-2 rounded-md transition-colors">
               <Calendar className="w-3.5 h-3.5" />Schedule Visit
+            </button>
+            <button
+              onClick={() => {
+                setSiteVisitMessage("");
+                setSiteVisitTone("professional");
+                setSiteVisitCustom("");
+                setSiteVisitLogContact(true);
+                setShowSiteVisitModal(true);
+                generateSiteVisitRequest.mutate({ leadId: lead.id, tone: "professional" });
+              }}
+              className="flex flex-col items-center justify-center gap-1 bg-teal-600/20 hover:bg-teal-600/30 border border-teal-500/30 text-[11px] text-teal-400 py-2 rounded-md transition-colors">
+              <Sparkles className="w-3.5 h-3.5" />Site Visit Req
             </button>
           </div>
           {/* Linked Jobber quote badge — clickable with live status */}
@@ -2104,10 +2134,176 @@ nolandearthworks.com`;
         </div>
       </div>
     )}
+        {/* Site Visit Request Modal */}
+    {showSiteVisitModal && (
+      <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70">
+        <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-xl p-5 w-full max-w-md shadow-2xl">
+          {/* Header */}
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h3 className="text-white font-semibold text-sm flex items-center gap-2">
+                <Sparkles className="w-4 h-4 text-teal-400" />
+                Site Visit Request
+              </h3>
+              <p className="text-[#888] text-xs mt-0.5">{lead.name}{lead.phone ? ` · ${lead.phone}` : ""}</p>
+            </div>
+            <button onClick={() => setShowSiteVisitModal(false)} className="text-[#555] hover:text-white transition-colors">
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+
+          {/* Tone selector */}
+          <div className="mb-3">
+            <p className="text-[10px] text-[#666] uppercase tracking-wider mb-1.5">Tone</p>
+            <div className="flex gap-1.5">
+              {(["professional", "casual", "urgent"] as const).map(t => (
+                <button
+                  key={t}
+                  onClick={() => {
+                    setSiteVisitTone(t);
+                    setSiteVisitMessage("");
+                    generateSiteVisitRequest.mutate({ leadId: lead.id, tone: t, customInstructions: siteVisitCustom || undefined });
+                  }}
+                  className={cn(
+                    "flex-1 py-1.5 text-[11px] font-semibold rounded-md border transition-colors capitalize",
+                    siteVisitTone === t
+                      ? "bg-teal-600/20 border-teal-500/50 text-teal-300"
+                      : "bg-[#111] border-[#2a2a2a] text-[#888] hover:text-white hover:border-[#3a3a3a]"
+                  )}
+                >
+                  {t}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Custom instructions */}
+          <div className="mb-3">
+            <p className="text-[10px] text-[#666] uppercase tracking-wider mb-1.5">Custom instructions (optional)</p>
+            <input
+              type="text"
+              value={siteVisitCustom}
+              onChange={e => setSiteVisitCustom(e.target.value)}
+              onKeyDown={e => {
+                if (e.key === "Enter" && siteVisitCustom.trim()) {
+                  setSiteVisitMessage("");
+                  generateSiteVisitRequest.mutate({ leadId: lead.id, tone: siteVisitTone, customInstructions: siteVisitCustom.trim() });
+                }
+              }}
+              placeholder='e.g. "mention we have availability this week"'
+              className="w-full bg-[#111] border border-[#2a2a2a] text-white text-xs rounded-lg px-3 py-2 placeholder:text-[#555] focus:outline-none focus:border-teal-600/60"
+            />
+          </div>
+
+          {/* Generated message */}
+          <div className="mb-3">
+            <div className="flex items-center justify-between mb-1.5">
+              <p className="text-[10px] text-[#666] uppercase tracking-wider">Generated message</p>
+              {siteVisitMessage && (
+                <button
+                  onClick={() => {
+                    setSiteVisitMessage("");
+                    generateSiteVisitRequest.mutate({ leadId: lead.id, tone: siteVisitTone, customInstructions: siteVisitCustom || undefined });
+                  }}
+                  disabled={generateSiteVisitRequest.isPending}
+                  className="flex items-center gap-1 text-[10px] text-teal-400/70 hover:text-teal-400 transition-colors disabled:opacity-40"
+                >
+                  <RefreshCw className="w-3 h-3" />Regenerate
+                </button>
+              )}
+            </div>
+            {generateSiteVisitRequest.isPending ? (
+              <div className="space-y-2 p-3 bg-[#111] rounded-lg border border-[#2a2a2a]">
+                <div className="flex items-center gap-2 mb-2">
+                  <Sparkles className="w-3.5 h-3.5 text-teal-400 animate-pulse" />
+                  <span className="text-[11px] text-[#666]">Writing message...</span>
+                </div>
+                <div className="h-2.5 bg-[#222] rounded animate-pulse w-full" />
+                <div className="h-2.5 bg-[#222] rounded animate-pulse w-5/6" />
+                <div className="h-2.5 bg-[#222] rounded animate-pulse w-4/5" />
+                <div className="h-2.5 bg-[#222] rounded animate-pulse w-3/4" />
+              </div>
+            ) : siteVisitMessage ? (
+              <textarea
+                value={siteVisitMessage}
+                onChange={e => setSiteVisitMessage(e.target.value)}
+                rows={5}
+                className="w-full bg-[#111] border border-[#2a2a2a] text-white text-sm rounded-lg px-3 py-2.5 resize-none placeholder:text-[#555] focus:outline-none focus:border-teal-600/60"
+              />
+            ) : (
+              <div className="p-3 bg-[#111] rounded-lg border border-[#2a2a2a] text-[#555] text-xs text-center">
+                Select a tone above to generate a message
+              </div>
+            )}
+          </div>
+
+          {/* Log as contacted checkbox */}
+          {siteVisitMessage && (
+            <label className="flex items-center gap-2 mb-3 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={siteVisitLogContact}
+                onChange={e => setSiteVisitLogContact(e.target.checked)}
+                className="w-3.5 h-3.5 rounded accent-teal-500"
+              />
+              <span className="text-[11px] text-[#888]">Log as Contacted + append note to lead</span>
+            </label>
+          )}
+
+          {/* Footer actions */}
+          <div className="flex gap-2">
+            <Button
+              variant="ghost"
+              className="flex-1 text-[#888] hover:text-white"
+              onClick={() => setShowSiteVisitModal(false)}
+            >
+              Close
+            </Button>
+            {siteVisitMessage && (
+              <>
+                <Button
+                  variant="outline"
+                  className="flex-1 gap-1.5 border-[#2a2a2a] text-[#aaa] hover:text-white"
+                  onClick={() => {
+                    navigator.clipboard.writeText(siteVisitMessage);
+                    toast.success("Copied to clipboard");
+                  }}
+                >
+                  <Copy className="w-3.5 h-3.5" />Copy
+                </Button>
+                {lead.phone && (
+                  <Button
+                    className="flex-1 bg-teal-600 hover:bg-teal-500 text-white gap-1.5"
+                    disabled={sendInitialSms.isPending}
+                    onClick={() => {
+                      sendInitialSms.mutate(
+                        { leadId: lead.id, body: siteVisitMessage },
+                        {
+                          onSuccess: () => {
+                            if (siteVisitLogContact) {
+                              onStageChange(lead.id, "contacted");
+                              appendLeadNote.mutate({ leadId: lead.id, note: "Site visit request sent via SMS" });
+                            }
+                            toast.success("Site visit request sent via SMS");
+                            setShowSiteVisitModal(false);
+                          },
+                        }
+                      );
+                    }}
+                  >
+                    {sendInitialSms.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
+                    Send SMS
+                  </Button>
+                )}
+              </>
+            )}
+          </div>
+        </div>
+      </div>
+    )}
     </>
   );
 }
-
 // ─── Add Lead Modal ───────────────────────────────────────────────────────────
 
 interface AddLeadForm {
