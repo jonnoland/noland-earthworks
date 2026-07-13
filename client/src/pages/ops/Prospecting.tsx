@@ -40,6 +40,8 @@ import {
   Check,
   AlertTriangle,
   Facebook,
+  Sparkles,
+  Copy,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -119,6 +121,9 @@ export default function Prospecting() {
   const [editingNotesId, setEditingNotesId] = useState<number | null>(null);
   const [notesEditValue, setNotesEditValue] = useState("");
   const [convertingId, setConvertingId] = useState<number | null>(null);
+  const [fbOutreachTarget, setFbOutreachTarget] = useState<Prospect | null>(null);
+  const [fbOutreachText, setFbOutreachText] = useState("");
+  const [fbOutreachGeneratingId, setFbOutreachGeneratingId] = useState<number | null>(null);
 
   const { data: prospects = [], isLoading, refetch } = trpc.ops.prospecting.list.useQuery(
     { status: filter === "all" ? undefined : filter },
@@ -191,6 +196,24 @@ export default function Prospecting() {
       toast.error(err.message);
     },
   });
+
+  const generateFbOutreach = trpc.ops.prospecting.generateFbOutreach.useMutation({
+    onSuccess: (res, vars) => {
+      setFbOutreachText(res.message);
+      setFbOutreachGeneratingId(null);
+    },
+    onError: (err) => {
+      setFbOutreachGeneratingId(null);
+      toast.error(err.message);
+    },
+  });
+
+  function openFbOutreach(p: Prospect) {
+    setFbOutreachTarget(p);
+    setFbOutreachText("");
+    setFbOutreachGeneratingId(p.id);
+    generateFbOutreach.mutate({ id: p.id });
+  }
 
   const sendSms = trpc.ops.leads.sendDirectSms.useMutation({
     onSuccess: () => {
@@ -664,6 +687,18 @@ export default function Prospecting() {
                             </Button>
                           </a>
                         )}
+                        {/* AI Generate FB Message */}
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => openFbOutreach(p)}
+                          disabled={fbOutreachGeneratingId === p.id && generateFbOutreach.isPending}
+                          className="border-purple-700 text-purple-300 hover:text-white h-8 text-xs"
+                          title="Generate a personalized Facebook message with AI"
+                        >
+                          <Sparkles className="h-3.5 w-3.5 mr-1.5" />
+                          {fbOutreachGeneratingId === p.id && generateFbOutreach.isPending ? "Generating..." : "AI Message"}
+                        </Button>
 
                         {p.status === "new" && (
                           <Button
@@ -741,6 +776,78 @@ export default function Prospecting() {
           })}
         </div>
       )}
+
+      {/* AI FB Outreach modal */}
+      <Dialog open={!!fbOutreachTarget} onOpenChange={(open) => { if (!open) { setFbOutreachTarget(null); setFbOutreachText(""); } }}>
+        <DialogContent className="bg-zinc-900 border-zinc-700 text-white max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-white">
+              <Sparkles className="h-4 w-4 text-purple-400" />
+              AI Facebook Message &mdash; {fbOutreachTarget?.contactName ?? "Prospect"}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <p className="text-xs text-zinc-400">
+              AI-generated based on the prospect&apos;s post, summary, location, acreage, and notes.
+              Edit before sending. Replace <span className="font-mono text-zinc-300">[PHONE]</span> with your number.
+            </p>
+            {generateFbOutreach.isPending ? (
+              <div className="flex items-center gap-2 py-6 text-zinc-400 text-sm">
+                <Sparkles className="h-4 w-4 animate-pulse text-purple-400" />
+                Writing personalized message...
+              </div>
+            ) : (
+              <Textarea
+                value={fbOutreachText}
+                onChange={(e) => setFbOutreachText(e.target.value)}
+                rows={7}
+                className="bg-zinc-800 border-zinc-600 text-white text-sm resize-none"
+                placeholder="AI message will appear here..."
+              />
+            )}
+            {fbOutreachText && !generateFbOutreach.isPending && (
+              <p className="text-xs text-zinc-500 text-right">{fbOutreachText.length} chars</p>
+            )}
+          </div>
+          <DialogFooter className="gap-2">
+            <Button
+              variant="outline"
+              onClick={() => { setFbOutreachTarget(null); setFbOutreachText(""); }}
+              className="border-zinc-600 text-zinc-300"
+            >
+              Close
+            </Button>
+            {!generateFbOutreach.isPending && fbOutreachText && (
+              <>
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    if (fbOutreachTarget) {
+                      setFbOutreachText("");
+                      setFbOutreachGeneratingId(fbOutreachTarget.id);
+                      generateFbOutreach.mutate({ id: fbOutreachTarget.id });
+                    }
+                  }}
+                  className="border-purple-700 text-purple-300 hover:text-white"
+                >
+                  <Sparkles className="h-3.5 w-3.5 mr-1.5" />
+                  Regenerate
+                </Button>
+                <Button
+                  onClick={() => {
+                    navigator.clipboard.writeText(fbOutreachText);
+                    toast.success("Message copied to clipboard.");
+                  }}
+                  className="bg-purple-700 hover:bg-purple-600 text-white"
+                >
+                  <Copy className="h-3.5 w-3.5 mr-1.5" />
+                  Copy Message
+                </Button>
+              </>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Reach Out modal */}
       <Dialog open={!!reachOutTarget} onOpenChange={(open) => !open && setReachOutTarget(null)}>

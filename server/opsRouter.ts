@@ -3983,6 +3983,50 @@ Do not fabricate prospects. Only include real posts you actually found and visit
         .groupBy(prospectingLeads.source);
       return rows.map(r => ({ source: r.source, count: Number(r.count) }));
     }),
+
+  // Generate a personalized Facebook Messenger outreach message using the prospect's full context
+  generateFbOutreach: ownerProcedure
+    .input(z.object({ id: z.number() }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+      const rows = await db.select().from(prospectingLeads).where(eq(prospectingLeads.id, input.id)).limit(1);
+      const p = rows[0];
+      if (!p) throw new TRPCError({ code: "NOT_FOUND", message: "Prospect not found" });
+
+      const contextParts: string[] = [];
+      if (p.contactName) contextParts.push(`Name: ${p.contactName}`);
+      if (p.location) contextParts.push(`Location: ${p.location}`);
+      if (p.estimatedAcres) contextParts.push(`Estimated acreage: ${p.estimatedAcres} acres`);
+      if (p.marginTier) contextParts.push(`Margin tier: ${p.marginTier}`);
+      if (p.postSnippet) contextParts.push(`What they posted: ${p.postSnippet}`);
+      if (p.summary) contextParts.push(`AI summary: ${p.summary}`);
+      if (p.notes) contextParts.push(`Additional notes: ${p.notes}`);
+      contextParts.push(`Source: ${p.source}`);
+
+      const prompt = `You are writing a short, personalized Facebook Messenger outreach message for Jon Noland, owner of Noland Earthworks LLC — a veteran-owned forestry mulching and land management company in Middle Tennessee.
+
+Prospect context:
+${contextParts.join("\n")}
+
+Write a SHORT, casual first-contact Facebook Messenger message from Jon. Rules:
+- Casual, warm, southern — not corporate or salesy
+- 2-3 sentences maximum — this is a Messenger message, not an email
+- Reference something specific from what they posted or their situation (brush, overgrown land, acreage, location, etc.)
+- Mention forestry mulching if relevant to their situation
+- End with a low-pressure offer to come take a look or give them a call
+- No emojis. No hashtags. No filler phrases like "I'd love to help" or "we're passionate about"
+- Sign off as Jon, Noland Earthworks, with phone number placeholder [PHONE]
+- Make it feel like a real person reached out, not a bot
+- If notes are provided, incorporate any relevant details from the notes
+Return only the message text, no preamble or explanation.`;
+
+      const result = await invokeLLM({ messages: [{ role: "user", content: prompt }] });
+      const raw = result?.choices?.[0]?.message?.content;
+      const message = typeof raw === "string" ? raw.trim() : null;
+      if (!message) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "AI did not return a message. Try again." });
+      return { message };
+    }),
 });
 export const opsRouter = router({
   jobs: jobsRouter,

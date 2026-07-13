@@ -2267,3 +2267,7 @@
 - [x] Tier 3: Source performance mini-stats row (counts per source)
 - [x] Tier 3: Bulk dismiss for cleaning out low-quality leads (checkbox selection + bulk action bar)
 - [x] Tier 3: Archived tab with restore button; archive button on active cards
+
+## AI FB Outreach Generator (v1.0.48)
+- [x] Add generateFbOutreach tRPC procedure to prospectingRouter: takes prospect id, uses invokeLLM to write a short personalized Facebook Messenger message using prospect summary, notes, location, acreage, margin tier, and post snippet
+- [x] Add "AI Message" button next to "Message on FB" on each prospect card; clicking opens a modal that auto-generates the message, shows a loading state, then displays an editable textarea with Regenerate and Copy buttons
