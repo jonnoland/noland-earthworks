@@ -19,18 +19,19 @@ import { and, desc, eq } from "drizzle-orm";
  * Curated stock photo pool — real forestry mulching machines in diverse settings.
  * All files are JPEG. URLs are permanent public CDN URLs (no auth required).
  */
+const CF = "https://d2xsxph8kpxj0f.cloudfront.net/310519663484957999/PymCzDCnSJzPjdkfwA7Jn6/stock-photos";
 export const STOCK_PHOTO_POOL: Array<{ url: string; tags: string[]; brand: string | null; description: string }> = [
-  { url: "https://files.manuscdn.com/user_upload_by_module/session_file/310519663484957999/QiodsoYcXHtJabcv.jpg", tags: ["woods", "trees", "forestry", "mulch", "brush", "cedar", "general"], brand: "takeuchi", description: "Takeuchi tracked mulcher working through wooded area" },
-  { url: "https://files.manuscdn.com/user_upload_by_module/session_file/310519663484957999/aRISdWBRuGXTExCB.jpg", tags: ["woods", "trees", "forestry", "brush", "cedar", "saplings", "general"], brand: null, description: "Compact loader mulcher pushing through dense saplings" },
-  { url: "https://files.manuscdn.com/user_upload_by_module/session_file/310519663484957999/LtZNHbjaEFnEGENh.jpg", tags: ["row", "right-of-way", "brush", "general"], brand: null, description: "Mulcher on right-of-way clearing" },
-  { url: "https://files.manuscdn.com/user_upload_by_module/session_file/310519663484957999/JUYMuBnidStmlGuC.jpg", tags: ["field", "pasture", "reclaim", "open", "general", "wide"], brand: null, description: "Red mulcher in wide open field, blue sky" },
-  { url: "https://files.manuscdn.com/user_upload_by_module/session_file/310519663484957999/WAZazzjcFrVltfHJ.jpg", tags: ["brush", "dense", "overgrown", "general", "reclaim", "saplings"], brand: null, description: "Yellow loader with mulcher head pushing through dry dense brush" },
-  { url: "https://files.manuscdn.com/user_upload_by_module/session_file/310519663484957999/pmUmSiKhsnNBCoOW.jpg", tags: ["slope", "hillside", "terrain", "row", "right-of-way", "general"], brand: null, description: "FAE tracked mulcher on dry hillside slope" },
-  { url: "https://files.manuscdn.com/user_upload_by_module/session_file/310519663484957999/GivYnMHwetfnhimZ.jpg", tags: ["brush", "dense", "mulch", "forestry", "general"], brand: null, description: "Fecon Bull Hog mulcher head working through brush" },
-  { url: "https://files.manuscdn.com/user_upload_by_module/session_file/310519663484957999/uheDZTBsafUTqWcT.jpg", tags: ["brush", "dense", "overgrown", "general", "reclaim"], brand: null, description: "FAE tracked mulcher working through overgrown brush" },
-  { url: "https://files.manuscdn.com/user_upload_by_module/session_file/310519663484957999/dbTIGFKpInxonyIw.jpg", tags: ["woods", "trees", "forestry", "lot", "general", "site prep"], brand: "cat", description: "CAT mulcher in spring woodland clearing" },
-  { url: "https://files.manuscdn.com/user_upload_by_module/session_file/310519663484957999/unkRuyKtCOgaFRqY.jpg", tags: ["lot", "cleared", "site prep", "general", "reclaim", "ranch"], brand: "cat", description: "CAT mulcher clearing ranch/lot area with trees" },
-  { url: "https://files.manuscdn.com/user_upload_by_module/session_file/310519663484957999/GRuAxgdbCiUOraWs.jpg", tags: ["slope", "hillside", "terrain", "forestry", "general", "steep"], brand: null, description: "Machine on steep slope forestry work" },
+  { url: `${CF}/mulcher-01-takeuchi-woods.jpg`, tags: ["woods", "trees", "forestry", "mulch", "brush", "cedar", "general"], brand: "takeuchi", description: "Takeuchi tracked mulcher working through wooded area" },
+  { url: `${CF}/mulcher-02-saplings.jpg`, tags: ["woods", "trees", "forestry", "brush", "cedar", "saplings", "general"], brand: null, description: "Compact loader mulcher pushing through dense saplings" },
+  { url: `${CF}/mulcher-03-row.jpg`, tags: ["row", "right-of-way", "brush", "general"], brand: null, description: "Mulcher on right-of-way clearing" },
+  { url: `${CF}/mulcher-04-field.jpg`, tags: ["field", "pasture", "reclaim", "open", "general", "wide"], brand: null, description: "Red mulcher in wide open field, blue sky" },
+  { url: `${CF}/mulcher-05-yellow-brush.jpg`, tags: ["brush", "dense", "overgrown", "general", "reclaim", "saplings"], brand: null, description: "Yellow loader with mulcher head pushing through dry dense brush" },
+  { url: `${CF}/mulcher-06-fae-slope.jpg`, tags: ["slope", "hillside", "terrain", "row", "right-of-way", "general"], brand: null, description: "FAE tracked mulcher on dry hillside slope" },
+  { url: `${CF}/mulcher-07-fecon-mulch.jpg`, tags: ["brush", "dense", "mulch", "forestry", "general"], brand: null, description: "Fecon Bull Hog mulcher head working through brush" },
+  { url: `${CF}/mulcher-08-brush-control.jpg`, tags: ["brush", "dense", "overgrown", "general", "reclaim"], brand: null, description: "FAE tracked mulcher working through overgrown brush" },
+  { url: `${CF}/mulcher-09-cat-lot.jpg`, tags: ["woods", "trees", "forestry", "lot", "general", "site prep"], brand: "cat", description: "CAT mulcher in spring woodland clearing" },
+  { url: `${CF}/mulcher-10-cat-ranch.jpg`, tags: ["lot", "cleared", "site prep", "general", "reclaim", "ranch"], brand: "cat", description: "CAT mulcher clearing ranch/lot area with trees" },
+  { url: `${CF}/mulcher-11-steep-slope.jpg`, tags: ["slope", "hillside", "terrain", "forestry", "general", "steep"], brand: null, description: "Machine on steep slope forestry work" },
 ];
 
 /** Pick a stock photo based on job context and optional brand preference. */
