@@ -1688,3 +1688,18 @@ export const savedRoutes = mysqlTable("saved_routes", {
 
 export type SavedRoute = typeof savedRoutes.$inferSelect;
 export type InsertSavedRoute = typeof savedRoutes.$inferInsert;
+
+/**
+ * Saved custom instruction templates for the AI FB Outreach modal.
+ * Allows Jon to save and reuse favorite prompt snippets.
+ */
+export const outreachTemplates = mysqlTable("outreach_templates", {
+  id: int("id").autoincrement().primaryKey(),
+  /** Short display name for the template (e.g., "Mention availability") */
+  name: varchar("name", { length: 120 }).notNull(),
+  /** The custom instructions text to inject into the AI prompt */
+  instructions: text("instructions").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type OutreachTemplate = typeof outreachTemplates.$inferSelect;
+export type InsertOutreachTemplate = typeof outreachTemplates.$inferInsert;

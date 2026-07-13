@@ -27,7 +27,7 @@ import {
 } from "./db";
 import { Resend } from "resend";
 import { jobs, opsLeads, quoteSubmissions, crews, crewMembers, conversations, messages, reviews, timeEntries, distanceQuotes, businessSettings, automationSettings, serviceCatalog, pricingBenchmarks, messageTemplates, reminderRules, leadNotes, visitBlackoutDates, recurringBlackoutDays, aiPricingSettings, quoteDrafts, jobberTokens, socialPosts, adSpend, equipment, serviceLogs, serviceIntervals, fieldDiagnostics, ownerTasks, jobNotes, jobberRevenueCache, morningBriefs, reviewRequests, chatSessions,
- scheduleEntries, agentConfig, adCampaigns, prospectingLeads } from "../drizzle/schema";
+ scheduleEntries, agentConfig, adCampaigns, prospectingLeads, outreachTemplates } from "../drizzle/schema";
 
 import { and, desc, eq, gte, inArray, lt, lte, like, or, sql } from "drizzle-orm";
 import { autoPatchSeoCheck, AUTO_PATCHABLE_CHECKS, SQUARESPACE_MANUAL_CHECKS, CODE_FIXED_CHECKS, INFRA_CHECKS } from "./seoAutoPatcher";
@@ -4036,15 +4036,23 @@ Rules that apply to ALL tones:
 ${input.customInstructions ? `\nAdditional instructions from Jon: ${input.customInstructions}` : ""}
 Return only the message text, no preamble or explanation.`;
 
-      const result = await invokeLLM({ messages: [{ role: "user", content: prompt }] });
-      const raw = result?.choices?.[0]?.message?.content;
-      let message = typeof raw === "string" ? raw.trim() : null;
-      if (!message) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "AI did not return a message. Try again." });
-
-      // Auto-replace [PHONE] with the owner's real phone number
-      message = message.replace(/\[PHONE\]/gi, ownerPhone);
-
-      return { message };
+            // Generate 3 variations in parallel
+      const variationPrompts = [
+        prompt,
+        prompt + "\n(This is variation 2 — write a distinctly different opening and phrasing than variation 1, but same tone and rules.)",
+        prompt + "\n(This is variation 3 — write a distinctly different approach than variations 1 and 2, same tone and rules.)",
+      ];
+      const results = await Promise.all(
+        variationPrompts.map((p) => invokeLLM({ messages: [{ role: "user", content: p }] }))
+      );
+      const variations = results.map((r) => {
+        const raw = r?.choices?.[0]?.message?.content;
+        let msg = typeof raw === "string" ? raw.trim() : null;
+        if (!msg) return null;
+        return msg.replace(/\[PHONE\]/gi, ownerPhone);
+      }).filter(Boolean) as string[];
+      if (variations.length === 0) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "AI did not return any variations. Try again." });
+      return { variations };
     }),
 
   // Append a message to the prospect's notes field (used by Save to Notes in the AI modal)
@@ -4060,6 +4068,37 @@ Return only the message text, no preamble or explanation.`;
         ? `${existing}\n\n[AI Draft ${timestamp}]\n${input.text}`
         : `[AI Draft ${timestamp}]\n${input.text}`;
       await db.update(prospectingLeads).set({ notes: appended }).where(eq(prospectingLeads.id, input.id));
+      return { ok: true };
+    }),
+
+  // List all saved outreach instruction templates
+  listOutreachTemplates: ownerProcedure
+    .query(async () => {
+      const db = await getDb();
+      if (!db) return [];
+      return db.select().from(outreachTemplates).orderBy(desc(outreachTemplates.createdAt));
+    }),
+
+  // Save a new outreach instruction template
+  saveOutreachTemplate: ownerProcedure
+    .input(z.object({
+      name: z.string().min(1).max(120),
+      instructions: z.string().min(1).max(500),
+    }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+      await db.insert(outreachTemplates).values({ name: input.name, instructions: input.instructions });
+      return { ok: true };
+    }),
+
+  // Delete a saved outreach instruction template
+  deleteOutreachTemplate: ownerProcedure
+    .input(z.object({ id: z.number() }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+      await db.delete(outreachTemplates).where(eq(outreachTemplates.id, input.id));
       return { ok: true };
     }),
 });

@@ -610,6 +610,13 @@
       "when": 1783957770101,
       "tag": "0086_flat_arclight",
       "breakpoints": true
+    },
+    {
+      "idx": 87,
+      "version": "5",
+      "when": 1783975046346,
+      "tag": "0087_familiar_starfox",
+      "breakpoints": true
     }
   ]
 }

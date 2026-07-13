@@ -2280,3 +2280,11 @@
 ## AI FB Outreach Modal UX (v1.0.50)
 - [x] Replace the plain loading text with a skeleton animation (5 shimmer lines of varying widths) inside the modal while the AI is generating
 - [x] Add optional custom instructions input field below the tone selector; value passed to generateFbOutreach and injected into LLM prompt as "Additional instructions from Jon"
+
+## AI FB Outreach — Variations & Templates (v1.0.51)
+- [x] Update generateFbOutreach to return 3 message variations (array) via parallel invokeLLM calls
+- [x] Update modal UI to show Option 1/2/3 selector tabs; clicking a tab loads that variation into the editable textarea
+- [x] Add outreach_templates table (id, name, instructions, createdAt) to schema and pushed migration (0087)
+- [x] Add listOutreachTemplates, saveOutreachTemplate, deleteOutreachTemplate procedures to prospectingRouter
+- [x] Add Save as template button next to custom instructions label; shows inline name input + Save button
+- [x] Add Load template dropdown next to custom instructions label; lists saved templates, click to load, hover X to delete

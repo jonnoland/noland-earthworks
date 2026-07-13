@@ -123,10 +123,15 @@ export default function Prospecting() {
   const [notesEditValue, setNotesEditValue] = useState("");
   const [convertingId, setConvertingId] = useState<number | null>(null);
   const [fbOutreachTarget, setFbOutreachTarget] = useState<Prospect | null>(null);
+  const [fbOutreachVariations, setFbOutreachVariations] = useState<string[]>([]);
+  const [fbOutreachSelectedIdx, setFbOutreachSelectedIdx] = useState(0);
   const [fbOutreachText, setFbOutreachText] = useState("");
   const [fbOutreachGeneratingId, setFbOutreachGeneratingId] = useState<number | null>(null);
   const [fbOutreachTone, setFbOutreachTone] = useState<"casual" | "professional" | "urgent">("casual");
   const [fbCustomInstructions, setFbCustomInstructions] = useState("");
+  const [fbSaveTemplateName, setFbSaveTemplateName] = useState("");
+  const [fbShowSaveTemplate, setFbShowSaveTemplate] = useState(false);
+  const [fbShowTemplateMenu, setFbShowTemplateMenu] = useState(false);
 
   const { data: prospects = [], isLoading, refetch } = trpc.ops.prospecting.list.useQuery(
     { status: filter === "all" ? undefined : filter },
@@ -202,13 +207,30 @@ export default function Prospecting() {
 
   const generateFbOutreach = trpc.ops.prospecting.generateFbOutreach.useMutation({
     onSuccess: (res) => {
-      setFbOutreachText(res.message);
+      const vars = res.variations ?? [];
+      setFbOutreachVariations(vars);
+      setFbOutreachSelectedIdx(0);
+      setFbOutreachText(vars[0] ?? "");
       setFbOutreachGeneratingId(null);
     },
     onError: (err) => {
       setFbOutreachGeneratingId(null);
       toast.error(err.message);
     },
+  });
+  const { data: outreachTemplates = [] } = trpc.ops.prospecting.listOutreachTemplates.useQuery();
+  const saveOutreachTemplate = trpc.ops.prospecting.saveOutreachTemplate.useMutation({
+    onSuccess: () => {
+      utils.ops.prospecting.listOutreachTemplates.invalidate();
+      setFbSaveTemplateName("");
+      setFbShowSaveTemplate(false);
+      toast.success("Template saved.");
+    },
+    onError: (err) => toast.error(err.message),
+  });
+  const deleteOutreachTemplate = trpc.ops.prospecting.deleteOutreachTemplate.useMutation({
+    onSuccess: () => utils.ops.prospecting.listOutreachTemplates.invalidate(),
+    onError: (err) => toast.error(err.message),
   });
 
   const appendToNotes = trpc.ops.prospecting.appendToNotes.useMutation({
@@ -222,6 +244,8 @@ export default function Prospecting() {
   function openFbOutreach(p: Prospect) {
     setFbOutreachTarget(p);
     setFbOutreachText("");
+    setFbOutreachVariations([]);
+    setFbOutreachSelectedIdx(0);
     setFbOutreachGeneratingId(p.id);
     generateFbOutreach.mutate({ id: p.id, tone: fbOutreachTone, customInstructions: fbCustomInstructions.trim() || undefined });
   }
@@ -789,7 +813,7 @@ export default function Prospecting() {
       )}
 
       {/* AI FB Outreach modal */}
-      <Dialog open={!!fbOutreachTarget} onOpenChange={(open) => { if (!open) { setFbOutreachTarget(null); setFbOutreachText(""); } }}>
+      <Dialog open={!!fbOutreachTarget} onOpenChange={(open) => { if (!open) { setFbOutreachTarget(null); setFbOutreachText(""); setFbOutreachVariations([]); setFbOutreachSelectedIdx(0); setFbShowSaveTemplate(false); setFbShowTemplateMenu(false); } }}>
         <DialogContent className="bg-zinc-900 border-zinc-700 text-white max-w-lg">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-white">
@@ -821,9 +845,57 @@ export default function Prospecting() {
               </div>
             </div>
 
-            {/* Optional custom instructions */}
+            {/* Optional custom instructions with template picker */}
             <div className="space-y-1">
-              <label className="text-xs text-zinc-400">Custom instructions <span className="text-zinc-600">(optional)</span></label>
+              <div className="flex items-center justify-between">
+                <label className="text-xs text-zinc-400">Custom instructions <span className="text-zinc-600">(optional)</span></label>
+                <div className="flex items-center gap-1">
+                  {/* Template picker */}
+                  <div className="relative">
+                    <button
+                      type="button"
+                      onClick={() => { setFbShowTemplateMenu(!fbShowTemplateMenu); setFbShowSaveTemplate(false); }}
+                      className="text-xs text-zinc-500 hover:text-zinc-300 px-1.5 py-0.5 rounded border border-zinc-700 hover:border-zinc-500"
+                    >
+                      Load template
+                    </button>
+                    {fbShowTemplateMenu && (
+                      <div className="absolute right-0 top-6 z-50 bg-zinc-800 border border-zinc-600 rounded-md shadow-lg min-w-[200px] max-h-48 overflow-y-auto">
+                        {outreachTemplates.length === 0 ? (
+                          <p className="text-xs text-zinc-500 px-3 py-2">No saved templates yet.</p>
+                        ) : (
+                          outreachTemplates.map((t) => (
+                            <div key={t.id} className="flex items-center justify-between px-3 py-1.5 hover:bg-zinc-700 group">
+                              <button
+                                type="button"
+                                className="text-xs text-zinc-300 text-left flex-1 truncate"
+                                onClick={() => { setFbCustomInstructions(t.instructions); setFbShowTemplateMenu(false); }}
+                              >
+                                {t.name}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => deleteOutreachTemplate.mutate({ id: t.id })}
+                                className="text-zinc-600 hover:text-red-400 ml-2 opacity-0 group-hover:opacity-100"
+                              >
+                                <X className="h-3 w-3" />
+                              </button>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    )}
+                  </div>
+                  {/* Save as template */}
+                  <button
+                    type="button"
+                    onClick={() => { setFbShowSaveTemplate(!fbShowSaveTemplate); setFbShowTemplateMenu(false); }}
+                    className="text-xs text-zinc-500 hover:text-zinc-300 px-1.5 py-0.5 rounded border border-zinc-700 hover:border-zinc-500"
+                  >
+                    Save as template
+                  </button>
+                </div>
+              </div>
               <Input
                 value={fbCustomInstructions}
                 onChange={(e) => setFbCustomInstructions(e.target.value)}
@@ -831,6 +903,28 @@ export default function Prospecting() {
                 maxLength={500}
                 className="bg-zinc-800 border-zinc-600 text-white text-xs h-8 placeholder:text-zinc-600"
               />
+              {fbShowSaveTemplate && (
+                <div className="flex items-center gap-2 mt-1">
+                  <Input
+                    value={fbSaveTemplateName}
+                    onChange={(e) => setFbSaveTemplateName(e.target.value)}
+                    placeholder="Template name (e.g. Mention availability)"
+                    maxLength={120}
+                    className="bg-zinc-800 border-zinc-600 text-white text-xs h-7 placeholder:text-zinc-600 flex-1"
+                  />
+                  <Button
+                    size="sm"
+                    disabled={!fbSaveTemplateName.trim() || !fbCustomInstructions.trim() || saveOutreachTemplate.isPending}
+                    onClick={() => saveOutreachTemplate.mutate({ name: fbSaveTemplateName.trim(), instructions: fbCustomInstructions.trim() })}
+                    className="h-7 text-xs bg-zinc-700 hover:bg-zinc-600 text-white"
+                  >
+                    {saveOutreachTemplate.isPending ? "Saving..." : "Save"}
+                  </Button>
+                  <button type="button" onClick={() => setFbShowSaveTemplate(false)} className="text-zinc-500 hover:text-zinc-300">
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              )}
             </div>
 
             <p className="text-xs text-zinc-400">
@@ -842,7 +936,7 @@ export default function Prospecting() {
               <div className="space-y-2 py-2">
                 <div className="flex items-center gap-2 mb-3 text-zinc-500 text-xs">
                   <Sparkles className="h-3.5 w-3.5 animate-pulse text-purple-400" />
-                  Writing personalized message...
+                  Writing 3 variations...
                 </div>
                 <Skeleton className="h-4 w-full bg-zinc-700/60" />
                 <Skeleton className="h-4 w-5/6 bg-zinc-700/60" />
@@ -851,13 +945,36 @@ export default function Prospecting() {
                 <Skeleton className="h-4 w-3/4 bg-zinc-700/60" />
               </div>
             ) : (
-              <Textarea
-                value={fbOutreachText}
-                onChange={(e) => setFbOutreachText(e.target.value)}
-                rows={7}
-                className="bg-zinc-800 border-zinc-600 text-white text-sm resize-none"
-                placeholder="AI message will appear here..."
-              />
+              <div className="space-y-2">
+                {/* Variation selector tabs */}
+                {fbOutreachVariations.length > 1 && (
+                  <div className="flex items-center gap-1.5">
+                    {fbOutreachVariations.map((_, idx) => (
+                      <button
+                        key={idx}
+                        type="button"
+                        onClick={() => { setFbOutreachSelectedIdx(idx); setFbOutreachText(fbOutreachVariations[idx]); }}
+                        className={cn(
+                          "text-xs px-2.5 py-1 rounded border transition-colors",
+                          fbOutreachSelectedIdx === idx
+                            ? "bg-purple-700 border-purple-600 text-white"
+                            : "bg-zinc-800 border-zinc-700 text-zinc-400 hover:text-white hover:bg-zinc-700"
+                        )}
+                      >
+                        Option {idx + 1}
+                      </button>
+                    ))}
+                    <span className="text-xs text-zinc-600 ml-1">Select a variation to edit</span>
+                  </div>
+                )}
+                <Textarea
+                  value={fbOutreachText}
+                  onChange={(e) => setFbOutreachText(e.target.value)}
+                  rows={7}
+                  className="bg-zinc-800 border-zinc-600 text-white text-sm resize-none"
+                  placeholder="AI message will appear here..."
+                />
+              </div>
             )}
             {fbOutreachText && !generateFbOutreach.isPending && (
               <p className="text-xs text-zinc-500 text-right">{fbOutreachText.length} chars</p>
