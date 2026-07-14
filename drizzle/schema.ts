@@ -1703,3 +1703,23 @@ export const outreachTemplates = mysqlTable("outreach_templates", {
 });
 export type OutreachTemplate = typeof outreachTemplates.$inferSelect;
 export type InsertOutreachTemplate = typeof outreachTemplates.$inferInsert;
+
+/**
+ * Lead contact log — every outbound contact attempt on a lead is recorded here.
+ * Tracks method, full message body (for email/SMS copies), and timestamp.
+ */
+export const leadContactLog = mysqlTable("lead_contact_log", {
+  id: int("id").autoincrement().primaryKey(),
+  leadId: int("leadId").notNull(),
+  /** Contact method used */
+  method: mysqlEnum("method", ["email", "sms", "phone", "in_person"]).notNull(),
+  /** Email subject line (null for SMS/phone) */
+  subject: varchar("subject", { length: 500 }),
+  /** Full message body — copy of what was sent */
+  body: text("body"),
+  /** When the message was sent */
+  sentAt: timestamp("sentAt").defaultNow().notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type LeadContactLog = typeof leadContactLog.$inferSelect;
+export type InsertLeadContactLog = typeof leadContactLog.$inferInsert;

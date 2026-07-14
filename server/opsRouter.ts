@@ -27,7 +27,7 @@ import {
 } from "./db";
 import { Resend } from "resend";
 import { jobs, opsLeads, quoteSubmissions, crews, crewMembers, conversations, messages, reviews, timeEntries, distanceQuotes, businessSettings, automationSettings, serviceCatalog, pricingBenchmarks, messageTemplates, reminderRules, leadNotes, visitBlackoutDates, recurringBlackoutDays, aiPricingSettings, quoteDrafts, jobberTokens, socialPosts, adSpend, equipment, serviceLogs, serviceIntervals, fieldDiagnostics, ownerTasks, jobNotes, jobberRevenueCache, morningBriefs, reviewRequests, chatSessions,
- scheduleEntries, agentConfig, adCampaigns, prospectingLeads, outreachTemplates } from "../drizzle/schema";
+ scheduleEntries, agentConfig, adCampaigns, prospectingLeads, outreachTemplates, leadContactLog } from "../drizzle/schema";
 
 import { and, desc, eq, gte, inArray, lt, lte, like, or, sql } from "drizzle-orm";
 import { autoPatchSeoCheck, AUTO_PATCHABLE_CHECKS, SQUARESPACE_MANUAL_CHECKS, CODE_FIXED_CHECKS, INFRA_CHECKS } from "./seoAutoPatcher";
@@ -482,11 +482,8 @@ const leadsRouter = router({
             hour: "numeric",
             minute: "2-digit",
           });
-          await resend.emails.send({
-            from: "Noland Earthworks <noreply@nolandearthworks.com>",
-            to: lead.email,
-            subject: "Your Site Visit is Confirmed — Noland Earthworks",
-            html: `
+          const visitSubject = "Your Site Visit is Confirmed — Noland Earthworks";
+          const visitHtml = `
               <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;background:#fff;">
                 <div style="background:#1a1a1a;padding:24px 32px;">
                   <h1 style="color:#d97706;margin:0;font-size:22px;letter-spacing:1px;">NOLAND EARTHWORKS</h1>
@@ -504,11 +501,27 @@ const leadsRouter = router({
                   <p style="color:#888;font-size:12px;margin:0;">Noland Earthworks, LLC &mdash; Vanleer, TN &mdash; <a href="https://nolandearthworks.com" style="color:#d97706;">nolandearthworks.com</a></p>
                 </div>
               </div>
-            `,
+            `;
+                    await resend.emails.send({
+            from: "Noland Earthworks <noreply@nolandearthworks.com>",
+            to: lead.email,
+            subject: visitSubject,
+            html: visitHtml,
           }).catch((e: unknown) => console.error("[Ops] Visit confirmation email failed:", e));
+          // Log the email contact
+          const db2 = await getDb();
+          if (db2) {
+            await db2.insert(leadContactLog).values({
+              leadId: input.leadId,
+              method: "email",
+              subject: visitSubject,
+              body: `Site visit confirmation email sent to ${lead.email}. Visit time: ${visitFormatted} (Central Time).`,
+              sentAt: new Date(),
+              createdAt: new Date(),
+            });
+          }
         }
       }
-
       return { success: true, visitConfirmedAt: now };
     }),
 
@@ -993,6 +1006,19 @@ Return JSON only: {"suggestedStage": "<stage>", "reason": "<one sentence>"}`;
         sentAt: new Date(),
       });
       await db.update(conversations).set({ lastMessage: input.body, lastMessageAt: new Date() }).where(eq(conversations.id, convId));
+      // Log contact in lead_contact_log
+      await db.insert(leadContactLog).values({
+        leadId: input.leadId,
+        method: "sms",
+        subject: null,
+        body: input.body,
+        sentAt: new Date(),
+        createdAt: new Date(),
+      });
+      // Advance lead stage to "contacted" if still "new"
+      if (lead.stage === "new") {
+        await updateOpsLeadById(input.leadId, { stage: "contacted" });
+      }
       return { conversationId: convId, twilioSid };
     }),
   /** Generate a personalized lead generation action plan based on current pipeline state and season */
@@ -1183,6 +1209,46 @@ Rules:
         : `[${timestamp}] ${input.note}`;
       await updateOpsLeadById(input.leadId, { notes: updated });
       return { ok: true };
+    }),
+
+  /** Log an outbound contact attempt on a lead (Email or SMS) and store the full message body */
+  logContact: ownerProcedure
+    .input(z.object({
+      leadId: z.number().int().positive(),
+      method: z.enum(["email", "sms", "phone", "in_person"]),
+      subject: z.string().max(500).optional(),
+      body: z.string().optional(),
+    }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+      await db.insert(leadContactLog).values({
+        leadId: input.leadId,
+        method: input.method,
+        subject: input.subject ?? null,
+        body: input.body ?? null,
+        sentAt: new Date(),
+        createdAt: new Date(),
+      });
+      // Also move the lead to "contacted" stage if still "new"
+      const lead = await getOpsLeadById(input.leadId);
+      if (lead && lead.stage === "new") {
+        await updateOpsLeadById(input.leadId, { stage: "contacted" });
+      }
+      return { ok: true };
+    }),
+
+  /** Return the full contact log for a lead, newest first */
+  getContactLog: ownerProcedure
+    .input(z.object({ leadId: z.number().int().positive() }))
+    .query(async ({ input }) => {
+      const db = await getDb();
+      if (!db) return [];
+      return db
+        .select()
+        .from(leadContactLog)
+        .where(eq(leadContactLog.leadId, input.leadId))
+        .orderBy(desc(leadContactLog.sentAt));
     }),
 });
 // ─── Schedule Router ──────────────────────────────────────────────────────────

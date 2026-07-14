@@ -2300,3 +2300,12 @@
 - [x] Add "Site Visit Req" button (teal, Sparkles icon) to the 5-column action grid in the lead detail panel; auto-generates a Professional tone message on open
 - [x] Site Visit Request modal: tone selector (Professional / Casual / Urgent), custom instructions field (Enter to regenerate), skeleton loader while generating, editable textarea, Regenerate button, Copy button, Send SMS button, Log as Contacted checkbox
 - [x] On Send SMS: marks lead as contacted, appends "Site visit request sent via SMS" note to lead record
+
+## Contact Method Tracking & Message Log (v1.0.54)
+- [x] Add lead_contact_log table to schema: id, leadId, method (email|sms|phone|in_person), subject (nullable, for email), body (text — full message copy), sentAt, createdAt; pushed migration 0088
+- [x] Push schema migration
+- [x] Add leads.logContact tRPC procedure: inserts a contact log entry and auto-advances lead stage to "contacted" if still "new"
+- [x] Add leads.getContactLog tRPC procedure: returns all log entries for a lead ordered by sentAt desc
+- [x] Update sendInitialSms to insert contact log row (method: sms) after successful send; auto-advances stage
+- [x] Update confirmVisit email send to insert contact log row (method: email, subject + body summary)
+- [x] Add Contact Log section to lead detail panel: color-coded method badge (blue Email / green SMS / amber Phone / purple In Person), subject line, timestamp, expandable View/Hide body; empty state when no contacts yet

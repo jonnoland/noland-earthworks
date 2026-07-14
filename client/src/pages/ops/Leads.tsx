@@ -23,7 +23,7 @@ import {
   ClipboardList, Star, Snowflake, RefreshCw,
   Map as MapIcon, LayoutGrid, Clock, Navigation,
   Brain, Copy, Check, CheckCheck, Sparkles, Unlink,
-  Send, Radar, CheckCircle, Info, Save, CheckCircle2, Facebook, Pencil,
+  Send, Radar, CheckCircle, Info, Save, CheckCircle2, Facebook, Pencil, History,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -689,6 +689,7 @@ function LeadDetailPanel({
     onError: (e) => toast.error(e.message || "Failed to unlink quote."),
   });
   const { data: notes = [], isLoading: notesLoading } = trpc.ops.leads.listNotes.useQuery({ leadId: lead.id });
+  const { data: contactLog = [], isLoading: contactLogLoading } = trpc.ops.leads.getContactLog.useQuery({ leadId: lead.id });
 
   // Live Jobber quote status for the linked quote badge
   const { data: linkedQuote, isLoading: quoteStatusLoading } = trpc.jobber.quoteDetail.useQuery(
@@ -1916,6 +1917,67 @@ nolandearthworks.com`;
                     </div>
                   </div>
                 ))}
+              </div>
+            )}
+          </div>
+
+          {/* Contact Log */}
+          <div className="px-4 py-3 border-t border-[#1e1e1e]">
+            <div className="flex items-center gap-2 mb-3">
+              <History className="w-3.5 h-3.5 text-[#555]" />
+              <p className="text-xs font-semibold text-white">Contact Log</p>
+              <span className="ml-auto text-[10px] text-[#555]">{contactLog.length} contact{contactLog.length !== 1 ? "s" : ""}</span>
+            </div>
+            {contactLogLoading ? (
+              <div className="flex items-center gap-2 py-2">
+                <Loader2 className="w-3.5 h-3.5 animate-spin text-[#555]" />
+                <span className="text-xs text-[#555]">Loading...</span>
+              </div>
+            ) : contactLog.length === 0 ? (
+              <p className="text-[11px] text-[#555] italic">No outbound contacts logged yet.</p>
+            ) : (
+              <div className="space-y-3">
+                {contactLog.map(entry => {
+                  const methodIcon = entry.method === "email"
+                    ? <Mail className="w-3 h-3 text-blue-400" />
+                    : entry.method === "sms"
+                    ? <MessageSquare className="w-3 h-3 text-green-400" />
+                    : entry.method === "phone"
+                    ? <Phone className="w-3 h-3 text-amber-400" />
+                    : <User className="w-3 h-3 text-purple-400" />;
+                  const methodLabel = entry.method === "email" ? "Email" : entry.method === "sms" ? "SMS" : entry.method === "phone" ? "Phone Call" : "In Person";
+                  const methodColor = entry.method === "email" ? "text-blue-400 bg-blue-400/10 border-blue-400/20" : entry.method === "sms" ? "text-green-400 bg-green-400/10 border-green-400/20" : entry.method === "phone" ? "text-amber-400 bg-amber-400/10 border-amber-400/20" : "text-purple-400 bg-purple-400/10 border-purple-400/20";
+                  const [expanded, setExpanded] = useState(false);
+                  return (
+                    <div key={entry.id} className="rounded-lg border border-[#222] bg-[#141414] overflow-hidden">
+                      <div className="flex items-center gap-2 px-3 py-2">
+                        <span className={`inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full border ${methodColor}`}>
+                          {methodIcon}
+                          {methodLabel}
+                        </span>
+                        {entry.subject && (
+                          <span className="text-[11px] text-[#aaa] truncate flex-1">{entry.subject}</span>
+                        )}
+                        <span className="ml-auto text-[10px] text-[#555] shrink-0">{timeAgo(entry.sentAt)}</span>
+                        {entry.body && (
+                          <button
+                            onClick={() => setExpanded(v => !v)}
+                            className="shrink-0 text-[10px] text-[#555] hover:text-[#aaa] transition-colors"
+                          >
+                            {expanded ? "Hide" : "View"}
+                          </button>
+                        )}
+                      </div>
+                      {expanded && entry.body && (
+                        <div className="px-3 pb-3">
+                          <div className="bg-[#1a1a1a] rounded-md p-2.5 border border-[#2a2a2a]">
+                            <p className="text-[11px] text-[#bbb] whitespace-pre-wrap leading-relaxed">{entry.body}</p>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             )}
           </div>
