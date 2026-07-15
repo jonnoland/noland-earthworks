@@ -2330,3 +2330,8 @@
 - [x] Enhance Corridor Length tooltip with inline SVG top-down corridor diagram showing a horizontal double-headed arrow labeled "Corridor Length (LF)"
 - [x] Enhance Corridor Width tooltip with inline SVG top-down corridor diagram showing a vertical double-headed arrow labeled "Corridor Width (ft)"
 - [x] AI FB Outreach modal already has a fully editable textarea (fbOutreachText bound to onChange); confirmed working — no change needed
+
+## ROW Quote UX Polish (v1.0.58)
+- [x] Add highlight animation (orange glow flash + box-shadow pulse, 1.4s ease-out) to Full Name input when "Request a Free Site Visit" button scrolls to it; triggers 400ms after scroll starts
+- [x] Replace plain effective-acres text with inline SVG formula diagram: [LF] x [Width] / [43,560] = [acres] with orange-highlighted result box, live values
+- [x] Regenerate button confirmed present in AI FB Outreach modal (added in v1.0.52, right-aligned next to Option tabs)

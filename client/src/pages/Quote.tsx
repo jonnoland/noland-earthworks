@@ -1025,10 +1025,12 @@ export default function QuotePage() {
               ) : (
                 <form onSubmit={handleSubmit} className="flex flex-col gap-6">
                   {/* Name + Phone */}
+                  <style>{`@keyframes nameHighlight { 0%{box-shadow:0 0 0 0 rgba(224,123,42,0);border-color:rgba(255,255,255,0.12)} 20%{box-shadow:0 0 0 4px rgba(224,123,42,0.4);border-color:rgba(224,123,42,0.9)} 60%{box-shadow:0 0 0 6px rgba(224,123,42,0.2);border-color:rgba(224,123,42,0.7)} 100%{box-shadow:0 0 0 0 rgba(224,123,42,0);border-color:rgba(255,255,255,0.12)} } .name-highlight-flash { animation: nameHighlight 1.4s ease-out forwards; }`}</style>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                     <div>
                       <label style={labelStyle}>Full Name *</label>
                       <input
+                        id="quote-name-input"
                         name="name" type="text" required
                         placeholder="John Smith"
                         value={form.name} onChange={handleChange}
@@ -1226,13 +1228,37 @@ export default function QuotePage() {
                           />
                         </div>
                       </div>
-                      {/* Effective acres + helper text */}
+                      {/* Effective acres + helper text + SVG diagram */}
                       <div style={{ fontSize: "0.75rem", color: "rgba(240,237,230,0.45)", lineHeight: 1.5 }}>
                         Don't know the linear footage? Multiply your acreage by 43,560, then divide by the corridor width in feet.
                         {rowEffAcres > 0 && (
-                          <span style={{ display: "block", marginTop: "0.4rem", color: "rgba(224,123,42,0.85)", fontWeight: 600 }}>
-                            {rowLf.toLocaleString()} ft &times; {rowW} ft &divide; 43,560 = {rowEffAcres.toFixed(3)} effective acres
-                          </span>
+                          <div style={{ marginTop: "0.55rem" }}>
+                            {/* SVG: formula diagram */}
+                            <svg width="100%" viewBox="0 0 300 64" style={{ display: "block", marginBottom: "0.35rem", maxWidth: "300px" }}>
+                              {/* Box 1: LF */}
+                              <rect x="2" y="14" width="68" height="28" rx="3" fill="rgba(224,123,42,0.1)" stroke="rgba(224,123,42,0.45)" strokeWidth="1" />
+                              <text x="36" y="24" textAnchor="middle" fill="rgba(224,123,42,0.9)" fontSize="9" fontFamily="sans-serif" fontWeight="700">{rowLf.toLocaleString()} ft</text>
+                              <text x="36" y="36" textAnchor="middle" fill="rgba(240,237,230,0.4)" fontSize="7" fontFamily="sans-serif">Length</text>
+                              {/* × */}
+                              <text x="82" y="32" textAnchor="middle" fill="rgba(240,237,230,0.5)" fontSize="13" fontFamily="sans-serif">×</text>
+                              {/* Box 2: Width */}
+                              <rect x="92" y="14" width="68" height="28" rx="3" fill="rgba(224,123,42,0.1)" stroke="rgba(224,123,42,0.45)" strokeWidth="1" />
+                              <text x="126" y="24" textAnchor="middle" fill="rgba(224,123,42,0.9)" fontSize="9" fontFamily="sans-serif" fontWeight="700">{rowW} ft</text>
+                              <text x="126" y="36" textAnchor="middle" fill="rgba(240,237,230,0.4)" fontSize="7" fontFamily="sans-serif">Width</text>
+                              {/* ÷ */}
+                              <text x="172" y="32" textAnchor="middle" fill="rgba(240,237,230,0.5)" fontSize="13" fontFamily="sans-serif">÷</text>
+                              {/* Box 3: 43,560 */}
+                              <rect x="182" y="14" width="58" height="28" rx="3" fill="rgba(255,255,255,0.04)" stroke="rgba(255,255,255,0.12)" strokeWidth="1" />
+                              <text x="211" y="24" textAnchor="middle" fill="rgba(240,237,230,0.6)" fontSize="9" fontFamily="sans-serif">43,560</text>
+                              <text x="211" y="36" textAnchor="middle" fill="rgba(240,237,230,0.35)" fontSize="7" fontFamily="sans-serif">sq ft/acre</text>
+                              {/* = */}
+                              <text x="250" y="32" textAnchor="middle" fill="rgba(240,237,230,0.5)" fontSize="13" fontFamily="sans-serif">=</text>
+                              {/* Box 4: result */}
+                              <rect x="260" y="10" width="38" height="36" rx="3" fill="rgba(224,123,42,0.18)" stroke="rgba(224,123,42,0.7)" strokeWidth="1.5" />
+                              <text x="279" y="26" textAnchor="middle" fill="#E07B2A" fontSize="9" fontFamily="sans-serif" fontWeight="700">{rowEffAcres.toFixed(2)}</text>
+                              <text x="279" y="38" textAnchor="middle" fill="rgba(224,123,42,0.7)" fontSize="7" fontFamily="sans-serif">acres</text>
+                            </svg>
+                          </div>
                         )}
                       </div>
                       {/* Rough price range — shown once both dimensions are entered */}
@@ -1249,8 +1275,17 @@ export default function QuotePage() {
                           <button
                             type="button"
                             onClick={() => {
-                              const nameEl = document.querySelector<HTMLInputElement>('input[name="name"]');
-                              if (nameEl) { nameEl.focus(); nameEl.scrollIntoView({ behavior: "smooth", block: "center" }); }
+                              const nameEl = document.getElementById('quote-name-input') as HTMLInputElement | null;
+                              if (nameEl) {
+                                nameEl.scrollIntoView({ behavior: "smooth", block: "center" });
+                                setTimeout(() => {
+                                  nameEl.focus();
+                                  nameEl.classList.remove('name-highlight-flash');
+                                  void nameEl.offsetWidth; // force reflow to restart animation
+                                  nameEl.classList.add('name-highlight-flash');
+                                  nameEl.addEventListener('animationend', () => nameEl.classList.remove('name-highlight-flash'), { once: true });
+                                }, 400);
+                              }
                             }}
                             style={{ marginTop: "0.75rem", width: "100%", padding: "0.55rem 1rem", background: "rgba(224,123,42,0.12)", border: "1px solid rgba(224,123,42,0.45)", borderRadius: "4px", color: "#E07B2A", fontFamily: "'Oswald', sans-serif", fontSize: "0.72rem", letterSpacing: "0.12em", textTransform: "uppercase", cursor: "pointer", transition: "background 0.15s" }}
                             onMouseEnter={(e) => ((e.target as HTMLButtonElement).style.background = "rgba(224,123,42,0.22)")}
