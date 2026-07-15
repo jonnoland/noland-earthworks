@@ -258,6 +258,7 @@ export default function QuotePage() {
       trailTerrain: "",
       rowLinearFeet: "",
       rowCorridorWidthFt: "",
+      clientType: (params.get("clientType") as "residential" | "commercial" | "government") || "residential",
     };
   })();
 
@@ -455,6 +456,7 @@ export default function QuotePage() {
       parcelId: parcelInfo?.parcelId ?? undefined,
       deedAcres: parcelInfo?.deedAcres ?? undefined,
       adjustedAcres: adjustedAcres ? parseFloat(adjustedAcres) : undefined,
+      clientType: form.clientType as "residential" | "commercial" | "government",
       // Site visit helpers
       propertyPhotoUrls: uploadedPhotos.filter(p => !p.uploading && !p.error && p.url.startsWith("http")).map(p => p.url),
       propertyPinLat: pinLat ?? undefined,
@@ -990,8 +992,8 @@ export default function QuotePage() {
                     );
                   })()}
 
-                  {/* Ballpark Range Block */}
-                  {ballparkRange && (
+                  {/* Ballpark Range Block — suppressed for government/municipal leads */}
+                  {ballparkRange && form.clientType !== "government" && (
                     <div
                       style={{
                         marginBottom: "1.5rem",
@@ -1047,8 +1049,8 @@ export default function QuotePage() {
                     </div>
                   )}
 
-                  {/* Parcel-based preliminary estimate — shown when parcel lookup was used */}
-                  {submittedEstimate && !ballparkRange && (
+                  {/* Parcel-based preliminary estimate — suppressed for government/municipal leads */}
+                  {submittedEstimate && !ballparkRange && form.clientType !== "government" && (
                     <div
                       style={{
                         marginBottom: "1.5rem",
@@ -1219,6 +1221,47 @@ export default function QuotePage() {
                         <option value="other" style={{ backgroundColor: "#1a1a1a" }}>Other / Not Listed</option>
                       </select>
                     </div>
+                  </div>
+
+                  {/* Client Type selector */}
+                  <div>
+                    <label style={labelStyle}>Client Type</label>
+                    <div className="grid grid-cols-3 gap-3" style={{ marginTop: "0.25rem" }}>
+                      {(["residential", "commercial", "government"] as const).map((ct) => {
+                        const labels: Record<string, string> = { residential: "Residential", commercial: "Commercial", government: "Government / Municipal" };
+                        const isSelected = form.clientType === ct;
+                        return (
+                          <button
+                            key={ct}
+                            type="button"
+                            onClick={() => setForm(f => ({ ...f, clientType: ct }))}
+                            style={{
+                              padding: "0.6rem 0.5rem",
+                              fontFamily: "'Lato', sans-serif",
+                              fontSize: "0.8rem",
+                              fontWeight: isSelected ? 700 : 400,
+                              letterSpacing: "0.02em",
+                              border: isSelected ? "1.5px solid #E07B2A" : "1px solid rgba(255,255,255,0.12)",
+                              backgroundColor: isSelected ? "rgba(224,123,42,0.12)" : "rgba(255,255,255,0.03)",
+                              color: isSelected ? "#E07B2A" : "rgba(240,237,230,0.7)",
+                              borderRadius: "4px",
+                              cursor: "pointer",
+                              transition: "all 0.15s ease",
+                              textAlign: "center",
+                            }}
+                          >
+                            {labels[ct]}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    {form.clientType === "government" && (
+                      <div style={{ marginTop: "0.75rem", padding: "0.75rem 1rem", backgroundColor: "rgba(26,79,138,0.12)", border: "1px solid rgba(26,79,138,0.35)", borderRadius: "4px" }}>
+                        <p style={{ margin: 0, fontFamily: "'Lato', sans-serif", fontSize: "0.8rem", color: "rgba(180,210,255,0.85)", lineHeight: 1.6 }}>
+                          Government and municipal contracts are quoted on a unit-price basis (per acre or per linear foot) after a site assessment. A ballpark range is not applicable. We will follow up to schedule a site visit and prepare a formal bid package.
+                        </p>
+                      </div>
+                    )}
                   </div>
 
                   {/* Acreage — hidden for ROW (uses linear feet instead) */}

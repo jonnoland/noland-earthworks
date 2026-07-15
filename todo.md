@@ -2350,4 +2350,18 @@
 - [x] Update owner notification email HTML to include photo thumbnail links and Google Maps URL from pin
 - [x] Update owner in-app notification content to include photo count and map link
 - [x] TypeScript: 0 errors (`npx tsc --noEmit`)
-- [ ] Save checkpoint v1.0.59
+- [x] Save checkpoint v1.0.59
+
+## Government/Municipal Contract Support (v1.0.60)
+- [x] Add `clientType` field (enum: "residential" | "commercial" | "government") to quoteSchema zod input
+- [x] Add `clientType` varchar(50) column to quoteSubmissions schema and run db:push
+- [x] Add "Client Type" selector to Quote.tsx form (radio or select: Residential / Commercial / Government or Municipal)
+- [x] When clientType === "government": suppress ballpark range display on form and show "Unit-price bid — site visit required" notice
+- [x] Persist clientType in quoteSubmissions DB insert
+- [x] Add clientType to owner notification email (Project Details table row)
+- [x] Add clientType to owner in-app notification content
+- [x] Add clientType to ops leads table display (badge: GOV for government leads)
+- [x] Generate private rate card document (Markdown + PDF) for government/municipal work
+- [x] Generate unit-price proposal template (Markdown + PDF) for government/municipal contracts
+- [x] TypeScript: 0 errors
+- [ ] Save checkpoint v1.0.60

@@ -193,6 +193,8 @@ export const opsLeads = mysqlTable("ops_leads", {
   aiQuoteData: text("aiQuoteData"),
   /** Timestamp when the AI quote was last saved to this lead */
   aiQuoteSavedAt: timestamp("aiQuoteSavedAt"),
+  /** Client type: residential | commercial | government */
+  clientType: varchar("clientType", { length: 50 }).default("residential"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
@@ -259,6 +261,8 @@ export const quoteSubmissions = mysqlTable("quote_submissions", {
   propertyPinLng: decimal("propertyPinLng", { precision: 10, scale: 7 }),
   /** Preliminary price range shown on form (e.g. "$3,200 – $4,500") */
   estimatedRange: varchar("estimatedRange", { length: 100 }),
+  /** Client type: residential | commercial | government */
+  clientType: varchar("clientType", { length: 50 }).default("residential"),
   /** AI lead qualification */
   aiScore: mysqlEnum("aiScore", ["strong", "marginal", "weak"]),
   aiSummary: text("aiSummary"),

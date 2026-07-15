@@ -201,6 +201,7 @@ interface Lead {
   jobberQuoteId?: string | null;
   jobberQuoteNumber?: number | null;
   estimateAmount?: string | null;
+  clientType?: string | null;
 }
 
 // ─── Lead Card ────────────────────────────────────────────────────────────────
@@ -269,6 +270,16 @@ function LeadCard({ lead, onClick, onDragStart }: { lead: Lead; onClick: () => v
             <span className="inline-flex items-center gap-0.5 text-[10px] font-medium px-1.5 py-0.5 rounded border bg-amber-500/15 text-amber-400 border-amber-500/30">
               <Clock className="w-2.5 h-2.5" />
               {staleDays}d stale
+            </span>
+          )}
+          {lead.clientType === "government" && (
+            <span className="inline-flex items-center gap-0.5 text-[10px] font-semibold px-1.5 py-0.5 rounded border bg-blue-500/15 text-blue-400 border-blue-500/25">
+              GOV
+            </span>
+          )}
+          {lead.clientType === "commercial" && (
+            <span className="inline-flex items-center gap-0.5 text-[10px] font-semibold px-1.5 py-0.5 rounded border bg-purple-500/15 text-purple-400 border-purple-500/25">
+              COM
             </span>
           )}
           {lead.requestedVisitAt && (

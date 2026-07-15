@@ -1,0 +1,1 @@
+ALTER TABLE `quote_submissions` ADD `clientType` varchar(50) DEFAULT 'residential';

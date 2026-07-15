@@ -42,6 +42,8 @@ const quoteSchema = z.object({
   propertyPinLat: z.number().min(-90).max(90).optional(),
   /** Map pin longitude dropped by the user */
   propertyPinLng: z.number().min(-180).max(180).optional(),
+  /** Client type — drives proposal workflow (unit-price for government) */
+  clientType: z.enum(["residential", "commercial", "government"]).optional().default("residential"),
 });
 
 export type QuoteInput = z.infer<typeof quoteSchema>;
@@ -151,6 +153,7 @@ function buildEmailHtml(data: QuoteInput): string {
         <tr>
           <td style="padding:0 36px;">
             <table width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #f0ede6;border-radius:6px;overflow:hidden;">
+              ${row("Client Type", `<strong style="text-transform:capitalize;">${escapeHtml(data.clientType ?? "residential")}</strong>${data.clientType === "government" ? " &nbsp;<span style=\"display:inline-block;background:#1a4f8a;color:#fff;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.6px;padding:2px 7px;border-radius:3px;\">GOV</span>" : ""}`)} 
               ${row("Service Requested", `<strong>${escapeHtml(data.service)}</strong>`)}
               ${row("County", escapeHtml(data.county) + " County")}
               ${(data.service === 'right-of-way-clearing' || data.service === 'Right-of-Way Clearing')
@@ -453,6 +456,7 @@ export const quoteRouter = router({
           `Name: ${input.name}`,
           `Phone: ${input.phone}`,
           `Email: ${input.email}`,
+          input.clientType && input.clientType !== "residential" ? `Client Type: ${input.clientType.toUpperCase()}` : "",
           `Service: ${input.service}`,
           `County: ${input.county} County`,
           (() => {
@@ -578,6 +582,7 @@ export const quoteRouter = router({
           propertyPhotoUrls: input.propertyPhotoUrls && input.propertyPhotoUrls.length > 0 ? JSON.stringify(input.propertyPhotoUrls) : null,
           propertyPinLat: input.propertyPinLat != null ? String(input.propertyPinLat) : null,
           propertyPinLng: input.propertyPinLng != null ? String(input.propertyPinLng) : null,
+          clientType: input.clientType ?? "residential",
           aiScore: qualification?.score ?? null,
           aiSummary: qualification?.summary ?? null,
           aiFlags: qualification?.flags && qualification.flags.length > 0 ? JSON.stringify(qualification.flags) : null,
@@ -639,6 +644,7 @@ export const quoteRouter = router({
           stage: "new",
           jobType: serviceMap[input.service] ?? input.service,
           notes: notes || undefined,
+          clientType: input.clientType ?? "residential",
         });
         console.log(`[Quote] Lead ${quoteLeadCreated ? "created" : "updated"} for ${input.name}`);
       } else {

@@ -231,6 +231,13 @@ export async function upsertOpsLeadByPhone(
       chatSessionId: data.chatSessionId ?? existing.chatSessionId,
       // Keep existing stage unless it is still "new" and we have a new source
       source: existing.source === "other" ? data.source : existing.source,
+      // Update clientType if the new submission is more specific (government > commercial > residential)
+      clientType: (() => {
+        const order = { government: 3, commercial: 2, residential: 1 };
+        const existingRank = order[(existing.clientType ?? "residential") as keyof typeof order] ?? 1;
+        const newRank = order[(data.clientType ?? "residential") as keyof typeof order] ?? 1;
+        return newRank > existingRank ? data.clientType : existing.clientType;
+      })(),
       updatedAt: new Date(),
     })
     .where(eq(opsLeads.id, existing.id));
