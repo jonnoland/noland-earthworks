@@ -44,6 +44,8 @@ const quoteSchema = z.object({
   propertyPinLng: z.number().min(-180).max(180).optional(),
   /** Client type — drives proposal workflow (unit-price for government) */
   clientType: z.enum(["residential", "commercial", "government"]).optional().default("residential"),
+  /** RFP/bid document CDN URLs — only set for government/municipal leads */
+  rfpDocumentUrls: z.array(z.string().url()).max(5).optional().default([]),
 });
 
 export type QuoteInput = z.infer<typeof quoteSchema>;
@@ -206,6 +208,24 @@ function buildEmailHtml(data: QuoteInput): string {
                   <a href="https://www.google.com/maps?q=${data.propertyPinLat},${data.propertyPinLng}" style="color:#E07B2A;text-decoration:none;font-weight:600;font-size:14px;">View on Google Maps &rarr;</a>
                 </td>
               </tr>
+            </table>
+          </td>
+        </tr>` : ""}
+
+        ${data.rfpDocumentUrls && data.rfpDocumentUrls.length > 0 ? `
+        <!-- Section: RFP Documents -->
+        <tr>
+          <td style="padding:24px 36px 0;">
+            <p style="margin:0 0 10px;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#1a4f8a;border-bottom:2px solid #1a4f8a;padding-bottom:6px;">RFP / Bid Documents (${data.rfpDocumentUrls.length})</p>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:0 36px 16px;">
+            <table width="100%" cellpadding="0" cellspacing="0">
+              ${data.rfpDocumentUrls.map((url, i) => {
+                const fileName = url.split("/").pop()?.replace(/^\d+-[a-z0-9]+-/, "") ?? `Document ${i + 1}`;
+                return `<tr><td style="padding:4px 0;"><a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer" style="color:#1a4f8a;font-size:13px;">${escapeHtml(decodeURIComponent(fileName))}</a></td></tr>`;
+              }).join("")}
             </table>
           </td>
         </tr>` : ""}
@@ -472,6 +492,7 @@ export const quoteRouter = router({
           input.message ? `\nProject Details:\n${input.message}` : "",
           input.propertyPhotoUrls && input.propertyPhotoUrls.length > 0 ? `\nProperty Photos: ${input.propertyPhotoUrls.length} photo${input.propertyPhotoUrls.length > 1 ? "s" : ""} attached` : "",
           input.propertyPinLat != null && input.propertyPinLng != null ? `Property Pin: https://www.google.com/maps?q=${input.propertyPinLat},${input.propertyPinLng}` : "",
+          input.rfpDocumentUrls && input.rfpDocumentUrls.length > 0 ? `\nRFP Documents: ${input.rfpDocumentUrls.length} file${input.rfpDocumentUrls.length > 1 ? "s" : ""} attached` : "",
         ]
           .filter(Boolean)
           .join("\n"),
@@ -582,6 +603,7 @@ export const quoteRouter = router({
           propertyPhotoUrls: input.propertyPhotoUrls && input.propertyPhotoUrls.length > 0 ? JSON.stringify(input.propertyPhotoUrls) : null,
           propertyPinLat: input.propertyPinLat != null ? String(input.propertyPinLat) : null,
           propertyPinLng: input.propertyPinLng != null ? String(input.propertyPinLng) : null,
+          rfpDocumentUrls: input.rfpDocumentUrls && input.rfpDocumentUrls.length > 0 ? JSON.stringify(input.rfpDocumentUrls) : null,
           clientType: input.clientType ?? "residential",
           aiScore: qualification?.score ?? null,
           aiSummary: qualification?.summary ?? null,
@@ -741,6 +763,46 @@ export const quoteRouter = router({
   // ─── Property Photo Upload ────────────────────────────────────────────────────
   // Accepts a base64-encoded image, uploads to S3, returns the CDN URL.
   // Called from the quote form before final submission so URLs can be embedded.
+  uploadRfpDocument: publicProcedure
+    .input(
+      z.object({
+        base64: z.string().min(1),
+        mimeType: z.string().default("application/pdf"),
+        fileName: z.string().max(200).default("document"),
+      })
+    )
+    .mutation(async ({ input }) => {
+      const allowedTypes = [
+        "application/pdf",
+        "application/msword",
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        "application/vnd.ms-excel",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        "text/plain",
+      ];
+      if (!allowedTypes.includes(input.mimeType)) {
+        throw new Error(`Unsupported document type: ${input.mimeType}`);
+      }
+      const buffer = Buffer.from(input.base64, "base64");
+      if (buffer.byteLength > 25 * 1024 * 1024) {
+        throw new Error("Document exceeds 25 MB limit");
+      }
+      const extMap: Record<string, string> = {
+        "application/pdf": "pdf",
+        "application/msword": "doc",
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document": "docx",
+        "application/vnd.ms-excel": "xls",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": "xlsx",
+        "text/plain": "txt",
+      };
+      const ext = extMap[input.mimeType] ?? "bin";
+      const randomSuffix = Math.random().toString(36).slice(2, 10);
+      const safeName = input.fileName.replace(/[^a-zA-Z0-9._-]/g, "_").slice(0, 80);
+      const key = `rfp-documents/${Date.now()}-${randomSuffix}-${safeName}.${ext}`;
+      const { url } = await storagePut(key, buffer, input.mimeType);
+      return { url, fileName: input.fileName };
+    }),
+
   uploadPropertyPhoto: publicProcedure
     .input(
       z.object({

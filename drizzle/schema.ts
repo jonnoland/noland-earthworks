@@ -259,6 +259,8 @@ export const quoteSubmissions = mysqlTable("quote_submissions", {
   propertyPinLat: decimal("propertyPinLat", { precision: 10, scale: 7 }),
   /** Map pin longitude dropped by the user on the property map */
   propertyPinLng: decimal("propertyPinLng", { precision: 10, scale: 7 }),
+  /** RFP/bid document CDN URLs — JSON array, only set for government/municipal leads */
+  rfpDocumentUrls: text("rfpDocumentUrls"),
   /** Preliminary price range shown on form (e.g. "$3,200 – $4,500") */
   estimatedRange: varchar("estimatedRange", { length: 100 }),
   /** Client type: residential | commercial | government */

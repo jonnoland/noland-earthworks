@@ -3564,6 +3564,7 @@ export default function Leads() {
   const [sourceFilter, setSourceFilter] = useState<string>("all");
   const [aiScoreFilter, setAiScoreFilter] = useState<string>("all");
   const [staleFilter, setStaleFilter] = useState<boolean>(false);
+  const [govFilter, setGovFilter] = useState<boolean>(false);
   const [closedExpanded, setClosedExpanded] = useState(false);
 
   const utils = trpc.useUtils();
@@ -3627,6 +3628,7 @@ export default function Leads() {
     if (sourceFilter !== "all" && l.source !== sourceFilter) return false;
     if (aiScoreFilter !== "all" && l.aiScore !== aiScoreFilter) return false;
     if (staleFilter && !isLeadStale(l)) return false;
+    if (govFilter && l.clientType !== "government") return false;
     if (!search) return true;
     const q = search.toLowerCase();
     return l.name.toLowerCase().includes(q) || (l.phone ?? "").includes(q) || (l.address ?? "").toLowerCase().includes(q);
@@ -3849,6 +3851,31 @@ export default function Leads() {
                     "text-[10px] font-bold px-1 py-0.5 rounded-full",
                     staleFilter ? "bg-white/15" : "bg-white/5"
                   )}>{staleCount}</span>
+                </button>
+              </div>
+            );
+          })()}
+          {/* GOV filter pill */}
+          {(() => {
+            const govCount = (leads as Lead[]).filter(l => l.clientType === "government").length;
+            if (govCount === 0) return null;
+            return (
+              <div className="flex items-center gap-1.5">
+                <span className="text-[10px] font-bold text-blue-400/60 shrink-0">GOV</span>
+                <button
+                  onClick={() => setGovFilter(v => !v)}
+                  className={cn(
+                    "shrink-0 flex items-center gap-1 text-[11px] font-medium px-2.5 py-1 rounded-full border transition-colors",
+                    govFilter
+                      ? "bg-blue-500/30 text-blue-300 border-blue-500/50"
+                      : "bg-blue-500/10 text-blue-400/70 border-blue-500/20 hover:border-blue-500/40"
+                  )}
+                >
+                  Gov / Municipal
+                  <span className={cn(
+                    "text-[10px] font-bold px-1 py-0.5 rounded-full",
+                    govFilter ? "bg-white/15" : "bg-white/5"
+                  )}>{govCount}</span>
                 </button>
               </div>
             );

@@ -122,6 +122,7 @@ export default function QuotePage() {
   // Photo upload
   const [uploadedPhotos, setUploadedPhotos] = useState<{ file: File; url: string; uploading: boolean; error?: string }[]>([]);
   const photoInputRef = useRef<HTMLInputElement | null>(null);
+  const rfpInputRef = useRef<HTMLInputElement | null>(null);
   // Map pin
   const [pinLat, setPinLat] = useState<number | null>(null);
   const [pinLng, setPinLng] = useState<number | null>(null);
@@ -302,6 +303,51 @@ export default function QuotePage() {
 
   const [submitError, setSubmitError] = useState<string | null>(null);
 
+  // RFP document upload state (government leads only)
+  const [rfpDocs, setRfpDocs] = useState<{ file: File; url: string; fileName: string; uploading: boolean; error?: string }[]>([]);
+  const uploadRfpMutation = trpc.quote.uploadRfpDocument.useMutation();
+
+  const handleRfpUpload = async (files: FileList | null) => {
+    if (!files || files.length === 0) return;
+    const MAX_DOCS = 5;
+    const remaining = MAX_DOCS - rfpDocs.filter(d => !d.error).length;
+    const toProcess = Array.from(files).slice(0, remaining);
+    const allowedTypes = [
+      "application/pdf",
+      "application/msword",
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      "application/vnd.ms-excel",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      "text/plain",
+    ];
+    for (const file of toProcess) {
+      if (!allowedTypes.includes(file.type)) {
+        setRfpDocs(prev => [...prev, { file, url: "", fileName: file.name, uploading: false, error: "Unsupported file type" }]);
+        continue;
+      }
+      if (file.size > 25 * 1024 * 1024) {
+        setRfpDocs(prev => [...prev, { file, url: "", fileName: file.name, uploading: false, error: "File exceeds 25 MB" }]);
+        continue;
+      }
+      setRfpDocs(prev => [...prev, { file, url: "", fileName: file.name, uploading: true }]);
+      try {
+        const base64 = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve((reader.result as string).split(",")[1] ?? "");
+          reader.onerror = reject;
+          reader.readAsDataURL(file);
+        });
+        const { url } = await uploadRfpMutation.mutateAsync({ base64, mimeType: file.type, fileName: file.name });
+        setRfpDocs(prev => prev.map(d => d.file === file ? { ...d, url, uploading: false } : d));
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : "Upload failed";
+        setRfpDocs(prev => prev.map(d => d.file === file ? { ...d, uploading: false, error: msg } : d));
+      }
+    }
+  };
+
+  const removeRfpDoc = (index: number) => setRfpDocs(prev => prev.filter((_, i) => i !== index));
+
   // Upload mutation for property photos
   const uploadPhotoMutation = trpc.quote.uploadPropertyPhoto.useMutation();
 
@@ -457,6 +503,7 @@ export default function QuotePage() {
       deedAcres: parcelInfo?.deedAcres ?? undefined,
       adjustedAcres: adjustedAcres ? parseFloat(adjustedAcres) : undefined,
       clientType: form.clientType as "residential" | "commercial" | "government",
+      rfpDocumentUrls: rfpDocs.filter(d => !d.uploading && !d.error && d.url.startsWith("http")).map(d => d.url),
       // Site visit helpers
       propertyPhotoUrls: uploadedPhotos.filter(p => !p.uploading && !p.error && p.url.startsWith("http")).map(p => p.url),
       propertyPinLat: pinLat ?? undefined,
@@ -1251,6 +1298,14 @@ export default function QuotePage() {
                             }}
                           >
                             {labels[ct]}
+                            {ct === "government" && (
+                              <span
+                                title="Government and municipal contracts are quoted on a unit-price basis (per acre or per linear foot) after a site assessment — not a flat job price. We will schedule a site visit and prepare a formal bid package."
+                                style={{ display: "inline-flex", alignItems: "center", marginLeft: "0.3rem", verticalAlign: "middle", opacity: 0.65 }}
+                              >
+                                <Info size={11} />
+                              </span>
+                            )}
                           </button>
                         );
                       })}
@@ -2286,6 +2341,72 @@ export default function QuotePage() {
                             </div>
                           )}
                         </div>
+
+                        {/* ── RFP Document Upload (government leads only) ── */}
+                        {form.clientType === "government" && (
+                          <div>
+                            <div style={{ fontFamily: "'Oswald', sans-serif", fontSize: "0.68rem", letterSpacing: "0.14em", textTransform: "uppercase", color: "rgba(100,160,255,0.85)", marginBottom: "0.5rem" }}>RFP / Bid Documents</div>
+                            <p style={{ fontFamily: "'Lato', sans-serif", fontSize: "0.78rem", color: "rgba(240,237,230,0.45)", margin: "0 0 0.75rem", lineHeight: 1.5 }}>
+                              Attach any RFP, ITB, scope of work, or bid specification documents. PDF, Word, Excel, and plain text accepted. Up to 5 files, 25 MB each.
+                            </p>
+                            {/* Upload zone */}
+                            <div
+                              role="button"
+                              tabIndex={0}
+                              onClick={() => rfpInputRef.current?.click()}
+                              onKeyDown={(e) => e.key === "Enter" && rfpInputRef.current?.click()}
+                              onDragOver={(e) => { e.preventDefault(); (e.currentTarget as HTMLDivElement).style.borderColor = "rgba(100,160,255,0.6)"; }}
+                              onDragLeave={(e) => { (e.currentTarget as HTMLDivElement).style.borderColor = "rgba(255,255,255,0.12)"; }}
+                              onDrop={(e) => {
+                                e.preventDefault();
+                                (e.currentTarget as HTMLDivElement).style.borderColor = "rgba(255,255,255,0.12)";
+                                handleRfpUpload(e.dataTransfer.files);
+                              }}
+                              style={{ border: "2px dashed rgba(255,255,255,0.12)", borderRadius: "4px", padding: "1.25rem", textAlign: "center", cursor: "pointer", transition: "border-color 0.15s", background: "rgba(255,255,255,0.02)" }}
+                            >
+                              <input
+                                ref={rfpInputRef}
+                                type="file"
+                                accept=".pdf,.doc,.docx,.xls,.xlsx,.txt,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/plain"
+                                multiple
+                                style={{ display: "none" }}
+                                onChange={(e) => handleRfpUpload(e.target.files)}
+                              />
+                              <div style={{ fontFamily: "'Lato', sans-serif", fontSize: "0.8rem", color: "rgba(240,237,230,0.45)" }}>
+                                Drag and drop files here, or click to select
+                              </div>
+                              <div style={{ fontFamily: "'Lato', sans-serif", fontSize: "0.7rem", color: "rgba(240,237,230,0.25)", marginTop: "0.25rem" }}>
+                                PDF, Word, Excel, TXT &bull; Max 25 MB per file &bull; Up to 5 files
+                              </div>
+                            </div>
+                            {/* File list */}
+                            {rfpDocs.length > 0 && (
+                              <div style={{ marginTop: "0.75rem", display: "flex", flexDirection: "column", gap: "0.4rem" }}>
+                                {rfpDocs.map((doc, idx) => (
+                                  <div key={idx} style={{ display: "flex", alignItems: "center", gap: "0.5rem", padding: "0.45rem 0.75rem", background: doc.error ? "rgba(220,38,38,0.08)" : "rgba(26,79,138,0.1)", border: `1px solid ${doc.error ? "rgba(220,38,38,0.3)" : "rgba(26,79,138,0.3)"}`, borderRadius: "4px" }}>
+                                    {doc.uploading ? (
+                                      <Loader2 size={13} className="animate-spin" style={{ color: "rgba(100,160,255,0.7)", flexShrink: 0 }} />
+                                    ) : doc.error ? (
+                                      <AlertCircle size={13} style={{ color: "#fca5a5", flexShrink: 0 }} />
+                                    ) : (
+                                      <CheckCircle size={13} style={{ color: "rgba(100,160,255,0.8)", flexShrink: 0 }} />
+                                    )}
+                                    <span style={{ fontFamily: "'Lato', sans-serif", fontSize: "0.78rem", color: doc.error ? "#fca5a5" : "rgba(240,237,230,0.75)", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                                      {doc.error ? `${doc.fileName} — ${doc.error}` : doc.fileName}
+                                    </span>
+                                    <button
+                                      type="button"
+                                      onClick={() => removeRfpDoc(idx)}
+                                      style={{ background: "none", border: "none", cursor: "pointer", color: "rgba(240,237,230,0.35)", padding: "0.1rem", display: "flex", alignItems: "center", flexShrink: 0 }}
+                                    >
+                                      <X size={13} />
+                                    </button>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        )}
 
                       </div>
                     )}

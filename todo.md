@@ -2364,4 +2364,15 @@
 - [x] Generate private rate card document (Markdown + PDF) for government/municipal work
 - [x] Generate unit-price proposal template (Markdown + PDF) for government/municipal contracts
 - [x] TypeScript: 0 errors
-- [ ] Save checkpoint v1.0.60
+- [x] Save checkpoint v1.0.60
+
+## Gov/Municipal UX Enhancements (v1.0.61)
+- [x] Add RFP document upload field to Quote.tsx (only visible when clientType === "government")
+- [x] Add uploadRfpDocument tRPC mutation (PDF/Word/etc to S3, returns CDN URL)
+- [x] Add rfpDocumentUrls column to quoteSubmissions schema and run db:push
+- [x] Persist rfpDocumentUrls in quoteSubmissions DB insert
+- [x] Include RFP document links in owner notification email
+- [x] Add GOV filter button to Ops Leads board (Leads.tsx)
+- [x] Add tooltip/info icon to Government/Municipal selector button in Quote.tsx
+- [x] TypeScript: 0 errors
+- [ ] Save checkpoint v1.0.61
