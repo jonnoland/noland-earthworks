@@ -3,12 +3,13 @@
  * Hero banner → two-column layout: contact info left, full form right
  */
 import { useState, useEffect, useRef } from "react";
-import { Phone, Mail, MapPin, Send, ArrowLeft, CheckCircle, Loader2, Search, ExternalLink, AlertCircle, Info } from "lucide-react";
+import { Phone, Mail, MapPin, Send, ArrowLeft, CheckCircle, Loader2, Search, ExternalLink, AlertCircle, Info, Camera, X, ChevronDown, ChevronUp } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import MobileCTABar from "@/components/MobileCTABar";
 import { trpc } from "@/lib/trpc";
 import { usePageTitle } from "@/hooks/usePageTitle";
+import { MapView } from "@/components/Map";
 
 const inputStyle: React.CSSProperties = {
   width: "100%",
@@ -115,6 +116,18 @@ export default function QuotePage() {
   const [adjustedAcres, setAdjustedAcres] = useState<string>("");
   const [adjustedAcresError, setAdjustedAcresError] = useState<string>("");
   const [submittedEstimate, setSubmittedEstimate] = useState<{ range: string; note: string; adjustedAcres?: number } | null>(null);
+
+  // ─── Site Visit Helpers: Photo Upload + Map Pin ───────────────────────────────
+  const [siteVisitOpen, setSiteVisitOpen] = useState(false);
+  // Photo upload
+  const [uploadedPhotos, setUploadedPhotos] = useState<{ file: File; url: string; uploading: boolean; error?: string }[]>([]);
+  const photoInputRef = useRef<HTMLInputElement | null>(null);
+  // Map pin
+  const [pinLat, setPinLat] = useState<number | null>(null);
+  const [pinLng, setPinLng] = useState<number | null>(null);
+  const mapRef = useRef<google.maps.Map | null>(null);
+  const pinMarkerRef = useRef<google.maps.marker.AdvancedMarkerElement | null>(null);
+  const pinClickListenerRef = useRef<google.maps.MapsEventListener | null>(null);
 
   // Debounce parcel address input — fire lookup 1.2s after user stops typing
   useEffect(() => {
@@ -288,6 +301,99 @@ export default function QuotePage() {
 
   const [submitError, setSubmitError] = useState<string | null>(null);
 
+  // Upload mutation for property photos
+  const uploadPhotoMutation = trpc.quote.uploadPropertyPhoto.useMutation();
+
+  // Handle file selection and upload to S3
+  const handlePhotoUpload = async (files: FileList | null) => {
+    if (!files || files.length === 0) return;
+    const MAX_PHOTOS = 10;
+    const remaining = MAX_PHOTOS - uploadedPhotos.filter(p => !p.error).length;
+    const toProcess = Array.from(files).slice(0, remaining);
+    for (const file of toProcess) {
+      if (!file.type.startsWith("image/")) continue;
+      if (file.size > 10 * 1024 * 1024) {
+        setUploadedPhotos(prev => [...prev, { file, url: "", uploading: false, error: "File exceeds 10 MB" }]);
+        continue;
+      }
+      // Add placeholder with uploading state
+      const placeholder = { file, url: URL.createObjectURL(file), uploading: true };
+      setUploadedPhotos(prev => [...prev, placeholder]);
+      try {
+        const base64 = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => {
+            const result = reader.result as string;
+            // Strip data URL prefix to get raw base64
+            resolve(result.split(",")[1] ?? "");
+          };
+          reader.onerror = reject;
+          reader.readAsDataURL(file);
+        });
+        const { url } = await uploadPhotoMutation.mutateAsync({ base64, mimeType: file.type });
+        setUploadedPhotos(prev =>
+          prev.map(p => p.file === file ? { ...p, url, uploading: false } : p)
+        );
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : "Upload failed";
+        setUploadedPhotos(prev =>
+          prev.map(p => p.file === file ? { ...p, uploading: false, error: msg } : p)
+        );
+      }
+    }
+  };
+
+  const removePhoto = (index: number) => {
+    setUploadedPhotos(prev => prev.filter((_, i) => i !== index));
+  };
+
+  // Map pin handler — wired in onMapReady callback
+  const handleMapReady = (map: google.maps.Map) => {
+    mapRef.current = map;
+    // Center on Middle Tennessee by default
+    map.setCenter({ lat: 36.1, lng: -87.1 });
+    map.setZoom(9);
+    // Remove old listener if any
+    if (pinClickListenerRef.current) {
+      window.google.maps.event.removeListener(pinClickListenerRef.current);
+    }
+    map.setOptions({ draggableCursor: "crosshair" });
+    pinClickListenerRef.current = map.addListener("click", (e: google.maps.MapMouseEvent) => {
+      if (!e.latLng) return;
+      const lat = e.latLng.lat();
+      const lng = e.latLng.lng();
+      setPinLat(lat);
+      setPinLng(lng);
+      // Remove old marker
+      if (pinMarkerRef.current) {
+        pinMarkerRef.current.map = null;
+      }
+      // Create custom pin element
+      const pinEl = document.createElement("div");
+      pinEl.style.cssText = `
+        width: 20px; height: 20px; border-radius: 50% 50% 50% 0;
+        background: #E07B2A; border: 2px solid #fff;
+        transform: rotate(-45deg);
+        box-shadow: 0 2px 8px rgba(0,0,0,0.5);
+      `;
+      pinMarkerRef.current = new window.google.maps.marker.AdvancedMarkerElement({
+        map,
+        position: { lat, lng },
+        content: pinEl,
+        title: "Property Location",
+      });
+    });
+  };
+
+  const clearPin = () => {
+    setPinLat(null);
+    setPinLng(null);
+    if (pinMarkerRef.current) {
+      pinMarkerRef.current.map = null;
+      pinMarkerRef.current = null;
+    }
+  };
+
   const submitQuote = trpc.quote.submit.useMutation({
     onSuccess: (data) => {
       setSubmitted(true);
@@ -349,6 +455,10 @@ export default function QuotePage() {
       parcelId: parcelInfo?.parcelId ?? undefined,
       deedAcres: parcelInfo?.deedAcres ?? undefined,
       adjustedAcres: adjustedAcres ? parseFloat(adjustedAcres) : undefined,
+      // Site visit helpers
+      propertyPhotoUrls: uploadedPhotos.filter(p => !p.uploading && !p.error && p.url.startsWith("http")).map(p => p.url),
+      propertyPinLat: pinLat ?? undefined,
+      propertyPinLng: pinLng ?? undefined,
       estimatedRange: (() => {
         const effectiveAcres = adjustedAcres ? parseFloat(adjustedAcres) : (parcelInfo?.deedAcres ?? 0);
         const trailLf = form.service === "trail-cutting" && form.trailLinearFeet ? parseFloat(form.trailLinearFeet) : undefined;
@@ -1958,6 +2068,184 @@ export default function QuotePage() {
                         onBlur={(e) => (e.target.style.borderColor = "rgba(255,255,255,0.12)")}
                       />
                     </div>
+                  </div>
+
+                  {/* ─── Site Visit Helpers: Photo Upload + Map Pin ─── */}
+                  <div style={{ border: "1px solid rgba(224,123,42,0.25)", borderRadius: "4px", overflow: "hidden" }}>
+                    {/* Collapsible header */}
+                    <button
+                      type="button"
+                      onClick={() => setSiteVisitOpen(o => !o)}
+                      style={{
+                        width: "100%",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        padding: "0.75rem 1rem",
+                        background: siteVisitOpen ? "rgba(224,123,42,0.1)" : "rgba(224,123,42,0.05)",
+                        border: "none",
+                        cursor: "pointer",
+                        transition: "background 0.15s",
+                      }}
+                    >
+                      <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                        <Camera size={14} style={{ color: "#E07B2A" }} />
+                        <span style={{ fontFamily: "'Oswald', sans-serif", fontSize: "0.72rem", letterSpacing: "0.14em", textTransform: "uppercase", color: "rgba(240,237,230,0.75)" }}>
+                          Help Us Prepare for Your Visit
+                        </span>
+                        <span style={{ fontFamily: "'Lato', sans-serif", fontSize: "0.68rem", color: "rgba(240,237,230,0.35)", letterSpacing: "0.04em" }}>
+                          (Optional)
+                        </span>
+                        {(uploadedPhotos.filter(p => !p.error && !p.uploading).length > 0 || pinLat !== null) && (
+                          <span style={{ background: "rgba(224,123,42,0.25)", color: "#E07B2A", fontSize: "0.65rem", fontFamily: "'Oswald', sans-serif", letterSpacing: "0.08em", padding: "1px 7px", borderRadius: "10px" }}>
+                            {[uploadedPhotos.filter(p => !p.error && !p.uploading).length > 0 && `${uploadedPhotos.filter(p => !p.error && !p.uploading).length} photo${uploadedPhotos.filter(p => !p.error && !p.uploading).length > 1 ? "s" : ""}`, pinLat !== null && "pin set"].filter(Boolean).join(" · ")}
+                          </span>
+                        )}
+                      </div>
+                      {siteVisitOpen ? <ChevronUp size={14} style={{ color: "rgba(224,123,42,0.7)" }} /> : <ChevronDown size={14} style={{ color: "rgba(224,123,42,0.7)" }} />}
+                    </button>
+
+                    {/* Collapsible body */}
+                    {siteVisitOpen && (
+                      <div style={{ padding: "1rem", background: "rgba(255,255,255,0.02)", display: "flex", flexDirection: "column", gap: "1.25rem" }}>
+
+                        {/* ── Photo Upload ── */}
+                        <div>
+                          <div style={{ fontFamily: "'Oswald', sans-serif", fontSize: "0.68rem", letterSpacing: "0.14em", textTransform: "uppercase", color: "rgba(224,123,42,0.8)", marginBottom: "0.5rem" }}>Property Photos</div>
+                          <p style={{ fontFamily: "'Lato', sans-serif", fontSize: "0.78rem", color: "rgba(240,237,230,0.45)", margin: "0 0 0.75rem", lineHeight: 1.5 }}>
+                            Upload photos of your property — before/after shots, vegetation type, access roads, or anything that helps us understand the job.
+                          </p>
+
+                          {/* Upload zone */}
+                          <div
+                            role="button"
+                            tabIndex={0}
+                            onClick={() => photoInputRef.current?.click()}
+                            onKeyDown={(e) => e.key === "Enter" && photoInputRef.current?.click()}
+                            onDragOver={(e) => { e.preventDefault(); (e.currentTarget as HTMLDivElement).style.borderColor = "rgba(224,123,42,0.7)"; }}
+                            onDragLeave={(e) => { (e.currentTarget as HTMLDivElement).style.borderColor = "rgba(255,255,255,0.12)"; }}
+                            onDrop={(e) => {
+                              e.preventDefault();
+                              (e.currentTarget as HTMLDivElement).style.borderColor = "rgba(255,255,255,0.12)";
+                              handlePhotoUpload(e.dataTransfer.files);
+                            }}
+                            style={{
+                              border: "2px dashed rgba(255,255,255,0.12)",
+                              borderRadius: "4px",
+                              padding: "1.25rem",
+                              textAlign: "center",
+                              cursor: "pointer",
+                              transition: "border-color 0.15s",
+                              background: "rgba(255,255,255,0.02)",
+                            }}
+                          >
+                            <Camera size={20} style={{ color: "rgba(224,123,42,0.5)", margin: "0 auto 0.4rem" }} />
+                            <div style={{ fontFamily: "'Lato', sans-serif", fontSize: "0.8rem", color: "rgba(240,237,230,0.55)" }}>
+                              Click to select or drag &amp; drop photos
+                            </div>
+                            <div style={{ fontFamily: "'Lato', sans-serif", fontSize: "0.7rem", color: "rgba(240,237,230,0.3)", marginTop: "0.2rem" }}>
+                              JPG, PNG, HEIC · Up to 10 MB each · Max 10 photos
+                            </div>
+                          </div>
+                          <input
+                            ref={photoInputRef}
+                            type="file"
+                            accept="image/*"
+                            multiple
+                            style={{ display: "none" }}
+                            onChange={(e) => handlePhotoUpload(e.target.files)}
+                          />
+
+                          {/* Thumbnail grid */}
+                          {uploadedPhotos.length > 0 && (
+                            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(80px, 1fr))", gap: "0.5rem", marginTop: "0.75rem" }}>
+                              {uploadedPhotos.map((photo, i) => (
+                                <div key={i} style={{ position: "relative", aspectRatio: "1", borderRadius: "3px", overflow: "hidden", background: "rgba(255,255,255,0.06)" }}>
+                                  {photo.url ? (
+                                    <img
+                                      src={photo.url}
+                                      alt={`Property photo ${i + 1}`}
+                                      style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                                    />
+                                  ) : (
+                                    <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                                      <Camera size={16} style={{ color: "rgba(240,237,230,0.3)" }} />
+                                    </div>
+                                  )}
+                                  {/* Uploading overlay */}
+                                  {photo.uploading && (
+                                    <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.55)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                                      <Loader2 size={16} className="animate-spin" style={{ color: "#E07B2A" }} />
+                                    </div>
+                                  )}
+                                  {/* Error overlay */}
+                                  {photo.error && (
+                                    <div style={{ position: "absolute", inset: 0, background: "rgba(220,38,38,0.5)", display: "flex", alignItems: "center", justifyContent: "center", padding: "0.25rem" }}>
+                                      <span style={{ fontSize: "0.6rem", color: "#fff", textAlign: "center", fontFamily: "'Lato', sans-serif" }}>{photo.error}</span>
+                                    </div>
+                                  )}
+                                  {/* Remove button */}
+                                  {!photo.uploading && (
+                                    <button
+                                      type="button"
+                                      onClick={() => removePhoto(i)}
+                                      style={{
+                                        position: "absolute", top: "2px", right: "2px",
+                                        background: "rgba(0,0,0,0.65)", border: "none",
+                                        borderRadius: "50%", width: "18px", height: "18px",
+                                        display: "flex", alignItems: "center", justifyContent: "center",
+                                        cursor: "pointer", padding: 0,
+                                      }}
+                                    >
+                                      <X size={10} style={{ color: "#fff" }} />
+                                    </button>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+
+                        {/* ── Map Pin Drop ── */}
+                        <div>
+                          <div style={{ fontFamily: "'Oswald', sans-serif", fontSize: "0.68rem", letterSpacing: "0.14em", textTransform: "uppercase", color: "rgba(224,123,42,0.8)", marginBottom: "0.5rem" }}>Property Location</div>
+                          <p style={{ fontFamily: "'Lato', sans-serif", fontSize: "0.78rem", color: "rgba(240,237,230,0.45)", margin: "0 0 0.75rem", lineHeight: 1.5 }}>
+                            Click anywhere on the map to drop a pin on your property. This helps us plan the site visit route.
+                          </p>
+                          <div style={{ height: "280px", borderRadius: "4px", border: "1px solid rgba(255,255,255,0.1)", overflow: "hidden" }}>
+                            <MapView
+                              className="w-full h-full"
+                              initialCenter={{ lat: 36.1, lng: -87.1 }}
+                              initialZoom={9}
+                              onMapReady={handleMapReady}
+                            />
+                          </div>
+                          {pinLat !== null && pinLng !== null && (
+                            <div style={{ marginTop: "0.5rem", display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0.5rem 0.75rem", background: "rgba(224,123,42,0.08)", border: "1px solid rgba(224,123,42,0.25)", borderRadius: "4px" }}>
+                              <div style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}>
+                                <MapPin size={13} style={{ color: "#E07B2A", flexShrink: 0 }} />
+                                <span style={{ fontFamily: "'Lato', sans-serif", fontSize: "0.78rem", color: "rgba(240,237,230,0.75)" }}>
+                                  {pinLat.toFixed(5)}, {pinLng.toFixed(5)}
+                                </span>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={clearPin}
+                                style={{ background: "none", border: "none", cursor: "pointer", color: "rgba(240,237,230,0.4)", padding: "0.1rem", display: "flex", alignItems: "center" }}
+                              >
+                                <X size={13} />
+                              </button>
+                            </div>
+                          )}
+                          {pinLat === null && (
+                            <div style={{ marginTop: "0.4rem", fontFamily: "'Lato', sans-serif", fontSize: "0.72rem", color: "rgba(240,237,230,0.3)", textAlign: "center" }}>
+                              No pin set yet — click the map to mark your property
+                            </div>
+                          )}
+                        </div>
+
+                      </div>
+                    )}
                   </div>
 
                   {/* Message */}

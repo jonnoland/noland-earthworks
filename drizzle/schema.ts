@@ -251,6 +251,12 @@ export const quoteSubmissions = mysqlTable("quote_submissions", {
   rowLinearFeet: int("rowLinearFeet"),
   /** ROW Clearing — corridor width in feet (default 30 ft when not provided) */
   rowCorridorWidthFt: int("rowCorridorWidthFt"),
+  /** Property photos uploaded by the user — JSON array of S3 CDN URLs */
+  propertyPhotoUrls: text("propertyPhotoUrls"),
+  /** Map pin latitude dropped by the user on the property map */
+  propertyPinLat: decimal("propertyPinLat", { precision: 10, scale: 7 }),
+  /** Map pin longitude dropped by the user on the property map */
+  propertyPinLng: decimal("propertyPinLng", { precision: 10, scale: 7 }),
   /** Preliminary price range shown on form (e.g. "$3,200 – $4,500") */
   estimatedRange: varchar("estimatedRange", { length: 100 }),
   /** AI lead qualification */

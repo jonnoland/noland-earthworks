@@ -2335,3 +2335,19 @@
 - [x] Add highlight animation (orange glow flash + box-shadow pulse, 1.4s ease-out) to Full Name input when "Request a Free Site Visit" button scrolls to it; triggers 400ms after scroll starts
 - [x] Replace plain effective-acres text with inline SVG formula diagram: [LF] x [Width] / [43,560] = [acres] with orange-highlighted result box, live values
 - [x] Regenerate button confirmed present in AI FB Outreach modal (added in v1.0.52, right-aligned next to Option tabs)
+
+## Photo Upload + Map Pin Drop — Site Visit Request (v1.0.59)
+- [x] Add `propertyPhotoUrls` (text, JSON array of CDN URLs, nullable) to `quoteSubmissions` schema
+- [x] Add `propertyPinLat` (decimal precision 10 scale 7, nullable) to `quoteSubmissions` schema
+- [x] Add `propertyPinLng` (decimal precision 10 scale 7, nullable) to `quoteSubmissions` schema
+- [x] Run `pnpm db:push` to migrate schema changes
+- [x] Add `quote.uploadPropertyPhoto` public tRPC mutation (base64 + mimeType → S3 CDN URL) in quoteRouter.ts
+- [x] Add `propertyPhotoUrls`, `propertyPinLat`, `propertyPinLng` to quoteSchema zod input
+- [x] Persist new fields in quoteSubmissions DB insert
+- [x] Add photo upload UI to Quote.tsx: drag-and-drop / click-to-upload, multiple images, thumbnails with remove, uploads via tRPC, optional label
+- [x] Add map pin drop UI to Quote.tsx: MapView component, click-to-drop-pin, coordinates display, optional label
+- [x] Place both sections in a collapsible "Help us prepare for your visit" panel near the site visit CTA
+- [x] Update owner notification email HTML to include photo thumbnail links and Google Maps URL from pin
+- [x] Update owner in-app notification content to include photo count and map link
+- [x] TypeScript: 0 errors (`npx tsc --noEmit`)
+- [ ] Save checkpoint v1.0.59

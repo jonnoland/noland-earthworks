@@ -5,6 +5,7 @@ import { ENV } from "./_core/env";
 import { Resend } from "resend";
 import { createJobberRequest, isJobberConnected, createJobberClientFromLead } from "./jobber";
 import { createOpsLead, upsertOpsLeadByPhone, getOwnerUser, getDb } from "./db";
+import { storagePut } from "./storage";
 import { quoteSubmissions } from "../drizzle/schema";
 import { sendOwnerSms } from "./sms";
 import { qualifyLead } from "./leadQualifier";
@@ -35,6 +36,12 @@ const quoteSchema = z.object({
   /** ROW Clearing — corridor width in feet. Defaults to 30 ft when not provided. */
   rowCorridorWidthFt: z.number().int().min(4).max(500).optional(),
   estimatedRange: z.string().max(100).optional().default(""),
+  /** Property photos — array of S3 CDN URLs uploaded before form submission */
+  propertyPhotoUrls: z.array(z.string().url()).max(10).optional().default([]),
+  /** Map pin latitude dropped by the user */
+  propertyPinLat: z.number().min(-90).max(90).optional(),
+  /** Map pin longitude dropped by the user */
+  propertyPinLng: z.number().min(-180).max(180).optional(),
 });
 
 export type QuoteInput = z.infer<typeof quoteSchema>;
@@ -167,6 +174,58 @@ function buildEmailHtml(data: QuoteInput): string {
         <tr>
           <td style="padding:0 36px;">
             <div style="background:#f9f7f4;border:1px solid #f0ede6;border-radius:6px;padding:14px 16px;font-size:14px;color:#333;line-height:1.6;white-space:pre-wrap;">${escapeHtml(data.message)}</div>
+          </td>
+        </tr>` : ""}
+
+        ${data.propertyPinLat != null && data.propertyPinLng != null ? `
+        <!-- Section: Property Location Pin -->
+        <tr>
+          <td style="padding:24px 36px 0;">
+            <p style="margin:0 0 10px;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#E07B2A;border-bottom:2px solid #E07B2A;padding-bottom:6px;">Property Location</p>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:0 36px;">
+            <table width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #f0ede6;border-radius:6px;overflow:hidden;">
+              <tr>
+                <td style="padding:10px 16px;border-bottom:1px solid #f0ede6;width:38%;">
+                  <span style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:#999;">Coordinates</span>
+                </td>
+                <td style="padding:10px 16px;border-bottom:1px solid #f0ede6;">
+                  <span style="font-size:14px;color:#1a1a1a;">${data.propertyPinLat.toFixed(5)}, ${data.propertyPinLng.toFixed(5)}</span>
+                </td>
+              </tr>
+              <tr>
+                <td style="padding:10px 16px;width:38%;">
+                  <span style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:#999;">Open in Maps</span>
+                </td>
+                <td style="padding:10px 16px;">
+                  <a href="https://www.google.com/maps?q=${data.propertyPinLat},${data.propertyPinLng}" style="color:#E07B2A;text-decoration:none;font-weight:600;font-size:14px;">View on Google Maps &rarr;</a>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>` : ""}
+
+        ${data.propertyPhotoUrls && data.propertyPhotoUrls.length > 0 ? `
+        <!-- Section: Property Photos -->
+        <tr>
+          <td style="padding:24px 36px 0;">
+            <p style="margin:0 0 10px;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#E07B2A;border-bottom:2px solid #E07B2A;padding-bottom:6px;">Property Photos (${data.propertyPhotoUrls.length})</p>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:0 36px;">
+            <table width="100%" cellpadding="0" cellspacing="0">
+              <tr>
+                ${data.propertyPhotoUrls.map((url, i) => `
+                <td style="padding:4px;width:${Math.floor(100 / Math.min(data.propertyPhotoUrls!.length, 3))}%;vertical-align:top;">
+                  <a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer">
+                    <img src="${escapeHtml(url)}" alt="Property photo ${i + 1}" width="100%" style="display:block;border-radius:4px;border:1px solid #f0ede6;" />
+                  </a>
+                </td>`).join("")}
+              </tr>
+            </table>
           </td>
         </tr>` : ""}
 
@@ -407,6 +466,8 @@ export const quoteRouter = router({
           })(),
           (input.street || input.city) ? `Address: ${[input.street, [input.city, input.state, input.zip].filter(Boolean).join(" ")].filter(Boolean).join(", ")}` : "",
           input.message ? `\nProject Details:\n${input.message}` : "",
+          input.propertyPhotoUrls && input.propertyPhotoUrls.length > 0 ? `\nProperty Photos: ${input.propertyPhotoUrls.length} photo${input.propertyPhotoUrls.length > 1 ? "s" : ""} attached` : "",
+          input.propertyPinLat != null && input.propertyPinLng != null ? `Property Pin: https://www.google.com/maps?q=${input.propertyPinLat},${input.propertyPinLng}` : "",
         ]
           .filter(Boolean)
           .join("\n"),
@@ -514,6 +575,9 @@ export const quoteRouter = router({
           deedAcres: input.deedAcres != null ? String(input.deedAcres) : null,
           adjustedAcres: input.adjustedAcres != null ? String(input.adjustedAcres) : null,
           estimatedRange: input.estimatedRange || null,
+          propertyPhotoUrls: input.propertyPhotoUrls && input.propertyPhotoUrls.length > 0 ? JSON.stringify(input.propertyPhotoUrls) : null,
+          propertyPinLat: input.propertyPinLat != null ? String(input.propertyPinLat) : null,
+          propertyPinLng: input.propertyPinLng != null ? String(input.propertyPinLng) : null,
           aiScore: qualification?.score ?? null,
           aiSummary: qualification?.summary ?? null,
           aiFlags: qualification?.flags && qualification.flags.length > 0 ? JSON.stringify(qualification.flags) : null,
@@ -666,6 +730,33 @@ export const quoteRouter = router({
         tpvLink,
         geocodedAddress: geoData.results[0].formatted_address,
       };
+    }),
+
+  // ─── Property Photo Upload ────────────────────────────────────────────────────
+  // Accepts a base64-encoded image, uploads to S3, returns the CDN URL.
+  // Called from the quote form before final submission so URLs can be embedded.
+  uploadPropertyPhoto: publicProcedure
+    .input(
+      z.object({
+        base64: z.string().min(1),
+        mimeType: z.string().default("image/jpeg"),
+      })
+    )
+    .mutation(async ({ input }) => {
+      const allowedTypes = ["image/jpeg", "image/png", "image/heic", "image/webp", "image/gif"];
+      if (!allowedTypes.includes(input.mimeType)) {
+        throw new Error(`Unsupported image type: ${input.mimeType}`);
+      }
+      // Enforce 10 MB limit on the decoded buffer
+      const buffer = Buffer.from(input.base64, "base64");
+      if (buffer.byteLength > 10 * 1024 * 1024) {
+        throw new Error("Image exceeds 10 MB limit");
+      }
+      const ext = input.mimeType.split("/")[1]?.replace("jpeg", "jpg") ?? "jpg";
+      const randomSuffix = Math.random().toString(36).slice(2, 10);
+      const key = `property-photos/${Date.now()}-${randomSuffix}.${ext}`;
+      const { url } = await storagePut(key, buffer, input.mimeType);
+      return { url };
     }),
 
   // Google Places Autocomplete — server-side proxy so no SDK needed on the quote page
