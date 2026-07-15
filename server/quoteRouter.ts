@@ -30,6 +30,10 @@ const quoteSchema = z.object({
   parcelId: z.string().max(100).optional().default(""),
   deedAcres: z.number().optional(),
   adjustedAcres: z.number().optional(),
+  /** ROW Clearing — primary unit (linear feet). When provided, acreage field is ignored for ROW. */
+  rowLinearFeet: z.number().int().min(1).max(200000).optional(),
+  /** ROW Clearing — corridor width in feet. Defaults to 30 ft when not provided. */
+  rowCorridorWidthFt: z.number().int().min(4).max(500).optional(),
   estimatedRange: z.string().max(100).optional().default(""),
 });
 
@@ -142,7 +146,11 @@ function buildEmailHtml(data: QuoteInput): string {
             <table width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #f0ede6;border-radius:6px;overflow:hidden;">
               ${row("Service Requested", `<strong>${escapeHtml(data.service)}</strong>`)}
               ${row("County", escapeHtml(data.county) + " County")}
-              ${data.acreage ? row("Acreage", escapeHtml(data.acreage)) : ""}
+              ${(data.service === 'right-of-way-clearing' || data.service === 'Right-of-Way Clearing')
+                ? (data.rowLinearFeet ? row("Corridor Length", `${data.rowLinearFeet.toLocaleString()} linear feet`) : (data.acreage ? row("Acreage (provided)", escapeHtml(data.acreage)) : ""))
+                : (data.acreage ? row("Acreage", escapeHtml(data.acreage)) : "")}
+              ${(data.service === 'right-of-way-clearing' || data.service === 'Right-of-Way Clearing') && data.rowCorridorWidthFt ? row("Corridor Width", `${data.rowCorridorWidthFt} ft`) : ""}
+              ${(data.service === 'right-of-way-clearing' || data.service === 'Right-of-Way Clearing') && data.rowLinearFeet && data.rowCorridorWidthFt ? row("Effective Acres", `${((data.rowLinearFeet * data.rowCorridorWidthFt) / 43560).toFixed(3)} acres`) : ""}
               ${addressLines.length ? row("Property Address", addressLines.map(escapeHtml).join("<br />")) : ""}
               ${data.addOns && data.addOns.length > 0 ? row("Add-On Services", data.addOns.map(escapeHtml).join("<br />")) : ""}
             </table>
@@ -268,7 +276,10 @@ function buildConfirmationEmailHtml(data: QuoteInput): string {
             <table width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #f0ede6;border-radius:6px;overflow:hidden;">
               ${row("Service", `<strong>${escapeHtml(data.service)}</strong>`)}
               ${row("County", escapeHtml(data.county) + " County")}
-              ${data.acreage ? row("Acreage", escapeHtml(data.acreage)) : ""}
+              ${(data.service === 'right-of-way-clearing' || data.service === 'Right-of-Way Clearing')
+                ? (data.rowLinearFeet ? row("Corridor Length", `${data.rowLinearFeet.toLocaleString()} linear feet`) : (data.acreage ? row("Acreage (provided)", escapeHtml(data.acreage)) : ""))
+                : (data.acreage ? row("Acreage", escapeHtml(data.acreage)) : "")}
+              ${(data.service === 'right-of-way-clearing' || data.service === 'Right-of-Way Clearing') && data.rowCorridorWidthFt ? row("Corridor Width", `${data.rowCorridorWidthFt} ft`) : ""}
               ${addressLines.length ? row("Property Address", addressLines.map(escapeHtml).join("<br />")) : ""}
               ${data.addOns && data.addOns.length > 0 ? row("Add-On Services", data.addOns.map(escapeHtml).join("<br />")) : ""}
             </table>
@@ -385,7 +396,15 @@ export const quoteRouter = router({
           `Email: ${input.email}`,
           `Service: ${input.service}`,
           `County: ${input.county} County`,
-          input.acreage ? `Acreage: ${input.acreage}` : "",
+          (() => {
+            const isRow = input.service === 'right-of-way-clearing' || input.service === 'Right-of-Way Clearing';
+            if (isRow && input.rowLinearFeet) {
+              const corridorWidth = input.rowCorridorWidthFt ?? 30;
+              const effAcres = ((input.rowLinearFeet * corridorWidth) / 43560).toFixed(3);
+              return `ROW: ${input.rowLinearFeet.toLocaleString()} linear feet × ${corridorWidth} ft wide = ${effAcres} effective acres`;
+            }
+            return input.acreage ? `Acreage: ${input.acreage}` : "";
+          })(),
           (input.street || input.city) ? `Address: ${[input.street, [input.city, input.state, input.zip].filter(Boolean).join(" ")].filter(Boolean).join(", ")}` : "",
           input.message ? `\nProject Details:\n${input.message}` : "",
         ]
@@ -404,7 +423,15 @@ export const quoteRouter = router({
         `Name: ${input.name}`,
         `Phone: ${input.phone}`,
         `Service: ${input.service} | ${input.county} County`,
-        input.acreage ? `Acreage: ${input.acreage}` : "",
+        (() => {
+          const isRow = input.service === 'right-of-way-clearing' || input.service === 'Right-of-Way Clearing';
+          if (isRow && input.rowLinearFeet) {
+            const corridorWidth = input.rowCorridorWidthFt ?? 30;
+            const effAcres = ((input.rowLinearFeet * corridorWidth) / 43560).toFixed(2);
+            return `ROW: ${input.rowLinearFeet.toLocaleString()} LF × ${corridorWidth} ft = ${effAcres} ac`;
+          }
+          return input.acreage ? `Acreage: ${input.acreage}` : "";
+        })(),
         addressPart ? `Address: ${addressPart}` : "",
         qualification?.summary ? `AI: ${qualification.summary}` : "",
         `View leads: https://www.nolandearthworks.com/ops/leads`,
@@ -474,6 +501,8 @@ export const quoteRouter = router({
           service: input.service,
           county: input.county,
           acreage: input.acreage || null,
+          rowLinearFeet: input.rowLinearFeet ?? null,
+          rowCorridorWidthFt: input.rowCorridorWidthFt ?? null,
           street: input.street || null,
           city: input.city || null,
           state: input.state || null,
@@ -521,7 +550,15 @@ export const quoteRouter = router({
           qualification ? `AI Score: ${qualification.score.toUpperCase()}` : "",
           qualification?.summary ? `AI Summary: ${qualification.summary}` : "",
           qualification?.flags && qualification.flags.length > 0 ? `AI Flags: ${qualification.flags.join(" | ")}` : "",
-          input.acreage ? `Acreage: ${input.acreage}` : "",
+          (() => {
+            const isRow = input.service === 'right-of-way-clearing' || input.service === 'Right-of-Way Clearing';
+            if (isRow && input.rowLinearFeet) {
+              const corridorWidth = input.rowCorridorWidthFt ?? 30;
+              const effAcres = ((input.rowLinearFeet * corridorWidth) / 43560).toFixed(3);
+              return `ROW: ${input.rowLinearFeet.toLocaleString()} linear feet × ${corridorWidth} ft wide = ${effAcres} effective acres`;
+            }
+            return input.acreage ? `Acreage: ${input.acreage}` : "";
+          })(),
           address ? `Address: ${address}` : "",
           input.message ? `\nProject Details:\n${input.message}` : "",
         ]

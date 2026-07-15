@@ -243,6 +243,8 @@ export default function QuotePage() {
       trailLinearFeet: "",
       trailWidth: "",
       trailTerrain: "",
+      rowLinearFeet: "",
+      rowCorridorWidthFt: "",
     };
   })();
 
@@ -326,6 +328,8 @@ export default function QuotePage() {
       city: form.city,
       state: form.state || "TN",
       zip: form.zip,
+      rowLinearFeet: form.service === "right-of-way-clearing" && form.rowLinearFeet ? parseInt(form.rowLinearFeet, 10) : undefined,
+      rowCorridorWidthFt: form.service === "right-of-way-clearing" && form.rowCorridorWidthFt ? parseInt(form.rowCorridorWidthFt, 10) : undefined,
       message: [
         form.message,
         form.service === "trail-cutting" && form.trailLinearFeet ? `Trail Length: ${parseFloat(form.trailLinearFeet).toLocaleString()} linear feet` : "",
@@ -334,6 +338,11 @@ export default function QuotePage() {
           ? `Effective Acreage: ${((parseFloat(form.trailLinearFeet) * parseFloat(form.trailWidth)) / 43560).toFixed(2)} acres`
           : "",
         form.service === "trail-cutting" && form.trailTerrain ? `Terrain Type: ${form.trailTerrain.charAt(0).toUpperCase() + form.trailTerrain.slice(1)}` : "",
+        form.service === "right-of-way-clearing" && form.rowLinearFeet ? `ROW Length: ${parseFloat(form.rowLinearFeet).toLocaleString()} linear feet` : "",
+        form.service === "right-of-way-clearing" && form.rowCorridorWidthFt ? `Corridor Width: ${form.rowCorridorWidthFt} ft` : "",
+        form.service === "right-of-way-clearing" && form.rowLinearFeet && form.rowCorridorWidthFt
+          ? `Effective Acreage: ${((parseFloat(form.rowLinearFeet) * parseFloat(form.rowCorridorWidthFt)) / 43560).toFixed(3)} acres`
+          : "",
       ].filter(Boolean).join("\n"),
       addOns: selectedAddOns,
       parcelOwner: parcelInfo?.owner ?? undefined,
@@ -1100,7 +1109,8 @@ export default function QuotePage() {
                     </div>
                   </div>
 
-                  {/* Acreage */}
+                  {/* Acreage — hidden for ROW (uses linear feet instead) */}
+                  {form.service !== "right-of-way-clearing" && (
                   <div>
                     <label style={labelStyle}>Approximate Acreage <span style={{ fontWeight: 400, opacity: 0.65, fontSize: "0.85em", textTransform: "none", letterSpacing: 0 }}>(minimum charge is 1 acre)</span></label>
                     <select
@@ -1121,6 +1131,55 @@ export default function QuotePage() {
                       <option value="unsure" style={{ backgroundColor: "#1a1a1a" }}>Not sure</option>
                     </select>
                   </div>
+                  )}
+
+                  {/* ROW-specific fields — linear feet + corridor width */}
+                  {form.service === "right-of-way-clearing" && (
+                  <div style={{ padding: "1rem", background: "rgba(224,123,42,0.05)", border: "1px solid rgba(224,123,42,0.2)", borderRadius: "4px" }}>
+                    <div style={{ fontFamily: "'Oswald', sans-serif", fontSize: "0.68rem", letterSpacing: "0.14em", textTransform: "uppercase", color: "rgba(224,123,42,0.8)", marginBottom: "0.75rem" }}>Right-of-Way Dimensions</div>
+                    <div className="grid grid-cols-2 gap-4" style={{ marginBottom: "0.75rem" }}>
+                      <div>
+                        <label style={labelStyle}>Corridor Length <span style={{ color: "rgba(240,237,230,0.4)", fontSize: "0.7rem", letterSpacing: "0.08em" }}>(linear feet)</span></label>
+                        <input
+                          type="number"
+                          name="rowLinearFeet"
+                          min="1"
+                          step="100"
+                          placeholder="e.g. 2640"
+                          value={form.rowLinearFeet}
+                          onChange={handleChange}
+                          style={inputStyle}
+                          onFocus={(e) => (e.target.style.borderColor = "rgba(224,123,42,0.6)")}
+                          onBlur={(e) => (e.target.style.borderColor = "rgba(255,255,255,0.12)")}
+                        />
+                      </div>
+                      <div>
+                        <label style={labelStyle}>Corridor Width <span style={{ color: "rgba(240,237,230,0.4)", fontSize: "0.7rem", letterSpacing: "0.08em" }}>(feet, optional)</span></label>
+                        <input
+                          type="number"
+                          name="rowCorridorWidthFt"
+                          min="4"
+                          step="5"
+                          placeholder="e.g. 30"
+                          value={form.rowCorridorWidthFt}
+                          onChange={handleChange}
+                          style={inputStyle}
+                          onFocus={(e) => (e.target.style.borderColor = "rgba(224,123,42,0.6)")}
+                          onBlur={(e) => (e.target.style.borderColor = "rgba(255,255,255,0.12)")}
+                        />
+                      </div>
+                    </div>
+                    {/* Acre-to-LF converter — shown when user enters acreage instead */}
+                    <div style={{ fontSize: "0.75rem", color: "rgba(240,237,230,0.45)", lineHeight: 1.5 }}>
+                      Don't know the linear footage? Multiply your acreage by 43,560, then divide by the corridor width in feet.
+                      {form.rowLinearFeet && form.rowCorridorWidthFt && (
+                        <span style={{ display: "block", marginTop: "0.4rem", color: "rgba(224,123,42,0.85)", fontWeight: 600 }}>
+                          {parseFloat(form.rowLinearFeet).toLocaleString()} ft &times; {form.rowCorridorWidthFt} ft &divide; 43,560 = {((parseFloat(form.rowLinearFeet) * parseFloat(form.rowCorridorWidthFt)) / 43560).toFixed(3)} effective acres
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  )}
 
                   {/* Trail-specific fields — only shown when Trail Cutting is selected */}
                   {form.service === "trail-cutting" && (() => {

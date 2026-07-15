@@ -2309,3 +2309,13 @@
 - [x] Update sendInitialSms to insert contact log row (method: sms) after successful send; auto-advances stage
 - [x] Update confirmVisit email send to insert contact log row (method: email, subject + body summary)
 - [x] Add Contact Log section to lead detail panel: color-coded method badge (blue Email / green SMS / amber Phone / purple In Person), subject line, timestamp, expandable View/Hide body; empty state when no contacts yet
+
+## ROW Linear Feet (v1.0.55)
+- [x] Quote form: when service type is Right-of-Way Clearing, replace acreage selector with Corridor Length (linear feet) + Corridor Width (ft) fields
+- [x] Quote form: live effective-acres calculator shown below ROW fields (LF x width / 43,560); helper text explains how to convert if customer only knows acreage
+- [x] Quote form schema: added rowLinearFeet (int) and rowCorridorWidthFt (int) columns to quoteSubmissions; pushed migration 0089
+- [x] Update quote confirmation screen: ROW jobs show Corridor Length in LF + Corridor Width + Effective Acres
+- [x] Update owner notification email for ROW quotes to show linear feet prominently
+- [x] Update customer confirmation email for ROW quotes to show linear feet
+- [x] Update ops lead notes creation to show ROW linear feet instead of acreage
+- [x] Update submit handler to pass rowLinearFeet and rowCorridorWidthFt to mutation and append to message field

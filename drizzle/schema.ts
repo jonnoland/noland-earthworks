@@ -247,6 +247,10 @@ export const quoteSubmissions = mysqlTable("quote_submissions", {
   deedAcres: decimal("deedAcres", { precision: 10, scale: 2 }),
   /** User-adjusted acreage (partial-property jobs) — overrides deedAcres for estimate */
   adjustedAcres: decimal("adjustedAcres", { precision: 10, scale: 2 }),
+  /** ROW Clearing — primary unit of measure (linear feet) */
+  rowLinearFeet: int("rowLinearFeet"),
+  /** ROW Clearing — corridor width in feet (default 30 ft when not provided) */
+  rowCorridorWidthFt: int("rowCorridorWidthFt"),
   /** Preliminary price range shown on form (e.g. "$3,200 – $4,500") */
   estimatedRange: varchar("estimatedRange", { length: 100 }),
   /** AI lead qualification */
