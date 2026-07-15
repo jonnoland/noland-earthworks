@@ -2382,4 +2382,11 @@
 - [x] Add GOV badge to Kanban lead cards in Leads.tsx (blue pill with Building2 icon, visible on card when clientType === "government")
 - [x] Add RFP document preview panel to lead details modal: list uploaded docs with open-in-new-tab links + inline AI extraction summary (deadlines, requirements, agency, bonding)
 - [x] TypeScript: 0 errors
-- [ ] Save checkpoint v1.0.62
+- [x] Save checkpoint v1.0.62
+
+## RFP Panel Enhancements (v1.0.63)
+- [x] Add loading skeleton animation inside RfpDocumentPanel while AI extraction is running
+- [x] Make all extracted RFP fields inline-editable (deadlines date/description, requirements list items, projectSize, issuingAgency, agencyContact, bondingInsurance items, summary)
+- [x] Add "Apply to Lead" button that auto-populates lead fields from extracted data (estimatedValue from projectSize, notes from summary + agency + bonding + deadlines)
+- [x] TypeScript: 0 errors
+- [ ] Save checkpoint v1.0.63

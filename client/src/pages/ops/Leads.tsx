@@ -602,24 +602,37 @@ function AllLeadsMap({ leads, onLeadClick }: { leads: Lead[]; onLeadClick: (lead
 
 // ─── RFP Document Panel ──────────────────────────────────────────────────────
 
-function RfpDocumentPanel({ rfpUrls }: { rfpUrls: string[] }) {
-  const [extraction, setExtraction] = useState<{
-    deadlines: Array<{ date: string; description: string }>;
-    requirements: string[];
-    projectSize: string;
-    issuingAgency: string;
-    agencyContact: string;
-    bondingInsurance: string[];
-    summary: string;
-  } | null>(null);
+type RfpExtraction = {
+  deadlines: Array<{ date: string; description: string }>;
+  requirements: string[];
+  projectSize: string;
+  issuingAgency: string;
+  agencyContact: string;
+  bondingInsurance: string[];
+  summary: string;
+};
+
+function RfpDocumentPanel({ rfpUrls, leadId, onLeadUpdated }: { rfpUrls: string[]; leadId: number; onLeadUpdated?: (patch: { jobType?: string; estimatedValue?: string; notes?: string }) => void }) {
+  const [extraction, setExtraction] = useState<RfpExtraction | null>(null);
+  const [edited, setEdited] = useState<RfpExtraction | null>(null);
   const [extracting, setExtracting] = useState(false);
   const [extractError, setExtractError] = useState<string | null>(null);
+  const [applied, setApplied] = useState(false);
+
+  const data = edited ?? extraction;
 
   const extractRfpData = trpc.quote.extractRfpData.useMutation();
+  const updateLead = trpc.ops.leads.update.useMutation({
+    onSuccess: () => {
+      setApplied(true);
+      setTimeout(() => setApplied(false), 2500);
+    },
+  });
 
   const handleExtract = async () => {
     setExtracting(true);
     setExtractError(null);
+    setEdited(null);
     try {
       const result = await extractRfpData.mutateAsync({ rfpDocumentUrls: rfpUrls });
       setExtraction(result);
@@ -628,6 +641,39 @@ function RfpDocumentPanel({ rfpUrls }: { rfpUrls: string[] }) {
     } finally {
       setExtracting(false);
     }
+  };
+
+  const handleApply = () => {
+    if (!data) return;
+    // Build a notes string from summary + agency + bonding
+    const notesParts: string[] = [];
+    if (data.summary) notesParts.push(`RFP Summary: ${data.summary}`);
+    if (data.issuingAgency) notesParts.push(`Issuing Agency: ${data.issuingAgency}`);
+    if (data.agencyContact) notesParts.push(`Contact: ${data.agencyContact}`);
+    if (data.bondingInsurance.length > 0) notesParts.push(`Bonding/Insurance: ${data.bondingInsurance.join("; ")}`);
+    if (data.deadlines.length > 0) notesParts.push(`Deadlines: ${data.deadlines.map(d => `${d.date} — ${d.description}`).join("; ")}`);
+    const notes = notesParts.join("\n");
+    const patch: { jobType?: string; estimatedValue?: string; notes?: string } = {};
+    if (notes) patch.notes = notes;
+    if (data.projectSize) patch.estimatedValue = data.projectSize.replace(/[^0-9.]/g, "").slice(0, 12) || undefined;
+    updateLead.mutate({ id: leadId, ...patch });
+    if (onLeadUpdated) onLeadUpdated(patch);
+  };
+
+  const updateField = <K extends keyof RfpExtraction>(key: K, value: RfpExtraction[K]) => {
+    setEdited(prev => ({ ...(prev ?? extraction!), [key]: value }));
+  };
+
+  const updateDeadline = (i: number, field: "date" | "description", value: string) => {
+    const base = edited ?? extraction!;
+    const updated = base.deadlines.map((d, idx) => idx === i ? { ...d, [field]: value } : d);
+    setEdited({ ...base, deadlines: updated });
+  };
+
+  const updateListItem = (key: "requirements" | "bondingInsurance", i: number, value: string) => {
+    const base = edited ?? extraction!;
+    const updated = (base[key] as string[]).map((v, idx) => idx === i ? value : v);
+    setEdited({ ...base, [key]: updated });
   };
 
   const getFileName = (url: string) => {
@@ -645,21 +691,31 @@ function RfpDocumentPanel({ rfpUrls }: { rfpUrls: string[] }) {
           <Building2 className="w-3.5 h-3.5 text-blue-400" />
           <span className="text-[11px] font-semibold uppercase tracking-wider text-blue-400">RFP / Bid Documents ({rfpUrls.length})</span>
         </div>
-        {!extraction && (
-          <button
-            onClick={handleExtract}
-            disabled={extracting}
-            className="flex items-center gap-1.5 text-[10px] font-semibold px-2.5 py-1 rounded bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 border border-blue-500/30 transition-colors disabled:opacity-50"
-          >
-            {extracting ? <><Loader2 className="w-3 h-3 animate-spin" />Analyzing...</> : <><Sparkles className="w-3 h-3" />AI Extract</>}
-          </button>
-        )}
-        {extraction && (
-          <button
-            onClick={() => setExtraction(null)}
-            className="text-[10px] text-blue-400/60 hover:text-blue-400 transition-colors"
-          >Re-run</button>
-        )}
+        <div className="flex items-center gap-2">
+          {data && (
+            <button
+              onClick={handleApply}
+              disabled={updateLead.isPending || applied}
+              className="flex items-center gap-1.5 text-[10px] font-semibold px-2.5 py-1 rounded bg-green-500/20 hover:bg-green-500/30 text-green-300 border border-green-500/30 transition-colors disabled:opacity-60"
+            >
+              {updateLead.isPending ? <><Loader2 className="w-3 h-3 animate-spin" />Applying...</> : applied ? <><CheckCircle className="w-3 h-3" />Applied</> : <><ClipboardList className="w-3 h-3" />Apply to Lead</>}
+            </button>
+          )}
+          {!extraction && !extracting && (
+            <button
+              onClick={handleExtract}
+              className="flex items-center gap-1.5 text-[10px] font-semibold px-2.5 py-1 rounded bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 border border-blue-500/30 transition-colors"
+            >
+              <Sparkles className="w-3 h-3" />AI Extract
+            </button>
+          )}
+          {extraction && !extracting && (
+            <button
+              onClick={() => { setExtraction(null); setEdited(null); }}
+              className="text-[10px] text-blue-400/60 hover:text-blue-400 transition-colors"
+            >Re-run</button>
+          )}
+        </div>
       </div>
 
       {/* Document list */}
@@ -684,24 +740,83 @@ function RfpDocumentPanel({ rfpUrls }: { rfpUrls: string[] }) {
         <div className="px-3 py-2 text-[11px] text-red-400 border-t border-blue-500/20">{extractError}</div>
       )}
 
-      {/* Extraction results */}
-      {extraction && (
+      {/* Loading skeleton */}
+      {extracting && (
+        <div className="px-3 py-3 border-t border-blue-500/20 space-y-3 animate-pulse">
+          <div className="space-y-1.5">
+            <div className="h-2.5 bg-blue-500/15 rounded w-1/3" />
+            <div className="h-2 bg-[#1e1e1e] rounded w-full" />
+            <div className="h-2 bg-[#1e1e1e] rounded w-5/6" />
+            <div className="h-2 bg-[#1e1e1e] rounded w-4/6" />
+          </div>
+          <div className="space-y-1.5">
+            <div className="h-2.5 bg-blue-500/15 rounded w-1/4" />
+            {[1,2].map(i => (
+              <div key={i} className="flex items-center gap-2">
+                <div className="h-3 w-3 rounded-full bg-amber-500/15 shrink-0" />
+                <div className="h-2 bg-[#1e1e1e] rounded flex-1" />
+                <div className="h-2 bg-[#1e1e1e] rounded w-1/3" />
+              </div>
+            ))}
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            {[1,2].map(i => (
+              <div key={i} className="bg-[#111] rounded p-2 space-y-1">
+                <div className="h-2 bg-[#222] rounded w-1/2" />
+                <div className="h-2.5 bg-[#1e1e1e] rounded w-3/4" />
+              </div>
+            ))}
+          </div>
+          <div className="space-y-1.5">
+            <div className="h-2.5 bg-blue-500/15 rounded w-1/3" />
+            {[1,2,3].map(i => (
+              <div key={i} className="flex items-center gap-1.5">
+                <div className="h-3 w-3 rounded-full bg-blue-500/10 shrink-0" />
+                <div className="h-2 bg-[#1e1e1e] rounded flex-1" />
+              </div>
+            ))}
+          </div>
+          <div className="flex items-center gap-2 pt-1">
+            <Loader2 className="w-3 h-3 text-blue-400/50 animate-spin" />
+            <span className="text-[10px] text-blue-400/50">Analyzing documents...</span>
+          </div>
+        </div>
+      )}
+
+      {/* Extraction results (editable) */}
+      {data && !extracting && (
         <div className="px-3 py-3 border-t border-blue-500/20 space-y-3">
           {/* Summary */}
-          {extraction.summary && (
-            <p className="text-[11px] text-[#aaa] leading-relaxed">{extraction.summary}</p>
-          )}
+          <div>
+            <p className="text-[9px] uppercase tracking-wider text-[#555] mb-1">Summary</p>
+            <textarea
+              value={data.summary}
+              onChange={e => updateField("summary", e.target.value)}
+              rows={3}
+              className="w-full bg-[#0d0d0d] border border-[#2a2a2a] focus:border-blue-500/40 rounded px-2 py-1.5 text-[11px] text-[#aaa] resize-none focus:outline-none transition-colors"
+            />
+          </div>
 
           {/* Deadlines */}
-          {extraction.deadlines.length > 0 && (
+          {data.deadlines.length > 0 && (
             <div>
               <p className="text-[10px] font-semibold uppercase tracking-wider text-blue-400 mb-1.5">Deadlines</p>
-              <div className="space-y-1">
-                {extraction.deadlines.map((d, i) => (
-                  <div key={i} className="flex items-start gap-2">
-                    <Calendar className="w-3 h-3 text-amber-400 shrink-0 mt-0.5" />
-                    <span className="text-[11px] text-white font-medium">{d.date}</span>
-                    <span className="text-[11px] text-[#888]">{d.description}</span>
+              <div className="space-y-1.5">
+                {data.deadlines.map((d, i) => (
+                  <div key={i} className="flex items-start gap-1.5">
+                    <Calendar className="w-3 h-3 text-amber-400 shrink-0 mt-1.5" />
+                    <input
+                      value={d.date}
+                      onChange={e => updateDeadline(i, "date", e.target.value)}
+                      className="w-28 bg-[#0d0d0d] border border-[#2a2a2a] focus:border-blue-500/40 rounded px-1.5 py-1 text-[11px] text-white focus:outline-none transition-colors"
+                      placeholder="Date"
+                    />
+                    <input
+                      value={d.description}
+                      onChange={e => updateDeadline(i, "description", e.target.value)}
+                      className="flex-1 bg-[#0d0d0d] border border-[#2a2a2a] focus:border-blue-500/40 rounded px-1.5 py-1 text-[11px] text-[#888] focus:outline-none transition-colors"
+                      placeholder="Description"
+                    />
                   </div>
                 ))}
               </div>
@@ -709,32 +824,53 @@ function RfpDocumentPanel({ rfpUrls }: { rfpUrls: string[] }) {
           )}
 
           {/* Project size + Agency */}
-          {(extraction.projectSize || extraction.issuingAgency) && (
-            <div className="grid grid-cols-2 gap-2">
-              {extraction.projectSize && (
-                <div className="bg-[#111] rounded p-2">
-                  <p className="text-[9px] uppercase tracking-wider text-[#555] mb-0.5">Project Size</p>
-                  <p className="text-[11px] text-white">{extraction.projectSize}</p>
-                </div>
-              )}
-              {extraction.issuingAgency && (
-                <div className="bg-[#111] rounded p-2">
-                  <p className="text-[9px] uppercase tracking-wider text-[#555] mb-0.5">Issuing Agency</p>
-                  <p className="text-[11px] text-white">{extraction.issuingAgency}</p>
-                </div>
-              )}
+          <div className="grid grid-cols-2 gap-2">
+            <div className="bg-[#0d0d0d] rounded p-2">
+              <p className="text-[9px] uppercase tracking-wider text-[#555] mb-1">Project Size</p>
+              <input
+                value={data.projectSize}
+                onChange={e => updateField("projectSize", e.target.value)}
+                className="w-full bg-transparent border-b border-[#2a2a2a] focus:border-blue-500/40 text-[11px] text-white focus:outline-none transition-colors pb-0.5"
+                placeholder="e.g. 12 acres"
+              />
+            </div>
+            <div className="bg-[#0d0d0d] rounded p-2">
+              <p className="text-[9px] uppercase tracking-wider text-[#555] mb-1">Issuing Agency</p>
+              <input
+                value={data.issuingAgency}
+                onChange={e => updateField("issuingAgency", e.target.value)}
+                className="w-full bg-transparent border-b border-[#2a2a2a] focus:border-blue-500/40 text-[11px] text-white focus:outline-none transition-colors pb-0.5"
+                placeholder="Agency name"
+              />
+            </div>
+          </div>
+
+          {/* Agency Contact */}
+          {(data.agencyContact || edited) && (
+            <div>
+              <p className="text-[9px] uppercase tracking-wider text-[#555] mb-1">Agency Contact</p>
+              <input
+                value={data.agencyContact}
+                onChange={e => updateField("agencyContact", e.target.value)}
+                className="w-full bg-[#0d0d0d] border border-[#2a2a2a] focus:border-blue-500/40 rounded px-2 py-1 text-[11px] text-[#aaa] focus:outline-none transition-colors"
+                placeholder="Name, email, or phone"
+              />
             </div>
           )}
 
           {/* Requirements */}
-          {extraction.requirements.length > 0 && (
+          {data.requirements.length > 0 && (
             <div>
               <p className="text-[10px] font-semibold uppercase tracking-wider text-blue-400 mb-1.5">Key Requirements</p>
-              <ul className="space-y-0.5">
-                {extraction.requirements.slice(0, 6).map((req, i) => (
-                  <li key={i} className="flex items-start gap-1.5 text-[11px] text-[#aaa]">
-                    <CheckCircle className="w-3 h-3 text-blue-400/60 shrink-0 mt-0.5" />
-                    {req}
+              <ul className="space-y-1">
+                {data.requirements.slice(0, 8).map((req, i) => (
+                  <li key={i} className="flex items-start gap-1.5">
+                    <CheckCircle className="w-3 h-3 text-blue-400/60 shrink-0 mt-1.5" />
+                    <input
+                      value={req}
+                      onChange={e => updateListItem("requirements", i, e.target.value)}
+                      className="flex-1 bg-[#0d0d0d] border border-[#2a2a2a] focus:border-blue-500/40 rounded px-1.5 py-1 text-[11px] text-[#aaa] focus:outline-none transition-colors"
+                    />
                   </li>
                 ))}
               </ul>
@@ -742,18 +878,26 @@ function RfpDocumentPanel({ rfpUrls }: { rfpUrls: string[] }) {
           )}
 
           {/* Bonding / Insurance */}
-          {extraction.bondingInsurance.length > 0 && (
+          {data.bondingInsurance.length > 0 && (
             <div>
               <p className="text-[10px] font-semibold uppercase tracking-wider text-amber-400/80 mb-1.5">Bonding / Insurance</p>
-              <ul className="space-y-0.5">
-                {extraction.bondingInsurance.map((item, i) => (
-                  <li key={i} className="flex items-start gap-1.5 text-[11px] text-[#aaa]">
-                    <Info className="w-3 h-3 text-amber-400/60 shrink-0 mt-0.5" />
-                    {item}
+              <ul className="space-y-1">
+                {data.bondingInsurance.map((item, i) => (
+                  <li key={i} className="flex items-start gap-1.5">
+                    <Info className="w-3 h-3 text-amber-400/60 shrink-0 mt-1.5" />
+                    <input
+                      value={item}
+                      onChange={e => updateListItem("bondingInsurance", i, e.target.value)}
+                      className="flex-1 bg-[#0d0d0d] border border-[#2a2a2a] focus:border-amber-500/30 rounded px-1.5 py-1 text-[11px] text-[#aaa] focus:outline-none transition-colors"
+                    />
                   </li>
                 ))}
               </ul>
             </div>
+          )}
+
+          {edited && (
+            <p className="text-[9px] text-blue-400/50 text-right">Edits not yet saved — click Apply to Lead to push to the lead record.</p>
           )}
         </div>
       )}
@@ -1938,7 +2082,7 @@ nolandearthworks.com`;
             try { rfpUrls = JSON.parse(lead.rfpDocumentUrls) as string[]; } catch { rfpUrls = []; }
             if (rfpUrls.length === 0) return null;
             return (
-              <RfpDocumentPanel rfpUrls={rfpUrls} />
+              <RfpDocumentPanel rfpUrls={rfpUrls} leadId={lead.id} />
             );
           })()}
 
