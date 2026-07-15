@@ -1134,52 +1134,94 @@ export default function QuotePage() {
                   )}
 
                   {/* ROW-specific fields — linear feet + corridor width */}
-                  {form.service === "right-of-way-clearing" && (
-                  <div style={{ padding: "1rem", background: "rgba(224,123,42,0.05)", border: "1px solid rgba(224,123,42,0.2)", borderRadius: "4px" }}>
-                    <div style={{ fontFamily: "'Oswald', sans-serif", fontSize: "0.68rem", letterSpacing: "0.14em", textTransform: "uppercase", color: "rgba(224,123,42,0.8)", marginBottom: "0.75rem" }}>Right-of-Way Dimensions</div>
-                    <div className="grid grid-cols-2 gap-4" style={{ marginBottom: "0.75rem" }}>
-                      <div>
-                        <label style={labelStyle}>Corridor Length <span style={{ color: "rgba(240,237,230,0.4)", fontSize: "0.7rem", letterSpacing: "0.08em" }}>(linear feet)</span></label>
-                        <input
-                          type="number"
-                          name="rowLinearFeet"
-                          min="1"
-                          step="100"
-                          placeholder="e.g. 2640"
-                          value={form.rowLinearFeet}
-                          onChange={handleChange}
-                          style={inputStyle}
-                          onFocus={(e) => (e.target.style.borderColor = "rgba(224,123,42,0.6)")}
-                          onBlur={(e) => (e.target.style.borderColor = "rgba(255,255,255,0.12)")}
-                        />
+                  {form.service === "right-of-way-clearing" && (() => {
+                    const rowLf = parseFloat(form.rowLinearFeet) || 0;
+                    const rowW  = parseFloat(form.rowCorridorWidthFt) || 0;
+                    const rowEffAcres = rowLf > 0 && rowW > 0 ? (rowLf * rowW) / 43560 : 0;
+                    // Rough price range: $600–$1,100/acre for ROW, $750 minimum
+                    const rowLow  = rowEffAcres > 0 ? Math.max(750, Math.round(rowEffAcres * 600 / 50) * 50) : 0;
+                    const rowHigh = rowEffAcres > 0 ? Math.max(750, Math.round(rowEffAcres * 1100 / 50) * 50) : 0;
+                    return (
+                    <div style={{ padding: "1rem", background: "rgba(224,123,42,0.05)", border: "1px solid rgba(224,123,42,0.2)", borderRadius: "4px" }}>
+                      <div style={{ fontFamily: "'Oswald', sans-serif", fontSize: "0.68rem", letterSpacing: "0.14em", textTransform: "uppercase", color: "rgba(224,123,42,0.8)", marginBottom: "0.75rem" }}>Right-of-Way Dimensions</div>
+                      <div className="grid grid-cols-2 gap-4" style={{ marginBottom: "0.75rem" }}>
+                        <div>
+                          {/* Corridor Length label + tooltip */}
+                          <div style={{ display: "flex", alignItems: "center", gap: "0.35rem", marginBottom: "0.375rem" }}>
+                            <span style={labelStyle as React.CSSProperties}>Corridor Length <span style={{ color: "rgba(240,237,230,0.4)", fontSize: "0.7rem", letterSpacing: "0.08em" }}>(linear feet)</span></span>
+                            <div className="row-tip-lf" style={{ position: "relative", display: "inline-flex", cursor: "pointer", flexShrink: 0, marginBottom: "0.375rem" }}>
+                              <Info size={13} style={{ color: "rgba(224,123,42,0.7)" }} />
+                              <div style={{ position: "absolute", bottom: "calc(100% + 6px)", left: "50%", transform: "translateX(-50%)", width: "220px", background: "rgba(20,20,20,0.97)", border: "1px solid rgba(224,123,42,0.3)", borderRadius: "4px", padding: "0.6rem 0.75rem", fontSize: "0.72rem", color: "rgba(240,237,230,0.85)", lineHeight: 1.5, zIndex: 50, opacity: 0, pointerEvents: "none", transition: "opacity 0.15s" }} className="row-tip-lf-popup">
+                                Measure from one end of the corridor to the other in a straight line. If your ROW has bends, measure each straight segment and add them together. Half a mile = 2,640 ft. One mile = 5,280 ft.
+                                <div style={{ position: "absolute", top: "100%", left: "50%", transform: "translateX(-50%)", width: 0, height: 0, borderLeft: "5px solid transparent", borderRight: "5px solid transparent", borderTop: "5px solid rgba(224,123,42,0.3)" }} />
+                              </div>
+                            </div>
+                          </div>
+                          <style>{`.row-tip-lf:hover .row-tip-lf-popup { opacity: 1 !important; pointer-events: auto !important; }`}</style>
+                          <input
+                            type="number"
+                            name="rowLinearFeet"
+                            min="1"
+                            step="100"
+                            placeholder="e.g. 2640"
+                            value={form.rowLinearFeet}
+                            onChange={handleChange}
+                            style={inputStyle}
+                            onFocus={(e) => (e.target.style.borderColor = "rgba(224,123,42,0.6)")}
+                            onBlur={(e) => (e.target.style.borderColor = "rgba(255,255,255,0.12)")}
+                          />
+                        </div>
+                        <div>
+                          {/* Corridor Width label + tooltip */}
+                          <div style={{ display: "flex", alignItems: "center", gap: "0.35rem", marginBottom: "0.375rem" }}>
+                            <span style={labelStyle as React.CSSProperties}>Corridor Width <span style={{ color: "rgba(240,237,230,0.4)", fontSize: "0.7rem", letterSpacing: "0.08em" }}>(feet, optional)</span></span>
+                            <div className="row-tip-w" style={{ position: "relative", display: "inline-flex", cursor: "pointer", flexShrink: 0, marginBottom: "0.375rem" }}>
+                              <Info size={13} style={{ color: "rgba(224,123,42,0.7)" }} />
+                              <div style={{ position: "absolute", bottom: "calc(100% + 6px)", left: "50%", transform: "translateX(-50%)", width: "220px", background: "rgba(20,20,20,0.97)", border: "1px solid rgba(224,123,42,0.3)", borderRadius: "4px", padding: "0.6rem 0.75rem", fontSize: "0.72rem", color: "rgba(240,237,230,0.85)", lineHeight: 1.5, zIndex: 50, opacity: 0, pointerEvents: "none", transition: "opacity 0.15s" }} className="row-tip-w-popup">
+                                The width of the strip to be cleared, measured side to side. Utility ROW is typically 20–50 ft. Driveway ROW is typically 12–20 ft. If you're not sure, leave this blank and we'll confirm during the site visit.
+                                <div style={{ position: "absolute", top: "100%", left: "50%", transform: "translateX(-50%)", width: 0, height: 0, borderLeft: "5px solid transparent", borderRight: "5px solid transparent", borderTop: "5px solid rgba(224,123,42,0.3)" }} />
+                              </div>
+                            </div>
+                          </div>
+                          <style>{`.row-tip-w:hover .row-tip-w-popup { opacity: 1 !important; pointer-events: auto !important; }`}</style>
+                          <input
+                            type="number"
+                            name="rowCorridorWidthFt"
+                            min="4"
+                            step="5"
+                            placeholder="e.g. 30"
+                            value={form.rowCorridorWidthFt}
+                            onChange={handleChange}
+                            style={inputStyle}
+                            onFocus={(e) => (e.target.style.borderColor = "rgba(224,123,42,0.6)")}
+                            onBlur={(e) => (e.target.style.borderColor = "rgba(255,255,255,0.12)")}
+                          />
+                        </div>
                       </div>
-                      <div>
-                        <label style={labelStyle}>Corridor Width <span style={{ color: "rgba(240,237,230,0.4)", fontSize: "0.7rem", letterSpacing: "0.08em" }}>(feet, optional)</span></label>
-                        <input
-                          type="number"
-                          name="rowCorridorWidthFt"
-                          min="4"
-                          step="5"
-                          placeholder="e.g. 30"
-                          value={form.rowCorridorWidthFt}
-                          onChange={handleChange}
-                          style={inputStyle}
-                          onFocus={(e) => (e.target.style.borderColor = "rgba(224,123,42,0.6)")}
-                          onBlur={(e) => (e.target.style.borderColor = "rgba(255,255,255,0.12)")}
-                        />
+                      {/* Effective acres + helper text */}
+                      <div style={{ fontSize: "0.75rem", color: "rgba(240,237,230,0.45)", lineHeight: 1.5 }}>
+                        Don't know the linear footage? Multiply your acreage by 43,560, then divide by the corridor width in feet.
+                        {rowEffAcres > 0 && (
+                          <span style={{ display: "block", marginTop: "0.4rem", color: "rgba(224,123,42,0.85)", fontWeight: 600 }}>
+                            {rowLf.toLocaleString()} ft &times; {rowW} ft &divide; 43,560 = {rowEffAcres.toFixed(3)} effective acres
+                          </span>
+                        )}
                       </div>
-                    </div>
-                    {/* Acre-to-LF converter — shown when user enters acreage instead */}
-                    <div style={{ fontSize: "0.75rem", color: "rgba(240,237,230,0.45)", lineHeight: 1.5 }}>
-                      Don't know the linear footage? Multiply your acreage by 43,560, then divide by the corridor width in feet.
-                      {form.rowLinearFeet && form.rowCorridorWidthFt && (
-                        <span style={{ display: "block", marginTop: "0.4rem", color: "rgba(224,123,42,0.85)", fontWeight: 600 }}>
-                          {parseFloat(form.rowLinearFeet).toLocaleString()} ft &times; {form.rowCorridorWidthFt} ft &divide; 43,560 = {((parseFloat(form.rowLinearFeet) * parseFloat(form.rowCorridorWidthFt)) / 43560).toFixed(3)} effective acres
-                        </span>
+                      {/* Rough price range — shown once both dimensions are entered */}
+                      {rowEffAcres > 0 && (
+                        <div style={{ marginTop: "0.85rem", padding: "0.65rem 0.85rem", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "4px" }}>
+                          <div style={{ fontFamily: "'Oswald', sans-serif", fontSize: "0.65rem", letterSpacing: "0.12em", textTransform: "uppercase", color: "rgba(240,237,230,0.45)", marginBottom: "0.3rem" }}>Rough Ballpark Range</div>
+                          <div style={{ fontSize: "1.05rem", fontWeight: 700, color: "#E07B2A", letterSpacing: "0.02em" }}>
+                            ${rowLow.toLocaleString()} – ${rowHigh.toLocaleString()}
+                          </div>
+                          <div style={{ fontSize: "0.7rem", color: "rgba(240,237,230,0.4)", marginTop: "0.25rem", lineHeight: 1.4 }}>
+                            Rough estimate only. Vegetation density, terrain, slope, and access can significantly affect the final price. A site visit is required for an accurate quote.
+                          </div>
+                        </div>
                       )}
                     </div>
-                  </div>
-                  )}
+                    );
+                  })()}
 
                   {/* Trail-specific fields — only shown when Trail Cutting is selected */}
                   {form.service === "trail-cutting" && (() => {

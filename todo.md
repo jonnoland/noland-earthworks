@@ -2319,3 +2319,8 @@
 - [x] Update customer confirmation email for ROW quotes to show linear feet
 - [x] Update ops lead notes creation to show ROW linear feet instead of acreage
 - [x] Update submit handler to pass rowLinearFeet and rowCorridorWidthFt to mutation and append to message field
+
+## ROW Quote Form UX (v1.0.56)
+- [x] Add tooltip helper icons (Info icon, hover popover) next to Corridor Length and Corridor Width labels explaining how to measure each
+- [x] Display rough initial price range ($600–$1,100/acre, $750 min) below the ROW effective-acres calculator, with a clear disclaimer that a site visit is required for an accurate quote
+- [x] ROW dimensions (LF, width, effective acres) are already appended to the ops lead notes in quoteRouter.ts; confirmed working
