@@ -2375,4 +2375,11 @@
 - [x] Add GOV filter button to Ops Leads board (Leads.tsx)
 - [x] Add tooltip/info icon to Government/Municipal selector button in Quote.tsx
 - [x] TypeScript: 0 errors
-- [ ] Save checkpoint v1.0.61
+- [x] Save checkpoint v1.0.61
+
+## Gov/Municipal AI + UX (v1.0.62)
+- [x] Add `quote.extractRfpData` server procedure: accepts array of CDN URLs, fetches each doc, runs LLM extraction for deadlines + requirements, returns structured JSON
+- [x] Add GOV badge to Kanban lead cards in Leads.tsx (blue pill with Building2 icon, visible on card when clientType === "government")
+- [x] Add RFP document preview panel to lead details modal: list uploaded docs with open-in-new-tab links + inline AI extraction summary (deadlines, requirements, agency, bonding)
+- [x] TypeScript: 0 errors
+- [ ] Save checkpoint v1.0.62

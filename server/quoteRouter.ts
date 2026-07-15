@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { invokeLLM, type Message, type TextContent, type FileContent } from "./_core/llm";
 import { publicProcedure, router } from "./_core/trpc";
 import { notifyOwner } from "./_core/notification";
 import { ENV } from "./_core/env";
@@ -828,6 +829,132 @@ export const quoteRouter = router({
     }),
 
   // Google Places Autocomplete — server-side proxy so no SDK needed on the quote page
+  extractRfpData: publicProcedure
+    .input(
+      z.object({
+        rfpDocumentUrls: z.array(z.string().url()).min(1).max(5),
+      })
+    )
+    .mutation(async ({ input }) => {
+      // Fetch text content from each uploaded document URL and concatenate
+      const docTexts: string[] = [];
+      for (const url of input.rfpDocumentUrls) {
+        try {
+          const res = await fetch(url);
+          if (!res.ok) continue;
+          const contentType = res.headers.get("content-type") ?? "";
+          // For plain text files, read directly
+          if (contentType.includes("text/plain")) {
+            const text = await res.text();
+            docTexts.push(text.slice(0, 8000));
+          } else {
+            // For binary formats (PDF, Word, Excel), pass the URL directly to the LLM as a file_url
+            // We'll include the URL reference in the prompt so the LLM knows about it
+            docTexts.push(`[Document: ${url}]`);
+          }
+        } catch {
+          // skip unreadable docs
+        }
+      }
+
+      // Build the extraction prompt
+      const documentContext = docTexts.length > 0
+        ? docTexts.join("\n\n---\n\n")
+        : input.rfpDocumentUrls.map((u) => `[Document URL: ${u}]`).join("\n");
+
+      // Build message content — include file_url entries for PDF/Word docs so the LLM can read them
+      const fileUrlEntries = input.rfpDocumentUrls.map((url) => ({
+        type: "file_url" as const,
+        file_url: { url },
+      }));
+
+      const llmMessages: Message[] = [
+        {
+          role: "system",
+          content:
+            "You are a government contract analyst. Extract key information from RFP and bid documents for a land clearing and forestry mulching company. Return structured JSON only.",
+        },
+        {
+          role: "user",
+          content: [
+            {
+              type: "text" as const,
+              text: `Extract the following from the attached RFP/bid document(s):\n\n1. All submission deadlines (date and time, what they are for)\n2. Key project requirements (scope, specifications, mandatory items)\n3. Estimated project size (acreage, linear feet, or dollar value if mentioned)\n4. Issuing agency name and contact\n5. Any bonding, insurance, or certification requirements\n\nDocument context:\n${documentContext}`,
+            } as TextContent,
+            ...fileUrlEntries as FileContent[],
+          ],
+        },
+      ];
+
+      const result = await invokeLLM({
+        messages: llmMessages,
+        response_format: {
+          type: "json_schema",
+          json_schema: {
+            name: "rfp_extraction",
+            strict: true,
+            schema: {
+              type: "object",
+              properties: {
+                deadlines: {
+                  type: "array",
+                  items: {
+                    type: "object",
+                    properties: {
+                      date: { type: "string", description: "ISO date string or human-readable date" },
+                      description: { type: "string", description: "What this deadline is for" },
+                    },
+                    required: ["date", "description"],
+                    additionalProperties: false,
+                  },
+                },
+                requirements: {
+                  type: "array",
+                  items: { type: "string" },
+                  description: "Key project requirements and mandatory items",
+                },
+                projectSize: { type: "string", description: "Estimated project size (acreage, linear feet, or dollar value)" },
+                issuingAgency: { type: "string", description: "Name of the issuing government agency" },
+                agencyContact: { type: "string", description: "Contact name, email, or phone for the issuing agency" },
+                bondingInsurance: {
+                  type: "array",
+                  items: { type: "string" },
+                  description: "Bonding, insurance, or certification requirements",
+                },
+                summary: { type: "string", description: "One-paragraph plain-language summary of the RFP" },
+              },
+              required: ["deadlines", "requirements", "projectSize", "issuingAgency", "agencyContact", "bondingInsurance", "summary"],
+              additionalProperties: false,
+            },
+          },
+        },
+      });
+
+      const rawContent = result.choices[0]?.message?.content ?? "{}";
+      const raw = typeof rawContent === "string" ? rawContent : JSON.stringify(rawContent);
+      try {
+        return JSON.parse(raw) as {
+          deadlines: Array<{ date: string; description: string }>;
+          requirements: string[];
+          projectSize: string;
+          issuingAgency: string;
+          agencyContact: string;
+          bondingInsurance: string[];
+          summary: string;
+        };
+      } catch {
+        return {
+          deadlines: [],
+          requirements: [],
+          projectSize: "",
+          issuingAgency: "",
+          agencyContact: "",
+          bondingInsurance: [],
+          summary: "Could not parse RFP document. Please review the attached files manually.",
+        };
+      }
+    }),
+
   placesAutocomplete: publicProcedure
     .input(z.object({ input: z.string().min(1).max(200) }))
     .query(async ({ input }) => {

@@ -24,6 +24,7 @@ import {
   Map as MapIcon, LayoutGrid, Clock, Navigation,
   Brain, Copy, Check, CheckCheck, Sparkles, Unlink,
   Send, Radar, CheckCircle, Info, Save, CheckCircle2, Facebook, Pencil, History,
+  Building2,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -202,6 +203,7 @@ interface Lead {
   jobberQuoteNumber?: number | null;
   estimateAmount?: string | null;
   clientType?: string | null;
+  rfpDocumentUrls?: string | null;
 }
 
 // ─── Lead Card ────────────────────────────────────────────────────────────────
@@ -273,7 +275,8 @@ function LeadCard({ lead, onClick, onDragStart }: { lead: Lead; onClick: () => v
             </span>
           )}
           {lead.clientType === "government" && (
-            <span className="inline-flex items-center gap-0.5 text-[10px] font-semibold px-1.5 py-0.5 rounded border bg-blue-500/15 text-blue-400 border-blue-500/25">
+            <span className="inline-flex items-center gap-0.5 text-[10px] font-semibold px-1.5 py-0.5 rounded border bg-blue-500/20 text-blue-300 border-blue-400/40 ring-1 ring-blue-400/20">
+              <Building2 className="w-2.5 h-2.5" />
               GOV
             </span>
           )}
@@ -596,6 +599,167 @@ function AllLeadsMap({ leads, onLeadClick }: { leads: Lead[]; onLeadClick: (lead
 }
 
 // ─── Lead Detail Panel ────────────────────────────────────────────────────────
+
+// ─── RFP Document Panel ──────────────────────────────────────────────────────
+
+function RfpDocumentPanel({ rfpUrls }: { rfpUrls: string[] }) {
+  const [extraction, setExtraction] = useState<{
+    deadlines: Array<{ date: string; description: string }>;
+    requirements: string[];
+    projectSize: string;
+    issuingAgency: string;
+    agencyContact: string;
+    bondingInsurance: string[];
+    summary: string;
+  } | null>(null);
+  const [extracting, setExtracting] = useState(false);
+  const [extractError, setExtractError] = useState<string | null>(null);
+
+  const extractRfpData = trpc.quote.extractRfpData.useMutation();
+
+  const handleExtract = async () => {
+    setExtracting(true);
+    setExtractError(null);
+    try {
+      const result = await extractRfpData.mutateAsync({ rfpDocumentUrls: rfpUrls });
+      setExtraction(result);
+    } catch (err) {
+      setExtractError(err instanceof Error ? err.message : "Extraction failed");
+    } finally {
+      setExtracting(false);
+    }
+  };
+
+  const getFileName = (url: string) => {
+    try {
+      const raw = url.split("/").pop() ?? "Document";
+      return decodeURIComponent(raw.replace(/^\d+-[a-z0-9]+-/, ""));
+    } catch { return "Document"; }
+  };
+
+  return (
+    <div className="mx-4 mb-3 rounded-lg border border-blue-500/25 bg-blue-500/5 overflow-hidden">
+      {/* Header */}
+      <div className="flex items-center justify-between px-3 py-2.5 border-b border-blue-500/20">
+        <div className="flex items-center gap-2">
+          <Building2 className="w-3.5 h-3.5 text-blue-400" />
+          <span className="text-[11px] font-semibold uppercase tracking-wider text-blue-400">RFP / Bid Documents ({rfpUrls.length})</span>
+        </div>
+        {!extraction && (
+          <button
+            onClick={handleExtract}
+            disabled={extracting}
+            className="flex items-center gap-1.5 text-[10px] font-semibold px-2.5 py-1 rounded bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 border border-blue-500/30 transition-colors disabled:opacity-50"
+          >
+            {extracting ? <><Loader2 className="w-3 h-3 animate-spin" />Analyzing...</> : <><Sparkles className="w-3 h-3" />AI Extract</>}
+          </button>
+        )}
+        {extraction && (
+          <button
+            onClick={() => setExtraction(null)}
+            className="text-[10px] text-blue-400/60 hover:text-blue-400 transition-colors"
+          >Re-run</button>
+        )}
+      </div>
+
+      {/* Document list */}
+      <div className="px-3 py-2 space-y-1">
+        {rfpUrls.map((url, i) => (
+          <a
+            key={i}
+            href={url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-2 text-[11px] text-blue-300 hover:text-blue-200 transition-colors group"
+          >
+            <FileText className="w-3 h-3 shrink-0 text-blue-400/60" />
+            <span className="truncate flex-1">{getFileName(url)}</span>
+            <ExternalLink className="w-3 h-3 shrink-0 opacity-0 group-hover:opacity-60 transition-opacity" />
+          </a>
+        ))}
+      </div>
+
+      {/* Extraction error */}
+      {extractError && (
+        <div className="px-3 py-2 text-[11px] text-red-400 border-t border-blue-500/20">{extractError}</div>
+      )}
+
+      {/* Extraction results */}
+      {extraction && (
+        <div className="px-3 py-3 border-t border-blue-500/20 space-y-3">
+          {/* Summary */}
+          {extraction.summary && (
+            <p className="text-[11px] text-[#aaa] leading-relaxed">{extraction.summary}</p>
+          )}
+
+          {/* Deadlines */}
+          {extraction.deadlines.length > 0 && (
+            <div>
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-blue-400 mb-1.5">Deadlines</p>
+              <div className="space-y-1">
+                {extraction.deadlines.map((d, i) => (
+                  <div key={i} className="flex items-start gap-2">
+                    <Calendar className="w-3 h-3 text-amber-400 shrink-0 mt-0.5" />
+                    <span className="text-[11px] text-white font-medium">{d.date}</span>
+                    <span className="text-[11px] text-[#888]">{d.description}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Project size + Agency */}
+          {(extraction.projectSize || extraction.issuingAgency) && (
+            <div className="grid grid-cols-2 gap-2">
+              {extraction.projectSize && (
+                <div className="bg-[#111] rounded p-2">
+                  <p className="text-[9px] uppercase tracking-wider text-[#555] mb-0.5">Project Size</p>
+                  <p className="text-[11px] text-white">{extraction.projectSize}</p>
+                </div>
+              )}
+              {extraction.issuingAgency && (
+                <div className="bg-[#111] rounded p-2">
+                  <p className="text-[9px] uppercase tracking-wider text-[#555] mb-0.5">Issuing Agency</p>
+                  <p className="text-[11px] text-white">{extraction.issuingAgency}</p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Requirements */}
+          {extraction.requirements.length > 0 && (
+            <div>
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-blue-400 mb-1.5">Key Requirements</p>
+              <ul className="space-y-0.5">
+                {extraction.requirements.slice(0, 6).map((req, i) => (
+                  <li key={i} className="flex items-start gap-1.5 text-[11px] text-[#aaa]">
+                    <CheckCircle className="w-3 h-3 text-blue-400/60 shrink-0 mt-0.5" />
+                    {req}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {/* Bonding / Insurance */}
+          {extraction.bondingInsurance.length > 0 && (
+            <div>
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-amber-400/80 mb-1.5">Bonding / Insurance</p>
+              <ul className="space-y-0.5">
+                {extraction.bondingInsurance.map((item, i) => (
+                  <li key={i} className="flex items-start gap-1.5 text-[11px] text-[#aaa]">
+                    <Info className="w-3 h-3 text-amber-400/60 shrink-0 mt-0.5" />
+                    {item}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
 
 function LeadDetailPanel({
   lead, onClose, onStageChange, onDelete,
@@ -1767,6 +1931,16 @@ nolandearthworks.com`;
               })()}
             </div>
           )}
+
+          {/* RFP Documents + AI Extraction (government leads only) */}
+          {lead.clientType === "government" && lead.rfpDocumentUrls && (() => {
+            let rfpUrls: string[] = [];
+            try { rfpUrls = JSON.parse(lead.rfpDocumentUrls) as string[]; } catch { rfpUrls = []; }
+            if (rfpUrls.length === 0) return null;
+            return (
+              <RfpDocumentPanel rfpUrls={rfpUrls} />
+            );
+          })()}
 
           {/* AI Follow-Up Draft */}
           <div className="mx-4 mb-3">
