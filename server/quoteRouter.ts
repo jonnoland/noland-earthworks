@@ -887,7 +887,19 @@ export const quoteRouter = router({
       ];
 
       const result = await invokeLLM({
-        messages: llmMessages,
+        messages: [
+          ...llmMessages.slice(0, 1),
+          {
+            role: "user" as const,
+            content: [
+              {
+                type: "text" as const,
+                text: `Extract the following from the attached RFP/bid document(s) and include a confidence score (0-100) for each field indicating how certain you are the value is correct and complete:\n\n1. All submission deadlines (date and time, what they are for)\n2. Key project requirements (scope, specifications, mandatory items)\n3. Estimated project size (acreage, linear feet, or dollar value if mentioned)\n4. Issuing agency name and contact\n5. Any bonding, insurance, or certification requirements\n6. A plain-language summary\n\nFor confidence scores: 80-100 = clearly stated in the document; 50-79 = inferred or partially stated; 0-49 = guessed or not found.\n\nDocument context:\n${documentContext}`,
+              } as TextContent,
+              ...fileUrlEntries as FileContent[],
+            ],
+          },
+        ],
         response_format: {
           type: "json_schema",
           json_schema: {
@@ -903,27 +915,48 @@ export const quoteRouter = router({
                     properties: {
                       date: { type: "string", description: "ISO date string or human-readable date" },
                       description: { type: "string", description: "What this deadline is for" },
+                      confidence: { type: "integer", description: "Confidence score 0-100" },
                     },
-                    required: ["date", "description"],
+                    required: ["date", "description", "confidence"],
                     additionalProperties: false,
                   },
                 },
                 requirements: {
                   type: "array",
-                  items: { type: "string" },
+                  items: {
+                    type: "object",
+                    properties: {
+                      text: { type: "string", description: "Requirement text" },
+                      confidence: { type: "integer", description: "Confidence score 0-100" },
+                    },
+                    required: ["text", "confidence"],
+                    additionalProperties: false,
+                  },
                   description: "Key project requirements and mandatory items",
                 },
                 projectSize: { type: "string", description: "Estimated project size (acreage, linear feet, or dollar value)" },
+                projectSizeConfidence: { type: "integer", description: "Confidence score 0-100 for projectSize" },
                 issuingAgency: { type: "string", description: "Name of the issuing government agency" },
+                issuingAgencyConfidence: { type: "integer", description: "Confidence score 0-100 for issuingAgency" },
                 agencyContact: { type: "string", description: "Contact name, email, or phone for the issuing agency" },
+                agencyContactConfidence: { type: "integer", description: "Confidence score 0-100 for agencyContact" },
                 bondingInsurance: {
                   type: "array",
-                  items: { type: "string" },
+                  items: {
+                    type: "object",
+                    properties: {
+                      text: { type: "string", description: "Bonding/insurance requirement text" },
+                      confidence: { type: "integer", description: "Confidence score 0-100" },
+                    },
+                    required: ["text", "confidence"],
+                    additionalProperties: false,
+                  },
                   description: "Bonding, insurance, or certification requirements",
                 },
                 summary: { type: "string", description: "One-paragraph plain-language summary of the RFP" },
+                summaryConfidence: { type: "integer", description: "Confidence score 0-100 for summary" },
               },
-              required: ["deadlines", "requirements", "projectSize", "issuingAgency", "agencyContact", "bondingInsurance", "summary"],
+              required: ["deadlines", "requirements", "projectSize", "projectSizeConfidence", "issuingAgency", "issuingAgencyConfidence", "agencyContact", "agencyContactConfidence", "bondingInsurance", "summary", "summaryConfidence"],
               additionalProperties: false,
             },
           },
@@ -933,24 +966,33 @@ export const quoteRouter = router({
       const rawContent = result.choices[0]?.message?.content ?? "{}";
       const raw = typeof rawContent === "string" ? rawContent : JSON.stringify(rawContent);
       try {
-        return JSON.parse(raw) as {
-          deadlines: Array<{ date: string; description: string }>;
-          requirements: string[];
+        const parsed = JSON.parse(raw) as {
+          deadlines: Array<{ date: string; description: string; confidence: number }>;
+          requirements: Array<{ text: string; confidence: number }>;
           projectSize: string;
+          projectSizeConfidence: number;
           issuingAgency: string;
+          issuingAgencyConfidence: number;
           agencyContact: string;
-          bondingInsurance: string[];
+          agencyContactConfidence: number;
+          bondingInsurance: Array<{ text: string; confidence: number }>;
           summary: string;
+          summaryConfidence: number;
         };
+        return parsed;
       } catch {
         return {
           deadlines: [],
           requirements: [],
           projectSize: "",
+          projectSizeConfidence: 0,
           issuingAgency: "",
+          issuingAgencyConfidence: 0,
           agencyContact: "",
+          agencyContactConfidence: 0,
           bondingInsurance: [],
           summary: "Could not parse RFP document. Please review the attached files manually.",
+          summaryConfidence: 0,
         };
       }
     }),

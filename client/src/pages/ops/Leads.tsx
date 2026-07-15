@@ -603,14 +603,36 @@ function AllLeadsMap({ leads, onLeadClick }: { leads: Lead[]; onLeadClick: (lead
 // ─── RFP Document Panel ──────────────────────────────────────────────────────
 
 type RfpExtraction = {
-  deadlines: Array<{ date: string; description: string }>;
-  requirements: string[];
+  deadlines: Array<{ date: string; description: string; confidence: number }>;
+  requirements: Array<{ text: string; confidence: number }>;
   projectSize: string;
+  projectSizeConfidence: number;
   issuingAgency: string;
+  issuingAgencyConfidence: number;
   agencyContact: string;
-  bondingInsurance: string[];
+  agencyContactConfidence: number;
+  bondingInsurance: Array<{ text: string; confidence: number }>;
   summary: string;
+  summaryConfidence: number;
 };
+
+function ConfidenceIndicator({ score }: { score: number }) {
+  const pct = Math.max(0, Math.min(100, score));
+  const isHigh = pct >= 80;
+  const isMid = pct >= 50;
+  const color = isHigh ? "text-green-400 bg-green-500/15 border-green-500/30" : isMid ? "text-amber-400 bg-amber-500/15 border-amber-500/30" : "text-red-400 bg-red-500/15 border-red-500/30";
+  const label = isHigh ? "High" : isMid ? "Review" : "Verify";
+  const dotColor = isHigh ? "bg-green-400" : isMid ? "bg-amber-400" : "bg-red-400";
+  return (
+    <span
+      title={`Confidence: ${pct}% — ${isHigh ? "Clearly stated in document" : isMid ? "Inferred or partially stated — review recommended" : "Not found or guessed — manual verification required"}`}
+      className={`inline-flex items-center gap-1 text-[9px] font-semibold px-1.5 py-0.5 rounded border ${color} shrink-0 cursor-help`}
+    >
+      <span className={`w-1.5 h-1.5 rounded-full ${dotColor}`} />
+      {pct}% {label}
+    </span>
+  );
+}
 
 function RfpDocumentPanel({ rfpUrls, leadId, onLeadUpdated }: { rfpUrls: string[]; leadId: number; onLeadUpdated?: (patch: { jobType?: string; estimatedValue?: string; notes?: string }) => void }) {
   const [extraction, setExtraction] = useState<RfpExtraction | null>(null);
@@ -650,7 +672,7 @@ function RfpDocumentPanel({ rfpUrls, leadId, onLeadUpdated }: { rfpUrls: string[
     if (data.summary) notesParts.push(`RFP Summary: ${data.summary}`);
     if (data.issuingAgency) notesParts.push(`Issuing Agency: ${data.issuingAgency}`);
     if (data.agencyContact) notesParts.push(`Contact: ${data.agencyContact}`);
-    if (data.bondingInsurance.length > 0) notesParts.push(`Bonding/Insurance: ${data.bondingInsurance.join("; ")}`);
+    if (data.bondingInsurance.length > 0) notesParts.push(`Bonding/Insurance: ${data.bondingInsurance.map(b => b.text).join("; ")}`);
     if (data.deadlines.length > 0) notesParts.push(`Deadlines: ${data.deadlines.map(d => `${d.date} — ${d.description}`).join("; ")}`);
     const notes = notesParts.join("\n");
     const patch: { jobType?: string; estimatedValue?: string; notes?: string } = {};
@@ -672,7 +694,7 @@ function RfpDocumentPanel({ rfpUrls, leadId, onLeadUpdated }: { rfpUrls: string[
 
   const updateListItem = (key: "requirements" | "bondingInsurance", i: number, value: string) => {
     const base = edited ?? extraction!;
-    const updated = (base[key] as string[]).map((v, idx) => idx === i ? value : v);
+    const updated = (base[key] as Array<{ text: string; confidence: number }>).map((v, idx) => idx === i ? { ...v, text: value } : v);
     setEdited({ ...base, [key]: updated });
   };
 
@@ -788,7 +810,10 @@ function RfpDocumentPanel({ rfpUrls, leadId, onLeadUpdated }: { rfpUrls: string[
         <div className="px-3 py-3 border-t border-blue-500/20 space-y-3">
           {/* Summary */}
           <div>
-            <p className="text-[9px] uppercase tracking-wider text-[#555] mb-1">Summary</p>
+            <div className="flex items-center gap-2 mb-1">
+              <p className="text-[9px] uppercase tracking-wider text-[#555]">Summary</p>
+              <ConfidenceIndicator score={data.summaryConfidence ?? 0} />
+            </div>
             <textarea
               value={data.summary}
               onChange={e => updateField("summary", e.target.value)}
@@ -803,20 +828,25 @@ function RfpDocumentPanel({ rfpUrls, leadId, onLeadUpdated }: { rfpUrls: string[
               <p className="text-[10px] font-semibold uppercase tracking-wider text-blue-400 mb-1.5">Deadlines</p>
               <div className="space-y-1.5">
                 {data.deadlines.map((d, i) => (
-                  <div key={i} className="flex items-start gap-1.5">
-                    <Calendar className="w-3 h-3 text-amber-400 shrink-0 mt-1.5" />
-                    <input
-                      value={d.date}
-                      onChange={e => updateDeadline(i, "date", e.target.value)}
-                      className="w-28 bg-[#0d0d0d] border border-[#2a2a2a] focus:border-blue-500/40 rounded px-1.5 py-1 text-[11px] text-white focus:outline-none transition-colors"
-                      placeholder="Date"
-                    />
-                    <input
-                      value={d.description}
-                      onChange={e => updateDeadline(i, "description", e.target.value)}
-                      className="flex-1 bg-[#0d0d0d] border border-[#2a2a2a] focus:border-blue-500/40 rounded px-1.5 py-1 text-[11px] text-[#888] focus:outline-none transition-colors"
-                      placeholder="Description"
-                    />
+                  <div key={i} className="flex flex-col gap-0.5">
+                    <div className="flex items-center gap-1.5">
+                      <Calendar className="w-3 h-3 text-amber-400 shrink-0" />
+                      <ConfidenceIndicator score={d.confidence ?? 0} />
+                    </div>
+                    <div className="flex items-start gap-1.5 ml-4">
+                      <input
+                        value={d.date}
+                        onChange={e => updateDeadline(i, "date", e.target.value)}
+                        className="w-28 bg-[#0d0d0d] border border-[#2a2a2a] focus:border-blue-500/40 rounded px-1.5 py-1 text-[11px] text-white focus:outline-none transition-colors"
+                        placeholder="Date"
+                      />
+                      <input
+                        value={d.description}
+                        onChange={e => updateDeadline(i, "description", e.target.value)}
+                        className="flex-1 bg-[#0d0d0d] border border-[#2a2a2a] focus:border-blue-500/40 rounded px-1.5 py-1 text-[11px] text-[#888] focus:outline-none transition-colors"
+                        placeholder="Description"
+                      />
+                    </div>
                   </div>
                 ))}
               </div>
@@ -826,7 +856,10 @@ function RfpDocumentPanel({ rfpUrls, leadId, onLeadUpdated }: { rfpUrls: string[
           {/* Project size + Agency */}
           <div className="grid grid-cols-2 gap-2">
             <div className="bg-[#0d0d0d] rounded p-2">
-              <p className="text-[9px] uppercase tracking-wider text-[#555] mb-1">Project Size</p>
+              <div className="flex items-center gap-1.5 mb-1">
+                <p className="text-[9px] uppercase tracking-wider text-[#555]">Project Size</p>
+                <ConfidenceIndicator score={data.projectSizeConfidence ?? 0} />
+              </div>
               <input
                 value={data.projectSize}
                 onChange={e => updateField("projectSize", e.target.value)}
@@ -835,7 +868,10 @@ function RfpDocumentPanel({ rfpUrls, leadId, onLeadUpdated }: { rfpUrls: string[
               />
             </div>
             <div className="bg-[#0d0d0d] rounded p-2">
-              <p className="text-[9px] uppercase tracking-wider text-[#555] mb-1">Issuing Agency</p>
+              <div className="flex items-center gap-1.5 mb-1">
+                <p className="text-[9px] uppercase tracking-wider text-[#555]">Issuing Agency</p>
+                <ConfidenceIndicator score={data.issuingAgencyConfidence ?? 0} />
+              </div>
               <input
                 value={data.issuingAgency}
                 onChange={e => updateField("issuingAgency", e.target.value)}
@@ -848,7 +884,10 @@ function RfpDocumentPanel({ rfpUrls, leadId, onLeadUpdated }: { rfpUrls: string[
           {/* Agency Contact */}
           {(data.agencyContact || edited) && (
             <div>
-              <p className="text-[9px] uppercase tracking-wider text-[#555] mb-1">Agency Contact</p>
+              <div className="flex items-center gap-1.5 mb-1">
+                <p className="text-[9px] uppercase tracking-wider text-[#555]">Agency Contact</p>
+                <ConfidenceIndicator score={data.agencyContactConfidence ?? 0} />
+              </div>
               <input
                 value={data.agencyContact}
                 onChange={e => updateField("agencyContact", e.target.value)}
@@ -862,14 +901,17 @@ function RfpDocumentPanel({ rfpUrls, leadId, onLeadUpdated }: { rfpUrls: string[
           {data.requirements.length > 0 && (
             <div>
               <p className="text-[10px] font-semibold uppercase tracking-wider text-blue-400 mb-1.5">Key Requirements</p>
-              <ul className="space-y-1">
+              <ul className="space-y-1.5">
                 {data.requirements.slice(0, 8).map((req, i) => (
-                  <li key={i} className="flex items-start gap-1.5">
-                    <CheckCircle className="w-3 h-3 text-blue-400/60 shrink-0 mt-1.5" />
+                  <li key={i} className="flex flex-col gap-0.5">
+                    <div className="flex items-center gap-1.5">
+                      <CheckCircle className="w-3 h-3 text-blue-400/60 shrink-0" />
+                      <ConfidenceIndicator score={req.confidence} />
+                    </div>
                     <input
-                      value={req}
+                      value={req.text}
                       onChange={e => updateListItem("requirements", i, e.target.value)}
-                      className="flex-1 bg-[#0d0d0d] border border-[#2a2a2a] focus:border-blue-500/40 rounded px-1.5 py-1 text-[11px] text-[#aaa] focus:outline-none transition-colors"
+                      className="w-full bg-[#0d0d0d] border border-[#2a2a2a] focus:border-blue-500/40 rounded px-1.5 py-1 text-[11px] text-[#aaa] focus:outline-none transition-colors ml-4"
                     />
                   </li>
                 ))}
@@ -881,14 +923,17 @@ function RfpDocumentPanel({ rfpUrls, leadId, onLeadUpdated }: { rfpUrls: string[
           {data.bondingInsurance.length > 0 && (
             <div>
               <p className="text-[10px] font-semibold uppercase tracking-wider text-amber-400/80 mb-1.5">Bonding / Insurance</p>
-              <ul className="space-y-1">
+              <ul className="space-y-1.5">
                 {data.bondingInsurance.map((item, i) => (
-                  <li key={i} className="flex items-start gap-1.5">
-                    <Info className="w-3 h-3 text-amber-400/60 shrink-0 mt-1.5" />
+                  <li key={i} className="flex flex-col gap-0.5">
+                    <div className="flex items-center gap-1.5">
+                      <Info className="w-3 h-3 text-amber-400/60 shrink-0" />
+                      <ConfidenceIndicator score={item.confidence} />
+                    </div>
                     <input
-                      value={item}
+                      value={item.text}
                       onChange={e => updateListItem("bondingInsurance", i, e.target.value)}
-                      className="flex-1 bg-[#0d0d0d] border border-[#2a2a2a] focus:border-amber-500/30 rounded px-1.5 py-1 text-[11px] text-[#aaa] focus:outline-none transition-colors"
+                      className="w-full bg-[#0d0d0d] border border-[#2a2a2a] focus:border-amber-500/30 rounded px-1.5 py-1 text-[11px] text-[#aaa] focus:outline-none transition-colors ml-4"
                     />
                   </li>
                 ))}

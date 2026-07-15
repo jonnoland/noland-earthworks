@@ -2389,4 +2389,12 @@
 - [x] Make all extracted RFP fields inline-editable (deadlines date/description, requirements list items, projectSize, issuingAgency, agencyContact, bondingInsurance items, summary)
 - [x] Add "Apply to Lead" button that auto-populates lead fields from extracted data (estimatedValue from projectSize, notes from summary + agency + bonding + deadlines)
 - [x] TypeScript: 0 errors
-- [ ] Save checkpoint v1.0.63
+- [x] Save checkpoint v1.0.63
+
+## RFP Confidence Scores (v1.0.64)
+- [x] Extend extractRfpData LLM JSON schema to include per-field confidence scores (0-100 integer) for: summary, each deadline, projectSize, issuingAgency, agencyContact, each requirement, each bondingInsurance item
+- [x] Update RfpExtraction type in Leads.tsx to include confidence fields
+- [x] Add ConfidenceIndicator component: colored dot/pill (green >=80, amber 50-79, red <50) with numeric label and tooltip ("High / Review / Verify")
+- [x] Render ConfidenceIndicator inline next to each editable field label
+- [x] TypeScript: 0 errors
+- [ ] Save checkpoint v1.0.64
