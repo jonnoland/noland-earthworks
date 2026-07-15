@@ -2324,3 +2324,9 @@
 - [x] Add tooltip helper icons (Info icon, hover popover) next to Corridor Length and Corridor Width labels explaining how to measure each
 - [x] Display rough initial price range ($600–$1,100/acre, $750 min) below the ROW effective-acres calculator, with a clear disclaimer that a site visit is required for an accurate quote
 - [x] ROW dimensions (LF, width, effective acres) are already appended to the ops lead notes in quoteRouter.ts; confirmed working
+
+## ROW Quote + Outreach UX (v1.0.57)
+- [x] Add "Request a Free Site Visit" button below the rough ballpark range box; clicking it smooth-scrolls to and focuses the Full Name input field
+- [x] Enhance Corridor Length tooltip with inline SVG top-down corridor diagram showing a horizontal double-headed arrow labeled "Corridor Length (LF)"
+- [x] Enhance Corridor Width tooltip with inline SVG top-down corridor diagram showing a vertical double-headed arrow labeled "Corridor Width (ft)"
+- [x] AI FB Outreach modal already has a fully editable textarea (fbOutreachText bound to onChange); confirmed working — no change needed

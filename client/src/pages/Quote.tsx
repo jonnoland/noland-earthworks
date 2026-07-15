@@ -1151,8 +1151,22 @@ export default function QuotePage() {
                             <span style={labelStyle as React.CSSProperties}>Corridor Length <span style={{ color: "rgba(240,237,230,0.4)", fontSize: "0.7rem", letterSpacing: "0.08em" }}>(linear feet)</span></span>
                             <div className="row-tip-lf" style={{ position: "relative", display: "inline-flex", cursor: "pointer", flexShrink: 0, marginBottom: "0.375rem" }}>
                               <Info size={13} style={{ color: "rgba(224,123,42,0.7)" }} />
-                              <div style={{ position: "absolute", bottom: "calc(100% + 6px)", left: "50%", transform: "translateX(-50%)", width: "220px", background: "rgba(20,20,20,0.97)", border: "1px solid rgba(224,123,42,0.3)", borderRadius: "4px", padding: "0.6rem 0.75rem", fontSize: "0.72rem", color: "rgba(240,237,230,0.85)", lineHeight: 1.5, zIndex: 50, opacity: 0, pointerEvents: "none", transition: "opacity 0.15s" }} className="row-tip-lf-popup">
-                                Measure from one end of the corridor to the other in a straight line. If your ROW has bends, measure each straight segment and add them together. Half a mile = 2,640 ft. One mile = 5,280 ft.
+                              <div style={{ position: "absolute", bottom: "calc(100% + 6px)", left: "50%", transform: "translateX(-50%)", width: "240px", background: "rgba(20,20,20,0.97)", border: "1px solid rgba(224,123,42,0.3)", borderRadius: "4px", padding: "0.6rem 0.75rem", fontSize: "0.72rem", color: "rgba(240,237,230,0.85)", lineHeight: 1.5, zIndex: 50, opacity: 0, pointerEvents: "none", transition: "opacity 0.15s" }} className="row-tip-lf-popup">
+                                {/* SVG: top-down corridor length diagram */}
+                                <svg width="210" height="60" viewBox="0 0 210 60" style={{ display: "block", marginBottom: "0.4rem" }}>
+                                  {/* corridor outline */}
+                                  <rect x="10" y="20" width="190" height="20" rx="2" fill="rgba(224,123,42,0.08)" stroke="rgba(224,123,42,0.5)" strokeWidth="1" />
+                                  {/* length arrow */}
+                                  <line x1="10" y1="50" x2="200" y2="50" stroke="#E07B2A" strokeWidth="1.5" />
+                                  <polygon points="10,47 10,53 4,50" fill="#E07B2A" />
+                                  <polygon points="200,47 200,53 206,50" fill="#E07B2A" />
+                                  {/* label */}
+                                  <text x="105" y="58" textAnchor="middle" fill="rgba(240,237,230,0.6)" fontSize="8" fontFamily="sans-serif">Corridor Length (LF)</text>
+                                  {/* start/end markers */}
+                                  <line x1="10" y1="16" x2="10" y2="44" stroke="rgba(224,123,42,0.4)" strokeWidth="1" strokeDasharray="2,2" />
+                                  <line x1="200" y1="16" x2="200" y2="44" stroke="rgba(224,123,42,0.4)" strokeWidth="1" strokeDasharray="2,2" />
+                                </svg>
+                                Measure end-to-end in a straight line. For bends, add each segment. Half mile = 2,640 ft. One mile = 5,280 ft.
                                 <div style={{ position: "absolute", top: "100%", left: "50%", transform: "translateX(-50%)", width: 0, height: 0, borderLeft: "5px solid transparent", borderRight: "5px solid transparent", borderTop: "5px solid rgba(224,123,42,0.3)" }} />
                               </div>
                             </div>
@@ -1177,8 +1191,22 @@ export default function QuotePage() {
                             <span style={labelStyle as React.CSSProperties}>Corridor Width <span style={{ color: "rgba(240,237,230,0.4)", fontSize: "0.7rem", letterSpacing: "0.08em" }}>(feet, optional)</span></span>
                             <div className="row-tip-w" style={{ position: "relative", display: "inline-flex", cursor: "pointer", flexShrink: 0, marginBottom: "0.375rem" }}>
                               <Info size={13} style={{ color: "rgba(224,123,42,0.7)" }} />
-                              <div style={{ position: "absolute", bottom: "calc(100% + 6px)", left: "50%", transform: "translateX(-50%)", width: "220px", background: "rgba(20,20,20,0.97)", border: "1px solid rgba(224,123,42,0.3)", borderRadius: "4px", padding: "0.6rem 0.75rem", fontSize: "0.72rem", color: "rgba(240,237,230,0.85)", lineHeight: 1.5, zIndex: 50, opacity: 0, pointerEvents: "none", transition: "opacity 0.15s" }} className="row-tip-w-popup">
-                                The width of the strip to be cleared, measured side to side. Utility ROW is typically 20–50 ft. Driveway ROW is typically 12–20 ft. If you're not sure, leave this blank and we'll confirm during the site visit.
+                              <div style={{ position: "absolute", bottom: "calc(100% + 6px)", left: "50%", transform: "translateX(-50%)", width: "240px", background: "rgba(20,20,20,0.97)", border: "1px solid rgba(224,123,42,0.3)", borderRadius: "4px", padding: "0.6rem 0.75rem", fontSize: "0.72rem", color: "rgba(240,237,230,0.85)", lineHeight: 1.5, zIndex: 50, opacity: 0, pointerEvents: "none", transition: "opacity 0.15s" }} className="row-tip-w-popup">
+                                {/* SVG: top-down corridor width diagram */}
+                                <svg width="210" height="60" viewBox="0 0 210 60" style={{ display: "block", marginBottom: "0.4rem" }}>
+                                  {/* corridor outline (top-down) */}
+                                  <rect x="30" y="10" width="150" height="30" rx="2" fill="rgba(224,123,42,0.08)" stroke="rgba(224,123,42,0.5)" strokeWidth="1" />
+                                  {/* width arrow (vertical, inside corridor) */}
+                                  <line x1="105" y1="10" x2="105" y2="40" stroke="#E07B2A" strokeWidth="1.5" />
+                                  <polygon points="102,10 108,10 105,4" fill="#E07B2A" />
+                                  <polygon points="102,40 108,40 105,46" fill="#E07B2A" />
+                                  {/* label */}
+                                  <text x="105" y="56" textAnchor="middle" fill="rgba(240,237,230,0.6)" fontSize="8" fontFamily="sans-serif">Corridor Width (ft)</text>
+                                  {/* side markers */}
+                                  <line x1="26" y1="10" x2="34" y2="10" stroke="rgba(224,123,42,0.4)" strokeWidth="1" />
+                                  <line x1="26" y1="40" x2="34" y2="40" stroke="rgba(224,123,42,0.4)" strokeWidth="1" />
+                                </svg>
+                                Side-to-side width of the strip to clear. Utility ROW: 20–50 ft. Driveway ROW: 12–20 ft. Leave blank if unsure.
                                 <div style={{ position: "absolute", top: "100%", left: "50%", transform: "translateX(-50%)", width: 0, height: 0, borderLeft: "5px solid transparent", borderRight: "5px solid transparent", borderTop: "5px solid rgba(224,123,42,0.3)" }} />
                               </div>
                             </div>
@@ -1217,6 +1245,19 @@ export default function QuotePage() {
                           <div style={{ fontSize: "0.7rem", color: "rgba(240,237,230,0.4)", marginTop: "0.25rem", lineHeight: 1.4 }}>
                             Rough estimate only. Vegetation density, terrain, slope, and access can significantly affect the final price. A site visit is required for an accurate quote.
                           </div>
+                          {/* Request Site Visit CTA */}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const nameEl = document.querySelector<HTMLInputElement>('input[name="name"]');
+                              if (nameEl) { nameEl.focus(); nameEl.scrollIntoView({ behavior: "smooth", block: "center" }); }
+                            }}
+                            style={{ marginTop: "0.75rem", width: "100%", padding: "0.55rem 1rem", background: "rgba(224,123,42,0.12)", border: "1px solid rgba(224,123,42,0.45)", borderRadius: "4px", color: "#E07B2A", fontFamily: "'Oswald', sans-serif", fontSize: "0.72rem", letterSpacing: "0.12em", textTransform: "uppercase", cursor: "pointer", transition: "background 0.15s" }}
+                            onMouseEnter={(e) => ((e.target as HTMLButtonElement).style.background = "rgba(224,123,42,0.22)")}
+                            onMouseLeave={(e) => ((e.target as HTMLButtonElement).style.background = "rgba(224,123,42,0.12)")}
+                          >
+                            Request a Free Site Visit &rarr;
+                          </button>
                         </div>
                       )}
                     </div>
