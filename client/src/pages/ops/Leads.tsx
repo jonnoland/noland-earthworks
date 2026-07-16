@@ -143,6 +143,7 @@ const KANBAN_STAGES = [
   { id: "estimate_sent", label: "Site Visit", subtitle: "Site visits scheduled" },
   { id: "negotiating",   label: "Quote Sent", subtitle: "Proposals delivered" },
   { id: "converted",     label: "Follow-Up",  subtitle: "Chasing decisions" },
+  { id: "on_hold",       label: "On Hold",    subtitle: "Waiting on customer" },
 ] as const;
 
 const SOURCE_LABELS: Record<string, string> = {
@@ -2223,8 +2224,8 @@ nolandearthworks.com`;
             <p className="text-[10px] font-semibold uppercase tracking-wider text-[#555] mb-2">Move to Stage</p>
             <div className="flex flex-wrap gap-1.5">
               {[...KANBAN_STAGES,
-                { id: "won" as const, label: "Won" },
-                { id: "lost" as const, label: "Lost" },
+                { id: "won" as const, label: "Won", subtitle: "" },
+                { id: "lost" as const, label: "Lost", subtitle: "" },
               ].map(s => (
                 <button key={s.id}
                   onClick={() => onStageChange(lead.id, s.id)}

@@ -659,6 +659,13 @@
       "when": 1784142525025,
       "tag": "0093_glorious_gorgon",
       "breakpoints": true
+    },
+    {
+      "idx": 94,
+      "version": "5",
+      "when": 1784232122372,
+      "tag": "0094_smart_vulcan",
+      "breakpoints": true
     }
   ]
 }

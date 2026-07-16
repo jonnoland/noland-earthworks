@@ -162,6 +162,7 @@ export const opsLeads = mysqlTable("ops_leads", {
     "converted",
     "estimate_sent",
     "negotiating",
+    "on_hold",
     "won",
     "lost",
   ]).default("new").notNull(),

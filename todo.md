@@ -2397,4 +2397,13 @@
 - [x] Add ConfidenceIndicator component: colored dot/pill (green >=80, amber 50-79, red <50) with numeric label and tooltip ("High / Review / Verify")
 - [x] Render ConfidenceIndicator inline next to each editable field label
 - [x] TypeScript: 0 errors
-- [ ] Save checkpoint v1.0.64
+- [x] Save checkpoint v1.0.64
+
+## On-Hold Stage on Ops Leads Board (v1.0.65)
+- [x] Audit STAGES array and DB stage enum/varchar in opsLeads schema
+- [x] Add "on_hold" to the STAGES array in Leads.tsx with label "On Hold" and subtitle "Waiting on customer"
+- [x] Add "on_hold" to DB mysqlEnum in opsLeads schema and run db:push
+- [x] Drag-and-drop onDrop handler accepts "on_hold" as a target stage (uses KANBAN_STAGES loop)
+- [x] Stage change button in lead detail panel includes On Hold
+- [x] TypeScript: 0 errors
+- [ ] Save checkpoint v1.0.65
