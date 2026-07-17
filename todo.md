@@ -2406,4 +2406,4 @@
 - [x] Drag-and-drop onDrop handler accepts "on_hold" as a target stage (uses KANBAN_STAGES loop)
 - [x] Stage change button in lead detail panel includes On Hold
 - [x] TypeScript: 0 errors
-- [ ] Save checkpoint v1.0.65
+- [x] Save checkpoint v1.0.65

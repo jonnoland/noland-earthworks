@@ -379,7 +379,7 @@ const leadsRouter = router({
       phone: z.string().optional(),
       address: z.string().optional(),
       source: z.enum(["google", "facebook", "referral", "website", "direct", "other"]).default("other"),
-      stage: z.enum(["new", "contacted", "converted", "estimate_sent", "negotiating", "won", "lost"]).default("new"),
+      stage: z.enum(["new", "contacted", "converted", "estimate_sent", "negotiating", "on_hold", "won", "lost"]).default("new"),
       jobType: z.string().optional(),
       estimatedValue: z.string().optional(),
       notes: z.string().optional(),
@@ -393,7 +393,7 @@ const leadsRouter = router({
       phone: z.string().optional(),
       address: z.string().optional(),
       source: z.enum(["google", "facebook", "referral", "website", "direct", "other"]).optional(),
-      stage: z.enum(["new", "contacted", "converted", "estimate_sent", "negotiating", "won", "lost"]).optional(),
+      stage: z.enum(["new", "contacted", "converted", "estimate_sent", "negotiating", "on_hold", "won", "lost"]).optional(),
       jobType: z.string().optional(),
       estimatedValue: z.string().optional(),
       notes: z.string().optional(),
@@ -706,7 +706,7 @@ Write the message as if you are Jon sending a text or short email. First-person,
   bulkUpdateStage: ownerProcedure
     .input(z.object({
       ids: z.array(z.number()).min(1).max(100),
-      stage: z.enum(["new", "contacted", "converted", "estimate_sent", "negotiating", "won", "lost"]),
+      stage: z.enum(["new", "contacted", "converted", "estimate_sent", "negotiating", "on_hold", "won", "lost"]),
     }))
     .mutation(async ({ ctx, input }) => {
       const db = await getDb();
