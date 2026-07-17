@@ -31,7 +31,6 @@ type PublicPricing = {
   volumeDiscount5to10Pct: number;
   volumeDiscount10plusPct: number;
   // Add-on rates
-  postClearSeedingPerAcre: number;
   fenceLineClearingPerLf: number;
   mulchRedistributionPerAcre: number;
   selectiveClearingFlatRate: number;

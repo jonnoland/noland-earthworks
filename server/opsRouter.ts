@@ -3205,7 +3205,6 @@ const settingsRouter = router({
       // Add-on rates
       stumpGrindingPerStump: z.number().int().min(0).optional(),
       debrisHaulingPerLoad: z.number().int().min(0).optional(),
-      postClearSeedingPerAcre: z.number().int().min(0).optional(),
       fenceLineClearingPerLf: z.number().int().min(0).optional(),
       mulchRedistributionPerAcre: z.number().int().min(0).optional(),
       selectiveClearingFlatRate: z.number().int().min(0).optional(),

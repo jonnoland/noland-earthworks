@@ -1213,7 +1213,7 @@ export default function QuotePage() {
 
                   {/* Email */}
                   <div>
-                    <label style={labelStyle}>Email Address</label>
+                    <label style={labelStyle}>Email Address *</label>
                     <input
                       name="email" type="email" required
                       placeholder="john@example.com"

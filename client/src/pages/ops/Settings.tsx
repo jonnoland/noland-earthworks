@@ -2348,7 +2348,6 @@ const MIDDLE_TN_DEFAULTS = {
   westTnMobilizationFee: "650",    // reflects additional 60–90 mi drive time
   stumpGrindingPerStump: 200,
   debrisHaulingPerLoad: 450,
-  postClearSeedingPerAcre: 225,
   fenceLineClearingPerLf: 4,
   mulchRedistributionPerAcre: 175,
   selectiveClearingFlatRate: 200,
@@ -2460,7 +2459,6 @@ function AIPricingTab() {
         // Add-on rates
         stumpGrindingPerStump: settings.stumpGrindingPerStump,
         debrisHaulingPerLoad: settings.debrisHaulingPerLoad,
-        postClearSeedingPerAcre: settings.postClearSeedingPerAcre,
         fenceLineClearingPerLf: settings.fenceLineClearingPerLf,
         mulchRedistributionPerAcre: settings.mulchRedistributionPerAcre,
         selectiveClearingFlatRate: settings.selectiveClearingFlatRate,
@@ -2512,7 +2510,6 @@ function AIPricingTab() {
       // Add-on rates
       stumpGrindingPerStump: Number(form.stumpGrindingPerStump),
       debrisHaulingPerLoad: Number(form.debrisHaulingPerLoad),
-      postClearSeedingPerAcre: Number(form.postClearSeedingPerAcre),
       fenceLineClearingPerLf: Number(form.fenceLineClearingPerLf),
       mulchRedistributionPerAcre: Number(form.mulchRedistributionPerAcre),
       selectiveClearingFlatRate: Number(form.selectiveClearingFlatRate),

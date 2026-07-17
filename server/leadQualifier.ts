@@ -93,7 +93,6 @@ Trail Cutting (effective acres = length × width ÷ 43,560; also quotable per li
   - Effective acreage: length × width ÷ 43,560 sq ft
 
 Add-ons:
-  - Post-clear seeding: $150 – $700/acre
   - Stump grinding: $150 – $400/stump or $500 – $1,200/acre
 
 BALLPARK RANGE RULES:

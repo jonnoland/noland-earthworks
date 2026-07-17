@@ -1715,11 +1715,11 @@
 
 ## Site Audit Fixes — Jun 8 2026
 
-- [ ] Hide Ops button in Navbar from public visitors (admin-only)
-- [ ] Hide Ops Dashboard link in Footer from public visitors (admin-only)
-- [ ] Fix stats bar data: 35 counties served, 24hr quote turnaround
-- [ ] Fix "Valneer" typo on pricing page — correct spelling is Vanleer
-- [ ] Make email field required on quote form
+- [x] Hide Ops button in Navbar from public visitors (admin-only)
+- [x] Hide Ops Dashboard link in Footer from public visitors (admin-only)
+- [x] Fix stats bar data: 35 counties served, 24hr quote turnaround
+- [x] Fix "Valneer" typo on pricing page — correct spelling is Vanleer
+- [x] Make email field required on quote form
 
 ## Field Fix (FieldFix.ai Clone)
 - [x] DB schema: equipment table (make, model, year, serial, hours, tags, notes)
@@ -2199,34 +2199,34 @@
 - [x] Quick-Edit modal: add Notes textarea to capture extra context before promoting to a lead
 
 ## Content/Branding Fixes (Jul 10, 2026)
-- [ ] ServicesSection: move Forestry Mulching to first position (currently second after Land Management)
-- [ ] Navbar: move Forestry Mulching to first position in services dropdown
-- [ ] ServicesSection: remove Post-Clear Seeding from add-ons list
-- [ ] Navbar: remove Post-Clear Seeding from add-ons dropdown
-- [ ] App.tsx: remove PostClearSeeding route, redirect /services/add-ons/post-clear-seeding to /services/forestry-mulching
-- [ ] PostClearSeeding.tsx: page can remain but route redirects away (or delete page)
-- [ ] Pricing.tsx: remove Post-Clear Seeding service card
-- [ ] Quote.tsx: remove Post-Clear Seeding from all add-on arrays
-- [ ] CostCalculator.tsx: remove Post-Clear Seeding add-on option
-- [ ] AddOnGuideSection.tsx: remove Post-Clear Seeding card
-- [ ] FenceLineClearing.tsx: remove Post-Clear Seeding from related services
-- [ ] MulchRedistribution.tsx: remove Post-Clear Seeding from related services
-- [ ] SelectiveClearing.tsx: remove Post-Clear Seeding from related services
-- [ ] sitemapRoutes.ts: remove post-clear-seeding URL
-- [ ] ops/Settings.tsx: remove Post-Clear Seeding from pricing settings and calculator preview
-- [ ] ops/CostEstimator.tsx: remove Post-Clear Seeding from add-on options
-- [ ] ops/Pricing.tsx: remove Post-Clear Seeding from benchmark table
-- [ ] agents.ts: remove Post-Clear Seeding from service pricing list
-- [ ] leadQualifier.ts: remove post-clear seeding from rate reference
-- [ ] widgetRouter.ts: remove postClearSeedingPerAcre from widget response
-- [ ] opsRouter.ts: remove seeding add-on pricing context from quote prompts
-- [ ] aiAutomationRouter.ts: update company description from "land clearing" to "land management"
-- [ ] opsRouter.ts: update all AI prompt descriptions from "land clearing" to "land management"
-- [ ] Faq.tsx: update "land clearing" contextual references to "land management"
-- [ ] ForestryMulching.tsx: update competitor comparison line from "land clearing companies" to "land management companies"
-- [ ] BlogPostLayout.tsx: update "land clearing" keyword to "land management"
-- [ ] Leads.tsx (prospecting description): update "land clearing" to "land management"
-- [ ] Prospecting.tsx: update "land clearing" to "land management"
+- [x] ServicesSection: move Forestry Mulching to first position (currently second after Land Management)
+- [x] Navbar: move Forestry Mulching to first position in services dropdown
+- [x] ServicesSection: remove Post-Clear Seeding from add-ons list
+- [x] Navbar: remove Post-Clear Seeding from add-ons dropdown
+- [x] App.tsx: remove PostClearSeeding route, redirect /services/add-ons/post-clear-seeding to /services/forestry-mulching
+- [x] PostClearSeeding.tsx: page can remain but route redirects away (or delete page)
+- [x] Pricing.tsx: remove Post-Clear Seeding service card
+- [x] Quote.tsx: remove Post-Clear Seeding from all add-on arrays
+- [x] CostCalculator.tsx: remove Post-Clear Seeding add-on option
+- [x] AddOnGuideSection.tsx: remove Post-Clear Seeding card
+- [x] FenceLineClearing.tsx: remove Post-Clear Seeding from related services
+- [x] MulchRedistribution.tsx: remove Post-Clear Seeding from related services
+- [x] SelectiveClearing.tsx: remove Post-Clear Seeding from related services
+- [x] sitemapRoutes.ts: remove post-clear-seeding URL
+- [x] ops/Settings.tsx: remove Post-Clear Seeding from pricing settings and calculator preview
+- [x] ops/CostEstimator.tsx: remove Post-Clear Seeding from add-on options
+- [x] ops/Pricing.tsx: remove Post-Clear Seeding from benchmark table
+- [x] agents.ts: remove Post-Clear Seeding from service pricing list
+- [x] leadQualifier.ts: remove post-clear seeding from rate reference
+- [x] widgetRouter.ts: remove postClearSeedingPerAcre from widget response
+- [x] opsRouter.ts: remove seeding add-on pricing context from quote prompts
+- [x] aiAutomationRouter.ts: update company description from "land clearing" to "land management"
+- [x] opsRouter.ts: update all AI prompt descriptions from "land clearing" to "land management"
+- [x] Faq.tsx: update "land clearing" contextual references to "land management"
+- [x] ForestryMulching.tsx: update competitor comparison line from "land clearing companies" to "land management companies"
+- [x] BlogPostLayout.tsx: update "land clearing" keyword to "land management"
+- [x] Leads.tsx (prospecting description): update "land clearing" to "land management"
+- [x] Prospecting.tsx: update "land clearing" to "land management"
 - [x] Fix Jobber 403 Cloudflare IP-block: add graceful try/catch to all 8 read-query procedures so homepage and Ops pages return empty results instead of 500 errors when Jobber API is unreachable
 - [x] Build govContractsRouter.ts tRPC procedure to fetch SAM.gov opportunities via public search API
 - [x] Build /ops/sales/government-contracts page with live SAM.gov opportunity feed, filters, and state portal links
@@ -2247,6 +2247,7 @@
 - [x] Add weighStationStatus tRPC procedure: scrape coopsareopen.com for TN station open/closed status with timestamp
 - [x] Add dieselPrice tRPC procedure: fetch current TN diesel price from EIA public API
 - [x] Update WeighStationPlanner UI: open/closed badge on each weigh station marker and card, fuel cost estimator panel with adjustable MPG input
+- [x] Fix weigh station markers not showing on route planner map: clearMap used m.setMap(null) on AdvancedMarkerElement (requires m.map = null); fixed with type-safe dual-path cleanup
 - [x] Replace AI-only ad machine images with a curated pool of forestry mulching stock photos
 - [x] Update ads generator to select varied forestry mulching stock photos by job context instead of repeating one machine with different backgrounds
 - [x] Add stock photo preview panel to Ads page: show auto-selected photo after generation, with prev/next swap buttons to cycle through the full pool

@@ -119,7 +119,14 @@ export default function WeighStationPlanner() {
 
   // Clear map markers and directions
   const clearMap = useCallback(() => {
-    markersRef.current.forEach((m) => m.setMap(null));
+    // AdvancedMarkerElement uses m.map = null (not setMap) to detach from map
+    markersRef.current.forEach((m) => {
+      if (typeof m.setMap === "function") {
+        m.setMap(null); // legacy google.maps.Marker
+      } else {
+        m.map = null; // AdvancedMarkerElement
+      }
+    });
     markersRef.current = [];
     if (directionsRendererRef.current) {
       directionsRendererRef.current.setMap(null);
