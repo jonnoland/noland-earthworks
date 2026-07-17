@@ -2408,3 +2408,20 @@
 - [x] Stage change button in lead detail panel includes On Hold
 - [x] TypeScript: 0 errors
 - [x] Save checkpoint v1.0.65
+
+## Weigh Station Data Layer (Jul 17, 2026)
+- [ ] Build weighStationsRouter.ts: Overpass API query for real DOT weighbridge nodes along route corridor, filtered to exclude CAT Scales
+- [ ] Build coopsareopen.com scraper: per-state page scrape for highway/direction/mile-marker context
+- [ ] Build tRPC procedure: getWeighStations(bbox) — returns merged OSM + coopsareopen data
+- [ ] Update WeighStationPlanner: replace current hardcoded/placeholder station data with real tRPC data
+- [ ] Update WeighStationPlanner markers: use real coordinates, show highway/direction/mile-marker, remove fake open/closed status
+- [ ] Add "Live status unavailable — check PrePass or Trucker Path" note to each station card
+
+## Weigh Station Data Layer — July 2026
+
+- [x] Replace hardcoded weighStationData.ts (39 manually entered stations) with live Overpass API data: query amenity=weighbridge nodes within route bounding box, filter out commercial CAT Scales, 6-hour in-memory cache
+- [x] Remove fake open/closed status from WeighStationPlanner UI: drop showOpenOnly filter, statusBadge/statusLabel/getStationStatus dead code, coopsareopen.com attribution
+- [x] Update WeighStationPlanner map legend: single amber marker for DOT weigh station, note that live status is not publicly available
+- [x] Update station card expanded section: replace prepassEligible display with "check PrePass or Trucker Path app" note
+- [x] Update header description to reflect OSM data source
+- [x] Fix UNKNOWN direction badge: hide direction badge when direction is UNKNOWN instead of showing orange badge

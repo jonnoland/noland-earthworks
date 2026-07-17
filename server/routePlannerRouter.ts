@@ -3,7 +3,7 @@ import { adminProcedure, router } from "./_core/trpc";
 import { getDb } from "./db";
 import { savedRoutes } from "../drizzle/schema";
 import { eq, desc } from "drizzle-orm";
-import { findStationsAlongRoute, WEIGH_STATIONS } from "./weighStationData";
+import { fetchWeighStationsForRoute, haversineDistance } from "./weighStationData";
 import { ENV } from "./_core/env";
 
 // ── Google Maps Directions API helper ────────────────────────────────────────
@@ -142,8 +142,8 @@ export const routePlannerRouter = router({
     .mutation(async ({ input }) => {
       const directions = await getDirections(input.origin, input.destination);
 
-      // Find weigh stations within 1.5 miles of the route polyline
-      const stations = findStationsAlongRoute(directions.polylinePoints, 1.5);
+      // Find weigh stations within 1.5 miles of the route polyline (live Overpass API data)
+      const stations = await fetchWeighStationsForRoute(directions.polylinePoints, 1.5);
 
       // Sort stations by approximate route order (by lng for E-W routes, lat for N-S)
       const latSpan = Math.abs(
@@ -245,9 +245,10 @@ export const routePlannerRouter = router({
 
   /**
    * Get all weigh stations in the dataset (for map pre-load).
+   * Stations are now fetched live from Overpass API per-route — no static dataset.
    */
   getAllStations: adminProcedure.query(async () => {
-    return WEIGH_STATIONS;
+    return [] as import("./weighStationData").WeighStation[];
   }),
 
   /**

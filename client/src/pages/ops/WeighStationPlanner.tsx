@@ -20,7 +20,6 @@ import {
   AlertTriangle,
   CheckCircle,
   Fuel,
-  CircleDot,
 } from "lucide-react";
 
 // Default origin: Vanleer, TN
@@ -79,43 +78,13 @@ export default function WeighStationPlanner() {
   const markerLibRef = useRef<google.maps.MarkerLibrary | null>(null);
 
   const [mpg, setMpg] = useState(9);
-  const [showOpenOnly, setShowOpenOnly] = useState(false);
 
   const planRoute = trpc.routePlanner.planRoute.useMutation();
   const saveRoute = trpc.routePlanner.saveRoute.useMutation();
   const deleteRoute = trpc.routePlanner.deleteRoute.useMutation();
   const { data: savedRoutes, refetch: refetchSaved } =
     trpc.routePlanner.getSavedRoutes.useQuery();
-  const { data: stationStatus } = trpc.routePlanner.weighStationStatus.useQuery();
   const { data: dieselData } = trpc.routePlanner.dieselPrice.useQuery();
-
-  // Build a normalized name -> status map from coopsareopen data
-  const statusMap = useMemo(() => {
-    const map: Record<string, "open" | "closed" | "unknown"> = {};
-    if (!stationStatus?.stations) return map;
-    for (const s of stationStatus.stations) {
-      // Normalize: lowercase, strip punctuation
-      const key = s.name.toLowerCase().replace(/[^a-z0-9]/g, "");
-      map[key] = s.status;
-    }
-    return map;
-  }, [stationStatus]);
-
-  // Look up open/closed for a station by matching normalized name
-  const getStationStatus = useCallback(
-    (stationName: string): "open" | "closed" | "unknown" => {
-      const key = stationName.toLowerCase().replace(/[^a-z0-9]/g, "");
-      // Try exact match first
-      if (statusMap[key]) return statusMap[key];
-      // Try partial match (station name may be longer in our dataset)
-      const entries = Object.entries(statusMap) as Array<[string, "open" | "closed" | "unknown"]>;
-      for (const [k, v] of entries) {
-        if (key.includes(k) || k.includes(key)) return v;
-      }
-      return "unknown";
-    },
-    [statusMap]
-  );
 
   // Clear map markers and directions
   const clearMap = useCallback(() => {
@@ -184,19 +153,11 @@ export default function WeighStationPlanner() {
         const destMarker = new AdvancedMarkerElement({ position: route.destinationLatLng, map, title: "Destination", content: destPin.element, zIndex: 10 });
         markersRef.current.push(destMarker);
 
-        // Weigh station markers
-        const stationsToShow = showOpenOnly
-          ? route.weighStations.filter((s) => getStationStatus(s.name) === "open")
-          : route.weighStations;
-
-        stationsToShow.forEach((station) => {
-          const stStatus = getStationStatus(station.name);
-          const statusColor = stStatus === "open" ? "#16A34A" : stStatus === "closed" ? "#DC2626" : "#9CA3AF";
-          const statusText = stStatus === "open" ? "Open" : stStatus === "closed" ? "Closed" : "Status unknown";
-
-          // Blue = PrePass eligible, amber = no bypass
-          const pinBg = station.prepassEligible ? "#2563EB" : "#F59E0B";
-          const pinBorder = stStatus === "open" ? "#16A34A" : stStatus === "closed" ? "#DC2626" : "#6B7280";
+        // Weigh station markers — all stations shown (no open/closed filter; status not publicly available)
+        route.weighStations.forEach((station) => {
+          // All markers use neutral amber border — status is unknown
+          const pinBg = "#F59E0B"; // amber — DOT scale house
+          const pinBorder = "#6B7280"; // neutral gray border
 
           // Custom truck/scale SVG glyph
           const glyphEl = document.createElement("div");
@@ -220,16 +181,15 @@ export default function WeighStationPlanner() {
             zIndex: 8,
           });
 
+          const dirLabel = station.direction !== "UNKNOWN" ? ` ${station.direction}` : "";
           const infoWindow = new google.maps.InfoWindow({
             content: `
-              <div style="font-family:sans-serif;font-size:13px;max-width:220px">
+              <div style="font-family:sans-serif;font-size:13px;max-width:240px">
                 <strong>${station.name}</strong><br/>
-                ${station.highway} ${station.direction} — MM ${station.milepost ?? "N/A"}<br/>
-                ${station.city}, ${station.state}<br/>
-                ${station.prepassEligible ? '<span style="color:#2563EB">&#10003; PrePass/Drivewyze eligible</span>' : '<span style="color:#D97706">No bypass program</span>'}<br/>
-                <span style="color:${statusColor};font-weight:600">&#9679; ${statusText}</span>
-                ${station.notes ? `<br/><em>${station.notes}</em>` : ""}
-                ${station.phone ? `<br/>&#128222; ${station.phone}` : ""}
+                ${station.highway}${dirLabel}${station.milepost != null ? ` — MM ${station.milepost}` : ""}<br/>
+                ${station.city ? `${station.city}, ` : ""}${station.state}<br/>
+                <span style="color:#9CA3AF;font-size:11px">Live status not available — check PrePass or Trucker Path app</span>
+                ${station.notes ? `<br/><em style="color:#9CA3AF;font-size:11px">${station.notes}</em>` : ""}
               </div>
             `,
           });
@@ -243,13 +203,10 @@ export default function WeighStationPlanner() {
         markersRef.current.push(originMarker);
         const destMarker = new google.maps.Marker({ position: route.destinationLatLng, map, title: "Destination", icon: { path: google.maps.SymbolPath.CIRCLE, scale: 10, fillColor: "#DC2626", fillOpacity: 1, strokeColor: "#fff", strokeWeight: 2 }, zIndex: 10 });
         markersRef.current.push(destMarker);
-        const stationsToShow = showOpenOnly ? route.weighStations.filter((s) => getStationStatus(s.name) === "open") : route.weighStations;
-        stationsToShow.forEach((station) => {
-          const stStatus = getStationStatus(station.name);
-          const statusColor = stStatus === "open" ? "#16A34A" : stStatus === "closed" ? "#DC2626" : "#9CA3AF";
-          const statusText = stStatus === "open" ? "Open" : stStatus === "closed" ? "Closed" : "Status unknown";
-          const marker = new google.maps.Marker({ position: { lat: station.lat, lng: station.lng }, map, title: station.name, icon: { path: google.maps.SymbolPath.BACKWARD_CLOSED_ARROW, scale: 7, fillColor: station.prepassEligible ? "#2563EB" : "#F59E0B", fillOpacity: 1, strokeColor: stStatus === "open" ? "#16A34A" : stStatus === "closed" ? "#DC2626" : "#fff", strokeWeight: stStatus !== "unknown" ? 2.5 : 1.5 }, zIndex: 8 });
-          const infoWindow = new google.maps.InfoWindow({ content: `<div style="font-family:sans-serif;font-size:13px;max-width:220px"><strong>${station.name}</strong><br/>${station.highway} ${station.direction} — MM ${station.milepost ?? "N/A"}<br/>${station.city}, ${station.state}<br/>${station.prepassEligible ? '<span style="color:#2563EB">&#10003; PrePass/Drivewyze eligible</span>' : '<span style="color:#D97706">No bypass program</span>'}<br/><span style="color:${statusColor};font-weight:600">&#9679; ${statusText}</span>${station.notes ? `<br/><em>${station.notes}</em>` : ""}${station.phone ? `<br/>&#128222; ${station.phone}` : ""}</div>` });
+        route.weighStations.forEach((station) => {
+          const dirLabel = station.direction !== "UNKNOWN" ? ` ${station.direction}` : "";
+          const marker = new google.maps.Marker({ position: { lat: station.lat, lng: station.lng }, map, title: station.name, icon: { path: google.maps.SymbolPath.BACKWARD_CLOSED_ARROW, scale: 7, fillColor: "#F59E0B", fillOpacity: 1, strokeColor: "#fff", strokeWeight: 1.5 }, zIndex: 8 });
+          const infoWindow = new google.maps.InfoWindow({ content: `<div style="font-family:sans-serif;font-size:13px;max-width:240px"><strong>${station.name}</strong><br/>${station.highway}${dirLabel}${station.milepost != null ? ` — MM ${station.milepost}` : ""}<br/>${station.city ? `${station.city}, ` : ""}${station.state}<br/><span style="color:#9CA3AF;font-size:11px">Live status not available — check PrePass or Trucker Path app</span></div>` });
           marker.addListener("click", () => { infoWindow.open(map, marker); });
           markersRef.current.push(marker);
         });
@@ -262,15 +219,15 @@ export default function WeighStationPlanner() {
       );
       map.fitBounds(bounds, 60);
     },
-    [clearMap, showOpenOnly, getStationStatus]
+    [clearMap]
   );
 
-  // Re-draw when map becomes ready and we have a route, or when open-only filter changes
+  // Re-draw when map becomes ready and we have a route
   useEffect(() => {
     if (mapReady && plannedRoute) {
       drawRouteOnMap(plannedRoute);
     }
-  }, [mapReady, plannedRoute, drawRouteOnMap, showOpenOnly]);
+  }, [mapReady, plannedRoute, drawRouteOnMap]);
 
   const handlePlanRoute = async () => {
     if (!destination.trim()) {
@@ -331,18 +288,6 @@ export default function WeighStationPlanner() {
     }
   };
 
-  const statusBadge = (status: "open" | "closed" | "unknown") => {
-    if (status === "open") return "bg-green-500/20 text-green-300 border-green-500/30";
-    if (status === "closed") return "bg-red-500/20 text-red-300 border-red-500/30";
-    return "bg-white/10 text-white/40 border-white/10";
-  };
-
-  const statusLabel = (status: "open" | "closed" | "unknown") => {
-    if (status === "open") return "Open";
-    if (status === "closed") return "Closed";
-    return "Status unknown";
-  };
-
   // Fuel cost calculation
   const fuelCost = useMemo(() => {
     if (!plannedRoute || !dieselData) return null;
@@ -353,7 +298,9 @@ export default function WeighStationPlanner() {
 
   const directionColor = (dir: string) => {
     if (dir === "NB" || dir === "EB") return "bg-blue-500/20 text-blue-300 border-blue-500/30";
-    return "bg-orange-500/20 text-orange-300 border-orange-500/30";
+    if (dir === "SB" || dir === "WB") return "bg-orange-500/20 text-orange-300 border-orange-500/30";
+    if (dir === "BOTH") return "bg-purple-500/20 text-purple-300 border-purple-500/30";
+    return "bg-white/10 text-white/40 border-white/15"; // UNKNOWN
   };
 
   return (
@@ -365,8 +312,7 @@ export default function WeighStationPlanner() {
           <h1 className="text-2xl font-bold tracking-tight">Weigh Station Route Planner</h1>
         </div>
         <p className="text-sm text-white/50">
-          Plan routes to job sites and see every weigh station along the way. Markers show
-          PrePass/Drivewyze bypass eligibility.
+          Plan routes to job sites and see every DOT weigh station along the way. Station locations from OpenStreetMap. Check PrePass or Trucker Path for live open/closed status.
         </p>
       </div>
 
@@ -532,28 +478,9 @@ export default function WeighStationPlanner() {
                     <h3 className="text-xs font-semibold text-white/60 uppercase tracking-wide">
                       Weigh Stations Along Route
                     </h3>
-                    <div className="flex items-center gap-2">
-                      {stationStatus?.fetchedAt && (
-                        <span className="text-[10px] text-white/30">
-                          coopsareopen.com
-                        </span>
-                      )}
-                      <button
-                        onClick={() => setShowOpenOnly((v) => !v)}
-                        className={`flex items-center gap-1.5 text-[10px] font-medium px-2 py-0.5 rounded-full border transition-colors ${
-                          showOpenOnly
-                            ? "bg-green-500/20 text-green-300 border-green-500/40"
-                            : "bg-white/5 text-white/40 border-white/15 hover:text-white/60"
-                        }`}
-                        title={showOpenOnly ? "Showing open stations only — click to show all" : "Click to show open stations only"}
-                      >
-                        <span className={`w-2 h-2 rounded-full flex-shrink-0 ${showOpenOnly ? "bg-green-400" : "bg-white/30"}`} />
-                        {showOpenOnly ? "Open only" : "All stations"}
-                      </button>
-                    </div>
+                    <span className="text-[10px] text-white/30">via OpenStreetMap</span>
                   </div>
                   {plannedRoute.weighStations
-                    .filter((station) => !showOpenOnly || getStationStatus(station.name) === "open")
                     .map((station) => (
                     <div
                       key={station.id}
@@ -580,26 +507,14 @@ export default function WeighStationPlanner() {
                           </div>
                         </div>
                         <div className="flex items-center gap-1.5 flex-shrink-0">
-                          <Badge
-                            variant="outline"
-                            className={`text-xs ${directionColor(station.direction)}`}
-                          >
-                            {station.direction}
-                          </Badge>
-                          {(() => {
-                            const st = getStationStatus(station.name);
-                            if (st !== "unknown") {
-                              return (
-                                <Badge
-                                  variant="outline"
-                                  className={`text-xs ${statusBadge(st)}`}
-                                >
-                                  {statusLabel(st)}
-                                </Badge>
-                              );
-                            }
-                            return null;
-                          })()}
+                          {station.direction !== "UNKNOWN" && (
+                            <Badge
+                              variant="outline"
+                              className={`text-xs ${directionColor(station.direction)}`}
+                            >
+                              {station.direction}
+                            </Badge>
+                          )}
                           {expandedStation === station.id ? (
                             <ChevronUp className="w-3.5 h-3.5 text-white/40" />
                           ) : (
@@ -610,25 +525,14 @@ export default function WeighStationPlanner() {
 
                       {expandedStation === station.id && (
                         <div className="px-3 pb-3 space-y-2 border-t border-white/10 pt-2">
-                          <div className="flex items-center gap-2">
-                            {station.prepassEligible ? (
-                              <CheckCircle className="w-3.5 h-3.5 text-blue-400" />
-                            ) : (
-                              <AlertTriangle className="w-3.5 h-3.5 text-amber-400" />
-                            )}
-                            <span className="text-xs text-white/70">
-                              {station.prepassEligible
-                                ? "PrePass / Drivewyze bypass eligible"
-                                : "No bypass program — must enter if open"}
+                          <div className="flex items-start gap-2">
+                            <AlertTriangle className="w-3.5 h-3.5 text-white/30 mt-0.5 flex-shrink-0" />
+                            <span className="text-xs text-white/40">
+                              Live open/closed status is not publicly available. Check the PrePass or Trucker Path app for current station status.
                             </span>
                           </div>
                           {station.notes && (
-                            <p className="text-xs text-white/50 italic">{station.notes}</p>
-                          )}
-                          {station.phone && (
-                            <p className="text-xs text-white/50">
-                              <span className="text-white/40">Phone:</span> {station.phone}
-                            </p>
+                            <p className="text-xs text-white/30 italic">{station.notes}</p>
                           )}
                         </div>
                       )}
@@ -720,25 +624,10 @@ export default function WeighStationPlanner() {
                 Destination
               </div>
               <div className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded-full bg-blue-500 flex-shrink-0" />
-                Weigh station — PrePass/Drivewyze eligible
-              </div>
-              <div className="flex items-center gap-2">
                 <div className="w-3 h-3 rounded-full bg-amber-500 flex-shrink-0" />
-                Weigh station — no bypass program
+                DOT weigh station (OSM data)
               </div>
-              <div className="border-t border-white/10 pt-1.5 mt-1 space-y-1.5">
-                <div className="text-white/30 text-[10px] uppercase tracking-wide mb-1">Open/Closed Status (marker border)</div>
-                <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 rounded-full border-2 border-green-500 bg-transparent flex-shrink-0" />
-                  Station reported open
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 rounded-full border-2 border-red-500 bg-transparent flex-shrink-0" />
-                  Station reported closed
-                </div>
-                <p className="text-[10px] text-white/25 mt-1">Status: coopsareopen.com (crowdsourced){stationStatus?.fetchedAt ? ` · updated ${new Date(stationStatus.fetchedAt).toLocaleTimeString()}` : ""}</p>
-              </div>
+              <p className="text-[10px] text-white/25 mt-1">Station locations sourced from OpenStreetMap. Live open/closed status is not publicly available — check PrePass or Trucker Path for current status.</p>
             </div>
           </div>
         </div>

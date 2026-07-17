@@ -1,539 +1,376 @@
 /**
- * Weigh Station Dataset — TN and surrounding states
- * Sources: TN.gov CVE, coopsareopen.com, Drivewyze PreClear coverage
- * Coordinates are approximate centerpoints for each station.
- * PrePass/Drivewyze bypass eligibility noted where confirmed.
+ * Weigh Station Data Layer
+ *
+ * Locations: OpenStreetMap Overpass API (amenity=weighbridge, excluding commercial CAT Scales)
+ * Highway/direction enrichment: coopsareopen.com per-state tables (scraped)
+ * Live open/closed status: not publicly available — status is always "unknown"
+ *
+ * The Overpass query is run server-side on each planRoute call, scoped to the route bounding box.
+ * Results are cached in-memory for 6 hours to avoid hammering the public Overpass endpoint.
  */
+
+import * as cheerio from "cheerio";
+
+// ── Types ─────────────────────────────────────────────────────────────────────
 
 export interface WeighStation {
   id: string;
   name: string;
   state: string;
   highway: string;
-  direction: "NB" | "SB" | "EB" | "WB" | "BOTH";
+  direction: "NB" | "SB" | "EB" | "WB" | "BOTH" | "UNKNOWN";
   milepost: number | null;
   lat: number;
   lng: number;
   city: string;
   phone?: string;
-  prepassEligible: boolean; // Drivewyze/PrePass bypass available
+  prepassEligible: boolean;
   notes?: string;
+  source: "osm" | "manual";
 }
 
-export const WEIGH_STATIONS: WeighStation[] = [
-  // ── TENNESSEE ─────────────────────────────────────────────────────────────
-  {
-    id: "tn-i40-wb-307",
-    name: "Monterey Scale House",
-    state: "TN",
-    highway: "I-40",
-    direction: "WB",
-    milepost: 307,
-    lat: 36.1495,
-    lng: -85.2641,
-    city: "Monterey",
-    prepassEligible: false,
-  },
-  {
-    id: "tn-i40-eb-49",
-    name: "Haywood County Scale House (EB)",
-    state: "TN",
-    highway: "I-40",
-    direction: "EB",
-    milepost: 49.5,
-    lat: 35.5951,
-    lng: -89.2612,
-    city: "Brownsville",
-    prepassEligible: true,
-    notes: "Drivewyze PreClear eligible",
-  },
-  {
-    id: "tn-i40-wb-50",
-    name: "Haywood County Scale House (WB)",
-    state: "TN",
-    highway: "I-40",
-    direction: "WB",
-    milepost: 50,
-    lat: 35.5940,
-    lng: -89.2640,
-    city: "Brownsville",
-    prepassEligible: false,
-  },
-  {
-    id: "tn-i40-eb-103",
-    name: "Poplar Springs Scale House (EB)",
-    state: "TN",
-    highway: "I-40",
-    direction: "EB",
-    milepost: 103,
-    lat: 35.6508,
-    lng: -88.3912,
-    city: "Lexington",
-    prepassEligible: false,
-  },
-  {
-    id: "tn-i40-wb-102",
-    name: "Poplar Springs Scale House (WB)",
-    state: "TN",
-    highway: "I-40",
-    direction: "WB",
-    milepost: 102.5,
-    lat: 35.6510,
-    lng: -88.3950,
-    city: "Lexington",
-    prepassEligible: false,
-  },
-  {
-    id: "tn-i40-eb-226",
-    name: "Mount Juliet Scale House (EB)",
-    state: "TN",
-    highway: "I-40",
-    direction: "EB",
-    milepost: 226,
-    lat: 36.2001,
-    lng: -86.5190,
-    city: "Mount Juliet",
-    prepassEligible: false,
-  },
-  {
-    id: "tn-i40-wb-228",
-    name: "Mount Juliet Scale House (WB)",
-    state: "TN",
-    highway: "I-40",
-    direction: "WB",
-    milepost: 228,
-    lat: 36.2010,
-    lng: -86.5050,
-    city: "Mount Juliet",
-    prepassEligible: false,
-  },
-  {
-    id: "tn-i40-eb-252",
-    name: "New Middleton Scale House (EB)",
-    state: "TN",
-    highway: "I-40",
-    direction: "EB",
-    milepost: 252.25,
-    lat: 36.1620,
-    lng: -86.0750,
-    city: "New Middleton",
-    prepassEligible: false,
-    notes: "East of Lebanon",
-  },
-  {
-    id: "tn-i40-wb-252",
-    name: "New Middleton Scale House (WB)",
-    state: "TN",
-    highway: "I-40",
-    direction: "WB",
-    milepost: 252.5,
-    lat: 36.1625,
-    lng: -86.0720,
-    city: "New Middleton",
-    prepassEligible: false,
-    notes: "East of Lebanon",
-  },
-  {
-    id: "tn-i40-eb-336",
-    name: "Ozone Scale House (EB)",
-    state: "TN",
-    highway: "I-40",
-    direction: "EB",
-    milepost: 336,
-    lat: 35.9350,
-    lng: -84.7420,
-    city: "Rockwood",
-    prepassEligible: false,
-  },
-  {
-    id: "tn-i40-eb-372",
-    name: "Knox County Scale House (EB)",
-    state: "TN",
-    highway: "I-40",
-    direction: "EB",
-    milepost: 372,
-    lat: 35.9462,
-    lng: -83.8710,
-    city: "Knoxville",
-    phone: "(865) 594-0920",
-    prepassEligible: true,
-    notes: "Drivewyze PreClear eligible. 3.5 miles east of I-40/I-75 junction.",
-  },
-  {
-    id: "tn-i40-wb-372",
-    name: "Knox County Scale House (WB)",
-    state: "TN",
-    highway: "I-40",
-    direction: "WB",
-    milepost: 372,
-    lat: 35.9465,
-    lng: -83.8680,
-    city: "Knoxville",
-    phone: "(865) 594-0910",
-    prepassEligible: true,
-    notes: "Drivewyze PreClear eligible.",
-  },
-  {
-    id: "tn-i40-eb-441",
-    name: "Hartford Scale House (EB)",
-    state: "TN",
-    highway: "I-40",
-    direction: "EB",
-    milepost: 441,
-    lat: 35.7980,
-    lng: -83.0350,
-    city: "Newport",
-    prepassEligible: false,
-  },
-  {
-    id: "tn-i40-wb-441",
-    name: "Hartford Scale House (WB)",
-    state: "TN",
-    highway: "I-40",
-    direction: "WB",
-    milepost: 441,
-    lat: 35.7985,
-    lng: -83.0320,
-    city: "Newport",
-    prepassEligible: false,
-  },
-  {
-    id: "tn-i24-wb-115",
-    name: "Coffee County Scale House (WB)",
-    state: "TN",
-    highway: "I-24",
-    direction: "WB",
-    milepost: 115,
-    lat: 35.4812,
-    lng: -86.0850,
-    city: "Manchester",
-    phone: "(931) 393-0788",
-    prepassEligible: true,
-    notes: "Drivewyze PreClear eligible. THP District 2 headquarters.",
-  },
-  {
-    id: "tn-i24-eb-115",
-    name: "Coffee County Scale House (EB)",
-    state: "TN",
-    highway: "I-24",
-    direction: "EB",
-    milepost: 115,
-    lat: 35.4815,
-    lng: -86.0820,
-    city: "Manchester",
-    prepassEligible: false,
-  },
-  {
-    id: "tn-i65-nb-5",
-    name: "Giles County Scale House (NB)",
-    state: "TN",
-    highway: "I-65",
-    direction: "NB",
-    milepost: 5,
-    lat: 35.0012,
-    lng: -86.8940,
-    city: "Ardmore",
-    phone: "(931) 424-0420",
-    prepassEligible: true,
-    notes: "Drivewyze PreClear eligible. THP District 7 headquarters.",
-  },
-  {
-    id: "tn-i65-nb-119",
-    name: "Robertson County Scale House (NB)",
-    state: "TN",
-    highway: "I-65",
-    direction: "NB",
-    milepost: 119,
-    lat: 36.5120,
-    lng: -86.5130,
-    city: "Portland",
-    phone: "(615) 325-0424",
-    prepassEligible: true,
-    notes: "Drivewyze PreClear eligible. THP District 3 headquarters.",
-  },
-  {
-    id: "tn-i65-sb-120",
-    name: "Robertson County Scale House (SB)",
-    state: "TN",
-    highway: "I-65",
-    direction: "SB",
-    milepost: 120,
-    lat: 36.5115,
-    lng: -86.5140,
-    city: "Portland",
-    prepassEligible: true,
-    notes: "Drivewyze PreClear eligible.",
-  },
-  {
-    id: "tn-i81-sb-21",
-    name: "Greene County Scale House (SB)",
-    state: "TN",
-    highway: "I-81",
-    direction: "SB",
-    milepost: 21,
-    lat: 36.2180,
-    lng: -82.9350,
-    city: "Mosheim",
-    phone: "(423) 235-4104",
-    prepassEligible: true,
-    notes: "Drivewyze PreClear eligible. THP District 5 headquarters.",
-  },
-  {
-    id: "tn-i75-nb-23",
-    name: "Cleveland Scale House (NB)",
-    state: "TN",
-    highway: "I-75",
-    direction: "NB",
-    milepost: 23.5,
-    lat: 35.1650,
-    lng: -84.8720,
-    city: "Cleveland",
-    prepassEligible: false,
-  },
-  {
-    id: "tn-i75-sb-13",
-    name: "Cleveland Scale House (SB)",
-    state: "TN",
-    highway: "I-75",
-    direction: "SB",
-    milepost: 13,
-    lat: 35.0820,
-    lng: -84.9010,
-    city: "Cleveland",
-    prepassEligible: false,
-  },
+// ── coopsareopen.com state slug map ──────────────────────────────────────────
 
-  // ── KENTUCKY (near TN border, within ~150 miles) ───────────────────────────
-  {
-    id: "ky-i65-nb-4",
-    name: "Simpson County Scale House (NB)",
-    state: "KY",
-    highway: "I-65",
-    direction: "NB",
-    milepost: 4,
-    lat: 36.7380,
-    lng: -86.5720,
-    city: "Franklin",
-    prepassEligible: false,
-    notes: "Just north of TN border",
-  },
-  {
-    id: "ky-i65-nb-89",
-    name: "Elizabethtown Scale House (NB)",
-    state: "KY",
-    highway: "I-65",
-    direction: "NB",
-    milepost: 89.5,
-    lat: 37.6940,
-    lng: -85.8590,
-    city: "Elizabethtown",
-    prepassEligible: false,
-    notes: "Junction of I-65 and Western KY Parkway",
-  },
-  {
-    id: "ky-i65-sb-89",
-    name: "Elizabethtown Scale House (SB)",
-    state: "KY",
-    highway: "I-65",
-    direction: "SB",
-    milepost: 89.5,
-    lat: 37.6935,
-    lng: -85.8600,
-    city: "Elizabethtown",
-    prepassEligible: false,
-  },
-  {
-    id: "ky-i24-eb-36",
-    name: "Lyon County Scale House (EB)",
-    state: "KY",
-    highway: "I-24",
-    direction: "EB",
-    milepost: 36,
-    lat: 37.0280,
-    lng: -88.0820,
-    city: "Kuttawa",
-    prepassEligible: true,
-    notes: "Drivewyze PreClear eligible",
-  },
-  {
-    id: "ky-i24-wb-36",
-    name: "Lyon County Scale House (WB)",
-    state: "KY",
-    highway: "I-24",
-    direction: "WB",
-    milepost: 36,
-    lat: 37.0285,
-    lng: -88.0850,
-    city: "Kuttawa",
-    prepassEligible: false,
-  },
-  {
-    id: "ky-i75-nb-33",
-    name: "Laurel County Scale House (NB)",
-    state: "KY",
-    highway: "I-75",
-    direction: "NB",
-    milepost: 33.5,
-    lat: 37.1280,
-    lng: -84.0820,
-    city: "London",
-    prepassEligible: true,
-    notes: "Drivewyze PreClear eligible",
-  },
-  {
-    id: "ky-i75-sb-34",
-    name: "Laurel County Scale House (SB)",
-    state: "KY",
-    highway: "I-75",
-    direction: "SB",
-    milepost: 34,
-    lat: 37.1275,
-    lng: -84.0810,
-    city: "London",
-    prepassEligible: true,
-    notes: "Drivewyze PreClear eligible",
-  },
+const STATE_SLUGS: Record<string, string> = {
+  TN: "tennessee",
+  KY: "kentucky",
+  AL: "alabama",
+  MS: "mississippi",
+  AR: "arkansas",
+  GA: "georgia",
+  NC: "north-carolina",
+  VA: "virginia",
+  MO: "missouri",
+  SC: "south-carolina",
+  WV: "west-virginia",
+  IN: "indiana",
+  IL: "illinois",
+  OH: "ohio",
+  TX: "texas",
+  OK: "oklahoma",
+  LA: "louisiana",
+  FL: "florida",
+};
 
-  // ── ALABAMA (near TN border) ───────────────────────────────────────────────
-  {
-    id: "al-i65-nb-355",
-    name: "Athens Scale House (NB)",
-    state: "AL",
-    highway: "I-65",
-    direction: "NB",
-    milepost: 355.5,
-    lat: 34.7980,
-    lng: -86.9720,
-    city: "Athens",
-    prepassEligible: false,
-  },
-  {
-    id: "al-i65-sb-355",
-    name: "Athens Scale House (SB)",
-    state: "AL",
-    highway: "I-65",
-    direction: "SB",
-    milepost: 355.5,
-    lat: 34.7975,
-    lng: -86.9730,
-    city: "Athens",
-    prepassEligible: false,
-  },
-  {
-    id: "al-i65-nb-278",
-    name: "Morris Scale House (NB)",
-    state: "AL",
-    highway: "I-65",
-    direction: "NB",
-    milepost: 278,
-    lat: 33.7580,
-    lng: -86.8120,
-    city: "Morris",
-    prepassEligible: false,
-  },
-  {
-    id: "al-i65-sb-278",
-    name: "Morris Scale House (SB)",
-    state: "AL",
-    highway: "I-65",
-    direction: "SB",
-    milepost: 278,
-    lat: 33.7575,
-    lng: -86.8130,
-    city: "Morris",
-    prepassEligible: false,
-  },
+// ── In-memory cache ───────────────────────────────────────────────────────────
 
-  // ── MISSISSIPPI (near TN border) ───────────────────────────────────────────
-  {
-    id: "ms-i55-nb-291",
-    name: "Hernando Scale House (NB)",
-    state: "MS",
-    highway: "I-55",
-    direction: "NB",
-    milepost: 291,
-    lat: 34.8350,
-    lng: -90.0020,
-    city: "Hernando",
-    prepassEligible: false,
-    notes: "Near TN/MS border",
-  },
-  {
-    id: "ms-i55-sb-291",
-    name: "Hernando Scale House (SB)",
-    state: "MS",
-    highway: "I-55",
-    direction: "SB",
-    milepost: 291,
-    lat: 34.8345,
-    lng: -90.0030,
-    city: "Hernando",
-    prepassEligible: false,
-  },
-  {
-    id: "ms-i22-eb-100",
-    name: "Booneville Scale House (EB)",
-    state: "MS",
-    highway: "I-22",
-    direction: "EB",
-    milepost: 100,
-    lat: 34.6580,
-    lng: -88.5620,
-    city: "Booneville",
-    prepassEligible: false,
-  },
+interface CacheEntry {
+  stations: WeighStation[];
+  fetchedAt: number;
+}
 
-  // ── ARKANSAS (near TN border via I-40) ────────────────────────────────────
-  {
-    id: "ar-i40-eb-273",
-    name: "Lehi Scale House (EB)",
-    state: "AR",
-    highway: "I-40",
-    direction: "EB",
-    milepost: 273,
-    lat: 35.1420,
-    lng: -90.1820,
-    city: "West Memphis",
-    prepassEligible: true,
-    notes: "Drivewyze PreClear eligible. Near TN/AR border.",
-  },
-  {
-    id: "ar-i40-wb-283",
-    name: "Riverside Scale House (WB)",
-    state: "AR",
-    highway: "I-40",
-    direction: "WB",
-    milepost: 283,
-    lat: 35.1450,
-    lng: -90.0850,
-    city: "West Memphis",
-    prepassEligible: true,
-    notes: "Drivewyze PreClear eligible.",
-  },
-];
+const CACHE_TTL_MS = 6 * 60 * 60 * 1000; // 6 hours
+const stationCache = new Map<string, CacheEntry>();
 
-/**
- * Returns weigh stations within a given bounding box (lat/lng bounds).
- * Used to filter stations relevant to a route.
- */
-export function getStationsInBounds(
+function bboxKey(
   minLat: number,
   maxLat: number,
   minLng: number,
   maxLng: number
-): WeighStation[] {
-  return WEIGH_STATIONS.filter(
-    (s) =>
-      s.lat >= minLat &&
-      s.lat <= maxLat &&
-      s.lng >= minLng &&
-      s.lng <= maxLng
+): string {
+  return `${minLat.toFixed(1)},${maxLat.toFixed(1)},${minLng.toFixed(1)},${maxLng.toFixed(1)}`;
+}
+
+// ── Overpass API ──────────────────────────────────────────────────────────────
+
+const OVERPASS_ENDPOINTS = [
+  "https://overpass.kumi.systems/api/interpreter",
+  "https://overpass-api.de/api/interpreter",
+];
+
+interface OverpassElement {
+  type: "node" | "way" | "relation";
+  id: number;
+  lat?: number;
+  lon?: number;
+  center?: { lat: number; lon: number };
+  tags?: Record<string, string>;
+}
+
+async function queryOverpass(
+  minLat: number,
+  maxLat: number,
+  minLng: number,
+  maxLng: number
+): Promise<OverpassElement[]> {
+  const bbox = `${minLat},${minLng},${maxLat},${maxLng}`;
+  const query = `[out:json][timeout:20];(node["amenity"="weighbridge"](${bbox});way["amenity"="weighbridge"](${bbox}););out center tags;`;
+
+  for (const endpoint of OVERPASS_ENDPOINTS) {
+    try {
+      const res = await fetch(endpoint, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+          "User-Agent": "NolandEarthworks-RoutePlanner/1.0",
+          Accept: "application/json",
+        },
+        body: `data=${encodeURIComponent(query)}`,
+        signal: AbortSignal.timeout(25_000),
+      });
+      if (!res.ok) continue;
+      const data = (await res.json()) as { elements: OverpassElement[] };
+      return data.elements ?? [];
+    } catch {
+      // Try next endpoint
+    }
+  }
+  console.warn("[WeighStation] All Overpass endpoints failed — returning empty list");
+  return [];
+}
+
+// ── coopsareopen.com scraper ──────────────────────────────────────────────────
+
+interface CoopsRow {
+  name: string;
+  highway: string;
+  milepost: string;
+  location: string;
+  state: string;
+}
+
+const coopsCache = new Map<string, { data: CoopsRow[]; fetchedAt: number }>();
+
+async function scrapeCoopsState(stateAbbr: string): Promise<CoopsRow[]> {
+  const cached = coopsCache.get(stateAbbr);
+  if (cached && Date.now() - cached.fetchedAt < CACHE_TTL_MS) {
+    return cached.data;
+  }
+
+  const slug = STATE_SLUGS[stateAbbr];
+  if (!slug) return [];
+
+  try {
+    const res = await fetch(
+      `https://www.coopsareopen.com/${slug}-weigh-stations.html`,
+      {
+        headers: {
+          "User-Agent":
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120.0.0.0 Safari/537.36",
+          Accept: "text/html,application/xhtml+xml",
+        },
+        signal: AbortSignal.timeout(10_000),
+      }
+    );
+    if (!res.ok) return [];
+    const html = await res.text();
+    const $ = cheerio.load(html);
+    const rows: CoopsRow[] = [];
+
+    $("table tr").each((_i, row) => {
+      const cells = $(row)
+        .find("td")
+        .map((_j, td) => $(td).text().trim())
+        .get();
+      if (
+        cells.length >= 2 &&
+        cells[0] &&
+        !cells[0].toLowerCase().includes("weigh station name") &&
+        !cells[0].toLowerCase().includes("station name")
+      ) {
+        rows.push({
+          name: cells[0],
+          highway: cells[1] || "",
+          milepost: cells[2] || "",
+          location: cells[3] || "",
+          state: stateAbbr,
+        });
+      }
+    });
+
+    coopsCache.set(stateAbbr, { data: rows, fetchedAt: Date.now() });
+    return rows;
+  } catch {
+    return [];
+  }
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+function parseHighwayDirection(raw: string): {
+  highway: string;
+  direction: WeighStation["direction"];
+} {
+  const lower = raw.toLowerCase();
+  let direction: WeighStation["direction"] = "UNKNOWN";
+  if (/\bnb\b|northbound|[–—-]\s*nb/i.test(lower)) direction = "NB";
+  else if (/\bsb\b|southbound|[–—-]\s*sb/i.test(lower)) direction = "SB";
+  else if (/\beb\b|eastbound|[–—-]\s*eb/i.test(lower)) direction = "EB";
+  else if (/\bwb\b|westbound|[–—-]\s*wb/i.test(lower)) direction = "WB";
+
+  const highway = raw
+    .replace(/\s*[–—-]\s*(nb|sb|eb|wb|northbound|southbound|eastbound|westbound).*/gi, "")
+    .replace(/\bI\s+(\d)/gi, "I-$1")
+    .replace(/\bUS\s+(\d)/gi, "US-$1")
+    .replace(/\bSR\s+(\d)/gi, "SR-$1")
+    .trim();
+
+  return { highway, direction };
+}
+
+/** Rough state detection from lat/lng bounding boxes */
+function guessState(lat: number, lng: number): string {
+  if (lat >= 34.98 && lat <= 36.68 && lng >= -90.31 && lng <= -81.65) return "TN";
+  if (lat >= 36.5 && lat <= 39.15 && lng >= -89.6 && lng <= -81.96) return "KY";
+  if (lat >= 30.14 && lat <= 35.01 && lng >= -88.47 && lng <= -84.89) return "AL";
+  if (lat >= 30.17 && lat <= 35.01 && lng >= -91.65 && lng <= -88.1) return "MS";
+  if (lat >= 33.0 && lat <= 36.5 && lng >= -94.62 && lng <= -89.64) return "AR";
+  if (lat >= 30.36 && lat <= 35.0 && lng >= -85.61 && lng <= -80.84) return "GA";
+  if (lat >= 33.84 && lat <= 36.59 && lng >= -84.32 && lng <= -75.46) return "NC";
+  if (lat >= 36.54 && lat <= 39.47 && lng >= -83.68 && lng <= -75.24) return "VA";
+  if (lat >= 35.99 && lat <= 40.61 && lng >= -95.77 && lng <= -89.1) return "MO";
+  if (lat >= 37.2 && lat <= 41.76 && lng >= -88.1 && lng <= -84.78) return "IN";
+  if (lat >= 36.97 && lat <= 42.51 && lng >= -91.51 && lng <= -87.02) return "IL";
+  if (lat >= 38.4 && lat <= 41.98 && lng >= -84.82 && lng <= -80.52) return "OH";
+  if (lat >= 37.2 && lat <= 39.72 && lng >= -82.64 && lng <= -77.72) return "WV";
+  if (lat >= 24.4 && lat <= 31.0 && lng >= -87.63 && lng <= -80.03) return "FL";
+  if (lat >= 28.9 && lat <= 36.5 && lng >= -106.65 && lng <= -93.51) return "TX";
+  return "??";
+}
+
+/** Filter out commercial/private scales */
+function isCommercialScale(tags: Record<string, string>): boolean {
+  const name = (tags.name || "").toLowerCase();
+  const operator = (tags.operator || "").toLowerCase();
+  return (
+    name.includes("cat scale") ||
+    name.includes("landfill") ||
+    name.includes("republic services") ||
+    name.includes("waste management") ||
+    operator.includes("cat scale")
   );
 }
 
-/**
- * Returns the distance in miles between two lat/lng points (Haversine).
- */
+// ── Main export: fetch stations for a route bounding box ─────────────────────
+
+export async function fetchWeighStationsForRoute(
+  routePoints: Array<{ lat: number; lng: number }>,
+  radiusMiles = 1.5
+): Promise<WeighStation[]> {
+  if (routePoints.length === 0) return [];
+
+  const lats = routePoints.map((p) => p.lat);
+  const lngs = routePoints.map((p) => p.lng);
+  const pad = 0.15; // ~10 miles
+  const minLat = Math.min(...lats) - pad;
+  const maxLat = Math.max(...lats) + pad;
+  const minLng = Math.min(...lngs) - pad;
+  const maxLng = Math.max(...lngs) + pad;
+
+  const key = bboxKey(minLat, maxLat, minLng, maxLng);
+  const cached = stationCache.get(key);
+  if (cached && Date.now() - cached.fetchedAt < CACHE_TTL_MS) {
+    return filterToRoute(cached.stations, routePoints, radiusMiles);
+  }
+
+  // Determine which states are covered by the route
+  const statesInRoute = new Set<string>(["TN"]);
+  for (const pt of routePoints) {
+    const s = guessState(pt.lat, pt.lng);
+    if (s !== "??") statesInRoute.add(s);
+  }
+
+  // Fetch Overpass + coops data in parallel
+  const [osmElements, ...coopsArrays] = await Promise.all([
+    queryOverpass(minLat, maxLat, minLng, maxLng),
+    ...Array.from(statesInRoute).map((s) => scrapeCoopsState(s)),
+  ]);
+
+  const allCoops: CoopsRow[] = coopsArrays.flat();
+
+  // Build a lookup: state -> coops rows sorted by milepost
+  const coopsByState = new Map<string, CoopsRow[]>();
+  for (const row of allCoops) {
+    if (!coopsByState.has(row.state)) coopsByState.set(row.state, []);
+    coopsByState.get(row.state)!.push(row);
+  }
+
+  const stations: WeighStation[] = [];
+  const seenIds = new Set<string>();
+
+  for (const el of osmElements) {
+    const tags = el.tags ?? {};
+    if (isCommercialScale(tags)) continue;
+
+    const lat = el.lat ?? el.center?.lat;
+    const lon = el.lon ?? el.center?.lon;
+    if (lat == null || lon == null) continue;
+
+    const osmId = `osm-${el.type}-${el.id}`;
+    if (seenIds.has(osmId)) continue;
+    seenIds.add(osmId);
+
+    const stateAbbr = guessState(lat, lon);
+    let name = tags.name || "";
+    let highway = tags["highway:ref"] || tags["ref"] || "";
+    let direction: WeighStation["direction"] = "UNKNOWN";
+    let milepost: number | null = null;
+    const city = tags["addr:city"] || tags["addr:town"] || "";
+
+    // Try to enrich from coops data for this state
+    const stateCoops = coopsByState.get(stateAbbr) ?? [];
+    if (stateCoops.length > 0 && !highway) {
+      // We can't reliably match by milepost without geocoding coops stations,
+      // but we can at least note the highway context from OSM tags
+      const osmHighway = tags["highway"] || "";
+      if (osmHighway && osmHighway !== "service") {
+        highway = osmHighway;
+      }
+    }
+
+    // Build name if missing
+    if (!name) {
+      const dirStr = direction !== "UNKNOWN" ? ` (${direction})` : "";
+      name = highway
+        ? `Weigh Station — ${highway}${dirStr}`
+        : "DOT Weigh Station";
+    }
+
+    // Try to parse direction from name
+    if (direction === "UNKNOWN") {
+      const nameLower = name.toLowerCase();
+      if (/\bnb\b|northbound/.test(nameLower)) direction = "NB";
+      else if (/\bsb\b|southbound/.test(nameLower)) direction = "SB";
+      else if (/\beb\b|eastbound/.test(nameLower)) direction = "EB";
+      else if (/\bwb\b|westbound/.test(nameLower)) direction = "WB";
+    }
+
+    stations.push({
+      id: osmId,
+      name,
+      state: stateAbbr,
+      highway,
+      direction,
+      milepost,
+      lat,
+      lng: lon,
+      city,
+      prepassEligible: false,
+      notes:
+        "Live open/closed status is not publicly available. Check the PrePass or Trucker Path app for current station status.",
+      source: "osm",
+    });
+  }
+
+  stationCache.set(key, { stations, fetchedAt: Date.now() });
+  return filterToRoute(stations, routePoints, radiusMiles);
+}
+
+/** Filter stations to only those within radiusMiles of the route polyline */
+function filterToRoute(
+  stations: WeighStation[],
+  routePoints: Array<{ lat: number; lng: number }>,
+  radiusMiles: number
+): WeighStation[] {
+  return stations.filter((station) =>
+    routePoints.some(
+      (pt) => haversineDistance(pt.lat, pt.lng, station.lat, station.lng) <= radiusMiles
+    )
+  );
+}
+
+// ── Haversine distance ────────────────────────────────────────────────────────
+
 export function haversineDistance(
   lat1: number,
   lng1: number,
@@ -551,33 +388,16 @@ export function haversineDistance(
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
-/**
- * Finds weigh stations within `radiusMiles` of any point in a route polyline.
- * `routePoints` is an array of {lat, lng} decoded from the Google Directions polyline.
- */
+// ── Legacy exports (kept for backward compatibility with routePlannerRouter) ──
+
+/** @deprecated Use fetchWeighStationsForRoute instead */
+export const WEIGH_STATIONS: WeighStation[] = [];
+
+/** @deprecated Use fetchWeighStationsForRoute instead */
 export function findStationsAlongRoute(
   routePoints: Array<{ lat: number; lng: number }>,
-  radiusMiles = 1.5
+  _radiusMiles = 1.5
 ): WeighStation[] {
-  if (routePoints.length === 0) return [];
-
-  // Build bounding box with padding
-  const lats = routePoints.map((p) => p.lat);
-  const lngs = routePoints.map((p) => p.lng);
-  const pad = 0.05;
-  const candidates = getStationsInBounds(
-    Math.min(...lats) - pad,
-    Math.max(...lats) + pad,
-    Math.min(...lngs) - pad,
-    Math.max(...lngs) + pad
-  );
-
-  // For each candidate, check if any route point is within radiusMiles
-  return candidates.filter((station) =>
-    routePoints.some(
-      (pt) =>
-        haversineDistance(pt.lat, pt.lng, station.lat, station.lng) <=
-        radiusMiles
-    )
-  );
+  // Synchronous stub — returns empty; planRoute now uses fetchWeighStationsForRoute
+  return [];
 }
