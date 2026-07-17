@@ -56,10 +56,27 @@ export default function AIChatWidget() {
   const startSession = trpc.chat.startSession.useMutation();
   const sendMessage = trpc.chat.sendMessage.useMutation();
 
-  // Initialize or resume session
-  useEffect(() => {
-    const stored = localStorage.getItem(STORAGE_KEY);
+  // Track whether we have already initialized the session
+  const sessionInitialized = useRef(false);
 
+  // Scroll to bottom on new messages
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages, isTyping]);
+
+  // Focus input when opened; initialize session lazily on first open
+  const inputRef = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    if (!isOpen) return;
+    setHasUnread(false);
+    setTimeout(() => inputRef.current?.focus(), 100);
+
+    // Only start/resume the session once — when the widget is first opened
+    if (sessionInitialized.current) return;
+    sessionInitialized.current = true;
+
+    const stored = localStorage.getItem(STORAGE_KEY);
     startSession.mutate(
       { sessionToken: stored ?? undefined },
       {
@@ -75,21 +92,6 @@ export default function AIChatWidget() {
         },
       }
     );
-  }, []);
-
-  // Scroll to bottom on new messages
-  const messagesEndRef = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, isTyping]);
-
-  // Focus input when opened
-  const inputRef = useRef<HTMLInputElement>(null);
-  useEffect(() => {
-    if (isOpen) {
-      setHasUnread(false);
-      setTimeout(() => inputRef.current?.focus(), 100);
-    }
   }, [isOpen]);
 
   const handleSend = useCallback(() => {
