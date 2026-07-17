@@ -74,7 +74,9 @@ export default function WeighStationPlanner() {
   const [mapReady, setMapReady] = useState(false);
   const mapRef = useRef<google.maps.Map | null>(null);
   const directionsRendererRef = useRef<google.maps.DirectionsRenderer | null>(null);
-  const markersRef = useRef<google.maps.Marker[]>([]);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const markersRef = useRef<any[]>([]);
+  const markerLibRef = useRef<google.maps.MarkerLibrary | null>(null);
 
   const [mpg, setMpg] = useState(9);
   const [showOpenOnly, setShowOpenOnly] = useState(false);
@@ -159,85 +161,92 @@ export default function WeighStationPlanner() {
         }
       );
 
-      // Origin marker
-      const originMarker = new google.maps.Marker({
-        position: route.originLatLng,
-        map,
-        title: "Origin",
-        icon: {
-          path: google.maps.SymbolPath.CIRCLE,
-          scale: 10,
-          fillColor: "#16A34A",
-          fillOpacity: 1,
-          strokeColor: "#fff",
-          strokeWeight: 2,
-        },
-        zIndex: 10,
-      });
-      markersRef.current.push(originMarker);
+      // Use pre-loaded AdvancedMarkerElement library (loaded in onMapReady)
+      const markerLib = markerLibRef.current;
 
-      // Destination marker
-      const destMarker = new google.maps.Marker({
-        position: route.destinationLatLng,
-        map,
-        title: "Destination",
-        icon: {
-          path: google.maps.SymbolPath.CIRCLE,
-          scale: 10,
-          fillColor: "#DC2626",
-          fillOpacity: 1,
-          strokeColor: "#fff",
-          strokeWeight: 2,
-        },
-        zIndex: 10,
-      });
-      markersRef.current.push(destMarker);
+      if (markerLib) {
+        const { AdvancedMarkerElement, PinElement } = markerLib;
 
-      // Weigh station markers (respects showOpenOnly filter via closure)
-      const stationsToShow = showOpenOnly
-        ? route.weighStations.filter((s) => getStationStatus(s.name) === "open")
-        : route.weighStations;
+        // Origin marker — green pin
+        const originPin = new PinElement({ background: "#16A34A", borderColor: "#15803D", glyphColor: "#fff", scale: 1.1 });
+        const originMarker = new AdvancedMarkerElement({ position: route.originLatLng, map, title: "Origin", content: originPin.element, zIndex: 10 });
+        markersRef.current.push(originMarker);
 
-      stationsToShow.forEach((station) => {
-        const stStatus = getStationStatus(station.name);
-        const statusColor = stStatus === "open" ? "#16A34A" : stStatus === "closed" ? "#DC2626" : "#9CA3AF";
-        const statusText = stStatus === "open" ? "Open" : stStatus === "closed" ? "Closed" : "Status unknown";
+        // Destination marker — red pin
+        const destPin = new PinElement({ background: "#DC2626", borderColor: "#B91C1C", glyphColor: "#fff", scale: 1.1 });
+        const destMarker = new AdvancedMarkerElement({ position: route.destinationLatLng, map, title: "Destination", content: destPin.element, zIndex: 10 });
+        markersRef.current.push(destMarker);
 
-        const marker = new google.maps.Marker({
-          position: { lat: station.lat, lng: station.lng },
-          map,
-          title: station.name,
-          icon: {
-            path: google.maps.SymbolPath.BACKWARD_CLOSED_ARROW,
-            scale: 7,
-            fillColor: station.prepassEligible ? "#2563EB" : "#F59E0B",
-            fillOpacity: 1,
-            strokeColor: stStatus === "open" ? "#16A34A" : stStatus === "closed" ? "#DC2626" : "#fff",
-            strokeWeight: stStatus !== "unknown" ? 2.5 : 1.5,
-          },
-          zIndex: 8,
+        // Weigh station markers
+        const stationsToShow = showOpenOnly
+          ? route.weighStations.filter((s) => getStationStatus(s.name) === "open")
+          : route.weighStations;
+
+        stationsToShow.forEach((station) => {
+          const stStatus = getStationStatus(station.name);
+          const statusColor = stStatus === "open" ? "#16A34A" : stStatus === "closed" ? "#DC2626" : "#9CA3AF";
+          const statusText = stStatus === "open" ? "Open" : stStatus === "closed" ? "Closed" : "Status unknown";
+
+          // Blue = PrePass eligible, amber = no bypass
+          const pinBg = station.prepassEligible ? "#2563EB" : "#F59E0B";
+          const pinBorder = stStatus === "open" ? "#16A34A" : stStatus === "closed" ? "#DC2626" : "#6B7280";
+
+          // Custom truck/scale SVG glyph
+          const glyphEl = document.createElement("div");
+          glyphEl.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h14l3 9-3 3H6l-3-3 3-9z"/><line x1="6" y1="12" x2="6" y2="21"/><line x1="18" y1="12" x2="18" y2="21"/><line x1="3" y1="21" x2="21" y2="21"/></svg>`;
+          glyphEl.style.display = "flex";
+          glyphEl.style.alignItems = "center";
+          glyphEl.style.justifyContent = "center";
+
+          const stationPin = new PinElement({
+            background: pinBg,
+            borderColor: pinBorder,
+            glyph: glyphEl,
+            scale: 0.9,
+          });
+
+          const marker = new AdvancedMarkerElement({
+            position: { lat: station.lat, lng: station.lng },
+            map,
+            title: station.name,
+            content: stationPin.element,
+            zIndex: 8,
+          });
+
+          const infoWindow = new google.maps.InfoWindow({
+            content: `
+              <div style="font-family:sans-serif;font-size:13px;max-width:220px">
+                <strong>${station.name}</strong><br/>
+                ${station.highway} ${station.direction} — MM ${station.milepost ?? "N/A"}<br/>
+                ${station.city}, ${station.state}<br/>
+                ${station.prepassEligible ? '<span style="color:#2563EB">&#10003; PrePass/Drivewyze eligible</span>' : '<span style="color:#D97706">No bypass program</span>'}<br/>
+                <span style="color:${statusColor};font-weight:600">&#9679; ${statusText}</span>
+                ${station.notes ? `<br/><em>${station.notes}</em>` : ""}
+                ${station.phone ? `<br/>&#128222; ${station.phone}` : ""}
+              </div>
+            `,
+          });
+
+          marker.addListener("click", () => { infoWindow.open(map, marker); });
+          markersRef.current.push(marker);
         });
-
-        const infoWindow = new google.maps.InfoWindow({
-          content: `
-            <div style="font-family:sans-serif;font-size:13px;max-width:220px">
-              <strong>${station.name}</strong><br/>
-              ${station.highway} ${station.direction} — MM ${station.milepost ?? "N/A"}<br/>
-              ${station.city}, ${station.state}<br/>
-              ${station.prepassEligible ? '<span style="color:#2563EB">✓ PrePass/Drivewyze eligible</span>' : '<span style="color:#D97706">No bypass program</span>'}<br/>
-              <span style="color:${statusColor};font-weight:600">● ${statusText}</span>
-              ${station.notes ? `<br/><em>${station.notes}</em>` : ""}
-              ${station.phone ? `<br/>📞 ${station.phone}` : ""}
-            </div>
-          `,
+      } else {
+        // Fallback: legacy markers if library not yet loaded
+        const originMarker = new google.maps.Marker({ position: route.originLatLng, map, title: "Origin", icon: { path: google.maps.SymbolPath.CIRCLE, scale: 10, fillColor: "#16A34A", fillOpacity: 1, strokeColor: "#fff", strokeWeight: 2 }, zIndex: 10 });
+        markersRef.current.push(originMarker);
+        const destMarker = new google.maps.Marker({ position: route.destinationLatLng, map, title: "Destination", icon: { path: google.maps.SymbolPath.CIRCLE, scale: 10, fillColor: "#DC2626", fillOpacity: 1, strokeColor: "#fff", strokeWeight: 2 }, zIndex: 10 });
+        markersRef.current.push(destMarker);
+        const stationsToShow = showOpenOnly ? route.weighStations.filter((s) => getStationStatus(s.name) === "open") : route.weighStations;
+        stationsToShow.forEach((station) => {
+          const stStatus = getStationStatus(station.name);
+          const statusColor = stStatus === "open" ? "#16A34A" : stStatus === "closed" ? "#DC2626" : "#9CA3AF";
+          const statusText = stStatus === "open" ? "Open" : stStatus === "closed" ? "Closed" : "Status unknown";
+          const marker = new google.maps.Marker({ position: { lat: station.lat, lng: station.lng }, map, title: station.name, icon: { path: google.maps.SymbolPath.BACKWARD_CLOSED_ARROW, scale: 7, fillColor: station.prepassEligible ? "#2563EB" : "#F59E0B", fillOpacity: 1, strokeColor: stStatus === "open" ? "#16A34A" : stStatus === "closed" ? "#DC2626" : "#fff", strokeWeight: stStatus !== "unknown" ? 2.5 : 1.5 }, zIndex: 8 });
+          const infoWindow = new google.maps.InfoWindow({ content: `<div style="font-family:sans-serif;font-size:13px;max-width:220px"><strong>${station.name}</strong><br/>${station.highway} ${station.direction} — MM ${station.milepost ?? "N/A"}<br/>${station.city}, ${station.state}<br/>${station.prepassEligible ? '<span style="color:#2563EB">&#10003; PrePass/Drivewyze eligible</span>' : '<span style="color:#D97706">No bypass program</span>'}<br/><span style="color:${statusColor};font-weight:600">&#9679; ${statusText}</span>${station.notes ? `<br/><em>${station.notes}</em>` : ""}${station.phone ? `<br/>&#128222; ${station.phone}` : ""}</div>` });
+          marker.addListener("click", () => { infoWindow.open(map, marker); });
+          markersRef.current.push(marker);
         });
-
-        marker.addListener("click", () => {
-          infoWindow.open(map, marker);
-        });
-
-        markersRef.current.push(marker);
-      });
+      }
 
       // Fit bounds
       const bounds = new google.maps.LatLngBounds(
@@ -730,8 +739,14 @@ export default function WeighStationPlanner() {
         {/* Right panel — map */}
         <div className="flex-1 min-h-[400px] lg:min-h-0 relative">
           <MapView
-            onMapReady={(map) => {
+            onMapReady={async (map) => {
               mapRef.current = map;
+              // Pre-load AdvancedMarkerElement library so drawRouteOnMap can use it synchronously
+              try {
+                markerLibRef.current = await google.maps.importLibrary("marker") as google.maps.MarkerLibrary;
+              } catch {
+                // library load failed — will fall back to legacy markers
+              }
               setMapReady(true);
               // Default view: Middle Tennessee
               map.setCenter({ lat: 36.25, lng: -87.53 });
