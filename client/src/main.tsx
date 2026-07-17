@@ -10,7 +10,20 @@ import "./index.css";
 
 const queryClient = new QueryClient();
 
+const isNetworkError = (error: unknown): boolean => {
+  // Pure network failures (server unreachable, connection reset, CORS pre-flight blocked)
+  // have no HTTP response — message is "Failed to fetch" or "Load failed".
+  // These are transient and should not trigger auth redirects or console errors.
+  if (error instanceof TypeError) return true;
+  if (error instanceof TRPCClientError) {
+    const msg = error.message.toLowerCase();
+    if (msg === "failed to fetch" || msg === "load failed" || msg === "network request failed") return true;
+  }
+  return false;
+};
+
 const redirectToLoginIfUnauthorized = (error: unknown) => {
+  if (isNetworkError(error)) return; // transient — skip redirect
   if (!(error instanceof TRPCClientError)) return;
   if (typeof window === "undefined") return;
 
@@ -25,7 +38,9 @@ queryClient.getQueryCache().subscribe(event => {
   if (event.type === "updated" && event.action.type === "error") {
     const error = event.query.state.error;
     redirectToLoginIfUnauthorized(error);
-    console.error("[API Query Error]", error);
+    if (!isNetworkError(error)) {
+      console.error("[API Query Error]", error);
+    }
   }
 });
 
@@ -33,7 +48,9 @@ queryClient.getMutationCache().subscribe(event => {
   if (event.type === "updated" && event.action.type === "error") {
     const error = event.mutation.state.error;
     redirectToLoginIfUnauthorized(error);
-    console.error("[API Mutation Error]", error);
+    if (!isNetworkError(error)) {
+      console.error("[API Mutation Error]", error);
+    }
   }
 });
 
