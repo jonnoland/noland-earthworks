@@ -387,12 +387,13 @@ function BidPrepModal({
 export default function GovContracts() {
   const [activeTab, setActiveTab] = useState<"federal" | "tn-state">("federal");
   const [naicsFilter, setNaicsFilter] = useState<string>("all");
+  const [stateFilter, setStateFilter] = useState<string>("all");
   const [page, setPage] = useState(0);
   const [selectedOpp, setSelectedOpp] = useState<Opportunity | null>(null);
   const [showAllTn, setShowAllTn] = useState(false);
 
   const { data, isLoading, isFetching, refetch } = trpc.govContracts.search.useQuery(
-    { naicsFilter, page },
+    { naicsFilter, stateFilter, page },
     {
       retry: 1,
       staleTime: 5 * 60 * 1000,
@@ -425,7 +426,7 @@ export default function GovContracts() {
   return (
     <DashboardLayout
       title="Government Contracts"
-      subtitle="Active solicitations within 150 miles of Vanleer, TN"
+      subtitle="Active solicitations in TN, southern KY, northern AL, and AR"
     >
       <div className="space-y-6">
 
@@ -652,7 +653,7 @@ export default function GovContracts() {
               <a href="https://sam.gov" target="_blank" rel="noopener noreferrer" className="text-amber-500 hover:underline">
                 SAM.gov
               </a>
-              {" "}— active solicitations within 150 miles of Vanleer, TN.
+              {" "}— active solicitations in Tennessee, southern Kentucky, northern Alabama, and Arkansas.
             </p>
           </div>
           <Button
@@ -669,6 +670,28 @@ export default function GovContracts() {
 
         {/* ── Filters ── */}
         <div className="flex flex-wrap gap-3 items-center">
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-muted-foreground">State:</span>
+            <Select value={stateFilter} onValueChange={(v) => { setStateFilter(v); handleFilterChange(); }}>
+              <SelectTrigger className="h-8 w-[160px] text-xs border-zinc-700 bg-zinc-900">
+                <SelectValue placeholder="All States" />
+              </SelectTrigger>
+              <SelectContent className="bg-zinc-900 border-zinc-700">
+                <SelectItem value="all" className="text-xs">All States{stateCounts ? ` (${Object.values(stateCounts).reduce((a, b) => a + b, 0)})` : ""}</SelectItem>
+                {[
+                  { code: "TN", label: "Tennessee" },
+                  { code: "KY", label: "Kentucky (S.)" },
+                  { code: "AL", label: "Alabama (N.)" },
+                  { code: "AR", label: "Arkansas" },
+                ].map(({ code, label }) => (
+                  <SelectItem key={code} value={code} className="text-xs">
+                    {label}{stateCounts[code] ? ` (${stateCounts[code]})` : ""}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
           <div className="flex items-center gap-2">
             <span className="text-xs text-muted-foreground">NAICS:</span>
             <Select value={naicsFilter} onValueChange={(v) => { setNaicsFilter(v); handleFilterChange(); }}>

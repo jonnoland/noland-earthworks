@@ -170,15 +170,59 @@ const CITY_COORDS: Record<string, [number, number]> = {
   "crossville": [35.9487, -85.0269],
   "livingston": [36.3812, -85.3228],
   "sparta": [35.9262, -85.4647],
-  // Nearby out-of-state cities within 150 miles
+  // Southern Kentucky (within ~120 miles of Vanleer)
   "hopkinsville": [36.8656, -87.4886],  // KY ~90mi
   "bowling green": [36.9903, -86.4436], // KY ~120mi
   "paducah": [37.0834, -88.5998],       // KY ~130mi
+  "murray": [36.6101, -88.3148],        // KY ~95mi
+  "madisonville": [37.3284, -87.4989],  // KY ~75mi
+  "princeton": [37.1090, -87.8817],     // KY ~80mi
+  "cadiz": [36.8651, -87.8350],         // KY ~80mi
+  "eddyville": [37.0951, -88.0800],     // KY ~100mi
+  "calvert city": [37.0337, -88.3498],  // KY ~115mi
+  "benton": [36.8573, -88.3509],        // KY ~105mi
+  "mayfield": [36.7423, -88.6367],      // KY ~115mi
+  "fulton": [36.5051, -88.8759],        // KY ~120mi
+  "oak grove": [36.6637, -87.4339],     // KY ~85mi
+  "elkton": [36.8090, -87.1531],        // KY ~75mi
+  "russellville": [36.8451, -86.8836],  // KY ~85mi
+  "franklin ky": [36.7223, -86.5778],   // KY ~90mi
+  "glasgow": [37.0001, -85.9122],       // KY ~120mi
+  "elizabethtown": [37.6959, -85.8591], // KY ~130mi
+  // Northern Alabama (within ~150 miles of Vanleer)
   "huntsville": [34.7304, -86.5861],    // AL ~140mi
   "muscle shoals": [34.7448, -87.6677], // AL ~100mi
   "florence": [34.7998, -87.6773],      // AL ~100mi
   "decatur": [34.6059, -86.9833],       // AL ~120mi
-  "corinth": [34.9343, -88.5223],       // MS ~130mi
+  "sheffield": [34.7659, -87.6986],     // AL ~100mi
+  "tuscumbia": [34.7312, -87.7053],     // AL ~100mi
+  "athens al": [34.8026, -86.9717],     // AL ~130mi
+  "hartselle": [34.4432, -86.9281],     // AL ~145mi
+  "cullman": [34.1748, -86.8436],       // AL ~160mi (edge)
+  "fort payne": [34.4443, -85.7197],    // AL ~175mi (outside)
+  "scottsboro": [34.6723, -86.0342],    // AL ~150mi
+  "guntersville": [34.3579, -86.2942],  // AL ~155mi (edge)
+  "rainsville": [34.4943, -85.8481],    // AL ~175mi (outside)
+  // Arkansas
+  "little rock": [34.7465, -92.2896],   // AR
+  "fort smith": [35.3859, -94.3985],    // AR
+  "jonesboro": [35.8423, -90.7043],     // AR
+  "fayetteville ar": [36.0626, -94.1574], // AR
+  "springdale": [36.1867, -94.1288],    // AR
+  "rogers": [36.3320, -94.1188],        // AR
+  "bentonville": [36.3729, -94.2088],   // AR
+  "texarkana": [33.4251, -94.0477],     // AR/TX
+  "el dorado": [33.2076, -92.6660],     // AR
+  "pine bluff": [34.2284, -92.0032],    // AR
+  "hot springs": [34.5037, -93.0552],   // AR
+  "conway": [35.0887, -92.4421],        // AR
+  "west memphis": [35.1465, -90.1843],  // AR
+  "blytheville": [35.9273, -89.9187],   // AR
+  "paragould": [36.0584, -90.4976],     // AR
+  "batesville": [35.7695, -91.6407],    // AR
+  "searcy": [35.2509, -91.7360],        // AR
+  "harrison": [36.2298, -93.1077],      // AR
+  "mountain home": [36.3354, -92.3849], // AR
 };
 
 /**
@@ -194,13 +238,14 @@ function haversineDistanceMiles(lat1: number, lng1: number, lat2: number, lng2: 
 }
 
 /**
- * Returns true if the opportunity's place of performance is within 150 miles of Vanleer, TN.
- * Strategy:
- *   1. Must be in TN (or no state specified — defaults to include).
- *   2. If a city is listed, check its approximate coordinates against the 150-mile radius.
- *   3. If only state=TN and no city, include it (all of TN fits within 150 miles of Vanleer).
+ * Service area states: TN (all), southern KY, northern AL, AR (all).
+ * For KY and AL we use haversine distance to restrict to the relevant portion.
  */
-function isWithin150MilesOfVanleer(result: SamResult): boolean {
+const SERVICE_AREA_STATES = new Set(["TN", "KY", "AL", "AR"]);
+const KY_MAX_MILES = 120; // southern Kentucky only
+const AL_MAX_MILES = 150; // northern Alabama only
+
+function isInServiceArea(result: SamResult): boolean {
   const pops = result.placeOfPerformance ?? [];
 
   // No place of performance listed — include (could be TN)
@@ -208,27 +253,34 @@ function isWithin150MilesOfVanleer(result: SamResult): boolean {
 
   return pops.some(pop => {
     const stateCode = pop.state?.code?.toUpperCase();
+    if (!stateCode) return true; // no state — include
+    if (!SERVICE_AREA_STATES.has(stateCode)) return false;
 
-    // Must be TN
-    if (stateCode && stateCode !== "TN") {
-      // Allow nearby out-of-state cities that are within 150 miles
+    // TN and AR — include all
+    if (stateCode === "TN" || stateCode === "AR") return true;
+
+    // KY — restrict to southern counties via city distance
+    if (stateCode === "KY") {
       const cityKey = pop.city?.name?.toLowerCase().trim() ?? "";
       const coords = CITY_COORDS[cityKey];
-      if (!coords) return false;
-      return haversineDistanceMiles(VANLEER_LAT, VANLEER_LNG, coords[0], coords[1]) <= MAX_RADIUS_MILES;
+      if (!coords) return true; // unknown KY city — include conservatively
+      return haversineDistanceMiles(VANLEER_LAT, VANLEER_LNG, coords[0], coords[1]) <= KY_MAX_MILES;
     }
 
-    // State is TN — check city distance if available
-    const cityKey = pop.city?.name?.toLowerCase().trim() ?? "";
-    if (cityKey && CITY_COORDS[cityKey]) {
-      const [lat, lng] = CITY_COORDS[cityKey];
-      return haversineDistanceMiles(VANLEER_LAT, VANLEER_LNG, lat, lng) <= MAX_RADIUS_MILES;
+    // AL — restrict to northern counties via city distance
+    if (stateCode === "AL") {
+      const cityKey = pop.city?.name?.toLowerCase().trim() ?? "";
+      const coords = CITY_COORDS[cityKey];
+      if (!coords) return true; // unknown AL city — include conservatively
+      return haversineDistanceMiles(VANLEER_LAT, VANLEER_LNG, coords[0], coords[1]) <= AL_MAX_MILES;
     }
 
-    // TN with no recognizable city — include (all TN is within 150 miles)
-    return stateCode === "TN";
+    return false;
   });
 }
+
+// Legacy alias
+const isWithin150MilesOfVanleer = isInServiceArea;
 
 // NAICS codes relevant to land clearing / forestry mulching
 const TARGET_NAICS = new Set(["115310", "561730", "238910", "562910", "237990", "333120"]);
@@ -316,8 +368,8 @@ function isRelevantByKeyword(title: string): boolean {
   return RELEVANT_KEYWORDS.some(kw => lower.includes(kw.toLowerCase()));
 }
 
-// Legacy alias kept for any remaining references
-const isNearbyState = isWithin150MilesOfVanleer;
+// Legacy alias
+const isNearbyState = isInServiceArea;
 
 function hasRelevantNaics(result: SamResult): boolean {
   const naics = result.naics ?? [];
@@ -371,6 +423,7 @@ export const govContractsRouter = router({
   search: adminProcedure
     .input(z.object({
       naicsFilter: z.string().optional(), // e.g. "115310" or "all"
+      stateFilter: z.string().optional(), // e.g. "TN", "KY", "AL", "AR", or "all"
       page: z.number().min(0).default(0),
     }))
     .query(async ({ input }) => {
@@ -420,8 +473,17 @@ export const govContractsRouter = router({
           );
         }
 
-        // Always apply 150-mile Vanleer radius filter (TN-focused)
-        filtered = filtered.filter(isWithin150MilesOfVanleer);
+        // Apply service area filter: TN, southern KY, northern AL, AR
+        filtered = filtered.filter(isInServiceArea);
+
+        // Apply state filter if specified
+        if (input.stateFilter && input.stateFilter !== "all") {
+          filtered = filtered.filter(r => {
+            const pops = r.placeOfPerformance ?? [];
+            const stateCode = pops.find(p => p.state?.code)?.state?.code?.toUpperCase();
+            return stateCode === input.stateFilter?.toUpperCase();
+          });
+        }
 
         // Sort: active deadlines first, then by posted date
         filtered.sort((a, b) => {

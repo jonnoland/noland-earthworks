@@ -2425,3 +2425,10 @@
 - [x] Update station card expanded section: replace prepassEligible display with "check PrePass or Trucker Path app" note
 - [x] Update header description to reflect OSM data source
 - [x] Fix UNKNOWN direction badge: hide direction badge when direction is UNKNOWN instead of showing orange badge
+
+## Gov Contracts Geographic Filter — July 2026
+
+- [x] Server: restrict federal contracts to TN, southern KY (counties within ~100mi of Vanleer), northern AL, and AR only — replace the current "150 miles of Vanleer" radius with explicit state allowlist
+- [x] Server: add stateFilter input param to govContracts.search procedure so the UI can filter by state server-side
+- [x] UI: add State filter/sort dropdown to Federal contracts tab (All States / TN / KY / AL / AR)
+- [x] UI: update subtitle from "150 miles of Vanleer" to reflect the actual state coverage
