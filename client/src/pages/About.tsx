@@ -200,7 +200,7 @@ export default function AboutPage() {
           className="absolute right-0 top-0 bottom-0 flex items-center"
           style={{ opacity: 0.04, pointerEvents: "none", paddingRight: "4rem" }}
         >
-          <img src={LOGO_URL} alt="" style={{ height: "340px", width: "auto" }} />
+          <img src={LOGO_URL} alt="Noland Earthworks logo watermark" role="presentation" style={{ height: "340px", width: "auto" }} />
         </div>
 
         <div className="container relative z-10 pb-14 pt-32">

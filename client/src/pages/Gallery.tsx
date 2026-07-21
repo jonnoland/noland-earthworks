@@ -57,7 +57,7 @@ function PhotoCard({ photo }: { photo: {
       <div style={{ position: "relative", aspectRatio: "16/9", overflow: "hidden" }}>
         <img
           src={photo.url}
-          alt={photo.title || SERVICE_LABELS[photo.serviceType] || "Job photo"}
+          alt={photo.title ? `${photo.title} — Noland Earthworks, Tennessee` : (SERVICE_LABELS[photo.serviceType] ? `${SERVICE_LABELS[photo.serviceType]} job — Noland Earthworks, Middle Tennessee` : "Forestry mulching job photo — Noland Earthworks, Tennessee")}
           style={{ width: "100%", height: "100%", objectFit: "cover" }}
           loading="lazy"
         />

@@ -132,10 +132,43 @@ export default function ServicePageLayout(props: ServicePageProps) {
         "@id": "https://nolandearthworks.com/#business",
         "name": "Noland Earthworks, LLC"
       },
-      "areaServed": {
-        "@type": "State",
-        "name": "Tennessee"
-      },
+      "areaServed": [
+        { "@type": "State", "name": "Tennessee", "sameAs": "https://www.wikidata.org/wiki/Q1509" },
+        { "@type": "AdministrativeArea", "name": "Davidson County, Tennessee" },
+        { "@type": "AdministrativeArea", "name": "Williamson County, Tennessee" },
+        { "@type": "AdministrativeArea", "name": "Rutherford County, Tennessee" },
+        { "@type": "AdministrativeArea", "name": "Wilson County, Tennessee" },
+        { "@type": "AdministrativeArea", "name": "Maury County, Tennessee" },
+        { "@type": "AdministrativeArea", "name": "Dickson County, Tennessee" },
+        { "@type": "AdministrativeArea", "name": "Cheatham County, Tennessee" },
+        { "@type": "AdministrativeArea", "name": "Robertson County, Tennessee" },
+        { "@type": "AdministrativeArea", "name": "Sumner County, Tennessee" },
+        { "@type": "AdministrativeArea", "name": "Montgomery County, Tennessee" },
+        { "@type": "AdministrativeArea", "name": "Bedford County, Tennessee" },
+        { "@type": "AdministrativeArea", "name": "Marshall County, Tennessee" },
+        { "@type": "AdministrativeArea", "name": "Hickman County, Tennessee" },
+        { "@type": "AdministrativeArea", "name": "Lewis County, Tennessee" },
+        { "@type": "AdministrativeArea", "name": "Perry County, Tennessee" },
+        { "@type": "AdministrativeArea", "name": "Wayne County, Tennessee" },
+        { "@type": "AdministrativeArea", "name": "Giles County, Tennessee" },
+        { "@type": "AdministrativeArea", "name": "Lincoln County, Tennessee" },
+        { "@type": "AdministrativeArea", "name": "Lawrence County, Tennessee" },
+        { "@type": "AdministrativeArea", "name": "Houston County, Tennessee" },
+        { "@type": "AdministrativeArea", "name": "Humphreys County, Tennessee" },
+        { "@type": "AdministrativeArea", "name": "Stewart County, Tennessee" },
+        { "@type": "AdministrativeArea", "name": "Trousdale County, Tennessee" },
+        { "@type": "AdministrativeArea", "name": "Cannon County, Tennessee" },
+        { "@type": "AdministrativeArea", "name": "Moore County, Tennessee" },
+        { "@type": "AdministrativeArea", "name": "Madison County, Tennessee" },
+        { "@type": "AdministrativeArea", "name": "Carroll County, Tennessee" },
+        { "@type": "AdministrativeArea", "name": "Chester County, Tennessee" },
+        { "@type": "AdministrativeArea", "name": "Decatur County, Tennessee" },
+        { "@type": "AdministrativeArea", "name": "Gibson County, Tennessee" },
+        { "@type": "AdministrativeArea", "name": "Hardin County, Tennessee" },
+        { "@type": "AdministrativeArea", "name": "Henderson County, Tennessee" },
+        { "@type": "AdministrativeArea", "name": "Henry County, Tennessee" },
+        { "@type": "AdministrativeArea", "name": "Weakley County, Tennessee" }
+      ],
       "url": `https://nolandearthworks.com/services/${slug}`
     };
     const faqSchema = {
@@ -395,7 +428,7 @@ export default function ServicePageLayout(props: ServicePageProps) {
                 >
                   <img
                     src={svc.heroImage}
-                    alt={svc.title}
+                    alt={`${svc.title} — Noland Earthworks, Middle Tennessee`}
                     style={{
                       width: "100%",
                       height: "100%",

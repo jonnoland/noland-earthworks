@@ -2432,3 +2432,17 @@
 - [x] Server: add stateFilter input param to govContracts.search procedure so the UI can filter by state server-side
 - [x] UI: add State filter/sort dropdown to Federal contracts tab (All States / TN / KY / AL / AR)
 - [x] UI: update subtitle from "150 miles of Vanleer" to reflect the actual state coverage
+
+## AI Visibility — FAQ Pages & Directory Copy — July 2026
+
+- [x] Create /resources/faq page with structured Q&A: what is forestry mulching, cost factors, best time of year, mulching vs bush hogging, what is included/excluded, how long does it take (already exists at /faq with 23 Q&As and FAQPage JSON-LD schema)
+- [x] Add FAQ page to Navbar Resources dropdown and sitemap (already in place)
+- [x] Create directory listing copy package document (Markdown): business description variants (short/medium/long), service list, keywords, GBP Q&A set, review request SMS/email template
+
+## AI Visibility Technical Improvements — July 2026
+
+- [x] Update robots.txt: allow GPTBot, OAI-SearchBot, PerplexityBot, ClaudeBot, Google-Extended, Applebot-Extended
+- [x] Create llms.txt at site root: business description, services, service area, contact info, key page URLs
+- [x] Expand LocalBusiness JSON-LD schema: add 35-county areaServed array, hasOfferCatalog with service types
+- [x] Add Service JSON-LD schema to each primary service page (ForestryMulching, LandManagement, BrushHogging)
+- [x] Audit image alt text across Gallery, HeroSection, and service pages for descriptive location+service keywords
