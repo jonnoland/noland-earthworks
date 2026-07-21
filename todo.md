@@ -2446,3 +2446,24 @@
 - [x] Expand LocalBusiness JSON-LD schema: add 35-county areaServed array, hasOfferCatalog with service types
 - [x] Add Service JSON-LD schema to each primary service page (ForestryMulching, LandManagement, BrushHogging)
 - [x] Audit image alt text across Gallery, HeroSection, and service pages for descriptive location+service keywords
+
+## Map Drawing + Deposit Collection (LandWorkPro Parity) — July 2026
+
+### Feature 1: Draw Work Area on Satellite Map
+- [x] CostEstimator: add "Draw Work Area" panel below the address/satellite section using Google Maps Drawing Manager (polygon tool)
+- [x] Auto-calculate acreage from drawn polygon using Google Maps geometry library, populate acreage field
+- [x] Capture drawn polygon as a static satellite map screenshot URL (Google Static Maps API with polygon overlay)
+- [x] Store drawn polygon coordinates and map screenshot URL in estimate result
+- [x] Display drawn map thumbnail in the satellite analysis box (replaces AI thumbnail when polygon is drawn)
+- [x] When saving estimate to lead, attach polygon coordinates and map URL to the lead record
+- [ ] Add mapPolygon and mapScreenshotUrl fields to opsLeads schema and run db:push
+
+### Feature 2: Stripe Deposit Collection via Quote
+- [x] Add "Collect Deposit" button to CostEstimator result card
+- [x] Create opsRouter.createQuotePayment procedure: takes estimate data, deposit amount (%), creates Stripe Checkout Session with line items matching the estimate, returns checkout URL
+- [x] Deposit amount selector: 25%, 33%, 50%, or custom dollar amount
+- [x] Checkout session metadata: job type, total price, deposit amount, client name, phone
+- [x] Success/cancel URLs: redirect to /ops/cost-estimator with status param
+- [ ] After payment: webhook updates lead stage to "proposal_sent" and records deposit amount
+- [x] Add "Send by SMS" option: checkbox + phone field in deposit dialog, sends Twilio SMS with payment link
+- [ ] Add depositAmount and depositPaidAt fields to opsLeads schema

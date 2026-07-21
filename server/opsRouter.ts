@@ -6364,5 +6364,81 @@ Generate a complete monthly ad campaign plan. Return ONLY valid JSON matching th
       });
       return { ok: true };
     }),
+
+  /**
+   * Create a Stripe Checkout Session for a deposit on a quoted job.
+   * Optionally sends the payment link via SMS using Twilio.
+   * Owner-only — called from the CostEstimator Collect Deposit dialog.
+   */
+  createQuotePayment: ownerProcedure
+    .input(z.object({
+      service: z.string().min(1),
+      totalPrice: z.number().positive(),
+      depositAmount: z.number().positive(),
+      clientName: z.string().optional(),
+      phone: z.string().optional(),
+      sendSms: z.boolean().default(false),
+      mapThumbnailUrl: z.string().optional(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const { getStripe, isStripeConfigured } = await import('./stripe');
+      if (!isStripeConfigured()) {
+        throw new TRPCError({ code: 'PRECONDITION_FAILED', message: 'Stripe is not configured.' });
+      }
+      const stripe = getStripe();
+      const depositCents = Math.round(input.depositAmount * 100);
+      const totalCents = Math.round(input.totalPrice * 100);
+      const balanceCents = totalCents - depositCents;
+      const clientLabel = input.clientName ? ` — ${input.clientName}` : '';
+      const depositPctLabel = Math.round(input.depositAmount / input.totalPrice * 100);
+      const fmtUsd = (cents: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(cents / 100);
+      const description = `Deposit for ${input.service}${clientLabel} (${depositPctLabel}% of ${fmtUsd(totalCents)})`;
+      const session = await stripe.checkout.sessions.create({
+        mode: 'payment',
+        line_items: [{
+          price_data: {
+            currency: 'usd',
+            unit_amount: depositCents,
+            product_data: {
+              name: description,
+              description: `Balance due on completion: ${fmtUsd(balanceCents)}. Noland Earthworks, LLC — Veteran-Owned Land Management`,
+            },
+          },
+          quantity: 1,
+        }],
+        allow_promotion_codes: false,
+        client_reference_id: ctx.user.id.toString(),
+        metadata: {
+          user_id: ctx.user.id.toString(),
+          payment_type: 'deposit',
+          service: input.service,
+          total_price: input.totalPrice.toString(),
+          deposit_amount: input.depositAmount.toString(),
+          client_name: input.clientName ?? '',
+          client_phone: input.phone ?? '',
+        },
+        success_url: 'https://nolandearth-pymczdcn.manus.space/ops/cost-estimator?deposit=success',
+        cancel_url: 'https://nolandearth-pymczdcn.manus.space/ops/cost-estimator?deposit=cancelled',
+      });
+      if (!session.url) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Stripe did not return a checkout URL.' });
+      let smsSent = false;
+      if (input.sendSms && input.phone && ENV.twilioAccountSid && ENV.twilioAuthToken && ENV.twilioFromNumber) {
+        try {
+          const twilio = await import('twilio');
+          const client = twilio.default(ENV.twilioAccountSid, ENV.twilioAuthToken);
+          const depositFmt = fmtUsd(depositCents);
+          const smsBody = `Hi${input.clientName ? ' ' + input.clientName : ''}! Your deposit of ${depositFmt} for ${input.service} with Noland Earthworks is ready. Pay securely here: ${session.url} — Jon Noland, 615-406-4819`;
+          await client.messages.create({
+            body: smsBody,
+            to: input.phone,
+            from: ENV.twilioFromNumber,
+          });
+          smsSent = true;
+        } catch (err) {
+          console.error('[createQuotePayment] SMS send failed:', err);
+        }
+      }
+      return { checkoutUrl: session.url, sessionId: session.id, smsSent };
+    }),
 });
 

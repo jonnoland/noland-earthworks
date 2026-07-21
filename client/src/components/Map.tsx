@@ -52,6 +52,21 @@
  * const dist = google.maps.geometry.spherical.computeDistanceBetween(p1, p2);
  *
  * -------------------------------
+ * ✏️ DRAWING (from `drawing` library)
+ * - Attach DrawingManager to map to enable polygon/polyline/rectangle drawing.
+ * const dm = new google.maps.drawing.DrawingManager({
+ *   drawingMode: google.maps.drawing.OverlayType.POLYGON,
+ *   drawingControl: true,
+ *   map,
+ *   polygonOptions: { fillColor: "#E07B2A", fillOpacity: 0.25, strokeColor: "#E07B2A" },
+ * });
+ * google.maps.event.addListener(dm, "overlaycomplete", (e) => {
+ *   const polygon = e.overlay as google.maps.Polygon;
+ *   const areaSqM = google.maps.geometry.spherical.computeArea(polygon.getPath());
+ *   const acres = areaSqM / 4046.86;
+ * });
+ *
+ * -------------------------------
  * 🛣️ ROUTES (from `routes` library)
  * - Combines DirectionsService (standalone) + DirectionsRenderer (map-attached)
  * const directionsService = new google.maps.DirectionsService();
@@ -69,9 +84,9 @@
  *
  * -------------------------------
  * ✅ SUMMARY
- * - “map-attached” → AdvancedMarkerElement, DirectionsRenderer, Layers.
- * - “standalone” → Geocoder, DirectionsService, DistanceMatrixService, ElevationService.
- * - “data-only” → Place, Geometry utilities.
+ * - "map-attached" → AdvancedMarkerElement, DirectionsRenderer, Layers.
+ * - "standalone" → Geocoder, DirectionsService, DistanceMatrixService, ElevationService.
+ * - "data-only" → Place, Geometry utilities.
  */
 
 /// <reference types="@types/google.maps" />
@@ -139,7 +154,7 @@ export function loadMapScript() {
     // loading=async is required by Google Maps to suppress the "loaded without loading=async" warning.
     // With loading=async, script.onload fires before google.maps.Map is ready — so we must
     // poll for the constructor to be available after the script loads.
-    script.src = `/api/maps/js?v=weekly&libraries=marker,places,geocoding,geometry&loading=async`;
+    script.src = `/api/maps/js?v=weekly&libraries=marker,places,geocoding,geometry,drawing&loading=async`;
     script.async = true;
     script.crossOrigin = "anonymous";
     script.onload = () => {
