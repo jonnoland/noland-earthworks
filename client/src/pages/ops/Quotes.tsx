@@ -2708,17 +2708,10 @@ function WebsiteRequestCard({
   };
 
   function handleBuildQuote() {
-    onBuildQuote({
-      clientName: submission.name,
-      clientPhone: submission.phone,
-      clientEmail: submission.email,
-      clientAddress: address,
-      jobType: analysis
-        ? `${submission.service} — ${submission.acreage ?? ""} ${submission.county} County`.trim()
-        : submission.service,
-      message: analysis ? editedMessage : undefined,
-      lineItems: analysis?.lineItems,
-    });
+    const params = new URLSearchParams();
+    if (submission.name) params.set("clientName", submission.name);
+    if (address) params.set("address", address);
+    window.location.href = `/ops/cost-estimator?${params.toString()}`;
   }
 
   return (
@@ -2820,7 +2813,7 @@ function WebsiteRequestCard({
           </button>
           <button
             onClick={handleBuildQuote}
-            title="Build Quote in Jobber"
+            title="Build Quote (Native Cost Estimator)"
             className="flex items-center gap-1 text-[11px] font-medium text-primary hover:text-primary/80 transition-colors"
           >
             <PlusCircle className="w-3 h-3" />
@@ -3206,7 +3199,7 @@ function WebsiteRequestCard({
               onClick={handleBuildQuote}
             >
               <PlusCircle className="w-3.5 h-3.5" />
-              Build Quote in Jobber
+              Build Quote (Native)
             </Button>
           </div>
         </div>
@@ -3827,15 +3820,15 @@ function WebsiteRequestsSection({
                         size="sm"
                         variant="outline"
                         className="flex-1 h-7 text-xs"
-                        onClick={() => onBuildQuote({
-                          clientName: fq.name,
-                          clientEmail: fq.email ?? undefined,
-                          jobType: [fq.serviceType, fq.acreage ? `${fq.acreage} acres` : null].filter(Boolean).join(" — "),
-                          message: fq.aiDraftResponse ?? undefined,
-                        })}
+                        onClick={() => {
+                          const params = new URLSearchParams();
+                          if (fq.name) params.set("clientName", fq.name);
+                          if (fq.address) params.set("address", fq.address ?? "");
+                          window.location.href = `/ops/cost-estimator?${params.toString()}`;
+                        }}
                       >
                         <Plus className="w-3 h-3 mr-1" />
-                        Build Quote in Jobber
+                        Build Quote (Native)
                       </Button>
                       {confirmDeleteFieldId === fq.id ? (
                         <div className="flex gap-1">

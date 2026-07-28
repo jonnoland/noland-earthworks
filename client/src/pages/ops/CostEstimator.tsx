@@ -396,8 +396,15 @@ export default function CostEstimator() {
   const [addOns, setAddOns] = useState<string[]>([]);
   const [fenceLineLF, setFenceLineLF] = useState("");
 
-  // Satellite auto-fill
-  const [propertyAddress, setPropertyAddress] = useState("");
+  // Satellite auto-fill — read URL params for field quote prefill
+  const [propertyAddress, setPropertyAddress] = useState(() => {
+    const params = new URLSearchParams(window.location.search);
+    return params.get("address") ?? "";
+  });
+  const [prefillClientName] = useState(() => {
+    const params = new URLSearchParams(window.location.search);
+    return params.get("clientName") ?? "";
+  });
   const [satelliteAnalysis, setSatelliteAnalysis] = useState<string | null>(null);
   const [satelliteMapUrl, setSatelliteMapUrl] = useState<string | null>(null);
 
@@ -413,7 +420,7 @@ export default function CostEstimator() {
   const [customDepositAmt, setCustomDepositAmt] = useState("");
   const [depositPhone, setDepositPhone] = useState("");
   const [depositSendSms, setDepositSendSms] = useState(false);
-  const [depositClientName, setDepositClientName] = useState("");
+  const [depositClientName, setDepositClientName] = useState(prefillClientName);
 
   const analyzeProperty = trpc.ops.analyzePropertySatellite.useMutation({
     onSuccess: (data) => {
