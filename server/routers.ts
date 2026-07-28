@@ -20,6 +20,7 @@ import { galleryRouter } from "./galleryRouter";
 import { aiVisibilityRouter } from "./routers/aiVisibility";
 import { govContractsRouter } from "./govContractsRouter";
 import { routePlannerRouter } from "./routePlannerRouter";
+import { quotePortalRouter } from "./quotePortalRouter";
 import { getDb } from "./db";
 import { businessSettings } from "../drizzle/schema";
 
@@ -55,6 +56,7 @@ export const appRouter = router({
   aiVisibility: aiVisibilityRouter,
   govContracts: govContractsRouter,
   routePlanner: routePlannerRouter,
+  quotePortal: quotePortalRouter,
 
   /**
    * Public site configuration — read-only, no auth required.

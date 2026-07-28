@@ -94,7 +94,7 @@ import {
   ResponsiveContainer, PieChart, Pie, Cell, Legend, ComposedChart, Line, Area,
 } from "recharts";
 import {
-  TrendingUp, ArrowLeft, Send, XCircle, MapPin as MapPinIcon,
+  TrendingUp, ArrowLeft, Send, XCircle, MapPin as MapPinIcon, CreditCard,
 } from "lucide-react";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -4117,6 +4117,9 @@ function DistanceQuotesTab() {
   const [expandedId, setExpandedId] = useState<number | null>(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null);
   const [emailConfirmId, setEmailConfirmId] = useState<number | null>(null);
+  const [portalConfirmId, setPortalConfirmId] = useState<number | null>(null);
+  const [portalNote, setPortalNote] = useState("");
+  const [copiedPortalId, setCopiedPortalId] = useState<number | null>(null);
 
   const { data: dqQuotes = [], isLoading: dqLoading, refetch: dqRefetch } = trpc.ops.distanceQuotes.list.useQuery();
   const dqUpdateStatus = trpc.ops.distanceQuotes.updateStatus.useMutation({
@@ -4129,6 +4132,17 @@ function DistanceQuotesTab() {
   });
   const dqEmail = trpc.ops.distanceQuotes.emailQuote.useMutation({
     onSuccess: () => { dqRefetch(); toast.success("Quote emailed to client."); setEmailConfirmId(null); },
+    onError: (e) => toast.error(e.message),
+  });
+  const dqSendPortal = trpc.ops.distanceQuotes.sendPortalLink.useMutation({
+    onSuccess: (data) => {
+      dqRefetch();
+      toast.success("Portal link sent to client.");
+      setPortalConfirmId(null);
+      setPortalNote("");
+      // Copy link to clipboard
+      navigator.clipboard.writeText(data.portalUrl).catch(() => {});
+    },
     onError: (e) => toast.error(e.message),
   });
 
@@ -4291,6 +4305,76 @@ function DistanceQuotesTab() {
                           <Mail className="w-3.5 h-3.5" />Email Quote
                         </button>
                       )
+                    )}
+                    {/* Send Portal Link */}
+                    {quote.clientEmail && (
+                      portalConfirmId === quote.id ? (
+                        <div className="flex flex-col gap-2 w-full border-t border-border pt-3 mt-1">
+                          <p className="text-xs text-amber-400 font-medium">Send portal link to {quote.clientEmail}?</p>
+                          <p className="text-[11px] text-muted-foreground">Client will receive a branded email with a link to view, approve/decline, and pay a deposit — no login required.</p>
+                          <input
+                            type="text"
+                            placeholder="Optional note to include in the email..."
+                            value={portalNote}
+                            onChange={e => setPortalNote(e.target.value)}
+                            className="w-full text-xs bg-secondary border border-border rounded-md px-3 py-2 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                          />
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => dqSendPortal.mutate({ id: quote.id, note: portalNote || undefined })}
+                              disabled={dqSendPortal.isPending}
+                              className="flex items-center gap-1 text-xs bg-amber-500 hover:bg-amber-400 text-black font-semibold px-3 py-1.5 rounded-md transition-all disabled:opacity-50"
+                            >
+                              <Send className="w-3 h-3" />{dqSendPortal.isPending ? "Sending..." : "Send Portal Link"}
+                            </button>
+                            <button onClick={() => { setPortalConfirmId(null); setPortalNote(""); }} className="text-xs text-muted-foreground hover:text-foreground transition-colors">Cancel</button>
+                          </div>
+                        </div>
+                      ) : (
+                        <button
+                          onClick={() => setPortalConfirmId(quote.id)}
+                          className="flex items-center gap-1.5 text-xs text-amber-400 hover:text-amber-300 transition-colors px-2 py-1.5"
+                        >
+                          <ExternalLink className="w-3.5 h-3.5" />
+                          {(quote as any).portalToken ? "Resend Portal Link" : "Send Portal Link"}
+                        </button>
+                      )
+                    )}
+                    {/* Portal status indicators */}
+                    {(quote as any).portalToken && (
+                      <div className="flex items-center gap-3 text-[11px] text-muted-foreground ml-auto">
+                        {(quote as any).portalViewedAt && (
+                          <span className="flex items-center gap-1 text-blue-400">
+                            <Eye className="w-3 h-3" />Viewed {fmtDate((quote as any).portalViewedAt)}
+                          </span>
+                        )}
+                        {(quote as any).clientAction === "approved" && (
+                          <span className="flex items-center gap-1 text-green-400">
+                            <CheckCircle className="w-3 h-3" />Approved
+                          </span>
+                        )}
+                        {(quote as any).clientAction === "declined" && (
+                          <span className="flex items-center gap-1 text-red-400">
+                            <XCircle className="w-3 h-3" />Declined
+                          </span>
+                        )}
+                        {(quote as any).depositPaidAt && (
+                          <span className="flex items-center gap-1 text-green-400">
+                            <CreditCard className="w-3 h-3" />Deposit paid
+                          </span>
+                        )}
+                        <button
+                          onClick={() => {
+                            const url = `https://nolandearth-pymczdcn.manus.space/quote/${(quote as any).portalToken}`;
+                            navigator.clipboard.writeText(url);
+                            setCopiedPortalId(quote.id);
+                            setTimeout(() => setCopiedPortalId(null), 2000);
+                          }}
+                          className="flex items-center gap-1 text-zinc-500 hover:text-zinc-300 transition-colors"
+                        >
+                          <Copy className="w-3 h-3" />{copiedPortalId === quote.id ? "Copied!" : "Copy link"}
+                        </button>
+                      </div>
                     )}
                     {deleteConfirmId === quote.id ? (
                       <div className="flex items-center gap-2">

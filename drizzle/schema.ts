@@ -455,9 +455,22 @@ export const distanceQuotes = mysqlTable("distance_quotes", {
   targetMarginPct: int("targetMarginPct").notNull().default(30),
   /** Status */
   status: mysqlEnum("status", ["draft", "sent", "accepted", "declined", "expired"]).notNull().default("draft"),
+  /** Client portal — token-authenticated public URL for client to view/approve/decline */
+  portalToken: varchar("portalToken", { length: 64 }),
+  /** Client action on the portal: null = not yet viewed, 'approved' | 'declined' */
+  clientAction: mysqlEnum("clientAction", ["approved", "declined"]),
+  /** Timestamp when client approved or declined */
+  clientActionAt: timestamp("clientActionAt"),
+  /** Deposit collected via Stripe (cents) — set after checkout.session.completed */
+  depositPaidCents: int("depositPaidCents"),
+  /** Timestamp when deposit was paid */
+  depositPaidAt: timestamp("depositPaidAt"),
+  /** Stripe session ID for the deposit — used to match webhook events */
+  depositSessionId: varchar("depositSessionId", { length: 120 }),
   /** Timestamps */
   sentAt: timestamp("sentAt"),
   emailedAt: timestamp("emailedAt"),
+  portalViewedAt: timestamp("portalViewedAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });

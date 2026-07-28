@@ -2467,3 +2467,18 @@
 - [ ] After payment: webhook updates lead stage to "proposal_sent" and records deposit amount
 - [x] Add "Send by SMS" option: checkbox + phone field in deposit dialog, sends Twilio SMS with payment link
 - [ ] Add depositAmount and depositPaidAt fields to opsLeads schema
+
+## Native Client Quote Portal (Jobber Replacement) — Jul 2026
+
+- [x] Schema: add portalToken, clientAction, clientActionAt, depositPaidCents, depositPaidAt, depositSessionId, portalViewedAt fields to distanceQuotes
+- [x] Run db:push to apply schema migration (0095)
+- [x] Server: quotePortalRouter — public getByToken procedure (marks portalViewedAt on first view, notifies owner)
+- [x] Server: quotePortalRouter — clientAction procedure (approve/decline, updates status, sends confirmation email, notifies owner)
+- [x] Server: quotePortalRouter — createDepositSession procedure (Stripe Checkout Session for client deposit, stores depositSessionId)
+- [x] Server: wire quotePortalRouter into routers.ts as quotePortal
+- [x] Server: sendPortalLink procedure in distanceQuotesRouter (crypto token, branded email via Resend, marks quote sent)
+- [x] Server: buildPortalEmail HTML email template (Noland Earthworks branded, CTA button, optional note)
+- [x] Frontend: /quote/:token public portal page (QuotePortal.tsx) — full quote view, approve/decline, deposit payment
+- [x] Frontend: Send Portal Link button in /ops/quotes Quotes.tsx with optional note field and confirm flow
+- [x] Frontend: portal status indicators in quote card (Viewed date, Approved/Declined badge, Deposit paid badge, Copy link button)
+- [x] Frontend: App.tsx route /quote/:token registered as public lazy route

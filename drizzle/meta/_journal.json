@@ -666,6 +666,13 @@
       "when": 1784232122372,
       "tag": "0094_smart_vulcan",
       "breakpoints": true
+    },
+    {
+      "idx": 95,
+      "version": "5",
+      "when": 1785248387040,
+      "tag": "0095_charming_tattoo",
+      "breakpoints": true
     }
   ]
 }

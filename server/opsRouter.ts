@@ -2786,6 +2786,64 @@ const distanceQuotesRouter = router({
       return { success: true };
     }),
 
+  /**
+   * Generate a unique portal token for a quote and send the client a branded email
+   * with a link to view, approve/decline, and pay a deposit — no login required.
+   * If a token already exists, reuses it (idempotent re-send).
+   */
+  sendPortalLink: ownerProcedure
+    .input(z.object({
+      id: z.number().int().positive(),
+      /** Optional custom note from Jon to include in the email */
+      note: z.string().max(500).optional(),
+    }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'DB unavailable' });
+
+      const [quote] = await db.select().from(distanceQuotes).where(eq(distanceQuotes.id, input.id)).limit(1);
+      if (!quote) throw new TRPCError({ code: 'NOT_FOUND', message: 'Quote not found' });
+      if (!quote.clientEmail) throw new TRPCError({ code: 'BAD_REQUEST', message: 'This quote has no client email address.' });
+
+      // Generate or reuse portal token
+      let token = quote.portalToken;
+      if (!token) {
+        const { randomBytes } = await import('crypto');
+        token = randomBytes(32).toString('hex');
+        await db.update(distanceQuotes)
+          .set({ portalToken: token })
+          .where(eq(distanceQuotes.id, input.id));
+      }
+
+      const PORTAL_BASE_URL = 'https://nolandearth-pymczdcn.manus.space';
+      const portalUrl = `${PORTAL_BASE_URL}/quote/${token}`;
+      const fmt = (cents: number) =>
+        new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(cents / 100);
+      const jobLabel = quote.jobType.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+      const firstName = quote.clientName.split(' ')[0];
+
+      const html = buildPortalEmail(firstName, jobLabel, quote.jobAddress, fmt(quote.adjustedJobTotalCents), portalUrl, input.note);
+
+      if (!ENV.resendApiKey) throw new TRPCError({ code: 'PRECONDITION_FAILED', message: 'Email service not configured.' });
+      const { Resend } = await import('resend');
+      const resend = new Resend(ENV.resendApiKey);
+      const { error } = await resend.emails.send({
+        from: 'Noland Earthworks <noreply@nolandearthworks.com>',
+        to: quote.clientEmail,
+        replyTo: 'jon@nolandearthworks.com',
+        subject: `Your Quote from Noland Earthworks — ${jobLabel}`,
+        html,
+      });
+      if (error) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: `Email failed: ${error.message}` });
+
+      // Mark as sent
+      await db.update(distanceQuotes)
+        .set({ status: 'sent', sentAt: new Date(), emailedAt: new Date() })
+        .where(eq(distanceQuotes.id, input.id));
+
+      return { success: true, portalUrl, token };
+    }),
+
   analytics: ownerProcedure.query(async () => {
     const db = await getDb();
     if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
@@ -4275,6 +4333,52 @@ Return only the message text, no preamble or explanation.`;
       return { ok: true };
     }),
 });
+
+// ─── Portal Email Template ────────────────────────────────────────────────────
+function buildPortalEmail(
+  firstName: string,
+  jobLabel: string,
+  address: string,
+  total: string,
+  portalUrl: string,
+  note?: string,
+): string {
+  return `<!DOCTYPE html><html><head><meta charset="UTF-8"><style>
+    body{margin:0;padding:0;background:#f4f4f4;font-family:Arial,sans-serif;}
+    .wrapper{max-width:600px;margin:0 auto;background:#fff;}
+    .header{background:#1a1a1a;padding:24px 32px;}
+    .header h1{color:#f0a500;margin:0;font-size:20px;letter-spacing:.5px;}
+    .header p{color:#888;margin:4px 0 0;font-size:12px;}
+    .body{padding:32px;}
+    .greeting{font-size:16px;font-weight:700;color:#1a1a1a;margin-bottom:16px;}
+    .section-title{font-size:11px;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:.8px;margin:24px 0 8px;border-bottom:1px solid #eee;padding-bottom:6px;}
+    .row{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #f0f0f0;font-size:13px;color:#444;}
+    .label{color:#888;}
+    .value{font-weight:600;color:#1a1a1a;}
+    .total-row{display:flex;justify-content:space-between;padding:10px 0;font-size:15px;font-weight:700;color:#1a1a1a;border-top:2px solid #1a1a1a;margin-top:4px;}
+    .cta{text-align:center;margin:32px 0;}
+    .cta a{background:#f0a500;color:#1a1a1a;font-weight:700;font-size:15px;padding:14px 36px;border-radius:4px;text-decoration:none;letter-spacing:.3px;display:inline-block;}
+    .disclaimer{font-size:11px;color:#aaa;line-height:1.6;margin-top:24px;}
+    .footer{background:#f4f4f4;padding:16px 32px;font-size:11px;color:#999;text-align:center;}
+    a{color:#f0a500;}
+  </style></head><body><div class="wrapper">
+    <div class="header"><h1>Noland Earthworks, LLC</h1><p>Veteran-Owned &amp; Operated &bull; Middle &amp; West Tennessee</p></div>
+    <div class="body">
+      <p class="greeting">Hi ${firstName},</p>
+      <p style="font-size:14px;line-height:1.7;color:#333;">Thank you for reaching out. I put together an estimate for your project based on the details you provided. You can review the full quote, ask questions, and approve or decline it using the link below &mdash; no account required.</p>
+      <div class="section-title">Project Summary</div>
+      <div class="row"><span class="label">Service</span><span class="value">${jobLabel}</span></div>
+      <div class="row"><span class="label">Job Site</span><span class="value">${address}</span></div>
+      <div class="total-row"><span>Estimated Total</span><span class="value">${total}</span></div>
+      ${note ? `<div class="section-title">Note from Jon</div><p style="font-size:13px;color:#555;line-height:1.6;">${note}</p>` : ''}
+      <p class="disclaimer">This is a preliminary estimate based on the information available. A site visit is required to confirm the final scope and price. Pricing may vary based on terrain, vegetation density, access, and site conditions.</p>
+      <div class="cta"><a href="${portalUrl}">View &amp; Respond to Your Quote</a></div>
+      <p style="text-align:center;font-size:12px;color:#888;">Or call Jon directly: <strong>615-406-4819</strong></p>
+    </div>
+    <div class="footer">Noland Earthworks, LLC &bull; Vanleer, TN &bull; <a href="https://www.nolandearthworks.com">nolandearthworks.com</a><br/>Veteran-owned and operated. Licensed and insured.</div>
+  </div></body></html>`;
+}
+
 export const opsRouter = router({
   jobs: jobsRouter,
   leads: leadsRouter,

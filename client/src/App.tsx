@@ -57,6 +57,7 @@ const OpsRoutePlanner    = lazy(() => import("./pages/ops/WeighStationPlanner"))
 const PaymentPortal  = lazy(() => import("./pages/portal/PaymentPortal"));
 const PaymentSuccess = lazy(() => import("./pages/portal/PaymentSuccess"));
 const PaymentCancel  = lazy(() => import("./pages/portal/PaymentCancel"));
+const QuotePortal    = lazy(() => import("./pages/QuotePortal"));
 
 // ── Public pages (eagerly loaded — fast first paint for visitors) ─────────────
 import Home from "./pages/Home";
@@ -417,6 +418,10 @@ function Router() {
         <Suspense fallback={<OpsLoading />}><OwnerRoute><OpsRoutePlanner /></OwnerRoute></Suspense>
       </Route>
 
+      {/* Client quote portal — token-authenticated, no login required */}
+      <Route path="/quote/:token">
+        <Suspense fallback={<OpsLoading />}><QuotePortal /></Suspense>
+      </Route>
       {/* Customer payment portal — lazy-loaded */}
       <Route path="/portal">
         <Suspense fallback={<OpsLoading />}><PaymentPortal /></Suspense>
