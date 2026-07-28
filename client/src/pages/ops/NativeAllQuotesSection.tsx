@@ -28,6 +28,7 @@ import {
   FileText, ExternalLink, Sparkles, Info, AlertTriangle,
   RefreshCw, ChevronRight, MapPin, Phone, Mail, User, X, Globe
 } from "lucide-react";
+import { WebsiteRequestsSection } from "./Quotes";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface LineItem {
@@ -160,24 +161,33 @@ function QuoteFormModal({
   onClose,
   editQuote,
   onSaved,
+  prefill,
 }: {
   open: boolean;
   onClose: () => void;
   editQuote?: NativeQuote | null;
   onSaved: () => void;
+  prefill?: {
+    clientName?: string;
+    clientPhone?: string;
+    clientEmail?: string;
+    propertyAddress?: string;
+    serviceType?: string;
+    clientMessage?: string;
+  };
 }) {
   const utils = trpc.useUtils();
 
   const blankForm = (): QuoteFormData => ({
-    clientName: "",
-    clientEmail: "",
-    clientPhone: "",
-    propertyAddress: "",
+    clientName: prefill?.clientName ?? "",
+    clientEmail: prefill?.clientEmail ?? "",
+    clientPhone: prefill?.clientPhone ?? "",
+    propertyAddress: prefill?.propertyAddress ?? "",
     title: "",
-    serviceType: "Forestry Mulching",
+    serviceType: prefill?.serviceType ?? "Forestry Mulching",
     acreage: "",
     estimatedDuration: "",
-    clientMessage: "",
+    clientMessage: prefill?.clientMessage ?? "",
     internalNotes: "",
     lineItems: DEFAULT_LINE_ITEMS.map(li => ({ ...li })),
   });
@@ -1133,6 +1143,14 @@ export function NativeAllQuotesSection() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [showCreate, setShowCreate] = useState(false);
+  const [createPrefill, setCreatePrefill] = useState<{
+    clientName?: string;
+    clientPhone?: string;
+    clientEmail?: string;
+    propertyAddress?: string;
+    serviceType?: string;
+    clientMessage?: string;
+  } | undefined>(undefined);
   const [editQuote, setEditQuote] = useState<NativeQuote | null>(null);
   const [selectedQuote, setSelectedQuote] = useState<NativeQuote | null>(null);
   const importMutation = trpc.nativeQuotes.importFromJobber.useMutation({
@@ -1173,174 +1191,199 @@ export function NativeAllQuotesSection() {
 
   return (
     <div className="space-y-5 pb-10">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-        <div className="flex items-center gap-2">
-          <FileText className="w-5 h-5 text-primary" />
-          <h2 className="text-base font-semibold text-foreground">All Quotes</h2>
+      {/* ── Two-column grid: left = Quotes table, right = Website Requests ── */}
+      <div className="grid grid-cols-1 xl:grid-cols-5 gap-6 items-start">
+        {/* ── LEFT: Quotes table (3/5 width on xl) ── */}
+        <div className="xl:col-span-3 space-y-4">
+          {/* Header */}
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <FileText className="w-5 h-5 text-primary" />
+              <h2 className="text-base font-semibold text-foreground">All Quotes</h2>
+              {!isLoading && (
+                <Badge variant="secondary" className="text-xs">{counts.all} total</Badge>
+              )}
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="relative flex-1 sm:w-56">
+                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+                <Input
+                  placeholder="Search quotes..."
+                  value={search}
+                  onChange={e => setSearch(e.target.value)}
+                  className="pl-8 h-8 text-xs bg-secondary/30 border-border"
+                />
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 px-2"
+                onClick={() => refetch()}
+                disabled={isFetching}
+                aria-label="Refresh"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${isFetching ? "animate-spin" : ""}`} />
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 gap-1.5 text-xs"
+                onClick={() => importMutation.mutate()}
+                disabled={importMutation.isPending}
+                title="Import all quotes from Jobber into All Quotes"
+              >
+                {importMutation.isPending ? (
+                  <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                ) : (
+                  <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                )}
+                Import Jobber
+              </Button>
+              <Button
+                size="sm"
+                className="h-8 gap-1.5 text-xs"
+                onClick={() => { setCreatePrefill(undefined); setShowCreate(true); }}
+              >
+                <Plus className="w-3.5 h-3.5" />New Quote
+              </Button>
+            </div>
+          </div>
+
+          {/* Status filter pills */}
           {!isLoading && (
-            <Badge variant="secondary" className="text-xs">{counts.all} total</Badge>
+            <div className="flex flex-wrap gap-1.5">
+              {statuses.map(s => (
+                <button
+                  key={s.value}
+                  onClick={() => setStatusFilter(s.value)}
+                  className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
+                    statusFilter === s.value
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-secondary/40 text-muted-foreground hover:bg-secondary/70"
+                  }`}
+                >
+                  {s.label} ({s.count})
+                </button>
+              ))}
+            </div>
           )}
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="relative flex-1 sm:w-56">
-            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
-            <Input
-              placeholder="Search quotes..."
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              className="pl-8 h-8 text-xs bg-secondary/30 border-border"
+
+          {/* Loading */}
+          {isLoading && (
+            <div className="flex items-center justify-center py-20">
+              <RefreshCw className="w-6 h-6 animate-spin text-muted-foreground" />
+            </div>
+          )}
+
+          {/* Empty */}
+          {!isLoading && quotes.length === 0 && (
+            <div className="flex flex-col items-center justify-center py-16 text-center gap-3">
+              <FileText className="w-10 h-10 text-muted-foreground/40" />
+              <p className="text-sm text-muted-foreground">
+                {search || statusFilter !== "all" ? "No quotes match your filters." : "No quotes yet. Create your first quote."}
+              </p>
+              {!search && statusFilter === "all" && (
+                <Button size="sm" className="gap-1.5" onClick={() => { setCreatePrefill(undefined); setShowCreate(true); }}>
+                  <Plus className="w-3.5 h-3.5" />Create First Quote
+                </Button>
+              )}
+            </div>
+          )}
+
+          {/* Table */}
+          {!isLoading && quotes.length > 0 && (
+            <div className="rounded-lg border border-border overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs">
+                  <thead>
+                    <tr className="border-b border-border bg-secondary/20">
+                      <th className="text-left px-4 py-2.5 font-medium text-muted-foreground">Title</th>
+                      <th className="text-left px-4 py-2.5 font-medium text-muted-foreground hidden sm:table-cell">Client</th>
+                      <th className="text-right px-4 py-2.5 font-medium text-muted-foreground hidden md:table-cell">Total</th>
+                      <th className="text-left px-4 py-2.5 font-medium text-muted-foreground">Status</th>
+                      <th className="text-left px-4 py-2.5 font-medium text-muted-foreground hidden lg:table-cell">Date</th>
+                      <th className="text-right px-4 py-2.5 font-medium text-muted-foreground">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {quotes.map((quote, idx) => (
+                      <tr
+                        key={quote.id}
+                        onClick={() => setSelectedQuote(quote)}
+                        className={`border-b border-border last:border-0 hover:bg-secondary/30 transition-colors cursor-pointer ${
+                          idx % 2 === 0 ? "" : "bg-secondary/5"
+                        } ${selectedQuote?.id === quote.id ? "bg-primary/5 border-l-2 border-l-primary" : ""}`}
+                      >
+                        <td className="px-4 py-3 font-medium text-foreground max-w-[200px] truncate">
+                          <div className="flex items-center gap-1.5">
+                            {quote.title || "Untitled Quote"}
+                            <ChevronRight className="w-3 h-3 text-muted-foreground/50 shrink-0" />
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 text-muted-foreground hidden sm:table-cell">
+                          <div>{quote.clientName}</div>
+                          {quote.propertyAddress && (
+                            <div className="text-[11px] text-muted-foreground/60 truncate max-w-[160px]">{quote.propertyAddress}</div>
+                          )}
+                        </td>
+                        <td className="px-4 py-3 text-right hidden md:table-cell">
+                          <div className="flex items-center justify-end gap-1 text-foreground font-medium">
+                            <DollarSign className="w-3 h-3 text-green-500" />
+                            {(quote.totalCents / 100).toLocaleString("en-US", { minimumFractionDigits: 0 })}
+                          </div>
+                        </td>
+                        <td className="px-4 py-3">
+                          <StatusBadge quote={quote} />
+                        </td>
+                        <td className="px-4 py-3 text-muted-foreground hidden lg:table-cell">
+                          {new Date(quote.createdAt).toLocaleDateString()}
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          <div className="flex items-center justify-end gap-2">
+                            <button
+                              onClick={e => { e.stopPropagation(); setEditQuote(quote); }}
+                              title="Edit quote"
+                              className="text-muted-foreground hover:text-primary transition-colors"
+                            >
+                              <Edit2 className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              onClick={e => { e.stopPropagation(); setSelectedQuote(quote); }}
+                              title="View details"
+                              className="text-muted-foreground hover:text-primary transition-colors"
+                            >
+                              <ChevronRight className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+        </div>{/* end left column */}
+
+        {/* ── RIGHT: Website Requests (2/5 width on xl) — sticky ── */}
+        <div className="xl:col-span-2">
+          <div className="xl:sticky xl:top-4">
+            <WebsiteRequestsSection
+              onBuildQuote={(prefill) => {
+                setCreatePrefill({
+                  clientName: prefill.clientName,
+                  clientPhone: prefill.clientPhone,
+                  clientEmail: prefill.clientEmail,
+                  propertyAddress: prefill.clientAddress,
+                  serviceType: prefill.jobType,
+                  clientMessage: prefill.message,
+                });
+                setShowCreate(true);
+              }}
             />
           </div>
-          <Button
-            variant="outline"
-            size="sm"
-            className="h-8 px-2"
-            onClick={() => refetch()}
-            disabled={isFetching}
-            aria-label="Refresh"
-          >
-            <RefreshCw className={`w-3.5 h-3.5 ${isFetching ? "animate-spin" : ""}`} />
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            className="h-8 gap-1.5 text-xs"
-            onClick={() => importMutation.mutate()}
-            disabled={importMutation.isPending}
-            title="Import all quotes from Jobber into All Quotes"
-          >
-            {importMutation.isPending ? (
-              <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-            ) : (
-              <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-            )}
-            Import Jobber
-          </Button>
-          <Button
-            size="sm"
-            className="h-8 gap-1.5 text-xs"
-            onClick={() => setShowCreate(true)}
-          >
-            <Plus className="w-3.5 h-3.5" />New Quote
-          </Button>
-        </div>
-      </div>
-
-      {/* Status filter pills */}
-      {!isLoading && (
-        <div className="flex flex-wrap gap-1.5">
-          {statuses.map(s => (
-            <button
-              key={s.value}
-              onClick={() => setStatusFilter(s.value)}
-              className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
-                statusFilter === s.value
-                  ? "bg-primary text-primary-foreground"
-                  : "bg-secondary/40 text-muted-foreground hover:bg-secondary/70"
-              }`}
-            >
-              {s.label} ({s.count})
-            </button>
-          ))}
-        </div>
-      )}
-
-      {/* Loading */}
-      {isLoading && (
-        <div className="flex items-center justify-center py-20">
-          <RefreshCw className="w-6 h-6 animate-spin text-muted-foreground" />
-        </div>
-      )}
-
-      {/* Empty */}
-      {!isLoading && quotes.length === 0 && (
-        <div className="flex flex-col items-center justify-center py-16 text-center gap-3">
-          <FileText className="w-10 h-10 text-muted-foreground/40" />
-          <p className="text-sm text-muted-foreground">
-            {search || statusFilter !== "all" ? "No quotes match your filters." : "No quotes yet. Create your first quote."}
-          </p>
-          {!search && statusFilter === "all" && (
-            <Button size="sm" className="gap-1.5" onClick={() => setShowCreate(true)}>
-              <Plus className="w-3.5 h-3.5" />Create First Quote
-            </Button>
-          )}
-        </div>
-      )}
-
-      {/* Table */}
-      {!isLoading && quotes.length > 0 && (
-        <div className="rounded-lg border border-border overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-xs">
-              <thead>
-                <tr className="border-b border-border bg-secondary/20">
-                  <th className="text-left px-4 py-2.5 font-medium text-muted-foreground">Title</th>
-                  <th className="text-left px-4 py-2.5 font-medium text-muted-foreground hidden sm:table-cell">Client</th>
-                  <th className="text-right px-4 py-2.5 font-medium text-muted-foreground hidden md:table-cell">Total</th>
-                  <th className="text-left px-4 py-2.5 font-medium text-muted-foreground">Status</th>
-                  <th className="text-left px-4 py-2.5 font-medium text-muted-foreground hidden lg:table-cell">Date</th>
-                  <th className="text-right px-4 py-2.5 font-medium text-muted-foreground">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {quotes.map((quote, idx) => (
-                  <tr
-                    key={quote.id}
-                    onClick={() => setSelectedQuote(quote)}
-                    className={`border-b border-border last:border-0 hover:bg-secondary/30 transition-colors cursor-pointer ${
-                      idx % 2 === 0 ? "" : "bg-secondary/5"
-                    } ${selectedQuote?.id === quote.id ? "bg-primary/5 border-l-2 border-l-primary" : ""}`}
-                  >
-                    <td className="px-4 py-3 font-medium text-foreground max-w-[200px] truncate">
-                      <div className="flex items-center gap-1.5">
-                        {quote.title || "Untitled Quote"}
-                        <ChevronRight className="w-3 h-3 text-muted-foreground/50 shrink-0" />
-                      </div>
-                    </td>
-                    <td className="px-4 py-3 text-muted-foreground hidden sm:table-cell">
-                      <div>{quote.clientName}</div>
-                      {quote.propertyAddress && (
-                        <div className="text-[11px] text-muted-foreground/60 truncate max-w-[160px]">{quote.propertyAddress}</div>
-                      )}
-                    </td>
-                    <td className="px-4 py-3 text-right hidden md:table-cell">
-                      <div className="flex items-center justify-end gap-1 text-foreground font-medium">
-                        <DollarSign className="w-3 h-3 text-green-500" />
-                        {(quote.totalCents / 100).toLocaleString("en-US", { minimumFractionDigits: 0 })}
-                      </div>
-                    </td>
-                    <td className="px-4 py-3">
-                      <StatusBadge quote={quote} />
-                    </td>
-                    <td className="px-4 py-3 text-muted-foreground hidden lg:table-cell">
-                      {new Date(quote.createdAt).toLocaleDateString()}
-                    </td>
-                    <td className="px-4 py-3 text-right">
-                      <div className="flex items-center justify-end gap-2">
-                        <button
-                          onClick={e => { e.stopPropagation(); setEditQuote(quote); }}
-                          title="Edit quote"
-                          className="text-muted-foreground hover:text-primary transition-colors"
-                        >
-                          <Edit2 className="w-3.5 h-3.5" />
-                        </button>
-                        <button
-                          onClick={e => { e.stopPropagation(); setSelectedQuote(quote); }}
-                          title="View details"
-                          className="text-muted-foreground hover:text-primary transition-colors"
-                        >
-                          <ChevronRight className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
+        </div>{/* end right column */}
+      </div>{/* end two-column grid */}
 
       {/* Detail panel */}
       {selectedQuote && (
@@ -1354,7 +1397,12 @@ export function NativeAllQuotesSection() {
 
       {/* Modals */}
       {showCreate && (
-        <QuoteFormModal open onClose={() => setShowCreate(false)} onSaved={() => { setShowCreate(false); refetch(); }} />
+        <QuoteFormModal
+          open
+          onClose={() => { setShowCreate(false); setCreatePrefill(undefined); }}
+          onSaved={() => { setShowCreate(false); setCreatePrefill(undefined); refetch(); }}
+          prefill={createPrefill}
+        />
       )}
       {editQuote && (
         <QuoteFormModal open editQuote={editQuote} onClose={() => setEditQuote(null)} onSaved={() => { setEditQuote(null); refetch(); }} />
