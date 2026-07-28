@@ -97,6 +97,7 @@ import {
   TrendingUp, ArrowLeft, Send, XCircle, MapPin as MapPinIcon, CreditCard,
   Settings2, GripVertical, ToggleLeft, ToggleRight,
 } from "lucide-react";
+import { NativeAllQuotesSection } from "@/pages/ops/NativeAllQuotesSection";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -4446,6 +4447,8 @@ function PortalAddOnsManager() {
   const [showNew, setShowNew] = useState(false);
   const [form, setForm] = useState({ label: "", description: "", estimateCents: 0, isActive: true });
   const [editForm, setEditForm] = useState({ label: "", description: "", estimateCents: 0, isActive: true });
+  const [search, setSearch] = useState("");
+  const [filterStatus, setFilterStatus] = useState<"all" | "active" | "inactive">("all");
 
   const fmt = (cents: number) => `$${(cents / 100).toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
 
@@ -4522,11 +4525,46 @@ function PortalAddOnsManager() {
           </div>
         )}
 
+        {/* Search + filter bar */}
+        <div className="flex gap-2 mb-4">
+          <div className="relative flex-1">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
+            <input
+              className="w-full pl-8 pr-3 py-1.5 bg-secondary/30 border border-border rounded text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-amber-500/50"
+              placeholder="Search add-ons..."
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+            />
+          </div>
+          <div className="flex gap-1">
+            {(["all", "active", "inactive"] as const).map(s => (
+              <button
+                key={s}
+                onClick={() => setFilterStatus(s)}
+                className={`px-2.5 py-1.5 rounded text-[11px] font-medium transition-colors ${
+                  filterStatus === s
+                    ? "bg-amber-500 text-black"
+                    : "bg-secondary/30 text-muted-foreground hover:bg-secondary/60"
+                }`}
+              >
+                {s.charAt(0).toUpperCase() + s.slice(1)}
+              </button>
+            ))}
+          </div>
+        </div>
+
         {(!addOns || addOns.length === 0) ? (
           <div className="text-center py-10 text-sm text-muted-foreground">No add-ons yet. Click "New Add-on" to create the first one.</div>
-        ) : (
+        ) : (() => {
+          const filtered = addOns.filter((ao: any) => {
+            const matchSearch = !search.trim() || ao.label.toLowerCase().includes(search.toLowerCase()) || (ao.description ?? "").toLowerCase().includes(search.toLowerCase());
+            const matchStatus = filterStatus === "all" || (filterStatus === "active" ? ao.isActive : !ao.isActive);
+            return matchSearch && matchStatus;
+          });
+          if (filtered.length === 0) return <div className="text-center py-8 text-sm text-muted-foreground">No add-ons match your search.</div>;
+          return (
           <div className="space-y-2">
-            {addOns.map((ao: any) => (
+            {filtered.map((ao: any) => (
               <div key={ao.id} className={`rounded-lg border p-3 transition-colors ${ao.isActive ? 'border-border bg-secondary/10' : 'border-border/40 bg-secondary/5 opacity-60'}`}>
                 {editId === ao.id ? (
                   <div className="space-y-3">
@@ -4588,7 +4626,8 @@ function PortalAddOnsManager() {
               </div>
             ))}
           </div>
-        )}
+          );
+        })()}
 
         <p className="text-[11px] text-muted-foreground mt-4 pt-3 border-t border-border">
           Add-on estimates are shown to clients as approximate figures. Final pricing is confirmed after site visit. Changes here take effect on all future portal links immediately.
@@ -4874,11 +4913,14 @@ export default function OpsQuotes() {
   const totalCount = (data as any)?.totalCount ?? nodes.length;
 
   return (
-    <DashboardLayout title="Quotes" subtitle="Jobber CRM · Distance Quotes · Analytics">
-      <Tabs defaultValue="jobber" className="space-y-4">
+    <DashboardLayout title="Quotes" subtitle="All Quotes · Distance Quotes · Analytics">
+      <Tabs defaultValue="all-quotes" className="space-y-4">
         <TabsList className="bg-zinc-900 border border-zinc-800">
+          <TabsTrigger value="all-quotes" className="gap-1.5 text-xs">
+            <FileText className="w-3.5 h-3.5" /> All Quotes
+          </TabsTrigger>
           <TabsTrigger value="jobber" className="gap-1.5 text-xs">
-            <FileText className="w-3.5 h-3.5" /> Jobber Quotes
+            <ExternalLink className="w-3.5 h-3.5" /> Jobber
           </TabsTrigger>
           <TabsTrigger value="distance" className="gap-1.5 text-xs">
             <MapPin className="w-3.5 h-3.5" /> Distance Quotes
@@ -4890,6 +4932,11 @@ export default function OpsQuotes() {
             <Settings2 className="w-3.5 h-3.5" /> Add-ons
           </TabsTrigger>
         </TabsList>
+
+        {/* ── ALL QUOTES TAB (Native — Jobber replacement) ── */}
+        <TabsContent value="all-quotes" className="mt-0">
+          <NativeAllQuotesSection />
+        </TabsContent>
 
         {/* ── JOBBER QUOTES TAB ── */}
         <TabsContent value="jobber" className="mt-0">

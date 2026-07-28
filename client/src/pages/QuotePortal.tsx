@@ -441,6 +441,33 @@ export default function QuotePortal() {
               <p className="text-green-400/70 text-xs mt-0.5">A deposit secures your spot on the schedule.</p>
             )}
 
+            {/* Print-only add-ons breakdown */}
+            {isApproved && savedAddOns.length > 0 && (
+              <div className="hidden print-only mt-4 pt-4 border-t border-zinc-300">
+                <p className="text-xs font-semibold text-zinc-600 mb-2 uppercase tracking-wide">Selected Add-on Services</p>
+                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "12px" }}>
+                  <thead>
+                    <tr style={{ borderBottom: "1px solid #d1d5db" }}>
+                      <th style={{ textAlign: "left", padding: "4px 0", color: "#6b7280", fontWeight: 600 }}>Service</th>
+                      <th style={{ textAlign: "right", padding: "4px 0", color: "#6b7280", fontWeight: 600 }}>Estimate</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {savedAddOns.map((ao: any) => (
+                      <tr key={ao.key} style={{ borderBottom: "1px solid #f3f4f6" }}>
+                        <td style={{ padding: "4px 0", color: "#1a1a1a" }}>{ao.label}</td>
+                        <td style={{ padding: "4px 0", color: "#1a1a1a", textAlign: "right" }}>${(ao.costCents / 100).toLocaleString("en-US", { minimumFractionDigits: 0 })}</td>
+                      </tr>
+                    ))}
+                    <tr style={{ borderTop: "2px solid #d1d5db" }}>
+                      <td style={{ padding: "6px 0", fontWeight: 700, color: "#1a1a1a" }}>Add-ons Total</td>
+                      <td style={{ padding: "6px 0", fontWeight: 700, color: "#1a1a1a", textAlign: "right" }}>${(savedAddOnTotal / 100).toLocaleString("en-US", { minimumFractionDigits: 0 })}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            )}
+
             {/* Print-only signature block */}
             {isApproved && (
               <div className="hidden print-only mt-4 pt-4 border-t border-zinc-300">
@@ -930,9 +957,16 @@ function PortalShell({ children }: { children: React.ReactNode }) {
       {/* Header */}
       <header className="bg-zinc-900 border-b border-zinc-800 px-4 py-4">
         <div className="max-w-xl mx-auto flex items-center justify-between">
-          <div>
-            <p className="text-amber-500 font-bold text-sm tracking-wide">NOLAND EARTHWORKS</p>
-            <p className="text-zinc-500 text-xs">Veteran-Owned Land Management &bull; Middle &amp; West Tennessee</p>
+          <div className="flex items-center gap-3">
+            <img
+              src="https://d2xsxph8kpxj0f.cloudfront.net/310519663484957999/PymCzDCnSJzPjdkfwA7Jn6/noland-logo-transparent_783e5c7b.png"
+              alt="Noland Earthworks"
+              className="h-10 w-auto object-contain"
+            />
+            <div>
+              <p className="text-amber-500 font-bold text-sm tracking-wide">NOLAND EARTHWORKS</p>
+              <p className="text-zinc-500 text-xs">Veteran-Owned Land Management &bull; Middle &amp; West Tennessee</p>
+            </div>
           </div>
           <a
             href="https://www.nolandearthworks.com"

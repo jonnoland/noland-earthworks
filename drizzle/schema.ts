@@ -1789,3 +1789,54 @@ export const portalAddOnOptions = mysqlTable("portal_add_on_options", {
 });
 export type PortalAddOnOption = typeof portalAddOnOptions.$inferSelect;
 export type InsertPortalAddOnOption = typeof portalAddOnOptions.$inferInsert;
+
+// ─── Native Quotes ────────────────────────────────────────────────────────────
+/**
+ * Native quote management — replaces the Jobber Quotes tab.
+ * Covers the full quote lifecycle: draft → sent → approved/declined → invoiced.
+ * Line items stored as JSON array: [{description, qty, unitPriceCents, totalCents}]
+ */
+export const nativeQuotes = mysqlTable("native_quotes", {
+  id: int("id").primaryKey().autoincrement(),
+  clientName: varchar("clientName", { length: 255 }).notNull(),
+  clientEmail: varchar("clientEmail", { length: 255 }),
+  clientPhone: varchar("clientPhone", { length: 30 }),
+  propertyAddress: varchar("propertyAddress", { length: 500 }),
+  title: varchar("title", { length: 500 }).notNull(),
+  internalNotes: text("internalNotes"),
+  clientMessage: text("clientMessage"),
+  /** JSON array: [{description, qty, unitPriceCents, totalCents}] */
+  lineItems: text("lineItems").notNull().default("[]"),
+  totalCents: int("totalCents").notNull().default(0),
+  estimatedDuration: varchar("estimatedDuration", { length: 100 }),
+  acreage: varchar("acreage", { length: 50 }),
+  serviceType: varchar("serviceType", { length: 100 }),
+  /** draft | sent | viewed | approved | declined | invoiced | cancelled */
+  status: varchar("status", { length: 30 }).notNull().default("draft"),
+  portalToken: varchar("portalToken", { length: 64 }),
+  portalSentAt: timestamp("portalSentAt"),
+  portalViewedAt: timestamp("portalViewedAt"),
+  clientAction: varchar("clientAction", { length: 20 }),
+  clientActionAt: timestamp("clientActionAt"),
+  signatureDataUrl: text("signatureDataUrl"),
+  signatureTypedText: varchar("signatureTypedText", { length: 255 }),
+  signatureMode: varchar("signatureMode", { length: 10 }),
+  signedAt: timestamp("signedAt"),
+  changeRequestNote: text("changeRequestNote"),
+  changeRequestAt: timestamp("changeRequestAt"),
+  declineNote: text("declineNote"),
+  depositPaidCents: int("depositPaidCents"),
+  depositPaidAt: timestamp("depositPaidAt"),
+  stripeSessionId: varchar("stripeSessionId", { length: 255 }),
+  portalAddOns: text("portalAddOns"),
+  portalAddOnsTotalCents: int("portalAddOnsTotalCents"),
+  leadId: int("leadId"),
+  fieldQuoteId: int("fieldQuoteId"),
+  distanceQuoteId: int("distanceQuoteId"),
+  convertedJobId: int("convertedJobId"),
+  convertedToJobAt: timestamp("convertedToJobAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type NativeQuote = typeof nativeQuotes.$inferSelect;
+export type InsertNativeQuote = typeof nativeQuotes.$inferInsert;

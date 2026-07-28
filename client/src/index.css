@@ -403,6 +403,15 @@
     print-color-adjust: exact;
   }
 
+  /* Logo in print header */
+  .portal-print-root header img {
+    height: 36px !important;
+    width: auto !important;
+    display: block !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
   /* Cards: light gray background */
   .portal-print-root .rounded-xl,
   .portal-print-root .rounded-lg {

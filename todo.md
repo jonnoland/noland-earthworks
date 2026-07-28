@@ -2508,3 +2508,12 @@
 - [ ] Phase 3: Edit, duplicate, and convert-to-job actions on native quotes
 - [ ] Phase 4: Rename Jobber Quotes tab to All Quotes, merge all quote types into one unified list
 - [ ] Phase 4: Remove hard dependency on Jobber for primary quote list view
+
+## Native Quoting System — Phase 3 & 4 Complete (Jul 2026)
+- [x] Schema: nativeQuotes table (clientName, clientEmail, clientPhone, propertyAddress, title, lineItems JSON, totalCents, serviceType, acreage, estimatedDuration, clientMessage, internalNotes, status, portalToken, portalSentAt, portalViewedAt, clientAction, clientActionAt, signatureDataUrl, signedAt, depositPaidCents, depositPaidAt, convertedJobId, convertedToJobAt, createdAt, updatedAt)
+- [x] Run db:push for nativeQuotes table (TiDB-compatible migration)
+- [x] Server: nativeQuotesRouter — list, create, update, delete, duplicate, sendPortal, convertToJob, createDepositSession (all ownerProcedure)
+- [x] Server: nativeQuotesRouter wired into routers.ts as nativeQuotes namespace
+- [x] Frontend: NativeAllQuotesSection.tsx — full quote management UI (search, status filter, create/edit modal with line items, duplicate, delete, send portal, collect deposit, convert to job, portal status badges)
+- [x] Frontend: All Quotes tab added to Quotes.tsx as default tab (NativeAllQuotesSection), Jobber tab retained as secondary
+- [x] TypeScript: 0 errors
