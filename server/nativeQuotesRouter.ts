@@ -713,9 +713,10 @@ Rules:
     }),
 
   /**
-   * importFromJobber — fetches all quotes from Jobber and inserts them into
-   * the native_quotes table. Skips any quote whose jobberQuoteId is already
-   * stored (idempotent — safe to run multiple times).
+   * importFromJobber — two-phase batched import to avoid Jobber throttling.
+   * Phase 1: fetch quote list (no nested lineItems — low complexity).
+   * Phase 2: fetch each quote's detail individually with a 300 ms delay.
+   * Idempotent — skips quotes already tagged [Jobber #N] in internalNotes.
    */
   importFromJobber: ownerProcedure
     .mutation(async () => {
@@ -725,18 +726,15 @@ Rules:
       const connected = await isJobberConnected();
       if (!connected) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Jobber is not connected" });
 
-      // 1. Fetch the full quote list from Jobber
+      // ── Phase 1: lightweight list query (no nested collections) ──────────────
       const listData = await jobberGraphQL(`
-        query GetAllQuotes {
+        query GetQuoteList {
           quotes(first: 200) {
             nodes {
-              id quoteNumber title quoteStatus createdAt message
-              amounts { subtotal total }
+              id quoteNumber title quoteStatus createdAt
+              amounts { total }
               client { id name companyName phones { number } emails { address } }
               property { address { street1 city province postalCode } }
-              lineItems {
-                nodes { id name description quantity unitPrice }
-              }
             }
           }
         }
@@ -745,7 +743,7 @@ Rules:
       const jobberQuotes: any[] = listData?.quotes?.nodes ?? [];
       if (!jobberQuotes.length) return { imported: 0, skipped: 0 };
 
-      // 2. Find which Jobber quote IDs are already in native_quotes
+      // ── Dedup check ───────────────────────────────────────────────────────────
       const existing = await db
         .select({ internalNotes: nativeQuotes.internalNotes })
         .from(nativeQuotes)
@@ -756,6 +754,17 @@ Rules:
           .filter(Boolean)
       );
 
+      const statusMap: Record<string, string> = {
+        DRAFT: "draft",
+        AWAITING_RESPONSE: "sent",
+        CHANGES_REQUESTED: "sent",
+        APPROVED: "approved",
+        ARCHIVED: "declined",
+        CONVERTED_TO_JOB: "invoiced",
+      };
+
+      const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
+
       let imported = 0;
       let skipped = 0;
 
@@ -763,44 +772,46 @@ Rules:
         const quoteNum = String(jq.quoteNumber ?? "");
         if (existingJobberIds.has(quoteNum)) { skipped++; continue; }
 
-        // Map Jobber status → native status
-        const statusMap: Record<string, string> = {
-          DRAFT: "draft",
-          AWAITING_RESPONSE: "sent",
-          CHANGES_REQUESTED: "sent",
-          APPROVED: "approved",
-          ARCHIVED: "declined",
-          CONVERTED_TO_JOB: "invoiced",
-        };
+        // ── Phase 2: per-quote detail fetch (includes lineItems) ──────────────
+        let lineItems: any[] = [];
+        let clientMessage: string | null = null;
+        try {
+          await sleep(350); // respect Jobber rate limits
+          const detail = await jobberGraphQL(`
+            query GetQuoteDetail($id: EncodedId!) {
+              quote(id: $id) {
+                message
+                lineItems {
+                  nodes { name description quantity unitPrice }
+                }
+              }
+            }
+          `, { id: jq.id }) as any;
+          clientMessage = detail?.quote?.message ?? null;
+          lineItems = (detail?.quote?.lineItems?.nodes ?? []).map((li: any) => {
+            const unitPriceCents = Math.round(parseFloat(li.unitPrice ?? "0") * 100);
+            const qty = parseFloat(li.quantity ?? "1");
+            return {
+              description: li.name || li.description || "Service",
+              qty,
+              unitPriceCents,
+              totalCents: Math.round(unitPriceCents * qty),
+            };
+          });
+        } catch {
+          // If detail fetch fails (throttle on a single quote), continue with empty line items
+        }
+
         const status = statusMap[String(jq.quoteStatus ?? "").toUpperCase()] ?? "draft";
-
-        // Build line items from Jobber
-        const lineItems = (jq.lineItems?.nodes ?? []).map((li: any) => {
-          const unitPriceCents = Math.round((parseFloat(li.unitPrice ?? "0")) * 100);
-          const qty = parseFloat(li.quantity ?? "1");
-          return {
-            description: li.name || li.description || "Service",
-            qty,
-            unitPriceCents,
-            totalCents: Math.round(unitPriceCents * qty),
-          };
-        });
-
-        const totalCents = Math.round((parseFloat(jq.amounts?.total ?? "0")) * 100);
-
-        // Client info
+        const totalCents = Math.round(parseFloat(jq.amounts?.total ?? "0") * 100);
         const clientName = jq.client?.companyName || jq.client?.name || "Unknown Client";
         const clientPhone = jq.client?.phones?.[0]?.number ?? null;
         const clientEmail = jq.client?.emails?.[0]?.address ?? null;
-
-        // Property address
         const addr = jq.property?.address;
         const propertyAddress = addr
           ? [addr.street1, addr.city, addr.province, addr.postalCode].filter(Boolean).join(", ")
           : null;
-
-        // Internal note tags the record with the Jobber quote number for dedup
-        const internalNotes = `[Jobber #${quoteNum}] Imported from Jobber.${jq.message ? " Client message: " + jq.message : ""}`;
+        const internalNotes = `[Jobber #${quoteNum}] Imported from Jobber.${clientMessage ? " Client message: " + clientMessage : ""}`;
 
         await db.insert(nativeQuotes).values({
           clientName,
@@ -809,7 +820,7 @@ Rules:
           propertyAddress,
           title: jq.title || `Quote #${quoteNum}`,
           internalNotes,
-          clientMessage: jq.message ?? null,
+          clientMessage,
           lineItems: JSON.stringify(lineItems),
           totalCents,
           status,
