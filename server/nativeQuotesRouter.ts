@@ -547,12 +547,28 @@ Rules:
         totalCents:     Math.round(li.qty * li.unitPriceCents),
       }));
 
+      const finalTotalCents = lineItems.reduce((s, li) => s + li.totalCents, 0);
+      const belowMinimum = finalTotalCents < MIN_JOB * 100;
       return {
         title:             parsed.title ?? `${serviceType} - ${acreage} Acres`,
         estimatedDuration: parsed.estimatedDuration ?? "",
         clientMessage:     parsed.clientMessage ?? "",
         lineItems,
-        totalCents: lineItems.reduce((s, li) => s + li.totalCents, 0),
+        totalCents: finalTotalCents,
+        belowMinimum,
+        minimumJobCents: MIN_JOB * 100,
+        breakdown: {
+          baseRatePerAcre: midPerAcre,
+          baseRateLow:     adjLow,
+          baseRateHigh:    adjHigh,
+          terrainMultiplier: terrainMult,
+          accessMultiplier:  accessMult,
+          densityKey,
+          acreage,
+          rawTotalBeforeMinimum: rawTotal,
+          minimumJobApplied: rawTotal < MIN_JOB,
+          mobilizationFee: MOBILIZATION,
+        },
       };
     }),
 

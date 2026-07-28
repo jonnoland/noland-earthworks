@@ -25,7 +25,7 @@ import { toast } from "sonner";
 import {
   Plus, Search, Edit2, Trash2, Copy, Send, CreditCard, Briefcase,
   ChevronDown, ChevronUp, Eye, CheckCircle, XCircle, Clock, DollarSign,
-  FileText, ExternalLink, Sparkles
+  FileText, ExternalLink, Sparkles, Info, AlertTriangle
 } from "lucide-react";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -207,28 +207,56 @@ function QuoteFormModal({
   );
 
   // ── AI Suggest ────────────────────────────────────────────────────────────
-  const [aiPanel, setAiPanel] = useState<"closed" | "open" | "loading">("closed");
+  const [aiPanel, setAiPanel] = useState<"closed" | "open" | "loading" | "result">("closed");
   const [aiTerrain, setAiTerrain] = useState("flat");
   const [aiDensity, setAiDensity] = useState("moderate");
   const [aiAccess, setAiAccess] = useState("easy");
+  const [aiSuggestion, setAiSuggestion] = useState<{
+    title: string;
+    estimatedDuration: string;
+    clientMessage: string;
+    lineItems: LineItem[];
+    totalCents: number;
+    belowMinimum: boolean;
+    minimumJobCents: number;
+    breakdown: {
+      baseRatePerAcre: number;
+      baseRateLow: number;
+      baseRateHigh: number;
+      terrainMultiplier: number;
+      accessMultiplier: number;
+      densityKey: string;
+      acreage: number;
+      rawTotalBeforeMinimum: number;
+      minimumJobApplied: boolean;
+      mobilizationFee: number;
+    };
+  } | null>(null);
 
   const aiSuggestMutation = trpc.nativeQuotes.aiSuggest.useMutation({
     onSuccess: (data) => {
-      setForm(prev => ({
-        ...prev,
-        title: prev.title || data.title,
-        estimatedDuration: data.estimatedDuration || prev.estimatedDuration,
-        clientMessage: data.clientMessage || prev.clientMessage,
-        lineItems: data.lineItems.length > 0 ? data.lineItems : prev.lineItems,
-      }));
-      setAiPanel("closed");
-      toast.success("AI suggestion applied");
+      setAiSuggestion(data);
+      setAiPanel("result");
     },
     onError: (e) => {
       setAiPanel("open");
       toast.error("AI suggestion failed: " + e.message);
     },
   });
+
+  const applyAiSuggestion = () => {
+    if (!aiSuggestion) return;
+    setForm(prev => ({
+      ...prev,
+      title: prev.title || aiSuggestion.title,
+      estimatedDuration: aiSuggestion.estimatedDuration || prev.estimatedDuration,
+      clientMessage: aiSuggestion.clientMessage || prev.clientMessage,
+      lineItems: aiSuggestion.lineItems.length > 0 ? aiSuggestion.lineItems : prev.lineItems,
+    }));
+    setAiPanel("closed");
+    setAiSuggestion(null);
+    toast.success("AI suggestion applied to quote");
+  };
 
   const handleAiSuggest = () => {
     const acreage = parseFloat(form.acreage);
@@ -435,6 +463,77 @@ function QuoteFormModal({
                     <><Sparkles className="h-3.5 w-3.5 mr-1.5" />Generate AI Suggestion</>
                   )}
                 </Button>
+              </div>
+            )}
+
+            {/* Result panel — shown after generation */}
+            {aiPanel === "result" && aiSuggestion && (
+              <div className="mt-3 space-y-3">
+                {/* Below-minimum warning */}
+                {aiSuggestion.belowMinimum && (
+                  <div className="flex items-start gap-2 rounded-md bg-red-500/10 border border-red-500/30 px-3 py-2">
+                    <AlertTriangle className="h-4 w-4 text-red-400 mt-0.5 shrink-0" />
+                    <p className="text-xs text-red-300">
+                      Suggested total (${(aiSuggestion.totalCents / 100).toLocaleString()}) is below the minimum job total
+                      of ${(aiSuggestion.minimumJobCents / 100).toLocaleString()}. Review line items before applying.
+                    </p>
+                  </div>
+                )}
+
+                {/* Price breakdown tooltip */}
+                <div className="rounded-md bg-zinc-800/60 border border-zinc-700 px-3 py-2 space-y-1.5">
+                  <div className="flex items-center gap-1.5 mb-1">
+                    <Info className="h-3.5 w-3.5 text-zinc-400" />
+                    <span className="text-xs font-medium text-zinc-300">How the AI calculated this price</span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
+                    <span className="text-zinc-500">Base rate range</span>
+                    <span className="text-zinc-200">${aiSuggestion.breakdown.baseRateLow.toLocaleString()} – ${aiSuggestion.breakdown.baseRateHigh.toLocaleString()}/acre</span>
+                    <span className="text-zinc-500">Mid-point rate</span>
+                    <span className="text-zinc-200">${aiSuggestion.breakdown.baseRatePerAcre.toLocaleString()}/acre</span>
+                    <span className="text-zinc-500">Terrain multiplier</span>
+                    <span className="text-zinc-200">x{aiSuggestion.breakdown.terrainMultiplier.toFixed(2)} ({aiTerrain})</span>
+                    <span className="text-zinc-500">Access multiplier</span>
+                    <span className="text-zinc-200">x{aiSuggestion.breakdown.accessMultiplier.toFixed(2)} ({aiAccess})</span>
+                    <span className="text-zinc-500">Acreage</span>
+                    <span className="text-zinc-200">{aiSuggestion.breakdown.acreage} acres</span>
+                    <span className="text-zinc-500">Raw total</span>
+                    <span className="text-zinc-200">${aiSuggestion.breakdown.rawTotalBeforeMinimum.toLocaleString()}</span>
+                    {aiSuggestion.breakdown.minimumJobApplied && (
+                      <>
+                        <span className="text-zinc-500">Minimum job applied</span>
+                        <span className="text-amber-400">Yes — bumped to ${(aiSuggestion.minimumJobCents / 100).toLocaleString()}</span>
+                      </>
+                    )}
+                  </div>
+                </div>
+
+                {/* Suggested total */}
+                <div className="flex items-center justify-between px-1">
+                  <span className="text-xs text-zinc-400">Suggested total</span>
+                  <span className={`text-lg font-bold ${aiSuggestion.belowMinimum ? "text-red-400" : "text-amber-400"}`}>
+                    ${(aiSuggestion.totalCents / 100).toLocaleString()}
+                  </span>
+                </div>
+
+                {/* Action buttons */}
+                <div className="flex gap-2">
+                  <Button
+                    className="flex-1 bg-amber-500 hover:bg-amber-600 text-black font-semibold h-8 text-xs"
+                    onClick={applyAiSuggestion}
+                    type="button"
+                  >
+                    <CheckCircle className="h-3.5 w-3.5 mr-1.5" />Apply to Quote
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="h-8 text-xs border-zinc-600 text-zinc-400 hover:bg-zinc-800"
+                    onClick={() => { setAiPanel("open"); setAiSuggestion(null); }}
+                    type="button"
+                  >
+                    Regenerate
+                  </Button>
+                </div>
               </div>
             )}
           </div>
