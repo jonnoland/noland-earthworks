@@ -25,6 +25,7 @@ import { getStripe, isStripeConfigured } from "./stripe";
 import { notifyOwner } from "./_core/notification";
 import { ENV } from "./_core/env";
 import { invokeLLM } from "./_core/llm";
+import { isJobberConnected, jobberGraphQL } from "./jobber";
 
 const ownerProcedure = protectedProcedure.use(({ ctx, next }) => {
   const isOwnerByOpenId = ENV.ownerOpenId && ctx.user.openId === ENV.ownerOpenId;
@@ -709,5 +710,114 @@ Rules:
         content: `${quote.clientName} ${input.action === "approved" ? "approved" : input.action === "declined" ? "declined" : "requested changes on"} the quote "${quote.title}".${input.note ? " Note: " + input.note : ""}`,
       }).catch(() => {/* non-critical */});
       return { success: true };
+    }),
+
+  /**
+   * importFromJobber — fetches all quotes from Jobber and inserts them into
+   * the native_quotes table. Skips any quote whose jobberQuoteId is already
+   * stored (idempotent — safe to run multiple times).
+   */
+  importFromJobber: ownerProcedure
+    .mutation(async () => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+
+      const connected = await isJobberConnected();
+      if (!connected) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Jobber is not connected" });
+
+      // 1. Fetch the full quote list from Jobber
+      const listData = await jobberGraphQL(`
+        query GetAllQuotes {
+          quotes(first: 200) {
+            nodes {
+              id quoteNumber title quoteStatus createdAt message
+              amounts { subtotal total }
+              client { id name companyName phones { number } emails { address } }
+              property { address { street1 city province postalCode } }
+              lineItems {
+                nodes { id name description quantity unitPrice }
+              }
+            }
+          }
+        }
+      `) as any;
+
+      const jobberQuotes: any[] = listData?.quotes?.nodes ?? [];
+      if (!jobberQuotes.length) return { imported: 0, skipped: 0 };
+
+      // 2. Find which Jobber quote IDs are already in native_quotes
+      const existing = await db
+        .select({ internalNotes: nativeQuotes.internalNotes })
+        .from(nativeQuotes)
+        .where(like(nativeQuotes.internalNotes, "[Jobber #%"));
+      const existingJobberIds = new Set(
+        existing
+          .map(r => r.internalNotes?.match(/\[Jobber #(\d+)\]/)?.[1])
+          .filter(Boolean)
+      );
+
+      let imported = 0;
+      let skipped = 0;
+
+      for (const jq of jobberQuotes) {
+        const quoteNum = String(jq.quoteNumber ?? "");
+        if (existingJobberIds.has(quoteNum)) { skipped++; continue; }
+
+        // Map Jobber status → native status
+        const statusMap: Record<string, string> = {
+          DRAFT: "draft",
+          AWAITING_RESPONSE: "sent",
+          CHANGES_REQUESTED: "sent",
+          APPROVED: "approved",
+          ARCHIVED: "declined",
+          CONVERTED_TO_JOB: "invoiced",
+        };
+        const status = statusMap[String(jq.quoteStatus ?? "").toUpperCase()] ?? "draft";
+
+        // Build line items from Jobber
+        const lineItems = (jq.lineItems?.nodes ?? []).map((li: any) => {
+          const unitPriceCents = Math.round((parseFloat(li.unitPrice ?? "0")) * 100);
+          const qty = parseFloat(li.quantity ?? "1");
+          return {
+            description: li.name || li.description || "Service",
+            qty,
+            unitPriceCents,
+            totalCents: Math.round(unitPriceCents * qty),
+          };
+        });
+
+        const totalCents = Math.round((parseFloat(jq.amounts?.total ?? "0")) * 100);
+
+        // Client info
+        const clientName = jq.client?.companyName || jq.client?.name || "Unknown Client";
+        const clientPhone = jq.client?.phones?.[0]?.number ?? null;
+        const clientEmail = jq.client?.emails?.[0]?.address ?? null;
+
+        // Property address
+        const addr = jq.property?.address;
+        const propertyAddress = addr
+          ? [addr.street1, addr.city, addr.province, addr.postalCode].filter(Boolean).join(", ")
+          : null;
+
+        // Internal note tags the record with the Jobber quote number for dedup
+        const internalNotes = `[Jobber #${quoteNum}] Imported from Jobber.${jq.message ? " Client message: " + jq.message : ""}`;
+
+        await db.insert(nativeQuotes).values({
+          clientName,
+          clientEmail,
+          clientPhone,
+          propertyAddress,
+          title: jq.title || `Quote #${quoteNum}`,
+          internalNotes,
+          clientMessage: jq.message ?? null,
+          lineItems: JSON.stringify(lineItems),
+          totalCents,
+          status,
+          createdAt: jq.createdAt ? new Date(jq.createdAt) : new Date(),
+        } as any);
+        imported++;
+      }
+
+      return { imported, skipped };
     }),
 });

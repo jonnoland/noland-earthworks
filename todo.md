@@ -2540,3 +2540,5 @@
 - [x] Recalculate line item prices proportionally when multipliers are edited before applying
 - [x] Reformat All Quotes section to match Jobber section layout (table + slide-out detail panel)
 - [x] Fix portal token routing — QuotePortalRouter now wired to /quote/:token in App.tsx
+- [x] Add importFromJobber procedure to nativeQuotesRouter (fetches all Jobber quotes, maps to native schema, idempotent)
+- [x] Add Import Jobber button to All Quotes header — one-click migration with toast feedback

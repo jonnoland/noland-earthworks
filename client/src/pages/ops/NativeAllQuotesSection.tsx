@@ -1109,7 +1109,13 @@ export function NativeAllQuotesSection() {
   const [showCreate, setShowCreate] = useState(false);
   const [editQuote, setEditQuote] = useState<NativeQuote | null>(null);
   const [selectedQuote, setSelectedQuote] = useState<NativeQuote | null>(null);
-
+  const importMutation = trpc.nativeQuotes.importFromJobber.useMutation({
+    onSuccess: (result) => {
+      toast.success(`Imported ${result.imported} quote${result.imported !== 1 ? "s" : ""} from Jobber${result.skipped > 0 ? ` (${result.skipped} already existed, skipped)` : "."}`);
+      refetch();
+    },
+    onError: (err) => toast.error(err.message),
+  });
   const { data, isLoading, refetch, isFetching } = trpc.nativeQuotes.list.useQuery({
     search: search || undefined,
     status: statusFilter,
@@ -1167,6 +1173,21 @@ export function NativeAllQuotesSection() {
             aria-label="Refresh"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${isFetching ? "animate-spin" : ""}`} />
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-8 gap-1.5 text-xs"
+            onClick={() => importMutation.mutate()}
+            disabled={importMutation.isPending}
+            title="Import all quotes from Jobber into All Quotes"
+          >
+            {importMutation.isPending ? (
+              <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+            ) : (
+              <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+            )}
+            Import Jobber
           </Button>
           <Button
             size="sm"
