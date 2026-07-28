@@ -27,7 +27,7 @@ import {
   Search, RefreshCw, X, MapPin, Phone, Mail, User,
   Calendar, CheckCircle, Clock, XCircle, FileText,
   DollarSign, Trash2, Edit2, ExternalLink, ChevronRight,
-  Briefcase, Send
+  Briefcase, Send, Download
 } from "lucide-react";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -352,8 +352,47 @@ export default function NativeJobsSection() {
             size="icon"
             onClick={() => refetch()}
             className="text-zinc-400 hover:text-white h-9 w-9"
+            title="Refresh"
           >
             <RefreshCw className="w-4 h-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => {
+              if (jobs.length === 0) return;
+              const headers = ["ID", "Client", "Phone", "Email", "Address", "Service", "Acreage", "Status", "Scheduled Date", "Completed At", "Total ($)", "Deposit Paid ($)", "Balance Due ($)", "Notes"];
+              const rows = jobs.map(j => [
+                j.id,
+                j.clientName,
+                j.clientPhone ?? "",
+                j.clientEmail ?? "",
+                j.propertyAddress ?? "",
+                j.serviceType ?? "",
+                j.acreage ?? "",
+                j.status,
+                j.scheduledDate ? new Date(j.scheduledDate).toLocaleDateString() : "",
+                j.completedAt ? new Date(j.completedAt).toLocaleDateString() : "",
+                ((j.totalCents ?? 0) / 100).toFixed(2),
+                ((j.paidCents ?? 0) / 100).toFixed(2),
+                (((j.totalCents ?? 0) - (j.paidCents ?? 0)) / 100).toFixed(2),
+                (j.internalNotes ?? "").replace(/"/g, "'").replace(/\n/g, " "),
+              ]);
+              const csv = [headers, ...rows]
+                .map(r => r.map(v => `"${v}"`).join(","))
+                .join("\n");
+              const blob = new Blob([csv], { type: "text/csv" });
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement("a");
+              a.href = url;
+              a.download = `noland-jobs-${new Date().toISOString().slice(0, 10)}.csv`;
+              a.click();
+              URL.revokeObjectURL(url);
+            }}
+            className="text-zinc-400 hover:text-white h-9 w-9"
+            title="Export filtered jobs to CSV"
+          >
+            <Download className="w-4 h-4" />
           </Button>
         </div>
 

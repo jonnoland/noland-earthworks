@@ -1915,3 +1915,28 @@ export const nativeInvoices = mysqlTable("native_invoices", {
 });
 export type NativeInvoice = typeof nativeInvoices.$inferSelect;
 export type InsertNativeInvoice = typeof nativeInvoices.$inferInsert;
+
+// ─── Native Clients ───────────────────────────────────────────────────────────
+/**
+ * Native clients — auto-synced from jobs and quotes.
+ * Provides a client directory with job history and spend totals.
+ */
+export const nativeClients = mysqlTable("native_clients", {
+  id: int("id").primaryKey().autoincrement(),
+  name: varchar("name", { length: 255 }).notNull(),
+  email: varchar("email", { length: 255 }),
+  phone: varchar("phone", { length: 30 }),
+  /** Primary property address (from first job) */
+  address: varchar("address", { length: 500 }),
+  /** Internal notes about this client */
+  notes: text("notes"),
+  /** Denormalized counters — updated when jobs are created/completed */
+  jobCount: int("jobCount").notNull().default(0),
+  totalSpentCents: int("totalSpentCents").notNull().default(0),
+  /** Source of first contact — website_quote | field_quote | manual */
+  source: varchar("source", { length: 50 }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type NativeClient = typeof nativeClients.$inferSelect;
+export type InsertNativeClient = typeof nativeClients.$inferInsert;

@@ -2554,6 +2554,20 @@
 - [ ] Item 5: Fix notification email CTA to point to All Quotes instead of Jobber
 - [x] Item 2: Native Jobs section — DB schema (nativeJobs table), server procedures, Jobs tab in Ops
 - [x] Item 3: HTML invoice generation from completed job, emailed to client (stored in S3, opens in browser)
-- [ ] Item 4a: Native Clients tab in Ops backed by database
+- [x] Item 4a: Native Clients tab in Ops backed by database
 - [x] Item 4b: Native Jobs tab in Ops backed by database (using nativeJobs table)
-- [ ] Item 4c: Native Invoices tab in Ops backed by database
+- [x] Item 4c: Native Invoices tab in Ops backed by database
+
+## Native Clients, Invoices Tab, and Jobs CSV Export (Jul 2026)
+- [x] Schema: nativeClients table (name, email, phone, address, notes, jobCount, totalSpentCents, createdAt, updatedAt)
+- [x] Run db:push for nativeClients table
+- [x] Server: nativeClientsRouter — list, getById, update, delete, upsertFromJob (auto-sync when job is created/updated)
+- [x] Server: nativeClientsRouter wired into routers.ts as nativeClients namespace
+- [x] Frontend: NativeClientsSection.tsx — table + slide-out detail panel (contact info, job history, total spent, notes, delete)
+- [x] Frontend: Clients tab added to Quotes.tsx (Ops page)
+- [x] Server: nativeJobs.listInvoices already exists — expose all invoices with job context
+- [x] Frontend: NativeInvoicesSection.tsx — all invoices table (invoice #, client, amount, status, date, view/mark paid actions)
+- [x] Frontend: Invoices tab added to Quotes.tsx (Ops page)
+- [x] Frontend: CSV export button in NativeJobsSection — exports filtered jobs list as downloadable CSV
+- [x] TypeScript: 0 errors
+- [x] Tests: vitest coverage for nativeClientsRouter
