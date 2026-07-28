@@ -13,7 +13,7 @@
  *   createDepositSession — Stripe Checkout for deposit
  */
 import { z } from "zod";
-import { protectedProcedure, router } from "./_core/trpc";
+import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
 import { TRPCError } from "@trpc/server";
 import { getDb } from "./db";
 import { nativeQuotes, jobs } from "../drizzle/schema";
@@ -492,5 +492,144 @@ Rules:
         lineItems,
         totalCents: lineItems.reduce((s, li) => s + li.totalCents, 0),
       };
+    }),
+
+  /**
+   * Public deposit session — called from the client portal (no auth).
+   * Accepts portal token so the client can pay without logging in.
+   */
+  publicDepositSession: publicProcedure
+    .input(z.object({
+      token: z.string().min(16),
+      depositPct: z.number().int().min(1).max(100),
+      origin: z.string().optional(),
+    }))
+    .mutation(async ({ input }: { input: { token: string; depositPct: number; origin?: string } }) => {
+      if (!isStripeConfigured()) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Payment not configured" });
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Service unavailable" });
+      const [quote] = await db.select().from(nativeQuotes).where(eq(nativeQuotes.portalToken, input.token)).limit(1);
+      if (!quote) throw new TRPCError({ code: "NOT_FOUND", message: "Quote not found" });
+      const depositCents = Math.round(quote.totalCents * input.depositPct / 100);
+      const stripe = getStripe();
+      const origin = input.origin ?? "https://nolandearth-pymczdcn.manus.space";
+      const session = await stripe.checkout.sessions.create({
+        payment_method_types: ["card"],
+        mode: "payment",
+        line_items: [{
+          price_data: {
+            currency: "usd",
+            product_data: {
+              name: `Deposit — ${quote.title}`,
+              description: `${input.depositPct}% deposit for ${quote.clientName}. Balance due on completion.`,
+            },
+            unit_amount: depositCents,
+          },
+          quantity: 1,
+        }],
+        customer_email: quote.clientEmail ?? undefined,
+        client_reference_id: `nq-${quote.id}`,
+        metadata: {
+          native_quote_id: quote.id.toString(),
+          client_name: quote.clientName,
+          deposit_pct: input.depositPct.toString(),
+          total_cents: quote.totalCents.toString(),
+        },
+        allow_promotion_codes: true,
+        success_url: `${origin}/quote/${input.token}?deposit=success`,
+        cancel_url: `${origin}/quote/${input.token}?deposit=cancelled`,
+      });
+      return { checkoutUrl: session.url };
+    }),
+
+  /**
+   * Public portal lookup — no auth required.
+   * Called by QuotePortal.tsx when the token belongs to a native quote.
+   * Marks portalViewedAt on first view and notifies owner.
+   */
+  getByToken: publicProcedure
+    .input(z.object({ token: z.string().min(16) }))
+    .query(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Service unavailable" });
+      const [quote] = await db
+        .select()
+        .from(nativeQuotes)
+        .where(eq(nativeQuotes.portalToken, input.token))
+        .limit(1);
+      if (!quote) throw new TRPCError({ code: "NOT_FOUND", message: "Quote not found or link has expired." });
+      // Mark first view
+      if (!quote.portalViewedAt) {
+        await db
+          .update(nativeQuotes)
+          .set({ portalViewedAt: new Date(), status: quote.status === "sent" ? "sent" : quote.status })
+          .where(eq(nativeQuotes.id, quote.id));
+        await notifyOwner({
+          title: `Quote Opened — ${quote.clientName}`,
+          content: `${quote.clientName} just opened their quote portal link for "${quote.title}".`,
+        }).catch(() => {/* non-critical */});
+      }
+      const lineItems = (() => {
+        try { return JSON.parse(quote.lineItems ?? "[]"); }
+        catch { return []; }
+      })();
+      return {
+        type: "native" as const,
+        id: quote.id,
+        clientName: quote.clientName,
+        title: quote.title,
+        serviceType: quote.serviceType,
+        acreage: quote.acreage,
+        propertyAddress: quote.propertyAddress,
+        estimatedDuration: quote.estimatedDuration,
+        clientMessage: quote.clientMessage,
+        lineItems,
+        totalCents: quote.totalCents,
+        totalFormatted: new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(quote.totalCents / 100),
+        status: quote.status,
+        clientAction: quote.clientAction,
+        clientActionAt: quote.clientActionAt,
+        depositPaidCents: quote.depositPaidCents,
+        depositPaidAt: quote.depositPaidAt,
+        convertedToJobAt: quote.convertedToJobAt,
+        portalViewedAt: quote.portalViewedAt,
+        portalSentAt: quote.portalSentAt,
+        signedAt: quote.signedAt,
+        createdAt: quote.createdAt,
+      };
+    }),
+
+  /**
+   * Client submits an action (approve / decline / changes_requested) on a native quote portal.
+   */
+  portalAction: publicProcedure
+    .input(z.object({
+      token: z.string().min(16),
+      action: z.enum(["approved", "declined", "changes_requested"]),
+      note: z.string().max(2000).optional(),
+    }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Service unavailable" });
+      const [quote] = await db
+        .select()
+        .from(nativeQuotes)
+        .where(eq(nativeQuotes.portalToken, input.token))
+        .limit(1);
+      if (!quote) throw new TRPCError({ code: "NOT_FOUND", message: "Quote not found or link has expired." });
+      await db
+        .update(nativeQuotes)
+        .set({
+          clientAction: input.action,
+          clientActionAt: new Date(),
+          ...(input.action === "changes_requested" ? { changeRequestNote: input.note ?? null, changeRequestAt: new Date() } : {}),
+          ...(input.action === "declined" ? { declineNote: input.note ?? null } : {}),
+        })
+        .where(eq(nativeQuotes.id, quote.id));
+      await notifyOwner({
+        title: `Quote ${input.action === "approved" ? "Approved" : input.action === "declined" ? "Declined" : "Changes Requested"} — ${quote.clientName}`,
+        content: `${quote.clientName} ${input.action === "approved" ? "approved" : input.action === "declined" ? "declined" : "requested changes on"} the quote "${quote.title}".${input.note ? " Note: " + input.note : ""}`,
+      }).catch(() => {/* non-critical */});
+      return { success: true };
     }),
 });

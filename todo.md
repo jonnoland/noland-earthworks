@@ -2522,3 +2522,11 @@
 - [x] Server: nativeQuotes.aiSuggest procedure — takes serviceType, acreage, terrain, density, access, notes; returns title, estimatedDuration, clientMessage, lineItems, totalCents using LLM with TN market rate context
 - [x] Frontend: AI Suggest panel in QuoteFormModal (collapsible, amber-themed) — terrain/density/access selectors, Generate button, auto-fills title + line items + duration + client message on success
 - [x] TypeScript: 0 errors
+
+## Quote Portal Fix — Native Quote Token Resolution
+- [x] Add getByToken public procedure to nativeQuotesRouter
+- [x] Add portalAction public procedure to nativeQuotesRouter (approve/decline/changes)
+- [x] Add publicDepositSession public procedure to nativeQuotesRouter (Stripe, no auth)
+- [x] Create NativeQuotePortal.tsx — dedicated portal page for native quotes
+- [x] Add QuotePortalRouter to App.tsx — auto-detects native vs legacy quote by token
+- [x] TypeScript: 0 errors
