@@ -1,14 +1,15 @@
-/**
+/*
  * Client Quote Portal — /quote/:token
  *
  * Public, no login required. The client receives a unique URL by email.
  * Features:
  *   - Full quote view with line-item pricing
- *   - Approve with digital signature pad
+ *   - Optional add-ons selector before signing
+ *   - Approve with digital signature pad (draw or type)
  *   - Request Changes flow
  *   - Decline with optional note
  *   - Stripe deposit payment
- *   - PDF download (print stylesheet)
+ *   - PDF download (print stylesheet, includes signature + timestamp)
  *
  * Design: dark earth tones matching Noland Earthworks brand.
  */
@@ -35,11 +36,37 @@ import {
   PenLine,
   RotateCcw,
   MessageSquareDiff,
+  Plus,
+  Minus,
 } from "lucide-react";
 
 type DepositPct = 25 | 33 | 50;
 
-// ─── Signature Pad ────────────────────────────────────────────────────────────
+// ─── Add-on options (mirrors CostCalculator) ─────────────────────────────────
+// Prices are approximate flat rates shown to the client for selection.
+// Actual pricing is confirmed by Jon after site visit.
+const PORTAL_ADD_ONS = [
+  {
+    key: "fence-line-clearing",
+    label: "Fence Line Clearing",
+    description: "Clear and clean up fence lines buried in brush or overgrowth.",
+    estimateCents: 85000, // ~$850 estimate
+  },
+  {
+    key: "mulch-redistribution",
+    label: "Mulch Redistribution",
+    description: "Redistribute and level mulch material across cleared areas.",
+    estimateCents: 52500, // ~$525/acre estimate
+  },
+  {
+    key: "selective-clearing",
+    label: "Selective Clearing & Tree Preservation",
+    description: "Mark and preserve specific trees while clearing surrounding vegetation.",
+    estimateCents: 20000, // ~$200 flat estimate
+  },
+];
+
+// ─── Signature Pad (draw mode) ────────────────────────────────────────────────
 
 function SignaturePad({
   onSignature,
@@ -135,7 +162,7 @@ function SignaturePad({
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between">
-        <label className="text-xs text-zinc-400 font-medium">Sign below to approve</label>
+        <label className="text-xs text-zinc-400 font-medium">Draw your signature below</label>
         {hasSignature && (
           <button
             type="button"
@@ -163,9 +190,6 @@ function SignaturePad({
           </div>
         )}
       </div>
-      <p className="text-[11px] text-zinc-600">
-        By signing, you agree to the terms of this estimate. This is not a binding contract — a site visit is required to confirm the final scope and price.
-      </p>
     </div>
   );
 }
@@ -191,9 +215,29 @@ export default function QuotePortal() {
     { enabled: !!token, retry: false }
   );
 
+  // ── Add-ons selection (before signing) ──
+  const [selectedAddOns, setSelectedAddOns] = useState<Set<string>>(new Set());
+  const [showAddOns, setShowAddOns] = useState(false);
+
+  function toggleAddOn(key: string) {
+    setSelectedAddOns(prev => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  }
+
+  const selectedAddOnItems = PORTAL_ADD_ONS.filter(a => selectedAddOns.has(a.key));
+  const addOnTotalCents = selectedAddOnItems.reduce((sum, a) => sum + a.estimateCents, 0);
+
+  // ── Signature mode: 'drawn' | 'typed' ──
+  const [signatureMode, setSignatureMode] = useState<"drawn" | "typed">("drawn");
+  const [signatureDataUrl, setSignatureDataUrl] = useState<string | null>(null);
+  const [typedSignature, setTypedSignature] = useState("");
+
   // ── Approve flow ──
   const [showApproveFlow, setShowApproveFlow] = useState(false);
-  const [signatureDataUrl, setSignatureDataUrl] = useState<string | null>(null);
   const [pendingAction, setPendingAction] = useState<"approved" | "declined" | null>(null);
   const clientActionMut = trpc.quotePortal.clientAction.useMutation({
     onSuccess: (data) => {
@@ -247,12 +291,29 @@ export default function QuotePortal() {
   }
 
   function handleConfirmApprove() {
-    if (!signatureDataUrl) {
-      toast.error("Please sign the pad before approving.");
+    if (signatureMode === "drawn" && !signatureDataUrl) {
+      toast.error("Please draw your signature before approving.");
+      return;
+    }
+    if (signatureMode === "typed" && typedSignature.trim().length < 2) {
+      toast.error("Please type your full name to sign.");
       return;
     }
     setPendingAction("approved");
-    clientActionMut.mutate({ token, action: "approved", signatureDataUrl });
+    const addOnsPayload = selectedAddOnItems.map(a => ({
+      key: a.key,
+      label: a.label,
+      costCents: a.estimateCents,
+    }));
+    clientActionMut.mutate({
+      token,
+      action: "approved",
+      signatureDataUrl: signatureMode === "drawn" ? (signatureDataUrl ?? undefined) : undefined,
+      signatureMode,
+      signatureTypedText: signatureMode === "typed" ? typedSignature.trim() : undefined,
+      portalAddOns: addOnsPayload.length > 0 ? addOnsPayload : undefined,
+      portalAddOnsTotalCents: addOnTotalCents > 0 ? addOnTotalCents : undefined,
+    });
   }
 
   function handleDeclineClick() {
@@ -304,8 +365,10 @@ export default function QuotePortal() {
     );
   }
 
-  const depositCents = Math.round(quote.totalCents * (depositPct / 100));
-  const balanceCents = quote.totalCents - depositCents;
+  const baseTotalCents = quote.totalCents;
+  const grandTotalCents = baseTotalCents + addOnTotalCents;
+  const depositCents = Math.round(grandTotalCents * (depositPct / 100));
+  const balanceCents = grandTotalCents - depositCents;
   const fmt = (cents: number) =>
     new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(cents / 100);
 
@@ -316,6 +379,15 @@ export default function QuotePortal() {
   const hasChangeRequest = !!(quote as any).changeRequestAt;
 
   const jobLabel = quote.jobType.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+
+  // Determine if there are previously selected add-ons (from approved quote)
+  const savedAddOns: Array<{key: string; label: string; costCents: number}> = (quote as any).portalAddOns ?? [];
+  const savedAddOnTotal: number = (quote as any).portalAddOnsTotalCents ?? 0;
+
+  // Approval timestamp for PDF
+  const approvalDate = quote.clientActionAt
+    ? new Date(quote.clientActionAt).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })
+    : null;
 
   return (
     <PortalShell>
@@ -364,20 +436,48 @@ export default function QuotePortal() {
 
       {/* Status badge */}
       {isActioned && (
-        <div className={`mb-6 rounded-lg border p-4 flex items-center gap-3 ${isApproved ? "bg-green-900/30 border-green-700" : "bg-red-900/20 border-red-800"}`}>
+        <div className={`mb-6 rounded-lg border p-4 flex items-start gap-3 ${isApproved ? "bg-green-900/30 border-green-700" : "bg-red-900/20 border-red-800"}`}>
           {isApproved
-            ? <CheckCircle className="w-5 h-5 text-green-400 shrink-0" />
-            : <XCircle className="w-5 h-5 text-red-400 shrink-0" />}
-          <div>
+            ? <CheckCircle className="w-5 h-5 text-green-400 shrink-0 mt-0.5" />
+            : <XCircle className="w-5 h-5 text-red-400 shrink-0 mt-0.5" />}
+          <div className="flex-1">
             <p className={`font-semibold text-sm ${isApproved ? "text-green-300" : "text-red-300"}`}>
               You {isApproved ? "approved" : "declined"} this quote
-              {quote.clientActionAt ? ` on ${new Date(quote.clientActionAt).toLocaleDateString("en-US", { month: "long", day: "numeric" })}` : ""}.
+              {approvalDate ? ` on ${approvalDate}` : ""}.
             </p>
             {isApproved && (quote as any).signedAt && (
-              <p className="text-green-400/70 text-xs mt-0.5">Digitally signed on {new Date((quote as any).signedAt).toLocaleDateString("en-US", { month: "long", day: "numeric" })}.</p>
+              <p className="text-green-400/70 text-xs mt-0.5">
+                Digitally signed on {new Date((quote as any).signedAt).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}.
+              </p>
             )}
             {isApproved && !hasDepositPaid && (
               <p className="text-green-400/70 text-xs mt-0.5">A deposit secures your spot on the schedule.</p>
+            )}
+
+            {/* Print-only signature block */}
+            {isApproved && (
+              <div className="hidden print-only mt-4 pt-4 border-t border-zinc-300">
+                {(quote as any).signatureMode === "typed" && (quote as any).signatureTypedText ? (
+                  <div>
+                    <p className="text-xs text-zinc-500 mb-1">Client Signature</p>
+                    <p style={{ fontFamily: "'Dancing Script', cursive", fontSize: "1.6rem", color: "#1a1a1a", lineHeight: 1.2 }}>
+                      {(quote as any).signatureTypedText}
+                    </p>
+                  </div>
+                ) : (quote as any).signatureDataUrl ? (
+                  <div>
+                    <p className="text-xs text-zinc-500 mb-1">Client Signature</p>
+                    <img
+                      src={(quote as any).signatureDataUrl}
+                      alt="Client signature"
+                      style={{ maxWidth: "240px", height: "60px", objectFit: "contain", filter: "invert(1)" }}
+                    />
+                  </div>
+                ) : null}
+                {approvalDate && (
+                  <p className="text-xs text-zinc-500 mt-2">Approved: {approvalDate}</p>
+                )}
+              </div>
             )}
           </div>
         </div>
@@ -404,7 +504,7 @@ export default function QuotePortal() {
               {quote.depositPaidAt ? ` on ${new Date(quote.depositPaidAt).toLocaleDateString("en-US", { month: "long", day: "numeric" })}` : ""}.
             </p>
             <p className="text-green-400/70 text-xs mt-0.5">
-              Balance due on completion: {fmt(quote.totalCents - (quote.depositPaidCents ?? 0))}.
+              Balance due on completion: {fmt(baseTotalCents + savedAddOnTotal - (quote.depositPaidCents ?? 0))}.
             </p>
           </div>
         </div>
@@ -437,9 +537,26 @@ export default function QuotePortal() {
           <PriceRow label="Price per Acre" value={`${quote.pricePerAcre}/ac`} />
         </div>
         <div className="px-5 py-4 bg-zinc-800/30 flex justify-between items-center">
-          <span className="text-base font-bold text-white">Estimated Total</span>
+          <span className="text-base font-bold text-white">Base Estimate</span>
           <span className="text-xl font-bold text-amber-400">{quote.totalFormatted}</span>
         </div>
+
+        {/* Saved add-ons (shown after approval) */}
+        {isApproved && savedAddOns.length > 0 && (
+          <div className="px-5 pb-4 space-y-1 border-t border-zinc-800">
+            <p className="text-xs text-zinc-500 pt-3 pb-1 font-medium uppercase tracking-wide">Selected Add-ons</p>
+            {savedAddOns.map(a => (
+              <div key={a.key} className="flex justify-between text-sm">
+                <span className="text-zinc-400">{a.label}</span>
+                <span className="text-zinc-300">{fmt(a.costCents)}</span>
+              </div>
+            ))}
+            <div className="flex justify-between text-sm font-bold pt-2 border-t border-zinc-700 mt-2">
+              <span className="text-white">Total with Add-ons</span>
+              <span className="text-amber-400">{fmt(baseTotalCents + savedAddOnTotal)}</span>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Notes */}
@@ -464,18 +581,145 @@ export default function QuotePortal() {
         <div className="space-y-4 mb-8 no-print">
           <p className="text-zinc-300 text-sm font-medium">How would you like to proceed?</p>
 
+          {/* Add-ons selector — shown before approve flow */}
+          {!showApproveFlow && !showDeclineNote && !showChangesForm && (
+            <div className="rounded-xl bg-zinc-900 border border-zinc-800 overflow-hidden">
+              <button
+                type="button"
+                onClick={() => setShowAddOns(v => !v)}
+                className="w-full flex items-center justify-between px-5 py-3 text-left hover:bg-zinc-800/50 transition-colors"
+              >
+                <div className="flex items-center gap-2">
+                  <Plus className="w-4 h-4 text-amber-500" />
+                  <span className="text-sm font-medium text-zinc-200">Optional Add-on Services</span>
+                  {selectedAddOns.size > 0 && (
+                    <span className="bg-amber-500 text-black text-xs font-bold rounded-full px-2 py-0.5">
+                      {selectedAddOns.size}
+                    </span>
+                  )}
+                </div>
+                <span className="text-zinc-500 text-xs">{showAddOns ? "Hide" : "Show"}</span>
+              </button>
+              {showAddOns && (
+                <div className="border-t border-zinc-800 divide-y divide-zinc-800">
+                  {PORTAL_ADD_ONS.map(addon => {
+                    const selected = selectedAddOns.has(addon.key);
+                    return (
+                      <div
+                        key={addon.key}
+                        className={`flex items-start gap-3 px-5 py-4 cursor-pointer transition-colors ${selected ? "bg-amber-900/20" : "hover:bg-zinc-800/40"}`}
+                        onClick={() => toggleAddOn(addon.key)}
+                      >
+                        <div className={`w-5 h-5 rounded border-2 shrink-0 mt-0.5 flex items-center justify-center transition-colors ${selected ? "bg-amber-500 border-amber-500" : "border-zinc-600"}`}>
+                          {selected && <CheckCircle className="w-3 h-3 text-black" />}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between gap-2">
+                            <p className="text-sm font-medium text-zinc-200">{addon.label}</p>
+                            <p className="text-sm text-amber-400 font-semibold shrink-0">~{fmt(addon.estimateCents)}</p>
+                          </div>
+                          <p className="text-xs text-zinc-500 mt-0.5">{addon.description}</p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                  {selectedAddOns.size > 0 && (
+                    <div className="px-5 py-3 bg-zinc-800/30 flex justify-between items-center">
+                      <span className="text-sm text-zinc-400">Add-on estimate</span>
+                      <span className="text-sm font-bold text-amber-400">+{fmt(addOnTotalCents)}</span>
+                    </div>
+                  )}
+                  <div className="px-5 py-2">
+                    <p className="text-[11px] text-zinc-600">Add-on pricing is an estimate only. Final pricing confirmed after site visit.</p>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Approve flow — signature pad */}
           {showApproveFlow && (
             <div className="rounded-xl bg-zinc-900 border border-amber-700/40 p-5 space-y-4">
-              <SignaturePad
-                onSignature={(url) => setSignatureDataUrl(url)}
-                onClear={() => setSignatureDataUrl(null)}
-              />
+              {/* Selected add-ons summary */}
+              {selectedAddOns.size > 0 && (
+                <div className="rounded-lg bg-amber-900/20 border border-amber-700/30 p-3">
+                  <p className="text-xs font-semibold text-amber-400 mb-2">Add-ons included in this approval:</p>
+                  {selectedAddOnItems.map(a => (
+                    <div key={a.key} className="flex justify-between text-xs text-zinc-300">
+                      <span>{a.label}</span>
+                      <span>~{fmt(a.estimateCents)}</span>
+                    </div>
+                  ))}
+                  <div className="flex justify-between text-sm font-bold text-white mt-2 pt-2 border-t border-amber-700/30">
+                    <span>Total (base + add-ons)</span>
+                    <span className="text-amber-400">{fmt(grandTotalCents)}</span>
+                  </div>
+                </div>
+              )}
+
+              {/* Signature mode toggle */}
+              <div>
+                <p className="text-xs text-zinc-400 font-medium mb-2">Signature method</p>
+                <div className="flex rounded-lg overflow-hidden border border-zinc-700">
+                  <button
+                    type="button"
+                    onClick={() => { setSignatureMode("drawn"); setSignatureDataUrl(null); }}
+                    className={`flex-1 py-2 text-xs font-semibold transition-colors ${signatureMode === "drawn" ? "bg-amber-500 text-black" : "bg-zinc-800 text-zinc-400 hover:bg-zinc-700"}`}
+                  >
+                    Draw Signature
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setSignatureMode("typed"); setSignatureDataUrl(null); }}
+                    className={`flex-1 py-2 text-xs font-semibold transition-colors ${signatureMode === "typed" ? "bg-amber-500 text-black" : "bg-zinc-800 text-zinc-400 hover:bg-zinc-700"}`}
+                  >
+                    Type Signature
+                  </button>
+                </div>
+              </div>
+
+              {/* Draw mode */}
+              {signatureMode === "drawn" && (
+                <SignaturePad
+                  onSignature={(url) => setSignatureDataUrl(url)}
+                  onClear={() => setSignatureDataUrl(null)}
+                />
+              )}
+
+              {/* Type mode */}
+              {signatureMode === "typed" && (
+                <div className="space-y-2">
+                  <label className="text-xs text-zinc-400 font-medium">Type your full name to sign</label>
+                  <input
+                    type="text"
+                    value={typedSignature}
+                    onChange={e => setTypedSignature(e.target.value)}
+                    placeholder="Your full name"
+                    className="w-full bg-zinc-900 border border-zinc-700 rounded-lg px-4 py-3 text-amber-400 focus:outline-none focus:border-amber-500 transition-colors"
+                    style={{ fontFamily: "'Dancing Script', cursive", fontSize: "1.4rem" }}
+                    autoComplete="name"
+                  />
+                  {typedSignature.trim().length > 0 && (
+                    <p className="text-[11px] text-zinc-600">
+                      Preview: <span style={{ fontFamily: "'Dancing Script', cursive", fontSize: "1rem", color: "#f0a500" }}>{typedSignature}</span>
+                    </p>
+                  )}
+                </div>
+              )}
+
+              <p className="text-[11px] text-zinc-600">
+                By signing, you agree to the terms of this estimate. This is not a binding contract — a site visit is required to confirm the final scope and price.
+              </p>
+
               <div className="flex gap-3">
                 <Button
                   className="flex-1 bg-amber-500 hover:bg-amber-400 text-black font-bold h-11 text-sm"
                   onClick={handleConfirmApprove}
-                  disabled={!signatureDataUrl || (clientActionMut.isPending && pendingAction === "approved")}
+                  disabled={
+                    (signatureMode === "drawn" && !signatureDataUrl) ||
+                    (signatureMode === "typed" && typedSignature.trim().length < 2) ||
+                    (clientActionMut.isPending && pendingAction === "approved")
+                  }
                 >
                   {clientActionMut.isPending && pendingAction === "approved"
                     ? <Loader2 className="w-4 h-4 animate-spin mr-2" />
@@ -685,6 +929,15 @@ export default function QuotePortal() {
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
 function PortalShell({ children }: { children: React.ReactNode }) {
+  // Load Dancing Script for typed signature rendering
+  useEffect(() => {
+    const link = document.createElement("link");
+    link.rel = "stylesheet";
+    link.href = "https://fonts.googleapis.com/css2?family=Dancing+Script:wght@600&display=swap";
+    document.head.appendChild(link);
+    return () => { document.head.removeChild(link); };
+  }, []);
+
   return (
     <div className="min-h-screen bg-zinc-950 text-white portal-print-root">
       {/* Header */}

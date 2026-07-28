@@ -120,9 +120,14 @@ export const quotePortalRouter = router({
         // Signature
         signatureDataUrl: quote.signatureDataUrl,
         signedAt: quote.signedAt,
+        signatureMode: quote.signatureMode,
+        signatureTypedText: quote.signatureTypedText,
         // Change request
         changeRequestNote: quote.changeRequestNote,
         changeRequestAt: quote.changeRequestAt,
+        // Portal add-ons
+        portalAddOns: quote.portalAddOns ? (JSON.parse(quote.portalAddOns) as Array<{key: string; label: string; costCents: number}>) : [],
+        portalAddOnsTotalCents: quote.portalAddOnsTotalCents ?? 0,
       };
     }),
 
@@ -199,6 +204,14 @@ export const quotePortalRouter = router({
       action: z.enum(["approved", "declined"]),
       message: z.string().max(1000).optional(),
       signatureDataUrl: z.string().max(200000).optional(), // base64 PNG from canvas
+      signatureMode: z.enum(["drawn", "typed"]).optional(),
+      signatureTypedText: z.string().max(255).optional(),
+      portalAddOns: z.array(z.object({
+        key: z.string(),
+        label: z.string(),
+        costCents: z.number().int().nonnegative(),
+      })).optional(),
+      portalAddOnsTotalCents: z.number().int().nonnegative().optional(),
     }))
     .mutation(async ({ input }) => {
       const db = await getDb();
@@ -227,6 +240,10 @@ export const quotePortalRouter = router({
           clientActionAt: new Date(),
           status: newStatus,
           ...(input.signatureDataUrl ? { signatureDataUrl: input.signatureDataUrl, signedAt: new Date() } : {}),
+          ...(input.signatureMode ? { signatureMode: input.signatureMode } : {}),
+          ...(input.signatureTypedText ? { signatureTypedText: input.signatureTypedText } : {}),
+          ...(input.portalAddOns ? { portalAddOns: JSON.stringify(input.portalAddOns) } : {}),
+          ...(input.portalAddOnsTotalCents !== undefined ? { portalAddOnsTotalCents: input.portalAddOnsTotalCents } : {}),
         })
         .where(eq(distanceQuotes.id, quote.id));
 

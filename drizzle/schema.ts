@@ -479,6 +479,14 @@ export const distanceQuotes = mysqlTable("distance_quotes", {
   changeRequestNote: text("changeRequestNote"),
   /** Timestamp when client submitted a change request */
   changeRequestAt: timestamp("changeRequestAt"),
+  /** Portal add-ons selected by the client before signing — JSON array of {key, label, costCents} */
+  portalAddOns: text("portalAddOns"),
+  /** Total add-on cost in cents selected by the client on the portal */
+  portalAddOnsTotalCents: int("portalAddOnsTotalCents"),
+  /** Signature mode: 'drawn' (canvas) or 'typed' (cursive font rendering) */
+  signatureMode: varchar("signatureMode", { length: 10 }),
+  /** Typed signature text — only set when signatureMode = 'typed' */
+  signatureTypedText: varchar("signatureTypedText", { length: 255 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });

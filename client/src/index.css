@@ -442,6 +442,31 @@
   a[href]::after {
     content: none !important;
   }
+
+  /* Signature block in print */
+  .portal-print-root .print-only {
+    display: block !important;
+    margin-top: 1.5rem;
+    padding-top: 1rem;
+    border-top: 1px solid #ccc;
+  }
+
+  /* Typed signature cursive rendering */
+  .portal-print-root .print-only p[style*="Dancing Script"] {
+    font-size: 1.6rem !important;
+    color: #1a1a1a !important;
+    line-height: 1.2 !important;
+  }
+
+  /* Drawn signature image — invert to black on white */
+  .portal-print-root .print-only img[alt="Client signature"] {
+    filter: invert(1) !important;
+    max-width: 240px !important;
+    height: 60px !important;
+    object-fit: contain !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
 }
 
 /* Hidden by default, shown only in print */
