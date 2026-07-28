@@ -26,7 +26,8 @@ import {
   Plus, Search, Edit2, Trash2, Copy, Send, CreditCard, Briefcase,
   Eye, CheckCircle, XCircle, DollarSign,
   FileText, ExternalLink, Sparkles, Info, AlertTriangle,
-  RefreshCw, ChevronRight, MapPin, Phone, Mail, User, X, Globe
+  RefreshCw, ChevronRight, MapPin, Phone, Mail, User, Users, X, Globe,
+  Loader2, Clock, ChevronDown, ChevronUp, ArchiveRestore
 } from "lucide-react";
 import { WebsiteRequestsSection } from "./Quotes";
 
@@ -59,6 +60,11 @@ interface NativeQuote {
   clientAction: string | null;
   clientActionAt: Date | null;
   signedAt: Date | null;
+  signatureDataUrl: string | null;
+  signatureTypedText: string | null;
+  changeRequestNote: string | null;
+  changeRequestAt: Date | null;
+  declineNote: string | null;
   depositPaidCents: number | null;
   depositPaidAt: Date | null;
   convertedJobId: number | null;
@@ -879,6 +885,38 @@ function NativeQuoteDetailPanel({
 
   const portalUrl = quote.portalToken ? `${window.location.origin}/quote/${quote.portalToken}` : null;
 
+  // ── Satellite imagery ─────────────────────────────────────────────────────
+  const { data: satData, isLoading: satLoading } = trpc.ops.quotes.satelliteImage.useQuery(
+    { address: quote.propertyAddress! },
+    { enabled: !!quote.propertyAddress, staleTime: 1000 * 60 * 10 }
+  );
+
+  // ── Link to Lead ──────────────────────────────────────────────────────────
+  const [showLinkLeadPicker, setShowLinkLeadPicker] = useState(false);
+  const [leadPickerSearch, setLeadPickerSearch] = useState("");
+  const { data: linkedLead } = trpc.ops.getLeadByNativeQuoteId.useQuery(
+    { nativeQuoteId: quote.id },
+    { retry: false, staleTime: 1000 * 60 * 5 }
+  );
+  const { data: unlinkedLeads = [] } = trpc.ops.getUnlinkedLeads.useQuery(
+    undefined,
+    { enabled: showLinkLeadPicker, retry: false }
+  );
+  const filteredLeads = (unlinkedLeads as any[]).filter((l: any) => {
+    if (!leadPickerSearch) return true;
+    const q = leadPickerSearch.toLowerCase();
+    return (l.name ?? "").toLowerCase().includes(q) || (l.address ?? "").toLowerCase().includes(q);
+  });
+  const linkQuoteToLead = trpc.ops.linkNativeQuoteToLead.useMutation({
+    onSuccess: () => {
+      toast.success("Quote linked to lead.");
+      setShowLinkLeadPicker(false);
+      utils.ops.getLeadByNativeQuoteId.invalidate({ nativeQuoteId: quote.id });
+      utils.ops.leads.list.invalidate();
+    },
+    onError: (err) => toast.error(err.message || "Failed to link quote to lead."),
+  });
+
   return (
     <>
       {/* Backdrop */}
@@ -896,6 +934,38 @@ function NativeQuoteDetailPanel({
             <X className="w-4 h-4" />
           </button>
         </div>
+
+        {/* Satellite imagery strip */}
+        {quote.propertyAddress && (
+          <div className="relative w-full h-36 bg-secondary/20 overflow-hidden shrink-0">
+            {satLoading && (
+              <div className="absolute inset-0 flex items-center justify-center gap-2 text-[11px] text-muted-foreground">
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                Loading satellite view...
+              </div>
+            )}
+            {satData?.url && (
+              <>
+                <img
+                  src={satData.url}
+                  alt={`Satellite view of ${quote.propertyAddress}`}
+                  className="w-full h-full object-cover"
+                  onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                />
+                <div className="absolute bottom-0 left-0 right-0 px-3 py-1.5 bg-black/60 flex items-center gap-1.5">
+                  <MapPin className="w-3 h-3 text-primary shrink-0" />
+                  <span className="text-[11px] text-white/90 truncate">{quote.propertyAddress}</span>
+                </div>
+              </>
+            )}
+            {!satLoading && !satData?.url && (
+              <div className="absolute inset-0 flex items-center justify-center gap-2 text-[11px] text-muted-foreground">
+                <MapPin className="w-3.5 h-3.5" />
+                {quote.propertyAddress}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Body */}
         <div className="flex-1 overflow-y-auto p-5 space-y-5">
@@ -1031,6 +1101,39 @@ function NativeQuoteDetailPanel({
             </div>
           )}
 
+          {/* Change request note */}
+          {quote.changeRequestNote && (
+            <div className="rounded-lg border border-amber-600/40 bg-amber-950/20 p-4">
+              <p className="text-[10px] uppercase tracking-wider text-amber-400 mb-1">Change Request</p>
+              <p className="text-xs text-amber-200 whitespace-pre-wrap">{quote.changeRequestNote}</p>
+              {quote.changeRequestAt && (
+                <p className="text-[11px] text-muted-foreground mt-1">{new Date(quote.changeRequestAt).toLocaleDateString()}</p>
+              )}
+            </div>
+          )}
+
+          {/* Decline note */}
+          {quote.declineNote && (
+            <div className="rounded-lg border border-red-600/40 bg-red-950/20 p-4">
+              <p className="text-[10px] uppercase tracking-wider text-red-400 mb-1">Decline Reason</p>
+              <p className="text-xs text-red-200 whitespace-pre-wrap">{quote.declineNote}</p>
+            </div>
+          )}
+
+          {/* Signature */}
+          {quote.signedAt && (
+            <div className="rounded-lg border border-emerald-600/40 bg-emerald-950/20 p-4">
+              <p className="text-[10px] uppercase tracking-wider text-emerald-400 mb-2">Client Signature</p>
+              {quote.signatureDataUrl && (
+                <img src={quote.signatureDataUrl} alt="Client signature" className="h-14 bg-white/10 rounded p-1 mb-1" />
+              )}
+              {quote.signatureTypedText && (
+                <p className="text-sm font-medium text-emerald-300 italic">{quote.signatureTypedText}</p>
+              )}
+              <p className="text-[11px] text-muted-foreground mt-1">Signed {new Date(quote.signedAt).toLocaleDateString()}</p>
+            </div>
+          )}
+
           {/* Portal activity */}
           {quote.portalSentAt && (
             <div className="rounded-lg bg-secondary/30 border border-border p-4">
@@ -1065,6 +1168,47 @@ function NativeQuoteDetailPanel({
               )}
             </div>
           )}
+
+          {/* Linked lead */}
+          <div>
+            {linkedLead ? (
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <Users className="w-3.5 h-3.5 text-primary shrink-0" />
+                <span>Linked to lead: <span className="font-medium text-foreground">{linkedLead.name}</span></span>
+              </div>
+            ) : (
+              <button
+                onClick={() => setShowLinkLeadPicker(v => !v)}
+                className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-primary transition-colors"
+              >
+                <Users className="w-3.5 h-3.5" />Link to Lead
+              </button>
+            )}
+            {showLinkLeadPicker && (
+              <div className="mt-2 rounded-lg border border-border bg-card p-3 space-y-2">
+                <input
+                  type="text"
+                  placeholder="Search leads..."
+                  value={leadPickerSearch}
+                  onChange={e => setLeadPickerSearch(e.target.value)}
+                  className="w-full text-xs bg-secondary/30 border border-border rounded px-2 py-1.5 outline-none focus:border-primary"
+                />
+                {filteredLeads.length === 0 && (
+                  <p className="text-xs text-muted-foreground text-center py-2">No unlinked leads found.</p>
+                )}
+                {filteredLeads.slice(0, 8).map((l: any) => (
+                  <button
+                    key={l.id}
+                    onClick={() => linkQuoteToLead.mutate({ leadId: l.id, nativeQuoteId: quote.id, estimateAmount: quote.totalCents > 0 ? quote.totalCents / 100 : undefined })}
+                    className="w-full text-left text-xs px-2 py-1.5 rounded hover:bg-secondary/50 transition-colors"
+                  >
+                    <span className="font-medium text-foreground">{l.name}</span>
+                    {l.address && <span className="text-muted-foreground ml-1.5">{l.address}</span>}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
 
           <p className="text-[11px] text-muted-foreground">Created {new Date(quote.createdAt).toLocaleDateString()}</p>
         </div>
@@ -1104,6 +1248,19 @@ function NativeQuoteDetailPanel({
               <ExternalLink className="w-3.5 h-3.5" />View Portal
             </button>
           )}
+          {/* Restore to Draft — shown when quote is declined or cancelled */}
+          {(quote.clientAction === "declined" || quote.status === "cancelled") && !quote.convertedToJobAt && (
+            <button
+              onClick={() => {
+                updateStatusMutation.mutate({ id: quote.id, status: "draft" });
+                toast.success("Quote restored to draft.");
+              }}
+              className="w-full flex items-center justify-center gap-2 py-2 rounded-md text-xs font-semibold text-amber-300 border border-amber-600/40 hover:bg-amber-950/30 transition-colors"
+            >
+              <ArchiveRestore className="w-3.5 h-3.5" />Restore to Draft
+            </button>
+          )}
+
           {/* Secondary row */}
           <div className="flex items-center justify-between pt-1">
             <div className="flex gap-3">
@@ -1153,6 +1310,22 @@ export function NativeAllQuotesSection() {
   } | undefined>(undefined);
   const [editQuote, setEditQuote] = useState<NativeQuote | null>(null);
   const [selectedQuote, setSelectedQuote] = useState<NativeQuote | null>(null);
+  // ── Stale quotes follow-up ──────────────────────────────────────────────────
+  const [showStalePanel, setShowStalePanel] = useState(false);
+  const [staleFollowUpDrafts, setStaleFollowUpDrafts] = useState<Record<number, string>>({});
+  const [draftingFor, setDraftingFor] = useState<number | null>(null);
+  const { data: staleQuotes = [] } = trpc.ops.getStaleQuotes.useQuery(undefined, {
+    staleTime: 1000 * 60 * 5,
+    retry: false,
+  });
+  const draftFollowUpMutation = trpc.ops.draftQuoteFollowUp.useMutation({
+    onSuccess: (result, variables) => {
+      setStaleFollowUpDrafts(prev => ({ ...prev, [variables.quoteId]: result.draft }));
+      setDraftingFor(null);
+    },
+    onError: (err) => { toast.error(err.message); setDraftingFor(null); },
+  });
+
   const importMutation = trpc.nativeQuotes.importFromJobber.useMutation({
     onSuccess: (result) => {
       toast.success(`Imported ${result.imported} quote${result.imported !== 1 ? "s" : ""} from Jobber${result.skipped > 0 ? ` (${result.skipped} already existed, skipped)` : "."}`);
@@ -1268,6 +1441,69 @@ export function NativeAllQuotesSection() {
             </div>
           )}
 
+          {/* Stale quotes follow-up panel */}
+          {(staleQuotes as any[]).length > 0 && (
+            <div className="rounded-lg border border-amber-500/30 bg-card p-4">
+              <button
+                className="w-full flex items-center justify-between"
+                onClick={() => setShowStalePanel(p => !p)}
+              >
+                <div className="flex items-center gap-2">
+                  <Clock className="w-4 h-4 text-amber-400" />
+                  <span className="text-sm font-semibold text-foreground">Quotes Needing Follow-Up</span>
+                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-400/10 text-amber-400 border border-amber-400/20 font-semibold">{(staleQuotes as any[]).length}</span>
+                </div>
+                {showStalePanel ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
+              </button>
+              {showStalePanel && (
+                <div className="mt-3 space-y-3">
+                  {(staleQuotes as any[]).map((q: any) => {
+                    const draft = staleFollowUpDrafts[q.id];
+                    return (
+                      <div key={q.id} className="rounded-md bg-secondary/20 border border-border p-3 space-y-2">
+                        <div className="flex items-start justify-between gap-2">
+                          <div>
+                            <p className="text-xs font-semibold text-foreground">{q.clientName ?? `Quote #${q.id}`}</p>
+                            <p className="text-[11px] text-muted-foreground">{q.service ?? "Land clearing"} &middot; {q.daysSinceSent} days since sent</p>
+                          </div>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-7 text-xs gap-1 shrink-0"
+                            disabled={draftingFor === q.id}
+                            onClick={() => {
+                              setDraftingFor(q.id);
+                              draftFollowUpMutation.mutate({
+                                quoteId: q.id,
+                                clientName: q.clientName ?? "there",
+                                service: q.service ?? "land management",
+                                acreage: q.acreage ?? undefined,
+                                daysSinceSent: q.daysSinceSent,
+                              });
+                            }}
+                          >
+                            {draftingFor === q.id ? <><Loader2 className="w-3 h-3 animate-spin" />Drafting...</> : <><Sparkles className="w-3 h-3 text-orange-400" />Draft SMS</>}
+                          </Button>
+                        </div>
+                        {draft && (
+                          <div className="rounded bg-primary/5 border border-primary/20 p-2">
+                            <p className="text-xs text-foreground leading-relaxed">{draft}</p>
+                            <button
+                              className="text-[11px] text-primary hover:text-primary/80 mt-1.5 transition-colors"
+                              onClick={() => { navigator.clipboard.writeText(draft); toast.success("Copied to clipboard."); }}
+                            >
+                              Copy
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Loading */}
           {isLoading && (
             <div className="flex items-center justify-center py-20">
@@ -1297,6 +1533,7 @@ export function NativeAllQuotesSection() {
                 <table className="w-full text-xs">
                   <thead>
                     <tr className="border-b border-border bg-secondary/20">
+                      <th className="text-left px-4 py-2.5 font-medium text-muted-foreground hidden lg:table-cell">#</th>
                       <th className="text-left px-4 py-2.5 font-medium text-muted-foreground">Title</th>
                       <th className="text-left px-4 py-2.5 font-medium text-muted-foreground hidden sm:table-cell">Client</th>
                       <th className="text-right px-4 py-2.5 font-medium text-muted-foreground hidden md:table-cell">Total</th>
@@ -1314,6 +1551,9 @@ export function NativeAllQuotesSection() {
                           idx % 2 === 0 ? "" : "bg-secondary/5"
                         } ${selectedQuote?.id === quote.id ? "bg-primary/5 border-l-2 border-l-primary" : ""}`}
                       >
+                        <td className="px-4 py-3 text-muted-foreground/60 text-[11px] hidden lg:table-cell">
+                          #{quote.id}
+                        </td>
                         <td className="px-4 py-3 font-medium text-foreground max-w-[200px] truncate">
                           <div className="flex items-center gap-1.5">
                             {quote.title || "Untitled Quote"}

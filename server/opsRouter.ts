@@ -27,7 +27,7 @@ import {
 } from "./db";
 import { Resend } from "resend";
 import { jobs, opsLeads, quoteSubmissions, crews, crewMembers, conversations, messages, reviews, timeEntries, distanceQuotes, businessSettings, automationSettings, serviceCatalog, pricingBenchmarks, messageTemplates, reminderRules, leadNotes, visitBlackoutDates, recurringBlackoutDays, aiPricingSettings, quoteDrafts, jobberTokens, socialPosts, adSpend, equipment, serviceLogs, serviceIntervals, fieldDiagnostics, ownerTasks, jobNotes, jobberRevenueCache, morningBriefs, reviewRequests, chatSessions,
- scheduleEntries, agentConfig, adCampaigns, prospectingLeads, outreachTemplates, leadContactLog } from "../drizzle/schema";
+ scheduleEntries, agentConfig, adCampaigns, prospectingLeads, outreachTemplates, leadContactLog, nativeQuotes } from "../drizzle/schema";
 
 import { and, asc, desc, eq, gte, inArray, lt, lte, like, or, sql } from "drizzle-orm";
 import { portalAddOnOptions } from "../drizzle/schema";
@@ -5860,17 +5860,34 @@ Always be specific to nolandearthworks.com. Never give generic advice — tie ev
     }),
 
   // ─── Priority 4: Quote Follow-Up Automation ────────────────────────────────────
+  /**
+   * Returns native quotes sent to the client portal 7+ days ago
+   * with no client action and not yet converted.
+   * Used by the "Quotes Needing Follow-Up" panel in the All Quotes tab.
+   */
   getStaleQuotes: ownerProcedure.query(async () => {
     const db = await getDb();
     if (!db) return [];
     const cutoff = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
-    return db.select().from(quoteSubmissions)
+    const rows = await db
+      .select()
+      .from(nativeQuotes)
       .where(and(
-        eq(quoteSubmissions.jobberStatus, "synced"),
-        lt(quoteSubmissions.createdAt, cutoff),
+        lt(nativeQuotes.portalSentAt, cutoff),
+        sql`${nativeQuotes.clientAction} IS NULL`,
+        sql`${nativeQuotes.convertedToJobAt} IS NULL`,
       ))
-      .orderBy(desc(quoteSubmissions.createdAt))
+      .orderBy(desc(nativeQuotes.portalSentAt))
       .limit(20);
+    return rows.map(q => ({
+      id: q.id,
+      clientName: q.clientName,
+      phone: q.clientPhone,
+      service: q.serviceType ?? "Land Clearing",
+      acreage: q.acreage ?? undefined,
+      portalSentAt: q.portalSentAt,
+      daysSinceSent: Math.floor((Date.now() - (q.portalSentAt?.getTime() ?? Date.now())) / (1000 * 60 * 60 * 24)),
+    }));
   }),
 
   draftQuoteFollowUp: ownerProcedure
@@ -6625,5 +6642,42 @@ Generate a complete monthly ad campaign plan. Return ONLY valid JSON matching th
         }
       }
       return { checkoutUrl: session.url, sessionId: session.id, smsSent };
+    }),
+
+  /**
+   * Returns the lead (if any) linked to a native quote ID.
+   */
+  getLeadByNativeQuoteId: ownerProcedure
+    .input(z.object({ nativeQuoteId: z.number().int().positive() }))
+    .query(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) return null;
+      const rows = await db
+        .select()
+        .from(opsLeads)
+        .where(and(eq(opsLeads.userId, ctx.user.id), eq(opsLeads.nativeQuoteId, input.nativeQuoteId)))
+        .limit(1);
+      return rows[0] ?? null;
+    }),
+
+  /**
+   * Links a native quote to an existing lead by setting nativeQuoteId.
+   * Advances the lead stage to 'estimate_sent'.
+   */
+  linkNativeQuoteToLead: ownerProcedure
+    .input(z.object({
+      leadId: z.number().int().positive(),
+      nativeQuoteId: z.number().int().positive(),
+      estimateAmount: z.number().optional(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'DB unavailable' });
+      await updateOpsLead(input.leadId, ctx.user.id, {
+        stage: 'estimate_sent',
+        nativeQuoteId: input.nativeQuoteId,
+        ...(input.estimateAmount != null ? { estimateAmount: String(input.estimateAmount) } : {}),
+      });
+      return { ok: true };
     }),
 });

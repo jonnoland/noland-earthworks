@@ -2571,3 +2571,12 @@
 - [x] Frontend: CSV export button in NativeJobsSection — exports filtered jobs list as downloadable CSV
 - [x] TypeScript: 0 errors
 - [x] Tests: vitest coverage for nativeClientsRouter
+
+## Jobber Removal — Close Feature Gaps (2026-07-28)
+
+- [ ] Gap 1: Satellite imagery strip in NativeQuoteDetailPanel (wire trpc.ops.quotes.satelliteImage using quote.propertyAddress)
+- [ ] Gap 2: Update getStaleQuotes to query nativeQuotes (portalSentAt > 7 days, no clientAction) and add Quotes Needing Follow-Up panel to NativeAllQuotesSection
+- [ ] Gap 3: Add Link to Lead to NativeQuoteDetailPanel (add nativeQuoteId support to linkQuoteToLead procedure)
+- [ ] Gap 4: Add Quote # column (display #id) to All Quotes table
+- [ ] Gap 5: Add Restore to Draft action for cancelled quotes in NativeQuoteDetailPanel
+- [ ] Gap 6: Render changeRequestNote, declineNote, signatureDataUrl/signatureTypedText/signedAt in NativeQuoteDetailPanel body
