@@ -98,6 +98,7 @@ import {
   Settings2, GripVertical, ToggleLeft, ToggleRight,
 } from "lucide-react";
 import { NativeAllQuotesSection } from "@/pages/ops/NativeAllQuotesSection";
+import NativeJobsSection from "@/pages/ops/NativeJobsSection";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -4928,6 +4929,9 @@ export default function OpsQuotes() {
           <TabsTrigger value="analytics" className="gap-1.5 text-xs">
             <TrendingUp className="w-3.5 h-3.5" /> Analytics
           </TabsTrigger>
+          <TabsTrigger value="jobs" className="gap-1.5 text-xs">
+            <Briefcase className="w-3.5 h-3.5" /> Jobs
+          </TabsTrigger>
           <TabsTrigger value="addons" className="gap-1.5 text-xs">
             <Settings2 className="w-3.5 h-3.5" /> Add-ons
           </TabsTrigger>
@@ -5241,6 +5245,9 @@ export default function OpsQuotes() {
         </TabsContent>
 
         {/* ── ADD-ONS MANAGER TAB ── */}
+        <TabsContent value="jobs" className="mt-0" style={{ minHeight: 500 }}>
+          <NativeJobsSection />
+        </TabsContent>
         <TabsContent value="addons" className="mt-0">
           <PortalAddOnsManager />
         </TabsContent>

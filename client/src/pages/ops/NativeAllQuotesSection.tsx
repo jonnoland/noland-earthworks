@@ -26,7 +26,7 @@ import {
   Plus, Search, Edit2, Trash2, Copy, Send, CreditCard, Briefcase,
   Eye, CheckCircle, XCircle, DollarSign,
   FileText, ExternalLink, Sparkles, Info, AlertTriangle,
-  RefreshCw, ChevronRight, MapPin, Phone, Mail, User, X
+  RefreshCw, ChevronRight, MapPin, Phone, Mail, User, X, Globe
 } from "lucide-react";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -851,12 +851,14 @@ function NativeQuoteDetailPanel({
   const [showSendPortal, setShowSendPortal] = useState(false);
   const [showDeposit, setShowDeposit] = useState(false);
   const [showConvert, setShowConvert] = useState(false);
-
   const deleteMutation = trpc.nativeQuotes.delete.useMutation({
     onSuccess: () => { utils.nativeQuotes.list.invalidate(); toast.success("Quote deleted"); onClose(); },
     onError: (e) => toast.error("Error: " + e.message),
   });
-
+  const updateStatusMutation = trpc.nativeQuotes.update.useMutation({
+    onSuccess: () => { utils.nativeQuotes.list.invalidate(); },
+    onError: (e) => toast.error("Error: " + e.message),
+  });
   const duplicateMutation = trpc.nativeQuotes.duplicate.useMutation({
     onSuccess: () => { utils.nativeQuotes.list.invalidate(); toast.success("Quote duplicated"); },
     onError: (e) => toast.error("Error: " + e.message),
@@ -887,6 +889,29 @@ function NativeQuoteDetailPanel({
 
         {/* Body */}
         <div className="flex-1 overflow-y-auto p-5 space-y-5">
+          {/* Web Request banner */}
+          {quote.status === "web_request" && (
+            <div className="rounded-lg border border-cyan-600/40 bg-cyan-950/30 p-4">
+              <div className="flex items-start gap-3">
+                <div className="shrink-0 w-8 h-8 rounded-full bg-cyan-600/20 flex items-center justify-center">
+                  <Globe className="w-4 h-4 text-cyan-400" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-cyan-300 mb-0.5">Website Request</p>
+                  <p className="text-xs text-muted-foreground">This came in from the website quote form. Review the details below, then convert it to a formal quote to add pricing and send the portal.</p>
+                </div>
+              </div>
+              <button
+                onClick={() => {
+                  updateStatusMutation.mutate({ id: quote.id, status: "draft" });
+                  onEdit({ ...quote, status: "draft" });
+                }}
+                className="mt-3 w-full flex items-center justify-center gap-2 py-2 rounded-md text-xs font-semibold text-white bg-cyan-600 hover:bg-cyan-700 transition-colors"
+              >
+                <FileText className="w-3.5 h-3.5" />Convert to Quote
+              </button>
+            </div>
+          )}
           {/* Client block */}
           <div className="rounded-lg bg-secondary/30 border border-border p-4 space-y-2">
             <div className="flex items-center gap-2 mb-2">

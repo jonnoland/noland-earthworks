@@ -22,6 +22,7 @@ import { govContractsRouter } from "./govContractsRouter";
 import { routePlannerRouter } from "./routePlannerRouter";
 import { quotePortalRouter } from "./quotePortalRouter";
 import { nativeQuotesRouter } from "./nativeQuotesRouter";
+import { nativeJobsRouter } from "./nativeJobsRouter";
 import { getDb } from "./db";
 import { businessSettings } from "../drizzle/schema";
 
@@ -59,6 +60,7 @@ export const appRouter = router({
   routePlanner: routePlannerRouter,
   quotePortal: quotePortalRouter,
   nativeQuotes: nativeQuotesRouter,
+  nativeJobs: nativeJobsRouter,
 
   /**
    * Public site configuration — read-only, no auth required.

@@ -256,8 +256,8 @@ function buildEmailHtml(data: QuoteInput): string {
         <!-- CTA -->
         <tr>
           <td style="padding:28px 36px;text-align:center;">
-            <a href="https://secure.getjobber.com/work_requests" style="display:inline-block;background:#E07B2A;color:#ffffff;font-size:14px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;padding:14px 32px;border-radius:6px;text-decoration:none;">View in Jobber &rarr;</a>
-            <p style="margin:12px 0 0;font-size:12px;color:#aaa;">This request has been automatically synced to your Jobber account.</p>
+            <a href="https://nolandearthworks.com/ops/quotes" style="display:inline-block;background:#E07B2A;color:#ffffff;font-size:14px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;padding:14px 32px;border-radius:6px;text-decoration:none;">View in All Quotes &rarr;</a>
+            <p style="margin:12px 0 0;font-size:12px;color:#aaa;">This request has been added to your All Quotes section under Web Requests.</p>
           </td>
         </tr>
 

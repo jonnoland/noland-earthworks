@@ -2548,3 +2548,12 @@
 - [x] Add Web Requests filter pill to All Quotes section
 - [x] Add cyan Web Request status badge
 - [x] Server-side list procedure already supports exact status filter — web_request works
+
+## Jobber Removal — Native System Completion
+- [ ] Item 1: Web Requests review panel — Convert to Quote quick-action in All Quotes detail panel
+- [ ] Item 5: Fix notification email CTA to point to All Quotes instead of Jobber
+- [x] Item 2: Native Jobs section — DB schema (nativeJobs table), server procedures, Jobs tab in Ops
+- [x] Item 3: HTML invoice generation from completed job, emailed to client (stored in S3, opens in browser)
+- [ ] Item 4a: Native Clients tab in Ops backed by database
+- [x] Item 4b: Native Jobs tab in Ops backed by database (using nativeJobs table)
+- [ ] Item 4c: Native Invoices tab in Ops backed by database
