@@ -2482,3 +2482,14 @@
 - [x] Frontend: Send Portal Link button in /ops/quotes Quotes.tsx with optional note field and confirm flow
 - [x] Frontend: portal status indicators in quote card (Viewed date, Approved/Declined badge, Deposit paid badge, Copy link button)
 - [x] Frontend: App.tsx route /quote/:token registered as public lazy route
+
+## Quote Portal Enhancements — Jul 2026
+
+- [x] Schema: add signatureDataUrl (text), signedAt (timestamp), changeRequestNote (text), changeRequestAt (timestamp) to distanceQuotes
+- [x] Run db:push for new schema fields
+- [x] Server: update quotePortalRouter clientAction to accept and store signatureDataUrl + signedAt
+- [x] Server: add quotePortalRouter requestChanges procedure (stores note, notifies owner, sends client acknowledgement email)
+- [x] Frontend: digital signature pad canvas in QuotePortal approve flow (draw signature before confirming approval)
+- [x] Frontend: Request Changes button and form in QuotePortal (text area for client to describe requested changes)
+- [x] Frontend: PDF download button on QuotePortal (print-optimized CSS, window.print() with print stylesheet)
+- [x] Frontend: show signature thumbnail in Quotes.tsx ops card when quote is signed (signedAt date shown in portal status)

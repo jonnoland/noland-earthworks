@@ -21,6 +21,33 @@ import { notifyOwner } from "./_core/notification";
 
 const PORTAL_BASE_URL = "https://nolandearth-pymczdcn.manus.space";
 
+// ─── Email Templates (defined before router so they are in scope) ─────────────
+
+function buildChangeRequestEmail(firstName: string, jobType: string, note: string): string {
+  const job = jobType.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+  return `<!DOCTYPE html><html><head><meta charset="UTF-8"><style>
+    body{margin:0;padding:0;background:#f4f4f4;font-family:Arial,sans-serif;}
+    .wrapper{max-width:600px;margin:0 auto;background:#fff;}
+    .header{background:#1a1a1a;padding:24px 32px;}
+    .header h1{color:#f0a500;margin:0;font-size:20px;letter-spacing:.5px;}
+    .header p{color:#888;margin:4px 0 0;font-size:12px;}
+    .body{padding:32px;}
+    .greeting{font-size:16px;font-weight:700;color:#1a1a1a;margin-bottom:16px;}
+    .note-box{background:#f9f9f9;border-left:3px solid #f0a500;padding:12px 16px;margin:16px 0;font-size:13px;color:#333;font-style:italic;}
+    .footer{background:#f4f4f4;padding:16px 32px;font-size:11px;color:#999;text-align:center;}
+    a{color:#f0a500;}
+  </style></head><body><div class="wrapper">
+    <div class="header"><h1>Noland Earthworks, LLC</h1><p>Veteran-Owned &amp; Operated &bull; Middle &amp; West Tennessee</p></div>
+    <div class="body">
+      <p class="greeting">Hi ${firstName},</p>
+      <p style="font-size:14px;line-height:1.7;color:#333;">We received your change request for the <strong>${job}</strong> quote. Here is what you submitted:</p>
+      <div class="note-box">&ldquo;${note}&rdquo;</div>
+      <p style="font-size:14px;line-height:1.7;color:#333;">Jon will review your request and follow up with a revised quote shortly. If you need to reach him directly, call or text <strong>615-406-4819</strong>.</p>
+    </div>
+    <div class="footer">Noland Earthworks, LLC &bull; Vanleer, TN &bull; <a href="https://www.nolandearthworks.com">nolandearthworks.com</a><br/>Veteran-owned and operated. Licensed and insured.</div>
+  </div></body></html>`;
+}
+
 export const quotePortalRouter = router({
   /**
    * Load a quote by its portal token.
@@ -90,18 +117,88 @@ export const quotePortalRouter = router({
         depositPaidAt: quote.depositPaidAt,
         sentAt: quote.sentAt,
         createdAt: quote.createdAt,
+        // Signature
+        signatureDataUrl: quote.signatureDataUrl,
+        signedAt: quote.signedAt,
+        // Change request
+        changeRequestNote: quote.changeRequestNote,
+        changeRequestAt: quote.changeRequestAt,
       };
     }),
 
   /**
-   * Client approves or declines the quote.
-   * Updates the quote status and notifies the owner.
+   * Client requests changes to the quote.
+   * Stores the note, notifies the owner, and sends the client an acknowledgement email.
    */
+  requestChanges: publicProcedure
+    .input(z.object({
+      token: z.string().min(16),
+      note: z.string().min(10).max(2000),
+    }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Service unavailable" });
+
+      const [quote] = await db
+        .select()
+        .from(distanceQuotes)
+        .where(eq(distanceQuotes.portalToken, input.token))
+        .limit(1);
+
+      if (!quote) throw new TRPCError({ code: "NOT_FOUND", message: "Quote not found." });
+      if (quote.clientAction) {
+        throw new TRPCError({ code: "CONFLICT", message: `This quote has already been ${quote.clientAction}. Contact Jon directly to discuss changes.` });
+      }
+
+      await db
+        .update(distanceQuotes)
+        .set({
+          changeRequestNote: input.note,
+          changeRequestAt: new Date(),
+          status: "draft", // revert to draft so it shows up in your queue
+        })
+        .where(eq(distanceQuotes.id, quote.id));
+
+      const fmt = (cents: number) =>
+        new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(cents / 100);
+
+      await notifyOwner({
+        title: `Changes Requested — ${quote.clientName}`,
+        content: [
+          `${quote.clientName} requested changes to the quote for ${quote.jobType.replace(/_/g, " ")}.`,
+          `Job site: ${quote.jobAddress}`,
+          `Acreage: ${quote.jobAcres} ac | Total: ${fmt(quote.adjustedJobTotalCents)}`,
+          `Client note: "${input.note}"`,
+        ].join("\n"),
+      }).catch(() => {/* non-critical */});
+
+      // Send acknowledgement email to client
+      if (quote.clientEmail && ENV.resendApiKey) {
+        try {
+          const { Resend } = await import("resend");
+          const resend = new Resend(ENV.resendApiKey);
+          const firstName = quote.clientName.split(" ")[0];
+          await resend.emails.send({
+            from: "Noland Earthworks <noreply@nolandearthworks.com>",
+            to: quote.clientEmail,
+            replyTo: "jon@nolandearthworks.com",
+            subject: "Change Request Received — Noland Earthworks",
+            html: buildChangeRequestEmail(firstName, quote.jobType, input.note),
+          });
+        } catch (err) {
+          console.error("[quotePortal] Change request email failed:", err);
+        }
+      }
+
+      return { success: true };
+    }),
+
   clientAction: publicProcedure
     .input(z.object({
       token: z.string().min(16),
       action: z.enum(["approved", "declined"]),
       message: z.string().max(1000).optional(),
+      signatureDataUrl: z.string().max(200000).optional(), // base64 PNG from canvas
     }))
     .mutation(async ({ input }) => {
       const db = await getDb();
@@ -129,6 +226,7 @@ export const quotePortalRouter = router({
           clientAction: input.action,
           clientActionAt: new Date(),
           status: newStatus,
+          ...(input.signatureDataUrl ? { signatureDataUrl: input.signatureDataUrl, signedAt: new Date() } : {}),
         })
         .where(eq(distanceQuotes.id, quote.id));
 

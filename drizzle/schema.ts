@@ -471,6 +471,14 @@ export const distanceQuotes = mysqlTable("distance_quotes", {
   sentAt: timestamp("sentAt"),
   emailedAt: timestamp("emailedAt"),
   portalViewedAt: timestamp("portalViewedAt"),
+  /** Digital signature — base64 PNG data URL captured on the portal when client approves */
+  signatureDataUrl: text("signatureDataUrl"),
+  /** Timestamp when client signed */
+  signedAt: timestamp("signedAt"),
+  /** Client-requested changes note */
+  changeRequestNote: text("changeRequestNote"),
+  /** Timestamp when client submitted a change request */
+  changeRequestAt: timestamp("changeRequestAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });

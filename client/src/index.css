@@ -375,3 +375,76 @@
   from { transform: rotate(0deg); }
   to   { transform: rotate(360deg); }
 }
+
+/* ─── Quote Portal Print / PDF Styles ──────────────────────────────────────── */
+
+@media print {
+  /* Force white background and black text for readability on paper */
+  .portal-print-root {
+    background: #ffffff !important;
+    color: #1a1a1a !important;
+  }
+
+  /* Hide interactive elements that have no meaning on paper */
+  .no-print {
+    display: none !important;
+  }
+
+  /* Show print-only elements */
+  .print-only {
+    display: block !important;
+  }
+
+  /* Recolor the header for print */
+  .portal-print-root header {
+    background: #1a1a1a !important;
+    border-bottom: 2px solid #f0a500 !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  /* Cards: light gray background */
+  .portal-print-root .rounded-xl,
+  .portal-print-root .rounded-lg {
+    background: #f8f8f8 !important;
+    border-color: #ddd !important;
+    color: #1a1a1a !important;
+  }
+
+  /* Text color overrides */
+  .portal-print-root .text-zinc-200,
+  .portal-print-root .text-zinc-300,
+  .portal-print-root .text-white {
+    color: #1a1a1a !important;
+  }
+  .portal-print-root .text-zinc-400,
+  .portal-print-root .text-zinc-500,
+  .portal-print-root .text-zinc-600 {
+    color: #555 !important;
+  }
+  .portal-print-root .text-amber-400,
+  .portal-print-root .text-amber-500 {
+    color: #b45309 !important;
+  }
+
+  /* Page breaks */
+  .portal-print-root .rounded-xl {
+    page-break-inside: avoid;
+  }
+
+  /* Remove shadows */
+  * {
+    box-shadow: none !important;
+    text-shadow: none !important;
+  }
+
+  /* Ensure links print with URL */
+  a[href]::after {
+    content: none !important;
+  }
+}
+
+/* Hidden by default, shown only in print */
+.print-only {
+  display: none;
+}
