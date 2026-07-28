@@ -2517,3 +2517,8 @@
 - [x] Frontend: NativeAllQuotesSection.tsx — full quote management UI (search, status filter, create/edit modal with line items, duplicate, delete, send portal, collect deposit, convert to job, portal status badges)
 - [x] Frontend: All Quotes tab added to Quotes.tsx as default tab (NativeAllQuotesSection), Jobber tab retained as secondary
 - [x] TypeScript: 0 errors
+
+## AI Suggest in Quote Modal (Jul 2026)
+- [x] Server: nativeQuotes.aiSuggest procedure — takes serviceType, acreage, terrain, density, access, notes; returns title, estimatedDuration, clientMessage, lineItems, totalCents using LLM with TN market rate context
+- [x] Frontend: AI Suggest panel in QuoteFormModal (collapsible, amber-themed) — terrain/density/access selectors, Generate button, auto-fills title + line items + duration + client message on success
+- [x] TypeScript: 0 errors

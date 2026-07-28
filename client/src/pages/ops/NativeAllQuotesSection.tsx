@@ -25,7 +25,7 @@ import { toast } from "sonner";
 import {
   Plus, Search, Edit2, Trash2, Copy, Send, CreditCard, Briefcase,
   ChevronDown, ChevronUp, Eye, CheckCircle, XCircle, Clock, DollarSign,
-  FileText, ExternalLink
+  FileText, ExternalLink, Sparkles
 } from "lucide-react";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -206,6 +206,45 @@ function QuoteFormModal({
     [form.lineItems]
   );
 
+  // ── AI Suggest ────────────────────────────────────────────────────────────
+  const [aiPanel, setAiPanel] = useState<"closed" | "open" | "loading">("closed");
+  const [aiTerrain, setAiTerrain] = useState("flat");
+  const [aiDensity, setAiDensity] = useState("moderate");
+  const [aiAccess, setAiAccess] = useState("easy");
+
+  const aiSuggestMutation = trpc.nativeQuotes.aiSuggest.useMutation({
+    onSuccess: (data) => {
+      setForm(prev => ({
+        ...prev,
+        title: prev.title || data.title,
+        estimatedDuration: data.estimatedDuration || prev.estimatedDuration,
+        clientMessage: data.clientMessage || prev.clientMessage,
+        lineItems: data.lineItems.length > 0 ? data.lineItems : prev.lineItems,
+      }));
+      setAiPanel("closed");
+      toast.success("AI suggestion applied");
+    },
+    onError: (e) => {
+      setAiPanel("open");
+      toast.error("AI suggestion failed: " + e.message);
+    },
+  });
+
+  const handleAiSuggest = () => {
+    const acreage = parseFloat(form.acreage);
+    if (!form.serviceType) { toast.error("Select a service type first"); return; }
+    if (!form.acreage || isNaN(acreage) || acreage <= 0) { toast.error("Enter acreage first"); return; }
+    setAiPanel("loading");
+    aiSuggestMutation.mutate({
+      serviceType: form.serviceType,
+      acreage,
+      terrain: aiTerrain,
+      density: aiDensity,
+      access: aiAccess,
+      notes: form.internalNotes || undefined,
+    });
+  };
+
   const createMutation = trpc.nativeQuotes.create.useMutation({
     onSuccess: () => {
       utils.nativeQuotes.list.invalidate();
@@ -320,6 +359,84 @@ function QuoteFormModal({
                   className="bg-zinc-800 border-zinc-700" placeholder="1–2 days" />
               </div>
             </div>
+          </div>
+
+          {/* AI Suggest panel */}
+          <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Sparkles className="h-4 w-4 text-amber-400" />
+                <span className="text-sm font-medium text-amber-300">AI Suggest</span>
+                <span className="text-xs text-zinc-500">Auto-fill line items, duration, and client message</span>
+              </div>
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-7 text-xs border-amber-500/50 text-amber-400 hover:bg-amber-500/10"
+                onClick={() => setAiPanel(p => p === "closed" ? "open" : "closed")}
+                type="button"
+              >
+                {aiPanel === "closed" ? "Configure" : "Hide"}
+              </Button>
+            </div>
+            {aiPanel !== "closed" && (
+              <div className="mt-3 space-y-3">
+                <div className="grid grid-cols-3 gap-2">
+                  <div>
+                    <Label className="text-zinc-400 text-xs mb-1 block">Terrain</Label>
+                    <Select value={aiTerrain} onValueChange={setAiTerrain}>
+                      <SelectTrigger className="bg-zinc-800 border-zinc-700 h-8 text-xs">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent className="bg-zinc-800 border-zinc-700">
+                        <SelectItem value="flat">Flat</SelectItem>
+                        <SelectItem value="rolling">Rolling</SelectItem>
+                        <SelectItem value="steep">Steep</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label className="text-zinc-400 text-xs mb-1 block">Vegetation Density</Label>
+                    <Select value={aiDensity} onValueChange={setAiDensity}>
+                      <SelectTrigger className="bg-zinc-800 border-zinc-700 h-8 text-xs">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent className="bg-zinc-800 border-zinc-700">
+                        <SelectItem value="light">Light</SelectItem>
+                        <SelectItem value="moderate">Moderate</SelectItem>
+                        <SelectItem value="heavy">Heavy</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label className="text-zinc-400 text-xs mb-1 block">Site Access</Label>
+                    <Select value={aiAccess} onValueChange={setAiAccess}>
+                      <SelectTrigger className="bg-zinc-800 border-zinc-700 h-8 text-xs">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent className="bg-zinc-800 border-zinc-700">
+                        <SelectItem value="easy">Easy</SelectItem>
+                        <SelectItem value="moderate">Moderate</SelectItem>
+                        <SelectItem value="difficult">Difficult</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <p className="text-xs text-zinc-500">Requires service type and acreage to be filled in above.</p>
+                <Button
+                  className="w-full bg-amber-500 hover:bg-amber-600 text-black font-semibold h-8 text-xs"
+                  onClick={handleAiSuggest}
+                  disabled={aiPanel === "loading"}
+                  type="button"
+                >
+                  {aiPanel === "loading" ? (
+                    <><span className="animate-spin mr-2">&#9696;</span>Generating suggestion...</>
+                  ) : (
+                    <><Sparkles className="h-3.5 w-3.5 mr-1.5" />Generate AI Suggestion</>
+                  )}
+                </Button>
+              </div>
+            )}
           </div>
 
           {/* Line items */}
