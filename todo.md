@@ -2538,3 +2538,5 @@
 - [x] Add info tooltips to terrain and access multipliers explaining how values are determined
 - [x] Add copy-to-clipboard button for the full price breakdown
 - [x] Recalculate line item prices proportionally when multipliers are edited before applying
+- [x] Reformat All Quotes section to match Jobber section layout (table + slide-out detail panel)
+- [x] Fix portal token routing — QuotePortalRouter now wired to /quote/:token in App.tsx

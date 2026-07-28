@@ -24,8 +24,9 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import {
   Plus, Search, Edit2, Trash2, Copy, Send, CreditCard, Briefcase,
-  ChevronDown, ChevronUp, Eye, CheckCircle, XCircle, Clock, DollarSign,
-  FileText, ExternalLink, Sparkles, Info, AlertTriangle
+  Eye, CheckCircle, XCircle, DollarSign,
+  FileText, ExternalLink, Sparkles, Info, AlertTriangle,
+  RefreshCw, ChevronRight, MapPin, Phone, Mail, User, X
 } from "lucide-react";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -833,24 +834,25 @@ function ConvertToJobDialog({ quote, onClose }: { quote: NativeQuote; onClose: (
   );
 }
 
-// ─── Quote card ───────────────────────────────────────────────────────────────
-function QuoteCard({
+// ─── Native Quote Detail Panel ────────────────────────────────────────────────
+function NativeQuoteDetailPanel({
   quote,
+  onClose,
   onEdit,
   onRefresh,
 }: {
   quote: NativeQuote;
+  onClose: () => void;
   onEdit: (q: NativeQuote) => void;
   onRefresh: () => void;
 }) {
   const utils = trpc.useUtils();
-  const [expanded, setExpanded] = useState(false);
   const [showSendPortal, setShowSendPortal] = useState(false);
   const [showDeposit, setShowDeposit] = useState(false);
   const [showConvert, setShowConvert] = useState(false);
 
   const deleteMutation = trpc.nativeQuotes.delete.useMutation({
-    onSuccess: () => { utils.nativeQuotes.list.invalidate(); toast.success("Quote deleted"); },
+    onSuccess: () => { utils.nativeQuotes.list.invalidate(); toast.success("Quote deleted"); onClose(); },
     onError: (e) => toast.error("Error: " + e.message),
   });
 
@@ -865,52 +867,114 @@ function QuoteCard({
   const portalUrl = quote.portalToken ? `${window.location.origin}/quote/${quote.portalToken}` : null;
 
   return (
-    <div className="bg-zinc-900 border border-zinc-700 rounded-lg overflow-hidden">
-      {/* Header row */}
-      <div className="flex items-center gap-3 p-3 cursor-pointer hover:bg-zinc-800/50 transition-colors"
-        onClick={() => setExpanded(e => !e)}>
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="font-semibold text-zinc-100 text-sm truncate">{quote.title}</span>
+    <>
+      {/* Backdrop */}
+      <div className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm" onClick={onClose} />
+      {/* Panel */}
+      <div className="fixed right-0 top-0 bottom-0 z-50 w-full max-w-md bg-card border-l border-border shadow-2xl flex flex-col overflow-hidden">
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 py-4 border-b border-border shrink-0">
+          <div className="flex items-center gap-2">
+            <FileText className="w-4 h-4 text-primary" />
+            <span className="text-sm font-semibold text-foreground truncate max-w-[200px]">{quote.title}</span>
             <StatusBadge quote={quote} />
           </div>
-          <div className="text-xs text-zinc-400 mt-0.5">
-            {quote.clientName}
-            {quote.propertyAddress && <span className="ml-2 text-zinc-500">· {quote.propertyAddress}</span>}
-          </div>
+          <button onClick={onClose} className="text-muted-foreground hover:text-foreground transition-colors p-1 rounded" aria-label="Close">
+            <X className="w-4 h-4" />
+          </button>
         </div>
-        <div className="text-right shrink-0">
-          <div className="text-amber-400 font-bold text-sm">
-            ${(quote.totalCents / 100).toLocaleString("en-US", { minimumFractionDigits: 0 })}
-          </div>
-          <div className="text-xs text-zinc-500">{new Date(quote.createdAt).toLocaleDateString()}</div>
-        </div>
-        {expanded ? <ChevronUp className="h-4 w-4 text-zinc-500 shrink-0" /> : <ChevronDown className="h-4 w-4 text-zinc-500 shrink-0" />}
-      </div>
 
-      {/* Expanded detail */}
-      {expanded && (
-        <div className="border-t border-zinc-700 p-3 space-y-4">
-          {/* Info grid */}
-          <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
-            {quote.serviceType && <div><span className="text-zinc-500">Service:</span> <span className="text-zinc-300">{quote.serviceType}</span></div>}
-            {quote.acreage && <div><span className="text-zinc-500">Acreage:</span> <span className="text-zinc-300">{quote.acreage} ac</span></div>}
-            {quote.estimatedDuration && <div><span className="text-zinc-500">Est. Duration:</span> <span className="text-zinc-300">{quote.estimatedDuration}</span></div>}
-            {quote.clientEmail && <div><span className="text-zinc-500">Email:</span> <span className="text-zinc-300">{quote.clientEmail}</span></div>}
-            {quote.clientPhone && <div><span className="text-zinc-500">Phone:</span> <span className="text-zinc-300">{quote.clientPhone}</span></div>}
+        {/* Body */}
+        <div className="flex-1 overflow-y-auto p-5 space-y-5">
+          {/* Client block */}
+          <div className="rounded-lg bg-secondary/30 border border-border p-4 space-y-2">
+            <div className="flex items-center gap-2 mb-2">
+              <User className="w-3.5 h-3.5 text-primary" />
+              <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Client</span>
+            </div>
+            <p className="text-sm font-semibold text-foreground">{quote.clientName}</p>
+            {quote.clientPhone && (
+              <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                <Phone className="w-3 h-3" />{quote.clientPhone}
+              </div>
+            )}
+            {quote.clientEmail && (
+              <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                <Mail className="w-3 h-3" />{quote.clientEmail}
+              </div>
+            )}
           </div>
 
-          {/* Line items */}
+          {/* Property */}
+          {quote.propertyAddress && (
+            <div className="flex items-start gap-2 text-xs text-muted-foreground">
+              <MapPin className="w-3.5 h-3.5 mt-0.5 shrink-0 text-primary" />
+              <span>{quote.propertyAddress}</span>
+            </div>
+          )}
+
+          {/* Job details */}
+          <div className="rounded-lg bg-secondary/30 border border-border p-4">
+            <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-3">Job Details</p>
+            <div className="space-y-2">
+              {quote.serviceType && (
+                <div className="flex justify-between text-xs">
+                  <span className="text-muted-foreground">Service</span>
+                  <span className="font-medium text-foreground">{quote.serviceType}</span>
+                </div>
+              )}
+              {quote.acreage && (
+                <div className="flex justify-between text-xs">
+                  <span className="text-muted-foreground">Acreage</span>
+                  <span className="font-medium text-foreground">{quote.acreage} acres</span>
+                </div>
+              )}
+              {quote.estimatedDuration && (
+                <div className="flex justify-between text-xs">
+                  <span className="text-muted-foreground">Est. Duration</span>
+                  <span className="font-medium text-foreground">{quote.estimatedDuration}</span>
+                </div>
+              )}
+              <div className="flex justify-between text-sm border-t border-border pt-2 mt-1">
+                <span className="font-semibold text-foreground">Total</span>
+                <span className="font-bold text-primary">${(quote.totalCents / 100).toLocaleString("en-US", { minimumFractionDigits: 0 })}</span>
+              </div>
+              {quote.depositPaidAt && quote.depositPaidCents && (
+                <div className="flex justify-between text-xs">
+                  <span className="text-muted-foreground">Deposit Paid</span>
+                  <span className="font-medium text-green-400">${(quote.depositPaidCents / 100).toLocaleString()}</span>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Line Items */}
           {lineItems.length > 0 && (
             <div>
-              <div className="text-xs text-zinc-500 mb-1">Line Items</div>
-              <div className="space-y-1">
-                {lineItems.map((li, i) => (
-                  <div key={i} className="flex justify-between text-xs">
-                    <span className="text-zinc-300">{li.description} {li.qty > 1 ? `× ${li.qty}` : ""}</span>
-                    <span className="text-amber-400">${((li.qty * li.unitPriceCents) / 100).toLocaleString()}</span>
-                  </div>
-                ))}
+              <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-2">Line Items</p>
+              <div className="rounded-lg border border-border overflow-hidden">
+                <table className="w-full text-xs">
+                  <thead>
+                    <tr className="bg-secondary/20 border-b border-border">
+                      <th className="text-left px-3 py-2 font-medium text-muted-foreground">Item</th>
+                      <th className="text-right px-3 py-2 font-medium text-muted-foreground">Qty</th>
+                      <th className="text-right px-3 py-2 font-medium text-muted-foreground">Unit Price</th>
+                      <th className="text-right px-3 py-2 font-medium text-muted-foreground">Total</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {lineItems.map((li, i) => (
+                      <tr key={i} className="border-b border-border last:border-0">
+                        <td className="px-3 py-2.5">
+                          <p className="font-medium text-foreground">{li.description}</p>
+                        </td>
+                        <td className="px-3 py-2.5 text-right text-muted-foreground">{li.qty}</td>
+                        <td className="px-3 py-2.5 text-right text-muted-foreground">${(li.unitPriceCents / 100).toLocaleString()}</td>
+                        <td className="px-3 py-2.5 text-right font-medium text-foreground">${((li.qty * li.unitPriceCents) / 100).toLocaleString()}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             </div>
           )}
@@ -918,81 +982,123 @@ function QuoteCard({
           {/* Client message */}
           {quote.clientMessage && (
             <div>
-              <div className="text-xs text-zinc-500 mb-1">Client Message</div>
-              <p className="text-xs text-zinc-300 bg-zinc-800 rounded p-2">{quote.clientMessage}</p>
+              <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Client Message</p>
+              <p className="text-xs text-muted-foreground bg-secondary/30 rounded-md p-3 whitespace-pre-wrap">{quote.clientMessage}</p>
             </div>
           )}
 
           {/* Internal notes */}
           {quote.internalNotes && (
             <div>
-              <div className="text-xs text-zinc-500 mb-1">Internal Notes</div>
-              <p className="text-xs text-zinc-400 bg-zinc-800/50 rounded p-2">{quote.internalNotes}</p>
+              <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Internal Notes</p>
+              <p className="text-xs text-muted-foreground bg-secondary/30 rounded-md p-3 whitespace-pre-wrap">{quote.internalNotes}</p>
             </div>
           )}
 
-          {/* Portal status */}
+          {/* Portal activity */}
           {quote.portalSentAt && (
-            <div className="bg-zinc-800/50 rounded p-2 text-xs space-y-0.5">
-              <div className="text-zinc-500 font-medium mb-1">Portal Activity</div>
-              <div className="flex gap-2 flex-wrap">
-                <span className="text-sky-400"><Send className="h-3 w-3 inline mr-1" />Sent {new Date(quote.portalSentAt).toLocaleDateString()}</span>
-                {quote.portalViewedAt && <span className="text-blue-400"><Eye className="h-3 w-3 inline mr-1" />Viewed {new Date(quote.portalViewedAt).toLocaleDateString()}</span>}
-                {quote.clientAction === "approved" && <span className="text-emerald-400"><CheckCircle className="h-3 w-3 inline mr-1" />Approved {quote.clientActionAt ? new Date(quote.clientActionAt).toLocaleDateString() : ""}</span>}
-                {quote.clientAction === "declined" && <span className="text-red-400"><XCircle className="h-3 w-3 inline mr-1" />Declined</span>}
-                {quote.depositPaidAt && <span className="text-green-400"><DollarSign className="h-3 w-3 inline mr-1" />Deposit paid ${((quote.depositPaidCents ?? 0) / 100).toLocaleString()}</span>}
+            <div className="rounded-lg bg-secondary/30 border border-border p-4">
+              <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-2">Portal Activity</p>
+              <div className="space-y-1.5 text-xs">
+                <div className="flex items-center gap-1.5 text-sky-400">
+                  <Send className="h-3 w-3" />Sent {new Date(quote.portalSentAt).toLocaleDateString()}
+                </div>
+                {quote.portalViewedAt && (
+                  <div className="flex items-center gap-1.5 text-blue-400">
+                    <Eye className="h-3 w-3" />Viewed {new Date(quote.portalViewedAt).toLocaleDateString()}
+                  </div>
+                )}
+                {quote.clientAction === "approved" && (
+                  <div className="flex items-center gap-1.5 text-emerald-400">
+                    <CheckCircle className="h-3 w-3" />Approved {quote.clientActionAt ? new Date(quote.clientActionAt).toLocaleDateString() : ""}
+                  </div>
+                )}
+                {quote.clientAction === "declined" && (
+                  <div className="flex items-center gap-1.5 text-red-400">
+                    <XCircle className="h-3 w-3" />Declined
+                  </div>
+                )}
               </div>
               {portalUrl && (
-                <button className="text-zinc-500 hover:text-zinc-300 underline mt-1 block"
-                  onClick={() => { navigator.clipboard.writeText(portalUrl); toast.success("Link copied"); }}>
+                <button
+                  className="mt-2 text-[11px] text-muted-foreground hover:text-primary transition-colors underline"
+                  onClick={() => { navigator.clipboard.writeText(portalUrl); toast.success("Link copied"); }}
+                >
                   Copy portal link
                 </button>
               )}
             </div>
           )}
 
-          {/* Actions */}
-          <div className="flex flex-wrap gap-2 pt-1">
-            <Button size="sm" variant="outline" className="border-zinc-600 text-xs h-7" onClick={() => onEdit(quote)}>
-              <Edit2 className="h-3 w-3 mr-1" /> Edit
-            </Button>
-            <Button size="sm" variant="outline" className="border-zinc-600 text-xs h-7" onClick={() => duplicateMutation.mutate({ id: quote.id })}>
-              <Copy className="h-3 w-3 mr-1" /> Duplicate
-            </Button>
-            {quote.clientEmail && !quote.convertedToJobAt && (
-              <Button size="sm" className="bg-sky-700 hover:bg-sky-600 text-white text-xs h-7" onClick={() => setShowSendPortal(true)}>
-                <Send className="h-3 w-3 mr-1" /> Send Portal
-              </Button>
-            )}
-            {quote.totalCents > 0 && !quote.depositPaidAt && !quote.convertedToJobAt && (
-              <Button size="sm" className="bg-green-700 hover:bg-green-600 text-white text-xs h-7" onClick={() => setShowDeposit(true)}>
-                <CreditCard className="h-3 w-3 mr-1" /> Collect Deposit
-              </Button>
-            )}
-            {(quote.clientAction === "approved" || quote.depositPaidAt) && !quote.convertedToJobAt && (
-              <Button size="sm" className="bg-purple-700 hover:bg-purple-600 text-white text-xs h-7" onClick={() => setShowConvert(true)}>
-                <Briefcase className="h-3 w-3 mr-1" /> Convert to Job
-              </Button>
-            )}
-            {portalUrl && (
-              <Button size="sm" variant="outline" className="border-zinc-600 text-xs h-7"
-                onClick={() => window.open(portalUrl, "_blank")}>
-                <ExternalLink className="h-3 w-3 mr-1" /> View Portal
-              </Button>
-            )}
-            <Button size="sm" variant="outline" className="border-red-800 text-red-400 hover:text-red-300 text-xs h-7 ml-auto"
-              onClick={() => { if (confirm("Delete this quote?")) deleteMutation.mutate({ id: quote.id }); }}>
-              <Trash2 className="h-3 w-3 mr-1" /> Delete
-            </Button>
+          <p className="text-[11px] text-muted-foreground">Created {new Date(quote.createdAt).toLocaleDateString()}</p>
+        </div>
+
+        {/* Footer actions */}
+        <div className="shrink-0 border-t border-border px-5 py-4 space-y-2">
+          {/* Primary actions */}
+          {quote.clientEmail && !quote.convertedToJobAt && (
+            <button
+              onClick={() => setShowSendPortal(true)}
+              className="w-full flex items-center justify-center gap-2 py-2 rounded-md text-xs font-semibold text-white bg-sky-600 hover:bg-sky-700 transition-colors"
+            >
+              <Send className="w-3.5 h-3.5" />Send Portal to Client
+            </button>
+          )}
+          {quote.totalCents > 0 && !quote.depositPaidAt && !quote.convertedToJobAt && (
+            <button
+              onClick={() => setShowDeposit(true)}
+              className="w-full flex items-center justify-center gap-2 py-2 rounded-md text-xs font-semibold text-white bg-green-600 hover:bg-green-700 transition-colors"
+            >
+              <CreditCard className="w-3.5 h-3.5" />Collect Deposit
+            </button>
+          )}
+          {(quote.clientAction === "approved" || quote.depositPaidAt) && !quote.convertedToJobAt && (
+            <button
+              onClick={() => setShowConvert(true)}
+              className="w-full flex items-center justify-center gap-2 py-2 rounded-md text-xs font-semibold text-white bg-primary hover:bg-primary/90 transition-colors"
+            >
+              <Briefcase className="w-3.5 h-3.5" />Convert to Job
+            </button>
+          )}
+          {portalUrl && (
+            <button
+              onClick={() => window.open(portalUrl, "_blank")}
+              className="w-full flex items-center justify-center gap-2 py-2 rounded-md text-xs font-semibold text-muted-foreground border border-border hover:border-primary hover:text-primary transition-colors"
+            >
+              <ExternalLink className="w-3.5 h-3.5" />View Portal
+            </button>
+          )}
+          {/* Secondary row */}
+          <div className="flex items-center justify-between pt-1">
+            <div className="flex gap-3">
+              <button
+                onClick={() => onEdit(quote)}
+                className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+              >
+                <Edit2 className="w-3.5 h-3.5" />Edit
+              </button>
+              <button
+                onClick={() => duplicateMutation.mutate({ id: quote.id })}
+                className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+              >
+                <Copy className="w-3.5 h-3.5" />Duplicate
+              </button>
+            </div>
+            <button
+              onClick={() => { if (confirm("Delete this quote?")) deleteMutation.mutate({ id: quote.id }); }}
+              className="flex items-center gap-1 text-xs text-red-500 hover:text-red-400 transition-colors"
+            >
+              <Trash2 className="w-3.5 h-3.5" />Delete
+            </button>
           </div>
         </div>
-      )}
+      </div>
 
       {/* Dialogs */}
       {showSendPortal && <SendPortalDialog quote={quote} onClose={() => setShowSendPortal(false)} />}
       {showDeposit && <DepositDialog quote={quote} onClose={() => setShowDeposit(false)} />}
       {showConvert && <ConvertToJobDialog quote={quote} onClose={() => setShowConvert(false)} />}
-    </div>
+    </>
   );
 }
 
@@ -1002,8 +1108,9 @@ export function NativeAllQuotesSection() {
   const [statusFilter, setStatusFilter] = useState("all");
   const [showCreate, setShowCreate] = useState(false);
   const [editQuote, setEditQuote] = useState<NativeQuote | null>(null);
+  const [selectedQuote, setSelectedQuote] = useState<NativeQuote | null>(null);
 
-  const { data, isLoading, refetch } = trpc.nativeQuotes.list.useQuery({
+  const { data, isLoading, refetch, isFetching } = trpc.nativeQuotes.list.useQuery({
     search: search || undefined,
     status: statusFilter,
     limit: 100,
@@ -1022,61 +1129,186 @@ export function NativeAllQuotesSection() {
     return { all, draft, sent, approved, converted };
   }, [quotes]);
 
-  return (
-    <div className="space-y-4">
-      {/* Toolbar */}
-      <div className="flex flex-wrap items-center gap-3">
-        <div className="relative flex-1 min-w-48">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-500" />
-          <Input
-            placeholder="Search quotes..."
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            className="pl-9 bg-zinc-800 border-zinc-700"
-          />
-        </div>
-        <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-40 bg-zinc-800 border-zinc-700">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent className="bg-zinc-800 border-zinc-700">
-            <SelectItem value="all">All ({counts.all})</SelectItem>
-            <SelectItem value="draft">Draft ({counts.draft})</SelectItem>
-            <SelectItem value="sent">Sent ({counts.sent})</SelectItem>
-            <SelectItem value="approved">Approved ({counts.approved})</SelectItem>
-            <SelectItem value="invoiced">Converted ({counts.converted})</SelectItem>
-          </SelectContent>
-        </Select>
-        <Button className="bg-amber-500 hover:bg-amber-600 text-black font-semibold" onClick={() => setShowCreate(true)}>
-          <Plus className="h-4 w-4 mr-1" /> New Quote
-        </Button>
-      </div>
+  const statuses = [
+    { value: "all", label: "All", count: counts.all },
+    { value: "draft", label: "Draft", count: counts.draft },
+    { value: "sent", label: "Sent", count: counts.sent },
+    { value: "approved", label: "Approved", count: counts.approved },
+    { value: "invoiced", label: "Converted", count: counts.converted },
+  ];
 
-      {/* Quote list */}
-      {isLoading ? (
-        <div className="text-center text-zinc-500 py-12">Loading quotes...</div>
-      ) : quotes.length === 0 ? (
-        <div className="text-center text-zinc-500 py-12">
-          <FileText className="h-10 w-10 mx-auto mb-3 opacity-30" />
-          <p className="text-sm">No quotes found.</p>
-          <Button className="mt-4 bg-amber-500 hover:bg-amber-600 text-black font-semibold" onClick={() => setShowCreate(true)}>
-            <Plus className="h-4 w-4 mr-1" /> Create First Quote
+  return (
+    <div className="space-y-5 pb-10">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div className="flex items-center gap-2">
+          <FileText className="w-5 h-5 text-primary" />
+          <h2 className="text-base font-semibold text-foreground">All Quotes</h2>
+          {!isLoading && (
+            <Badge variant="secondary" className="text-xs">{counts.all} total</Badge>
+          )}
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="relative flex-1 sm:w-56">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+            <Input
+              placeholder="Search quotes..."
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              className="pl-8 h-8 text-xs bg-secondary/30 border-border"
+            />
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-8 px-2"
+            onClick={() => refetch()}
+            disabled={isFetching}
+            aria-label="Refresh"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${isFetching ? "animate-spin" : ""}`} />
+          </Button>
+          <Button
+            size="sm"
+            className="h-8 gap-1.5 text-xs"
+            onClick={() => setShowCreate(true)}
+          >
+            <Plus className="w-3.5 h-3.5" />New Quote
           </Button>
         </div>
-      ) : (
-        <div className="space-y-2">
-          {quotes.map(q => (
-            <QuoteCard key={q.id} quote={q} onEdit={q2 => setEditQuote(q2)} onRefresh={refetch} />
+      </div>
+
+      {/* Status filter pills */}
+      {!isLoading && (
+        <div className="flex flex-wrap gap-1.5">
+          {statuses.map(s => (
+            <button
+              key={s.value}
+              onClick={() => setStatusFilter(s.value)}
+              className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
+                statusFilter === s.value
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-secondary/40 text-muted-foreground hover:bg-secondary/70"
+              }`}
+            >
+              {s.label} ({s.count})
+            </button>
           ))}
         </div>
       )}
 
+      {/* Loading */}
+      {isLoading && (
+        <div className="flex items-center justify-center py-20">
+          <RefreshCw className="w-6 h-6 animate-spin text-muted-foreground" />
+        </div>
+      )}
+
+      {/* Empty */}
+      {!isLoading && quotes.length === 0 && (
+        <div className="flex flex-col items-center justify-center py-16 text-center gap-3">
+          <FileText className="w-10 h-10 text-muted-foreground/40" />
+          <p className="text-sm text-muted-foreground">
+            {search || statusFilter !== "all" ? "No quotes match your filters." : "No quotes yet. Create your first quote."}
+          </p>
+          {!search && statusFilter === "all" && (
+            <Button size="sm" className="gap-1.5" onClick={() => setShowCreate(true)}>
+              <Plus className="w-3.5 h-3.5" />Create First Quote
+            </Button>
+          )}
+        </div>
+      )}
+
+      {/* Table */}
+      {!isLoading && quotes.length > 0 && (
+        <div className="rounded-lg border border-border overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs">
+              <thead>
+                <tr className="border-b border-border bg-secondary/20">
+                  <th className="text-left px-4 py-2.5 font-medium text-muted-foreground">Title</th>
+                  <th className="text-left px-4 py-2.5 font-medium text-muted-foreground hidden sm:table-cell">Client</th>
+                  <th className="text-right px-4 py-2.5 font-medium text-muted-foreground hidden md:table-cell">Total</th>
+                  <th className="text-left px-4 py-2.5 font-medium text-muted-foreground">Status</th>
+                  <th className="text-left px-4 py-2.5 font-medium text-muted-foreground hidden lg:table-cell">Date</th>
+                  <th className="text-right px-4 py-2.5 font-medium text-muted-foreground">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {quotes.map((quote, idx) => (
+                  <tr
+                    key={quote.id}
+                    onClick={() => setSelectedQuote(quote)}
+                    className={`border-b border-border last:border-0 hover:bg-secondary/30 transition-colors cursor-pointer ${
+                      idx % 2 === 0 ? "" : "bg-secondary/5"
+                    } ${selectedQuote?.id === quote.id ? "bg-primary/5 border-l-2 border-l-primary" : ""}`}
+                  >
+                    <td className="px-4 py-3 font-medium text-foreground max-w-[200px] truncate">
+                      <div className="flex items-center gap-1.5">
+                        {quote.title || "Untitled Quote"}
+                        <ChevronRight className="w-3 h-3 text-muted-foreground/50 shrink-0" />
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 text-muted-foreground hidden sm:table-cell">
+                      <div>{quote.clientName}</div>
+                      {quote.propertyAddress && (
+                        <div className="text-[11px] text-muted-foreground/60 truncate max-w-[160px]">{quote.propertyAddress}</div>
+                      )}
+                    </td>
+                    <td className="px-4 py-3 text-right hidden md:table-cell">
+                      <div className="flex items-center justify-end gap-1 text-foreground font-medium">
+                        <DollarSign className="w-3 h-3 text-green-500" />
+                        {(quote.totalCents / 100).toLocaleString("en-US", { minimumFractionDigits: 0 })}
+                      </div>
+                    </td>
+                    <td className="px-4 py-3">
+                      <StatusBadge quote={quote} />
+                    </td>
+                    <td className="px-4 py-3 text-muted-foreground hidden lg:table-cell">
+                      {new Date(quote.createdAt).toLocaleDateString()}
+                    </td>
+                    <td className="px-4 py-3 text-right">
+                      <div className="flex items-center justify-end gap-2">
+                        <button
+                          onClick={e => { e.stopPropagation(); setEditQuote(quote); }}
+                          title="Edit quote"
+                          className="text-muted-foreground hover:text-primary transition-colors"
+                        >
+                          <Edit2 className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          onClick={e => { e.stopPropagation(); setSelectedQuote(quote); }}
+                          title="View details"
+                          className="text-muted-foreground hover:text-primary transition-colors"
+                        >
+                          <ChevronRight className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* Detail panel */}
+      {selectedQuote && (
+        <NativeQuoteDetailPanel
+          quote={selectedQuote}
+          onClose={() => setSelectedQuote(null)}
+          onEdit={q => { setSelectedQuote(null); setEditQuote(q); }}
+          onRefresh={refetch}
+        />
+      )}
+
       {/* Modals */}
       {showCreate && (
-        <QuoteFormModal open onClose={() => setShowCreate(false)} onSaved={() => setShowCreate(false)} />
+        <QuoteFormModal open onClose={() => setShowCreate(false)} onSaved={() => { setShowCreate(false); refetch(); }} />
       )}
       {editQuote && (
-        <QuoteFormModal open editQuote={editQuote} onClose={() => setEditQuote(null)} onSaved={() => setEditQuote(null)} />
+        <QuoteFormModal open editQuote={editQuote} onClose={() => setEditQuote(null)} onSaved={() => { setEditQuote(null); refetch(); }} />
       )}
     </div>
   );
