@@ -211,6 +211,10 @@ function QuoteFormModal({
   const [aiTerrain, setAiTerrain] = useState("flat");
   const [aiDensity, setAiDensity] = useState("moderate");
   const [aiAccess, setAiAccess] = useState("easy");
+  // Editable multipliers — override the server-computed values before applying
+  const [editTerrainMult, setEditTerrainMult] = useState<string>("");
+  const [editAccessMult, setEditAccessMult] = useState<string>("");
+  const [copyDone, setCopyDone] = useState(false);
   const [aiSuggestion, setAiSuggestion] = useState<{
     title: string;
     estimatedDuration: string;
@@ -236,6 +240,9 @@ function QuoteFormModal({
   const aiSuggestMutation = trpc.nativeQuotes.aiSuggest.useMutation({
     onSuccess: (data) => {
       setAiSuggestion(data);
+      setEditTerrainMult(data.breakdown.terrainMultiplier.toFixed(2));
+      setEditAccessMult(data.breakdown.accessMultiplier.toFixed(2));
+      setCopyDone(false);
       setAiPanel("result");
     },
     onError: (e) => {
@@ -246,12 +253,28 @@ function QuoteFormModal({
 
   const applyAiSuggestion = () => {
     if (!aiSuggestion) return;
+    // Recalculate total using editable multipliers if they differ from server values
+    const tMult = parseFloat(editTerrainMult) || aiSuggestion.breakdown.terrainMultiplier;
+    const aMult = parseFloat(editAccessMult) || aiSuggestion.breakdown.accessMultiplier;
+    const serverTMult = aiSuggestion.breakdown.terrainMultiplier;
+    const serverAMult = aiSuggestion.breakdown.accessMultiplier;
+    const multipliersChanged = tMult !== serverTMult || aMult !== serverAMult;
+    let lineItems = aiSuggestion.lineItems;
+    if (multipliersChanged && lineItems.length > 0) {
+      // Scale line item prices proportionally
+      const scale = (tMult * aMult) / (serverTMult * serverAMult);
+      lineItems = lineItems.map(li => ({
+        ...li,
+        unitPriceCents: Math.round(li.unitPriceCents * scale),
+        totalCents: Math.round(li.unitPriceCents * scale * li.qty),
+      }));
+    }
     setForm(prev => ({
       ...prev,
       title: prev.title || aiSuggestion.title,
       estimatedDuration: aiSuggestion.estimatedDuration || prev.estimatedDuration,
       clientMessage: aiSuggestion.clientMessage || prev.clientMessage,
-      lineItems: aiSuggestion.lineItems.length > 0 ? aiSuggestion.lineItems : prev.lineItems,
+      lineItems: lineItems.length > 0 ? lineItems : prev.lineItems,
     }));
     setAiPanel("closed");
     setAiSuggestion(null);
@@ -480,21 +503,95 @@ function QuoteFormModal({
                   </div>
                 )}
 
-                {/* Price breakdown tooltip */}
+                {/* Price breakdown with editable multipliers + copy button */}
                 <div className="rounded-md bg-zinc-800/60 border border-zinc-700 px-3 py-2 space-y-1.5">
-                  <div className="flex items-center gap-1.5 mb-1">
-                    <Info className="h-3.5 w-3.5 text-zinc-400" />
-                    <span className="text-xs font-medium text-zinc-300">How the AI calculated this price</span>
+                  <div className="flex items-center justify-between mb-1">
+                    <div className="flex items-center gap-1.5">
+                      <Info className="h-3.5 w-3.5 text-zinc-400" />
+                      <span className="text-xs font-medium text-zinc-300">How the AI calculated this price</span>
+                    </div>
+                    <button
+                      type="button"
+                      title="Copy breakdown to clipboard"
+                      className="text-zinc-500 hover:text-zinc-200 transition-colors"
+                      onClick={() => {
+                        const tMult = parseFloat(editTerrainMult) || aiSuggestion.breakdown.terrainMultiplier;
+                        const aMult = parseFloat(editAccessMult) || aiSuggestion.breakdown.accessMultiplier;
+                        const text = [
+                          `AI Price Breakdown`,
+                          `Service: ${form.serviceType}`,
+                          `Acreage: ${aiSuggestion.breakdown.acreage} acres`,
+                          `Base rate range: $${aiSuggestion.breakdown.baseRateLow.toLocaleString()} – $${aiSuggestion.breakdown.baseRateHigh.toLocaleString()}/acre`,
+                          `Mid-point rate: $${aiSuggestion.breakdown.baseRatePerAcre.toLocaleString()}/acre`,
+                          `Terrain multiplier: x${tMult.toFixed(2)} (${aiTerrain})`,
+                          `Access multiplier: x${aMult.toFixed(2)} (${aiAccess})`,
+                          `Raw total: $${aiSuggestion.breakdown.rawTotalBeforeMinimum.toLocaleString()}`,
+                          aiSuggestion.breakdown.minimumJobApplied ? `Minimum job applied: Yes — bumped to $${(aiSuggestion.minimumJobCents / 100).toLocaleString()}` : null,
+                          `Suggested total: $${(aiSuggestion.totalCents / 100).toLocaleString()}`,
+                        ].filter(Boolean).join('\n');
+                        navigator.clipboard.writeText(text).then(() => {
+                          setCopyDone(true);
+                          setTimeout(() => setCopyDone(false), 2000);
+                        });
+                      }}
+                    >
+                      {copyDone
+                        ? <CheckCircle className="h-3.5 w-3.5 text-green-400" />
+                        : <Copy className="h-3.5 w-3.5" />}
+                    </button>
                   </div>
-                  <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
+                  <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-xs">
                     <span className="text-zinc-500">Base rate range</span>
                     <span className="text-zinc-200">${aiSuggestion.breakdown.baseRateLow.toLocaleString()} – ${aiSuggestion.breakdown.baseRateHigh.toLocaleString()}/acre</span>
                     <span className="text-zinc-500">Mid-point rate</span>
                     <span className="text-zinc-200">${aiSuggestion.breakdown.baseRatePerAcre.toLocaleString()}/acre</span>
-                    <span className="text-zinc-500">Terrain multiplier</span>
-                    <span className="text-zinc-200">x{aiSuggestion.breakdown.terrainMultiplier.toFixed(2)} ({aiTerrain})</span>
-                    <span className="text-zinc-500">Access multiplier</span>
-                    <span className="text-zinc-200">x{aiSuggestion.breakdown.accessMultiplier.toFixed(2)} ({aiAccess})</span>
+
+                    {/* Editable terrain multiplier */}
+                    <div className="flex items-center gap-1 text-zinc-500">
+                      <span>Terrain multiplier</span>
+                      <span
+                        title={`How terrain difficulty affects the base rate.\n\nFlat: x1.00 (no adjustment)\nRolling: x1.10–1.20 (moderate slope, some repositioning)\nSteep: x1.30–1.50 (significant slope, slower progress, higher wear)`}
+                        className="cursor-help text-zinc-600 hover:text-zinc-400"
+                      >
+                        <Info className="h-3 w-3" />
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0.5"
+                        max="3"
+                        value={editTerrainMult}
+                        onChange={e => setEditTerrainMult(e.target.value)}
+                        className="w-16 h-5 text-xs bg-zinc-700 border border-zinc-600 rounded px-1 text-zinc-200 focus:outline-none focus:border-amber-500"
+                      />
+                      <span className="text-zinc-400">({aiTerrain})</span>
+                    </div>
+
+                    {/* Editable access multiplier */}
+                    <div className="flex items-center gap-1 text-zinc-500">
+                      <span>Access multiplier</span>
+                      <span
+                        title={`How site access affects the base rate.\n\nEasy: x1.00 (clear entry, no obstacles)\nModerate: x1.10–1.20 (narrow gate, soft ground, some maneuvering)\nDifficult: x1.25–1.40 (tight access, wet/soft soil, significant obstacles)`}
+                        className="cursor-help text-zinc-600 hover:text-zinc-400"
+                      >
+                        <Info className="h-3 w-3" />
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0.5"
+                        max="3"
+                        value={editAccessMult}
+                        onChange={e => setEditAccessMult(e.target.value)}
+                        className="w-16 h-5 text-xs bg-zinc-700 border border-zinc-600 rounded px-1 text-zinc-200 focus:outline-none focus:border-amber-500"
+                      />
+                      <span className="text-zinc-400">({aiAccess})</span>
+                    </div>
+
                     <span className="text-zinc-500">Acreage</span>
                     <span className="text-zinc-200">{aiSuggestion.breakdown.acreage} acres</span>
                     <span className="text-zinc-500">Raw total</span>

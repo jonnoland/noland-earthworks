@@ -442,8 +442,9 @@ function Router() {
       </Route>
 
       {/* Client quote portal — token-authenticated, no login required */}
+      {/* QuotePortalRouter checks nativeQuotes first, falls back to legacy distanceQuotes */}
       <Route path="/quote/:token">
-        <Suspense fallback={<OpsLoading />}><QuotePortal /></Suspense>
+        <Suspense fallback={<OpsLoading />}><QuotePortalRouter /></Suspense>
       </Route>
       {/* Customer payment portal — lazy-loaded */}
       <Route path="/portal">

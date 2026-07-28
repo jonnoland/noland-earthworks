@@ -2530,3 +2530,11 @@
 - [x] Create NativeQuotePortal.tsx — dedicated portal page for native quotes
 - [x] Add QuotePortalRouter to App.tsx — auto-detects native vs legacy quote by token
 - [x] TypeScript: 0 errors
+
+## Portal Fix + AI Suggest Breakdown Enhancements
+- [x] Fix /quote/:token portal — route was pointing to old QuotePortal instead of QuotePortalRouter
+- [x] Wire QuotePortalRouter into App.tsx /quote/:token route (native first, legacy fallback)
+- [x] Add editable terrain and access multipliers to AI Suggest breakdown panel
+- [x] Add info tooltips to terrain and access multipliers explaining how values are determined
+- [x] Add copy-to-clipboard button for the full price breakdown
+- [x] Recalculate line item prices proportionally when multipliers are edited before applying
