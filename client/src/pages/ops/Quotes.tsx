@@ -95,6 +95,7 @@ import {
 } from "recharts";
 import {
   TrendingUp, ArrowLeft, Send, XCircle, MapPin as MapPinIcon, CreditCard,
+  Settings2, GripVertical, ToggleLeft, ToggleRight,
 } from "lucide-react";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -4440,6 +4441,170 @@ const QaCustomTooltip = ({ active, payload, label }: any) => {
   );
 };
 
+// ─── Portal Add-ons Manager ─────────────────────────────────────────────────
+function PortalAddOnsManager() {
+  const utils = trpc.useUtils();
+  const { data: addOns, isLoading } = trpc.ops.portalAddOns.list.useQuery();
+  const createMut = trpc.ops.portalAddOns.create.useMutation({ onSuccess: () => utils.ops.portalAddOns.list.invalidate() });
+  const updateMut = trpc.ops.portalAddOns.update.useMutation({ onSuccess: () => utils.ops.portalAddOns.list.invalidate() });
+  const deleteMut = trpc.ops.portalAddOns.delete.useMutation({ onSuccess: () => utils.ops.portalAddOns.list.invalidate() });
+
+  const [editId, setEditId] = useState<number | null>(null);
+  const [showNew, setShowNew] = useState(false);
+  const [form, setForm] = useState({ label: "", description: "", estimateCents: 0, isActive: true });
+  const [editForm, setEditForm] = useState({ label: "", description: "", estimateCents: 0, isActive: true });
+
+  const fmt = (cents: number) => `$${(cents / 100).toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
+
+  const handleCreate = async () => {
+    if (!form.label.trim()) { toast.error("Label is required"); return; }
+    await createMut.mutateAsync({ label: form.label, description: form.description || undefined, estimateCents: form.estimateCents, isActive: form.isActive });
+    setForm({ label: "", description: "", estimateCents: 0, isActive: true });
+    setShowNew(false);
+    toast.success("Add-on created");
+  };
+
+  const handleUpdate = async (id: number) => {
+    await updateMut.mutateAsync({ id, label: editForm.label, description: editForm.description || undefined, estimateCents: editForm.estimateCents, isActive: editForm.isActive });
+    setEditId(null);
+    toast.success("Add-on updated");
+  };
+
+  const handleDelete = async (id: number) => {
+    if (!confirm("Delete this add-on? It will no longer appear on the client portal.")) return;
+    await deleteMut.mutateAsync({ id });
+    toast.success("Add-on deleted");
+  };
+
+  const startEdit = (ao: any) => {
+    setEditId(ao.id);
+    setEditForm({ label: ao.label, description: ao.description ?? "", estimateCents: ao.estimateCents, isActive: ao.isActive });
+  };
+
+  if (isLoading) return <div className="flex items-center justify-center h-40 text-sm text-muted-foreground">Loading add-ons...</div>;
+
+  return (
+    <div className="space-y-4 pb-10">
+      <div className="ops-card p-5">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h2 className="text-sm font-semibold text-foreground" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>Portal Add-on Services</h2>
+            <p className="text-xs text-muted-foreground mt-0.5">These options appear on the client quote portal before the client signs. Clients can select any combination before approving.</p>
+          </div>
+          <button
+            onClick={() => setShowNew(v => !v)}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-amber-500 hover:bg-amber-400 text-black text-xs font-semibold transition-colors"
+          >
+            <Plus className="w-3.5 h-3.5" /> New Add-on
+          </button>
+        </div>
+
+        {showNew && (
+          <div className="mb-4 p-4 rounded-lg border border-amber-500/30 bg-amber-500/5 space-y-3">
+            <p className="text-xs font-semibold text-amber-400">New Add-on</p>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="col-span-2">
+                <label className="text-[10px] text-muted-foreground uppercase tracking-wide">Label *</label>
+                <input className="w-full mt-1 bg-secondary/30 border border-border rounded px-2.5 py-1.5 text-xs text-foreground" value={form.label} onChange={e => setForm(f => ({ ...f, label: e.target.value }))} placeholder="e.g. Fence Line Clearing" />
+              </div>
+              <div className="col-span-2">
+                <label className="text-[10px] text-muted-foreground uppercase tracking-wide">Description</label>
+                <input className="w-full mt-1 bg-secondary/30 border border-border rounded px-2.5 py-1.5 text-xs text-foreground" value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} placeholder="Short description shown to client" />
+              </div>
+              <div>
+                <label className="text-[10px] text-muted-foreground uppercase tracking-wide">Estimate ($)</label>
+                <input type="number" min="0" className="w-full mt-1 bg-secondary/30 border border-border rounded px-2.5 py-1.5 text-xs text-foreground" value={form.estimateCents / 100} onChange={e => setForm(f => ({ ...f, estimateCents: Math.round(parseFloat(e.target.value || '0') * 100) }))} placeholder="850" />
+              </div>
+              <div className="flex items-end gap-2">
+                <label className="flex items-center gap-2 text-xs text-muted-foreground cursor-pointer">
+                  <input type="checkbox" checked={form.isActive} onChange={e => setForm(f => ({ ...f, isActive: e.target.checked }))} className="accent-amber-500" />
+                  Active (visible on portal)
+                </label>
+              </div>
+            </div>
+            <div className="flex gap-2 pt-1">
+              <button onClick={handleCreate} disabled={createMut.isPending} className="px-3 py-1.5 rounded bg-amber-500 hover:bg-amber-400 text-black text-xs font-semibold disabled:opacity-50">Save Add-on</button>
+              <button onClick={() => setShowNew(false)} className="px-3 py-1.5 rounded bg-secondary hover:bg-secondary/70 text-foreground text-xs">Cancel</button>
+            </div>
+          </div>
+        )}
+
+        {(!addOns || addOns.length === 0) ? (
+          <div className="text-center py-10 text-sm text-muted-foreground">No add-ons yet. Click "New Add-on" to create the first one.</div>
+        ) : (
+          <div className="space-y-2">
+            {addOns.map((ao: any) => (
+              <div key={ao.id} className={`rounded-lg border p-3 transition-colors ${ao.isActive ? 'border-border bg-secondary/10' : 'border-border/40 bg-secondary/5 opacity-60'}`}>
+                {editId === ao.id ? (
+                  <div className="space-y-3">
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="col-span-2">
+                        <label className="text-[10px] text-muted-foreground uppercase tracking-wide">Label *</label>
+                        <input className="w-full mt-1 bg-secondary/30 border border-border rounded px-2.5 py-1.5 text-xs text-foreground" value={editForm.label} onChange={e => setEditForm(f => ({ ...f, label: e.target.value }))} />
+                      </div>
+                      <div className="col-span-2">
+                        <label className="text-[10px] text-muted-foreground uppercase tracking-wide">Description</label>
+                        <input className="w-full mt-1 bg-secondary/30 border border-border rounded px-2.5 py-1.5 text-xs text-foreground" value={editForm.description} onChange={e => setEditForm(f => ({ ...f, description: e.target.value }))} />
+                      </div>
+                      <div>
+                        <label className="text-[10px] text-muted-foreground uppercase tracking-wide">Estimate ($)</label>
+                        <input type="number" min="0" className="w-full mt-1 bg-secondary/30 border border-border rounded px-2.5 py-1.5 text-xs text-foreground" value={editForm.estimateCents / 100} onChange={e => setEditForm(f => ({ ...f, estimateCents: Math.round(parseFloat(e.target.value || "0") * 100) }))} />
+                      </div>
+                      <div className="flex items-end">
+                        <label className="flex items-center gap-2 text-xs text-muted-foreground cursor-pointer">
+                          <input type="checkbox" checked={editForm.isActive} onChange={e => setEditForm(f => ({ ...f, isActive: e.target.checked }))} className="accent-amber-500" />
+                          Active
+                        </label>
+                      </div>
+                    </div>
+                    <div className="flex gap-2">
+                      <button onClick={() => handleUpdate(ao.id)} disabled={updateMut.isPending} className="px-3 py-1.5 rounded bg-amber-500 hover:bg-amber-400 text-black text-xs font-semibold disabled:opacity-50">Save</button>
+                      <button onClick={() => setEditId(null)} className="px-3 py-1.5 rounded bg-secondary hover:bg-secondary/70 text-foreground text-xs">Cancel</button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-start gap-2.5 flex-1 min-w-0">
+                      <GripVertical className="w-4 h-4 text-muted-foreground/40 mt-0.5 shrink-0" />
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-semibold text-foreground">{ao.label}</span>
+                          {!ao.isActive && <span className="text-[10px] px-1.5 py-0.5 rounded bg-secondary text-muted-foreground border border-border">Hidden</span>}
+                        </div>
+                        {ao.description && <p className="text-[11px] text-muted-foreground mt-0.5 truncate">{ao.description}</p>}
+                        <p className="text-[11px] text-amber-400 font-semibold mt-1">~{fmt(ao.estimateCents)} estimate</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <button
+                        onClick={() => updateMut.mutate({ id: ao.id, isActive: !ao.isActive })}
+                        title={ao.isActive ? "Hide from portal" : "Show on portal"}
+                        className="p-1.5 rounded hover:bg-secondary/50 transition-colors"
+                      >
+                        {ao.isActive ? <ToggleRight className="w-4 h-4 text-amber-400" /> : <ToggleLeft className="w-4 h-4 text-muted-foreground" />}
+                      </button>
+                      <button onClick={() => startEdit(ao)} className="p-1.5 rounded hover:bg-secondary/50 transition-colors">
+                        <Pencil className="w-3.5 h-3.5 text-muted-foreground" />
+                      </button>
+                      <button onClick={() => handleDelete(ao.id)} disabled={deleteMut.isPending} className="p-1.5 rounded hover:bg-red-500/20 transition-colors">
+                        <Trash2 className="w-3.5 h-3.5 text-red-400" />
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+
+        <p className="text-[11px] text-muted-foreground mt-4 pt-3 border-t border-border">
+          Add-on estimates are shown to clients as approximate figures. Final pricing is confirmed after site visit. Changes here take effect on all future portal links immediately.
+        </p>
+      </div>
+    </div>
+  );
+}
+
 function QuoteAnalyticsTab() {
   const { data: qaData, isLoading: qaLoading } = trpc.ops.distanceQuotes.analytics.useQuery();
 
@@ -4727,6 +4892,9 @@ export default function OpsQuotes() {
           </TabsTrigger>
           <TabsTrigger value="analytics" className="gap-1.5 text-xs">
             <TrendingUp className="w-3.5 h-3.5" /> Analytics
+          </TabsTrigger>
+          <TabsTrigger value="addons" className="gap-1.5 text-xs">
+            <Settings2 className="w-3.5 h-3.5" /> Add-ons
           </TabsTrigger>
         </TabsList>
 
@@ -5030,6 +5198,11 @@ export default function OpsQuotes() {
         {/* ── ANALYTICS TAB ── */}
         <TabsContent value="analytics" className="mt-0">
           <QuoteAnalyticsTab />
+        </TabsContent>
+
+        {/* ── ADD-ONS MANAGER TAB ── */}
+        <TabsContent value="addons" className="mt-0">
+          <PortalAddOnsManager />
         </TabsContent>
 
       </Tabs>

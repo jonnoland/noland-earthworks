@@ -14,7 +14,8 @@ import { TRPCError } from "@trpc/server";
 import { eq } from "drizzle-orm";
 import { router, publicProcedure } from "./_core/trpc";
 import { getDb } from "./db";
-import { distanceQuotes } from "../drizzle/schema";
+import { distanceQuotes, portalAddOnOptions } from "../drizzle/schema";
+import { asc } from "drizzle-orm";
 import { isStripeConfigured, getStripe } from "./stripe";
 import { ENV } from "./_core/env";
 import { notifyOwner } from "./_core/notification";
@@ -49,6 +50,18 @@ function buildChangeRequestEmail(firstName: string, jobType: string, note: strin
 }
 
 export const quotePortalRouter = router({
+  /**
+   * List active add-on options — public, no auth required.
+   * Called by the client portal to show available add-ons before signing.
+   */
+  listAddOns: publicProcedure.query(async () => {
+    const db = await getDb();
+    if (!db) return [];
+    return db.select().from(portalAddOnOptions)
+      .where(eq(portalAddOnOptions.isActive, true))
+      .orderBy(asc(portalAddOnOptions.sortOrder));
+  }),
+
   /**
    * Load a quote by its portal token.
    * Returns only the fields the client needs to see — no internal pricing details.

@@ -29,7 +29,8 @@ import { Resend } from "resend";
 import { jobs, opsLeads, quoteSubmissions, crews, crewMembers, conversations, messages, reviews, timeEntries, distanceQuotes, businessSettings, automationSettings, serviceCatalog, pricingBenchmarks, messageTemplates, reminderRules, leadNotes, visitBlackoutDates, recurringBlackoutDays, aiPricingSettings, quoteDrafts, jobberTokens, socialPosts, adSpend, equipment, serviceLogs, serviceIntervals, fieldDiagnostics, ownerTasks, jobNotes, jobberRevenueCache, morningBriefs, reviewRequests, chatSessions,
  scheduleEntries, agentConfig, adCampaigns, prospectingLeads, outreachTemplates, leadContactLog } from "../drizzle/schema";
 
-import { and, desc, eq, gte, inArray, lt, lte, like, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gte, inArray, lt, lte, like, or, sql } from "drizzle-orm";
+import { portalAddOnOptions } from "../drizzle/schema";
 import { autoPatchSeoCheck, AUTO_PATCHABLE_CHECKS, SQUARESPACE_MANUAL_CHECKS, CODE_FIXED_CHECKS, INFRA_CHECKS } from "./seoAutoPatcher";
 import { notifyOwner } from "./_core/notification";
 
@@ -4379,6 +4380,86 @@ function buildPortalEmail(
   </div></body></html>`;
 }
 
+// ─── Portal Add-ons Router ────────────────────────────────────────────────────
+const DEFAULT_ADD_ONS = [
+  { label: "Fence Line Clearing", description: "Clear overgrown vegetation along fence lines, restoring visibility and access.", estimateCents: 85000, sortOrder: 0 },
+  { label: "Mulch Redistribution", description: "Redistribute and level mulch left on site for a cleaner, more uniform finish.", estimateCents: 52500, sortOrder: 1 },
+  { label: "Selective Clearing & Tree Preservation", description: "Carefully remove unwanted brush while preserving desirable trees and vegetation.", estimateCents: 20000, sortOrder: 2 },
+];
+
+const portalAddOnsRouter = router({
+  list: ownerProcedure.query(async ({ ctx }) => {
+    const db = await getDb();
+    let rows = await db!.select().from(portalAddOnOptions).orderBy(asc(portalAddOnOptions.sortOrder));
+    if (rows.length === 0) {
+      await db!.insert(portalAddOnOptions).values(DEFAULT_ADD_ONS);
+      rows = await db!.select().from(portalAddOnOptions).orderBy(asc(portalAddOnOptions.sortOrder));
+    }
+    return rows;
+  }),
+
+  listActive: ownerProcedure.query(async ({ ctx }) => {
+    const db = await getDb();
+    return db!.select().from(portalAddOnOptions)
+      .where(eq(portalAddOnOptions.isActive, true))
+      .orderBy(asc(portalAddOnOptions.sortOrder));
+  }),
+
+  create: ownerProcedure
+    .input(z.object({
+      label: z.string().min(1).max(200),
+      description: z.string().optional(),
+      estimateCents: z.number().int().min(0),
+      sortOrder: z.number().int().optional(),
+      isActive: z.boolean().optional(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      const [row] = await db!.insert(portalAddOnOptions).values({
+        label: input.label,
+        description: input.description ?? null,
+        estimateCents: input.estimateCents,
+        sortOrder: input.sortOrder ?? 99,
+        isActive: input.isActive ?? true,
+      });
+      return { id: (row as any).insertId };
+    }),
+
+  update: ownerProcedure
+    .input(z.object({
+      id: z.number().int(),
+      label: z.string().min(1).max(200).optional(),
+      description: z.string().optional(),
+      estimateCents: z.number().int().min(0).optional(),
+      sortOrder: z.number().int().optional(),
+      isActive: z.boolean().optional(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      const { id, ...fields } = input;
+      await db!.update(portalAddOnOptions).set(fields).where(eq(portalAddOnOptions.id, id));
+      return { ok: true };
+    }),
+
+  delete: ownerProcedure
+    .input(z.object({ id: z.number().int() }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      await db!.delete(portalAddOnOptions).where(eq(portalAddOnOptions.id, input.id));
+      return { ok: true };
+    }),
+
+  reorder: ownerProcedure
+    .input(z.array(z.object({ id: z.number().int(), sortOrder: z.number().int() })))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      await Promise.all(input.map(({ id, sortOrder }) =>
+        db!.update(portalAddOnOptions).set({ sortOrder }).where(eq(portalAddOnOptions.id, id))
+      ));
+      return { ok: true };
+    }),
+});
+
 export const opsRouter = router({
   jobs: jobsRouter,
   leads: leadsRouter,
@@ -4398,6 +4479,7 @@ export const opsRouter = router({
   adVariants: adVariantsRouter,
   ai: aiAutomationRouter,
   prospecting: prospectingRouter,
+  portalAddOns: portalAddOnsRouter,
 
   generateWeeklyInsight: protectedProcedure
     .input(z.object({
@@ -6545,4 +6627,3 @@ Generate a complete monthly ad campaign plan. Return ONLY valid JSON matching th
       return { checkoutUrl: session.url, sessionId: session.id, smsSent };
     }),
 });
-

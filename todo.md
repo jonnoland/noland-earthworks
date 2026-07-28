@@ -2493,3 +2493,18 @@
 - [x] Frontend: Request Changes button and form in QuotePortal (text area for client to describe requested changes)
 - [x] Frontend: PDF download button on QuotePortal (print-optimized CSS, window.print() with print stylesheet)
 - [x] Frontend: show signature thumbnail in Quotes.tsx ops card when quote is signed (signedAt date shown in portal status)
+
+## Dynamic Add-ons Manager + Quoting Overhaul
+
+- [ ] Schema: create portalAddOnOptions table (id, label, description, estimateCents, sortOrder, isActive, createdAt)
+- [ ] Server: add portalAddOns CRUD router (list, create, update, delete, reorder) — ownerProcedure
+- [ ] Server: add public getAddOns procedure to quotePortalRouter (returns active add-ons for portal display)
+- [ ] Seed: insert the three default add-on options on first run if table is empty
+- [ ] Frontend: Add-ons Manager panel in /ops/quotes settings panel
+- [ ] Frontend: QuotePortal fetches add-ons dynamically from DB instead of hardcoded PORTAL_ADD_ONS array
+- [ ] Phase 2: Add Send Portal Link button to website quote request cards in Quotes.tsx
+- [ ] Phase 2: Add Send Portal Link button to field quote cards in Quotes.tsx
+- [ ] Phase 3: Native quote creation modal in Quotes.tsx — Jobber-style line items (service, description, qty, unit price, total)
+- [ ] Phase 3: Edit, duplicate, and convert-to-job actions on native quotes
+- [ ] Phase 4: Rename Jobber Quotes tab to All Quotes, merge all quote types into one unified list
+- [ ] Phase 4: Remove hard dependency on Jobber for primary quote list view

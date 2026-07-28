@@ -1769,3 +1769,23 @@ export const leadContactLog = mysqlTable("lead_contact_log", {
 });
 export type LeadContactLog = typeof leadContactLog.$inferSelect;
 export type InsertLeadContactLog = typeof leadContactLog.$inferInsert;
+
+// ─── Portal Add-on Options ────────────────────────────────────────────────────
+/** Configurable add-on services shown to clients on the quote portal before they sign. */
+export const portalAddOnOptions = mysqlTable("portal_add_on_options", {
+  id: int("id").primaryKey().autoincrement(),
+  /** Display label shown to the client */
+  label: varchar("label", { length: 200 }).notNull(),
+  /** Short description explaining the service */
+  description: text("description"),
+  /** Estimated cost in cents — shown as "~$X" to the client */
+  estimateCents: int("estimateCents").notNull().default(0),
+  /** Sort order for display (lower = first) */
+  sortOrder: int("sortOrder").notNull().default(0),
+  /** Whether this add-on is currently shown on the portal */
+  isActive: boolean("isActive").notNull().default(true),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type PortalAddOnOption = typeof portalAddOnOptions.$inferSelect;
+export type InsertPortalAddOnOption = typeof portalAddOnOptions.$inferInsert;

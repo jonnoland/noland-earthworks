@@ -42,29 +42,7 @@ import {
 
 type DepositPct = 25 | 33 | 50;
 
-// ─── Add-on options (mirrors CostCalculator) ─────────────────────────────────
-// Prices are approximate flat rates shown to the client for selection.
-// Actual pricing is confirmed by Jon after site visit.
-const PORTAL_ADD_ONS = [
-  {
-    key: "fence-line-clearing",
-    label: "Fence Line Clearing",
-    description: "Clear and clean up fence lines buried in brush or overgrowth.",
-    estimateCents: 85000, // ~$850 estimate
-  },
-  {
-    key: "mulch-redistribution",
-    label: "Mulch Redistribution",
-    description: "Redistribute and level mulch material across cleared areas.",
-    estimateCents: 52500, // ~$525/acre estimate
-  },
-  {
-    key: "selective-clearing",
-    label: "Selective Clearing & Tree Preservation",
-    description: "Mark and preserve specific trees while clearing surrounding vegetation.",
-    estimateCents: 20000, // ~$200 flat estimate
-  },
-];
+// Add-ons are now fetched dynamically from the DB via trpc.quotePortal.listAddOns
 
 // ─── Signature Pad (draw mode) ────────────────────────────────────────────────
 
@@ -215,7 +193,16 @@ export default function QuotePortal() {
     { enabled: !!token, retry: false }
   );
 
-  // ── Add-ons selection (before signing) ──
+  // ── Add-ons (fetched from DB) ──
+  const { data: dbAddOns = [] } = trpc.quotePortal.listAddOns.useQuery(undefined, { retry: false });
+  // Normalise to a stable shape: use `id` as the key since DB rows have no slug
+  const portalAddOns = dbAddOns.map((a: any) => ({
+    key: String(a.id),
+    label: a.label as string,
+    description: (a.description ?? "") as string,
+    estimateCents: a.estimateCents as number,
+  }));
+
   const [selectedAddOns, setSelectedAddOns] = useState<Set<string>>(new Set());
   const [showAddOns, setShowAddOns] = useState(false);
 
@@ -228,8 +215,8 @@ export default function QuotePortal() {
     });
   }
 
-  const selectedAddOnItems = PORTAL_ADD_ONS.filter(a => selectedAddOns.has(a.key));
-  const addOnTotalCents = selectedAddOnItems.reduce((sum, a) => sum + a.estimateCents, 0);
+  const selectedAddOnItems = portalAddOns.filter((a: any) => selectedAddOns.has(a.key));
+  const addOnTotalCents = selectedAddOnItems.reduce((sum: number, a: any) => sum + a.estimateCents, 0);
 
   // ── Signature mode: 'drawn' | 'typed' ──
   const [signatureMode, setSignatureMode] = useState<"drawn" | "typed">("drawn");
@@ -602,7 +589,7 @@ export default function QuotePortal() {
               </button>
               {showAddOns && (
                 <div className="border-t border-zinc-800 divide-y divide-zinc-800">
-                  {PORTAL_ADD_ONS.map(addon => {
+                  {portalAddOns.map((addon: any) => {
                     const selected = selectedAddOns.has(addon.key);
                     return (
                       <div
