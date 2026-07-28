@@ -2542,3 +2542,9 @@
 - [x] Fix portal token routing — QuotePortalRouter now wired to /quote/:token in App.tsx
 - [x] Add importFromJobber procedure to nativeQuotesRouter (fetches all Jobber quotes, maps to native schema, idempotent)
 - [x] Add Import Jobber button to All Quotes header — one-click migration with toast feedback
+
+## Website Quote Request → All Quotes Routing
+- [x] Auto-insert native quote (status: web_request) on every website form submission
+- [x] Add Web Requests filter pill to All Quotes section
+- [x] Add cyan Web Request status badge
+- [x] Server-side list procedure already supports exact status filter — web_request works

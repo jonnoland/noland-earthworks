@@ -74,6 +74,7 @@ function StatusBadge({ quote }: { quote: NativeQuote }) {
   if (quote.clientAction === "changes_requested") return <Badge className="bg-orange-500 text-white text-xs">Changes Requested</Badge>;
   if (quote.portalViewedAt) return <Badge className="bg-blue-500 text-white text-xs">Viewed</Badge>;
   if (quote.portalSentAt) return <Badge className="bg-sky-600 text-white text-xs">Sent</Badge>;
+  if (quote.status === "web_request") return <Badge className="bg-cyan-600 text-white text-xs">Web Request</Badge>;
   if (quote.status === "invoiced") return <Badge className="bg-amber-600 text-white text-xs">Invoiced</Badge>;
   return <Badge className="bg-zinc-600 text-white text-xs">Draft</Badge>;
 }
@@ -1128,15 +1129,17 @@ export function NativeAllQuotesSection() {
   // Status counts
   const counts = useMemo(() => {
     const all = quotes.length;
-    const draft = quotes.filter(q => !q.portalSentAt && !q.convertedToJobAt).length;
-    const sent = quotes.filter(q => q.portalSentAt && !q.clientAction && !q.convertedToJobAt).length;
+    const webRequest = quotes.filter(q => q.status === "web_request").length;
+    const draft = quotes.filter(q => q.status === "draft" && !q.portalSentAt && !q.convertedToJobAt).length;
+    const sent = quotes.filter(q => q.portalSentAt && !q.clientAction && !q.convertedToJobAt && q.status !== "web_request").length;
     const approved = quotes.filter(q => q.clientAction === "approved" && !q.convertedToJobAt).length;
     const converted = quotes.filter(q => q.convertedToJobAt).length;
-    return { all, draft, sent, approved, converted };
+    return { all, webRequest, draft, sent, approved, converted };
   }, [quotes]);
 
   const statuses = [
     { value: "all", label: "All", count: counts.all },
+    { value: "web_request", label: "Web Requests", count: counts.webRequest },
     { value: "draft", label: "Draft", count: counts.draft },
     { value: "sent", label: "Sent", count: counts.sent },
     { value: "approved", label: "Approved", count: counts.approved },

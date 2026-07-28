@@ -7,7 +7,7 @@ import { Resend } from "resend";
 import { createJobberRequest, isJobberConnected, createJobberClientFromLead } from "./jobber";
 import { createOpsLead, upsertOpsLeadByPhone, getOwnerUser, getDb } from "./db";
 import { storagePut } from "./storage";
-import { quoteSubmissions } from "../drizzle/schema";
+import { quoteSubmissions, nativeQuotes } from "../drizzle/schema";
 import { sendOwnerSms } from "./sms";
 import { qualifyLead } from "./leadQualifier";
 import { opsLeads } from "../drizzle/schema";
@@ -684,6 +684,46 @@ export const quoteRouter = router({
       phone: input.phone || undefined,
       address: [input.street, input.city, input.state, input.zip].filter(Boolean).join(", ") || undefined,
     }).catch(err => console.warn("[Quote] Jobber client creation failed:", err));
+
+    // Auto-create a native quote (web_request) so it appears in All Quotes section
+    try {
+      const db2 = await getDb();
+      if (db2) {
+        const address = [input.street, input.city, input.state, input.zip]
+          .filter(Boolean)
+          .join(", ");
+        const serviceLabel = input.service || "Forestry Mulching";
+        const title = `${serviceLabel} \u2014 ${input.name}${input.county ? ` (${input.county} Co.)` : ""}`;
+        const { randomBytes } = await import("crypto");
+        const portalToken = randomBytes(32).toString("hex");
+        const notes = [
+          `[Web Request]`,
+          qualification?.score ? `AI Score: ${qualification.score.toUpperCase()}` : "",
+          qualification?.summary ? `AI Summary: ${qualification.summary}` : "",
+          qualification?.flags?.length ? `AI Flags: ${qualification.flags.join(" | ")}` : "",
+          input.acreage ? `Acreage: ${input.acreage}` : "",
+          input.message ? `Client Message: ${input.message}` : "",
+        ].filter(Boolean).join("\n");
+        await db2.insert(nativeQuotes).values({
+          clientName: input.name,
+          clientEmail: input.email || null,
+          clientPhone: input.phone || null,
+          propertyAddress: address || null,
+          title,
+          serviceType: serviceLabel,
+          acreage: input.acreage || null,
+          clientMessage: input.message || null,
+          internalNotes: notes,
+          lineItems: "[]",
+          totalCents: 0,
+          status: "web_request",
+          portalToken,
+        });
+        console.log(`[Quote] Native quote (web_request) created for ${input.name}`);
+      }
+    } catch (nativeErr) {
+      console.warn("[Quote] Failed to create native web_request quote:", nativeErr);
+    }
 
     return {
       success: true,
