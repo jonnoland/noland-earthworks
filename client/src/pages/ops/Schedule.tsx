@@ -95,6 +95,23 @@ interface JobberJob {
   client?: { id?: string; name?: string | null; companyName?: string | null } | null;
   property?: { address?: { street1?: string | null; city?: string | null } | null } | null;
 }
+// Native job adapted to JobberJob shape for calendar compatibility
+function nativeJobToJobberJob(j: any): JobberJob {
+  const scheduledDate = j.scheduledDate ? new Date(j.scheduledDate) : null;
+  const startAt = scheduledDate ? scheduledDate.toISOString() : null;
+  return {
+    id: String(j.id),
+    jobNumber: j.id,
+    title: j.title ?? j.client ?? "Untitled Job",
+    jobStatus: j.status === "completed" ? "COMPLETED" : j.status === "in_progress" ? "ACTIVE" : "SCHEDULED",
+    jobType: j.jobType ?? null,
+    startAt,
+    endAt: startAt,
+    total: j.totalPrice != null ? Number(j.totalPrice) : null,
+    client: j.client ? { name: j.client } : null,
+    property: j.address ? { address: { street1: j.address, city: null } } : null,
+  };
+}
 
 // ─── Local job shape ─────────────────────────────────────────────────────────
 interface LocalJob {
@@ -505,25 +522,18 @@ export default function Schedule() {
     () => localJobs.filter(j => j.scheduledDate),
     [localJobs]
   );
-
-  // ── Jobber jobs (primary job source) ──
+  // ── Native jobs (primary job source) ──
   const {
-    data: jobberData,
+    data: nativeJobsRaw = [],
     isLoading: jobberLoading,
     isFetching: jobberFetching,
     refetch: refetchJobber,
-    error: jobberError,
-  } = trpc.jobber.jobs.useQuery({ first: 200 }, { retry: false });
-
-  const jobberNotConnected =
-    !jobberLoading &&
-    (jobberError?.message?.includes("not connected") ||
-      jobberError?.message?.includes("not authorized") ||
-      jobberError?.message?.includes("token") ||
-      !jobberData);
-
-  const jobberJobs: JobberJob[] = (jobberData as any)?.nodes ?? [];
-
+  } = trpc.nativeJobs.list.useQuery({}, { refetchInterval: 30000 });
+  const jobberNotConnected = false;
+  const jobberJobs: JobberJob[] = useMemo(
+    () => (nativeJobsRaw as any[]).map(nativeJobToJobberJob),
+    [nativeJobsRaw]
+  );
   // Jobs that have a startAt date — these are the ones we show on the calendar
   const scheduledJobberJobs = useMemo(
     () => jobberJobs.filter(j => j.startAt),

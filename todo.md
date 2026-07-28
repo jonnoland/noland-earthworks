@@ -2580,3 +2580,18 @@
 - [ ] Gap 4: Add Quote # column (display #id) to All Quotes table
 - [ ] Gap 5: Add Restore to Draft action for cancelled quotes in NativeQuoteDetailPanel
 - [ ] Gap 6: Render changeRequestNote, declineNote, signatureDataUrl/signatureTypedText/signedAt in NativeQuoteDetailPanel body
+
+## Jobber Removal — Full /ops Cleanup (2026-07-28)
+- [ ] Remove Jobber tab from /ops/quotes (TabsTrigger + TabsContent + related state)
+- [ ] Remove Jobber data queries from Dashboard.tsx (replace with nativeJobs.list, nativeQuotes.list)
+- [ ] Remove Jobber quoteDetail query from Leads.tsx (replace with nativeQuotes.getById)
+- [ ] Remove Jobber jobs query from Schedule.tsx (replace with nativeJobs.list)
+- [ ] Rebuild Jobs.tsx using nativeJobs data
+- [ ] Rebuild Clients.tsx using nativeClients data
+- [ ] Rebuild Invoices.tsx using nativeInvoices data
+- [ ] Update sidebar: redirect Jobs entry to /ops/quotes, redirect Clients entry to /ops/quotes
+- [ ] Add Field Fix to sidebar under Field Work
+- [ ] Add Tasks to sidebar under Field Work or Business
+- [ ] Add Prospecting to sidebar under Sales
+- [ ] Add Payments to sidebar under Sales or Business
+- [ ] TypeScript: 0 errors after all changes

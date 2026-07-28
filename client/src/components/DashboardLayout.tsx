@@ -43,6 +43,9 @@ import {
   Truck,
   Landmark,
   Route,
+  Wrench,
+  ClipboardList,
+  Radar,
 } from "lucide-react";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { getLoginUrl } from "@/const";
@@ -263,10 +266,12 @@ const NAV_GROUPS = [
     items: [
       { label: "Jobs",          href: "/ops/jobs",          icon: Briefcase },
       { label: "Schedule",      href: "/ops/schedule",      icon: CalendarDays },
+      { label: "Tasks",         href: "/ops/tasks",         icon: ClipboardList },
       { label: "Crews",         href: "/ops/crews-hub",     icon: HardHat },
       { label: "Equipment",     href: "/ops/equipment-hub", icon: Settings },
-      { label: "Rentals",        href: "/ops/rentals",       icon: Truck },
-      { label: "Route Planner",  href: "/ops/route-planner", icon: Route },
+      { label: "Field Fix",     href: "/ops/field-fix",     icon: Wrench },
+      { label: "Rentals",       href: "/ops/rentals",       icon: Truck },
+      { label: "Route Planner", href: "/ops/route-planner", icon: Route },
     ],
   },
   {
@@ -275,7 +280,9 @@ const NAV_GROUPS = [
       { label: "Leads",         href: "/ops/leads",         icon: Target },
       { label: "Quotes",        href: "/ops/quotes",        icon: FileText },
       { label: "Clients",       href: "/ops/clients",       icon: Users },
-      { label: "Gov Contracts",  href: "/ops/gov-contracts",  icon: Landmark },
+      { label: "Invoices",      href: "/ops/invoices",      icon: DollarSign },
+      { label: "Prospecting",   href: "/ops/prospecting",   icon: Radar },
+      { label: "Gov Contracts", href: "/ops/gov-contracts", icon: Landmark },
     ],
   },
   {
@@ -530,11 +537,6 @@ export default function DashboardLayout({ children, title, subtitle }: Dashboard
           <NavLinks />
         </nav>
 
-        {/* Jobber link */}
-        <div className="px-3 pb-2 border-t border-[#1e1e1e] pt-2">
-          <JobberPill collapsed={collapsed} />
-        </div>
-
         {/* Version indicator — clickable to open changelog */}
         {!collapsed && (
           <button
@@ -672,9 +674,6 @@ export default function DashboardLayout({ children, title, subtitle }: Dashboard
             </div>
           </div>
         </header>
-
-        {/* Jobber disconnected banner — shown on all ops pages when token is expired */}
-        <JobberReconnectBanner />
 
         {/* Page content */}
         <main

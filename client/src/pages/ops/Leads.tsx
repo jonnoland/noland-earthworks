@@ -202,6 +202,7 @@ interface Lead {
   chatSessionId?: number | null;
   jobberQuoteId?: string | null;
   jobberQuoteNumber?: number | null;
+  nativeQuoteId?: number | null;
   estimateAmount?: string | null;
   clientType?: string | null;
   rfpDocumentUrls?: string | null;
@@ -1056,11 +1057,19 @@ function LeadDetailPanel({
   const { data: notes = [], isLoading: notesLoading } = trpc.ops.leads.listNotes.useQuery({ leadId: lead.id });
   const { data: contactLog = [], isLoading: contactLogLoading } = trpc.ops.leads.getContactLog.useQuery({ leadId: lead.id });
 
-  // Live Jobber quote status for the linked quote badge
-  const { data: linkedQuote, isLoading: quoteStatusLoading } = trpc.jobber.quoteDetail.useQuery(
-    { id: lead.jobberQuoteId! },
-    { enabled: !!lead.jobberQuoteId, retry: false, staleTime: 1000 * 60 * 5 }
+  // Live native quote status for the linked quote badge
+  const { data: linkedNativeQuote, isLoading: quoteStatusLoading } = trpc.nativeQuotes.getById.useQuery(
+    { id: lead.nativeQuoteId! },
+    { enabled: !!lead.nativeQuoteId, retry: false, staleTime: 1000 * 60 * 5 }
   );
+  const linkedQuote = linkedNativeQuote ? {
+    quoteStatus: linkedNativeQuote.status?.toUpperCase() ?? null,
+    client: linkedNativeQuote.clientName ? { name: linkedNativeQuote.clientName, companyName: null } : null,
+    property: linkedNativeQuote.propertyAddress ? { address: { street1: linkedNativeQuote.propertyAddress, city: null, province: null } } : null,
+    lineItems: { nodes: linkedNativeQuote.lineItems ? (() => { try { return JSON.parse(linkedNativeQuote.lineItems as string); } catch { return []; } })() : [] },
+    amounts: (linkedNativeQuote as any).totalPrice != null ? { subtotal: (linkedNativeQuote as any).totalPrice, total: (linkedNativeQuote as any).totalPrice } : null,
+    message: (linkedNativeQuote as any).notes ?? linkedNativeQuote.internalNotes ?? null,
+  } : null;
 
   const deleteChatSession = trpc.chat.deleteSession.useMutation({
     onSuccess: () => {
