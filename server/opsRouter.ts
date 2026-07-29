@@ -7,8 +7,6 @@ import { z } from "zod";
 import { protectedProcedure, router } from "./_core/trpc";
 import { aiAutomationRouter } from "./aiAutomationRouter";
 import { ENV } from "./_core/env";
-import { isJobberConnected, jobberGraphQL } from "./jobber";
-import { fetchJobberInvoices } from "./jobberApi";
 import { invokeLLM } from "./_core/llm";
 import { generateImage } from "./_core/imageGeneration";
 import { storagePut } from "./storage";
@@ -26,7 +24,7 @@ import {
   getProspectingLeads, updateProspectingLeadStatus, deleteProspectingLead, countNewProspectingLeads,
 } from "./db";
 import { Resend } from "resend";
-import { jobs, opsLeads, quoteSubmissions, crews, crewMembers, conversations, messages, reviews, timeEntries, distanceQuotes, businessSettings, automationSettings, serviceCatalog, pricingBenchmarks, messageTemplates, reminderRules, leadNotes, visitBlackoutDates, recurringBlackoutDays, aiPricingSettings, quoteDrafts, jobberTokens, socialPosts, adSpend, equipment, serviceLogs, serviceIntervals, fieldDiagnostics, ownerTasks, jobNotes, jobberRevenueCache, morningBriefs, reviewRequests, chatSessions,
+import { jobs, opsLeads, quoteSubmissions, crews, crewMembers, conversations, messages, reviews, timeEntries, distanceQuotes, businessSettings, automationSettings, serviceCatalog, pricingBenchmarks, messageTemplates, reminderRules, leadNotes, visitBlackoutDates, recurringBlackoutDays, aiPricingSettings, quoteDrafts, socialPosts, adSpend, equipment, serviceLogs, serviceIntervals, fieldDiagnostics, ownerTasks, jobNotes, morningBriefs, reviewRequests, chatSessions,
  scheduleEntries, agentConfig, adCampaigns, prospectingLeads, outreachTemplates, leadContactLog, nativeQuotes } from "../drizzle/schema";
 
 import { and, asc, desc, eq, gte, inArray, lt, lte, like, or, sql } from "drizzle-orm";
@@ -129,31 +127,25 @@ const jobsRouter = router({
     .input(z.object({ id: z.number() }))
     .mutation(({ ctx, input }) => deleteJob(input.id, ctx.user.id)),
   generateCompletionNote: ownerProcedure
-    .input(z.object({ jobberJobId: z.string() }))
-    .mutation(async ({ input }) => {
-      // Fetch job data from Jobber
-      const data = await jobberGraphQL(`
-        query GetJobForNote($id: EncodedId!) {
-          job(id: $id) {
-            id jobNumber title jobStatus jobType total
-            completedAt instructions
-            client { name companyName }
-            property { address { street1 city province } }
-          }
-        }
-      `, { id: input.jobberJobId }) as any;
-      const job = data?.job;
-      if (!job) throw new TRPCError({ code: "NOT_FOUND", message: "Job not found in Jobber" });
+    .input(z.object({ jobId: z.number().int().positive() }))
+    .mutation(async ({ ctx, input }) => {
+      // Fetch job data from native jobs table
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+      const jobRows = await db.select().from(jobs)
+        .where(and(eq(jobs.id, input.jobId), eq(jobs.userId, ctx.user.id)))
+        .limit(1);
+      const job = jobRows[0];
+      if (!job) throw new TRPCError({ code: "NOT_FOUND", message: "Job not found" });
 
-      const clientName = job.client?.companyName || job.client?.name || "Unknown client";
-      const address = [job.property?.address?.street1, job.property?.address?.city, job.property?.address?.province]
-        .filter(Boolean).join(", ") || "address not recorded";
+      const clientName = job.client || "Unknown client";
+      const address = job.address || "address not recorded";
       const svc = (job.jobType ?? "land management").toLowerCase().replace(/_/g, " ");
-      const priceStr = job.total ? `$${Number(job.total).toLocaleString()}` : "price not recorded";
-      const dateStr = job.completedAt
-        ? new Date(job.completedAt).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })
+      const priceStr = job.totalPrice ? `$${Number(job.totalPrice).toLocaleString()}` : "price not recorded";
+      const dateStr = job.completedDate
+        ? new Date(job.completedDate).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })
         : "date not recorded";
-      const instrCtx = job.instructions ? `\nJob instructions/notes: ${job.instructions}` : "";
+      const instrCtx = job.notes ? `\nJob notes: ${job.notes}` : "";
 
       const result = await invokeLLM({
         messages: [
@@ -267,48 +259,7 @@ const jobsRouter = router({
       return { success: true };
     }),
 
-  /**
-   * Mark a Jobber job as completed locally — upserts a local jobs record with status='completed'.
-   * If a local record already exists for this Jobber job ID, updates it; otherwise creates one.
-   * This feeds the Scoreboard's "Jobs Completed" and "Recent Completed Jobs" metrics.
-   */
-  markJobberJobComplete: ownerProcedure
-    .input(z.object({
-      jobberJobId: z.string(),
-      title: z.string().optional(),
-      client: z.string().optional(),
-      totalPrice: z.string().optional(),
-      jobType: z.enum(["land_clearing", "forestry_mulching", "vegetation_management", "right_of_way_clearing", "trail_cutting", "brush_removal", "stump_grinding", "wildfire_mitigation"]).optional(),
-    }))
-    .mutation(async ({ ctx, input }) => {
-      const db = await getDb();
-      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
-      // Check if a local record already exists for this Jobber job
-      const [existing] = await db.select().from(jobs)
-        .where(and(eq(jobs.userId, ctx.user.id), eq(jobs.jobberJobId, input.jobberJobId)))
-        .limit(1);
-      if (existing) {
-        await db.update(jobs)
-          .set({ status: "completed", completedDate: new Date(), updatedAt: new Date() })
-          .where(eq(jobs.id, existing.id));
-        return { success: true, id: existing.id };
-      }
-      // Create a new local record linked to this Jobber job
-      const priceNum = input.totalPrice ? parseFloat(input.totalPrice.replace(/[^0-9.]/g, "")) : null;
-      const [result] = await db.insert(jobs).values({
-        userId: ctx.user.id,
-        title: input.title || "Jobber Job",
-        client: input.client || "",
-        jobType: input.jobType ?? "land_clearing",
-        status: "completed",
-        totalPrice: priceNum != null && !isNaN(priceNum) ? String(priceNum) : null,
-        completedDate: new Date(),
-        jobberJobId: input.jobberJobId,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      });
-      return { success: true, id: (result as any).insertId ?? null };
-    }),
+
 
   /** Mark a job as paid — sets status to 'paid' and stamps paidDate, auto-closes matching lead */
   markPaid: ownerProcedure
@@ -3061,47 +3012,14 @@ const settingsRouter = router({
 
   // ─── Integration Status ──────────────────────────────────────────────────────
   getIntegrationStatus: ownerProcedure.query(async () => {
-    const jobberConnected = await isJobberConnected();
     const twilioConfigured = !!(ENV.twilioAccountSid && ENV.twilioAuthToken && ENV.twilioFromNumber);
     const resendConfigured = !!ENV.resendApiKey;
     // Google Maps is always available via the Manus proxy — no key needed
     const googleMapsActive = true;
-
-    // ── Jobber token expiry details ─────────────────────────────────────────
-    // Fetch the most-recently-updated token row to surface expiry info to the UI.
-    // The background scheduler auto-refreshes short-lived access tokens, but the
-    // refresh token itself can expire if the server is offline for an extended
-    // period (Jobber refresh tokens last ~365 days but can be revoked manually).
-    let jobberExpiresAt: string | null = null;
-    let jobberTokenStatus: "ok" | "expiring_soon" | "expired" | "not_connected" = "not_connected";
-    const db = await getDb();
-    if (db && jobberConnected) {
-      try {
-        const tokenRows = await db.select().from(jobberTokens).orderBy(desc(jobberTokens.updatedAt)).limit(1);
-        if (tokenRows.length > 0) {
-          const expiresAt = tokenRows[0].expiresAt;
-          jobberExpiresAt = expiresAt.toISOString();
-          const msLeft = expiresAt.getTime() - Date.now();
-          if (msLeft <= 0) {
-            jobberTokenStatus = "expired";
-          } else if (msLeft < 15 * 60 * 1000) {
-            // Within 15 minutes — warn so the user knows a refresh is imminent
-            jobberTokenStatus = "expiring_soon";
-          } else {
-            jobberTokenStatus = "ok";
-          }
-        }
-      } catch {
-        // Non-fatal — just omit expiry details if the query fails
-      }
-    }
-
     return {
-      jobber: { connected: jobberConnected, expiresAt: jobberExpiresAt, tokenStatus: jobberTokenStatus },
       twilio: { configured: twilioConfigured, fromNumber: twilioConfigured ? ENV.twilioFromNumber : null },
       resend: { configured: resendConfigured },
       googleMaps: { active: googleMapsActive },
-
       facebook: { connected: false },
       googleBusiness: { connected: false },
       quickbooks: { connected: false },
@@ -3413,6 +3331,27 @@ const tasksRouter = router({
     .query(async ({ input }) => {
       const { listOwnerTasks } = await import("./db");
       return listOwnerTasks(input.includeCompleted);
+    }),
+  create: ownerProcedure
+    .input(z.object({
+      title: z.string().min(1).max(255),
+      description: z.string().optional(),
+      dueAt: z.date().optional(),
+      relatedType: z.string().optional(),
+      relatedId: z.number().int().optional(),
+    }))
+    .mutation(async ({ input }) => {
+      const { insertOwnerTask } = await import("./db");
+      const dueAt = input.dueAt ?? new Date(Date.now() + 24 * 60 * 60 * 1000); // default: tomorrow
+      await insertOwnerTask({
+        title: input.title,
+        description: input.description ?? null,
+        dueAt,
+        relatedType: input.relatedType ?? null,
+        relatedId: input.relatedId ?? null,
+        completed: false,
+      });
+      return { success: true };
     }),
 
   complete: ownerProcedure
@@ -5737,53 +5676,6 @@ Always be specific to nolandearthworks.com. Never give generic advice — tie ev
       return { results, created: results.filter(r => r.status === "created").length, failed: results.filter(r => r.status === "error").length };
     }),
 
-  // ─── Priority 1: Jobber Revenue Sync ──────────────────────────────────────────
-  syncJobberRevenue: ownerProcedure.mutation(async () => {
-    const db = await getDb();
-    if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable." });
-    const connected = await isJobberConnected();
-    if (!connected) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Jobber is not connected. Reconnect in Settings → Integrations." });
-    const invoicesData = await fetchJobberInvoices(100);
-    const nodes = invoicesData?.nodes ?? [];
-    let synced = 0;
-    for (const inv of nodes) {
-      const total = parseFloat(inv.amounts?.total ?? "0") || 0;
-      const balance = parseFloat(inv.amounts?.invoiceBalance ?? "0") || 0;
-      const clientName = inv.client?.companyName || inv.client?.name || "Unknown";
-      const issuedDate = inv.issuedDate ? new Date(inv.issuedDate) : null;
-      await db.insert(jobberRevenueCache).values({
-        invoiceId: inv.id,
-        invoiceNumber: inv.invoiceNumber ?? null,
-        invoiceStatus: inv.invoiceStatus ?? null,
-        total: total.toFixed(2),
-        balance: balance.toFixed(2),
-        clientName,
-        subject: inv.subject ?? null,
-        issuedDate,
-        syncedAt: new Date(),
-      }).onDuplicateKeyUpdate({
-        set: {
-          invoiceStatus: inv.invoiceStatus ?? null,
-          total: total.toFixed(2),
-          balance: balance.toFixed(2),
-          clientName,
-          subject: inv.subject ?? null,
-          issuedDate,
-          syncedAt: new Date(),
-        },
-      });
-      synced++;
-    }
-    return { synced, total: nodes.length };
-  }),
-
-  getJobberRevenue: ownerProcedure.query(async () => {
-    const db = await getDb();
-    if (!db) return { rows: [], lastSyncedAt: null };
-    const rows = await db.select().from(jobberRevenueCache).orderBy(desc(jobberRevenueCache.issuedDate));
-    const lastSyncedAt = rows.length > 0 ? rows[0].syncedAt : null;
-    return { rows, lastSyncedAt };
-  }),
 
   // ─── Priority 2: Auto-create Lead from Chat Session ───────────────────────────
   // (Chat sessions already auto-create leads via chatRouter — this procedure exposes
@@ -6471,8 +6363,8 @@ Generate a complete monthly ad campaign plan. Return ONLY valid JSON matching th
       return row;
     }),
   /**
-   * Called after a Jobber quote is created from a lead.
-   * Updates the lead stage to estimate_sent and stores the Jobber quote ID/number.
+   * Called after a quote is created from a lead.
+   * Updates the lead stage to estimate_sent and stores the quote ID/number.
    */
   linkQuoteToLead: protectedProcedure
     .input(z.object({
@@ -6482,21 +6374,7 @@ Generate a complete monthly ad campaign plan. Return ONLY valid JSON matching th
       estimateAmount: z.number().optional(),
     }))
     .mutation(async ({ ctx, input }) => {
-      let estimateAmount = input.estimateAmount;
-      // If no amount was passed in, fetch it live from Jobber
-      if (estimateAmount == null) {
-        try {
-          const data = await jobberGraphQL(`
-            query GetQuoteTotal($id: EncodedId!) {
-              quote(id: $id) { amounts { total } }
-            }
-          `, { id: input.jobberQuoteId }) as any;
-          const raw = data?.quote?.amounts?.total;
-          if (raw != null) estimateAmount = Number(raw);
-        } catch {
-          // Non-fatal — proceed without the amount
-        }
-      }
+      const estimateAmount = input.estimateAmount;
       await updateOpsLead(input.leadId, ctx.user.id, {
         stage: "estimate_sent",
         jobberQuoteId: input.jobberQuoteId,

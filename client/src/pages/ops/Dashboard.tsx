@@ -1,7 +1,7 @@
 /**
  * Dashboard Page — Noland Earthworks
- * Full Jobber sync: Jobs, Invoices, Quotes, and Requests all pulled from Jobber.
- * Local jobs table is a secondary fallback when Jobber is not connected.
+ * Dashboard — Noland Earthworks
+ * Uses native jobs, invoices, quotes, and leads data.
  */
 
 import { useState, useEffect, useMemo, useRef } from "react";
@@ -13,7 +13,7 @@ import { trpc } from "@/lib/trpc";
 import {
   DollarSign, Briefcase,
   Users, Clock, ArrowUpRight, MapPin, Plus, ChevronRight, Inbox,
-  CalendarDays, CalendarCheck, TrendingUp, Gauge, Activity, ExternalLink, Flag,
+  CalendarDays, CalendarCheck, TrendingUp, Gauge, Activity, Flag,
   FileText, Receipt, AlertCircle, CheckCircle2, PhoneCall, Star, MessageSquare,
   Sparkles, Loader2, RefreshCw, Zap, Target, Phone, Mail, Share2, CheckSquare,
 } from "lucide-react";
@@ -172,7 +172,7 @@ function SectionHeader({ title, badge, sub, href, external }: {
         external ? (
           <a href={href} target="_blank" rel="noopener noreferrer"
             className="text-xs text-primary hover:text-primary/80 flex items-center gap-1 transition-colors cursor-pointer">
-            View in Jobber <ExternalLink className="w-3 h-3" />
+            View all <ChevronRight className="w-3 h-3" />
           </a>
         ) : (
           <Link href={href}>
@@ -354,7 +354,7 @@ export default function Dashboard() {
   );
 
   // ─── Jobber requests ──────────────────────────────────────────────────────
-  // Open leads (replaces Jobber requests)
+  // Open leads pipeline
   const openRequests = useMemo(() =>
     leads.filter(l => !["won", "lost", "converted"].includes(l.stage)),
     [leads]
@@ -490,24 +490,18 @@ export default function Dashboard() {
                   Schedule
                 </button>
               </Link>
-              <Link href="/ops/jobs">
+              <Link href="/ops/quotes">
                 <button className="flex items-center gap-2 bg-primary hover:bg-primary/90 text-primary-foreground text-sm font-semibold px-4 py-2 rounded-md transition-colors">
                   <Plus className="w-4 h-4" />
-                  New Job
+                  New Quote
                 </button>
               </Link>
-              <a
-                href="https://nolandjobber-c3cs6zr4.manus.space"
-                target="_blank"
-                rel="noopener noreferrer"
-                title="Jobber Service Update"
-                onClick={() => { const w = window.open('https://nolandjobber-c3cs6zr4.manus.space', '_blank'); if (w) { w.document.title = 'Jobber Service Update'; } }}
-              >
+              <Link href="/ops/quotes">
                 <button className="flex items-center gap-2 bg-secondary hover:bg-secondary/80 text-foreground text-sm font-semibold px-4 py-2 rounded-md transition-colors border border-border">
-                  <ExternalLink className="w-4 h-4" />
-                  Jobber Services Update
+                  <FileText className="w-4 h-4" />
+                  All Quotes
                 </button>
-              </a>
+              </Link>
             </div>
           </div>
         </div>
@@ -563,7 +557,7 @@ export default function Dashboard() {
             sub={"in progress"}
             icon={Briefcase}
             delay={0}
-            href="/ops/jobs"
+            href="/ops/quotes"
           />
           <KPICard
             title="Scheduled Jobs"
@@ -580,7 +574,7 @@ export default function Dashboard() {
             icon={Receipt}
             delay={160}
             accent={overdueInvoices.length > 0 ? "red" : "default"}
-            href="/ops/invoices"
+            href="/ops/quotes"
           />
           <KPICard
             title="Open Leads / Requests"
@@ -601,7 +595,7 @@ export default function Dashboard() {
             icon={DollarSign}
             delay={0}
             accent="green"
-            href="/ops/invoices"
+            href="/ops/quotes"
           />
           <KPICard
             title="Open Quotes"
@@ -617,7 +611,7 @@ export default function Dashboard() {
             sub={`avg across ${normalizedLocalJobs.filter(j => j.totalPrice && j.acres).length} local jobs`}
             icon={TrendingUp}
             delay={160}
-            href="/ops/jobs"
+            href="/ops/quotes"
           />
           <KPICard
             title="Win Rate"
@@ -637,11 +631,7 @@ export default function Dashboard() {
                 <h3 className="text-sm font-semibold text-foreground" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
                   Scheduled Jobs
                 </h3>
-                {jobberConnected && (
-                  <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-green-400/10 text-green-400 border border-green-400/20">
-                    Jobber
-                  </span>
-                )}
+
               </div>
               <p className="text-xs text-muted-foreground">
                 Next 30 days — {filteredScheduledJobs.length} of {scheduledJobs.length} job{scheduledJobs.length !== 1 ? "s" : ""} shown
@@ -666,40 +656,20 @@ export default function Dashboard() {
                   </span>
                 </button>
               ))}
-              {jobberConnected ? (
-                <a
-                  href="https://secure.getjobber.com/home"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-xs text-primary hover:text-primary/80 flex items-center gap-1 transition-colors cursor-pointer ml-1"
-                >
-                  Jobber <ExternalLink className="w-3 h-3" />
-                </a>
-              ) : (
-                <Link href="/ops/schedule">
-                  <span className="text-xs text-primary hover:text-primary/80 flex items-center gap-1 transition-colors cursor-pointer ml-1">
-                    Calendar <ChevronRight className="w-3 h-3" />
-                  </span>
-                </Link>
-              )}
+              <Link href="/ops/schedule">
+                <span className="text-xs text-primary hover:text-primary/80 flex items-center gap-1 transition-colors cursor-pointer ml-1">
+                  Calendar <ChevronRight className="w-3 h-3" />
+                </span>
+              </Link>
             </div>
           </div>
 
           {filteredScheduledJobs.length === 0 ? (
-            jobberJobsError ? (
-              <EmptyState
-                message="Jobber is not connected. Jobs will appear here once Jobber credentials are configured."
-                linkLabel="Go to Jobs"
-                linkHref="/ops/jobs"
-              />
-            ) : (
-              <EmptyState
-                message="No jobs scheduled in the next 30 days."
-                linkLabel="Open Jobber"
-                linkHref="https://secure.getjobber.com/home"
-                external
-              />
-            )
+            <EmptyState
+              message="No jobs scheduled in the next 30 days."
+              linkLabel="View All Quotes"
+              linkHref="/ops/quotes"
+            />
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
               {filteredScheduledJobs.map((job) => {
@@ -707,7 +677,7 @@ export default function Dashboard() {
                 const dateLabel = formatScheduledDate(job.scheduledDate);
                 const isToday = dateLabel === "Today";
                 const isTomorrow = dateLabel === "Tomorrow";
-                const cardHref = "/ops/jobs";
+                const cardHref = "/ops/quotes";
                 const isExternal = false;
 
                 const CardContent = (
@@ -790,17 +760,13 @@ export default function Dashboard() {
               sub={overdueInvoices.length > 0
                 ? `${overdueInvoices.length} overdue · $${outstandingBalance.toLocaleString()} outstanding`
                 : `$${outstandingBalance.toLocaleString()} outstanding`}
-              href="https://secure.getjobber.com/invoices"
-              external
+              href="/ops/quotes"
             />
-            {false ? (
-              <EmptyState message="Jobber not connected — invoices unavailable." />
-            ) : openInvoices.length === 0 ? (
+            {openInvoices.length === 0 ? (
               <EmptyState
                 message="No open invoices. All caught up."
-                linkLabel="View in Jobber"
-                linkHref="https://secure.getjobber.com/invoices"
-                external
+                linkLabel="View all quotes"
+                linkHref="/ops/quotes"
               />
             ) : (
               <div className="space-y-2">
@@ -808,7 +774,7 @@ export default function Dashboard() {
                   const cfg = invoiceStatusConfig[inv.invoiceStatus] ?? { label: inv.invoiceStatus, color: "text-muted-foreground bg-secondary border-border" };
                   const isOverdue = inv.invoiceStatus === "OVERDUE";
                   return (
-                    <a key={inv.id} href="https://secure.getjobber.com/invoices" target="_blank" rel="noopener noreferrer">
+                    <Link key={inv.id} href="/ops/quotes">
                       <div className={cn(
                         "flex items-center gap-3 p-3 rounded-md transition-colors cursor-pointer",
                         isOverdue ? "bg-red-500/5 hover:bg-red-500/10 border border-red-500/20" : "bg-secondary/30 hover:bg-secondary/50"
@@ -838,14 +804,14 @@ export default function Dashboard() {
                           </div>
                         </div>
                       </div>
-                    </a>
+                    </Link>
                   );
                 })}
                 {openInvoices.length > 6 && (
-                  <a href="https://secure.getjobber.com/invoices" target="_blank" rel="noopener noreferrer"
+                  <Link href="/ops/quotes"
                     className="block text-center text-xs text-primary hover:text-primary/80 py-2 transition-colors">
-                    +{openInvoices.length - 6} more invoices in Jobber
-                  </a>
+                    +{openInvoices.length - 6} more invoices
+                  </Link>
                 )}
               </div>
             )}
@@ -859,9 +825,7 @@ export default function Dashboard() {
               sub={`${openQuotes.length} quote${openQuotes.length !== 1 ? "s" : ""} awaiting approval`}
               href="/ops/quotes"
             />
-            {false ? (
-              <EmptyState message="Jobber not connected — quotes unavailable." />
-            ) : openQuotes.length === 0 ? (
+            {openQuotes.length === 0 ? (
               <EmptyState
                 message="No open quotes."
                 linkLabel="View all quotes"
@@ -915,30 +879,26 @@ export default function Dashboard() {
         {/* Requests + Recent Jobs row */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
 
-          {/* Jobber Requests (Leads) */}
+          {/* Open Leads / Requests */}
           <div className="ops-card p-5">
             <SectionHeader
               title="Requests"
               badge={undefined}
               sub={`${openRequests.length} open request${openRequests.length !== 1 ? "s" : ""}`}
-              href="https://secure.getjobber.com/requests"
-              external
+              href="/ops/leads"
             />
-            {false ? (
-              <EmptyState message="Jobber not connected — requests unavailable." />
-            ) : openRequests.length === 0 ? (
+            {openRequests.length === 0 ? (
               <EmptyState
                 message="No open requests."
-                linkLabel="View in Jobber"
-                linkHref="https://secure.getjobber.com/requests"
-                external
+                linkLabel="View all leads"
+                linkHref="/ops/leads"
               />
             ) : (
               <div className="space-y-2">
                 {openRequests.slice(0, 6).map((r: any) => {
                   const cfg = requestStatusConfig[r.requestStatus] ?? { label: r.requestStatus, color: "text-muted-foreground bg-secondary border-border" };
                   return (
-                    <a key={r.id} href="https://secure.getjobber.com/requests" target="_blank" rel="noopener noreferrer">
+                    <Link key={r.id} href="/ops/leads">
                       <div className="flex items-center gap-3 p-3 rounded-md bg-secondary/30 hover:bg-secondary/50 transition-colors cursor-pointer">
                         <div className="w-8 h-8 rounded-md bg-primary/10 flex items-center justify-center shrink-0">
                           <PhoneCall className="w-3.5 h-3.5 text-primary" />
@@ -958,14 +918,14 @@ export default function Dashboard() {
                           </div>
                         </div>
                       </div>
-                    </a>
+                    </Link>
                   );
                 })}
                 {openRequests.length > 6 && (
-                  <a href="https://secure.getjobber.com/requests" target="_blank" rel="noopener noreferrer"
+                  <Link href="/ops/leads"
                     className="block text-center text-xs text-primary hover:text-primary/80 py-2 transition-colors">
-                    +{openRequests.length - 6} more in Jobber
-                  </a>
+                    +{openRequests.length - 6} more leads
+                  </Link>
                 )}
               </div>
             )}
@@ -977,7 +937,7 @@ export default function Dashboard() {
               title="Recent Jobs"
               badge={undefined}
               sub="Latest job activity"
-              href={"/ops/jobs"}
+              href={"/ops/quotes"}
               external={jobberConnected}
             />
             {recentJobs.length === 0 ? (
@@ -991,7 +951,7 @@ export default function Dashboard() {
                 {recentJobs.map((job) => {
                   const status = statusConfig[job.status] ?? { label: job.status, color: "text-muted-foreground bg-secondary border-border" };
                   const isExternal = false;
-                  const href = "/ops/jobs";
+                  const href = "/ops/quotes";
 
                   const rowContent = (
                     <div className="flex items-center gap-3 p-3 rounded-md bg-secondary/30 hover:bg-secondary/50 transition-colors cursor-pointer">
@@ -1075,7 +1035,7 @@ export default function Dashboard() {
                   </h3>
                   <p className="text-xs text-muted-foreground">Paid invoices — last 6 months</p>
                 </div>
-                <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-green-400/10 text-green-400 border border-green-400/20">Jobber</span>
+                <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-blue-400/10 text-blue-400 border border-blue-400/20">Native</span>
               </div>
               <ResponsiveContainer width="100%" height={160}>
                 <AreaChart data={months} margin={{ top: 4, right: 4, left: -16, bottom: 0 }}>
@@ -1148,7 +1108,7 @@ export default function Dashboard() {
                 </h3>
                 <p className="text-xs text-muted-foreground">
                   {jobberConnected
-                    ? "Revenue from Jobber invoices · Crew days and win rate from local records"
+                    ? "Revenue from invoices · Crew days and win rate from local records"
                     : "Calculated from your job and lead records"}
                 </p>
               </div>

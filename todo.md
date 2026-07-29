@@ -2550,8 +2550,8 @@
 - [x] Server-side list procedure already supports exact status filter — web_request works
 
 ## Jobber Removal — Native System Completion
-- [ ] Item 1: Web Requests review panel — Convert to Quote quick-action in All Quotes detail panel
-- [ ] Item 5: Fix notification email CTA to point to All Quotes instead of Jobber
+- [x] Item 1: Web Requests review panel — Convert to Quote quick-action in All Quotes detail panel
+- [x] Item 5: Fix notification email CTA to point to All Quotes instead of Jobber
 - [x] Item 2: Native Jobs section — DB schema (nativeJobs table), server procedures, Jobs tab in Ops
 - [x] Item 3: HTML invoice generation from completed job, emailed to client (stored in S3, opens in browser)
 - [x] Item 4a: Native Clients tab in Ops backed by database
@@ -2574,24 +2574,33 @@
 
 ## Jobber Removal — Close Feature Gaps (2026-07-28)
 
-- [ ] Gap 1: Satellite imagery strip in NativeQuoteDetailPanel (wire trpc.ops.quotes.satelliteImage using quote.propertyAddress)
-- [ ] Gap 2: Update getStaleQuotes to query nativeQuotes (portalSentAt > 7 days, no clientAction) and add Quotes Needing Follow-Up panel to NativeAllQuotesSection
-- [ ] Gap 3: Add Link to Lead to NativeQuoteDetailPanel (add nativeQuoteId support to linkQuoteToLead procedure)
-- [ ] Gap 4: Add Quote # column (display #id) to All Quotes table
-- [ ] Gap 5: Add Restore to Draft action for cancelled quotes in NativeQuoteDetailPanel
-- [ ] Gap 6: Render changeRequestNote, declineNote, signatureDataUrl/signatureTypedText/signedAt in NativeQuoteDetailPanel body
+- [x] Gap 1: Satellite imagery strip in NativeQuoteDetailPanel (wire trpc.ops.quotes.satelliteImage using quote.propertyAddress)
+- [x] Gap 2: Update getStaleQuotes to query nativeQuotes (portalSentAt > 7 days, no clientAction) and add Quotes Needing Follow-Up panel to NativeAllQuotesSection
+- [x] Gap 3: Add Link to Lead to NativeQuoteDetailPanel (add nativeQuoteId support to linkQuoteToLead procedure)
+- [x] Gap 4: Add Quote # column (display #id) to All Quotes table
+- [x] Gap 5: Add Restore to Draft action for cancelled quotes in NativeQuoteDetailPanel
+- [x] Gap 6: Render changeRequestNote, declineNote, signatureDataUrl/signatureTypedText/signedAt in NativeQuoteDetailPanel body
 
 ## Jobber Removal — Full /ops Cleanup (2026-07-28)
-- [ ] Remove Jobber tab from /ops/quotes (TabsTrigger + TabsContent + related state)
-- [ ] Remove Jobber data queries from Dashboard.tsx (replace with nativeJobs.list, nativeQuotes.list)
-- [ ] Remove Jobber quoteDetail query from Leads.tsx (replace with nativeQuotes.getById)
-- [ ] Remove Jobber jobs query from Schedule.tsx (replace with nativeJobs.list)
-- [ ] Rebuild Jobs.tsx using nativeJobs data
-- [ ] Rebuild Clients.tsx using nativeClients data
-- [ ] Rebuild Invoices.tsx using nativeInvoices data
-- [ ] Update sidebar: redirect Jobs entry to /ops/quotes, redirect Clients entry to /ops/quotes
-- [ ] Add Field Fix to sidebar under Field Work
-- [ ] Add Tasks to sidebar under Field Work or Business
-- [ ] Add Prospecting to sidebar under Sales
-- [ ] Add Payments to sidebar under Sales or Business
-- [ ] TypeScript: 0 errors after all changes
+- [x] Remove Jobber tab from /ops/quotes (TabsTrigger + TabsContent + related state)
+- [x] Remove Jobber data queries from Dashboard.tsx (replace with nativeJobs.list, nativeQuotes.list)
+- [x] Remove Jobber quoteDetail query from Leads.tsx (replace with nativeQuotes.getById)
+- [x] Remove Jobber jobs query from Schedule.tsx (replace with nativeJobs.list)
+- [x] Rebuild Jobs.tsx using nativeJobs data
+- [x] Rebuild Clients.tsx using nativeClients data
+- [x] Rebuild Invoices.tsx using nativeInvoices data
+- [x] Update sidebar: redirect Jobs entry to /ops/quotes, redirect Clients entry to /ops/quotes
+- [x] Add Field Fix to sidebar under Field Work
+- [x] Add Tasks to sidebar under Field Work or Business
+- [x] Add Prospecting to sidebar under Sales
+- [x] Add Payments to sidebar under Sales or Business
+- [x] TypeScript: 0 errors after all changes
+
+## Tasks Page Improvements (Jul 28, 2026)
+- [x] Add search bar to /ops/tasks (client-side filter by title/description)
+- [x] Add relatedType filter dropdown to /ops/tasks (shows types from existing tasks)
+- [x] Add "Add Task" button and modal to /ops/tasks for manual task creation
+- [x] Add tasks.create tRPC procedure to tasksRouter (title, description, dueAt, relatedType, relatedId)
+- [x] Clicking relatedType badge on a task filters the list to that type
+- [x] Clear filters button shown when search or type filter is active
+- [x] quoteRouter.ts: remove Jobber sync block and createJobberRequest/isJobberConnected import

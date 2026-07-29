@@ -20,7 +20,6 @@ import { getDb, getOwnerUser, insertAgentLog, getAgentConfig, upsertAgentConfig,
 import { businessSettings, jobs, opsLeads, scheduleEntries, serviceCatalog } from "../drizzle/schema";
 import { ENV } from "./_core/env";
 import { notifyOwner } from "./_core/notification";
-import { isJobberConnected, jobberGraphQL } from "./jobber";
 import { invokeLLM } from "./_core/llm";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -499,56 +498,6 @@ export async function runDailyDigestAgent() {
         )
       );
 
-    // ── Jobber revenue data (last 30 days) ──────────────────────────────────
-    let jobberRevenueHtml = "";
-    try {
-      const jobberConnected = await isJobberConnected();
-      if (jobberConnected) {
-        const thirtyDaysAgo = new Date();
-        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-        const invoiceData = await jobberGraphQL(`
-          query DigestInvoices($first: Int) {
-            invoices(first: $first) {
-              nodes {
-                id invoiceNumber invoiceStatus
-                amounts { subtotal total invoiceBalance }
-                issuedDate
-              }
-              totalCount
-            }
-          }
-        `, { first: 100 }) as any;
-
-        const invoiceNodes = invoiceData?.invoices?.nodes ?? [];
-        const totalInvoiced = invoiceNodes.reduce((s: number, inv: any) => s + (Number(inv.amounts?.total) || 0), 0);
-        const totalOutstanding = invoiceNodes.reduce((s: number, inv: any) => {
-          if (inv.invoiceStatus === "DRAFT" || inv.invoiceStatus === "SENT") {
-            return s + (Number(inv.amounts?.invoiceBalance) || 0);
-          }
-          return s;
-        }, 0);
-        const totalPaid = invoiceNodes.reduce((s: number, inv: any) => {
-          if (inv.invoiceStatus === "PAID") {
-            return s + (Number(inv.amounts?.total) || 0);
-          }
-          return s;
-        }, 0);
-
-        jobberRevenueHtml = `
-          <h3 style="font-family:sans-serif;margin-top:1.5rem;">Jobber Revenue (All Invoices)</h3>
-          <ul>
-            <li>Total Invoiced: <strong>$${totalInvoiced.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong></li>
-            <li>Total Paid: <strong style="color:#16a34a;">$${totalPaid.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong></li>
-            <li>Outstanding (Draft/Sent): <strong style="color:#c96e24;">$${totalOutstanding.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong></li>
-            <li>Invoice Count: <strong>${invoiceNodes.length}</strong></li>
-          </ul>
-        `;
-      }
-    } catch (jobberErr) {
-      console.warn("[Agent:daily_digest] Jobber revenue fetch failed:", jobberErr);
-      jobberRevenueHtml = `<p style="color:#888;font-size:0.85rem;">Jobber revenue data unavailable.</p>`;
-    }
-
     // Stage breakdown
     const stageCounts: Record<string, number> = {};
     for (const l of openLeads) {
@@ -642,8 +591,6 @@ export async function runDailyDigestAgent() {
 
           <h3 style="font-family:sans-serif;margin-top:1.5rem;">Ready to Invoice (${completedYesterday.length})</h3>
           <ul>${invoiceLines}</ul>
-
-          ${jobberRevenueHtml}
 
           <p style="margin-top:2rem;font-size:0.85rem;color:#888;">
             <a href="https://nolandearthworks.com/ops" style="color:#c96e24;">Open Ops Dashboard</a>

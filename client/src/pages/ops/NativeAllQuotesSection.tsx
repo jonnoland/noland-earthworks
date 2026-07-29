@@ -29,7 +29,6 @@ import {
   RefreshCw, ChevronRight, MapPin, Phone, Mail, User, Users, X, Globe,
   Loader2, Clock, ChevronDown, ChevronUp, ArchiveRestore
 } from "lucide-react";
-import { WebsiteRequestsSection } from "./Quotes";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface LineItem {
@@ -1295,6 +1294,117 @@ function NativeQuoteDetailPanel({
   );
 }
 
+// ─── Inline Web Requests Panel ──────────────────────────────────────────────
+function InlineWebRequestsPanel({
+  onBuildQuote,
+}: {
+  onBuildQuote: (prefill: {
+    clientName?: string;
+    clientPhone?: string;
+    clientEmail?: string;
+    propertyAddress?: string;
+    serviceType?: string;
+    clientMessage?: string;
+  }) => void;
+}) {
+  const { data, isLoading, refetch, isFetching } = trpc.ops.quotes.list.useQuery(
+    { limit: 50 },
+    { retry: false }
+  );
+  type WebReq = {
+    id: number;
+    name: string;
+    phone?: string | null;
+    email?: string | null;
+    street?: string | null;
+    city?: string | null;
+    service?: string | null;
+    message?: string | null;
+    acreage?: string | null;
+    county?: string | null;
+    aiScore?: string | null;
+    createdAt: Date | string;
+  };
+  const list = (data ?? []) as WebReq[];
+
+  return (
+    <div className="ops-card p-4 space-y-3">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Globe className="w-4 h-4 text-primary" />
+          <h2 className="text-sm font-semibold text-foreground">Website Requests</h2>
+          {!isLoading && list.length > 0 && (
+            <span className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-primary/15 text-primary text-[10px] font-semibold">{list.length}</span>
+          )}
+        </div>
+        <button
+          onClick={() => refetch()}
+          disabled={isFetching}
+          className="text-muted-foreground hover:text-foreground transition-colors"
+          aria-label="Refresh"
+        >
+          <RefreshCw className={`w-3.5 h-3.5 ${isFetching ? "animate-spin" : ""}`} />
+        </button>
+      </div>
+
+      {isLoading ? (
+        <div className="flex items-center justify-center py-8">
+          <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+        </div>
+      ) : list.length === 0 ? (
+        <div className="text-center py-8">
+          <Globe className="w-8 h-8 text-muted-foreground/30 mx-auto mb-2" />
+          <p className="text-xs text-muted-foreground">No website requests yet</p>
+        </div>
+      ) : (
+        <div className="space-y-2 max-h-[600px] overflow-y-auto pr-1">
+          {list.map((req) => (
+            <div key={req.id} className="rounded-md border border-border bg-card/50 p-3 space-y-1.5">
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <p className="text-sm font-medium text-foreground truncate">{req.name}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {[req.service, req.county, req.acreage ? `${req.acreage} ac` : undefined].filter(Boolean).join(" · ")}
+                  </p>
+                </div>
+                {req.aiScore && (
+                  <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded ${
+                    req.aiScore === "hot" ? "bg-red-500/20 text-red-400" :
+                    req.aiScore === "warm" ? "bg-amber-500/20 text-amber-400" :
+                    "bg-zinc-500/20 text-zinc-400"
+                  }`}>{req.aiScore}</span>
+                )}
+              </div>
+              {req.message && (
+                <p className="text-xs text-muted-foreground line-clamp-2">{req.message}</p>
+              )}
+              <div className="flex items-center justify-between pt-0.5">
+                <p className="text-[11px] text-muted-foreground">
+                  {new Date(req.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                </p>
+                <Button
+                  size="sm"
+                  className="h-6 text-xs px-2 gap-1"
+                  onClick={() => onBuildQuote({
+                    clientName: req.name,
+                    clientPhone: req.phone ?? undefined,
+                    clientEmail: req.email ?? undefined,
+                    propertyAddress: [req.street, req.city].filter(Boolean).join(", ") || undefined,
+                    serviceType: req.service ?? undefined,
+                    clientMessage: req.message ?? undefined,
+                  })}
+                >
+                  <Plus className="w-3 h-3" />
+                  Build Quote
+                </Button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 // ─── Main section ─────────────────────────────────────────────────────────────
 export function NativeAllQuotesSection() {
   const [search, setSearch] = useState("");
@@ -1326,13 +1436,6 @@ export function NativeAllQuotesSection() {
     onError: (err) => { toast.error(err.message); setDraftingFor(null); },
   });
 
-  const importMutation = trpc.nativeQuotes.importFromJobber.useMutation({
-    onSuccess: (result) => {
-      toast.success(`Imported ${result.imported} quote${result.imported !== 1 ? "s" : ""} from Jobber${result.skipped > 0 ? ` (${result.skipped} already existed, skipped)` : "."}`);
-      refetch();
-    },
-    onError: (err) => toast.error(err.message),
-  });
   const { data, isLoading, refetch, isFetching } = trpc.nativeQuotes.list.useQuery({
     search: search || undefined,
     status: statusFilter,
@@ -1396,21 +1499,6 @@ export function NativeAllQuotesSection() {
                 aria-label="Refresh"
               >
                 <RefreshCw className={`w-3.5 h-3.5 ${isFetching ? "animate-spin" : ""}`} />
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-8 gap-1.5 text-xs"
-                onClick={() => importMutation.mutate()}
-                disabled={importMutation.isPending}
-                title="Import all quotes from Jobber into All Quotes"
-              >
-                {importMutation.isPending ? (
-                  <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                ) : (
-                  <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-                )}
-                Import Jobber
               </Button>
               <Button
                 size="sm"
@@ -1608,16 +1696,9 @@ export function NativeAllQuotesSection() {
         {/* ── RIGHT: Website Requests (2/5 width on xl) — sticky ── */}
         <div className="xl:col-span-2">
           <div className="xl:sticky xl:top-4">
-            <WebsiteRequestsSection
+            <InlineWebRequestsPanel
               onBuildQuote={(prefill) => {
-                setCreatePrefill({
-                  clientName: prefill.clientName,
-                  clientPhone: prefill.clientPhone,
-                  clientEmail: prefill.clientEmail,
-                  propertyAddress: prefill.clientAddress,
-                  serviceType: prefill.jobType,
-                  clientMessage: prefill.message,
-                });
+                setCreatePrefill(prefill);
                 setShowCreate(true);
               }}
             />

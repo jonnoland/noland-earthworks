@@ -4,7 +4,6 @@ import { publicProcedure, router } from "./_core/trpc";
 import { notifyOwner } from "./_core/notification";
 import { ENV } from "./_core/env";
 import { Resend } from "resend";
-import { createJobberRequest, isJobberConnected, createJobberClientFromLead } from "./jobber";
 import { createOpsLead, upsertOpsLeadByPhone, getOwnerUser, getDb } from "./db";
 import { storagePut } from "./storage";
 import { quoteSubmissions, nativeQuotes } from "../drizzle/schema";
@@ -529,53 +528,7 @@ export const quoteRouter = router({
     } catch (err) {
       console.warn("[Quote] SMS notification failed:", err);
     }
-
-    // 3. Send to Jobber if connected — persist result to quote_submissions log
-    let jobberStatus: "synced" | "failed" | "skipped" = "skipped";
-    let jobberRequestId: string | undefined;
-    let jobberRequestUrl: string | undefined;
-    let jobberError: string | undefined;
-
-    try {
-      const jobberReady = await isJobberConnected();
-      if (jobberReady) {
-        const result = await createJobberRequest(input);
-        jobberStatus = "synced";
-        jobberRequestId = result.requestId;
-        jobberRequestUrl = result.requestUrl;
-      }
-    } catch (err) {
-      jobberStatus = "failed";
-      jobberError = err instanceof Error ? err.message : String(err);
-      console.error("[Quote] Jobber request creation failed:", err);
-      // Non-fatal: email + notification already sent.
-      // Notify owner so no lead is silently lost.
-      try {
-        await notifyOwner({
-          title: "⚠️ Jobber Sync Failed — Manual Entry Required",
-          content: [
-            `A quote was submitted but could NOT be automatically added to Jobber.`,
-            ``,
-            `Customer: ${input.name}`,
-            `Phone: ${input.phone}`,
-            `Email: ${input.email}`,
-            `Service: ${input.service}`,
-            `County: ${input.county}`,
-            input.acreage ? `Acreage: ${input.acreage}` : "",
-            input.message ? `Details: ${input.message}` : "",
-            ``,
-            `Error: ${jobberError}`,
-            ``,
-            `Please add this request to Jobber manually, or re-authorize at:`,
-            `https://nolandearthworks.com/api/jobber/authorize`,
-          ]
-            .filter(line => line !== undefined)
-            .join("\n"),
-        });
-      } catch (notifyErr) {
-        console.warn("[Quote] Jobber failure notification also failed:", notifyErr);
-      }
-    }
+    // Jobber sync removed — quote is stored natively via quoteSubmissions table
 
     // Persist submission to quote_submissions log
     try {
@@ -610,12 +563,8 @@ export const quoteRouter = router({
           aiSummary: qualification?.summary ?? null,
           aiFlags: qualification?.flags && qualification.flags.length > 0 ? JSON.stringify(qualification.flags) : null,
           aiDraftResponse: qualification?.draftResponse ?? null,
-          jobberStatus,
-          jobberRequestId: jobberRequestId ?? null,
-          jobberRequestUrl: jobberRequestUrl ?? null,
-          jobberError: jobberError ?? null,
         });
-        console.log(`[Quote] Submission logged for ${input.name} (Jobber: ${jobberStatus})`);
+        console.log(`[Quote] Submission logged for ${input.name}`);
       }
     } catch (logErr) {
       console.warn("[Quote] Failed to log submission:", logErr);
@@ -677,13 +626,6 @@ export const quoteRouter = router({
       console.warn("[Quote] Failed to create ops lead:", err);
     }
 
-    // Add to Jobber clients list (fire-and-forget)
-    createJobberClientFromLead({
-      name: input.name,
-      email: input.email || undefined,
-      phone: input.phone || undefined,
-      address: [input.street, input.city, input.state, input.zip].filter(Boolean).join(", ") || undefined,
-    }).catch(err => console.warn("[Quote] Jobber client creation failed:", err));
 
     // Auto-create a native quote (web_request) so it appears in All Quotes section
     try {

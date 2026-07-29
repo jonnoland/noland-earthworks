@@ -1,6 +1,6 @@
 /**
  * Schedule Page — Noland Earthworks
- * Primary job source: Jobber (live via tRPC — startAt/endAt dates)
+ * Primary job source: native jobs table (live via tRPC — startAt/endAt dates)
  * Secondary: local schedule entries (manual crew blocks)
  */
 
@@ -9,7 +9,7 @@ import { trpc } from "@/lib/trpc";
 import { useState, useMemo, useRef } from "react";
 import {
   ChevronLeft, ChevronRight, Plus, Trash2, Loader2, X,
-  Calendar, RefreshCw, ExternalLink, AlertCircle,
+  Calendar, RefreshCw, AlertCircle,
   CheckCircle2, GripVertical, Flag, Briefcase, MapPin,
   Sparkles, Copy,
 } from "lucide-react";
@@ -27,7 +27,7 @@ import { useDraggable, useDroppable } from "@dnd-kit/core";
 
 // ─── Color helpers ─────────────────────────────────────────────────────────────
 
-const JOBBER_STATUS_COLORS: Record<string, string> = {
+const JOB_STATUS_COLORS: Record<string, string> = {
   ACTIVE:              "border-blue-500/40 bg-blue-500/15 text-blue-300",
   QUOTE:               "border-yellow-500/40 bg-yellow-500/15 text-yellow-300",
   REQUIRES_INVOICING:  "border-purple-500/40 bg-purple-500/15 text-purple-300",
@@ -35,8 +35,8 @@ const JOBBER_STATUS_COLORS: Record<string, string> = {
   ARCHIVED:            "border-secondary/50 bg-secondary/20 text-muted-foreground",
 };
 
-function getJobberStatusColor(status?: string | null): string {
-  return JOBBER_STATUS_COLORS[status ?? ""] ?? "border-amber-500/40 bg-amber-500/15 text-amber-300";
+function getJobStatusColor(status?: string | null): string {
+  return JOB_STATUS_COLORS[status ?? ""] ?? "border-amber-500/40 bg-amber-500/15 text-amber-300";
 }
 
 const CREW_COLORS = [
@@ -82,8 +82,8 @@ const emptyForm: EntryFormData = {
   title: "", crewName: "", date: "", startHour: 7, endHour: 17, notes: "",
 };
 
-// Jobber job shape from the jobs query
-interface JobberJob {
+// Job shape for calendar compatibility
+interface ScheduledJob {
   id: string;
   jobNumber?: number | null;
   title?: string | null;
@@ -95,8 +95,8 @@ interface JobberJob {
   client?: { id?: string; name?: string | null; companyName?: string | null } | null;
   property?: { address?: { street1?: string | null; city?: string | null } | null } | null;
 }
-// Native job adapted to JobberJob shape for calendar compatibility
-function nativeJobToJobberJob(j: any): JobberJob {
+// Native job adapted to ScheduledJob shape for calendar compatibility
+function nativeJobToScheduledJob(j: any): ScheduledJob {
   const scheduledDate = j.scheduledDate ? new Date(j.scheduledDate) : null;
   const startAt = scheduledDate ? scheduledDate.toISOString() : null;
   return {
@@ -189,12 +189,12 @@ function DraggableLocalJobCard({ job, crewColor }: { job: LocalJob; crewColor: s
   );
 }
 
-// ─── Draggable Jobber job banner ───────────────────────────────────────────────
-function DraggableJobberBanner({ job }: { job: JobberJob }) {
+// ─── Draggable job banner ─────────────────────────────────────────────────────────
+function DraggableJobBanner({ job }: { job: ScheduledJob }) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
-    id: `jobber-${job.id}`,
+    id: `job-${job.id}`,
   });
-  const colorClass = getJobberStatusColor(job.jobStatus);
+  const colorClass = getJobStatusColor(job.jobStatus);
   const clientName = job.client?.name || job.client?.companyName || "Unknown";
   const isMultiDay = job.startAt && job.endAt &&
     new Date(job.endAt).toDateString() !== new Date(job.startAt).toDateString();
@@ -298,7 +298,7 @@ function DroppableCrewDayCell({
   );
 }
 
-// ─── Droppable day cell (Jobber row — day only) ────────────────────────────────
+// ─── Droppable day cell ────────────────────────────────────────────────────────────
 function DroppableDayCell({
   dayKey, children, isToday,
 }: {
@@ -321,7 +321,7 @@ function DroppableDayCell({
   );
 }
 
-// ─── Upcoming Jobber jobs list ─────────────────────────────────────────────────
+// ─── Upcoming jobs list ────────────────────────────────────────────────────────────
 
 const UPCOMING_STATUS_FILTERS = ["ALL", "ACTIVE", "QUOTE", "REQUIRES_INVOICING"] as const;
 type UpcomingStatusFilter = typeof UPCOMING_STATUS_FILTERS[number];
@@ -339,7 +339,7 @@ const UPCOMING_STATUS_DOT: Record<string, string> = {
   REQUIRES_INVOICING: "bg-purple-400",
 };
 
-function UpcomingJobberJobCard({ job }: { job: JobberJob }) {
+function UpcomingJobCard({ job }: { job: ScheduledJob }) {
   const [scheduleNote, setScheduleNote] = useState("");
   const [noteCopied, setNoteCopied] = useState(false);
   const generateNoteMutation = trpc.ops.generateScheduleNote.useMutation({
@@ -366,7 +366,7 @@ function UpcomingJobberJobCard({ job }: { job: JobberJob }) {
           {job.jobStatus && job.jobStatus !== "ACTIVE" && (
             <span className={cn(
               "shrink-0 text-[9px] font-medium px-1.5 py-0.5 rounded-full border",
-              JOBBER_STATUS_COLORS[job.jobStatus] ?? "bg-secondary/50 text-muted-foreground"
+              JOB_STATUS_COLORS[job.jobStatus] ?? "bg-secondary/50 text-muted-foreground"
             )}>
               {UPCOMING_STATUS_LABELS[job.jobStatus] ?? job.jobStatus}
             </span>
@@ -433,7 +433,7 @@ function UpcomingJobberJobCard({ job }: { job: JobberJob }) {
   );
 }
 
-function UpcomingJobberJobs({ jobs }: { jobs: JobberJob[] }) {
+function UpcomingJobs({ jobs }: { jobs: ScheduledJob[] }) {
   const [statusFilter, setStatusFilter] = useState<UpcomingStatusFilter>("ALL");
 
   const allUpcoming = useMemo(() => {
@@ -480,7 +480,7 @@ function UpcomingJobberJobs({ jobs }: { jobs: JobberJob[] }) {
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
           {filtered.map(job => (
-            <UpcomingJobberJobCard key={job.id} job={job} />
+            <UpcomingJobCard key={job.id} job={job} />
           ))}
         </div>
       )}
@@ -525,19 +525,19 @@ export default function Schedule() {
   // ── Native jobs (primary job source) ──
   const {
     data: nativeJobsRaw = [],
-    isLoading: jobberLoading,
-    isFetching: jobberFetching,
-    refetch: refetchJobber,
+    isLoading: jobsLoading,
+    isFetching: jobsFetching,
+    refetch: refetchJobs,
   } = trpc.nativeJobs.list.useQuery({}, { refetchInterval: 30000 });
-  const jobberNotConnected = false;
-  const jobberJobs: JobberJob[] = useMemo(
-    () => (nativeJobsRaw as any[]).map(nativeJobToJobberJob),
+  // false removed — always using native jobs
+  const scheduledJobs: ScheduledJob[] = useMemo(
+    () => (nativeJobsRaw as any[]).map(nativeJobToScheduledJob),
     [nativeJobsRaw]
   );
   // Jobs that have a startAt date — these are the ones we show on the calendar
-  const scheduledJobberJobs = useMemo(
-    () => jobberJobs.filter(j => j.startAt),
-    [jobberJobs]
+  const scheduledJobsWithDates = useMemo(
+    () => scheduledJobs.filter(j => j.startAt),
+    [scheduledJobs]
   );
 
   // ── Build week days ──
@@ -558,12 +558,12 @@ export default function Schedule() {
   const weekLabel = `${weekDays[0].label} – ${weekDays[6].label}`;
   const today = formatDateKey(new Date());
 
-  // ── Map Jobber jobs to calendar day keys ──
-  const jobberDayMap = useMemo(() => {
-    const map: Record<string, JobberJob[]> = {};
+  // ── Map jobs to calendar day keys ──
+  const jobDayMap = useMemo(() => {
+    const map: Record<string, ScheduledJob[]> = {};
     for (const day of weekDays) map[day.key] = [];
 
-    for (const job of scheduledJobberJobs) {
+    for (const job of scheduledJobsWithDates) {
       const startDate = new Date(job.startAt!);
       // Use endAt if available, otherwise treat as single-day
       const endDate = job.endAt ? new Date(job.endAt) : startDate;
@@ -580,9 +580,9 @@ export default function Schedule() {
       }
     }
     return map;
-  }, [scheduledJobberJobs, weekDays]);
+  }, [scheduledJobsWithDates, weekDays]);
 
-  const hasJobsThisWeek = weekDays.some(d => (jobberDayMap[d.key] ?? []).length > 0);
+  const hasJobsThisWeek = weekDays.some(d => (jobDayMap[d.key] ?? []).length > 0);
 
   // ── Crew entries — names sourced from DB crews, falling back to names already used in entries ──
   const crewNames = useMemo(() => {
@@ -694,7 +694,7 @@ export default function Schedule() {
   // ── Drag handlers ──
   const handleDragStart = (event: DragStartEvent) => {
     const id = String(event.active.id);
-    if (id.startsWith("jobber-")) setDraggingJobId(id.replace("jobber-", ""));
+    if (id.startsWith("job-")) setDraggingJobId(id.replace("job-", ""));
     else if (id.startsWith("entry-")) setDraggingEntryId(Number(id.replace("entry-", "")));
     else if (id.startsWith("localjob-")) setDraggingLocalJobId(Number(id.replace("localjob-", "")));
     else if (id.startsWith("quote-")) setDraggingQuoteId(Number(id.replace("quote-", "")));
@@ -715,9 +715,9 @@ export default function Schedule() {
     const crewDayMatch = overId.match(/^drop-crew:(.+)\|day:(.+)$/);
     const dayOnlyMatch = overId.match(/^drop-(.+)$/);
 
-    if (activeId.startsWith("jobber-")) {
-      // Jobber jobs are read-only — can't reschedule from here
-      toast.info("To reschedule a Jobber job, update it in Jobber directly.");
+    if (activeId.startsWith("job-")) {
+      // Scheduled jobs are read-only — reschedule via the Jobs page
+      toast.info("To reschedule this job, update it on the Jobs page.");
       return;
     }
 
@@ -758,7 +758,7 @@ export default function Schedule() {
     }
 
     if (activeId.startsWith("localjob-") && dayOnlyMatch) {
-      // Dropped on Jobber row — just update the date
+      // Dropped on jobs row — just update the date
       const jobId = Number(activeId.replace("localjob-", ""));
       const newDay = dayOnlyMatch[1];
       updateLocalJob.mutate({ id: jobId, scheduledDate: new Date(newDay + "T12:00:00") });
@@ -778,10 +778,10 @@ export default function Schedule() {
     }
   };
 
-  const isLoading = entriesLoading || jobberLoading;
+  const isLoading = entriesLoading || jobsLoading;
 
   return (
-    <DashboardLayout title="Schedule" subtitle="Weekly job calendar — live from Jobber">
+    <DashboardLayout title="Schedule" subtitle="Weekly job calendar — live from native jobs">
       <div className="p-6 space-y-5">
         {/* Header row */}
         <div className="flex items-center justify-between">
@@ -812,12 +812,12 @@ export default function Schedule() {
           </div>
           <div className="flex items-center gap-2">
             <button
-              onClick={() => refetchJobber()}
-              disabled={jobberFetching}
+              onClick={() => refetchJobs()}
+              disabled={jobsFetching}
               className="p-2 rounded-md hover:bg-secondary/80 text-muted-foreground hover:text-foreground transition-colors border border-border"
-              title="Refresh Jobber jobs"
+              title="Refresh jobs"
             >
-              <RefreshCw className={cn("w-3.5 h-3.5", jobberFetching && "animate-spin")} />
+              <RefreshCw className={cn("w-3.5 h-3.5", jobsFetching && "animate-spin")} />
             </button>
             <button
               onClick={() => { setForm({ ...emptyForm, date: weekDays[0].key }); setShowModal(true); }}
@@ -829,12 +829,12 @@ export default function Schedule() {
           </div>
         </div>
 
-        {/* Jobber not connected warning */}
-        {jobberNotConnected && (
+        {/* Jobs loading warning */}
+        {false && (
           <div className="flex items-center gap-2.5 rounded-lg border border-yellow-500/30 bg-yellow-500/5 px-4 py-3">
             <AlertCircle className="w-4 h-4 text-yellow-500 shrink-0" />
             <p className="text-xs text-muted-foreground">
-              Jobber is not connected — job dates will not appear on the calendar.{" "}
+              No jobs found — scheduled jobs will appear here once added.{" "}
               <a href="/ops/settings" className="text-primary hover:underline">Connect in Settings</a>.
             </p>
           </div>
@@ -875,8 +875,8 @@ export default function Schedule() {
                     </tr>
                   </thead>
                   <tbody>
-                    {/* ── Jobber Jobs row ── */}
-                    {!jobberNotConnected && (
+                    {/* ── Scheduled Jobs row ── */}
+                    {!false && (
                       <tr className={cn(
                         "border-b",
                         hasJobsThisWeek
@@ -897,13 +897,13 @@ export default function Schedule() {
                           )}
                         </td>
                         {weekDays.map(day => {
-                          const dayJobs = jobberDayMap[day.key] ?? [];
+                          const dayJobs = jobDayMap[day.key] ?? [];
                           return (
                             <DroppableDayCell key={day.key} dayKey={day.key} isToday={day.key === today}>
                               {dayJobs.length > 0 ? (
                                 <div className="space-y-1">
                                   {dayJobs.map(job => (
-                                    <DraggableJobberBanner key={job.id} job={job} />
+                                    <DraggableJobBanner key={job.id} job={job} />
                                   ))}
                                 </div>
                               ) : (
@@ -996,14 +996,14 @@ export default function Schedule() {
 
             {/* Drag overlay */}
             <DragOverlay>
-              {/* Jobber job overlay */}
+              {/* Scheduled job overlay */}
               {draggingJobId !== null && (() => {
-                const job = jobberJobs.find(j => j.id === draggingJobId);
+                const job = scheduledJobs.find(j => j.id === draggingJobId);
                 if (!job) return null;
                 return (
                   <div className={cn(
                     "rounded-md border px-2 py-1.5 text-[10px] shadow-xl cursor-grabbing flex items-start gap-1 w-36",
-                    getJobberStatusColor(job.jobStatus)
+                    getJobStatusColor(job.jobStatus)
                   )}>
                     <GripVertical className="w-2.5 h-2.5 opacity-40 mt-0.5 shrink-0" />
                     <div className="min-w-0">
@@ -1059,8 +1059,8 @@ export default function Schedule() {
         )}
 
         {/* Upcoming jobs list */}
-        {!jobberNotConnected && !jobberLoading && (
-          <UpcomingJobberJobs jobs={jobberJobs} />
+        {!false && !jobsLoading && (
+          <UpcomingJobs jobs={scheduledJobs} />
         )}
 
         {/* Manual schedule entries list */}
@@ -1143,20 +1143,7 @@ export default function Schedule() {
           </div>
         )}
 
-        {/* Jobber link */}
-        {!jobberNotConnected && (
-          <div className="flex justify-end">
-            <a
-              href="https://secure.getjobber.com/home"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-primary transition-colors"
-            >
-              <ExternalLink className="w-3 h-3" />
-              Open in Jobber
-            </a>
-          </div>
-        )}
+
       </div>
 
       {/* Add Entry Modal */}

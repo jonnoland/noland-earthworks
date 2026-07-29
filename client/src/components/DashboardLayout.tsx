@@ -312,47 +312,6 @@ const NAV_GROUPS = [
   },
 ];
 
-// ─── Jobber reconnect banner ─────────────────────────────────────────────────
-
-function JobberReconnectBanner() {
-  const { data, isLoading } = trpc.jobber.connectionStatus.useQuery(undefined, {
-    retry: false,
-    refetchInterval: 2 * 60 * 1000, // re-check every 2 minutes
-  });
-
-  // Don't show while loading or when connected
-  if (isLoading || data?.connected) return null;
-
-  const handleReconnect = () => {
-    window.location.href = "/api/jobber/connect";
-  };
-
-  return (
-    <div
-      className="flex items-center justify-between gap-3 px-4 py-2.5 text-sm shrink-0"
-      style={{
-        backgroundColor: "rgba(239,68,68,0.12)",
-        borderBottom: "1px solid rgba(239,68,68,0.25)",
-      }}
-    >
-      <div className="flex items-center gap-2 text-red-400">
-        <AlertTriangle size={14} className="shrink-0" />
-        <span>
-          Jobber is disconnected — live data is unavailable.
-          {data?.tokenExpired && " The access token expired."}
-        </span>
-      </div>
-      <button
-        onClick={handleReconnect}
-        className="flex items-center gap-1.5 px-3 py-1 rounded text-xs font-semibold text-white bg-red-500 hover:bg-red-600 transition-colors shrink-0"
-      >
-        <RefreshCw size={11} />
-        Reconnect Jobber
-      </button>
-    </div>
-  );
-}
-
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function getInitials(name: string | null | undefined): string {
@@ -363,38 +322,6 @@ function getInitials(name: string | null | undefined): string {
     .join("")
     .toUpperCase()
     .slice(0, 2);
-}
-
-// ─── Jobber status pill ───────────────────────────────────────────────────────
-
-function JobberPill({ collapsed }: { collapsed: boolean }) {
-  const { data, isLoading } = trpc.jobber.connectionStatus.useQuery(undefined, {
-    retry: false,
-    refetchInterval: 5 * 60 * 1000,
-  });
-  const connected = !isLoading && (data as any)?.connected === true;
-
-  return (
-    <a
-      href="https://secure.getjobber.com/home"
-      target="_blank"
-      rel="noopener noreferrer"
-      className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-white border border-[#222] rounded-md px-2.5 py-1.5 transition-colors"
-      title="Open Jobber"
-    >
-      <span
-        className={`w-1.5 h-1.5 rounded-full shrink-0 ${
-          isLoading ? "bg-muted-foreground animate-pulse" : connected ? "bg-green-500" : "bg-red-500"
-        }`}
-      />
-      {!collapsed && (
-        <>
-          <ExternalLink size={11} className="shrink-0" />
-          <span>Jobber</span>
-        </>
-      )}
-    </a>
-  );
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────

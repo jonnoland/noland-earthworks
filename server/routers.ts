@@ -5,7 +5,6 @@ import { publicProcedure, router } from "./_core/trpc";
 import { quoteRouter } from "./quoteRouter";
 import { contactRouter } from "./contactRouter";
 import { opsRouter } from "./opsRouter";
-import { jobberRouter } from "./jobberRouter";
 import { widgetRouter } from "./widgetRouter";
 import { agentRouter } from "./agentRouter";
 import { reviewsLiveRouter } from "./reviewsRouter";
@@ -44,7 +43,6 @@ export const appRouter = router({
   quote: quoteRouter,
   contact: contactRouter,
   ops: opsRouter,
-  jobber: jobberRouter,
   widget: widgetRouter,
   agents: agentRouter,
   reviewsLive: reviewsLiveRouter,
