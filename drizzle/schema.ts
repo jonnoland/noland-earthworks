@@ -273,6 +273,8 @@ export const quoteSubmissions = mysqlTable("quote_submissions", {
   aiSummary: text("aiSummary"),
   aiFlags: text("aiFlags"),        // JSON array of flag strings
   aiDraftResponse: text("aiDraftResponse"),
+  /** FK to native_quotes — set when the auto-created native quote is inserted on submission */
+  nativeQuoteId: int("nativeQuoteId"),
   /** Jobber sync outcome */
   jobberStatus: mysqlEnum("jobberStatus", ["synced", "failed", "skipped"]).notNull().default("skipped"),
   jobberRequestId: varchar("jobberRequestId", { length: 256 }),

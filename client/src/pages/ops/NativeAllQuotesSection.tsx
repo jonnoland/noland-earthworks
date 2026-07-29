@@ -12,7 +12,7 @@
  *   - Convert to Job
  *   - Portal status badges (sent / viewed / approved / declined / deposit paid)
  */
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef } from "react";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -27,8 +27,9 @@ import {
   Eye, CheckCircle, XCircle, DollarSign,
   FileText, ExternalLink, Sparkles, Info, AlertTriangle,
   RefreshCw, ChevronRight, MapPin, Phone, Mail, User, Users, X, Globe,
-  Loader2, Clock, ChevronDown, ChevronUp, ArchiveRestore
+  Loader2, Clock, ChevronDown, ChevronUp, ArchiveRestore, Pencil
 } from "lucide-react";
+import { MapView } from "@/components/Map";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface LineItem {
@@ -1294,47 +1295,60 @@ function NativeQuoteDetailPanel({
   );
 }
 
-// ─── Web Request Map Thumbnail ─────────────────────────────────────────────
-function WebReqMapThumbnail({
+// ─── Interactive Web Request Map ──────────────────────────────────────────────
+// Replaces the static satellite thumbnail with a zoomable/pannable Google Map.
+function WebReqInteractiveMap({
   lat, lng, address,
 }: {
   lat?: number;
   lng?: number;
   address?: string;
 }) {
-  // If we have explicit coords, use satelliteImageByCoords; otherwise use address-based satelliteImage
-  const byCoords = trpc.ops.quotes.satelliteImageByCoords.useQuery(
-    { lat: lat!, lng: lng! },
-    { enabled: lat != null && lng != null, retry: false }
-  );
-  const byAddress = trpc.ops.quotes.satelliteImage.useQuery(
+  const mapRef = useRef<google.maps.Map | null>(null);
+  // If no explicit pin, geocode the address to get coordinates
+  const geocodeQuery = trpc.ops.quotes.satelliteImage.useQuery(
     { address: address! },
-    { enabled: lat == null && !!address, retry: false }
+    { enabled: lat == null && !!address, retry: false, staleTime: 1000 * 60 * 30 }
   );
 
-  const { data, isLoading, isError } = lat != null ? byCoords : byAddress;
+  const resolvedLat = lat ?? geocodeQuery.data?.lat ?? null;
+  const resolvedLng = lng ?? geocodeQuery.data?.lng ?? null;
 
-  if (isLoading) {
+  const isResolving = lat == null && geocodeQuery.isLoading;
+
+  if (isResolving) {
     return (
-      <div className="w-full h-28 rounded bg-zinc-800 flex items-center justify-center">
+      <div className="w-full h-52 rounded bg-zinc-800 flex items-center justify-center">
         <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
       </div>
     );
   }
-  if (isError || !data?.url) {
+
+  if (!resolvedLat || !resolvedLng) {
     return (
-      <div className="w-full h-28 rounded bg-zinc-800 flex items-center justify-center">
-        <p className="text-xs text-muted-foreground">Map unavailable</p>
+      <div className="w-full h-52 rounded bg-zinc-800 flex items-center justify-center">
+        <p className="text-xs text-muted-foreground">Map unavailable — no coordinates</p>
       </div>
     );
   }
+
   return (
     <div className="w-full rounded overflow-hidden border border-border">
-      <img
-        src={data.url}
-        alt="Property satellite view"
-        className="w-full h-28 object-cover"
-        loading="lazy"
+      <MapView
+        className="w-full h-52"
+        initialCenter={{ lat: resolvedLat, lng: resolvedLng }}
+        initialZoom={17}
+        onMapReady={(map) => {
+          mapRef.current = map;
+          // Set satellite view
+          map.setMapTypeId("satellite");
+          // Drop a marker at the property pin
+          new window.google.maps.marker.AdvancedMarkerElement({
+            map,
+            position: { lat: resolvedLat, lng: resolvedLng },
+            title: "Property",
+          });
+        }}
       />
     </div>
   );
@@ -1375,12 +1389,40 @@ function InlineWebRequestsPanel({
     acreage?: string | null;
     county?: string | null;
     aiScore?: string | null;
+    aiSummary?: string | null;
+    aiFlags?: string | null;
+    estimatedRange?: string | null;
+    nativeQuoteId?: number | null;
     propertyPinLat?: string | null;
     propertyPinLng?: string | null;
     createdAt: Date | string;
   };
   const list = (data ?? []) as WebReq[];
+  const utils = trpc.useUtils();
   const [expandedMapId, setExpandedMapId] = useState<number | null>(null);
+  // Inline estimate edit state
+  const [editingEstimateId, setEditingEstimateId] = useState<number | null>(null);
+  const [editPrice, setEditPrice] = useState("");
+  const [editDesc, setEditDesc] = useState("");
+  const updateQuoteMutation = trpc.nativeQuotes.update.useMutation({
+    onSuccess: () => {
+      toast.success("Estimate updated.");
+      setEditingEstimateId(null);
+      utils.nativeQuotes.list.invalidate();
+    },
+    onError: (e) => toast.error("Update failed: " + e.message),
+  });
+  const handleSaveEstimate = (req: WebReq) => {
+    if (!req.nativeQuoteId) return;
+    const cents = Math.round(parseFloat(editPrice.replace(/[$,]/g, "")) * 100);
+    if (isNaN(cents) || cents < 0) { toast.error("Enter a valid price."); return; }
+    const desc = editDesc.trim() || req.service || "Forestry Mulching";
+    updateQuoteMutation.mutate({
+      id: req.nativeQuoteId,
+      totalCents: cents,
+      lineItems: [{ description: desc, qty: 1, unitPriceCents: cents, totalCents: cents }],
+    });
+  };
 
   return (
     <div className="ops-card p-4 space-y-3">
@@ -1418,8 +1460,10 @@ function InlineWebRequestsPanel({
             const addressStr = [req.street, req.city, req.state].filter(Boolean).join(", ");
             const hasMap = hasPin || !!addressStr;
             const isMapOpen = expandedMapId === req.id;
+            const isEditingEstimate = editingEstimateId === req.id;
             return (
-              <div key={req.id} className="rounded-md border border-border bg-card/50 p-3 space-y-1.5">
+              <div key={req.id} className="rounded-md border border-border bg-card/50 p-3 space-y-2">
+                {/* Row 1: Name + AI score badge + map toggle */}
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0">
                     <p className="text-sm font-medium text-foreground truncate">{req.name}</p>
@@ -1428,17 +1472,31 @@ function InlineWebRequestsPanel({
                     </p>
                   </div>
                   <div className="flex items-center gap-1.5 shrink-0">
+                    {/* AI score badge — uses correct enum values: strong/marginal/weak */}
                     {req.aiScore && (
-                      <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded ${
-                        req.aiScore === "hot" ? "bg-red-500/20 text-red-400" :
-                        req.aiScore === "warm" ? "bg-amber-500/20 text-amber-400" :
-                        "bg-zinc-500/20 text-zinc-400"
-                      }`}>{req.aiScore}</span>
+                      <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded border ${
+                        req.aiScore === "strong"
+                          ? "bg-green-500/15 text-green-400 border-green-500/25"
+                          : req.aiScore === "marginal"
+                          ? "bg-amber-500/15 text-amber-400 border-amber-500/25"
+                          : "bg-red-500/15 text-red-400 border-red-500/25"
+                      }`}>
+                        {req.aiScore.charAt(0).toUpperCase() + req.aiScore.slice(1)}
+                      </span>
                     )}
+                    {/* AI estimate display */}
+                    {req.estimatedRange && (
+                      <span className="text-[10px] font-medium text-amber-400 bg-amber-500/10 px-1.5 py-0.5 rounded">
+                        {req.estimatedRange}
+                      </span>
+                    )}
+                    {/* Map toggle */}
                     {hasMap && (
                       <button
                         onClick={() => setExpandedMapId(isMapOpen ? null : req.id)}
-                        className="h-5 w-5 flex items-center justify-center rounded text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors"
+                        className={`h-5 w-5 flex items-center justify-center rounded transition-colors ${
+                          isMapOpen ? "text-primary bg-primary/15" : "text-muted-foreground hover:text-primary hover:bg-primary/10"
+                        }`}
                         title={isMapOpen ? "Hide map" : "Show property map"}
                       >
                         <MapPin className="w-3 h-3" />
@@ -1446,22 +1504,99 @@ function InlineWebRequestsPanel({
                     )}
                   </div>
                 </div>
-                {/* Expandable satellite map */}
+
+                {/* AI Summary — visible on card face */}
+                {req.aiSummary && (
+                  <p className="text-[11px] text-muted-foreground leading-relaxed border-l-2 border-amber-500/30 pl-2">
+                    {req.aiSummary}
+                  </p>
+                )}
+
+                {/* Expandable interactive map */}
                 {isMapOpen && hasMap && (
-                  <WebReqMapThumbnail
+                  <WebReqInteractiveMap
                     lat={hasPin ? parseFloat(req.propertyPinLat!) : undefined}
                     lng={hasPin ? parseFloat(req.propertyPinLng!) : undefined}
                     address={!hasPin ? addressStr : undefined}
                   />
                 )}
+
                 {req.message && (
                   <p className="text-xs text-muted-foreground line-clamp-2">{req.message}</p>
                 )}
+
+                {/* Inline estimate editor */}
+                {isEditingEstimate && req.nativeQuoteId && (
+                  <div className="rounded border border-amber-500/30 bg-amber-500/5 p-2.5 space-y-2">
+                    <p className="text-[11px] font-semibold text-amber-400">Override AI Estimate</p>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="text-[10px] text-muted-foreground block mb-0.5">Price ($)</label>
+                        <Input
+                          value={editPrice}
+                          onChange={e => setEditPrice(e.target.value)}
+                          placeholder="e.g. 3500"
+                          className="h-7 text-xs bg-zinc-800 border-zinc-700"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[10px] text-muted-foreground block mb-0.5">Description</label>
+                        <Input
+                          value={editDesc}
+                          onChange={e => setEditDesc(e.target.value)}
+                          placeholder={req.service || "Forestry Mulching"}
+                          className="h-7 text-xs bg-zinc-800 border-zinc-700"
+                        />
+                      </div>
+                    </div>
+                    <div className="flex gap-1.5 justify-end">
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-6 text-xs px-2"
+                        onClick={() => setEditingEstimateId(null)}
+                      >
+                        Cancel
+                      </Button>
+                      <Button
+                        size="sm"
+                        className="h-6 text-xs px-2 gap-1"
+                        disabled={updateQuoteMutation.isPending}
+                        onClick={() => handleSaveEstimate(req)}
+                      >
+                        {updateQuoteMutation.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : null}
+                        Save
+                      </Button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Footer row: date + action buttons */}
                 <div className="flex items-center justify-between pt-0.5">
                   <p className="text-[11px] text-muted-foreground">
                     {new Date(req.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
                   </p>
                   <div className="flex items-center gap-1.5">
+                    {/* Edit estimate button — only shown when a native quote exists */}
+                    {req.nativeQuoteId && (
+                      <button
+                        onClick={() => {
+                          if (isEditingEstimate) {
+                            setEditingEstimateId(null);
+                          } else {
+                            setEditingEstimateId(req.id);
+                            setEditPrice("");
+                            setEditDesc(req.service ?? "");
+                          }
+                        }}
+                        className={`h-6 w-6 flex items-center justify-center rounded transition-colors ${
+                          isEditingEstimate ? "text-amber-400 bg-amber-400/10" : "text-muted-foreground hover:text-amber-400 hover:bg-amber-400/10"
+                        }`}
+                        title="Edit estimate"
+                      >
+                        <Pencil className="w-3 h-3" />
+                      </button>
+                    )}
                     <Button
                       size="sm"
                       className="h-6 text-xs px-2 gap-1"

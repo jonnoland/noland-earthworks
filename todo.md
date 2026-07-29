@@ -2682,3 +2682,11 @@
 ## Quote AI Pricing + Map (Jul 2026)
 - [x] Quotes: run incoming web quote requests through AI to generate an initial price estimate before they land in All Quotes (already implemented — ballparkRange parsed into totalCents + line items on native quote creation)
 - [x] Quotes: add map feature to the Website Requests section of /ops/quotes (satellite thumbnail via pin coords or address geocode, expandable per card)
+
+## Quote Card Enhancements (Jul 2026)
+- [x] Quotes/WebReq: replace static satellite thumbnail with interactive embedded Google Map (zoom/pan) in each website request card
+- [x] Quotes/WebReq: display AI qualification score and summary on the card face (not hidden in internal notes)
+- [x] Quotes/WebReq: add inline edit button to manually override the AI-generated estimate (price + line item description)
+- [x] DB migration: nativeQuoteId column added to quote_submissions table (applied via webdev_execute_sql)
+- [x] quoteRouter: capture insertId from quoteSubmissions insert and link back to native quote via nativeQuoteId
+- [x] AI score badge: fixed enum values (strong/marginal/weak) to match backend schema (was incorrectly using hot/warm)

@@ -531,10 +531,11 @@ export const quoteRouter = router({
     // Jobber sync removed — quote is stored natively via quoteSubmissions table
 
     // Persist submission to quote_submissions log
+    let submissionId: number | null = null;
     try {
       const db = await getDb();
       if (db) {
-        await db.insert(quoteSubmissions).values({
+        const [submissionResult] = await db.insert(quoteSubmissions).values({
           name: input.name,
           phone: input.phone,
           email: input.email,
@@ -564,7 +565,8 @@ export const quoteRouter = router({
           aiFlags: qualification?.flags && qualification.flags.length > 0 ? JSON.stringify(qualification.flags) : null,
           aiDraftResponse: qualification?.draftResponse ?? null,
         });
-        console.log(`[Quote] Submission logged for ${input.name}`);
+        submissionId = (submissionResult as any).insertId ?? null;
+        console.log(`[Quote] Submission logged for ${input.name} (id=${submissionId})`);
       }
     } catch (logErr) {
       console.warn("[Quote] Failed to log submission:", logErr);
@@ -682,7 +684,7 @@ export const quoteRouter = router({
           input.acreage ? `Acreage: ${input.acreage}` : "",
           input.message ? `Client Message: ${input.message}` : "",
         ].filter(Boolean).join("\n");
-        await db2.insert(nativeQuotes).values({
+        const [nativeResult] = await db2.insert(nativeQuotes).values({
           clientName: input.name,
           clientEmail: input.email || null,
           clientPhone: input.phone || null,
@@ -697,7 +699,18 @@ export const quoteRouter = router({
           status: "web_request",
           portalToken,
         });
-        console.log(`[Quote] Native quote (web_request) created for ${input.name}`);
+        const newNativeQuoteId = (nativeResult as any).insertId ?? null;
+        console.log(`[Quote] Native quote (web_request) created for ${input.name} (nativeQuoteId=${newNativeQuoteId})`);
+        // Link the submission back to the native quote
+        if (submissionId && newNativeQuoteId) {
+          try {
+            const { eq } = await import("drizzle-orm");
+            await db2.update(quoteSubmissions).set({ nativeQuoteId: newNativeQuoteId }).where(eq(quoteSubmissions.id, submissionId));
+            console.log(`[Quote] Linked submission ${submissionId} → nativeQuote ${newNativeQuoteId}`);
+          } catch (linkErr) {
+            console.warn("[Quote] Failed to link submission to native quote:", linkErr);
+          }
+        }
       }
     } catch (nativeErr) {
       console.warn("[Quote] Failed to create native web_request quote:", nativeErr);
