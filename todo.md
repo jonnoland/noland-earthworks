@@ -2750,3 +2750,10 @@
 - [x] Companion app map: reverse-geocode new coordinates when pin is dragged to update the address field
 - [x] Companion app map: forward-geocode address edits to move the map pin when address is typed/edited
 - [x] /ops/quotes Field Quotes: clicking the map snapshot opens a larger interactive map modal
+
+## Voice-to-Bid — Cost Estimator
+
+- [x] Voice-to-bid: Add mic button to Cost Estimator using Web Speech API for voice input
+- [x] Voice-to-bid: Add server-side LLM parser (parseVoiceBid) to extract service, acreage, terrain, density, access, client name from spoken description
+- [x] Voice-to-bid: Wire parsed fields into Cost Estimator form auto-fill with visual confirmation
+- [x] Voice-to-bid: Show transcript and parsed field summary before applying to form

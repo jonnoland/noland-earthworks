@@ -24,7 +24,7 @@ import {
 import {
   Loader2, AlertTriangle, TrendingUp, DollarSign, Clock, Eye, EyeOff,
   Satellite, Sparkles, Info, CheckCircle2, BookmarkPlus, PenLine, Trash2,
-  CreditCard, MessageSquare, MapPin,
+  CreditCard, MessageSquare, MapPin, Mic, MicOff, CheckCircle, X as XIcon,
 } from "lucide-react";
 import {
   Dialog,
@@ -422,6 +422,66 @@ export default function CostEstimator() {
   const [depositSendSms, setDepositSendSms] = useState(false);
   const [depositClientName, setDepositClientName] = useState(prefillClientName);
 
+  // ── Voice-to-Bid state ─────────────────────────────────────────────────────────
+  const [voiceListening, setVoiceListening] = useState(false);
+  const [voiceTranscript, setVoiceTranscript] = useState("");
+  const [voiceResult, setVoiceResult] = useState<{
+    clientName: string | null; address: string | null; service: string | null;
+    acreage: number | null; linearFeet: number | null; terrain: string | null;
+    vegetationDensity: string | null; accessDifficulty: string | null;
+    hasStumps: boolean | null; stumpCount: number | null;
+    mobilizationMiles: number | null; notes: string | null;
+  } | null>(null);
+  const [voiceOpen, setVoiceOpen] = useState(false);
+  const recognitionRef = useRef<any>(null);
+
+  const parseVoiceBid = trpc.ops.parseVoiceBid.useMutation({
+    onSuccess: (data) => { setVoiceResult(data); },
+    onError: (err) => toast.error(err.message || "Voice parse failed. Try again."),
+  });
+
+  const startListening = () => {
+    const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SR) { toast.error("Voice input not supported. Use Chrome or Safari."); return; }
+    const recognition = new SR();
+    recognition.continuous = false;
+    recognition.interimResults = false;
+    recognition.lang = "en-US";
+    recognition.onstart = () => setVoiceListening(true);
+    recognition.onend = () => setVoiceListening(false);
+    recognition.onerror = () => { setVoiceListening(false); toast.error("Microphone error. Check browser permissions."); };
+    recognition.onresult = (event: any) => {
+      const transcript = Array.from(event.results as any)
+        .map((r: any) => r[0].transcript).join(" ");
+      setVoiceTranscript(transcript);
+      parseVoiceBid.mutate({ transcript });
+    };
+    recognitionRef.current = recognition;
+    recognition.start();
+    setVoiceOpen(true);
+    setVoiceResult(null);
+    setVoiceTranscript("");
+  };
+
+  const stopListening = () => { recognitionRef.current?.stop(); setVoiceListening(false); };
+
+  const applyVoiceResult = () => {
+    if (!voiceResult) return;
+    if (voiceResult.service) setService(voiceResult.service);
+    if (voiceResult.acreage !== null) setAcreage(voiceResult.acreage.toString());
+    if (voiceResult.linearFeet !== null) setLinearFeet(voiceResult.linearFeet.toString());
+    if (voiceResult.terrain) setTerrain(voiceResult.terrain as any);
+    if (voiceResult.vegetationDensity) setVegetationDensity(voiceResult.vegetationDensity as any);
+    if (voiceResult.accessDifficulty) setAccessDifficulty(voiceResult.accessDifficulty as any);
+    if (voiceResult.hasStumps !== null) setHasStumps(voiceResult.hasStumps);
+    if (voiceResult.stumpCount !== null) setStumpCount(voiceResult.stumpCount.toString());
+    if (voiceResult.mobilizationMiles !== null) setMobilizationMiles(voiceResult.mobilizationMiles.toString());
+    if (voiceResult.notes) setNotes(voiceResult.notes);
+    if (voiceResult.address) setPropertyAddress(voiceResult.address);
+    setVoiceOpen(false); setVoiceResult(null); setVoiceTranscript("");
+    toast.success("Fields filled from voice description.");
+  };
+
   const analyzeProperty = trpc.ops.analyzePropertySatellite.useMutation({
     onSuccess: (data) => {
       setSatelliteAnalysis(data.analysis);
@@ -635,9 +695,65 @@ export default function CostEstimator() {
           {/* ── Input form ─────────────────────────────────────────────────────── */}
           <Card className="bg-zinc-900 border-zinc-700">
             <CardHeader>
-              <CardTitle className="text-white text-base">Job Details</CardTitle>
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-white text-base">Job Details</CardTitle>
+                <button
+                  type="button"
+                  onClick={voiceListening ? stopListening : startListening}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-sm font-medium border transition-all ${
+                    voiceListening
+                      ? "bg-red-600/20 border-red-500/60 text-red-300 animate-pulse"
+                      : "bg-orange-600/10 border-orange-600/40 text-orange-300 hover:bg-orange-600/20"
+                  }`}
+                  title="Describe the job by voice — AI will fill the fields"
+                >
+                  {voiceListening ? <MicOff size={14} /> : <Mic size={14} />}
+                  {voiceListening ? "Stop" : "Voice Bid"}
+                </button>
+              </div>
             </CardHeader>
             <CardContent className="space-y-4">
+
+              {/* Voice-to-Bid panel */}
+              {voiceOpen && (
+                <div className="rounded border border-orange-600/30 bg-orange-600/5 p-3 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-orange-300 text-xs font-medium flex items-center gap-1.5">
+                      {voiceListening ? (
+                        <><Mic size={12} className="animate-pulse" /> Listening — speak the job description...</>
+                      ) : parseVoiceBid.isPending ? (
+                        <><Loader2 size={12} className="animate-spin" /> Parsing description...</>
+                      ) : voiceResult ? (
+                        <><CheckCircle size={12} className="text-green-400" /> <span className="text-green-300">Fields ready to apply</span></>
+                      ) : (
+                        <><Mic size={12} /> Press "Voice Bid" and describe the job</>
+                      )}
+                    </span>
+                    <button type="button" onClick={() => { stopListening(); setVoiceOpen(false); setVoiceResult(null); setVoiceTranscript(""); }} className="text-zinc-500 hover:text-zinc-300">
+                      <XIcon size={14} />
+                    </button>
+                  </div>
+                  {voiceTranscript && (
+                    <p className="text-zinc-300 text-xs bg-zinc-800/60 rounded px-2.5 py-1.5 leading-relaxed italic">&#8220;{voiceTranscript}&#8221;</p>
+                  )}
+                  {voiceResult && (
+                    <div className="space-y-1.5">
+                      <div className="grid grid-cols-2 gap-1 text-[11px]">
+                        {voiceResult.service && <div className="text-zinc-400">Service: <span className="text-white">{voiceResult.service}</span></div>}
+                        {voiceResult.acreage !== null && <div className="text-zinc-400">Acreage: <span className="text-white">{voiceResult.acreage} ac</span></div>}
+                        {voiceResult.terrain && <div className="text-zinc-400">Terrain: <span className="text-white">{voiceResult.terrain}</span></div>}
+                        {voiceResult.vegetationDensity && <div className="text-zinc-400">Vegetation: <span className="text-white">{voiceResult.vegetationDensity}</span></div>}
+                        {voiceResult.accessDifficulty && <div className="text-zinc-400">Access: <span className="text-white">{voiceResult.accessDifficulty}</span></div>}
+                        {voiceResult.mobilizationMiles !== null && <div className="text-zinc-400">Miles: <span className="text-white">{voiceResult.mobilizationMiles}</span></div>}
+                        {voiceResult.address && <div className="col-span-2 text-zinc-400">Address: <span className="text-white">{voiceResult.address}</span></div>}
+                      </div>
+                      <Button size="sm" className="w-full bg-orange-600 hover:bg-orange-700 text-white text-xs" onClick={applyVoiceResult}>
+                        <CheckCircle size={12} className="mr-1" /> Apply to Form
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* Satellite Auto-Fill */}
               <div className="space-y-1.5">

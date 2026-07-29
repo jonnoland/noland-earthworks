@@ -6614,4 +6614,69 @@ Generate a complete monthly ad campaign plan. Return ONLY valid JSON matching th
       });
       return { ok: true };
     }),
+  /**
+   * Voice-to-Bid: Parse a spoken job description into structured estimator fields.
+   * Called from the Cost Estimator mic button after the browser captures the transcript.
+   */
+  parseVoiceBid: ownerProcedure
+    .input(z.object({ transcript: z.string().min(1).max(2000) }))
+    .mutation(async ({ input }) => {
+      const systemPrompt = `You are a land management job intake assistant for Noland Earthworks, LLC in Tennessee.
+Extract job details from a spoken description and return ONLY valid JSON with these exact fields:
+{
+  "clientName": string or null,
+  "address": string or null,
+  "service": one of ["Forestry Mulching", "Land Management", "Vegetation Management", "Right-of-Way Clearing", "Trail Cutting", "Brush Hogging", "Stump Grinding Only"] or null,
+  "acreage": number or null,
+  "linearFeet": number or null,
+  "terrain": one of ["flat", "rolling", "steep", "very_steep"] or null,
+  "vegetationDensity": one of ["light", "moderate", "heavy", "very_heavy"] or null,
+  "accessDifficulty": one of ["easy", "moderate", "difficult"] or null,
+  "hasStumps": boolean or null,
+  "stumpCount": number or null,
+  "mobilizationMiles": number or null,
+  "notes": string or null
+}
+Rules:
+- Default service to "Forestry Mulching" if unclear but land clearing is mentioned.
+- Map "medium" vegetation to "moderate", "thick" or "dense" to "heavy", "very thick" to "very_heavy".
+- Map "hilly" or "rolling hills" to "rolling", "flat" to "flat", "steep hillside" or "steep slope" to "steep".
+- Map "hard to get to" or "no road access" to "difficult", "some brush" to "moderate", "open gate" or "easy access" to "easy".
+- Extract acreage from phrases like "2 acres", "about 5 acres", "half acre", "1.5 acres".
+- Extract linear feet from phrases like "500 feet of fence line", "quarter mile trail" (1 mile = 5280 ft).
+- Return null for any field you cannot confidently determine.
+- Return ONLY the JSON object, no explanation, no markdown.`;
+
+      let parsed: Record<string, unknown> = {};
+      try {
+        const result = await invokeLLM({
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: input.transcript },
+          ],
+        });
+        const content = result.choices?.[0]?.message?.content;
+        const raw = typeof content === "string" ? content.trim() : JSON.stringify(content);
+        // Strip markdown code fences if present
+        const cleaned = raw.replace(/^```[\w]*\n?/, "").replace(/\n?```$/, "").trim();
+        parsed = JSON.parse(cleaned);
+      } catch (err) {
+        console.error("[parseVoiceBid] LLM error:", err);
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Failed to parse voice description. Try again." });
+      }
+      return {
+        clientName: (parsed.clientName as string | null) ?? null,
+        address: (parsed.address as string | null) ?? null,
+        service: (parsed.service as string | null) ?? null,
+        acreage: typeof parsed.acreage === "number" ? parsed.acreage : null,
+        linearFeet: typeof parsed.linearFeet === "number" ? parsed.linearFeet : null,
+        terrain: (parsed.terrain as string | null) ?? null,
+        vegetationDensity: (parsed.vegetationDensity as string | null) ?? null,
+        accessDifficulty: (parsed.accessDifficulty as string | null) ?? null,
+        hasStumps: typeof parsed.hasStumps === "boolean" ? parsed.hasStumps : null,
+        stumpCount: typeof parsed.stumpCount === "number" ? parsed.stumpCount : null,
+        mobilizationMiles: typeof parsed.mobilizationMiles === "number" ? parsed.mobilizationMiles : null,
+        notes: (parsed.notes as string | null) ?? null,
+      };
+    }),
 });
