@@ -2740,3 +2740,5 @@
 - [x] Field Quotes detail dialog: add Convert to Quote / Convert to Job button
 - [x] Field Quotes detail dialog: add Email and SMS buttons to send AI draft response to prospect
 - [x] Field Quotes list: add sort control (by date, acreage, AI score)
+- [x] Noland Field companion app: add Google Places address autocomplete to the Site Location field in NewQuote
+- [x] /ops/quotes: auto-refresh all quote sections (Website Requests, Field Quotes) on a polling interval so new submissions appear without a manual page refresh

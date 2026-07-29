@@ -895,6 +895,45 @@ Return JSON matching the schema exactly.`;
       return { id: Number(newId) };
     }),
 
+  /**
+   * Google Places address autocomplete — used by the Noland Field companion app.
+   * Requires app token so the Maps proxy key is never exposed to the client.
+   */
+  placesAutocomplete: requireAppToken
+    .input(z.object({
+      input: z.string().min(1),
+      sessiontoken: z.string().optional(),
+    }))
+    .query(async ({ input }) => {
+      try {
+        const result = await makeRequest<{
+          predictions: Array<{
+            description: string;
+            place_id: string;
+            structured_formatting?: {
+              main_text: string;
+              secondary_text: string;
+            };
+          }>;
+          status: string;
+        }>("/maps/api/place/autocomplete/json", {
+          input: input.input,
+          components: "country:us",
+          types: "address",
+          ...(input.sessiontoken ? { sessiontoken: input.sessiontoken } : {}),
+        });
+
+        if (result.status !== "OK" && result.status !== "ZERO_RESULTS") {
+          console.error("[PlacesAutocomplete] status:", result.status);
+          return { predictions: [] };
+        }
+        return { predictions: result.predictions ?? [] };
+      } catch (err) {
+        console.error("[PlacesAutocomplete] error:", err);
+        return { predictions: [] };
+      }
+    }),
+
   reverseGeocode: publicProcedure
     .input(z.object({ lat: z.number(), lng: z.number() }))
     .query(async ({ input }) => {

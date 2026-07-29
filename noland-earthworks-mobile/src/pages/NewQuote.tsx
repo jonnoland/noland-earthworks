@@ -17,6 +17,7 @@ import { Camera as CapCamera, CameraResultType, CameraSource } from "@capacitor/
 import { Geolocation } from "@capacitor/geolocation";
 import { trpc } from "@/lib/trpc";
 import PageHeader from "@/components/PageHeader";
+import AddressAutocomplete from "@/components/AddressAutocomplete";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -410,24 +411,25 @@ export default function NewQuote() {
           <p style={sectionTitle}>Site Location</p>
           <div>
             <label style={labelStyle}>Address</label>
-            <div style={{ position: "relative" }}>
-              <input
-                value={form.address}
-                onChange={set("address")}
-                placeholder="Street address or description"
-                style={{ ...inputStyle, paddingRight: 48 }}
-              />
-              <button
-                onClick={handleGetGPS}
-                disabled={gpsLoading}
-                style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: gpsLoading ? "not-allowed" : "pointer", padding: 4, marginTop: 3, display: "flex", alignItems: "center" }}
-              >
-                {gpsLoading
-                  ? <Loader2 size={18} color="oklch(0.65 0.18 50)" style={{ animation: "spin 1s linear infinite" }} />
-                  : <MapPin size={18} color={form.lat ? "oklch(0.65 0.18 50)" : "oklch(0.50 0.01 80)"} />
-                }
-              </button>
-            </div>
+            <AddressAutocomplete
+              value={form.address}
+              onChange={(addr) => setForm((f) => ({ ...f, address: addr }))}
+              inputStyle={inputStyle}
+              placeholder="Street address or description"
+              rightSlot={
+                <button
+                  onClick={handleGetGPS}
+                  disabled={gpsLoading}
+                  style={{ background: "none", border: "none", cursor: gpsLoading ? "not-allowed" : "pointer", padding: 4, display: "flex", alignItems: "center", flexShrink: 0 }}
+                  title="Use GPS location"
+                >
+                  {gpsLoading
+                    ? <Loader2 size={18} color="oklch(0.65 0.18 50)" style={{ animation: "spin 1s linear infinite" }} />
+                    : <MapPin size={18} color={form.lat ? "oklch(0.65 0.18 50)" : "oklch(0.50 0.01 80)"} />
+                  }
+                </button>
+              }
+            />
             {form.lat && <p style={{ color: "oklch(0.65 0.18 50)", fontSize: 11, margin: "4px 0 0" }}>GPS: {form.lat.toFixed(5)}, {form.lng?.toFixed(5)}</p>}
             {gpsError && <p style={{ color: "oklch(0.65 0.20 25)", fontSize: 11, margin: "4px 0 0" }}>{gpsError}</p>}
           </div>

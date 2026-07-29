@@ -1841,6 +1841,7 @@ export function NativeAllQuotesSection() {
     refetchOnMount: true,
     staleTime: 0,
     refetchOnWindowFocus: true,
+    refetchInterval: 30_000, // auto-refresh every 30 s so new submissions appear without a manual reload
   });
 
   const quotes = (data?.quotes ?? []) as NativeQuote[];

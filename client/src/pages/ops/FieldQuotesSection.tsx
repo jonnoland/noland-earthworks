@@ -398,7 +398,14 @@ export default function FieldQuotesSection() {
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null);
 
-  const { data: quotes = [], isLoading, refetch } = trpc.fieldQuote.list.useQuery({ limit: 100 });
+  const { data: quotes = [], isLoading, refetch } = trpc.fieldQuote.list.useQuery(
+    { limit: 100 },
+    {
+      refetchOnMount: true,
+      refetchOnWindowFocus: true,
+      refetchInterval: 30_000, // auto-refresh every 30 s so field app submissions appear without a manual reload
+    }
+  );
 
   const deleteMutation = trpc.fieldQuote.delete.useMutation({
     onSuccess: () => {
