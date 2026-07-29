@@ -139,6 +139,7 @@ export default function NewQuote() {
     message: "",
   });
 
+  const trpcUtils = trpc.useUtils();
   const uploadPhoto = trpc.fieldQuote.uploadPhoto.useMutation();
   const submitQuote = trpc.fieldQuote.submit.useMutation();
   const getEstimate = trpc.fieldQuote.estimate.useMutation({
@@ -156,13 +157,14 @@ export default function NewQuote() {
       const { latitude, longitude } = pos.coords;
       setForm((f) => ({ ...f, lat: latitude, lng: longitude }));
       try {
-        const res = await fetch(
-          `/api/trpc/fieldQuote.reverseGeocode?input=${encodeURIComponent(JSON.stringify({ lat: latitude, lng: longitude }))}`
-        );
-        const json = await res.json();
-        const address = json?.result?.data?.address;
-        if (address) setForm((f) => ({ ...f, address }));
+        const geo = await trpcUtils.client.fieldQuote.reverseGeocode.query({ lat: latitude, lng: longitude });
+        if (geo?.address) {
+          setForm((f) => ({ ...f, address: geo.address as string }));
+        } else {
+          setForm((f) => ({ ...f, address: `${latitude.toFixed(6)}, ${longitude.toFixed(6)}` }));
+        }
       } catch {
+        // Fallback to raw coordinates if geocoding fails
         setForm((f) => ({ ...f, address: `${latitude.toFixed(6)}, ${longitude.toFixed(6)}` }));
       }
     } catch (err: any) {
