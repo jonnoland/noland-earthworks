@@ -1311,6 +1311,10 @@ function InlineWebRequestsPanel({
     { limit: 50 },
     { retry: false }
   );
+  const deleteReq = trpc.ops.quotes.delete.useMutation({
+    onSuccess: () => { toast.success("Request deleted."); refetch(); },
+    onError: () => toast.error("Failed to delete request."),
+  });
   type WebReq = {
     id: number;
     name: string;
@@ -1382,21 +1386,35 @@ function InlineWebRequestsPanel({
                 <p className="text-[11px] text-muted-foreground">
                   {new Date(req.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
                 </p>
-                <Button
-                  size="sm"
-                  className="h-6 text-xs px-2 gap-1"
-                  onClick={() => onBuildQuote({
-                    clientName: req.name,
-                    clientPhone: req.phone ?? undefined,
-                    clientEmail: req.email ?? undefined,
-                    propertyAddress: [req.street, req.city].filter(Boolean).join(", ") || undefined,
-                    serviceType: req.service ?? undefined,
-                    clientMessage: req.message ?? undefined,
-                  })}
-                >
-                  <Plus className="w-3 h-3" />
-                  Build Quote
-                </Button>
+                <div className="flex items-center gap-1.5">
+                  <Button
+                    size="sm"
+                    className="h-6 text-xs px-2 gap-1"
+                    onClick={() => onBuildQuote({
+                      clientName: req.name,
+                      clientPhone: req.phone ?? undefined,
+                      clientEmail: req.email ?? undefined,
+                      propertyAddress: [req.street, req.city].filter(Boolean).join(", ") || undefined,
+                      serviceType: req.service ?? undefined,
+                      clientMessage: req.message ?? undefined,
+                    })}
+                  >
+                    <Plus className="w-3 h-3" />
+                    Build Quote
+                  </Button>
+                  <button
+                    onClick={() => {
+                      if (confirm(`Delete request from ${req.name}?`)) {
+                        deleteReq.mutate({ id: req.id });
+                      }
+                    }}
+                    disabled={deleteReq.isPending}
+                    className="h-6 w-6 flex items-center justify-center rounded text-muted-foreground hover:text-red-400 hover:bg-red-400/10 transition-colors"
+                    title="Delete request"
+                  >
+                    <Trash2 className="w-3 h-3" />
+                  </button>
+                </div>
               </div>
             </div>
           ))}

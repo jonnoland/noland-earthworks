@@ -2604,3 +2604,8 @@
 - [x] Clicking relatedType badge on a task filters the list to that type
 - [x] Clear filters button shown when search or type filter is active
 - [x] quoteRouter.ts: remove Jobber sync block and createJobberRequest/isJobberConnected import
+
+## Web Requests Delete (Jul 29, 2026)
+- [x] Add delete button (trash icon) to each Web Request card in /ops/quotes Website Requests panel
+- [x] Calls trpc.ops.quotes.delete mutation with confirmation dialog
+- [x] Refreshes the list on success with toast notification
