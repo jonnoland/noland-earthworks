@@ -2714,3 +2714,9 @@
 - [x] Quote detail panel: add visual lifecycle timeline showing Created, Sent, Viewed, Approved/Declined, Deposit Paid, Converted with exact timestamps
 - [x] Pipeline quote cards: add copy-portal-link quick action button on cards that have a portalToken (sent quotes)
 - [x] Pipeline stage column headers: display total monetary value (sum of totalCents) for all quotes in that stage
+
+## Quote Pipeline Filters (Jul 2026)
+- [x] Pipeline view: add min/max dollar value filter inputs to the filter bar
+- [x] Pipeline view: add date-from / date-to filter inputs (date created range) to the filter bar
+- [x] Pipeline view: apply both filters client-side in pipelineGroups so they stack with search and status filter
+- [x] Pipeline view: add a "Clear Filters" button that appears when any non-default filter is active

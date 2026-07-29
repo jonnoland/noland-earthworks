@@ -1781,6 +1781,12 @@ function InlineWebRequestsPanel({
 export function NativeAllQuotesSection() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  // Dollar value range filter (empty string = no constraint)
+  const [minValue, setMinValue] = useState("");
+  const [maxValue, setMaxValue] = useState("");
+  // Date created range filter (empty string = no constraint)
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
   const [showCreate, setShowCreate] = useState(false);
   const [createPrefill, setCreatePrefill] = useState<{
     clientName?: string;
@@ -1934,17 +1940,30 @@ export function NativeAllQuotesSection() {
     return "draft";
   };
 
-  // Group quotes by stage
+  // Derived filter values
+  const minCents = minValue !== "" ? Math.round(parseFloat(minValue) * 100) : null;
+  const maxCents = maxValue !== "" ? Math.round(parseFloat(maxValue) * 100) : null;
+  const dateFromMs = dateFrom !== "" ? new Date(dateFrom + "T00:00:00").getTime() : null;
+  const dateToMs = dateTo !== "" ? new Date(dateTo + "T23:59:59").getTime() : null;
+
+  // Group quotes by stage, applying all active filters
   const pipelineGroups = useMemo(() => {
     const groups: Record<string, NativeQuote[]> = {};
     PIPELINE_STAGES.forEach(s => { groups[s.key] = []; });
     quotes.forEach(q => {
+      // Dollar value filter
+      if (minCents !== null && q.totalCents < minCents) return;
+      if (maxCents !== null && q.totalCents > maxCents) return;
+      // Date created filter
+      const createdMs = new Date(q.createdAt).getTime();
+      if (dateFromMs !== null && createdMs < dateFromMs) return;
+      if (dateToMs !== null && createdMs > dateToMs) return;
       const key = getStageKey(q);
       if (groups[key]) groups[key].push(q);
       else groups["draft"].push(q);
     });
     return groups;
-  }, [quotes]);
+  }, [quotes, minCents, maxCents, dateFromMs, dateToMs]);
 
   // Total counts for header
   const totalCount = quotes.length;
@@ -2009,20 +2028,81 @@ export function NativeAllQuotesSection() {
 
           {/* Status filter pills */}
           {!isLoading && (
-            <div className="flex flex-wrap gap-1.5">
-              {statuses.map(s => (
-                <button
-                  key={s.value}
-                  onClick={() => setStatusFilter(s.value)}
-                  className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
-                    statusFilter === s.value
-                      ? "bg-primary text-primary-foreground"
-                      : "bg-secondary/40 text-muted-foreground hover:bg-secondary/70"
-                  }`}
-                >
-                  {s.label} ({s.count})
-                </button>
-              ))}
+            <div className="space-y-2">
+              {/* Stage pills */}
+              <div className="flex flex-wrap gap-1.5">
+                {statuses.map(s => (
+                  <button
+                    key={s.value}
+                    onClick={() => setStatusFilter(s.value)}
+                    className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
+                      statusFilter === s.value
+                        ? "bg-primary text-primary-foreground"
+                        : "bg-secondary/40 text-muted-foreground hover:bg-secondary/70"
+                    }`}
+                  >
+                    {s.label} ({s.count})
+                  </button>
+                ))}
+              </div>
+
+              {/* Dollar value + date range filters */}
+              <div className="flex flex-wrap items-center gap-2">
+                {/* Dollar value range */}
+                <div className="flex items-center gap-1.5">
+                  <DollarSign className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                  <input
+                    type="number"
+                    min="0"
+                    placeholder="Min $"
+                    value={minValue}
+                    onChange={e => setMinValue(e.target.value)}
+                    className="w-20 h-7 text-xs bg-secondary/30 border border-border rounded px-2 outline-none focus:border-primary text-foreground placeholder:text-muted-foreground/50"
+                  />
+                  <span className="text-[11px] text-muted-foreground">to</span>
+                  <input
+                    type="number"
+                    min="0"
+                    placeholder="Max $"
+                    value={maxValue}
+                    onChange={e => setMaxValue(e.target.value)}
+                    className="w-20 h-7 text-xs bg-secondary/30 border border-border rounded px-2 outline-none focus:border-primary text-foreground placeholder:text-muted-foreground/50"
+                  />
+                </div>
+
+                {/* Divider */}
+                <span className="text-border hidden sm:inline">|</span>
+
+                {/* Date created range */}
+                <div className="flex items-center gap-1.5">
+                  <Clock className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                  <input
+                    type="date"
+                    value={dateFrom}
+                    onChange={e => setDateFrom(e.target.value)}
+                    className="h-7 text-xs bg-secondary/30 border border-border rounded px-2 outline-none focus:border-primary text-foreground"
+                    title="Created from"
+                  />
+                  <span className="text-[11px] text-muted-foreground">to</span>
+                  <input
+                    type="date"
+                    value={dateTo}
+                    onChange={e => setDateTo(e.target.value)}
+                    className="h-7 text-xs bg-secondary/30 border border-border rounded px-2 outline-none focus:border-primary text-foreground"
+                    title="Created to"
+                  />
+                </div>
+
+                {/* Clear filters — only shown when any non-default filter is active */}
+                {(minValue !== "" || maxValue !== "" || dateFrom !== "" || dateTo !== "") && (
+                  <button
+                    onClick={() => { setMinValue(""); setMaxValue(""); setDateFrom(""); setDateTo(""); }}
+                    className="flex items-center gap-1 h-7 px-2 rounded text-xs text-muted-foreground hover:text-foreground bg-secondary/30 hover:bg-secondary/60 border border-border transition-colors"
+                  >
+                    <X className="w-3 h-3" />Clear
+                  </button>
+                )}
+              </div>
             </div>
           )}
 
