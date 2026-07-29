@@ -1824,11 +1824,19 @@ export function NativeAllQuotesSection() {
   // (clientAction, portalSentAt, depositPaidAt, convertedToJobAt), not just the
   // status column. Filtering by status alone at the DB level returns wrong results
   // for Sent/Approved/Declined stages.
-  const { data, isLoading, refetch, isFetching } = trpc.nativeQuotes.list.useQuery({
-    search: search || undefined,
-    status: "all",
-    limit: 500,
-    offset: 0,
+  const listInput = useMemo(() => {
+    const base: { status: string; limit: number; offset: number; search?: string } = {
+      status: "all",
+      limit: 500,
+      offset: 0,
+    };
+    if (search) base.search = search;
+    return base;
+  }, [search]);
+  const { data, isLoading, refetch, isFetching } = trpc.nativeQuotes.list.useQuery(listInput, {
+    refetchOnMount: true,
+    staleTime: 0,
+    refetchOnWindowFocus: true,
   });
 
   const quotes = (data?.quotes ?? []) as NativeQuote[];
