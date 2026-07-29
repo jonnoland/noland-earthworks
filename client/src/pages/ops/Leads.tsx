@@ -2881,6 +2881,9 @@ function ProspectingTab() {
   const [marginFilter, setMarginFilter] = useState<"all" | "high" | "medium" | "low">("all");
   const [reachOutTarget, setReachOutTarget] = useState<Prospect | null>(null);
   const [reachOutText, setReachOutText] = useState("");
+  const [reachOutVariations, setReachOutVariations] = useState<string[]>([]);
+  const [reachOutVarIdx, setReachOutVarIdx] = useState(0);
+  const [isGeneratingReachOut, setIsGeneratingReachOut] = useState(false);
   // Bulk selection
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [bulkMode, setBulkMode] = useState(false);
@@ -2961,6 +2964,19 @@ function ProspectingTab() {
     },
   });
 
+  const generateFbOutreach = trpc.ops.prospecting.generateFbOutreach.useMutation({
+    onSuccess: (data) => {
+      setReachOutVariations(data.variations);
+      setReachOutVarIdx(0);
+      if (data.variations.length > 0) setReachOutText(data.variations[0]);
+      setIsGeneratingReachOut(false);
+    },
+    onError: (err) => {
+      toast.error(err.message || "AI generation failed.");
+      setIsGeneratingReachOut(false);
+    },
+  });
+
   const sendSms = trpc.ops.leads.sendDirectSms.useMutation({
     onSuccess: () => {
       toast.success("Message sent.");
@@ -2974,7 +2990,12 @@ function ProspectingTab() {
 
   function openReachOut(p: Prospect) {
     setReachOutTarget(p);
+    setReachOutVariations([]);
+    setReachOutVarIdx(0);
+    // If there's already a saved draft, pre-fill it; then auto-generate fresh AI variations
     setReachOutText(p.reachOutDraft ?? "");
+    setIsGeneratingReachOut(true);
+    generateFbOutreach.mutate({ id: p.id, tone: "casual" });
   }
 
   function handleFacebookReachOut() {
@@ -3485,7 +3506,8 @@ function ProspectingTab() {
       <Dialog open={!!reachOutTarget} onOpenChange={(open) => !open && setReachOutTarget(null)}>
         <DialogContent className="bg-zinc-900 border-zinc-700 text-white max-w-lg">
           <DialogHeader>
-            <DialogTitle className="text-white">
+            <DialogTitle className="text-white flex items-center gap-2">
+              <Sparkles className="h-4 w-4 text-amber-400" />
               Reach Out — {reachOutTarget?.contactName ?? "Prospect"}
             </DialogTitle>
           </DialogHeader>
@@ -3501,17 +3523,68 @@ function ProspectingTab() {
                 <span>Facebook prospect — use <strong>Post on Facebook</strong> to open the original post and paste your message as a comment.</span>
               </div>
             )}
-            <p className="text-xs text-zinc-500">
-              Edit the AI-drafted message below before sending. If a phone number is detected in the contact info, it will be sent via SMS from your (888) number.
-            </p>
+
+            {/* AI generation status + variation picker */}
+            {isGeneratingReachOut ? (
+              <div className="flex items-center gap-2 text-xs text-amber-400 py-1">
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                <span>Generating AI message variations…</span>
+              </div>
+            ) : reachOutVariations.length > 1 ? (
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-zinc-500">Variation:</span>
+                {reachOutVariations.map((v, i) => (
+                  <button
+                    key={i}
+                    onClick={() => { setReachOutVarIdx(i); setReachOutText(v); }}
+                    className={cn(
+                      "px-2 py-0.5 rounded text-xs font-medium transition-colors",
+                      reachOutVarIdx === i
+                        ? "bg-amber-600 text-white"
+                        : "bg-zinc-700 text-zinc-400 hover:text-white"
+                    )}
+                  >
+                    {i + 1}
+                  </button>
+                ))}
+                <button
+                  onClick={() => {
+                    if (!reachOutTarget) return;
+                    setIsGeneratingReachOut(true);
+                    generateFbOutreach.mutate({ id: reachOutTarget.id, tone: "casual" });
+                  }}
+                  className="ml-auto flex items-center gap-1 text-xs text-zinc-400 hover:text-amber-400 transition-colors"
+                >
+                  <RefreshCw className="h-3 w-3" /> Regenerate
+                </button>
+              </div>
+            ) : (
+              <div className="flex items-center justify-between">
+                <p className="text-xs text-zinc-500">
+                  Edit the message below before sending.
+                </p>
+                <button
+                  onClick={() => {
+                    if (!reachOutTarget) return;
+                    setIsGeneratingReachOut(true);
+                    generateFbOutreach.mutate({ id: reachOutTarget.id, tone: "casual" });
+                  }}
+                  className="flex items-center gap-1 text-xs text-amber-400 hover:text-amber-300 transition-colors"
+                >
+                  <Sparkles className="h-3 w-3" /> Generate AI message
+                </button>
+              </div>
+            )}
+
             <Textarea
               value={reachOutText}
               onChange={(e) => setReachOutText(e.target.value)}
               rows={6}
               className="bg-zinc-800 border-zinc-600 text-white text-sm resize-none"
-              placeholder="Type your message..."
+              placeholder={isGeneratingReachOut ? "Generating…" : "Type your message..."}
+              disabled={isGeneratingReachOut}
             />
-            <p className="text-xs text-zinc-500 text-right">{reachOutText.length} / 160 chars</p>
+            <p className="text-xs text-zinc-500 text-right">{reachOutText.length} chars</p>
           </div>
           <DialogFooter className="gap-2 flex-wrap">
             <Button
