@@ -13,11 +13,12 @@
  *   createDepositSession — Stripe Checkout for deposit
  */
 import { z } from "zod";
-import { protectedProcedure, router } from "./_core/trpc";
+import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
 import { TRPCError } from "@trpc/server";
 import { getDb } from "./db";
-import { nativeQuotes, jobs } from "../drizzle/schema";
-import { eq, desc, like, or, and } from "drizzle-orm";
+import { nativeQuotes, jobs, aiPricingSettings } from "../drizzle/schema";
+import { getPricingBenchmarks } from "./db";
+import { eq, desc, like, or, and, asc } from "drizzle-orm";
 import { randomBytes } from "crypto";
 
 import { getStripe, isStripeConfigured } from "./stripe";
@@ -373,45 +374,107 @@ export const nativeQuotesRouter = router({
       terrain: z.string().optional(),
       density: z.string().optional(),
       access: z.string().optional(),
-      notes: z.string().max(500).optional(),
+      notes: z.string().max(5000).optional(),
     }))
     .mutation(async ({ input }: { input: { serviceType: string; acreage: number; terrain?: string; density?: string; access?: string; notes?: string } }) => {
       const { serviceType, acreage, terrain, density, access, notes } = input;
 
-      const BASE_RATES: Record<string, Record<string, [number, number]>> = {
-        "forestry-mulching":     { light: [600, 900],  moderate: [800, 1200],  heavy: [1100, 1800] },
-        "land-clearing":         { light: [500, 800],  moderate: [700, 1100],  heavy: [1000, 1600] },
-        "brush-hogging":         { light: [100, 175],  moderate: [150, 250],   heavy: [200, 350]   },
-        "right-of-way-clearing": { light: [500, 800],  moderate: [700, 1100],  heavy: [1000, 1600] },
-        "trail-cutting":         { light: [400, 700],  moderate: [600, 1000],  heavy: [900, 1400]  },
-        "lot-clearing":          { light: [500, 800],  moderate: [700, 1100],  heavy: [1000, 1600] },
-        "pasture-reclamation":   { light: [500, 800],  moderate: [700, 1100],  heavy: [1000, 1600] },
-      };
+      // ── Pull DB-driven pricing (same source as Cost Estimator) ──────────────
       const svcKey = serviceType.toLowerCase().replace(/\s+/g, "-");
+      let pricingRow2: typeof aiPricingSettings.$inferSelect | null = null;
+      try {
+        const db2 = await getDb();
+        if (db2) {
+          const rows2 = await db2.select().from(aiPricingSettings).limit(1);
+          if (rows2.length === 0) {
+            await db2.insert(aiPricingSettings).values({});
+            const seeded2 = await db2.select().from(aiPricingSettings).limit(1);
+            pricingRow2 = seeded2[0] ?? null;
+          } else {
+            pricingRow2 = rows2[0];
+          }
+        }
+      } catch { /* non-fatal — fall back to defaults */ }
+
+      let benchmarkMids2: Record<string, number> = {};
+      try {
+        const bRows2 = await getPricingBenchmarks();
+        for (const b of bRows2) {
+          if (b.midPerAcre && b.midPerAcre > 0) benchmarkMids2[b.serviceType.toLowerCase()] = b.midPerAcre;
+        }
+      } catch { /* non-fatal */ }
+
+      const fmBase  = pricingRow2?.forestryMulchingBaseRate ?? benchmarkMids2["forestry mulching"] ?? 800;
+      const lcBase  = pricingRow2?.landClearingBaseRate     ?? benchmarkMids2["land management"]   ?? 700;
+      const bhBase  = pricingRow2?.brushHoggingBaseRate     ?? benchmarkMids2["brush hogging"]     ?? 150;
+      const rowBase = pricingRow2?.rowClearingBaseRate       ?? 6;
+      const dmMult  = parseFloat(pricingRow2?.densityModerateMultiplier ?? "1.25");
+      const dhMult  = parseFloat(pricingRow2?.densityHeavyMultiplier    ?? "1.60");
+      const trMult  = parseFloat(pricingRow2?.terrainRollingMultiplier  ?? "1.15");
+      const tsMult  = parseFloat(pricingRow2?.terrainSteepMultiplier    ?? "1.35");
+      const amMult  = parseFloat(pricingRow2?.accessModerateMultiplier  ?? "1.10");
+      const adMult  = parseFloat(pricingRow2?.accessDifficultMultiplier ?? "1.25");
+      const MOBILIZATION = pricingRow2?.mobilizationFee ?? 400;
+      const MIN_JOB      = pricingRow2?.minimumJobTotal  ?? 1800;
+
+      const BASE_RATES: Record<string, Record<string, [number, number]>> = {
+        "forestry-mulching": {
+          light:    [Math.round(fmBase * 0.75), Math.round(fmBase * 1.0)],
+          moderate: [Math.round(fmBase * 1.0),  Math.round(fmBase * dmMult)],
+          heavy:    [Math.round(fmBase * dmMult), Math.round(fmBase * dhMult * 1.5)],
+        },
+        "land-clearing": {
+          light:    [Math.round(lcBase * 0.75), Math.round(lcBase * 1.0)],
+          moderate: [Math.round(lcBase * 1.0),  Math.round(lcBase * dmMult)],
+          heavy:    [Math.round(lcBase * dmMult), Math.round(lcBase * dhMult * 2.0)],
+        },
+        "lot-clearing": {
+          light:    [Math.round(lcBase * 0.75), Math.round(lcBase * 1.0)],
+          moderate: [Math.round(lcBase * 1.0),  Math.round(lcBase * dmMult)],
+          heavy:    [Math.round(lcBase * dmMult), Math.round(lcBase * dhMult * 2.0)],
+        },
+        "pasture-reclamation": {
+          light:    [Math.round(lcBase * 0.75), Math.round(lcBase * 1.0)],
+          moderate: [Math.round(lcBase * 1.0),  Math.round(lcBase * dmMult)],
+          heavy:    [Math.round(lcBase * dmMult), Math.round(lcBase * dhMult * 2.0)],
+        },
+        "brush-hogging": {
+          light:    [Math.round(bhBase * 0.75), Math.round(bhBase * 1.0)],
+          moderate: [Math.round(bhBase * 1.0),  Math.round(bhBase * dmMult)],
+          heavy:    [Math.round(bhBase * dmMult), Math.round(bhBase * dhMult)],
+        },
+        "right-of-way-clearing": {
+          light:    [Math.round(rowBase * 1320 * 0.75), Math.round(rowBase * 1320 * 1.0)],
+          moderate: [Math.round(rowBase * 1320 * 1.0),  Math.round(rowBase * 1320 * dmMult)],
+          heavy:    [Math.round(rowBase * 1320 * dmMult), Math.round(rowBase * 1320 * dhMult * 1.5)],
+        },
+        "trail-cutting": {
+          light:    [Math.round(lcBase * 0.65), Math.round(lcBase * 0.90)],
+          moderate: [Math.round(lcBase * 0.85), Math.round(lcBase * 1.15)],
+          heavy:    [Math.round(lcBase * 1.10), Math.round(lcBase * dhMult * 1.5)],
+        },
+      } as Record<string, Record<string, [number, number]>>;
+
       const densityKey = (density ?? "moderate") as string;
       const [rLow, rHigh] = (BASE_RATES[svcKey]?.[densityKey] ?? [700, 1200]) as [number, number];
-      const terrainMult = terrain === "steep" ? 1.35 : terrain === "rolling" ? 1.15 : 1.0;
-      const accessMult  = access === "difficult" ? 1.25 : access === "moderate" ? 1.10 : 1.0;
+      const terrainMult = terrain === "steep" ? tsMult : terrain === "rolling" ? trMult : 1.0;
+      const accessMult  = access === "difficult" ? adMult : access === "moderate" ? amMult : 1.0;
       const adjLow  = Math.round(rLow  * terrainMult * accessMult);
       const adjHigh = Math.round(rHigh * terrainMult * accessMult);
       const midPerAcre = Math.round((adjLow + adjHigh) / 2);
-      const totalMid   = Math.round(midPerAcre * acreage);
+      const rawTotal   = Math.round(midPerAcre * acreage);
+      const totalMid   = Math.max(rawTotal, MIN_JOB);
 
       const systemPrompt = `You are an expert estimator for Noland Earthworks, LLC — a veteran-owned forestry mulching and land clearing company in Middle Tennessee. You help the owner (Jon Noland) quickly build accurate quotes.
-
-Pricing context for Middle & West Tennessee (2025-2026 market rates):
-- Forestry Mulching: $600-$1,800/acre depending on density
-- Land Clearing: $500-$1,600/acre
-- Brush Hogging: $100-$350/acre
-- Right-of-Way Clearing: $500-$1,600/acre
-- Trail Cutting: $400-$1,400/acre
-- Terrain multipliers: flat x1.0, rolling x1.15, steep x1.35
-- Access multipliers: easy x1.0, moderate x1.10, difficult x1.25
-- Mobilization fee: $150-$300 for jobs under 5 acres or distant locations
-- Minimum job: $750
-
+Current calibrated rates for Middle & West Tennessee:
+- Forestry Mulching: $${Math.round(fmBase*0.875)}-$${Math.round(fmBase*dhMult*1.25)}/acre (base $${fmBase}/acre)
+- Land Clearing: $${Math.round(lcBase*0.875)}-$${Math.round(lcBase*dhMult*1.5)}/acre (base $${lcBase}/acre)
+- Brush Hogging: $${Math.round(bhBase*0.875)}-$${Math.round(bhBase*dhMult)}/acre (base $${bhBase}/acre)
+- Terrain multipliers: flat x1.0, rolling x${trMult}, steep x${tsMult}
+- Access multipliers: easy x1.0, moderate x${amMult}, difficult x${adMult}
+- Mobilization fee: $${MOBILIZATION} for jobs under 5 acres or distant locations
+- Minimum job: $${MIN_JOB}
 For this job the calculated mid-point estimate is $${totalMid.toLocaleString()} ($${midPerAcre}/acre x ${acreage} acres, ${density ?? "moderate"} density, ${terrain ?? "flat"} terrain, ${access ?? "easy"} access).
-
 Return ONLY valid JSON with no markdown or explanation. Schema:
 {
   "title": string,
@@ -421,11 +484,10 @@ Return ONLY valid JSON with no markdown or explanation. Schema:
     { "description": string, "qty": number, "unitPriceCents": number }
   ]
 }
-
 Rules:
 - Line items should total close to $${totalMid.toLocaleString()}
 - Primary line item is the main service (e.g. "Forestry Mulching - 5 acres @ $${midPerAcre}/acre")
-- Add a mobilization fee line item ($200) if acreage < 5
+- Add a mobilization fee line item ($${MOBILIZATION}) if acreage < 5
 - Keep line items to 2-4 maximum
 - Duration: 1 acre ~2-4 hours; 5 acres ~1 day; 10 acres ~2 days; 20+ acres ~3-5 days
 - Client message should be professional, plain-spoken, no corporate jargon, no emojis`;
@@ -485,12 +547,167 @@ Rules:
         totalCents:     Math.round(li.qty * li.unitPriceCents),
       }));
 
+      const finalTotalCents = lineItems.reduce((s, li) => s + li.totalCents, 0);
+      const belowMinimum = finalTotalCents < MIN_JOB * 100;
       return {
         title:             parsed.title ?? `${serviceType} - ${acreage} Acres`,
         estimatedDuration: parsed.estimatedDuration ?? "",
         clientMessage:     parsed.clientMessage ?? "",
         lineItems,
-        totalCents: lineItems.reduce((s, li) => s + li.totalCents, 0),
+        totalCents: finalTotalCents,
+        belowMinimum,
+        minimumJobCents: MIN_JOB * 100,
+        breakdown: {
+          baseRatePerAcre: midPerAcre,
+          baseRateLow:     adjLow,
+          baseRateHigh:    adjHigh,
+          terrainMultiplier: terrainMult,
+          accessMultiplier:  accessMult,
+          densityKey,
+          acreage,
+          rawTotalBeforeMinimum: rawTotal,
+          minimumJobApplied: rawTotal < MIN_JOB,
+          mobilizationFee: MOBILIZATION,
+        },
       };
+    }),
+
+  /**
+   * Public deposit session — called from the client portal (no auth).
+   * Accepts portal token so the client can pay without logging in.
+   */
+  publicDepositSession: publicProcedure
+    .input(z.object({
+      token: z.string().min(16),
+      depositPct: z.number().int().min(1).max(100),
+      origin: z.string().optional(),
+    }))
+    .mutation(async ({ input }: { input: { token: string; depositPct: number; origin?: string } }) => {
+      if (!isStripeConfigured()) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Payment not configured" });
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Service unavailable" });
+      const [quote] = await db.select().from(nativeQuotes).where(eq(nativeQuotes.portalToken, input.token)).limit(1);
+      if (!quote) throw new TRPCError({ code: "NOT_FOUND", message: "Quote not found" });
+      const depositCents = Math.round(quote.totalCents * input.depositPct / 100);
+      const stripe = getStripe();
+      const origin = input.origin ?? "https://nolandearth-pymczdcn.manus.space";
+      const session = await stripe.checkout.sessions.create({
+        payment_method_types: ["card"],
+        mode: "payment",
+        line_items: [{
+          price_data: {
+            currency: "usd",
+            product_data: {
+              name: `Deposit — ${quote.title}`,
+              description: `${input.depositPct}% deposit for ${quote.clientName}. Balance due on completion.`,
+            },
+            unit_amount: depositCents,
+          },
+          quantity: 1,
+        }],
+        customer_email: quote.clientEmail ?? undefined,
+        client_reference_id: `nq-${quote.id}`,
+        metadata: {
+          native_quote_id: quote.id.toString(),
+          client_name: quote.clientName,
+          deposit_pct: input.depositPct.toString(),
+          total_cents: quote.totalCents.toString(),
+        },
+        allow_promotion_codes: true,
+        success_url: `${origin}/quote/${input.token}?deposit=success`,
+        cancel_url: `${origin}/quote/${input.token}?deposit=cancelled`,
+      });
+      return { checkoutUrl: session.url };
+    }),
+
+  /**
+   * Public portal lookup — no auth required.
+   * Called by QuotePortal.tsx when the token belongs to a native quote.
+   * Marks portalViewedAt on first view and notifies owner.
+   */
+  getByToken: publicProcedure
+    .input(z.object({ token: z.string().min(16) }))
+    .query(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Service unavailable" });
+      const [quote] = await db
+        .select()
+        .from(nativeQuotes)
+        .where(eq(nativeQuotes.portalToken, input.token))
+        .limit(1);
+      if (!quote) throw new TRPCError({ code: "NOT_FOUND", message: "Quote not found or link has expired." });
+      // Mark first view
+      if (!quote.portalViewedAt) {
+        await db
+          .update(nativeQuotes)
+          .set({ portalViewedAt: new Date(), status: quote.status === "sent" ? "sent" : quote.status })
+          .where(eq(nativeQuotes.id, quote.id));
+        await notifyOwner({
+          title: `Quote Opened — ${quote.clientName}`,
+          content: `${quote.clientName} just opened their quote portal link for "${quote.title}".`,
+        }).catch(() => {/* non-critical */});
+      }
+      const lineItems = (() => {
+        try { return JSON.parse(quote.lineItems ?? "[]"); }
+        catch { return []; }
+      })();
+      return {
+        type: "native" as const,
+        id: quote.id,
+        clientName: quote.clientName,
+        title: quote.title,
+        serviceType: quote.serviceType,
+        acreage: quote.acreage,
+        propertyAddress: quote.propertyAddress,
+        estimatedDuration: quote.estimatedDuration,
+        clientMessage: quote.clientMessage,
+        lineItems,
+        totalCents: quote.totalCents,
+        totalFormatted: new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(quote.totalCents / 100),
+        status: quote.status,
+        clientAction: quote.clientAction,
+        clientActionAt: quote.clientActionAt,
+        depositPaidCents: quote.depositPaidCents,
+        depositPaidAt: quote.depositPaidAt,
+        convertedToJobAt: quote.convertedToJobAt,
+        portalViewedAt: quote.portalViewedAt,
+        portalSentAt: quote.portalSentAt,
+        signedAt: quote.signedAt,
+        createdAt: quote.createdAt,
+      };
+    }),
+
+  /**
+   * Client submits an action (approve / decline / changes_requested) on a native quote portal.
+   */
+  portalAction: publicProcedure
+    .input(z.object({
+      token: z.string().min(16),
+      action: z.enum(["approved", "declined", "changes_requested"]),
+      note: z.string().max(2000).optional(),
+    }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Service unavailable" });
+      const [quote] = await db
+        .select()
+        .from(nativeQuotes)
+        .where(eq(nativeQuotes.portalToken, input.token))
+        .limit(1);
+      if (!quote) throw new TRPCError({ code: "NOT_FOUND", message: "Quote not found or link has expired." });
+      await db
+        .update(nativeQuotes)
+        .set({
+          clientAction: input.action,
+          clientActionAt: new Date(),
+          ...(input.action === "changes_requested" ? { changeRequestNote: input.note ?? null, changeRequestAt: new Date() } : {}),
+          ...(input.action === "declined" ? { declineNote: input.note ?? null } : {}),
+        })
+        .where(eq(nativeQuotes.id, quote.id));
+      await notifyOwner({
+        title: `Quote ${input.action === "approved" ? "Approved" : input.action === "declined" ? "Declined" : "Changes Requested"} — ${quote.clientName}`,
+        content: `${quote.clientName} ${input.action === "approved" ? "approved" : input.action === "declined" ? "declined" : "requested changes on"} the quote "${quote.title}".${input.note ? " Note: " + input.note : ""}`,
+      }).catch(() => {/* non-critical */});
+      return { success: true };
     }),
 });

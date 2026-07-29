@@ -1,7 +1,8 @@
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/NotFound";
-import { Route, Switch } from "wouter";
+import { Route, Switch, useParams } from "wouter";
+import { trpc } from "@/lib/trpc";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import ScrollToTop from "./components/ScrollToTop";
@@ -57,7 +58,8 @@ const OpsRoutePlanner    = lazy(() => import("./pages/ops/WeighStationPlanner"))
 const PaymentPortal  = lazy(() => import("./pages/portal/PaymentPortal"));
 const PaymentSuccess = lazy(() => import("./pages/portal/PaymentSuccess"));
 const PaymentCancel  = lazy(() => import("./pages/portal/PaymentCancel"));
-const QuotePortal    = lazy(() => import("./pages/QuotePortal"));
+const QuotePortal         = lazy(() => import("./pages/QuotePortal"));
+const NativeQuotePortal   = lazy(() => import("./pages/NativeQuotePortal"));
 
 // ── Public pages (eagerly loaded — fast first paint for visitors) ─────────────
 import Home from "./pages/Home";
@@ -159,6 +161,27 @@ import {
   MadisonCountyPage,
   WeakleyCountyPage,
 } from "./pages/CountyPages";
+
+// ── Smart portal router: tries native quotes first, falls back to legacy ─────
+function QuotePortalRouter() {
+  const params = useParams<{ token: string }>();
+  const token = params.token ?? "";
+  const { data, isLoading, error } = trpc.nativeQuotes.getByToken.useQuery(
+    { token },
+    { enabled: !!token, retry: false }
+  );
+  if (isLoading) {
+    return (
+      <div style={{ minHeight: "100vh", backgroundColor: "#0a0a0a", display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <div style={{ color: "rgba(240,237,230,0.4)", fontFamily: "'Lato', sans-serif", fontSize: "0.875rem", letterSpacing: "0.1em" }}>Loading...</div>
+      </div>
+    );
+  }
+  // If found in nativeQuotes, render the native portal
+  if (data) return <NativeQuotePortal />;
+  // Otherwise fall back to the legacy distanceQuotes portal
+  return <QuotePortal />;
+}
 
 // Minimal loading fallback for lazy routes
 function OpsLoading() {
@@ -419,8 +442,9 @@ function Router() {
       </Route>
 
       {/* Client quote portal — token-authenticated, no login required */}
+      {/* QuotePortalRouter checks nativeQuotes first, falls back to legacy distanceQuotes */}
       <Route path="/quote/:token">
-        <Suspense fallback={<OpsLoading />}><QuotePortal /></Suspense>
+        <Suspense fallback={<OpsLoading />}><QuotePortalRouter /></Suspense>
       </Route>
       {/* Customer payment portal — lazy-loaded */}
       <Route path="/portal">

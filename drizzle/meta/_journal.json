@@ -701,6 +701,41 @@
       "when": 1785253328135,
       "tag": "0099_dusty_archangel",
       "breakpoints": true
+    },
+    {
+      "idx": 100,
+      "version": "5",
+      "when": 1785275148776,
+      "tag": "0100_late_human_cannonball",
+      "breakpoints": true
+    },
+    {
+      "idx": 101,
+      "version": "5",
+      "when": 1785276100301,
+      "tag": "0101_loving_nick_fury",
+      "breakpoints": true
+    },
+    {
+      "idx": 102,
+      "version": "7",
+      "when": 1785276147510,
+      "tag": "0101_loving_nick_fury",
+      "breakpoints": true
+    },
+    {
+      "idx": 103,
+      "version": "5",
+      "when": 1785278475540,
+      "tag": "0103_lucky_the_call",
+      "breakpoints": true
+    },
+    {
+      "idx": 104,
+      "version": "5",
+      "when": 1785286804615,
+      "tag": "0104_skinny_luckman",
+      "breakpoints": true
     }
   ]
 }

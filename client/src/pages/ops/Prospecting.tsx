@@ -5,7 +5,7 @@
  *   Tier 2: Follow-up reminders, Convert to Lead button
  *   Tier 3: Sort, source stats, bulk dismiss, archived tab, auto-archive display
  */
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -21,6 +21,16 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import {
   Radar,
   ExternalLink,
@@ -43,6 +53,7 @@ import {
   Facebook,
   Sparkles,
   Copy,
+  Zap,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -71,7 +82,7 @@ const MARGIN_COLORS: Record<string, string> = {
 };
 
 type ProspectStatus = "new" | "contacted" | "dismissed";
-type SortKey = "age" | "margin" | "source" | "location";
+type SortKey = "age" | "margin" | "score" | "source" | "location";
 type TabView = "active" | "archived";
 
 interface Prospect {
@@ -89,6 +100,7 @@ interface Prospect {
   marginTier: string | null;
   estimatedAcres: string | null;
   notes: string | null;
+  fitScore: number | null;
   urgencyFlag: boolean;
   archivedAt: Date | null;
   lastContactedAt: Date | null;
@@ -122,6 +134,16 @@ export default function Prospecting() {
   const [editingNotesId, setEditingNotesId] = useState<number | null>(null);
   const [notesEditValue, setNotesEditValue] = useState("");
   const [convertingId, setConvertingId] = useState<number | null>(null);
+  const [convertingClientId, setConvertingClientId] = useState<number | null>(null);
+  const [confirmClientProspect, setConfirmClientProspect] = useState<Prospect | null>(null);
+  const [selectedClientIds, setSelectedClientIds] = useState<Set<number>>(new Set());
+  const [batchConvertingClients, setBatchConvertingClients] = useState(false);
+  const [minFitScore, setMinFitScore] = useState<0 | 4 | 6 | 8>(0);
+  // "all" | "green" (8+) | "yellow" (6-7) | "unscored" (no fitScore)
+  const [fitColorFilter, setFitColorFilter] = useState<"all" | "green" | "yellow" | "unscored">("all");
+  const [scanBaselineCount, setScanBaselineCount] = useState<number | null>(null);
+  const [lastManualScanDelta, setLastManualScanDelta] = useState<number | null>(null);
+  const [awaitingScanResults, setAwaitingScanResults] = useState(false);
   const [fbOutreachTarget, setFbOutreachTarget] = useState<Prospect | null>(null);
   const [fbOutreachVariations, setFbOutreachVariations] = useState<string[]>([]);
   const [fbOutreachSelectedIdx, setFbOutreachSelectedIdx] = useState(0);
@@ -140,6 +162,10 @@ export default function Prospecting() {
     { status: filter === "all" ? undefined : filter },
     { refetchInterval: 60_000 }
   );
+
+  const { data: newCountData } = trpc.ops.prospecting.newCount.useQuery(undefined, {
+    refetchInterval: 60_000,
+  });
 
   const { data: sourceStats = [] } = trpc.ops.prospecting.getSourceStats.useQuery(undefined, {
     refetchInterval: 120_000,
@@ -208,6 +234,71 @@ export default function Prospecting() {
     },
   });
 
+  const convertToClient = trpc.nativeClients.create.useMutation({
+    onSuccess: () => {
+      utils.nativeClients.list.invalidate();
+      setConvertingClientId(null);
+      setConfirmClientProspect(null);
+      toast.success("Prospect added to Clients.");
+    },
+    onError: (err) => {
+      setConvertingClientId(null);
+      toast.error(err.message);
+    },
+  });
+
+  const deleteClient = trpc.nativeClients.delete.useMutation({
+    onSuccess: () => utils.nativeClients.list.invalidate(),
+  });
+
+  async function batchConvertToClients() {
+    setBatchConvertingClients(true);
+    const targets = filteredActive.filter(p => selectedClientIds.has(p.id));
+    const createdIds: number[] = [];
+    for (const p of targets) {
+      const email = p.contactInfo?.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i)?.[0];
+      const phone = p.contactInfo?.match(/\+?[\d\s\-().]{10,}/)?.[0]?.trim();
+      try {
+        const result = await convertToClient.mutateAsync({
+          name: p.contactName ?? p.source,
+          email: email || undefined,
+          phone: phone || undefined,
+          address: p.location ?? undefined,
+          notes: [
+            p.summary,
+            p.notes ? `Prospect notes: ${p.notes}` : null,
+            p.postSnippet ? `Original post: ${p.postSnippet}` : null,
+          ].filter(Boolean).join("\n\n"),
+        });
+        if (result?.id) createdIds.push(result.id);
+      } catch {
+        // individual errors silently skipped; final toast covers the count
+      }
+    }
+    setBatchConvertingClients(false);
+    setSelectedClientIds(new Set());
+    utils.nativeClients.list.invalidate();
+    const successCount = createdIds.length;
+    toast.success(
+      `${successCount} of ${targets.length} prospect${targets.length === 1 ? "" : "s"} added to Clients.`,
+      {
+        duration: 8000,
+        action: createdIds.length > 0
+          ? {
+              label: "Undo",
+              onClick: async () => {
+                for (const id of createdIds) {
+                  try { await deleteClient.mutateAsync({ id }); } catch { /* ignore */ }
+                }
+                utils.nativeClients.list.invalidate();
+                toast.success(`Removed ${createdIds.length} client${createdIds.length === 1 ? "" : "s"}.`);
+              },
+            }
+          : undefined,
+      }
+    );
+  }
+
   const generateFbOutreach = trpc.ops.prospecting.generateFbOutreach.useMutation({
     onSuccess: (res) => {
       const vars = res.variations ?? [];
@@ -244,6 +335,17 @@ export default function Prospecting() {
     onError: (err) => toast.error(err.message),
   });
 
+  const runScan = trpc.ops.prospecting.runScan.useMutation({
+    onSuccess: () => {
+      setAwaitingScanResults(true);
+      toast.success("Scan started. New prospects will appear within a few minutes.");
+    },
+    onError: (err) => {
+      setAwaitingScanResults(false);
+      setScanBaselineCount(null);
+      toast.error("Failed to start scan: " + err.message);
+    },
+  });
   const appendToNotes = trpc.ops.prospecting.appendToNotes.useMutation({
     onSuccess: () => {
       invalidateAll();
@@ -324,6 +426,8 @@ export default function Prospecting() {
     switch (sortKey) {
       case "margin":
         return list.sort((a, b) => (marginOrder[a.marginTier ?? ""] ?? 3) - (marginOrder[b.marginTier ?? ""] ?? 3));
+      case "score":
+        return list.sort((a, b) => (b.fitScore ?? 0) - (a.fitScore ?? 0));
       case "source":
         return list.sort((a, b) => a.source.localeCompare(b.source));
       case "location":
@@ -334,11 +438,34 @@ export default function Prospecting() {
     }
   }, [activeProspects, sortKey]);
 
-  const displayList = tabView === "archived" ? archivedProspects : sortedActive;
+  const filteredActive = useMemo(() => {
+    return sortedActive.filter(p => {
+      // numeric min-score gate
+      if (minFitScore > 0 && (p.fitScore ?? 0) < minFitScore) return false;
+      // color-tier gate
+      if (fitColorFilter === "green" && (p.fitScore == null || p.fitScore < 8)) return false;
+      if (fitColorFilter === "yellow" && (p.fitScore == null || p.fitScore < 6 || p.fitScore >= 8)) return false;
+      if (fitColorFilter === "unscored" && p.fitScore != null) return false;
+      return true;
+    });
+  }, [sortedActive, minFitScore, fitColorFilter]);
 
-  const newCount = activeProspects.filter(p => p.status === "new").length;
+  const displayList = tabView === "archived" ? archivedProspects : filteredActive;
+
+  const newCount = newCountData?.count ?? activeProspects.filter(p => p.status === "new").length;
   const contactedCount = activeProspects.filter(p => p.status === "contacted").length;
   const dismissedCount = activeProspects.filter(p => p.status === "dismissed").length;
+
+  useEffect(() => {
+    if (!awaitingScanResults || scanBaselineCount == null) return;
+    const delta = newCount - scanBaselineCount;
+    if (delta > 0) {
+      setLastManualScanDelta(delta);
+      setAwaitingScanResults(false);
+      setScanBaselineCount(null);
+      toast.success(`Last scan found ${delta} new prospect${delta === 1 ? "" : "s"}.`);
+    }
+  }, [awaitingScanResults, scanBaselineCount, newCount]);
 
   return (
     <div className="p-6 space-y-6 max-w-5xl mx-auto">
@@ -351,24 +478,40 @@ export default function Prospecting() {
             <p className="text-sm text-zinc-400">AI-discovered leads from Craigslist, Facebook, Nextdoor, and more</p>
           </div>
         </div>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => refetch()}
-          className="border-zinc-700 text-zinc-300 hover:text-white"
-        >
-          <RefreshCw className="h-4 w-4 mr-2" />
-          Refresh
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              setScanBaselineCount(newCount);
+              setLastManualScanDelta(null);
+              runScan.mutate();
+            }}
+            disabled={runScan.isPending}
+            className="border-orange-700 text-orange-300 hover:bg-orange-900/30 hover:text-orange-200"
+            title="Trigger a manual AI scan now"
+          >
+            <Zap className="h-4 w-4 mr-2" />
+            {runScan.isPending ? "Starting..." : "Run Scan"}
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => refetch()}
+            className="border-zinc-700 text-zinc-300 hover:text-white"
+          >
+            <RefreshCw className="h-4 w-4 mr-2" />
+            Refresh
+          </Button>
+        </div>
       </div>
 
       {/* Info banner */}
       <div className="flex items-start gap-3 rounded-lg border border-zinc-700 bg-zinc-800/50 p-4 text-sm text-zinc-300">
         <Info className="h-4 w-4 mt-0.5 shrink-0 text-orange-400" />
         <span>
-          The AI scans public sources daily for people in Tennessee asking about land management, forestry mulching, brush removal, or overgrown property.
-          New prospects appear here automatically. Review each one, fire a reach-out message, or dismiss it.
-          The cron runs every morning — check back daily.
+          The AI scans 30 sources daily: Craigslist (Nashville, Memphis, Knoxville, Chattanooga, Clarksville), Facebook Marketplace, and Google — looking for people in Tennessee who need land clearing, forestry mulching, brush removal, cedar thicket removal, or pasture reclaimed.
+          Each prospect is scored 1-10 for fit. Sort by Fit Score to work the best leads first. Use "Run Scan" to trigger a manual scan on demand.
         </span>
       </div>
 
@@ -398,7 +541,7 @@ export default function Prospecting() {
       )}
 
       {/* Stats row */}
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="rounded-lg border border-zinc-700 bg-zinc-800/60 p-4 text-center">
           <div className="text-2xl font-bold text-orange-400">{newCount}</div>
           <div className="text-xs text-zinc-400 mt-1">New</div>
@@ -410,6 +553,14 @@ export default function Prospecting() {
         <div className="rounded-lg border border-zinc-700 bg-zinc-800/60 p-4 text-center">
           <div className="text-2xl font-bold text-zinc-400">{dismissedCount}</div>
           <div className="text-xs text-zinc-400 mt-1">Dismissed</div>
+        </div>
+        <div className="rounded-lg border border-orange-800/70 bg-orange-950/20 p-4 text-center">
+          <div className="text-2xl font-bold text-orange-300">
+            {awaitingScanResults ? "..." : lastManualScanDelta != null ? `+${lastManualScanDelta}` : "—"}
+          </div>
+          <div className="text-xs text-zinc-400 mt-1">
+            {awaitingScanResults ? "Waiting on scan" : "Last scan found"}
+          </div>
         </div>
       </div>
 
@@ -476,6 +627,40 @@ export default function Prospecting() {
               ))}
             </div>
             <div className="flex items-center gap-1 bg-zinc-800 border border-zinc-700 rounded px-2 py-1">
+              <span className="text-[11px] uppercase tracking-wide text-zinc-500">Min score</span>
+              <select
+                value={String(minFitScore)}
+                onChange={e => setMinFitScore(Number(e.target.value) as 0 | 4 | 6 | 8)}
+                className="bg-transparent text-xs text-zinc-300 outline-none cursor-pointer"
+              >
+                <option value="0">All</option>
+                <option value="4">4+</option>
+                <option value="6">6+</option>
+                <option value="8">8+</option>
+              </select>
+            </div>
+            <div className="flex items-center gap-1 bg-zinc-800 border border-zinc-700 rounded px-2 py-1">
+              <span
+                className={cn(
+                  "inline-block w-2.5 h-2.5 rounded-full mr-1",
+                  fitColorFilter === "green" ? "bg-green-500" :
+                  fitColorFilter === "yellow" ? "bg-yellow-400" :
+                  fitColorFilter === "unscored" ? "bg-zinc-500" :
+                  "bg-zinc-600"
+                )}
+              />
+              <select
+                value={fitColorFilter}
+                onChange={e => setFitColorFilter(e.target.value as "all" | "green" | "yellow" | "unscored")}
+                className="bg-transparent text-xs text-zinc-300 outline-none cursor-pointer"
+              >
+                <option value="all">All tiers</option>
+                <option value="green">Green (8+)</option>
+                <option value="yellow">Yellow (6-7)</option>
+                <option value="unscored">Unscored</option>
+              </select>
+            </div>
+            <div className="flex items-center gap-1 bg-zinc-800 border border-zinc-700 rounded px-2 py-1">
               <ArrowUpDown className="h-3 w-3 text-zinc-400" />
               <select
                 value={sortKey}
@@ -483,6 +668,7 @@ export default function Prospecting() {
                 className="bg-transparent text-xs text-zinc-300 outline-none cursor-pointer"
               >
                 <option value="age">Newest</option>
+                <option value="score">Fit Score</option>
                 <option value="margin">Margin</option>
                 <option value="source">Source</option>
                 <option value="location">Location</option>
@@ -492,18 +678,30 @@ export default function Prospecting() {
         )}
       </div>
 
-      {/* Bulk dismiss bar */}
+      {/* Bulk action bar */}
       {selectedIds.size > 0 && tabView === "active" && (
-        <div className="flex items-center justify-between rounded-lg border border-zinc-600 bg-zinc-800/80 px-4 py-2">
+        <div className="flex items-center justify-between rounded-lg border border-zinc-600 bg-zinc-800/80 px-4 py-2 flex-wrap gap-2">
           <span className="text-sm text-zinc-300">{selectedIds.size} selected</span>
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-wrap">
             <Button
               size="sm"
               variant="outline"
-              onClick={() => setSelectedIds(new Set())}
+              onClick={() => { setSelectedIds(new Set()); setSelectedClientIds(new Set()); }}
               className="border-zinc-600 text-zinc-400 h-7 text-xs"
             >
               Clear
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => {
+                setSelectedClientIds(new Set(selectedIds));
+              }}
+              disabled={batchConvertingClients}
+              className="border-cyan-700 text-cyan-300 hover:text-white h-7 text-xs"
+            >
+              <UserPlus className="h-3 w-3 mr-1.5" />
+              Convert to Clients
             </Button>
             <Button
               size="sm"
@@ -526,6 +724,8 @@ export default function Prospecting() {
           <p className="text-zinc-400 text-sm">
             {tabView === "archived"
               ? "No archived prospects."
+              : minFitScore > 0
+              ? `No prospects match the current filters (${minFitScore}+ fit score).`
               : filter === "all"
               ? "No prospects yet. The AI cron runs daily — check back tomorrow morning."
               : `No ${filter} prospects.`}
@@ -539,13 +739,21 @@ export default function Prospecting() {
             const isSelected = selectedIds.has(p.id);
             const messengerUrl = p.profileUrl ? buildMessengerLink(p.profileUrl) : null;
 
+            const fitBorderClass =
+              p.fitScore != null && p.fitScore >= 8
+                ? "border-green-600/70"
+                : p.fitScore != null && p.fitScore >= 6
+                ? "border-yellow-500/60"
+                : "border-zinc-700";
+
             return (
               <Card
                 key={p.id}
                 className={cn(
-                  "border-zinc-700 bg-zinc-800/60 transition-colors",
+                  "bg-zinc-800/60 transition-colors border-2",
+                  fitBorderClass,
                   isSelected && "border-orange-600/60 bg-zinc-800/80",
-                  p.urgencyFlag && "border-l-2 border-l-red-500"
+                  p.urgencyFlag && "border-l-4 border-l-red-500"
                 )}
               >
                 <CardHeader className="pb-2">
@@ -584,6 +792,20 @@ export default function Prospecting() {
                         <span className="flex items-center gap-1 text-xs font-medium text-red-400 bg-red-900/30 border border-red-700 px-2 py-0.5 rounded">
                           <Flame className="h-3 w-3" />
                           Urgent
+                        </span>
+                      )}
+                      {p.fitScore != null && (
+                        <span
+                          className={cn(
+                            "text-xs font-bold px-2 py-0.5 rounded border",
+                            p.fitScore >= 9 ? "bg-green-900/40 text-green-300 border-green-700" :
+                            p.fitScore >= 7 ? "bg-emerald-900/30 text-emerald-400 border-emerald-700" :
+                            p.fitScore >= 5 ? "bg-yellow-900/30 text-yellow-400 border-yellow-700" :
+                            "bg-zinc-800 text-zinc-500 border-zinc-600"
+                          )}
+                          title={`AI fit score: ${p.fitScore}/10`}
+                        >
+                          {p.fitScore}/10
                         </span>
                       )}
 
@@ -780,6 +1002,17 @@ export default function Prospecting() {
                             Restore
                           </Button>
                         )}
+
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => setConfirmClientProspect(p)}
+                          disabled={convertingClientId === p.id && convertToClient.isPending}
+                          className="border-cyan-700 text-cyan-300 hover:text-white h-8 text-xs"
+                        >
+                          <UserPlus className="h-3.5 w-3.5 mr-1.5" />
+                          {convertingClientId === p.id && convertToClient.isPending ? "Converting..." : "Convert to Client"}
+                        </Button>
 
                         <Button
                           size="sm"
@@ -1147,6 +1380,102 @@ export default function Prospecting() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Convert to Client confirmation modal */}
+      <AlertDialog
+        open={confirmClientProspect !== null}
+        onOpenChange={(open) => { if (!open) setConfirmClientProspect(null); }}
+      >
+        <AlertDialogContent className="bg-zinc-900 border-zinc-700 text-zinc-100">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Add to Clients?</AlertDialogTitle>
+            <AlertDialogDescription className="text-zinc-400 space-y-1">
+              {confirmClientProspect && (
+                <>
+                  <span className="block">
+                    <strong className="text-zinc-200">{confirmClientProspect.contactName ?? confirmClientProspect.source}</strong>
+                    {confirmClientProspect.location && (
+                      <> &mdash; {confirmClientProspect.location}</>
+                    )}
+                  </span>
+                  {confirmClientProspect.fitScore != null && (
+                    <span className="block">Fit score: <strong className="text-zinc-200">{confirmClientProspect.fitScore}/10</strong></span>
+                  )}
+                  {(() => {
+                    const email = confirmClientProspect.contactInfo?.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i)?.[0];
+                    const phone = confirmClientProspect.contactInfo?.match(/\+?[\d\s\-().]{10,}/)?.[0]?.trim();
+                    return (email || phone) ? (
+                      <span className="block">
+                        {email && <span className="text-zinc-300 mr-3">{email}</span>}
+                        {phone && <span className="text-zinc-300">{phone}</span>}
+                      </span>
+                    ) : null;
+                  })()}
+                  <span className="block mt-1 text-zinc-500 text-xs line-clamp-3">{confirmClientProspect.summary}</span>
+                </>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="border-zinc-700 text-zinc-300">
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (!confirmClientProspect) return;
+                const p = confirmClientProspect;
+                const email = p.contactInfo?.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i)?.[0];
+                const phone = p.contactInfo?.match(/\+?[\d\s\-().]{10,}/)?.[0]?.trim();
+                setConvertingClientId(p.id);
+                convertToClient.mutate({
+                  name: p.contactName ?? p.source,
+                  email: email || undefined,
+                  phone: phone || undefined,
+                  address: p.location ?? undefined,
+                  notes: [
+                    p.summary,
+                    p.notes ? `Prospect notes: ${p.notes}` : null,
+                    p.postSnippet ? `Original post: ${p.postSnippet}` : null,
+                  ].filter(Boolean).join("\n\n"),
+                });
+              }}
+              className="bg-cyan-700 hover:bg-cyan-600 text-white"
+            >
+              Add to Clients
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Batch Convert to Clients confirmation */}
+      <AlertDialog
+        open={selectedClientIds.size > 0}
+        onOpenChange={(open) => { if (!open) setSelectedClientIds(new Set()); }}
+      >
+        <AlertDialogContent className="bg-zinc-900 border-zinc-700 text-zinc-100">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Convert {selectedClientIds.size} prospect{selectedClientIds.size === 1 ? "" : "s"} to Clients?</AlertDialogTitle>
+            <AlertDialogDescription className="text-zinc-400">
+              Each selected prospect will be added as a new Client record. This cannot be undone automatically.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel
+              className="border-zinc-700 text-zinc-300"
+              onClick={() => setSelectedClientIds(new Set())}
+            >
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={batchConvertToClients}
+              disabled={batchConvertingClients}
+              className="bg-cyan-700 hover:bg-cyan-600 text-white"
+            >
+              {batchConvertingClients ? "Converting..." : `Add ${selectedClientIds.size} to Clients`}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

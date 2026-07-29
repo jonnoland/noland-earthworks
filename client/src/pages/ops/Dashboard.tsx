@@ -1,7 +1,7 @@
 /**
  * Dashboard Page — Noland Earthworks
- * Full Jobber sync: Jobs, Invoices, Quotes, and Requests all pulled from Jobber.
- * Local jobs table is a secondary fallback when Jobber is not connected.
+ * Dashboard — Noland Earthworks
+ * Uses native jobs, invoices, quotes, and leads data.
  */
 
 import { useState, useEffect, useMemo, useRef } from "react";
@@ -13,7 +13,7 @@ import { trpc } from "@/lib/trpc";
 import {
   DollarSign, Briefcase,
   Users, Clock, ArrowUpRight, MapPin, Plus, ChevronRight, Inbox,
-  CalendarDays, CalendarCheck, TrendingUp, Gauge, Activity, ExternalLink, Flag,
+  CalendarDays, CalendarCheck, TrendingUp, Gauge, Activity, Flag,
   FileText, Receipt, AlertCircle, CheckCircle2, PhoneCall, Star, MessageSquare,
   Sparkles, Loader2, RefreshCw, Zap, Target, Phone, Mail, Share2, CheckSquare,
 } from "lucide-react";
@@ -172,7 +172,7 @@ function SectionHeader({ title, badge, sub, href, external }: {
         external ? (
           <a href={href} target="_blank" rel="noopener noreferrer"
             className="text-xs text-primary hover:text-primary/80 flex items-center gap-1 transition-colors cursor-pointer">
-            View in Jobber <ExternalLink className="w-3 h-3" />
+            View all <ChevronRight className="w-3 h-3" />
           </a>
         ) : (
           <Link href={href}>
@@ -247,22 +247,17 @@ export default function Dashboard() {
   const { data: leadActionPlan, isFetching: leadPlanLoading, refetch: refetchLeadPlan } =
     trpc.ops.leads.generateLeadActionPlan.useQuery(undefined, { enabled: false, retry: false });
 
-  // ─── Jobber data — primary source of truth ───────────────────────────────
-  const { data: jobberJobsRaw, isError: jobberJobsError } = trpc.jobber.jobs.useQuery(
-    { first: 100 }, { retry: false, refetchInterval: 60000 }
-  );
-  const { data: jobberInvoicesRaw, isError: jobberInvoicesError } = trpc.jobber.invoices.useQuery(
-    { first: 50 }, { retry: false, refetchInterval: 60000 }
-  );
-  const { data: jobberQuotesRaw, isError: jobberQuotesError } = trpc.jobber.quotes.useQuery(
-    { first: 50 }, { retry: false, refetchInterval: 60000 }
-  );
-  const { data: jobberRequestsRaw, isError: jobberRequestsError } = trpc.jobber.requests.useQuery(
-    { first: 50 }, { retry: false, refetchInterval: 60000 }
-  );
-
-  // ─── Local jobs (fallback) ────────────────────────────────────────────────
+  // ─── Native data sources (Jobber removed) ───────────────────────────────
+  const jobberJobsError = false;
+  const jobberJobsRaw: undefined = undefined;
+  const jobberInvoicesRaw: undefined = undefined;
+  const jobberQuotesRaw: undefined = undefined;
+  const jobberRequestsRaw: undefined = undefined;
   const { data: localJobs = [] } = trpc.ops.jobs.list.useQuery(undefined, { refetchInterval: 30000 });
+  const { data: nativeJobsList = [] } = trpc.nativeJobs.list.useQuery({}, { refetchInterval: 30000 });
+  const { data: nativeInvoicesList = [] } = trpc.nativeJobs.listInvoices.useQuery({}, { refetchInterval: 60000 });
+  const { data: nativeQuotesData } = trpc.nativeQuotes.list.useQuery({ limit: 100 }, { refetchInterval: 60000 });
+  const nativeQuotesList = nativeQuotesData?.quotes ?? [];
 
   // ─── Local leads (for pipeline section) ────────────────────────────────────────────
   const { data: leads = [] } = trpc.ops.leads.list.useQuery(undefined, { refetchInterval: 15000 });
@@ -285,39 +280,31 @@ export default function Dashboard() {
     prevLeadCount.current = leads.length;
   }, [leads.length]);
 
-  const jobberConnected = !jobberJobsError && jobberJobsRaw !== undefined;
-
-  // ── Jobber token status (for expiry alert banner) ─────────────────────────
-  const { data: integrationStatus } = trpc.ops.settings.getIntegrationStatus.useQuery(undefined, {
-    staleTime: 2 * 60 * 1000,   // re-check every 2 minutes
-    refetchInterval: 2 * 60 * 1000,
-    retry: false,
-  });
-  const jobberTokenStatus = integrationStatus?.jobber.tokenStatus ?? null;
-  const jobberExpiresAt   = integrationStatus?.jobber.expiresAt   ?? null;
-  const { data: jobberAuthUrl } = trpc.jobber.getAuthUrl.useQuery(undefined, { staleTime: 60_000 });
+  const jobberConnected = false;
+  const jobberTokenStatus: null = null;
+  const jobberExpiresAt: null = null;
+  const jobberAuthUrl: undefined = undefined;
 
   // ─── Normalize Jobber jobs ────────────────────────────────────────────────
-  const jobberJobs = useMemo<NormalizedJob[]>(() => {
-    const nodes = jobberJobsRaw?.nodes ?? [];
-    return nodes.map((j: any) => ({
-      id: `jobber-${j.id}`,
-      client: j.client?.name ?? "Unknown Client",
-      title: j.title ?? `Job #${j.jobNumber}`,
-      status: mapJobberStatus(j.jobStatus),
+  // Native jobs normalization
+  const jobberJobs: NormalizedJob[] = [];
+  const normalizedNativeJobs = useMemo<NormalizedJob[]>(() => {
+    return nativeJobsList.map((j: any) => ({
+      id: `native-${j.id}`,
+      client: j.client ?? "Unknown",
+      title: j.title ?? j.client ?? "Untitled Job",
+      status: j.status ?? "scheduled",
       jobType: j.jobType ?? undefined,
-      scheduledDate: j.startAt ? new Date(j.startAt) : null,
-      address: [j.property?.address?.street1, j.property?.address?.city]
-        .filter(Boolean).join(", ") || undefined,
-      totalPrice: j.total != null ? Number(j.total) : null,
-      acres: null,
+      scheduledDate: j.scheduledDate ? new Date(j.scheduledDate) : null,
+      address: j.address ?? undefined,
+      totalPrice: j.totalPrice != null ? Number(j.totalPrice) : null,
+      acres: j.acres != null ? Number(j.acres) : null,
       crewDays: null,
-      source: "jobber" as const,
-      jobberJobNumber: j.jobNumber,
+      source: "local" as const,
+      isHighPriority: false,
+      rescheduledAt: null,
     }));
-  }, [jobberJobsRaw]);
-
-  // ─── Normalize local jobs ─────────────────────────────────────────────────
+  }, [nativeJobsList]);
   const normalizedLocalJobs = useMemo<NormalizedJob[]>(() => {
     return localJobs.map((j) => ({
       id: `local-${j.id}`,
@@ -335,64 +322,42 @@ export default function Dashboard() {
       rescheduledAt: (j as any).rescheduledAt ? new Date((j as any).rescheduledAt) : null,
     }));
   }, [localJobs]);
-
   const allJobs = useMemo<NormalizedJob[]>(() => {
-    if (jobberJobs.length > 0) return jobberJobs;
+    if (normalizedNativeJobs.length > 0) return normalizedNativeJobs;
     return normalizedLocalJobs;
-  }, [jobberJobs, normalizedLocalJobs]);
+  }, [normalizedNativeJobs, normalizedLocalJobs]);
 
   // ─── Jobber invoices ──────────────────────────────────────────────────────
-  const invoices = useMemo(() => {
-    return (jobberInvoicesRaw?.nodes ?? []) as any[];
-  }, [jobberInvoicesRaw]);
-
+  // Native invoices
   const openInvoices = useMemo(() =>
-    invoices.filter((inv: any) => !["PAID", "BAD_DEBT", "DRAFT"].includes(inv.invoiceStatus)),
-    [invoices]
+    nativeInvoicesList.filter((inv: any) => inv.status !== "paid" && inv.status !== "void"),
+    [nativeInvoicesList]
   );
-
-  const overdueInvoices = useMemo(() =>
-    invoices.filter((inv: any) => inv.invoiceStatus === "OVERDUE"),
-    [invoices]
-  );
-
-  const paidThisMonth = useMemo(() => {
-    const now = new Date();
-    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-    return invoices.filter((inv: any) =>
-      inv.invoiceStatus === "PAID" &&
-      inv.issuedDate && new Date(inv.issuedDate) >= monthStart
-    );
-  }, [invoices]);
-
+  const overdueInvoices: any[] = [];
   const outstandingBalance = useMemo(() =>
-    openInvoices.reduce((s: number, inv: any) => s + Number(inv.amounts?.invoiceBalance ?? 0), 0),
+    openInvoices.reduce((s: number, inv: any) => s + Math.max(0, Number(inv.totalCents ?? 0) - Number(inv.depositCents ?? 0)) / 100, 0),
     [openInvoices]
   );
-
-  const paidThisMonthTotal = useMemo(() =>
-    paidThisMonth.reduce((s: number, inv: any) => s + Number(inv.amounts?.total ?? 0), 0),
-    [paidThisMonth]
-  );
+  const paidThisMonthTotal = useMemo(() => {
+    const now = new Date();
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    return nativeInvoicesList
+      .filter((inv: any) => inv.status === "paid" && inv.paidAt && new Date(inv.paidAt) >= monthStart)
+      .reduce((s: number, inv: any) => s + Number(inv.totalCents ?? 0) / 100, 0);
+  }, [nativeInvoicesList]);
 
   // ─── Jobber quotes ────────────────────────────────────────────────────────
-  const quotes = useMemo(() => {
-    return (jobberQuotesRaw?.nodes ?? []) as any[];
-  }, [jobberQuotesRaw]);
-
+  // Native quotes
   const openQuotes = useMemo(() =>
-    quotes.filter((q: any) => !["ARCHIVED", "CONVERTED_TO_JOB", "DRAFT"].includes(q.quoteStatus)),
-    [quotes]
+    nativeQuotesList.filter((q: any) => !["archived", "converted", "declined"].includes(q.status ?? "")),
+    [nativeQuotesList]
   );
 
   // ─── Jobber requests ──────────────────────────────────────────────────────
-  const requests = useMemo(() => {
-    return (jobberRequestsRaw?.nodes ?? []) as any[];
-  }, [jobberRequestsRaw]);
-
+  // Open leads pipeline
   const openRequests = useMemo(() =>
-    requests.filter((r: any) => !["CONVERTED", "ARCHIVED"].includes(r.requestStatus)),
-    [requests]
+    leads.filter(l => !["won", "lost", "converted"].includes(l.stage)),
+    [leads]
   );
 
   // ─── KPIs ─────────────────────────────────────────────────────────────────
@@ -403,10 +368,8 @@ export default function Dashboard() {
       j.status === "scheduled" || (j.scheduledDate && j.status !== "completed" && j.status !== "paid" && j.status !== "cancelled")
     ).length;
 
-    // Leads: Jobber requests if connected, otherwise local leads
-    const openLeads = jobberConnected
-      ? openRequests.length
-      : leads.filter(l => !["won", "lost", "converted"].includes(l.stage)).length;
+    // Leads: from native leads pipeline
+    const openLeads = leads.filter(l => !["won", "lost", "converted"].includes(l.stage)).length;
 
     const now = new Date();
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
@@ -414,7 +377,7 @@ export default function Dashboard() {
       const d = j.scheduledDate;
       return d && d >= monthStart && d <= now;
     });
-    const revenueThisMonth = jobberConnected
+    const revenueThisMonth = paidThisMonthTotal > 0
       ? paidThisMonthTotal
       : jobsThisMonth.reduce((s, j) => s + (j.totalPrice ?? 0), 0);
 
@@ -527,24 +490,18 @@ export default function Dashboard() {
                   Schedule
                 </button>
               </Link>
-              <Link href="/ops/jobs">
+              <Link href="/ops/quotes">
                 <button className="flex items-center gap-2 bg-primary hover:bg-primary/90 text-primary-foreground text-sm font-semibold px-4 py-2 rounded-md transition-colors">
                   <Plus className="w-4 h-4" />
-                  New Job
+                  New Quote
                 </button>
               </Link>
-              <a
-                href="https://nolandjobber-c3cs6zr4.manus.space"
-                target="_blank"
-                rel="noopener noreferrer"
-                title="Jobber Service Update"
-                onClick={() => { const w = window.open('https://nolandjobber-c3cs6zr4.manus.space', '_blank'); if (w) { w.document.title = 'Jobber Service Update'; } }}
-              >
+              <Link href="/ops/quotes">
                 <button className="flex items-center gap-2 bg-secondary hover:bg-secondary/80 text-foreground text-sm font-semibold px-4 py-2 rounded-md transition-colors border border-border">
-                  <ExternalLink className="w-4 h-4" />
-                  Jobber Services Update
+                  <FileText className="w-4 h-4" />
+                  All Quotes
                 </button>
-              </a>
+              </Link>
             </div>
           </div>
         </div>
@@ -592,58 +549,15 @@ export default function Dashboard() {
           </div>
         )}
 
-        {/* Jobber token expiry alert banner */}
-        {(jobberTokenStatus === "expired" || jobberTokenStatus === "expiring_soon") && (
-          <div className={`flex items-start gap-3 rounded-lg border px-4 py-3 ${
-            jobberTokenStatus === "expired"
-              ? "bg-red-500/10 border-red-500/30"
-              : "bg-amber-500/10 border-amber-500/30"
-          }`}>
-            <AlertCircle className={`w-4 h-4 shrink-0 mt-0.5 ${
-              jobberTokenStatus === "expired" ? "text-red-400" : "text-amber-400"
-            }`} />
-            <div className="flex-1 min-w-0">
-              <p className={`text-xs font-semibold ${
-                jobberTokenStatus === "expired" ? "text-red-300" : "text-amber-300"
-              }`}>
-                {jobberTokenStatus === "expired"
-                  ? "Jobber integration disconnected — reconnection required"
-                  : "Jobber token expiring soon"}
-              </p>
-              <p className="text-[11px] text-muted-foreground mt-0.5">
-                {jobberTokenStatus === "expired"
-                  ? "The Jobber access token has expired. Quote submissions are no longer forwarded to Jobber until you reconnect."
-                  : `The Jobber access token expires shortly${
-                      jobberExpiresAt
-                        ? ` (${new Date(jobberExpiresAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })})`
-                        : ""
-                    }. The system will attempt an automatic refresh — if it fails, reconnect manually.`}
-              </p>
-            </div>
-            {jobberAuthUrl?.url && (
-              <a
-                href={jobberAuthUrl.url}
-                className={`shrink-0 inline-flex items-center gap-1.5 text-[11px] font-semibold px-3 py-1.5 rounded-md transition-colors ${
-                  jobberTokenStatus === "expired"
-                    ? "bg-red-500/20 hover:bg-red-500/30 text-red-300 border border-red-500/30"
-                    : "bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/30"
-                }`}
-              >
-                Reconnect
-              </a>
-            )}
-          </div>
-        )}
-
         {/* KPI Cards — row 1: jobs + money */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           <KPICard
             title="Active Jobs"
             value={kpis.activeJobs.toString()}
-            sub={jobberConnected ? "from Jobber" : "in progress"}
+            sub={"in progress"}
             icon={Briefcase}
             delay={0}
-            href="/ops/jobs"
+            href="/ops/quotes"
           />
           <KPICard
             title="Scheduled Jobs"
@@ -656,16 +570,16 @@ export default function Dashboard() {
           <KPICard
             title="Outstanding Balance"
             value={kpis.outstandingBalance > 0 ? `$${kpis.outstandingBalance.toLocaleString()}` : "—"}
-            sub={jobberConnected ? `${openInvoices.length} open invoice${openInvoices.length !== 1 ? "s" : ""}` : "from invoices"}
+            sub={"from invoices"}
             icon={Receipt}
             delay={160}
             accent={overdueInvoices.length > 0 ? "red" : "default"}
-            href="/ops/invoices"
+            href="/ops/quotes"
           />
           <KPICard
             title="Open Leads / Requests"
             value={kpis.openLeads.toString()}
-            sub={jobberConnected ? "from Jobber requests" : "in pipeline"}
+            sub={"in pipeline"}
             icon={Users}
             delay={240}
             href="/ops/leads"
@@ -677,16 +591,16 @@ export default function Dashboard() {
           <KPICard
             title="Paid This Month"
             value={paidThisMonthTotal > 0 ? `$${paidThisMonthTotal.toLocaleString()}` : "—"}
-            sub={jobberConnected ? `${paidThisMonth.length} invoice${paidThisMonth.length !== 1 ? "s" : ""} paid` : "from completed jobs"}
+            sub={`${nativeInvoicesList.filter((inv: any) => inv.status === "paid").length} invoice${nativeInvoicesList.filter((inv: any) => inv.status === "paid").length !== 1 ? "s" : ""} paid`}
             icon={DollarSign}
             delay={0}
             accent="green"
-            href="/ops/invoices"
+            href="/ops/quotes"
           />
           <KPICard
             title="Open Quotes"
             value={kpis.openQuotes.toString()}
-            sub={jobberConnected ? "awaiting approval" : "pending"}
+            sub={"pending"}
             icon={FileText}
             delay={80}
             href="/ops/quotes"
@@ -697,7 +611,7 @@ export default function Dashboard() {
             sub={`avg across ${normalizedLocalJobs.filter(j => j.totalPrice && j.acres).length} local jobs`}
             icon={TrendingUp}
             delay={160}
-            href="/ops/jobs"
+            href="/ops/quotes"
           />
           <KPICard
             title="Win Rate"
@@ -717,11 +631,7 @@ export default function Dashboard() {
                 <h3 className="text-sm font-semibold text-foreground" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
                   Scheduled Jobs
                 </h3>
-                {jobberConnected && (
-                  <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-green-400/10 text-green-400 border border-green-400/20">
-                    Jobber
-                  </span>
-                )}
+
               </div>
               <p className="text-xs text-muted-foreground">
                 Next 30 days — {filteredScheduledJobs.length} of {scheduledJobs.length} job{scheduledJobs.length !== 1 ? "s" : ""} shown
@@ -746,40 +656,20 @@ export default function Dashboard() {
                   </span>
                 </button>
               ))}
-              {jobberConnected ? (
-                <a
-                  href="https://secure.getjobber.com/home"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-xs text-primary hover:text-primary/80 flex items-center gap-1 transition-colors cursor-pointer ml-1"
-                >
-                  Jobber <ExternalLink className="w-3 h-3" />
-                </a>
-              ) : (
-                <Link href="/ops/schedule">
-                  <span className="text-xs text-primary hover:text-primary/80 flex items-center gap-1 transition-colors cursor-pointer ml-1">
-                    Calendar <ChevronRight className="w-3 h-3" />
-                  </span>
-                </Link>
-              )}
+              <Link href="/ops/schedule">
+                <span className="text-xs text-primary hover:text-primary/80 flex items-center gap-1 transition-colors cursor-pointer ml-1">
+                  Calendar <ChevronRight className="w-3 h-3" />
+                </span>
+              </Link>
             </div>
           </div>
 
           {filteredScheduledJobs.length === 0 ? (
-            jobberJobsError ? (
-              <EmptyState
-                message="Jobber is not connected. Jobs will appear here once Jobber credentials are configured."
-                linkLabel="Go to Jobs"
-                linkHref="/ops/jobs"
-              />
-            ) : (
-              <EmptyState
-                message="No jobs scheduled in the next 30 days."
-                linkLabel="Open Jobber"
-                linkHref="https://secure.getjobber.com/home"
-                external
-              />
-            )
+            <EmptyState
+              message="No jobs scheduled in the next 30 days."
+              linkLabel="View All Quotes"
+              linkHref="/ops/quotes"
+            />
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
               {filteredScheduledJobs.map((job) => {
@@ -787,7 +677,7 @@ export default function Dashboard() {
                 const dateLabel = formatScheduledDate(job.scheduledDate);
                 const isToday = dateLabel === "Today";
                 const isTomorrow = dateLabel === "Tomorrow";
-                const cardHref = "/ops/jobs";
+                const cardHref = "/ops/quotes";
                 const isExternal = false;
 
                 const CardContent = (
@@ -866,21 +756,17 @@ export default function Dashboard() {
           <div className="ops-card p-5">
             <SectionHeader
               title="Open Invoices"
-              badge={jobberConnected ? "Jobber" : undefined}
+              badge={undefined}
               sub={overdueInvoices.length > 0
                 ? `${overdueInvoices.length} overdue · $${outstandingBalance.toLocaleString()} outstanding`
                 : `$${outstandingBalance.toLocaleString()} outstanding`}
-              href="https://secure.getjobber.com/invoices"
-              external
+              href="/ops/quotes"
             />
-            {jobberInvoicesError ? (
-              <EmptyState message="Jobber not connected — invoices unavailable." />
-            ) : openInvoices.length === 0 ? (
+            {openInvoices.length === 0 ? (
               <EmptyState
                 message="No open invoices. All caught up."
-                linkLabel="View in Jobber"
-                linkHref="https://secure.getjobber.com/invoices"
-                external
+                linkLabel="View all quotes"
+                linkHref="/ops/quotes"
               />
             ) : (
               <div className="space-y-2">
@@ -888,7 +774,7 @@ export default function Dashboard() {
                   const cfg = invoiceStatusConfig[inv.invoiceStatus] ?? { label: inv.invoiceStatus, color: "text-muted-foreground bg-secondary border-border" };
                   const isOverdue = inv.invoiceStatus === "OVERDUE";
                   return (
-                    <a key={inv.id} href="https://secure.getjobber.com/invoices" target="_blank" rel="noopener noreferrer">
+                    <Link key={inv.id} href="/ops/quotes">
                       <div className={cn(
                         "flex items-center gap-3 p-3 rounded-md transition-colors cursor-pointer",
                         isOverdue ? "bg-red-500/5 hover:bg-red-500/10 border border-red-500/20" : "bg-secondary/30 hover:bg-secondary/50"
@@ -918,14 +804,14 @@ export default function Dashboard() {
                           </div>
                         </div>
                       </div>
-                    </a>
+                    </Link>
                   );
                 })}
                 {openInvoices.length > 6 && (
-                  <a href="https://secure.getjobber.com/invoices" target="_blank" rel="noopener noreferrer"
+                  <Link href="/ops/quotes"
                     className="block text-center text-xs text-primary hover:text-primary/80 py-2 transition-colors">
-                    +{openInvoices.length - 6} more invoices in Jobber
-                  </a>
+                    +{openInvoices.length - 6} more invoices
+                  </Link>
                 )}
               </div>
             )}
@@ -935,13 +821,11 @@ export default function Dashboard() {
           <div className="ops-card p-5">
             <SectionHeader
               title="Open Quotes"
-              badge={jobberConnected ? "Jobber" : undefined}
+              badge={undefined}
               sub={`${openQuotes.length} quote${openQuotes.length !== 1 ? "s" : ""} awaiting approval`}
               href="/ops/quotes"
             />
-            {jobberQuotesError ? (
-              <EmptyState message="Jobber not connected — quotes unavailable." />
-            ) : openQuotes.length === 0 ? (
+            {openQuotes.length === 0 ? (
               <EmptyState
                 message="No open quotes."
                 linkLabel="View all quotes"
@@ -995,30 +879,26 @@ export default function Dashboard() {
         {/* Requests + Recent Jobs row */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
 
-          {/* Jobber Requests (Leads) */}
+          {/* Open Leads / Requests */}
           <div className="ops-card p-5">
             <SectionHeader
               title="Requests"
-              badge={jobberConnected ? "Jobber" : undefined}
+              badge={undefined}
               sub={`${openRequests.length} open request${openRequests.length !== 1 ? "s" : ""}`}
-              href="https://secure.getjobber.com/requests"
-              external
+              href="/ops/leads"
             />
-            {jobberRequestsError ? (
-              <EmptyState message="Jobber not connected — requests unavailable." />
-            ) : openRequests.length === 0 ? (
+            {openRequests.length === 0 ? (
               <EmptyState
                 message="No open requests."
-                linkLabel="View in Jobber"
-                linkHref="https://secure.getjobber.com/requests"
-                external
+                linkLabel="View all leads"
+                linkHref="/ops/leads"
               />
             ) : (
               <div className="space-y-2">
                 {openRequests.slice(0, 6).map((r: any) => {
                   const cfg = requestStatusConfig[r.requestStatus] ?? { label: r.requestStatus, color: "text-muted-foreground bg-secondary border-border" };
                   return (
-                    <a key={r.id} href="https://secure.getjobber.com/requests" target="_blank" rel="noopener noreferrer">
+                    <Link key={r.id} href="/ops/leads">
                       <div className="flex items-center gap-3 p-3 rounded-md bg-secondary/30 hover:bg-secondary/50 transition-colors cursor-pointer">
                         <div className="w-8 h-8 rounded-md bg-primary/10 flex items-center justify-center shrink-0">
                           <PhoneCall className="w-3.5 h-3.5 text-primary" />
@@ -1038,14 +918,14 @@ export default function Dashboard() {
                           </div>
                         </div>
                       </div>
-                    </a>
+                    </Link>
                   );
                 })}
                 {openRequests.length > 6 && (
-                  <a href="https://secure.getjobber.com/requests" target="_blank" rel="noopener noreferrer"
+                  <Link href="/ops/leads"
                     className="block text-center text-xs text-primary hover:text-primary/80 py-2 transition-colors">
-                    +{openRequests.length - 6} more in Jobber
-                  </a>
+                    +{openRequests.length - 6} more leads
+                  </Link>
                 )}
               </div>
             )}
@@ -1055,9 +935,9 @@ export default function Dashboard() {
           <div className="lg:col-span-2 ops-card p-5">
             <SectionHeader
               title="Recent Jobs"
-              badge={jobberConnected ? "Jobber" : undefined}
+              badge={undefined}
               sub="Latest job activity"
-              href={jobberConnected ? "https://secure.getjobber.com/home" : "/ops/jobs"}
+              href={"/ops/quotes"}
               external={jobberConnected}
             />
             {recentJobs.length === 0 ? (
@@ -1071,7 +951,7 @@ export default function Dashboard() {
                 {recentJobs.map((job) => {
                   const status = statusConfig[job.status] ?? { label: job.status, color: "text-muted-foreground bg-secondary border-border" };
                   const isExternal = false;
-                  const href = "/ops/jobs";
+                  const href = "/ops/quotes";
 
                   const rowContent = (
                     <div className="flex items-center gap-3 p-3 rounded-md bg-secondary/30 hover:bg-secondary/50 transition-colors cursor-pointer">
@@ -1134,14 +1014,14 @@ export default function Dashboard() {
             const label = d.toLocaleDateString("en-US", { month: "short", year: "2-digit" });
             const start = new Date(d.getFullYear(), d.getMonth(), 1);
             const end = new Date(d.getFullYear(), d.getMonth() + 1, 0, 23, 59, 59);
-            const revenue = invoices
+            const revenue = nativeInvoicesList
               .filter((inv: any) =>
-                inv.invoiceStatus === "PAID" &&
-                inv.issuedDate &&
-                new Date(inv.issuedDate) >= start &&
-                new Date(inv.issuedDate) <= end
+                inv.status === "paid" &&
+                inv.paidAt &&
+                new Date(inv.paidAt) >= start &&
+                new Date(inv.paidAt) <= end
               )
-              .reduce((s: number, inv: any) => s + Number(inv.amounts?.total ?? 0), 0);
+              .reduce((s: number, inv: any) => s + Number(inv.totalCents ?? 0) / 100, 0);
             months.push({ month: label, revenue });
           }
           const hasData = months.some(m => m.revenue > 0);
@@ -1155,7 +1035,7 @@ export default function Dashboard() {
                   </h3>
                   <p className="text-xs text-muted-foreground">Paid invoices — last 6 months</p>
                 </div>
-                <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-green-400/10 text-green-400 border border-green-400/20">Jobber</span>
+                <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-blue-400/10 text-blue-400 border border-blue-400/20">Native</span>
               </div>
               <ResponsiveContainer width="100%" height={160}>
                 <AreaChart data={months} margin={{ top: 4, right: 4, left: -16, bottom: 0 }}>
@@ -1228,7 +1108,7 @@ export default function Dashboard() {
                 </h3>
                 <p className="text-xs text-muted-foreground">
                   {jobberConnected
-                    ? "Revenue from Jobber invoices · Crew days and win rate from local records"
+                    ? "Revenue from invoices · Crew days and win rate from local records"
                     : "Calculated from your job and lead records"}
                 </p>
               </div>
@@ -1243,7 +1123,7 @@ export default function Dashboard() {
                 <div className="text-xl font-bold text-foreground ops-metric-value">
                   {paidThisMonthTotal > 0 ? `$${paidThisMonthTotal.toLocaleString()}` : "—"}
                 </div>
-                <div className="text-[11px] text-muted-foreground mt-1">{paidThisMonth.length} invoice{paidThisMonth.length !== 1 ? "s" : ""}</div>
+                <div className="text-[11px] text-muted-foreground mt-1">{nativeInvoicesList.filter((inv: any) => inv.status === "paid").length} invoice{nativeInvoicesList.filter((inv: any) => inv.status === "paid").length !== 1 ? "s" : ""}</div>
               </div>
               <div className="rounded-lg border border-border bg-secondary/20 p-4">
                 <div className="flex items-center gap-2 mb-2">

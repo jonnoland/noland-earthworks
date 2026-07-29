@@ -9,7 +9,6 @@ import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
 import { prerenderMiddleware } from "../prerender";
-import { registerJobberRoutes } from "../jobberRoutes";
 import { registerTwilioRoutes } from "../twilioRoutes";
 import { registerFacebookWebhookRoutes } from "../facebookWebhookRoutes";
 import { registerZapierWebhookRoutes } from "../zapierWebhookRoutes";
@@ -19,7 +18,6 @@ import { registerInstagramTokenRefreshRoute } from "../instagramTokenRefresh";
 import { registerStripeWebhookRoutes } from "../stripeWebhookRoutes";
 import { registerScheduledAdsPublisherRoute } from "../scheduledAdsPublisher";
 import { registerStorageProxy } from "./storageProxy";
-import { startJobberTokenRefreshScheduler } from "../jobber";
 import { startGoogleTokenRefreshScheduler } from "../googleRoutes";
 import cron from "node-cron";
 import {
@@ -97,8 +95,6 @@ async function startServer() {
   registerStorageProxy(app);
   // OAuth callback under /api/oauth/callback
   registerOAuthRoutes(app);
-  // Jobber OAuth routes: /api/jobber/authorize, /api/jobber/callback, /api/jobber/status
-  registerJobberRoutes(app);
   // Twilio SMS proxy: POST /api/twilio/inbound, POST /api/twilio/owner-reply, GET /api/twilio/status
   registerTwilioRoutes(app);
   // Facebook Leadgen Webhook: GET /api/webhooks/facebook (verify), POST /api/webhooks/facebook (lead events)
@@ -113,8 +109,6 @@ async function startServer() {
   registerInstagramTokenRefreshRoute(app);
   // Scheduled ads publisher: POST /api/scheduled/publish-ads
   registerScheduledAdsPublisherRoute(app);
-  // Start background Jobber token refresh scheduler (checks every 5 min, refreshes if within 10 min of expiry)
-  startJobberTokenRefreshScheduler();
   // Start background Google token refresh scheduler (checks every 5 min, refreshes if within 10 min of expiry)
   startGoogleTokenRefreshScheduler();
 
@@ -540,6 +534,8 @@ ${transcript}`;
           profileUrl?: string;
           marginTier?: string | null;
           estimatedAcres?: string | null;
+          fitScore?: number | null;
+          urgencyFlag?: boolean;
         }>;
       };
       if (!Array.isArray(body.prospects) || body.prospects.length === 0) {
@@ -568,6 +564,8 @@ ${transcript}`;
           profileUrl: p.profileUrl ?? null,
           marginTier: p.marginTier ?? null,
           estimatedAcres: p.estimatedAcres ?? null,
+          fitScore: p.fitScore ?? null,
+          urgencyFlag: p.urgencyFlag ?? false,
           status: "new",
         });
         inserted++;
@@ -618,6 +616,8 @@ ${transcript}`;
           profileUrl?: string;
           marginTier?: string | null;
           estimatedAcres?: string | null;
+          fitScore?: number | null;
+          urgencyFlag?: boolean;
         }>;
       };
       if (!Array.isArray(body.prospects) || body.prospects.length === 0) {
@@ -645,6 +645,8 @@ ${transcript}`;
           profileUrl: p.profileUrl ?? null,
           marginTier: p.marginTier ?? null,
           estimatedAcres: p.estimatedAcres ?? null,
+          fitScore: p.fitScore ?? null,
+          urgencyFlag: p.urgencyFlag ?? false,
           status: "new",
         });
         inserted++;

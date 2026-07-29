@@ -10,7 +10,7 @@ import { invokeLLM } from "./_core/llm";
 import { getDb } from "./db";
 import { chatSessions, chatMessages } from "../drizzle/schema";
 import { eq, desc, isNull, sql } from "drizzle-orm";
-import { createOpsLead, getOwnerUser, upsertOpsLeadByPhone } from "./db";
+import { createOpsLead, getOwnerUser, upsertOpsLeadByPhone, upsertNativeClient } from "./db";
 import { notifyOwner } from "./_core/notification";
 import { ENV } from "./_core/env";
 import { Resend } from "resend";
@@ -376,12 +376,23 @@ export const chatRouter = router({
             }
 
             leadCreated = true;
+
+            // Auto-upsert into native_clients
+            try {
+              await upsertNativeClient({
+                name: resolvedName || "Website Visitor",
+                email: updatedSession?.visitorEmail || input.visitorEmail || null,
+                phone: resolvedPhone || null,
+                source: "chat",
+              });
+            } catch (clientErr) {
+              console.warn("[Chat] Failed to upsert native client:", clientErr);
+            }
           }
         } catch (err) {
           console.warn("[Chat] Failed to create lead from chat session:", err);
         }
       }
-
       return { response: responseText, leadCreated };
     }),
 

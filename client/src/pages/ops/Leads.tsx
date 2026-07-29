@@ -24,7 +24,7 @@ import {
   Map as MapIcon, LayoutGrid, Clock, Navigation,
   Brain, Copy, Check, CheckCheck, Sparkles, Unlink,
   Send, Radar, CheckCircle, Info, Save, CheckCircle2, Facebook, Pencil, History,
-  Building2,
+  Building2, ChevronRight,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -202,6 +202,7 @@ interface Lead {
   chatSessionId?: number | null;
   jobberQuoteId?: string | null;
   jobberQuoteNumber?: number | null;
+  nativeQuoteId?: number | null;
   estimateAmount?: string | null;
   clientType?: string | null;
   rfpDocumentUrls?: string | null;
@@ -1056,11 +1057,19 @@ function LeadDetailPanel({
   const { data: notes = [], isLoading: notesLoading } = trpc.ops.leads.listNotes.useQuery({ leadId: lead.id });
   const { data: contactLog = [], isLoading: contactLogLoading } = trpc.ops.leads.getContactLog.useQuery({ leadId: lead.id });
 
-  // Live Jobber quote status for the linked quote badge
-  const { data: linkedQuote, isLoading: quoteStatusLoading } = trpc.jobber.quoteDetail.useQuery(
-    { id: lead.jobberQuoteId! },
-    { enabled: !!lead.jobberQuoteId, retry: false, staleTime: 1000 * 60 * 5 }
+  // Live native quote status for the linked quote badge
+  const { data: linkedNativeQuote, isLoading: quoteStatusLoading } = trpc.nativeQuotes.getById.useQuery(
+    { id: lead.nativeQuoteId! },
+    { enabled: !!lead.nativeQuoteId, retry: false, staleTime: 1000 * 60 * 5 }
   );
+  const linkedQuote = linkedNativeQuote ? {
+    quoteStatus: linkedNativeQuote.status?.toUpperCase() ?? null,
+    client: linkedNativeQuote.clientName ? { name: linkedNativeQuote.clientName, companyName: null } : null,
+    property: linkedNativeQuote.propertyAddress ? { address: { street1: linkedNativeQuote.propertyAddress, city: null, province: null } } : null,
+    lineItems: { nodes: linkedNativeQuote.lineItems ? (() => { try { return JSON.parse(linkedNativeQuote.lineItems as string); } catch { return []; } })() : [] },
+    amounts: (linkedNativeQuote as any).totalPrice != null ? { subtotal: (linkedNativeQuote as any).totalPrice, total: (linkedNativeQuote as any).totalPrice } : null,
+    message: (linkedNativeQuote as any).notes ?? linkedNativeQuote.internalNotes ?? null,
+  } : null;
 
   const deleteChatSession = trpc.chat.deleteSession.useMutation({
     onSuccess: () => {
@@ -1338,8 +1347,8 @@ nolandearthworks.com`;
               <Sparkles className="w-3.5 h-3.5" />Site Visit Req
             </button>
           </div>
-          {/* Linked Jobber quote badge — clickable with live status */}
-          {lead.jobberQuoteId && (() => {
+          {/* Linked native quote badge — clickable with live status */}
+          {(lead.nativeQuoteId || lead.jobberQuoteId) && (() => {
             const status = linkedQuote?.quoteStatus ?? null;
             const statusColor =
               status === "APPROVED" ? "text-green-400 border-green-500/30 bg-green-500/10" :
@@ -1350,14 +1359,6 @@ nolandearthworks.com`;
               status === "ARCHIVED" ? "Archived" :
               status === "DRAFT" ? "Draft" :
               quoteStatusLoading ? "..." : "Linked";
-            // Decode Jobber base64 ID to numeric for URL
-            let numericId = lead.jobberQuoteId;
-            try {
-              const decoded = atob(lead.jobberQuoteId);
-              const parts = decoded.split("/");
-              const last = parts[parts.length - 1];
-              if (last && /^\d+$/.test(last)) numericId = last;
-            } catch { /* ignore */ }
             return (
               <>
                 <button
@@ -1366,7 +1367,7 @@ nolandearthworks.com`;
                 >
                   <FileText className="w-3 h-3 shrink-0" />
                   <span className="text-[11px] font-medium">
-                    Quote {lead.jobberQuoteNumber ? `#${lead.jobberQuoteNumber}` : ""}
+                    Quote {lead.nativeQuoteId ? `#${lead.nativeQuoteId}` : ""}
                   </span>
                   {lead.estimateAmount && (
                     <span className="text-[11px] font-bold text-white">
@@ -1374,7 +1375,7 @@ nolandearthworks.com`;
                     </span>
                   )}
                   <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-black/20">{statusLabel}</span>
-                  <ExternalLink className="ml-auto w-3 h-3 shrink-0 opacity-60" />
+                  <ChevronRight className="ml-auto w-3 h-3 shrink-0 opacity-60" />
                 </button>
                 {/* Quote preview modal */}
                 {showQuotePreview && (
@@ -1385,7 +1386,7 @@ nolandearthworks.com`;
                         <div className="flex items-center gap-2">
                           <FileText className="w-4 h-4" />
                           <span className="text-sm font-semibold">
-                            Quote {lead.jobberQuoteNumber ? `#${lead.jobberQuoteNumber}` : ""}
+                            Quote {lead.nativeQuoteId ? `#${lead.nativeQuoteId}` : ""}
                           </span>
                           <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-black/30">{statusLabel}</span>
                         </div>
@@ -1407,7 +1408,7 @@ nolandearthworks.com`;
                                 <p className="text-[10px] uppercase tracking-wider text-[#555] mb-1">Client</p>
                                 <p className="text-sm text-white font-medium">{linkedQuote.client.name || linkedQuote.client.companyName}</p>
                                 {linkedQuote.property?.address && (
-                                  <p className="text-[11px] text-[#666]">
+                                  <p className="text-[11px] text-[#888] mt-0.5">
                                     {[linkedQuote.property.address.street1, linkedQuote.property.address.city, linkedQuote.property.address.province].filter(Boolean).join(", ")}
                                   </p>
                                 )}
@@ -1419,11 +1420,11 @@ nolandearthworks.com`;
                                 <p className="text-[10px] uppercase tracking-wider text-[#555] mb-1">Line Items</p>
                                 <div className="space-y-1">
                                   {linkedQuote.lineItems.nodes.map((item: any, i: number) => (
-                                    <div key={i} className="flex items-start justify-between gap-2 text-[11px]">
-                                      <span className="text-[#ccc] flex-1">{item.name}{item.description ? ` — ${item.description}` : ""}</span>
-                                      <span className="text-white font-semibold shrink-0">
-                                        {item.quantity !== 1 && <span className="text-[#666] mr-1">{item.quantity}×</span>}
-                                        ${Number(item.unitPrice).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                    <div key={i} className="flex justify-between text-[11px]">
+                                      <span className="text-[#aaa]">{item.name ?? item.description ?? "Item"}</span>
+                                      <span className="text-[#ccc] shrink-0 ml-2">
+                                        {item.unitPrice != null ? `$${Number(item.unitPrice).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : ""}
+                                        {item.quantity != null && item.quantity !== 1 ? ` × ${item.quantity}` : ""}
                                       </span>
                                     </div>
                                   ))}
@@ -1481,13 +1482,11 @@ nolandearthworks.com`;
                         ) : (
                           <div className="flex gap-2">
                             <a
-                              href={`https://secure.getjobber.com/quotes/${numericId}`}
-                              target="_blank"
-                              rel="noopener noreferrer"
+                              href={`/ops/quotes?quote=${lead.nativeQuoteId}`}
                               className="flex-1 flex items-center justify-center gap-1.5 bg-[#1e1e1e] hover:bg-[#252525] border border-[#2a2a2a] text-[#aaa] text-[11px] font-semibold py-2 rounded-md transition-colors"
                             >
-                              <ExternalLink className="w-3 h-3" />
-                              Open in Jobber
+                              <FileText className="w-3 h-3" />
+                              View Quote
                             </a>
                             <button
                               onClick={() => setConfirmUnlink(true)}

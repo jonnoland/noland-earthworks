@@ -1332,13 +1332,7 @@ function GoogleBusinessProfileCard() {
 
 function IntegrationsTab() {
   const { data: status, isLoading, refetch } = trpc.ops.settings.getIntegrationStatus.useQuery();
-  const { data: jobberAuth } = trpc.jobber.getAuthUrl.useQuery();
   const { data: googleStatus } = trpc.ops.google.connectionStatus.useQuery();
-  const jobberDisconnect = trpc.jobber.disconnect.useMutation({
-    onSuccess: () => { toast.success("Jobber disconnected"); refetch(); },
-    onError: () => toast.error("Failed to disconnect"),
-  });
-
   // Facebook webhook utilities
   const { data: fbLastReceived, refetch: refetchFbLast } = trpc.ops.leads.facebookLastReceived.useQuery();
   const fbTestWebhook = trpc.ops.leads.facebookTestWebhook.useMutation({
@@ -1394,81 +1388,6 @@ function IntegrationsTab() {
 
   return (
     <div className="space-y-4">
-
-      {/* ── Jobber ── */}
-      <SettingsSection
-        title="Jobber"
-        description="Field service management — clients, requests, jobs, invoices, and scheduling."
-        action={<ConnectedBadge ok={!!status?.jobber.connected} />}
-      >
-        {status?.jobber.connected ? (
-          <div className="space-y-3">
-            {/* Token status indicator */}
-            {status.jobber.tokenStatus === "expired" ? (
-              <div className="flex items-start gap-2 p-3 bg-red-500/10 border border-red-500/20 rounded-lg">
-                <AlertCircle className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs font-semibold text-red-300">Token expired — reconnection required</p>
-                  <p className="text-[11px] text-muted-foreground mt-0.5">The Jobber access token has expired. Quote submissions are no longer forwarded to Jobber until you reconnect.</p>
-                </div>
-              </div>
-            ) : status.jobber.tokenStatus === "expiring_soon" ? (
-              <div className="flex items-start gap-2 p-3 bg-amber-500/10 border border-amber-500/20 rounded-lg">
-                <AlertCircle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs font-semibold text-amber-300">Token expiring soon</p>
-                  <p className="text-[11px] text-muted-foreground mt-0.5">
-                    The access token expires shortly{status.jobber.expiresAt ? ` (${new Date(status.jobber.expiresAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })})` : ""}. The system will attempt an automatic refresh — if it fails, reconnect manually.
-                  </p>
-                </div>
-              </div>
-            ) : (
-              <div className="flex items-center gap-2 p-3 bg-green-500/10 border border-green-500/20 rounded-lg">
-                <CheckCircle2 className="w-4 h-4 text-green-400 shrink-0" />
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs font-semibold text-foreground">Jobber is connected</p>
-                  <p className="text-[11px] text-muted-foreground mt-0.5">
-                    New quote submissions are automatically sent to Jobber as service requests.
-                    {status.jobber.expiresAt && (
-                      <> Token refreshed, valid until {new Date(status.jobber.expiresAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}.</>
-                    )}
-                  </p>
-                </div>
-              </div>
-            )}
-            <div className="flex gap-2">
-              {jobberAuth?.url && (
-                <a href={jobberAuth.url}
-                  className="flex items-center gap-2 bg-secondary hover:bg-secondary/80 border border-border text-xs px-3 py-2 rounded-md transition-colors">
-                  <RefreshCw className="w-3.5 h-3.5" />Reconnect
-                </a>
-              )}
-              <button
-                onClick={() => jobberDisconnect.mutate()}
-                disabled={jobberDisconnect.isPending}
-                className="flex items-center gap-2 bg-secondary hover:bg-secondary/80 border border-red-500/30 text-xs text-red-400 px-3 py-2 rounded-md transition-colors disabled:opacity-50">
-                {jobberDisconnect.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <XCircle className="w-3.5 h-3.5" />}
-                Disconnect
-              </button>
-            </div>
-          </div>
-        ) : (
-          <div className="space-y-3">
-            <div className="flex items-start gap-2 bg-amber-500/10 border border-amber-500/20 rounded-md p-3">
-              <AlertCircle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
-              <p className="text-xs text-amber-300">Jobber is not connected. Quote form submissions will not be forwarded to Jobber until you connect.</p>
-            </div>
-            {jobberAuth?.url ? (
-              <a href={jobberAuth.url}
-                className="inline-flex items-center gap-2 bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-semibold px-4 py-2 rounded-md transition-colors">
-                <Link2 className="w-3.5 h-3.5" />Connect Jobber
-              </a>
-            ) : (
-              <p className="text-xs text-muted-foreground">Jobber client credentials are not configured. Add JOBBER_CLIENT_ID and JOBBER_CLIENT_SECRET to your secrets.</p>
-            )}
-          </div>
-        )}
-      </SettingsSection>
 
       {/* ── Twilio ── */}
       <SettingsSection

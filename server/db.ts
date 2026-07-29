@@ -654,3 +654,60 @@ export async function countNewProspectingLeads() {
   const result = await db.select({ count: count() }).from(prospectingLeads).where(eq(prospectingLeads.status, "new"));
   return result[0]?.count ?? 0;
 }
+
+// ─── Native Clients helper ────────────────────────────────────────────────────
+/**
+ * Upsert a client into native_clients.
+ * Matches by email (preferred), then phone, then name.
+ * Safe to call fire-and-forget — never throws, just logs on error.
+ */
+export async function upsertNativeClient(data: {
+  name: string;
+  email?: string | null;
+  phone?: string | null;
+  address?: string | null;
+  source?: string;
+}): Promise<void> {
+  try {
+    const db = await getDb();
+    if (!db) return;
+    const { nativeClients } = await import("../drizzle/schema");
+    const { eq } = await import("drizzle-orm");
+
+    let existing: (typeof nativeClients.$inferSelect) | null = null;
+
+    if (data.email) {
+      const [row] = await db.select().from(nativeClients).where(eq(nativeClients.email, data.email)).limit(1);
+      existing = row ?? null;
+    }
+    if (!existing && data.phone) {
+      const [row] = await db.select().from(nativeClients).where(eq(nativeClients.phone, data.phone)).limit(1);
+      existing = row ?? null;
+    }
+    if (!existing) {
+      const [row] = await db.select().from(nativeClients).where(eq(nativeClients.name, data.name)).limit(1);
+      existing = row ?? null;
+    }
+
+    if (existing) {
+      await db.update(nativeClients).set({
+        email: data.email || existing.email,
+        phone: data.phone || existing.phone,
+        address: data.address || existing.address,
+        updatedAt: new Date(),
+      }).where(eq(nativeClients.id, existing.id));
+    } else {
+      await db.insert(nativeClients).values({
+        name: data.name,
+        email: data.email ?? null,
+        phone: data.phone ?? null,
+        address: data.address ?? null,
+        source: data.source ?? "website_quote",
+        jobCount: 0,
+        totalSpentCents: 0,
+      });
+    }
+  } catch (err) {
+    console.warn("[upsertNativeClient] Failed:", err);
+  }
+}

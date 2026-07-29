@@ -190,6 +190,8 @@ export const opsLeads = mysqlTable("ops_leads", {
   jobberQuoteNumber: int("jobberQuoteNumber"),
   /** Estimate amount from the linked Jobber quote — stored for display on the lead */
   estimateAmount: decimal("estimateAmount", { precision: 10, scale: 2 }),
+  /** FK to native_quotes — set when a native quote is linked to this lead */
+  nativeQuoteId: int("nativeQuoteId"),
   /** Saved AI quote estimate — JSON blob with service, estimateLow, estimateHigh, reasoning, etc. */
   aiQuoteData: text("aiQuoteData"),
   /** Timestamp when the AI quote was last saved to this lead */
@@ -1684,6 +1686,15 @@ export const prospectingLeads = mysqlTable("prospecting_leads", {
   /** User-entered notes / extra context about this prospect */
   notes: text("notes"),
   /**
+   * AI fit score 1-10 — how strong a prospect this is for Noland Earthworks.
+   * 9-10: Rural TN, 5+ acres, dense veg, urgency signals
+   * 7-8: Rural/semi-rural TN, 2-5 acres, clear scope
+   * 5-6: Location unclear, 1-3 acres, mixed signals
+   * 3-4: Under 1 acre, suburban, access issues
+   * 1-2: Wrong state/scope, already hired, too vague
+   */
+  fitScore: int("fitScore"),
+  /**
    * AI-detected urgency flag — true when the post contains urgency keywords
    * ("ASAP", "this week", "already got quotes", "need it done", etc.)
    */
@@ -1840,3 +1851,103 @@ export const nativeQuotes = mysqlTable("native_quotes", {
 });
 export type NativeQuote = typeof nativeQuotes.$inferSelect;
 export type InsertNativeQuote = typeof nativeQuotes.$inferInsert;
+
+// ─── Native Jobs ──────────────────────────────────────────────────────────────
+/**
+ * Native jobs — created when a quote is converted to a job.
+ * Tracks scheduling, completion, and links back to the originating quote.
+ */
+export const nativeJobs = mysqlTable("native_jobs", {
+  id: int("id").primaryKey().autoincrement(),
+  /** FK to native_quotes — the quote this job was converted from */
+  quoteId: int("quoteId"),
+  clientName: varchar("clientName", { length: 255 }).notNull(),
+  clientEmail: varchar("clientEmail", { length: 255 }),
+  clientPhone: varchar("clientPhone", { length: 30 }),
+  propertyAddress: varchar("propertyAddress", { length: 500 }),
+  serviceType: varchar("serviceType", { length: 100 }),
+  acreage: varchar("acreage", { length: 50 }),
+  /** Total job value in cents — copied from quote at conversion time */
+  totalCents: int("totalCents").notNull().default(0),
+  /** Line items snapshot from the quote — JSON array: [{description, qty, unitPriceCents, totalCents}] */
+  lineItems: text("lineItems").notNull().default("[]"),
+  /** scheduled | in_progress | completed | cancelled */
+  status: mysqlEnum("status", ["scheduled", "in_progress", "completed", "cancelled"]).notNull().default("scheduled"),
+  scheduledDate: timestamp("scheduledDate"),
+  completedAt: timestamp("completedAt"),
+  /** Internal notes for this job (separate from quote notes) */
+  internalNotes: text("internalNotes"),
+  /** Amount invoiced in cents — set when invoice is generated */
+  invoicedCents: int("invoicedCents"),
+  invoicedAt: timestamp("invoicedAt"),
+  /** Amount paid in cents — set when payment is received */
+  paidCents: int("paidCents"),
+  paidAt: timestamp("paidAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type NativeJob = typeof nativeJobs.$inferSelect;
+export type InsertNativeJob = typeof nativeJobs.$inferInsert;
+
+// ─── Native Invoices ──────────────────────────────────────────────────────────
+/**
+ * Native invoices — generated from completed jobs.
+ * Stores the invoice PDF URL and payment status.
+ */
+export const nativeInvoices = mysqlTable("native_invoices", {
+  id: int("id").primaryKey().autoincrement(),
+  /** FK to native_jobs */
+  jobId: int("jobId").notNull(),
+  /** FK to native_quotes (for direct reference) */
+  quoteId: int("quoteId"),
+  clientName: varchar("clientName", { length: 255 }).notNull(),
+  clientEmail: varchar("clientEmail", { length: 255 }),
+  clientPhone: varchar("clientPhone", { length: 30 }),
+  propertyAddress: varchar("propertyAddress", { length: 500 }),
+  serviceType: varchar("serviceType", { length: 100 }),
+  /** Line items snapshot — JSON array: [{description, qty, unitPriceCents, totalCents}] */
+  lineItems: text("lineItems").notNull().default("[]"),
+  subtotalCents: int("subtotalCents").notNull().default(0),
+  /** Deposit already paid — deducted from balance due */
+  depositPaidCents: int("depositPaidCents").notNull().default(0),
+  totalCents: int("totalCents").notNull().default(0),
+  /** unpaid | sent | paid | void */
+  status: mysqlEnum("status", ["unpaid", "sent", "paid", "void"]).notNull().default("unpaid"),
+  /** S3 URL of the generated PDF */
+  pdfUrl: varchar("pdfUrl", { length: 1024 }),
+  /** Resend email ID — for tracking delivery */
+  emailSentId: varchar("emailSentId", { length: 128 }),
+  emailSentAt: timestamp("emailSentAt"),
+  paidAt: timestamp("paidAt"),
+  dueDate: timestamp("dueDate"),
+  notes: text("notes"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type NativeInvoice = typeof nativeInvoices.$inferSelect;
+export type InsertNativeInvoice = typeof nativeInvoices.$inferInsert;
+
+// ─── Native Clients ───────────────────────────────────────────────────────────
+/**
+ * Native clients — auto-synced from jobs and quotes.
+ * Provides a client directory with job history and spend totals.
+ */
+export const nativeClients = mysqlTable("native_clients", {
+  id: int("id").primaryKey().autoincrement(),
+  name: varchar("name", { length: 255 }).notNull(),
+  email: varchar("email", { length: 255 }),
+  phone: varchar("phone", { length: 30 }),
+  /** Primary property address (from first job) */
+  address: varchar("address", { length: 500 }),
+  /** Internal notes about this client */
+  notes: text("notes"),
+  /** Denormalized counters — updated when jobs are created/completed */
+  jobCount: int("jobCount").notNull().default(0),
+  totalSpentCents: int("totalSpentCents").notNull().default(0),
+  /** Source of first contact — website_quote | field_quote | manual */
+  source: varchar("source", { length: 50 }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type NativeClient = typeof nativeClients.$inferSelect;
+export type InsertNativeClient = typeof nativeClients.$inferInsert;

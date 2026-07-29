@@ -4,10 +4,9 @@ import { publicProcedure, router } from "./_core/trpc";
 import { notifyOwner } from "./_core/notification";
 import { ENV } from "./_core/env";
 import { Resend } from "resend";
-import { createJobberRequest, isJobberConnected, createJobberClientFromLead } from "./jobber";
-import { createOpsLead, upsertOpsLeadByPhone, getOwnerUser, getDb } from "./db";
+import { createOpsLead, upsertOpsLeadByPhone, getOwnerUser, getDb, upsertNativeClient } from "./db";
 import { storagePut } from "./storage";
-import { quoteSubmissions } from "../drizzle/schema";
+import { quoteSubmissions, nativeQuotes } from "../drizzle/schema";
 import { sendOwnerSms } from "./sms";
 import { qualifyLead } from "./leadQualifier";
 import { opsLeads } from "../drizzle/schema";
@@ -256,8 +255,8 @@ function buildEmailHtml(data: QuoteInput): string {
         <!-- CTA -->
         <tr>
           <td style="padding:28px 36px;text-align:center;">
-            <a href="https://secure.getjobber.com/work_requests" style="display:inline-block;background:#E07B2A;color:#ffffff;font-size:14px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;padding:14px 32px;border-radius:6px;text-decoration:none;">View in Jobber &rarr;</a>
-            <p style="margin:12px 0 0;font-size:12px;color:#aaa;">This request has been automatically synced to your Jobber account.</p>
+            <a href="https://nolandearthworks.com/ops/quotes" style="display:inline-block;background:#E07B2A;color:#ffffff;font-size:14px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;padding:14px 32px;border-radius:6px;text-decoration:none;">View in All Quotes &rarr;</a>
+            <p style="margin:12px 0 0;font-size:12px;color:#aaa;">This request has been added to your All Quotes section under Web Requests.</p>
           </td>
         </tr>
 
@@ -529,53 +528,7 @@ export const quoteRouter = router({
     } catch (err) {
       console.warn("[Quote] SMS notification failed:", err);
     }
-
-    // 3. Send to Jobber if connected — persist result to quote_submissions log
-    let jobberStatus: "synced" | "failed" | "skipped" = "skipped";
-    let jobberRequestId: string | undefined;
-    let jobberRequestUrl: string | undefined;
-    let jobberError: string | undefined;
-
-    try {
-      const jobberReady = await isJobberConnected();
-      if (jobberReady) {
-        const result = await createJobberRequest(input);
-        jobberStatus = "synced";
-        jobberRequestId = result.requestId;
-        jobberRequestUrl = result.requestUrl;
-      }
-    } catch (err) {
-      jobberStatus = "failed";
-      jobberError = err instanceof Error ? err.message : String(err);
-      console.error("[Quote] Jobber request creation failed:", err);
-      // Non-fatal: email + notification already sent.
-      // Notify owner so no lead is silently lost.
-      try {
-        await notifyOwner({
-          title: "⚠️ Jobber Sync Failed — Manual Entry Required",
-          content: [
-            `A quote was submitted but could NOT be automatically added to Jobber.`,
-            ``,
-            `Customer: ${input.name}`,
-            `Phone: ${input.phone}`,
-            `Email: ${input.email}`,
-            `Service: ${input.service}`,
-            `County: ${input.county}`,
-            input.acreage ? `Acreage: ${input.acreage}` : "",
-            input.message ? `Details: ${input.message}` : "",
-            ``,
-            `Error: ${jobberError}`,
-            ``,
-            `Please add this request to Jobber manually, or re-authorize at:`,
-            `https://nolandearthworks.com/api/jobber/authorize`,
-          ]
-            .filter(line => line !== undefined)
-            .join("\n"),
-        });
-      } catch (notifyErr) {
-        console.warn("[Quote] Jobber failure notification also failed:", notifyErr);
-      }
-    }
+    // Jobber sync removed — quote is stored natively via quoteSubmissions table
 
     // Persist submission to quote_submissions log
     try {
@@ -610,12 +563,8 @@ export const quoteRouter = router({
           aiSummary: qualification?.summary ?? null,
           aiFlags: qualification?.flags && qualification.flags.length > 0 ? JSON.stringify(qualification.flags) : null,
           aiDraftResponse: qualification?.draftResponse ?? null,
-          jobberStatus,
-          jobberRequestId: jobberRequestId ?? null,
-          jobberRequestUrl: jobberRequestUrl ?? null,
-          jobberError: jobberError ?? null,
         });
-        console.log(`[Quote] Submission logged for ${input.name} (Jobber: ${jobberStatus})`);
+        console.log(`[Quote] Submission logged for ${input.name}`);
       }
     } catch (logErr) {
       console.warn("[Quote] Failed to log submission:", logErr);
@@ -677,13 +626,60 @@ export const quoteRouter = router({
       console.warn("[Quote] Failed to create ops lead:", err);
     }
 
-    // Add to Jobber clients list (fire-and-forget)
-    createJobberClientFromLead({
-      name: input.name,
-      email: input.email || undefined,
-      phone: input.phone || undefined,
-      address: [input.street, input.city, input.state, input.zip].filter(Boolean).join(", ") || undefined,
-    }).catch(err => console.warn("[Quote] Jobber client creation failed:", err));
+    // Auto-upsert into native_clients so the client directory stays current
+    try {
+      const address = [input.street, input.city, input.state, input.zip].filter(Boolean).join(", ");
+      await upsertNativeClient({
+        name: input.name,
+        email: input.email || null,
+        phone: input.phone || null,
+        address: address || null,
+        source: "website_quote",
+      });
+    } catch (clientErr) {
+      console.warn("[Quote] Failed to upsert native client:", clientErr);
+    }
+
+
+    // Auto-create a native quote (web_request) so it appears in All Quotes section
+    try {
+      const db2 = await getDb();
+      if (db2) {
+        const address = [input.street, input.city, input.state, input.zip]
+          .filter(Boolean)
+          .join(", ");
+        const serviceLabel = input.service || "Forestry Mulching";
+        const title = `${serviceLabel} \u2014 ${input.name}${input.county ? ` (${input.county} Co.)` : ""}`;
+        const { randomBytes } = await import("crypto");
+        const portalToken = randomBytes(32).toString("hex");
+        const notes = [
+          `[Web Request]`,
+          qualification?.score ? `AI Score: ${qualification.score.toUpperCase()}` : "",
+          qualification?.summary ? `AI Summary: ${qualification.summary}` : "",
+          qualification?.flags?.length ? `AI Flags: ${qualification.flags.join(" | ")}` : "",
+          input.acreage ? `Acreage: ${input.acreage}` : "",
+          input.message ? `Client Message: ${input.message}` : "",
+        ].filter(Boolean).join("\n");
+        await db2.insert(nativeQuotes).values({
+          clientName: input.name,
+          clientEmail: input.email || null,
+          clientPhone: input.phone || null,
+          propertyAddress: address || null,
+          title,
+          serviceType: serviceLabel,
+          acreage: input.acreage || null,
+          clientMessage: input.message || null,
+          internalNotes: notes,
+          lineItems: "[]",
+          totalCents: 0,
+          status: "web_request",
+          portalToken,
+        });
+        console.log(`[Quote] Native quote (web_request) created for ${input.name}`);
+      }
+    } catch (nativeErr) {
+      console.warn("[Quote] Failed to create native web_request quote:", nativeErr);
+    }
 
     return {
       success: true,

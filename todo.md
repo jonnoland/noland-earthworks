@@ -2534,3 +2534,136 @@
 - [x] SEO: Rewrite thin Wilson County blog post with substantive county-specific content
 - [x] SEO: Rewrite thin Montgomery County blog post with substantive county-specific content
 - [x] SEO: Rewrite thin Sumner County blog post with substantive county-specific content
+
+## Quote Portal Fix — Native Quote Token Resolution
+- [x] Add getByToken public procedure to nativeQuotesRouter
+- [x] Add portalAction public procedure to nativeQuotesRouter (approve/decline/changes)
+- [x] Add publicDepositSession public procedure to nativeQuotesRouter (Stripe, no auth)
+- [x] Create NativeQuotePortal.tsx — dedicated portal page for native quotes
+- [x] Add QuotePortalRouter to App.tsx — auto-detects native vs legacy quote by token
+- [x] TypeScript: 0 errors
+
+## Portal Fix + AI Suggest Breakdown Enhancements
+- [x] Fix /quote/:token portal — route was pointing to old QuotePortal instead of QuotePortalRouter
+- [x] Wire QuotePortalRouter into App.tsx /quote/:token route (native first, legacy fallback)
+- [x] Add editable terrain and access multipliers to AI Suggest breakdown panel
+- [x] Add info tooltips to terrain and access multipliers explaining how values are determined
+- [x] Add copy-to-clipboard button for the full price breakdown
+- [x] Recalculate line item prices proportionally when multipliers are edited before applying
+- [x] Reformat All Quotes section to match Jobber section layout (table + slide-out detail panel)
+- [x] Fix portal token routing — QuotePortalRouter now wired to /quote/:token in App.tsx
+- [x] Add importFromJobber procedure to nativeQuotesRouter (fetches all Jobber quotes, maps to native schema, idempotent)
+- [x] Add Import Jobber button to All Quotes header — one-click migration with toast feedback
+
+## Website Quote Request → All Quotes Routing
+- [x] Auto-insert native quote (status: web_request) on every website form submission
+- [x] Add Web Requests filter pill to All Quotes section
+- [x] Add cyan Web Request status badge
+- [x] Server-side list procedure already supports exact status filter — web_request works
+
+## Jobber Removal — Native System Completion
+- [x] Item 1: Web Requests review panel — Convert to Quote quick-action in All Quotes detail panel
+- [x] Item 5: Fix notification email CTA to point to All Quotes instead of Jobber
+- [x] Item 2: Native Jobs section — DB schema (nativeJobs table), server procedures, Jobs tab in Ops
+- [x] Item 3: HTML invoice generation from completed job, emailed to client (stored in S3, opens in browser)
+- [x] Item 4a: Native Clients tab in Ops backed by database
+- [x] Item 4b: Native Jobs tab in Ops backed by database (using nativeJobs table)
+- [x] Item 4c: Native Invoices tab in Ops backed by database
+
+## Native Clients, Invoices Tab, and Jobs CSV Export (Jul 2026)
+- [x] Schema: nativeClients table (name, email, phone, address, notes, jobCount, totalSpentCents, createdAt, updatedAt)
+- [x] Run db:push for nativeClients table
+- [x] Server: nativeClientsRouter — list, getById, update, delete, upsertFromJob (auto-sync when job is created/updated)
+- [x] Server: nativeClientsRouter wired into routers.ts as nativeClients namespace
+- [x] Frontend: NativeClientsSection.tsx — table + slide-out detail panel (contact info, job history, total spent, notes, delete)
+- [x] Frontend: Clients tab added to Quotes.tsx (Ops page)
+- [x] Server: nativeJobs.listInvoices already exists — expose all invoices with job context
+- [x] Frontend: NativeInvoicesSection.tsx — all invoices table (invoice #, client, amount, status, date, view/mark paid actions)
+- [x] Frontend: Invoices tab added to Quotes.tsx (Ops page)
+- [x] Frontend: CSV export button in NativeJobsSection — exports filtered jobs list as downloadable CSV
+- [x] TypeScript: 0 errors
+- [x] Tests: vitest coverage for nativeClientsRouter
+
+## Jobber Removal — Close Feature Gaps (2026-07-28)
+
+- [x] Gap 1: Satellite imagery strip in NativeQuoteDetailPanel (wire trpc.ops.quotes.satelliteImage using quote.propertyAddress)
+- [x] Gap 2: Update getStaleQuotes to query nativeQuotes (portalSentAt > 7 days, no clientAction) and add Quotes Needing Follow-Up panel to NativeAllQuotesSection
+- [x] Gap 3: Add Link to Lead to NativeQuoteDetailPanel (add nativeQuoteId support to linkQuoteToLead procedure)
+- [x] Gap 4: Add Quote # column (display #id) to All Quotes table
+- [x] Gap 5: Add Restore to Draft action for cancelled quotes in NativeQuoteDetailPanel
+- [x] Gap 6: Render changeRequestNote, declineNote, signatureDataUrl/signatureTypedText/signedAt in NativeQuoteDetailPanel body
+
+## Jobber Removal — Full /ops Cleanup (2026-07-28)
+- [x] Remove Jobber tab from /ops/quotes (TabsTrigger + TabsContent + related state)
+- [x] Remove Jobber data queries from Dashboard.tsx (replace with nativeJobs.list, nativeQuotes.list)
+- [x] Remove Jobber quoteDetail query from Leads.tsx (replace with nativeQuotes.getById)
+- [x] Remove Jobber jobs query from Schedule.tsx (replace with nativeJobs.list)
+- [x] Rebuild Jobs.tsx using nativeJobs data
+- [x] Rebuild Clients.tsx using nativeClients data
+- [x] Rebuild Invoices.tsx using nativeInvoices data
+- [x] Update sidebar: redirect Jobs entry to /ops/quotes, redirect Clients entry to /ops/quotes
+- [x] Add Field Fix to sidebar under Field Work
+- [x] Add Tasks to sidebar under Field Work or Business
+- [x] Add Prospecting to sidebar under Sales
+- [x] Add Payments to sidebar under Sales or Business
+- [x] TypeScript: 0 errors after all changes
+
+## Tasks Page Improvements (Jul 28, 2026)
+- [x] Add search bar to /ops/tasks (client-side filter by title/description)
+- [x] Add relatedType filter dropdown to /ops/tasks (shows types from existing tasks)
+- [x] Add "Add Task" button and modal to /ops/tasks for manual task creation
+- [x] Add tasks.create tRPC procedure to tasksRouter (title, description, dueAt, relatedType, relatedId)
+- [x] Clicking relatedType badge on a task filters the list to that type
+- [x] Clear filters button shown when search or type filter is active
+- [x] quoteRouter.ts: remove Jobber sync block and createJobberRequest/isJobberConnected import
+
+## Web Requests Delete (Jul 29, 2026)
+- [x] Add delete button (trash icon) to each Web Request card in /ops/quotes Website Requests panel
+- [x] Calls trpc.ops.quotes.delete mutation with confirmation dialog
+- [x] Refreshes the list on success with toast notification
+
+## Clients List Improvements (Jul 29, 2026)
+- [x] Auto-upsert client when lead comes in (quoteRouter, contactRouter, chatRouter)
+- [x] Auto-upsert client when quote is created (nativeQuotesRouter)
+- [x] Add upsertNativeClient helper to db.ts
+- [x] Add syncFromLeads procedure to nativeClientsRouter
+- [x] Add syncFromQuotes procedure to nativeClientsRouter
+- [x] Add create procedure to nativeClientsRouter (manual add)
+- [x] Add Client modal with name/phone/email/address/notes fields
+- [x] Sync from Leads toolbar button (Users icon)
+- [x] Sync from Quotes toolbar button (FileText icon)
+- [x] Sync from Jobs toolbar button (RefreshCw icon)
+- [x] Delete client from detail panel (existing, confirmed working)
+- [x] Edit client from detail panel (existing, confirmed working)
+
+## Client Detail Panel & CSV Export (Jul 29, 2026)
+- [x] Expand getById to return associated quotes and leads alongside jobs
+- [x] Client detail panel: 4-tab layout (Overview, Quotes, Jobs, Leads/Interactions)
+- [x] Overview tab: contact info, notes, latest quote summary
+- [x] Quotes tab: all associated quotes with status, amount, date
+- [x] Jobs tab: all associated jobs with status, amount, date
+- [x] Leads tab: all associated lead records with stage, AI score, source
+- [x] Stats row: job count, quote count, total spent
+- [x] Add exportCsv procedure to nativeClientsRouter
+- [x] CSV export button in toolbar (downloads client list as .csv)
+- [x] Update nativeClients.test.ts schema mock to include nativeQuotes and opsLeads
+
+## Prospecting Page Improvements (Jul 29, 2026)
+- [x] Expand scan prompt with additional keywords: cedar thicket, brush removal, pasture reclamation, fence line clearing, overgrown lot
+- [x] Add Craigslist markets: Memphis, Knoxville, Chattanooga, Clarksville (in addition to Nashville)
+- [x] Add AI fit scoring (fitScore 1-10) to scan prompt output
+- [x] Add fitScore column to prospectingLeads schema and run migration
+- [x] Update postback endpoints to store fitScore from scan results
+- [x] Add fitScore badge to each prospect card (color-coded: green 9-10, emerald 7-8, yellow 5-6, gray 1-4)
+- [x] Add "Fit Score" sort option to sort dropdown
+- [x] Add "Run Scan" button to Prospecting page header for manual on-demand scans
+- [x] Update info banner to reflect expanded scan coverage
+- [x] Prospecting: add minimum fit score filter to hide low-fit prospects
+- [x] Prospecting: add Convert to Client action on prospect cards
+- [x] Prospecting: add last-scan new prospects badge/counter on the Prospecting page
+- [x] Prospecting: color-coded card borders based on fit score (green 8+, yellow 6+, default otherwise)
+- [x] Prospecting: confirmation modal with prospect summary before Convert to Client finalizes
+- [x] Prospecting: batch-select checkboxes to convert multiple prospects to clients simultaneously
+- [x] Prospecting: Undo option in batch convert-to-clients toast (delete the created client records)
+- [x] Prospecting: show contact info (email/phone) in the Convert to Client confirmation modal
+- [x] Prospecting: fit score color-tier filter (All / Green 8+ / Yellow 6+ / Unscored)

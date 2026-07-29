@@ -37,6 +37,10 @@ import {
   Image,
   MessageSquare,
   BookOpen,
+  CheckSquare,
+  Stethoscope,
+  DollarSign,
+  TrendingUp,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/_core/hooks/useAuth";
@@ -54,8 +58,10 @@ const navGroups = [
   {
     label: "Field Work",
     items: [
-      { icon: Briefcase,    label: "Jobs",      href: "/ops/jobs" },
+      { icon: Briefcase,    label: "Jobs",      href: "/ops/quotes" },
       { icon: CalendarDays, label: "Schedule",  href: "/ops/schedule" },
+      { icon: Stethoscope,  label: "Field Fix", href: "/ops/field-fix" },
+      { icon: CheckSquare,  label: "Tasks",     href: "/ops/tasks" },
       { icon: HardHat,      label: "Crews",     href: "/ops/crews-hub" },
       { icon: Wrench,       label: "Equipment", href: "/ops/equipment-hub" },
     ],
@@ -63,9 +69,11 @@ const navGroups = [
   {
     label: "Sales",
     items: [
-      { icon: Users,    label: "Leads",   href: "/ops/leads" },
-      { icon: FileText, label: "Quotes",  href: "/ops/quotes" },
-      { icon: Receipt,  label: "Clients", href: "/ops/clients" },
+      { icon: Users,       label: "Leads",       href: "/ops/leads" },
+      { icon: FileText,    label: "Quotes",      href: "/ops/quotes" },
+      { icon: TrendingUp,  label: "Prospecting", href: "/ops/prospecting" },
+      { icon: Receipt,     label: "Clients",     href: "/ops/quotes" },
+      { icon: DollarSign,  label: "Payments",    href: "/ops/payments" },
     ],
   },
   {

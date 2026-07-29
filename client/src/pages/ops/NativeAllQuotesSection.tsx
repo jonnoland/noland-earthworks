@@ -24,8 +24,10 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import {
   Plus, Search, Edit2, Trash2, Copy, Send, CreditCard, Briefcase,
-  ChevronDown, ChevronUp, Eye, CheckCircle, XCircle, Clock, DollarSign,
-  FileText, ExternalLink, Sparkles
+  Eye, CheckCircle, XCircle, DollarSign,
+  FileText, ExternalLink, Sparkles, Info, AlertTriangle,
+  RefreshCw, ChevronRight, MapPin, Phone, Mail, User, Users, X, Globe,
+  Loader2, Clock, ChevronDown, ChevronUp, ArchiveRestore
 } from "lucide-react";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -57,6 +59,11 @@ interface NativeQuote {
   clientAction: string | null;
   clientActionAt: Date | null;
   signedAt: Date | null;
+  signatureDataUrl: string | null;
+  signatureTypedText: string | null;
+  changeRequestNote: string | null;
+  changeRequestAt: Date | null;
+  declineNote: string | null;
   depositPaidCents: number | null;
   depositPaidAt: Date | null;
   convertedJobId: number | null;
@@ -73,6 +80,7 @@ function StatusBadge({ quote }: { quote: NativeQuote }) {
   if (quote.clientAction === "changes_requested") return <Badge className="bg-orange-500 text-white text-xs">Changes Requested</Badge>;
   if (quote.portalViewedAt) return <Badge className="bg-blue-500 text-white text-xs">Viewed</Badge>;
   if (quote.portalSentAt) return <Badge className="bg-sky-600 text-white text-xs">Sent</Badge>;
+  if (quote.status === "web_request") return <Badge className="bg-cyan-600 text-white text-xs">Web Request</Badge>;
   if (quote.status === "invoiced") return <Badge className="bg-amber-600 text-white text-xs">Invoiced</Badge>;
   return <Badge className="bg-zinc-600 text-white text-xs">Draft</Badge>;
 }
@@ -158,24 +166,33 @@ function QuoteFormModal({
   onClose,
   editQuote,
   onSaved,
+  prefill,
 }: {
   open: boolean;
   onClose: () => void;
   editQuote?: NativeQuote | null;
   onSaved: () => void;
+  prefill?: {
+    clientName?: string;
+    clientPhone?: string;
+    clientEmail?: string;
+    propertyAddress?: string;
+    serviceType?: string;
+    clientMessage?: string;
+  };
 }) {
   const utils = trpc.useUtils();
 
   const blankForm = (): QuoteFormData => ({
-    clientName: "",
-    clientEmail: "",
-    clientPhone: "",
-    propertyAddress: "",
+    clientName: prefill?.clientName ?? "",
+    clientEmail: prefill?.clientEmail ?? "",
+    clientPhone: prefill?.clientPhone ?? "",
+    propertyAddress: prefill?.propertyAddress ?? "",
     title: "",
-    serviceType: "Forestry Mulching",
+    serviceType: prefill?.serviceType ?? "Forestry Mulching",
     acreage: "",
     estimatedDuration: "",
-    clientMessage: "",
+    clientMessage: prefill?.clientMessage ?? "",
     internalNotes: "",
     lineItems: DEFAULT_LINE_ITEMS.map(li => ({ ...li })),
   });
@@ -207,28 +224,79 @@ function QuoteFormModal({
   );
 
   // ── AI Suggest ────────────────────────────────────────────────────────────
-  const [aiPanel, setAiPanel] = useState<"closed" | "open" | "loading">("closed");
+  const [aiPanel, setAiPanel] = useState<"closed" | "open" | "loading" | "result">("closed");
   const [aiTerrain, setAiTerrain] = useState("flat");
   const [aiDensity, setAiDensity] = useState("moderate");
   const [aiAccess, setAiAccess] = useState("easy");
+  // Editable multipliers — override the server-computed values before applying
+  const [editTerrainMult, setEditTerrainMult] = useState<string>("");
+  const [editAccessMult, setEditAccessMult] = useState<string>("");
+  const [copyDone, setCopyDone] = useState(false);
+  const [aiSuggestion, setAiSuggestion] = useState<{
+    title: string;
+    estimatedDuration: string;
+    clientMessage: string;
+    lineItems: LineItem[];
+    totalCents: number;
+    belowMinimum: boolean;
+    minimumJobCents: number;
+    breakdown: {
+      baseRatePerAcre: number;
+      baseRateLow: number;
+      baseRateHigh: number;
+      terrainMultiplier: number;
+      accessMultiplier: number;
+      densityKey: string;
+      acreage: number;
+      rawTotalBeforeMinimum: number;
+      minimumJobApplied: boolean;
+      mobilizationFee: number;
+    };
+  } | null>(null);
 
   const aiSuggestMutation = trpc.nativeQuotes.aiSuggest.useMutation({
     onSuccess: (data) => {
-      setForm(prev => ({
-        ...prev,
-        title: prev.title || data.title,
-        estimatedDuration: data.estimatedDuration || prev.estimatedDuration,
-        clientMessage: data.clientMessage || prev.clientMessage,
-        lineItems: data.lineItems.length > 0 ? data.lineItems : prev.lineItems,
-      }));
-      setAiPanel("closed");
-      toast.success("AI suggestion applied");
+      setAiSuggestion(data);
+      setEditTerrainMult(data.breakdown.terrainMultiplier.toFixed(2));
+      setEditAccessMult(data.breakdown.accessMultiplier.toFixed(2));
+      setCopyDone(false);
+      setAiPanel("result");
     },
     onError: (e) => {
       setAiPanel("open");
       toast.error("AI suggestion failed: " + e.message);
     },
   });
+
+  const applyAiSuggestion = () => {
+    if (!aiSuggestion) return;
+    // Recalculate total using editable multipliers if they differ from server values
+    const tMult = parseFloat(editTerrainMult) || aiSuggestion.breakdown.terrainMultiplier;
+    const aMult = parseFloat(editAccessMult) || aiSuggestion.breakdown.accessMultiplier;
+    const serverTMult = aiSuggestion.breakdown.terrainMultiplier;
+    const serverAMult = aiSuggestion.breakdown.accessMultiplier;
+    const multipliersChanged = tMult !== serverTMult || aMult !== serverAMult;
+    let lineItems = aiSuggestion.lineItems;
+    if (multipliersChanged && lineItems.length > 0) {
+      // Scale line item prices proportionally
+      const scale = (tMult * aMult) / (serverTMult * serverAMult);
+      lineItems = lineItems.map(li => ({
+        ...li,
+        unitPriceCents: Math.round(li.unitPriceCents * scale),
+        totalCents: Math.round(li.unitPriceCents * scale * li.qty),
+      }));
+    }
+    setForm(prev => ({
+      ...prev,
+      title: prev.title || aiSuggestion.title,
+      estimatedDuration: aiSuggestion.estimatedDuration || prev.estimatedDuration,
+      clientMessage: aiSuggestion.clientMessage || prev.clientMessage,
+      lineItems: lineItems.length > 0 ? lineItems : prev.lineItems,
+    }));
+    setAiPanel("closed");
+    setAiSuggestion(null);
+    toast.success("AI suggestion applied to quote");
+  };
 
   const handleAiSuggest = () => {
     const acreage = parseFloat(form.acreage);
@@ -437,6 +505,151 @@ function QuoteFormModal({
                 </Button>
               </div>
             )}
+
+            {/* Result panel — shown after generation */}
+            {aiPanel === "result" && aiSuggestion && (
+              <div className="mt-3 space-y-3">
+                {/* Below-minimum warning */}
+                {aiSuggestion.belowMinimum && (
+                  <div className="flex items-start gap-2 rounded-md bg-red-500/10 border border-red-500/30 px-3 py-2">
+                    <AlertTriangle className="h-4 w-4 text-red-400 mt-0.5 shrink-0" />
+                    <p className="text-xs text-red-300">
+                      Suggested total (${(aiSuggestion.totalCents / 100).toLocaleString()}) is below the minimum job total
+                      of ${(aiSuggestion.minimumJobCents / 100).toLocaleString()}. Review line items before applying.
+                    </p>
+                  </div>
+                )}
+
+                {/* Price breakdown with editable multipliers + copy button */}
+                <div className="rounded-md bg-zinc-800/60 border border-zinc-700 px-3 py-2 space-y-1.5">
+                  <div className="flex items-center justify-between mb-1">
+                    <div className="flex items-center gap-1.5">
+                      <Info className="h-3.5 w-3.5 text-zinc-400" />
+                      <span className="text-xs font-medium text-zinc-300">How the AI calculated this price</span>
+                    </div>
+                    <button
+                      type="button"
+                      title="Copy breakdown to clipboard"
+                      className="text-zinc-500 hover:text-zinc-200 transition-colors"
+                      onClick={() => {
+                        const tMult = parseFloat(editTerrainMult) || aiSuggestion.breakdown.terrainMultiplier;
+                        const aMult = parseFloat(editAccessMult) || aiSuggestion.breakdown.accessMultiplier;
+                        const text = [
+                          `AI Price Breakdown`,
+                          `Service: ${form.serviceType}`,
+                          `Acreage: ${aiSuggestion.breakdown.acreage} acres`,
+                          `Base rate range: $${aiSuggestion.breakdown.baseRateLow.toLocaleString()} – $${aiSuggestion.breakdown.baseRateHigh.toLocaleString()}/acre`,
+                          `Mid-point rate: $${aiSuggestion.breakdown.baseRatePerAcre.toLocaleString()}/acre`,
+                          `Terrain multiplier: x${tMult.toFixed(2)} (${aiTerrain})`,
+                          `Access multiplier: x${aMult.toFixed(2)} (${aiAccess})`,
+                          `Raw total: $${aiSuggestion.breakdown.rawTotalBeforeMinimum.toLocaleString()}`,
+                          aiSuggestion.breakdown.minimumJobApplied ? `Minimum job applied: Yes — bumped to $${(aiSuggestion.minimumJobCents / 100).toLocaleString()}` : null,
+                          `Suggested total: $${(aiSuggestion.totalCents / 100).toLocaleString()}`,
+                        ].filter(Boolean).join('\n');
+                        navigator.clipboard.writeText(text).then(() => {
+                          setCopyDone(true);
+                          setTimeout(() => setCopyDone(false), 2000);
+                        });
+                      }}
+                    >
+                      {copyDone
+                        ? <CheckCircle className="h-3.5 w-3.5 text-green-400" />
+                        : <Copy className="h-3.5 w-3.5" />}
+                    </button>
+                  </div>
+                  <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-xs">
+                    <span className="text-zinc-500">Base rate range</span>
+                    <span className="text-zinc-200">${aiSuggestion.breakdown.baseRateLow.toLocaleString()} – ${aiSuggestion.breakdown.baseRateHigh.toLocaleString()}/acre</span>
+                    <span className="text-zinc-500">Mid-point rate</span>
+                    <span className="text-zinc-200">${aiSuggestion.breakdown.baseRatePerAcre.toLocaleString()}/acre</span>
+
+                    {/* Editable terrain multiplier */}
+                    <div className="flex items-center gap-1 text-zinc-500">
+                      <span>Terrain multiplier</span>
+                      <span
+                        title={`How terrain difficulty affects the base rate.\n\nFlat: x1.00 (no adjustment)\nRolling: x1.10–1.20 (moderate slope, some repositioning)\nSteep: x1.30–1.50 (significant slope, slower progress, higher wear)`}
+                        className="cursor-help text-zinc-600 hover:text-zinc-400"
+                      >
+                        <Info className="h-3 w-3" />
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0.5"
+                        max="3"
+                        value={editTerrainMult}
+                        onChange={e => setEditTerrainMult(e.target.value)}
+                        className="w-16 h-5 text-xs bg-zinc-700 border border-zinc-600 rounded px-1 text-zinc-200 focus:outline-none focus:border-amber-500"
+                      />
+                      <span className="text-zinc-400">({aiTerrain})</span>
+                    </div>
+
+                    {/* Editable access multiplier */}
+                    <div className="flex items-center gap-1 text-zinc-500">
+                      <span>Access multiplier</span>
+                      <span
+                        title={`How site access affects the base rate.\n\nEasy: x1.00 (clear entry, no obstacles)\nModerate: x1.10–1.20 (narrow gate, soft ground, some maneuvering)\nDifficult: x1.25–1.40 (tight access, wet/soft soil, significant obstacles)`}
+                        className="cursor-help text-zinc-600 hover:text-zinc-400"
+                      >
+                        <Info className="h-3 w-3" />
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0.5"
+                        max="3"
+                        value={editAccessMult}
+                        onChange={e => setEditAccessMult(e.target.value)}
+                        className="w-16 h-5 text-xs bg-zinc-700 border border-zinc-600 rounded px-1 text-zinc-200 focus:outline-none focus:border-amber-500"
+                      />
+                      <span className="text-zinc-400">({aiAccess})</span>
+                    </div>
+
+                    <span className="text-zinc-500">Acreage</span>
+                    <span className="text-zinc-200">{aiSuggestion.breakdown.acreage} acres</span>
+                    <span className="text-zinc-500">Raw total</span>
+                    <span className="text-zinc-200">${aiSuggestion.breakdown.rawTotalBeforeMinimum.toLocaleString()}</span>
+                    {aiSuggestion.breakdown.minimumJobApplied && (
+                      <>
+                        <span className="text-zinc-500">Minimum job applied</span>
+                        <span className="text-amber-400">Yes — bumped to ${(aiSuggestion.minimumJobCents / 100).toLocaleString()}</span>
+                      </>
+                    )}
+                  </div>
+                </div>
+
+                {/* Suggested total */}
+                <div className="flex items-center justify-between px-1">
+                  <span className="text-xs text-zinc-400">Suggested total</span>
+                  <span className={`text-lg font-bold ${aiSuggestion.belowMinimum ? "text-red-400" : "text-amber-400"}`}>
+                    ${(aiSuggestion.totalCents / 100).toLocaleString()}
+                  </span>
+                </div>
+
+                {/* Action buttons */}
+                <div className="flex gap-2">
+                  <Button
+                    className="flex-1 bg-amber-500 hover:bg-amber-600 text-black font-semibold h-8 text-xs"
+                    onClick={applyAiSuggestion}
+                    type="button"
+                  >
+                    <CheckCircle className="h-3.5 w-3.5 mr-1.5" />Apply to Quote
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="h-8 text-xs border-zinc-600 text-zinc-400 hover:bg-zinc-800"
+                    onClick={() => { setAiPanel("open"); setAiSuggestion(null); }}
+                    type="button"
+                  >
+                    Regenerate
+                  </Button>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Line items */}
@@ -637,27 +850,30 @@ function ConvertToJobDialog({ quote, onClose }: { quote: NativeQuote; onClose: (
   );
 }
 
-// ─── Quote card ───────────────────────────────────────────────────────────────
-function QuoteCard({
+// ─── Native Quote Detail Panel ────────────────────────────────────────────────
+function NativeQuoteDetailPanel({
   quote,
+  onClose,
   onEdit,
   onRefresh,
 }: {
   quote: NativeQuote;
+  onClose: () => void;
   onEdit: (q: NativeQuote) => void;
   onRefresh: () => void;
 }) {
   const utils = trpc.useUtils();
-  const [expanded, setExpanded] = useState(false);
   const [showSendPortal, setShowSendPortal] = useState(false);
   const [showDeposit, setShowDeposit] = useState(false);
   const [showConvert, setShowConvert] = useState(false);
-
   const deleteMutation = trpc.nativeQuotes.delete.useMutation({
-    onSuccess: () => { utils.nativeQuotes.list.invalidate(); toast.success("Quote deleted"); },
+    onSuccess: () => { utils.nativeQuotes.list.invalidate(); toast.success("Quote deleted"); onClose(); },
     onError: (e) => toast.error("Error: " + e.message),
   });
-
+  const updateStatusMutation = trpc.nativeQuotes.update.useMutation({
+    onSuccess: () => { utils.nativeQuotes.list.invalidate(); },
+    onError: (e) => toast.error("Error: " + e.message),
+  });
   const duplicateMutation = trpc.nativeQuotes.duplicate.useMutation({
     onSuccess: () => { utils.nativeQuotes.list.invalidate(); toast.success("Quote duplicated"); },
     onError: (e) => toast.error("Error: " + e.message),
@@ -668,53 +884,202 @@ function QuoteCard({
 
   const portalUrl = quote.portalToken ? `${window.location.origin}/quote/${quote.portalToken}` : null;
 
+  // ── Satellite imagery ─────────────────────────────────────────────────────
+  const { data: satData, isLoading: satLoading } = trpc.ops.quotes.satelliteImage.useQuery(
+    { address: quote.propertyAddress! },
+    { enabled: !!quote.propertyAddress, staleTime: 1000 * 60 * 10 }
+  );
+
+  // ── Link to Lead ──────────────────────────────────────────────────────────
+  const [showLinkLeadPicker, setShowLinkLeadPicker] = useState(false);
+  const [leadPickerSearch, setLeadPickerSearch] = useState("");
+  const { data: linkedLead } = trpc.ops.getLeadByNativeQuoteId.useQuery(
+    { nativeQuoteId: quote.id },
+    { retry: false, staleTime: 1000 * 60 * 5 }
+  );
+  const { data: unlinkedLeads = [] } = trpc.ops.getUnlinkedLeads.useQuery(
+    undefined,
+    { enabled: showLinkLeadPicker, retry: false }
+  );
+  const filteredLeads = (unlinkedLeads as any[]).filter((l: any) => {
+    if (!leadPickerSearch) return true;
+    const q = leadPickerSearch.toLowerCase();
+    return (l.name ?? "").toLowerCase().includes(q) || (l.address ?? "").toLowerCase().includes(q);
+  });
+  const linkQuoteToLead = trpc.ops.linkNativeQuoteToLead.useMutation({
+    onSuccess: () => {
+      toast.success("Quote linked to lead.");
+      setShowLinkLeadPicker(false);
+      utils.ops.getLeadByNativeQuoteId.invalidate({ nativeQuoteId: quote.id });
+      utils.ops.leads.list.invalidate();
+    },
+    onError: (err) => toast.error(err.message || "Failed to link quote to lead."),
+  });
+
   return (
-    <div className="bg-zinc-900 border border-zinc-700 rounded-lg overflow-hidden">
-      {/* Header row */}
-      <div className="flex items-center gap-3 p-3 cursor-pointer hover:bg-zinc-800/50 transition-colors"
-        onClick={() => setExpanded(e => !e)}>
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="font-semibold text-zinc-100 text-sm truncate">{quote.title}</span>
+    <>
+      {/* Backdrop */}
+      <div className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm" onClick={onClose} />
+      {/* Panel */}
+      <div className="fixed right-0 top-0 bottom-0 z-50 w-full max-w-md bg-card border-l border-border shadow-2xl flex flex-col overflow-hidden">
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 py-4 border-b border-border shrink-0">
+          <div className="flex items-center gap-2">
+            <FileText className="w-4 h-4 text-primary" />
+            <span className="text-sm font-semibold text-foreground truncate max-w-[200px]">{quote.title}</span>
             <StatusBadge quote={quote} />
           </div>
-          <div className="text-xs text-zinc-400 mt-0.5">
-            {quote.clientName}
-            {quote.propertyAddress && <span className="ml-2 text-zinc-500">· {quote.propertyAddress}</span>}
-          </div>
+          <button onClick={onClose} className="text-muted-foreground hover:text-foreground transition-colors p-1 rounded" aria-label="Close">
+            <X className="w-4 h-4" />
+          </button>
         </div>
-        <div className="text-right shrink-0">
-          <div className="text-amber-400 font-bold text-sm">
-            ${(quote.totalCents / 100).toLocaleString("en-US", { minimumFractionDigits: 0 })}
-          </div>
-          <div className="text-xs text-zinc-500">{new Date(quote.createdAt).toLocaleDateString()}</div>
-        </div>
-        {expanded ? <ChevronUp className="h-4 w-4 text-zinc-500 shrink-0" /> : <ChevronDown className="h-4 w-4 text-zinc-500 shrink-0" />}
-      </div>
 
-      {/* Expanded detail */}
-      {expanded && (
-        <div className="border-t border-zinc-700 p-3 space-y-4">
-          {/* Info grid */}
-          <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
-            {quote.serviceType && <div><span className="text-zinc-500">Service:</span> <span className="text-zinc-300">{quote.serviceType}</span></div>}
-            {quote.acreage && <div><span className="text-zinc-500">Acreage:</span> <span className="text-zinc-300">{quote.acreage} ac</span></div>}
-            {quote.estimatedDuration && <div><span className="text-zinc-500">Est. Duration:</span> <span className="text-zinc-300">{quote.estimatedDuration}</span></div>}
-            {quote.clientEmail && <div><span className="text-zinc-500">Email:</span> <span className="text-zinc-300">{quote.clientEmail}</span></div>}
-            {quote.clientPhone && <div><span className="text-zinc-500">Phone:</span> <span className="text-zinc-300">{quote.clientPhone}</span></div>}
+        {/* Satellite imagery strip */}
+        {quote.propertyAddress && (
+          <div className="relative w-full h-36 bg-secondary/20 overflow-hidden shrink-0">
+            {satLoading && (
+              <div className="absolute inset-0 flex items-center justify-center gap-2 text-[11px] text-muted-foreground">
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                Loading satellite view...
+              </div>
+            )}
+            {satData?.url && (
+              <>
+                <img
+                  src={satData.url}
+                  alt={`Satellite view of ${quote.propertyAddress}`}
+                  className="w-full h-full object-cover"
+                  onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                />
+                <div className="absolute bottom-0 left-0 right-0 px-3 py-1.5 bg-black/60 flex items-center gap-1.5">
+                  <MapPin className="w-3 h-3 text-primary shrink-0" />
+                  <span className="text-[11px] text-white/90 truncate">{quote.propertyAddress}</span>
+                </div>
+              </>
+            )}
+            {!satLoading && !satData?.url && (
+              <div className="absolute inset-0 flex items-center justify-center gap-2 text-[11px] text-muted-foreground">
+                <MapPin className="w-3.5 h-3.5" />
+                {quote.propertyAddress}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Body */}
+        <div className="flex-1 overflow-y-auto p-5 space-y-5">
+          {/* Web Request banner */}
+          {quote.status === "web_request" && (
+            <div className="rounded-lg border border-cyan-600/40 bg-cyan-950/30 p-4">
+              <div className="flex items-start gap-3">
+                <div className="shrink-0 w-8 h-8 rounded-full bg-cyan-600/20 flex items-center justify-center">
+                  <Globe className="w-4 h-4 text-cyan-400" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-cyan-300 mb-0.5">Website Request</p>
+                  <p className="text-xs text-muted-foreground">This came in from the website quote form. Review the details below, then convert it to a formal quote to add pricing and send the portal.</p>
+                </div>
+              </div>
+              <button
+                onClick={() => {
+                  updateStatusMutation.mutate({ id: quote.id, status: "draft" });
+                  onEdit({ ...quote, status: "draft" });
+                }}
+                className="mt-3 w-full flex items-center justify-center gap-2 py-2 rounded-md text-xs font-semibold text-white bg-cyan-600 hover:bg-cyan-700 transition-colors"
+              >
+                <FileText className="w-3.5 h-3.5" />Convert to Quote
+              </button>
+            </div>
+          )}
+          {/* Client block */}
+          <div className="rounded-lg bg-secondary/30 border border-border p-4 space-y-2">
+            <div className="flex items-center gap-2 mb-2">
+              <User className="w-3.5 h-3.5 text-primary" />
+              <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Client</span>
+            </div>
+            <p className="text-sm font-semibold text-foreground">{quote.clientName}</p>
+            {quote.clientPhone && (
+              <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                <Phone className="w-3 h-3" />{quote.clientPhone}
+              </div>
+            )}
+            {quote.clientEmail && (
+              <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                <Mail className="w-3 h-3" />{quote.clientEmail}
+              </div>
+            )}
           </div>
 
-          {/* Line items */}
+          {/* Property */}
+          {quote.propertyAddress && (
+            <div className="flex items-start gap-2 text-xs text-muted-foreground">
+              <MapPin className="w-3.5 h-3.5 mt-0.5 shrink-0 text-primary" />
+              <span>{quote.propertyAddress}</span>
+            </div>
+          )}
+
+          {/* Job details */}
+          <div className="rounded-lg bg-secondary/30 border border-border p-4">
+            <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-3">Job Details</p>
+            <div className="space-y-2">
+              {quote.serviceType && (
+                <div className="flex justify-between text-xs">
+                  <span className="text-muted-foreground">Service</span>
+                  <span className="font-medium text-foreground">{quote.serviceType}</span>
+                </div>
+              )}
+              {quote.acreage && (
+                <div className="flex justify-between text-xs">
+                  <span className="text-muted-foreground">Acreage</span>
+                  <span className="font-medium text-foreground">{quote.acreage} acres</span>
+                </div>
+              )}
+              {quote.estimatedDuration && (
+                <div className="flex justify-between text-xs">
+                  <span className="text-muted-foreground">Est. Duration</span>
+                  <span className="font-medium text-foreground">{quote.estimatedDuration}</span>
+                </div>
+              )}
+              <div className="flex justify-between text-sm border-t border-border pt-2 mt-1">
+                <span className="font-semibold text-foreground">Total</span>
+                <span className="font-bold text-primary">${(quote.totalCents / 100).toLocaleString("en-US", { minimumFractionDigits: 0 })}</span>
+              </div>
+              {quote.depositPaidAt && quote.depositPaidCents && (
+                <div className="flex justify-between text-xs">
+                  <span className="text-muted-foreground">Deposit Paid</span>
+                  <span className="font-medium text-green-400">${(quote.depositPaidCents / 100).toLocaleString()}</span>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Line Items */}
           {lineItems.length > 0 && (
             <div>
-              <div className="text-xs text-zinc-500 mb-1">Line Items</div>
-              <div className="space-y-1">
-                {lineItems.map((li, i) => (
-                  <div key={i} className="flex justify-between text-xs">
-                    <span className="text-zinc-300">{li.description} {li.qty > 1 ? `× ${li.qty}` : ""}</span>
-                    <span className="text-amber-400">${((li.qty * li.unitPriceCents) / 100).toLocaleString()}</span>
-                  </div>
-                ))}
+              <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-2">Line Items</p>
+              <div className="rounded-lg border border-border overflow-hidden">
+                <table className="w-full text-xs">
+                  <thead>
+                    <tr className="bg-secondary/20 border-b border-border">
+                      <th className="text-left px-3 py-2 font-medium text-muted-foreground">Item</th>
+                      <th className="text-right px-3 py-2 font-medium text-muted-foreground">Qty</th>
+                      <th className="text-right px-3 py-2 font-medium text-muted-foreground">Unit Price</th>
+                      <th className="text-right px-3 py-2 font-medium text-muted-foreground">Total</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {lineItems.map((li, i) => (
+                      <tr key={i} className="border-b border-border last:border-0">
+                        <td className="px-3 py-2.5">
+                          <p className="font-medium text-foreground">{li.description}</p>
+                        </td>
+                        <td className="px-3 py-2.5 text-right text-muted-foreground">{li.qty}</td>
+                        <td className="px-3 py-2.5 text-right text-muted-foreground">${(li.unitPriceCents / 100).toLocaleString()}</td>
+                        <td className="px-3 py-2.5 text-right font-medium text-foreground">${((li.qty * li.unitPriceCents) / 100).toLocaleString()}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             </div>
           )}
@@ -722,92 +1087,374 @@ function QuoteCard({
           {/* Client message */}
           {quote.clientMessage && (
             <div>
-              <div className="text-xs text-zinc-500 mb-1">Client Message</div>
-              <p className="text-xs text-zinc-300 bg-zinc-800 rounded p-2">{quote.clientMessage}</p>
+              <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Client Message</p>
+              <p className="text-xs text-muted-foreground bg-secondary/30 rounded-md p-3 whitespace-pre-wrap">{quote.clientMessage}</p>
             </div>
           )}
 
           {/* Internal notes */}
           {quote.internalNotes && (
             <div>
-              <div className="text-xs text-zinc-500 mb-1">Internal Notes</div>
-              <p className="text-xs text-zinc-400 bg-zinc-800/50 rounded p-2">{quote.internalNotes}</p>
+              <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Internal Notes</p>
+              <p className="text-xs text-muted-foreground bg-secondary/30 rounded-md p-3 whitespace-pre-wrap">{quote.internalNotes}</p>
             </div>
           )}
 
-          {/* Portal status */}
+          {/* Change request note */}
+          {quote.changeRequestNote && (
+            <div className="rounded-lg border border-amber-600/40 bg-amber-950/20 p-4">
+              <p className="text-[10px] uppercase tracking-wider text-amber-400 mb-1">Change Request</p>
+              <p className="text-xs text-amber-200 whitespace-pre-wrap">{quote.changeRequestNote}</p>
+              {quote.changeRequestAt && (
+                <p className="text-[11px] text-muted-foreground mt-1">{new Date(quote.changeRequestAt).toLocaleDateString()}</p>
+              )}
+            </div>
+          )}
+
+          {/* Decline note */}
+          {quote.declineNote && (
+            <div className="rounded-lg border border-red-600/40 bg-red-950/20 p-4">
+              <p className="text-[10px] uppercase tracking-wider text-red-400 mb-1">Decline Reason</p>
+              <p className="text-xs text-red-200 whitespace-pre-wrap">{quote.declineNote}</p>
+            </div>
+          )}
+
+          {/* Signature */}
+          {quote.signedAt && (
+            <div className="rounded-lg border border-emerald-600/40 bg-emerald-950/20 p-4">
+              <p className="text-[10px] uppercase tracking-wider text-emerald-400 mb-2">Client Signature</p>
+              {quote.signatureDataUrl && (
+                <img src={quote.signatureDataUrl} alt="Client signature" className="h-14 bg-white/10 rounded p-1 mb-1" />
+              )}
+              {quote.signatureTypedText && (
+                <p className="text-sm font-medium text-emerald-300 italic">{quote.signatureTypedText}</p>
+              )}
+              <p className="text-[11px] text-muted-foreground mt-1">Signed {new Date(quote.signedAt).toLocaleDateString()}</p>
+            </div>
+          )}
+
+          {/* Portal activity */}
           {quote.portalSentAt && (
-            <div className="bg-zinc-800/50 rounded p-2 text-xs space-y-0.5">
-              <div className="text-zinc-500 font-medium mb-1">Portal Activity</div>
-              <div className="flex gap-2 flex-wrap">
-                <span className="text-sky-400"><Send className="h-3 w-3 inline mr-1" />Sent {new Date(quote.portalSentAt).toLocaleDateString()}</span>
-                {quote.portalViewedAt && <span className="text-blue-400"><Eye className="h-3 w-3 inline mr-1" />Viewed {new Date(quote.portalViewedAt).toLocaleDateString()}</span>}
-                {quote.clientAction === "approved" && <span className="text-emerald-400"><CheckCircle className="h-3 w-3 inline mr-1" />Approved {quote.clientActionAt ? new Date(quote.clientActionAt).toLocaleDateString() : ""}</span>}
-                {quote.clientAction === "declined" && <span className="text-red-400"><XCircle className="h-3 w-3 inline mr-1" />Declined</span>}
-                {quote.depositPaidAt && <span className="text-green-400"><DollarSign className="h-3 w-3 inline mr-1" />Deposit paid ${((quote.depositPaidCents ?? 0) / 100).toLocaleString()}</span>}
+            <div className="rounded-lg bg-secondary/30 border border-border p-4">
+              <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-2">Portal Activity</p>
+              <div className="space-y-1.5 text-xs">
+                <div className="flex items-center gap-1.5 text-sky-400">
+                  <Send className="h-3 w-3" />Sent {new Date(quote.portalSentAt).toLocaleDateString()}
+                </div>
+                {quote.portalViewedAt && (
+                  <div className="flex items-center gap-1.5 text-blue-400">
+                    <Eye className="h-3 w-3" />Viewed {new Date(quote.portalViewedAt).toLocaleDateString()}
+                  </div>
+                )}
+                {quote.clientAction === "approved" && (
+                  <div className="flex items-center gap-1.5 text-emerald-400">
+                    <CheckCircle className="h-3 w-3" />Approved {quote.clientActionAt ? new Date(quote.clientActionAt).toLocaleDateString() : ""}
+                  </div>
+                )}
+                {quote.clientAction === "declined" && (
+                  <div className="flex items-center gap-1.5 text-red-400">
+                    <XCircle className="h-3 w-3" />Declined
+                  </div>
+                )}
               </div>
               {portalUrl && (
-                <button className="text-zinc-500 hover:text-zinc-300 underline mt-1 block"
-                  onClick={() => { navigator.clipboard.writeText(portalUrl); toast.success("Link copied"); }}>
+                <button
+                  className="mt-2 text-[11px] text-muted-foreground hover:text-primary transition-colors underline"
+                  onClick={() => { navigator.clipboard.writeText(portalUrl); toast.success("Link copied"); }}
+                >
                   Copy portal link
                 </button>
               )}
             </div>
           )}
 
-          {/* Actions */}
-          <div className="flex flex-wrap gap-2 pt-1">
-            <Button size="sm" variant="outline" className="border-zinc-600 text-xs h-7" onClick={() => onEdit(quote)}>
-              <Edit2 className="h-3 w-3 mr-1" /> Edit
-            </Button>
-            <Button size="sm" variant="outline" className="border-zinc-600 text-xs h-7" onClick={() => duplicateMutation.mutate({ id: quote.id })}>
-              <Copy className="h-3 w-3 mr-1" /> Duplicate
-            </Button>
-            {quote.clientEmail && !quote.convertedToJobAt && (
-              <Button size="sm" className="bg-sky-700 hover:bg-sky-600 text-white text-xs h-7" onClick={() => setShowSendPortal(true)}>
-                <Send className="h-3 w-3 mr-1" /> Send Portal
-              </Button>
+          {/* Linked lead */}
+          <div>
+            {linkedLead ? (
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <Users className="w-3.5 h-3.5 text-primary shrink-0" />
+                <span>Linked to lead: <span className="font-medium text-foreground">{linkedLead.name}</span></span>
+              </div>
+            ) : (
+              <button
+                onClick={() => setShowLinkLeadPicker(v => !v)}
+                className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-primary transition-colors"
+              >
+                <Users className="w-3.5 h-3.5" />Link to Lead
+              </button>
             )}
-            {quote.totalCents > 0 && !quote.depositPaidAt && !quote.convertedToJobAt && (
-              <Button size="sm" className="bg-green-700 hover:bg-green-600 text-white text-xs h-7" onClick={() => setShowDeposit(true)}>
-                <CreditCard className="h-3 w-3 mr-1" /> Collect Deposit
-              </Button>
+            {showLinkLeadPicker && (
+              <div className="mt-2 rounded-lg border border-border bg-card p-3 space-y-2">
+                <input
+                  type="text"
+                  placeholder="Search leads..."
+                  value={leadPickerSearch}
+                  onChange={e => setLeadPickerSearch(e.target.value)}
+                  className="w-full text-xs bg-secondary/30 border border-border rounded px-2 py-1.5 outline-none focus:border-primary"
+                />
+                {filteredLeads.length === 0 && (
+                  <p className="text-xs text-muted-foreground text-center py-2">No unlinked leads found.</p>
+                )}
+                {filteredLeads.slice(0, 8).map((l: any) => (
+                  <button
+                    key={l.id}
+                    onClick={() => linkQuoteToLead.mutate({ leadId: l.id, nativeQuoteId: quote.id, estimateAmount: quote.totalCents > 0 ? quote.totalCents / 100 : undefined })}
+                    className="w-full text-left text-xs px-2 py-1.5 rounded hover:bg-secondary/50 transition-colors"
+                  >
+                    <span className="font-medium text-foreground">{l.name}</span>
+                    {l.address && <span className="text-muted-foreground ml-1.5">{l.address}</span>}
+                  </button>
+                ))}
+              </div>
             )}
-            {(quote.clientAction === "approved" || quote.depositPaidAt) && !quote.convertedToJobAt && (
-              <Button size="sm" className="bg-purple-700 hover:bg-purple-600 text-white text-xs h-7" onClick={() => setShowConvert(true)}>
-                <Briefcase className="h-3 w-3 mr-1" /> Convert to Job
-              </Button>
-            )}
-            {portalUrl && (
-              <Button size="sm" variant="outline" className="border-zinc-600 text-xs h-7"
-                onClick={() => window.open(portalUrl, "_blank")}>
-                <ExternalLink className="h-3 w-3 mr-1" /> View Portal
-              </Button>
-            )}
-            <Button size="sm" variant="outline" className="border-red-800 text-red-400 hover:text-red-300 text-xs h-7 ml-auto"
-              onClick={() => { if (confirm("Delete this quote?")) deleteMutation.mutate({ id: quote.id }); }}>
-              <Trash2 className="h-3 w-3 mr-1" /> Delete
-            </Button>
+          </div>
+
+          <p className="text-[11px] text-muted-foreground">Created {new Date(quote.createdAt).toLocaleDateString()}</p>
+        </div>
+
+        {/* Footer actions */}
+        <div className="shrink-0 border-t border-border px-5 py-4 space-y-2">
+          {/* Primary actions */}
+          {quote.clientEmail && !quote.convertedToJobAt && (
+            <button
+              onClick={() => setShowSendPortal(true)}
+              className="w-full flex items-center justify-center gap-2 py-2 rounded-md text-xs font-semibold text-white bg-sky-600 hover:bg-sky-700 transition-colors"
+            >
+              <Send className="w-3.5 h-3.5" />Send Portal to Client
+            </button>
+          )}
+          {quote.totalCents > 0 && !quote.depositPaidAt && !quote.convertedToJobAt && (
+            <button
+              onClick={() => setShowDeposit(true)}
+              className="w-full flex items-center justify-center gap-2 py-2 rounded-md text-xs font-semibold text-white bg-green-600 hover:bg-green-700 transition-colors"
+            >
+              <CreditCard className="w-3.5 h-3.5" />Collect Deposit
+            </button>
+          )}
+          {(quote.clientAction === "approved" || quote.depositPaidAt) && !quote.convertedToJobAt && (
+            <button
+              onClick={() => setShowConvert(true)}
+              className="w-full flex items-center justify-center gap-2 py-2 rounded-md text-xs font-semibold text-white bg-primary hover:bg-primary/90 transition-colors"
+            >
+              <Briefcase className="w-3.5 h-3.5" />Convert to Job
+            </button>
+          )}
+          {portalUrl && (
+            <button
+              onClick={() => window.open(portalUrl, "_blank")}
+              className="w-full flex items-center justify-center gap-2 py-2 rounded-md text-xs font-semibold text-muted-foreground border border-border hover:border-primary hover:text-primary transition-colors"
+            >
+              <ExternalLink className="w-3.5 h-3.5" />View Portal
+            </button>
+          )}
+          {/* Restore to Draft — shown when quote is declined or cancelled */}
+          {(quote.clientAction === "declined" || quote.status === "cancelled") && !quote.convertedToJobAt && (
+            <button
+              onClick={() => {
+                updateStatusMutation.mutate({ id: quote.id, status: "draft" });
+                toast.success("Quote restored to draft.");
+              }}
+              className="w-full flex items-center justify-center gap-2 py-2 rounded-md text-xs font-semibold text-amber-300 border border-amber-600/40 hover:bg-amber-950/30 transition-colors"
+            >
+              <ArchiveRestore className="w-3.5 h-3.5" />Restore to Draft
+            </button>
+          )}
+
+          {/* Secondary row */}
+          <div className="flex items-center justify-between pt-1">
+            <div className="flex gap-3">
+              <button
+                onClick={() => onEdit(quote)}
+                className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+              >
+                <Edit2 className="w-3.5 h-3.5" />Edit
+              </button>
+              <button
+                onClick={() => duplicateMutation.mutate({ id: quote.id })}
+                className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+              >
+                <Copy className="w-3.5 h-3.5" />Duplicate
+              </button>
+            </div>
+            <button
+              onClick={() => { if (confirm("Delete this quote?")) deleteMutation.mutate({ id: quote.id }); }}
+              className="flex items-center gap-1 text-xs text-red-500 hover:text-red-400 transition-colors"
+            >
+              <Trash2 className="w-3.5 h-3.5" />Delete
+            </button>
           </div>
         </div>
-      )}
+      </div>
 
       {/* Dialogs */}
       {showSendPortal && <SendPortalDialog quote={quote} onClose={() => setShowSendPortal(false)} />}
       {showDeposit && <DepositDialog quote={quote} onClose={() => setShowDeposit(false)} />}
       {showConvert && <ConvertToJobDialog quote={quote} onClose={() => setShowConvert(false)} />}
-    </div>
+    </>
   );
 }
 
+// ─── Inline Web Requests Panel ──────────────────────────────────────────────
+function InlineWebRequestsPanel({
+  onBuildQuote,
+}: {
+  onBuildQuote: (prefill: {
+    clientName?: string;
+    clientPhone?: string;
+    clientEmail?: string;
+    propertyAddress?: string;
+    serviceType?: string;
+    clientMessage?: string;
+  }) => void;
+}) {
+  const { data, isLoading, refetch, isFetching } = trpc.ops.quotes.list.useQuery(
+    { limit: 50 },
+    { retry: false }
+  );
+  const deleteReq = trpc.ops.quotes.delete.useMutation({
+    onSuccess: () => { toast.success("Request deleted."); refetch(); },
+    onError: () => toast.error("Failed to delete request."),
+  });
+  type WebReq = {
+    id: number;
+    name: string;
+    phone?: string | null;
+    email?: string | null;
+    street?: string | null;
+    city?: string | null;
+    service?: string | null;
+    message?: string | null;
+    acreage?: string | null;
+    county?: string | null;
+    aiScore?: string | null;
+    createdAt: Date | string;
+  };
+  const list = (data ?? []) as WebReq[];
+
+  return (
+    <div className="ops-card p-4 space-y-3">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Globe className="w-4 h-4 text-primary" />
+          <h2 className="text-sm font-semibold text-foreground">Website Requests</h2>
+          {!isLoading && list.length > 0 && (
+            <span className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-primary/15 text-primary text-[10px] font-semibold">{list.length}</span>
+          )}
+        </div>
+        <button
+          onClick={() => refetch()}
+          disabled={isFetching}
+          className="text-muted-foreground hover:text-foreground transition-colors"
+          aria-label="Refresh"
+        >
+          <RefreshCw className={`w-3.5 h-3.5 ${isFetching ? "animate-spin" : ""}`} />
+        </button>
+      </div>
+
+      {isLoading ? (
+        <div className="flex items-center justify-center py-8">
+          <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+        </div>
+      ) : list.length === 0 ? (
+        <div className="text-center py-8">
+          <Globe className="w-8 h-8 text-muted-foreground/30 mx-auto mb-2" />
+          <p className="text-xs text-muted-foreground">No website requests yet</p>
+        </div>
+      ) : (
+        <div className="space-y-2 max-h-[600px] overflow-y-auto pr-1">
+          {list.map((req) => (
+            <div key={req.id} className="rounded-md border border-border bg-card/50 p-3 space-y-1.5">
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <p className="text-sm font-medium text-foreground truncate">{req.name}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {[req.service, req.county, req.acreage ? `${req.acreage} ac` : undefined].filter(Boolean).join(" · ")}
+                  </p>
+                </div>
+                {req.aiScore && (
+                  <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded ${
+                    req.aiScore === "hot" ? "bg-red-500/20 text-red-400" :
+                    req.aiScore === "warm" ? "bg-amber-500/20 text-amber-400" :
+                    "bg-zinc-500/20 text-zinc-400"
+                  }`}>{req.aiScore}</span>
+                )}
+              </div>
+              {req.message && (
+                <p className="text-xs text-muted-foreground line-clamp-2">{req.message}</p>
+              )}
+              <div className="flex items-center justify-between pt-0.5">
+                <p className="text-[11px] text-muted-foreground">
+                  {new Date(req.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                </p>
+                <div className="flex items-center gap-1.5">
+                  <Button
+                    size="sm"
+                    className="h-6 text-xs px-2 gap-1"
+                    onClick={() => onBuildQuote({
+                      clientName: req.name,
+                      clientPhone: req.phone ?? undefined,
+                      clientEmail: req.email ?? undefined,
+                      propertyAddress: [req.street, req.city].filter(Boolean).join(", ") || undefined,
+                      serviceType: req.service ?? undefined,
+                      clientMessage: req.message ?? undefined,
+                    })}
+                  >
+                    <Plus className="w-3 h-3" />
+                    Build Quote
+                  </Button>
+                  <button
+                    onClick={() => {
+                      if (confirm(`Delete request from ${req.name}?`)) {
+                        deleteReq.mutate({ id: req.id });
+                      }
+                    }}
+                    disabled={deleteReq.isPending}
+                    className="h-6 w-6 flex items-center justify-center rounded text-muted-foreground hover:text-red-400 hover:bg-red-400/10 transition-colors"
+                    title="Delete request"
+                  >
+                    <Trash2 className="w-3 h-3" />
+                  </button>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 // ─── Main section ─────────────────────────────────────────────────────────────
 export function NativeAllQuotesSection() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [showCreate, setShowCreate] = useState(false);
+  const [createPrefill, setCreatePrefill] = useState<{
+    clientName?: string;
+    clientPhone?: string;
+    clientEmail?: string;
+    propertyAddress?: string;
+    serviceType?: string;
+    clientMessage?: string;
+  } | undefined>(undefined);
   const [editQuote, setEditQuote] = useState<NativeQuote | null>(null);
+  const [selectedQuote, setSelectedQuote] = useState<NativeQuote | null>(null);
+  // ── Stale quotes follow-up ──────────────────────────────────────────────────
+  const [showStalePanel, setShowStalePanel] = useState(false);
+  const [staleFollowUpDrafts, setStaleFollowUpDrafts] = useState<Record<number, string>>({});
+  const [draftingFor, setDraftingFor] = useState<number | null>(null);
+  const { data: staleQuotes = [] } = trpc.ops.getStaleQuotes.useQuery(undefined, {
+    staleTime: 1000 * 60 * 5,
+    retry: false,
+  });
+  const draftFollowUpMutation = trpc.ops.draftQuoteFollowUp.useMutation({
+    onSuccess: (result, variables) => {
+      setStaleFollowUpDrafts(prev => ({ ...prev, [variables.quoteId]: result.draft }));
+      setDraftingFor(null);
+    },
+    onError: (err) => { toast.error(err.message); setDraftingFor(null); },
+  });
 
-  const { data, isLoading, refetch } = trpc.nativeQuotes.list.useQuery({
+  const { data, isLoading, refetch, isFetching } = trpc.nativeQuotes.list.useQuery({
     search: search || undefined,
     status: statusFilter,
     limit: 100,
@@ -819,68 +1466,285 @@ export function NativeAllQuotesSection() {
   // Status counts
   const counts = useMemo(() => {
     const all = quotes.length;
-    const draft = quotes.filter(q => !q.portalSentAt && !q.convertedToJobAt).length;
-    const sent = quotes.filter(q => q.portalSentAt && !q.clientAction && !q.convertedToJobAt).length;
+    const webRequest = quotes.filter(q => q.status === "web_request").length;
+    const draft = quotes.filter(q => q.status === "draft" && !q.portalSentAt && !q.convertedToJobAt).length;
+    const sent = quotes.filter(q => q.portalSentAt && !q.clientAction && !q.convertedToJobAt && q.status !== "web_request").length;
     const approved = quotes.filter(q => q.clientAction === "approved" && !q.convertedToJobAt).length;
     const converted = quotes.filter(q => q.convertedToJobAt).length;
-    return { all, draft, sent, approved, converted };
+    return { all, webRequest, draft, sent, approved, converted };
   }, [quotes]);
 
-  return (
-    <div className="space-y-4">
-      {/* Toolbar */}
-      <div className="flex flex-wrap items-center gap-3">
-        <div className="relative flex-1 min-w-48">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-500" />
-          <Input
-            placeholder="Search quotes..."
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            className="pl-9 bg-zinc-800 border-zinc-700"
-          />
-        </div>
-        <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-40 bg-zinc-800 border-zinc-700">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent className="bg-zinc-800 border-zinc-700">
-            <SelectItem value="all">All ({counts.all})</SelectItem>
-            <SelectItem value="draft">Draft ({counts.draft})</SelectItem>
-            <SelectItem value="sent">Sent ({counts.sent})</SelectItem>
-            <SelectItem value="approved">Approved ({counts.approved})</SelectItem>
-            <SelectItem value="invoiced">Converted ({counts.converted})</SelectItem>
-          </SelectContent>
-        </Select>
-        <Button className="bg-amber-500 hover:bg-amber-600 text-black font-semibold" onClick={() => setShowCreate(true)}>
-          <Plus className="h-4 w-4 mr-1" /> New Quote
-        </Button>
-      </div>
+  const statuses = [
+    { value: "all", label: "All", count: counts.all },
+    { value: "web_request", label: "Web Requests", count: counts.webRequest },
+    { value: "draft", label: "Draft", count: counts.draft },
+    { value: "sent", label: "Sent", count: counts.sent },
+    { value: "approved", label: "Approved", count: counts.approved },
+    { value: "invoiced", label: "Converted", count: counts.converted },
+  ];
 
-      {/* Quote list */}
-      {isLoading ? (
-        <div className="text-center text-zinc-500 py-12">Loading quotes...</div>
-      ) : quotes.length === 0 ? (
-        <div className="text-center text-zinc-500 py-12">
-          <FileText className="h-10 w-10 mx-auto mb-3 opacity-30" />
-          <p className="text-sm">No quotes found.</p>
-          <Button className="mt-4 bg-amber-500 hover:bg-amber-600 text-black font-semibold" onClick={() => setShowCreate(true)}>
-            <Plus className="h-4 w-4 mr-1" /> Create First Quote
-          </Button>
-        </div>
-      ) : (
-        <div className="space-y-2">
-          {quotes.map(q => (
-            <QuoteCard key={q.id} quote={q} onEdit={q2 => setEditQuote(q2)} onRefresh={refetch} />
-          ))}
-        </div>
+  return (
+    <div className="space-y-5 pb-10">
+      {/* ── Two-column grid: left = Quotes table, right = Website Requests ── */}
+      <div className="grid grid-cols-1 xl:grid-cols-5 gap-6 items-start">
+        {/* ── LEFT: Quotes table (3/5 width on xl) ── */}
+        <div className="xl:col-span-3 space-y-4">
+          {/* Header */}
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <FileText className="w-5 h-5 text-primary" />
+              <h2 className="text-base font-semibold text-foreground">All Quotes</h2>
+              {!isLoading && (
+                <Badge variant="secondary" className="text-xs">{counts.all} total</Badge>
+              )}
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="relative flex-1 sm:w-56">
+                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+                <Input
+                  placeholder="Search quotes..."
+                  value={search}
+                  onChange={e => setSearch(e.target.value)}
+                  className="pl-8 h-8 text-xs bg-secondary/30 border-border"
+                />
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 px-2"
+                onClick={() => refetch()}
+                disabled={isFetching}
+                aria-label="Refresh"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${isFetching ? "animate-spin" : ""}`} />
+              </Button>
+              <Button
+                size="sm"
+                className="h-8 gap-1.5 text-xs"
+                onClick={() => { setCreatePrefill(undefined); setShowCreate(true); }}
+              >
+                <Plus className="w-3.5 h-3.5" />New Quote
+              </Button>
+            </div>
+          </div>
+
+          {/* Status filter pills */}
+          {!isLoading && (
+            <div className="flex flex-wrap gap-1.5">
+              {statuses.map(s => (
+                <button
+                  key={s.value}
+                  onClick={() => setStatusFilter(s.value)}
+                  className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
+                    statusFilter === s.value
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-secondary/40 text-muted-foreground hover:bg-secondary/70"
+                  }`}
+                >
+                  {s.label} ({s.count})
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* Stale quotes follow-up panel */}
+          {(staleQuotes as any[]).length > 0 && (
+            <div className="rounded-lg border border-amber-500/30 bg-card p-4">
+              <button
+                className="w-full flex items-center justify-between"
+                onClick={() => setShowStalePanel(p => !p)}
+              >
+                <div className="flex items-center gap-2">
+                  <Clock className="w-4 h-4 text-amber-400" />
+                  <span className="text-sm font-semibold text-foreground">Quotes Needing Follow-Up</span>
+                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-400/10 text-amber-400 border border-amber-400/20 font-semibold">{(staleQuotes as any[]).length}</span>
+                </div>
+                {showStalePanel ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
+              </button>
+              {showStalePanel && (
+                <div className="mt-3 space-y-3">
+                  {(staleQuotes as any[]).map((q: any) => {
+                    const draft = staleFollowUpDrafts[q.id];
+                    return (
+                      <div key={q.id} className="rounded-md bg-secondary/20 border border-border p-3 space-y-2">
+                        <div className="flex items-start justify-between gap-2">
+                          <div>
+                            <p className="text-xs font-semibold text-foreground">{q.clientName ?? `Quote #${q.id}`}</p>
+                            <p className="text-[11px] text-muted-foreground">{q.service ?? "Land clearing"} &middot; {q.daysSinceSent} days since sent</p>
+                          </div>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-7 text-xs gap-1 shrink-0"
+                            disabled={draftingFor === q.id}
+                            onClick={() => {
+                              setDraftingFor(q.id);
+                              draftFollowUpMutation.mutate({
+                                quoteId: q.id,
+                                clientName: q.clientName ?? "there",
+                                service: q.service ?? "land management",
+                                acreage: q.acreage ?? undefined,
+                                daysSinceSent: q.daysSinceSent,
+                              });
+                            }}
+                          >
+                            {draftingFor === q.id ? <><Loader2 className="w-3 h-3 animate-spin" />Drafting...</> : <><Sparkles className="w-3 h-3 text-orange-400" />Draft SMS</>}
+                          </Button>
+                        </div>
+                        {draft && (
+                          <div className="rounded bg-primary/5 border border-primary/20 p-2">
+                            <p className="text-xs text-foreground leading-relaxed">{draft}</p>
+                            <button
+                              className="text-[11px] text-primary hover:text-primary/80 mt-1.5 transition-colors"
+                              onClick={() => { navigator.clipboard.writeText(draft); toast.success("Copied to clipboard."); }}
+                            >
+                              Copy
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Loading */}
+          {isLoading && (
+            <div className="flex items-center justify-center py-20">
+              <RefreshCw className="w-6 h-6 animate-spin text-muted-foreground" />
+            </div>
+          )}
+
+          {/* Empty */}
+          {!isLoading && quotes.length === 0 && (
+            <div className="flex flex-col items-center justify-center py-16 text-center gap-3">
+              <FileText className="w-10 h-10 text-muted-foreground/40" />
+              <p className="text-sm text-muted-foreground">
+                {search || statusFilter !== "all" ? "No quotes match your filters." : "No quotes yet. Create your first quote."}
+              </p>
+              {!search && statusFilter === "all" && (
+                <Button size="sm" className="gap-1.5" onClick={() => { setCreatePrefill(undefined); setShowCreate(true); }}>
+                  <Plus className="w-3.5 h-3.5" />Create First Quote
+                </Button>
+              )}
+            </div>
+          )}
+
+          {/* Table */}
+          {!isLoading && quotes.length > 0 && (
+            <div className="rounded-lg border border-border overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs">
+                  <thead>
+                    <tr className="border-b border-border bg-secondary/20">
+                      <th className="text-left px-4 py-2.5 font-medium text-muted-foreground hidden lg:table-cell">#</th>
+                      <th className="text-left px-4 py-2.5 font-medium text-muted-foreground">Title</th>
+                      <th className="text-left px-4 py-2.5 font-medium text-muted-foreground hidden sm:table-cell">Client</th>
+                      <th className="text-right px-4 py-2.5 font-medium text-muted-foreground hidden md:table-cell">Total</th>
+                      <th className="text-left px-4 py-2.5 font-medium text-muted-foreground">Status</th>
+                      <th className="text-left px-4 py-2.5 font-medium text-muted-foreground hidden lg:table-cell">Date</th>
+                      <th className="text-right px-4 py-2.5 font-medium text-muted-foreground">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {quotes.map((quote, idx) => (
+                      <tr
+                        key={quote.id}
+                        onClick={() => setSelectedQuote(quote)}
+                        className={`border-b border-border last:border-0 hover:bg-secondary/30 transition-colors cursor-pointer ${
+                          idx % 2 === 0 ? "" : "bg-secondary/5"
+                        } ${selectedQuote?.id === quote.id ? "bg-primary/5 border-l-2 border-l-primary" : ""}`}
+                      >
+                        <td className="px-4 py-3 text-muted-foreground/60 text-[11px] hidden lg:table-cell">
+                          #{quote.id}
+                        </td>
+                        <td className="px-4 py-3 font-medium text-foreground max-w-[200px] truncate">
+                          <div className="flex items-center gap-1.5">
+                            {quote.title || "Untitled Quote"}
+                            <ChevronRight className="w-3 h-3 text-muted-foreground/50 shrink-0" />
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 text-muted-foreground hidden sm:table-cell">
+                          <div>{quote.clientName}</div>
+                          {quote.propertyAddress && (
+                            <div className="text-[11px] text-muted-foreground/60 truncate max-w-[160px]">{quote.propertyAddress}</div>
+                          )}
+                        </td>
+                        <td className="px-4 py-3 text-right hidden md:table-cell">
+                          <div className="flex items-center justify-end gap-1 text-foreground font-medium">
+                            <DollarSign className="w-3 h-3 text-green-500" />
+                            {(quote.totalCents / 100).toLocaleString("en-US", { minimumFractionDigits: 0 })}
+                          </div>
+                        </td>
+                        <td className="px-4 py-3">
+                          <StatusBadge quote={quote} />
+                        </td>
+                        <td className="px-4 py-3 text-muted-foreground hidden lg:table-cell">
+                          {new Date(quote.createdAt).toLocaleDateString()}
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          <div className="flex items-center justify-end gap-2">
+                            <button
+                              onClick={e => { e.stopPropagation(); setEditQuote(quote); }}
+                              title="Edit quote"
+                              className="text-muted-foreground hover:text-primary transition-colors"
+                            >
+                              <Edit2 className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              onClick={e => { e.stopPropagation(); setSelectedQuote(quote); }}
+                              title="View details"
+                              className="text-muted-foreground hover:text-primary transition-colors"
+                            >
+                              <ChevronRight className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+        </div>{/* end left column */}
+
+        {/* ── RIGHT: Website Requests (2/5 width on xl) — sticky ── */}
+        <div className="xl:col-span-2">
+          <div className="xl:sticky xl:top-4">
+            <InlineWebRequestsPanel
+              onBuildQuote={(prefill) => {
+                setCreatePrefill(prefill);
+                setShowCreate(true);
+              }}
+            />
+          </div>
+        </div>{/* end right column */}
+      </div>{/* end two-column grid */}
+
+      {/* Detail panel */}
+      {selectedQuote && (
+        <NativeQuoteDetailPanel
+          quote={selectedQuote}
+          onClose={() => setSelectedQuote(null)}
+          onEdit={q => { setSelectedQuote(null); setEditQuote(q); }}
+          onRefresh={refetch}
+        />
       )}
 
       {/* Modals */}
       {showCreate && (
-        <QuoteFormModal open onClose={() => setShowCreate(false)} onSaved={() => setShowCreate(false)} />
+        <QuoteFormModal
+          open
+          onClose={() => { setShowCreate(false); setCreatePrefill(undefined); }}
+          onSaved={() => { setShowCreate(false); setCreatePrefill(undefined); refetch(); }}
+          prefill={createPrefill}
+        />
       )}
       {editQuote && (
-        <QuoteFormModal open editQuote={editQuote} onClose={() => setEditQuote(null)} onSaved={() => setEditQuote(null)} />
+        <QuoteFormModal open editQuote={editQuote} onClose={() => setEditQuote(null)} onSaved={() => { setEditQuote(null); refetch(); }} />
       )}
     </div>
   );

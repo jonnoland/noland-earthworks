@@ -7,8 +7,6 @@ import { z } from "zod";
 import { protectedProcedure, router } from "./_core/trpc";
 import { aiAutomationRouter } from "./aiAutomationRouter";
 import { ENV } from "./_core/env";
-import { isJobberConnected, jobberGraphQL } from "./jobber";
-import { fetchJobberInvoices } from "./jobberApi";
 import { invokeLLM } from "./_core/llm";
 import { generateImage } from "./_core/imageGeneration";
 import { storagePut } from "./storage";
@@ -26,8 +24,8 @@ import {
   getProspectingLeads, updateProspectingLeadStatus, deleteProspectingLead, countNewProspectingLeads,
 } from "./db";
 import { Resend } from "resend";
-import { jobs, opsLeads, quoteSubmissions, crews, crewMembers, conversations, messages, reviews, timeEntries, distanceQuotes, businessSettings, automationSettings, serviceCatalog, pricingBenchmarks, messageTemplates, reminderRules, leadNotes, visitBlackoutDates, recurringBlackoutDays, aiPricingSettings, quoteDrafts, jobberTokens, socialPosts, adSpend, equipment, serviceLogs, serviceIntervals, fieldDiagnostics, ownerTasks, jobNotes, jobberRevenueCache, morningBriefs, reviewRequests, chatSessions,
- scheduleEntries, agentConfig, adCampaigns, prospectingLeads, outreachTemplates, leadContactLog } from "../drizzle/schema";
+import { jobs, opsLeads, quoteSubmissions, crews, crewMembers, conversations, messages, reviews, timeEntries, distanceQuotes, businessSettings, automationSettings, serviceCatalog, pricingBenchmarks, messageTemplates, reminderRules, leadNotes, visitBlackoutDates, recurringBlackoutDays, aiPricingSettings, quoteDrafts, socialPosts, adSpend, equipment, serviceLogs, serviceIntervals, fieldDiagnostics, ownerTasks, jobNotes, morningBriefs, reviewRequests, chatSessions,
+ scheduleEntries, agentConfig, adCampaigns, prospectingLeads, outreachTemplates, leadContactLog, nativeQuotes } from "../drizzle/schema";
 
 import { and, asc, desc, eq, gte, inArray, lt, lte, like, or, sql } from "drizzle-orm";
 import { portalAddOnOptions } from "../drizzle/schema";
@@ -129,31 +127,25 @@ const jobsRouter = router({
     .input(z.object({ id: z.number() }))
     .mutation(({ ctx, input }) => deleteJob(input.id, ctx.user.id)),
   generateCompletionNote: ownerProcedure
-    .input(z.object({ jobberJobId: z.string() }))
-    .mutation(async ({ input }) => {
-      // Fetch job data from Jobber
-      const data = await jobberGraphQL(`
-        query GetJobForNote($id: EncodedId!) {
-          job(id: $id) {
-            id jobNumber title jobStatus jobType total
-            completedAt instructions
-            client { name companyName }
-            property { address { street1 city province } }
-          }
-        }
-      `, { id: input.jobberJobId }) as any;
-      const job = data?.job;
-      if (!job) throw new TRPCError({ code: "NOT_FOUND", message: "Job not found in Jobber" });
+    .input(z.object({ jobId: z.number().int().positive() }))
+    .mutation(async ({ ctx, input }) => {
+      // Fetch job data from native jobs table
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+      const jobRows = await db.select().from(jobs)
+        .where(and(eq(jobs.id, input.jobId), eq(jobs.userId, ctx.user.id)))
+        .limit(1);
+      const job = jobRows[0];
+      if (!job) throw new TRPCError({ code: "NOT_FOUND", message: "Job not found" });
 
-      const clientName = job.client?.companyName || job.client?.name || "Unknown client";
-      const address = [job.property?.address?.street1, job.property?.address?.city, job.property?.address?.province]
-        .filter(Boolean).join(", ") || "address not recorded";
+      const clientName = job.client || "Unknown client";
+      const address = job.address || "address not recorded";
       const svc = (job.jobType ?? "land management").toLowerCase().replace(/_/g, " ");
-      const priceStr = job.total ? `$${Number(job.total).toLocaleString()}` : "price not recorded";
-      const dateStr = job.completedAt
-        ? new Date(job.completedAt).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })
+      const priceStr = job.totalPrice ? `$${Number(job.totalPrice).toLocaleString()}` : "price not recorded";
+      const dateStr = job.completedDate
+        ? new Date(job.completedDate).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })
         : "date not recorded";
-      const instrCtx = job.instructions ? `\nJob instructions/notes: ${job.instructions}` : "";
+      const instrCtx = job.notes ? `\nJob notes: ${job.notes}` : "";
 
       const result = await invokeLLM({
         messages: [
@@ -267,48 +259,7 @@ const jobsRouter = router({
       return { success: true };
     }),
 
-  /**
-   * Mark a Jobber job as completed locally — upserts a local jobs record with status='completed'.
-   * If a local record already exists for this Jobber job ID, updates it; otherwise creates one.
-   * This feeds the Scoreboard's "Jobs Completed" and "Recent Completed Jobs" metrics.
-   */
-  markJobberJobComplete: ownerProcedure
-    .input(z.object({
-      jobberJobId: z.string(),
-      title: z.string().optional(),
-      client: z.string().optional(),
-      totalPrice: z.string().optional(),
-      jobType: z.enum(["land_clearing", "forestry_mulching", "vegetation_management", "right_of_way_clearing", "trail_cutting", "brush_removal", "stump_grinding", "wildfire_mitigation"]).optional(),
-    }))
-    .mutation(async ({ ctx, input }) => {
-      const db = await getDb();
-      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
-      // Check if a local record already exists for this Jobber job
-      const [existing] = await db.select().from(jobs)
-        .where(and(eq(jobs.userId, ctx.user.id), eq(jobs.jobberJobId, input.jobberJobId)))
-        .limit(1);
-      if (existing) {
-        await db.update(jobs)
-          .set({ status: "completed", completedDate: new Date(), updatedAt: new Date() })
-          .where(eq(jobs.id, existing.id));
-        return { success: true, id: existing.id };
-      }
-      // Create a new local record linked to this Jobber job
-      const priceNum = input.totalPrice ? parseFloat(input.totalPrice.replace(/[^0-9.]/g, "")) : null;
-      const [result] = await db.insert(jobs).values({
-        userId: ctx.user.id,
-        title: input.title || "Jobber Job",
-        client: input.client || "",
-        jobType: input.jobType ?? "land_clearing",
-        status: "completed",
-        totalPrice: priceNum != null && !isNaN(priceNum) ? String(priceNum) : null,
-        completedDate: new Date(),
-        jobberJobId: input.jobberJobId,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      });
-      return { success: true, id: (result as any).insertId ?? null };
-    }),
+
 
   /** Mark a job as paid — sets status to 'paid' and stamps paidDate, auto-closes matching lead */
   markPaid: ownerProcedure
@@ -3061,47 +3012,14 @@ const settingsRouter = router({
 
   // ─── Integration Status ──────────────────────────────────────────────────────
   getIntegrationStatus: ownerProcedure.query(async () => {
-    const jobberConnected = await isJobberConnected();
     const twilioConfigured = !!(ENV.twilioAccountSid && ENV.twilioAuthToken && ENV.twilioFromNumber);
     const resendConfigured = !!ENV.resendApiKey;
     // Google Maps is always available via the Manus proxy — no key needed
     const googleMapsActive = true;
-
-    // ── Jobber token expiry details ─────────────────────────────────────────
-    // Fetch the most-recently-updated token row to surface expiry info to the UI.
-    // The background scheduler auto-refreshes short-lived access tokens, but the
-    // refresh token itself can expire if the server is offline for an extended
-    // period (Jobber refresh tokens last ~365 days but can be revoked manually).
-    let jobberExpiresAt: string | null = null;
-    let jobberTokenStatus: "ok" | "expiring_soon" | "expired" | "not_connected" = "not_connected";
-    const db = await getDb();
-    if (db && jobberConnected) {
-      try {
-        const tokenRows = await db.select().from(jobberTokens).orderBy(desc(jobberTokens.updatedAt)).limit(1);
-        if (tokenRows.length > 0) {
-          const expiresAt = tokenRows[0].expiresAt;
-          jobberExpiresAt = expiresAt.toISOString();
-          const msLeft = expiresAt.getTime() - Date.now();
-          if (msLeft <= 0) {
-            jobberTokenStatus = "expired";
-          } else if (msLeft < 15 * 60 * 1000) {
-            // Within 15 minutes — warn so the user knows a refresh is imminent
-            jobberTokenStatus = "expiring_soon";
-          } else {
-            jobberTokenStatus = "ok";
-          }
-        }
-      } catch {
-        // Non-fatal — just omit expiry details if the query fails
-      }
-    }
-
     return {
-      jobber: { connected: jobberConnected, expiresAt: jobberExpiresAt, tokenStatus: jobberTokenStatus },
       twilio: { configured: twilioConfigured, fromNumber: twilioConfigured ? ENV.twilioFromNumber : null },
       resend: { configured: resendConfigured },
       googleMaps: { active: googleMapsActive },
-
       facebook: { connected: false },
       googleBusiness: { connected: false },
       quickbooks: { connected: false },
@@ -3413,6 +3331,27 @@ const tasksRouter = router({
     .query(async ({ input }) => {
       const { listOwnerTasks } = await import("./db");
       return listOwnerTasks(input.includeCompleted);
+    }),
+  create: ownerProcedure
+    .input(z.object({
+      title: z.string().min(1).max(255),
+      description: z.string().optional(),
+      dueAt: z.date().optional(),
+      relatedType: z.string().optional(),
+      relatedId: z.number().int().optional(),
+    }))
+    .mutation(async ({ input }) => {
+      const { insertOwnerTask } = await import("./db");
+      const dueAt = input.dueAt ?? new Date(Date.now() + 24 * 60 * 60 * 1000); // default: tomorrow
+      await insertOwnerTask({
+        title: input.title,
+        description: input.description ?? null,
+        dueAt,
+        relatedType: input.relatedType ?? null,
+        relatedId: input.relatedId ?? null,
+        completed: false,
+      });
+      return { success: true };
     }),
 
   complete: ownerProcedure
@@ -4071,17 +4010,45 @@ Return only the message text, no preamble.`;
       const postbackUrl = `${baseUrl}/api/scheduled/prospect-leads-manual`;
 
       const prompt = `You are an AI lead prospecting agent for Noland Earthworks, LLC — a veteran-owned forestry mulching and land management company based in Middle Tennessee.
+Your job: Search public sources for people in Tennessee who need land clearing, forestry mulching, brush removal, overgrown property cleared, cedar thicket removal, fence line clearing, or pasture reclaimed. Find real posts from real people — not business listings, not ads.
 
-Your job: Search public sources for people in Middle Tennessee who need land clearing, forestry mulching, brush removal, overgrown property cleared, or pasture reclaimed. Find real posts from real people — not business listings, not ads.
+SEARCH THESE SOURCES (check ALL of them — do not skip any):
 
-SEARCH THESE SOURCES (check all of them):
-1. Craigslist Nashville services: https://nashville.craigslist.org/search/sss?query=land+clearing
-2. Craigslist Nashville farm+garden: https://nashville.craigslist.org/search/grd?query=land+clearing
-3. Craigslist Nashville general: https://nashville.craigslist.org/search/sss?query=forestry+mulching
-4. Facebook Marketplace Nashville — services section: https://www.facebook.com/marketplace/nashville/services — search for: land clearing, brush removal, forestry mulching, overgrown property. Look for people REQUESTING services (not offering them).
-5. Facebook Marketplace search: https://www.facebook.com/marketplace/search?query=land+clearing+tennessee&category_id=233 (services category)
-6. Google search: site:craigslist.org "land clearing" OR "forestry mulching" Tennessee
-7. Google search: "land clearing" OR "brush removal" "Middle Tennessee" OR "Nashville" OR "Columbia TN" -site:nolandearthworks.com
+--- CRAIGSLIST (multiple markets and keyword variations) ---
+1.  https://nashville.craigslist.org/search/sss?query=land+clearing
+2.  https://nashville.craigslist.org/search/grd?query=land+clearing
+3.  https://nashville.craigslist.org/search/sss?query=forestry+mulching
+4.  https://nashville.craigslist.org/search/sss?query=brush+removal
+5.  https://nashville.craigslist.org/search/grd?query=pasture+reclamation
+6.  https://nashville.craigslist.org/search/grd?query=cedar+thicket
+7.  https://nashville.craigslist.org/search/sss?query=overgrown+property
+8.  https://nashville.craigslist.org/search/sss?query=fence+line+clearing
+9.  https://memphis.craigslist.org/search/sss?query=land+clearing
+10. https://memphis.craigslist.org/search/grd?query=land+clearing
+11. https://memphis.craigslist.org/search/sss?query=brush+removal
+12. https://memphis.craigslist.org/search/grd?query=pasture+reclamation
+13. https://knoxville.craigslist.org/search/sss?query=land+clearing
+14. https://knoxville.craigslist.org/search/grd?query=land+clearing
+15. https://knoxville.craigslist.org/search/sss?query=forestry+mulching
+16. https://chattanooga.craigslist.org/search/sss?query=land+clearing
+17. https://chattanooga.craigslist.org/search/grd?query=land+clearing
+18. https://clarksville.craigslist.org/search/sss?query=land+clearing
+19. https://clarksville.craigslist.org/search/grd?query=land+clearing
+20. https://clarksville.craigslist.org/search/sss?query=brush+removal
+
+--- FACEBOOK MARKETPLACE ---
+21. https://www.facebook.com/marketplace/nashville/services — search: land clearing, brush removal, forestry mulching, overgrown property, cedar thicket. Look for people REQUESTING services, not offering them.
+22. https://www.facebook.com/marketplace/memphis/services — same keyword searches.
+23. https://www.facebook.com/marketplace/search?query=land+clearing+tennessee&category_id=233
+24. https://www.facebook.com/marketplace/search?query=brush+removal+tennessee&category_id=233
+25. https://www.facebook.com/marketplace/search?query=forestry+mulching+tennessee&category_id=233
+
+--- GOOGLE SEARCHES ---
+26. site:craigslist.org "land clearing" OR "forestry mulching" Tennessee
+27. "land clearing" OR "brush removal" "Middle Tennessee" OR "West Tennessee" -site:nolandearthworks.com
+28. "cedar thicket" OR "overgrown pasture" Tennessee clearing help
+29. "fence line clearing" OR "pasture reclamation" Tennessee
+30. "forestry mulching" Tennessee need help
 
 FOR EACH PROSPECT FOUND, collect:
 - source: one of "craigslist", "facebook_marketplace", "facebook", "nextdoor", "google", "other"
@@ -4092,40 +4059,46 @@ FOR EACH PROSPECT FOUND, collect:
 - summary: 1-2 sentence description of what they need and why they are a good fit for Noland Earthworks
 - reachOutDraft: a short, casual, genuine outreach message Jon can send — written in Jon's voice (no emojis, no corporate language, warm and direct, mention veteran-owned, offer a free site visit). Example: "Hey [name] — saw your post about clearing that property. I run a tracked forestry mulcher out of Middle Tennessee, veteran-owned and operated. I can grind everything down to mulch — no debris piles, no burning. Happy to come take a look for free. Give me a call at 615-406-4819 or visit nolandearthworks.com."
 - postSnippet: the first 200 characters of the original post text
-- profileUrl: for Facebook and Facebook Marketplace prospects ONLY — the URL of the poster's Facebook profile page (e.g., https://www.facebook.com/username or https://www.facebook.com/profile.php?id=12345). Navigate to the post and click the poster's name to get their profile URL. Set to null for Craigslist and other non-Facebook sources.
+- profileUrl: for Facebook and Facebook Marketplace prospects ONLY — the URL of the poster's Facebook profile page. Navigate to the post and click the poster's name to get their profile URL. Set to null for Craigslist and other non-Facebook sources.
 - estimatedAcres: your best estimate of the acreage involved based on the post (e.g., "5", "2-3", "10+"). Set to null if the post gives no indication of size.
+- fitScore: an integer from 1 to 10 representing how strong a fit this prospect is for Noland Earthworks. Use these criteria:
+  * 9-10: Rural TN, 5+ acres, dense vegetation (cedar, heavy brush, overgrown timber), accessible terrain, urgency signals ("ASAP", "need it done", "already got one quote"), no grading/hauling needed
+  * 7-8: Rural/semi-rural TN, 2-5 acres, moderate vegetation, reasonable access, clear scope
+  * 5-6: Location unclear or suburban fringe, 1-3 acres, mixed signals, no urgency, scope partially unclear
+  * 3-4: Under 1 acre, suburban, significant access issues, or scope includes grading/hauling
+  * 1-2: Wrong state, wrong scope, already hired, or post is too vague to evaluate
 - marginTier: your estimated profit margin tier for this job. Use these rules:
   * "high" — 4+ acres of dense vegetation (heavy brush, cedar, overgrown timber) on accessible terrain with no major obstacles. At $1,047/day internal cost and 1-2 acres/day productivity, a 4-acre job at $6,000+ yields 55%+ margin.
-  * "medium" — 2-4 acres OR moderate conditions (some slope, mixed vegetation, partial access issues). These typically yield 35-54% margin. Example: 3 acres at $4,500 = ~43% margin.
-  * "low" — under 2 acres, very small suburban lot, significant access problems, steep slopes, standing water, near structures, or scope is unclear. These run below 35% margin. Example: 1 acre at $2,000 = ~28% margin.
-  * null — post gives truly insufficient information to score (no size, no description of vegetation or terrain).
-  Reference: Noland Earthworks internal daily cost is $1,047/day (labor + equipment + fuel + wear), productivity is 1-2 acres/day on typical terrain. Minimum viable job at 30% margin requires ~$1,500 total. Minimum job total is $1,800.
+  * "medium" — 2-4 acres OR moderate conditions (some slope, mixed vegetation, partial access issues). These typically yield 35-54% margin.
+  * "low" — under 2 acres, very small suburban lot, significant access problems, steep slopes, standing water, near structures, or scope is unclear.
+  * null — post gives truly insufficient information to score.
+  Reference: Noland Earthworks internal daily cost is $1,047/day, productivity is 1-2 acres/day on typical terrain. Minimum viable job at 30% margin requires ~$1,500 total. Minimum job total is $1,800.
+- urgencyFlag: set to true if the post contains urgency signals like "ASAP", "this week", "need it done soon", "already got quotes", "need it before spring", "need it before hunting season", "deadline". Otherwise false.
 
 QUALITY FILTER — only include prospects that:
-- Are in Tennessee (Middle or West TN preferred)
-- Need land clearing, forestry mulching, brush removal, pasture reclamation, overgrown lot clearing, fence line clearing, or similar
+- Are in Tennessee (Middle or West TN preferred; East TN acceptable if within 150 miles of Vanleer, TN)
+- Need land clearing, forestry mulching, brush removal, pasture reclamation, overgrown lot clearing, fence line clearing, cedar thicket removal, or similar
 - Are from individuals or small businesses (not large contractors already doing the work)
 - Posted within the last 60 days
 - Are NOT asking for grading, excavation, or hauling only
-- Have at least 1 acre of work (skip suburban quarter-acre lots, small residential yards, and anything under 0.5 acres unless the post clearly describes dense overgrowth or difficult terrain that justifies mobilization)
+- Have at least 1 acre of work (skip suburban quarter-acre lots, small residential yards, and anything under 0.5 acres unless the post clearly describes dense overgrowth or difficult terrain)
 - Are NOT already completed or already have a contractor hired
 - Do NOT involve tree removal requiring an arborist (large trees, hazard trees, stump-only jobs without clearing context)
+- Have a fitScore of 4 or higher (discard anything scoring 1-3)
 
-After collecting all prospects (aim for 3-10 quality leads), POST them to the site using curl:
+Aim for 5-15 quality leads. Prioritize by fitScore descending.
 
+After collecting all prospects, POST them to the site using curl:
 curl -s -X POST "${postbackUrl}" \\
   -H "Content-Type: application/json" \\
   -H "x-manus-api-key: ${ENV.manusApiKey}" \\
   -d '{"prospects": REPLACE_WITH_JSON_ARRAY}'
-
 The endpoint will deduplicate by URL automatically. A successful response looks like: {"ok": true, "inserted": N}
-
 If you find no qualifying prospects today, POST an empty array:
 curl -s -X POST "${postbackUrl}" \\
   -H "Content-Type: application/json" \\
   -H "x-manus-api-key: ${ENV.manusApiKey}" \\
   -d '{"prospects": []}'
-
 Do not fabricate prospects. Only include real posts you actually found and visited.`;
 
       const response = await fetch("https://api.manus.ai/v2/task.create", {
@@ -5737,53 +5710,6 @@ Always be specific to nolandearthworks.com. Never give generic advice — tie ev
       return { results, created: results.filter(r => r.status === "created").length, failed: results.filter(r => r.status === "error").length };
     }),
 
-  // ─── Priority 1: Jobber Revenue Sync ──────────────────────────────────────────
-  syncJobberRevenue: ownerProcedure.mutation(async () => {
-    const db = await getDb();
-    if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable." });
-    const connected = await isJobberConnected();
-    if (!connected) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Jobber is not connected. Reconnect in Settings → Integrations." });
-    const invoicesData = await fetchJobberInvoices(100);
-    const nodes = invoicesData?.nodes ?? [];
-    let synced = 0;
-    for (const inv of nodes) {
-      const total = parseFloat(inv.amounts?.total ?? "0") || 0;
-      const balance = parseFloat(inv.amounts?.invoiceBalance ?? "0") || 0;
-      const clientName = inv.client?.companyName || inv.client?.name || "Unknown";
-      const issuedDate = inv.issuedDate ? new Date(inv.issuedDate) : null;
-      await db.insert(jobberRevenueCache).values({
-        invoiceId: inv.id,
-        invoiceNumber: inv.invoiceNumber ?? null,
-        invoiceStatus: inv.invoiceStatus ?? null,
-        total: total.toFixed(2),
-        balance: balance.toFixed(2),
-        clientName,
-        subject: inv.subject ?? null,
-        issuedDate,
-        syncedAt: new Date(),
-      }).onDuplicateKeyUpdate({
-        set: {
-          invoiceStatus: inv.invoiceStatus ?? null,
-          total: total.toFixed(2),
-          balance: balance.toFixed(2),
-          clientName,
-          subject: inv.subject ?? null,
-          issuedDate,
-          syncedAt: new Date(),
-        },
-      });
-      synced++;
-    }
-    return { synced, total: nodes.length };
-  }),
-
-  getJobberRevenue: ownerProcedure.query(async () => {
-    const db = await getDb();
-    if (!db) return { rows: [], lastSyncedAt: null };
-    const rows = await db.select().from(jobberRevenueCache).orderBy(desc(jobberRevenueCache.issuedDate));
-    const lastSyncedAt = rows.length > 0 ? rows[0].syncedAt : null;
-    return { rows, lastSyncedAt };
-  }),
 
   // ─── Priority 2: Auto-create Lead from Chat Session ───────────────────────────
   // (Chat sessions already auto-create leads via chatRouter — this procedure exposes
@@ -5860,17 +5786,34 @@ Always be specific to nolandearthworks.com. Never give generic advice — tie ev
     }),
 
   // ─── Priority 4: Quote Follow-Up Automation ────────────────────────────────────
+  /**
+   * Returns native quotes sent to the client portal 7+ days ago
+   * with no client action and not yet converted.
+   * Used by the "Quotes Needing Follow-Up" panel in the All Quotes tab.
+   */
   getStaleQuotes: ownerProcedure.query(async () => {
     const db = await getDb();
     if (!db) return [];
     const cutoff = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
-    return db.select().from(quoteSubmissions)
+    const rows = await db
+      .select()
+      .from(nativeQuotes)
       .where(and(
-        eq(quoteSubmissions.jobberStatus, "synced"),
-        lt(quoteSubmissions.createdAt, cutoff),
+        lt(nativeQuotes.portalSentAt, cutoff),
+        sql`${nativeQuotes.clientAction} IS NULL`,
+        sql`${nativeQuotes.convertedToJobAt} IS NULL`,
       ))
-      .orderBy(desc(quoteSubmissions.createdAt))
+      .orderBy(desc(nativeQuotes.portalSentAt))
       .limit(20);
+    return rows.map(q => ({
+      id: q.id,
+      clientName: q.clientName,
+      phone: q.clientPhone,
+      service: q.serviceType ?? "Land Clearing",
+      acreage: q.acreage ?? undefined,
+      portalSentAt: q.portalSentAt,
+      daysSinceSent: Math.floor((Date.now() - (q.portalSentAt?.getTime() ?? Date.now())) / (1000 * 60 * 60 * 24)),
+    }));
   }),
 
   draftQuoteFollowUp: ownerProcedure
@@ -6454,8 +6397,8 @@ Generate a complete monthly ad campaign plan. Return ONLY valid JSON matching th
       return row;
     }),
   /**
-   * Called after a Jobber quote is created from a lead.
-   * Updates the lead stage to estimate_sent and stores the Jobber quote ID/number.
+   * Called after a quote is created from a lead.
+   * Updates the lead stage to estimate_sent and stores the quote ID/number.
    */
   linkQuoteToLead: protectedProcedure
     .input(z.object({
@@ -6465,21 +6408,7 @@ Generate a complete monthly ad campaign plan. Return ONLY valid JSON matching th
       estimateAmount: z.number().optional(),
     }))
     .mutation(async ({ ctx, input }) => {
-      let estimateAmount = input.estimateAmount;
-      // If no amount was passed in, fetch it live from Jobber
-      if (estimateAmount == null) {
-        try {
-          const data = await jobberGraphQL(`
-            query GetQuoteTotal($id: EncodedId!) {
-              quote(id: $id) { amounts { total } }
-            }
-          `, { id: input.jobberQuoteId }) as any;
-          const raw = data?.quote?.amounts?.total;
-          if (raw != null) estimateAmount = Number(raw);
-        } catch {
-          // Non-fatal — proceed without the amount
-        }
-      }
+      const estimateAmount = input.estimateAmount;
       await updateOpsLead(input.leadId, ctx.user.id, {
         stage: "estimate_sent",
         jobberQuoteId: input.jobberQuoteId,
@@ -6625,5 +6554,42 @@ Generate a complete monthly ad campaign plan. Return ONLY valid JSON matching th
         }
       }
       return { checkoutUrl: session.url, sessionId: session.id, smsSent };
+    }),
+
+  /**
+   * Returns the lead (if any) linked to a native quote ID.
+   */
+  getLeadByNativeQuoteId: ownerProcedure
+    .input(z.object({ nativeQuoteId: z.number().int().positive() }))
+    .query(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) return null;
+      const rows = await db
+        .select()
+        .from(opsLeads)
+        .where(and(eq(opsLeads.userId, ctx.user.id), eq(opsLeads.nativeQuoteId, input.nativeQuoteId)))
+        .limit(1);
+      return rows[0] ?? null;
+    }),
+
+  /**
+   * Links a native quote to an existing lead by setting nativeQuoteId.
+   * Advances the lead stage to 'estimate_sent'.
+   */
+  linkNativeQuoteToLead: ownerProcedure
+    .input(z.object({
+      leadId: z.number().int().positive(),
+      nativeQuoteId: z.number().int().positive(),
+      estimateAmount: z.number().optional(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'DB unavailable' });
+      await updateOpsLead(input.leadId, ctx.user.id, {
+        stage: 'estimate_sent',
+        nativeQuoteId: input.nativeQuoteId,
+        ...(input.estimateAmount != null ? { estimateAmount: String(input.estimateAmount) } : {}),
+      });
+      return { ok: true };
     }),
 });

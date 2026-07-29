@@ -5,7 +5,6 @@ import { publicProcedure, router } from "./_core/trpc";
 import { quoteRouter } from "./quoteRouter";
 import { contactRouter } from "./contactRouter";
 import { opsRouter } from "./opsRouter";
-import { jobberRouter } from "./jobberRouter";
 import { widgetRouter } from "./widgetRouter";
 import { agentRouter } from "./agentRouter";
 import { reviewsLiveRouter } from "./reviewsRouter";
@@ -22,6 +21,8 @@ import { govContractsRouter } from "./govContractsRouter";
 import { routePlannerRouter } from "./routePlannerRouter";
 import { quotePortalRouter } from "./quotePortalRouter";
 import { nativeQuotesRouter } from "./nativeQuotesRouter";
+import { nativeJobsRouter } from "./nativeJobsRouter";
+import { nativeClientsRouter } from "./nativeClientsRouter";
 import { getDb } from "./db";
 import { businessSettings } from "../drizzle/schema";
 
@@ -42,7 +43,6 @@ export const appRouter = router({
   quote: quoteRouter,
   contact: contactRouter,
   ops: opsRouter,
-  jobber: jobberRouter,
   widget: widgetRouter,
   agents: agentRouter,
   reviewsLive: reviewsLiveRouter,
@@ -59,6 +59,8 @@ export const appRouter = router({
   routePlanner: routePlannerRouter,
   quotePortal: quotePortalRouter,
   nativeQuotes: nativeQuotesRouter,
+  nativeJobs: nativeJobsRouter,
+  nativeClients: nativeClientsRouter,
 
   /**
    * Public site configuration — read-only, no auth required.
