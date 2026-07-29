@@ -610,6 +610,185 @@ export const fieldQuoteRouter = router({
       }
     }),
 
+  /**
+   * AI cost estimate from the mobile app — requires app token.
+   * Uses the same pricing constants, system prompt, and JSON schema as the
+   * website's CostEstimator so both tools produce identical results.
+   */
+  estimate: requireAppToken
+    .input(z.object({
+      service: z.string().min(1),
+      acreage: z.number().min(0.1).max(500).optional(),
+      linearFeet: z.number().min(1).max(50000).optional(),
+      terrain: z.enum(["flat", "rolling", "steep", "very_steep"]),
+      vegetationDensity: z.enum(["light", "moderate", "heavy", "very_heavy"]),
+      accessDifficulty: z.enum(["easy", "moderate", "difficult"]),
+      mobilizationMiles: z.number().min(0).max(300).default(0),
+      hasStumps: z.boolean().default(false),
+      stumpCount: z.number().min(0).max(500).default(0),
+      notes: z.string().max(1000).optional(),
+      trailWidth: z.number().min(4).max(40).optional(),
+      trailAddOns: z.array(z.string()).optional(),
+      rowWidth: z.number().min(4).max(200).optional(),
+      addOns: z.array(z.string()).optional(),
+      fenceLineLF: z.number().min(0).max(50000).optional(),
+    }))
+    .mutation(async ({ input }) => {
+      // ── Pricing constants (kept in sync with costEstimatorRouter.ts) ──────
+      const MOB_TIERS = [
+        { maxMiles: 30,  surcharge: 0,   label: "Local (0–30 mi)" },
+        { maxMiles: 50,  surcharge: 150, label: "Near (31–50 mi)" },
+        { maxMiles: 75,  surcharge: 300, label: "Regional (51–75 mi)" },
+        { maxMiles: 100, surcharge: 500, label: "Extended (76–100 mi)" },
+        { maxMiles: 999, surcharge: 750, label: "Long-Haul (100+ mi)" },
+      ];
+      const travelSurcharge = (MOB_TIERS.find(t => input.mobilizationMiles <= t.maxMiles) ?? MOB_TIERS[MOB_TIERS.length - 1]).surcharge;
+      const mobTierLabel = (MOB_TIERS.find(t => input.mobilizationMiles <= t.maxMiles) ?? MOB_TIERS[MOB_TIERS.length - 1]).label;
+
+      let effectiveAcresNote = "";
+      if (input.service === "Right-of-Way Clearing" && input.linearFeet && input.rowWidth) {
+        const ea = (input.linearFeet * input.rowWidth) / 43560;
+        effectiveAcresNote = `Effective acres (${input.linearFeet} LF × ${input.rowWidth} ft wide ÷ 43,560): ${ea.toFixed(3)} acres`;
+      }
+      if (input.service === "Trail Cutting" && input.acreage && input.trailWidth) {
+        const lf = Math.round((input.acreage * 43560) / input.trailWidth);
+        effectiveAcresNote = `Trail geometry: ${input.acreage} effective acres × 43,560 ÷ ${input.trailWidth} ft wide ≈ ${lf.toLocaleString()} linear feet`;
+      }
+
+      const addOnLines: string[] = [];
+      if (input.trailAddOns?.length) addOnLines.push(`Trail add-ons requested: ${input.trailAddOns.join(", ")}`);
+      if (input.addOns?.length) addOnLines.push(`Add-ons requested: ${input.addOns.join(", ")}`);
+      if (input.fenceLineLF && input.fenceLineLF > 0) addOnLines.push(`Fence line clearing: ${input.fenceLineLF} linear feet`);
+
+      const jobDescription = [
+        `Service: ${input.service}`,
+        input.acreage ? `Acreage: ${input.acreage} acres` : "",
+        input.linearFeet ? `Linear feet: ${input.linearFeet} LF` : "",
+        input.trailWidth ? `Trail width: ${input.trailWidth} ft` : "",
+        input.rowWidth ? `ROW width: ${input.rowWidth} ft` : "",
+        effectiveAcresNote,
+        `Terrain: ${input.terrain.replace("_", " ")}`,
+        `Vegetation density: ${input.vegetationDensity.replace("_", " ")}`,
+        `Access difficulty: ${input.accessDifficulty}`,
+        `Distance from Vanleer, TN: ${input.mobilizationMiles} miles one-way`,
+        `Travel surcharge tier: ${mobTierLabel} — flat surcharge: $${travelSurcharge}`,
+        input.hasStumps && input.stumpCount > 0 ? `Stumps to grind: ${input.stumpCount}` : "",
+        ...addOnLines,
+        input.notes ? `Additional notes: ${input.notes}` : "",
+      ].filter(Boolean).join("\n");
+
+      const COST_SYSTEM_PROMPT = `You are a job cost estimator for Noland Earthworks, LLC — a veteran-owned land management and forestry mulching company in Middle Tennessee.
+
+EXACT CURRENT RATES (use these numbers precisely — do not substitute generic values):
+
+LABOR:
+- Jon's wage: $28/hour × 8 hrs/day × 1.25 burden = $280.00/day
+- He is the sole operator — no crew
+
+EQUIPMENT:
+- CAT 299D3 XE monthly payment: $2,200 ÷ 20 working days = $110.00/day
+
+FUEL:
+- Machine fuel: 7 GPH × 8 hrs × $5.33/gal = $298.48/day
+- Truck/trailer fuel: $65.00/day
+- Total fuel per day: $363.48
+
+WEAR & CONSUMABLES:
+- Teeth set: $2,200 per set ÷ 12 days = $183.33/day
+- Major maintenance/wear: $18,000/year ÷ 240 working days = $75.00/day
+- Misc consumables: $35.00/day
+- Total wear per day: $293.33
+
+TOTAL INTERNAL COST PER DAY: $1,046.81
+TARGET GROSS MARGIN: 30% (customer price = total cost ÷ 0.70)
+MINIMUM JOB VALUE: $1,800
+
+PRODUCTIVITY RATES (acres per 8-hour day):
+- Light vegetation, flat: 2.5 acres/day
+- Moderate vegetation, flat: 1.5 acres/day
+- Heavy vegetation, flat: 0.8 acres/day
+- Very heavy vegetation, flat: 0.5 acres/day
+- Rolling terrain: reduce productivity by 15–20%
+- Steep terrain: reduce productivity by 30–40%
+- Very steep terrain: reduce productivity by 50–60%
+- ROW clearing: 400–600 linear feet/day depending on vegetation
+- Stump grinding: 15–30 minutes per stump
+
+TRAVEL SURCHARGE (one-way miles from Vanleer, TN — flat fee, not per-mile):
+- 0–30 miles: $0 (local, no surcharge)
+- 31–50 miles: $150
+- 51–75 miles: $300
+- 76–100 miles: $500
+- 100+ miles: $750
+
+MARKET RATES (Middle Tennessee, 2025–2026):
+- Forestry mulching: $650–$1,200/acre (light-moderate); $1,200–$2,000+/acre (dense cedar/hardwood or steep terrain)
+- Land management: $550–$1,000/acre; heavy clearing $1,200–$2,500/acre
+- ROW clearing: $600–$1,100/acre
+- Trail cutting: $2.00–$4.00/lf (flat); $500 minimum
+- Brush hogging: $150–$350/acre
+- Stump grinding: $150–$250/stump
+
+Return JSON matching the schema exactly.`;
+
+      const result = await invokeLLM({
+        messages: [
+          { role: "system", content: COST_SYSTEM_PROMPT },
+          { role: "user", content: `Generate a detailed cost estimate for this job:\n\n${jobDescription}\n\nReturn JSON with the exact schema specified.` },
+        ],
+        temperature: 0,
+        response_format: {
+          type: "json_schema",
+          json_schema: {
+            name: "cost_estimate",
+            strict: true,
+            schema: {
+              type: "object",
+              properties: {
+                estimatedHours: { type: "number" },
+                estimatedDays: { type: "number" },
+                fuelCost: { type: "number" },
+                mobilizationCost: { type: "number" },
+                laborCost: { type: "number" },
+                equipmentCost: { type: "number" },
+                totalInternalCost: { type: "number" },
+                customerPriceLow: { type: "number" },
+                customerPriceHigh: { type: "number" },
+                marginPct: { type: "number" },
+                summary: { type: "string" },
+                warnings: { type: "array", items: { type: "string" } },
+                breakdown: {
+                  type: "array",
+                  items: {
+                    type: "object",
+                    properties: {
+                      label: { type: "string" },
+                      hours: { type: "number" },
+                      cost: { type: "number" },
+                      note: { type: "string" },
+                    },
+                    required: ["label", "cost", "note"],
+                    additionalProperties: false,
+                  },
+                },
+              },
+              required: [
+                "estimatedHours", "estimatedDays", "fuelCost", "mobilizationCost",
+                "laborCost", "equipmentCost", "totalInternalCost",
+                "customerPriceLow", "customerPriceHigh", "marginPct",
+                "summary", "warnings", "breakdown",
+              ],
+              additionalProperties: false,
+            },
+          },
+        },
+      });
+
+      const content = result?.choices?.[0]?.message?.content;
+      if (!content) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Empty AI response" });
+      return JSON.parse(typeof content === "string" ? content : JSON.stringify(content));
+    }),
+
   reverseGeocode: publicProcedure
     .input(z.object({ lat: z.number(), lng: z.number() }))
     .query(async ({ input }) => {

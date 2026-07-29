@@ -8,6 +8,10 @@ import {
   CheckCircle2,
   AlertCircle,
   ChevronDown,
+  Sparkles,
+  DollarSign,
+  Clock,
+  AlertTriangle,
 } from "lucide-react";
 import { Camera as CapCamera, CameraResultType, CameraSource } from "@capacitor/camera";
 import { Geolocation } from "@capacitor/geolocation";
@@ -17,8 +21,8 @@ import PageHeader from "@/components/PageHeader";
 // ─── Types ──────────────────────────────────────────────────────────────────
 
 interface PhotoEntry {
-  dataUrl: string; // base64 data URL for preview
-  base64: string;  // raw base64 for upload
+  dataUrl: string;
+  base64: string;
   mimeType: string;
 }
 
@@ -31,34 +35,71 @@ interface FormState {
   address: string;
   lat: number | null;
   lng: number | null;
-  // Job details
+  // Job details — core
   serviceType: string;
   acreage: string;
-  terrainType: string;
-  vegetationDensity: string;
+  linearFeet: string;
+  // AI pricing inputs (matching website CostEstimator)
+  terrain: "flat" | "rolling" | "steep" | "very_steep";
+  vegetationDensity: "light" | "moderate" | "heavy" | "very_heavy";
+  accessDifficulty: "easy" | "moderate" | "difficult";
+  mobilizationMiles: string;
+  hasStumps: boolean;
+  stumpCount: string;
+  trailWidth: string;
+  rowWidth: string;
+  fenceLineLF: string;
+  // Legacy intake fields still sent to fieldQuote.submit
   vegetationTypes: string;
-  slopeCondition: string;
-  accessCondition: string;
   obstacles: string;
   proximityToStructures: string;
   // Notes
   message: string;
 }
 
+interface EstimateResult {
+  estimatedHours: number;
+  estimatedDays: number;
+  totalInternalCost: number;
+  customerPriceLow: number;
+  customerPriceHigh: number;
+  marginPct: number;
+  summary: string;
+  warnings: string[];
+  breakdown: { label: string; cost: number; note?: string }[];
+}
+
+// ─── Option lists (matching website CostEstimator exactly) ──────────────────
+
 const SERVICE_TYPES = [
   "Forestry Mulching",
   "Land Management",
-  "Brush Hogging",
+  "Vegetation Management",
   "Right-of-Way Clearing",
-  "Site Prep",
-  "Fence Line Clearing",
-  "Pasture Reclamation",
+  "Trail Cutting",
+  "Brush Hogging",
+  "Stump Grinding",
 ];
 
-const TERRAIN_TYPES = ["Flat", "Rolling", "Hilly", "Steep", "Mixed"];
-const VEGETATION_DENSITY = ["Light", "Moderate", "Heavy", "Very Heavy"];
-const SLOPE_CONDITIONS = ["Minimal (<10%)", "Moderate (10-25%)", "Steep (>25%)"];
-const ACCESS_CONDITIONS = ["Easy - paved road", "Moderate - dirt/gravel road", "Difficult - no road access", "Very difficult - off-road only"];
+const TERRAIN_OPTIONS: { value: FormState["terrain"]; label: string }[] = [
+  { value: "flat",       label: "Flat" },
+  { value: "rolling",    label: "Rolling" },
+  { value: "steep",      label: "Steep" },
+  { value: "very_steep", label: "Very Steep" },
+];
+
+const VEG_OPTIONS: { value: FormState["vegetationDensity"]; label: string }[] = [
+  { value: "light",      label: "Light" },
+  { value: "moderate",   label: "Moderate" },
+  { value: "heavy",      label: "Heavy" },
+  { value: "very_heavy", label: "Very Heavy" },
+];
+
+const ACCESS_OPTIONS: { value: FormState["accessDifficulty"]; label: string }[] = [
+  { value: "easy",       label: "Easy" },
+  { value: "moderate",   label: "Moderate" },
+  { value: "difficult",  label: "Difficult" },
+];
 
 // ─── Component ──────────────────────────────────────────────────────────────
 
@@ -69,6 +110,9 @@ export default function NewQuote() {
   const [gpsError, setGpsError] = useState<string | null>(null);
   const [submitState, setSubmitState] = useState<"idle" | "submitting" | "success" | "error">("idle");
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [estimate, setEstimate] = useState<EstimateResult | null>(null);
+  const [estimateError, setEstimateError] = useState<string | null>(null);
+
   const [form, setForm] = useState<FormState>({
     name: "",
     email: "",
@@ -78,11 +122,17 @@ export default function NewQuote() {
     lng: null,
     serviceType: "Forestry Mulching",
     acreage: "",
-    terrainType: "Flat",
-    vegetationDensity: "Moderate",
+    linearFeet: "",
+    terrain: "flat",
+    vegetationDensity: "moderate",
+    accessDifficulty: "easy",
+    mobilizationMiles: "0",
+    hasStumps: false,
+    stumpCount: "",
+    trailWidth: "",
+    rowWidth: "",
+    fenceLineLF: "",
     vegetationTypes: "",
-    slopeCondition: "Minimal (<10%)",
-    accessCondition: "Easy - paved road",
     obstacles: "",
     proximityToStructures: "",
     message: "",
@@ -90,6 +140,10 @@ export default function NewQuote() {
 
   const uploadPhoto = trpc.fieldQuote.uploadPhoto.useMutation();
   const submitQuote = trpc.fieldQuote.submit.useMutation();
+  const getEstimate = trpc.fieldQuote.estimate.useMutation({
+    onSuccess: (data) => setEstimate(data as EstimateResult),
+    onError: (err) => setEstimateError(err.message || "AI estimate failed."),
+  });
 
   // ─── GPS ────────────────────────────────────────────────────────────────
 
@@ -97,33 +151,18 @@ export default function NewQuote() {
     setGpsLoading(true);
     setGpsError(null);
     try {
-      const pos = await Geolocation.getCurrentPosition({
-        enableHighAccuracy: true,
-        timeout: 15000,
-      });
+      const pos = await Geolocation.getCurrentPosition({ enableHighAccuracy: true, timeout: 15000 });
       const { latitude, longitude } = pos.coords;
-
-      // Reverse geocode using Google Maps API via the server
       setForm((f) => ({ ...f, lat: latitude, lng: longitude }));
-
-      // Try to get a human-readable address via browser fetch
       try {
         const res = await fetch(
-          `/api/trpc/fieldQuote.reverseGeocode?input=${encodeURIComponent(
-            JSON.stringify({ lat: latitude, lng: longitude })
-          )}`
+          `/api/trpc/fieldQuote.reverseGeocode?input=${encodeURIComponent(JSON.stringify({ lat: latitude, lng: longitude }))}`
         );
         const json = await res.json();
         const address = json?.result?.data?.address;
-        if (address) {
-          setForm((f) => ({ ...f, address }));
-        }
+        if (address) setForm((f) => ({ ...f, address }));
       } catch {
-        // Address lookup failed — coordinates are still captured
-        setForm((f) => ({
-          ...f,
-          address: `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`,
-        }));
+        setForm((f) => ({ ...f, address: `${latitude.toFixed(6)}, ${longitude.toFixed(6)}` }));
       }
     } catch (err: any) {
       setGpsError(err?.message ?? "Could not get location. Check permissions.");
@@ -140,55 +179,68 @@ export default function NewQuote() {
         quality: 80,
         allowEditing: false,
         resultType: CameraResultType.Base64,
-        source: CameraSource.Prompt, // Lets user choose camera or gallery
+        source: CameraSource.Prompt,
       });
-
       if (image.base64String) {
         const mimeType = `image/${image.format ?? "jpeg"}`;
         const dataUrl = `data:${mimeType};base64,${image.base64String}`;
-        setPhotos((prev) => [
-          ...prev,
-          { dataUrl, base64: image.base64String!, mimeType },
-        ]);
+        setPhotos((prev) => [...prev, { dataUrl, base64: image.base64String!, mimeType }]);
       }
     } catch (err: any) {
-      if (err?.message !== "User cancelled photos app") {
-        console.error("Camera error:", err);
-      }
+      if (err?.message !== "User cancelled photos app") console.error("Camera error:", err);
     }
   };
 
-  const removePhoto = (idx: number) => {
-    setPhotos((prev) => prev.filter((_, i) => i !== idx));
+  const removePhoto = (idx: number) => setPhotos((prev) => prev.filter((_, i) => i !== idx));
+
+  // ─── AI Estimate ─────────────────────────────────────────────────────────
+
+  const handleGetEstimate = () => {
+    if (!form.serviceType) return;
+    setEstimate(null);
+    setEstimateError(null);
+    const acreage = parseFloat(form.acreage);
+    const linearFeet = parseFloat(form.linearFeet);
+    const mobilizationMiles = parseFloat(form.mobilizationMiles) || 0;
+    const stumpCount = parseInt(form.stumpCount) || 0;
+    const trailWidth = parseFloat(form.trailWidth);
+    const rowWidth = parseFloat(form.rowWidth);
+    const fenceLineLF = parseFloat(form.fenceLineLF);
+
+    getEstimate.mutate({
+      service: form.serviceType,
+      acreage: isNaN(acreage) ? undefined : acreage,
+      linearFeet: isNaN(linearFeet) ? undefined : linearFeet,
+      terrain: form.terrain,
+      vegetationDensity: form.vegetationDensity,
+      accessDifficulty: form.accessDifficulty,
+      mobilizationMiles,
+      hasStumps: form.hasStumps,
+      stumpCount,
+      notes: form.message || undefined,
+      trailWidth: isNaN(trailWidth) ? undefined : trailWidth,
+      rowWidth: isNaN(rowWidth) ? undefined : rowWidth,
+      fenceLineLF: isNaN(fenceLineLF) ? undefined : fenceLineLF,
+    });
   };
 
   // ─── Submit ─────────────────────────────────────────────────────────────
 
   const handleSubmit = async () => {
-    if (!form.name.trim()) {
-      setSubmitError("Customer name is required.");
-      return;
-    }
-    if (!form.serviceType) {
-      setSubmitError("Service type is required.");
-      return;
-    }
+    if (!form.name.trim()) { setSubmitError("Customer name is required."); return; }
+    if (!form.serviceType) { setSubmitError("Service type is required."); return; }
 
     setSubmitState("submitting");
     setSubmitError(null);
 
     try {
-      // 1. Upload photos to S3
       const photoUrls: string[] = [];
       for (const photo of photos) {
-        const result = await uploadPhoto.mutateAsync({
-          base64: photo.base64,
-          mimeType: photo.mimeType,
-        });
+        const result = await uploadPhoto.mutateAsync({ base64: photo.base64, mimeType: photo.mimeType });
         photoUrls.push(result.url);
       }
 
-      // 2. Submit the quote
+      const acreage = parseFloat(form.acreage);
       await submitQuote.mutateAsync({
         name: form.name,
         email: form.email || undefined,
@@ -197,12 +249,12 @@ export default function NewQuote() {
         lat: form.lat ?? undefined,
         lng: form.lng ?? undefined,
         serviceType: form.serviceType,
-        acreage: form.acreage ? parseFloat(form.acreage) : undefined,
-        terrainType: form.terrainType || undefined,
-        vegetationDensity: form.vegetationDensity || undefined,
+        acreage: isNaN(acreage) ? undefined : acreage,
+        terrainType: form.terrain,
+        vegetationDensity: form.vegetationDensity,
         vegetationTypes: form.vegetationTypes || undefined,
-        slopeCondition: form.slopeCondition || undefined,
-        accessCondition: form.accessCondition || undefined,
+        slopeCondition: undefined,
+        accessCondition: form.accessDifficulty,
         obstacles: form.obstacles || undefined,
         proximityToStructures: form.proximityToStructures || undefined,
         message: form.message || undefined,
@@ -231,16 +283,7 @@ export default function NewQuote() {
         </p>
         <button
           onClick={() => navigate("/")}
-          style={{
-            backgroundColor: "oklch(0.65 0.18 50)",
-            border: "none",
-            borderRadius: 12,
-            padding: "14px 32px",
-            color: "#000",
-            fontWeight: 700,
-            fontSize: 16,
-            cursor: "pointer",
-          }}
+          style={{ backgroundColor: "oklch(0.65 0.18 50)", border: "none", borderRadius: 12, padding: "14px 32px", color: "#000", fontWeight: 700, fontSize: 16, cursor: "pointer" }}
         >
           Back to Home
         </button>
@@ -248,22 +291,17 @@ export default function NewQuote() {
           onClick={() => {
             setSubmitState("idle");
             setPhotos([]);
+            setEstimate(null);
             setForm({
               name: "", email: "", phone: "", address: "", lat: null, lng: null,
-              serviceType: "Forestry Mulching", acreage: "", terrainType: "Flat",
-              vegetationDensity: "Moderate", vegetationTypes: "", slopeCondition: "Minimal (<10%)",
-              accessCondition: "Easy - paved road", obstacles: "", proximityToStructures: "", message: "",
+              serviceType: "Forestry Mulching", acreage: "", linearFeet: "",
+              terrain: "flat", vegetationDensity: "moderate", accessDifficulty: "easy",
+              mobilizationMiles: "0", hasStumps: false, stumpCount: "", trailWidth: "",
+              rowWidth: "", fenceLineLF: "", vegetationTypes: "", obstacles: "",
+              proximityToStructures: "", message: "",
             });
           }}
-          style={{
-            marginTop: 12,
-            background: "none",
-            border: "none",
-            color: "oklch(0.65 0.18 50)",
-            fontSize: 15,
-            cursor: "pointer",
-            padding: "8px 0",
-          }}
+          style={{ marginTop: 12, background: "none", border: "none", color: "oklch(0.65 0.18 50)", fontSize: 15, cursor: "pointer", padding: "8px 0" }}
         >
           Submit another quote
         </button>
@@ -271,7 +309,7 @@ export default function NewQuote() {
     );
   }
 
-  // ─── Form ────────────────────────────────────────────────────────────────
+  // ─── Styles ──────────────────────────────────────────────────────────────
 
   const set = (key: keyof FormState) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) =>
     setForm((f) => ({ ...f, [key]: e.target.value }));
@@ -312,6 +350,9 @@ export default function NewQuote() {
     marginBottom: 14,
   };
 
+  const isROW = form.serviceType === "Right-of-Way Clearing";
+  const isTrail = form.serviceType === "Trail Cutting";
+
   return (
     <div style={{ height: "100%", display: "flex", flexDirection: "column" }}>
       <PageHeader
@@ -323,16 +364,9 @@ export default function NewQuote() {
             disabled={submitState === "submitting"}
             style={{
               backgroundColor: submitState === "submitting" ? "oklch(0.40 0 0)" : "oklch(0.65 0.18 50)",
-              border: "none",
-              borderRadius: 8,
-              padding: "8px 16px",
-              color: "#000",
-              fontWeight: 700,
-              fontSize: 14,
-              cursor: submitState === "submitting" ? "not-allowed" : "pointer",
-              display: "flex",
-              alignItems: "center",
-              gap: 6,
+              border: "none", borderRadius: 8, padding: "8px 16px", color: "#000",
+              fontWeight: 700, fontSize: 14, cursor: submitState === "submitting" ? "not-allowed" : "pointer",
+              display: "flex", alignItems: "center", gap: 6,
             }}
           >
             {submitState === "submitting" ? (
@@ -350,7 +384,7 @@ export default function NewQuote() {
           </div>
         )}
 
-        {/* ── Contact ── */}
+        {/* ── Customer Info ── */}
         <div style={sectionStyle}>
           <p style={sectionTitle}>Customer Info</p>
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
@@ -386,35 +420,16 @@ export default function NewQuote() {
               <button
                 onClick={handleGetGPS}
                 disabled={gpsLoading}
-                style={{
-                  position: "absolute",
-                  right: 10,
-                  top: "50%",
-                  transform: "translateY(-50%)",
-                  background: "none",
-                  border: "none",
-                  cursor: gpsLoading ? "not-allowed" : "pointer",
-                  padding: 4,
-                  marginTop: 3,
-                  display: "flex",
-                  alignItems: "center",
-                }}
+                style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: gpsLoading ? "not-allowed" : "pointer", padding: 4, marginTop: 3, display: "flex", alignItems: "center" }}
               >
-                {gpsLoading ? (
-                  <Loader2 size={18} color="oklch(0.65 0.18 50)" style={{ animation: "spin 1s linear infinite" }} />
-                ) : (
-                  <MapPin size={18} color={form.lat ? "oklch(0.65 0.18 50)" : "oklch(0.50 0.01 80)"} />
-                )}
+                {gpsLoading
+                  ? <Loader2 size={18} color="oklch(0.65 0.18 50)" style={{ animation: "spin 1s linear infinite" }} />
+                  : <MapPin size={18} color={form.lat ? "oklch(0.65 0.18 50)" : "oklch(0.50 0.01 80)"} />
+                }
               </button>
             </div>
-            {form.lat && (
-              <p style={{ color: "oklch(0.65 0.18 50)", fontSize: 11, margin: "4px 0 0" }}>
-                GPS: {form.lat.toFixed(5)}, {form.lng?.toFixed(5)}
-              </p>
-            )}
-            {gpsError && (
-              <p style={{ color: "oklch(0.65 0.20 25)", fontSize: 11, margin: "4px 0 0" }}>{gpsError}</p>
-            )}
+            {form.lat && <p style={{ color: "oklch(0.65 0.18 50)", fontSize: 11, margin: "4px 0 0" }}>GPS: {form.lat.toFixed(5)}, {form.lng?.toFixed(5)}</p>}
+            {gpsError && <p style={{ color: "oklch(0.65 0.20 25)", fontSize: 11, margin: "4px 0 0" }}>{gpsError}</p>}
           </div>
         </div>
 
@@ -422,6 +437,8 @@ export default function NewQuote() {
         <div style={sectionStyle}>
           <p style={sectionTitle}>Job Details</p>
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+
+            {/* Service type */}
             <div>
               <label style={labelStyle}>Service Type *</label>
               <div style={{ position: "relative" }}>
@@ -432,17 +449,47 @@ export default function NewQuote() {
               </div>
             </div>
 
-            <div>
-              <label style={labelStyle}>Estimated Acreage</label>
-              <input value={form.acreage} onChange={set("acreage")} placeholder="e.g. 5.5" type="number" inputMode="decimal" style={inputStyle} />
-            </div>
+            {/* Acreage — always shown unless ROW with LF */}
+            {!isROW && (
+              <div>
+                <label style={labelStyle}>{isTrail ? "Effective Acreage (length × width ÷ 43,560)" : "Estimated Acreage"}</label>
+                <input value={form.acreage} onChange={set("acreage")} placeholder="e.g. 5.5" type="number" inputMode="decimal" style={inputStyle} />
+              </div>
+            )}
 
+            {/* ROW-specific: linear feet + width */}
+            {isROW && (
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                <div>
+                  <label style={labelStyle}>Linear Feet</label>
+                  <input value={form.linearFeet} onChange={set("linearFeet")} placeholder="e.g. 2000" type="number" inputMode="numeric" style={inputStyle} />
+                </div>
+                <div>
+                  <label style={labelStyle}>ROW Width (ft)</label>
+                  <input value={form.rowWidth} onChange={set("rowWidth")} placeholder="e.g. 30" type="number" inputMode="numeric" style={inputStyle} />
+                </div>
+              </div>
+            )}
+
+            {/* Trail-specific: trail width */}
+            {isTrail && (
+              <div>
+                <label style={labelStyle}>Trail Width (ft)</label>
+                <input value={form.trailWidth} onChange={set("trailWidth")} placeholder="e.g. 10" type="number" inputMode="numeric" style={inputStyle} />
+              </div>
+            )}
+
+            {/* Terrain + Vegetation */}
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
               <div>
                 <label style={labelStyle}>Terrain</label>
                 <div style={{ position: "relative" }}>
-                  <select value={form.terrainType} onChange={set("terrainType")} style={{ ...inputStyle, appearance: "none", paddingRight: 28 }}>
-                    {TERRAIN_TYPES.map((t) => <option key={t}>{t}</option>)}
+                  <select
+                    value={form.terrain}
+                    onChange={(e) => setForm((f) => ({ ...f, terrain: e.target.value as FormState["terrain"] }))}
+                    style={{ ...inputStyle, appearance: "none", paddingRight: 28 }}
+                  >
+                    {TERRAIN_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
                   </select>
                   <ChevronDown size={14} style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-25%)", color: "oklch(0.50 0.01 80)", pointerEvents: "none" }} />
                 </div>
@@ -450,44 +497,92 @@ export default function NewQuote() {
               <div>
                 <label style={labelStyle}>Vegetation Density</label>
                 <div style={{ position: "relative" }}>
-                  <select value={form.vegetationDensity} onChange={set("vegetationDensity")} style={{ ...inputStyle, appearance: "none", paddingRight: 28 }}>
-                    {VEGETATION_DENSITY.map((v) => <option key={v}>{v}</option>)}
+                  <select
+                    value={form.vegetationDensity}
+                    onChange={(e) => setForm((f) => ({ ...f, vegetationDensity: e.target.value as FormState["vegetationDensity"] }))}
+                    style={{ ...inputStyle, appearance: "none", paddingRight: 28 }}
+                  >
+                    {VEG_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
                   </select>
                   <ChevronDown size={14} style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-25%)", color: "oklch(0.50 0.01 80)", pointerEvents: "none" }} />
                 </div>
               </div>
             </div>
 
+            {/* Access difficulty */}
+            <div>
+              <label style={labelStyle}>Site Access</label>
+              <div style={{ position: "relative" }}>
+                <select
+                  value={form.accessDifficulty}
+                  onChange={(e) => setForm((f) => ({ ...f, accessDifficulty: e.target.value as FormState["accessDifficulty"] }))}
+                  style={{ ...inputStyle, appearance: "none", paddingRight: 36 }}
+                >
+                  {ACCESS_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+                </select>
+                <ChevronDown size={16} style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-25%)", color: "oklch(0.50 0.01 80)", pointerEvents: "none" }} />
+              </div>
+            </div>
+
+            {/* Mobilization miles */}
+            <div>
+              <label style={labelStyle}>Distance from Vanleer, TN (miles one-way)</label>
+              <input value={form.mobilizationMiles} onChange={set("mobilizationMiles")} placeholder="e.g. 45" type="number" inputMode="numeric" style={inputStyle} />
+              {(() => {
+                const miles = parseFloat(form.mobilizationMiles) || 0;
+                const tiers = [
+                  { max: 30, label: "Local — no travel surcharge" },
+                  { max: 50, label: "Near — +$150 travel surcharge" },
+                  { max: 75, label: "Regional — +$300 travel surcharge" },
+                  { max: 100, label: "Extended — +$500 travel surcharge" },
+                  { max: Infinity, label: "Long-Haul — +$750 travel surcharge" },
+                ];
+                const tier = tiers.find((t) => miles <= t.max);
+                return tier ? (
+                  <p style={{ color: "oklch(0.65 0.18 50)", fontSize: 11, margin: "4px 0 0" }}>{tier.label}</p>
+                ) : null;
+              })()}
+            </div>
+
+            {/* Stumps */}
+            <div>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: form.hasStumps ? 8 : 0 }}>
+                <input
+                  type="checkbox"
+                  id="hasStumps"
+                  checked={form.hasStumps}
+                  onChange={(e) => setForm((f) => ({ ...f, hasStumps: e.target.checked }))}
+                  style={{ width: 18, height: 18, accentColor: "oklch(0.65 0.18 50)", cursor: "pointer" }}
+                />
+                <label htmlFor="hasStumps" style={{ ...labelStyle, marginTop: 0, cursor: "pointer" }}>Stumps to grind</label>
+              </div>
+              {form.hasStumps && (
+                <div>
+                  <label style={labelStyle}>Stump Count</label>
+                  <input value={form.stumpCount} onChange={set("stumpCount")} placeholder="e.g. 12" type="number" inputMode="numeric" style={inputStyle} />
+                </div>
+              )}
+            </div>
+
+            {/* Fence line */}
+            <div>
+              <label style={labelStyle}>Fence Line Clearing (linear feet, optional)</label>
+              <input value={form.fenceLineLF} onChange={set("fenceLineLF")} placeholder="e.g. 500" type="number" inputMode="numeric" style={inputStyle} />
+            </div>
+
+            {/* Vegetation types (legacy intake field) */}
             <div>
               <label style={labelStyle}>Vegetation Types</label>
               <input value={form.vegetationTypes} onChange={set("vegetationTypes")} placeholder="e.g. cedar, honeysuckle, briars" style={inputStyle} />
             </div>
 
+            {/* Obstacles */}
             <div>
-              <label style={labelStyle}>Slope</label>
-              <div style={{ position: "relative" }}>
-                <select value={form.slopeCondition} onChange={set("slopeCondition")} style={{ ...inputStyle, appearance: "none", paddingRight: 36 }}>
-                  {SLOPE_CONDITIONS.map((s) => <option key={s}>{s}</option>)}
-                </select>
-                <ChevronDown size={16} style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-25%)", color: "oklch(0.50 0.01 80)", pointerEvents: "none" }} />
-              </div>
-            </div>
-
-            <div>
-              <label style={labelStyle}>Site Access</label>
-              <div style={{ position: "relative" }}>
-                <select value={form.accessCondition} onChange={set("accessCondition")} style={{ ...inputStyle, appearance: "none", paddingRight: 36 }}>
-                  {ACCESS_CONDITIONS.map((a) => <option key={a}>{a}</option>)}
-                </select>
-                <ChevronDown size={16} style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-25%)", color: "oklch(0.50 0.01 80)", pointerEvents: "none" }} />
-              </div>
-            </div>
-
-            <div>
-              <label style={labelStyle}>Obstacles (stumps, rock, water, fencing)</label>
+              <label style={labelStyle}>Obstacles (rock, water, fencing)</label>
               <input value={form.obstacles} onChange={set("obstacles")} placeholder="Describe any obstacles on site" style={inputStyle} />
             </div>
 
+            {/* Proximity */}
             <div>
               <label style={labelStyle}>Proximity to Structures / Utilities</label>
               <input value={form.proximityToStructures} onChange={set("proximityToStructures")} placeholder="e.g. 20ft from fence, near power line" style={inputStyle} />
@@ -495,36 +590,115 @@ export default function NewQuote() {
           </div>
         </div>
 
+        {/* ── AI Pricing Estimate ── */}
+        <div style={{ ...sectionStyle, border: "1px solid oklch(0.65 0.18 50 / 0.35)" }}>
+          <p style={sectionTitle}>AI Price Estimate</p>
+
+          <button
+            onClick={handleGetEstimate}
+            disabled={getEstimate.isPending}
+            style={{
+              width: "100%",
+              backgroundColor: getEstimate.isPending ? "oklch(0.25 0 0)" : "oklch(0.65 0.18 50 / 0.15)",
+              border: "1px solid oklch(0.65 0.18 50 / 0.5)",
+              borderRadius: 10,
+              padding: "13px 16px",
+              color: getEstimate.isPending ? "oklch(0.60 0.01 80)" : "oklch(0.65 0.18 50)",
+              fontWeight: 700,
+              fontSize: 14,
+              cursor: getEstimate.isPending ? "not-allowed" : "pointer",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 8,
+              marginBottom: 12,
+            }}
+          >
+            {getEstimate.isPending ? (
+              <><Loader2 size={16} style={{ animation: "spin 1s linear infinite" }} /> Generating estimate...</>
+            ) : (
+              <><Sparkles size={16} /> Generate AI Estimate</>
+            )}
+          </button>
+
+          {estimateError && (
+            <p style={{ color: "oklch(0.65 0.20 25)", fontSize: 13, margin: "0 0 8px" }}>{estimateError}</p>
+          )}
+
+          {estimate && (
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              {/* Price range */}
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>
+                <div style={{ backgroundColor: "oklch(0.22 0 0)", borderRadius: 10, padding: "12px 10px", textAlign: "center" }}>
+                  <DollarSign size={16} color="oklch(0.65 0.18 50)" style={{ margin: "0 auto 4px" }} />
+                  <p style={{ color: "oklch(0.50 0.01 80)", fontSize: 10, margin: "0 0 2px" }}>Price Range</p>
+                  <p style={{ color: "oklch(0.94 0.01 80)", fontSize: 13, fontWeight: 700, margin: 0 }}>
+                    ${estimate.customerPriceLow.toLocaleString()} – ${estimate.customerPriceHigh.toLocaleString()}
+                  </p>
+                </div>
+                <div style={{ backgroundColor: "oklch(0.22 0 0)", borderRadius: 10, padding: "12px 10px", textAlign: "center" }}>
+                  <Clock size={16} color="oklch(0.65 0.18 50)" style={{ margin: "0 auto 4px" }} />
+                  <p style={{ color: "oklch(0.50 0.01 80)", fontSize: 10, margin: "0 0 2px" }}>Est. Days</p>
+                  <p style={{ color: "oklch(0.94 0.01 80)", fontSize: 13, fontWeight: 700, margin: 0 }}>
+                    {estimate.estimatedDays.toFixed(1)}
+                  </p>
+                </div>
+                <div style={{ backgroundColor: "oklch(0.22 0 0)", borderRadius: 10, padding: "12px 10px", textAlign: "center" }}>
+                  <p style={{ color: "oklch(0.50 0.01 80)", fontSize: 10, margin: "0 0 2px" }}>Margin</p>
+                  <p style={{ color: "oklch(0.94 0.01 80)", fontSize: 13, fontWeight: 700, margin: 0 }}>
+                    {estimate.marginPct.toFixed(0)}%
+                  </p>
+                  <p style={{ color: "oklch(0.50 0.01 80)", fontSize: 10, margin: "2px 0 0" }}>
+                    Cost: ${estimate.totalInternalCost.toLocaleString()}
+                  </p>
+                </div>
+              </div>
+
+              {/* Summary */}
+              <p style={{ color: "oklch(0.75 0.01 80)", fontSize: 13, lineHeight: 1.5, margin: 0 }}>{estimate.summary}</p>
+
+              {/* Warnings */}
+              {estimate.warnings.length > 0 && (
+                <div style={{ backgroundColor: "oklch(0.55 0.18 60 / 0.12)", border: "1px solid oklch(0.65 0.18 50 / 0.3)", borderRadius: 8, padding: "10px 12px" }}>
+                  {estimate.warnings.map((w, i) => (
+                    <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 6, marginBottom: i < estimate.warnings.length - 1 ? 6 : 0 }}>
+                      <AlertTriangle size={13} color="oklch(0.75 0.18 60)" style={{ flexShrink: 0, marginTop: 1 }} />
+                      <p style={{ color: "oklch(0.75 0.18 60)", fontSize: 12, margin: 0 }}>{w}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Cost breakdown */}
+              <div>
+                <p style={{ color: "oklch(0.50 0.01 80)", fontSize: 11, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em", margin: "0 0 6px" }}>Cost Breakdown</p>
+                {estimate.breakdown.map((item, i) => (
+                  <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", padding: "5px 0", borderBottom: i < estimate.breakdown.length - 1 ? "1px solid oklch(0.25 0 0)" : "none" }}>
+                    <div>
+                      <p style={{ color: "oklch(0.80 0.01 80)", fontSize: 13, margin: 0 }}>{item.label}</p>
+                      {item.note && <p style={{ color: "oklch(0.45 0.01 80)", fontSize: 11, margin: "1px 0 0" }}>{item.note}</p>}
+                    </div>
+                    <p style={{ color: "oklch(0.94 0.01 80)", fontSize: 13, fontWeight: 600, margin: 0, flexShrink: 0, marginLeft: 8 }}>
+                      ${item.cost.toLocaleString()}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+
         {/* ── Site Photos ── */}
         <div style={sectionStyle}>
           <p style={sectionTitle}>Site Photos</p>
-
-          {/* Photo grid */}
           {photos.length > 0 && (
             <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8, marginBottom: 12 }}>
               {photos.map((p, i) => (
                 <div key={i} style={{ position: "relative", paddingBottom: "100%", borderRadius: 8, overflow: "hidden" }}>
-                  <img
-                    src={p.dataUrl}
-                    alt={`Site photo ${i + 1}`}
-                    style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }}
-                  />
+                  <img src={p.dataUrl} alt={`Site photo ${i + 1}`} style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }} />
                   <button
                     onClick={() => removePhoto(i)}
-                    style={{
-                      position: "absolute",
-                      top: 4,
-                      right: 4,
-                      width: 22,
-                      height: 22,
-                      borderRadius: 11,
-                      backgroundColor: "rgba(0,0,0,0.7)",
-                      border: "none",
-                      cursor: "pointer",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                    }}
+                    style={{ position: "absolute", top: 4, right: 4, width: 22, height: 22, borderRadius: 11, backgroundColor: "rgba(0,0,0,0.7)", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
                   >
                     <X size={12} color="#fff" />
                   </button>
@@ -532,35 +706,17 @@ export default function NewQuote() {
               ))}
             </div>
           )}
-
           <button
             onClick={handleTakePhoto}
-            style={{
-              width: "100%",
-              backgroundColor: "oklch(0.22 0 0)",
-              border: "2px dashed oklch(0.30 0 0)",
-              borderRadius: 10,
-              padding: "16px",
-              cursor: "pointer",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: 8,
-              color: "oklch(0.60 0.01 80)",
-              fontSize: 14,
-            }}
+            style={{ width: "100%", backgroundColor: "oklch(0.22 0 0)", border: "2px dashed oklch(0.30 0 0)", borderRadius: 10, padding: "16px", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, color: "oklch(0.60 0.01 80)", fontSize: 14 }}
           >
             <Camera size={20} />
             {photos.length === 0 ? "Take or choose site photos" : "Add another photo"}
           </button>
-          {photos.length > 0 && (
-            <p style={{ color: "oklch(0.50 0.01 80)", fontSize: 11, margin: "6px 0 0", textAlign: "center" }}>
-              {photos.length} photo{photos.length !== 1 ? "s" : ""} attached
-            </p>
-          )}
+          {photos.length > 0 && <p style={{ color: "oklch(0.50 0.01 80)", fontSize: 11, margin: "6px 0 0", textAlign: "center" }}>{photos.length} photo{photos.length !== 1 ? "s" : ""} attached</p>}
         </div>
 
-        {/* ── Notes ── */}
+        {/* ── Field Notes ── */}
         <div style={sectionStyle}>
           <p style={sectionTitle}>Field Notes</p>
           <textarea
@@ -572,30 +728,22 @@ export default function NewQuote() {
           />
         </div>
 
-        {/* Submit button (bottom) */}
+        {/* Submit button */}
         <button
           onClick={handleSubmit}
           disabled={submitState === "submitting"}
           style={{
             width: "100%",
             backgroundColor: submitState === "submitting" ? "oklch(0.40 0 0)" : "oklch(0.65 0.18 50)",
-            border: "none",
-            borderRadius: 12,
-            padding: "16px",
-            color: "#000",
-            fontWeight: 700,
-            fontSize: 16,
+            border: "none", borderRadius: 12, padding: "16px", color: "#000", fontWeight: 700, fontSize: 16,
             cursor: submitState === "submitting" ? "not-allowed" : "pointer",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            gap: 8,
-            marginBottom: 8,
+            display: "flex", alignItems: "center", justifyContent: "center", gap: 8, marginBottom: 8,
           }}
         >
-          {submitState === "submitting" ? (
-            <><Loader2 size={18} style={{ animation: "spin 1s linear infinite" }} /> Submitting...</>
-          ) : "Submit Field Quote"}
+          {submitState === "submitting"
+            ? <><Loader2 size={18} style={{ animation: "spin 1s linear infinite" }} /> Submitting...</>
+            : "Submit Field Quote"
+          }
         </button>
       </div>
     </div>

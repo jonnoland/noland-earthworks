@@ -2735,3 +2735,4 @@
 - [x] Fix: converted quotes not appearing in /ops/jobs Jobs section
 - [x] Fix: Schedule page drag-and-drop not working to schedule jobs
 - [x] Leads Reach Out: use AI to auto-generate a personalized outreach message when the dialog opens
+- [x] Noland Field mobile app: add AI pricing estimate to NewQuote form matching website CostEstimator inputs and logic
