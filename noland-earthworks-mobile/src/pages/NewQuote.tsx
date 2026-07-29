@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   MapPin,
@@ -12,6 +12,9 @@ import {
   DollarSign,
   Clock,
   AlertTriangle,
+  Mic,
+  MicOff,
+  CheckCircle,
 } from "lucide-react";
 import { Camera as CapCamera, CameraResultType, CameraSource } from "@capacitor/camera";
 import { Geolocation } from "@capacitor/geolocation";
@@ -253,6 +256,68 @@ export default function NewQuote() {
     onSuccess: (data) => setEstimate(data as EstimateResult),
     onError: (err) => setEstimateError(err.message || "AI estimate failed."),
   });
+
+  // Voice-to-Bid
+  const [voiceListening, setVoiceListening] = useState(false);
+  const [voiceTranscript, setVoiceTranscript] = useState("");
+  const [voiceResult, setVoiceResult] = useState<{
+    clientName: string | null; address: string | null; service: string | null;
+    acreage: number | null; linearFeet: number | null; terrain: string | null;
+    vegetationDensity: string | null; accessDifficulty: string | null;
+    hasStumps: boolean | null; stumpCount: number | null;
+    mobilizationMiles: number | null; notes: string | null;
+  } | null>(null);
+  const [voiceOpen, setVoiceOpen] = useState(false);
+  const recognitionRef = useRef<any>(null);
+
+  const parseVoiceBid = trpc.ops.parseVoiceBid.useMutation({
+    onSuccess: (data) => setVoiceResult(data),
+    onError: () => alert("Voice parse failed. Try again."),
+  });
+
+  const startListening = () => {
+    const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SR) { alert("Voice input not supported in this browser. Use Chrome or Safari."); return; }
+    const recognition = new SR();
+    recognition.continuous = false;
+    recognition.interimResults = false;
+    recognition.lang = "en-US";
+    recognition.onstart = () => setVoiceListening(true);
+    recognition.onend = () => setVoiceListening(false);
+    recognition.onerror = () => { setVoiceListening(false); alert("Microphone error. Check browser permissions."); };
+    recognition.onresult = (event: any) => {
+      const transcript = Array.from(event.results as any).map((r: any) => r[0].transcript).join(" ");
+      setVoiceTranscript(transcript);
+      parseVoiceBid.mutate({ transcript });
+    };
+    recognitionRef.current = recognition;
+    recognition.start();
+    setVoiceOpen(true);
+    setVoiceResult(null);
+    setVoiceTranscript("");
+  };
+
+  const stopListening = () => { recognitionRef.current?.stop(); setVoiceListening(false); };
+
+  const applyVoiceResult = () => {
+    if (!voiceResult) return;
+    setForm((f) => ({
+      ...f,
+      ...(voiceResult.service && SERVICE_TYPES.includes(voiceResult.service) ? { serviceType: voiceResult.service } : {}),
+      ...(voiceResult.acreage !== null ? { acreage: voiceResult.acreage.toString() } : {}),
+      ...(voiceResult.linearFeet !== null ? { linearFeet: voiceResult.linearFeet.toString() } : {}),
+      ...(voiceResult.terrain && ["flat","rolling","steep","very_steep"].includes(voiceResult.terrain) ? { terrain: voiceResult.terrain as FormState["terrain"] } : {}),
+      ...(voiceResult.vegetationDensity && ["light","moderate","heavy","very_heavy"].includes(voiceResult.vegetationDensity) ? { vegetationDensity: voiceResult.vegetationDensity as FormState["vegetationDensity"] } : {}),
+      ...(voiceResult.accessDifficulty && ["easy","moderate","difficult"].includes(voiceResult.accessDifficulty) ? { accessDifficulty: voiceResult.accessDifficulty as FormState["accessDifficulty"] } : {}),
+      ...(voiceResult.hasStumps !== null ? { hasStumps: voiceResult.hasStumps } : {}),
+      ...(voiceResult.stumpCount !== null ? { stumpCount: voiceResult.stumpCount.toString() } : {}),
+      ...(voiceResult.mobilizationMiles !== null ? { mobilizationMiles: voiceResult.mobilizationMiles.toString() } : {}),
+      ...(voiceResult.notes ? { message: voiceResult.notes } : {}),
+      ...(voiceResult.clientName ? { name: voiceResult.clientName } : {}),
+      ...(voiceResult.address ? { address: voiceResult.address } : {}),
+    }));
+    setVoiceOpen(false); setVoiceResult(null); setVoiceTranscript("");
+  };
 
   // Track whether the address was set programmatically (GPS / autocomplete / pin drag)
   // so we don't trigger forward-geocode in those cases.
@@ -522,6 +587,88 @@ export default function NewQuote() {
           <div style={{ backgroundColor: "oklch(0.65 0.20 25 / 0.15)", border: "1px solid oklch(0.65 0.20 25 / 0.4)", borderRadius: 10, padding: "12px 14px", marginBottom: 16, display: "flex", alignItems: "center", gap: 8 }}>
             <AlertCircle size={16} color="oklch(0.65 0.20 25)" />
             <p style={{ color: "oklch(0.65 0.20 25)", fontSize: 13, margin: 0 }}>{submitError}</p>
+          </div>
+        )}
+
+        {/* ── Voice Bid Button ── */}
+        <button
+          onClick={voiceOpen ? stopListening : startListening}
+          style={{
+            width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 10,
+            backgroundColor: voiceListening ? "oklch(0.65 0.20 25 / 0.15)" : "oklch(0.65 0.18 50 / 0.12)",
+            border: `1.5px solid ${voiceListening ? "oklch(0.65 0.20 25)" : "oklch(0.65 0.18 50)"}`,
+            borderRadius: 12, padding: "14px 16px", marginBottom: 16,
+            color: voiceListening ? "oklch(0.65 0.20 25)" : "oklch(0.65 0.18 50)",
+            fontWeight: 700, fontSize: 15, cursor: "pointer",
+          }}
+        >
+          {voiceListening ? <MicOff size={20} /> : <Mic size={20} />}
+          {voiceListening ? "Tap to Stop Listening" : "Voice Bid — Speak Job Description"}
+        </button>
+
+        {/* ── Voice Overlay Panel ── */}
+        {voiceOpen && (
+          <div style={{
+            backgroundColor: "oklch(0.16 0 0)", border: "1px solid oklch(0.30 0.01 80)",
+            borderRadius: 14, padding: 16, marginBottom: 16,
+          }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+              <span style={{ color: "oklch(0.65 0.18 50)", fontWeight: 700, fontSize: 13, textTransform: "uppercase", letterSpacing: "0.06em" }}>Voice Bid</span>
+              <button onClick={() => { stopListening(); setVoiceOpen(false); setVoiceResult(null); setVoiceTranscript(""); }}
+                style={{ background: "none", border: "none", cursor: "pointer", color: "oklch(0.55 0.01 80)", padding: 4 }}>
+                <X size={16} />
+              </button>
+            </div>
+
+            {voiceListening && (
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+                <div style={{ width: 10, height: 10, borderRadius: "50%", backgroundColor: "oklch(0.65 0.20 25)", animation: "pulse 1s infinite" }} />
+                <span style={{ color: "oklch(0.65 0.20 25)", fontSize: 13 }}>Listening... speak the job description</span>
+              </div>
+            )}
+
+            {voiceTranscript && !voiceListening && (
+              <div style={{ backgroundColor: "oklch(0.20 0 0)", borderRadius: 8, padding: "10px 12px", marginBottom: 12 }}>
+                <p style={{ color: "oklch(0.55 0.01 80)", fontSize: 11, margin: "0 0 4px", textTransform: "uppercase", letterSpacing: "0.06em" }}>Heard</p>
+                <p style={{ color: "oklch(0.85 0.01 80)", fontSize: 13, margin: 0, lineHeight: 1.5 }}>{voiceTranscript}</p>
+              </div>
+            )}
+
+            {parseVoiceBid.isPending && (
+              <div style={{ display: "flex", alignItems: "center", gap: 8, color: "oklch(0.65 0.18 50)", fontSize: 13 }}>
+                <Loader2 size={14} style={{ animation: "spin 1s linear infinite" }} /> Parsing...
+              </div>
+            )}
+
+            {voiceResult && !parseVoiceBid.isPending && (
+              <div>
+                <p style={{ color: "oklch(0.70 0.01 80)", fontSize: 12, margin: "0 0 8px", textTransform: "uppercase", letterSpacing: "0.06em" }}>Extracted</p>
+                <div style={{ display: "flex", flexDirection: "column", gap: 4, marginBottom: 14 }}>
+                  {voiceResult.clientName && <span style={{ color: "oklch(0.85 0.01 80)", fontSize: 13 }}>Name: <strong>{voiceResult.clientName}</strong></span>}
+                  {voiceResult.service && <span style={{ color: "oklch(0.85 0.01 80)", fontSize: 13 }}>Service: <strong>{voiceResult.service}</strong></span>}
+                  {voiceResult.acreage !== null && <span style={{ color: "oklch(0.85 0.01 80)", fontSize: 13 }}>Acreage: <strong>{voiceResult.acreage} ac</strong></span>}
+                  {voiceResult.terrain && <span style={{ color: "oklch(0.85 0.01 80)", fontSize: 13 }}>Terrain: <strong>{voiceResult.terrain}</strong></span>}
+                  {voiceResult.vegetationDensity && <span style={{ color: "oklch(0.85 0.01 80)", fontSize: 13 }}>Vegetation: <strong>{voiceResult.vegetationDensity}</strong></span>}
+                  {voiceResult.accessDifficulty && <span style={{ color: "oklch(0.85 0.01 80)", fontSize: 13 }}>Access: <strong>{voiceResult.accessDifficulty}</strong></span>}
+                  {voiceResult.mobilizationMiles !== null && <span style={{ color: "oklch(0.85 0.01 80)", fontSize: 13 }}>Miles: <strong>{voiceResult.mobilizationMiles}</strong></span>}
+                  {voiceResult.notes && <span style={{ color: "oklch(0.85 0.01 80)", fontSize: 13 }}>Notes: <strong>{voiceResult.notes}</strong></span>}
+                </div>
+                <button
+                  onClick={applyVoiceResult}
+                  style={{
+                    width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+                    backgroundColor: "oklch(0.65 0.18 50)", border: "none", borderRadius: 10,
+                    padding: "12px 16px", color: "#000", fontWeight: 700, fontSize: 14, cursor: "pointer",
+                  }}
+                >
+                  <CheckCircle size={16} /> Apply to Form
+                </button>
+              </div>
+            )}
+
+            {!voiceListening && !voiceTranscript && !voiceResult && (
+              <p style={{ color: "oklch(0.55 0.01 80)", fontSize: 13, margin: 0 }}>Tap the mic button above and describe the job — service type, acreage, terrain, vegetation, access, and how far out the site is.</p>
+            )}
           </div>
         )}
 
