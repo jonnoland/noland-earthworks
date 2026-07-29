@@ -141,6 +141,10 @@ export default function Prospecting() {
   const [minFitScore, setMinFitScore] = useState<0 | 4 | 6 | 8>(0);
   // "all" | "green" (8+) | "yellow" (6-7) | "unscored" (no fitScore)
   const [fitColorFilter, setFitColorFilter] = useState<"all" | "green" | "yellow" | "unscored">("all");
+  // "all" | "low" | "medium" | "high" — filters on marginTier (used as urgency/priority)
+  const [urgencyFilter, setUrgencyFilter] = useState<"all" | "low" | "medium" | "high">("all");
+  // When true, hides prospects older than 30 days
+  const [hideStale, setHideStale] = useState(true);
   const [scanBaselineCount, setScanBaselineCount] = useState<number | null>(null);
   const [lastManualScanDelta, setLastManualScanDelta] = useState<number | null>(null);
   const [awaitingScanResults, setAwaitingScanResults] = useState(false);
@@ -446,9 +450,13 @@ export default function Prospecting() {
       if (fitColorFilter === "green" && (p.fitScore == null || p.fitScore < 8)) return false;
       if (fitColorFilter === "yellow" && (p.fitScore == null || p.fitScore < 6 || p.fitScore >= 8)) return false;
       if (fitColorFilter === "unscored" && p.fitScore != null) return false;
+      // urgency/priority tier gate (maps to marginTier)
+      if (urgencyFilter !== "all" && (p.marginTier ?? "").toLowerCase() !== urgencyFilter) return false;
+      // stale post gate — hide prospects older than 30 days
+      if (hideStale && daysSince(p.createdAt) > 30) return false;
       return true;
     });
-  }, [sortedActive, minFitScore, fitColorFilter]);
+  }, [sortedActive, minFitScore, fitColorFilter, urgencyFilter, hideStale]);
 
   const displayList = tabView === "archived" ? archivedProspects : filteredActive;
 
@@ -660,6 +668,34 @@ export default function Prospecting() {
                 <option value="unscored">Unscored</option>
               </select>
             </div>
+            {/* Urgency / Priority filter (Low / Medium / High based on marginTier) */}
+            <div className="flex items-center gap-1 bg-zinc-800 border border-zinc-700 rounded px-2 py-1">
+              <span className="text-[11px] uppercase tracking-wide text-zinc-500">Priority</span>
+              <select
+                value={urgencyFilter}
+                onChange={e => setUrgencyFilter(e.target.value as "all" | "low" | "medium" | "high")}
+                className="bg-transparent text-xs text-zinc-300 outline-none cursor-pointer"
+              >
+                <option value="all">All</option>
+                <option value="high">High</option>
+                <option value="medium">Medium</option>
+                <option value="low">Low</option>
+              </select>
+            </div>
+            {/* Hide stale posts toggle */}
+            <button
+              onClick={() => setHideStale(prev => !prev)}
+              className={cn(
+                "flex items-center gap-1.5 px-2 py-1 rounded text-xs font-medium border transition-colors",
+                hideStale
+                  ? "bg-zinc-700 border-zinc-600 text-zinc-200"
+                  : "bg-zinc-800 border-zinc-700 text-zinc-500 hover:text-zinc-300"
+              )}
+              title={hideStale ? "Showing posts from last 30 days only — click to show all" : "Click to hide posts older than 30 days"}
+            >
+              <span className={cn("inline-block w-1.5 h-1.5 rounded-full", hideStale ? "bg-orange-400" : "bg-zinc-600")} />
+              Hide old
+            </button>
             <div className="flex items-center gap-1 bg-zinc-800 border border-zinc-700 rounded px-2 py-1">
               <ArrowUpDown className="h-3 w-3 text-zinc-400" />
               <select

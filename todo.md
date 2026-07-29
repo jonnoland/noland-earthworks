@@ -2674,3 +2674,7 @@
 - [x] Build AuthorBio component (photo, name, title, bio, link to About page)
 - [x] Add AuthorBio to BlogPostLayout so it appears at the bottom of all blog posts
 - [x] Add sticky table of contents to CostOfLandClearing.tsx for the expanded guide
+
+## Prospecting Filter Improvements (Jul 2026)
+- [x] Prospecting: add Low/Medium/High urgency filter dropdown to filter toolbar
+- [x] Prospecting: add stale post auto-hide (hide posts older than 30 days — on by default, toggle to show all)
