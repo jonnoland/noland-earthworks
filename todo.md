@@ -2609,3 +2609,17 @@
 - [x] Add delete button (trash icon) to each Web Request card in /ops/quotes Website Requests panel
 - [x] Calls trpc.ops.quotes.delete mutation with confirmation dialog
 - [x] Refreshes the list on success with toast notification
+
+## Clients List Improvements (Jul 29, 2026)
+- [x] Auto-upsert client when lead comes in (quoteRouter, contactRouter, chatRouter)
+- [x] Auto-upsert client when quote is created (nativeQuotesRouter)
+- [x] Add upsertNativeClient helper to db.ts
+- [x] Add syncFromLeads procedure to nativeClientsRouter
+- [x] Add syncFromQuotes procedure to nativeClientsRouter
+- [x] Add create procedure to nativeClientsRouter (manual add)
+- [x] Add Client modal with name/phone/email/address/notes fields
+- [x] Sync from Leads toolbar button (Users icon)
+- [x] Sync from Quotes toolbar button (FileText icon)
+- [x] Sync from Jobs toolbar button (RefreshCw icon)
+- [x] Delete client from detail panel (existing, confirmed working)
+- [x] Edit client from detail panel (existing, confirmed working)

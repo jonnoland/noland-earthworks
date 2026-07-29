@@ -3,7 +3,7 @@ import { publicProcedure, router } from "./_core/trpc";
 import { notifyOwner } from "./_core/notification";
 import { ENV } from "./_core/env";
 import { Resend } from "resend";
-import { createOpsLead, upsertOpsLeadByPhone, getOwnerUser } from "./db";
+import { createOpsLead, upsertOpsLeadByPhone, getOwnerUser, upsertNativeClient } from "./db";
 
 const contactSchema = z.object({
   name: z.string().min(1, "Name is required").max(100),
@@ -153,6 +153,18 @@ export const contactRouter = router({
       }
     } catch (err) {
       console.warn("[Contact] Failed to create ops lead:", err);
+    }
+
+    // Auto-upsert into native_clients
+    try {
+      await upsertNativeClient({
+        name: input.name,
+        email: input.email || null,
+        phone: input.phone || null,
+        source: "website_contact",
+      });
+    } catch (clientErr) {
+      console.warn("[Contact] Failed to upsert native client:", clientErr);
     }
 
     return { success: true };

@@ -4,7 +4,7 @@ import { publicProcedure, router } from "./_core/trpc";
 import { notifyOwner } from "./_core/notification";
 import { ENV } from "./_core/env";
 import { Resend } from "resend";
-import { createOpsLead, upsertOpsLeadByPhone, getOwnerUser, getDb } from "./db";
+import { createOpsLead, upsertOpsLeadByPhone, getOwnerUser, getDb, upsertNativeClient } from "./db";
 import { storagePut } from "./storage";
 import { quoteSubmissions, nativeQuotes } from "../drizzle/schema";
 import { sendOwnerSms } from "./sms";
@@ -624,6 +624,20 @@ export const quoteRouter = router({
       }
     } catch (err) {
       console.warn("[Quote] Failed to create ops lead:", err);
+    }
+
+    // Auto-upsert into native_clients so the client directory stays current
+    try {
+      const address = [input.street, input.city, input.state, input.zip].filter(Boolean).join(", ");
+      await upsertNativeClient({
+        name: input.name,
+        email: input.email || null,
+        phone: input.phone || null,
+        address: address || null,
+        source: "website_quote",
+      });
+    } catch (clientErr) {
+      console.warn("[Quote] Failed to upsert native client:", clientErr);
     }
 
 

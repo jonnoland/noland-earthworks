@@ -1,9 +1,12 @@
 /**
  * NativeClientsSection — client directory backed by native_clients table.
  *
- * Layout mirrors NativeJobsSection:
- *   Left: searchable table with client rows
- *   Right: slide-out detail panel (contact info, job history, notes, edit, delete)
+ * Features:
+ *   - Searchable table of all clients
+ *   - Add client manually (+ button)
+ *   - Sync from leads, quotes, and jobs (toolbar icons)
+ *   - Detail panel: contact info, job history, edit, delete
+ *   - Auto-populated from website leads, contact form, chat, and quotes
  */
 import { useState } from "react";
 import { trpc } from "@/lib/trpc";
@@ -42,6 +45,9 @@ import {
   RefreshCw,
   X,
   ChevronRight,
+  UserPlus,
+  Users,
+  FileText,
 } from "lucide-react";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -106,6 +112,109 @@ function jobStatusColor(status: string): string {
 
 function jobStatusLabel(status: string): string {
   return status.replace("_", " ").replace(/\b\w/g, c => c.toUpperCase());
+}
+
+// ─── Add Client Dialog ────────────────────────────────────────────────────────
+
+function AddClientDialog({
+  open,
+  onClose,
+}: {
+  open: boolean;
+  onClose: () => void;
+}) {
+  const utils = trpc.useUtils();
+  const [form, setForm] = useState({ name: "", email: "", phone: "", address: "", notes: "" });
+
+  const createMutation = trpc.nativeClients.create.useMutation({
+    onSuccess: () => {
+      utils.nativeClients.list.invalidate();
+      setForm({ name: "", email: "", phone: "", address: "", notes: "" });
+      toast.success("Client added.");
+      onClose();
+    },
+    onError: (e) => toast.error(e.message),
+  });
+
+  return (
+    <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
+      <DialogContent className="max-w-md bg-zinc-900 border-zinc-700 text-zinc-100">
+        <DialogHeader>
+          <DialogTitle>Add Client</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-3">
+          <div>
+            <label className="text-xs text-zinc-400 mb-1 block">Name *</label>
+            <Input
+              value={form.name}
+              onChange={(e) => setForm({ ...form, name: e.target.value })}
+              placeholder="Full name"
+              className="bg-zinc-800 border-zinc-700 text-zinc-100"
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs text-zinc-400 mb-1 block">Phone</label>
+              <Input
+                value={form.phone}
+                onChange={(e) => setForm({ ...form, phone: e.target.value })}
+                placeholder="(615) 000-0000"
+                className="bg-zinc-800 border-zinc-700 text-zinc-100"
+              />
+            </div>
+            <div>
+              <label className="text-xs text-zinc-400 mb-1 block">Email</label>
+              <Input
+                value={form.email}
+                onChange={(e) => setForm({ ...form, email: e.target.value })}
+                placeholder="email@example.com"
+                className="bg-zinc-800 border-zinc-700 text-zinc-100"
+              />
+            </div>
+          </div>
+          <div>
+            <label className="text-xs text-zinc-400 mb-1 block">Address</label>
+            <Input
+              value={form.address}
+              onChange={(e) => setForm({ ...form, address: e.target.value })}
+              placeholder="Street, City, TN"
+              className="bg-zinc-800 border-zinc-700 text-zinc-100"
+            />
+          </div>
+          <div>
+            <label className="text-xs text-zinc-400 mb-1 block">Notes</label>
+            <Textarea
+              value={form.notes}
+              onChange={(e) => setForm({ ...form, notes: e.target.value })}
+              rows={3}
+              placeholder="Internal notes..."
+              className="bg-zinc-800 border-zinc-700 text-zinc-100 resize-none"
+            />
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="ghost" onClick={onClose} className="text-zinc-400">
+            Cancel
+          </Button>
+          <Button
+            onClick={() =>
+              createMutation.mutate({
+                name: form.name,
+                email: form.email || undefined,
+                phone: form.phone || undefined,
+                address: form.address || undefined,
+                notes: form.notes || undefined,
+              })
+            }
+            disabled={createMutation.isPending || !form.name.trim()}
+            className="bg-amber-600 hover:bg-amber-500 text-white"
+          >
+            {createMutation.isPending ? "Adding..." : "Add Client"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
 }
 
 // ─── Edit Dialog ──────────────────────────────────────────────────────────────
@@ -267,6 +376,9 @@ function ClientDetailPanel({
           <h3 className="text-base font-semibold text-zinc-100">{client.name}</h3>
           <p className="text-xs text-zinc-500 mt-0.5">
             Client since {formatDate(client.createdAt)}
+            {client.source && (
+              <span className="ml-2 text-zinc-600">· {client.source.replace(/_/g, " ")}</span>
+            )}
           </p>
         </div>
         <button onClick={onClose} className="text-zinc-500 hover:text-zinc-300 p-1">
@@ -440,154 +552,218 @@ export default function NativeClientsSection() {
   const utils = trpc.useUtils();
   const [search, setSearch] = useState("");
   const [selectedId, setSelectedId] = useState<number | null>(null);
+  const [showAddModal, setShowAddModal] = useState(false);
 
-  const { data: clients = [], isLoading, refetch } = trpc.nativeClients.list.useQuery({
+  const { data: clients = [], isLoading } = trpc.nativeClients.list.useQuery({
     search: search || undefined,
-    limit: 100,
+    limit: 200,
   });
 
-  const syncMutation = trpc.nativeClients.syncFromJobs.useMutation({
+  const syncJobsMutation = trpc.nativeClients.syncFromJobs.useMutation({
     onSuccess: (result) => {
       utils.nativeClients.list.invalidate();
-      toast.success(`Sync complete: ${result.created} created, ${result.updated} updated.`);
+      toast.success(`Synced from jobs: ${result.created} added, ${result.updated} updated.`);
     },
     onError: (e) => toast.error(e.message),
   });
 
-  const selectedClient = clients.find((c) => c.id === selectedId) ?? null;
+  const syncLeadsMutation = trpc.nativeClients.syncFromLeads.useMutation({
+    onSuccess: (result) => {
+      utils.nativeClients.list.invalidate();
+      toast.success(`Synced from leads: ${result.created} added, ${result.updated} updated.`);
+    },
+    onError: (e) => toast.error(e.message),
+  });
+
+  const syncQuotesMutation = trpc.nativeClients.syncFromQuotes.useMutation({
+    onSuccess: (result) => {
+      utils.nativeClients.list.invalidate();
+      toast.success(`Synced from quotes: ${result.created} added, ${result.updated} updated.`);
+    },
+    onError: (e) => toast.error(e.message),
+  });
+
+  const isSyncing =
+    syncJobsMutation.isPending || syncLeadsMutation.isPending || syncQuotesMutation.isPending;
 
   return (
-    <div
-      className="flex h-full"
-      style={{ minHeight: 500 }}
-    >
-      {/* ── Left: Table ── */}
-      <div
-        className={`flex flex-col border-r border-zinc-800 transition-all duration-200 ${
-          selectedId ? "w-1/2" : "w-full"
-        }`}
-      >
-        {/* Toolbar */}
-        <div className="flex items-center gap-2 p-3 border-b border-zinc-800">
-          <div className="relative flex-1">
-            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-500" />
-            <Input
-              placeholder="Search clients..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="pl-8 h-8 text-sm bg-zinc-800/60 border-zinc-700 text-zinc-100 placeholder:text-zinc-600"
-            />
+    <>
+      <div className="flex h-full" style={{ minHeight: 500 }}>
+        {/* ── Left: Table ── */}
+        <div
+          className={`flex flex-col border-r border-zinc-800 transition-all duration-200 ${
+            selectedId ? "w-1/2" : "w-full"
+          }`}
+        >
+          {/* Toolbar */}
+          <div className="flex items-center gap-2 p-3 border-b border-zinc-800">
+            <div className="relative flex-1">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-500" />
+              <Input
+                placeholder="Search clients..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="pl-8 h-8 text-sm bg-zinc-800/60 border-zinc-700 text-zinc-100 placeholder:text-zinc-600"
+              />
+            </div>
+            {/* Add client manually */}
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setShowAddModal(true)}
+              className="text-amber-400 hover:text-amber-300 h-8 px-2"
+              title="Add client manually"
+            >
+              <UserPlus className="w-3.5 h-3.5" />
+            </Button>
+            {/* Sync from leads */}
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => syncLeadsMutation.mutate()}
+              disabled={isSyncing}
+              className="text-zinc-400 hover:text-zinc-200 h-8 px-2"
+              title="Sync from leads"
+            >
+              <Users className={`w-3.5 h-3.5 ${syncLeadsMutation.isPending ? "animate-spin" : ""}`} />
+            </Button>
+            {/* Sync from quotes */}
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => syncQuotesMutation.mutate()}
+              disabled={isSyncing}
+              className="text-zinc-400 hover:text-zinc-200 h-8 px-2"
+              title="Sync from quotes"
+            >
+              <FileText className={`w-3.5 h-3.5 ${syncQuotesMutation.isPending ? "animate-spin" : ""}`} />
+            </Button>
+            {/* Sync from jobs */}
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => syncJobsMutation.mutate()}
+              disabled={isSyncing}
+              className="text-zinc-400 hover:text-zinc-200 h-8 px-2"
+              title="Sync from jobs"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${syncJobsMutation.isPending ? "animate-spin" : ""}`} />
+            </Button>
           </div>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => syncMutation.mutate()}
-            disabled={syncMutation.isPending}
-            className="text-zinc-400 hover:text-zinc-200 h-8 px-2"
-            title="Sync clients from jobs"
-          >
-            <RefreshCw className={`w-3.5 h-3.5 ${syncMutation.isPending ? "animate-spin" : ""}`} />
-          </Button>
-        </div>
 
-        {/* Count */}
-        <div className="px-3 py-1.5 border-b border-zinc-800">
-          <span className="text-xs text-zinc-500">
-            {isLoading ? "Loading..." : `${clients.length} client${clients.length !== 1 ? "s" : ""}`}
-          </span>
-        </div>
+          {/* Count + legend */}
+          <div className="flex items-center justify-between px-3 py-1.5 border-b border-zinc-800">
+            <span className="text-xs text-zinc-500">
+              {isLoading ? "Loading..." : `${clients.length} client${clients.length !== 1 ? "s" : ""}`}
+            </span>
+            <span className="text-[10px] text-zinc-600 hidden sm:block">
+              + = add &nbsp;|&nbsp; people = sync leads &nbsp;|&nbsp; doc = sync quotes &nbsp;|&nbsp; refresh = sync jobs
+            </span>
+          </div>
 
-        {/* Table */}
-        <div className="flex-1 overflow-y-auto">
-          {isLoading ? (
-            <div className="flex items-center justify-center h-32 text-zinc-500 text-sm">
-              Loading clients...
-            </div>
-          ) : clients.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-48 text-zinc-600 text-sm gap-2">
-              <User className="w-8 h-8 opacity-30" />
-              <p>No clients yet.</p>
-              <p className="text-xs text-zinc-700">
-                Click the sync button to import from existing jobs.
-              </p>
-            </div>
-          ) : (
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-zinc-800 text-zinc-500 text-xs">
-                  <th className="text-left px-3 py-2 font-medium">Client</th>
-                  {!selectedId && (
-                    <>
-                      <th className="text-left px-3 py-2 font-medium">Contact</th>
-                      <th className="text-right px-3 py-2 font-medium">Jobs</th>
-                      <th className="text-right px-3 py-2 font-medium">Total Spent</th>
-                    </>
-                  )}
-                  <th className="w-6" />
-                </tr>
-              </thead>
-              <tbody>
-                {clients.map((client) => (
-                  <tr
-                    key={client.id}
-                    onClick={() => setSelectedId(client.id === selectedId ? null : client.id)}
-                    className={`border-b border-zinc-800/50 cursor-pointer transition-colors ${
-                      selectedId === client.id
-                        ? "bg-amber-900/20"
-                        : "hover:bg-zinc-800/40"
-                    }`}
-                  >
-                    <td className="px-3 py-2.5">
-                      <div className="font-medium text-zinc-200 truncate max-w-[160px]">
-                        {client.name}
-                      </div>
-                      {client.address && (
-                        <div className="text-xs text-zinc-500 truncate max-w-[160px] mt-0.5">
-                          {client.address.split(",").slice(-2).join(",").trim()}
-                        </div>
-                      )}
-                    </td>
+          {/* Table */}
+          <div className="flex-1 overflow-y-auto">
+            {isLoading ? (
+              <div className="flex items-center justify-center h-32 text-zinc-500 text-sm">
+                Loading clients...
+              </div>
+            ) : clients.length === 0 ? (
+              <div className="flex flex-col items-center justify-center h-48 text-zinc-600 text-sm gap-2">
+                <User className="w-8 h-8 opacity-30" />
+                <p>No clients yet.</p>
+                <p className="text-xs text-zinc-700">
+                  Use the sync buttons to import from leads, quotes, or jobs.
+                </p>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setShowAddModal(true)}
+                  className="mt-2 border-zinc-700 text-zinc-400 hover:text-zinc-200"
+                >
+                  <UserPlus className="w-3.5 h-3.5 mr-1.5" /> Add Client
+                </Button>
+              </div>
+            ) : (
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-zinc-800 text-zinc-500 text-xs">
+                    <th className="text-left px-3 py-2 font-medium">Client</th>
                     {!selectedId && (
                       <>
-                        <td className="px-3 py-2.5 text-zinc-400 text-xs">
-                          <div>{client.phone ?? "—"}</div>
-                          <div className="truncate max-w-[140px]">{client.email ?? ""}</div>
-                        </td>
-                        <td className="px-3 py-2.5 text-right">
-                          <Badge
-                            variant="outline"
-                            className="border-zinc-700 text-zinc-400 text-[10px]"
-                          >
-                            {client.jobCount}
-                          </Badge>
-                        </td>
-                        <td className="px-3 py-2.5 text-right font-medium text-green-400 text-xs">
-                          {client.totalSpentCents > 0
-                            ? formatCents(client.totalSpentCents)
-                            : "—"}
-                        </td>
+                        <th className="text-left px-3 py-2 font-medium">Contact</th>
+                        <th className="text-right px-3 py-2 font-medium">Jobs</th>
+                        <th className="text-right px-3 py-2 font-medium">Total Spent</th>
                       </>
                     )}
-                    <td className="px-2 py-2.5 text-zinc-600">
-                      <ChevronRight className="w-3.5 h-3.5" />
-                    </td>
+                    <th className="w-6" />
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
+                </thead>
+                <tbody>
+                  {clients.map((client) => (
+                    <tr
+                      key={client.id}
+                      onClick={() => setSelectedId(client.id === selectedId ? null : client.id)}
+                      className={`border-b border-zinc-800/50 cursor-pointer transition-colors ${
+                        selectedId === client.id
+                          ? "bg-amber-900/20"
+                          : "hover:bg-zinc-800/40"
+                      }`}
+                    >
+                      <td className="px-3 py-2.5">
+                        <div className="font-medium text-zinc-200 truncate max-w-[160px]">
+                          {client.name}
+                        </div>
+                        {client.address && (
+                          <div className="text-xs text-zinc-500 truncate max-w-[160px] mt-0.5">
+                            {client.address.split(",").slice(-2).join(",").trim()}
+                          </div>
+                        )}
+                      </td>
+                      {!selectedId && (
+                        <>
+                          <td className="px-3 py-2.5 text-zinc-400 text-xs">
+                            <div>{client.phone ?? "—"}</div>
+                            <div className="truncate max-w-[140px]">{client.email ?? ""}</div>
+                          </td>
+                          <td className="px-3 py-2.5 text-right">
+                            <Badge
+                              variant="outline"
+                              className="border-zinc-700 text-zinc-400 text-[10px]"
+                            >
+                              {client.jobCount}
+                            </Badge>
+                          </td>
+                          <td className="px-3 py-2.5 text-right font-medium text-green-400 text-xs">
+                            {client.totalSpentCents > 0
+                              ? formatCents(client.totalSpentCents)
+                              : "—"}
+                          </td>
+                        </>
+                      )}
+                      <td className="px-2 py-2.5 text-zinc-600">
+                        <ChevronRight className="w-3.5 h-3.5" />
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
         </div>
+
+        {/* ── Right: Detail Panel ── */}
+        {selectedId && (
+          <div className="w-1/2 flex flex-col bg-zinc-900/50">
+            <ClientDetailPanel
+              clientId={selectedId}
+              onClose={() => setSelectedId(null)}
+            />
+          </div>
+        )}
       </div>
 
-      {/* ── Right: Detail Panel ── */}
-      {selectedId && (
-        <div className="w-1/2 flex flex-col bg-zinc-900/50">
-          <ClientDetailPanel
-            clientId={selectedId}
-            onClose={() => setSelectedId(null)}
-          />
-        </div>
-      )}
-    </div>
+      {/* Add Client Modal */}
+      <AddClientDialog open={showAddModal} onClose={() => setShowAddModal(false)} />
+    </>
   );
 }

@@ -12,7 +12,7 @@ import { z } from "zod";
 import { protectedProcedure, router } from "./_core/trpc";
 import { TRPCError } from "@trpc/server";
 import { getDb } from "./db";
-import { nativeClients, nativeJobs } from "../drizzle/schema";
+import { nativeClients, nativeJobs, opsLeads, nativeQuotes } from "../drizzle/schema";
 import { eq, desc, like, or, sql } from "drizzle-orm";
 import { ENV } from "./_core/env";
 
@@ -242,6 +242,41 @@ export const nativeClientsRouter = router({
     }),
 
   /**
+   * Manually create a new client record.
+   */
+  create: ownerProcedure
+    .input(
+      z.object({
+        name: z.string().min(1),
+        email: z.string().optional(),
+        phone: z.string().optional(),
+        address: z.string().optional(),
+        notes: z.string().optional(),
+      })
+    )
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+      await db.insert(nativeClients).values({
+        name: input.name,
+        email: input.email ?? null,
+        phone: input.phone ?? null,
+        address: input.address ?? null,
+        notes: input.notes ?? null,
+        source: "manual",
+        jobCount: 0,
+        totalSpentCents: 0,
+      });
+      const [created] = await db
+        .select()
+        .from(nativeClients)
+        .where(eq(nativeClients.name, input.name))
+        .orderBy(desc(nativeClients.createdAt))
+        .limit(1);
+      return created;
+    }),
+
+  /**
    * Hard delete a client record.
    */
   delete: ownerProcedure
@@ -336,6 +371,118 @@ export const nativeClientsRouter = router({
         seen.set(key, true);
       }
 
+      return { created, updated };
+    }),
+
+  /**
+   * Backfill clients from existing ops leads.
+   */
+  syncFromLeads: ownerProcedure
+    .mutation(async () => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+      const leads = await db.select().from(opsLeads).orderBy(desc(opsLeads.createdAt));
+      const seen = new Map<string, boolean>();
+      let created = 0;
+      let updated = 0;
+      for (const lead of leads) {
+        const key = (lead.email || lead.phone || lead.name || "").toLowerCase();
+        if (!key) continue;
+        let existing = null;
+        if (lead.email) {
+          const [row] = await db.select().from(nativeClients).where(eq(nativeClients.email, lead.email)).limit(1);
+          existing = row ?? null;
+        }
+        if (!existing && lead.phone) {
+          const [row] = await db.select().from(nativeClients).where(eq(nativeClients.phone, lead.phone)).limit(1);
+          existing = row ?? null;
+        }
+        if (!existing) {
+          const [row] = await db.select().from(nativeClients).where(eq(nativeClients.name, lead.name)).limit(1);
+          existing = row ?? null;
+        }
+        if (existing) {
+          if (!seen.has(key)) {
+            await db.update(nativeClients).set({
+              email: lead.email || existing.email,
+              phone: lead.phone || existing.phone,
+              updatedAt: new Date(),
+            }).where(eq(nativeClients.id, existing.id));
+            updated++;
+          }
+        } else {
+          if (!seen.has(key)) {
+            await db.insert(nativeClients).values({
+              name: lead.name,
+              email: lead.email ?? null,
+              phone: lead.phone ?? null,
+              address: lead.address ?? null,
+              source: lead.source ?? "website",
+              jobCount: 0,
+              totalSpentCents: 0,
+            });
+            created++;
+          }
+        }
+        seen.set(key, true);
+      }
+      return { created, updated };
+    }),
+
+  /**
+   * Backfill clients from existing native quotes.
+   */
+  syncFromQuotes: ownerProcedure
+    .mutation(async () => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+      const quotes = await db.select().from(nativeQuotes).orderBy(desc(nativeQuotes.createdAt));
+      const seen = new Map<string, boolean>();
+      let created = 0;
+      let updated = 0;
+      for (const quote of quotes) {
+        if (!quote.clientName) continue;
+        const key = (quote.clientEmail || quote.clientPhone || quote.clientName || "").toLowerCase();
+        if (!key) continue;
+        let existing = null;
+        if (quote.clientEmail) {
+          const [row] = await db.select().from(nativeClients).where(eq(nativeClients.email, quote.clientEmail)).limit(1);
+          existing = row ?? null;
+        }
+        if (!existing && quote.clientPhone) {
+          const [row] = await db.select().from(nativeClients).where(eq(nativeClients.phone, quote.clientPhone)).limit(1);
+          existing = row ?? null;
+        }
+        if (!existing) {
+          const [row] = await db.select().from(nativeClients).where(eq(nativeClients.name, quote.clientName)).limit(1);
+          existing = row ?? null;
+        }
+        if (existing) {
+          if (!seen.has(key)) {
+            await db.update(nativeClients).set({
+              email: quote.clientEmail || existing.email,
+              phone: quote.clientPhone || existing.phone,
+              address: quote.propertyAddress || existing.address,
+              updatedAt: new Date(),
+            }).where(eq(nativeClients.id, existing.id));
+            updated++;
+          }
+        } else {
+          if (!seen.has(key)) {
+            await db.insert(nativeClients).values({
+              name: quote.clientName,
+              email: quote.clientEmail ?? null,
+              phone: quote.clientPhone ?? null,
+              address: quote.propertyAddress ?? null,
+              source: "field_quote",
+              jobCount: 0,
+              totalSpentCents: 0,
+            });
+            created++;
+          }
+        }
+        seen.set(key, true);
+      }
       return { created, updated };
     }),
 });
