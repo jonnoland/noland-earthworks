@@ -1261,6 +1261,30 @@ function NativeQuoteDetailPanel({
             </button>
           )}
 
+          {/* Status selector — change quote status directly from the panel */}
+          {!quote.convertedToJobAt && (
+            <div className="flex items-center gap-2 py-1.5">
+              <span className="text-[11px] text-muted-foreground shrink-0">Status:</span>
+              <select
+                value={quote.status}
+                onChange={e => {
+                  updateStatusMutation.mutate({ id: quote.id, status: e.target.value });
+                  toast.success(`Status updated to ${e.target.value.replace(/_/g, " ")}.`);
+                }}
+                disabled={updateStatusMutation.isPending}
+                className="flex-1 text-xs bg-secondary/40 border border-border rounded px-2 py-1 text-foreground focus:outline-none focus:border-primary cursor-pointer"
+              >
+                <option value="web_request">Web Request</option>
+                <option value="draft">Draft</option>
+                <option value="sent">Sent</option>
+                <option value="approved">Approved</option>
+                <option value="declined">Declined</option>
+                <option value="cancelled">Cancelled</option>
+                <option value="invoiced">Invoiced</option>
+              </select>
+            </div>
+          )}
+
           {/* Secondary row */}
           <div className="flex items-center justify-between pt-1">
             <div className="flex gap-3">
@@ -1665,6 +1689,12 @@ export function NativeAllQuotesSection() {
     onError: (err) => { toast.error(err.message); setDraftingFor(null); },
   });
 
+  const utils = trpc.useUtils();
+  const updateStatusMutation = trpc.nativeQuotes.update.useMutation({
+    onSuccess: () => { utils.nativeQuotes.list.invalidate(); },
+    onError: (e) => toast.error("Failed to update status: " + e.message),
+  });
+
   const { data, isLoading, refetch, isFetching } = trpc.nativeQuotes.list.useQuery({
     search: search || undefined,
     status: statusFilter,
@@ -1889,8 +1919,29 @@ export function NativeAllQuotesSection() {
                             {(quote.totalCents / 100).toLocaleString("en-US", { minimumFractionDigits: 0 })}
                           </div>
                         </td>
-                        <td className="px-4 py-3">
-                          <StatusBadge quote={quote} />
+                        <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
+                          {quote.convertedToJobAt ? (
+                            <StatusBadge quote={quote} />
+                          ) : (
+                            <select
+                              value={quote.status}
+                              onChange={e => {
+                                e.stopPropagation();
+                                updateStatusMutation.mutate({ id: quote.id, status: e.target.value });
+                                toast.success(`Status → ${e.target.value.replace(/_/g, " ")}`);
+                              }}
+                              disabled={updateStatusMutation.isPending}
+                              className="text-[11px] bg-secondary/40 border border-border rounded px-1.5 py-0.5 text-foreground focus:outline-none focus:border-primary cursor-pointer max-w-[110px]"
+                            >
+                              <option value="web_request">Web Request</option>
+                              <option value="draft">Draft</option>
+                              <option value="sent">Sent</option>
+                              <option value="approved">Approved</option>
+                              <option value="declined">Declined</option>
+                              <option value="cancelled">Cancelled</option>
+                              <option value="invoiced">Invoiced</option>
+                            </select>
+                          )}
                         </td>
                         <td className="px-4 py-3 text-muted-foreground hidden lg:table-cell">
                           {new Date(quote.createdAt).toLocaleDateString()}

@@ -2690,3 +2690,7 @@
 - [x] DB migration: nativeQuoteId column added to quote_submissions table (applied via webdev_execute_sql)
 - [x] quoteRouter: capture insertId from quoteSubmissions insert and link back to native quote via nativeQuoteId
 - [x] AI score badge: fixed enum values (strong/marginal/weak) to match backend schema (was incorrectly using hot/warm)
+
+## Quote Status Management (Jul 2026)
+- [x] Quotes: add inline status selector to the quotes table row (Status column) so Jon can change a quote's status without opening the detail panel
+- [x] Quotes: add status selector to the NativeQuoteDetailPanel footer so status is editable from the slide-out panel
