@@ -22,6 +22,16 @@ import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   Radar,
   ExternalLink,
   MessageSquare,
@@ -125,6 +135,9 @@ export default function Prospecting() {
   const [notesEditValue, setNotesEditValue] = useState("");
   const [convertingId, setConvertingId] = useState<number | null>(null);
   const [convertingClientId, setConvertingClientId] = useState<number | null>(null);
+  const [confirmClientProspect, setConfirmClientProspect] = useState<Prospect | null>(null);
+  const [selectedClientIds, setSelectedClientIds] = useState<Set<number>>(new Set());
+  const [batchConvertingClients, setBatchConvertingClients] = useState(false);
   const [minFitScore, setMinFitScore] = useState<0 | 4 | 6 | 8>(0);
   const [scanBaselineCount, setScanBaselineCount] = useState<number | null>(null);
   const [lastManualScanDelta, setLastManualScanDelta] = useState<number | null>(null);
@@ -223,6 +236,7 @@ export default function Prospecting() {
     onSuccess: () => {
       utils.nativeClients.list.invalidate();
       setConvertingClientId(null);
+      setConfirmClientProspect(null);
       toast.success("Prospect added to Clients.");
     },
     onError: (err) => {
@@ -230,6 +244,36 @@ export default function Prospecting() {
       toast.error(err.message);
     },
   });
+
+  async function batchConvertToClients() {
+    setBatchConvertingClients(true);
+    const targets = filteredActive.filter(p => selectedClientIds.has(p.id));
+    let successCount = 0;
+    for (const p of targets) {
+      const email = p.contactInfo?.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i)?.[0];
+      const phone = p.contactInfo?.match(/\+?[\d\s\-().]{10,}/)?.[0]?.trim();
+      try {
+        await convertToClient.mutateAsync({
+          name: p.contactName ?? p.source,
+          email: email || undefined,
+          phone: phone || undefined,
+          address: p.location ?? undefined,
+          notes: [
+            p.summary,
+            p.notes ? `Prospect notes: ${p.notes}` : null,
+            p.postSnippet ? `Original post: ${p.postSnippet}` : null,
+          ].filter(Boolean).join("\n\n"),
+        });
+        successCount++;
+      } catch {
+        // individual errors silently skipped; final toast covers the count
+      }
+    }
+    setBatchConvertingClients(false);
+    setSelectedClientIds(new Set());
+    utils.nativeClients.list.invalidate();
+    toast.success(`${successCount} of ${targets.length} prospect${targets.length === 1 ? "" : "s"} added to Clients.`);
+  }
 
   const generateFbOutreach = trpc.ops.prospecting.generateFbOutreach.useMutation({
     onSuccess: (res) => {
@@ -582,18 +626,30 @@ export default function Prospecting() {
         )}
       </div>
 
-      {/* Bulk dismiss bar */}
+      {/* Bulk action bar */}
       {selectedIds.size > 0 && tabView === "active" && (
-        <div className="flex items-center justify-between rounded-lg border border-zinc-600 bg-zinc-800/80 px-4 py-2">
+        <div className="flex items-center justify-between rounded-lg border border-zinc-600 bg-zinc-800/80 px-4 py-2 flex-wrap gap-2">
           <span className="text-sm text-zinc-300">{selectedIds.size} selected</span>
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-wrap">
             <Button
               size="sm"
               variant="outline"
-              onClick={() => setSelectedIds(new Set())}
+              onClick={() => { setSelectedIds(new Set()); setSelectedClientIds(new Set()); }}
               className="border-zinc-600 text-zinc-400 h-7 text-xs"
             >
               Clear
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => {
+                setSelectedClientIds(new Set(selectedIds));
+              }}
+              disabled={batchConvertingClients}
+              className="border-cyan-700 text-cyan-300 hover:text-white h-7 text-xs"
+            >
+              <UserPlus className="h-3 w-3 mr-1.5" />
+              Convert to Clients
             </Button>
             <Button
               size="sm"
@@ -631,13 +687,21 @@ export default function Prospecting() {
             const isSelected = selectedIds.has(p.id);
             const messengerUrl = p.profileUrl ? buildMessengerLink(p.profileUrl) : null;
 
+            const fitBorderClass =
+              p.fitScore != null && p.fitScore >= 8
+                ? "border-green-600/70"
+                : p.fitScore != null && p.fitScore >= 6
+                ? "border-yellow-500/60"
+                : "border-zinc-700";
+
             return (
               <Card
                 key={p.id}
                 className={cn(
-                  "border-zinc-700 bg-zinc-800/60 transition-colors",
+                  "bg-zinc-800/60 transition-colors border-2",
+                  fitBorderClass,
                   isSelected && "border-orange-600/60 bg-zinc-800/80",
-                  p.urgencyFlag && "border-l-2 border-l-red-500"
+                  p.urgencyFlag && "border-l-4 border-l-red-500"
                 )}
               >
                 <CardHeader className="pb-2">
@@ -890,22 +954,7 @@ export default function Prospecting() {
                         <Button
                           size="sm"
                           variant="outline"
-                          onClick={() => {
-                            const email = p.contactInfo?.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i)?.[0];
-                            const phone = p.contactInfo?.match(/\+?[\d\s\-().]{10,}/)?.[0]?.trim();
-                            setConvertingClientId(p.id);
-                            convertToClient.mutate({
-                              name: p.contactName ?? p.source,
-                              email: email || undefined,
-                              phone: phone || undefined,
-                              address: p.location ?? undefined,
-                              notes: [
-                                p.summary,
-                                p.notes ? `Prospect notes: ${p.notes}` : null,
-                                p.postSnippet ? `Original post: ${p.postSnippet}` : null,
-                              ].filter(Boolean).join("\n\n"),
-                            });
-                          }}
+                          onClick={() => setConfirmClientProspect(p)}
                           disabled={convertingClientId === p.id && convertToClient.isPending}
                           className="border-cyan-700 text-cyan-300 hover:text-white h-8 text-xs"
                         >
@@ -1279,6 +1328,92 @@ export default function Prospecting() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Convert to Client confirmation modal */}
+      <AlertDialog
+        open={confirmClientProspect !== null}
+        onOpenChange={(open) => { if (!open) setConfirmClientProspect(null); }}
+      >
+        <AlertDialogContent className="bg-zinc-900 border-zinc-700 text-zinc-100">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Add to Clients?</AlertDialogTitle>
+            <AlertDialogDescription className="text-zinc-400 space-y-1">
+              {confirmClientProspect && (
+                <>
+                  <span className="block">
+                    <strong className="text-zinc-200">{confirmClientProspect.contactName ?? confirmClientProspect.source}</strong>
+                    {confirmClientProspect.location && (
+                      <> &mdash; {confirmClientProspect.location}</>
+                    )}
+                  </span>
+                  {confirmClientProspect.fitScore != null && (
+                    <span className="block">Fit score: <strong className="text-zinc-200">{confirmClientProspect.fitScore}/10</strong></span>
+                  )}
+                  <span className="block mt-1 text-zinc-500 text-xs line-clamp-3">{confirmClientProspect.summary}</span>
+                </>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="border-zinc-700 text-zinc-300">
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (!confirmClientProspect) return;
+                const p = confirmClientProspect;
+                const email = p.contactInfo?.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i)?.[0];
+                const phone = p.contactInfo?.match(/\+?[\d\s\-().]{10,}/)?.[0]?.trim();
+                setConvertingClientId(p.id);
+                convertToClient.mutate({
+                  name: p.contactName ?? p.source,
+                  email: email || undefined,
+                  phone: phone || undefined,
+                  address: p.location ?? undefined,
+                  notes: [
+                    p.summary,
+                    p.notes ? `Prospect notes: ${p.notes}` : null,
+                    p.postSnippet ? `Original post: ${p.postSnippet}` : null,
+                  ].filter(Boolean).join("\n\n"),
+                });
+              }}
+              className="bg-cyan-700 hover:bg-cyan-600 text-white"
+            >
+              Add to Clients
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Batch Convert to Clients confirmation */}
+      <AlertDialog
+        open={selectedClientIds.size > 0}
+        onOpenChange={(open) => { if (!open) setSelectedClientIds(new Set()); }}
+      >
+        <AlertDialogContent className="bg-zinc-900 border-zinc-700 text-zinc-100">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Convert {selectedClientIds.size} prospect{selectedClientIds.size === 1 ? "" : "s"} to Clients?</AlertDialogTitle>
+            <AlertDialogDescription className="text-zinc-400">
+              Each selected prospect will be added as a new Client record. This cannot be undone automatically.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel
+              className="border-zinc-700 text-zinc-300"
+              onClick={() => setSelectedClientIds(new Set())}
+            >
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={batchConvertToClients}
+              disabled={batchConvertingClients}
+              className="bg-cyan-700 hover:bg-cyan-600 text-white"
+            >
+              {batchConvertingClients ? "Converting..." : `Add ${selectedClientIds.size} to Clients`}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

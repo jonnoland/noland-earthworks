@@ -2649,3 +2649,6 @@
 - [x] Prospecting: add minimum fit score filter to hide low-fit prospects
 - [x] Prospecting: add Convert to Client action on prospect cards
 - [x] Prospecting: add last-scan new prospects badge/counter on the Prospecting page
+- [x] Prospecting: color-coded card borders based on fit score (green 8+, yellow 6+, default otherwise)
+- [x] Prospecting: confirmation modal with prospect summary before Convert to Client finalizes
+- [x] Prospecting: batch-select checkboxes to convert multiple prospects to clients simultaneously
