@@ -1,6 +1,11 @@
 /**
  * FieldQuotesSection — displays quotes submitted from the Noland Field
  * companion app. Shown on /ops/quotes below the Website Requests section.
+ *
+ * Features:
+ *   - Sort by date, acreage, or AI score
+ *   - AI score filter pills
+ *   - Detail dialog with Convert to Quote, Email/SMS outreach, and Delete
  */
 import React, { useState, useMemo } from "react";
 import { trpc } from "@/lib/trpc";
@@ -8,6 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import {
   Smartphone,
@@ -21,14 +27,19 @@ import {
   User,
   Image,
   Loader2,
-  AlertCircle,
-  CheckCircle2,
   AlertTriangle,
   Sparkles,
   ExternalLink,
   X,
   FileText,
+  ArrowUpDown,
+  Briefcase,
+  Send,
+  MessageSquare,
+  CheckCircle,
 } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useLocation } from "wouter";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -57,6 +68,10 @@ interface FieldQuote {
   createdAt: Date;
 }
 
+type SortKey = "date_desc" | "date_asc" | "acreage_desc" | "score";
+
+const SCORE_ORDER: Record<string, number> = { strong: 0, marginal: 1, weak: 2 };
+
 // ─── AI Score badge ───────────────────────────────────────────────────────────
 
 function AiScoreBadge({ score }: { score: FieldQuote["aiScore"] }) {
@@ -76,13 +91,42 @@ function FieldQuoteDetailDialog({
   onClose,
   onDelete,
   isDeleting,
+  onConverted,
 }: {
   quote: FieldQuote;
   onClose: () => void;
   onDelete: () => void;
   isDeleting: boolean;
+  onConverted: (newQuoteId: number) => void;
 }) {
   const [photoIdx, setPhotoIdx] = useState<number | null>(null);
+  const [outreachMsg, setOutreachMsg] = useState(quote.aiDraftResponse ?? "");
+  const [showOutreach, setShowOutreach] = useState(false);
+  const [, navigate] = useLocation();
+
+  const utils = trpc.useUtils();
+
+  const convertToQuote = trpc.fieldQuote.convertToQuote.useMutation({
+    onSuccess: (data) => {
+      toast.success("Quote created in draft. Opening now...");
+      utils.nativeQuotes.list.invalidate();
+      onConverted(data.id);
+      onClose();
+      navigate("/ops/quotes");
+    },
+    onError: (e) => toast.error(e.message),
+  });
+
+  const sendOutreach = trpc.fieldQuote.sendOutreach.useMutation({
+    onSuccess: (data) => {
+      const ok = data.results.filter((r) => r.success).map((r) => r.channel).join(" & ");
+      const fail = data.results.filter((r) => !r.success);
+      if (ok) toast.success(`Sent via ${ok}.`);
+      fail.forEach((f) => toast.error(`${f.channel} failed: ${f.error}`));
+      setShowOutreach(false);
+    },
+    onError: (e) => toast.error(e.message),
+  });
 
   const rows: { label: string; value: string | null | undefined }[] = [
     { label: "Service",            value: quote.serviceType },
@@ -96,6 +140,16 @@ function FieldQuoteDetailDialog({
     { label: "Near Structures",    value: quote.proximityToStructures },
   ].filter((r) => r.value);
 
+  const handleSendEmail = () => {
+    if (!quote.email) { toast.error("No email on file for this prospect."); return; }
+    sendOutreach.mutate({ id: quote.id, message: outreachMsg, channels: ["email"] });
+  };
+
+  const handleSendSms = () => {
+    if (!quote.phone) { toast.error("No phone number on file for this prospect."); return; }
+    sendOutreach.mutate({ id: quote.id, message: outreachMsg, channels: ["sms"] });
+  };
+
   return (
     <Dialog open onOpenChange={onClose}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-zinc-900 border-zinc-700">
@@ -107,7 +161,74 @@ function FieldQuoteDetailDialog({
         </DialogHeader>
 
         <div className="space-y-5 pb-2">
-          {/* AI Score + Summary */}
+          {/* ── Action buttons ── */}
+          <div className="flex flex-wrap gap-2">
+            <Button
+              size="sm"
+              onClick={() => convertToQuote.mutate({ id: quote.id })}
+              disabled={convertToQuote.isPending}
+              className="bg-primary hover:bg-primary/90 text-primary-foreground"
+            >
+              {convertToQuote.isPending
+                ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" />
+                : <FileText className="w-3.5 h-3.5 mr-1.5" />}
+              Convert to Quote
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setShowOutreach((v) => !v)}
+              className="border-zinc-600 text-foreground"
+            >
+              <Send className="w-3.5 h-3.5 mr-1.5" />
+              {showOutreach ? "Hide Outreach" : "Send Outreach"}
+            </Button>
+          </div>
+
+          {/* ── Outreach panel ── */}
+          {showOutreach && (
+            <div className="rounded-lg bg-zinc-800 border border-zinc-700 p-4 space-y-3">
+              <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">
+                Send AI Draft Response
+              </p>
+              <Textarea
+                value={outreachMsg}
+                onChange={(e) => setOutreachMsg(e.target.value)}
+                rows={6}
+                className="bg-zinc-900 border-zinc-600 text-sm text-foreground resize-none"
+                placeholder="Edit the message before sending..."
+              />
+              <div className="flex gap-2">
+                <Button
+                  size="sm"
+                  onClick={handleSendEmail}
+                  disabled={sendOutreach.isPending || !quote.email}
+                  className="flex-1"
+                  title={!quote.email ? "No email on file" : undefined}
+                >
+                  {sendOutreach.isPending
+                    ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" />
+                    : <Mail className="w-3.5 h-3.5 mr-1.5" />}
+                  Email{quote.email ? ` (${quote.email})` : " — no email"}
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={handleSendSms}
+                  disabled={sendOutreach.isPending || !quote.phone}
+                  className="flex-1 border-zinc-600"
+                  title={!quote.phone ? "No phone on file" : undefined}
+                >
+                  {sendOutreach.isPending
+                    ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" />
+                    : <MessageSquare className="w-3.5 h-3.5 mr-1.5" />}
+                  Text{quote.phone ? ` (${quote.phone})` : " — no phone"}
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {/* ── AI Score + Summary ── */}
           {(quote.aiScore || quote.aiSummary) && (
             <div className="rounded-lg bg-zinc-800 border border-zinc-700 p-4 space-y-2">
               <div className="flex items-center gap-2">
@@ -129,7 +250,7 @@ function FieldQuoteDetailDialog({
             </div>
           )}
 
-          {/* Contact */}
+          {/* ── Contact ── */}
           <div className="rounded-lg bg-zinc-800 border border-zinc-700 p-4 space-y-2">
             <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-3">Contact</p>
             <div className="flex items-center gap-2 text-sm">
@@ -164,7 +285,7 @@ function FieldQuoteDetailDialog({
             )}
           </div>
 
-          {/* Job details */}
+          {/* ── Job details ── */}
           {rows.length > 0 && (
             <div className="rounded-lg bg-zinc-800 border border-zinc-700 p-4">
               <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-3">Job Details</p>
@@ -179,7 +300,7 @@ function FieldQuoteDetailDialog({
             </div>
           )}
 
-          {/* Field notes */}
+          {/* ── Field notes ── */}
           {quote.message && (
             <div className="rounded-lg bg-zinc-800 border border-zinc-700 p-4">
               <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-2">Field Notes</p>
@@ -187,15 +308,15 @@ function FieldQuoteDetailDialog({
             </div>
           )}
 
-          {/* AI draft response */}
-          {quote.aiDraftResponse && (
+          {/* ── AI draft response ── */}
+          {quote.aiDraftResponse && !showOutreach && (
             <div className="rounded-lg bg-zinc-800 border border-zinc-700 p-4">
               <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-2">AI Draft Response</p>
               <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">{quote.aiDraftResponse}</p>
             </div>
           )}
 
-          {/* Photos */}
+          {/* ── Photos ── */}
           {quote.photoUrls.length > 0 && (
             <div className="rounded-lg bg-zinc-800 border border-zinc-700 p-4">
               <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-3">
@@ -215,12 +336,12 @@ function FieldQuoteDetailDialog({
             </div>
           )}
 
-          {/* Submitted */}
+          {/* ── Submitted ── */}
           <p className="text-xs text-muted-foreground text-right">
             Submitted {new Date(quote.createdAt).toLocaleString("en-US", { month: "short", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit" })}
           </p>
 
-          {/* Delete */}
+          {/* ── Delete ── */}
           <div className="pt-2 border-t border-zinc-800">
             <Button
               variant="destructive"
@@ -235,16 +356,13 @@ function FieldQuoteDetailDialog({
           </div>
         </div>
 
-        {/* Lightbox */}
+        {/* ── Lightbox ── */}
         {photoIdx !== null && (
           <div
             className="fixed inset-0 z-[200] bg-black/90 flex items-center justify-center p-4"
             onClick={() => setPhotoIdx(null)}
           >
-            <button
-              className="absolute top-4 right-4 text-white/70 hover:text-white"
-              onClick={() => setPhotoIdx(null)}
-            >
+            <button className="absolute top-4 right-4 text-white/70 hover:text-white" onClick={() => setPhotoIdx(null)}>
               <X className="w-6 h-6" />
             </button>
             <img
@@ -276,6 +394,7 @@ function FieldQuoteDetailDialog({
 export default function FieldQuotesSection() {
   const [search, setSearch] = useState("");
   const [scoreFilter, setScoreFilter] = useState<"all" | "strong" | "marginal" | "weak">("all");
+  const [sortKey, setSortKey] = useState<SortKey>("date_desc");
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null);
 
@@ -305,8 +424,22 @@ export default function FieldQuotesSection() {
           r.email?.toLowerCase().includes(q)
       );
     }
+    // Sort
+    list = [...list].sort((a, b) => {
+      if (sortKey === "date_desc") return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+      if (sortKey === "date_asc")  return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+      if (sortKey === "acreage_desc") {
+        const aA = parseFloat(a.acreage ?? "0");
+        const bA = parseFloat(b.acreage ?? "0");
+        return bA - aA;
+      }
+      if (sortKey === "score") {
+        return (SCORE_ORDER[a.aiScore ?? "weak"] ?? 2) - (SCORE_ORDER[b.aiScore ?? "weak"] ?? 2);
+      }
+      return 0;
+    });
     return list;
-  }, [quotes, search, scoreFilter]);
+  }, [quotes, search, scoreFilter, sortKey]);
 
   const selectedQuote = selectedId != null ? (quotes as FieldQuote[]).find((q) => q.id === selectedId) ?? null : null;
 
@@ -350,7 +483,7 @@ export default function FieldQuotesSection() {
         ))}
       </div>
 
-      {/* ── Filters ── */}
+      {/* ── Filters + Sort ── */}
       <div className="flex flex-col sm:flex-row gap-3">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
@@ -361,7 +494,8 @@ export default function FieldQuotesSection() {
             className="pl-9 bg-zinc-900 border-zinc-700 text-sm h-9"
           />
         </div>
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-2 flex-wrap">
+          {/* Score filter pills */}
           {(["all", "strong", "marginal", "weak"] as const).map((s) => (
             <button
               key={s}
@@ -376,6 +510,19 @@ export default function FieldQuotesSection() {
               <span className="ml-1 text-[10px] opacity-70">{counts[s]}</span>
             </button>
           ))}
+          {/* Sort select */}
+          <Select value={sortKey} onValueChange={(v) => setSortKey(v as SortKey)}>
+            <SelectTrigger className="h-8 w-40 bg-zinc-900 border-zinc-700 text-xs">
+              <ArrowUpDown className="w-3 h-3 mr-1.5 text-muted-foreground" />
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent className="bg-zinc-900 border-zinc-700">
+              <SelectItem value="date_desc" className="text-xs">Newest First</SelectItem>
+              <SelectItem value="date_asc"  className="text-xs">Oldest First</SelectItem>
+              <SelectItem value="acreage_desc" className="text-xs">Largest Acreage</SelectItem>
+              <SelectItem value="score"     className="text-xs">AI Score</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
       </div>
 
@@ -420,9 +567,7 @@ export default function FieldQuotesSection() {
                         {quote.serviceType}
                       </span>
                     )}
-                    {quote.acreage && (
-                      <span>{quote.acreage} acres</span>
-                    )}
+                    {quote.acreage && <span>{quote.acreage} acres</span>}
                     {quote.address && (
                       <span className="flex items-center gap-1 truncate max-w-[200px]">
                         <MapPin className="w-3 h-3 shrink-0" />
@@ -459,6 +604,9 @@ export default function FieldQuotesSection() {
           onClose={() => setSelectedId(null)}
           onDelete={() => setDeleteConfirmId(selectedQuote.id)}
           isDeleting={deleteMutation.isPending}
+          onConverted={(id) => {
+            // Optionally navigate to the new quote — handled inside dialog
+          }}
         />
       )}
 

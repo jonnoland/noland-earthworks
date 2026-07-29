@@ -789,6 +789,112 @@ Return JSON matching the schema exactly.`;
       return JSON.parse(typeof content === "string" ? content : JSON.stringify(content));
     }),
 
+  /**
+   * Send the AI draft response to the prospect via email and/or SMS.
+   * Owner-only (Manus session).
+   */
+  sendOutreach: protectedProcedure
+    .input(z.object({
+      id: z.number(),
+      message: z.string().min(1),
+      channels: z.array(z.enum(["email", "sms"])).min(1),
+    }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+      const rows = await db.select().from(fieldQuotes).where(eq(fieldQuotes.id, input.id)).limit(1);
+      if (!rows.length) throw new TRPCError({ code: "NOT_FOUND", message: "Field quote not found" });
+      const fq = rows[0];
+
+      const results: { channel: string; success: boolean; error?: string }[] = [];
+
+      // ── Email ──────────────────────────────────────────────────────────────
+      if (input.channels.includes("email") && fq.email) {
+        try {
+          const { Resend } = await import("resend");
+          const resend = new Resend(ENV.resendApiKey);
+          await resend.emails.send({
+            from: "Jon Noland <quotes@nolandearthworks.com>",
+            to: fq.email,
+            subject: "Noland Earthworks — Following Up",
+            html: `<p>${input.message.replace(/\n/g, "<br/>")}</p>`,
+          });
+          results.push({ channel: "email", success: true });
+        } catch (e: any) {
+          results.push({ channel: "email", success: false, error: e?.message ?? "Email failed" });
+        }
+      }
+
+      // ── SMS ───────────────────────────────────────────────────────────────
+      if (input.channels.includes("sms") && fq.phone) {
+        try {
+          if (!ENV.twilioAccountSid || !ENV.twilioAuthToken || !ENV.twilioFromNumber) {
+            throw new Error("Twilio not configured");
+          }
+          const twilio = await import("twilio");
+          const client = twilio.default(ENV.twilioAccountSid, ENV.twilioAuthToken);
+          // Normalize phone to E.164
+          const digits = fq.phone.replace(/\D/g, "");
+          const e164 = digits.startsWith("1") ? `+${digits}` : `+1${digits}`;
+          await client.messages.create({
+            body: input.message.slice(0, 1600),
+            from: ENV.twilioFromNumber,
+            to: e164,
+          });
+          results.push({ channel: "sms", success: true });
+        } catch (e: any) {
+          results.push({ channel: "sms", success: false, error: e?.message ?? "SMS failed" });
+        }
+      }
+
+      return { results };
+    }),
+
+  /**
+   * Convert a field quote into a native quote (draft) — owner-only.
+   * Links the new quote back to the originating field quote via fieldQuoteId.
+   */
+  convertToQuote: protectedProcedure
+    .input(z.object({ id: z.number() }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+      const rows = await db.select().from(fieldQuotes).where(eq(fieldQuotes.id, input.id)).limit(1);
+      if (!rows.length) throw new TRPCError({ code: "NOT_FOUND", message: "Field quote not found" });
+      const fq = rows[0];
+
+      const { nativeQuotes } = await import("../drizzle/schema");
+      const title = [
+        fq.serviceType ?? "Forestry Mulching",
+        fq.acreage ? `— ${fq.acreage} ac` : "",
+        fq.address ? `— ${fq.address.split(",")[0]}` : "",
+      ].filter(Boolean).join(" ");
+
+      const result = await db.insert(nativeQuotes).values({
+        clientName: fq.name,
+        clientEmail: fq.email ?? null,
+        clientPhone: fq.phone ?? null,
+        propertyAddress: fq.address ?? null,
+        title,
+        internalNotes: [
+          fq.aiSummary ? `AI Assessment: ${fq.aiSummary}` : "",
+          fq.message ? `Field Notes: ${fq.message}` : "",
+          fq.terrainType ? `Terrain: ${fq.terrainType}` : "",
+          fq.vegetationDensity ? `Vegetation: ${fq.vegetationDensity}` : "",
+          fq.accessCondition ? `Access: ${fq.accessCondition}` : "",
+        ].filter(Boolean).join("\n"),
+        clientMessage: null,
+        lineItems: JSON.stringify([]),
+        totalCents: 0,
+        acreage: fq.acreage ?? null,
+        serviceType: fq.serviceType ?? null,
+        status: "draft",
+        fieldQuoteId: fq.id,
+      });
+      const newId = (result as any).insertId ?? (result as any)[0]?.insertId;
+      return { id: Number(newId) };
+    }),
+
   reverseGeocode: publicProcedure
     .input(z.object({ lat: z.number(), lng: z.number() }))
     .query(async ({ input }) => {
