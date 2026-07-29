@@ -94,7 +94,33 @@ export const nativeClientsRouter = router({
         .orderBy(desc(nativeJobs.createdAt))
         .limit(50);
 
-      return { ...client, jobs };
+      // Fetch associated quotes by name, email, or phone
+      const quoteConds: ReturnType<typeof eq>[] = [
+        eq(nativeQuotes.clientName, client.name),
+      ];
+      if (client.email) quoteConds.push(eq(nativeQuotes.clientEmail, client.email));
+      if (client.phone) quoteConds.push(eq(nativeQuotes.clientPhone, client.phone));
+      const quotes = await db
+        .select()
+        .from(nativeQuotes)
+        .where(or(...quoteConds))
+        .orderBy(desc(nativeQuotes.createdAt))
+        .limit(50);
+
+      // Fetch associated leads by name, email, or phone
+      const leadConds: ReturnType<typeof eq>[] = [
+        eq(opsLeads.name, client.name),
+      ];
+      if (client.email) leadConds.push(eq(opsLeads.email, client.email));
+      if (client.phone) leadConds.push(eq(opsLeads.phone, client.phone));
+      const leads = await db
+        .select()
+        .from(opsLeads)
+        .where(or(...leadConds))
+        .orderBy(desc(opsLeads.createdAt))
+        .limit(20);
+
+      return { ...client, jobs, quotes, leads };
     }),
 
   /**
@@ -485,4 +511,39 @@ export const nativeClientsRouter = router({
       }
       return { created, updated };
     }),
+
+  /**
+   * Export all clients as a CSV string.
+   */
+  exportCsv: ownerProcedure.query(async () => {
+    const db = await getDb();
+    if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+    const clients = await db
+      .select()
+      .from(nativeClients)
+      .orderBy(desc(nativeClients.name));
+    const escape = (v: string | null | undefined) => {
+      if (v == null) return "";
+      const s = String(v);
+      if (s.includes(",") || s.includes('"') || s.includes("\n")) {
+        return `"${s.replace(/"/g, '""')}"`;
+      }
+      return s;
+    };
+    const header = ["Name", "Phone", "Email", "Address", "Jobs", "Total Spent", "Source", "Notes", "Added"].join(",");
+    const rows = clients.map((c) =>
+      [
+        escape(c.name),
+        escape(c.phone),
+        escape(c.email),
+        escape(c.address),
+        c.jobCount,
+        (c.totalSpentCents / 100).toFixed(2),
+        escape(c.source),
+        escape(c.notes),
+        new Date(c.createdAt).toLocaleDateString("en-US"),
+      ].join(",")
+    );
+    return [header, ...rows].join("\n");
+  }),
 });

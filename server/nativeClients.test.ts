@@ -27,6 +27,8 @@ vi.mock("./db", () => ({
 vi.mock("../drizzle/schema", () => ({
   nativeClients: { id: "id", name: "name", email: "email", phone: "phone", address: "address", notes: "notes", jobCount: "jobCount", totalSpentCents: "totalSpentCents", source: "source", createdAt: "createdAt", updatedAt: "updatedAt" },
   nativeJobs: { id: "id", clientName: "clientName", clientEmail: "clientEmail", clientPhone: "clientPhone", propertyAddress: "propertyAddress", serviceType: "serviceType", status: "status", totalCents: "totalCents", scheduledDate: "scheduledDate", completedAt: "completedAt", createdAt: "createdAt", paidCents: "paidCents" },
+  nativeQuotes: { id: "id", clientName: "clientName", clientEmail: "clientEmail", clientPhone: "clientPhone", propertyAddress: "propertyAddress", title: "title", status: "status", totalCents: "totalCents", serviceType: "serviceType", acreage: "acreage", portalSentAt: "portalSentAt", createdAt: "createdAt" },
+  opsLeads: { id: "id", name: "name", email: "email", phone: "phone", source: "source", stage: "stage", jobType: "jobType", notes: "notes", aiScore: "aiScore", createdAt: "createdAt" },
 }));
 
 vi.mock("drizzle-orm", () => ({
@@ -147,15 +149,31 @@ describe("nativeClientsRouter", () => {
       jobsChain.where = vi.fn().mockReturnValue(jobsChain);
       jobsChain.orderBy = vi.fn().mockReturnValue(jobsChain);
       jobsChain.limit = vi.fn().mockResolvedValue(mockJobs);
+      // Third select: quotes lookup
+      const quotesChain: any = {};
+      quotesChain.from = vi.fn().mockReturnValue(quotesChain);
+      quotesChain.where = vi.fn().mockReturnValue(quotesChain);
+      quotesChain.orderBy = vi.fn().mockReturnValue(quotesChain);
+      quotesChain.limit = vi.fn().mockResolvedValue([]);
+      // Fourth select: leads lookup
+      const leadsChain: any = {};
+      leadsChain.from = vi.fn().mockReturnValue(leadsChain);
+      leadsChain.where = vi.fn().mockReturnValue(leadsChain);
+      leadsChain.orderBy = vi.fn().mockReturnValue(leadsChain);
+      leadsChain.limit = vi.fn().mockResolvedValue([]);
 
       mockDb.select
         .mockReturnValueOnce(clientChain)
-        .mockReturnValueOnce(jobsChain);
+        .mockReturnValueOnce(jobsChain)
+        .mockReturnValueOnce(quotesChain)
+        .mockReturnValueOnce(leadsChain);
 
       const caller = makeCaller(ownerCtx);
       const result = await caller.getById({ id: 1 });
       expect(result.id).toBe(1);
       expect(result.jobs).toEqual(mockJobs);
+      expect((result as any).quotes).toEqual([]);
+      expect((result as any).leads).toEqual([]);
     });
 
     it("throws NOT_FOUND for missing client", async () => {

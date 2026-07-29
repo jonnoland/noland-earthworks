@@ -2623,3 +2623,15 @@
 - [x] Sync from Jobs toolbar button (RefreshCw icon)
 - [x] Delete client from detail panel (existing, confirmed working)
 - [x] Edit client from detail panel (existing, confirmed working)
+
+## Client Detail Panel & CSV Export (Jul 29, 2026)
+- [x] Expand getById to return associated quotes and leads alongside jobs
+- [x] Client detail panel: 4-tab layout (Overview, Quotes, Jobs, Leads/Interactions)
+- [x] Overview tab: contact info, notes, latest quote summary
+- [x] Quotes tab: all associated quotes with status, amount, date
+- [x] Jobs tab: all associated jobs with status, amount, date
+- [x] Leads tab: all associated lead records with stage, AI score, source
+- [x] Stats row: job count, quote count, total spent
+- [x] Add exportCsv procedure to nativeClientsRouter
+- [x] CSV export button in toolbar (downloads client list as .csv)
+- [x] Update nativeClients.test.ts schema mock to include nativeQuotes and opsLeads

@@ -5,8 +5,8 @@
  *   - Searchable table of all clients
  *   - Add client manually (+ button)
  *   - Sync from leads, quotes, and jobs (toolbar icons)
- *   - Detail panel: contact info, job history, edit, delete
- *   - Auto-populated from website leads, contact form, chat, and quotes
+ *   - CSV export of full client list
+ *   - Detail panel: contact info, associated quotes, job history, leads/interactions, edit, delete
  */
 import { useState } from "react";
 import { trpc } from "@/lib/trpc";
@@ -48,6 +48,9 @@ import {
   UserPlus,
   Users,
   FileText,
+  Download,
+  MessageSquare,
+  ClipboardList,
 } from "lucide-react";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -78,7 +81,28 @@ type NativeJob = {
   createdAt: Date;
 };
 
-type ClientWithJobs = NativeClient & { jobs: NativeJob[] };
+type NativeQuote = {
+  id: number;
+  title: string;
+  status: string;
+  totalCents: number;
+  serviceType: string | null;
+  propertyAddress: string | null;
+  acreage: string | null;
+  portalSentAt: Date | null;
+  createdAt: Date;
+};
+
+type OpsLead = {
+  id: number;
+  name: string;
+  source: string;
+  stage: string;
+  jobType: string | null;
+  notes: string | null;
+  aiScore: string | null;
+  createdAt: Date;
+};
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -110,19 +134,36 @@ function jobStatusColor(status: string): string {
   }
 }
 
-function jobStatusLabel(status: string): string {
-  return status.replace("_", " ").replace(/\b\w/g, c => c.toUpperCase());
+function quoteStatusColor(status: string): string {
+  switch (status) {
+    case "draft": return "bg-zinc-500/15 text-zinc-400 border-zinc-500/30";
+    case "sent": return "bg-blue-500/15 text-blue-400 border-blue-500/30";
+    case "viewed": return "bg-purple-500/15 text-purple-400 border-purple-500/30";
+    case "approved": return "bg-green-500/15 text-green-400 border-green-500/30";
+    case "declined": return "bg-red-500/15 text-red-400 border-red-500/30";
+    case "invoiced": return "bg-amber-500/15 text-amber-400 border-amber-500/30";
+    default: return "bg-zinc-500/15 text-zinc-400 border-zinc-500/30";
+  }
+}
+
+function leadStageColor(stage: string): string {
+  switch (stage) {
+    case "new": return "bg-blue-500/15 text-blue-400 border-blue-500/30";
+    case "contacted": return "bg-purple-500/15 text-purple-400 border-purple-500/30";
+    case "estimate_sent": return "bg-amber-500/15 text-amber-400 border-amber-500/30";
+    case "won": return "bg-green-500/15 text-green-400 border-green-500/30";
+    case "lost": return "bg-red-500/15 text-red-400 border-red-500/30";
+    default: return "bg-zinc-500/15 text-zinc-400 border-zinc-500/30";
+  }
+}
+
+function labelify(s: string): string {
+  return s.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
 }
 
 // ─── Add Client Dialog ────────────────────────────────────────────────────────
 
-function AddClientDialog({
-  open,
-  onClose,
-}: {
-  open: boolean;
-  onClose: () => void;
-}) {
+function AddClientDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
   const utils = trpc.useUtils();
   const [form, setForm] = useState({ name: "", email: "", phone: "", address: "", notes: "" });
 
@@ -193,19 +234,15 @@ function AddClientDialog({
           </div>
         </div>
         <DialogFooter>
-          <Button variant="ghost" onClick={onClose} className="text-zinc-400">
-            Cancel
-          </Button>
+          <Button variant="ghost" onClick={onClose} className="text-zinc-400">Cancel</Button>
           <Button
-            onClick={() =>
-              createMutation.mutate({
-                name: form.name,
-                email: form.email || undefined,
-                phone: form.phone || undefined,
-                address: form.address || undefined,
-                notes: form.notes || undefined,
-              })
-            }
+            onClick={() => createMutation.mutate({
+              name: form.name,
+              email: form.email || undefined,
+              phone: form.phone || undefined,
+              address: form.address || undefined,
+              notes: form.notes || undefined,
+            })}
             disabled={createMutation.isPending || !form.name.trim()}
             className="bg-amber-600 hover:bg-amber-500 text-white"
           >
@@ -220,18 +257,11 @@ function AddClientDialog({
 // ─── Edit Dialog ──────────────────────────────────────────────────────────────
 
 function EditClientDialog({
-  client,
-  open,
-  onClose,
-  onSaved,
+  client, open, onClose, onSaved,
 }: {
-  client: NativeClient;
-  open: boolean;
-  onClose: () => void;
-  onSaved: () => void;
+  client: NativeClient; open: boolean; onClose: () => void; onSaved: () => void;
 }) {
   const utils = trpc.useUtils();
-
   const [form, setForm] = useState({
     name: client.name,
     email: client.email ?? "",
@@ -254,69 +284,42 @@ function EditClientDialog({
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
       <DialogContent className="max-w-md bg-zinc-900 border-zinc-700 text-zinc-100">
-        <DialogHeader>
-          <DialogTitle>Edit Client</DialogTitle>
-        </DialogHeader>
+        <DialogHeader><DialogTitle>Edit Client</DialogTitle></DialogHeader>
         <div className="space-y-3">
           <div>
             <label className="text-xs text-zinc-400 mb-1 block">Name</label>
-            <Input
-              value={form.name}
-              onChange={(e) => setForm({ ...form, name: e.target.value })}
-              className="bg-zinc-800 border-zinc-700 text-zinc-100"
-            />
+            <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="bg-zinc-800 border-zinc-700 text-zinc-100" />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="text-xs text-zinc-400 mb-1 block">Email</label>
-              <Input
-                value={form.email}
-                onChange={(e) => setForm({ ...form, email: e.target.value })}
-                className="bg-zinc-800 border-zinc-700 text-zinc-100"
-              />
+              <Input value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} className="bg-zinc-800 border-zinc-700 text-zinc-100" />
             </div>
             <div>
               <label className="text-xs text-zinc-400 mb-1 block">Phone</label>
-              <Input
-                value={form.phone}
-                onChange={(e) => setForm({ ...form, phone: e.target.value })}
-                className="bg-zinc-800 border-zinc-700 text-zinc-100"
-              />
+              <Input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} className="bg-zinc-800 border-zinc-700 text-zinc-100" />
             </div>
           </div>
           <div>
             <label className="text-xs text-zinc-400 mb-1 block">Address</label>
-            <Input
-              value={form.address}
-              onChange={(e) => setForm({ ...form, address: e.target.value })}
-              className="bg-zinc-800 border-zinc-700 text-zinc-100"
-            />
+            <Input value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} className="bg-zinc-800 border-zinc-700 text-zinc-100" />
           </div>
           <div>
             <label className="text-xs text-zinc-400 mb-1 block">Internal Notes</label>
-            <Textarea
-              value={form.notes}
-              onChange={(e) => setForm({ ...form, notes: e.target.value })}
-              rows={3}
-              className="bg-zinc-800 border-zinc-700 text-zinc-100 resize-none"
-            />
+            <Textarea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} rows={3} className="bg-zinc-800 border-zinc-700 text-zinc-100 resize-none" />
           </div>
         </div>
         <DialogFooter>
-          <Button variant="ghost" onClick={onClose} className="text-zinc-400">
-            Cancel
-          </Button>
+          <Button variant="ghost" onClick={onClose} className="text-zinc-400">Cancel</Button>
           <Button
-            onClick={() =>
-              updateMutation.mutate({
-                id: client.id,
-                name: form.name,
-                email: form.email || undefined,
-                phone: form.phone || undefined,
-                address: form.address || undefined,
-                notes: form.notes || undefined,
-              })
-            }
+            onClick={() => updateMutation.mutate({
+              id: client.id,
+              name: form.name,
+              email: form.email || undefined,
+              phone: form.phone || undefined,
+              address: form.address || undefined,
+              notes: form.notes || undefined,
+            })}
             disabled={updateMutation.isPending}
             className="bg-amber-600 hover:bg-amber-500 text-white"
           >
@@ -330,16 +333,13 @@ function EditClientDialog({
 
 // ─── Detail Panel ─────────────────────────────────────────────────────────────
 
-function ClientDetailPanel({
-  clientId,
-  onClose,
-}: {
-  clientId: number;
-  onClose: () => void;
-}) {
+type DetailTab = "overview" | "quotes" | "jobs" | "interactions";
+
+function ClientDetailPanel({ clientId, onClose }: { clientId: number; onClose: () => void }) {
   const utils = trpc.useUtils();
   const [editOpen, setEditOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [tab, setTab] = useState<DetailTab>("overview");
 
   const { data: client, isLoading } = trpc.nativeClients.getById.useQuery({ id: clientId });
 
@@ -353,32 +353,31 @@ function ClientDetailPanel({
   });
 
   if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-48 text-zinc-500 text-sm">
-        Loading...
-      </div>
-    );
+    return <div className="flex items-center justify-center h-48 text-zinc-500 text-sm">Loading...</div>;
+  }
+  if (!client) {
+    return <div className="flex items-center justify-center h-48 text-zinc-500 text-sm">Client not found.</div>;
   }
 
-  if (!client) {
-    return (
-      <div className="flex items-center justify-center h-48 text-zinc-500 text-sm">
-        Client not found.
-      </div>
-    );
-  }
+  const quotes: NativeQuote[] = (client as any).quotes ?? [];
+  const leads: OpsLead[] = (client as any).leads ?? [];
+
+  const tabs: { id: DetailTab; label: string; count?: number }[] = [
+    { id: "overview", label: "Overview" },
+    { id: "quotes", label: "Quotes", count: quotes.length },
+    { id: "jobs", label: "Jobs", count: client.jobs.length },
+    { id: "interactions", label: "Leads", count: leads.length },
+  ];
 
   return (
-    <div className="flex flex-col h-full overflow-y-auto">
+    <div className="flex flex-col h-full overflow-hidden">
       {/* Header */}
-      <div className="flex items-start justify-between p-4 border-b border-zinc-800">
+      <div className="flex items-start justify-between p-4 border-b border-zinc-800 shrink-0">
         <div>
           <h3 className="text-base font-semibold text-zinc-100">{client.name}</h3>
           <p className="text-xs text-zinc-500 mt-0.5">
-            Client since {formatDate(client.createdAt)}
-            {client.source && (
-              <span className="ml-2 text-zinc-600">· {client.source.replace(/_/g, " ")}</span>
-            )}
+            Added {formatDate(client.createdAt)}
+            {client.source && <span className="ml-2 text-zinc-600">· {labelify(client.source)}</span>}
           </p>
         </div>
         <button onClick={onClose} className="text-zinc-500 hover:text-zinc-300 p-1">
@@ -387,112 +386,226 @@ function ClientDetailPanel({
       </div>
 
       {/* Stats row */}
-      <div className="grid grid-cols-2 gap-3 p-4 border-b border-zinc-800">
-        <div className="bg-zinc-800/60 rounded-lg p-3">
-          <div className="flex items-center gap-1.5 text-zinc-400 text-xs mb-1">
-            <Briefcase className="w-3.5 h-3.5" /> Total Jobs
-          </div>
-          <div className="text-xl font-bold text-zinc-100">{client.jobCount}</div>
+      <div className="grid grid-cols-3 gap-2 p-3 border-b border-zinc-800 shrink-0">
+        <div className="bg-zinc-800/60 rounded-lg p-2.5">
+          <div className="flex items-center gap-1 text-zinc-400 text-[10px] mb-1"><Briefcase className="w-3 h-3" /> Jobs</div>
+          <div className="text-lg font-bold text-zinc-100">{client.jobCount}</div>
         </div>
-        <div className="bg-zinc-800/60 rounded-lg p-3">
-          <div className="flex items-center gap-1.5 text-zinc-400 text-xs mb-1">
-            <DollarSign className="w-3.5 h-3.5" /> Total Spent
-          </div>
-          <div className="text-xl font-bold text-green-400">
-            {formatCents(client.totalSpentCents)}
-          </div>
+        <div className="bg-zinc-800/60 rounded-lg p-2.5">
+          <div className="flex items-center gap-1 text-zinc-400 text-[10px] mb-1"><ClipboardList className="w-3 h-3" /> Quotes</div>
+          <div className="text-lg font-bold text-zinc-100">{quotes.length}</div>
+        </div>
+        <div className="bg-zinc-800/60 rounded-lg p-2.5">
+          <div className="flex items-center gap-1 text-zinc-400 text-[10px] mb-1"><DollarSign className="w-3 h-3" /> Spent</div>
+          <div className="text-lg font-bold text-green-400">{formatCents(client.totalSpentCents)}</div>
         </div>
       </div>
 
-      {/* Contact info */}
-      <div className="p-4 border-b border-zinc-800 space-y-2">
-        <p className="text-xs font-medium text-zinc-400 uppercase tracking-wide mb-2">
-          Contact
-        </p>
-        {client.phone && (
-          <div className="flex items-center gap-2 text-sm text-zinc-300">
-            <Phone className="w-3.5 h-3.5 text-zinc-500 shrink-0" />
-            <a href={`tel:${client.phone}`} className="hover:text-amber-400">
-              {client.phone}
-            </a>
-          </div>
-        )}
-        {client.email && (
-          <div className="flex items-center gap-2 text-sm text-zinc-300">
-            <Mail className="w-3.5 h-3.5 text-zinc-500 shrink-0" />
-            <a href={`mailto:${client.email}`} className="hover:text-amber-400 truncate">
-              {client.email}
-            </a>
-          </div>
-        )}
-        {client.address && (
-          <div className="flex items-start gap-2 text-sm text-zinc-300">
-            <MapPin className="w-3.5 h-3.5 text-zinc-500 shrink-0 mt-0.5" />
-            <span>{client.address}</span>
-          </div>
-        )}
-        {!client.phone && !client.email && !client.address && (
-          <p className="text-xs text-zinc-600 italic">No contact details on file.</p>
-        )}
+      {/* Tabs */}
+      <div className="flex border-b border-zinc-800 shrink-0">
+        {tabs.map((t) => (
+          <button
+            key={t.id}
+            onClick={() => setTab(t.id)}
+            className={`flex-1 py-2 text-xs font-medium transition-colors ${
+              tab === t.id
+                ? "text-amber-400 border-b-2 border-amber-500"
+                : "text-zinc-500 hover:text-zinc-300"
+            }`}
+          >
+            {t.label}
+            {t.count !== undefined && t.count > 0 && (
+              <span className="ml-1 text-[10px] opacity-70">({t.count})</span>
+            )}
+          </button>
+        ))}
       </div>
 
-      {/* Notes */}
-      {client.notes && (
-        <div className="p-4 border-b border-zinc-800">
-          <p className="text-xs font-medium text-zinc-400 uppercase tracking-wide mb-2">
-            Notes
-          </p>
-          <p className="text-sm text-zinc-300 whitespace-pre-wrap">{client.notes}</p>
-        </div>
-      )}
-
-      {/* Job history */}
-      <div className="p-4 flex-1">
-        <p className="text-xs font-medium text-zinc-400 uppercase tracking-wide mb-3">
-          Job History ({client.jobs.length})
-        </p>
-        {client.jobs.length === 0 ? (
-          <p className="text-xs text-zinc-600 italic">No jobs on record.</p>
-        ) : (
-          <div className="space-y-2">
-            {client.jobs.map((job) => (
-              <div
-                key={job.id}
-                className="bg-zinc-800/60 rounded-lg p-3 border border-zinc-700/50"
-              >
-                <div className="flex items-start justify-between gap-2">
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-zinc-200 truncate">
-                      {job.serviceType ?? "Land Clearing"}
-                    </p>
-                    {job.propertyAddress && (
-                      <p className="text-xs text-zinc-500 truncate mt-0.5">
-                        {job.propertyAddress}
-                      </p>
-                    )}
-                    <p className="text-xs text-zinc-600 mt-1">
-                      {formatDate(job.scheduledDate ?? job.createdAt)}
-                    </p>
+      {/* Tab content */}
+      <div className="flex-1 overflow-y-auto">
+        {/* Overview tab */}
+        {tab === "overview" && (
+          <div className="p-4 space-y-4">
+            {/* Contact info */}
+            <div>
+              <p className="text-xs font-medium text-zinc-400 uppercase tracking-wide mb-2">Contact</p>
+              <div className="space-y-2">
+                {client.phone && (
+                  <div className="flex items-center gap-2 text-sm text-zinc-300">
+                    <Phone className="w-3.5 h-3.5 text-zinc-500 shrink-0" />
+                    <a href={`tel:${client.phone}`} className="hover:text-amber-400">{client.phone}</a>
                   </div>
-                  <div className="flex flex-col items-end gap-1.5 shrink-0">
-                    <span
-                      className={`text-[10px] px-1.5 py-0.5 rounded border font-medium ${jobStatusColor(job.status)}`}
-                    >
-                      {jobStatusLabel(job.status)}
-                    </span>
-                    <span className="text-xs font-semibold text-zinc-300">
-                      {formatCents(job.totalCents)}
-                    </span>
+                )}
+                {client.email && (
+                  <div className="flex items-center gap-2 text-sm text-zinc-300">
+                    <Mail className="w-3.5 h-3.5 text-zinc-500 shrink-0" />
+                    <a href={`mailto:${client.email}`} className="hover:text-amber-400 truncate">{client.email}</a>
+                  </div>
+                )}
+                {client.address && (
+                  <div className="flex items-start gap-2 text-sm text-zinc-300">
+                    <MapPin className="w-3.5 h-3.5 text-zinc-500 shrink-0 mt-0.5" />
+                    <span>{client.address}</span>
+                  </div>
+                )}
+                {!client.phone && !client.email && !client.address && (
+                  <p className="text-xs text-zinc-600 italic">No contact details on file.</p>
+                )}
+              </div>
+            </div>
+
+            {/* Notes */}
+            {client.notes && (
+              <div>
+                <p className="text-xs font-medium text-zinc-400 uppercase tracking-wide mb-2">Notes</p>
+                <p className="text-sm text-zinc-300 whitespace-pre-wrap">{client.notes}</p>
+              </div>
+            )}
+
+            {/* Recent quote summary */}
+            {quotes.length > 0 && (
+              <div>
+                <p className="text-xs font-medium text-zinc-400 uppercase tracking-wide mb-2">Latest Quote</p>
+                <div className="bg-zinc-800/60 rounded-lg p-3 border border-zinc-700/50">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-zinc-200 truncate">{quotes[0].title}</p>
+                      {quotes[0].propertyAddress && (
+                        <p className="text-xs text-zinc-500 truncate mt-0.5">{quotes[0].propertyAddress}</p>
+                      )}
+                      <p className="text-xs text-zinc-600 mt-1">{formatDate(quotes[0].createdAt)}</p>
+                    </div>
+                    <div className="flex flex-col items-end gap-1.5 shrink-0">
+                      <span className={`text-[10px] px-1.5 py-0.5 rounded border font-medium ${quoteStatusColor(quotes[0].status)}`}>
+                        {labelify(quotes[0].status)}
+                      </span>
+                      <span className="text-xs font-semibold text-zinc-300">{formatCents(quotes[0].totalCents)}</span>
+                    </div>
                   </div>
                 </div>
+                {quotes.length > 1 && (
+                  <button onClick={() => setTab("quotes")} className="text-xs text-amber-500 hover:text-amber-400 mt-1.5">
+                    View all {quotes.length} quotes →
+                  </button>
+                )}
               </div>
-            ))}
+            )}
+          </div>
+        )}
+
+        {/* Quotes tab */}
+        {tab === "quotes" && (
+          <div className="p-4">
+            {quotes.length === 0 ? (
+              <p className="text-xs text-zinc-600 italic">No quotes on record.</p>
+            ) : (
+              <div className="space-y-2">
+                {quotes.map((q) => (
+                  <div key={q.id} className="bg-zinc-800/60 rounded-lg p-3 border border-zinc-700/50">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-zinc-200 truncate">{q.title}</p>
+                        {q.propertyAddress && (
+                          <p className="text-xs text-zinc-500 truncate mt-0.5">{q.propertyAddress}</p>
+                        )}
+                        <div className="flex items-center gap-2 mt-1">
+                          <p className="text-xs text-zinc-600">{formatDate(q.createdAt)}</p>
+                          {q.acreage && <p className="text-xs text-zinc-600">{q.acreage} ac</p>}
+                          {q.portalSentAt && <p className="text-xs text-zinc-600">Sent {formatDate(q.portalSentAt)}</p>}
+                        </div>
+                      </div>
+                      <div className="flex flex-col items-end gap-1.5 shrink-0">
+                        <span className={`text-[10px] px-1.5 py-0.5 rounded border font-medium ${quoteStatusColor(q.status)}`}>
+                          {labelify(q.status)}
+                        </span>
+                        <span className="text-xs font-semibold text-zinc-300">{formatCents(q.totalCents)}</span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Jobs tab */}
+        {tab === "jobs" && (
+          <div className="p-4">
+            {client.jobs.length === 0 ? (
+              <p className="text-xs text-zinc-600 italic">No jobs on record.</p>
+            ) : (
+              <div className="space-y-2">
+                {client.jobs.map((job) => (
+                  <div key={job.id} className="bg-zinc-800/60 rounded-lg p-3 border border-zinc-700/50">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-zinc-200 truncate">{job.serviceType ?? "Land Clearing"}</p>
+                        {job.propertyAddress && (
+                          <p className="text-xs text-zinc-500 truncate mt-0.5">{job.propertyAddress}</p>
+                        )}
+                        <p className="text-xs text-zinc-600 mt-1">{formatDate(job.scheduledDate ?? job.createdAt)}</p>
+                      </div>
+                      <div className="flex flex-col items-end gap-1.5 shrink-0">
+                        <span className={`text-[10px] px-1.5 py-0.5 rounded border font-medium ${jobStatusColor(job.status)}`}>
+                          {labelify(job.status)}
+                        </span>
+                        <span className="text-xs font-semibold text-zinc-300">{formatCents(job.totalCents)}</span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Interactions / Leads tab */}
+        {tab === "interactions" && (
+          <div className="p-4">
+            {leads.length === 0 ? (
+              <p className="text-xs text-zinc-600 italic">No lead records found for this client.</p>
+            ) : (
+              <div className="space-y-2">
+                {leads.map((lead) => (
+                  <div key={lead.id} className="bg-zinc-800/60 rounded-lg p-3 border border-zinc-700/50">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <MessageSquare className="w-3.5 h-3.5 text-zinc-500 shrink-0" />
+                          <p className="text-sm font-medium text-zinc-200 truncate">
+                            {lead.jobType ?? "Inquiry"} · {labelify(lead.source)}
+                          </p>
+                        </div>
+                        {lead.notes && (
+                          <p className="text-xs text-zinc-500 mt-1 line-clamp-2">{lead.notes}</p>
+                        )}
+                        <p className="text-xs text-zinc-600 mt-1">{formatDate(lead.createdAt)}</p>
+                      </div>
+                      <div className="flex flex-col items-end gap-1.5 shrink-0">
+                        <span className={`text-[10px] px-1.5 py-0.5 rounded border font-medium ${leadStageColor(lead.stage)}`}>
+                          {labelify(lead.stage)}
+                        </span>
+                        {lead.aiScore && (
+                          <span className={`text-[10px] px-1.5 py-0.5 rounded border font-medium ${
+                            lead.aiScore === "strong" ? "bg-green-500/15 text-green-400 border-green-500/30" :
+                            lead.aiScore === "marginal" ? "bg-amber-500/15 text-amber-400 border-amber-500/30" :
+                            "bg-zinc-500/15 text-zinc-400 border-zinc-500/30"
+                          }`}>
+                            {lead.aiScore}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
       </div>
 
       {/* Actions */}
-      <div className="p-4 border-t border-zinc-800 flex gap-2">
+      <div className="p-4 border-t border-zinc-800 flex gap-2 shrink-0">
         <Button
           variant="outline"
           size="sm"
@@ -525,14 +638,11 @@ function ClientDetailPanel({
           <AlertDialogHeader>
             <AlertDialogTitle>Delete client?</AlertDialogTitle>
             <AlertDialogDescription className="text-zinc-400">
-              This will permanently remove {client.name} from the client directory. Job records
-              are not affected.
+              This will permanently remove {client.name} from the client directory. Job records are not affected.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel className="border-zinc-700 text-zinc-300">
-              Cancel
-            </AlertDialogCancel>
+            <AlertDialogCancel className="border-zinc-700 text-zinc-300">Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => deleteMutation.mutate({ id: client.id })}
               className="bg-red-700 hover:bg-red-600 text-white"
@@ -583,6 +693,25 @@ export default function NativeClientsSection() {
     onError: (e) => toast.error(e.message),
   });
 
+  // CSV export — lazy query, triggered on button click
+  const exportQuery = trpc.nativeClients.exportCsv.useQuery(undefined, {
+    enabled: false,
+    gcTime: 0,
+  });
+
+  const handleExport = async () => {
+    const result = await exportQuery.refetch();
+    if (!result.data) return;
+    const blob = new Blob([result.data], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `noland-earthworks-clients-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success("Client list exported.");
+  };
+
   const isSyncing =
     syncJobsMutation.isPending || syncLeadsMutation.isPending || syncQuotesMutation.isPending;
 
@@ -606,20 +735,16 @@ export default function NativeClientsSection() {
                 className="pl-8 h-8 text-sm bg-zinc-800/60 border-zinc-700 text-zinc-100 placeholder:text-zinc-600"
               />
             </div>
-            {/* Add client manually */}
             <Button
-              variant="ghost"
-              size="sm"
+              variant="ghost" size="sm"
               onClick={() => setShowAddModal(true)}
               className="text-amber-400 hover:text-amber-300 h-8 px-2"
               title="Add client manually"
             >
               <UserPlus className="w-3.5 h-3.5" />
             </Button>
-            {/* Sync from leads */}
             <Button
-              variant="ghost"
-              size="sm"
+              variant="ghost" size="sm"
               onClick={() => syncLeadsMutation.mutate()}
               disabled={isSyncing}
               className="text-zinc-400 hover:text-zinc-200 h-8 px-2"
@@ -627,10 +752,8 @@ export default function NativeClientsSection() {
             >
               <Users className={`w-3.5 h-3.5 ${syncLeadsMutation.isPending ? "animate-spin" : ""}`} />
             </Button>
-            {/* Sync from quotes */}
             <Button
-              variant="ghost"
-              size="sm"
+              variant="ghost" size="sm"
               onClick={() => syncQuotesMutation.mutate()}
               disabled={isSyncing}
               className="text-zinc-400 hover:text-zinc-200 h-8 px-2"
@@ -638,10 +761,8 @@ export default function NativeClientsSection() {
             >
               <FileText className={`w-3.5 h-3.5 ${syncQuotesMutation.isPending ? "animate-spin" : ""}`} />
             </Button>
-            {/* Sync from jobs */}
             <Button
-              variant="ghost"
-              size="sm"
+              variant="ghost" size="sm"
               onClick={() => syncJobsMutation.mutate()}
               disabled={isSyncing}
               className="text-zinc-400 hover:text-zinc-200 h-8 px-2"
@@ -649,34 +770,35 @@ export default function NativeClientsSection() {
             >
               <RefreshCw className={`w-3.5 h-3.5 ${syncJobsMutation.isPending ? "animate-spin" : ""}`} />
             </Button>
+            <Button
+              variant="ghost" size="sm"
+              onClick={handleExport}
+              disabled={exportQuery.isFetching}
+              className="text-zinc-400 hover:text-zinc-200 h-8 px-2"
+              title="Export as CSV"
+            >
+              <Download className={`w-3.5 h-3.5 ${exportQuery.isFetching ? "animate-pulse" : ""}`} />
+            </Button>
           </div>
 
-          {/* Count + legend */}
+          {/* Count */}
           <div className="flex items-center justify-between px-3 py-1.5 border-b border-zinc-800">
             <span className="text-xs text-zinc-500">
               {isLoading ? "Loading..." : `${clients.length} client${clients.length !== 1 ? "s" : ""}`}
-            </span>
-            <span className="text-[10px] text-zinc-600 hidden sm:block">
-              + = add &nbsp;|&nbsp; people = sync leads &nbsp;|&nbsp; doc = sync quotes &nbsp;|&nbsp; refresh = sync jobs
             </span>
           </div>
 
           {/* Table */}
           <div className="flex-1 overflow-y-auto">
             {isLoading ? (
-              <div className="flex items-center justify-center h-32 text-zinc-500 text-sm">
-                Loading clients...
-              </div>
+              <div className="flex items-center justify-center h-32 text-zinc-500 text-sm">Loading clients...</div>
             ) : clients.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-48 text-zinc-600 text-sm gap-2">
                 <User className="w-8 h-8 opacity-30" />
                 <p>No clients yet.</p>
-                <p className="text-xs text-zinc-700">
-                  Use the sync buttons to import from leads, quotes, or jobs.
-                </p>
+                <p className="text-xs text-zinc-700">Use the sync buttons to import from leads, quotes, or jobs.</p>
                 <Button
-                  size="sm"
-                  variant="outline"
+                  size="sm" variant="outline"
                   onClick={() => setShowAddModal(true)}
                   className="mt-2 border-zinc-700 text-zinc-400 hover:text-zinc-200"
                 >
@@ -704,15 +826,11 @@ export default function NativeClientsSection() {
                       key={client.id}
                       onClick={() => setSelectedId(client.id === selectedId ? null : client.id)}
                       className={`border-b border-zinc-800/50 cursor-pointer transition-colors ${
-                        selectedId === client.id
-                          ? "bg-amber-900/20"
-                          : "hover:bg-zinc-800/40"
+                        selectedId === client.id ? "bg-amber-900/20" : "hover:bg-zinc-800/40"
                       }`}
                     >
                       <td className="px-3 py-2.5">
-                        <div className="font-medium text-zinc-200 truncate max-w-[160px]">
-                          {client.name}
-                        </div>
+                        <div className="font-medium text-zinc-200 truncate max-w-[160px]">{client.name}</div>
                         {client.address && (
                           <div className="text-xs text-zinc-500 truncate max-w-[160px] mt-0.5">
                             {client.address.split(",").slice(-2).join(",").trim()}
@@ -726,17 +844,12 @@ export default function NativeClientsSection() {
                             <div className="truncate max-w-[140px]">{client.email ?? ""}</div>
                           </td>
                           <td className="px-3 py-2.5 text-right">
-                            <Badge
-                              variant="outline"
-                              className="border-zinc-700 text-zinc-400 text-[10px]"
-                            >
+                            <Badge variant="outline" className="border-zinc-700 text-zinc-400 text-[10px]">
                               {client.jobCount}
                             </Badge>
                           </td>
                           <td className="px-3 py-2.5 text-right font-medium text-green-400 text-xs">
-                            {client.totalSpentCents > 0
-                              ? formatCents(client.totalSpentCents)
-                              : "—"}
+                            {client.totalSpentCents > 0 ? formatCents(client.totalSpentCents) : "—"}
                           </td>
                         </>
                       )}
@@ -754,15 +867,11 @@ export default function NativeClientsSection() {
         {/* ── Right: Detail Panel ── */}
         {selectedId && (
           <div className="w-1/2 flex flex-col bg-zinc-900/50">
-            <ClientDetailPanel
-              clientId={selectedId}
-              onClose={() => setSelectedId(null)}
-            />
+            <ClientDetailPanel clientId={selectedId} onClose={() => setSelectedId(null)} />
           </div>
         )}
       </div>
 
-      {/* Add Client Modal */}
       <AddClientDialog open={showAddModal} onClose={() => setShowAddModal(false)} />
     </>
   );
