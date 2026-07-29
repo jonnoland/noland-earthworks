@@ -43,6 +43,7 @@ import {
   Facebook,
   Sparkles,
   Copy,
+  Zap,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -71,7 +72,7 @@ const MARGIN_COLORS: Record<string, string> = {
 };
 
 type ProspectStatus = "new" | "contacted" | "dismissed";
-type SortKey = "age" | "margin" | "source" | "location";
+type SortKey = "age" | "margin" | "score" | "source" | "location";
 type TabView = "active" | "archived";
 
 interface Prospect {
@@ -89,6 +90,7 @@ interface Prospect {
   marginTier: string | null;
   estimatedAcres: string | null;
   notes: string | null;
+  fitScore: number | null;
   urgencyFlag: boolean;
   archivedAt: Date | null;
   lastContactedAt: Date | null;
@@ -244,6 +246,14 @@ export default function Prospecting() {
     onError: (err) => toast.error(err.message),
   });
 
+  const runScan = trpc.ops.prospecting.runScan.useMutation({
+    onSuccess: () => {
+      toast.success("Scan started. New prospects will appear within a few minutes.");
+    },
+    onError: (err) => {
+      toast.error("Failed to start scan: " + err.message);
+    },
+  });
   const appendToNotes = trpc.ops.prospecting.appendToNotes.useMutation({
     onSuccess: () => {
       invalidateAll();
@@ -324,6 +334,8 @@ export default function Prospecting() {
     switch (sortKey) {
       case "margin":
         return list.sort((a, b) => (marginOrder[a.marginTier ?? ""] ?? 3) - (marginOrder[b.marginTier ?? ""] ?? 3));
+      case "score":
+        return list.sort((a, b) => (b.fitScore ?? 0) - (a.fitScore ?? 0));
       case "source":
         return list.sort((a, b) => a.source.localeCompare(b.source));
       case "location":
@@ -351,24 +363,36 @@ export default function Prospecting() {
             <p className="text-sm text-zinc-400">AI-discovered leads from Craigslist, Facebook, Nextdoor, and more</p>
           </div>
         </div>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => refetch()}
-          className="border-zinc-700 text-zinc-300 hover:text-white"
-        >
-          <RefreshCw className="h-4 w-4 mr-2" />
-          Refresh
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => runScan.mutate()}
+            disabled={runScan.isPending}
+            className="border-orange-700 text-orange-300 hover:bg-orange-900/30 hover:text-orange-200"
+            title="Trigger a manual AI scan now"
+          >
+            <Zap className="h-4 w-4 mr-2" />
+            {runScan.isPending ? "Starting..." : "Run Scan"}
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => refetch()}
+            className="border-zinc-700 text-zinc-300 hover:text-white"
+          >
+            <RefreshCw className="h-4 w-4 mr-2" />
+            Refresh
+          </Button>
+        </div>
       </div>
 
       {/* Info banner */}
       <div className="flex items-start gap-3 rounded-lg border border-zinc-700 bg-zinc-800/50 p-4 text-sm text-zinc-300">
         <Info className="h-4 w-4 mt-0.5 shrink-0 text-orange-400" />
         <span>
-          The AI scans public sources daily for people in Tennessee asking about land management, forestry mulching, brush removal, or overgrown property.
-          New prospects appear here automatically. Review each one, fire a reach-out message, or dismiss it.
-          The cron runs every morning — check back daily.
+          The AI scans 30 sources daily: Craigslist (Nashville, Memphis, Knoxville, Chattanooga, Clarksville), Facebook Marketplace, and Google — looking for people in Tennessee who need land clearing, forestry mulching, brush removal, cedar thicket removal, or pasture reclaimed.
+          Each prospect is scored 1-10 for fit. Sort by Fit Score to work the best leads first. Use "Run Scan" to trigger a manual scan on demand.
         </span>
       </div>
 
@@ -483,6 +507,7 @@ export default function Prospecting() {
                 className="bg-transparent text-xs text-zinc-300 outline-none cursor-pointer"
               >
                 <option value="age">Newest</option>
+                <option value="score">Fit Score</option>
                 <option value="margin">Margin</option>
                 <option value="source">Source</option>
                 <option value="location">Location</option>
@@ -584,6 +609,20 @@ export default function Prospecting() {
                         <span className="flex items-center gap-1 text-xs font-medium text-red-400 bg-red-900/30 border border-red-700 px-2 py-0.5 rounded">
                           <Flame className="h-3 w-3" />
                           Urgent
+                        </span>
+                      )}
+                      {p.fitScore != null && (
+                        <span
+                          className={cn(
+                            "text-xs font-bold px-2 py-0.5 rounded border",
+                            p.fitScore >= 9 ? "bg-green-900/40 text-green-300 border-green-700" :
+                            p.fitScore >= 7 ? "bg-emerald-900/30 text-emerald-400 border-emerald-700" :
+                            p.fitScore >= 5 ? "bg-yellow-900/30 text-yellow-400 border-yellow-700" :
+                            "bg-zinc-800 text-zinc-500 border-zinc-600"
+                          )}
+                          title={`AI fit score: ${p.fitScore}/10`}
+                        >
+                          {p.fitScore}/10
                         </span>
                       )}
 

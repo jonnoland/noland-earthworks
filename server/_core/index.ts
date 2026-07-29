@@ -534,6 +534,8 @@ ${transcript}`;
           profileUrl?: string;
           marginTier?: string | null;
           estimatedAcres?: string | null;
+          fitScore?: number | null;
+          urgencyFlag?: boolean;
         }>;
       };
       if (!Array.isArray(body.prospects) || body.prospects.length === 0) {
@@ -562,6 +564,8 @@ ${transcript}`;
           profileUrl: p.profileUrl ?? null,
           marginTier: p.marginTier ?? null,
           estimatedAcres: p.estimatedAcres ?? null,
+          fitScore: p.fitScore ?? null,
+          urgencyFlag: p.urgencyFlag ?? false,
           status: "new",
         });
         inserted++;
@@ -612,6 +616,8 @@ ${transcript}`;
           profileUrl?: string;
           marginTier?: string | null;
           estimatedAcres?: string | null;
+          fitScore?: number | null;
+          urgencyFlag?: boolean;
         }>;
       };
       if (!Array.isArray(body.prospects) || body.prospects.length === 0) {
@@ -639,6 +645,8 @@ ${transcript}`;
           profileUrl: p.profileUrl ?? null,
           marginTier: p.marginTier ?? null,
           estimatedAcres: p.estimatedAcres ?? null,
+          fitScore: p.fitScore ?? null,
+          urgencyFlag: p.urgencyFlag ?? false,
           status: "new",
         });
         inserted++;

@@ -2635,3 +2635,14 @@
 - [x] Add exportCsv procedure to nativeClientsRouter
 - [x] CSV export button in toolbar (downloads client list as .csv)
 - [x] Update nativeClients.test.ts schema mock to include nativeQuotes and opsLeads
+
+## Prospecting Page Improvements (Jul 29, 2026)
+- [x] Expand scan prompt with additional keywords: cedar thicket, brush removal, pasture reclamation, fence line clearing, overgrown lot
+- [x] Add Craigslist markets: Memphis, Knoxville, Chattanooga, Clarksville (in addition to Nashville)
+- [x] Add AI fit scoring (fitScore 1-10) to scan prompt output
+- [x] Add fitScore column to prospectingLeads schema and run migration
+- [x] Update postback endpoints to store fitScore from scan results
+- [x] Add fitScore badge to each prospect card (color-coded: green 9-10, emerald 7-8, yellow 5-6, gray 1-4)
+- [x] Add "Fit Score" sort option to sort dropdown
+- [x] Add "Run Scan" button to Prospecting page header for manual on-demand scans
+- [x] Update info banner to reflect expanded scan coverage

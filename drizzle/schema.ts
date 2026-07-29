@@ -1686,6 +1686,15 @@ export const prospectingLeads = mysqlTable("prospecting_leads", {
   /** User-entered notes / extra context about this prospect */
   notes: text("notes"),
   /**
+   * AI fit score 1-10 — how strong a prospect this is for Noland Earthworks.
+   * 9-10: Rural TN, 5+ acres, dense veg, urgency signals
+   * 7-8: Rural/semi-rural TN, 2-5 acres, clear scope
+   * 5-6: Location unclear, 1-3 acres, mixed signals
+   * 3-4: Under 1 acre, suburban, access issues
+   * 1-2: Wrong state/scope, already hired, too vague
+   */
+  fitScore: int("fitScore"),
+  /**
    * AI-detected urgency flag — true when the post contains urgency keywords
    * ("ASAP", "this week", "already got quotes", "need it done", etc.)
    */
