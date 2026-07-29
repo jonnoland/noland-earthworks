@@ -12,7 +12,7 @@
  *   - Convert to Job
  *   - Portal status badges (sent / viewed / approved / declined / deposit paid)
  */
-import { useState, useMemo, useRef } from "react";
+import React, { useState, useMemo, useRef } from "react";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -27,7 +27,8 @@ import {
   Eye, CheckCircle, XCircle, DollarSign,
   FileText, ExternalLink, Sparkles, Info, AlertTriangle,
   RefreshCw, ChevronRight, MapPin, Phone, Mail, User, Users, X, Globe,
-  Loader2, Clock, ChevronDown, ChevronUp, ArchiveRestore, Pencil
+  Loader2, Clock, ChevronDown, ChevronUp, ArchiveRestore, Pencil,
+  ArrowRight, Ban
 } from "lucide-react";
 import { MapView } from "@/components/Map";
 
@@ -875,6 +876,46 @@ function NativeQuoteDetailPanel({
     onSuccess: () => { utils.nativeQuotes.list.invalidate(); },
     onError: (e) => toast.error("Error: " + e.message),
   });
+
+  // Valid transitions map for the detail panel (mirrors PIPELINE_STAGES in main section)
+  const PANEL_TRANSITIONS: Record<string, { value: string; label: string }[]> = {
+    web_request: [
+      { value: "draft", label: "Draft" },
+      { value: "declined", label: "Declined" },
+      { value: "cancelled", label: "Cancelled" },
+    ],
+    draft: [
+      { value: "sent", label: "Sent" },
+      { value: "declined", label: "Declined" },
+      { value: "cancelled", label: "Cancelled" },
+    ],
+    sent: [
+      { value: "approved", label: "Approved" },
+      { value: "declined", label: "Declined" },
+      { value: "cancelled", label: "Cancelled" },
+    ],
+    approved: [
+      { value: "invoiced", label: "Invoiced" },
+      { value: "cancelled", label: "Cancelled" },
+    ],
+    invoiced: [],
+    declined: [{ value: "draft", label: "Restore to Draft" }],
+    cancelled: [{ value: "draft", label: "Restore to Draft" }],
+  };
+
+  // Derive current stage key for the panel
+  const panelStageKey = (() => {
+    if (quote.convertedToJobAt) return "invoiced";
+    if (quote.clientAction === "declined") return "declined";
+    if (quote.status === "cancelled") return "cancelled";
+    if (quote.clientAction === "approved" || quote.depositPaidAt) return "approved";
+    if (quote.portalSentAt) return "sent";
+    if (quote.status === "web_request") return "web_request";
+    return "draft";
+  })();
+
+  const panelValidTransitions = PANEL_TRANSITIONS[panelStageKey] ?? [];
+
   const duplicateMutation = trpc.nativeQuotes.duplicate.useMutation({
     onSuccess: () => { utils.nativeQuotes.list.invalidate(); toast.success("Quote duplicated"); },
     onError: (e) => toast.error("Error: " + e.message),
@@ -1261,27 +1302,36 @@ function NativeQuoteDetailPanel({
             </button>
           )}
 
-          {/* Status selector — change quote status directly from the panel */}
+          {/* Status selector — only valid next steps shown */}
           {!quote.convertedToJobAt && (
-            <div className="flex items-center gap-2 py-1.5">
-              <span className="text-[11px] text-muted-foreground shrink-0">Status:</span>
-              <select
-                value={quote.status}
-                onChange={e => {
-                  updateStatusMutation.mutate({ id: quote.id, status: e.target.value });
-                  toast.success(`Status updated to ${e.target.value.replace(/_/g, " ")}.`);
-                }}
-                disabled={updateStatusMutation.isPending}
-                className="flex-1 text-xs bg-secondary/40 border border-border rounded px-2 py-1 text-foreground focus:outline-none focus:border-primary cursor-pointer"
-              >
-                <option value="web_request">Web Request</option>
-                <option value="draft">Draft</option>
-                <option value="sent">Sent</option>
-                <option value="approved">Approved</option>
-                <option value="declined">Declined</option>
-                <option value="cancelled">Cancelled</option>
-                <option value="invoiced">Invoiced</option>
-              </select>
+            <div className="space-y-1.5 py-1.5">
+              <div className="flex items-center gap-2">
+                <span className="text-[11px] text-muted-foreground shrink-0">Current stage:</span>
+                <span className="text-[11px] font-semibold text-foreground capitalize">{panelStageKey.replace(/_/g, " ")}</span>
+              </div>
+              {panelValidTransitions.length > 0 && (
+                <div className="flex items-center gap-2">
+                  <span className="text-[11px] text-muted-foreground shrink-0">Move to:</span>
+                  <div className="flex flex-wrap gap-1.5">
+                    {panelValidTransitions.map(t => (
+                      <button
+                        key={t.value}
+                        onClick={() => {
+                          updateStatusMutation.mutate({ id: quote.id, status: t.value });
+                          toast.success(`Moved to ${t.label}.`);
+                        }}
+                        disabled={updateStatusMutation.isPending}
+                        className="text-[11px] px-2 py-0.5 rounded border border-border bg-secondary/40 text-foreground hover:bg-primary/20 hover:border-primary transition-colors"
+                      >
+                        {t.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {panelValidTransitions.length === 0 && (
+                <p className="text-[11px] text-muted-foreground">No further transitions available.</p>
+              )}
             </div>
           )}
 
@@ -1704,24 +1754,136 @@ export function NativeAllQuotesSection() {
 
   const quotes = (data?.quotes ?? []) as NativeQuote[];
 
-  // Status counts
-  const counts = useMemo(() => {
-    const all = quotes.length;
-    const webRequest = quotes.filter(q => q.status === "web_request").length;
-    const draft = quotes.filter(q => q.status === "draft" && !q.portalSentAt && !q.convertedToJobAt).length;
-    const sent = quotes.filter(q => q.portalSentAt && !q.clientAction && !q.convertedToJobAt && q.status !== "web_request").length;
-    const approved = quotes.filter(q => q.clientAction === "approved" && !q.convertedToJobAt).length;
-    const converted = quotes.filter(q => q.convertedToJobAt).length;
-    return { all, webRequest, draft, sent, approved, converted };
+  // ── Pipeline stage definitions ────────────────────────────────────────────
+  // Each stage has: a key used to classify quotes, display label, color tokens,
+  // the set of valid next statuses the user can move to from this stage,
+  // and a contextual action label shown on the card.
+  type PipelineStage = {
+    key: string;
+    label: string;
+    description: string;
+    color: string;        // Tailwind border/text accent
+    bgColor: string;      // Tailwind bg accent
+    badgeColor: string;   // Badge background
+    nextStatuses: string[];
+    actionLabel?: string;
+    actionIcon?: React.ReactNode;
+    terminal?: boolean;
+  };
+
+  const PIPELINE_STAGES: PipelineStage[] = [
+    {
+      key: "web_request",
+      label: "Web Request",
+      description: "Came in from the website. Review and build a formal quote.",
+      color: "text-cyan-400",
+      bgColor: "bg-cyan-950/30",
+      badgeColor: "bg-cyan-600",
+      nextStatuses: ["draft", "declined", "cancelled"],
+      actionLabel: "Build Quote",
+      actionIcon: <FileText className="w-3 h-3" />,
+    },
+    {
+      key: "draft",
+      label: "Draft",
+      description: "Quote is being prepared. Add pricing and line items, then send.",
+      color: "text-zinc-400",
+      bgColor: "bg-zinc-800/30",
+      badgeColor: "bg-zinc-600",
+      nextStatuses: ["sent", "declined", "cancelled"],
+      actionLabel: "Send to Client",
+      actionIcon: <Send className="w-3 h-3" />,
+    },
+    {
+      key: "sent",
+      label: "Sent",
+      description: "Portal link sent to client. Waiting for their response.",
+      color: "text-sky-400",
+      bgColor: "bg-sky-950/30",
+      badgeColor: "bg-sky-600",
+      nextStatuses: ["approved", "declined", "cancelled"],
+      actionLabel: "Follow Up",
+      actionIcon: <Send className="w-3 h-3" />,
+    },
+    {
+      key: "approved",
+      label: "Approved",
+      description: "Client approved the quote. Collect deposit or convert to job.",
+      color: "text-emerald-400",
+      bgColor: "bg-emerald-950/30",
+      badgeColor: "bg-emerald-600",
+      nextStatuses: ["invoiced", "cancelled"],
+      actionLabel: "Convert to Job",
+      actionIcon: <Briefcase className="w-3 h-3" />,
+    },
+    {
+      key: "invoiced",
+      label: "Converted / Invoiced",
+      description: "Job created. Invoice sent or pending.",
+      color: "text-amber-400",
+      bgColor: "bg-amber-950/30",
+      badgeColor: "bg-amber-600",
+      nextStatuses: [],
+    },
+    {
+      key: "declined",
+      label: "Declined",
+      description: "Client declined. Can be restored to draft.",
+      color: "text-red-400",
+      bgColor: "bg-red-950/20",
+      badgeColor: "bg-red-600",
+      nextStatuses: ["draft"],
+      terminal: true,
+    },
+    {
+      key: "cancelled",
+      label: "Cancelled",
+      description: "Quote cancelled. Can be restored to draft.",
+      color: "text-zinc-500",
+      bgColor: "bg-zinc-900/30",
+      badgeColor: "bg-zinc-700",
+      nextStatuses: ["draft"],
+      terminal: true,
+    },
+  ];
+
+  // Classify each quote into a pipeline stage key
+  const getStageKey = (q: NativeQuote): string => {
+    if (q.convertedToJobAt) return "invoiced";
+    if (q.clientAction === "declined") return "declined";
+    if (q.status === "cancelled") return "cancelled";
+    if (q.clientAction === "approved" || q.depositPaidAt) return "approved";
+    if (q.portalSentAt) return "sent";
+    if (q.status === "web_request") return "web_request";
+    return "draft";
+  };
+
+  // Group quotes by stage
+  const pipelineGroups = useMemo(() => {
+    const groups: Record<string, NativeQuote[]> = {};
+    PIPELINE_STAGES.forEach(s => { groups[s.key] = []; });
+    quotes.forEach(q => {
+      const key = getStageKey(q);
+      if (groups[key]) groups[key].push(q);
+      else groups["draft"].push(q);
+    });
+    return groups;
   }, [quotes]);
 
+  // Total counts for header
+  const totalCount = quotes.length;
+  const activeCount = quotes.filter(q => !q.convertedToJobAt && q.status !== "cancelled" && q.clientAction !== "declined").length;
+
+  // Filter: if statusFilter is "all", show all stages; otherwise show just that stage
+  const visibleStages = statusFilter === "all"
+    ? PIPELINE_STAGES
+    : PIPELINE_STAGES.filter(s => s.key === statusFilter);
+
   const statuses = [
-    { value: "all", label: "All", count: counts.all },
-    { value: "web_request", label: "Web Requests", count: counts.webRequest },
-    { value: "draft", label: "Draft", count: counts.draft },
-    { value: "sent", label: "Sent", count: counts.sent },
-    { value: "approved", label: "Approved", count: counts.approved },
-    { value: "invoiced", label: "Converted", count: counts.converted },
+    { value: "all", label: "All", count: totalCount },
+    ...PIPELINE_STAGES.filter(s => !s.terminal).map(s => ({ value: s.key, label: s.label, count: pipelineGroups[s.key]?.length ?? 0 })),
+    { value: "declined", label: "Declined", count: pipelineGroups["declined"]?.length ?? 0 },
+    { value: "cancelled", label: "Cancelled", count: pipelineGroups["cancelled"]?.length ?? 0 },
   ];
 
   return (
@@ -1736,7 +1898,7 @@ export function NativeAllQuotesSection() {
               <FileText className="w-5 h-5 text-primary" />
               <h2 className="text-base font-semibold text-foreground">All Quotes</h2>
               {!isLoading && (
-                <Badge variant="secondary" className="text-xs">{counts.all} total</Badge>
+                <Badge variant="secondary" className="text-xs">{totalCount} total · {activeCount} active</Badge>
               )}
             </div>
             <div className="flex items-center gap-2">
@@ -1873,102 +2035,124 @@ export function NativeAllQuotesSection() {
             </div>
           )}
 
-          {/* Table */}
+          {/* ── Pipeline view ── */}
           {!isLoading && quotes.length > 0 && (
-            <div className="rounded-lg border border-border overflow-hidden">
-              <div className="overflow-x-auto">
-                <table className="w-full text-xs">
-                  <thead>
-                    <tr className="border-b border-border bg-secondary/20">
-                      <th className="text-left px-4 py-2.5 font-medium text-muted-foreground hidden lg:table-cell">#</th>
-                      <th className="text-left px-4 py-2.5 font-medium text-muted-foreground">Title</th>
-                      <th className="text-left px-4 py-2.5 font-medium text-muted-foreground hidden sm:table-cell">Client</th>
-                      <th className="text-right px-4 py-2.5 font-medium text-muted-foreground hidden md:table-cell">Total</th>
-                      <th className="text-left px-4 py-2.5 font-medium text-muted-foreground">Status</th>
-                      <th className="text-left px-4 py-2.5 font-medium text-muted-foreground hidden lg:table-cell">Date</th>
-                      <th className="text-right px-4 py-2.5 font-medium text-muted-foreground">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {quotes.map((quote, idx) => (
-                      <tr
-                        key={quote.id}
-                        onClick={() => setSelectedQuote(quote)}
-                        className={`border-b border-border last:border-0 hover:bg-secondary/30 transition-colors cursor-pointer ${
-                          idx % 2 === 0 ? "" : "bg-secondary/5"
-                        } ${selectedQuote?.id === quote.id ? "bg-primary/5 border-l-2 border-l-primary" : ""}`}
-                      >
-                        <td className="px-4 py-3 text-muted-foreground/60 text-[11px] hidden lg:table-cell">
-                          #{quote.id}
-                        </td>
-                        <td className="px-4 py-3 font-medium text-foreground max-w-[200px] truncate">
-                          <div className="flex items-center gap-1.5">
-                            {quote.title || "Untitled Quote"}
-                            <ChevronRight className="w-3 h-3 text-muted-foreground/50 shrink-0" />
-                          </div>
-                        </td>
-                        <td className="px-4 py-3 text-muted-foreground hidden sm:table-cell">
-                          <div>{quote.clientName}</div>
-                          {quote.propertyAddress && (
-                            <div className="text-[11px] text-muted-foreground/60 truncate max-w-[160px]">{quote.propertyAddress}</div>
-                          )}
-                        </td>
-                        <td className="px-4 py-3 text-right hidden md:table-cell">
-                          <div className="flex items-center justify-end gap-1 text-foreground font-medium">
-                            <DollarSign className="w-3 h-3 text-green-500" />
-                            {(quote.totalCents / 100).toLocaleString("en-US", { minimumFractionDigits: 0 })}
-                          </div>
-                        </td>
-                        <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
-                          {quote.convertedToJobAt ? (
-                            <StatusBadge quote={quote} />
-                          ) : (
-                            <select
-                              value={quote.status}
-                              onChange={e => {
-                                e.stopPropagation();
-                                updateStatusMutation.mutate({ id: quote.id, status: e.target.value });
-                                toast.success(`Status → ${e.target.value.replace(/_/g, " ")}`);
-                              }}
-                              disabled={updateStatusMutation.isPending}
-                              className="text-[11px] bg-secondary/40 border border-border rounded px-1.5 py-0.5 text-foreground focus:outline-none focus:border-primary cursor-pointer max-w-[110px]"
+            <div className="space-y-3">
+              {visibleStages.map(stage => {
+                const stageQuotes = pipelineGroups[stage.key] ?? [];
+                // When filtering, skip empty stages unless it's the active filter
+                if (statusFilter === "all" && stageQuotes.length === 0) return null;
+                return (
+                  <div key={stage.key} className={`rounded-lg border border-border overflow-hidden`}>
+                    {/* Stage header */}
+                    <div className={`flex items-center justify-between px-4 py-2.5 border-b border-border ${stage.bgColor}`}>
+                      <div className="flex items-center gap-2">
+                        <span className={`text-xs font-semibold uppercase tracking-wider ${stage.color}`}>{stage.label}</span>
+                        <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full text-white ${stage.badgeColor}`}>{stageQuotes.length}</span>
+                        <span className="text-[11px] text-muted-foreground hidden sm:inline">{stage.description}</span>
+                      </div>
+                      {/* Flow arrow — shows valid next stages */}
+                      {stage.nextStatuses.length > 0 && (
+                        <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
+                          <ArrowRight className="w-3 h-3" />
+                          <span>{stage.nextStatuses.map(s => PIPELINE_STAGES.find(p => p.key === s)?.label ?? s).join(" / ")}</span>
+                        </div>
+                      )}
+                      {stage.nextStatuses.length === 0 && !stage.terminal && (
+                        <span className="text-[10px] text-muted-foreground flex items-center gap-1"><CheckCircle className="w-3 h-3" />Terminal</span>
+                      )}
+                    </div>
+
+                    {/* Quotes in this stage */}
+                    {stageQuotes.length === 0 ? (
+                      <div className="px-4 py-3 text-[11px] text-muted-foreground/50 italic">No quotes in this stage.</div>
+                    ) : (
+                      <div className="divide-y divide-border">
+                        {stageQuotes.map(quote => {
+                          const currentStage = PIPELINE_STAGES.find(s => s.key === stage.key)!;
+                          const validNextStatuses = currentStage.nextStatuses;
+                          return (
+                            <div
+                              key={quote.id}
+                              className={`flex items-center gap-3 px-4 py-3 hover:bg-secondary/20 transition-colors cursor-pointer text-xs ${
+                                selectedQuote?.id === quote.id ? "bg-primary/5 border-l-2 border-l-primary" : ""
+                              }`}
+                              onClick={() => setSelectedQuote(quote)}
                             >
-                              <option value="web_request">Web Request</option>
-                              <option value="draft">Draft</option>
-                              <option value="sent">Sent</option>
-                              <option value="approved">Approved</option>
-                              <option value="declined">Declined</option>
-                              <option value="cancelled">Cancelled</option>
-                              <option value="invoiced">Invoiced</option>
-                            </select>
-                          )}
-                        </td>
-                        <td className="px-4 py-3 text-muted-foreground hidden lg:table-cell">
-                          {new Date(quote.createdAt).toLocaleDateString()}
-                        </td>
-                        <td className="px-4 py-3 text-right">
-                          <div className="flex items-center justify-end gap-2">
-                            <button
-                              onClick={e => { e.stopPropagation(); setEditQuote(quote); }}
-                              title="Edit quote"
-                              className="text-muted-foreground hover:text-primary transition-colors"
-                            >
-                              <Edit2 className="w-3.5 h-3.5" />
-                            </button>
-                            <button
-                              onClick={e => { e.stopPropagation(); setSelectedQuote(quote); }}
-                              title="View details"
-                              className="text-muted-foreground hover:text-primary transition-colors"
-                            >
-                              <ChevronRight className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                              {/* Quote info */}
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-1.5">
+                                  <span className="font-medium text-foreground truncate">{quote.title || "Untitled Quote"}</span>
+                                  <span className="text-muted-foreground/40">#</span>
+                                  <span className="text-muted-foreground/60 text-[11px]">{quote.id}</span>
+                                </div>
+                                <div className="text-[11px] text-muted-foreground truncate">
+                                  {quote.clientName}
+                                  {quote.propertyAddress && <span className="text-muted-foreground/50"> · {quote.propertyAddress}</span>}
+                                </div>
+                              </div>
+
+                              {/* Total */}
+                              {quote.totalCents > 0 && (
+                                <div className="shrink-0 flex items-center gap-0.5 text-foreground font-medium">
+                                  <DollarSign className="w-3 h-3 text-green-500" />
+                                  {(quote.totalCents / 100).toLocaleString("en-US", { minimumFractionDigits: 0 })}
+                                </div>
+                              )}
+
+                              {/* Date */}
+                              <div className="shrink-0 text-[11px] text-muted-foreground hidden md:block">
+                                {new Date(quote.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                              </div>
+
+                              {/* Status move dropdown — only valid next steps */}
+                              {!quote.convertedToJobAt && validNextStatuses.length > 0 && (
+                                <div onClick={e => e.stopPropagation()} className="shrink-0">
+                                  <select
+                                    defaultValue=""
+                                    onChange={e => {
+                                      if (!e.target.value) return;
+                                      updateStatusMutation.mutate({ id: quote.id, status: e.target.value });
+                                      toast.success(`Moved to ${e.target.value.replace(/_/g, " ")}`);
+                                      e.target.value = "";
+                                    }}
+                                    disabled={updateStatusMutation.isPending}
+                                    className="text-[11px] bg-secondary/40 border border-border rounded px-1.5 py-0.5 text-muted-foreground focus:outline-none focus:border-primary cursor-pointer"
+                                  >
+                                    <option value="">Move to…</option>
+                                    {validNextStatuses.map(s => {
+                                      const nextStage = PIPELINE_STAGES.find(p => p.key === s);
+                                      return <option key={s} value={s}>{nextStage?.label ?? s}</option>;
+                                    })}
+                                  </select>
+                                </div>
+                              )}
+
+                              {/* Actions */}
+                              <div className="shrink-0 flex items-center gap-1.5" onClick={e => e.stopPropagation()}>
+                                <button
+                                  onClick={() => setEditQuote(quote)}
+                                  title="Edit"
+                                  className="text-muted-foreground hover:text-primary transition-colors p-0.5 rounded"
+                                >
+                                  <Edit2 className="w-3.5 h-3.5" />
+                                </button>
+                                <button
+                                  onClick={() => setSelectedQuote(quote)}
+                                  title="View details"
+                                  className="text-muted-foreground hover:text-primary transition-colors p-0.5 rounded"
+                                >
+                                  <ChevronRight className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           )}
         </div>{/* end left column */}

@@ -2694,3 +2694,9 @@
 ## Quote Status Management (Jul 2026)
 - [x] Quotes: add inline status selector to the quotes table row (Status column) so Jon can change a quote's status without opening the detail panel
 - [x] Quotes: add status selector to the NativeQuoteDetailPanel footer so status is editable from the slide-out panel
+
+## Quote Pipeline / Status Flow (Jul 2026)
+- [x] Quotes: define canonical status order: Web Request → Draft → Sent → Approved → Converted/Invoiced (Declined/Cancelled as terminal off-ramps)
+- [x] Quotes: replace flat table view with a status-pipeline view — quotes grouped and sorted by stage, with stage headers showing counts and next-step arrows
+- [x] Quotes: restrict status dropdown to valid next/previous transitions only (pipeline row uses "Move to…" with only valid next steps; detail panel shows stage buttons for valid transitions only)
+- [x] Quotes: stage headers show description and valid next stages with arrow indicator
