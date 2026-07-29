@@ -102,14 +102,15 @@ function nativeJobToScheduledJob(j: any): ScheduledJob {
   return {
     id: String(j.id),
     jobNumber: j.id,
-    title: j.title ?? j.client ?? "Untitled Job",
+    // nativeJobs uses clientName/propertyAddress/totalCents; legacy jobs used client/address/totalPrice
+    title: j.title ?? j.clientName ?? j.client ?? "Untitled Job",
     jobStatus: j.status === "completed" ? "COMPLETED" : j.status === "in_progress" ? "ACTIVE" : "SCHEDULED",
-    jobType: j.jobType ?? null,
+    jobType: j.jobType ?? j.serviceType ?? null,
     startAt,
     endAt: startAt,
-    total: j.totalPrice != null ? Number(j.totalPrice) : null,
-    client: j.client ? { name: j.client } : null,
-    property: j.address ? { address: { street1: j.address, city: null } } : null,
+    total: j.totalCents != null ? j.totalCents / 100 : (j.totalPrice != null ? Number(j.totalPrice) : null),
+    client: (j.clientName || j.client) ? { name: j.clientName ?? j.client } : null,
+    property: (j.propertyAddress || j.address) ? { address: { street1: j.propertyAddress ?? j.address, city: null } } : null,
   };
 }
 
@@ -635,6 +636,11 @@ export default function Schedule() {
     CREW_COLORS[crewNames.indexOf(crewName) % CREW_COLORS.length];
 
   // ── Update mutations for drag-and-drop ──
+  const updateNativeJob = trpc.nativeJobs.update.useMutation({
+    onSuccess: () => utils.nativeJobs.list.invalidate(),
+    onError: (e) => toast.error(e.message || "Failed to reschedule job"),
+  });
+
   const updateEntry = trpc.ops.schedule.update.useMutation({
     onSuccess: () => utils.ops.schedule.list.invalidate(),
     onError: (e) => toast.error(e.message || "Failed to move entry"),
@@ -716,8 +722,12 @@ export default function Schedule() {
     const dayOnlyMatch = overId.match(/^drop-(.+)$/);
 
     if (activeId.startsWith("job-")) {
-      // Scheduled jobs are read-only — reschedule via the Jobs page
-      toast.info("To reschedule this job, update it on the Jobs page.");
+      // Native job drag — reschedule by updating scheduledDate
+      const jobId = Number(activeId.replace("job-", ""));
+      const targetDay = crewDayMatch ? crewDayMatch[2] : (dayOnlyMatch ? dayOnlyMatch[1] : null);
+      if (!targetDay || isNaN(jobId)) return;
+      updateNativeJob.mutate({ id: jobId, scheduledDate: new Date(targetDay + "T12:00:00") });
+      toast.success(`Job rescheduled to ${new Date(targetDay).toLocaleDateString("en-US", { month: "short", day: "numeric" })}`);
       return;
     }
 

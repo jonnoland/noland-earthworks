@@ -16,7 +16,7 @@ import { z } from "zod";
 import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
 import { TRPCError } from "@trpc/server";
 import { getDb } from "./db";
-import { nativeQuotes, jobs, aiPricingSettings } from "../drizzle/schema";
+import { nativeQuotes, nativeJobs, aiPricingSettings } from "../drizzle/schema";
 import { getPricingBenchmarks } from "./db";
 import { eq, desc, like, or, and, asc } from "drizzle-orm";
 import { randomBytes } from "crypto";
@@ -308,29 +308,20 @@ export const nativeQuotesRouter = router({
       if (!rows.length) throw new Error("Quote not found");
       const quote = rows[0];
 
-      // Map serviceType to jobs.jobType enum
-      const jobTypeMap: Record<string, string> = {
-        "Forestry Mulching": "forestry_mulching",
-        "Land Clearing": "land_clearing",
-        "Brush Hogging": "vegetation_management",
-        "Right-of-Way Clearing": "right_of_way_clearing",
-        "Trail Cutting": "trail_cutting",
-      };
-      const jobType = (jobTypeMap[quote.serviceType ?? ""] ?? "land_clearing") as any;
-
-      const totalDollars = quote.totalCents / 100;
-      const result = await db.insert(jobs).values({
-        userId: 1, // owner
-        title: quote.title,
-        client: quote.clientName,
-        address: quote.propertyAddress ?? "",
-        jobType,
-        status: "estimate",
-        acres: quote.acreage ? parseFloat(quote.acreage) : null,
-        totalPrice: totalDollars > 0 ? totalDollars.toString() : null,
+      // Insert into nativeJobs (the table the Jobs page reads from)
+      const result = await db.insert(nativeJobs).values({
+        quoteId: quote.id,
+        clientName: quote.clientName,
         clientEmail: quote.clientEmail ?? null,
-        notes: `Created from native quote #${quote.id}. ${quote.internalNotes ?? ""}`.trim(),
+        clientPhone: quote.clientPhone ?? null,
+        propertyAddress: quote.propertyAddress ?? null,
+        serviceType: quote.serviceType ?? null,
+        acreage: quote.acreage ?? null,
+        totalCents: quote.totalCents,
+        lineItems: quote.lineItems ?? "[]",
+        status: "scheduled",
         scheduledDate: input.scheduledDate ? new Date(input.scheduledDate) : null,
+        internalNotes: quote.internalNotes ?? null,
       } as any);
       const jobId = (result as any).insertId ?? (result as any)[0]?.insertId;
 

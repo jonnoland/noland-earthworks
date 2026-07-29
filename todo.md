@@ -2730,3 +2730,7 @@
 - [x] Pipeline: add dollar value range filter (min/max) and date created range filter to the filter bar
 - [x] Pipeline: add sort control — order by highest value (totalCents desc) or newest first (createdAt desc)
 - [x] Pipeline: add summary bar at the top showing total dollar value of all currently visible quotes
+
+## Bug Fixes (Jul 2026)
+- [x] Fix: converted quotes not appearing in /ops/jobs Jobs section
+- [x] Fix: Schedule page drag-and-drop not working to schedule jobs

@@ -819,6 +819,7 @@ function ConvertToJobDialog({ quote, onClose }: { quote: NativeQuote; onClose: (
   const convertMutation = trpc.nativeQuotes.convertToJob.useMutation({
     onSuccess: () => {
       utils.nativeQuotes.list.invalidate();
+      utils.nativeJobs.list.invalidate();
       toast.success("Converted to job: A new job record has been created.");
       onClose();
     },
