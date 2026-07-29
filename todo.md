@@ -2709,3 +2709,8 @@
 - [x] "Restore to Draft" clears clientAction via the update mutation fix above
 - [x] Duplicate quote was copying portal lifecycle fields — fixed: duplicate now only copies content fields, all lifecycle fields are intentionally omitted
 - [x] getStageKey and StatusBadge updated to check both status column AND lifecycle fields so classification is correct regardless of which path set the state
+
+## Quote UI Enhancements (Jul 2026 — Round 2)
+- [x] Quote detail panel: add visual lifecycle timeline showing Created, Sent, Viewed, Approved/Declined, Deposit Paid, Converted with exact timestamps
+- [x] Pipeline quote cards: add copy-portal-link quick action button on cards that have a portalToken (sent quotes)
+- [x] Pipeline stage column headers: display total monetary value (sum of totalCents) for all quotes in that stage
