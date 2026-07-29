@@ -374,7 +374,7 @@ export const nativeQuotesRouter = router({
       terrain: z.string().optional(),
       density: z.string().optional(),
       access: z.string().optional(),
-      notes: z.string().max(500).optional(),
+      notes: z.string().max(5000).optional(),
     }))
     .mutation(async ({ input }: { input: { serviceType: string; acreage: number; terrain?: string; density?: string; access?: string; notes?: string } }) => {
       const { serviceType, acreage, terrain, density, access, notes } = input;
