@@ -31,6 +31,7 @@ import {
   ArrowRight, Ban, ArrowUpDown
 } from "lucide-react";
 import { MapView } from "@/components/Map";
+import FieldQuotesSection from "@/pages/ops/FieldQuotesSection";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface LineItem {
@@ -2414,6 +2415,11 @@ export function NativeAllQuotesSection() {
           </div>
         </div>{/* end right column */}
       </div>{/* end two-column grid */}
+
+      {/* ── Field Quotes (companion app submissions) ── */}
+      <div className="mt-8 border-t border-zinc-800 pt-8">
+        <FieldQuotesSection />
+      </div>
 
       {/* Detail panel */}
       {selectedQuote && (
