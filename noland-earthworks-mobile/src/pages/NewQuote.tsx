@@ -1,4 +1,4 @@
-import { useState } from "react";
+import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   MapPin,
@@ -18,6 +18,50 @@ import { Geolocation } from "@capacitor/geolocation";
 import { trpc } from "@/lib/trpc";
 import PageHeader from "@/components/PageHeader";
 import AddressAutocomplete from "@/components/AddressAutocomplete";
+
+// ─── SiteMapPreview ──────────────────────────────────────────────────────────
+
+function SiteMapPreview({ lat, lng }: { lat: number; lng: number }) {
+  const trpcUtils = trpc.useUtils();
+  const [mapUrl, setMapUrl] = React.useState<string | null>(null);
+  const [loading, setLoading] = React.useState(false);
+
+  React.useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    trpcUtils.client.fieldQuote.staticMapUrl
+      .query({ lat, lng, zoom: 15, width: 600, height: 280 })
+      .then((res) => { if (!cancelled) setMapUrl(res.url ?? null); })
+      .catch(() => { if (!cancelled) setMapUrl(null); })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, [lat, lng]);
+
+  if (loading) {
+    return (
+      <div style={{
+        marginTop: 10, height: 160, borderRadius: 10,
+        background: "oklch(0.18 0.01 80)",
+        display: "flex", alignItems: "center", justifyContent: "center",
+        border: "1px solid oklch(0.28 0.01 80)",
+      }}>
+        <Loader2 size={20} color="oklch(0.65 0.18 50)" style={{ animation: "spin 1s linear infinite" }} />
+      </div>
+    );
+  }
+
+  if (!mapUrl) return null;
+
+  return (
+    <div style={{ marginTop: 10, borderRadius: 10, overflow: "hidden", border: "1px solid oklch(0.28 0.01 80)" }}>
+      <img
+        src={mapUrl}
+        alt="Site location map"
+        style={{ width: "100%", display: "block", maxHeight: 200, objectFit: "cover" }}
+      />
+    </div>
+  );
+}
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -432,8 +476,15 @@ export default function NewQuote() {
                 </button>
               }
             />
-            {form.lat && <p style={{ color: "oklch(0.65 0.18 50)", fontSize: 11, margin: "4px 0 0" }}>GPS: {form.lat.toFixed(5)}, {form.lng?.toFixed(5)}</p>}
+            {form.lat && (
+              <p style={{ color: "oklch(0.65 0.18 50)", fontSize: 11, margin: "4px 0 0" }}>
+                GPS: {form.lat.toFixed(5)}, {form.lng?.toFixed(5)}
+              </p>
+            )}
             {gpsError && <p style={{ color: "oklch(0.65 0.20 25)", fontSize: 11, margin: "4px 0 0" }}>{gpsError}</p>}
+            {form.lat && form.lng && (
+              <SiteMapPreview lat={form.lat} lng={form.lng} />
+            )}
           </div>
         </div>
 

@@ -954,4 +954,37 @@ Return JSON matching the schema exactly.`;
         return { address: null };
       }
     }),
+
+  /**
+   * Returns a Google Static Maps image URL for the given coordinates.
+   * The URL is signed server-side so the API key is never exposed to the client.
+   */
+  staticMapUrl: publicProcedure
+    .input(z.object({
+      lat: z.number(),
+      lng: z.number(),
+      zoom: z.number().int().min(1).max(20).default(15),
+      width: z.number().int().min(100).max(640).default(600),
+      height: z.number().int().min(100).max(400).default(300),
+    }))
+    .query(async ({ input }) => {
+      try {
+        const { getMapsConfig } = await import("./_core/map");
+        const { baseUrl, apiKey } = getMapsConfig();
+        const center = `${input.lat},${input.lng}`;
+        const marker = `color:0xE87722|${center}`;
+        const url = new URL(`${baseUrl}/v1/maps/proxy/maps/api/staticmap`);
+        url.searchParams.set("key", apiKey);
+        url.searchParams.set("center", center);
+        url.searchParams.set("zoom", String(input.zoom));
+        url.searchParams.set("size", `${input.width}x${input.height}`);
+        url.searchParams.set("maptype", "satellite");
+        url.searchParams.set("markers", marker);
+        url.searchParams.set("scale", "2");
+        return { url: url.toString() };
+      } catch (err) {
+        console.error("[FieldQuoteRouter] staticMapUrl failed:", err);
+        return { url: null };
+      }
+    }),
 });

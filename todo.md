@@ -2743,3 +2743,4 @@
 - [x] Noland Field companion app: add Google Places address autocomplete to the Site Location field in NewQuote
 - [x] /ops/quotes: auto-refresh all quote sections (Website Requests, Field Quotes) on a polling interval so new submissions appear without a manual page refresh
 - [x] Noland Field companion app: fix GPS button to reverse-geocode coordinates into a formatted address using tRPC client (was using broken raw fetch with relative URL)
+- [x] Noland Field companion app: show a small static map preview below the address field once lat/lng is determined (GPS or autocomplete selection)
