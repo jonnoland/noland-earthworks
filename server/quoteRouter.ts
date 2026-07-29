@@ -748,14 +748,35 @@ export const quoteRouter = router({
       }
       const { lat, lng } = geoData.results[0].geometry.location;
 
-      // 2. Convert lat/lon to Web Mercator (WKID 102100) for the ArcGIS query
+      // 2. Convert lat/lon to Web Mercator (WKID 102100) for the ArcGIS query.
+      //    Use the correct Mercator Y formula (not the simplified tan version).
       const x = lng * 20037508.34 / 180;
-      const y = Math.log(Math.tan((90 + lat) * Math.PI / 360)) / Math.PI * 20037508.34;
-      const geometry = JSON.stringify({ x: Math.round(x), y: Math.round(y), spatialReference: { wkid: 102100 } });
+      const sinLat = Math.sin(lat * Math.PI / 180);
+      const y = Math.log((1 + sinLat) / (1 - sinLat)) / 2 * 20037508.34 / Math.PI;
 
-      // 3. Query the Tennessee Property Boundaries Public Use feature service
-      const parcelUrl = `https://services1.arcgis.com/YuVBSS7Y1of2Qud1/arcgis/rest/services/Tennessee_Property_Boundaries_Public_Use/FeatureServer/0/query?geometry=${encodeURIComponent(geometry)}&geometryType=esriGeometryPoint&spatialRel=esriSpatialRelIntersects&outFields=PARCELID,ADDRESS,OWNER,OWNER2,DEEDAC,COUNTY_NAME,LINK_TPAD,LINK_TPV&f=json`;
-      const parcelRes = await fetch(parcelUrl);
+      // 3. Query the Tennessee Property Boundaries Public Use feature service.
+      //    Use a 30-metre bounding-box envelope via HTTP POST (form-encoded).
+      //    A GET point query silently fails when the URL exceeds ArcGIS limits;
+      //    POST avoids that and the envelope reliably intersects the parcel polygon.
+      const buf = 30; // metres
+      const envelope = JSON.stringify({
+        xmin: Math.round(x - buf), ymin: Math.round(y - buf),
+        xmax: Math.round(x + buf), ymax: Math.round(y + buf),
+        spatialReference: { wkid: 102100 },
+      });
+      const parcelParams = new URLSearchParams({
+        geometry: envelope,
+        geometryType: "esriGeometryEnvelope",
+        spatialRel: "esriSpatialRelIntersects",
+        outFields: "PARCELID,ADDRESS,OWNER,OWNER2,DEEDAC,COUNTY_NAME,LINK_TPAD,LINK_TPV",
+        f: "json",
+      });
+      const parcelServiceUrl = "https://services1.arcgis.com/YuVBSS7Y1of2Qud1/arcgis/rest/services/Tennessee_Property_Boundaries_Public_Use/FeatureServer/0/query";
+      const parcelRes = await fetch(parcelServiceUrl, {
+        method: "POST",
+        body: parcelParams,
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      });
       if (!parcelRes.ok) throw new Error("Parcel service request failed");
       const parcelData = await parcelRes.json() as {
         features?: Array<{ attributes: Record<string, unknown> }>;
@@ -766,7 +787,23 @@ export const quoteRouter = router({
         return { found: false, reason: "No parcel found at this location" };
       }
 
-      const attr = parcelData.features[0].attributes;
+      // When the envelope intersects multiple parcels, prefer the one whose
+      // address string most closely matches the geocoded address, or the one
+      // with the largest deed acreage as a tiebreaker.
+      const geocodedStreet = (geoData.results[0].formatted_address || "").split(",")[0].toUpperCase().trim();
+      const bestFeature = parcelData.features.reduce((best, f) => {
+        const fAddr = (typeof f.attributes.ADDRESS === "string" ? f.attributes.ADDRESS : "").toUpperCase();
+        const bAddr = (typeof best.attributes.ADDRESS === "string" ? best.attributes.ADDRESS : "").toUpperCase();
+        // Score: does the parcel address appear in the geocoded street (or vice versa)?
+        const fScore = fAddr && geocodedStreet.includes(fAddr.split(" ")[0]) ? 1 : 0;
+        const bScore = bAddr && geocodedStreet.includes(bAddr.split(" ")[0]) ? 1 : 0;
+        if (fScore !== bScore) return fScore > bScore ? f : best;
+        // Tiebreak: larger deed acreage wins
+        const fAc = typeof f.attributes.DEEDAC === "number" ? f.attributes.DEEDAC : 0;
+        const bAc = typeof best.attributes.DEEDAC === "number" ? best.attributes.DEEDAC : 0;
+        return fAc >= bAc ? f : best;
+      });
+      const attr = bestFeature.attributes;
       const deedAcres = typeof attr.DEEDAC === "number" ? attr.DEEDAC : null;
       const owner = typeof attr.OWNER === "string" ? attr.OWNER : null;
       const owner2 = typeof attr.OWNER2 === "string" && attr.OWNER2 ? attr.OWNER2 : null;

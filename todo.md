@@ -2720,3 +2720,8 @@
 - [x] Pipeline view: add date-from / date-to filter inputs (date created range) to the filter bar
 - [x] Pipeline view: apply both filters client-side in pipelineGroups so they stack with search and status filter
 - [x] Pipeline view: add a "Clear Filters" button that appears when any non-default filter is active
+
+## Parcel Lookup Fix (Jul 2026)
+- [x] Property address lookup returning "Parcel not found" for valid TN addresses — root cause: GET request with JSON geometry in URL silently rejected by ArcGIS when URL is too long; fixed by switching to HTTP POST with form-encoded body and a 30-metre bounding-box envelope instead of a point query
+- [x] Web Mercator Y conversion formula was incorrect (used tan approximation instead of the correct sinLat formula) — fixed
+- [x] Multiple parcels in envelope: added best-match selection logic (address string match first, largest acreage as tiebreaker) so the correct parcel is returned when the buffer clips a neighbor
