@@ -61,6 +61,7 @@ interface FieldQuote {
   message: string | null;
   photoUrls: string[];
   source: string;
+  mapSnapshotUrl: string | null;
   aiScore: "strong" | "marginal" | "weak" | null;
   aiSummary: string | null;
   aiFlags: string[];
@@ -284,6 +285,33 @@ function FieldQuoteDetailDialog({
               </div>
             )}
           </div>
+
+          {/* ── Site Map ── */}
+          {quote.mapSnapshotUrl && (
+            <div className="rounded-lg bg-zinc-800 border border-zinc-700 p-4">
+              <div className="flex items-center justify-between mb-3">
+                <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Site Map</p>
+                {quote.address && (
+                  <a
+                    href={`https://maps.google.com/?q=${encodeURIComponent(quote.address)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-[10px] text-primary hover:underline flex items-center gap-1"
+                  >
+                    Open in Maps <ExternalLink className="w-2.5 h-2.5" />
+                  </a>
+                )}
+              </div>
+              <div className="rounded-lg overflow-hidden border border-zinc-700">
+                <img
+                  src={quote.mapSnapshotUrl}
+                  alt="Site location satellite view"
+                  className="w-full object-cover"
+                  style={{ maxHeight: 220 }}
+                />
+              </div>
+            </div>
+          )}
 
           {/* ── Job details ── */}
           {rows.length > 0 && (

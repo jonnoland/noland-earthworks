@@ -21,44 +21,107 @@ import AddressAutocomplete from "@/components/AddressAutocomplete";
 
 // ─── SiteMapPreview ──────────────────────────────────────────────────────────
 
-function SiteMapPreview({ lat, lng }: { lat: number; lng: number }) {
-  const trpcUtils = trpc.useUtils();
-  const [mapUrl, setMapUrl] = React.useState<string | null>(null);
-  const [loading, setLoading] = React.useState(false);
+/**
+ * InteractiveMapPreview — Google Maps iframe with a draggable orange marker.
+ * The iframe loads the Maps JS API through the live server proxy so no key is
+ * exposed. When the user drags the pin, the iframe posts the new lat/lng back
+ * via postMessage and the parent updates form state.
+ */
+function InteractiveMapPreview({
+  lat, lng, onPinMoved,
+}: {
+  lat: number;
+  lng: number;
+  onPinMoved: (lat: number, lng: number) => void;
+}) {
+  const iframeRef = React.useRef<HTMLIFrameElement>(null);
+  const SERVER_BASE = "https://nolandearth-pymczdcn.manus.space";
 
+  // Build the srcdoc for the iframe — loads Maps JS from our proxy, drops a
+  // draggable AdvancedMarkerElement at the given coordinates.
+  const srcdoc = `<!DOCTYPE html>
+<html style="margin:0;padding:0;height:100%;">
+<head>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <style>html,body,#map{margin:0;padding:0;width:100%;height:100%;}</style>
+</head>
+<body>
+  <div id="map"></div>
+  <script>
+    (async function() {
+      const script = document.createElement('script');
+      script.src = '${SERVER_BASE}/api/maps/js?v=weekly&libraries=marker&loading=async';
+      script.async = true;
+      document.head.appendChild(script);
+      await new Promise(r => { script.onload = r; });
+      // Wait for google.maps.Map to be available
+      let attempts = 0;
+      while (typeof google === 'undefined' || typeof google.maps === 'undefined' || typeof google.maps.Map === 'undefined') {
+        if (++attempts > 100) return;
+        await new Promise(r => setTimeout(r, 50));
+      }
+      const center = { lat: ${lat}, lng: ${lng} };
+      const map = new google.maps.Map(document.getElementById('map'), {
+        center,
+        zoom: 15,
+        mapTypeId: 'satellite',
+        disableDefaultUI: true,
+        zoomControl: true,
+        gestureHandling: 'greedy',
+      });
+      const marker = new google.maps.marker.AdvancedMarkerElement({
+        map,
+        position: center,
+        gmpDraggable: true,
+        title: 'Drag to adjust location',
+      });
+      marker.addListener('dragend', function() {
+        const pos = marker.position;
+        const newLat = typeof pos.lat === 'function' ? pos.lat() : pos.lat;
+        const newLng = typeof pos.lng === 'function' ? pos.lng() : pos.lng;
+        window.parent.postMessage({ type: 'pinMoved', lat: newLat, lng: newLng }, '*');
+      });
+    })();
+  <\/script>
+</body>
+</html>`;
+
+  // Listen for postMessage from the iframe
   React.useEffect(() => {
-    let cancelled = false;
-    setLoading(true);
-    trpcUtils.client.fieldQuote.staticMapUrl
-      .query({ lat, lng, zoom: 15, width: 600, height: 280 })
-      .then((res) => { if (!cancelled) setMapUrl(res.url ?? null); })
-      .catch(() => { if (!cancelled) setMapUrl(null); })
-      .finally(() => { if (!cancelled) setLoading(false); });
-    return () => { cancelled = true; };
-  }, [lat, lng]);
+    const handler = (e: MessageEvent) => {
+      if (e.data?.type === "pinMoved" && typeof e.data.lat === "number" && typeof e.data.lng === "number") {
+        onPinMoved(e.data.lat, e.data.lng);
+      }
+    };
+    window.addEventListener("message", handler);
+    return () => window.removeEventListener("message", handler);
+  }, [onPinMoved]);
 
-  if (loading) {
-    return (
-      <div style={{
-        marginTop: 10, height: 160, borderRadius: 10,
-        background: "oklch(0.18 0.01 80)",
-        display: "flex", alignItems: "center", justifyContent: "center",
-        border: "1px solid oklch(0.28 0.01 80)",
-      }}>
-        <Loader2 size={20} color="oklch(0.65 0.18 50)" style={{ animation: "spin 1s linear infinite" }} />
-      </div>
-    );
-  }
-
-  if (!mapUrl) return null;
+  const mapsUrl = `https://maps.google.com/?q=${lat},${lng}`;
 
   return (
-    <div style={{ marginTop: 10, borderRadius: 10, overflow: "hidden", border: "1px solid oklch(0.28 0.01 80)" }}>
-      <img
-        src={mapUrl}
-        alt="Site location map"
-        style={{ width: "100%", display: "block", maxHeight: 200, objectFit: "cover" }}
-      />
+    <div style={{ marginTop: 10 }}>
+      <div style={{ borderRadius: 10, overflow: "hidden", border: "1px solid oklch(0.28 0.01 80)", height: 200, position: "relative" }}>
+        <iframe
+          ref={iframeRef}
+          srcDoc={srcdoc}
+          style={{ width: "100%", height: "100%", border: "none", display: "block" }}
+          title="Site location map"
+          sandbox="allow-scripts allow-same-origin"
+        />
+      </div>
+      <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 6 }}>
+        <MapPin size={12} color="oklch(0.65 0.18 50)" />
+        <span style={{ fontSize: 11, color: "oklch(0.55 0.01 80)" }}>Drag the pin to adjust the exact location</span>
+        <a
+          href={mapsUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{ marginLeft: "auto", fontSize: 11, color: "oklch(0.65 0.18 50)", textDecoration: "underline" }}
+        >
+          Open in Maps
+        </a>
+      </div>
     </div>
   );
 }
@@ -460,6 +523,7 @@ export default function NewQuote() {
             <AddressAutocomplete
               value={form.address}
               onChange={(addr) => setForm((f) => ({ ...f, address: addr }))}
+              onCoordinates={(lat, lng) => setForm((f) => ({ ...f, lat, lng }))}
               inputStyle={inputStyle}
               placeholder="Street address or description"
               rightSlot={
@@ -483,7 +547,11 @@ export default function NewQuote() {
             )}
             {gpsError && <p style={{ color: "oklch(0.65 0.20 25)", fontSize: 11, margin: "4px 0 0" }}>{gpsError}</p>}
             {form.lat && form.lng && (
-              <SiteMapPreview lat={form.lat} lng={form.lng} />
+              <InteractiveMapPreview
+                lat={form.lat}
+                lng={form.lng}
+                onPinMoved={(lat, lng) => setForm((f) => ({ ...f, lat, lng }))}
+              />
             )}
           </div>
         </div>

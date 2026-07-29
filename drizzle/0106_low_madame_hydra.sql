@@ -1,0 +1,1 @@
+ALTER TABLE `field_quotes` ADD `mapSnapshotUrl` text;

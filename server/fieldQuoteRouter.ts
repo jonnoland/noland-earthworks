@@ -347,7 +347,28 @@ export const fieldQuoteRouter = router({
       const db = await getDb();
       if (!db) throw new Error("Database not available");
 
-      // 1. Insert the field quote record
+      // 1. Generate satellite map snapshot URL if coordinates are available
+      let mapSnapshotUrl: string | null = null;
+      if (input.lat !== undefined && input.lng !== undefined) {
+        try {
+          const { getMapsConfig } = await import("./_core/map");
+          const { baseUrl, apiKey } = getMapsConfig();
+          const center = `${input.lat},${input.lng}`;
+          const snapUrl = new URL(`${baseUrl}/v1/maps/proxy/maps/api/staticmap`);
+          snapUrl.searchParams.set("key", apiKey);
+          snapUrl.searchParams.set("center", center);
+          snapUrl.searchParams.set("zoom", "15");
+          snapUrl.searchParams.set("size", "600x300");
+          snapUrl.searchParams.set("maptype", "satellite");
+          snapUrl.searchParams.set("markers", `color:0xE87722|${center}`);
+          snapUrl.searchParams.set("scale", "2");
+          mapSnapshotUrl = snapUrl.toString();
+        } catch {
+          // Non-critical — proceed without snapshot
+        }
+      }
+
+      // 2. Insert the field quote record
       const [inserted] = await db
         .insert(fieldQuotes)
         .values({
@@ -369,6 +390,7 @@ export const fieldQuoteRouter = router({
           message: input.message ?? null,
           photoUrls: JSON.stringify(input.photoUrls),
           source: input.source,
+          mapSnapshotUrl,
         })
         .$returningId();
 
@@ -985,6 +1007,44 @@ Return JSON matching the schema exactly.`;
       } catch (err) {
         console.error("[FieldQuoteRouter] staticMapUrl failed:", err);
         return { url: null };
+      }
+    }),
+
+  /**
+   * Resolve a Google Places place_id into lat/lng + formatted address.
+   * Used by AddressAutocomplete after the user selects a prediction.
+   */
+  placeDetails: publicProcedure
+    .input(z.object({
+      placeId: z.string(),
+      sessiontoken: z.string().optional(),
+    }))
+    .query(async ({ input }) => {
+      try {
+        const { getMapsConfig } = await import("./_core/map");
+        const { baseUrl, apiKey } = getMapsConfig();
+        const url = new URL(`${baseUrl}/v1/maps/proxy/maps/api/place/details/json`);
+        url.searchParams.set("key", apiKey);
+        url.searchParams.set("place_id", input.placeId);
+        url.searchParams.set("fields", "geometry,formatted_address");
+        if (input.sessiontoken) url.searchParams.set("sessiontoken", input.sessiontoken);
+        const res = await fetch(url.toString());
+        const data = await res.json() as {
+          result?: {
+            geometry?: { location?: { lat: number; lng: number } };
+            formatted_address?: string;
+          };
+          status?: string;
+        };
+        const loc = data.result?.geometry?.location;
+        return {
+          lat: loc?.lat ?? null,
+          lng: loc?.lng ?? null,
+          formattedAddress: data.result?.formatted_address ?? null,
+        };
+      } catch (err) {
+        console.error("[FieldQuoteRouter] placeDetails failed:", err);
+        return { lat: null, lng: null, formattedAddress: null };
       }
     }),
 });

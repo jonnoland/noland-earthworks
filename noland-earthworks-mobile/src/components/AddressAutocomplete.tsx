@@ -26,6 +26,8 @@ interface Prediction {
 interface Props {
   value: string;
   onChange: (address: string) => void;
+  /** Called with lat/lng when a Places prediction is selected and geocoded */
+  onCoordinates?: (lat: number, lng: number) => void;
   /** Optional element rendered on the right side of the input (e.g. GPS button) */
   rightSlot?: React.ReactNode;
   inputStyle?: React.CSSProperties;
@@ -45,6 +47,7 @@ function useDebounce<T>(value: T, delay: number): T {
 export default function AddressAutocomplete({
   value,
   onChange,
+  onCoordinates,
   rightSlot,
   inputStyle,
   placeholder = "Street address or description",
@@ -97,10 +100,22 @@ export default function AddressAutocomplete({
       onChange(addr);
       setPredictions([]);
       setOpen(false);
+      // Resolve lat/lng via placeDetails if a callback is provided
+      if (onCoordinates) {
+        const sessiontoken = sessionRef.current;
+        utils.client.fieldQuote.placeDetails
+          .query({ placeId: prediction.place_id, sessiontoken })
+          .then((res) => {
+            if (res.lat !== null && res.lng !== null) {
+              onCoordinates(res.lat, res.lng);
+            }
+          })
+          .catch(() => { /* non-critical */ });
+      }
       // Reset session token after a selection (Google billing best practice)
       sessionRef.current = crypto.randomUUID();
     },
-    [onChange]
+    [onChange, onCoordinates, utils]
   );
 
   const handleClear = () => {

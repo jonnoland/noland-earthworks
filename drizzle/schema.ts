@@ -1096,6 +1096,8 @@ export const fieldQuotes = mysqlTable("field_quotes", {
   photoUrls: text("photoUrls"),
   /** Source identifier — always "field_app" for mobile submissions */
   source: varchar("source", { length: 50 }).notNull().default("field_app"),
+  /** Satellite map snapshot URL generated at submit time from final lat/lng */
+  mapSnapshotUrl: text("mapSnapshotUrl"),
   /** AI lead qualification */
   aiScore: mysqlEnum("aiScore", ["strong", "marginal", "weak"]),
   aiSummary: text("aiSummary"),
