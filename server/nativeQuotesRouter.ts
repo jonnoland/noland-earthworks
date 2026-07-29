@@ -178,6 +178,24 @@ export const nativeQuotesRouter = router({
       // Remove undefined values
       Object.keys(updates).forEach(k => updates[k] === undefined && delete updates[k]);
       if (Object.keys(updates).length === 0) return { success: true };
+
+      // Sync clientAction when status is set to a stage that the pipeline
+      // classifier reads from clientAction (approved / declined).
+      // Also clear clientAction when restoring to draft so the quote
+      // doesn't get mis-classified back into the declined/approved stage.
+      if (updates.status === "approved" && !updates.clientAction) {
+        updates.clientAction = "approved";
+        updates.clientActionAt = new Date();
+      } else if (updates.status === "declined" && !updates.clientAction) {
+        updates.clientAction = "declined";
+        updates.clientActionAt = new Date();
+      } else if (updates.status === "draft") {
+        // Restoring to draft — clear any prior client action so the quote
+        // re-enters the draft stage cleanly
+        updates.clientAction = null;
+        updates.clientActionAt = null;
+      }
+
       await db.update(nativeQuotes).set(updates).where(eq(nativeQuotes.id, id));
       return { success: true };
     }),
@@ -199,6 +217,9 @@ export const nativeQuotesRouter = router({
       const rows = await db.select().from(nativeQuotes).where(eq(nativeQuotes.id, input.id)).limit(1);
       if (!rows.length) throw new Error("Quote not found");
       const src = rows[0];
+      // Copy only content fields — never copy portal/lifecycle fields
+      // (portalToken, portalSentAt, clientAction, depositPaidAt, convertedToJobAt, etc.)
+      // so the duplicate starts as a clean draft.
       const result = await db.insert(nativeQuotes).values({
         clientName: src.clientName,
         clientEmail: src.clientEmail,
@@ -214,6 +235,9 @@ export const nativeQuotesRouter = router({
         serviceType: src.serviceType,
         status: "draft",
         leadId: src.leadId,
+        // Intentionally omitted: portalToken, portalSentAt, portalViewedAt,
+        // clientAction, clientActionAt, depositPaidAt, depositPaidCents,
+        // stripeSessionId, convertedJobId, convertedToJobAt, signedAt
       });
       const id = (result as any).insertId ?? (result as any)[0]?.insertId;
       return { id: Number(id) };
@@ -695,11 +719,16 @@ Rules:
         .where(eq(nativeQuotes.portalToken, input.token))
         .limit(1);
       if (!quote) throw new TRPCError({ code: "NOT_FOUND", message: "Quote not found or link has expired." });
+      // Sync status column so pipeline stage classifier stays consistent
+      const statusSync = input.action === "approved" ? "approved"
+        : input.action === "declined" ? "declined"
+        : quote.status; // changes_requested stays in current status
       await db
         .update(nativeQuotes)
         .set({
           clientAction: input.action,
           clientActionAt: new Date(),
+          status: statusSync,
           ...(input.action === "changes_requested" ? { changeRequestNote: input.note ?? null, changeRequestAt: new Date() } : {}),
           ...(input.action === "declined" ? { declineNote: input.note ?? null } : {}),
         })

@@ -12,7 +12,7 @@ import Stripe from "stripe";
 import { getStripe, isStripeConfigured } from "./stripe";
 import { ENV } from "./_core/env";
 import { getDb } from "./db";
-import { payments } from "../drizzle/schema";
+import { payments, nativeQuotes } from "../drizzle/schema";
 import { eq } from "drizzle-orm";
 
 export function registerStripeWebhookRoutes(app: Express): void {
@@ -87,6 +87,7 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session): Promis
       ? session.payment_intent
       : session.payment_intent?.id ?? null;
 
+  // Update generic payments table (used by other checkout flows)
   await db
     .update(payments)
     .set({
@@ -95,6 +96,26 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session): Promis
       paidAt: new Date(),
     })
     .where(eq(payments.stripeSessionId, session.id));
+
+  // If this is a native quote deposit, mark the quote as deposit paid
+  const nativeQuoteId = session.metadata?.native_quote_id
+    ? parseInt(session.metadata.native_quote_id, 10)
+    : null;
+  if (nativeQuoteId && !isNaN(nativeQuoteId)) {
+    const amountTotal = session.amount_total ?? 0; // cents
+    await db
+      .update(nativeQuotes)
+      .set({
+        depositPaidCents: amountTotal,
+        depositPaidAt: new Date(),
+        stripeSessionId: session.id,
+        status: "approved",
+        clientAction: "approved",
+        clientActionAt: new Date(),
+      })
+      .where(eq(nativeQuotes.id, nativeQuoteId));
+    console.log(`[Stripe Webhook] Native quote #${nativeQuoteId} deposit paid — ${amountTotal} cents`);
+  }
 
   console.log(`[Stripe Webhook] Payment marked as paid for session ${session.id}`);
 }

@@ -2700,3 +2700,12 @@
 - [x] Quotes: replace flat table view with a status-pipeline view — quotes grouped and sorted by stage, with stage headers showing counts and next-step arrows
 - [x] Quotes: restrict status dropdown to valid next/previous transitions only (pipeline row uses "Move to…" with only valid next steps; detail panel shows stage buttons for valid transitions only)
 - [x] Quotes: stage headers show description and valid next stages with arrow indicator
+
+## Quote Flow Audit Fixes (Jul 2026)
+- [x] Backend list filter sends statusFilter to DB but pipeline stages are derived from multiple fields (clientAction, portalSentAt, depositPaidAt, convertedToJobAt) — fixed: always fetch all quotes (status=all, limit=500) and filter client-side
+- [x] Moving a quote to "approved" or "declined" via the Move dropdown only sets status column, but getStageKey reads clientAction for those stages — fixed: update mutation now also sets clientAction/clientActionAt when status is approved/declined, and clears them when restoring to draft
+- [x] Stripe deposit webhook never updates native_quotes.depositPaidAt/depositPaidCents — fixed: stripeWebhookRoutes.ts now checks metadata.native_quote_id and updates depositPaidAt/depositPaidCents/stripeSessionId/status/clientAction on native quote
+- [x] portalAction (client approve/decline) does not update the status column — fixed: portalAction now syncs status to approved/declined when clientAction is set
+- [x] "Restore to Draft" clears clientAction via the update mutation fix above
+- [x] Duplicate quote was copying portal lifecycle fields — fixed: duplicate now only copies content fields, all lifecycle fields are intentionally omitted
+- [x] getStageKey and StatusBadge updated to check both status column AND lifecycle fields so classification is correct regardless of which path set the state

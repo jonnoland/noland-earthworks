@@ -75,15 +75,15 @@ interface NativeQuote {
 
 // ─── Status badge ─────────────────────────────────────────────────────────────
 function StatusBadge({ quote }: { quote: NativeQuote }) {
-  if (quote.convertedToJobAt) return <Badge className="bg-purple-600 text-white text-xs">Converted to Job</Badge>;
+  if (quote.convertedToJobAt || quote.status === "invoiced") return <Badge className="bg-purple-600 text-white text-xs">Converted to Job</Badge>;
   if (quote.depositPaidAt) return <Badge className="bg-green-600 text-white text-xs">Deposit Paid</Badge>;
-  if (quote.clientAction === "approved") return <Badge className="bg-emerald-600 text-white text-xs">Approved</Badge>;
-  if (quote.clientAction === "declined") return <Badge className="bg-red-600 text-white text-xs">Declined</Badge>;
+  if (quote.clientAction === "approved" || quote.status === "approved") return <Badge className="bg-emerald-600 text-white text-xs">Approved</Badge>;
+  if (quote.clientAction === "declined" || quote.status === "declined") return <Badge className="bg-red-600 text-white text-xs">Declined</Badge>;
   if (quote.clientAction === "changes_requested") return <Badge className="bg-orange-500 text-white text-xs">Changes Requested</Badge>;
+  if (quote.status === "cancelled") return <Badge className="bg-zinc-500 text-white text-xs">Cancelled</Badge>;
   if (quote.portalViewedAt) return <Badge className="bg-blue-500 text-white text-xs">Viewed</Badge>;
-  if (quote.portalSentAt) return <Badge className="bg-sky-600 text-white text-xs">Sent</Badge>;
+  if (quote.portalSentAt || quote.status === "sent") return <Badge className="bg-sky-600 text-white text-xs">Sent</Badge>;
   if (quote.status === "web_request") return <Badge className="bg-cyan-600 text-white text-xs">Web Request</Badge>;
-  if (quote.status === "invoiced") return <Badge className="bg-amber-600 text-white text-xs">Invoiced</Badge>;
   return <Badge className="bg-zinc-600 text-white text-xs">Draft</Badge>;
 }
 
@@ -1745,10 +1745,14 @@ export function NativeAllQuotesSection() {
     onError: (e) => toast.error("Failed to update status: " + e.message),
   });
 
+  // Always fetch all quotes — pipeline stages are derived from multiple fields
+  // (clientAction, portalSentAt, depositPaidAt, convertedToJobAt), not just the
+  // status column. Filtering by status alone at the DB level returns wrong results
+  // for Sent/Approved/Declined stages.
   const { data, isLoading, refetch, isFetching } = trpc.nativeQuotes.list.useQuery({
     search: search || undefined,
-    status: statusFilter,
-    limit: 100,
+    status: "all",
+    limit: 500,
     offset: 0,
   });
 
@@ -1847,13 +1851,16 @@ export function NativeAllQuotesSection() {
     },
   ];
 
-  // Classify each quote into a pipeline stage key
+  // Classify each quote into a pipeline stage key.
+  // Uses both the status column (written by update mutation) AND the lifecycle
+  // fields (clientAction, portalSentAt, depositPaidAt, convertedToJobAt) so that
+  // quotes are correctly classified regardless of which path set the state.
   const getStageKey = (q: NativeQuote): string => {
-    if (q.convertedToJobAt) return "invoiced";
-    if (q.clientAction === "declined") return "declined";
+    if (q.convertedToJobAt || q.status === "invoiced") return "invoiced";
+    if (q.clientAction === "declined" || q.status === "declined") return "declined";
     if (q.status === "cancelled") return "cancelled";
-    if (q.clientAction === "approved" || q.depositPaidAt) return "approved";
-    if (q.portalSentAt) return "sent";
+    if (q.clientAction === "approved" || q.depositPaidAt || q.status === "approved") return "approved";
+    if (q.portalSentAt || q.status === "sent") return "sent";
     if (q.status === "web_request") return "web_request";
     return "draft";
   };
