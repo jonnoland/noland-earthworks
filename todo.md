@@ -2652,3 +2652,6 @@
 - [x] Prospecting: color-coded card borders based on fit score (green 8+, yellow 6+, default otherwise)
 - [x] Prospecting: confirmation modal with prospect summary before Convert to Client finalizes
 - [x] Prospecting: batch-select checkboxes to convert multiple prospects to clients simultaneously
+- [x] Prospecting: Undo option in batch convert-to-clients toast (delete the created client records)
+- [x] Prospecting: show contact info (email/phone) in the Convert to Client confirmation modal
+- [x] Prospecting: fit score color-tier filter (All / Green 8+ / Yellow 6+ / Unscored)

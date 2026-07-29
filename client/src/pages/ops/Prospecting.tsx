@@ -139,6 +139,8 @@ export default function Prospecting() {
   const [selectedClientIds, setSelectedClientIds] = useState<Set<number>>(new Set());
   const [batchConvertingClients, setBatchConvertingClients] = useState(false);
   const [minFitScore, setMinFitScore] = useState<0 | 4 | 6 | 8>(0);
+  // "all" | "green" (8+) | "yellow" (6-7) | "unscored" (no fitScore)
+  const [fitColorFilter, setFitColorFilter] = useState<"all" | "green" | "yellow" | "unscored">("all");
   const [scanBaselineCount, setScanBaselineCount] = useState<number | null>(null);
   const [lastManualScanDelta, setLastManualScanDelta] = useState<number | null>(null);
   const [awaitingScanResults, setAwaitingScanResults] = useState(false);
@@ -245,15 +247,19 @@ export default function Prospecting() {
     },
   });
 
+  const deleteClient = trpc.nativeClients.delete.useMutation({
+    onSuccess: () => utils.nativeClients.list.invalidate(),
+  });
+
   async function batchConvertToClients() {
     setBatchConvertingClients(true);
     const targets = filteredActive.filter(p => selectedClientIds.has(p.id));
-    let successCount = 0;
+    const createdIds: number[] = [];
     for (const p of targets) {
       const email = p.contactInfo?.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i)?.[0];
       const phone = p.contactInfo?.match(/\+?[\d\s\-().]{10,}/)?.[0]?.trim();
       try {
-        await convertToClient.mutateAsync({
+        const result = await convertToClient.mutateAsync({
           name: p.contactName ?? p.source,
           email: email || undefined,
           phone: phone || undefined,
@@ -264,7 +270,7 @@ export default function Prospecting() {
             p.postSnippet ? `Original post: ${p.postSnippet}` : null,
           ].filter(Boolean).join("\n\n"),
         });
-        successCount++;
+        if (result?.id) createdIds.push(result.id);
       } catch {
         // individual errors silently skipped; final toast covers the count
       }
@@ -272,7 +278,25 @@ export default function Prospecting() {
     setBatchConvertingClients(false);
     setSelectedClientIds(new Set());
     utils.nativeClients.list.invalidate();
-    toast.success(`${successCount} of ${targets.length} prospect${targets.length === 1 ? "" : "s"} added to Clients.`);
+    const successCount = createdIds.length;
+    toast.success(
+      `${successCount} of ${targets.length} prospect${targets.length === 1 ? "" : "s"} added to Clients.`,
+      {
+        duration: 8000,
+        action: createdIds.length > 0
+          ? {
+              label: "Undo",
+              onClick: async () => {
+                for (const id of createdIds) {
+                  try { await deleteClient.mutateAsync({ id }); } catch { /* ignore */ }
+                }
+                utils.nativeClients.list.invalidate();
+                toast.success(`Removed ${createdIds.length} client${createdIds.length === 1 ? "" : "s"}.`);
+              },
+            }
+          : undefined,
+      }
+    );
   }
 
   const generateFbOutreach = trpc.ops.prospecting.generateFbOutreach.useMutation({
@@ -414,10 +438,17 @@ export default function Prospecting() {
     }
   }, [activeProspects, sortKey]);
 
-  const filteredActive = useMemo(
-    () => sortedActive.filter(p => minFitScore === 0 || (p.fitScore ?? 0) >= minFitScore),
-    [sortedActive, minFitScore]
-  );
+  const filteredActive = useMemo(() => {
+    return sortedActive.filter(p => {
+      // numeric min-score gate
+      if (minFitScore > 0 && (p.fitScore ?? 0) < minFitScore) return false;
+      // color-tier gate
+      if (fitColorFilter === "green" && (p.fitScore == null || p.fitScore < 8)) return false;
+      if (fitColorFilter === "yellow" && (p.fitScore == null || p.fitScore < 6 || p.fitScore >= 8)) return false;
+      if (fitColorFilter === "unscored" && p.fitScore != null) return false;
+      return true;
+    });
+  }, [sortedActive, minFitScore, fitColorFilter]);
 
   const displayList = tabView === "archived" ? archivedProspects : filteredActive;
 
@@ -606,6 +637,27 @@ export default function Prospecting() {
                 <option value="4">4+</option>
                 <option value="6">6+</option>
                 <option value="8">8+</option>
+              </select>
+            </div>
+            <div className="flex items-center gap-1 bg-zinc-800 border border-zinc-700 rounded px-2 py-1">
+              <span
+                className={cn(
+                  "inline-block w-2.5 h-2.5 rounded-full mr-1",
+                  fitColorFilter === "green" ? "bg-green-500" :
+                  fitColorFilter === "yellow" ? "bg-yellow-400" :
+                  fitColorFilter === "unscored" ? "bg-zinc-500" :
+                  "bg-zinc-600"
+                )}
+              />
+              <select
+                value={fitColorFilter}
+                onChange={e => setFitColorFilter(e.target.value as "all" | "green" | "yellow" | "unscored")}
+                className="bg-transparent text-xs text-zinc-300 outline-none cursor-pointer"
+              >
+                <option value="all">All tiers</option>
+                <option value="green">Green (8+)</option>
+                <option value="yellow">Yellow (6-7)</option>
+                <option value="unscored">Unscored</option>
               </select>
             </div>
             <div className="flex items-center gap-1 bg-zinc-800 border border-zinc-700 rounded px-2 py-1">
@@ -1349,6 +1401,16 @@ export default function Prospecting() {
                   {confirmClientProspect.fitScore != null && (
                     <span className="block">Fit score: <strong className="text-zinc-200">{confirmClientProspect.fitScore}/10</strong></span>
                   )}
+                  {(() => {
+                    const email = confirmClientProspect.contactInfo?.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i)?.[0];
+                    const phone = confirmClientProspect.contactInfo?.match(/\+?[\d\s\-().]{10,}/)?.[0]?.trim();
+                    return (email || phone) ? (
+                      <span className="block">
+                        {email && <span className="text-zinc-300 mr-3">{email}</span>}
+                        {phone && <span className="text-zinc-300">{phone}</span>}
+                      </span>
+                    ) : null;
+                  })()}
                   <span className="block mt-1 text-zinc-500 text-xs line-clamp-3">{confirmClientProspect.summary}</span>
                 </>
               )}
