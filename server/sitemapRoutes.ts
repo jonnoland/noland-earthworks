@@ -4,7 +4,7 @@ const BASE_URL = "https://nolandearthworks.com";
 
 // All public pages with their SEO priority and change frequency
 const PAGES = [
-  { path: "/",                                                          priority: "1.0", changefreq: "weekly"  },
+  { path: "/",                                                          priority: "1.0", changefreq: "weekly",  lastmod: "2026-07-28" },
   // Service pages
   { path: "/services/forestry-mulching",                                priority: "0.9", changefreq: "monthly" },
   { path: "/services/land-management",                                   priority: "0.9", changefreq: "monthly" },
@@ -18,11 +18,11 @@ const PAGES = [
   // Key pages
   { path: "/quote",                                                     priority: "0.9", changefreq: "monthly" },
   { path: "/pricing",                                                   priority: "0.8", changefreq: "monthly" },
-  { path: "/about",                                                     priority: "0.6", changefreq: "monthly" },
+  { path: "/about",                                                     priority: "0.7", changefreq: "monthly", lastmod: "2026-07-28" },
   { path: "/gallery",                                                   priority: "0.7", changefreq: "monthly" },
   // Blog / Resources
   { path: "/blog",                                                      priority: "0.8", changefreq: "weekly"  },
-  { path: "/blog/cost-of-land-management-tennessee",                      priority: "0.8", changefreq: "monthly" },
+  { path: "/blog/cost-of-land-management-tennessee",                      priority: "0.8", changefreq: "monthly", lastmod: "2026-07-28" },
   { path: "/blog/forestry-mulching-vs-bulldozing",                      priority: "0.8", changefreq: "monthly" },
   { path: "/blog/signs-you-need-vegetation-management",                 priority: "0.7", changefreq: "monthly" },
   { path: "/blog/best-time-to-clear-land-tennessee",                    priority: "0.7", changefreq: "monthly" },

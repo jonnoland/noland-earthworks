@@ -2522,3 +2522,15 @@
 - [x] Server: nativeQuotes.aiSuggest procedure — takes serviceType, acreage, terrain, density, access, notes; returns title, estimatedDuration, clientMessage, lineItems, totalCents using LLM with TN market rate context
 - [x] Frontend: AI Suggest panel in QuoteFormModal (collapsible, amber-themed) — terrain/density/access selectors, Generate button, auto-fills title + line items + duration + client message on success
 - [x] TypeScript: 0 errors
+
+## SEO Audit Implementation (Jul 2026)
+- [x] SEO: Fix double H1 — convert hidden static SEO block H1 to H2 (visible HeroSection already has the H1)
+- [x] SEO: Add HowTo schema to index.html for the 3-step forestry mulching process
+- [x] SEO: Add Person schema for Jon M. Noland to index.html (E-E-A-T + AI entity)
+- [x] SEO: Add Person schema useEffect to About.tsx with @id anchor for entity linking
+- [x] SEO: Add @id reference to Person author entity in BlogPostLayout.tsx to link all blog posts to the About page entity
+- [x] SEO: Fix sitemap lastmod — use per-page dates for homepage, About, and cost post; raise About priority to 0.7
+- [x] SEO: Expand cost blog post (CostOfLandClearing.tsx) from 56 lines to comprehensive cost factors guide targeting AI citation queries
+- [x] SEO: Rewrite thin Wilson County blog post with substantive county-specific content
+- [x] SEO: Rewrite thin Montgomery County blog post with substantive county-specific content
+- [x] SEO: Rewrite thin Sumner County blog post with substantive county-specific content
