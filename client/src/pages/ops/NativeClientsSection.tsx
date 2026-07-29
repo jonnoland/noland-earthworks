@@ -812,6 +812,7 @@ export default function NativeClientsSection() {
                     <th className="text-left px-3 py-2 font-medium">Client</th>
                     {!selectedId && (
                       <>
+                        <th className="text-left px-3 py-2 font-medium">Address</th>
                         <th className="text-left px-3 py-2 font-medium">Contact</th>
                         <th className="text-right px-3 py-2 font-medium">Jobs</th>
                         <th className="text-right px-3 py-2 font-medium">Total Spent</th>
@@ -831,14 +832,14 @@ export default function NativeClientsSection() {
                     >
                       <td className="px-3 py-2.5">
                         <div className="font-medium text-zinc-200 truncate max-w-[160px]">{client.name}</div>
-                        {client.address && (
-                          <div className="text-xs text-zinc-500 truncate max-w-[160px] mt-0.5">
-                            {client.address.split(",").slice(-2).join(",").trim()}
-                          </div>
-                        )}
                       </td>
                       {!selectedId && (
                         <>
+                          <td className="px-3 py-2.5 text-zinc-400 text-xs max-w-[220px]">
+                            {client.address
+                              ? <span className="truncate block">{client.address}</span>
+                              : <span className="text-zinc-600">—</span>}
+                          </td>
                           <td className="px-3 py-2.5 text-zinc-400 text-xs">
                             <div>{client.phone ?? "—"}</div>
                             <div className="truncate max-w-[140px]">{client.email ?? ""}</div>
