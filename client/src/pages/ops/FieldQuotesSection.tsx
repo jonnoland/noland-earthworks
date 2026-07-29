@@ -103,6 +103,7 @@ function FieldQuoteDetailDialog({
   const [photoIdx, setPhotoIdx] = useState<number | null>(null);
   const [outreachMsg, setOutreachMsg] = useState(quote.aiDraftResponse ?? "");
   const [showOutreach, setShowOutreach] = useState(false);
+  const [mapModalOpen, setMapModalOpen] = useState(false);
   const [, navigate] = useLocation();
 
   const utils = trpc.useUtils();
@@ -302,13 +303,22 @@ function FieldQuoteDetailDialog({
                   </a>
                 )}
               </div>
-              <div className="rounded-lg overflow-hidden border border-zinc-700">
+              <div
+                className="rounded-lg overflow-hidden border border-zinc-700 cursor-pointer group relative"
+                onClick={() => setMapModalOpen(true)}
+                title="Click to view larger map"
+              >
                 <img
-                  src={quote.mapSnapshotUrl}
+                  src={quote.mapSnapshotUrl!}
                   alt="Site location satellite view"
-                  className="w-full object-cover"
+                  className="w-full object-cover transition-opacity group-hover:opacity-80"
                   style={{ maxHeight: 220 }}
                 />
+                <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                  <span className="bg-black/60 text-white text-xs px-3 py-1.5 rounded-full font-medium flex items-center gap-1.5">
+                    <MapPin className="w-3 h-3" /> View larger map
+                  </span>
+                </div>
               </div>
             </div>
           )}
@@ -383,6 +393,48 @@ function FieldQuoteDetailDialog({
             </Button>
           </div>
         </div>
+
+        {/* ── Map Modal ── */}
+        {mapModalOpen && quote.mapSnapshotUrl && (
+          <div
+            className="fixed inset-0 z-[200] bg-black/90 flex flex-col items-center justify-center p-4"
+            onClick={() => setMapModalOpen(false)}
+          >
+            <button
+              className="absolute top-4 right-4 text-white/70 hover:text-white"
+              onClick={() => setMapModalOpen(false)}
+            >
+              <X className="w-6 h-6" />
+            </button>
+            <div className="w-full max-w-3xl" onClick={(e) => e.stopPropagation()}>
+              <div className="flex items-center justify-between mb-3">
+                <p className="text-white font-semibold text-sm">
+                  {quote.address ?? "Site Location"}
+                </p>
+                {quote.address && (
+                  <a
+                    href={`https://maps.google.com/?q=${encodeURIComponent(quote.address)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-primary text-xs hover:underline flex items-center gap-1"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    Open in Google Maps <ExternalLink className="w-3 h-3" />
+                  </a>
+                )}
+              </div>
+              <div className="rounded-xl overflow-hidden border border-zinc-700">
+                <img
+                  src={quote.mapSnapshotUrl.replace(/size=\d+x\d+/, "size=800x500")}
+                  alt="Site location satellite view"
+                  className="w-full object-cover"
+                  style={{ maxHeight: 500 }}
+                />
+              </div>
+              <p className="text-zinc-500 text-xs mt-2 text-center">Click anywhere outside to close</p>
+            </div>
+          </div>
+        )}
 
         {/* ── Lightbox ── */}
         {photoIdx !== null && (

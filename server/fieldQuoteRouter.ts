@@ -1047,4 +1047,31 @@ Return JSON matching the schema exactly.`;
         return { lat: null, lng: null, formattedAddress: null };
       }
     }),
+
+  forwardGeocode: publicProcedure
+    .input(z.object({ address: z.string() }))
+    .query(async ({ input }) => {
+      try {
+        const { getMapsConfig } = await import("./_core/map");
+        const { baseUrl, apiKey } = getMapsConfig();
+        const url = new URL(`${baseUrl}/v1/maps/proxy/maps/api/geocode/json`);
+        url.searchParams.set("key", apiKey);
+        url.searchParams.set("address", input.address);
+        const res = await fetch(url.toString());
+        const data = await res.json() as {
+          results?: Array<{ geometry?: { location?: { lat: number; lng: number } }; formatted_address?: string }>;
+          status?: string;
+        };
+        const first = data.results?.[0];
+        const loc = first?.geometry?.location;
+        return {
+          lat: loc?.lat ?? null,
+          lng: loc?.lng ?? null,
+          formattedAddress: first?.formatted_address ?? null,
+        };
+      } catch (err) {
+        console.error("[FieldQuoteRouter] forwardGeocode failed:", err);
+        return { lat: null, lng: null, formattedAddress: null };
+      }
+    }),
 });

@@ -254,6 +254,36 @@ export default function NewQuote() {
     onError: (err) => setEstimateError(err.message || "AI estimate failed."),
   });
 
+  // Track whether the address was set programmatically (GPS / autocomplete / pin drag)
+  // so we don't trigger forward-geocode in those cases.
+  const skipForwardGeocode = React.useRef(false);
+  const fwdGeoDebounce = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Forward-geocode: when address changes manually, debounce 800 ms then geocode
+  React.useEffect(() => {
+    if (skipForwardGeocode.current) {
+      skipForwardGeocode.current = false;
+      return;
+    }
+    if (!form.address || form.address.length < 6) return;
+    if (fwdGeoDebounce.current) clearTimeout(fwdGeoDebounce.current);
+    fwdGeoDebounce.current = setTimeout(async () => {
+      try {
+        const result = await trpcUtils.client.fieldQuote.forwardGeocode.query({ address: form.address });
+        if (result?.lat && result?.lng) {
+          skipForwardGeocode.current = true; // prevent re-triggering
+          setForm((f) => ({ ...f, lat: result.lat!, lng: result.lng! }));
+        }
+      } catch {
+        // silently ignore
+      }
+    }, 800);
+    return () => {
+      if (fwdGeoDebounce.current) clearTimeout(fwdGeoDebounce.current);
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [form.address]);
+
   // ─── GPS ────────────────────────────────────────────────────────────────
 
   const handleGetGPS = async () => {
@@ -266,6 +296,7 @@ export default function NewQuote() {
       try {
         const geo = await trpcUtils.client.fieldQuote.reverseGeocode.query({ lat: latitude, lng: longitude });
         if (geo?.address) {
+          skipForwardGeocode.current = true;
           setForm((f) => ({ ...f, address: geo.address as string }));
         } else {
           setForm((f) => ({ ...f, address: `${latitude.toFixed(6)}, ${longitude.toFixed(6)}` }));
@@ -523,7 +554,10 @@ export default function NewQuote() {
             <AddressAutocomplete
               value={form.address}
               onChange={(addr) => setForm((f) => ({ ...f, address: addr }))}
-              onCoordinates={(lat, lng) => setForm((f) => ({ ...f, lat, lng }))}
+              onCoordinates={(lat, lng) => {
+                skipForwardGeocode.current = true;
+                setForm((f) => ({ ...f, lat, lng }));
+              }}
               inputStyle={inputStyle}
               placeholder="Street address or description"
               rightSlot={
@@ -550,7 +584,18 @@ export default function NewQuote() {
               <InteractiveMapPreview
                 lat={form.lat}
                 lng={form.lng}
-                onPinMoved={(lat, lng) => setForm((f) => ({ ...f, lat, lng }))}
+                onPinMoved={async (lat, lng) => {
+                  setForm((f) => ({ ...f, lat, lng }));
+                  try {
+                    const geo = await trpcUtils.client.fieldQuote.reverseGeocode.query({ lat, lng });
+                    if (geo?.address) {
+                      skipForwardGeocode.current = true;
+                      setForm((f) => ({ ...f, address: geo.address as string }));
+                    }
+                  } catch {
+                    // silently ignore — lat/lng already updated
+                  }
+                }}
               />
             )}
           </div>

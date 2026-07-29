@@ -2747,3 +2747,6 @@
 - [x] Companion app map: make preview interactive with draggable pin to adjust GPS coordinates
 - [x] Companion app map: tap preview to open location in device native maps app
 - [x] Companion app map: save map snapshot URL with submitted quote so it shows on /ops/quotes Field Quotes section
+- [x] Companion app map: reverse-geocode new coordinates when pin is dragged to update the address field
+- [x] Companion app map: forward-geocode address edits to move the map pin when address is typed/edited
+- [x] /ops/quotes Field Quotes: clicking the map snapshot opens a larger interactive map modal
