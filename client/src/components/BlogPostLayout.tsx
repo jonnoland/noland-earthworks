@@ -9,6 +9,7 @@ import MobileCTABar from "@/components/MobileCTABar";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { ArrowLeft, Calendar, RefreshCw } from "lucide-react";
 import RelatedPosts from "@/components/RelatedPosts";
+import AuthorBio from "@/components/AuthorBio";
 
 export interface BlogPostProps {
   title: string;
@@ -328,6 +329,9 @@ export default function BlogPostLayout({
       {/* Article body */}
       <article className="container py-14" style={{ maxWidth: "820px" }}>
         <div className="blog-content">{children}</div>
+
+        {/* Author bio — E-E-A-T signal, links to About page entity */}
+        <AuthorBio />
       </article>
 
       {/* Related Posts */}

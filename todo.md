@@ -2667,3 +2667,10 @@
 - [x] Prospecting: Undo option in batch convert-to-clients toast (delete the created client records)
 - [x] Prospecting: show contact info (email/phone) in the Convert to Client confirmation modal
 - [x] Prospecting: fit score color-tier filter (All / Green 8+ / Yellow 6+ / Unscored)
+
+## Blog Enhancements + TS Fixes (Jul 2026)
+- [x] Fix TS error: nativeJobsRouter.ts — nativeJobs and nativeInvoices not exported from drizzle/schema (stale tsc watch; tsc --noEmit is clean)
+- [x] Fix TS error: opsRouter.ts — nativeQuoteId property missing on opsLeads table type (stale tsc watch; tsc --noEmit is clean)
+- [x] Build AuthorBio component (photo, name, title, bio, link to About page)
+- [x] Add AuthorBio to BlogPostLayout so it appears at the bottom of all blog posts
+- [x] Add sticky table of contents to CostOfLandClearing.tsx for the expanded guide
