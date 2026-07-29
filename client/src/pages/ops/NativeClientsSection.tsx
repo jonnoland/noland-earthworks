@@ -51,6 +51,7 @@ import {
   Download,
   MessageSquare,
   ClipboardList,
+  ExternalLink,
 } from "lucide-react";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -663,6 +664,7 @@ export default function NativeClientsSection() {
   const [search, setSearch] = useState("");
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [inlineEditClient, setInlineEditClient] = useState<NativeClient | null>(null);
 
   const { data: clients = [], isLoading } = trpc.nativeClients.list.useQuery({
     search: search || undefined,
@@ -836,9 +838,20 @@ export default function NativeClientsSection() {
                       {!selectedId && (
                         <>
                           <td className="px-3 py-2.5 text-zinc-400 text-xs max-w-[220px]">
-                            {client.address
-                              ? <span className="truncate block">{client.address}</span>
-                              : <span className="text-zinc-600">—</span>}
+                            {client.address ? (
+                              <a
+                                href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(client.address)}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                onClick={(e) => e.stopPropagation()}
+                                className="truncate flex items-center gap-1 text-blue-400 hover:text-blue-300 hover:underline"
+                              >
+                                <span className="truncate">{client.address}</span>
+                                <ExternalLink className="w-2.5 h-2.5 shrink-0 opacity-60" />
+                              </a>
+                            ) : (
+                              <span className="text-zinc-600">—</span>
+                            )}
                           </td>
                           <td className="px-3 py-2.5 text-zinc-400 text-xs">
                             <div>{client.phone ?? "—"}</div>
@@ -854,8 +867,17 @@ export default function NativeClientsSection() {
                           </td>
                         </>
                       )}
-                      <td className="px-2 py-2.5 text-zinc-600">
-                        <ChevronRight className="w-3.5 h-3.5" />
+                      <td className="px-2 py-2.5">
+                        <div className="flex items-center gap-1">
+                          <button
+                            onClick={(e) => { e.stopPropagation(); setInlineEditClient(client); }}
+                            className="p-1 rounded hover:bg-zinc-700 text-zinc-500 hover:text-amber-400 transition-colors"
+                            title="Edit client"
+                          >
+                            <Pencil className="w-3 h-3" />
+                          </button>
+                          <ChevronRight className="w-3.5 h-3.5 text-zinc-600" />
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -874,6 +896,14 @@ export default function NativeClientsSection() {
       </div>
 
       <AddClientDialog open={showAddModal} onClose={() => setShowAddModal(false)} />
+      {inlineEditClient && (
+        <EditClientDialog
+          client={inlineEditClient}
+          open={true}
+          onClose={() => setInlineEditClient(null)}
+          onSaved={() => setInlineEditClient(null)}
+        />
+      )}
     </>
   );
 }
