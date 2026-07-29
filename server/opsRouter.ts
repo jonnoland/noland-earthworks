@@ -1292,6 +1292,28 @@ const quotesRouter = router({
     }),
 
   /**
+   * Satellite imagery by explicit lat/lng coordinates.
+   * Used when the customer dropped a map pin on the quote form.
+   */
+  satelliteImageByCoords: ownerProcedure
+    .input(z.object({
+      lat: z.number(),
+      lng: z.number(),
+    }))
+    .query(async ({ input }) => {
+      const { getMapsConfig } = await import("./_core/map");
+      const { baseUrl, apiKey } = getMapsConfig();
+      const staticUrl = new URL(`${baseUrl}/v1/maps/proxy/maps/api/staticmap`);
+      staticUrl.searchParams.set("center", `${input.lat},${input.lng}`);
+      staticUrl.searchParams.set("zoom", "17");
+      staticUrl.searchParams.set("size", "600x300");
+      staticUrl.searchParams.set("maptype", "satellite");
+      staticUrl.searchParams.set("markers", `color:red|${input.lat},${input.lng}`);
+      staticUrl.searchParams.set("key", apiKey);
+      return { url: staticUrl.toString() };
+    }),
+
+  /**
    * AI Quote Analyzer — takes an inbound quote submission and returns:
    * - Recommended scope of work (plain English)
    * - Suggested line items with quantities and unit prices

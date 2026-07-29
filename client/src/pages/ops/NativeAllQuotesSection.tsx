@@ -1294,6 +1294,52 @@ function NativeQuoteDetailPanel({
   );
 }
 
+// ─── Web Request Map Thumbnail ─────────────────────────────────────────────
+function WebReqMapThumbnail({
+  lat, lng, address,
+}: {
+  lat?: number;
+  lng?: number;
+  address?: string;
+}) {
+  // If we have explicit coords, use satelliteImageByCoords; otherwise use address-based satelliteImage
+  const byCoords = trpc.ops.quotes.satelliteImageByCoords.useQuery(
+    { lat: lat!, lng: lng! },
+    { enabled: lat != null && lng != null, retry: false }
+  );
+  const byAddress = trpc.ops.quotes.satelliteImage.useQuery(
+    { address: address! },
+    { enabled: lat == null && !!address, retry: false }
+  );
+
+  const { data, isLoading, isError } = lat != null ? byCoords : byAddress;
+
+  if (isLoading) {
+    return (
+      <div className="w-full h-28 rounded bg-zinc-800 flex items-center justify-center">
+        <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+  if (isError || !data?.url) {
+    return (
+      <div className="w-full h-28 rounded bg-zinc-800 flex items-center justify-center">
+        <p className="text-xs text-muted-foreground">Map unavailable</p>
+      </div>
+    );
+  }
+  return (
+    <div className="w-full rounded overflow-hidden border border-border">
+      <img
+        src={data.url}
+        alt="Property satellite view"
+        className="w-full h-28 object-cover"
+        loading="lazy"
+      />
+    </div>
+  );
+}
+
 // ─── Inline Web Requests Panel ──────────────────────────────────────────────
 function InlineWebRequestsPanel({
   onBuildQuote,
@@ -1322,14 +1368,19 @@ function InlineWebRequestsPanel({
     email?: string | null;
     street?: string | null;
     city?: string | null;
+    state?: string | null;
+    zip?: string | null;
     service?: string | null;
     message?: string | null;
     acreage?: string | null;
     county?: string | null;
     aiScore?: string | null;
+    propertyPinLat?: string | null;
+    propertyPinLng?: string | null;
     createdAt: Date | string;
   };
   const list = (data ?? []) as WebReq[];
+  const [expandedMapId, setExpandedMapId] = useState<number | null>(null);
 
   return (
     <div className="ops-card p-4 space-y-3">
@@ -1362,62 +1413,87 @@ function InlineWebRequestsPanel({
         </div>
       ) : (
         <div className="space-y-2 max-h-[600px] overflow-y-auto pr-1">
-          {list.map((req) => (
-            <div key={req.id} className="rounded-md border border-border bg-card/50 p-3 space-y-1.5">
-              <div className="flex items-start justify-between gap-2">
-                <div className="min-w-0">
-                  <p className="text-sm font-medium text-foreground truncate">{req.name}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {[req.service, req.county, req.acreage ? `${req.acreage} ac` : undefined].filter(Boolean).join(" · ")}
-                  </p>
+          {list.map((req) => {
+            const hasPin = !!req.propertyPinLat && !!req.propertyPinLng;
+            const addressStr = [req.street, req.city, req.state].filter(Boolean).join(", ");
+            const hasMap = hasPin || !!addressStr;
+            const isMapOpen = expandedMapId === req.id;
+            return (
+              <div key={req.id} className="rounded-md border border-border bg-card/50 p-3 space-y-1.5">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-foreground truncate">{req.name}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {[req.service, req.county, req.acreage ? `${req.acreage} ac` : undefined].filter(Boolean).join(" · ")}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    {req.aiScore && (
+                      <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded ${
+                        req.aiScore === "hot" ? "bg-red-500/20 text-red-400" :
+                        req.aiScore === "warm" ? "bg-amber-500/20 text-amber-400" :
+                        "bg-zinc-500/20 text-zinc-400"
+                      }`}>{req.aiScore}</span>
+                    )}
+                    {hasMap && (
+                      <button
+                        onClick={() => setExpandedMapId(isMapOpen ? null : req.id)}
+                        className="h-5 w-5 flex items-center justify-center rounded text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors"
+                        title={isMapOpen ? "Hide map" : "Show property map"}
+                      >
+                        <MapPin className="w-3 h-3" />
+                      </button>
+                    )}
+                  </div>
                 </div>
-                {req.aiScore && (
-                  <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded ${
-                    req.aiScore === "hot" ? "bg-red-500/20 text-red-400" :
-                    req.aiScore === "warm" ? "bg-amber-500/20 text-amber-400" :
-                    "bg-zinc-500/20 text-zinc-400"
-                  }`}>{req.aiScore}</span>
+                {/* Expandable satellite map */}
+                {isMapOpen && hasMap && (
+                  <WebReqMapThumbnail
+                    lat={hasPin ? parseFloat(req.propertyPinLat!) : undefined}
+                    lng={hasPin ? parseFloat(req.propertyPinLng!) : undefined}
+                    address={!hasPin ? addressStr : undefined}
+                  />
                 )}
-              </div>
-              {req.message && (
-                <p className="text-xs text-muted-foreground line-clamp-2">{req.message}</p>
-              )}
-              <div className="flex items-center justify-between pt-0.5">
-                <p className="text-[11px] text-muted-foreground">
-                  {new Date(req.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
-                </p>
-                <div className="flex items-center gap-1.5">
-                  <Button
-                    size="sm"
-                    className="h-6 text-xs px-2 gap-1"
-                    onClick={() => onBuildQuote({
-                      clientName: req.name,
-                      clientPhone: req.phone ?? undefined,
-                      clientEmail: req.email ?? undefined,
-                      propertyAddress: [req.street, req.city].filter(Boolean).join(", ") || undefined,
-                      serviceType: req.service ?? undefined,
-                      clientMessage: req.message ?? undefined,
-                    })}
-                  >
-                    <Plus className="w-3 h-3" />
-                    Build Quote
-                  </Button>
-                  <button
-                    onClick={() => {
-                      if (confirm(`Delete request from ${req.name}?`)) {
-                        deleteReq.mutate({ id: req.id });
-                      }
-                    }}
-                    disabled={deleteReq.isPending}
-                    className="h-6 w-6 flex items-center justify-center rounded text-muted-foreground hover:text-red-400 hover:bg-red-400/10 transition-colors"
-                    title="Delete request"
-                  >
-                    <Trash2 className="w-3 h-3" />
-                  </button>
+                {req.message && (
+                  <p className="text-xs text-muted-foreground line-clamp-2">{req.message}</p>
+                )}
+                <div className="flex items-center justify-between pt-0.5">
+                  <p className="text-[11px] text-muted-foreground">
+                    {new Date(req.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                  </p>
+                  <div className="flex items-center gap-1.5">
+                    <Button
+                      size="sm"
+                      className="h-6 text-xs px-2 gap-1"
+                      onClick={() => onBuildQuote({
+                        clientName: req.name,
+                        clientPhone: req.phone ?? undefined,
+                        clientEmail: req.email ?? undefined,
+                        propertyAddress: [req.street, req.city].filter(Boolean).join(", ") || undefined,
+                        serviceType: req.service ?? undefined,
+                        clientMessage: req.message ?? undefined,
+                      })}
+                    >
+                      <Plus className="w-3 h-3" />
+                      Build Quote
+                    </Button>
+                    <button
+                      onClick={() => {
+                        if (confirm(`Delete request from ${req.name}?`)) {
+                          deleteReq.mutate({ id: req.id });
+                        }
+                      }}
+                      disabled={deleteReq.isPending}
+                      className="h-6 w-6 flex items-center justify-center rounded text-muted-foreground hover:text-red-400 hover:bg-red-400/10 transition-colors"
+                      title="Delete request"
+                    >
+                      <Trash2 className="w-3 h-3" />
+                    </button>
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>

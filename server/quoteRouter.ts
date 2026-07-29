@@ -652,8 +652,30 @@ export const quoteRouter = router({
         const title = `${serviceLabel} \u2014 ${input.name}${input.county ? ` (${input.county} Co.)` : ""}`;
         const { randomBytes } = await import("crypto");
         const portalToken = randomBytes(32).toString("hex");
+        // Parse ballparkRange (e.g. "$2,000 \u2013 $4,500") into a midpoint totalCents for the AI estimate
+        const aiRange = qualification?.ballparkRange ?? "";
+        let aiTotalCents = 0;
+        let aiLineItems = "[]";
+        if (aiRange) {
+          const nums = aiRange.replace(/[$,]/g, "").match(/\d+(?:\.\d+)?/g);
+          if (nums && nums.length >= 2) {
+            const lo = parseFloat(nums[0]);
+            const hi = parseFloat(nums[1]);
+            const mid = Math.round((lo + hi) / 2);
+            aiTotalCents = mid * 100;
+            const acreageLabel = input.acreage ? ` (${input.acreage.replace(/-/g, "\u2013")} ac)` : "";
+            aiLineItems = JSON.stringify([{
+              description: `${serviceLabel}${acreageLabel} \u2014 AI estimate pending site visit`,
+              qty: 1,
+              unitPriceCents: aiTotalCents,
+              totalCents: aiTotalCents,
+            }]);
+          }
+        }
         const notes = [
           `[Web Request]`,
+          aiRange ? `AI Estimate: ${aiRange}` : "",
+          qualification?.ballparkNote ? `Note: ${qualification.ballparkNote}` : "",
           qualification?.score ? `AI Score: ${qualification.score.toUpperCase()}` : "",
           qualification?.summary ? `AI Summary: ${qualification.summary}` : "",
           qualification?.flags?.length ? `AI Flags: ${qualification.flags.join(" | ")}` : "",
@@ -670,8 +692,8 @@ export const quoteRouter = router({
           acreage: input.acreage || null,
           clientMessage: input.message || null,
           internalNotes: notes,
-          lineItems: "[]",
-          totalCents: 0,
+          lineItems: aiLineItems,
+          totalCents: aiTotalCents,
           status: "web_request",
           portalToken,
         });

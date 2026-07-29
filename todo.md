@@ -2678,3 +2678,7 @@
 ## Prospecting Filter Improvements (Jul 2026)
 - [x] Prospecting: add Low/Medium/High urgency filter dropdown to filter toolbar
 - [x] Prospecting: add stale post auto-hide (hide posts older than 30 days — on by default, toggle to show all)
+
+## Quote AI Pricing + Map (Jul 2026)
+- [x] Quotes: run incoming web quote requests through AI to generate an initial price estimate before they land in All Quotes (already implemented — ballparkRange parsed into totalCents + line items on native quote creation)
+- [x] Quotes: add map feature to the Website Requests section of /ops/quotes (satellite thumbnail via pin coords or address geocode, expandable per card)
