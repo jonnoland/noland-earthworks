@@ -2646,3 +2646,6 @@
 - [x] Add "Fit Score" sort option to sort dropdown
 - [x] Add "Run Scan" button to Prospecting page header for manual on-demand scans
 - [x] Update info banner to reflect expanded scan coverage
+- [x] Prospecting: add minimum fit score filter to hide low-fit prospects
+- [x] Prospecting: add Convert to Client action on prospect cards
+- [x] Prospecting: add last-scan new prospects badge/counter on the Prospecting page

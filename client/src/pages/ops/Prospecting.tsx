@@ -5,7 +5,7 @@
  *   Tier 2: Follow-up reminders, Convert to Lead button
  *   Tier 3: Sort, source stats, bulk dismiss, archived tab, auto-archive display
  */
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -124,6 +124,11 @@ export default function Prospecting() {
   const [editingNotesId, setEditingNotesId] = useState<number | null>(null);
   const [notesEditValue, setNotesEditValue] = useState("");
   const [convertingId, setConvertingId] = useState<number | null>(null);
+  const [convertingClientId, setConvertingClientId] = useState<number | null>(null);
+  const [minFitScore, setMinFitScore] = useState<0 | 4 | 6 | 8>(0);
+  const [scanBaselineCount, setScanBaselineCount] = useState<number | null>(null);
+  const [lastManualScanDelta, setLastManualScanDelta] = useState<number | null>(null);
+  const [awaitingScanResults, setAwaitingScanResults] = useState(false);
   const [fbOutreachTarget, setFbOutreachTarget] = useState<Prospect | null>(null);
   const [fbOutreachVariations, setFbOutreachVariations] = useState<string[]>([]);
   const [fbOutreachSelectedIdx, setFbOutreachSelectedIdx] = useState(0);
@@ -142,6 +147,10 @@ export default function Prospecting() {
     { status: filter === "all" ? undefined : filter },
     { refetchInterval: 60_000 }
   );
+
+  const { data: newCountData } = trpc.ops.prospecting.newCount.useQuery(undefined, {
+    refetchInterval: 60_000,
+  });
 
   const { data: sourceStats = [] } = trpc.ops.prospecting.getSourceStats.useQuery(undefined, {
     refetchInterval: 120_000,
@@ -210,6 +219,18 @@ export default function Prospecting() {
     },
   });
 
+  const convertToClient = trpc.nativeClients.create.useMutation({
+    onSuccess: () => {
+      utils.nativeClients.list.invalidate();
+      setConvertingClientId(null);
+      toast.success("Prospect added to Clients.");
+    },
+    onError: (err) => {
+      setConvertingClientId(null);
+      toast.error(err.message);
+    },
+  });
+
   const generateFbOutreach = trpc.ops.prospecting.generateFbOutreach.useMutation({
     onSuccess: (res) => {
       const vars = res.variations ?? [];
@@ -248,9 +269,12 @@ export default function Prospecting() {
 
   const runScan = trpc.ops.prospecting.runScan.useMutation({
     onSuccess: () => {
+      setAwaitingScanResults(true);
       toast.success("Scan started. New prospects will appear within a few minutes.");
     },
     onError: (err) => {
+      setAwaitingScanResults(false);
+      setScanBaselineCount(null);
       toast.error("Failed to start scan: " + err.message);
     },
   });
@@ -346,11 +370,27 @@ export default function Prospecting() {
     }
   }, [activeProspects, sortKey]);
 
-  const displayList = tabView === "archived" ? archivedProspects : sortedActive;
+  const filteredActive = useMemo(
+    () => sortedActive.filter(p => minFitScore === 0 || (p.fitScore ?? 0) >= minFitScore),
+    [sortedActive, minFitScore]
+  );
 
-  const newCount = activeProspects.filter(p => p.status === "new").length;
+  const displayList = tabView === "archived" ? archivedProspects : filteredActive;
+
+  const newCount = newCountData?.count ?? activeProspects.filter(p => p.status === "new").length;
   const contactedCount = activeProspects.filter(p => p.status === "contacted").length;
   const dismissedCount = activeProspects.filter(p => p.status === "dismissed").length;
+
+  useEffect(() => {
+    if (!awaitingScanResults || scanBaselineCount == null) return;
+    const delta = newCount - scanBaselineCount;
+    if (delta > 0) {
+      setLastManualScanDelta(delta);
+      setAwaitingScanResults(false);
+      setScanBaselineCount(null);
+      toast.success(`Last scan found ${delta} new prospect${delta === 1 ? "" : "s"}.`);
+    }
+  }, [awaitingScanResults, scanBaselineCount, newCount]);
 
   return (
     <div className="p-6 space-y-6 max-w-5xl mx-auto">
@@ -367,7 +407,11 @@ export default function Prospecting() {
           <Button
             variant="outline"
             size="sm"
-            onClick={() => runScan.mutate()}
+            onClick={() => {
+              setScanBaselineCount(newCount);
+              setLastManualScanDelta(null);
+              runScan.mutate();
+            }}
             disabled={runScan.isPending}
             className="border-orange-700 text-orange-300 hover:bg-orange-900/30 hover:text-orange-200"
             title="Trigger a manual AI scan now"
@@ -422,7 +466,7 @@ export default function Prospecting() {
       )}
 
       {/* Stats row */}
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="rounded-lg border border-zinc-700 bg-zinc-800/60 p-4 text-center">
           <div className="text-2xl font-bold text-orange-400">{newCount}</div>
           <div className="text-xs text-zinc-400 mt-1">New</div>
@@ -434,6 +478,14 @@ export default function Prospecting() {
         <div className="rounded-lg border border-zinc-700 bg-zinc-800/60 p-4 text-center">
           <div className="text-2xl font-bold text-zinc-400">{dismissedCount}</div>
           <div className="text-xs text-zinc-400 mt-1">Dismissed</div>
+        </div>
+        <div className="rounded-lg border border-orange-800/70 bg-orange-950/20 p-4 text-center">
+          <div className="text-2xl font-bold text-orange-300">
+            {awaitingScanResults ? "..." : lastManualScanDelta != null ? `+${lastManualScanDelta}` : "—"}
+          </div>
+          <div className="text-xs text-zinc-400 mt-1">
+            {awaitingScanResults ? "Waiting on scan" : "Last scan found"}
+          </div>
         </div>
       </div>
 
@@ -500,6 +552,19 @@ export default function Prospecting() {
               ))}
             </div>
             <div className="flex items-center gap-1 bg-zinc-800 border border-zinc-700 rounded px-2 py-1">
+              <span className="text-[11px] uppercase tracking-wide text-zinc-500">Min score</span>
+              <select
+                value={String(minFitScore)}
+                onChange={e => setMinFitScore(Number(e.target.value) as 0 | 4 | 6 | 8)}
+                className="bg-transparent text-xs text-zinc-300 outline-none cursor-pointer"
+              >
+                <option value="0">All</option>
+                <option value="4">4+</option>
+                <option value="6">6+</option>
+                <option value="8">8+</option>
+              </select>
+            </div>
+            <div className="flex items-center gap-1 bg-zinc-800 border border-zinc-700 rounded px-2 py-1">
               <ArrowUpDown className="h-3 w-3 text-zinc-400" />
               <select
                 value={sortKey}
@@ -551,6 +616,8 @@ export default function Prospecting() {
           <p className="text-zinc-400 text-sm">
             {tabView === "archived"
               ? "No archived prospects."
+              : minFitScore > 0
+              ? `No prospects match the current filters (${minFitScore}+ fit score).`
               : filter === "all"
               ? "No prospects yet. The AI cron runs daily — check back tomorrow morning."
               : `No ${filter} prospects.`}
@@ -819,6 +886,32 @@ export default function Prospecting() {
                             Restore
                           </Button>
                         )}
+
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => {
+                            const email = p.contactInfo?.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i)?.[0];
+                            const phone = p.contactInfo?.match(/\+?[\d\s\-().]{10,}/)?.[0]?.trim();
+                            setConvertingClientId(p.id);
+                            convertToClient.mutate({
+                              name: p.contactName ?? p.source,
+                              email: email || undefined,
+                              phone: phone || undefined,
+                              address: p.location ?? undefined,
+                              notes: [
+                                p.summary,
+                                p.notes ? `Prospect notes: ${p.notes}` : null,
+                                p.postSnippet ? `Original post: ${p.postSnippet}` : null,
+                              ].filter(Boolean).join("\n\n"),
+                            });
+                          }}
+                          disabled={convertingClientId === p.id && convertToClient.isPending}
+                          className="border-cyan-700 text-cyan-300 hover:text-white h-8 text-xs"
+                        >
+                          <UserPlus className="h-3.5 w-3.5 mr-1.5" />
+                          {convertingClientId === p.id && convertToClient.isPending ? "Converting..." : "Convert to Client"}
+                        </Button>
 
                         <Button
                           size="sm"
