@@ -68,7 +68,7 @@ export const nativeQuotesRouter = router({
     .input(z.object({
       search: z.string().optional(),
       status: z.string().optional(),
-      limit: z.number().int().min(1).max(200).default(50),
+      limit: z.number().int().min(1).max(500).default(50),
       offset: z.number().int().min(0).default(0),
     }))
     .query(async ({ input }: { input: { search?: string; status?: string; limit: number; offset: number } }) => {
@@ -95,6 +95,7 @@ export const nativeQuotesRouter = router({
         .orderBy(desc(nativeQuotes.createdAt))
         .limit(input.limit)
         .offset(input.offset);
+      console.log(`[nativeQuotes.list] Returning ${rows.length} rows (status=${input.status ?? 'all'}, search=${input.search ?? ''})`);
       return { quotes: rows, total: rows.length };
     }),
 
