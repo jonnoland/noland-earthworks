@@ -2725,3 +2725,8 @@
 - [x] Property address lookup returning "Parcel not found" for valid TN addresses — root cause: GET request with JSON geometry in URL silently rejected by ArcGIS when URL is too long; fixed by switching to HTTP POST with form-encoded body and a 30-metre bounding-box envelope instead of a point query
 - [x] Web Mercator Y conversion formula was incorrect (used tan approximation instead of the correct sinLat formula) — fixed
 - [x] Multiple parcels in envelope: added best-match selection logic (address string match first, largest acreage as tiebreaker) so the correct parcel is returned when the buffer clips a neighbor
+
+## Pipeline View Enhancements Round 3 (Jul 2026)
+- [x] Pipeline: add dollar value range filter (min/max) and date created range filter to the filter bar
+- [x] Pipeline: add sort control — order by highest value (totalCents desc) or newest first (createdAt desc)
+- [x] Pipeline: add summary bar at the top showing total dollar value of all currently visible quotes

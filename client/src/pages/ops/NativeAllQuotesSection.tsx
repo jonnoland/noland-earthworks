@@ -28,7 +28,7 @@ import {
   FileText, ExternalLink, Sparkles, Info, AlertTriangle,
   RefreshCw, ChevronRight, MapPin, Phone, Mail, User, Users, X, Globe,
   Loader2, Clock, ChevronDown, ChevronUp, ArchiveRestore, Pencil,
-  ArrowRight, Ban
+  ArrowRight, Ban, ArrowUpDown
 } from "lucide-react";
 import { MapView } from "@/components/Map";
 
@@ -1787,6 +1787,8 @@ export function NativeAllQuotesSection() {
   // Date created range filter (empty string = no constraint)
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
+  // Sort control
+  const [sortBy, setSortBy] = useState<"newest" | "highest">("newest");
   const [showCreate, setShowCreate] = useState(false);
   const [createPrefill, setCreatePrefill] = useState<{
     clientName?: string;
@@ -1970,8 +1972,13 @@ export function NativeAllQuotesSection() {
       if (groups[key]) groups[key].push(q);
       else groups["draft"].push(q);
     });
+    // Apply sort to each stage
+    const sortFn = sortBy === "highest"
+      ? (a: NativeQuote, b: NativeQuote) => (b.totalCents ?? 0) - (a.totalCents ?? 0)
+      : (a: NativeQuote, b: NativeQuote) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    Object.keys(groups).forEach(key => { groups[key].sort(sortFn); });
     return groups;
-  }, [quotes, minCents, maxCents, dateFromMs, dateToMs]);
+  }, [quotes, minCents, maxCents, dateFromMs, dateToMs, sortBy]);
 
   // Total counts for header
   const totalCount = quotes.length;
@@ -2101,6 +2108,31 @@ export function NativeAllQuotesSection() {
                   />
                 </div>
 
+                {/* Sort control */}
+                <div className="flex items-center gap-1 ml-auto">
+                  <ArrowUpDown className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                  <button
+                    onClick={() => setSortBy("newest")}
+                    className={`h-7 px-2.5 rounded-l text-xs border border-border transition-colors ${
+                      sortBy === "newest"
+                        ? "bg-primary text-primary-foreground border-primary"
+                        : "bg-secondary/30 text-muted-foreground hover:bg-secondary/60"
+                    }`}
+                  >
+                    Newest
+                  </button>
+                  <button
+                    onClick={() => setSortBy("highest")}
+                    className={`h-7 px-2.5 rounded-r text-xs border border-l-0 border-border transition-colors ${
+                      sortBy === "highest"
+                        ? "bg-primary text-primary-foreground border-primary"
+                        : "bg-secondary/30 text-muted-foreground hover:bg-secondary/60"
+                    }`}
+                  >
+                    Highest $
+                  </button>
+                </div>
+
                 {/* Clear filters — only shown when any non-default filter is active */}
                 {(minValue !== "" || maxValue !== "" || dateFrom !== "" || dateTo !== "") && (
                   <button
@@ -2198,6 +2230,26 @@ export function NativeAllQuotesSection() {
               )}
             </div>
           )}
+
+          {/* ── Summary bar ── */}
+          {!isLoading && quotes.length > 0 && (() => {
+            const visibleQuotes = visibleStages.flatMap(s => pipelineGroups[s.key] ?? []);
+            const visibleTotalCents = visibleQuotes.reduce((sum, q) => sum + (q.totalCents ?? 0), 0);
+            const visibleTotalFormatted = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(visibleTotalCents / 100);
+            return (
+              <div className="flex items-center gap-4 px-4 py-2 rounded-lg bg-secondary/20 border border-border text-xs text-muted-foreground">
+                <div className="flex items-center gap-1.5">
+                  <FileText className="w-3.5 h-3.5" />
+                  <span><span className="font-semibold text-foreground">{visibleQuotes.length}</span> quote{visibleQuotes.length !== 1 ? "s" : ""} visible</span>
+                </div>
+                <span className="text-border">|</span>
+                <div className="flex items-center gap-1.5">
+                  <DollarSign className="w-3.5 h-3.5" />
+                  <span>Total: <span className="font-semibold text-foreground">{visibleTotalFormatted}</span></span>
+                </div>
+              </div>
+            );
+          })()}
 
           {/* ── Pipeline view ── */}
           {!isLoading && quotes.length > 0 && (
