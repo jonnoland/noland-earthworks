@@ -1603,17 +1603,76 @@ export default function CostCalculator() {
                     </div>
                   )}
 
-                  {/* Per-unit breakdown — hide for stump grinding */}
-                  {!isStumpService && (
-                    <div style={{ display: "flex", gap: "1rem", flexWrap: "wrap", marginBottom: "1.25rem" }}>
-                      <div style={{ backgroundColor: "rgba(255,255,255,0.04)", borderRadius: "4px", padding: "0.6rem 0.9rem", flex: 1, minWidth: "120px" }}>
-                        <p style={{ fontFamily: "'Lato', sans-serif", fontSize: "0.65rem", color: "rgba(240,237,230,0.4)", textTransform: "uppercase", letterSpacing: "0.1em", margin: "0 0 0.2rem" }}>Per Acre</p>
-                        <p style={{ fontFamily: "'Oswald', sans-serif", fontWeight: 600, fontSize: "1rem", color: "#F0EDE6", margin: 0 }}>
-                          {fmt(result.perAcreLow)} – {fmt(result.perAcreHigh)}
-                        </p>
+                  {/* Detailed price breakdown — hide for stump grinding */}
+                  {!isStumpService && livePricing && (() => {
+                    const mob = livePricing.mobilizationFee ?? 450;
+                    const acres = effectiveAcresForAddOns;
+                    const acreSubtotalLow  = result.perAcreLow  * acres;
+                    const acreSubtotalHigh = result.perAcreHigh * acres;
+                    const densityMult = state.density === "heavy"
+                      ? parseFloat(livePricing.densityHeavyMultiplier ?? "1.60")
+                      : state.density === "moderate"
+                      ? parseFloat(livePricing.densityModerateMultiplier ?? "1.25")
+                      : 1.0;
+                    const terrainMult = state.terrain === "steep"
+                      ? parseFloat(livePricing.terrainSteepMultiplier ?? "1.40")
+                      : state.terrain === "rolling"
+                      ? parseFloat(livePricing.terrainRollingMultiplier ?? "1.15")
+                      : 1.0;
+                    const accessMult = state.access === "difficult"
+                      ? parseFloat(livePricing.accessDifficultMultiplier ?? "1.25")
+                      : state.access === "moderate"
+                      ? parseFloat(livePricing.accessModerateMultiplier ?? "1.10")
+                      : 1.0;
+                    const rowStyle: React.CSSProperties = { display: "flex", justifyContent: "space-between", alignItems: "baseline", padding: "0.2rem 0" };
+                    const labelStyle: React.CSSProperties = { fontFamily: "'Lato', sans-serif", fontSize: "0.78rem", color: "rgba(240,237,230,0.55)" };
+                    const valueStyle: React.CSSProperties = { fontFamily: "'Lato', sans-serif", fontSize: "0.78rem", color: "rgba(240,237,230,0.85)", whiteSpace: "nowrap" };
+                    return (
+                      <div style={{
+                        backgroundColor: "rgba(255,255,255,0.03)",
+                        border: "1px solid rgba(255,255,255,0.08)",
+                        borderRadius: "4px",
+                        padding: "0.75rem 1rem",
+                        marginBottom: "1.25rem",
+                      }}>
+                        <p style={{ fontFamily: "'Lato', sans-serif", fontSize: "0.65rem", color: "rgba(240,237,230,0.4)", textTransform: "uppercase", letterSpacing: "0.1em", margin: "0 0 0.55rem" }}>Price Breakdown</p>
+                        <div style={{ display: "flex", flexDirection: "column" }}>
+                          <div style={rowStyle}>
+                            <span style={labelStyle}>Base rate &middot; {acres} {acres === 1 ? "acre" : "acres"}</span>
+                            <span style={valueStyle}>{fmt(acreSubtotalLow)} &ndash; {fmt(acreSubtotalHigh)}</span>
+                          </div>
+                          {densityMult !== 1.0 && (
+                            <div style={rowStyle}>
+                              <span style={labelStyle}>Density ({state.density}) &times;{densityMult.toFixed(2)}</span>
+                              <span style={{ ...valueStyle, color: "rgba(240,237,230,0.4)", fontSize: "0.72rem" }}>included above</span>
+                            </div>
+                          )}
+                          {terrainMult !== 1.0 && (
+                            <div style={rowStyle}>
+                              <span style={labelStyle}>Terrain ({state.terrain}) &times;{terrainMult.toFixed(2)}</span>
+                              <span style={{ ...valueStyle, color: "rgba(240,237,230,0.4)", fontSize: "0.72rem" }}>included above</span>
+                            </div>
+                          )}
+                          {accessMult !== 1.0 && (
+                            <div style={rowStyle}>
+                              <span style={labelStyle}>Access ({state.access}) &times;{accessMult.toFixed(2)}</span>
+                              <span style={{ ...valueStyle, color: "rgba(240,237,230,0.4)", fontSize: "0.72rem" }}>included above</span>
+                            </div>
+                          )}
+                          <div style={rowStyle}>
+                            <span style={labelStyle}>Mobilization / travel</span>
+                            <span style={valueStyle}>{fmt(mob)}</span>
+                          </div>
+                          <div style={{ borderTop: "1px solid rgba(255,255,255,0.08)", marginTop: "0.35rem", paddingTop: "0.4rem", display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
+                            <span style={{ fontFamily: "'Oswald', sans-serif", fontWeight: 600, fontSize: "0.82rem", color: "#F0EDE6", letterSpacing: "0.05em", textTransform: "uppercase" }}>Estimated Total</span>
+                            <span style={{ fontFamily: "'Oswald', sans-serif", fontWeight: 700, fontSize: "0.95rem", color: "#E07B2A" }}>
+                              {fmt(result.low)} &ndash; {fmt(result.high)}
+                            </span>
+                          </div>
+                        </div>
                       </div>
-                    </div>
-                  )}
+                    );
+                  })()}
 
                   {/* Completion time */}
                   {timeResult && (
