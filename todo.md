@@ -2757,3 +2757,6 @@
 - [x] Voice-to-bid: Add server-side LLM parser (parseVoiceBid) to extract service, acreage, terrain, density, access, client name from spoken description
 - [x] Voice-to-bid: Wire parsed fields into Cost Estimator form auto-fill with visual confirmation
 - [x] Voice-to-bid: Show transcript and parsed field summary before applying to form
+- [x] Calculator: Add "Request Site Visit" button below the detailed breakdown
+- [x] Calculator: Add tooltips on density and terrain multiplier rows explaining calculation
+- [x] Calculator: Add "Email me this breakdown" option with email input

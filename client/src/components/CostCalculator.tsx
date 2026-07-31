@@ -1251,6 +1251,39 @@ export default function CostCalculator() {
     acres: number; density: string; terrain: string;
     estimateLow: number; estimateHigh: number; leadId: number | null;
   } | null>(null);
+
+  // Email breakdown state
+  const [showEmailPanel, setShowEmailPanel] = useState(false);
+  const [breakdownEmail, setBreakdownEmail] = useState("");
+  const [emailSent, setEmailSent] = useState(false);
+  const [emailSending, setEmailSending] = useState(false);
+  const emailBreakdownMutation = trpc.widget.emailBreakdown.useMutation();
+
+  const handleEmailBreakdown = async () => {
+    if (!result || !livePricing || !breakdownEmail) return;
+    setEmailSending(true);
+    const mob = livePricing.mobilizationFee ?? 450;
+    try {
+      await emailBreakdownMutation.mutateAsync({
+        email:        breakdownEmail,
+        service:      state.service,
+        acres:        state.acres,
+        density:      state.density,
+        terrain:      state.terrain,
+        access:       state.access,
+        estimateLow:  result.low,
+        estimateHigh: result.high,
+        perAcreLow:   result.perAcreLow,
+        perAcreHigh:  result.perAcreHigh,
+        mobilization: mob,
+      });
+      setEmailSent(true);
+    } catch {
+      // silently fail — user can try again
+    } finally {
+      setEmailSending(false);
+    }
+  };
   const set = (key: keyof CalcState) => (val: string | number) =>
     setState((prev) => ({ ...prev, [key]: val }));
 
@@ -1643,19 +1676,43 @@ export default function CostCalculator() {
                           </div>
                           {densityMult !== 1.0 && (
                             <div style={rowStyle}>
-                              <span style={labelStyle}>Density ({state.density}) &times;{densityMult.toFixed(2)}</span>
+                              <span style={{ ...labelStyle, display: "flex", alignItems: "center", gap: "0.3rem" }}>
+                                Density ({state.density}) &times;{densityMult.toFixed(2)}
+                                <span
+                                  title={state.density === "heavy" ? `Heavy density (dense timber, thick cedar, mature hardwoods) increases the per-acre rate by ${Math.round((densityMult - 1) * 100)}% to account for slower machine progress and higher wear.` : `Moderate density (mixed brush, trees up to 8\u2033) increases the per-acre rate by ${Math.round((densityMult - 1) * 100)}% above the light-brush baseline.`}
+                                  style={{ cursor: "help", display: "inline-flex", alignItems: "center" }}
+                                >
+                                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="rgba(224,123,42,0.5)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+                                </span>
+                              </span>
                               <span style={{ ...valueStyle, color: "rgba(240,237,230,0.4)", fontSize: "0.72rem" }}>included above</span>
                             </div>
                           )}
                           {terrainMult !== 1.0 && (
                             <div style={rowStyle}>
-                              <span style={labelStyle}>Terrain ({state.terrain}) &times;{terrainMult.toFixed(2)}</span>
+                              <span style={{ ...labelStyle, display: "flex", alignItems: "center", gap: "0.3rem" }}>
+                                Terrain ({state.terrain}) &times;{terrainMult.toFixed(2)}
+                                <span
+                                  title={state.terrain === "steep" ? `Steep terrain increases the per-acre rate by ${Math.round((terrainMult - 1) * 100)}% — steep slopes slow the machine significantly and increase operator risk.` : `Rolling terrain increases the per-acre rate by ${Math.round((terrainMult - 1) * 100)}% — moderate grades reduce machine speed compared to flat ground.`}
+                                  style={{ cursor: "help", display: "inline-flex", alignItems: "center" }}
+                                >
+                                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="rgba(224,123,42,0.5)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+                                </span>
+                              </span>
                               <span style={{ ...valueStyle, color: "rgba(240,237,230,0.4)", fontSize: "0.72rem" }}>included above</span>
                             </div>
                           )}
                           {accessMult !== 1.0 && (
                             <div style={rowStyle}>
-                              <span style={labelStyle}>Access ({state.access}) &times;{accessMult.toFixed(2)}</span>
+                              <span style={{ ...labelStyle, display: "flex", alignItems: "center", gap: "0.3rem" }}>
+                                Access ({state.access}) &times;{accessMult.toFixed(2)}
+                                <span
+                                  title={`${state.access === "difficult" ? "Difficult" : "Moderate"} site access increases the rate by ${Math.round((accessMult - 1) * 100)}% — limited entry points, soft ground, or long haul distances add time and risk.`}
+                                  style={{ cursor: "help", display: "inline-flex", alignItems: "center" }}
+                                >
+                                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="rgba(224,123,42,0.5)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+                                </span>
+                              </span>
                               <span style={{ ...valueStyle, color: "rgba(240,237,230,0.4)", fontSize: "0.72rem" }}>included above</span>
                             </div>
                           )}
@@ -1673,6 +1730,83 @@ export default function CostCalculator() {
                       </div>
                     );
                   })()}
+
+                  {/* Email breakdown + Request Site Visit */}
+                  {result && (
+                    <div style={{ marginBottom: "1.25rem", display: "flex", flexDirection: "column", gap: "0.6rem" }}>
+                      {/* Email panel toggle */}
+                      {!showEmailPanel && !emailSent && (
+                        <button
+                          onClick={() => { setShowEmailPanel(true); setEmailSent(false); }}
+                          style={{
+                            width: "100%", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)",
+                            borderRadius: "4px", padding: "0.6rem 1rem", cursor: "pointer",
+                            fontFamily: "'Lato', sans-serif", fontSize: "0.78rem", color: "rgba(240,237,230,0.65)",
+                            display: "flex", alignItems: "center", gap: "0.5rem",
+                          }}
+                        >
+                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
+                          Email me this breakdown
+                        </button>
+                      )}
+                      {showEmailPanel && !emailSent && (
+                        <div style={{ display: "flex", gap: "0.5rem", alignItems: "stretch" }}>
+                          <input
+                            type="email"
+                            placeholder="your@email.com"
+                            value={breakdownEmail}
+                            onChange={(e) => setBreakdownEmail(e.target.value)}
+                            style={{
+                              flex: 1, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.15)",
+                              borderRadius: "4px", padding: "0.55rem 0.75rem",
+                              fontFamily: "'Lato', sans-serif", fontSize: "0.82rem", color: "#F0EDE6",
+                              outline: "none",
+                            }}
+                            onKeyDown={(e) => { if (e.key === "Enter") handleEmailBreakdown(); }}
+                          />
+                          <button
+                            onClick={handleEmailBreakdown}
+                            disabled={emailSending || !breakdownEmail}
+                            style={{
+                              background: emailSending ? "rgba(224,123,42,0.5)" : "#E07B2A",
+                              border: "none", borderRadius: "4px", padding: "0.55rem 1rem",
+                              cursor: emailSending || !breakdownEmail ? "not-allowed" : "pointer",
+                              fontFamily: "'Lato', sans-serif", fontSize: "0.78rem", fontWeight: 700,
+                              color: "#fff", whiteSpace: "nowrap",
+                            }}
+                          >
+                            {emailSending ? "Sending..." : "Send"}
+                          </button>
+                          <button
+                            onClick={() => setShowEmailPanel(false)}
+                            style={{ background: "transparent", border: "none", cursor: "pointer", color: "rgba(240,237,230,0.4)", padding: "0 0.25rem" }}
+                          >
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                          </button>
+                        </div>
+                      )}
+                      {emailSent && (
+                        <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", padding: "0.55rem 0.75rem", background: "rgba(34,197,94,0.08)", border: "1px solid rgba(34,197,94,0.2)", borderRadius: "4px" }}>
+                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#4ade80" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                          <span style={{ fontFamily: "'Lato', sans-serif", fontSize: "0.78rem", color: "rgba(240,237,230,0.65)" }}>Breakdown sent to {breakdownEmail}</span>
+                        </div>
+                      )}
+                      {/* Request Site Visit CTA */}
+                      <a
+                        href="/contact"
+                        style={{
+                          display: "flex", alignItems: "center", justifyContent: "center", gap: "0.5rem",
+                          background: "#E07B2A", borderRadius: "4px", padding: "0.75rem 1rem",
+                          fontFamily: "'Oswald', sans-serif", fontWeight: 700, fontSize: "0.85rem",
+                          letterSpacing: "0.08em", textTransform: "uppercase", color: "#fff",
+                          textDecoration: "none",
+                        }}
+                      >
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                        Request a Site Visit
+                      </a>
+                    </div>
+                  )}
 
                   {/* Completion time */}
                   {timeResult && (
