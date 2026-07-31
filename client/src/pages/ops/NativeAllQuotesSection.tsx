@@ -186,6 +186,27 @@ function QuoteFormModal({
 }) {
   const utils = trpc.useUtils();
 
+  // ── Client autocomplete ─────────────────────────────────────────────────────
+  const [clientSearch, setClientSearch] = useState("");
+  const [showClientDropdown, setShowClientDropdown] = useState(false);
+  const clientInputRef = useRef<HTMLInputElement>(null);
+  const { data: clientResults = [] } = trpc.nativeClients.list.useQuery(
+    { search: clientSearch, limit: 20 },
+    { enabled: showClientDropdown }
+  );
+
+  const selectClient = (client: { name: string; email: string | null; phone: string | null; address: string | null }) => {
+    setForm(p => ({
+      ...p,
+      clientName: client.name,
+      clientEmail: client.email ?? p.clientEmail,
+      clientPhone: client.phone ?? p.clientPhone,
+      propertyAddress: client.address ?? p.propertyAddress,
+    }));
+    setClientSearch(client.name);
+    setShowClientDropdown(false);
+  };
+
   const blankForm = (): QuoteFormData => ({
     clientName: prefill?.clientName ?? "",
     clientEmail: prefill?.clientEmail ?? "",
@@ -378,10 +399,59 @@ function QuoteFormModal({
         <div className="space-y-5 py-2">
           {/* Client info */}
           <div className="grid grid-cols-2 gap-3">
-            <div>
+            <div className="relative">
               <Label className="text-zinc-400 text-xs mb-1 block">Client Name *</Label>
-              <Input value={form.clientName} onChange={e => setForm(p => ({ ...p, clientName: e.target.value }))}
-                className="bg-zinc-800 border-zinc-700" placeholder="John Smith" />
+              <div className="relative">
+                <Input
+                  ref={clientInputRef}
+                  value={clientSearch || form.clientName}
+                  onChange={e => {
+                    const val = e.target.value;
+                    setClientSearch(val);
+                    setForm(p => ({ ...p, clientName: val }));
+                    setShowClientDropdown(true);
+                  }}
+                  onFocus={() => setShowClientDropdown(true)}
+                  onBlur={() => setTimeout(() => setShowClientDropdown(false), 150)}
+                  className="bg-zinc-800 border-zinc-700 pr-8"
+                  placeholder="Search existing or type new client..."
+                  autoComplete="off"
+                />
+                <User className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-500 pointer-events-none" />
+              </div>
+              {showClientDropdown && (
+                <div className="absolute z-50 left-0 right-0 top-full mt-1 bg-zinc-800 border border-zinc-600 rounded-md shadow-xl max-h-52 overflow-y-auto">
+                  {clientResults.length === 0 ? (
+                    <div className="px-3 py-2.5 text-xs text-zinc-400 italic">No existing clients found — will create new</div>
+                  ) : (
+                    clientResults.map((c: any) => (
+                      <button
+                        key={c.id}
+                        type="button"
+                        onMouseDown={() => selectClient(c)}
+                        className="w-full text-left px-3 py-2 hover:bg-zinc-700 transition-colors"
+                      >
+                        <div className="text-xs font-semibold text-zinc-100">{c.name}</div>
+                        <div className="text-[11px] text-zinc-400 mt-0.5">
+                          {[c.phone, c.email].filter(Boolean).join(' · ')}
+                        </div>
+                      </button>
+                    ))
+                  )}
+                  <div className="border-t border-zinc-700 px-3 py-2">
+                    <button
+                      type="button"
+                      onMouseDown={() => {
+                        setForm(p => ({ ...p, clientName: clientSearch, clientEmail: "", clientPhone: "", propertyAddress: "" }));
+                        setShowClientDropdown(false);
+                      }}
+                      className="flex items-center gap-1.5 text-xs text-amber-400 hover:text-amber-300 font-medium"
+                    >
+                      <Plus className="w-3 h-3" /> New Client
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
             <div>
               <Label className="text-zinc-400 text-xs mb-1 block">Quote Title *</Label>

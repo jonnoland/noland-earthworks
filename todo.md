@@ -2760,3 +2760,4 @@
 - [x] Calculator: Add "Request Site Visit" button below the detailed breakdown
 - [x] Calculator: Add tooltips on density and terrain multiplier rows explaining calculation
 - [x] Calculator: Add "Email me this breakdown" option with email input
+- [x] Client autocomplete dropdown on New Quote form — search existing clients, autofill name/email/phone/address, New Client option
