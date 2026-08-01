@@ -16,7 +16,7 @@ import { z } from "zod";
 import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
 import { TRPCError } from "@trpc/server";
 import { getDb } from "./db";
-import { nativeQuotes, nativeJobs, aiPricingSettings } from "../drizzle/schema";
+import { nativeQuotes, nativeJobs, aiPricingSettings, nativeClients } from "../drizzle/schema";
 import { getPricingBenchmarks } from "./db";
 import { eq, desc, like, or, and, asc } from "drizzle-orm";
 import { randomBytes } from "crypto";
@@ -148,6 +148,44 @@ export const nativeQuotesRouter = router({
         distanceQuoteId: input.distanceQuoteId ?? null,
       });
       const id = (result as any).insertId ?? (result as any)[0]?.insertId;
+
+      // Auto-save / update client record
+      try {
+        const { clientName, clientEmail, clientPhone, propertyAddress } = input;
+        if (clientName?.trim()) {
+          let existing = null;
+          if (clientEmail) {
+            const [row] = await db.select().from(nativeClients).where(eq(nativeClients.email, clientEmail)).limit(1);
+            existing = row ?? null;
+          }
+          if (!existing && clientPhone) {
+            const [row] = await db.select().from(nativeClients).where(eq(nativeClients.phone, clientPhone)).limit(1);
+            existing = row ?? null;
+          }
+          if (!existing) {
+            const [row] = await db.select().from(nativeClients).where(eq(nativeClients.name, clientName.trim())).limit(1);
+            existing = row ?? null;
+          }
+          if (existing) {
+            await db.update(nativeClients).set({
+              name: clientName.trim() || existing.name,
+              email: clientEmail || existing.email,
+              phone: clientPhone || existing.phone,
+              address: propertyAddress || existing.address,
+              updatedAt: new Date(),
+            }).where(eq(nativeClients.id, existing.id));
+          } else {
+            await db.insert(nativeClients).values({
+              name: clientName.trim(),
+              email: clientEmail || null,
+              phone: clientPhone || null,
+              address: propertyAddress || null,
+              source: "manual",
+            });
+          }
+        }
+      } catch (_) { /* non-fatal — quote was already saved */ }
+
       return { id: Number(id) };
     }),
 

@@ -2761,3 +2761,6 @@
 - [x] Calculator: Add tooltips on density and terrain multiplier rows explaining calculation
 - [x] Calculator: Add "Email me this breakdown" option with email input
 - [x] Client autocomplete dropdown on New Quote form — search existing clients, autofill name/email/phone/address, New Client option
+- [x] Auto-save new client to DB on quote submit; update existing client if info changed
+- [x] Allow editing autofilled client fields (email, phone) in New Quote form
+- [x] Show client summary panel (past quotes, total spent, last quote) when existing client selected

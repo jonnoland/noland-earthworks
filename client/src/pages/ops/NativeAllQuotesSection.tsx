@@ -189,13 +189,19 @@ function QuoteFormModal({
   // ── Client autocomplete ─────────────────────────────────────────────────────
   const [clientSearch, setClientSearch] = useState("");
   const [showClientDropdown, setShowClientDropdown] = useState(false);
+  const [selectedClientId, setSelectedClientId] = useState<number | null>(null);
   const clientInputRef = useRef<HTMLInputElement>(null);
   const { data: clientResults = [] } = trpc.nativeClients.list.useQuery(
     { search: clientSearch, limit: 20 },
     { enabled: showClientDropdown }
   );
+  const { data: selectedClientFull } = trpc.nativeClients.getById.useQuery(
+    { id: selectedClientId! },
+    { enabled: selectedClientId !== null }
+  );
 
-  const selectClient = (client: { name: string; email: string | null; phone: string | null; address: string | null }) => {
+  const selectClient = (client: { id: number; name: string; email: string | null; phone: string | null; address: string | null }) => {
+    setSelectedClientId(client.id);
     setForm(p => ({
       ...p,
       clientName: client.name,
@@ -469,6 +475,42 @@ function QuoteFormModal({
                 className="bg-zinc-800 border-zinc-700" placeholder="615-555-0100" />
             </div>
           </div>
+
+          {/* Client summary panel */}
+          {selectedClientFull && (() => {
+            const clientQuotes: any[] = (selectedClientFull as any).quotes ?? [];
+            const totalSpent = selectedClientFull.totalSpentCents ?? 0;
+            const quoteCount = clientQuotes.length;
+            const lastQuote = clientQuotes[0];
+            return (
+              <div className="rounded-md border border-zinc-700 bg-zinc-900/60 px-3 py-2.5 text-xs">
+                <div className="flex items-center justify-between mb-1.5">
+                  <span className="font-semibold text-amber-400 flex items-center gap-1"><Users className="w-3 h-3" /> Existing Client</span>
+                  <span className="text-zinc-400">{selectedClientFull.source ?? "manual"}</span>
+                </div>
+                <div className="grid grid-cols-3 gap-2 text-zinc-300">
+                  <div>
+                    <div className="text-zinc-500 text-[10px] uppercase tracking-wide">Quotes</div>
+                    <div className="font-semibold">{quoteCount}</div>
+                  </div>
+                  <div>
+                    <div className="text-zinc-500 text-[10px] uppercase tracking-wide">Total Spent</div>
+                    <div className="font-semibold">{totalSpent > 0 ? `$${(totalSpent / 100).toLocaleString()}` : "—"}</div>
+                  </div>
+                  <div>
+                    <div className="text-zinc-500 text-[10px] uppercase tracking-wide">Last Quote</div>
+                    <div className="font-semibold">{lastQuote ? new Date(lastQuote.createdAt).toLocaleDateString() : "—"}</div>
+                  </div>
+                </div>
+                {lastQuote && (
+                  <div className="mt-1.5 text-zinc-400 truncate">
+                    Last: <span className="text-zinc-200">{lastQuote.title}</span>
+                    {lastQuote.totalCents > 0 && <span className="ml-1 text-green-400">${(lastQuote.totalCents / 100).toLocaleString()}</span>}
+                  </div>
+                )}
+              </div>
+            );
+          })()}
 
           {/* Property + service */}
           <div className="grid grid-cols-2 gap-3">
