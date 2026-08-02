@@ -692,26 +692,40 @@ export async function runPricingUpdateAgent() {
         const currentDate = new Date().toLocaleDateString("en-US", { month: "long", year: "numeric" });
         const prompt = `You are a market research assistant for a land management company in Tennessee. Today is ${currentDate}.
 
-Research current market rates for ${svc.description}. Focus specifically on:
-- Middle & West Tennessee (Nashville metro, Columbia, Murfreesboro, Franklin, Clarksville, Lawrenceburg, Jackson, Henderson, Decatur areas)
-- West Tennessee (Jackson, Memphis suburbs, Dyersburg, Paris, Brownsville areas)
+Research current market rates for ${svc.description}. You MUST follow these rules:
 
-Use your knowledge of:
-- Competitor pricing from companies like Middle Tennessee Land Management LLC, Mid State Land Management LLC, Grounded Land Solutions, Stribling Land Management & Dirtwork, Wolf Creek Land Company
-- Industry forums (LawnSite, ArboristSite, TractorByNet), contractor pricing guides, and homeowner cost reports for Tennessee
-- HomeAdvisor, Angi, Thumbtack, and similar platforms for regional cost data
-- Typical terrain conditions in this region (rolling hills, cedar glades, bottomland hardwoods, river bottoms)
-- Current fuel prices, diesel costs, and equipment operating costs in Tennessee as of ${currentDate}
-- Seasonal demand patterns — peak season (Oct–Mar) typically supports higher rates in Middle TN
+REGION: Middle & West Tennessee ONLY. This includes:
+- Middle TN: Nashville metro, Columbia, Murfreesboro, Franklin, Clarksville, Lawrenceburg, Dickson, Vanleer, Centerville, Waverly, Hohenwald
+- West TN: Jackson, Dyersburg, Paris, Brownsville, Henderson, Decatur
 
-For services priced per stump or per load (not per acre), express the low/mid/high values as the typical unit price (per stump for stump grinding, per load for debris hauling). The field names still use "PerAcre" but treat them as the relevant unit price for this service.
+SOURCE PRIORITY (use in this order):
+1. FIRST: Actual competitor pricing pages from Middle/West Tennessee operators — look for published rate tables or "rough pricing" sections on company websites. Known Middle TN operators with published pricing: Claiborne Services LLC (Franklin, TN — forestry mulching $1,750–$8,000+/ac by density), Clear Ground Land Co. (Murfreesboro), Cumberland Land & Storm (TN), Grounded Land Solutions, Stribling Land Clearing & Dirtwork, Wolf Creek Land Company, Mid State Land Clearing LLC, Middle Tennessee Land Clearing LLC.
+2. SECOND: Tennessee-specific contractor forums and Facebook groups (Middle Tennessee Land Clearing groups, LawnSite TN threads, TractorByNet TN discussions)
+3. THIRD: Regional cost guides that cite Tennessee specifically (ProMatcher TN avg: ~$1,633/ac for land clearing, UT Extension service data)
+4. LAST RESORT ONLY: National aggregators like HomeAdvisor or Angi — these skew low and should only be used to validate a floor, never as the primary source. HomeAdvisor's $400–$1,500/ac national average does NOT reflect Middle TN rates.
+
+QUALITY FILTERS — REJECT these data points:
+- Any per-acre rate under $800 for forestry mulching with a tracked mulcher (rates below this are brush hogging or skid steer work on flat ground, not comparable)
+- Any rate from markets outside Tennessee (NC, TX, GA, national averages do NOT apply)
+- Hourly rates converted to per-acre without specifying realistic productivity (a tracked forestry mulcher in Middle TN cedar does 0.5–2 acres/day depending on density)
+- Rates from companies that use skid steers on small flat residential lots (not comparable to tracked forestry mulcher on rural acreage with slopes)
+
+CONTEXT for Middle Tennessee forestry mulching and land clearing:
+- Terrain: rolling hills, cedar glades, steep hollows, bottomland hardwoods — NOT flat plains
+- Vegetation: heavy cedar, honeysuckle, privet, multiflora rose, mixed hardwood saplings — dense and difficult
+- Jobs typically 2–20 acres, tracked equipment required for slopes and wet ground
+- Mobilization (travel) is a real cost — rural properties 20–60 miles from base
+- Peak season Oct–Mar supports higher rates; summer heat and wet ground reduce productivity and increase wear
+- Minimum job charges of $1,500–$2,000 are standard in this market
+
+For services priced per stump or per load (not per acre), express the low/mid/high values as the typical unit price (per stump for stump grinding, per load for debris hauling). The field names still use "PerAcre" but treat them as the relevant unit price for that service.
 
 Respond with JSON only:
 {
-  "lowPerAcre": <integer, low end of market range>,
-  "midPerAcre": <integer, typical market rate>,
-  "highPerAcre": <integer, premium or complex rate>,
-  "summary": "<1-2 sentence explanation of the rates, the unit used (per acre / per stump / per load), and key factors considered>"
+  "lowPerAcre": <integer, competitive floor — what the lowest credible Middle TN operator charges for this service type>,
+  "midPerAcre": <integer, typical rate for a standard Middle TN job of this type, moderate density, rolling terrain>,
+  "highPerAcre": <integer, premium rate for heavy density, steep terrain, difficult access, or large timber>,
+  "summary": "<2-3 sentences: cite specific sources or operators referenced, state the unit (per acre/stump/load), and note the key factors driving the range>"
 }
 
 All values are USD integers. No $ signs or commas in the numbers.`;
