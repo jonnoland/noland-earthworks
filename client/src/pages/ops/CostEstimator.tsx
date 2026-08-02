@@ -519,6 +519,9 @@ export default function CostEstimator() {
   const isTrailService = service === "Trail Cutting";
   const isBrushHogging = service === "Brush Hogging";
 
+  // ── Market Benchmarks (for below-market warning) ──────────────────────────
+  const { data: benchmarks } = trpc.agents.getPricingBenchmarks.useQuery();
+
   const estimate = trpc.costEstimator.estimate.useMutation({
     onSuccess: (data) => setResult(data),
     onError: (err) => toast.error(err.message || "Something went wrong. Try again."),
@@ -1199,6 +1202,29 @@ export default function CostEstimator() {
                             Full range: {fmt(result.customerPriceLow)} – {fmt(result.customerPriceHigh)}
                           </p>
                         )}
+                        {/* Below-benchmark warning */}
+                        {!clientView && (() => {
+                          const currentPrice = getRecommendedPrice(result, pricingTier);
+                          const serviceKey = service.toLowerCase().includes("mulch") ? "Forestry Mulching"
+                            : service.toLowerCase().includes("brush hog") ? "Brush Hogging"
+                            : service.toLowerCase().includes("trail") ? "Trail Cutting"
+                            : service.toLowerCase().includes("row") || service.toLowerCase().includes("right") ? "ROW/Trail"
+                            : service.toLowerCase().includes("land") ? "Land Management"
+                            : null;
+                          const bench = benchmarks?.find(b => b.serviceType === serviceKey);
+                          const acreNum = parseFloat(acreage) || 0;
+                          if (!bench || bench.lowPerAcre === 0 || acreNum <= 0) return null;
+                          const benchLowTotal = bench.lowPerAcre * acreNum;
+                          if (currentPrice >= benchLowTotal) return null;
+                          return (
+                            <div className="flex items-start gap-2 mt-2 rounded-md border border-amber-500/40 bg-amber-500/10 px-2.5 py-2">
+                              <AlertTriangle size={13} className="text-amber-400 shrink-0 mt-0.5" />
+                              <p className="text-[11px] text-amber-300">
+                                <span className="font-semibold">Below market floor.</span> {fmt(currentPrice)} is under the Middle TN benchmark low of {fmt(benchLowTotal)} (${bench.lowPerAcre.toLocaleString()}/ac × {acreNum} ac). Consider raising to at least {fmt(benchLowTotal)}.
+                              </p>
+                            </div>
+                          );
+                        })()}
                       </div>
                       {!clientView && (
                         <div className="text-right">
