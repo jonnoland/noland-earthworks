@@ -25,6 +25,7 @@ import {
   Loader2, AlertTriangle, TrendingUp, DollarSign, Clock, Eye, EyeOff,
   Satellite, Sparkles, Info, CheckCircle2, BookmarkPlus, PenLine, Trash2,
   CreditCard, MessageSquare, MapPin, Mic, MicOff, CheckCircle, X as XIcon,
+  ChevronDown, ChevronUp, BarChart2,
 } from "lucide-react";
 import {
   Dialog,
@@ -380,6 +381,10 @@ export default function CostEstimator() {
   const [accessDifficulty, setAccessDifficulty] = useState<"easy" | "moderate" | "difficult">("easy");
   const [pricingTier, setPricingTier] = useState<PricingTier>("mid");
   const [clientView, setClientView] = useState(false);
+  // Price override — set when user clicks "Adjust to benchmark floor"
+  const [priceOverride, setPriceOverride] = useState<number | null>(null);
+  // Brushworks comparison panel
+  const [brushworksOpen, setBrushworksOpen] = useState(false);
   const [mobilizationMiles, setMobilizationMiles] = useState("25");
   const [hasStumps, setHasStumps] = useState(false);
   const [stumpCount, setStumpCount] = useState("");
@@ -523,7 +528,7 @@ export default function CostEstimator() {
   const { data: benchmarks } = trpc.agents.getPricingBenchmarks.useQuery();
 
   const estimate = trpc.costEstimator.estimate.useMutation({
-    onSuccess: (data) => setResult(data),
+    onSuccess: (data) => { setResult(data); setPriceOverride(null); },
     onError: (err) => toast.error(err.message || "Something went wrong. Try again."),
   });
 
@@ -1194,17 +1199,30 @@ export default function CostEstimator() {
                             </span>
                           )}
                         </div>
-                        <p className="text-orange-400 text-3xl font-bold">
-                          {fmt(getRecommendedPrice(result, pricingTier))}
-                        </p>
-                        {!clientView && (
+                        <div className="flex items-baseline gap-2">
+                          <p className="text-orange-400 text-3xl font-bold">
+                            {fmt(priceOverride ?? getRecommendedPrice(result, pricingTier))}
+                          </p>
+                          {priceOverride !== null && (
+                            <button
+                              onClick={() => setPriceOverride(null)}
+                              className="text-[10px] text-zinc-500 hover:text-zinc-300 underline underline-offset-2"
+                            >
+                              reset
+                            </button>
+                          )}
+                        </div>
+                        {priceOverride !== null && (
+                          <p className="text-amber-400 text-[10px] mt-0.5">Adjusted to benchmark floor</p>
+                        )}
+                        {!clientView && priceOverride === null && (
                           <p className="text-zinc-400 text-xs mt-1">
                             Full range: {fmt(result.customerPriceLow)} – {fmt(result.customerPriceHigh)}
                           </p>
                         )}
                         {/* Below-benchmark warning */}
                         {!clientView && (() => {
-                          const currentPrice = getRecommendedPrice(result, pricingTier);
+                          const basePrice = priceOverride ?? getRecommendedPrice(result, pricingTier);
                           const serviceKey = service.toLowerCase().includes("mulch") ? "Forestry Mulching"
                             : service.toLowerCase().includes("brush hog") ? "Brush Hogging"
                             : service.toLowerCase().includes("trail") ? "Trail Cutting"
@@ -1215,13 +1233,21 @@ export default function CostEstimator() {
                           const acreNum = parseFloat(acreage) || 0;
                           if (!bench || bench.lowPerAcre === 0 || acreNum <= 0) return null;
                           const benchLowTotal = bench.lowPerAcre * acreNum;
-                          if (currentPrice >= benchLowTotal) return null;
+                          if (basePrice >= benchLowTotal) return null;
                           return (
-                            <div className="flex items-start gap-2 mt-2 rounded-md border border-amber-500/40 bg-amber-500/10 px-2.5 py-2">
-                              <AlertTriangle size={13} className="text-amber-400 shrink-0 mt-0.5" />
-                              <p className="text-[11px] text-amber-300">
-                                <span className="font-semibold">Below market floor.</span> {fmt(currentPrice)} is under the Middle TN benchmark low of {fmt(benchLowTotal)} (${bench.lowPerAcre.toLocaleString()}/ac × {acreNum} ac). Consider raising to at least {fmt(benchLowTotal)}.
-                              </p>
+                            <div className="mt-2 rounded-md border border-amber-500/40 bg-amber-500/10 px-2.5 py-2">
+                              <div className="flex items-start gap-2">
+                                <AlertTriangle size={13} className="text-amber-400 shrink-0 mt-0.5" />
+                                <p className="text-[11px] text-amber-300">
+                                  <span className="font-semibold">Below market floor.</span> {fmt(basePrice)} is under the Middle TN benchmark low of {fmt(benchLowTotal)} (${bench.lowPerAcre.toLocaleString()}/ac × {acreNum} ac).
+                                </p>
+                              </div>
+                              <button
+                                onClick={() => setPriceOverride(benchLowTotal)}
+                                className="mt-1.5 ml-5 text-[11px] font-semibold text-amber-200 underline underline-offset-2 hover:text-white transition-colors"
+                              >
+                                Adjust to {fmt(benchLowTotal)} (benchmark floor)
+                              </button>
                             </div>
                           );
                         })()}
@@ -1362,6 +1388,166 @@ export default function CostEstimator() {
                         </div>
                       </CardContent>
                     </Card>
+                  );
+                })()}
+
+                {/* ── Brushworks Comparison Panel ──────────────────────────── */}
+                {!clientView && (() => {
+                  // Map form values to Brushworks tiers
+                  const acreNum = parseFloat(acreage) || 0;
+                  const isBrushworksFM = service === "Forestry Mulching" || service === "Land Management" || service === "Vegetation Management" || service === "Right-of-Way Clearing";
+                  const isBrushworksBH = service === "Brush Hogging";
+                  const isBrushworksTrail = service === "Trail Cutting";
+                  const supportedByBrushworks = isBrushworksFM || isBrushworksBH || isBrushworksTrail;
+                  if (!supportedByBrushworks || acreNum <= 0) return null;
+
+                  // Density mapping
+                  const bwDensityRate = (() => {
+                    if (isBrushworksBH) return 624; // no density tiers
+                    const densityMap: Record<string, { fm: number; trail: number }> = {
+                      light:      { fm: 2300, trail: 2000 },
+                      moderate:   { fm: 2645, trail: 2300 },
+                      heavy:      { fm: 2990, trail: 2600 },
+                      very_heavy: { fm: 2990, trail: 2600 },
+                    };
+                    const d = densityMap[vegetationDensity] ?? densityMap.moderate;
+                    return isBrushworksTrail ? d.trail : d.fm;
+                  })();
+
+                  // Terrain multiplier (T1=1.0, T2=+10%, T3=+25%; BH has no terrain multiplier)
+                  const bwTerrainMult = isBrushworksBH ? 1.0
+                    : terrain === "flat" ? 1.0
+                    : terrain === "rolling" ? 1.1
+                    : 1.25; // steep or very_steep → T3
+
+                  const bwRatePerAcre = Math.round(bwDensityRate * bwTerrainMult);
+
+                  // Volume discount
+                  const bwVolDiscount = acreNum >= 10 ? 0.20
+                    : acreNum >= 5.25 ? 0.15
+                    : acreNum >= 2.25 ? 0.10
+                    : 0;
+
+                  // Minimum job
+                  const bwMinimum = isBrushworksBH ? 625 : 1600;
+                  const bwSubtotal = bwRatePerAcre * acreNum;
+                  const bwAfterDiscount = bwSubtotal * (1 - bwVolDiscount);
+                  const bwTotal = Math.max(bwMinimum, bwAfterDiscount);
+
+                  // Our price for comparison
+                  const ourPrice = priceOverride ?? getRecommendedPrice(result, pricingTier);
+                  const diff = ourPrice - bwTotal;
+                  const diffPct = bwTotal > 0 ? ((diff / bwTotal) * 100).toFixed(0) : "0";
+
+                  const densityLabel = vegetationDensity === "light" ? "Light"
+                    : vegetationDensity === "moderate" ? "Medium"
+                    : "Dense";
+                  const terrainLabel = terrain === "flat" ? "T1 (flat, 1.0×)"
+                    : terrain === "rolling" ? "T2 (rolling, +10%)"
+                    : "T3 (steep, +25%)";
+
+                  return (
+                    <div className="space-y-0">
+                      {/* Toggle button */}
+                      <button
+                        onClick={() => setBrushworksOpen(v => !v)}
+                        className="w-full flex items-center justify-between px-3 py-2.5 rounded-t border border-zinc-600 bg-zinc-800/60 hover:bg-zinc-800 transition-colors"
+                      >
+                        <div className="flex items-center gap-2">
+                          <BarChart2 size={14} className="text-zinc-400" />
+                          <span className="text-zinc-300 text-sm font-medium">Brushworks Rate Comparison</span>
+                          {!brushworksOpen && (
+                            <span className={`text-[11px] px-1.5 py-0.5 rounded font-semibold ${
+                              diff > 0 ? "bg-green-900/50 text-green-300" :
+                              diff < 0 ? "bg-red-900/50 text-red-300" :
+                              "bg-zinc-700 text-zinc-300"
+                            }`}>
+                              {diff > 0 ? `+${fmt(diff)} vs Brushworks` : diff < 0 ? `${fmt(diff)} vs Brushworks` : "At par"}
+                            </span>
+                          )}
+                        </div>
+                        {brushworksOpen ? <ChevronUp size={14} className="text-zinc-400" /> : <ChevronDown size={14} className="text-zinc-400" />}
+                      </button>
+
+                      {brushworksOpen && (
+                        <Card className="bg-zinc-900 border-zinc-600 border-t-0 rounded-t-none">
+                          <CardContent className="pt-3 pb-3 space-y-3">
+                            {/* Header note */}
+                            <p className="text-zinc-500 text-[11px]">
+                              Brushworks (Clarksville, TN) published rates — excludes mobilization. Used as a regional market reference.
+                            </p>
+
+                            {/* Rate inputs */}
+                            <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-[12px]">
+                              <span className="text-zinc-400">Service tier</span>
+                              <span className="text-zinc-200 text-right">{isBrushworksBH ? "Brush Hogging" : isBrushworksTrail ? `Trail Cutting — ${densityLabel}` : `Forestry Mulching — ${densityLabel}`}</span>
+
+                              <span className="text-zinc-400">Base rate/ac</span>
+                              <span className="text-zinc-200 text-right">{fmt(bwDensityRate)}</span>
+
+                              {!isBrushworksBH && (
+                                <>
+                                  <span className="text-zinc-400">Terrain</span>
+                                  <span className="text-zinc-200 text-right">{terrainLabel}</span>
+                                </>
+                              )}
+
+                              <span className="text-zinc-400">Rate after terrain</span>
+                              <span className="text-zinc-200 text-right">{fmt(bwRatePerAcre)}/ac</span>
+
+                              <span className="text-zinc-400">Acreage</span>
+                              <span className="text-zinc-200 text-right">{acreNum.toFixed(2)} ac</span>
+
+                              <span className="text-zinc-400">Subtotal</span>
+                              <span className="text-zinc-200 text-right">{fmt(bwSubtotal)}</span>
+
+                              {bwVolDiscount > 0 && (
+                                <>
+                                  <span className="text-zinc-400">Volume discount</span>
+                                  <span className="text-green-400 text-right">−{(bwVolDiscount * 100).toFixed(0)}% (−{fmt(bwSubtotal * bwVolDiscount)})</span>
+                                </>
+                              )}
+                            </div>
+
+                            {/* Comparison totals */}
+                            <div className="rounded border border-zinc-700 overflow-hidden">
+                              <div className="grid grid-cols-2">
+                                <div className="px-3 py-2 bg-zinc-800 border-r border-zinc-700">
+                                  <p className="text-zinc-400 text-[10px] uppercase tracking-wide mb-0.5">Brushworks Total</p>
+                                  <p className="text-white font-bold text-base">{fmt(bwTotal)}</p>
+                                  <p className="text-zinc-500 text-[10px]">excl. mobilization</p>
+                                </div>
+                                <div className="px-3 py-2 bg-zinc-800/50">
+                                  <p className="text-zinc-400 text-[10px] uppercase tracking-wide mb-0.5">Your Estimate</p>
+                                  <p className="text-orange-400 font-bold text-base">{fmt(ourPrice)}</p>
+                                  <p className="text-zinc-500 text-[10px]">{pricingTier.toUpperCase()} tier{priceOverride !== null ? " (adjusted)" : ""}</p>
+                                </div>
+                              </div>
+                              <div className={`px-3 py-1.5 text-center text-[11px] font-semibold ${
+                                diff > 0 ? "bg-green-900/30 text-green-300" :
+                                diff < 0 ? "bg-red-900/30 text-red-300" :
+                                "bg-zinc-800 text-zinc-400"
+                              }`}>
+                                {diff > 0
+                                  ? `Your price is ${fmt(diff)} (${diffPct}%) above Brushworks`
+                                  : diff < 0
+                                  ? `Your price is ${fmt(Math.abs(diff))} (${Math.abs(parseInt(diffPct))}%) below Brushworks`
+                                  : "Your price matches Brushworks"}
+                              </div>
+                            </div>
+
+                            {diff < 0 && (
+                              <div className="flex items-start gap-2 rounded bg-red-900/20 border border-red-700/30 px-2.5 py-2">
+                                <AlertTriangle size={12} className="text-red-400 shrink-0 mt-0.5" />
+                                <p className="text-[11px] text-red-300">
+                                  Your estimate is below Brushworks published rates. Consider raising the price or verifying job conditions.
+                                </p>
+                              </div>
+                            )}
+                          </CardContent>
+                        </Card>
+                      )}
+                    </div>
                   );
                 })()}
 
