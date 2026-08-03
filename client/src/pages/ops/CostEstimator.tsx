@@ -35,6 +35,12 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { Switch } from "@/components/ui/switch";
 
 type EstimateResult = {
   estimatedHours: number;
@@ -385,6 +391,7 @@ export default function CostEstimator() {
   const [priceOverride, setPriceOverride] = useState<number | null>(null);
   // Brushworks comparison panel
   const [brushworksOpen, setBrushworksOpen] = useState(false);
+  const [bwExcludeMobilization, setBwExcludeMobilization] = useState(false);
   const [mobilizationMiles, setMobilizationMiles] = useState("25");
   const [hasStumps, setHasStumps] = useState(false);
   const [stumpCount, setStumpCount] = useState("");
@@ -1434,17 +1441,46 @@ export default function CostEstimator() {
                   const bwAfterDiscount = bwSubtotal * (1 - bwVolDiscount);
                   const bwTotal = Math.max(bwMinimum, bwAfterDiscount);
 
-                  // Our price for comparison
-                  const ourPrice = priceOverride ?? getRecommendedPrice(result, pricingTier);
+                  // Mobilization cost from result (for apples-to-apples toggle)
+                  const mobCost = result.mobilizationCost ?? 0;
+                  const ourBasePrice = priceOverride ?? getRecommendedPrice(result, pricingTier);
+                  const ourPrice = bwExcludeMobilization ? Math.max(0, ourBasePrice - mobCost) : ourBasePrice;
                   const diff = ourPrice - bwTotal;
                   const diffPct = bwTotal > 0 ? ((diff / bwTotal) * 100).toFixed(0) : "0";
+
+                  // Density tooltip text
+                  const densityTooltip = isBrushworksBH
+                    ? "Brush Hogging has no density tiers — flat $624/ac regardless of vegetation."
+                    : vegetationDensity === "light"
+                    ? `Light density: grass, small brush. Brushworks base rate ${isBrushworksTrail ? "$2,000" : "$2,300"}/ac (lowest tier).`
+                    : vegetationDensity === "moderate"
+                    ? `Moderate density: mixed brush and saplings. Brushworks base rate ${isBrushworksTrail ? "$2,300" : "$2,645"}/ac (mid tier).`
+                    : `Heavy/Very Heavy density: dense brush, small trees, thick cedar. Brushworks base rate ${isBrushworksTrail ? "$2,600" : "$2,990"}/ac (top tier). Very Heavy maps to the same Dense tier.`;
+
+                  // Terrain tooltip text
+                  const terrainTooltip = isBrushworksBH
+                    ? "Brush Hogging has no terrain multiplier — tractor-mounted rotary cutter, flat rate only."
+                    : terrain === "flat"
+                    ? "T1 — Flat/Mild terrain. No multiplier applied (1.0×). Base rate is unchanged."
+                    : terrain === "rolling"
+                    ? "T2 — Rolling/Moderate terrain. Brushworks applies a +10% multiplier. Rate = base × 1.10."
+                    : "T3 — Steep terrain (includes Very Steep). Brushworks applies a +25% multiplier. Rate = base × 1.25. Very Steep maps to T3 — Brushworks does not have a T4 tier.";
+
+                  // Volume discount tooltip
+                  const volDiscountTooltip = bwVolDiscount > 0
+                    ? acreNum >= 10
+                      ? "10+ acres: Brushworks applies a 20% volume discount to the services subtotal."
+                      : acreNum >= 5.25
+                      ? "5.25–9.99 acres: Brushworks applies a 15% volume discount to the services subtotal."
+                      : "2.25–5.24 acres: Brushworks applies a 10% volume discount to the services subtotal."
+                    : "No volume discount applies below 2.25 acres.";
 
                   const densityLabel = vegetationDensity === "light" ? "Light"
                     : vegetationDensity === "moderate" ? "Medium"
                     : "Dense";
-                  const terrainLabel = terrain === "flat" ? "T1 (flat, 1.0×)"
-                    : terrain === "rolling" ? "T2 (rolling, +10%)"
-                    : "T3 (steep, +25%)";
+                  const terrainLabel = terrain === "flat" ? "T1 — flat (1.0×)"
+                    : terrain === "rolling" ? "T2 — rolling (+10%)"
+                    : "T3 — steep (+25%)";
 
                   return (
                     <div className="space-y-0">
@@ -1477,17 +1513,64 @@ export default function CostEstimator() {
                               Brushworks (Clarksville, TN) published rates — excludes mobilization. Used as a regional market reference.
                             </p>
 
+                            {/* Mobilization toggle */}
+                            {mobCost > 0 && (
+                              <div className="flex items-center justify-between rounded bg-zinc-800 border border-zinc-700 px-2.5 py-2">
+                                <div className="flex items-center gap-2">
+                                  <span className="text-zinc-300 text-[12px] font-medium">Exclude mobilization from your estimate</span>
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <Info size={12} className="text-zinc-500 cursor-help" />
+                                    </TooltipTrigger>
+                                    <TooltipContent side="top" className="max-w-[220px] text-[11px]">
+                                      Brushworks never includes mobilization in their published rates — they add it separately at invoicing. Toggle this on to subtract your mobilization cost ({fmt(mobCost)}) from your estimate for a direct apples-to-apples comparison.
+                                    </TooltipContent>
+                                  </Tooltip>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  {bwExcludeMobilization && (
+                                    <span className="text-[10px] text-amber-400">−{fmt(mobCost)} removed</span>
+                                  )}
+                                  <Switch
+                                    checked={bwExcludeMobilization}
+                                    onCheckedChange={setBwExcludeMobilization}
+                                    className="scale-75"
+                                  />
+                                </div>
+                              </div>
+                            )}
+
                             {/* Rate inputs */}
-                            <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-[12px]">
+                            <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-[12px]">
                               <span className="text-zinc-400">Service tier</span>
                               <span className="text-zinc-200 text-right">{isBrushworksBH ? "Brush Hogging" : isBrushworksTrail ? `Trail Cutting — ${densityLabel}` : `Forestry Mulching — ${densityLabel}`}</span>
 
-                              <span className="text-zinc-400">Base rate/ac</span>
-                              <span className="text-zinc-200 text-right">{fmt(bwDensityRate)}</span>
+                              <div className="flex items-center gap-1">
+                                <span className="text-zinc-400">Base rate/ac</span>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Info size={11} className="text-zinc-600 cursor-help" />
+                                  </TooltipTrigger>
+                                  <TooltipContent side="left" className="max-w-[230px] text-[11px]">
+                                    {densityTooltip}
+                                  </TooltipContent>
+                                </Tooltip>
+                              </div>
+                              <span className="text-zinc-200 text-right">{fmt(bwDensityRate)}/ac</span>
 
                               {!isBrushworksBH && (
                                 <>
-                                  <span className="text-zinc-400">Terrain</span>
+                                  <div className="flex items-center gap-1">
+                                    <span className="text-zinc-400">Terrain tier</span>
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <Info size={11} className="text-zinc-600 cursor-help" />
+                                      </TooltipTrigger>
+                                      <TooltipContent side="left" className="max-w-[240px] text-[11px]">
+                                        {terrainTooltip}
+                                      </TooltipContent>
+                                    </Tooltip>
+                                  </div>
                                   <span className="text-zinc-200 text-right">{terrainLabel}</span>
                                 </>
                               )}
@@ -1503,7 +1586,17 @@ export default function CostEstimator() {
 
                               {bwVolDiscount > 0 && (
                                 <>
-                                  <span className="text-zinc-400">Volume discount</span>
+                                  <div className="flex items-center gap-1">
+                                    <span className="text-zinc-400">Volume discount</span>
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <Info size={11} className="text-zinc-600 cursor-help" />
+                                      </TooltipTrigger>
+                                      <TooltipContent side="left" className="max-w-[220px] text-[11px]">
+                                        {volDiscountTooltip}
+                                      </TooltipContent>
+                                    </Tooltip>
+                                  </div>
                                   <span className="text-green-400 text-right">−{(bwVolDiscount * 100).toFixed(0)}% (−{fmt(bwSubtotal * bwVolDiscount)})</span>
                                 </>
                               )}
@@ -1520,7 +1613,11 @@ export default function CostEstimator() {
                                 <div className="px-3 py-2 bg-zinc-800/50">
                                   <p className="text-zinc-400 text-[10px] uppercase tracking-wide mb-0.5">Your Estimate</p>
                                   <p className="text-orange-400 font-bold text-base">{fmt(ourPrice)}</p>
-                                  <p className="text-zinc-500 text-[10px]">{pricingTier.toUpperCase()} tier{priceOverride !== null ? " (adjusted)" : ""}</p>
+                                  <p className="text-zinc-500 text-[10px]">
+                                    {pricingTier.toUpperCase()} tier
+                                    {priceOverride !== null ? " (adjusted)" : ""}
+                                    {bwExcludeMobilization && mobCost > 0 ? " — excl. mob." : ""}
+                                  </p>
                                 </div>
                               </div>
                               <div className={`px-3 py-1.5 text-center text-[11px] font-semibold ${
@@ -1540,7 +1637,9 @@ export default function CostEstimator() {
                               <div className="flex items-start gap-2 rounded bg-red-900/20 border border-red-700/30 px-2.5 py-2">
                                 <AlertTriangle size={12} className="text-red-400 shrink-0 mt-0.5" />
                                 <p className="text-[11px] text-red-300">
-                                  Your estimate is below Brushworks published rates. Consider raising the price or verifying job conditions.
+                                  {bwExcludeMobilization
+                                    ? "Even excluding mobilization, your estimate is below Brushworks published rates. Consider raising the base price."
+                                    : "Your estimate is below Brushworks published rates. Try toggling off mobilization above for a direct comparison, or consider raising the base price."}
                                 </p>
                               </div>
                             )}
