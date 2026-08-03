@@ -1602,6 +1602,104 @@ export default function CostEstimator() {
                               )}
                             </div>
 
+                            {/* ── Stacked bar chart ─────────────────────────────── */}
+                            {(() => {
+                              // Build chart segments for Brushworks side
+                              const bwBase = bwDensityRate * acreNum;
+                              const bwTerrainAdd = (bwTerrainMult - 1) * bwDensityRate * acreNum;
+                              const bwDiscountSave = bwSubtotal * bwVolDiscount;
+
+                              // Build chart segments for Our side
+                              // Pull line items from result.breakdown (exclude mobilization when toggled)
+                              const ourBreakdown = result.breakdown.filter(item => {
+                                if (bwExcludeMobilization && item.label.toLowerCase().includes("mobilization")) return false;
+                                return true;
+                              });
+                              // Categorise into base, terrain/density multiplier, and other
+                              const ourBaseItem = ourBreakdown.find(item =>
+                                item.label.toLowerCase().includes("base") ||
+                                item.label.toLowerCase().includes("service") ||
+                                item.label.toLowerCase().includes("mulch") ||
+                                item.label.toLowerCase().includes("clearing") ||
+                                item.label.toLowerCase().includes("hogging") ||
+                                item.label.toLowerCase().includes("trail")
+                              );
+                              const ourMultItems = ourBreakdown.filter(item =>
+                                item.label.toLowerCase().includes("terrain") ||
+                                item.label.toLowerCase().includes("density") ||
+                                item.label.toLowerCase().includes("access") ||
+                                item.label.toLowerCase().includes("multiplier")
+                              );
+                              const ourOtherItems = ourBreakdown.filter(item =>
+                                item !== ourBaseItem &&
+                                !ourMultItems.includes(item)
+                              );
+                              const ourBaseAmt = ourBaseItem?.cost ?? 0;
+                              const ourMultAmt = ourMultItems.reduce((s, i) => s + i.cost, 0);
+                              const ourOtherAmt = ourOtherItems.reduce((s, i) => s + i.cost, 0);
+
+                              const maxVal = Math.max(bwTotal, ourPrice, 1);
+
+                              // Percentage width helper (min 2% so tiny segments are visible)
+                              const pct = (v: number) => `${Math.max(2, Math.round((v / maxVal) * 100))}%`;
+
+                              type Seg = { label: string; value: number; color: string; stripe?: boolean };
+
+                              const bwSegs: Seg[] = [
+                                { label: "Base", value: bwBase, color: "#71717a" },
+                                ...(bwTerrainAdd > 0 ? [{ label: "Terrain", value: bwTerrainAdd, color: "#a1a1aa" }] : []),
+                                ...(bwDiscountSave > 0 ? [{ label: "Vol. discount", value: -bwDiscountSave, color: "#22c55e", stripe: true }] : []),
+                              ];
+                              const ourSegs: Seg[] = [
+                                ...(ourBaseAmt > 0 ? [{ label: "Base", value: ourBaseAmt, color: "#c2410c" }] : []),
+                                ...(ourMultAmt > 0 ? [{ label: "Multipliers", value: ourMultAmt, color: "#ea580c" }] : []),
+                                ...(ourOtherAmt > 0 ? [{ label: "Other", value: ourOtherAmt, color: "#f97316" }] : []),
+                              ];
+
+                              const renderBar = (segs: Seg[], total: number, label: string, totalColor: string) => (
+                                <div className="space-y-1.5">
+                                  <div className="flex items-center justify-between">
+                                    <span className="text-[11px] text-zinc-400 font-medium">{label}</span>
+                                    <span className={`text-[12px] font-bold ${totalColor}`}>{fmt(total)}</span>
+                                  </div>
+                                  {/* Bar track */}
+                                  <div className="relative h-6 rounded overflow-hidden bg-zinc-800 flex">
+                                    {segs.filter(s => s.value > 0).map((seg, i) => (
+                                      <Tooltip key={i}>
+                                        <TooltipTrigger asChild>
+                                          <div
+                                            style={{ width: pct(seg.value), backgroundColor: seg.color }}
+                                            className="h-full transition-all duration-300 cursor-help"
+                                          />
+                                        </TooltipTrigger>
+                                        <TooltipContent side="top" className="text-[11px]">
+                                          {seg.label}: {fmt(seg.value)}
+                                        </TooltipContent>
+                                      </Tooltip>
+                                    ))}
+                                  </div>
+                                  {/* Legend */}
+                                  <div className="flex flex-wrap gap-x-3 gap-y-0.5">
+                                    {segs.filter(s => s.value > 0).map((seg, i) => (
+                                      <span key={i} className="flex items-center gap-1 text-[10px] text-zinc-400">
+                                        <span className="inline-block w-2 h-2 rounded-sm" style={{ backgroundColor: seg.color }} />
+                                        {seg.label} {fmt(seg.value)}
+                                      </span>
+                                    ))}
+                                  </div>
+                                </div>
+                              );
+
+                              return (
+                                <div className="space-y-3 rounded border border-zinc-700/60 bg-zinc-800/30 px-3 py-2.5">
+                                  <p className="text-zinc-500 text-[10px] uppercase tracking-wide">Cost breakdown comparison</p>
+                                  {renderBar(bwSegs, bwTotal, "Brushworks", "text-zinc-200")}
+                                  <div className="border-t border-zinc-700/50" />
+                                  {renderBar(ourSegs, ourPrice, "Your Estimate", "text-orange-400")}
+                                </div>
+                              );
+                            })()}
+
                             {/* Comparison totals */}
                             <div className="rounded border border-zinc-700 overflow-hidden">
                               <div className="grid grid-cols-2">
