@@ -24,7 +24,9 @@ import { nativeQuotesRouter } from "./nativeQuotesRouter";
 import { nativeJobsRouter } from "./nativeJobsRouter";
 import { nativeClientsRouter } from "./nativeClientsRouter";
 import { getDb } from "./db";
-import { businessSettings } from "../drizzle/schema";
+import { businessSettings, emailSubscribers } from "../drizzle/schema";
+import { z } from "zod";
+import { eq } from "drizzle-orm";
 
 export const appRouter = router({
     // if you need to use socket.io, read and register route in server/_core/index.ts, all api should start with '/api/' so that the gateway can route correctly
@@ -61,6 +63,41 @@ export const appRouter = router({
   nativeQuotes: nativeQuotesRouter,
   nativeJobs: nativeJobsRouter,
   nativeClients: nativeClientsRouter,
+
+  /**
+   * Email subscribe — public opt-in for seasonal tips and updates.
+   */
+  emailSubscribe: router({
+    subscribe: publicProcedure
+      .input(z.object({
+        email: z.string().email(),
+        name: z.string().optional(),
+        source: z.enum(["homepage", "pricing", "footer"]).default("homepage"),
+      }))
+      .mutation(async ({ input }) => {
+        const db = await getDb();
+        if (!db) return { success: false, message: "Service unavailable" };
+        try {
+          // Check if already subscribed
+          const existing = await db.select({ id: emailSubscribers.id })
+            .from(emailSubscribers)
+            .where(eq(emailSubscribers.email, input.email.toLowerCase().trim()))
+            .limit(1);
+          if (existing.length > 0) {
+            return { success: true, message: "already_subscribed" };
+          }
+          await db.insert(emailSubscribers).values({
+            email: input.email.toLowerCase().trim(),
+            name: input.name?.trim() || null,
+            source: input.source,
+          });
+          return { success: true, message: "subscribed" };
+        } catch (err) {
+          console.error("[emailSubscribe] error:", err);
+          return { success: false, message: "error" };
+        }
+      }),
+  }),
 
   /**
    * Public site configuration — read-only, no auth required.

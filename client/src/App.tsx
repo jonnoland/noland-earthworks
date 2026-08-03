@@ -72,12 +72,14 @@ import FenceLineClearingPage from "./pages/FenceLineClearing";
 import MulchRedistributionPage from "./pages/MulchRedistribution";
 import SelectiveClearingPage from "./pages/SelectiveClearing";
 import TrailCuttingPage from "./pages/TrailCutting";
+import SitePreparationPage from "./pages/SitePreparation";
 import QuotePage from "./pages/Quote";
 import AboutPage from "./pages/About";
 import PricingPage from "./pages/Pricing";
 import FaqPage from "./pages/Faq";
 import TermsOfServicePage from "./pages/TermsOfService";
 import PrivacyPolicyPage from "./pages/PrivacyPolicy";
+import ReviewsPage from "./pages/Reviews";
 import BlogPage from "./pages/Blog";
 import CostOfLandClearing from "./pages/blog/CostOfLandClearing";
 import ForestryMulchingVsBulldozing from "./pages/blog/ForestryMulchingVsBulldozing";
@@ -209,6 +211,9 @@ function Router() {
       {/* Gallery */}
       <Route path="/gallery" component={GalleryPage} />
 
+      {/* Reviews */}
+      <Route path="/reviews" component={ReviewsPage} />
+
       {/* Blog / Resources */}
       <Route path="/blog" component={BlogPage} />
       <Route path="/blog/cost-of-land-management-tennessee" component={CostOfLandClearing} />
@@ -268,6 +273,7 @@ function Router() {
       <Route path="/services/property-maintenance" component={PropertyMaintenancePage} />
       <Route path="/services/right-of-way-clearing" component={RightOfWayClearingPage} />
       <Route path="/services/trail-cutting" component={TrailCuttingPage} />
+      <Route path="/services/site-preparation" component={SitePreparationPage} />
       {/* Add-On service pages */}
       <Route path="/services/add-ons/post-clear-seeding" component={() => { window.location.replace("/services/forestry-mulching"); return null; }} />
       <Route path="/services/add-ons/fence-line-clearing" component={FenceLineClearingPage} />

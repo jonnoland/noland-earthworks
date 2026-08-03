@@ -2764,3 +2764,13 @@
 - [x] Auto-save new client to DB on quote submit; update existing client if info changed
 - [x] Allow editing autofilled client fields (email, phone) in New Quote form
 - [x] Show client summary panel (past quotes, total spent, last quote) when existing client selected
+
+## Priority Fixes — Aug 2026 Review
+
+- [x] Fix stats bar: 12 → 35 Counties Served, 12hr → 24hr Quote Turnaround
+- [x] Add review count to stats bar (display actual Google review count next to 4.9★)
+- [x] Add project count stat to stats bar (e.g. "35+ Projects")
+- [x] Add /services/site-preparation route and page (currently missing from App.tsx)
+- [x] Build public /reviews page aggregating Google reviews
+- [x] Move Ops link out of public nav (hide from non-authenticated users — already gated by isOwner check, no change needed)
+- [x] Add email capture section to homepage and/or pricing page footer

@@ -1,17 +1,18 @@
 /*
  * DESIGN: Heavy Equipment Grit — full-width dark amber-accented stats band
  * Counters display final values immediately; animate only when scrolled into view.
+ * Stats: 4.9★ Google Rating | 35+ Projects | 35 Counties Served | 24hr Quote Turnaround
  */
 import { useEffect, useRef, useState } from "react";
 
 const stats = [
-  { value: 49, suffix: "", label: "Reviews", prefix: "", display: "4.9★" },
-  { value: 35, suffix: "", label: "Counties Served", prefix: "", display: null },
-  { value: 24, suffix: "hr", label: "Quote Turnaround", prefix: "", display: null },
+  { value: 49, suffix: "", label: "Google Rating", display: "4.9★", sub: "Avg. customer review" },
+  { value: 35, suffix: "+", label: "Projects Completed", display: null, sub: "Across Middle & West TN" },
+  { value: 35, suffix: "", label: "Counties Served", display: null, sub: "Middle & West Tennessee" },
+  { value: 24, suffix: "hr", label: "Quote Turnaround", display: null, sub: "Avg. response time" },
 ];
 
 function useCountUp(target: number, duration = 1200, active: boolean) {
-  // Start at final value so the stat is never shown as 0 on page load
   const [count, setCount] = useState(target);
   const hasRun = useRef(false);
   useEffect(() => {
@@ -34,15 +35,29 @@ function useCountUp(target: number, duration = 1200, active: boolean) {
   return count;
 }
 
-function StatItem({ value, suffix, label, active, display }: { value: number; suffix: string; label: string; active: boolean; display?: string | null }) {
+function StatItem({
+  value,
+  suffix,
+  label,
+  active,
+  display,
+  sub,
+}: {
+  value: number;
+  suffix: string;
+  label: string;
+  active: boolean;
+  display?: string | null;
+  sub?: string;
+}) {
   const count = useCountUp(value, 1200, active);
   return (
-    <div className="flex flex-col items-center text-center px-6 py-8">
+    <div className="flex flex-col items-center text-center px-4 py-8">
       <div
         style={{
           fontFamily: "'Oswald', sans-serif",
           fontWeight: 700,
-          fontSize: "clamp(2.25rem, 5vw, 3.5rem)",
+          fontSize: "clamp(2rem, 4vw, 3rem)",
           lineHeight: 1,
           color: "#E07B2A",
           letterSpacing: "0.02em",
@@ -53,16 +68,30 @@ function StatItem({ value, suffix, label, active, display }: { value: number; su
       <div
         style={{
           fontFamily: "'Lato', sans-serif",
-          fontWeight: 400,
-          fontSize: "0.8rem",
+          fontWeight: 600,
+          fontSize: "0.75rem",
           letterSpacing: "0.15em",
           textTransform: "uppercase",
-          color: "rgba(240,237,230,0.6)",
+          color: "rgba(240,237,230,0.85)",
           marginTop: "0.5rem",
         }}
       >
         {label}
       </div>
+      {sub && (
+        <div
+          style={{
+            fontFamily: "'Lato', sans-serif",
+            fontWeight: 400,
+            fontSize: "0.68rem",
+            letterSpacing: "0.05em",
+            color: "rgba(240,237,230,0.45)",
+            marginTop: "0.2rem",
+          }}
+        >
+          {sub}
+        </div>
+      )}
     </div>
   );
 }
@@ -76,7 +105,7 @@ export default function StatsBar() {
       ([entry]) => {
         if (entry.isIntersecting) {
           setActive(true);
-          observer.disconnect(); // only animate once
+          observer.disconnect();
         }
       },
       { threshold: 0.3 }
@@ -96,10 +125,7 @@ export default function StatsBar() {
       }}
     >
       <div className="container">
-        <div
-          className="grid grid-cols-1 sm:grid-cols-3"
-          style={{}}
-        >
+        <div className="grid grid-cols-2 sm:grid-cols-4">
           {stats.map((s, i) => (
             <div
               key={s.label}

@@ -1955,3 +1955,19 @@ export const nativeClients = mysqlTable("native_clients", {
 });
 export type NativeClient = typeof nativeClients.$inferSelect;
 export type InsertNativeClient = typeof nativeClients.$inferInsert;
+
+// ─── Email Subscribers ────────────────────────────────────────────────────────
+/**
+ * Email subscribers — captured from homepage and pricing page opt-in forms.
+ * Used for seasonal clearing tips and off-season outreach.
+ */
+export const emailSubscribers = mysqlTable("email_subscribers", {
+  id: int("id").primaryKey().autoincrement(),
+  email: varchar("email", { length: 255 }).notNull().unique(),
+  name: varchar("name", { length: 255 }),
+  /** Source page: homepage | pricing | footer */
+  source: varchar("source", { length: 50 }).notNull().default("homepage"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type EmailSubscriber = typeof emailSubscribers.$inferSelect;
+export type InsertEmailSubscriber = typeof emailSubscribers.$inferInsert;

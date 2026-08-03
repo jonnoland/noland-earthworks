@@ -3,6 +3,160 @@
  * Company info, contact, social links, legal
  */
 import { Phone, Mail, Facebook, Instagram, Youtube } from "lucide-react";
+import { useState } from "react";
+import { trpc } from "@/lib/trpc";
+
+function EmailCaptureStrip() {
+  const [email, setEmail] = useState("");
+  const [status, setStatus] = useState<"idle" | "loading" | "success" | "error" | "duplicate">("idle");
+  const subscribe = trpc.emailSubscribe.subscribe.useMutation({
+    onSuccess: (data) => {
+      if (data.message === "already_subscribed") {
+        setStatus("duplicate");
+      } else if (data.success) {
+        setStatus("success");
+        setEmail("");
+      } else {
+        setStatus("error");
+      }
+    },
+    onError: () => setStatus("error"),
+  });
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email.trim()) return;
+    setStatus("loading");
+    subscribe.mutate({ email: email.trim(), source: "footer" });
+  };
+
+  return (
+    <div
+      style={{
+        borderTop: "1px solid rgba(224,123,42,0.15)",
+        borderBottom: "1px solid rgba(224,123,42,0.15)",
+        backgroundColor: "#0d0d0d",
+        padding: "2rem 0",
+      }}
+    >
+      <div
+        className="container"
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          gap: "0.75rem",
+          textAlign: "center",
+        }}
+      >
+        <p
+          style={{
+            fontFamily: "'Oswald', sans-serif",
+            fontWeight: 600,
+            fontSize: "1rem",
+            letterSpacing: "0.08em",
+            textTransform: "uppercase",
+            color: "#F0EDE6",
+            margin: 0,
+          }}
+        >
+          Seasonal Clearing Tips &amp; Updates
+        </p>
+        <p
+          style={{
+            fontFamily: "'Lato', sans-serif",
+            fontSize: "0.82rem",
+            color: "rgba(240,237,230,0.5)",
+            margin: 0,
+            maxWidth: "420px",
+          }}
+        >
+          Get occasional notes on the best times to clear, what to expect on your first job, and when we have open schedule slots.
+        </p>
+        {status === "success" ? (
+          <p
+            style={{
+              fontFamily: "'Lato', sans-serif",
+              fontSize: "0.85rem",
+              color: "#E07B2A",
+              fontWeight: 600,
+            }}
+          >
+            You're on the list. We'll be in touch.
+          </p>
+        ) : status === "duplicate" ? (
+          <p
+            style={{
+              fontFamily: "'Lato', sans-serif",
+              fontSize: "0.85rem",
+              color: "rgba(240,237,230,0.5)",
+            }}
+          >
+            That email is already on the list.
+          </p>
+        ) : (
+          <form
+            onSubmit={handleSubmit}
+            style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap", justifyContent: "center" }}
+          >
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="your@email.com"
+              required
+              style={{
+                backgroundColor: "rgba(255,255,255,0.05)",
+                border: "1px solid rgba(255,255,255,0.12)",
+                borderRadius: "2px",
+                padding: "0.55rem 1rem",
+                fontFamily: "'Lato', sans-serif",
+                fontSize: "0.85rem",
+                color: "#F0EDE6",
+                outline: "none",
+                width: "240px",
+              }}
+            />
+            <button
+              type="submit"
+              disabled={status === "loading"}
+              style={{
+                backgroundColor: "#E07B2A",
+                color: "#121212",
+                fontFamily: "'Oswald', sans-serif",
+                fontWeight: 600,
+                fontSize: "0.75rem",
+                letterSpacing: "0.1em",
+                textTransform: "uppercase",
+                padding: "0.55rem 1.25rem",
+                border: "none",
+                borderRadius: "2px",
+                cursor: status === "loading" ? "not-allowed" : "pointer",
+                opacity: status === "loading" ? 0.7 : 1,
+              }}
+            >
+              {status === "loading" ? "..." : "Subscribe"}
+            </button>
+            {status === "error" && (
+              <p
+                style={{
+                  width: "100%",
+                  textAlign: "center",
+                  fontFamily: "'Lato', sans-serif",
+                  fontSize: "0.78rem",
+                  color: "rgba(240,100,100,0.8)",
+                  margin: "0.25rem 0 0",
+                }}
+              >
+                Something went wrong. Try again.
+              </p>
+            )}
+          </form>
+        )}
+      </div>
+    </div>
+  );
+}
 
 export default function Footer() {
   const scrollTo = (href: string) => {
@@ -232,6 +386,9 @@ export default function Footer() {
           </div>
         </div>
       </div>
+
+      {/* Email capture strip */}
+      <EmailCaptureStrip />
 
       {/* Bottom bar */}
       <div
