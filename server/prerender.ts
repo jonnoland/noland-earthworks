@@ -95,7 +95,8 @@ async function getBrowser() {
   browserInstance = await puppeteer.launch({
     executablePath:
       process.env.CHROMIUM_PATH ||
-      "/usr/bin/chromium-browser",
+      process.env.PUPPETEER_EXECUTABLE_PATH ||
+      "/usr/bin/chromium",
     headless: true,
     args: [
       "--no-sandbox",
