@@ -24,9 +24,9 @@ import { nativeQuotesRouter } from "./nativeQuotesRouter";
 import { nativeJobsRouter } from "./nativeJobsRouter";
 import { nativeClientsRouter } from "./nativeClientsRouter";
 import { getDb } from "./db";
-import { businessSettings, emailSubscribers } from "../drizzle/schema";
+import { businessSettings, emailSubscribers, serviceFaqs, seoArticles } from "../drizzle/schema";
+import { desc, eq } from "drizzle-orm";
 import { z } from "zod";
-import { eq } from "drizzle-orm";
 
 export const appRouter = router({
     // if you need to use socket.io, read and register route in server/_core/index.ts, all api should start with '/api/' so that the gateway can route correctly
@@ -96,6 +96,60 @@ export const appRouter = router({
           console.error("[emailSubscribe] error:", err);
           return { success: false, message: "error" };
         }
+      }),
+  }),
+
+  /**
+   * Public blog — serves published seoArticles to the frontend dynamic route.
+   */
+  blog: router({
+    /** Get a single published article by slug */
+    getBySlug: publicProcedure
+      .input(z.object({ slug: z.string() }))
+      .query(async ({ input }) => {
+        const db = await getDb();
+        if (!db) return null;
+        const rows = await db.select()
+          .from(seoArticles)
+          .where(eq(seoArticles.publishedSlug, input.slug))
+          .limit(1);
+        const article = rows[0];
+        if (!article || article.status !== "published") return null;
+        return article;
+      }),
+    /** List all published articles for the blog index */
+    listPublished: publicProcedure.query(async () => {
+      const db = await getDb();
+      if (!db) return [];
+      return db.select({
+        id: seoArticles.id,
+        title: seoArticles.title,
+        metaDescription: seoArticles.metaDescription,
+        publishedSlug: seoArticles.publishedSlug,
+        publishedAt: seoArticles.publishedAt,
+        wordCount: seoArticles.wordCount,
+        targetKeyword: seoArticles.targetKeyword,
+      })
+        .from(seoArticles)
+        .where(eq(seoArticles.status, "published"))
+        .orderBy(desc(seoArticles.publishedAt));
+    }),
+  }),
+
+  /**
+   * Service page FAQs — dynamic FAQs per service slug with FAQPage schema support.
+   */
+  serviceFaq: router({
+    /** Get active FAQs for a specific service slug */
+    getByService: publicProcedure
+      .input(z.object({ serviceSlug: z.string() }))
+      .query(async ({ input }) => {
+        const db = await getDb();
+        if (!db) return [];
+        return db.select()
+          .from(serviceFaqs)
+          .where(eq(serviceFaqs.serviceSlug, input.serviceSlug))
+          .orderBy(serviceFaqs.sortOrder);
       }),
   }),
 

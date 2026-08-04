@@ -1971,3 +1971,27 @@ export const emailSubscribers = mysqlTable("email_subscribers", {
 });
 export type EmailSubscriber = typeof emailSubscribers.$inferSelect;
 export type InsertEmailSubscriber = typeof emailSubscribers.$inferInsert;
+
+// ─── Service Page FAQs ────────────────────────────────────────────────────────
+/**
+ * Dynamic FAQ items for service pages.
+ * Each row belongs to a specific service slug and is displayed in the FAQ
+ * accordion on that service page with FAQPage JSON-LD schema markup.
+ */
+export const serviceFaqs = mysqlTable("service_faqs", {
+  id: int("id").primaryKey().autoincrement(),
+  /** The service slug this FAQ belongs to, e.g. "forestry-mulching" */
+  serviceSlug: varchar("serviceSlug", { length: 100 }).notNull(),
+  /** The FAQ question */
+  question: varchar("question", { length: 500 }).notNull(),
+  /** The FAQ answer (plain text or simple markdown) */
+  answer: text("answer").notNull(),
+  /** Display order within the service page (lower = first) */
+  sortOrder: int("sortOrder").notNull().default(0),
+  /** Whether this FAQ is active and should be shown */
+  active: boolean("active").notNull().default(true),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type ServiceFaq = typeof serviceFaqs.$inferSelect;
+export type InsertServiceFaq = typeof serviceFaqs.$inferInsert;

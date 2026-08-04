@@ -111,11 +111,12 @@ const PAGES = [
 ];
 
 export function registerSitemapRoutes(app: Express) {
-  // XML Sitemap — dynamically generated so it always reflects the current page list
-  app.get("/sitemap.xml", (_req, res) => {
+  // XML Sitemap — dynamically generated; includes published DB articles
+  app.get("/sitemap.xml", async (_req, res) => {
     const lastmod = new Date().toISOString().split("T")[0];
 
-    const urls = PAGES.map(
+    // Static pages
+    const staticUrls = PAGES.map(
       ({ path, priority, changefreq }) => `
   <url>
     <loc>${BASE_URL}${path}</loc>
@@ -125,12 +126,39 @@ export function registerSitemapRoutes(app: Express) {
   </url>`
     ).join("");
 
+    // Dynamic DB-published blog articles
+    let dynamicUrls = "";
+    try {
+      const { getDb } = await import("./db");
+      const { seoArticles } = await import("../drizzle/schema");
+      const { eq } = await import("drizzle-orm");
+      const db = await getDb();
+      if (db) {
+        const published = await db
+          .select({ slug: seoArticles.publishedSlug, publishedAt: seoArticles.publishedAt })
+          .from(seoArticles)
+          .where(eq(seoArticles.status, "published"));
+        dynamicUrls = published
+          .filter(a => a.slug)
+          .map(a => `
+  <url>
+    <loc>${BASE_URL}/blog/${a.slug}</loc>
+    <lastmod>${a.publishedAt ? new Date(a.publishedAt).toISOString().split("T")[0] : lastmod}</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>`)
+          .join("");
+      }
+    } catch (err) {
+      console.error("[sitemap] Failed to fetch dynamic articles:", err);
+    }
+
     const xml = `<?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${urls}
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${staticUrls}${dynamicUrls}
 </urlset>`;
 
     res.setHeader("Content-Type", "application/xml");
-    res.setHeader("Cache-Control", "public, max-age=86400"); // cache 24h
+    res.setHeader("Cache-Control", "public, max-age=3600"); // cache 1h for dynamic content
     res.send(xml);
   });
 

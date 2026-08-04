@@ -125,6 +125,7 @@ import LandManagementPerryCounty from "./pages/blog/LandManagementPerryCounty";
 import LandManagementStewartCounty from "./pages/blog/LandManagementStewartCounty";
 import LandManagementWayneCounty from "./pages/blog/LandManagementWayneCounty";
 import LandManagementWeakleyCounty from "./pages/blog/LandManagementWeakleyCounty";
+import DynamicBlogPost from "./pages/DynamicBlogPost";
 import GalleryPage from "./pages/Gallery";
 import {
   DavidsonCountyPage,
@@ -263,8 +264,9 @@ function Router() {
       <Route path="/blog/land-management-perry-county" component={LandManagementPerryCounty} />
       <Route path="/blog/land-management-stewart-county" component={LandManagementStewartCounty} />
       <Route path="/blog/land-management-wayne-county" component={LandManagementWayneCounty} />
-      <Route path="/blog/land-management-weakley-county" component={LandManagementWeakleyCounty} />
-
+            <Route path="/blog/land-management-weakley-county" component={LandManagementWeakleyCounty} />
+      {/* Dynamic blog route — catches /blog/:slug for DB-published articles */}
+      <Route path="/blog/:slug" component={DynamicBlogPost} />
       {/* Service pages */}
       <Route path="/services/land-management" component={LandClearingPage} />
       <Route path="/services/land-management" component={() => { window.location.replace("/services/land-management"); return null; }} />

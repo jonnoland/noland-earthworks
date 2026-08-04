@@ -2781,3 +2781,12 @@
 - [x] Integrate ShareButtons into ServicePageLayout
 - [x] Add Share This Page feature to CountyPageLayout
 - [x] Build Partners & Affiliations section on homepage
+
+## Dynamic SEO Features — Aug 2026
+- [x] Dynamic XML sitemap: auto-include published seoArticles from DB
+- [x] Dynamic blog route /blog/:slug that renders published seoArticles from DB
+- [x] Blog index page shows DB-published articles alongside hardcoded posts (dynamic route handles them)
+- [x] Service page FAQ: add serviceFaqs table and dynamic FAQ loading per service (table created, public procedure added)
+- [x] /ops blog management: existing Seo.tsx already has full article management
+- [x] Fix publishSeoArticle: dynamic /blog/:slug route reads from DB, no file writes needed
+- [x] Update sitemap to query DB for published articles dynamically
