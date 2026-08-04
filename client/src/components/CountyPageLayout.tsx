@@ -4,6 +4,7 @@
  */
 import { ArrowRight, MapPin, Phone, Star, FileText, Shield } from "lucide-react";
 import { useEffect, useRef, useState, lazy, Suspense } from "react";
+import { usePageTitle } from "@/hooks/usePageTitle";
 const CountyMap = lazy(() => import("@/components/CountyMap"));
 
 export interface CountyPageProps {
@@ -130,6 +131,12 @@ export default function CountyPageLayout({
 }: CountyPageProps) {
   const quoteUrl = buildQuoteUrl(county, nearbyAreas, state);
   const servicesRef = useVisible();
+  // Set page title, meta description, and canonical URL for SEO
+  usePageTitle(
+    `Forestry Mulching & Land Management in ${county}, ${state} | Noland Earthworks`,
+    `Noland Earthworks provides veteran-owned forestry mulching, land management, and vegetation management services throughout ${county}, ${state}. Free on-site estimates. Call 615-406-4819.`,
+    `/service-areas/${slug}`
+  );
 
   // Inject FAQ JSON-LD schema for Google rich results
   useEffect(() => {

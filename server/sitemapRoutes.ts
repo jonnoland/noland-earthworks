@@ -11,6 +11,7 @@ const PAGES = [
   { path: "/services/vegetation-management",                            priority: "0.9", changefreq: "monthly" },
   { path: "/services/right-of-way-clearing",                            priority: "0.9", changefreq: "monthly" },
   { path: "/services/property-maintenance",                             priority: "0.8", changefreq: "monthly" },
+  { path: "/services/site-preparation",                                 priority: "0.8", changefreq: "monthly" },
   // Add-On service pages
   { path: "/services/add-ons/fence-line-clearing",                       priority: "0.7", changefreq: "monthly" },
   { path: "/services/add-ons/mulch-redistribution",                      priority: "0.7", changefreq: "monthly" },
@@ -20,6 +21,8 @@ const PAGES = [
   { path: "/pricing",                                                   priority: "0.8", changefreq: "monthly" },
   { path: "/about",                                                     priority: "0.7", changefreq: "monthly", lastmod: "2026-07-28" },
   { path: "/gallery",                                                   priority: "0.7", changefreq: "monthly" },
+  { path: "/reviews",                                                  priority: "0.7", changefreq: "monthly" },
+  { path: "/faq",                                                       priority: "0.7", changefreq: "monthly" },
   // Blog / Resources
   { path: "/blog",                                                      priority: "0.8", changefreq: "weekly"  },
   { path: "/blog/cost-of-land-management-tennessee",                      priority: "0.8", changefreq: "monthly", lastmod: "2026-07-28" },
