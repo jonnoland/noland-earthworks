@@ -25,7 +25,7 @@ import {
 } from "./db";
 import { Resend } from "resend";
 import { jobs, opsLeads, quoteSubmissions, crews, crewMembers, conversations, messages, reviews, timeEntries, distanceQuotes, businessSettings, automationSettings, serviceCatalog, pricingBenchmarks, messageTemplates, reminderRules, leadNotes, visitBlackoutDates, recurringBlackoutDays, aiPricingSettings, quoteDrafts, socialPosts, adSpend, equipment, serviceLogs, serviceIntervals, fieldDiagnostics, ownerTasks, jobNotes, morningBriefs, reviewRequests, chatSessions,
- scheduleEntries, agentConfig, adCampaigns, prospectingLeads, outreachTemplates, leadContactLog, nativeQuotes } from "../drizzle/schema";
+ scheduleEntries, agentConfig, adCampaigns, prospectingLeads, outreachTemplates, leadContactLog, nativeQuotes, serviceFaqs } from "../drizzle/schema";
 
 import { and, asc, desc, eq, gte, inArray, lt, lte, like, or, sql } from "drizzle-orm";
 import { portalAddOnOptions } from "../drizzle/schema";
@@ -6679,4 +6679,93 @@ Rules:
         notes: (parsed.notes as string | null) ?? null,
       };
     }),
+
+  // ─── Service FAQs CRUD ───────────────────────────────────────────────────────
+  serviceFaq: router({
+    /** List all FAQs for a service slug (owner view — includes inactive) */
+    list: ownerProcedure
+      .input(z.object({ serviceSlug: z.string() }))
+      .query(async ({ input }) => {
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+        return db
+          .select()
+          .from(serviceFaqs)
+          .where(eq(serviceFaqs.serviceSlug, input.serviceSlug))
+          .orderBy(asc(serviceFaqs.sortOrder), asc(serviceFaqs.id));
+      }),
+
+    /** List all FAQs across all services (for the management overview) */
+    listAll: ownerProcedure.query(async () => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+      return db
+        .select()
+        .from(serviceFaqs)
+        .orderBy(asc(serviceFaqs.serviceSlug), asc(serviceFaqs.sortOrder), asc(serviceFaqs.id));
+    }),
+
+    /** Create a new FAQ for a service */
+    create: ownerProcedure
+      .input(z.object({
+        serviceSlug: z.string().min(1).max(100),
+        question: z.string().min(5).max(500),
+        answer: z.string().min(5),
+        sortOrder: z.number().int().min(0).default(0),
+        active: z.boolean().default(true),
+      }))
+      .mutation(async ({ input }) => {
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+        const [row] = await db.insert(serviceFaqs).values({
+          serviceSlug: input.serviceSlug,
+          question: input.question,
+          answer: input.answer,
+          sortOrder: input.sortOrder,
+          active: input.active,
+        });
+        return { id: (row as { insertId: number }).insertId };
+      }),
+
+    /** Update an existing FAQ */
+    update: ownerProcedure
+      .input(z.object({
+        id: z.number().int().positive(),
+        question: z.string().min(5).max(500).optional(),
+        answer: z.string().min(5).optional(),
+        sortOrder: z.number().int().min(0).optional(),
+        active: z.boolean().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+        const { id, ...data } = input;
+        await db.update(serviceFaqs).set({ ...data, updatedAt: new Date() }).where(eq(serviceFaqs.id, id));
+        return { success: true };
+      }),
+
+    /** Delete a FAQ */
+    delete: ownerProcedure
+      .input(z.object({ id: z.number().int().positive() }))
+      .mutation(async ({ input }) => {
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+        await db.delete(serviceFaqs).where(eq(serviceFaqs.id, input.id));
+        return { success: true };
+      }),
+
+    /** Bulk reorder — accepts array of {id, sortOrder} pairs */
+    reorder: ownerProcedure
+      .input(z.array(z.object({ id: z.number().int().positive(), sortOrder: z.number().int().min(0) })))
+      .mutation(async ({ input }) => {
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+        await Promise.all(
+          input.map(({ id, sortOrder }) =>
+            db.update(serviceFaqs).set({ sortOrder, updatedAt: new Date() }).where(eq(serviceFaqs.id, id))
+          )
+        );
+        return { success: true };
+      }),
+  }),
 });

@@ -2,9 +2,10 @@
  * DESIGN: Heavy Equipment Grit — shared layout for all service detail pages
  * Hero banner → overview → photo gallery → FAQ accordion → CTA
  */
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { ArrowLeft, ChevronDown, ChevronUp, ArrowRight, Check } from "lucide-react";
 import ShareButtons from "@/components/ShareButtons";
+import { trpc } from "@/lib/trpc";
 // Using plain <a> tags to avoid nested anchor issues (wouter Link renders as <a>)
 
 export interface FaqItem {
@@ -113,6 +114,24 @@ export default function ServicePageLayout(props: ServicePageProps) {
     benefits, faqs, relatedServices,
   } = props;
 
+  // Load dynamic FAQs from the database (active only, ordered by sortOrder)
+  const { data: dbFaqs } = trpc.serviceFaq.getByService.useQuery(
+    { serviceSlug: slug },
+    { staleTime: 5 * 60 * 1000 } // cache 5 min
+  );
+
+  // Merge: DB FAQs first (they are managed/curated), then hardcoded FAQs that
+  // don't duplicate a DB question (dedup by lowercase question text)
+  const mergedFaqs = useMemo(() => {
+    const activeDynamic = (dbFaqs ?? []).filter(f => f.active);
+    const dynamicQuestions = new Set(activeDynamic.map(f => f.question.toLowerCase().trim()));
+    const uniqueStatic = faqs.filter(f => !dynamicQuestions.has(f.question.toLowerCase().trim()));
+    return [
+      ...activeDynamic.map(f => ({ question: f.question, answer: f.answer })),
+      ...uniqueStatic,
+    ];
+  }, [dbFaqs, faqs]);
+
   // Inject Service + FAQPage JSON-LD schema for Google rich results
   useEffect(() => {
     const id = `service-schema-${slug}`;
@@ -175,7 +194,7 @@ export default function ServicePageLayout(props: ServicePageProps) {
     const faqSchema = {
       "@context": "https://schema.org",
       "@type": "FAQPage",
-      "mainEntity": faqs.map(faq => ({
+      "mainEntity": mergedFaqs.map(faq => ({
         "@type": "Question",
         "name": faq.question,
         "acceptedAnswer": {
@@ -189,7 +208,7 @@ export default function ServicePageLayout(props: ServicePageProps) {
       const existing = document.getElementById(id);
       if (existing) existing.remove();
     };
-  }, [slug, title, tagline, faqs]);
+  }, [slug, title, tagline, mergedFaqs]);
 
   const headerVis = useVisible(0.1);
   const faqVis = useVisible(0.1);
@@ -385,7 +404,7 @@ export default function ServicePageLayout(props: ServicePageProps) {
               Frequently Asked Questions
             </h2>
             <div className="max-w-3xl">
-              <FaqAccordion faqs={faqs} />
+              <FaqAccordion faqs={mergedFaqs} />
             </div>
           </div>
         </div>

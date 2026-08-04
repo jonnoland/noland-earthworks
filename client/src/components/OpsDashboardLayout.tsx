@@ -79,9 +79,10 @@ const navGroups = [
   {
     label: "Marketing",
     items: [
-      { icon: Megaphone, label: "Marketing", href: "/ops/marketing" },
-      { icon: Star,      label: "Reviews",   href: "/ops/reviews" },
-      { icon: Image,     label: "Gallery",   href: "/ops/gallery" },
+      { icon: Megaphone,   label: "Marketing",    href: "/ops/marketing" },
+      { icon: Star,        label: "Reviews",      href: "/ops/reviews" },
+      { icon: Image,       label: "Gallery",      href: "/ops/gallery" },
+      { icon: HelpCircle,  label: "Service FAQs", href: "/ops/faqs" },
     ],
   },
   {
