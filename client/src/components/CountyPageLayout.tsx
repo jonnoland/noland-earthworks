@@ -5,6 +5,7 @@
 import { ArrowRight, MapPin, Phone, Star, FileText, Shield } from "lucide-react";
 import { useEffect, useRef, useState, lazy, Suspense } from "react";
 import { usePageTitle } from "@/hooks/usePageTitle";
+import ShareButtons from "@/components/ShareButtons";
 const CountyMap = lazy(() => import("@/components/CountyMap"));
 
 export interface CountyPageProps {
@@ -545,6 +546,36 @@ export default function CountyPageLayout({
         </div>
       </section>
 
+      {/* Share This Page */}
+      <div
+        className="container"
+        style={{
+          paddingTop: "1.75rem",
+          paddingBottom: "1.75rem",
+          borderTop: "1px solid rgba(240,237,230,0.07)",
+        }}
+      >
+        <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+          <span
+            style={{
+              fontFamily: "'Lato', sans-serif",
+              fontWeight: 700,
+              fontSize: "0.8rem",
+              letterSpacing: "0.06em",
+              textTransform: "uppercase",
+              color: "rgba(240,237,230,0.5)",
+              flexShrink: 0,
+            }}
+          >
+            Know someone who needs land cleared?
+          </span>
+          <ShareButtons
+            url={`https://nolandearthworks.com/service-areas/${slug}`}
+            title={`Forestry Mulching & Land Clearing in ${county} | Noland Earthworks`}
+            compact={false}
+          />
+        </div>
+      </div>
       {/* FAQ */}
       <section style={{ backgroundColor: "#1a1a1a" }} className="py-16 md:py-20">
         <div className="container max-w-3xl">

@@ -4,6 +4,7 @@
  */
 import { useState, useEffect, useRef } from "react";
 import { ArrowLeft, ChevronDown, ChevronUp, ArrowRight, Check } from "lucide-react";
+import ShareButtons from "@/components/ShareButtons";
 // Using plain <a> tags to avoid nested anchor issues (wouter Link renders as <a>)
 
 export interface FaqItem {
@@ -491,6 +492,20 @@ export default function ServicePageLayout(props: ServicePageProps) {
         </div>
       </section>
 
+      {/* ── SHARE BAR ── */}
+      <div
+        className="container"
+        style={{
+          paddingTop: "2rem",
+          paddingBottom: "2rem",
+          borderTop: "1px solid rgba(240,237,230,0.08)",
+        }}
+      >
+        <ShareButtons
+          url={`https://nolandearthworks.com/services/${slug}`}
+          title={title}
+        />
+      </div>
       {/* ── CTA STRIP ── */}
       <section
         style={{

@@ -2774,3 +2774,10 @@
 - [x] Build public /reviews page aggregating Google reviews
 - [x] Move Ops link out of public nav (hide from non-authenticated users — already gated by isOwner check, no change needed)
 - [x] Add email capture section to homepage and/or pricing page footer
+
+## Social Sharing & Partners — Aug 2026
+- [x] Build reusable ShareButtons component (Facebook, X, LinkedIn, copy link)
+- [x] Integrate ShareButtons into BlogPostLayout
+- [x] Integrate ShareButtons into ServicePageLayout
+- [x] Add Share This Page feature to CountyPageLayout
+- [x] Build Partners & Affiliations section on homepage

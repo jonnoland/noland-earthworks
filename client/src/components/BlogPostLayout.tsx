@@ -10,6 +10,7 @@ import { usePageTitle } from "@/hooks/usePageTitle";
 import { ArrowLeft, Calendar, RefreshCw } from "lucide-react";
 import RelatedPosts from "@/components/RelatedPosts";
 import AuthorBio from "@/components/AuthorBio";
+import ShareButtons from "@/components/ShareButtons";
 
 export interface BlogPostProps {
   title: string;
@@ -332,6 +333,19 @@ export default function BlogPostLayout({
 
         {/* Author bio — E-E-A-T signal, links to About page entity */}
         <AuthorBio />
+        {/* Social share bar */}
+        <div
+          style={{
+            marginTop: "2.5rem",
+            paddingTop: "1.5rem",
+            borderTop: "1px solid rgba(240,237,230,0.1)",
+          }}
+        >
+          <ShareButtons
+            url={`https://nolandearthworks.com/blog/${slug}`}
+            title={title}
+          />
+        </div>
       </article>
 
       {/* Related Posts */}

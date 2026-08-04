@@ -17,6 +17,7 @@ import FAQSection from "@/components/FAQSection";
 import ServiceAreasSection from "@/components/ServiceAreasSection";
 import CountiesSection from "@/components/CountiesSection";
 import BlogPreviewSection from "@/components/BlogPreviewSection";
+import PartnersSection from "@/components/PartnersSection";
 import MobileCTABar from "@/components/MobileCTABar";
 import Footer from "@/components/Footer";
 import { usePageTitle } from "@/hooks/usePageTitle";
@@ -47,6 +48,7 @@ export default function Home() {
       <ServiceAreasSection />
       <CountiesSection />
       <BlogPreviewSection />
+      <PartnersSection />
       <MobileCTABar />
       <Footer />
     </div>
