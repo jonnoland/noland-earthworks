@@ -6768,4 +6768,125 @@ Rules:
         return { success: true };
       }),
   }),
+
+  // ─── Lead Visibility Data ───────────────────────────────────────────────────────────────────
+  /**
+   * Returns 12 months of lead + quote submission data for the visibility dashboard.
+   * Includes monthly volume, source breakdown, AI score breakdown, and service type breakdown.
+   */
+  getLeadVisibilityData: ownerProcedure.query(async ({ ctx }) => {
+    const db = await getDb();
+    if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+
+    const twelveMonthsAgo = new Date();
+    twelveMonthsAgo.setMonth(twelveMonthsAgo.getMonth() - 12);
+
+    // Fetch all leads in the last 12 months
+    const allLeads = await db.select({
+      id: opsLeads.id,
+      source: opsLeads.source,
+      stage: opsLeads.stage,
+      aiScore: opsLeads.aiScore,
+      jobType: opsLeads.jobType,
+      createdAt: opsLeads.createdAt,
+    }).from(opsLeads)
+      .where(and(eq(opsLeads.userId, ctx.user.id), gte(opsLeads.createdAt, twelveMonthsAgo)))
+      .orderBy(opsLeads.createdAt);
+
+    // Fetch all quote submissions in the last 12 months
+    const allQuotes = await db.select({
+      id: quoteSubmissions.id,
+      service: quoteSubmissions.service,
+      county: quoteSubmissions.county,
+      aiScore: quoteSubmissions.aiScore,
+      createdAt: quoteSubmissions.createdAt,
+    }).from(quoteSubmissions)
+      .where(gte(quoteSubmissions.createdAt, twelveMonthsAgo))
+      .orderBy(quoteSubmissions.createdAt);
+
+    // Build monthly buckets (last 12 months)
+    const months: { key: string; label: string; leads: number; quotes: number; strong: number; marginal: number; weak: number; unscored: number }[] = [];
+    const now = new Date();
+    for (let i = 11; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+      const label = d.toLocaleDateString("en-US", { month: "short", year: "2-digit" });
+      months.push({ key, label, leads: 0, quotes: 0, strong: 0, marginal: 0, weak: 0, unscored: 0 });
+    }
+
+    for (const lead of allLeads) {
+      const key = `${lead.createdAt.getFullYear()}-${String(lead.createdAt.getMonth() + 1).padStart(2, "0")}`;
+      const bucket = months.find(m => m.key === key);
+      if (bucket) {
+        bucket.leads++;
+        if (lead.aiScore === "strong") bucket.strong++;
+        else if (lead.aiScore === "marginal") bucket.marginal++;
+        else if (lead.aiScore === "weak") bucket.weak++;
+        else bucket.unscored++;
+      }
+    }
+
+    for (const quote of allQuotes) {
+      const key = `${quote.createdAt.getFullYear()}-${String(quote.createdAt.getMonth() + 1).padStart(2, "0")}`;
+      const bucket = months.find(m => m.key === key);
+      if (bucket) bucket.quotes++;
+    }
+
+    // Source breakdown
+    const sourceCounts: Record<string, number> = {};
+    for (const lead of allLeads) {
+      const src = lead.source ?? "other";
+      sourceCounts[src] = (sourceCounts[src] ?? 0) + 1;
+    }
+    const sourceBreakdown = Object.entries(sourceCounts)
+      .map(([source, count]) => ({ source, count }))
+      .sort((a, b) => b.count - a.count);
+
+    // Service type breakdown from quote submissions
+    const serviceCounts: Record<string, number> = {};
+    for (const quote of allQuotes) {
+      const svc = quote.service ?? "other";
+      serviceCounts[svc] = (serviceCounts[svc] ?? 0) + 1;
+    }
+    const serviceBreakdown = Object.entries(serviceCounts)
+      .map(([service, count]) => ({ service, count }))
+      .sort((a, b) => b.count - a.count);
+
+    // Stage breakdown (current pipeline)
+    const stageCounts: Record<string, number> = {};
+    const currentLeads = await db.select({ stage: opsLeads.stage })
+      .from(opsLeads).where(eq(opsLeads.userId, ctx.user.id));
+    for (const lead of currentLeads) {
+      stageCounts[lead.stage] = (stageCounts[lead.stage] ?? 0) + 1;
+    }
+    const stageBreakdown = Object.entries(stageCounts)
+      .map(([stage, count]) => ({ stage, count }))
+      .sort((a, b) => b.count - a.count);
+
+    // Totals
+    const totalLeads = allLeads.length;
+    const totalQuotes = allQuotes.length;
+    const thisMonth = months[months.length - 1];
+    const lastMonth = months[months.length - 2];
+    const momChange = lastMonth.leads > 0
+      ? Math.round(((thisMonth.leads - lastMonth.leads) / lastMonth.leads) * 100)
+      : null;
+
+    // Peak month
+    const peakMonth = [...months].sort((a, b) => b.leads - a.leads)[0];
+
+    return {
+      monthly: months,
+      sourceBreakdown,
+      serviceBreakdown,
+      stageBreakdown,
+      totalLeads,
+      totalQuotes,
+      thisMonthLeads: thisMonth.leads,
+      thisMonthQuotes: thisMonth.quotes,
+      momChange,
+      peakMonth: peakMonth.label,
+      peakMonthCount: peakMonth.leads,
+    };
+  }),
 });

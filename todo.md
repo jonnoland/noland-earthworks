@@ -2795,3 +2795,14 @@
 - [x] Review request: trigger on paidDate+48h instead of completedDate, add sentiment filter
 - [x] AI proposal draft: draftProposalFromLead already built in aiAutomationRouter (confirmed working)
 - [x] AI photo captioning: generatePhotoCaption procedure added, AI caption button in gallery upload UI
+
+## Lead Visibility Dashboard — Aug 2026
+- [x] Add getLeadVisibilityData procedure to opsRouter (monthly lead/quote volume, source breakdown, AI score breakdown)
+- [x] Build /ops/lead-visibility page with charts and seasonal context
+- [x] Add Lead Visibility nav item to OpsDashboardLayout
+
+## AI Visibility Score Improvements — Aug 2026
+- [x] Add 4 new audit prompts: West Tennessee local service (2), additional branded (1), additional use case (1), additional competitor (1)
+- [x] Replace keyword-based mention detection with structured JSON analysis (Grok reasons about whether business was mentioned)
+- [x] Recalibrate scoring formula: weighted by category (branded 40%, local 35%, use case 25%) with quality bonus
+- [x] Add region field to prompts for better reporting context

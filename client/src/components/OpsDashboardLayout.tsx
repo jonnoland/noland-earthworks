@@ -41,6 +41,7 @@ import {
   Stethoscope,
   DollarSign,
   TrendingUp,
+  BarChart2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/_core/hooks/useAuth";
@@ -83,6 +84,7 @@ const navGroups = [
       { icon: Star,        label: "Reviews",      href: "/ops/reviews" },
       { icon: Image,       label: "Gallery",      href: "/ops/gallery" },
       { icon: HelpCircle,  label: "Service FAQs", href: "/ops/faqs" },
+      { icon: BarChart2,    label: "Lead Visibility", href: "/ops/lead-visibility" },
     ],
   },
   {

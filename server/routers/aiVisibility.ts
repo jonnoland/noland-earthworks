@@ -62,60 +62,102 @@ const AUDIT_PROMPTS: Array<{
   prompt: string;
   category: "local_service" | "branded" | "competitor" | "use_case" | "general";
   platform: "grok";
+  region: string;
 }> = [
-  // Local service — forestry mulching intent, no brand name
+  // Local service — Middle Tennessee, no brand name
   {
-    prompt: "Who does forestry mulching in Middle Tennessee? Give me specific companies.",
+    prompt: "Who does forestry mulching in Middle Tennessee? Give me specific companies with contact info.",
     category: "local_service",
     platform: "grok",
+    region: "Middle TN",
   },
   {
-    prompt: "Best forestry mulching contractors near Columbia Tennessee",
+    prompt: "Best forestry mulching contractors near Columbia Tennessee — who should I hire?",
     category: "local_service",
     platform: "grok",
+    region: "Middle TN",
   },
   {
-    prompt: "Forestry mulching services near Nashville Tennessee — who should I call?",
+    prompt: "Forestry mulching services near Nashville Tennessee — who are the top options?",
     category: "local_service",
     platform: "grok",
+    region: "Middle TN",
   },
   {
     prompt: "Veteran-owned forestry mulching company in Tennessee — any recommendations?",
     category: "local_service",
     platform: "grok",
+    region: "Tennessee",
+  },
+  // Local service — West Tennessee
+  {
+    prompt: "Who does forestry mulching in West Tennessee? Looking for a contractor near Jackson or Henderson.",
+    category: "local_service",
+    platform: "grok",
+    region: "West TN",
+  },
+  {
+    prompt: "Land clearing and forestry mulching contractors in West Tennessee — who are the best options?",
+    category: "local_service",
+    platform: "grok",
+    region: "West TN",
   },
   // Branded — direct name queries
   {
-    prompt: "What is Noland Earthworks and what services do they offer?",
+    prompt: "What is Noland Earthworks LLC and what services do they offer?",
     category: "branded",
     platform: "grok",
+    region: "Tennessee",
   },
   {
-    prompt: "Is Noland Earthworks LLC a reputable forestry mulching company in Tennessee?",
+    prompt: "Is Noland Earthworks a reputable forestry mulching company in Tennessee?",
     category: "branded",
     platform: "grok",
+    region: "Tennessee",
+  },
+  {
+    prompt: "Jon Noland forestry mulching Tennessee — tell me about his company",
+    category: "branded",
+    platform: "grok",
+    region: "Tennessee",
   },
   // Use case — specific forestry mulching jobs
   {
     prompt: "I need forestry mulching to reclaim overgrown pasture in Middle Tennessee — who can help?",
     category: "use_case",
     platform: "grok",
+    region: "Middle TN",
   },
   {
     prompt: "Who uses a forestry mulcher to clear cedar thickets and overgrown brush in Tennessee without burning or hauling?",
     category: "use_case",
     platform: "grok",
+    region: "Tennessee",
   },
   {
-    prompt: "Forestry mulching for lot clearing and site prep in Middle Tennessee",
+    prompt: "Forestry mulching for lot clearing and site prep in Middle Tennessee — who should I call?",
     category: "use_case",
     platform: "grok",
+    region: "Middle TN",
   },
-  // Competitor — share of voice for forestry mulching specifically
   {
-    prompt: "Compare forestry mulching companies in Middle Tennessee — who are the top options?",
+    prompt: "Best way to clear cedar thickets in Tennessee without burning — what companies do this?",
+    category: "use_case",
+    platform: "grok",
+    region: "Tennessee",
+  },
+  // Competitor — share of voice
+  {
+    prompt: "Compare forestry mulching companies in Middle Tennessee — who are the top options and what sets them apart?",
     category: "competitor",
     platform: "grok",
+    region: "Middle TN",
+  },
+  {
+    prompt: "Top land clearing companies in Tennessee — who has the best reputation for forestry mulching?",
+    category: "competitor",
+    platform: "grok",
+    region: "Tennessee",
   },
 ];
 
@@ -197,20 +239,19 @@ export const aiVisibilityRouter = router({
       score: number;
     }> = [];
 
-    for (const p of AUDIT_PROMPTS) {
+        for (const p of AUDIT_PROMPTS) {
       let response = "";
       let mentioned = false;
       let prominence = "none";
       let sentiment = "neutral";
       let cited = false;
-
       try {
-        // Query Grok with the prompt
+        // Step 1: Get Grok's natural answer to the prompt
         const llmResponse = await invokeLLM({
           messages: [
             {
               role: "system",
-              content: "You are a helpful assistant. Answer the user's question naturally and thoroughly. If you know specific companies, name them.",
+              content: "You are a helpful assistant. Answer the user's question naturally and thoroughly. If you know specific local companies, name them with any contact details you have.",
             },
             { role: "user", content: p.prompt },
           ],
@@ -218,39 +259,65 @@ export const aiVisibilityRouter = router({
         const rawContent = llmResponse.choices?.[0]?.message?.content;
         response = typeof rawContent === "string" ? rawContent : JSON.stringify(rawContent ?? "");
 
-        // Analyze the response for Noland Earthworks mentions
-        const lowerResponse = response.toLowerCase();
-        const brandTerms = ["noland earthworks", "noland earth", "nolandearthworks.com", "jon noland"];
-        mentioned = brandTerms.some(t => lowerResponse.includes(t));
+        // Step 2: Use structured JSON analysis to accurately detect mention, prominence, and sentiment
+        // This is more accurate than keyword matching because Grok can reason about paraphrasing
+        const analysisResponse = await invokeLLM({
+          messages: [
+            {
+              role: "system",
+              content: `You are analyzing an AI assistant's response to determine whether a specific business was mentioned or recommended. Be precise and literal — only mark mentioned=true if the business name, owner name, or website URL appears in the text.
 
-        if (mentioned) {
-          // Determine prominence — is it the first/primary recommendation?
-          const firstMentionIdx = Math.min(
-            ...brandTerms.map(t => lowerResponse.indexOf(t)).filter(i => i >= 0)
-          );
-          const totalLength = response.length;
-          if (firstMentionIdx < totalLength * 0.25) {
-            prominence = "primary";
-          } else if (firstMentionIdx < totalLength * 0.6) {
-            prominence = "secondary";
-          } else {
-            prominence = "secondary";
-          }
+Business to look for:
+- Company name: Noland Earthworks, Noland Earthworks LLC
+- Owner name: Jon Noland
+- Website: nolandearthworks.com
 
-          // Sentiment analysis — look for positive/negative language near the brand mention
-          const mentionContext = response.substring(
-            Math.max(0, firstMentionIdx - 100),
-            Math.min(response.length, firstMentionIdx + 300)
-          ).toLowerCase();
-          const positiveWords = ["recommend", "reputable", "trusted", "veteran", "quality", "reliable", "excellent", "great", "top", "best"];
-          const negativeWords = ["avoid", "complaint", "issue", "problem", "poor", "bad", "negative", "unreliable"];
-          const posScore = positiveWords.filter(w => mentionContext.includes(w)).length;
-          const negScore = negativeWords.filter(w => mentionContext.includes(w)).length;
-          if (posScore > negScore) sentiment = "positive";
-          else if (negScore > posScore) sentiment = "negative";
-          else sentiment = "neutral";
+Return a JSON object with these exact fields:
+- mentioned: boolean (true only if any of the above identifiers appear in the response text)
+- prominence: "primary" | "secondary" | "none" (primary = first or most prominently recommended; secondary = mentioned but not the top pick; none = not mentioned)
+- sentiment: "positive" | "neutral" | "negative" (only relevant if mentioned=true; assess the tone of language used about this business)
+- cited: boolean (true only if the URL nolandearthworks.com appears in the text)
+- reasoning: string (one sentence explaining your determination)`,
+            },
+            {
+              role: "user",
+              content: `Analyze this AI response for mentions of Noland Earthworks:\n\n${response}`,
+            },
+          ],
+          response_format: {
+            type: "json_schema",
+            json_schema: {
+              name: "mention_analysis",
+              strict: true,
+              schema: {
+                type: "object",
+                properties: {
+                  mentioned:   { type: "boolean" },
+                  prominence:  { type: "string", enum: ["primary", "secondary", "none"] },
+                  sentiment:   { type: "string", enum: ["positive", "neutral", "negative"] },
+                  cited:       { type: "boolean" },
+                  reasoning:   { type: "string" },
+                },
+                required: ["mentioned", "prominence", "sentiment", "cited", "reasoning"],
+                additionalProperties: false,
+              },
+            },
+          },
+        });
 
-          // Check for domain citation
+        const analysisRaw = analysisResponse.choices?.[0]?.message?.content;
+        const analysisText = typeof analysisRaw === "string" ? analysisRaw : JSON.stringify(analysisRaw ?? "{}");
+        try {
+          const analysis = JSON.parse(analysisText);
+          mentioned   = analysis.mentioned   === true;
+          prominence  = ["primary", "secondary", "none"].includes(analysis.prominence) ? analysis.prominence : "none";
+          sentiment   = ["positive", "neutral", "negative"].includes(analysis.sentiment) ? analysis.sentiment : "neutral";
+          cited       = analysis.cited === true;
+        } catch {
+          // Fallback to keyword matching if JSON parse fails
+          const lowerResponse = response.toLowerCase();
+          const brandTerms = ["noland earthworks", "nolandearthworks.com", "jon noland"];
+          mentioned = brandTerms.some(t => lowerResponse.includes(t));
           cited = lowerResponse.includes("nolandearthworks.com");
         }
       } catch (err) {
@@ -271,14 +338,44 @@ export const aiVisibilityRouter = router({
       });
     }
 
-    // Calculate aggregate scores
+        // Calculate aggregate scores
     const mentionedResults = promptResults.filter(r => r.mentioned);
     const totalPrompts = promptResults.length;
     const mentionRate = mentionedResults.length / totalPrompts;
     const avgScore = promptResults.reduce((sum, r) => sum + r.score, 0) / totalPrompts;
 
-    // Overall score: weighted combination of mention rate and average score
-    const overallScore = Math.round(mentionRate * 50 + avgScore * 0.5);
+    // Recalibrated scoring for a local single-operator contractor:
+    // - Branded queries (should always be answered) are weighted 2x
+    // - Local service queries are the hardest to appear in (no paid placement, pure organic)
+    // - A score of 50 = expected baseline for a well-established local contractor
+    // - A score of 70+ = strong AEO presence
+    const brandedResults = promptResults.filter(r => r.category === "branded");
+    const brandedMentionRate = brandedResults.length > 0
+      ? brandedResults.filter(r => r.mentioned).length / brandedResults.length
+      : 0;
+    const localResults = promptResults.filter(r => r.category === "local_service");
+    const localMentionRate = localResults.length > 0
+      ? localResults.filter(r => r.mentioned).length / localResults.length
+      : 0;
+    const useCaseResults = promptResults.filter(r => r.category === "use_case");
+    const useCaseMentionRate = useCaseResults.length > 0
+      ? useCaseResults.filter(r => r.mentioned).length / useCaseResults.length
+      : 0;
+
+    // Weighted score: branded (40%) + local service (35%) + use case (25%)
+    // Each component scaled so 100% mention rate in that category = full weight
+    const weightedMentionScore = Math.round(
+      brandedMentionRate * 40 +
+      localMentionRate * 35 +
+      useCaseMentionRate * 25
+    );
+    // Quality bonus: positive sentiment and citations add up to 15 extra points
+    const qualityBonus = Math.min(
+      15,
+      mentionedResults.filter(r => r.sentiment === "positive").length * 3 +
+      mentionedResults.filter(r => r.cited).length * 5
+    );
+    const overallScore = Math.min(100, weightedMentionScore + qualityBonus);
 
     // Platform scores (all grok for now, structured for future expansion)
     const grokResults = promptResults.filter(r => r.platform === "grok");

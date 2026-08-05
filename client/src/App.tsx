@@ -42,6 +42,7 @@ const OpsSocialPosts     = lazy(() => import("./pages/ops/SocialPosts"));
 const OpsAds             = lazy(() => import("./pages/ops/Ads"));
 const OpsSeo             = lazy(() => import("./pages/ops/Seo"));
 const OpsServiceFaqs     = lazy(() => import("./pages/ops/ServiceFaqs"));
+const OpsLeadVisibility  = lazy(() => import("./pages/ops/LeadVisibility"));
 const OpsChatSessions    = lazy(() => import("./pages/ops/ChatSessions"));
 const OpsGallery         = lazy(() => import("./pages/ops/Gallery"));
 const ClientsHub         = lazy(() => import("./pages/ops/ClientsHub"));
@@ -408,6 +409,9 @@ function Router() {
       </Route>
       <Route path="/ops/faqs">
         <Suspense fallback={<OpsLoading />}><OwnerRoute><OpsServiceFaqs /></OwnerRoute></Suspense>
+      </Route>
+      <Route path="/ops/lead-visibility">
+        <Suspense fallback={<OpsLoading />}><OwnerRoute><OpsLeadVisibility /></OwnerRoute></Suspense>
       </Route>
       <Route path="/ops/chat-sessions">
         <Suspense fallback={<OpsLoading />}><OwnerRoute><OpsChatSessions /></OwnerRoute></Suspense>
