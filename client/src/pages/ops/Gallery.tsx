@@ -3,6 +3,7 @@
  * Photos marked visible=true appear on the public /gallery page.
  */
 import { useState, useRef, useCallback } from "react";
+import { useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Button } from "@/components/ui/button";
@@ -36,6 +37,7 @@ import {
   X,
   Loader2,
   Sparkles,
+  Share2,
 } from "lucide-react";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -168,12 +170,17 @@ export default function OpsGallery() {
 
   // ── AI caption generation ─────────────────────────────────────────────────
   const [captioningId, setCaptioningId] = useState<string | null>(null);
+  // Store the social post version from the last caption generation, keyed by queue item id
+  const [socialPostDrafts, setSocialPostDrafts] = useState<Record<string, string>>({});
+  const [, setLocation] = useLocation();
   const generateCaption = trpc.ops.ai.generatePhotoCaption.useMutation({
-    onSuccess: (data, variables) => {
-      // Find the queue item by photoUrl — we pass it as a custom field via context
+    onSuccess: (data) => {
       const itemId = captioningId;
       if (itemId && data.galleryCaption) {
         updateQueueItem(itemId, { description: data.galleryCaption });
+        if (data.socialPost) {
+          setSocialPostDrafts(prev => ({ ...prev, [itemId]: data.socialPost }));
+        }
         toast.success("Caption generated — review and edit before uploading");
       }
       setCaptioningId(null);
@@ -462,18 +469,33 @@ export default function OpsGallery() {
                           rows={2}
                           disabled={item.status !== "pending"}
                         />
-                        <button
-                          type="button"
-                          onClick={() => handleGenerateCaption(item)}
-                          disabled={item.status !== "pending" || captioningId === item.id}
-                          className="flex items-center gap-1.5 text-xs text-orange-400 hover:text-orange-300 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-                        >
-                          {captioningId === item.id ? (
-                            <><Loader2 className="w-3 h-3 animate-spin" /> Generating caption...</>
-                          ) : (
-                            <><Sparkles className="w-3 h-3" /> Generate AI caption</>  
+                        <div className="flex items-center gap-3 flex-wrap">
+                          <button
+                            type="button"
+                            onClick={() => handleGenerateCaption(item)}
+                            disabled={item.status !== "pending" || captioningId === item.id}
+                            className="flex items-center gap-1.5 text-xs text-orange-400 hover:text-orange-300 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                          >
+                            {captioningId === item.id ? (
+                              <><Loader2 className="w-3 h-3 animate-spin" /> Generating caption...</>
+                            ) : (
+                              <><Sparkles className="w-3 h-3" /> Generate AI caption</>
+                            )}
+                          </button>
+                          {socialPostDrafts[item.id] && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const caption = encodeURIComponent(socialPostDrafts[item.id]);
+                                const desc = encodeURIComponent(item.description || item.title);
+                                setLocation(`/ops/social-posts?caption=${caption}&desc=${desc}`);
+                              }}
+                              className="flex items-center gap-1.5 text-xs text-blue-400 hover:text-blue-300 transition-colors"
+                            >
+                              <Share2 className="w-3 h-3" /> Send to Social Posts
+                            </button>
                           )}
-                        </button>
+                        </div>
                       </div>
                       <div className="flex items-center gap-2">
                         <Switch

@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Button } from "@/components/ui/button";
@@ -47,11 +48,27 @@ function timeAgo(date: Date | string) {
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function SocialPosts() {
+  const [location] = useLocation();
   const [jobDescription, setJobDescription] = useState("");
   const [platform, setPlatform] = useState<Platform>("both");
   const [tone, setTone] = useState<Tone>("casual");
   const [draft, setDraft] = useState("");
   const [copied, setCopied] = useState(false);
+  const [prefillBanner, setPrefillBanner] = useState<string | null>(null);
+
+  // Prefill from URL params — used when navigating from gallery AI caption
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const captionParam = params.get("caption");
+    const descParam = params.get("desc");
+    if (captionParam) {
+      setDraft(decodeURIComponent(captionParam));
+      setPrefillBanner("Caption pre-filled from gallery photo. Review and edit before posting.");
+    }
+    if (descParam) {
+      setJobDescription(decodeURIComponent(descParam));
+    }
+  }, []);
 
   const utils = trpc.useUtils();
 
@@ -115,6 +132,22 @@ export default function SocialPosts() {
             Describe a completed job and generate a ready-to-post Facebook or Instagram caption in your voice.
           </p>
         </div>
+
+        {/* Prefill banner — shown when arriving from gallery AI caption */}
+        {prefillBanner && (
+          <div className="flex items-center justify-between gap-3 rounded-lg bg-blue-500/10 border border-blue-500/20 px-4 py-3">
+            <div className="flex items-center gap-2">
+              <Sparkles className="w-4 h-4 text-blue-400 shrink-0" />
+              <span className="text-sm text-blue-300">{prefillBanner}</span>
+            </div>
+            <button
+              onClick={() => setPrefillBanner(null)}
+              className="text-blue-400/60 hover:text-blue-300 text-xs shrink-0"
+            >
+              Dismiss
+            </button>
+          </div>
+        )}
 
         {/* Generator Card */}
         <Card className="border-border bg-card">

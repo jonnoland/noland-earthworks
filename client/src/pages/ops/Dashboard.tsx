@@ -272,6 +272,26 @@ export default function Dashboard() {
     retry: false,
   });
   const dashboardReviews = (googleReviewsData?.reviews ?? []).slice(0, 5);
+
+  // ─── Review request tracking data ────────────────────────────────────────────────
+  const { data: reviewRequestsData = [] } = trpc.ops.getReviewRequests.useQuery(undefined, {
+    staleTime: 5 * 60 * 1000,
+    retry: false,
+  });
+  // Jobs for review request tracking (separate query to avoid conflict with allJobs NormalizedJob type)
+  const { data: reviewTrackingJobs = [] } = trpc.ops.jobs.list.useQuery(undefined, {
+    staleTime: 5 * 60 * 1000,
+    retry: false,
+  });
+  const flaggedJobs = reviewTrackingJobs.filter(
+    (j: any) => j.notes && [
+      "complaint", "unhappy", "dissatisfied", "refund", "dispute", "problem",
+      "issue", "wrong", "mistake", "damage", "damaged", "broken", "rework",
+      "redo", "not happy", "not satisfied", "bad", "terrible", "awful",
+    ].some(kw => j.notes.toLowerCase().includes(kw))
+  );
+  const sentReviewRequests = reviewTrackingJobs.filter((j: any) => j.reviewRequestSentAt);
+  const [reviewTrackingOpen, setReviewTrackingOpen] = useState(false);
   useEffect(() => {
     if (prevLeadCount.current !== null && leads.length > prevLeadCount.current) {
       const diff = leads.length - prevLeadCount.current;
@@ -1236,6 +1256,99 @@ export default function Dashboard() {
           )}
         </div>
 
+
+      {/* ─── Review Request Tracking Widget ─────────────────────────────────────── */}
+      <div className="mt-6 rounded-xl border border-border bg-card overflow-hidden">
+        <div
+          className="flex items-center justify-between px-5 py-4 cursor-pointer hover:bg-secondary/20 transition-colors"
+          onClick={() => setReviewTrackingOpen(v => !v)}
+        >
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-md bg-amber-500/10">
+              <Star className="w-4 h-4 text-amber-400" />
+            </div>
+            <div>
+              <h3 className="text-sm font-semibold text-foreground">Review Request Tracker</h3>
+              <p className="text-xs text-muted-foreground">
+                {sentReviewRequests.length} sent &bull; {flaggedJobs.length > 0 ? `${flaggedJobs.length} flagged job${flaggedJobs.length > 1 ? "s" : ""} need attention` : "No flagged jobs"}
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            {flaggedJobs.length > 0 && (
+              <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-red-400/10 text-red-400 border border-red-400/20">
+                {flaggedJobs.length} flagged
+              </span>
+            )}
+            {sentReviewRequests.length > 0 && (
+              <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-green-400/10 text-green-400 border border-green-400/20">
+                {sentReviewRequests.length} sent
+              </span>
+            )}
+            <ChevronRight className={cn("w-4 h-4 text-muted-foreground transition-transform", reviewTrackingOpen && "rotate-90")} />
+          </div>
+        </div>
+        {reviewTrackingOpen && (
+          <div className="border-t border-border">
+            {flaggedJobs.length > 0 && (
+              <div className="px-5 py-4 border-b border-border">
+                <div className="flex items-center gap-2 mb-3">
+                  <AlertCircle className="w-3.5 h-3.5 text-red-400" />
+                  <span className="text-xs font-semibold text-red-400 uppercase tracking-wide">Flagged Jobs — Review Request Suppressed</span>
+                </div>
+                <div className="space-y-2">
+                  {flaggedJobs.map((job: any) => (
+                    <div key={job.id} className="flex items-start justify-between gap-3 rounded-lg bg-red-500/5 border border-red-500/10 px-3 py-2.5">
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-medium text-foreground truncate">{job.client}</p>
+                        <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{job.notes?.slice(0, 120)}{(job.notes?.length ?? 0) > 120 ? "..." : ""}</p>
+                        <p className="text-[10px] text-red-400/70 mt-1">
+                          {job.paidDate ? `Paid ${new Date(job.paidDate).toLocaleDateString("en-US", { month: "short", day: "numeric" })}` : job.completedDate ? `Completed ${new Date(job.completedDate).toLocaleDateString("en-US", { month: "short", day: "numeric" })}` : "No date"}
+                        </p>
+                      </div>
+                      <Link href="/ops/jobs">
+                        <span className="text-[10px] text-primary hover:underline cursor-pointer shrink-0 mt-1">View job</span>
+                      </Link>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            {flaggedJobs.length === 0 && (
+              <div className="px-5 py-3 border-b border-border flex items-center gap-2">
+                <CheckCircle2 className="w-3.5 h-3.5 text-green-400" />
+                <span className="text-xs text-green-400">No flagged jobs — all clear</span>
+              </div>
+            )}
+            <div className="px-5 py-4">
+              <div className="flex items-center gap-2 mb-3">
+                <Mail className="w-3.5 h-3.5 text-green-400" />
+                <span className="text-xs font-semibold text-green-400 uppercase tracking-wide">Review Requests Sent</span>
+              </div>
+              {sentReviewRequests.length === 0 ? (
+                <p className="text-xs text-muted-foreground">No review requests sent yet. Requests fire automatically 48 hours after a job is marked paid.</p>
+              ) : (
+                <div className="space-y-2">
+                  {sentReviewRequests.slice(0, 8).map((job: any) => (
+                    <div key={job.id} className="flex items-center justify-between gap-3 rounded-lg bg-green-500/5 border border-green-500/10 px-3 py-2">
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-medium text-foreground truncate">{job.client}</p>
+                        <p className="text-[10px] text-muted-foreground mt-0.5">
+                          {job.jobType?.replace(/_/g, " ") ?? "Job"} &bull; Sent {new Date(job.reviewRequestSentAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                        </p>
+                      </div>
+                      <CheckCircle2 className="w-4 h-4 text-green-400 shrink-0" />
+                    </div>
+                  ))}
+                  {sentReviewRequests.length > 8 && (
+                    <p className="text-[10px] text-muted-foreground text-center pt-1">+{sentReviewRequests.length - 8} more — <Link href="/ops/jobs"><span className="text-primary hover:underline cursor-pointer">view all jobs</span></Link></p>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
       {/* ─── Get More Leads Panel ──────────────────────────────────────────────── */}
       <div className="mt-6 rounded-xl border border-border bg-card overflow-hidden">
         <div
