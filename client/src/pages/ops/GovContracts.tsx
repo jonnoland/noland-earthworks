@@ -45,6 +45,13 @@ import {
   Printer,
   Loader2,
   CheckCircle2,
+  Star,
+  ThumbsUp,
+  Minus,
+  ThumbsDown,
+  ClipboardList,
+  ArrowUpDown,
+  X,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -138,6 +145,188 @@ function NaicsBadge({ code }: { code: string }) {
     >
       {code}{label ? ` — ${label}` : ""}
     </span>
+  );
+}
+
+// ── Fit Score algorithm ──────────────────────────────────────────────────────
+// Scores each opportunity 0–100 based on how well it fits Noland Earthworks:
+// single operator, tracked forestry mulcher, 2–50 acres, TN/KY/AL/AR, veteran-owned.
+const PRIMARY_NAICS = new Set(["115310", "238910", "561730"]);
+const SECONDARY_NAICS = new Set(["562910", "237990"]);
+const SDVOSB_KEYWORDS = ["sdvosb", "service-disabled", "veteran", "vosb"];
+const GOOD_TITLE_KEYWORDS = [
+  "forestry", "mulch", "land clearing", "brush", "vegetation", "clearing",
+  "right-of-way", "row clearing", "trail", "mowing", "site prep", "site preparation",
+];
+const BAD_TITLE_KEYWORDS = [
+  "grading", "excavat", "hauling", "paving", "asphalt", "concrete", "demolition",
+  "construction", "building", "electrical", "plumbing", "hvac", "roofing",
+];
+
+function computeFitScore(opp: Opportunity): {
+  score: number;
+  tier: "recommended" | "good" | "review" | "low";
+  reasons: string[];
+} {
+  let score = 0;
+  const reasons: string[] = [];
+
+  // 1. NAICS match (0–30 pts)
+  const naicsCodes = opp.naics.map(n => n.code);
+  const hasPrimary = naicsCodes.some(c => PRIMARY_NAICS.has(c));
+  const hasSecondary = naicsCodes.some(c => SECONDARY_NAICS.has(c));
+  if (hasPrimary) { score += 30; reasons.push("Primary NAICS match"); }
+  else if (hasSecondary) { score += 15; reasons.push("Secondary NAICS match"); }
+
+  // 2. Title keyword match (0–20 pts)
+  const titleLower = opp.title.toLowerCase();
+  const goodMatches = GOOD_TITLE_KEYWORDS.filter(kw => titleLower.includes(kw));
+  const badMatches = BAD_TITLE_KEYWORDS.filter(kw => titleLower.includes(kw));
+  if (goodMatches.length > 0) {
+    const pts = Math.min(20, goodMatches.length * 7);
+    score += pts;
+    reasons.push(`Title keywords: ${goodMatches.slice(0, 2).join(", ")}`);
+  }
+  if (badMatches.length > 0) {
+    score -= 15;
+    reasons.push(`Scope mismatch: ${badMatches[0]}`);
+  }
+
+  // 3. Set-aside eligibility (0–25 pts)
+  const setAsideLower = (opp.setAside ?? "").toLowerCase();
+  if (SDVOSB_KEYWORDS.some(kw => setAsideLower.includes(kw))) {
+    score += 25;
+    reasons.push("SDVOSB set-aside — veteran preference");
+  } else if (setAsideLower.includes("small business") || setAsideLower.includes("sb")) {
+    score += 15;
+    reasons.push("Small business set-aside");
+  } else if (!opp.setAside || opp.setAside === "None") {
+    score += 5;
+    reasons.push("Open competition");
+  }
+
+  // 4. Geography (0–15 pts)
+  const state = (opp.state ?? "").toUpperCase();
+  if (state === "TN") { score += 15; reasons.push("Tennessee — home state"); }
+  else if (["KY", "AL", "AR"].includes(state)) { score += 10; reasons.push(`${state} — service area`); }
+  else if (state) { score += 3; }
+
+  // 5. Deadline urgency — penalize if < 5 days (not enough time to prepare)
+  if (opp.daysUntilDeadline !== null && opp.daysUntilDeadline < 5) {
+    score -= 10;
+    reasons.push("Deadline < 5 days — tight turnaround");
+  }
+
+  // Clamp to 0–100
+  score = Math.max(0, Math.min(100, score));
+
+  const tier: "recommended" | "good" | "review" | "low" =
+    score >= 70 ? "recommended" :
+    score >= 50 ? "good" :
+    score >= 30 ? "review" : "low";
+
+  return { score, tier, reasons };
+}
+
+function FitBadge({ tier, score }: { tier: "recommended" | "good" | "review" | "low"; score: number }) {
+  if (tier === "recommended") return (
+    <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/40">
+      <Star size={9} className="fill-amber-400" /> Recommended · {score}
+    </span>
+  );
+  if (tier === "good") return (
+    <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-green-500/15 text-green-400 border border-green-500/30">
+      <ThumbsUp size={9} /> Good Fit · {score}
+    </span>
+  );
+  if (tier === "review") return (
+    <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-zinc-700/60 text-zinc-300 border border-zinc-600/40">
+      <Minus size={9} /> Review · {score}
+    </span>
+  );
+  return (
+    <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-zinc-800/60 text-zinc-500 border border-zinc-700/40">
+      <ThumbsDown size={9} /> Low Fit · {score}
+    </span>
+  );
+}
+
+// ── Pre-submission Checklist Modal ────────────────────────────────────────────
+function PreSubmissionChecklist({ opportunity, onClose }: { opportunity: Opportunity; onClose: () => void }) {
+  const CHECKLIST = [
+    { id: "sam", label: "SAM.gov registration is active and not expired", detail: "Log in at sam.gov and verify your registration expiration date. Active registration is required to submit any federal bid." },
+    { id: "cage", label: "CAGE code is confirmed", detail: "Your CAGE code is required on all federal submissions. Verify it matches your SAM.gov profile." },
+    { id: "uei", label: "Unique Entity ID (UEI) is confirmed", detail: "The UEI replaced DUNS numbers in 2022. Confirm it is in your SAM.gov profile and matches your bid documents." },
+    { id: "naics", label: "NAICS code matches the solicitation", detail: "Confirm your primary NAICS code (115310, 238910, or 561730) is listed in your SAM.gov profile and matches the solicitation." },
+    { id: "sdvosb", label: "SDVOSB certification is current (if set-aside applies)", detail: "If this is an SDVOSB set-aside, verify your certification in the SBA Veteran Small Business Certification (VetCert) program at veterans.certify.sba.gov." },
+    { id: "scope", label: "Full solicitation reviewed — scope, CLINs, and attachments", detail: "Download and read the full solicitation package from SAM.gov. Pay attention to CLIN structure, performance requirements, and any required certifications or bonds." },
+    { id: "pricing", label: "Pricing worksheet reviewed and unit prices filled in", detail: "Do not submit the auto-generated pricing worksheet without reviewing the solicitation's required CLIN structure and filling in your actual unit prices." },
+    { id: "cover", label: "Cover letter reviewed and signature block added", detail: "Personalize the cover letter, add your full legal name and title, and confirm the submission address matches the solicitation." },
+    { id: "deadline", label: "Submission deadline confirmed", detail: `Deadline: ${opportunity.responseDeadline ?? "See solicitation"}. Federal submissions must be received — not just sent — before the deadline. Allow extra time for SAM.gov upload.` },
+    { id: "submit", label: "Submission made through SAM.gov or as directed in solicitation", detail: "Log in to sam.gov, navigate to this opportunity, and upload your response package. Some solicitations require email submission — read the instructions carefully." },
+  ];
+  const [checked, setChecked] = useState<Set<string>>(new Set());
+  const toggle = (id: string) => setChecked(prev => {
+    const next = new Set(prev);
+    next.has(id) ? next.delete(id) : next.add(id);
+    return next;
+  });
+  const allDone = checked.size === CHECKLIST.length;
+  return (
+    <Dialog open onOpenChange={onClose}>
+      <DialogContent className="max-w-xl bg-zinc-950 border-zinc-800 text-white max-h-[85vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="text-base font-semibold text-white flex items-center gap-2">
+            <ClipboardList size={16} className="text-amber-500" />
+            Pre-Submission Checklist
+          </DialogTitle>
+          <DialogDescription className="text-zinc-400 text-xs leading-relaxed">
+            {opportunity.title}
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-2 mt-2">
+          {CHECKLIST.map(item => (
+            <button
+              key={item.id}
+              onClick={() => toggle(item.id)}
+              className={`w-full text-left flex items-start gap-3 p-3 rounded-lg border transition-colors ${
+                checked.has(item.id)
+                  ? "border-green-700/50 bg-green-950/30"
+                  : "border-zinc-800 bg-zinc-900/40 hover:bg-zinc-900/70"
+              }`}
+            >
+              <div className={`mt-0.5 shrink-0 w-4 h-4 rounded border flex items-center justify-center transition-colors ${
+                checked.has(item.id) ? "bg-green-600 border-green-600" : "border-zinc-600"
+              }`}>
+                {checked.has(item.id) && <CheckCircle2 size={10} className="text-white" />}
+              </div>
+              <div>
+                <p className={`text-xs font-medium leading-snug ${
+                  checked.has(item.id) ? "text-green-400 line-through opacity-70" : "text-zinc-200"
+                }`}>{item.label}</p>
+                <p className="text-[10px] text-zinc-500 mt-0.5 leading-relaxed">{item.detail}</p>
+              </div>
+            </button>
+          ))}
+        </div>
+        <div className="flex items-center justify-between pt-3 border-t border-zinc-800">
+          <span className="text-xs text-zinc-400">{checked.size} of {CHECKLIST.length} complete</span>
+          <div className="flex gap-2">
+            <a
+              href={opportunity.samLink}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 text-xs bg-amber-600 hover:bg-amber-500 text-white px-3 py-1.5 rounded font-medium transition-colors"
+            >
+              Open on SAM.gov <ExternalLink size={11} />
+            </a>
+            <Button variant="outline" size="sm" onClick={onClose} className="border-zinc-700 text-zinc-300 text-xs">
+              Close
+            </Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -391,6 +580,8 @@ export default function GovContracts() {
   const [page, setPage] = useState(0);
   const [selectedOpp, setSelectedOpp] = useState<Opportunity | null>(null);
   const [showAllTn, setShowAllTn] = useState(false);
+  const [sortBy, setSortBy] = useState<"fit" | "deadline">("fit");
+  const [checklistOpp, setChecklistOpp] = useState<Opportunity | null>(null);
 
   const { data, isLoading, isFetching, refetch } = trpc.govContracts.search.useQuery(
     { naicsFilter, stateFilter, page },
@@ -400,11 +591,25 @@ export default function GovContracts() {
     }
   );
 
-  const opportunities = data?.opportunities ?? [];
+  const rawOpportunities = data?.opportunities ?? [];
   const totalCount = data?.totalCount ?? 0;
   const totalPages = data?.totalPages ?? 0;
   const stateCounts = (data?.stateCounts ?? {}) as Record<string, number>;
   const naicsCounts = (data?.naicsCounts ?? {}) as Record<string, number>;
+
+  // Compute fit scores and sort
+  const opportunities = useMemo(() => {
+    const scored = rawOpportunities.map(opp => ({ ...opp, fit: computeFitScore(opp) }));
+    if (sortBy === "fit") {
+      return scored.sort((a, b) => b.fit.score - a.fit.score);
+    }
+    // Sort by deadline ascending (soonest first)
+    return scored.sort((a, b) => {
+      const dA = a.daysUntilDeadline ?? 9999;
+      const dB = b.daysUntilDeadline ?? 9999;
+      return dA - dB;
+    });
+  }, [rawOpportunities, sortBy]);
 
   const handleFilterChange = () => {
     setPage(0);
@@ -709,11 +914,20 @@ export default function GovContracts() {
             </Select>
           </div>
 
-          {!isLoading && (
-            <span className="text-xs text-muted-foreground ml-auto">
-              {totalCount} opportunit{totalCount === 1 ? "y" : "ies"} found
-            </span>
-          )}
+          <div className="flex items-center gap-2 ml-auto">
+            <button
+              onClick={() => setSortBy(s => s === "fit" ? "deadline" : "fit")}
+              className="inline-flex items-center gap-1.5 text-[11px] font-medium px-2.5 py-1 rounded border border-zinc-700 text-zinc-300 hover:text-white hover:border-zinc-500 transition-colors bg-zinc-900"
+            >
+              <ArrowUpDown size={11} />
+              Sort: {sortBy === "fit" ? "Best Fit" : "Deadline"}
+            </button>
+            {!isLoading && (
+              <span className="text-xs text-muted-foreground">
+                {totalCount} opportunit{totalCount === 1 ? "y" : "ies"}
+              </span>
+            )}
+          </div>
         </div>
 
         {/* ── Error state ── */}
@@ -765,9 +979,15 @@ export default function GovContracts() {
               >
                 <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2 mb-2">
                   <div className="flex-1 min-w-0">
+                    <div className="flex flex-wrap items-center gap-1.5 mb-1">
+                      <FitBadge tier={opp.fit.tier} score={opp.fit.score} />
+                    </div>
                     <h3 className="text-sm font-medium text-white leading-snug">{opp.title}</h3>
                     {opp.solicitationNumber && (
                       <p className="text-[11px] text-zinc-500 mt-0.5">Sol. #{opp.solicitationNumber}</p>
+                    )}
+                    {opp.fit.reasons.length > 0 && (
+                      <p className="text-[10px] text-zinc-500 mt-0.5">{opp.fit.reasons.join(" · ")}</p>
                     )}
                   </div>
                   <div className="shrink-0">
@@ -827,15 +1047,15 @@ export default function GovContracts() {
                   </div>
                 )}
 
-                <div className="flex items-center gap-3">
+                <div className="flex flex-wrap items-center gap-2">
                   <a
                     href={opp.samLink}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1.5 text-xs text-amber-500 hover:text-amber-400 font-medium"
+                    className="inline-flex items-center gap-1.5 text-xs bg-zinc-800 hover:bg-zinc-700 text-zinc-200 font-medium px-3 py-1.5 rounded border border-zinc-700 transition-colors"
                   >
-                    View on SAM.gov
                     <ExternalLink size={11} />
+                    Open on SAM.gov
                   </a>
                   {!opp.isExpired && (
                     <Button
@@ -845,6 +1065,17 @@ export default function GovContracts() {
                     >
                       <FileText size={11} className="mr-1.5" />
                       Prepare Bid
+                    </Button>
+                  )}
+                  {!opp.isExpired && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-7 text-xs border-zinc-700 text-zinc-300 hover:text-white"
+                      onClick={() => setChecklistOpp(opp)}
+                    >
+                      <ClipboardList size={11} className="mr-1.5" />
+                      Checklist
                     </Button>
                   )}
                 </div>
@@ -928,6 +1159,14 @@ export default function GovContracts() {
         <BidPrepModal
           opportunity={selectedOpp}
           onClose={() => setSelectedOpp(null)}
+        />
+      )}
+
+      {/* ── Pre-Submission Checklist Modal ── */}
+      {checklistOpp && (
+        <PreSubmissionChecklist
+          opportunity={checklistOpp}
+          onClose={() => setChecklistOpp(null)}
         />
       )}
     </DashboardLayout>

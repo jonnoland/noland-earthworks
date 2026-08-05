@@ -2806,3 +2806,10 @@
 - [x] Replace keyword-based mention detection with structured JSON analysis (Grok reasons about whether business was mentioned)
 - [x] Recalibrate scoring formula: weighted by category (branded 40%, local 35%, use case 25%) with quality bonus
 - [x] Add region field to prompts for better reporting context
+
+## Gov Contracts Enhancements — Aug 2026
+- [x] Fit Score algorithm on SAM.gov opportunities (NAICS, set-aside, geography, size, deadline)
+- [x] Recommendation badges: Recommended / Good Fit / Review / Low Fit on each opportunity
+- [x] Sort by fit score by default
+- [x] One-click Open on SAM.gov button on each opportunity card
+- [x] Pre-submission checklist modal (SAM.gov registration, CAGE code, certifications)
