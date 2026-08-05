@@ -6,6 +6,7 @@
  */
 
 import { useState, useEffect } from "react";
+import { AnimatePresence, motion } from "framer-motion";
 import { trpc } from "@/lib/trpc";
 import { Link, useLocation } from "wouter";
 import { toast } from "sonner";
@@ -596,9 +597,20 @@ export default function OpsDashboardLayout({ children, title, subtitle }: Dashbo
           </div>
         </header>
 
-        {/* Page content */}
-        <main className="flex-1">
-          {children}
+        {/* Page content — animated on route change */}
+        <main className="flex-1 overflow-hidden">
+          <AnimatePresence mode="wait" initial={false}>
+            <motion.div
+              key={location}
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -4 }}
+              transition={{ duration: 0.18, ease: "easeOut" }}
+              className="h-full"
+            >
+              {children}
+            </motion.div>
+          </AnimatePresence>
         </main>
       </div>
     </div>
