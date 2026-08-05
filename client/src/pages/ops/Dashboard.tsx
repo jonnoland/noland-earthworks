@@ -18,6 +18,7 @@ import {
   Sparkles, Loader2, RefreshCw, Zap, Target, Phone, Mail, Share2, CheckSquare,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { Link } from "wouter";
@@ -98,6 +99,20 @@ function formatScheduledDate(d: Date | string | null | undefined): string {
 function formatDate(d: Date | string | null | undefined): string {
   if (!d) return "—";
   return new Date(d).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+}
+
+function KPICardSkeleton() {
+  return (
+    <div className="ops-card p-5">
+      <div className="flex items-start justify-between mb-4">
+        <Skeleton className="w-8 h-8 rounded-md" />
+        <Skeleton className="w-12 h-5 rounded-full" />
+      </div>
+      <Skeleton className="w-20 h-7 mb-2" />
+      <Skeleton className="w-28 h-3 mb-1" />
+      <Skeleton className="w-20 h-2.5" />
+    </div>
+  );
 }
 
 function KPICard({ title, value, sub, icon: Icon, delay = 0, accent, href }: {
@@ -253,14 +268,15 @@ export default function Dashboard() {
   const jobberInvoicesRaw: undefined = undefined;
   const jobberQuotesRaw: undefined = undefined;
   const jobberRequestsRaw: undefined = undefined;
-  const { data: localJobs = [] } = trpc.ops.jobs.list.useQuery(undefined, { refetchInterval: 30000 });
-  const { data: nativeJobsList = [] } = trpc.nativeJobs.list.useQuery({}, { refetchInterval: 30000 });
-  const { data: nativeInvoicesList = [] } = trpc.nativeJobs.listInvoices.useQuery({}, { refetchInterval: 60000 });
-  const { data: nativeQuotesData } = trpc.nativeQuotes.list.useQuery({ limit: 100 }, { refetchInterval: 60000 });
+  const { data: localJobs = [], isLoading: jobsLoading } = trpc.ops.jobs.list.useQuery(undefined, { refetchInterval: 30000 });
+  const { data: nativeJobsList = [], isLoading: nativeJobsLoading } = trpc.nativeJobs.list.useQuery({}, { refetchInterval: 30000 });
+  const { data: nativeInvoicesList = [], isLoading: invoicesLoading } = trpc.nativeJobs.listInvoices.useQuery({}, { refetchInterval: 60000 });
+  const { data: nativeQuotesData, isLoading: quotesLoading } = trpc.nativeQuotes.list.useQuery({ limit: 100 }, { refetchInterval: 60000 });
   const nativeQuotesList = nativeQuotesData?.quotes ?? [];
+  const dataLoading = jobsLoading || nativeJobsLoading || invoicesLoading || quotesLoading;
 
   // ─── Local leads (for pipeline section) ────────────────────────────────────────────
-  const { data: leads = [] } = trpc.ops.leads.list.useQuery(undefined, { refetchInterval: 15000 });
+  const { data: leads = [], isLoading: leadsLoading } = trpc.ops.leads.list.useQuery(undefined, { refetchInterval: 15000 });
 
   // ─── Google Business Profile reviews (latest 5 for dashboard widget) ────────────
   const { data: googleReviewsData } = trpc.ops.google.fetchReviews.useQuery(undefined, {
@@ -571,126 +587,147 @@ export default function Dashboard() {
 
         {/* KPI Cards — row 1: jobs + money */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <KPICard
-            title="Active Jobs"
-            value={kpis.activeJobs.toString()}
-            sub={"in progress"}
-            icon={Briefcase}
-            delay={0}
-            href="/ops/quotes"
-          />
-          <KPICard
-            title="Scheduled Jobs"
-            value={kpis.scheduledJobs.toString()}
-            sub="upcoming on calendar"
-            icon={CalendarCheck}
-            delay={80}
-            href="/ops/schedule"
-          />
-          <KPICard
-            title="Outstanding Balance"
-            value={kpis.outstandingBalance > 0 ? `$${kpis.outstandingBalance.toLocaleString()}` : "—"}
-            sub={"from invoices"}
-            icon={Receipt}
-            delay={160}
-            accent={overdueInvoices.length > 0 ? "red" : "default"}
-            href="/ops/quotes"
-          />
-          <KPICard
-            title="Open Leads / Requests"
-            value={kpis.openLeads.toString()}
-            sub={"in pipeline"}
-            icon={Users}
-            delay={240}
-            href="/ops/leads"
-          />
+          {dataLoading ? (
+            <><KPICardSkeleton /><KPICardSkeleton /><KPICardSkeleton /><KPICardSkeleton /></>
+          ) : (
+            <>
+              <KPICard
+                title="Active Jobs"
+                value={kpis.activeJobs.toString()}
+                sub={"in progress"}
+                icon={Briefcase}
+                delay={0}
+                href="/ops/quotes"
+              />
+              <KPICard
+                title="Scheduled Jobs"
+                value={kpis.scheduledJobs.toString()}
+                sub="upcoming on calendar"
+                icon={CalendarCheck}
+                delay={80}
+                href="/ops/schedule"
+              />
+              <KPICard
+                title="Outstanding Balance"
+                value={kpis.outstandingBalance > 0 ? `$${kpis.outstandingBalance.toLocaleString()}` : "—"}
+                sub={"from invoices"}
+                icon={Receipt}
+                delay={160}
+                accent={overdueInvoices.length > 0 ? "red" : "default"}
+                href="/ops/quotes"
+              />
+              <KPICard
+                title="Open Leads / Requests"
+                value={kpis.openLeads.toString()}
+                sub={"in pipeline"}
+                icon={Users}
+                delay={240}
+                href="/ops/leads"
+              />
+            </>
+          )}
         </div>
 
         {/* KPI Cards — row 2: revenue + quotes */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <KPICard
-            title="Paid This Month"
-            value={paidThisMonthTotal > 0 ? `$${paidThisMonthTotal.toLocaleString()}` : "—"}
-            sub={`${nativeInvoicesList.filter((inv: any) => inv.status === "paid").length} invoice${nativeInvoicesList.filter((inv: any) => inv.status === "paid").length !== 1 ? "s" : ""} paid`}
-            icon={DollarSign}
-            delay={0}
-            accent="green"
-            href="/ops/quotes"
-          />
-          <KPICard
-            title="Open Quotes"
-            value={kpis.openQuotes.toString()}
-            sub={"pending"}
-            icon={FileText}
-            delay={80}
-            href="/ops/quotes"
-          />
-          <KPICard
-            title="Revenue / Acre"
-            value={kpis.revenuePerAcre > 0 ? `$${Math.round(kpis.revenuePerAcre).toLocaleString()}` : "—"}
-            sub={`avg across ${normalizedLocalJobs.filter(j => j.totalPrice && j.acres).length} local jobs`}
-            icon={TrendingUp}
-            delay={160}
-            href="/ops/quotes"
-          />
-          <KPICard
-            title="Win Rate"
-            value={kpis.winRate > 0 ? `${Math.round(kpis.winRate)}%` : "—"}
-            sub="of closed leads converted"
-            icon={Gauge}
-            delay={240}
-            href="/ops/leads"
-          />
+          {dataLoading ? (
+            <><KPICardSkeleton /><KPICardSkeleton /><KPICardSkeleton /><KPICardSkeleton /></>
+          ) : (
+            <>
+              <KPICard
+                title="Paid This Month"
+                value={paidThisMonthTotal > 0 ? `$${paidThisMonthTotal.toLocaleString()}` : "—"}
+                sub={`${nativeInvoicesList.filter((inv: any) => inv.status === "paid").length} invoice${nativeInvoicesList.filter((inv: any) => inv.status === "paid").length !== 1 ? "s" : ""} paid`}
+                icon={DollarSign}
+                delay={0}
+                accent="green"
+                href="/ops/quotes"
+              />
+              <KPICard
+                title="Open Quotes"
+                value={kpis.openQuotes.toString()}
+                sub={"pending"}
+                icon={FileText}
+                delay={80}
+                href="/ops/quotes"
+              />
+              <KPICard
+                title="Revenue / Acre"
+                value={kpis.revenuePerAcre > 0 ? `$${Math.round(kpis.revenuePerAcre).toLocaleString()}` : "—"}
+                sub={`avg across ${normalizedLocalJobs.filter(j => j.totalPrice && j.acres).length} local jobs`}
+                icon={TrendingUp}
+                delay={160}
+                href="/ops/quotes"
+              />
+              <KPICard
+                title="Win Rate"
+                value={kpis.winRate > 0 ? `${Math.round(kpis.winRate)}%` : "—"}
+                sub="of closed leads converted"
+                icon={Gauge}
+                delay={240}
+                href="/ops/leads"
+              />
+            </>
+          )}
         </div>
 
         {/* Scheduled Jobs — full width */}
         <div className="ops-card p-5">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
-            <div>
-              <div className="flex items-center gap-2">
-                <h3 className="text-sm font-semibold text-foreground" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
-                  Scheduled Jobs
-                </h3>
-
+          {dataLoading ? (
+            <div className="space-y-3">
+              <div className="flex items-center justify-between mb-4">
+                <div className="space-y-1.5"><Skeleton className="w-32 h-4" /><Skeleton className="w-48 h-3" /></div>
+                <div className="flex gap-2"><Skeleton className="w-12 h-7 rounded" /><Skeleton className="w-16 h-7 rounded" /><Skeleton className="w-14 h-7 rounded" /></div>
               </div>
-              <p className="text-xs text-muted-foreground">
-                Next 30 days — {filteredScheduledJobs.length} of {scheduledJobs.length} job{scheduledJobs.length !== 1 ? "s" : ""} shown
-              </p>
+              {[0,1,2].map(i => <Skeleton key={i} className="w-full h-14 rounded-md" />)}
             </div>
-            <div className="flex items-center gap-2 flex-wrap">
-              {(["all", "scheduled", "in_progress", "invoiced"] as const).map(f => (
-                <button
-                  key={f}
-                  onClick={() => setSchedFilter(f)}
-                  className={cn(
-                    "text-[11px] font-semibold px-2.5 py-1 rounded border transition-colors",
-                    schedFilter === f
-                      ? "bg-primary text-primary-foreground border-primary"
-                      : "bg-secondary/40 text-muted-foreground border-border hover:bg-secondary/70"
-                  )}
-                >
-                  {f === "all" ? "All" : f === "in_progress" ? "Active" : f.charAt(0).toUpperCase() + f.slice(1)}
-                  {" "}
-                  <span className="opacity-70">
-                    ({f === "all" ? scheduledJobs.length : scheduledJobs.filter(j => j.status === f).length})
-                  </span>
-                </button>
-              ))}
-              <Link href="/ops/schedule">
-                <span className="text-xs text-primary hover:text-primary/80 flex items-center gap-1 transition-colors cursor-pointer ml-1">
-                  Calendar <ChevronRight className="w-3 h-3" />
-                </span>
-              </Link>
-            </div>
-          </div>
-
-          {filteredScheduledJobs.length === 0 ? (
-            <EmptyState
-              message="No jobs scheduled in the next 30 days."
-              linkLabel="View All Quotes"
-              linkHref="/ops/quotes"
-            />
-          ) : (
+          ) : null}
+          {!dataLoading && (
+            <>
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-sm font-semibold text-foreground" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
+                      Scheduled Jobs
+                    </h3>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Next 30 days — {filteredScheduledJobs.length} of {scheduledJobs.length} job{scheduledJobs.length !== 1 ? "s" : ""} shown
+                  </p>
+                </div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  {(["all", "scheduled", "in_progress", "invoiced"] as const).map(f => (
+                    <button
+                      key={f}
+                      onClick={() => setSchedFilter(f)}
+                      className={cn(
+                        "text-[11px] font-semibold px-2.5 py-1 rounded border transition-colors",
+                        schedFilter === f
+                          ? "bg-primary text-primary-foreground border-primary"
+                          : "bg-secondary/40 text-muted-foreground border-border hover:bg-secondary/70"
+                      )}
+                    >
+                      {f === "all" ? "All" : f === "in_progress" ? "Active" : f.charAt(0).toUpperCase() + f.slice(1)}
+                      {" "}
+                      <span className="opacity-70">
+                        ({f === "all" ? scheduledJobs.length : scheduledJobs.filter(j => j.status === f).length})
+                      </span>
+                    </button>
+                  ))}
+                  <Link href="/ops/schedule">
+                    <span className="text-xs text-primary hover:text-primary/80 flex items-center gap-1 transition-colors cursor-pointer ml-1">
+                      Calendar <ChevronRight className="w-3 h-3" />
+                    </span>
+                  </Link>
+                </div>
+              </div>
+              {filteredScheduledJobs.length === 0 ? (
+                <EmptyState
+                  message="No jobs scheduled in the next 30 days."
+                  linkLabel="View All Quotes"
+                  linkHref="/ops/quotes"
+                />
+              ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
               {filteredScheduledJobs.map((job) => {
                 const status = statusConfig[job.status] ?? { label: job.status, color: "text-muted-foreground bg-secondary border-border" };
@@ -766,6 +803,8 @@ export default function Dashboard() {
                 );
               })}
             </div>
+              )}
+            </>
           )}
         </div>
 

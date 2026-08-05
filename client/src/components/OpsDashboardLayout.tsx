@@ -506,19 +506,42 @@ export default function OpsDashboardLayout({ children, title, subtitle }: Dashbo
             <Menu className="w-5 h-5" />
           </button>
 
-          {/* Page title + back-to-dashboard breadcrumb */}
+          {/* Page title + breadcrumb trail */}
           <div className="flex-1 min-w-0">
-            {location !== "/ops" && (
-              <Link href="/ops">
-                <div className="flex items-center gap-1 text-[10px] text-muted-foreground hover:text-primary transition-colors cursor-pointer mb-0.5 w-fit">
-                  <LayoutDashboard className="w-3 h-3" />
-                  <span>Dashboard</span>
-                  <ChevronRight className="w-3 h-3" />
+            {location !== "/ops" && (() => {
+              // Find which group this page belongs to
+              const allItems = navGroups.flatMap(g => g.items.map(item => ({ ...item, group: g.label })));
+              const currentItem = allItems.find(i => i.href === location);
+              const currentLabel = currentItem?.label ?? title ?? "";
+              const groupLabel = currentItem?.group ?? "";
+              return (
+                <div className="flex items-center gap-1 flex-wrap">
+                  {/* Dashboard crumb */}
+                  <Link href="/ops">
+                    <div className="flex items-center gap-1 text-[10px] text-muted-foreground hover:text-primary transition-colors cursor-pointer">
+                      <LayoutDashboard className="w-3 h-3 shrink-0" />
+                      <span>Dashboard</span>
+                    </div>
+                  </Link>
+                  {/* Group crumb (if known and not Overview) */}
+                  {groupLabel && groupLabel !== "Overview" && (
+                    <>
+                      <ChevronRight className="w-3 h-3 text-muted-foreground/40 shrink-0" />
+                      <span className="text-[10px] text-muted-foreground/60">{groupLabel}</span>
+                    </>
+                  )}
+                  {/* Current page crumb */}
+                  {currentLabel && (
+                    <>
+                      <ChevronRight className="w-3 h-3 text-muted-foreground/40 shrink-0" />
+                      <span className="text-[10px] font-semibold text-foreground">{currentLabel}</span>
+                    </>
+                  )}
                 </div>
-              </Link>
-            )}
+              );
+            })()}
             {title && (
-              <div>
+              <div className={location !== "/ops" ? "mt-0.5" : ""}>
                 <h1 className="text-base font-semibold text-foreground leading-none" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
                   {title}
                 </h1>
@@ -526,11 +549,6 @@ export default function OpsDashboardLayout({ children, title, subtitle }: Dashbo
                   <p className="text-xs text-muted-foreground mt-0.5">{subtitle}</p>
                 )}
               </div>
-            )}
-            {!title && location !== "/ops" && (
-              <p className="text-sm font-semibold text-foreground leading-none" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
-                {navGroups.flatMap(g => g.items).find(i => i.href === location)?.label ?? ""}
-              </p>
             )}
           </div>
 
