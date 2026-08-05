@@ -89,13 +89,13 @@ const STATE_PORTALS = [
   },
   {
     name: "Alabama Procurement",
-    url: "https://vendor.staars.alabama.gov/",
+    url: "https://procurement.alabama.gov/",
     note: "AL state solicitations — land clearing and site prep",
   },
   {
-    name: "USACE Huntsville District",
-    url: "https://www.sah.usace.army.mil/Missions/Contracting/",
-    note: "Army Corps of Engineers — TN/AL/MS region contracts",
+    name: "USACE Nashville District",
+    url: "https://www.lrn.usace.army.mil/Business-With-Us/Contracting/",
+    note: "Army Corps of Engineers — TN/KY region contracts (Nashville District)",
   },
   {
     name: "TVA Procurement",
@@ -252,26 +252,65 @@ function FitBadge({ tier, score }: { tier: "recommended" | "good" | "review" | "
 }
 
 // ── Pre-submission Checklist Modal ────────────────────────────────────────────
+const CHECKLIST_ITEMS = [
+  { id: "sam", label: "SAM.gov registration is active and not expired", detail: "Log in at sam.gov and verify your registration expiration date. Active registration is required to submit any federal bid." },
+  { id: "cage", label: "CAGE code is confirmed", detail: "Your CAGE code is required on all federal submissions. Verify it matches your SAM.gov profile." },
+  { id: "uei", label: "Unique Entity ID (UEI) is confirmed", detail: "The UEI replaced DUNS numbers in 2022. Confirm it is in your SAM.gov profile and matches your bid documents." },
+  { id: "naics", label: "NAICS code matches the solicitation", detail: "Confirm your primary NAICS code (115310, 238910, or 561730) is listed in your SAM.gov profile and matches the solicitation." },
+  { id: "sdvosb", label: "SDVOSB certification is current (if set-aside applies)", detail: "If this is an SDVOSB set-aside, verify your certification in the SBA Veteran Small Business Certification (VetCert) program at veterans.certify.sba.gov." },
+  { id: "scope", label: "Full solicitation reviewed — scope, CLINs, and attachments", detail: "Download and read the full solicitation package from SAM.gov. Pay attention to CLIN structure, performance requirements, and any required certifications or bonds." },
+  { id: "pricing", label: "Pricing worksheet reviewed and unit prices filled in", detail: "Do not submit the auto-generated pricing worksheet without reviewing the solicitation's required CLIN structure and filling in your actual unit prices." },
+  { id: "cover", label: "Cover letter reviewed and signature block added", detail: "Personalize the cover letter, add your full legal name and title, and confirm the submission address matches the solicitation." },
+  { id: "deadline", label: "Submission deadline confirmed", detail: "Federal submissions must be received — not just sent — before the deadline. Allow extra time for SAM.gov upload." },
+  { id: "submit", label: "Submission made through SAM.gov or as directed in solicitation", detail: "Log in to sam.gov, navigate to this opportunity, and upload your response package. Some solicitations require email submission — read the instructions carefully." },
+];
+
 function PreSubmissionChecklist({ opportunity, onClose }: { opportunity: Opportunity; onClose: () => void }) {
-  const CHECKLIST = [
-    { id: "sam", label: "SAM.gov registration is active and not expired", detail: "Log in at sam.gov and verify your registration expiration date. Active registration is required to submit any federal bid." },
-    { id: "cage", label: "CAGE code is confirmed", detail: "Your CAGE code is required on all federal submissions. Verify it matches your SAM.gov profile." },
-    { id: "uei", label: "Unique Entity ID (UEI) is confirmed", detail: "The UEI replaced DUNS numbers in 2022. Confirm it is in your SAM.gov profile and matches your bid documents." },
-    { id: "naics", label: "NAICS code matches the solicitation", detail: "Confirm your primary NAICS code (115310, 238910, or 561730) is listed in your SAM.gov profile and matches the solicitation." },
-    { id: "sdvosb", label: "SDVOSB certification is current (if set-aside applies)", detail: "If this is an SDVOSB set-aside, verify your certification in the SBA Veteran Small Business Certification (VetCert) program at veterans.certify.sba.gov." },
-    { id: "scope", label: "Full solicitation reviewed — scope, CLINs, and attachments", detail: "Download and read the full solicitation package from SAM.gov. Pay attention to CLIN structure, performance requirements, and any required certifications or bonds." },
-    { id: "pricing", label: "Pricing worksheet reviewed and unit prices filled in", detail: "Do not submit the auto-generated pricing worksheet without reviewing the solicitation's required CLIN structure and filling in your actual unit prices." },
-    { id: "cover", label: "Cover letter reviewed and signature block added", detail: "Personalize the cover letter, add your full legal name and title, and confirm the submission address matches the solicitation." },
-    { id: "deadline", label: "Submission deadline confirmed", detail: `Deadline: ${opportunity.responseDeadline ?? "See solicitation"}. Federal submissions must be received — not just sent — before the deadline. Allow extra time for SAM.gov upload.` },
-    { id: "submit", label: "Submission made through SAM.gov or as directed in solicitation", detail: "Log in to sam.gov, navigate to this opportunity, and upload your response package. Some solicitations require email submission — read the instructions carefully." },
-  ];
-  const [checked, setChecked] = useState<Set<string>>(new Set());
+  const storageKey = `checklist-${opportunity.id}`;
+
+  // Auto-load saved progress from localStorage
+  const [checked, setChecked] = useState<Set<string>>(() => {
+    try {
+      const saved = localStorage.getItem(storageKey);
+      return saved ? new Set(JSON.parse(saved) as string[]) : new Set();
+    } catch { return new Set(); }
+  });
+
   const toggle = (id: string) => setChecked(prev => {
     const next = new Set(prev);
     next.has(id) ? next.delete(id) : next.add(id);
+    // Auto-save to localStorage
+    try { localStorage.setItem(storageKey, JSON.stringify(Array.from(next))); } catch {}
     return next;
   });
-  const allDone = checked.size === CHECKLIST.length;
+
+  const progress = Math.round((checked.size / CHECKLIST_ITEMS.length) * 100);
+  const allDone = checked.size === CHECKLIST_ITEMS.length;
+
+  // AI Draft Proposal
+  const bidPrep = trpc.govContracts.bidPrep.useMutation();
+  const [showDraft, setShowDraft] = useState(false);
+
+  const handleDraftProposal = () => {
+    setShowDraft(true);
+    if (!bidPrep.data && !bidPrep.isPending) {
+      bidPrep.mutate({
+        opportunityId: opportunity.id,
+        title: opportunity.title,
+        agency: opportunity.agency,
+        solicitationNumber: opportunity.solicitationNumber,
+        naics: opportunity.naics,
+        responseDeadline: opportunity.responseDeadline,
+        state: opportunity.state,
+        city: opportunity.city,
+        setAside: opportunity.setAside,
+        contactName: opportunity.contactName,
+        contactEmail: opportunity.contactEmail,
+        samLink: opportunity.samLink,
+      });
+    }
+  };
+
   return (
     <Dialog open onOpenChange={onClose}>
       <DialogContent className="max-w-xl bg-zinc-950 border-zinc-800 text-white max-h-[85vh] overflow-y-auto">
@@ -284,33 +323,111 @@ function PreSubmissionChecklist({ opportunity, onClose }: { opportunity: Opportu
             {opportunity.title}
           </DialogDescription>
         </DialogHeader>
-        <div className="space-y-2 mt-2">
-          {CHECKLIST.map(item => (
-            <button
-              key={item.id}
-              onClick={() => toggle(item.id)}
-              className={`w-full text-left flex items-start gap-3 p-3 rounded-lg border transition-colors ${
-                checked.has(item.id)
-                  ? "border-green-700/50 bg-green-950/30"
-                  : "border-zinc-800 bg-zinc-900/40 hover:bg-zinc-900/70"
+
+        {/* Progress bar */}
+        <div className="mt-1 mb-3">
+          <div className="flex items-center justify-between mb-1.5">
+            <span className="text-[11px] text-zinc-400">{checked.size} of {CHECKLIST_ITEMS.length} complete</span>
+            <span className={`text-[11px] font-semibold ${
+              allDone ? "text-green-400" : progress >= 60 ? "text-amber-400" : "text-zinc-400"
+            }`}>{progress}%</span>
+          </div>
+          <div className="w-full h-2 bg-zinc-800 rounded-full overflow-hidden">
+            <div
+              className={`h-full rounded-full transition-all duration-300 ${
+                allDone ? "bg-green-500" : progress >= 60 ? "bg-amber-500" : "bg-zinc-500"
               }`}
-            >
-              <div className={`mt-0.5 shrink-0 w-4 h-4 rounded border flex items-center justify-center transition-colors ${
-                checked.has(item.id) ? "bg-green-600 border-green-600" : "border-zinc-600"
-              }`}>
-                {checked.has(item.id) && <CheckCircle2 size={10} className="text-white" />}
-              </div>
-              <div>
-                <p className={`text-xs font-medium leading-snug ${
-                  checked.has(item.id) ? "text-green-400 line-through opacity-70" : "text-zinc-200"
-                }`}>{item.label}</p>
-                <p className="text-[10px] text-zinc-500 mt-0.5 leading-relaxed">{item.detail}</p>
-              </div>
-            </button>
-          ))}
+              style={{ width: `${progress}%` }}
+            />
+          </div>
+          {allDone && (
+            <p className="text-[11px] text-green-400 mt-1 font-medium">All items complete — ready to submit.</p>
+          )}
+          {checked.size > 0 && !allDone && (
+            <p className="text-[10px] text-zinc-500 mt-1">Progress saved automatically.</p>
+          )}
         </div>
-        <div className="flex items-center justify-between pt-3 border-t border-zinc-800">
-          <span className="text-xs text-zinc-400">{checked.size} of {CHECKLIST.length} complete</span>
+
+        {/* Checklist items */}
+        {!showDraft && (
+          <div className="space-y-2">
+            {CHECKLIST_ITEMS.map(item => (
+              <button
+                key={item.id}
+                onClick={() => toggle(item.id)}
+                className={`w-full text-left flex items-start gap-3 p-3 rounded-lg border transition-colors ${
+                  checked.has(item.id)
+                    ? "border-green-700/50 bg-green-950/30"
+                    : "border-zinc-800 bg-zinc-900/40 hover:bg-zinc-900/70"
+                }`}
+              >
+                <div className={`mt-0.5 shrink-0 w-4 h-4 rounded border flex items-center justify-center transition-colors ${
+                  checked.has(item.id) ? "bg-green-600 border-green-600" : "border-zinc-600"
+                }`}>
+                  {checked.has(item.id) && <CheckCircle2 size={10} className="text-white" />}
+                </div>
+                <div>
+                  <p className={`text-xs font-medium leading-snug ${
+                    checked.has(item.id) ? "text-green-400 line-through opacity-70" : "text-zinc-200"
+                  }`}>{item.label}</p>
+                  <p className="text-[10px] text-zinc-500 mt-0.5 leading-relaxed">{item.detail}</p>
+                </div>
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/* AI Draft Proposal panel */}
+        {showDraft && (
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <p className="text-xs font-semibold text-zinc-200">AI-Generated Cover Letter Draft</p>
+              <button onClick={() => setShowDraft(false)} className="text-zinc-500 hover:text-zinc-300">
+                <X size={14} />
+              </button>
+            </div>
+            {bidPrep.isPending && (
+              <div className="flex items-center gap-2 text-xs text-zinc-400 py-6 justify-center">
+                <Loader2 size={14} className="animate-spin" />
+                Generating cover letter draft...
+              </div>
+            )}
+            {bidPrep.isError && (
+              <p className="text-xs text-red-400">Failed to generate draft. Try again.</p>
+            )}
+            {bidPrep.data && (
+              <>
+                <textarea
+                  readOnly
+                  value={bidPrep.data.coverLetter}
+                  className="w-full min-h-[240px] text-xs font-mono bg-zinc-900 border border-zinc-700 text-zinc-200 rounded p-3 resize-y"
+                />
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => {
+                      navigator.clipboard.writeText(bidPrep.data!.coverLetter);
+                      toast.success("Cover letter copied");
+                    }}
+                    className="inline-flex items-center gap-1.5 text-xs border border-zinc-700 text-zinc-300 hover:text-white px-3 py-1.5 rounded transition-colors"
+                  >
+                    <Copy size={11} /> Copy
+                  </button>
+                  <p className="text-[10px] text-zinc-500 self-center">Review and personalize before submitting.</p>
+                </div>
+              </>
+            )}
+          </div>
+        )}
+
+        {/* Footer */}
+        <div className="flex flex-wrap items-center justify-between gap-2 pt-3 border-t border-zinc-800">
+          <button
+            onClick={handleDraftProposal}
+            className="inline-flex items-center gap-1.5 text-xs border border-zinc-700 text-zinc-300 hover:text-white hover:border-amber-600 px-3 py-1.5 rounded transition-colors"
+          >
+            <FileText size={11} className="text-amber-500" />
+            {showDraft ? "Back to Checklist" : "Draft Proposal"}
+          </button>
           <div className="flex gap-2">
             <a
               href={opportunity.samLink}
@@ -582,6 +699,24 @@ export default function GovContracts() {
   const [showAllTn, setShowAllTn] = useState(false);
   const [sortBy, setSortBy] = useState<"fit" | "deadline">("fit");
   const [checklistOpp, setChecklistOpp] = useState<Opportunity | null>(null);
+  const [showBookmarked, setShowBookmarked] = useState(false);
+
+  // Bookmarks — persisted to localStorage
+  const [bookmarks, setBookmarks] = useState<Set<string>>(() => {
+    try {
+      const saved = localStorage.getItem("gov-bookmarks");
+      return saved ? new Set(JSON.parse(saved) as string[]) : new Set();
+    } catch { return new Set(); }
+  });
+
+  const toggleBookmark = (id: string) => {
+    setBookmarks(prev => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      try { localStorage.setItem("gov-bookmarks", JSON.stringify(Array.from(next))); } catch {}
+      return next;
+    });
+  };
 
   const { data, isLoading, isFetching, refetch } = trpc.govContracts.search.useQuery(
     { naicsFilter, stateFilter, page },
@@ -597,19 +732,21 @@ export default function GovContracts() {
   const stateCounts = (data?.stateCounts ?? {}) as Record<string, number>;
   const naicsCounts = (data?.naicsCounts ?? {}) as Record<string, number>;
 
-  // Compute fit scores and sort
+  // Compute fit scores, filter bookmarks, and sort
   const opportunities = useMemo(() => {
-    const scored = rawOpportunities.map(opp => ({ ...opp, fit: computeFitScore(opp) }));
+    let scored = rawOpportunities.map(opp => ({ ...opp, fit: computeFitScore(opp) }));
+    if (showBookmarked) {
+      scored = scored.filter(opp => bookmarks.has(opp.id));
+    }
     if (sortBy === "fit") {
       return scored.sort((a, b) => b.fit.score - a.fit.score);
     }
-    // Sort by deadline ascending (soonest first)
     return scored.sort((a, b) => {
       const dA = a.daysUntilDeadline ?? 9999;
       const dB = b.daysUntilDeadline ?? 9999;
       return dA - dB;
     });
-  }, [rawOpportunities, sortBy]);
+  }, [rawOpportunities, sortBy, showBookmarked, bookmarks]);
 
   const handleFilterChange = () => {
     setPage(0);
@@ -915,6 +1052,19 @@ export default function GovContracts() {
           </div>
 
           <div className="flex items-center gap-2 ml-auto">
+            {bookmarks.size > 0 && (
+              <button
+                onClick={() => setShowBookmarked(v => !v)}
+                className={`inline-flex items-center gap-1.5 text-[11px] font-medium px-2.5 py-1 rounded border transition-colors ${
+                  showBookmarked
+                    ? "border-amber-600 bg-amber-600/20 text-amber-400"
+                    : "border-zinc-700 text-zinc-300 hover:text-white hover:border-zinc-500 bg-zinc-900"
+                }`}
+              >
+                <Star size={11} className={showBookmarked ? "fill-amber-400" : ""} />
+                Saved ({bookmarks.size})
+              </button>
+            )}
             <button
               onClick={() => setSortBy(s => s === "fit" ? "deadline" : "fit")}
               className="inline-flex items-center gap-1.5 text-[11px] font-medium px-2.5 py-1 rounded border border-zinc-700 text-zinc-300 hover:text-white hover:border-zinc-500 transition-colors bg-zinc-900"
@@ -924,7 +1074,7 @@ export default function GovContracts() {
             </button>
             {!isLoading && (
               <span className="text-xs text-muted-foreground">
-                {totalCount} opportunit{totalCount === 1 ? "y" : "ies"}
+                {showBookmarked ? `${opportunities.length} saved` : `${totalCount} opportunit${totalCount === 1 ? "y" : "ies"}`}
               </span>
             )}
           </div>
@@ -990,7 +1140,18 @@ export default function GovContracts() {
                       <p className="text-[10px] text-zinc-500 mt-0.5">{opp.fit.reasons.join(" · ")}</p>
                     )}
                   </div>
-                  <div className="shrink-0">
+                  <div className="shrink-0 flex items-center gap-2">
+                    <button
+                      onClick={() => toggleBookmark(opp.id)}
+                      title={bookmarks.has(opp.id) ? "Remove from saved" : "Save for later"}
+                      className={`p-1 rounded transition-colors ${
+                        bookmarks.has(opp.id)
+                          ? "text-amber-400 hover:text-amber-300"
+                          : "text-zinc-600 hover:text-zinc-300"
+                      }`}
+                    >
+                      <Star size={14} className={bookmarks.has(opp.id) ? "fill-amber-400" : ""} />
+                    </button>
                     <DeadlineBadge days={opp.daysUntilDeadline} />
                   </div>
                 </div>
