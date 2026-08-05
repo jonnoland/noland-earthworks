@@ -435,6 +435,86 @@ const leadsRouter = router({
         quoteData.missingInfo?.length ? `Missing info: ${quoteData.missingInfo.join(", ")}` : null,
       ].filter(Boolean).join("\n");
 
+      // ── Auto-generate proposal draft and attach as clientMessage ────────────────────────────────────────────────────────────────────────────────────
+      let clientMessage: string | undefined;
+      try {
+        // Pull live pricing settings for the proposal prompt
+        let dpPr: typeof aiPricingSettings.$inferSelect | null = null;
+        try {
+          const dpRows = await db.select().from(aiPricingSettings).limit(1);
+          dpPr = dpRows[0] ?? null;
+        } catch { /* use defaults */ }
+        const dpFm  = dpPr?.forestryMulchingBaseRate ?? 2000;
+        const dpLc  = dpPr?.landClearingBaseRate     ?? 2200;
+        const dpBh  = dpPr?.brushHoggingBaseRate     ?? 175;
+        const dpMin = dpPr?.minimumJobTotal          ?? 1800;
+        const dpDm  = parseFloat(dpPr?.densityModerateMultiplier ?? "1.25");
+        const dpDh  = parseFloat(dpPr?.densityHeavyMultiplier    ?? "1.60");
+
+        const recentNotes = await db.select().from(leadNotes)
+          .where(eq(leadNotes.leadId, leadId))
+          .orderBy(desc(leadNotes.createdAt))
+          .limit(10);
+        const noteText = recentNotes.map(n => `- ${n.content}`).join("\n") || "No notes.";
+
+        const proposalPrompt = `Draft a professional proposal for Noland Earthworks, LLC based on the lead data below.
+Lead:
+Name: ${lead.name}
+Job type: ${quoteData.service}
+Address: ${lead.address ?? "not provided"}
+Estimated acreage: ${quoteData.estimatedAcres ?? "unknown"}
+Estimate range: $${quoteData.estimateLow.toLocaleString()}–$${quoteData.estimateHigh.toLocaleString()} (${quoteData.confidence} confidence)
+Mobilization: ${quoteData.mobilizationNote}
+Notes: ${lead.notes ?? "none"}
+Lead notes:\n${noteText}
+Write a complete proposal with these sections:
+1. Project Description (2-3 sentences)
+2. Scope of Work (bullet list, specific)
+3. Inclusions (what is covered)
+4. Exclusions (what is NOT included — always exclude grading, hauling, excavation)
+5. Site Conditions & Assumptions
+6. Estimated Timeline
+7. Payment Terms (standard: 50% deposit, balance on completion)
+Voice: Professional, direct, plain language. No filler. Sound like a real contractor, not a template.
+Pricing guidance (internal use only — do NOT put a price in the proposal body):
+Forestry Mulching: $${Math.round(dpFm*0.75)}–$${dpFm}/acre (light), $${dpFm}–$${Math.round(dpFm*dpDm)}/acre (moderate), $${Math.round(dpFm*dpDm)}–$${Math.round(dpFm*dpDh*1.5)}+/acre (heavy)
+Land Management: $${Math.round(dpLc*0.75)}–$${dpLc}/acre (light), $${dpLc}–$${Math.round(dpLc*dpDm)}/acre (moderate), $${Math.round(dpLc*dpDm)}–$${Math.round(dpLc*dpDh*2)}+/acre (heavy)
+Brush Hogging: $${Math.round(dpBh*0.85)}–$${dpBh}/acre (maintenance), $${dpBh}–$${Math.round(dpBh*2)}/acre (brush control), $${Math.round(dpBh*2)}–$${Math.round(dpBh*3)}+/acre (reclamation)
+Minimum job: $${dpMin}.
+Leave a placeholder in the proposal body: [PRICE TO BE DETERMINED AFTER SITE VISIT]
+Return JSON only: {"projectDescription": "...", "scopeOfWork": ["..."], "inclusions": ["..."], "exclusions": ["..."], "siteConditions": "...", "estimatedTimeline": "...", "paymentTerms": "..."}`;
+
+        const proposalResult = await invokeLLM({ messages: [{ role: "user", content: proposalPrompt }] });
+        const proposalRaw = proposalResult?.choices?.[0]?.message?.content ?? "{}";
+        const proposal = JSON.parse(stripCodeFence(typeof proposalRaw === "string" ? proposalRaw : "{}"));
+
+        // Format the proposal as a readable client message
+        const lines: string[] = [];
+        if (proposal.projectDescription) lines.push(proposal.projectDescription, "");
+        if (proposal.scopeOfWork?.length) {
+          lines.push("Scope of Work:");
+          proposal.scopeOfWork.forEach((s: string) => lines.push(`  • ${s}`));
+          lines.push("");
+        }
+        if (proposal.inclusions?.length) {
+          lines.push("Inclusions:");
+          proposal.inclusions.forEach((s: string) => lines.push(`  • ${s}`));
+          lines.push("");
+        }
+        if (proposal.exclusions?.length) {
+          lines.push("Exclusions:");
+          proposal.exclusions.forEach((s: string) => lines.push(`  • ${s}`));
+          lines.push("");
+        }
+        if (proposal.siteConditions) lines.push(`Site Conditions & Assumptions: ${proposal.siteConditions}`, "");
+        if (proposal.estimatedTimeline) lines.push(`Estimated Timeline: ${proposal.estimatedTimeline}`, "");
+        if (proposal.paymentTerms) lines.push(`Payment Terms: ${proposal.paymentTerms}`);
+        clientMessage = lines.join("\n").trim();
+      } catch (err) {
+        console.warn("[saveAiQuote] Proposal draft generation failed (non-fatal):", err);
+        // Non-fatal — quote is still created without the proposal text
+      }
+
       // Insert the native quote draft
       const [inserted] = await db.insert(nativeQuotes).values({
         clientName: lead.name,
@@ -447,6 +527,7 @@ const leadsRouter = router({
         serviceType: quoteData.service,
         acreage: quoteData.estimatedAcres ? String(quoteData.estimatedAcres) : undefined,
         internalNotes,
+        clientMessage: clientMessage ?? undefined,
         status: "draft",
         leadId,
       });
