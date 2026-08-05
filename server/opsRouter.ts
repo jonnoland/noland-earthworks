@@ -401,21 +401,83 @@ const leadsRouter = router({
       const { leadId, ...quoteData } = input;
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+
+      // Fetch the lead to populate the quote with client details
+      const [lead] = await db.select().from(opsLeads)
+        .where(and(eq(opsLeads.id, leadId), eq(opsLeads.userId, ctx.user.id)))
+        .limit(1);
+      if (!lead) throw new TRPCError({ code: "NOT_FOUND", message: "Lead not found" });
+
+      // Build a native quote draft from the AI estimate
+      // Use the midpoint as the default total; line items show the range
+      const midCents = Math.round(((quoteData.estimateLow + quoteData.estimateHigh) / 2) * 100);
+      const acreageNote = quoteData.estimatedAcres ? ` (est. ${quoteData.estimatedAcres} acres)` : "";
+      const lineItems = JSON.stringify([
+        {
+          description: `${quoteData.service}${acreageNote} — AI Estimate Range: $${quoteData.estimateLow.toLocaleString()}–$${quoteData.estimateHigh.toLocaleString()}`,
+          qty: 1,
+          unitPriceCents: midCents,
+          totalCents: midCents,
+        },
+        ...(quoteData.mobilizationNote && quoteData.mobilizationNote !== "No mobilization fee (within 30 miles)" ? [
+          {
+            description: `Mobilization — ${quoteData.mobilizationNote}`,
+            qty: 1,
+            unitPriceCents: 0,
+            totalCents: 0,
+          },
+        ] : []),
+      ]);
+
+      const internalNotes = [
+        `AI Estimate — ${quoteData.confidence} confidence`,
+        quoteData.reasoning ? `Reasoning: ${quoteData.reasoning}` : null,
+        quoteData.missingInfo?.length ? `Missing info: ${quoteData.missingInfo.join(", ")}` : null,
+      ].filter(Boolean).join("\n");
+
+      // Insert the native quote draft
+      const [inserted] = await db.insert(nativeQuotes).values({
+        clientName: lead.name,
+        clientEmail: lead.email ?? undefined,
+        clientPhone: lead.phone ?? undefined,
+        propertyAddress: lead.address ?? undefined,
+        title: `${quoteData.service} — ${lead.name}`,
+        lineItems,
+        totalCents: midCents,
+        serviceType: quoteData.service,
+        acreage: quoteData.estimatedAcres ? String(quoteData.estimatedAcres) : undefined,
+        internalNotes,
+        status: "draft",
+        leadId,
+      });
+
+      // Get the inserted quote ID
+      const [newQuote] = await db.select({ id: nativeQuotes.id })
+        .from(nativeQuotes)
+        .where(and(eq(nativeQuotes.leadId, leadId), eq(nativeQuotes.status, "draft")))
+        .orderBy(desc(nativeQuotes.createdAt))
+        .limit(1);
+      const nativeQuoteId = newQuote?.id ?? null;
+
+      // Save AI quote blob on lead and link the new native quote
       await db.update(opsLeads)
         .set({
           aiQuoteData: JSON.stringify({ ...quoteData, savedAt: new Date().toISOString() }),
           aiQuoteSavedAt: new Date(),
+          nativeQuoteId,
           updatedAt: new Date(),
         })
         .where(and(eq(opsLeads.id, leadId), eq(opsLeads.userId, ctx.user.id)));
-      // Also add a system note to the lead's activity log
+
+      // Add a system note to the lead's activity log
       await db.insert(leadNotes).values({
         leadId,
         userId: ctx.user.id,
         type: "system",
-        content: `AI Quote saved: ${quoteData.service} — $${quoteData.estimateLow.toLocaleString()}–$${quoteData.estimateHigh.toLocaleString()}${quoteData.estimatedAcres ? ` (${quoteData.estimatedAcres} acres est.)` : ""} — ${quoteData.confidence} confidence`,
+        content: `AI Quote saved and draft quote created: ${quoteData.service} — $${quoteData.estimateLow.toLocaleString()}–$${quoteData.estimateHigh.toLocaleString()}${acreageNote} — ${quoteData.confidence} confidence${nativeQuoteId ? ` (Quote #${nativeQuoteId})` : ""}`,
       });
-      return { success: true };
+
+      return { success: true, nativeQuoteId };
     }),
 
   confirmVisit: ownerProcedure

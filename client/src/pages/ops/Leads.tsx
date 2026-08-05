@@ -1175,9 +1175,23 @@ function LeadDetailPanel({
   });
 
   const saveAiQuoteMutation = trpc.ops.leads.saveAiQuote.useMutation({
-    onSuccess: () => {
+    onSuccess: (data) => {
       setQuoteSaved(true);
-      toast.success("Quote saved to lead profile");
+      if (data?.nativeQuoteId) {
+        toast.success(
+          <span>
+            Draft quote created.{" "}
+            <a
+              href={`/ops/quotes?quote=${data.nativeQuoteId}`}
+              className="underline font-medium"
+            >
+              View Quote #{data.nativeQuoteId}
+            </a>
+          </span>
+        );
+      } else {
+        toast.success("Quote saved to lead profile");
+      }
       utils.ops.leads.listNotes.invalidate({ leadId: lead.id });
       utils.ops.leads.list.invalidate();
     },
