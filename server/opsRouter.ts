@@ -36,6 +36,13 @@ function getResend() {
   return ENV.resendApiKey ? new Resend(ENV.resendApiKey) : null;
 }
 
+// Strip markdown code fences from LLM JSON responses (Gemini wraps JSON in ```json ... ```)
+function stripCodeFence(raw: string): string {
+  const trimmed = raw.trim();
+  const match = trimmed.match(/^```(?:json)?\s*([\s\S]*?)\s*```$/i);
+  return match ? match[1].trim() : trimmed;
+}
+
 /**
  * Owner-only guard — only the site owner can call these procedures.
  * Primary check: openId matches OWNER_OPEN_ID env var.
@@ -720,7 +727,7 @@ Return JSON only: {"score": <1-10>, "tier": "strong"|"marginal"|"weak", "summary
       });
       const raw = result?.choices?.[0]?.message?.content ?? "{}";
       let parsed: { score: number; tier: string; summary: string; flags: string[] };
-      try { parsed = JSON.parse(typeof raw === "string" ? raw : JSON.stringify(raw)); } catch { throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "AI returned invalid JSON" }); }
+      try { parsed = JSON.parse(stripCodeFence(typeof raw === "string" ? raw : JSON.stringify(raw))); } catch { throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "AI returned invalid JSON" }); }
       const tier = ["strong", "marginal", "weak"].includes(parsed.tier) ? parsed.tier as "strong" | "marginal" | "weak" : "marginal";
       await db.update(opsLeads).set({ aiScore: tier, aiSummary: parsed.summary, aiFlags: JSON.stringify(parsed.flags), updatedAt: new Date() }).where(eq(opsLeads.id, input.leadId));
       return { score: parsed.score, tier, summary: parsed.summary, flags: parsed.flags };
@@ -1751,7 +1758,7 @@ ${input.customPrompt ? `\nADJUSTMENT INSTRUCTION: ${input.customPrompt}\nApply t
         calculatedHigh: finalHigh,
       };
       try {
-        const parsed = JSON.parse(typeof raw === "string" ? raw : JSON.stringify(raw)) as {
+        const parsed = JSON.parse(stripCodeFence(typeof raw === "string" ? raw : JSON.stringify(raw))) as {
           scopeNotes: string;
           lineItems: { name: string; description: string; quantity: number; unitPrice: number }[];
           priceLow: number;
@@ -2039,7 +2046,7 @@ Return ONLY valid JSON with this exact structure:
       const raw = result.choices?.[0]?.message?.content;
       if (!raw) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "AI did not return a response. Try again." });
       try {
-        return JSON.parse(typeof raw === "string" ? raw : JSON.stringify(raw)) as {
+        return JSON.parse(stripCodeFence(typeof raw === "string" ? raw : JSON.stringify(raw))) as {
           inferredService: string;
           inferredAcres: number;
           inferredDensity: string;
@@ -2393,7 +2400,7 @@ Return JSON only: {"replies": [{"tone": "direct_close", "text": "..."}, {"tone":
       });
       const raw = result?.choices?.[0]?.message?.content ?? "{}";
       try {
-        const parsed = JSON.parse(typeof raw === "string" ? raw : "{}");
+        const parsed = JSON.parse(stripCodeFence(typeof raw === "string" ? raw : "{}"));
         return { replies: parsed.replies ?? [] };
       } catch { throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "AI returned invalid response" }); }
     }),
@@ -4768,7 +4775,7 @@ export const opsRouter = router({
 
       const raw = result.choices?.[0]?.message?.content as string ?? "{}";
       let parsed: { keywords: Array<{ keyword: string; intent: string; difficulty: string; volumeRange: string; rationale: string; contentType: string }> };
-      try { parsed = JSON.parse(raw); } catch { throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "AI returned invalid JSON" }); }
+      try { parsed = JSON.parse(stripCodeFence(raw)); } catch { throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "AI returned invalid JSON" }); }
       return parsed.keywords ?? [];
     }),
 
@@ -4888,7 +4895,7 @@ export const opsRouter = router({
 
       const raw = result.choices?.[0]?.message?.content as string ?? "{}";
       let parsed: { title: string; metaDescription: string; bodyMarkdown: string };
-      try { parsed = JSON.parse(raw); } catch { throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "AI returned invalid JSON" }); }
+      try { parsed = JSON.parse(stripCodeFence(raw)); } catch { throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "AI returned invalid JSON" }); }
 
       // Persist to DB
       const db = await getDb();
@@ -5043,6 +5050,8 @@ export const opsRouter = router({
 
       const fileContent = `import BlogPostLayout from "@/components/BlogPostLayout";
 import { Streamdown } from "streamdown";
+
+
 
 const BODY = \`${escapedMarkdown}\`;
 
@@ -5218,7 +5227,7 @@ Return a JSON object with a "fixes" array — one object per issue in the same o
       let fixInstructions: Array<{ checkId: string; researchContext: string; instructions: string }> = [];
       try {
         const raw = llmResponse?.choices?.[0]?.message?.content;
-        const parsed = typeof raw === "string" ? JSON.parse(raw) : raw;
+        const parsed = typeof raw === "string" ? JSON.parse(stripCodeFence(raw)) : raw;
         fixInstructions = parsed?.fixes ?? [];
       } catch {
         throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Failed to parse AI fix instructions." });
@@ -5709,7 +5718,7 @@ Always be specific to nolandearthworks.com. Never give generic advice — tie ev
           });
 
           const raw = llmResponse?.choices?.[0]?.message?.content;
-          const parsed = typeof raw === "string" ? JSON.parse(raw) : raw;
+          const parsed = typeof raw === "string" ? JSON.parse(stripCodeFence(raw)) : raw;
           const wordCountActual = (parsed.bodyMarkdown ?? "").split(/\s+/).filter(Boolean).length;
 
           const [inserted] = await db.insert(seoArticles).values({

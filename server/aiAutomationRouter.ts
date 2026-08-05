@@ -17,6 +17,14 @@ import { ENV } from "./_core/env";
 
 // ─── Owner-only guard (mirrors opsRouter pattern) ─────────────────────────────
 import { protectedProcedure } from "./_core/trpc";
+
+// Strip markdown code fences from LLM JSON responses (Gemini wraps JSON in ```json ... ```)
+function stripCodeFence(raw: string): string {
+  const trimmed = raw.trim();
+  const match = trimmed.match(/^```(?:json)?\s*([\s\S]*?)\s*```$/i);
+  return match ? match[1].trim() : trimmed;
+}
+
 const ownerProcedure = protectedProcedure.use(({ ctx, next }) => {
   const isOwnerByOpenId = ENV.ownerOpenId && ctx.user.openId === ENV.ownerOpenId;
   const isOwnerByRole = ctx.user.role === "admin";
@@ -63,7 +71,7 @@ Return JSON only: {"risks": [{"id": "<invoice id>", "riskLevel": "high"|"medium"
       const result = await invokeLLM({ messages: [{ role: "user", content: prompt }] });
       const raw = result?.choices?.[0]?.message?.content ?? "{}";
       try {
-        const parsed = JSON.parse(typeof raw === "string" ? raw : "{}");
+        const parsed = JSON.parse(stripCodeFence(typeof raw === "string" ? raw : "{}"));
         return { risks: parsed.risks ?? [] };
       } catch { return { risks: [] }; }
     }),
@@ -126,7 +134,7 @@ Return JSON only: {"revenuePerHour": <number or null>, "hoursVariance": "<over/u
       const result = await invokeLLM({ messages: [{ role: "user", content: prompt }] });
       const raw = result?.choices?.[0]?.message?.content ?? "{}";
       try {
-        const parsed = JSON.parse(typeof raw === "string" ? raw : "{}");
+        const parsed = JSON.parse(stripCodeFence(typeof raw === "string" ? raw : "{}"));
         return { ...parsed, actualHours: totalHours };
       } catch { return { summary: "Analysis unavailable.", actualHours: totalHours }; }
     }),
@@ -189,7 +197,7 @@ Return JSON only: {"projectDescription": "...", "scopeOfWork": ["...", "..."], "
       const result = await invokeLLM({ messages: [{ role: "user", content: prompt }] });
       const raw = result?.choices?.[0]?.message?.content ?? "{}";
       try {
-        const parsed = JSON.parse(typeof raw === "string" ? raw : "{}");
+        const parsed = JSON.parse(stripCodeFence(typeof raw === "string" ? raw : "{}"));
         return parsed;
       } catch { throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "AI returned invalid response" }); }
     }),
@@ -255,7 +263,7 @@ Return JSON only: {"anomalies": [{"entryId": <id>, "type": "long_shift"|"duplica
       const result = await invokeLLM({ messages: [{ role: "user", content: prompt }] });
       const raw = result?.choices?.[0]?.message?.content ?? "{}";
       try {
-        const parsed = JSON.parse(typeof raw === "string" ? raw : "{}");
+        const parsed = JSON.parse(stripCodeFence(typeof raw === "string" ? raw : "{}"));
         return { anomalies: parsed.anomalies ?? [], summary: parsed.summary ?? "" };
       } catch { return { anomalies: [], summary: "Analysis unavailable." }; }
     }),
@@ -315,7 +323,7 @@ Return JSON only: {"forecast": [{"month": "YYYY-MM", "leadVolume": "low"|"medium
       const result = await invokeLLM({ messages: [{ role: "user", content: prompt }] });
       const raw = result?.choices?.[0]?.message?.content ?? "{}";
       try {
-        const parsed = JSON.parse(typeof raw === "string" ? raw : "{}");
+        const parsed = JSON.parse(stripCodeFence(typeof raw === "string" ? raw : "{}"));
         return parsed;
       } catch { return { forecast: [], overallOutlook: "Forecast unavailable." }; }
     }),
@@ -372,7 +380,7 @@ Return JSON only: {"facebook": "<post text>", "instagram": "<caption text>"}`;
       const result = await invokeLLM({ messages: [{ role: "user", content: prompt }] });
       const raw = result?.choices?.[0]?.message?.content ?? "{}";
       try {
-        const parsed = JSON.parse(typeof raw === "string" ? raw : "{}");
+        const parsed = JSON.parse(stripCodeFence(typeof raw === "string" ? raw : "{}"));
         return { facebook: parsed.facebook ?? "", instagram: parsed.instagram ?? "" };
       } catch { throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "AI returned invalid response" }); }
     }),
@@ -427,7 +435,7 @@ Return JSON only: {"clients": [{"name": "<client name>", "daysInactive": <number
       const result = await invokeLLM({ messages: [{ role: "user", content: prompt }] });
       const raw = result?.choices?.[0]?.message?.content ?? "{}";
       try {
-        const parsed = JSON.parse(typeof raw === "string" ? raw : "{}");
+        const parsed = JSON.parse(stripCodeFence(typeof raw === "string" ? raw : "{}"));
         // Merge email data back in
         const enriched = (parsed.clients ?? []).map((c: { name: string; daysInactive: number; reEngagementMessage: string }) => ({
           ...c,
@@ -472,7 +480,7 @@ Return JSON only: {"predictions": [{"serviceType": "<type>", "hoursUntilDue": <n
       const result = await invokeLLM({ messages: [{ role: "user", content: prompt }] });
       const raw = result?.choices?.[0]?.message?.content ?? "{}";
       try {
-        const parsed = JSON.parse(typeof raw === "string" ? raw : "{}");
+        const parsed = JSON.parse(stripCodeFence(typeof raw === "string" ? raw : "{}"));
         return parsed;
       } catch { return { predictions: [], failureRisk: "unknown", recommendation: "Analysis unavailable." }; }
     }),
@@ -519,7 +527,7 @@ Return JSON only: {"tasks": [{"title": "<short task title>", "description": "<on
       const result = await invokeLLM({ messages: [{ role: "user", content: prompt }] });
       const raw = result?.choices?.[0]?.message?.content ?? "{}";
       try {
-        const parsed = JSON.parse(typeof raw === "string" ? raw : "{}");
+        const parsed = JSON.parse(stripCodeFence(typeof raw === "string" ? raw : "{}"));
         const tasks = parsed.tasks ?? [];
         // Insert tasks into DB
         const created = [];
@@ -579,7 +587,7 @@ Return JSON only: {"bestPlatform": "<platform>", "worstPlatform": "<platform>", 
       const result = await invokeLLM({ messages: [{ role: "user", content: prompt }] });
       const raw = result?.choices?.[0]?.message?.content ?? "{}";
       try {
-        const parsed = JSON.parse(typeof raw === "string" ? raw : "{}");
+        const parsed = JSON.parse(stripCodeFence(typeof raw === "string" ? raw : "{}"));
         return { ...parsed, totalSpend, totalLeads: leadsThisMonth.length, wonLeads, spendByPlatform, leadsBySource };
       } catch { return { diagnosis: "Analysis unavailable.", totalSpend, totalLeads: leadsThisMonth.length }; }
     }),
@@ -639,7 +647,7 @@ Return JSON only: {"summary": "<5-line summary>", "topPriority": "<single most i
       const result = await invokeLLM({ messages: [{ role: "user", content: prompt }] });
       const raw = result?.choices?.[0]?.message?.content ?? "{}";
       try {
-        const parsed = JSON.parse(typeof raw === "string" ? raw : "{}");
+        const parsed = JSON.parse(stripCodeFence(typeof raw === "string" ? raw : "{}"));
         return {
           ...parsed,
           stats: {

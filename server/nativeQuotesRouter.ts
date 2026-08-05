@@ -26,6 +26,14 @@ import { notifyOwner } from "./_core/notification";
 import { ENV } from "./_core/env";
 import { invokeLLM } from "./_core/llm";
 
+// Strip markdown code fences from LLM JSON responses
+function stripCodeFence(raw: string): string {
+  const trimmed = raw.trim();
+  const match = trimmed.match(/^```(?:json)?\s*([\s\S]*?)\s*```$/i);
+  return match ? match[1].trim() : trimmed;
+}
+
+
 const ownerProcedure = protectedProcedure.use(({ ctx, next }) => {
   const isOwnerByOpenId = ENV.ownerOpenId && ctx.user.openId === ENV.ownerOpenId;
   const isOwnerByRole = ctx.user.role === "admin";
@@ -589,7 +597,7 @@ Rules:
       const raw = typeof rawContent === "string" ? rawContent : JSON.stringify(rawContent);
       let parsed: { title: string; estimatedDuration: string; clientMessage: string; lineItems: { description: string; qty: number; unitPriceCents: number }[] };
       try {
-        parsed = JSON.parse(raw);
+        parsed = JSON.parse(stripCodeFence(raw));
       } catch {
         throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "AI returned invalid JSON" });
       }

@@ -12,6 +12,14 @@ import { qualifyLead } from "./leadQualifier";
 import { opsLeads } from "../drizzle/schema";
 import { eq } from "drizzle-orm";
 
+// Strip markdown code fences from LLM JSON responses
+function stripCodeFence(raw: string): string {
+  const trimmed = raw.trim();
+  const match = trimmed.match(/^```(?:json)?\s*([\s\S]*?)\s*```$/i);
+  return match ? match[1].trim() : trimmed;
+}
+
+
 const quoteSchema = z.object({
   name: z.string().min(1, "Name is required").max(100),
   phone: z.string().min(1, "Phone is required").max(30).regex(/[0-9]/, "Phone must contain at least one digit"),
@@ -1034,7 +1042,7 @@ export const quoteRouter = router({
       const rawContent = result.choices[0]?.message?.content ?? "{}";
       const raw = typeof rawContent === "string" ? rawContent : JSON.stringify(rawContent);
       try {
-        const parsed = JSON.parse(raw) as {
+        const parsed = JSON.parse(stripCodeFence(raw)) as {
           deadlines: Array<{ date: string; description: string; confidence: number }>;
           requirements: Array<{ text: string; confidence: number }>;
           projectSize: string;

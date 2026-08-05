@@ -18,6 +18,14 @@ import { randomBytes } from "crypto";
 import { invokeLLM } from "./_core/llm";
 import { storagePut } from "./storage";
 
+// Strip markdown code fences from LLM JSON responses
+function stripCodeFence(raw: string): string {
+  const trimmed = raw.trim();
+  const match = trimmed.match(/^```(?:json)?\s*([\s\S]*?)\s*```$/i);
+  return match ? match[1].trim() : trimmed;
+}
+
+
 // ─── Equipment ────────────────────────────────────────────────────────────────
 
 const upsertEquipmentSchema = z.object({
@@ -338,7 +346,7 @@ Return ONLY valid JSON matching this exact schema — no markdown, no explanatio
 
       let report: FixReport;
       try {
-        report = JSON.parse(raw) as FixReport;
+        report = JSON.parse(stripCodeFence(raw)) as FixReport;
       } catch {
         // Attempt to extract JSON from response if wrapped in markdown
         const match = raw.match(/\{[\s\S]*\}/);

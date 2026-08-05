@@ -16,6 +16,14 @@ import { ENV } from "./_core/env";
 import { Resend } from "resend";
 import crypto from "crypto";
 
+// Strip markdown code fences from LLM JSON responses
+function stripCodeFence(raw: string): string {
+  const trimmed = raw.trim();
+  const match = trimmed.match(/^```(?:json)?\s*([\s\S]*?)\s*```$/i);
+  return match ? match[1].trim() : trimmed;
+}
+
+
 const CHAT_SYSTEM_PROMPT = `You are the AI assistant for Noland Earthworks, LLC — a veteran-owned land management and forestry mulching company in Middle Tennessee. Your name is not important; you represent Noland Earthworks.
 
 YOUR ROLE:
@@ -240,7 +248,7 @@ export const chatRouter = router({
 
           const raw = extractResult?.choices?.[0]?.message?.content;
           if (raw) {
-            const parsed = typeof raw === "string" ? JSON.parse(raw) : raw;
+            const parsed = typeof raw === "string" ? JSON.parse(stripCodeFence(raw)) : raw;
             if (!resolvedName && parsed.name) resolvedName = parsed.name;
             if (!resolvedPhone && parsed.phone) {
               const digits = String(parsed.phone).replace(/\D/g, "");
