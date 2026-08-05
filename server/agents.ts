@@ -230,8 +230,9 @@ export async function runVisitReminderAgent() {
 
 // ─── Agent 3: Review Request ──────────────────────────────────────────────────
 /**
- * Runs daily. Finds jobs marked "completed" in the last 1–3 days that have a
- * client email on the linked lead. Sends a Google review request email.
+ * Runs daily. Finds jobs marked "paid" 48–72 hours ago that have a client email
+ * on the linked lead and have not yet had a review request sent.
+ * Skips jobs whose notes contain negative sentiment keywords.
  */
 export async function runReviewRequestAgent() {
   const AGENT_ID = "review_request";
@@ -250,17 +251,31 @@ export async function runReviewRequestAgent() {
     const db = await getDb();
     if (!db) throw new Error("Database unavailable");
 
-    const threeDaysAgo = daysAgo(3);
-    const oneDayAgo = daysAgo(1);
+    // Trigger window: paid 48–72 hours ago (24h window prevents re-triggering)
+    const seventyTwoHoursAgo = new Date(Date.now() - 72 * 60 * 60 * 1000);
+    const fortyEightHoursAgo = new Date(Date.now() - 48 * 60 * 60 * 1000);
 
-    // Jobs completed in the 1–3 day window
+    // Negative sentiment keywords — suppress review request if found in job notes
+    const NEGATIVE_KEYWORDS = [
+      "complaint", "unhappy", "dissatisfied", "refund", "dispute", "problem",
+      "issue", "wrong", "mistake", "damage", "damaged", "broken", "rework",
+      "redo", "not happy", "not satisfied", "bad", "terrible", "awful",
+    ];
+    const hasSentimentFlag = (notes: string | null): boolean => {
+      if (!notes) return false;
+      const lower = notes.toLowerCase();
+      return NEGATIVE_KEYWORDS.some(kw => lower.includes(kw));
+    };
+
+    // Jobs paid in the 48–72 hour window that have not yet had a review request sent
+    const { isNull } = await import("drizzle-orm");
     const completedJobs = await db.select().from(jobs)
       .where(
         and(
-          eq(jobs.status, "completed"),
-          isNotNull(jobs.completedDate),
-          gte(jobs.completedDate, threeDaysAgo),
-          lte(jobs.completedDate, oneDayAgo)
+          isNotNull(jobs.paidDate),
+          gte(jobs.paidDate, seventyTwoHoursAgo),
+          lte(jobs.paidDate, fortyEightHoursAgo),
+          isNull(jobs.reviewRequestSentAt)
         )
       );
 
@@ -289,6 +304,16 @@ export async function runReviewRequestAgent() {
       }
       if (!lead?.email) continue;
 
+      // Sentiment filter — skip if job notes contain negative language
+      if (hasSentimentFlag(job.notes)) {
+        console.log(`[Agent:review_request] Skipping job ${job.id} (${job.client}) — negative sentiment detected in notes.`);
+        await notifyOwner({
+          title: "Review Request Suppressed",
+          content: `Job for ${job.client} was paid but review request was suppressed due to potential issue in job notes. Review manually before reaching out.`,
+        });
+        continue;
+      }
+
       try {
         await resend.emails.send({
           from: "Noland Earthworks <noreply@nolandearthworks.com>",
@@ -310,6 +335,10 @@ export async function runReviewRequestAgent() {
             </div>
           `,
         });
+        // Stamp reviewRequestSentAt so this job is never re-triggered
+        await db.update(jobs)
+          .set({ reviewRequestSentAt: new Date() })
+          .where(eq(jobs.id, job.id));
         sent++;
         names.push(job.client);
       } catch (emailErr) {

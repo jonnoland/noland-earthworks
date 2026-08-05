@@ -35,6 +35,7 @@ import {
   ImagePlus,
   X,
   Loader2,
+  Sparkles,
 } from "lucide-react";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -164,6 +165,43 @@ export default function OpsGallery() {
   const toggleVisibleMutation = trpc.gallery.updatePhoto.useMutation({
     onSuccess: () => utils.gallery.listAll.invalidate(),
   });
+
+  // ── AI caption generation ─────────────────────────────────────────────────
+  const [captioningId, setCaptioningId] = useState<string | null>(null);
+  const generateCaption = trpc.ops.ai.generatePhotoCaption.useMutation({
+    onSuccess: (data, variables) => {
+      // Find the queue item by photoUrl — we pass it as a custom field via context
+      const itemId = captioningId;
+      if (itemId && data.galleryCaption) {
+        updateQueueItem(itemId, { description: data.galleryCaption });
+        toast.success("Caption generated — review and edit before uploading");
+      }
+      setCaptioningId(null);
+    },
+    onError: () => {
+      toast.error("Caption generation failed");
+      setCaptioningId(null);
+    },
+  });
+
+  const handleGenerateCaption = async (item: QueueItem) => {
+    // We need a URL to send to the vision model — use the object URL preview
+    // The preview is a blob URL; we need to upload first to get a real URL.
+    // Instead, convert the file to a data URL and pass it directly.
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataUrl = reader.result as string;
+      setCaptioningId(item.id);
+      generateCaption.mutate({
+        photoUrl: dataUrl,
+        serviceType: item.serviceType,
+        photoType: item.photoType,
+        county: item.county,
+        acreage: item.acreage || undefined,
+      });
+    };
+    reader.readAsDataURL(item.file);
+  };
 
   // ── File handling ─────────────────────────────────────────────────────────
   const addFiles = useCallback((files: FileList | File[]) => {
@@ -415,7 +453,7 @@ export default function OpsGallery() {
                         className="bg-zinc-700 border-zinc-600 text-white text-xs h-8"
                         disabled={item.status !== "pending"}
                       />
-                      <div className="col-span-2">
+                      <div className="col-span-2 space-y-1">
                         <Textarea
                           value={item.description}
                           onChange={(e) => updateQueueItem(item.id, { description: e.target.value })}
@@ -424,6 +462,18 @@ export default function OpsGallery() {
                           rows={2}
                           disabled={item.status !== "pending"}
                         />
+                        <button
+                          type="button"
+                          onClick={() => handleGenerateCaption(item)}
+                          disabled={item.status !== "pending" || captioningId === item.id}
+                          className="flex items-center gap-1.5 text-xs text-orange-400 hover:text-orange-300 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                        >
+                          {captioningId === item.id ? (
+                            <><Loader2 className="w-3 h-3 animate-spin" /> Generating caption...</>
+                          ) : (
+                            <><Sparkles className="w-3 h-3" /> Generate AI caption</>  
+                          )}
+                        </button>
                       </div>
                       <div className="flex items-center gap-2">
                         <Switch

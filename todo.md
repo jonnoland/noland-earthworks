@@ -2790,3 +2790,8 @@
 - [x] /ops blog management: existing Seo.tsx already has full article management
 - [x] Fix publishSeoArticle: dynamic /blog/:slug route reads from DB, no file writes needed
 - [x] Update sitemap to query DB for published articles dynamically
+
+## AI Features — Aug 2026
+- [x] Review request: trigger on paidDate+48h instead of completedDate, add sentiment filter
+- [x] AI proposal draft: draftProposalFromLead already built in aiAutomationRouter (confirmed working)
+- [x] AI photo captioning: generatePhotoCaption procedure added, AI caption button in gallery upload UI

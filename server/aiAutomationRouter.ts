@@ -863,4 +863,73 @@ Return JSON only:
         throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "AI returned invalid response" });
       }
     }),
+
+  // ─── AI #14: Photo Caption Generator ─────────────────────────────────────────
+  /**
+   * Accepts an uploaded photo URL + metadata and returns a caption draft
+   * in Jon's voice for use in the gallery description and social posts.
+   * Uses vision model to analyze the actual image content.
+   */
+  generatePhotoCaption: ownerProcedure
+    .input(z.object({
+      photoUrl: z.string().url(),
+      serviceType: z.string().optional(),
+      photoType: z.enum(["before", "after", "general"]).optional(),
+      county: z.string().optional(),
+      acreage: z.string().optional(),
+    }))
+    .mutation(async ({ input }) => {
+      const systemPrompt = `You are writing captions for Noland Earthworks, LLC — a veteran-owned forestry mulching company in Middle Tennessee. Owner Jon Noland does all the work himself.
+
+Caption voice rules (MUST follow):
+- Sound like Jon wrote it — direct, warm, southern, genuine
+- No emojis. Ever.
+- No corporate language, no buzzwords, no filler phrases
+- Describe what you see in the photo plainly and specifically
+- For after shots: describe the transformation and what the land looks like now
+- For before shots: describe the condition of the land
+- For equipment/general shots: describe the work being done
+- End with a natural, low-pressure line about getting in touch if needed
+- 2–4 sentences max for gallery caption
+- 3–5 sentences for social post version`;
+
+      const userPrompt = `Analyze this job photo and write two caption drafts.
+
+Context:
+- Service type: ${input.serviceType ?? "forestry mulching"}
+- Photo type: ${input.photoType ?? "general"} (before/after/general)
+- Location: ${input.county ? input.county + ", Tennessee" : "Middle Tennessee"}
+- Acreage: ${input.acreage ?? "not specified"}
+
+Return JSON only:
+{
+  "galleryCaption": "<2-4 sentence caption for the website gallery>",
+  "socialPost": "<3-5 sentence post for Facebook/Instagram in Jon's voice>"
+}`;
+
+      const result = await invokeLLM({
+        messages: [
+          { role: "system", content: systemPrompt },
+          {
+            role: "user",
+            content: [
+              { type: "image_url", image_url: { url: input.photoUrl, detail: "high" } },
+              { type: "text", text: userPrompt },
+            ],
+          },
+        ],
+      });
+
+      const raw = result?.choices?.[0]?.message?.content ?? "{}";
+      const cleaned = typeof raw === "string" ? raw.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/i, "").trim() : "{}";
+      try {
+        const parsed = JSON.parse(cleaned);
+        return {
+          galleryCaption: parsed.galleryCaption ?? "",
+          socialPost: parsed.socialPost ?? "",
+        };
+      } catch {
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "AI returned invalid caption response" });
+      }
+    }),
 });
