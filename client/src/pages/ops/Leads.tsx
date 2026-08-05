@@ -342,6 +342,12 @@ function LeadCard({ lead, onClick, onDragStart }: { lead: Lead; onClick: () => v
               {new Date(lead.requestedVisitAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
             </span>
           )}
+          {lead.nativeQuoteId && (
+            <span className="inline-flex items-center gap-0.5 text-[10px] font-semibold px-1.5 py-0.5 rounded border bg-orange-500/15 text-orange-400 border-orange-500/25">
+              <FileText className="w-2.5 h-2.5" />
+              Quote #{lead.nativeQuoteId}
+            </span>
+          )}
         </div>
       )}
     </div>
