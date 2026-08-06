@@ -206,6 +206,8 @@ interface Lead {
   estimateAmount?: string | null;
   clientType?: string | null;
   rfpDocumentUrls?: string | null;
+  quoteStatus?: string | null;
+  quoteTotalCents?: number | null;
 }
 
 // ─── Contact Log Entry ──────────────────────────────────────────────────────
@@ -342,12 +344,29 @@ function LeadCard({ lead, onClick, onDragStart }: { lead: Lead; onClick: () => v
               {new Date(lead.requestedVisitAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
             </span>
           )}
-          {lead.nativeQuoteId && (
-            <span className="inline-flex items-center gap-0.5 text-[10px] font-semibold px-1.5 py-0.5 rounded border bg-orange-500/15 text-orange-400 border-orange-500/25">
-              <FileText className="w-2.5 h-2.5" />
-              Quote #{lead.nativeQuoteId}
-            </span>
-          )}
+          {lead.nativeQuoteId && (() => {
+            const qs = lead.quoteStatus ?? "draft";
+            const total = lead.quoteTotalCents ? `$${Math.round(lead.quoteTotalCents / 100).toLocaleString()}` : null;
+            const colorClass =
+              qs === "approved" || qs === "invoiced"
+                ? "bg-green-500/15 text-green-400 border-green-500/25"
+                : qs === "sent" || qs === "viewed"
+                ? "bg-blue-500/15 text-blue-400 border-blue-500/25"
+                : qs === "declined" || qs === "cancelled"
+                ? "bg-red-500/15 text-red-400 border-red-500/25"
+                : "bg-orange-500/15 text-orange-400 border-orange-500/25"; // draft
+            return (
+              <a
+                href={`/ops/quotes?quote=${lead.nativeQuoteId}`}
+                onClick={e => e.stopPropagation()}
+                className={`inline-flex items-center gap-0.5 text-[10px] font-semibold px-1.5 py-0.5 rounded border hover:opacity-80 transition-opacity ${colorClass}`}
+              >
+                <FileText className="w-2.5 h-2.5" />
+                Quote #{lead.nativeQuoteId}
+                {total && <span className="opacity-75 ml-0.5">{total}</span>}
+              </a>
+            );
+          })()}
         </div>
       )}
     </div>

@@ -4,7 +4,7 @@ import {
   InsertJob, InsertOpsLead, InsertScheduleEntry, InsertUser,
   jobs, opsLeads, scheduleEntries, users, visitBlackoutDates, InsertVisitBlackoutDate,
   recurringBlackoutDays, agentConfig, agentLog, ownerTasks, InsertOwnerTask,
-  jobNotes, pricingBenchmarks, chatSessions,
+  jobNotes, pricingBenchmarks, chatSessions, nativeQuotes,
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
@@ -177,7 +177,44 @@ export async function deleteJob(id: number, userId: number) {
 export async function getOpsLeads(userId: number) {
   const db = await getDb();
   if (!db) return [];
-  return db.select().from(opsLeads).where(eq(opsLeads.userId, userId)).orderBy(desc(opsLeads.createdAt));
+  const rows = await db
+    .select({
+      id: opsLeads.id,
+      userId: opsLeads.userId,
+      name: opsLeads.name,
+      email: opsLeads.email,
+      phone: opsLeads.phone,
+      address: opsLeads.address,
+      source: opsLeads.source,
+      stage: opsLeads.stage,
+      jobType: opsLeads.jobType,
+      estimatedValue: opsLeads.estimatedValue,
+      notes: opsLeads.notes,
+      requestedVisitAt: opsLeads.requestedVisitAt,
+      visitConfirmedAt: opsLeads.visitConfirmedAt,
+      aiScore: opsLeads.aiScore,
+      aiSummary: opsLeads.aiSummary,
+      aiFlags: opsLeads.aiFlags,
+      aiDraftResponse: opsLeads.aiDraftResponse,
+      chatSessionId: opsLeads.chatSessionId,
+      jobberQuoteId: opsLeads.jobberQuoteId,
+      jobberQuoteNumber: opsLeads.jobberQuoteNumber,
+      nativeQuoteId: opsLeads.nativeQuoteId,
+      estimateAmount: opsLeads.estimateAmount,
+      clientType: opsLeads.clientType,
+      aiQuoteData: opsLeads.aiQuoteData,
+      aiQuoteSavedAt: opsLeads.aiQuoteSavedAt,
+      createdAt: opsLeads.createdAt,
+      updatedAt: opsLeads.updatedAt,
+      // Joined quote fields for badge display
+      quoteStatus: nativeQuotes.status,
+      quoteTotalCents: nativeQuotes.totalCents,
+    })
+    .from(opsLeads)
+    .leftJoin(nativeQuotes, eq(nativeQuotes.id, opsLeads.nativeQuoteId))
+    .where(eq(opsLeads.userId, userId))
+    .orderBy(desc(opsLeads.createdAt));
+  return rows;
 }
 export async function createOpsLead(data: InsertOpsLead) {
   const db = await getDb();
