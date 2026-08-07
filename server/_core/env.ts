@@ -62,4 +62,6 @@ export const ENV = {
   googleAdsDeveloperToken: process.env.GOOGLE_ADS_DEVELOPER_TOKEN ?? "",
   googleAdsCustomerId: process.env.GOOGLE_ADS_CUSTOMER_ID ?? "",
   googleAdsRefreshToken: process.env.GOOGLE_ADS_REFRESH_TOKEN ?? "",
+  // Read-only ops viewer secret key — share in URL as ?key=VALUE for AI access
+  opsViewerKey: process.env.OPS_VIEWER_KEY ?? "",
 };
