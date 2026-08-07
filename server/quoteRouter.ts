@@ -471,10 +471,12 @@ export const quoteRouter = router({
       }
     }
 
-    // 3. Always send in-app owner notification as backup
+    // 3. In-app Manus notification disabled — owner prefers not to receive these
+    // Quote requests are visible in /ops/leads with full AI scoring and detail
     const scoreLabel = qualification ? `[${qualification.score.toUpperCase()}]` : "";
+    if (false as boolean) {
     try {
-      await notifyOwner({
+      await notifyOwner({ // disabled
         title: `New Quote Request ${scoreLabel} — ${input.name} (${input.service})`,
         content: [
           qualification ? `AI Score: ${qualification.score.toUpperCase()}` : "",
@@ -508,6 +510,7 @@ export const quoteRouter = router({
     } catch (err) {
       console.warn("[Quote] Owner notification failed:", err);
     }
+    } // end disabled block
 
     // 3b. Send SMS push notification to owner's phone
     try {
