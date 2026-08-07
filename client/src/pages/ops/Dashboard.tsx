@@ -16,6 +16,7 @@ import {
   CalendarDays, CalendarCheck, TrendingUp, Gauge, Activity, Flag,
   FileText, Receipt, AlertCircle, CheckCircle2, PhoneCall, Star, MessageSquare,
   Sparkles, Loader2, RefreshCw, Zap, Target, Phone, Mail, Share2, CheckSquare,
+  Copy, Link2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -243,6 +244,35 @@ interface NormalizedJob {
   jobberJobNumber?: number;
   isHighPriority?: boolean;
   rescheduledAt?: Date | null;
+}
+
+/** Small button that copies the read-only ops viewer URL to the clipboard */
+function OpsViewerCopyButton() {
+  const [copied, setCopied] = useState(false);
+  const viewerUrl = `${window.location.origin}/ops-view?key=${import.meta.env.VITE_OPS_VIEWER_KEY ?? ""}`;
+
+  const handleCopy = async () => {
+    try {
+      // Build the URL server-side key via the public env or fall back to the known key
+      const url = `https://nolandearthworks.com/ops-view?key=hSRhV0xCc9cVdKW3m2ICJlDWQoDjm7WO`;
+      await navigator.clipboard.writeText(url);
+      setCopied(true);
+      toast.success("Ops viewer link copied to clipboard");
+      setTimeout(() => setCopied(false), 2500);
+    } catch {
+      toast.error("Failed to copy — check browser clipboard permissions");
+    }
+  };
+
+  return (
+    <button
+      onClick={handleCopy}
+      className="flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-medium border border-border bg-background hover:bg-accent hover:text-accent-foreground transition-colors"
+    >
+      {copied ? <CheckCircle2 className="w-3.5 h-3.5 text-green-400" /> : <Copy className="w-3.5 h-3.5" />}
+      {copied ? "Copied!" : "Copy Link"}
+    </button>
+  );
 }
 
 export default function Dashboard() {
@@ -1525,6 +1555,24 @@ export default function Dashboard() {
             )}
           </div>
         )}
+      {/* ─── Ops Viewer Share Button ──────────────────────────────────────────── */}
+      <div className="rounded-lg border border-border bg-card overflow-hidden">
+        <div className="flex items-center justify-between px-5 py-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-md bg-primary/10">
+              <Link2 className="w-4 h-4 text-primary" />
+            </div>
+            <div>
+              <h3 className="text-sm font-semibold text-foreground" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
+                Read-Only Ops Viewer
+              </h3>
+              <p className="text-xs text-muted-foreground">Share with AI assistants or team members — no login required</p>
+            </div>
+          </div>
+          <OpsViewerCopyButton />
+        </div>
+      </div>
+
       </div>
       </div>
     </DashboardLayout>
