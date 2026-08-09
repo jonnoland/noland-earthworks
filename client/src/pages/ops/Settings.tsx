@@ -2273,6 +2273,12 @@ const MIDDLE_TN_DEFAULTS = {
   volumeDiscount3to5Pct: 3,
   volumeDiscount5to10Pct: 7,
   volumeDiscount10plusPct: 10,     // reduced from 12 — protects margin on large jobs
+  discountMilitaryVeteranPct: 10,
+  discountFirstTimePct: 10,
+  discountReferralPct: 5,
+  discountRepeatCustomerPct: 5,
+  discountOffSeasonPct: 0,
+  discountNonprofitGovPct: 0,
   apdForestryMulching: "1.5",
   apdLandClearing: "1.2",
   apdRowClearing: "1.2",           // acres/day — ROW clearing effective acreage
@@ -2385,6 +2391,13 @@ function AIPricingTab() {
         volumeDiscount3to5Pct: settings.volumeDiscount3to5Pct,
         volumeDiscount5to10Pct: settings.volumeDiscount5to10Pct,
         volumeDiscount10plusPct: settings.volumeDiscount10plusPct,
+        // Customer discounts
+        discountMilitaryVeteranPct: (settings as any).discountMilitaryVeteranPct ?? 10,
+        discountFirstTimePct: (settings as any).discountFirstTimePct ?? 10,
+        discountReferralPct: (settings as any).discountReferralPct ?? 5,
+        discountRepeatCustomerPct: (settings as any).discountRepeatCustomerPct ?? 5,
+        discountOffSeasonPct: (settings as any).discountOffSeasonPct ?? 0,
+        discountNonprofitGovPct: (settings as any).discountNonprofitGovPct ?? 0,
         // Production rates
         apdForestryMulching: settings.apdForestryMulching,
         apdLandClearing: settings.apdLandClearing,
@@ -2432,11 +2445,18 @@ function AIPricingTab() {
       fenceLineClearingPerLf: Number(form.fenceLineClearingPerLf),
       mulchRedistributionPerAcre: Number(form.mulchRedistributionPerAcre),
       selectiveClearingFlatRate: Number(form.selectiveClearingFlatRate),
-      // Volume discounts
-      volumeDiscount3to5Pct: Number(form.volumeDiscount3to5Pct),
-      volumeDiscount5to10Pct: Number(form.volumeDiscount5to10Pct),
-      volumeDiscount10plusPct: Number(form.volumeDiscount10plusPct),
-      // Production rates
+        // Volume discounts
+        volumeDiscount3to5Pct: Number(form.volumeDiscount3to5Pct),
+        volumeDiscount5to10Pct: Number(form.volumeDiscount5to10Pct),
+        volumeDiscount10plusPct: Number(form.volumeDiscount10plusPct),
+        // Customer discounts
+        discountMilitaryVeteranPct: Number(form.discountMilitaryVeteranPct),
+        discountFirstTimePct: Number(form.discountFirstTimePct),
+        discountReferralPct: Number(form.discountReferralPct),
+        discountRepeatCustomerPct: Number(form.discountRepeatCustomerPct),
+        discountOffSeasonPct: Number(form.discountOffSeasonPct),
+        discountNonprofitGovPct: Number(form.discountNonprofitGovPct),
+        // Production rates
       apdForestryMulching: String(form.apdForestryMulching),
       apdLandClearing: String(form.apdLandClearing),
       apdRowClearing: String(form.apdRowClearing),
@@ -2776,12 +2796,92 @@ function AIPricingTab() {
                     </div>
                   </div>
                 ))}
-              </div>
             </div>
           </div>
-        )}
+        </div>
+      )}
 
-        {/* ── Production & Seasonal ── */}
+      {/* ── Production & Seasonal ── */}
+      {activeSection === "addons" && (
+        <div className="ops-card p-4">
+          <p className="text-sm font-semibold text-foreground mb-1">Customer Discounts</p>
+          <p className="text-[11px] text-muted-foreground mb-4">
+            Applied manually per quote. Set to 0 to disable a discount type. These are reference values — the AI uses them when generating quote proposals.
+          </p>
+
+          {/* Required discounts */}
+          <p className="text-[10px] font-semibold uppercase tracking-wide text-primary mb-3">Your Discounts</p>
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-6">
+            {([
+              { label: "Military / Veteran",  key: "discountMilitaryVeteranPct",  note: "Active duty & veterans",      tip: "Builds goodwill and referrals in the veteran community. Veteran-owned businesses offering veteran discounts see higher repeat rates." },
+              { label: "First-Time Customer", key: "discountFirstTimePct",         note: "New client, first job only",  tip: "Lowers the barrier for new clients to book. Recovering the discount on repeat jobs is straightforward." },
+            ] as const).map(({ label, key, note, tip }) => (
+              <div key={key}>
+                <div className="flex items-center gap-1 mb-0.5">
+                  <label className="text-xs font-medium text-foreground">{label}</label>
+                  <span className="relative group">
+                    <Info className="w-3 h-3 text-muted-foreground cursor-help" />
+                    <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 w-52 bg-popover border border-border rounded p-2 text-[10px] text-muted-foreground shadow-lg opacity-0 group-hover:opacity-100 pointer-events-none z-50 transition-opacity">
+                      {tip}
+                    </span>
+                  </span>
+                </div>
+                <p className="text-[10px] text-muted-foreground mb-2">{note}</p>
+                <div className="flex items-center gap-1.5">
+                  <input
+                    type="number" min={0} max={50}
+                    value={form[key] as number ?? 0}
+                    onChange={(e) => setField(key, parseInt(e.target.value, 10) || 0)}
+                    className="w-20 rounded-md border border-border bg-background px-2 py-1.5 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                  />
+                  <span className="text-xs text-muted-foreground">%</span>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Industry-recommended discounts */}
+          <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground mb-3">Industry-Recommended Discounts</p>
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-4">
+            {([
+              { label: "Referral",           key: "discountReferralPct",       note: "Referring customer, next job",   tip: "Standard in the land clearing industry. A 5% credit on the referrer's next job drives word-of-mouth at low cost. Referrals close faster and require less marketing." },
+              { label: "Repeat / Loyalty",   key: "discountRepeatCustomerPct", note: "3+ completed jobs",              tip: "Rewarding repeat clients reduces churn and keeps recurring land management contracts in-house. Common in forestry and vegetation management." },
+              { label: "Off-Season",         key: "discountOffSeasonPct",      note: "Jul–Sep slow season",            tip: "Incentivizes bookings during slow months (Jul–Sep in TN). Keeps the machine running and cash flowing. Set to 0 to disable — only use when you have open capacity." },
+              { label: "Nonprofit / Gov",    key: "discountNonprofitGovPct",   note: "Manual per job",                 tip: "Optional goodwill discount for nonprofits, churches, or small municipalities. Builds community relationships and can lead to recurring contracts. Apply manually — not automatic." },
+            ] as const).map(({ label, key, note, tip }) => (
+              <div key={key}>
+                <div className="flex items-center gap-1 mb-0.5">
+                  <label className="text-xs font-medium text-foreground">{label}</label>
+                  <span className="relative group">
+                    <Info className="w-3 h-3 text-muted-foreground cursor-help" />
+                    <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 w-52 bg-popover border border-border rounded p-2 text-[10px] text-muted-foreground shadow-lg opacity-0 group-hover:opacity-100 pointer-events-none z-50 transition-opacity">
+                      {tip}
+                    </span>
+                  </span>
+                </div>
+                <p className="text-[10px] text-muted-foreground mb-2">{note}</p>
+                <div className="flex items-center gap-1.5">
+                  <input
+                    type="number" min={0} max={50}
+                    value={form[key] as number ?? 0}
+                    onChange={(e) => setField(key, parseInt(e.target.value, 10) || 0)}
+                    className="w-20 rounded-md border border-border bg-background px-2 py-1.5 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                  />
+                  <span className="text-xs text-muted-foreground">%</span>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="mt-3 p-3 bg-amber-500/5 border border-amber-500/20 rounded-md">
+            <p className="text-[11px] text-amber-300/80">
+              <strong>Note:</strong> Discounts are not applied automatically to quotes. They are reference values for when you manually price a job. The AI proposal generator will reference these when drafting client-facing proposals.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* ── Production & Seasonal ── */}
         {activeSection === "production" && (
           <div className="space-y-4">
             <div className="ops-card p-4">

@@ -856,6 +856,20 @@ export const aiPricingSettings = mysqlTable("ai_pricing_settings", {
   /** Volume discount % applied to jobs 10+ acres. 0 = disabled. */
   volumeDiscount10plusPct: int("volumeDiscount10plusPct").notNull().default(10),
 
+  // ── Customer discounts ───────────────────────────────────────────────────────
+  /** Military / Veteran discount %. Applied when customer self-identifies. 0 = disabled. */
+  discountMilitaryVeteranPct: int("discountMilitaryVeteranPct").notNull().default(10),
+  /** First-time customer discount %. Applied to first job for a new client. 0 = disabled. */
+  discountFirstTimePct: int("discountFirstTimePct").notNull().default(10),
+  /** Referral discount % given to the referring customer on their next job. 0 = disabled. */
+  discountReferralPct: int("discountReferralPct").notNull().default(5),
+  /** Repeat / loyalty discount % for clients with 3+ completed jobs. 0 = disabled. */
+  discountRepeatCustomerPct: int("discountRepeatCustomerPct").notNull().default(5),
+  /** Off-season discount % applied during slow season (Jul–Sep) to incentivize bookings. 0 = disabled. */
+  discountOffSeasonPct: int("discountOffSeasonPct").notNull().default(0),
+  /** Nonprofit / government entity discount %. Applied manually per job. 0 = disabled. */
+  discountNonprofitGovPct: int("discountNonprofitGovPct").notNull().default(0),
+
   // ── Production rates (acres per day) ────────────────────────────────────────
   /** Acres per day for forestry mulching (tracked mulcher, moderate conditions) */
   apdForestryMulching: varchar("apdForestryMulching", { length: 10 }).notNull().default("1.5"),

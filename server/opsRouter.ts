@@ -3373,6 +3373,13 @@ const settingsRouter = router({
       seasonalSlowReductionPct: z.number().int().min(0).max(50).optional(),
       // Complexity premium
       complexityPremiumPct: z.number().int().min(0).max(100).optional(),
+      // Customer discounts
+      discountMilitaryVeteranPct: z.number().int().min(0).max(100).optional(),
+      discountFirstTimePct: z.number().int().min(0).max(100).optional(),
+      discountReferralPct: z.number().int().min(0).max(100).optional(),
+      discountRepeatCustomerPct: z.number().int().min(0).max(100).optional(),
+      discountOffSeasonPct: z.number().int().min(0).max(100).optional(),
+      discountNonprofitGovPct: z.number().int().min(0).max(100).optional(),
     }))
     .mutation(async ({ input }) => {
       const db = await getDb();
