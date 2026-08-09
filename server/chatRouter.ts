@@ -37,6 +37,7 @@ ABOUT NOLAND EARTHWORKS:
 - Location: Middle Tennessee, serving all 35 counties across Middle and West Tennessee
 - Primary service: Forestry mulching — grinds brush, saplings, and small trees into mulch that stays on the ground as cover. No debris piles, no hauling, no burning. Cleaner result than bush hogging.
 - Also offers: Land clearing, site prep, right-of-way clearing, brush hogging, stump grinding
+- Also offers: Land management, site prep, right-of-way clearing, brush hogging, stump grinding
 - Does NOT offer: Grading, excavation, debris hauling, large tree removal (arborist work)
 - Equipment: Tracked forestry mulcher — handles slopes, wet ground, and difficult terrain that wheeled machines cannot
 - Best fit jobs: 2–20 acres, rural landowners, farmers reclaiming pasture, residential developers, lot clearing
