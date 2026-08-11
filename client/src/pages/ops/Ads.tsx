@@ -274,7 +274,7 @@ function PlatformStatusCard({
   onSettings?: () => void;
 }) {
   const spendLabel = spendCents && spendCents > 0
-    ? "$" + (spendCents / 100).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+    ? "$" + (spendCents / 100).toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 })
     : null;
 
   const SettingsGear = onSettings ? (
@@ -350,7 +350,7 @@ function SpendOnlyCard({
   onLogSpend?: () => void;
 }) {
   const spendLabel = spendCents && spendCents > 0
-    ? "$" + (spendCents / 100).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+    ? "$" + (spendCents / 100).toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 })
     : null;
 
   return (
@@ -862,7 +862,7 @@ export default function Ads() {
   const grandTotalCents = spendEntries.reduce((s, e) => s + e.amountCents, 0);
 
   function fmtDollars(cents: number) {
-    return "$" + (cents / 100).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    return "$" + (cents / 100).toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 });
   }
 
   function handleLogSpend() {

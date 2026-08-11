@@ -140,6 +140,7 @@ export default function OpsViewer() {
                         {l.aiScore ? <span className={`text-xs px-2 py-0.5 rounded font-medium ${STATUS_COLORS[l.aiScore] ?? ""}`}>{l.aiScore}</span> : "—"}
                       </td>
                       <td className="px-4 py-2 text-zinc-300">{l.estimatedValue ? `$${Number(l.estimatedValue).toLocaleString()}` : "—"}</td>
+                      <td className="px-4 py-2 text-zinc-300">{l.estimatedValue ? `$${Math.round(Number(l.estimatedValue)).toLocaleString()}` : "—"}</td>
                       <td className="px-4 py-2 text-zinc-500">{fmtDate(l.createdAt)}</td>
                     </tr>
                   ))}
