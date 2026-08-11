@@ -2813,3 +2813,7 @@
 - [x] Sort by fit score by default
 - [x] One-click Open on SAM.gov button on each opportunity card
 - [x] Pre-submission checklist modal (SAM.gov registration, CAGE code, certifications)
+
+## Completed-Job Final Invoice — Aug 2026
+- [x] Add a final-payment invoice action for completed jobs that calculates the unpaid balance and emails the customer
+- [x] Show final-invoice status and payment tracking on completed job records

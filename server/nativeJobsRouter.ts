@@ -184,6 +184,26 @@ export const nativeJobsRouter = router({
         throw new TRPCError({ code: "NOT_FOUND", message: "Job not found" });
       }
 
+      if (job.status !== "completed") {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Mark the job complete before sending the final payment invoice.",
+        });
+      }
+
+      const [existingInvoice] = await db
+        .select({ id: nativeInvoices.id })
+        .from(nativeInvoices)
+        .where(eq(nativeInvoices.jobId, job.id))
+        .limit(1);
+
+      if (existingInvoice) {
+        throw new TRPCError({
+          code: "CONFLICT",
+          message: "A final invoice has already been created for this job.",
+        });
+      }
+
       // Load deposit info from the source quote
       let depositPaidCents = 0;
       if (job.quoteId) {
@@ -250,7 +270,9 @@ export const nativeJobsRouter = router({
         .set({ invoicedCents: totalCents, invoicedAt: new Date() })
         .where(eq(nativeJobs.id, job.id));
 
-      // Optionally send email via Resend
+      // Email the final-payment invoice when requested.
+      let emailSent = false;
+      let emailSendError: string | undefined;
       if (input.sendEmail && job.clientEmail && ENV.resendApiKey) {
         try {
           const emailHtml = buildInvoiceEmailHtml({
@@ -279,16 +301,25 @@ export const nativeJobsRouter = router({
             }),
           });
 
-          const resData = await res.json() as { id?: string };
+          const resData = await res.json() as { id?: string; message?: string };
+          if (!res.ok || !resData.id) {
+            throw new Error(resData.message || "Email provider did not accept the invoice.");
+          }
           const emailSentId = resData.id;
 
           await db
             .update(nativeInvoices)
             .set({ emailSentId, emailSentAt: new Date(), status: "sent" })
             .where(eq(nativeInvoices.id, invoiceId));
+          emailSent = true;
         } catch (err) {
           console.error("[Invoice] Failed to send email:", err);
+          emailSendError = err instanceof Error ? err.message : "The invoice was created, but the email could not be sent.";
         }
+      } else if (input.sendEmail) {
+        emailSendError = job.clientEmail
+          ? "Email delivery is not configured. The invoice was created but not sent."
+          : "This job has no customer email address. The invoice was created but not sent.";
       }
 
       const [invoice] = await db
@@ -297,7 +328,7 @@ export const nativeJobsRouter = router({
         .where(eq(nativeInvoices.id, invoiceId))
         .limit(1);
 
-      return invoice;
+      return { ...invoice, emailSent, emailSendError };
     }),
 
   /**
@@ -354,7 +385,7 @@ export const nativeJobsRouter = router({
 // ─── HTML Builders ─────────────────────────────────────────────────────────────
 
 function fmt(cents: number): string {
-  return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(cents / 100);
+  return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(cents / 100);
 }
 
 function esc(str: string): string {

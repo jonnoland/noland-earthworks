@@ -62,6 +62,12 @@ interface LineItem {
   totalCents: number;
 }
 
+interface GeneratedInvoiceResult {
+  totalCents: number;
+  emailSent: boolean;
+  emailSendError?: string;
+}
+
 // ─── Status badge ─────────────────────────────────────────────────────────────
 
 function JobStatusBadge({ status, paidAt, invoicedAt }: { status: string; paidAt?: Date | null; invoicedAt?: Date | null }) {
@@ -93,21 +99,27 @@ function GenerateInvoiceDialog({
   job: NativeJob;
   open: boolean;
   onClose: () => void;
-  onSuccess: () => void;
+  onSuccess: (invoice: GeneratedInvoiceResult) => void;
 }) {
-  const [sendEmail, setSendEmail] = useState(false);
+  const [sendEmail, setSendEmail] = useState(true);
   const [notes, setNotes] = useState("");
   const utils = trpc.useUtils();
 
   const generateMut = trpc.nativeJobs.generateInvoice.useMutation({
     onSuccess: (invoice) => {
-      toast.success("Invoice generated");
+      if (invoice.emailSent) {
+        toast.success(`Final payment invoice emailed to ${job.clientEmail}`);
+      } else if (invoice.emailSendError) {
+        toast.error(`Invoice created, but not emailed: ${invoice.emailSendError}`);
+      } else {
+        toast.success("Final payment invoice created");
+      }
       if (invoice?.pdfUrl) {
         window.open(invoice.pdfUrl, "_blank");
       }
       utils.nativeJobs.list.invalidate();
       utils.nativeJobs.listInvoices.invalidate();
-      onSuccess();
+      onSuccess(invoice);
       onClose();
     },
     onError: (e) => toast.error(e.message),
@@ -120,6 +132,10 @@ function GenerateInvoiceDialog({
           <DialogTitle className="text-amber-400">Generate Invoice</DialogTitle>
         </DialogHeader>
         <div className="space-y-4 py-2">
+          <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-100">
+            <p className="font-semibold">Final payment invoice</p>
+            <p className="mt-1 text-xs text-amber-100/75">Any recorded quote deposit is deducted automatically. The remaining balance will be sent to the customer for payment.</p>
+          </div>
           <div className="bg-zinc-800 rounded-lg p-3 text-sm">
             <div className="text-zinc-400 mb-1">Client</div>
             <div className="font-medium">{job.clientName}</div>
@@ -139,7 +155,7 @@ function GenerateInvoiceDialog({
               rows={3}
             />
           </div>
-          {job.clientEmail && (
+          {job.clientEmail ? (
             <label className="flex items-center gap-3 cursor-pointer">
               <input
                 type="checkbox"
@@ -149,6 +165,10 @@ function GenerateInvoiceDialog({
               />
               <span className="text-sm text-zinc-300">Email invoice to {job.clientEmail}</span>
             </label>
+          ) : (
+            <p className="rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-200">
+              No customer email is saved on this job. You can create the invoice, but add an email address first if you need to send it directly.
+            </p>
           )}
         </div>
         <DialogFooter className="gap-2">
@@ -158,7 +178,7 @@ function GenerateInvoiceDialog({
             disabled={generateMut.isPending}
             className="bg-amber-600 hover:bg-amber-500 text-white"
           >
-            {generateMut.isPending ? "Generating..." : "Generate Invoice"}
+            {generateMut.isPending ? "Creating Final Invoice..." : sendEmail && job.clientEmail ? "Create & Send Final Invoice" : "Create Final Invoice"}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -686,14 +706,14 @@ export default function NativeJobsSection() {
               <Edit2 className="w-3.5 h-3.5 mr-1.5" />
               Edit
             </Button>
-            {!selectedJob.invoicedAt && (
+            {selectedJob.status === "completed" && !selectedJob.invoicedAt && (
               <Button
                 size="sm"
                 className="bg-amber-600 hover:bg-amber-500 text-white text-xs h-8"
                 onClick={() => setShowInvoiceDialog(true)}
               >
-                <FileText className="w-3.5 h-3.5 mr-1.5" />
-                Generate Invoice
+                <Send className="w-3.5 h-3.5 mr-1.5" />
+                Send Final Invoice
               </Button>
             )}
             {selectedJob.invoicedAt && !selectedJob.paidAt && (
@@ -729,9 +749,12 @@ export default function NativeJobsSection() {
           job={selectedJob}
           open={showInvoiceDialog}
           onClose={() => setShowInvoiceDialog(false)}
-          onSuccess={() => {
-            // Refresh selected job data
+          onSuccess={(invoice) => {
             utils.nativeJobs.list.invalidate();
+            utils.nativeJobs.listInvoices.invalidate();
+            setSelectedJob((current) => current?.id === selectedJob.id
+              ? { ...current, invoicedCents: invoice.totalCents, invoicedAt: new Date() }
+              : current);
           }}
         />
       )}
