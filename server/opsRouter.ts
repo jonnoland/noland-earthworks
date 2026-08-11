@@ -2634,13 +2634,34 @@ Return ONLY the reply text — no quotes, no labels, no explanation.`;
   latestUnread: ownerProcedure.query(async () => {
     const db = await getDb();
     if (!db) return null;
-    const [conv] = await db
-      .select()
+
+    const query = db
+      .select({
+        id: conversations.id,
+        contactName: conversations.contactName,
+        contactPhone: conversations.contactPhone,
+        lastMessage: conversations.lastMessage,
+        lastMessageAt: conversations.lastMessageAt,
+      })
       .from(conversations)
       .where(eq(conversations.unread, true))
       .orderBy(desc(conversations.lastMessageAt))
       .limit(1);
-    return conv ?? null;
+
+    let timeoutId: ReturnType<typeof setTimeout> | undefined;
+    try {
+      const [conv] = await Promise.race([
+        query,
+        new Promise<never>((_, reject) => {
+          timeoutId = setTimeout(() => {
+            reject(new TRPCError({ code: "TIMEOUT", message: "Unread message check timed out. Please retry." }));
+          }, 5_000);
+        }),
+      ]);
+      return conv ?? null;
+    } finally {
+      if (timeoutId) clearTimeout(timeoutId);
+    }
   }),
 });
 // ─── Reviews Router ───────────────────────────────────────────────────────────

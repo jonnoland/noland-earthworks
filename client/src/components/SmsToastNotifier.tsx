@@ -15,7 +15,7 @@ import { MessageSquare } from "lucide-react";
 
 export default function SmsToastNotifier() {
   const { isAuthenticated } = useAuth();
-  const [, navigate] = useLocation();
+  const [location, navigate] = useLocation();
 
   // Track the last conversation ID we toasted about to avoid repeat toasts
   const lastSeenId = useRef<number | null>(null);
@@ -23,7 +23,9 @@ export default function SmsToastNotifier() {
   const isFirstPoll = useRef(true);
 
   const { data: latest } = trpc.ops.conversations.latestUnread.useQuery(undefined, {
-    enabled: isAuthenticated,
+    // The toast is only relevant inside /ops. Keeping this background poll off
+    // public pages removes an unnecessary request from the marketing site.
+    enabled: isAuthenticated && location.startsWith("/ops"),
     refetchInterval: 30_000,
     retry: false,
   });

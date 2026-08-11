@@ -2820,3 +2820,6 @@
 
 ## AI Chat Quote Discounts — Aug 2026
 - [x] Add Military/Veteran and First-Time Customer discount suggestions to AI Chat quote guidance
+
+## API Response Error — Aug 2026
+- [x] Trace and fix the tRPC request that receives HTML instead of JSON in the web preview
