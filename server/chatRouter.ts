@@ -8,13 +8,14 @@ import { z } from "zod";
 import { publicProcedure, protectedProcedure, router } from "./_core/trpc";
 import { invokeLLM } from "./_core/llm";
 import { getDb } from "./db";
-import { chatSessions, chatMessages } from "../drizzle/schema";
+import { aiPricingSettings, chatSessions, chatMessages } from "../drizzle/schema";
 import { eq, desc, isNull, sql } from "drizzle-orm";
 import { createOpsLead, getOwnerUser, upsertOpsLeadByPhone, upsertNativeClient } from "./db";
 import { notifyOwner } from "./_core/notification";
 import { ENV } from "./_core/env";
 import { Resend } from "resend";
 import crypto from "crypto";
+import { buildChatDiscountGuidance } from "./chatDiscountGuidance";
 
 // Strip markdown code fences from LLM JSON responses
 function stripCodeFence(raw: string): string {
@@ -36,7 +37,6 @@ ABOUT NOLAND EARTHWORKS:
 - Owner: Jon Noland, U.S. Army veteran (9 years, two deployments to Afghanistan)
 - Location: Middle Tennessee, serving all 35 counties across Middle and West Tennessee
 - Primary service: Forestry mulching — grinds brush, saplings, and small trees into mulch that stays on the ground as cover. No debris piles, no hauling, no burning. Cleaner result than bush hogging.
-- Also offers: Land clearing, site prep, right-of-way clearing, brush hogging, stump grinding
 - Also offers: Land management, site prep, right-of-way clearing, brush hogging, stump grinding
 - Does NOT offer: Grading, excavation, debris hauling, large tree removal (arborist work)
 - Equipment: Tracked forestry mulcher — handles slopes, wet ground, and difficult terrain that wheeled machines cannot
@@ -182,9 +182,19 @@ export const chatRouter = router({
         content: input.message,
       });
 
+      const [pricingSettings] = await db
+        .select({
+          militaryVeteranPct: aiPricingSettings.discountMilitaryVeteranPct,
+          firstTimePct: aiPricingSettings.discountFirstTimePct,
+        })
+        .from(aiPricingSettings)
+        .limit(1);
+
+      const discountGuidance = buildChatDiscountGuidance(pricingSettings ?? {});
+
       // Build messages for LLM
       const llmMessages = [
-        { role: "system" as const, content: CHAT_SYSTEM_PROMPT },
+        { role: "system" as const, content: `${CHAT_SYSTEM_PROMPT}\n\n${discountGuidance}` },
         ...history.map(m => ({ role: m.role as "user" | "assistant", content: m.content })),
         { role: "user" as const, content: input.message },
       ];

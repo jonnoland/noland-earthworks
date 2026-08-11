@@ -2817,3 +2817,6 @@
 ## Completed-Job Final Invoice — Aug 2026
 - [x] Add a final-payment invoice action for completed jobs that calculates the unpaid balance and emails the customer
 - [x] Show final-invoice status and payment tracking on completed job records
+
+## AI Chat Quote Discounts — Aug 2026
+- [x] Add Military/Veteran and First-Time Customer discount suggestions to AI Chat quote guidance
