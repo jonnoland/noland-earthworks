@@ -800,7 +800,7 @@ export default function QuotePage() {
                       color: "rgba(240,237,230,0.5)",
                     }}
                   >
-                    10% discount for active duty &amp; veterans — mention it in your request
+                    Active duty / veteran and first-time customer discounts are available. Mention eligibility in your request; one qualifying 10% discount may be applied after site assessment.
                   </div>
                 </div>
               </div>
@@ -1322,7 +1322,7 @@ export default function QuotePage() {
                   {/* Acreage — hidden for ROW (uses linear feet instead) */}
                   {form.service !== "right-of-way-clearing" && (
                   <div>
-                    <label style={labelStyle}>Approximate Acreage <span style={{ fontWeight: 400, opacity: 0.65, fontSize: "0.85em", textTransform: "none", letterSpacing: 0 }}>(minimum charge is 1 acre)</span></label>
+                    <label style={labelStyle}>Approximate Acreage <span style={{ fontWeight: 400, opacity: 0.65, fontSize: "0.85em", textTransform: "none", letterSpacing: 0 }}>(most work starts at 1 acre; smaller scopes are reviewed for mobilization fit)</span></label>
                     <select
                       name="acreage"
                       value={form.acreage} onChange={handleChange}

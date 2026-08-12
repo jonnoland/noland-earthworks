@@ -502,6 +502,71 @@ ${transcript}`;
     }
   });
 
+  // ─── Lead Generation Milestone Snapshot ─────────────────────────────────────
+  // Heartbeat: daily 12:05 AM UTC. Stores an idempotent 30-day funnel rollup.
+  app.post("/api/scheduled/lead-generation-milestones", async (req, res) => {
+    try {
+      const { sdk } = await import("./sdk");
+      const { getDb } = await import("../db");
+      const { calculateLeadGenerationMetrics } = await import("../leadGenerationMetrics");
+      const { and, eq } = await import("drizzle-orm");
+      const schema = await import("../../drizzle/schema");
+
+      const user = await sdk.authenticateRequest(req);
+      if (!(user as any).isCron || !(user as any).taskUid) {
+        res.status(403).json({ error: "cron-only" });
+        return;
+      }
+
+      const db = await getDb();
+      if (!db) throw new Error("Database unavailable");
+      const taskUid = (user as any).taskUid as string;
+      const [settings] = await (db as any).select().from(schema.leadGenerationTrackingSettings)
+        .where(eq(schema.leadGenerationTrackingSettings.scheduleCronTaskUid, taskUid)).limit(1);
+      if (!settings) {
+        res.json({ ok: true, skipped: "orphan" });
+        return;
+      }
+
+      const metrics = await calculateLeadGenerationMetrics(db, settings.userId, 30);
+      const snapshotDate = new Date().toISOString().slice(0, 10);
+      const snapshot = {
+        userId: settings.userId,
+        snapshotDate,
+        leadsCreated: metrics.leadsCreated,
+        websiteLeads: metrics.websiteLeads,
+        respondedWithin24h: metrics.respondedWithin24h,
+        quotesCreated: metrics.quotesCreated,
+        quotesSent: metrics.quotesSent,
+        quotesViewed: metrics.quotesViewed,
+        quotesApproved: metrics.quotesApproved,
+        reviewRequestsSent: metrics.reviewRequestsSent,
+        sourceBreakdown: JSON.stringify(metrics.sourceBreakdown),
+        updatedAt: new Date(),
+      };
+      await (db as any).insert(schema.leadGenerationDailySnapshots).values(snapshot)
+        .onDuplicateKeyUpdate({ set: snapshot });
+      await (db as any).update(schema.leadGenerationTrackingSettings)
+        .set({ lastSnapshotAt: new Date(), lastRunStatus: "ok", lastRunError: null, updatedAt: new Date() })
+        .where(and(
+          eq(schema.leadGenerationTrackingSettings.userId, settings.userId),
+          eq(schema.leadGenerationTrackingSettings.scheduleCronTaskUid, taskUid),
+        ));
+
+      res.json({ ok: true, snapshotDate, metrics });
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      const stack = err instanceof Error ? err.stack : undefined;
+      console.error("[Cron] lead-generation-milestones error:", err);
+      res.status(500).json({
+        error: message,
+        stack,
+        context: { url: req.url },
+        timestamp: new Date().toISOString(),
+      });
+    }
+  });
+
   // AI Prospecting: POST /api/scheduled/prospect-leads
   // Called daily by the AGENT cron — receives an array of discovered prospects and saves them to the DB
   app.post("/api/scheduled/prospect-leads", async (req, res) => {

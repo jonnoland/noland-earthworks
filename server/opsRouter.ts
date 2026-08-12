@@ -25,12 +25,13 @@ import {
 } from "./db";
 import { Resend } from "resend";
 import { jobs, opsLeads, quoteSubmissions, crews, crewMembers, conversations, messages, reviews, timeEntries, distanceQuotes, businessSettings, automationSettings, serviceCatalog, pricingBenchmarks, messageTemplates, reminderRules, leadNotes, visitBlackoutDates, recurringBlackoutDays, aiPricingSettings, quoteDrafts, socialPosts, adSpend, equipment, serviceLogs, serviceIntervals, fieldDiagnostics, ownerTasks, jobNotes, morningBriefs, reviewRequests, chatSessions,
- scheduleEntries, agentConfig, adCampaigns, prospectingLeads, outreachTemplates, leadContactLog, nativeQuotes, serviceFaqs } from "../drizzle/schema";
+	 scheduleEntries, agentConfig, adCampaigns, prospectingLeads, outreachTemplates, leadContactLog, nativeQuotes, serviceFaqs, leadGenerationTrackingSettings, leadGenerationDailySnapshots } from "../drizzle/schema";
 
 import { and, asc, desc, eq, gte, inArray, lt, lte, like, or, sql } from "drizzle-orm";
 import { portalAddOnOptions } from "../drizzle/schema";
 import { autoPatchSeoCheck, AUTO_PATCHABLE_CHECKS, SQUARESPACE_MANUAL_CHECKS, CODE_FIXED_CHECKS, INFRA_CHECKS } from "./seoAutoPatcher";
 import { notifyOwner } from "./_core/notification";
+import { calculateLeadGenerationMetrics, evaluateMilestones } from "./leadGenerationMetrics";
 
 function getResend() {
   return ENV.resendApiKey ? new Resend(ENV.resendApiKey) : null;
@@ -7069,4 +7070,52 @@ Rules:
       peakMonthCount: peakMonth.leads,
     };
   }),
+
+  // ─── 30-Day Lead Generation Milestone Tracker ───────────────────────────────
+  getLeadGenerationMilestones: ownerProcedure.query(async ({ ctx }) => {
+    const db = await getDb();
+    if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+
+    let [settings] = await db.select().from(leadGenerationTrackingSettings)
+      .where(eq(leadGenerationTrackingSettings.userId, ctx.user.id)).limit(1);
+    if (!settings) {
+      await db.insert(leadGenerationTrackingSettings).values({ userId: ctx.user.id });
+      [settings] = await db.select().from(leadGenerationTrackingSettings)
+        .where(eq(leadGenerationTrackingSettings.userId, ctx.user.id)).limit(1);
+    }
+
+    const metrics = await calculateLeadGenerationMetrics(db, ctx.user.id, 30);
+    const milestones = evaluateMilestones(metrics, settings);
+    const snapshots = await db.select().from(leadGenerationDailySnapshots)
+      .where(and(
+        eq(leadGenerationDailySnapshots.userId, ctx.user.id),
+        gte(leadGenerationDailySnapshots.snapshotDate, new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10)),
+      ))
+      .orderBy(desc(leadGenerationDailySnapshots.snapshotDate))
+      .limit(30);
+
+    return { settings, metrics, milestones, snapshots };
+  }),
+
+  updateLeadGenerationMilestoneTargets: ownerProcedure
+    .input(z.object({
+      targetLeads30d: z.number().int().min(1).max(100).optional(),
+      targetFirstResponseRate: z.number().int().min(1).max(100).optional(),
+      targetQuoteSentRate: z.number().int().min(1).max(100).optional(),
+      targetQuoteViewRate: z.number().int().min(1).max(100).optional(),
+      targetReviewRequests30d: z.number().int().min(0).max(100).optional(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+      const [existing] = await db.select().from(leadGenerationTrackingSettings)
+        .where(eq(leadGenerationTrackingSettings.userId, ctx.user.id)).limit(1);
+      if (!existing) {
+        await db.insert(leadGenerationTrackingSettings).values({ userId: ctx.user.id, ...input });
+      } else {
+        await db.update(leadGenerationTrackingSettings).set({ ...input, updatedAt: new Date() })
+          .where(eq(leadGenerationTrackingSettings.userId, ctx.user.id));
+      }
+      return { ok: true };
+    }),
 });

@@ -1,61 +1,11 @@
 /*
  * DESIGN: Heavy Equipment Grit — dark section with amber star ratings
  * Horizontal scroll cards on mobile, 3-column on desktop
- * Live Google reviews via trpc.reviewsLive.getPublic — falls back to hardcoded quotes
- * if the API is not configured or returns no results.
+ * Live verified Google reviews via trpc.reviewsLive.getPublic.
  */
 import { useRef, useEffect, useState } from "react";
 import { trpc } from "@/lib/trpc";
 
-// Fallback quotes shown when live reviews are unavailable or still loading.
-// Replace with actual customer quotes when confirmed real.
-const FALLBACK_TESTIMONIALS = [
-  {
-    source: "Google",
-    quote:
-      "Jon showed up when he said he would, did exactly what he quoted, and left the property looking better than I expected. Had about 6 acres of cedar and overgrown brush — he knocked it out in a day and a half. No mess, no hauling, just clean ground. Will call him again without question.",
-    name: "David H.",
-    role: "Maury County, TN",
-    initial: "D",
-    rating: 5,
-  },
-  {
-    source: "Google",
-    quote:
-      "We had a fence line that hadn't been touched in years and a back pasture that was completely taken over by brush. Jon cleared the whole thing with the mulcher and you'd never know it was there. Straightforward pricing, no surprises. Exactly what we needed.",
-    name: "Randy T.",
-    role: "Marshall County, TN",
-    initial: "R",
-    rating: 5,
-  },
-  {
-    source: "Google",
-    quote:
-      "Hired Noland Earthworks to clear a lot before we broke ground on a new build. Jon was on time, communicated well throughout, and the site was ready when he said it would be. Veteran-owned and it shows — he runs a tight operation.",
-    name: "Chris B.",
-    role: "Williamson County, TN",
-    initial: "C",
-    rating: 5,
-  },
-  {
-    source: "Google",
-    quote:
-      "I've used other clearing companies before and the difference with forestry mulching is night and day. No burn piles, no debris to deal with — just clean ground with mulch cover. Jon explained the whole process upfront and delivered exactly what he described.",
-    name: "Mike W.",
-    role: "Dickson County, TN",
-    initial: "M",
-    rating: 5,
-  },
-  {
-    source: "Google",
-    quote:
-      "Had about 4 acres of thick cedar and honeysuckle that had taken over a pasture. Jon came out, looked at the site, gave me a fair quote, and had it done in one day. The land looks like it did 20 years ago. Couldn't be happier with the result.",
-    name: "Jennifer L.",
-    role: "Columbia, TN",
-    initial: "J",
-    rating: 5,
-  },
-];
 
 function StarRating({ rating }: { rating: number }) {
   return (
@@ -214,28 +164,24 @@ export default function TestimonialsSection() {
   const [visible, setVisible] = useState(false);
 
   // Fetch live Google reviews — public endpoint, no auth required.
-  // Falls back to hardcoded quotes if the API is unavailable or returns nothing.
   const { data: liveData } = trpc.reviewsLive.getPublic.useQuery(undefined, {
     staleTime: 1000 * 60 * 30, // cache for 30 minutes
     retry: 1,
   });
 
-  // Build the display list: use live reviews if we have at least 3, otherwise fall back.
+  // Build the display list from verified live reviews only.
   const liveReviews = liveData?.reviews ?? [];
-  const displayTestimonials =
-    liveReviews.length >= 3
-      ? liveReviews.map((r) => ({
+  const displayTestimonials = liveReviews.map((r) => ({
           source: r.source === "google" ? "Google" : "Facebook",
           quote: r.body,
           name: r.reviewerName,
           role: "Google Review",
           initial: r.reviewerName.charAt(0).toUpperCase(),
           rating: r.rating,
-        }))
-      : FALLBACK_TESTIMONIALS;
+        }));
 
   // Rating summary for the section header
-  const googleRating = liveData?.googleRating ?? 4.9;
+  const googleRating = liveData?.googleRating ?? null;
   const googleReviewCount = liveData?.googleReviewCount ?? null;
 
   useEffect(() => {
@@ -291,7 +237,8 @@ export default function TestimonialsSection() {
           >
             What Clients Say
           </h2>
-          {/* Live rating summary — prominent display */}
+          {/* Live rating summary — only rendered when verified data is available */}
+          {googleRating !== null && googleReviewCount !== null ? (
           <div
             className="flex items-center gap-4"
             style={{
@@ -361,14 +308,21 @@ export default function TestimonialsSection() {
               Verified reviews from real customers across Middle Tennessee.
             </div>
           </div>
+          ) : (
+            <p style={{ fontFamily: "'Lato', sans-serif", fontSize: "0.95rem", color: "rgba(240,237,230,0.65)", maxWidth: "560px", lineHeight: 1.6, margin: 0 }}>
+              We publish verified customer feedback only. Recent project photos and job details are available in the gallery while the review feed is updated.
+            </p>
+          )}
         </div>
 
         {/* Cards grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {displayTestimonials.map((t, i) => (
-            <TestimonialCard key={`${t.name}-${i}`} {...t} index={i} />
-          ))}
-        </div>
+        {displayTestimonials.length > 0 ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {displayTestimonials.map((t, i) => (
+              <TestimonialCard key={`${t.name}-${i}`} {...t} index={i} />
+            ))}
+          </div>
+        ) : null}
 
         {/* Google Review CTA */}
         <div

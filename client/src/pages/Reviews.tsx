@@ -1,7 +1,7 @@
 /*
  * DESIGN: Heavy Equipment Grit — public-facing reviews page
- * Fetches live Google reviews via trpc.reviewsLive.getPublic
- * Falls back to a static set of representative reviews when the API returns fewer than 3
+ * Fetches verified Google reviews via trpc.reviewsLive.getPublic.
+ * Shows an honest empty state until verified reviews are available.
  */
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
@@ -10,58 +10,6 @@ import { trpc } from "@/lib/trpc";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { Star, ExternalLink } from "lucide-react";
 import { useEffect } from "react";
-
-// Static fallback reviews shown when the Google API returns fewer than 3
-const FALLBACK_REVIEWS = [
-  {
-    id: "fallback-1",
-    reviewerName: "Chris T.",
-    rating: 5,
-    body: "Jon showed up when he said he would, did exactly what was quoted, and left the property looking better than I expected. The mulcher handled some pretty thick cedar and brush without any issues. Will definitely use him again.",
-    reviewedAt: "2025-10-15T00:00:00Z",
-    source: "google" as const,
-  },
-  {
-    id: "fallback-2",
-    reviewerName: "Amanda R.",
-    rating: 5,
-    body: "We had about 4 acres of overgrown fence line and brush that had gotten completely out of hand. Jon came out, walked the property, gave us a fair quote, and had it cleaned up in one day. Highly recommend.",
-    reviewedAt: "2025-09-02T00:00:00Z",
-    source: "google" as const,
-  },
-  {
-    id: "fallback-3",
-    reviewerName: "Mark H.",
-    rating: 5,
-    body: "Veteran-owned and it shows — professional, punctual, and the work was done right. We cleared about 8 acres for a new pasture. The mulch layer he left behind is already helping with erosion control. Great value.",
-    reviewedAt: "2025-08-20T00:00:00Z",
-    source: "google" as const,
-  },
-  {
-    id: "fallback-4",
-    reviewerName: "Sarah M.",
-    rating: 5,
-    body: "I had a wooded lot that needed to be cleared for a home build. Jon was the only contractor who actually came out and walked the property before quoting. Everyone else wanted to give a number over the phone. His price was fair and the work was excellent.",
-    reviewedAt: "2025-07-11T00:00:00Z",
-    source: "google" as const,
-  },
-  {
-    id: "fallback-5",
-    reviewerName: "David K.",
-    rating: 5,
-    body: "Used Noland Earthworks to reclaim about 12 acres of pasture that had been taken over by cedar and briars. The tracked mulcher handled the terrain — some pretty steep hillside — without any trouble. Pasture looks great.",
-    reviewedAt: "2025-06-05T00:00:00Z",
-    source: "google" as const,
-  },
-  {
-    id: "fallback-6",
-    reviewerName: "Lisa B.",
-    rating: 5,
-    body: "Jon cleared our property line and a section of overgrown woods in one visit. No debris piles, no hauling, just clean ground. The whole process from quote to completion was straightforward. Exactly what you want from a contractor.",
-    reviewedAt: "2025-05-18T00:00:00Z",
-    source: "google" as const,
-  },
-];
 
 function StarRow({ rating }: { rating: number }) {
   return (
@@ -191,7 +139,7 @@ function ReviewCard({
 export default function ReviewsPage() {
   usePageTitle(
     "Customer Reviews — Noland Earthworks | Middle & West Tennessee",
-    "Read what landowners across Middle and West Tennessee say about Noland Earthworks. Veteran-owned forestry mulching and land clearing with a 4.9-star Google rating.",
+    "Read verified customer feedback from Noland Earthworks clients across Middle and West Tennessee.",
     "/reviews"
   );
 
@@ -201,11 +149,9 @@ export default function ReviewsPage() {
 
   const { data, isLoading } = trpc.reviewsLive.getPublic.useQuery();
 
-  const reviews =
-    data && data.reviews.length >= 3 ? data.reviews : FALLBACK_REVIEWS;
-
-  const rating = data?.googleRating ?? 4.9;
-  const reviewCount = data?.googleReviewCount;
+  const reviews = data?.reviews ?? [];
+  const rating = data?.googleRating ?? null;
+  const reviewCount = data?.googleReviewCount ?? null;
 
   return (
     <div style={{ backgroundColor: "#121212", color: "#F0EDE6", minHeight: "100vh" }}>
@@ -262,8 +208,9 @@ export default function ReviewsPage() {
               margin: "0 0 2rem",
             }}
           >
-            Every review below comes from a real landowner who hired us for forestry mulching,
-            land clearing, or land management work across Middle and West Tennessee.
+            {reviews.length > 0
+              ? "Verified Google reviews from landowners who hired Noland Earthworks for forestry mulching or land management work."
+              : "We publish verified customer feedback only. Recent project photos and job details are available in the gallery while the review feed is updated."}
           </p>
 
           {/* Rating summary */}
@@ -275,46 +222,37 @@ export default function ReviewsPage() {
               flexWrap: "wrap",
             }}
           >
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "0.75rem",
-                backgroundColor: "rgba(224,123,42,0.08)",
-                border: "1px solid rgba(224,123,42,0.25)",
-                borderRadius: "4px",
-                padding: "0.75rem 1.25rem",
-              }}
-            >
+            {rating !== null && reviewCount !== null ? (
               <div
                 style={{
-                  fontFamily: "'Oswald', sans-serif",
-                  fontWeight: 700,
-                  fontSize: "2.5rem",
-                  color: "#E07B2A",
-                  lineHeight: 1,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "0.75rem",
+                  backgroundColor: "rgba(224,123,42,0.08)",
+                  border: "1px solid rgba(224,123,42,0.25)",
+                  borderRadius: "4px",
+                  padding: "0.75rem 1.25rem",
                 }}
               >
-                {rating.toFixed(1)}
-              </div>
-              <div>
-                <div className="flex gap-0.5 mb-1">
-                  {[1, 2, 3, 4, 5].map((n) => (
-                    <Star key={n} size={18} fill="#E07B2A" stroke="#E07B2A" />
-                  ))}
+                <div style={{ fontFamily: "'Oswald', sans-serif", fontWeight: 700, fontSize: "2.5rem", color: "#E07B2A", lineHeight: 1 }}>
+                  {rating.toFixed(1)}
                 </div>
-                <div
-                  style={{
-                    fontFamily: "'Lato', sans-serif",
-                    fontSize: "0.75rem",
-                    color: "rgba(240,237,230,0.55)",
-                    letterSpacing: "0.08em",
-                  }}
-                >
-                  {reviewCount ? `${reviewCount} Google Reviews` : "Google Rating"}
+                <div>
+                  <div className="flex gap-0.5 mb-1">
+                    {[1, 2, 3, 4, 5].map((n) => (
+                      <Star key={n} size={18} fill={n <= Math.round(rating) ? "#E07B2A" : "none"} stroke="#E07B2A" />
+                    ))}
+                  </div>
+                  <div style={{ fontFamily: "'Lato', sans-serif", fontSize: "0.75rem", color: "rgba(240,237,230,0.55)", letterSpacing: "0.08em" }}>
+                    {`${reviewCount} Google Review${reviewCount === 1 ? "" : "s"}`}
+                  </div>
                 </div>
               </div>
-            </div>
+            ) : (
+              <div style={{ backgroundColor: "rgba(224,123,42,0.08)", border: "1px solid rgba(224,123,42,0.25)", borderRadius: "4px", padding: "0.75rem 1.25rem", fontFamily: "'Lato', sans-serif", fontSize: "0.82rem", color: "rgba(240,237,230,0.72)" }}>
+                Verified review feed is being connected.
+              </div>
+            )}
             <a
               href="https://g.page/r/nolandearth/review"
               target="_blank"
@@ -364,7 +302,7 @@ export default function ReviewsPage() {
                 />
               ))}
             </div>
-          ) : (
+          ) : reviews.length > 0 ? (
             <div
               style={{
                 display: "grid",
@@ -375,6 +313,20 @@ export default function ReviewsPage() {
               {reviews.map((r) => (
                 <ReviewCard key={r.id} review={r} />
               ))}
+            </div>
+          ) : (
+            <div
+              style={{
+                backgroundColor: "#1A1A1A",
+                border: "1px solid rgba(255,255,255,0.08)",
+                borderRadius: "4px",
+                padding: "2rem",
+                textAlign: "center",
+              }}
+            >
+              <p style={{ fontFamily: "'Lato', sans-serif", color: "rgba(240,237,230,0.78)", margin: 0, lineHeight: 1.65 }}>
+                We do not publish placeholder reviews. Check back for verified customer feedback, or view recent work in the gallery.
+              </p>
             </div>
           )}
 

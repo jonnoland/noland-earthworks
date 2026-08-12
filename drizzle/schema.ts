@@ -1,4 +1,4 @@
-import { boolean, decimal, int, json, mysqlEnum, mysqlTable, text, timestamp, varchar } from "drizzle-orm/mysql-core";
+import { boolean, decimal, index, int, json, mysqlEnum, mysqlTable, text, timestamp, uniqueIndex, varchar } from "drizzle-orm/mysql-core";
 
 /**
  * Core user table backing auth flow.
@@ -2009,3 +2009,51 @@ export const serviceFaqs = mysqlTable("service_faqs", {
 });
 export type ServiceFaq = typeof serviceFaqs.$inferSelect;
 export type InsertServiceFaq = typeof serviceFaqs.$inferInsert;
+
+// ─── Lead Generation Milestone Tracking ───────────────────────────────────────
+/**
+ * One owner-controlled row that stores 30-day funnel targets and the Heartbeat
+ * task UID used by the daily, idempotent snapshot job.
+ */
+export const leadGenerationTrackingSettings = mysqlTable("lead_generation_tracking_settings", {
+  id: int("id").primaryKey().autoincrement(),
+  userId: int("userId").notNull().unique(),
+  trackingStartedAt: timestamp("trackingStartedAt").defaultNow().notNull(),
+  scheduleCronTaskUid: varchar("schedule_cron_task_uid", { length: 65 }),
+  targetLeads30d: int("targetLeads30d").notNull().default(8),
+  targetFirstResponseRate: int("targetFirstResponseRate").notNull().default(90),
+  targetQuoteSentRate: int("targetQuoteSentRate").notNull().default(90),
+  targetQuoteViewRate: int("targetQuoteViewRate").notNull().default(60),
+  targetReviewRequests30d: int("targetReviewRequests30d").notNull().default(4),
+  lastSnapshotAt: timestamp("lastSnapshotAt"),
+  lastRunStatus: varchar("lastRunStatus", { length: 32 }),
+  lastRunError: text("lastRunError"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, (table) => [
+  index("lead_generation_tracking_settings_task_uid_idx").on(table.scheduleCronTaskUid),
+]);
+export type LeadGenerationTrackingSettings = typeof leadGenerationTrackingSettings.$inferSelect;
+export type InsertLeadGenerationTrackingSettings = typeof leadGenerationTrackingSettings.$inferInsert;
+
+/** A durable daily funnel rollup used to compare the live 30-day view over time. */
+export const leadGenerationDailySnapshots = mysqlTable("lead_generation_daily_snapshots", {
+  id: int("id").primaryKey().autoincrement(),
+  userId: int("userId").notNull(),
+  snapshotDate: varchar("snapshotDate", { length: 10 }).notNull(),
+  leadsCreated: int("leadsCreated").notNull().default(0),
+  websiteLeads: int("websiteLeads").notNull().default(0),
+  respondedWithin24h: int("respondedWithin24h").notNull().default(0),
+  quotesCreated: int("quotesCreated").notNull().default(0),
+  quotesSent: int("quotesSent").notNull().default(0),
+  quotesViewed: int("quotesViewed").notNull().default(0),
+  quotesApproved: int("quotesApproved").notNull().default(0),
+  reviewRequestsSent: int("reviewRequestsSent").notNull().default(0),
+  sourceBreakdown: text("sourceBreakdown").notNull().default("{}"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, (table) => [
+  uniqueIndex("lead_generation_daily_snapshots_user_date_unique").on(table.userId, table.snapshotDate),
+]);
+export type LeadGenerationDailySnapshot = typeof leadGenerationDailySnapshots.$inferSelect;
+export type InsertLeadGenerationDailySnapshot = typeof leadGenerationDailySnapshots.$inferInsert;

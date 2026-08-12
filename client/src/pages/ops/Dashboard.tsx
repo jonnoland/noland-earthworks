@@ -16,7 +16,7 @@ import {
   CalendarDays, CalendarCheck, TrendingUp, Gauge, Activity, Flag,
   FileText, Receipt, AlertCircle, CheckCircle2, PhoneCall, Star, MessageSquare,
   Sparkles, Loader2, RefreshCw, Zap, Target, Phone, Mail, Share2, CheckSquare,
-  Copy, Link2,
+  Copy, Link2, ListTodo, Send, Eye,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -338,6 +338,38 @@ export default function Dashboard() {
   );
   const sentReviewRequests = reviewTrackingJobs.filter((j: any) => j.reviewRequestSentAt);
   const [reviewTrackingOpen, setReviewTrackingOpen] = useState(false);
+
+  // ─── 30-day lead generation milestone tracking ──────────────────────────────
+  const { data: milestoneTracking } = trpc.ops.getLeadGenerationMilestones.useQuery(undefined, {
+    refetchInterval: 5 * 60 * 1000,
+    staleTime: 60 * 1000,
+  });
+
+  const todaysNextActions = useMemo(() => {
+    const actions: Array<{ id: string; title: string; detail: string; href: string; tone: "red" | "amber" | "blue" | "green" }> = [];
+    const now = Date.now();
+    const dayMs = 24 * 60 * 60 * 1000;
+
+    leads.filter((lead: any) => lead.stage === "new").slice(0, 3).forEach((lead: any) => {
+      const ageHours = Math.max(0, Math.floor((now - new Date(lead.createdAt).getTime()) / (60 * 60 * 1000)));
+      actions.push({ id: `lead-${lead.id}`, title: `Respond to ${lead.name}`, detail: ageHours >= 24 ? `${ageHours}h old — outside the 24-hour response target` : `${ageHours}h since inquiry`, href: "/ops/leads", tone: ageHours >= 24 ? "red" : "amber" });
+    });
+
+    nativeQuotesList.filter((quote: any) => quote.status === "draft").slice(0, 3).forEach((quote: any) => {
+      actions.push({ id: `draft-${quote.id}`, title: `Review and send Quote #${quote.id}`, detail: `${quote.clientName} · $${Math.round((quote.totalCents ?? 0) / 100).toLocaleString()}`, href: `/ops/quotes?quote=${quote.id}`, tone: "amber" });
+    });
+
+    nativeQuotesList.filter((quote: any) => quote.portalSentAt && !quote.portalViewedAt && now - new Date(quote.portalSentAt).getTime() >= 2 * dayMs).slice(0, 3).forEach((quote: any) => {
+      const days = Math.floor((now - new Date(quote.portalSentAt).getTime()) / dayMs);
+      actions.push({ id: `unviewed-${quote.id}`, title: `Follow up on Quote #${quote.id}`, detail: `${quote.clientName} · sent ${days} day${days === 1 ? "" : "s"} ago and not yet viewed`, href: `/ops/quotes?quote=${quote.id}`, tone: "blue" });
+    });
+
+    nativeJobsList.filter((job: any) => job.status === "completed" && !job.invoicedAt).slice(0, 2).forEach((job: any) => {
+      actions.push({ id: `invoice-${job.id}`, title: `Send final invoice for ${job.clientName}`, detail: `${job.serviceType ?? "Completed job"} · final balance is ready`, href: "/ops/jobs", tone: "green" });
+    });
+
+    return actions.slice(0, 8);
+  }, [leads, nativeQuotesList, nativeJobsList]);
   useEffect(() => {
     if (prevLeadCount.current !== null && leads.length > prevLeadCount.current) {
       const diff = leads.length - prevLeadCount.current;
@@ -1325,6 +1357,82 @@ export default function Dashboard() {
           )}
         </div>
 
+      {/* ─── Today’s Next Actions + 30-Day Milestones ─────────────────────────── */}
+      <div className="mt-6 grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
+        <div className="rounded-xl border border-border bg-card overflow-hidden">
+          <div className="flex items-center justify-between px-5 py-4 border-b border-border bg-secondary/10">
+            <div className="flex items-center gap-3">
+              <div className="h-9 w-9 rounded-lg bg-primary/10 text-primary flex items-center justify-center"><ListTodo className="h-4 w-4" /></div>
+              <div>
+                <h3 className="text-sm font-semibold text-foreground" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>Today’s Next Actions</h3>
+                <p className="text-xs text-muted-foreground">Revenue and customer follow-through that needs a decision today.</p>
+              </div>
+            </div>
+            <Link href="/ops/leads" className="text-xs text-primary hover:underline">Open pipeline</Link>
+          </div>
+          <div className="divide-y divide-border">
+            {todaysNextActions.length > 0 ? todaysNextActions.map((action) => {
+              const tone = action.tone === "red" ? "bg-red-500/10 text-red-400" : action.tone === "amber" ? "bg-amber-500/10 text-amber-400" : action.tone === "blue" ? "bg-blue-500/10 text-blue-400" : "bg-emerald-500/10 text-emerald-400";
+              const Icon = action.tone === "green" ? Receipt : action.tone === "blue" ? Eye : action.tone === "red" ? Clock : Send;
+              return (
+                <Link key={action.id} href={action.href} className="flex items-center gap-3 px-5 py-3.5 hover:bg-secondary/20 transition-colors group">
+                  <span className={`h-8 w-8 rounded-md flex items-center justify-center shrink-0 ${tone}`}><Icon className="h-4 w-4" /></span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-sm font-medium text-foreground truncate">{action.title}</span>
+                    <span className="block text-xs text-muted-foreground truncate">{action.detail}</span>
+                  </span>
+                  <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
+                </Link>
+              );
+            }) : (
+              <div className="px-5 py-8 text-center">
+                <CheckCircle2 className="h-5 w-5 text-emerald-400 mx-auto mb-2" />
+                <p className="text-sm font-medium text-foreground">No urgent follow-through is waiting.</p>
+                <p className="text-xs text-muted-foreground mt-1">New leads, quotes, and completed jobs will appear here automatically.</p>
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="rounded-xl border border-border bg-card overflow-hidden">
+          <div className="flex items-center justify-between px-5 py-4 border-b border-border bg-secondary/10">
+            <div className="flex items-center gap-3">
+              <div className="h-9 w-9 rounded-lg bg-blue-500/10 text-blue-400 flex items-center justify-center"><Target className="h-4 w-4" /></div>
+              <div>
+                <h3 className="text-sm font-semibold text-foreground" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>30-Day Lead Generation</h3>
+                <p className="text-xs text-muted-foreground">Live funnel progress with a daily saved snapshot.</p>
+              </div>
+            </div>
+            <Link href="/ops/lead-visibility" className="text-xs text-primary hover:underline">Details</Link>
+          </div>
+          <div className="p-5 space-y-3">
+            {milestoneTracking ? milestoneTracking.milestones.map((milestone: any) => {
+              const actualLabel = milestone.actual === null ? "—" : milestone.unit === "percent" ? `${milestone.actual}%` : milestone.actual;
+              const targetLabel = milestone.unit === "percent" ? `${milestone.target}%` : milestone.target;
+              const ratio = milestone.actual === null ? 0 : Math.min(100, Math.round((milestone.actual / milestone.target) * 100));
+              const barClass = milestone.status === "on_track" ? "bg-emerald-500" : milestone.status === "pending_data" ? "bg-slate-500" : "bg-amber-500";
+              return (
+                <div key={milestone.key}>
+                  <div className="flex items-baseline justify-between gap-3 text-xs mb-1.5">
+                    <span className="text-foreground truncate">{milestone.label}</span>
+                    <span className={milestone.status === "on_track" ? "text-emerald-400 shrink-0" : milestone.status === "needs_attention" ? "text-amber-400 shrink-0" : "text-muted-foreground shrink-0"}>{actualLabel} / {targetLabel}</span>
+                  </div>
+                  <div className="h-1.5 rounded-full bg-secondary overflow-hidden"><div className={`h-full rounded-full transition-all ${barClass}`} style={{ width: `${ratio}%` }} /></div>
+                </div>
+              );
+            }) : (
+              <div className="space-y-3">
+                {[1, 2, 3, 4, 5].map((i) => <Skeleton key={i} className="h-7 w-full" />)}
+              </div>
+            )}
+            <p className="pt-1 text-[11px] leading-relaxed text-muted-foreground">
+              {milestoneTracking?.settings?.lastSnapshotAt
+                ? `Daily snapshot last saved ${new Date(milestoneTracking.settings.lastSnapshotAt).toLocaleDateString()}.`
+                : "Daily snapshot activates after the tracker’s first scheduled run."}
+            </p>
+          </div>
+        </div>
+      </div>
 
       {/* ─── Review Request Tracking Widget ─────────────────────────────────────── */}
       <div className="mt-6 rounded-xl border border-border bg-card overflow-hidden">

@@ -1,0 +1,1 @@
+ALTER TABLE `lead_generation_daily_snapshots` ADD CONSTRAINT `lead_generation_daily_snapshots_user_date_unique` UNIQUE(`userId`,`snapshotDate`);
