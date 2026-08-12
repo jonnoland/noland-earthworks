@@ -36,6 +36,8 @@ const labelStyle: React.CSSProperties = {
   marginBottom: "0.375rem",
 };
 
+const QUOTE_MESSAGE_MAX_LENGTH = 1200;
+
 function InlineFieldError({ id, message }: { id: string; message: string }) {
   return (
     <p id={id} role="alert" className="flex items-center gap-1" style={{ color: "#fca5a5", fontFamily: "'Lato', sans-serif", fontSize: "0.75rem", margin: "0.4rem 0 0", lineHeight: 1.4 }}>
@@ -1252,6 +1254,32 @@ export default function QuotePage() {
                       </svg>
                       Leave a Google Review
                     </a>
+                  </div>
+
+                  <div
+                    style={{
+                      width: "100%",
+                      maxWidth: "560px",
+                      marginBottom: "1.75rem",
+                      padding: "1.25rem 1.4rem",
+                      textAlign: "left",
+                      backgroundColor: "rgba(255,255,255,0.025)",
+                      border: "1px solid rgba(255,255,255,0.08)",
+                    }}
+                  >
+                    <div style={{ fontFamily: "'Oswald', sans-serif", fontWeight: 600, fontSize: "0.85rem", letterSpacing: "0.08em", textTransform: "uppercase", color: "#F0EDE6", marginBottom: "0.75rem" }}>
+                      While You Wait
+                    </div>
+                    {[
+                      ["Do you need to visit the property?", "Most forestry mulching and land management projects need an on-site visit so the scope, access, terrain, utilities, and vegetation can be evaluated accurately."],
+                      ["Does clearing include grading or hauling?", "No. Noland Earthworks handles forestry mulching, land management, right-of-way clearing, trail cutting, and brush hogging. Grading, excavation, and hauling are not included."],
+                      ["What helps prepare for the site visit?", "Clear access to the property, identify known utilities or obstacles, and have any priorities—such as preserving trees, opening a trail, or reclaiming pasture—ready to discuss."],
+                    ].map(([question, answer]) => (
+                      <details key={question} style={{ borderTop: "1px solid rgba(255,255,255,0.07)", padding: "0.65rem 0" }}>
+                        <summary style={{ cursor: "pointer", color: "rgba(240,237,230,0.82)", fontFamily: "'Lato', sans-serif", fontSize: "0.84rem", fontWeight: 700 }}>{question}</summary>
+                        <p style={{ margin: "0.55rem 0 0", color: "rgba(240,237,230,0.58)", fontFamily: "'Lato', sans-serif", fontSize: "0.8rem", lineHeight: 1.55 }}>{answer}</p>
+                      </details>
+                    ))}
                   </div>
 
                   <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
@@ -2545,15 +2573,26 @@ export default function QuotePage() {
 
                   {/* Message */}
                   <div>
-                    <label style={labelStyle}>Project Details</label>
+                    <label htmlFor="quote-project-details" style={labelStyle}>Project Details</label>
                     <textarea
+                      id="quote-project-details"
                       name="message" rows={5}
-                      placeholder="Describe your property and what you need done — type of vegetation, terrain, access, timeline, etc."
+                      maxLength={QUOTE_MESSAGE_MAX_LENGTH}
+                      aria-describedby="quote-message-help quote-message-count"
+                      placeholder="Example: About 3 acres of thick cedar and brush behind the house. The gate is 12 feet wide, the ground rolls toward the creek, and we would like it cleared before deer season."
                       value={form.message} onChange={handleChange}
                       style={{ ...inputStyle, resize: "vertical" }}
                       onFocus={(e) => (e.target.style.borderColor = "rgba(224,123,42,0.6)")}
                       onBlur={(e) => (e.target.style.borderColor = "rgba(255,255,255,0.12)")}
                     />
+                    <div className="flex items-start justify-between gap-4" style={{ marginTop: "0.45rem" }}>
+                      <span id="quote-message-help" style={{ color: "rgba(240,237,230,0.45)", fontFamily: "'Lato', sans-serif", fontSize: "0.75rem", lineHeight: 1.45, maxWidth: "560px" }}>
+                        Helpful details include vegetation, terrain, property access, obstacles, acreage, and your preferred timing.
+                      </span>
+                      <span id="quote-message-count" aria-live="polite" style={{ color: form.message.length >= QUOTE_MESSAGE_MAX_LENGTH * 0.9 ? "#E07B2A" : "rgba(240,237,230,0.45)", fontFamily: "'Lato', sans-serif", fontSize: "0.72rem", whiteSpace: "nowrap" }}>
+                        {form.message.length}/{QUOTE_MESSAGE_MAX_LENGTH}
+                      </span>
+                    </div>
                   </div>
 
                   {submitError && (

@@ -2865,3 +2865,7 @@
 - [x] Add homepage and services navigation actions to the quote success panel
 - [x] Format public quote phone numbers in real time for consistent entry
 - [x] Add subtle interactive hover motion to public Our Work gallery images
+
+## Lead Message Guidance & Post-Submit Engagement — Aug 2026
+- [x] Add helpful message-field placeholder text and a live character counter to the public quote form
+- [x] Add verified FAQ content below the public quote success message
