@@ -47,10 +47,10 @@ const services = [
     image: VEGETATION_MGMT,
   },
   {
-    title: "Property Maintenance",
+    title: "Brush Hogging",
     href: "/services/property-maintenance",
     description:
-      "Ongoing property maintenance and land management services to keep your property looking its best year-round. Veteran-owned expertise you can trust.",
+      "Brush hogging for pasture, fields, and lighter vegetation that needs regular upkeep. Veteran-owned work you can count on.",
     image: PROPERTY_MAINT,
   },
 ];

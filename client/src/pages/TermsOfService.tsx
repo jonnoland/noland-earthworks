@@ -48,9 +48,9 @@ export default function TermsOfService() {
           </p>
           <ul style={{ color: "rgba(240,237,230,0.8)", lineHeight: 2, paddingLeft: "1.5rem" }}>
             <li>Forestry Mulching &amp; Brush Clearing</li>
-            <li>Land Management &amp; Site Preparation</li>
+            <li>Land Management</li>
             <li>Vegetation Management &amp; Invasive Species Removal</li>
-            <li>Property Maintenance &amp; Reclamation</li>
+            <li>Brush Hogging &amp; Land Management</li>
             <li>Consulting, Estimates, Quotes &amp; Site Evaluations</li>
           </ul>
         </Section>

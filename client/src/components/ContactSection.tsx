@@ -319,7 +319,7 @@ export default function ContactSection() {
                     <option value="land-management" style={{ backgroundColor: "#1a1a1a" }}>Land Management</option>
                     <option value="forestry-mulching" style={{ backgroundColor: "#1a1a1a" }}>Forestry Mulching</option>
                     <option value="vegetation-management" style={{ backgroundColor: "#1a1a1a" }}>Vegetation Management</option>
-                    <option value="property-maintenance" style={{ backgroundColor: "#1a1a1a" }}>Property Maintenance</option>
+                    <option value="property-maintenance" style={{ backgroundColor: "#1a1a1a" }}>Brush Hogging</option>
                     <option value="multiple" style={{ backgroundColor: "#1a1a1a" }}>Multiple Services</option>
                   </select>
                 </div>

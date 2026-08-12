@@ -197,7 +197,7 @@ export default function TestimonialsSection() {
 
   return (
     <section
-      id="testimonials"
+      id="our-work"
       style={{ backgroundColor: "#121212", paddingTop: "6rem", paddingBottom: "6rem" }}
     >
       <div className="container">
@@ -222,7 +222,7 @@ export default function TestimonialsSection() {
               marginBottom: "0.75rem",
             }}
           >
-            Reviews
+            Verified Project Proof
           </p>
           <h2
             style={{
@@ -235,7 +235,7 @@ export default function TestimonialsSection() {
               marginBottom: "1.25rem",
             }}
           >
-            What Clients Say
+            Real Work. Verified Feedback.
           </h2>
           {/* Live rating summary — only rendered when verified data is available */}
           {googleRating !== null && googleReviewCount !== null ? (

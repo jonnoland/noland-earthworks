@@ -11,8 +11,8 @@ const VEGETATION_HERO = "https://d2xsxph8kpxj0f.cloudfront.net/31051966348495799
 
 const data: ServicePageProps = {
   slug: "property-maintenance",
-  title: "Property Maintenance — Land Management & Upkeep in Tennessee",
-  tagline: "Keep your land looking its best year-round with reliable, professional property maintenance from a veteran-owned team you can trust.",
+  title: "Brush Hogging — Land Management & Upkeep in Tennessee",
+  tagline: "Maintain pasture, fields, and lighter vegetation with reliable brush hogging from a veteran-owned operator you can trust.",
   heroImage: HERO,
   overviewTitle: "Year-Round Land Stewardship",
   overviewBody: [
@@ -65,8 +65,8 @@ const data: ServicePageProps = {
 
 export default function PropertyMaintenancePage() {
   usePageTitle(
-    "Property Maintenance in Tennessee | Noland Earthworks",
-    "Year-round property maintenance for Tennessee landowners. Brush clearing, fence line clearing, overgrowth control, and right-of-way maintenance. Veteran-owned. Free estimates.",
+    "Brush Hogging in Tennessee | Noland Earthworks",
+    "Brush hogging for Tennessee landowners. Maintain pasture, fields, and lighter vegetation with veteran-owned, on-site service. Free estimates.",
     "/services/property-maintenance"
   );
   return (

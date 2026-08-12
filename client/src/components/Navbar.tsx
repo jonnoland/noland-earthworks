@@ -15,7 +15,7 @@ const serviceLinks = [
   { label: "Vegetation Management", href: "/services/vegetation-management" },
   { label: "Right-of-Way Clearing", href: "/services/right-of-way-clearing" },
   { label: "Trail Cutting", href: "/services/trail-cutting" },
-  { label: "Property Maintenance", href: "/services/property-maintenance" },
+  { label: "Brush Hogging", href: "/services/property-maintenance" },
   { label: "Fence Line Clearing", href: "/services/add-ons/fence-line-clearing", isAddon: true },
   { label: "Mulch Redistribution", href: "/services/add-ons/mulch-redistribution", isAddon: true },
   { label: "Selective Clearing", href: "/services/add-ons/selective-clearing", isAddon: true },
@@ -68,7 +68,7 @@ export default function Navbar() {
 
   const navLinks = [
     { label: "Why Us", id: "#why-us" },
-    { label: "Testimonials", id: "#testimonials" },
+    { label: "Our Work", id: "#our-work" },
     { label: "Service Areas", id: "#service-areas" },
   ];
 

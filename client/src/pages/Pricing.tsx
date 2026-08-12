@@ -128,8 +128,8 @@ const services = [
   },
   {
     id: "property-maintenance",
-    name: "Property Maintenance",
-    tagline: "Keep your land looking its best year-round",
+    name: "Brush Hogging",
+    tagline: "Maintain pasture, fields, and lighter vegetation",
     icon: "🌿",
     description:
       "Seasonal brush cutting, pasture reclamation, and ongoing land upkeep. Ideal for farms, rural estates, and hunting properties.",

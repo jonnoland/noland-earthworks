@@ -9,6 +9,7 @@ import { storagePut } from "./storage";
 import { quoteSubmissions, nativeQuotes } from "../drizzle/schema";
 import { sendOwnerSms } from "./sms";
 import { qualifyLead } from "./leadQualifier";
+import { getServiceDisplayName } from "./serviceTaxonomy";
 import { opsLeads } from "../drizzle/schema";
 import { eq } from "drizzle-orm";
 
@@ -543,6 +544,7 @@ export const quoteRouter = router({
 
     // Persist submission to quote_submissions log
     let submissionId: number | null = null;
+    let leadId: number | null = null;
     try {
       const db = await getDb();
       if (db) {
@@ -587,16 +589,7 @@ export const quoteRouter = router({
     try {
       const owner = await getOwnerUser();
       if (owner) {
-        // Map the free-text service to a jobType enum value
-        const serviceMap: Record<string, string> = {
-          "Land Management": "land_clearing",
-          "Forestry Mulching": "forestry_mulching",
-          "Brush Removal": "brush_removal",
-          "Stump Grinding": "stump_grinding",
-          "Wildfire Mitigation": "wildfire_mitigation",
-          "Trail Cutting": "trail_cutting",
-          "trail-cutting": "trail_cutting",
-        };
+        const serviceLabel = getServiceDisplayName(input.service);
         const address = [input.street, input.city, input.state, input.zip]
           .filter(Boolean)
           .join(", ");
@@ -619,7 +612,7 @@ export const quoteRouter = router({
           .filter(Boolean)
           .join("\n");
         // Upsert by phone — prevents duplicate leads when the same person submits multiple quote requests
-        const { created: quoteLeadCreated } = await upsertOpsLeadByPhone({
+        const { leadId: upsertedLeadId, created: quoteLeadCreated } = await upsertOpsLeadByPhone({
           userId: owner.id,
           name: input.name,
           email: input.email,
@@ -627,10 +620,11 @@ export const quoteRouter = router({
           address: address || undefined,
           source: "website",
           stage: "new",
-          jobType: serviceMap[input.service] ?? input.service,
+          jobType: serviceLabel,
           notes: notes || undefined,
           clientType: input.clientType ?? "residential",
         });
+        leadId = upsertedLeadId;
         console.log(`[Quote] Lead ${quoteLeadCreated ? "created" : "updated"} for ${input.name}`);
       } else {
         console.warn("[Quote] Owner not found in DB — lead not created (owner must log in once first)");
@@ -661,7 +655,7 @@ export const quoteRouter = router({
         const address = [input.street, input.city, input.state, input.zip]
           .filter(Boolean)
           .join(", ");
-        const serviceLabel = input.service || "Forestry Mulching";
+        const serviceLabel = getServiceDisplayName(input.service);
         const title = `${serviceLabel} \u2014 ${input.name}${input.county ? ` (${input.county} Co.)` : ""}`;
         const { randomBytes } = await import("crypto");
         const portalToken = randomBytes(32).toString("hex");
@@ -717,10 +711,17 @@ export const quoteRouter = router({
           try {
             const { eq } = await import("drizzle-orm");
             await db2.update(quoteSubmissions).set({ nativeQuoteId: newNativeQuoteId }).where(eq(quoteSubmissions.id, submissionId));
-            console.log(`[Quote] Linked submission ${submissionId} → nativeQuote ${newNativeQuoteId}`);
+            console.log(`[Quote] Linked submission ${submissionId} → native quote ${newNativeQuoteId}`);
           } catch (linkErr) {
             console.warn("[Quote] Failed to link submission to native quote:", linkErr);
           }
+        }
+        if (leadId && newNativeQuoteId) {
+          await db2
+            .update(opsLeads)
+            .set({ nativeQuoteId: newNativeQuoteId, updatedAt: new Date() })
+            .where(eq(opsLeads.id, leadId));
+          console.log(`[Quote] Linked lead ${leadId} → native quote ${newNativeQuoteId}`);
         }
       }
     } catch (nativeErr) {

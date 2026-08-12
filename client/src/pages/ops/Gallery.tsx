@@ -60,7 +60,7 @@ const SERVICE_LABELS: Record<ServiceType, string> = {
   "vegetation-management": "Vegetation Management",
   "right-of-way-clearing": "Right-of-Way Clearing",
   "trail-cutting": "Trail Cutting",
-  "brush-hogging": "Brush Hogging / Property Maintenance",
+  "brush-hogging": "Brush Hogging",
   "stump-grinding": "Stump Grinding",
   "gravel-driveway": "Gravel / Driveway",
   other: "Other",

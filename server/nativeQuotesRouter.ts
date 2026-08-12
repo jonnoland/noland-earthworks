@@ -16,7 +16,7 @@ import { z } from "zod";
 import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
 import { TRPCError } from "@trpc/server";
 import { getDb } from "./db";
-import { nativeQuotes, nativeJobs, aiPricingSettings, nativeClients } from "../drizzle/schema";
+import { nativeQuotes, nativeJobs, aiPricingSettings, nativeClients, opsLeads } from "../drizzle/schema";
 import { getPricingBenchmarks } from "./db";
 import { eq, desc, like, or, and, asc } from "drizzle-orm";
 import { randomBytes } from "crypto";
@@ -309,12 +309,6 @@ export const nativeQuotesRouter = router({
       const origin = input.origin ?? "https://nolandearth-pymczdcn.manus.space";
       const portalUrl = `${origin}/quote/${token}`;
 
-      await db.update(nativeQuotes).set({
-        portalToken: token,
-        portalSentAt: new Date(),
-        status: "sent",
-      }).where(eq(nativeQuotes.id, input.id));
-
       // Send email
       const totalFormatted = `$${(quote.totalCents / 100).toLocaleString("en-US", { minimumFractionDigits: 0 })}`;
       const noteBlock = input.personalNote
@@ -338,6 +332,16 @@ export const nativeQuotesRouter = router({
         </div>`;
 
       await sendEmail(quote.clientEmail, `Your Quote from Noland Earthworks — ${quote.title}`, html);
+      // Only record the quote as sent after the customer email provider accepts it.
+      await db.update(nativeQuotes).set({
+        portalToken: token,
+        portalSentAt: new Date(),
+        status: "sent",
+      }).where(eq(nativeQuotes.id, input.id));
+      await db.update(opsLeads).set({
+        stage: "estimate_sent",
+        updatedAt: new Date(),
+      }).where(eq(opsLeads.nativeQuoteId, input.id));
       await notifyOwner({ title: "Quote Portal Sent", content: `Portal link sent to ${quote.clientName} (${quote.clientEmail}) for "${quote.title}"` });
       return { success: true, portalUrl };
     }),

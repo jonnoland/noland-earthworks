@@ -2848,3 +2848,8 @@
 ## Comprehensive Current-Site Audit — Aug 2026
 - [x] Audit the public website, /ops workflows, conversion paths, SEO/AEO, trust signals, and AI features
 - [x] Deliver prioritized recommendations for what to improve, add, consolidate, and remove
+
+## Audit-Fix Release — Aug 2026
+- [x] Remove the unsupported 4.9 Google Rating claim and rename Testimonials paths to verified project-proof language
+- [x] Consolidate public and gallery service names into the approved service taxonomy
+- [x] Repair stale-lead, quote-send, KPI formatting, and lead-service data workflows

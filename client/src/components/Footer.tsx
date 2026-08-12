@@ -251,7 +251,7 @@ export default function Footer() {
               {[
                 { label: "Services", href: "/#services" },
                 { label: "Why Choose Us", href: "/#why-us" },
-                { label: "Testimonials", href: "/#testimonials" },
+                { label: "Our Work", href: "/#our-work" },
                 { label: "Service Areas", href: "/#service-areas" },
                 { label: "About Us", href: "/about" },
                 { label: "Get a Quote", href: "/quote" },

@@ -952,7 +952,7 @@ export default function QuotePage() {
                       "forestry-mulching": "Forestry Mulching",
                       "vegetation-management": "Vegetation Management",
                       "right-of-way-clearing": "Right-of-Way Clearing",
-                      "property-maintenance": "Property Maintenance",
+                      "property-maintenance": "Brush Hogging",
                       "trail-cutting": "Trail Cutting",
                       "multiple": "Multiple Services",
                     };
@@ -1240,7 +1240,7 @@ export default function QuotePage() {
                         <option value="forestry-mulching" style={{ backgroundColor: "#1a1a1a" }}>Forestry Mulching</option>
                         <option value="vegetation-management" style={{ backgroundColor: "#1a1a1a" }}>Vegetation Management</option>
                         <option value="right-of-way-clearing" style={{ backgroundColor: "#1a1a1a" }}>Right-of-Way Clearing</option>
-                        <option value="property-maintenance" style={{ backgroundColor: "#1a1a1a" }}>Property Maintenance</option>
+                        <option value="property-maintenance" style={{ backgroundColor: "#1a1a1a" }}>Brush Hogging</option>
                         <option value="trail-cutting" style={{ backgroundColor: "#1a1a1a" }}>Trail Cutting</option>
                         <option value="multiple" style={{ backgroundColor: "#1a1a1a" }}>Multiple Services</option>
                       </select>

@@ -303,10 +303,10 @@ export default function Dashboard() {
   const { data: nativeInvoicesList = [], isLoading: invoicesLoading } = trpc.nativeJobs.listInvoices.useQuery({}, { refetchInterval: 60000 });
   const { data: nativeQuotesData, isLoading: quotesLoading } = trpc.nativeQuotes.list.useQuery({ limit: 100 }, { refetchInterval: 60000 });
   const nativeQuotesList = nativeQuotesData?.quotes ?? [];
-  const dataLoading = jobsLoading || nativeJobsLoading || invoicesLoading || quotesLoading;
 
   // ─── Local leads (for pipeline section) ────────────────────────────────────────────
   const { data: leads = [], isLoading: leadsLoading } = trpc.ops.leads.list.useQuery(undefined, { refetchInterval: 15000 });
+  const dataLoading = jobsLoading || nativeJobsLoading || invoicesLoading || quotesLoading || leadsLoading;
 
   // ─── Google Business Profile reviews (latest 5 for dashboard widget) ────────────
   const { data: googleReviewsData } = trpc.ops.google.fetchReviews.useQuery(undefined, {
@@ -350,10 +350,14 @@ export default function Dashboard() {
     const now = Date.now();
     const dayMs = 24 * 60 * 60 * 1000;
 
-    leads.filter((lead: any) => lead.stage === "new").slice(0, 3).forEach((lead: any) => {
+    leads
+      .filter((lead: any) => !["won", "lost", "converted", "estimate_sent"].includes(lead.stage) && !lead.nativeQuoteId)
+      .sort((a: any, b: any) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
+      .slice(0, 3)
+      .forEach((lead: any) => {
       const ageHours = Math.max(0, Math.floor((now - new Date(lead.createdAt).getTime()) / (60 * 60 * 1000)));
       actions.push({ id: `lead-${lead.id}`, title: `Respond to ${lead.name}`, detail: ageHours >= 24 ? `${ageHours}h old — outside the 24-hour response target` : `${ageHours}h since inquiry`, href: "/ops/leads", tone: ageHours >= 24 ? "red" : "amber" });
-    });
+      });
 
     nativeQuotesList.filter((quote: any) => quote.status === "draft").slice(0, 3).forEach((quote: any) => {
       actions.push({ id: `draft-${quote.id}`, title: `Review and send Quote #${quote.id}`, detail: `${quote.clientName} · $${Math.round((quote.totalCents ?? 0) / 100).toLocaleString()}`, href: `/ops/quotes?quote=${quote.id}`, tone: "amber" });
@@ -475,9 +479,8 @@ export default function Dashboard() {
       const d = j.scheduledDate;
       return d && d >= monthStart && d <= now;
     });
-    const revenueThisMonth = paidThisMonthTotal > 0
-      ? paidThisMonthTotal
-      : jobsThisMonth.reduce((s, j) => s + (j.totalPrice ?? 0), 0);
+    // Revenue is cash recorded as paid, never projected work from scheduled jobs.
+    const revenueThisMonth = paidThisMonthTotal;
 
     // Revenue per acre — local jobs only
     const acreJobs = normalizedLocalJobs.filter(j => j.totalPrice && j.acres && j.acres > 0);
@@ -671,7 +674,7 @@ export default function Dashboard() {
               />
               <KPICard
                 title="Outstanding Balance"
-                value={kpis.outstandingBalance > 0 ? `$${kpis.outstandingBalance.toLocaleString()}` : "—"}
+                value={kpis.outstandingBalance > 0 ? `$${Math.round(kpis.outstandingBalance).toLocaleString()}` : "—"}
                 sub={"from invoices"}
                 icon={Receipt}
                 delay={160}
@@ -698,7 +701,7 @@ export default function Dashboard() {
             <>
               <KPICard
                 title="Paid This Month"
-                value={paidThisMonthTotal > 0 ? `$${paidThisMonthTotal.toLocaleString()}` : "—"}
+                value={paidThisMonthTotal > 0 ? `$${Math.round(paidThisMonthTotal).toLocaleString()}` : "—"}
                 sub={`${nativeInvoicesList.filter((inv: any) => inv.status === "paid").length} invoice${nativeInvoicesList.filter((inv: any) => inv.status === "paid").length !== 1 ? "s" : ""} paid`}
                 icon={DollarSign}
                 delay={0}

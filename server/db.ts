@@ -262,6 +262,8 @@ export async function upsertOpsLeadByPhone(
       name: data.name && data.name !== "Website Visitor" ? data.name : existing.name,
       // Update email if newly provided
       email: data.email || existing.email,
+      // Keep the lead card aligned with the latest website request service.
+      jobType: data.jobType || existing.jobType,
       // Append notes
       notes: appendedNotes || existing.notes,
       // Link to latest chat session

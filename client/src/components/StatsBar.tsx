@@ -1,12 +1,12 @@
 /*
  * DESIGN: Heavy Equipment Grit — full-width dark amber-accented stats band
  * Counters display final values immediately; animate only when scrolled into view.
- * Stats: 4.9★ Google Rating | 35+ Projects | 35 Counties Served | 24hr Quote Turnaround
+ * Stats: Free Estimates | 35+ Projects | 35 Counties Served | 24hr Quote Turnaround
  */
 import { useEffect, useRef, useState } from "react";
 
 const stats = [
-  { value: 49, suffix: "", label: "Google Rating", display: "4.9★", sub: "Avg. customer review" },
+  { value: 0, suffix: "", label: "On-Site Estimates", display: "Free", sub: "Walk the property before quoting" },
   { value: 35, suffix: "+", label: "Projects Completed", display: null, sub: "Across Middle & West TN" },
   { value: 35, suffix: "", label: "Counties Served", display: null, sub: "Middle & West Tennessee" },
   { value: 24, suffix: "hr", label: "Quote Turnaround", display: null, sub: "Avg. response time" },

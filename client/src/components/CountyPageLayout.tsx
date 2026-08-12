@@ -50,9 +50,9 @@ const SERVICES = [
     desc: "Control invasive species, overgrowth, and unwanted vegetation along fences, roadsides, and waterways.",
   },
   {
-    title: "Site Preparation",
+    title: "Brush Hogging",
     slug: "property-maintenance",
-    desc: "Grading and site prep to ready your land for construction, pasture, or development.",
+    desc: "Maintain pasture, fields, and lighter vegetation with straightforward brush hogging.",
   },
 ];
 
@@ -571,7 +571,7 @@ export default function CountyPageLayout({
           </span>
           <ShareButtons
             url={`https://nolandearthworks.com/service-areas/${slug}`}
-            title={`Forestry Mulching & Land Clearing in ${county} | Noland Earthworks`}
+            title={`Forestry Mulching & Land Management in ${county} | Noland Earthworks`}
             compact={false}
           />
         </div>

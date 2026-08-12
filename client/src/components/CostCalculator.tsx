@@ -423,7 +423,7 @@ function MapPolygonModal({ onClose, onAcreageConfirm, calcState }: {
     "vegetation-management": "Vegetation Management",
     "right-of-way-clearing": "Right-of-Way Clearing",
     "trail-cutting":         "Trail Cutting",
-    "property-maintenance":  "Brush Hogging / Property Maintenance",
+    "property-maintenance":  "Brush Hogging",
     "stump-grinding-only":   "Stump Grinding Only",
   };
 
@@ -740,7 +740,7 @@ function SubmitLeadModal({ state, result, addOns = [], onClose, onSuccess }: {
     "vegetation-management": "Vegetation Management",
     "right-of-way-clearing": "Right-of-Way Clearing",
     "trail-cutting":         "Trail Cutting",
-    "property-maintenance":  "Brush Hogging / Property Maintenance",
+    "property-maintenance":  "Brush Hogging",
     "stump-grinding-only":   "Stump Grinding Only",
   };
 
@@ -914,7 +914,7 @@ const SERVICE_LABELS_CONFIRM: Record<string, string> = {
   "vegetation-management": "Vegetation Management",
   "right-of-way-clearing": "Right-of-Way Clearing",
   "trail-cutting":         "Trail Cutting",
-  "property-maintenance":  "Brush Hogging / Property Maintenance",
+  "property-maintenance":  "Brush Hogging",
   "stump-grinding-only":   "Stump Grinding Only",
 };
 
@@ -1293,7 +1293,7 @@ export default function CostCalculator() {
     { value: "vegetation-management", label: "Vegetation Management" },
     { value: "right-of-way-clearing", label: "Right-of-Way Clearing" },
     { value: "trail-cutting",         label: "Trail Cutting" },
-    { value: "property-maintenance",  label: "Brush Hogging / Property Maintenance" },
+    { value: "property-maintenance",  label: "Brush Hogging" },
     { value: "stump-grinding-only",   label: "Stump Grinding Only" },
   ];
 

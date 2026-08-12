@@ -13,7 +13,7 @@ const HERO = "https://d2xsxph8kpxj0f.cloudfront.net/310519663484957999/PymCzDCnS
 
 const data: ServicePageProps = {
   slug: "land-management",
-  title: "Land Management & Management in Tennessee",
+  title: "Land Management in Tennessee",
   tagline: "From overgrown pasture to construction-ready lots — full-service land management for residential, agricultural, and commercial properties across Middle & West Tennessee.",
   heroImage: HERO,
   overviewTitle: "Land Management Built Around What Your Property Needs",
@@ -35,7 +35,7 @@ const data: ServicePageProps = {
   relatedServices: [
     { title: "Forestry Mulching", slug: "forestry-mulching", description: "Mulch trees, brush, and stumps in a single pass — no hauling required.", heroImage: FORESTRY_HERO },
     { title: "Vegetation Management", slug: "vegetation-management", description: "Control invasive species, overgrowth, and unwanted vegetation.", heroImage: VEGETATION_HERO },
-    { title: "Property Maintenance", slug: "property-maintenance", description: "Keep your land clean, safe, and well-maintained year-round.", heroImage: MAINTENANCE_HERO },
+    { title: "Brush Hogging", slug: "property-maintenance", description: "Maintain open ground, pasture, and lighter vegetation with brush hogging.", heroImage: MAINTENANCE_HERO },
   ],
   faqs: [
     {

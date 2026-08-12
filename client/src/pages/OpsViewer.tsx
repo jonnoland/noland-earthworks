@@ -82,7 +82,7 @@ export default function OpsViewer() {
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <div>
             <h1 className="text-xl font-bold text-zinc-100">Noland Earthworks — Read-Only Ops View</h1>
-            <p className="text-xs text-zinc-500 mt-0.5">Veteran-Owned Land Clearing &amp; Forestry Mulching · Middle &amp; West Tennessee · Generated {new Date(data.generatedAt).toLocaleString()}</p>
+            <p className="text-xs text-zinc-500 mt-0.5">Veteran-Owned Land Management &amp; Forestry Mulching · Middle &amp; West Tennessee · Generated {new Date(data.generatedAt).toLocaleString()}</p>
           </div>
           <span className="text-xs bg-orange-500/20 text-orange-300 px-2 py-1 rounded font-medium">READ ONLY</span>
         </div>
@@ -139,7 +139,6 @@ export default function OpsViewer() {
                       <td className="px-4 py-2">
                         {l.aiScore ? <span className={`text-xs px-2 py-0.5 rounded font-medium ${STATUS_COLORS[l.aiScore] ?? ""}`}>{l.aiScore}</span> : "—"}
                       </td>
-                      <td className="px-4 py-2 text-zinc-300">{l.estimatedValue ? `$${Number(l.estimatedValue).toLocaleString()}` : "—"}</td>
                       <td className="px-4 py-2 text-zinc-300">{l.estimatedValue ? `$${Math.round(Number(l.estimatedValue)).toLocaleString()}` : "—"}</td>
                       <td className="px-4 py-2 text-zinc-500">{fmtDate(l.createdAt)}</td>
                     </tr>
