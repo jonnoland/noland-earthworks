@@ -2869,3 +2869,6 @@
 ## Lead Message Guidance & Post-Submit Engagement — Aug 2026
 - [x] Add helpful message-field placeholder text and a live character counter to the public quote form
 - [x] Add verified FAQ content below the public quote success message
+
+## Quarter-Acre Quote Slider — Aug 2026
+- [x] Replace the public quote form acreage selector with a 0.25–40 acre slider in 0.25-acre increments

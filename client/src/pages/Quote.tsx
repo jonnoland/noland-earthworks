@@ -11,6 +11,7 @@ import { trpc } from "@/lib/trpc";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { MapView } from "@/components/Map";
 import { formatQuotePhone, validateQuoteContact, validateQuoteContactField, type QuoteContactErrors, type QuoteContactField } from "@shared/quoteContactValidation";
+import { formatQuoteAcreage, normalizeQuoteAcreage, QUOTE_ACREAGE_MAX, QUOTE_ACREAGE_MIN, QUOTE_ACREAGE_STEP } from "@shared/quoteAcreage";
 
 const inputStyle: React.CSSProperties = {
   width: "100%",
@@ -44,16 +45,6 @@ function InlineFieldError({ id, message }: { id: string; message: string }) {
       <AlertCircle size={13} aria-hidden="true" /> {message}
     </p>
   );
-}
-
-// Map calculator's numeric acres to quote form's bucketed acreage option values
-function acresBucket(acres: number): string {
-  if (acres <= 0.5) return "half-to-one";
-  if (acres <= 1)   return "half-to-one";
-  if (acres <= 2)   return "one-to-two";
-  if (acres <= 5)   return "two-to-five";
-  if (acres <= 10)  return "five-to-ten";
-  return "ten-plus";
 }
 
 // Build a pre-fill note from density/terrain/access params
@@ -200,7 +191,7 @@ export default function QuotePage() {
     }
     // Auto-fill acreage bucket if not already set
     if (p.deedAcres && p.deedAcres > 0 && !form.acreage) {
-      updates.acreage = acresBucket(p.deedAcres);
+      updates.acreage = normalizeQuoteAcreage(p.deedAcres);
     }
     if (Object.keys(updates).length > 0) {
       setForm(prev => ({ ...prev, ...updates }));
@@ -260,7 +251,7 @@ export default function QuotePage() {
     const county   = params.get("county")  || "";
     const city     = params.get("city")    || "";
     const state    = params.get("state")   || "TN";
-    const acreage = acres > 0 ? acresBucket(acres) : "";
+    const acreage = acres > 0 ? normalizeQuoteAcreage(acres) : "1";
     const message = (density || terrain || access) ? buildPrefillNote(density, terrain, access) : "";
     return {
       name: "", phone: "", email: "",
@@ -1039,19 +1030,11 @@ export default function QuotePage() {
                       "trail-cutting": "Trail Cutting",
                       "multiple": "Multiple Services",
                     };
-                    const acreageLabels: Record<string, string> = {
-                      "half-to-one": "½ – 1 acre",
-                      "one-to-two": "1 – 2 acres",
-                      "two-to-five": "2 – 5 acres",
-                      "five-to-ten": "5 – 10 acres",
-                      "ten-plus": "10+ acres",
-                      "unsure": "Not sure",
-                    };
                     const countyDisplay = form.county
                       ? form.county.charAt(0).toUpperCase() + form.county.slice(1) + " County"
                       : "";
                     const serviceDisplay = serviceLabels[form.service] || form.service;
-                    const acreageDisplay = acreageLabels[form.acreage] || form.acreage;
+                    const acreageDisplay = formatQuoteAcreage(form.acreage);
                     const streetDisplay = form.street
                       ? form.street.split(" ").map((w: string) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(" ")
                       : "";
@@ -1481,24 +1464,29 @@ export default function QuotePage() {
                   {/* Acreage — hidden for ROW (uses linear feet instead) */}
                   {form.service !== "right-of-way-clearing" && (
                   <div>
-                    <label style={labelStyle}>Approximate Acreage <span style={{ fontWeight: 400, opacity: 0.65, fontSize: "0.85em", textTransform: "none", letterSpacing: 0 }}>(most work starts at 1 acre; smaller scopes are reviewed for mobilization fit)</span></label>
-                    <select
+                    <div className="flex items-end justify-between gap-4" style={{ marginBottom: "0.5rem" }}>
+                      <label htmlFor="quote-acreage-slider" style={{ ...labelStyle, marginBottom: 0 }}>
+                        Approximate Acreage <span style={{ fontWeight: 400, opacity: 0.65, fontSize: "0.85em", textTransform: "none", letterSpacing: 0 }}>(most work starts at 1 acre; smaller scopes are reviewed for mobilization fit)</span>
+                      </label>
+                      <output htmlFor="quote-acreage-slider" style={{ color: "#E07B2A", fontFamily: "'Oswald', sans-serif", fontSize: "1.25rem", fontWeight: 700, whiteSpace: "nowrap" }}>
+                        {formatQuoteAcreage(form.acreage || "1")}
+                      </output>
+                    </div>
+                    <input
+                      id="quote-acreage-slider"
                       name="acreage"
-                      value={form.acreage} onChange={handleChange}
-                      style={{ ...inputStyle, cursor: "pointer" }}
-                      onFocus={(e) => (e.target.style.borderColor = "rgba(224,123,42,0.6)")}
-                      onBlur={(e) => (e.target.style.borderColor = "rgba(255,255,255,0.12)")}
-                    >
-                      <option value="" style={{ backgroundColor: "#1a1a1a" }}>Select acreage...</option>
-                      <option value="under-quarter" style={{ backgroundColor: "#1a1a1a" }}>Under ¼ acre</option>
-                      <option value="quarter-to-half" style={{ backgroundColor: "#1a1a1a" }}>¼ – ½ acre</option>
-                      <option value="half-to-one" style={{ backgroundColor: "#1a1a1a" }}>½ – 1 acre</option>
-                      <option value="one-to-two" style={{ backgroundColor: "#1a1a1a" }}>1 – 2 acres</option>
-                      <option value="two-to-five" style={{ backgroundColor: "#1a1a1a" }}>2 – 5 acres</option>
-                      <option value="five-to-ten" style={{ backgroundColor: "#1a1a1a" }}>5 – 10 acres</option>
-                      <option value="ten-plus" style={{ backgroundColor: "#1a1a1a" }}>10+ acres</option>
-                      <option value="unsure" style={{ backgroundColor: "#1a1a1a" }}>Not sure</option>
-                    </select>
+                      type="range"
+                      min={QUOTE_ACREAGE_MIN}
+                      max={QUOTE_ACREAGE_MAX}
+                      step={QUOTE_ACREAGE_STEP}
+                      value={form.acreage || "1"}
+                      aria-valuetext={formatQuoteAcreage(form.acreage || "1")}
+                      onChange={handleChange}
+                      style={{ width: "100%", accentColor: "#E07B2A", cursor: "pointer", height: "1.25rem" }}
+                    />
+                    <div className="flex justify-between" style={{ marginTop: "0.2rem", color: "rgba(240,237,230,0.42)", fontFamily: "'Lato', sans-serif", fontSize: "0.72rem" }}>
+                      <span>0.25 ac</span><span>10 ac</span><span>20 ac</span><span>30 ac</span><span>40 ac</span>
+                    </div>
                   </div>
                   )}
 
