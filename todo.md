@@ -2844,3 +2844,7 @@
 
 ## Google Places Reviews Repair — Aug 2026
 - [x] Restore verified Google Places lookup and live review retrieval on the public website
+
+## Comprehensive Current-Site Audit — Aug 2026
+- [x] Audit the public website, /ops workflows, conversion paths, SEO/AEO, trust signals, and AI features
+- [x] Deliver prioritized recommendations for what to improve, add, consolidate, and remove
