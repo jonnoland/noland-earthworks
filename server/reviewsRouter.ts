@@ -1,8 +1,8 @@
 /**
  * reviewsRouter — live review fetching from Google Places API and Facebook Graph API.
  *
- * Google: Uses Places Details API (no approval required) to fetch up to 5 most-recent
- *         reviews for the business Place ID.
+ * Google: Uses the current Places API (v1) to fetch verified business rating and reviews.
+ *         The legacy Details endpoint remains a fallback for older Google Cloud projects.
  * Facebook: Uses Graph API /{page_id}/ratings endpoint with a Page Access Token.
  *
  * Both endpoints degrade gracefully when credentials are not configured.
@@ -10,6 +10,7 @@
 import { z } from "zod";
 import { router, protectedProcedure, publicProcedure } from "./_core/trpc";
 import { ENV } from "./_core/env";
+import { mapGooglePlaceV1Review, type GooglePlaceV1Review } from "./googlePlacesReviewMapper";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -49,16 +50,52 @@ async function fetchGoogleReviews(): Promise<{
     return { rating: null, reviewCount: null, reviews: [], configured: false };
   }
 
-  const fields = "rating,user_ratings_total,reviews";
-  const url = `https://maps.googleapis.com/maps/api/place/details/json?place_id=${encodeURIComponent(placeId)}&fields=${fields}&key=${apiKey}&reviews_sort=newest`;
+  type PlaceV1Result = {
+    rating?: number;
+    userRatingCount?: number;
+    reviews?: GooglePlaceV1Review[];
+  };
 
-  const res = await fetch(url);
-  if (!res.ok) {
-    console.error("[reviewsRouter] Google Places API error:", res.status, await res.text());
+  try {
+    const currentPlacesUrl = `https://places.googleapis.com/v1/places/${encodeURIComponent(placeId)}`;
+    const currentRes = await fetch(currentPlacesUrl, {
+      headers: {
+        "X-Goog-Api-Key": apiKey,
+        "X-Goog-FieldMask": "rating,userRatingCount,reviews",
+      },
+    });
+
+    if (currentRes.ok) {
+      const place = await currentRes.json() as PlaceV1Result;
+      const reviews: LiveReview[] = (place.reviews ?? []).map((review, index) => ({
+        ...mapGooglePlaceV1Review(review, index),
+        source: "google" as const,
+        replyUrl: "https://business.google.com/reviews",
+      }));
+
+      return {
+        rating: place.rating ?? null,
+        reviewCount: place.userRatingCount ?? null,
+        reviews,
+        configured: true,
+      };
+    }
+
+    const errorText = await currentRes.text();
+    console.warn("[reviewsRouter] Current Google Places API unavailable; trying legacy fallback:", currentRes.status, errorText.slice(0, 300));
+  } catch (error) {
+    console.warn("[reviewsRouter] Current Google Places API request failed; trying legacy fallback:", error);
+  }
+
+  const legacyFields = "rating,user_ratings_total,reviews";
+  const legacyUrl = `https://maps.googleapis.com/maps/api/place/details/json?place_id=${encodeURIComponent(placeId)}&fields=${legacyFields}&key=${apiKey}&reviews_sort=newest`;
+  const legacyRes = await fetch(legacyUrl);
+  if (!legacyRes.ok) {
+    console.error("[reviewsRouter] Legacy Google Places API error:", legacyRes.status, (await legacyRes.text()).slice(0, 300));
     return { rating: null, reviewCount: null, reviews: [], configured: true };
   }
 
-  const data = await res.json() as {
+  const legacyData = await legacyRes.json() as {
     status: string;
     result?: {
       rating?: number;
@@ -69,35 +106,28 @@ async function fetchGoogleReviews(): Promise<{
         rating: number;
         text: string;
         time: number;
-        author_url?: string;
       }>;
     };
   };
 
-  if (data.status !== "OK" || !data.result) {
-    console.error("[reviewsRouter] Google Places API status:", data.status);
+  if (legacyData.status !== "OK" || !legacyData.result) {
+    console.error("[reviewsRouter] Legacy Google Places API status:", legacyData.status);
     return { rating: null, reviewCount: null, reviews: [], configured: true };
   }
 
-  const result = data.result;
-  const reviews: LiveReview[] = (result.reviews ?? []).map((r, i) => ({
-    id: `google-${r.time}-${i}`,
+  const result = legacyData.result;
+  const reviews: LiveReview[] = (result.reviews ?? []).map((review, index) => ({
+    id: `google-${review.time}-${index}`,
     source: "google" as const,
-    reviewerName: r.author_name,
-    reviewerPhotoUrl: r.profile_photo_url,
-    rating: r.rating,
-    body: r.text,
-    reviewedAt: new Date(r.time * 1000).toISOString(),
-    // Deep-link to the Google Maps review reply page
-    replyUrl: `https://business.google.com/reviews`,
+    reviewerName: review.author_name,
+    reviewerPhotoUrl: review.profile_photo_url,
+    rating: review.rating,
+    body: review.text,
+    reviewedAt: new Date(review.time * 1000).toISOString(),
+    replyUrl: "https://business.google.com/reviews",
   }));
 
-  return {
-    rating: result.rating ?? null,
-    reviewCount: result.user_ratings_total ?? null,
-    reviews,
-    configured: true,
-  };
+  return { rating: result.rating ?? null, reviewCount: result.user_ratings_total ?? null, reviews, configured: true };
 }
 
 // ─── Facebook Graph API helpers ───────────────────────────────────────────────

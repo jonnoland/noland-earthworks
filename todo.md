@@ -2841,3 +2841,6 @@
 - [x] Add quote follow-up status and editable 2-business-day / 7-day outreach actions
 - [x] Align the quote form’s minimum-job language with its acreage options and active discount copy
 - [x] Add automated 30-day lead-generation milestone tracking for source, response, quote, and review metrics
+
+## Google Places Reviews Repair — Aug 2026
+- [x] Restore verified Google Places lookup and live review retrieval on the public website
