@@ -2823,3 +2823,8 @@
 
 ## API Response Error — Aug 2026
 - [x] Trace and fix the tRPC request that receives HTML instead of JSON in the web preview
+
+## Full AI, Lead Generation & Customer Interaction Audit — Aug 2026
+- [x] Inventory public-site conversion paths, /ops workflows, and all live AI integrations
+- [x] Research current local-service lead generation, customer experience, and AI/AEO practices
+- [x] Deliver a prioritized, research-backed improvement plan for AI, lead generation, and customer interaction
