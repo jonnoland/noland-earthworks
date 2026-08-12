@@ -2828,3 +2828,9 @@
 - [x] Inventory public-site conversion paths, /ops workflows, and all live AI integrations
 - [x] Research current local-service lead generation, customer experience, and AI/AEO practices
 - [x] Deliver a prioritized, research-backed improvement plan for AI, lead generation, and customer interaction
+
+## Reusable Audit Skill — Aug 2026
+- [x] Create and validate a reusable AI, lead-generation, customer-interaction, and AEO audit skill
+
+## 7/30/90-Day Audit Action Plan — Aug 2026
+- [x] Run the reusable audit skill and deliver an updated 7/30/90-day action plan
