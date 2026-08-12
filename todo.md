@@ -2836,8 +2836,8 @@
 - [x] Run the reusable audit skill and deliver an updated 7/30/90-day action plan
 
 ## 7-Day Quick Wins & 30-Day Milestone Tracking — Aug 2026
-- [ ] Replace unsupported review fallback cards with an honest verified-review state
-- [ ] Add a daily Today’s Next Actions queue for lead, quote, invoice, and review follow-through
-- [ ] Add quote follow-up status and editable 2-business-day / 7-day outreach actions
-- [ ] Align the quote form’s minimum-job language with its acreage options and active discount copy
-- [ ] Add automated 30-day lead-generation milestone tracking for source, response, quote, and review metrics
+- [x] Replace unsupported review fallback cards with an honest verified-review state
+- [x] Add a daily Today’s Next Actions queue for lead, quote, invoice, and review follow-through
+- [x] Add quote follow-up status and editable 2-business-day / 7-day outreach actions
+- [x] Align the quote form’s minimum-job language with its acreage options and active discount copy
+- [x] Add automated 30-day lead-generation milestone tracking for source, response, quote, and review metrics
