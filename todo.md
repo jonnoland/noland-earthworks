@@ -2853,3 +2853,7 @@
 - [x] Remove the unsupported 4.9 Google Rating claim and rename Testimonials paths to verified project-proof language
 - [x] Consolidate public and gallery service names into the approved service taxonomy
 - [x] Repair stale-lead, quote-send, KPI formatting, and lead-service data workflows
+
+## Lead Form Validation & Gallery Loading — Aug 2026
+- [x] Add inline client-side validation for complete public lead contact information
+- [x] Add visual image-loading states to the public Our Work gallery

@@ -44,6 +44,8 @@ function PhotoCard({ photo }: { photo: {
   photoType: string;
 } }) {
   const badge = PHOTO_TYPE_BADGE[photo.photoType] ?? PHOTO_TYPE_BADGE.general;
+  const [imageLoaded, setImageLoaded] = useState(false);
+  const [imageFailed, setImageFailed] = useState(false);
 
   return (
     <div
@@ -54,13 +56,28 @@ function PhotoCard({ photo }: { photo: {
       }}
     >
       {/* Image */}
-      <div style={{ position: "relative", aspectRatio: "16/9", overflow: "hidden" }}>
+      <div aria-busy={!imageLoaded && !imageFailed} style={{ position: "relative", aspectRatio: "16/9", overflow: "hidden", backgroundColor: "rgba(255,255,255,0.04)" }}>
+        {!imageLoaded && !imageFailed && (
+          <div
+            aria-label="Loading project image"
+            style={{
+              position: "absolute", inset: 0, zIndex: 1,
+              background: "linear-gradient(100deg, rgba(255,255,255,0.025) 20%, rgba(224,123,42,0.13) 45%, rgba(255,255,255,0.025) 70%)",
+              backgroundSize: "200% 100%", animation: "galleryShimmer 1.4s ease-in-out infinite",
+            }}
+          >
+            <div style={{ position: "absolute", left: "1rem", bottom: "1rem", fontFamily: "'Lato', sans-serif", fontSize: "0.72rem", letterSpacing: "0.1em", textTransform: "uppercase", color: "rgba(240,237,230,0.45)" }}>Loading project photo</div>
+          </div>
+        )}
         <img
           src={photo.url}
           alt={photo.title ? `${photo.title} — Noland Earthworks, Tennessee` : (SERVICE_LABELS[photo.serviceType] ? `${SERVICE_LABELS[photo.serviceType]} job — Noland Earthworks, Middle Tennessee` : "Forestry mulching job photo — Noland Earthworks, Tennessee")}
-          style={{ width: "100%", height: "100%", objectFit: "cover" }}
+          style={{ width: "100%", height: "100%", objectFit: "cover", opacity: imageLoaded ? 1 : 0, transition: "opacity 280ms ease" }}
           loading="lazy"
+          onLoad={() => setImageLoaded(true)}
+          onError={() => setImageFailed(true)}
         />
+        {imageFailed && <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", color: "rgba(240,237,230,0.55)", fontFamily: "'Lato', sans-serif", fontSize: "0.8rem" }}>Project image unavailable</div>}
         {/* Service badge */}
         <div
           style={{
@@ -167,6 +184,7 @@ export default function Gallery() {
 
   return (
     <div style={{ backgroundColor: "#121212", color: "#F0EDE6", minHeight: "100vh" }}>
+      <style>{`@keyframes galleryShimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }`}</style>
       <Navbar />
 
       {/* Hero */}

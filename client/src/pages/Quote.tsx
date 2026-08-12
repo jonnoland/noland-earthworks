@@ -10,6 +10,7 @@ import MobileCTABar from "@/components/MobileCTABar";
 import { trpc } from "@/lib/trpc";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { MapView } from "@/components/Map";
+import { validateQuoteContact, validateQuoteContactField, type QuoteContactErrors, type QuoteContactField } from "@shared/quoteContactValidation";
 
 const inputStyle: React.CSSProperties = {
   width: "100%",
@@ -34,6 +35,14 @@ const labelStyle: React.CSSProperties = {
   display: "block",
   marginBottom: "0.375rem",
 };
+
+function InlineFieldError({ id, message }: { id: string; message: string }) {
+  return (
+    <p id={id} role="alert" className="flex items-center gap-1" style={{ color: "#fca5a5", fontFamily: "'Lato', sans-serif", fontSize: "0.75rem", margin: "0.4rem 0 0", lineHeight: 1.4 }}>
+      <AlertCircle size={13} aria-hidden="true" /> {message}
+    </p>
+  );
+}
 
 // Map calculator's numeric acres to quote form's bucketed acreage option values
 function acresBucket(acres: number): string {
@@ -294,11 +303,32 @@ export default function QuotePage() {
   };
 
   const [form, setForm] = useState(initialForm);
+  const [contactErrors, setContactErrors] = useState<QuoteContactErrors>({});
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
   ) => {
-    setForm({ ...form, [e.target.name]: e.target.value });
+    const { name, value } = e.target;
+    setForm({ ...form, [name]: value });
+    if (["name", "phone", "email", "service"].includes(name) && contactErrors[name as QuoteContactField]) {
+      const error = validateQuoteContactField(name as QuoteContactField, value);
+      setContactErrors((current) => {
+        const next = { ...current };
+        if (error) next[name as QuoteContactField] = error;
+        else delete next[name as QuoteContactField];
+        return next;
+      });
+    }
+  };
+
+  const validateContactFieldOnBlur = (field: QuoteContactField, value: string) => {
+    const error = validateQuoteContactField(field, value);
+    setContactErrors((current) => {
+      const next = { ...current };
+      if (error) next[field] = error;
+      else delete next[field];
+      return next;
+    });
   };
 
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -459,6 +489,18 @@ export default function QuotePage() {
     e.preventDefault();
     setSubmitError(null);
     if (adjustedAcresError) return;
+    const errors = validateQuoteContact({
+      name: form.name,
+      phone: form.phone,
+      email: form.email,
+      service: form.service,
+    });
+    if (Object.keys(errors).length > 0) {
+      setContactErrors(errors);
+      const firstField = (Object.keys(errors)[0] ?? "name") as QuoteContactField;
+      window.setTimeout(() => document.querySelector<HTMLElement>(`[name="${firstField}"]`)?.focus(), 0);
+      return;
+    }
     // Capture the preliminary estimate before submitting so we can show it on the success screen
     const effectiveAcresForSubmit = adjustedAcres ? parseFloat(adjustedAcres) : (parcelInfo?.deedAcres ?? 0);
     const trailLfForSubmit = form.service === "trail-cutting" && form.trailLinearFeet ? parseFloat(form.trailLinearFeet) : undefined;
@@ -473,7 +515,7 @@ export default function QuotePage() {
     submitQuote.mutate({
       name: form.name,
       phone: form.phone,
-      email: form.email || "(not provided)",
+      email: form.email,
       service: form.service,
       county: form.county || "(not specified)",
       acreage: form.acreage,
@@ -1187,53 +1229,80 @@ export default function QuotePage() {
                   <style>{`@keyframes nameHighlight { 0%{box-shadow:0 0 0 0 rgba(224,123,42,0);border-color:rgba(255,255,255,0.12)} 20%{box-shadow:0 0 0 4px rgba(224,123,42,0.4);border-color:rgba(224,123,42,0.9)} 60%{box-shadow:0 0 0 6px rgba(224,123,42,0.2);border-color:rgba(224,123,42,0.7)} 100%{box-shadow:0 0 0 0 rgba(224,123,42,0);border-color:rgba(255,255,255,0.12)} } .name-highlight-flash { animation: nameHighlight 1.4s ease-out forwards; }`}</style>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                     <div>
-                      <label style={labelStyle}>Full Name *</label>
+                      <label htmlFor="quote-name-input" style={labelStyle}>Full Name *</label>
                       <input
                         id="quote-name-input"
                         name="name" type="text" required
                         placeholder="John Smith"
                         value={form.name} onChange={handleChange}
-                        style={inputStyle}
+                        aria-invalid={Boolean(contactErrors.name)}
+                        aria-describedby={contactErrors.name ? "quote-name-error" : undefined}
+                        style={{ ...inputStyle, borderColor: contactErrors.name ? "#f87171" : inputStyle.borderColor }}
                         onFocus={(e) => (e.target.style.borderColor = "rgba(224,123,42,0.6)")}
-                        onBlur={(e) => (e.target.style.borderColor = "rgba(255,255,255,0.12)")}
+                        onBlur={(e) => {
+                          const error = validateQuoteContactField("name", e.target.value);
+                          validateContactFieldOnBlur("name", e.target.value);
+                          e.target.style.borderColor = error ? "#f87171" : "rgba(255,255,255,0.12)";
+                        }}
                       />
+                      {contactErrors.name && <InlineFieldError id="quote-name-error" message={contactErrors.name} />}
                     </div>
                     <div>
-                      <label style={labelStyle}>Phone Number *</label>
+                      <label htmlFor="quote-phone-input" style={labelStyle}>Phone Number *</label>
                       <input
-                        name="phone" type="tel" required
+                        id="quote-phone-input" name="phone" type="tel" required
                         placeholder="(615) 555-0123"
                         value={form.phone} onChange={handleChange}
-                        style={inputStyle}
+                        aria-invalid={Boolean(contactErrors.phone)}
+                        aria-describedby={contactErrors.phone ? "quote-phone-error" : undefined}
+                        style={{ ...inputStyle, borderColor: contactErrors.phone ? "#f87171" : inputStyle.borderColor }}
                         onFocus={(e) => (e.target.style.borderColor = "rgba(224,123,42,0.6)")}
-                        onBlur={(e) => (e.target.style.borderColor = "rgba(255,255,255,0.12)")}
+                        onBlur={(e) => {
+                          const error = validateQuoteContactField("phone", e.target.value);
+                          validateContactFieldOnBlur("phone", e.target.value);
+                          e.target.style.borderColor = error ? "#f87171" : "rgba(255,255,255,0.12)";
+                        }}
                       />
+                      {contactErrors.phone && <InlineFieldError id="quote-phone-error" message={contactErrors.phone} />}
                     </div>
                   </div>
 
                   {/* Email */}
                   <div>
-                    <label style={labelStyle}>Email Address *</label>
+                    <label htmlFor="quote-email-input" style={labelStyle}>Email Address *</label>
                     <input
-                      name="email" type="email" required
+                      id="quote-email-input" name="email" type="email" required
                       placeholder="john@example.com"
                       value={form.email} onChange={handleChange}
-                      style={inputStyle}
+                      aria-invalid={Boolean(contactErrors.email)}
+                      aria-describedby={contactErrors.email ? "quote-email-error" : undefined}
+                      style={{ ...inputStyle, borderColor: contactErrors.email ? "#f87171" : inputStyle.borderColor }}
                       onFocus={(e) => (e.target.style.borderColor = "rgba(224,123,42,0.6)")}
-                      onBlur={(e) => (e.target.style.borderColor = "rgba(255,255,255,0.12)")}
+                      onBlur={(e) => {
+                        const error = validateQuoteContactField("email", e.target.value);
+                        validateContactFieldOnBlur("email", e.target.value);
+                        e.target.style.borderColor = error ? "#f87171" : "rgba(255,255,255,0.12)";
+                      }}
                     />
+                    {contactErrors.email && <InlineFieldError id="quote-email-error" message={contactErrors.email} />}
                   </div>
 
                   {/* Service + County */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                     <div>
-                      <label style={labelStyle}>Service Needed *</label>
+                      <label htmlFor="quote-service-input" style={labelStyle}>Service Needed *</label>
                       <select
-                        name="service" required
+                        id="quote-service-input" name="service" required
                         value={form.service} onChange={handleChange}
-                        style={{ ...inputStyle, cursor: "pointer" }}
+                        aria-invalid={Boolean(contactErrors.service)}
+                        aria-describedby={contactErrors.service ? "quote-service-error" : undefined}
+                        style={{ ...inputStyle, cursor: "pointer", borderColor: contactErrors.service ? "#f87171" : inputStyle.borderColor }}
                         onFocus={(e) => (e.target.style.borderColor = "rgba(224,123,42,0.6)")}
-                        onBlur={(e) => (e.target.style.borderColor = "rgba(255,255,255,0.12)")}
+                        onBlur={(e) => {
+                          const error = validateQuoteContactField("service", e.target.value);
+                          validateContactFieldOnBlur("service", e.target.value);
+                          e.target.style.borderColor = error ? "#f87171" : "rgba(255,255,255,0.12)";
+                        }}
                       >
                         <option value="" style={{ backgroundColor: "#1a1a1a" }}>Select a service...</option>
                         <option value="land-management" style={{ backgroundColor: "#1a1a1a" }}>Land Management</option>
@@ -1244,6 +1313,7 @@ export default function QuotePage() {
                         <option value="trail-cutting" style={{ backgroundColor: "#1a1a1a" }}>Trail Cutting</option>
                         <option value="multiple" style={{ backgroundColor: "#1a1a1a" }}>Multiple Services</option>
                       </select>
+                      {contactErrors.service && <InlineFieldError id="quote-service-error" message={contactErrors.service} />}
                     </div>
                     <div>
                       <label style={labelStyle}>County</label>
