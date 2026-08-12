@@ -2857,3 +2857,6 @@
 ## Lead Form Validation & Gallery Loading — Aug 2026
 - [x] Add inline client-side validation for complete public lead contact information
 - [x] Add visual image-loading states to the public Our Work gallery
+
+## Lead Capture Success Experience — Aug 2026
+- [x] Add a clearer confirmation message and smooth transition after public lead-form submission

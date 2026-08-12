@@ -96,6 +96,8 @@ export default function QuotePage() {
     "/quote"
   );
   const [submitted, setSubmitted] = useState(false);
+  const [successVisible, setSuccessVisible] = useState(false);
+  const successPanelRef = useRef<HTMLDivElement>(null);
   const [selectedAddOns, setSelectedAddOns] = useState<string[]>([]);
   const [ballparkRange, setBallparkRange] = useState("");
   const [ballparkNote, setBallparkNote] = useState("");
@@ -473,6 +475,7 @@ export default function QuotePage() {
 
   const submitQuote = trpc.quote.submit.useMutation({
     onSuccess: (data) => {
+      setSuccessVisible(false);
       setSubmitted(true);
       setSubmitError(null);
       setBallparkRange((data as any)?.ballparkRange ?? "");
@@ -484,6 +487,19 @@ export default function QuotePage() {
       );
     },
   });
+
+  useEffect(() => {
+    if (!submitted) return;
+    const animationFrame = window.requestAnimationFrame(() => setSuccessVisible(true));
+    const focusTimer = window.setTimeout(() => {
+      successPanelRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+      successPanelRef.current?.focus({ preventScroll: true });
+    }, 260);
+    return () => {
+      window.cancelAnimationFrame(animationFrame);
+      window.clearTimeout(focusTimer);
+    };
+  }, [submitted]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -926,12 +942,18 @@ export default function QuotePage() {
 
               {submitted ? (
                 <div
+                  ref={successPanelRef}
+                  tabIndex={-1}
+                  role="status"
+                  aria-live="polite"
                   className="flex flex-col items-center justify-center text-center p-12"
                   style={{
                     backgroundColor: "rgba(224,123,42,0.06)",
                     border: "1px solid rgba(224,123,42,0.3)",
                     minHeight: "480px",
-                    animation: "fadeSlideUp 0.5s ease both",
+                    opacity: successVisible ? 1 : 0,
+                    transform: successVisible ? "translateY(0) scale(1)" : "translateY(14px) scale(0.985)",
+                    transition: "opacity 360ms ease, transform 420ms cubic-bezier(0.22, 1, 0.36, 1)",
                   }}
                 >
                   {/* Animated success icon with pulse ring */}
@@ -958,7 +980,7 @@ export default function QuotePage() {
                       marginBottom: "1rem",
                     }}
                   >
-                    Got It, {form.name.split(" ")[0]}
+                    Your Quote Request Is In, {form.name.split(" ")[0]}.
                   </h2>
                   <p
                     style={{
@@ -971,7 +993,7 @@ export default function QuotePage() {
                       marginBottom: "0.75rem",
                     }}
                   >
-                    I'll reach out within one business day — usually the same day. We'll talk briefly about the property, and if it makes sense, I'll schedule a free on-site visit.
+                    We received your project details. I’ll reach out within one business day — usually the same day — to talk through the property and schedule a free on-site visit if it is a good fit.
                   </p>
                   <p
                     style={{
@@ -984,8 +1006,24 @@ export default function QuotePage() {
                       marginBottom: "1.5rem",
                     }}
                   >
-                    After the site visit, you'll have a written proposal within one to two days. No pressure, no obligation.
+                    You will receive a written proposal within one to two days of the site visit. No pressure and no obligation.
                   </p>
+
+                  <div
+                    className="grid grid-cols-1 sm:grid-cols-3 gap-2"
+                    style={{ width: "100%", maxWidth: "560px", marginBottom: "1.75rem" }}
+                  >
+                    {[
+                      ["1", "Request received"],
+                      ["2", "Quick follow-up"],
+                      ["3", "Written proposal"],
+                    ].map(([step, label]) => (
+                      <div key={step} className="flex items-center justify-center gap-2" style={{ padding: "0.75rem", border: "1px solid rgba(255,255,255,0.09)", backgroundColor: "rgba(255,255,255,0.025)" }}>
+                        <span style={{ color: "#E07B2A", fontFamily: "'Oswald', sans-serif", fontWeight: 700 }}>{step}</span>
+                        <span style={{ color: "rgba(240,237,230,0.72)", fontFamily: "'Lato', sans-serif", fontSize: "0.75rem" }}>{label}</span>
+                      </div>
+                    ))}
+                  </div>
 
                   {/* Submitted details summary */}
                   {(() => {
