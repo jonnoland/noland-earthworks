@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { validateQuoteContact, validateQuoteContactField } from "../shared/quoteContactValidation";
+import { formatQuotePhone, validateQuoteContact, validateQuoteContactField } from "../shared/quoteContactValidation";
 
 describe("quote contact validation", () => {
   it("requires usable name, phone, email, and service values", () => {
@@ -19,5 +19,12 @@ describe("quote contact validation", () => {
       service: "forestry-mulching",
     })).toEqual({});
     expect(validateQuoteContactField("email", "jordan@example.com")).toBeUndefined();
+  });
+
+  it("formats phone numbers consistently while a customer types", () => {
+    expect(formatQuotePhone("615")).toBe("615");
+    expect(formatQuotePhone("615555")).toBe("(615) 555");
+    expect(formatQuotePhone("6155550123")).toBe("(615) 555-0123");
+    expect(formatQuotePhone("615-555-0123 ext 9")).toBe("(615) 555-0123");
   });
 });

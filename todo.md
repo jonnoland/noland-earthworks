@@ -2860,3 +2860,8 @@
 
 ## Lead Capture Success Experience — Aug 2026
 - [x] Add a clearer confirmation message and smooth transition after public lead-form submission
+
+## Lead Capture Navigation & Gallery Interaction — Aug 2026
+- [x] Add homepage and services navigation actions to the quote success panel
+- [x] Format public quote phone numbers in real time for consistent entry
+- [x] Add subtle interactive hover motion to public Our Work gallery images

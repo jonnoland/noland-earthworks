@@ -46,13 +46,20 @@ function PhotoCard({ photo }: { photo: {
   const badge = PHOTO_TYPE_BADGE[photo.photoType] ?? PHOTO_TYPE_BADGE.general;
   const [imageLoaded, setImageLoaded] = useState(false);
   const [imageFailed, setImageFailed] = useState(false);
+  const [hovered, setHovered] = useState(false);
 
   return (
     <div
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
       style={{
         backgroundColor: "rgba(255,255,255,0.03)",
         border: "1px solid rgba(255,255,255,0.07)",
         overflow: "hidden",
+        transform: hovered ? "translateY(-3px)" : "translateY(0)",
+        boxShadow: hovered ? "0 14px 28px rgba(0,0,0,0.28)" : "0 0 0 rgba(0,0,0,0)",
+        transition: "transform 220ms ease, box-shadow 220ms ease, border-color 220ms ease",
+        borderColor: hovered ? "rgba(224,123,42,0.26)" : "rgba(255,255,255,0.07)",
       }}
     >
       {/* Image */}
@@ -72,7 +79,7 @@ function PhotoCard({ photo }: { photo: {
         <img
           src={photo.url}
           alt={photo.title ? `${photo.title} — Noland Earthworks, Tennessee` : (SERVICE_LABELS[photo.serviceType] ? `${SERVICE_LABELS[photo.serviceType]} job — Noland Earthworks, Middle Tennessee` : "Forestry mulching job photo — Noland Earthworks, Tennessee")}
-          style={{ width: "100%", height: "100%", objectFit: "cover", opacity: imageLoaded ? 1 : 0, transition: "opacity 280ms ease" }}
+          style={{ width: "100%", height: "100%", objectFit: "cover", opacity: imageLoaded ? 1 : 0, transform: imageLoaded && hovered ? "scale(1.045)" : "scale(1)", transition: "opacity 280ms ease, transform 700ms cubic-bezier(0.22, 1, 0.36, 1)" }}
           loading="lazy"
           onLoad={() => setImageLoaded(true)}
           onError={() => setImageFailed(true)}

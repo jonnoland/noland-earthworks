@@ -10,7 +10,7 @@ import MobileCTABar from "@/components/MobileCTABar";
 import { trpc } from "@/lib/trpc";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { MapView } from "@/components/Map";
-import { validateQuoteContact, validateQuoteContactField, type QuoteContactErrors, type QuoteContactField } from "@shared/quoteContactValidation";
+import { formatQuotePhone, validateQuoteContact, validateQuoteContactField, type QuoteContactErrors, type QuoteContactField } from "@shared/quoteContactValidation";
 
 const inputStyle: React.CSSProperties = {
   width: "100%",
@@ -310,7 +310,8 @@ export default function QuotePage() {
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
   ) => {
-    const { name, value } = e.target;
+    const { name, value: rawValue } = e.target;
+    const value = name === "phone" ? formatQuotePhone(rawValue) : rawValue;
     setForm({ ...form, [name]: value });
     if (["name", "phone", "email", "service"].includes(name) && contactErrors[name as QuoteContactField]) {
       const error = validateQuoteContactField(name as QuoteContactField, value);
@@ -1253,13 +1254,35 @@ export default function QuotePage() {
                     </a>
                   </div>
 
-                  <a
-                    href="/"
-                    className="btn-amber"
-                    style={{ textDecoration: "none" }}
-                  >
-                    Back to Home
-                  </a>
+                  <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+                    <a
+                      href="/"
+                      className="btn-amber"
+                      style={{ textDecoration: "none" }}
+                    >
+                      Back to Home
+                    </a>
+                    <a
+                      href="/services"
+                      style={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        minHeight: "48px",
+                        padding: "0.75rem 1.35rem",
+                        border: "1px solid rgba(240,237,230,0.4)",
+                        color: "#F0EDE6",
+                        fontFamily: "'Oswald', sans-serif",
+                        fontWeight: 600,
+                        fontSize: "0.9rem",
+                        letterSpacing: "0.06em",
+                        textTransform: "uppercase",
+                        textDecoration: "none",
+                      }}
+                    >
+                      Explore Services
+                    </a>
+                  </div>
                 </div>
               ) : (
                 <form onSubmit={handleSubmit} className="flex flex-col gap-6">

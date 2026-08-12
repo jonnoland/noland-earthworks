@@ -3,6 +3,13 @@ export type QuoteContactErrors = Partial<Record<QuoteContactField, string>>;
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
+export function formatQuotePhone(value: string): string {
+  const digits = value.replace(/\D/g, "").slice(0, 10);
+  if (digits.length <= 3) return digits;
+  if (digits.length <= 6) return `(${digits.slice(0, 3)}) ${digits.slice(3)}`;
+  return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`;
+}
+
 export function validateQuoteContactField(field: QuoteContactField, value: string): string | undefined {
   const trimmed = value.trim();
 
