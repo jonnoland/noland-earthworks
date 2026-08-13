@@ -21,7 +21,7 @@ The public site is crawlable and continues to generate non-branded discovery imp
 | Priority page | Performance | First Contentful Paint | Largest Contentful Paint | Reading |
 | --- | ---: | ---: | ---: | --- |
 | Homepage | 56 | 5.0 s | 9.9 s | The recent route, map, hero, and font work reduced unused JavaScript in earlier runs, but this remains a variable lab result. |
-| Forestry mulching service | 35 | 3.5 s | 12.7 s | Highest-priority performance page because it is both commercial and visible in Google generative AI features. |
+| Forestry mulching service | 35 | 3.5 s | 12.7 s | Highest-priority performance page because it is both commercial and visible in Google generative AI features. Follow-up optimization is recorded below. |
 | Quote page | 54 | 3.8 s | 10.2 s | Functional, but still too slow for a key conversion path. |
 
 ## Google Search Console Review
@@ -29,6 +29,8 @@ The public site is crawlable and continues to generate non-branded discovery imp
 The latest standard Search Console report recorded 13 clicks and 1,170 impressions. The visible query set includes local and non-branded demand such as `forestry mulching near me`, `land clearing`, and `vegetation management land services`. The current indexed-page count is 34. Exclusions consist of 69 discovered-but-not-indexed URLs, 7 crawled-but-not-indexed URLs, 5 canonical alternates, and 3 soft 404s.
 
 Because the Page indexing report is dated August 7, it predates the August 13 releases. The right conclusion is **no observed regression in the available data**, not a guarantee that no regression occurred. Check the report again after its next refresh and compare the indexed-page count, soft 404 count, and the daily impressions line against this baseline. [1] [2]
+
+**Performance follow-up:** The forestry-mulching page then received a responsive high-priority hero image. A subsequent mobile PageSpeed run measured 61 performance, 4.7 seconds FCP, and 12.3 seconds LCP. The mobile hero payload dropped from approximately 500 KB to 130 KB. Lab results vary, but the score improvement supports retaining this low-risk change.
 
 ## AI Search Visibility
 
@@ -38,7 +40,7 @@ The service-level Perplexity checks could not run in the available session; ther
 
 ## Final Prioritization
 
-1. **Problem:** The forestry-mulching service page measured 35/100 mobile performance with a 12.7-second LCP. **Fix:** Audit that page’s above-the-fold media and client code separately before making changes; it is the clearest remaining technical priority.
+1. **Problem:** The forestry-mulching service page’s LCP remains 12.3 seconds after its score improved from 35 to 61 in a follow-up lab run. **Fix:** Retain the responsive hero optimization and evaluate any next LCP change against the conversion-path tradeoff before publishing it.
 2. **Problem:** Search Console’s current index report predates the latest deployment, so a post-change indexing conclusion is not yet available. **Fix:** Recheck indexed, soft-404, and discovered-not-indexed trends after the next Search Console refresh.
 3. **Problem:** Google generative impressions are concentrated on educational cost/timing pages, while direct Perplexity evidence is unavailable. **Fix:** Continue building factual Tennessee-specific answers that link directly to service and quote pages; repeat Perplexity checks from an authenticated account before judging its visibility.
 

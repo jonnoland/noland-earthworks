@@ -2961,7 +2961,7 @@
 - [x] Defer the noncritical Google Fonts stylesheet while retaining the existing typography fallback
 - [ ] Analyze and reduce the remaining mobile LCP bottleneck using the live PageSpeed breakdown
 - [x] Retain the current homepage experience rather than defer additional below-the-fold content after the measured tradeoff review
-- [ ] Optimize the forestry-mulching service page’s critical loading path and remeasure its mobile LCP
+- [x] Optimize the forestry-mulching service page’s critical loading path and remeasure its mobile LCP
 
 ## Live Search & AI Visibility Verification — Aug 2026
 - [x] Run live mobile performance and technical SEO checks for priority landing pages

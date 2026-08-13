@@ -42,6 +42,10 @@ The current query table includes non-branded forestry-mulching and land-manageme
 
 These are lab measurements, which vary between runs. They confirm that the recently improved homepage is not the only remaining page-experience constraint: the forestry-mulching service page is now the priority LCP target.
 
+### Forestry-Mulching Follow-Up Measurement
+
+After publishing the responsive high-priority forestry hero, a follow-up mobile run measured 61/100 performance, 4.7 seconds FCP, and 12.3 seconds LCP. The score rose from 35 in the original three-page audit run. LCP improved modestly from 12.7 seconds; it remains the next page-specific constraint, while the hero payload dropped from roughly 500 KB to 130 KB on mobile.
+
 ## Google Generative AI Features Evidence
 
 Search Console’s Generative AI features beta report recorded 160 impressions in the available August 3–11 window. The leading pages were the Tennessee land-management cost article (91 impressions), the best-time-to-clear-land article (15), the homepage (14), and the forestry-mulching service page (13). County pages also appeared in the report. This is direct evidence that the site is being surfaced in at least one Google generative-search measurement, although the report currently provides impressions—not attributed clicks or revenue.
