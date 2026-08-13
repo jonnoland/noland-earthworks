@@ -2872,3 +2872,6 @@
 
 ## Quarter-Acre Quote Slider — Aug 2026
 - [x] Replace the public quote form acreage selector with a 0.25–40 acre slider in 0.25-acre increments
+
+## Parcel-Adjusted Acreage Behavior — Aug 2026
+- [x] Preserve customer-selected approximate acreage and copy it into Adjusted Acreage after parcel lookup

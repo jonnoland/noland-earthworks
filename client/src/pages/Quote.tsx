@@ -189,10 +189,6 @@ export default function QuotePage() {
       ];
       if (knownCounties.includes(normalized)) updates.county = normalized;
     }
-    // Auto-fill acreage bucket if not already set
-    if (p.deedAcres && p.deedAcres > 0 && !form.acreage) {
-      updates.acreage = normalizeQuoteAcreage(p.deedAcres);
-    }
     if (Object.keys(updates).length > 0) {
       setForm(prev => ({ ...prev, ...updates }));
       setParcelAutoFilled(true);
@@ -299,6 +295,17 @@ export default function QuotePage() {
 
   const [form, setForm] = useState(initialForm);
   const [contactErrors, setContactErrors] = useState<QuoteContactErrors>({});
+
+  // Once an address resolves to a parcel, carry the customer's selected work area into Adjusted Acreage.
+  // The parcel size remains informational and never replaces the requested scope.
+  useEffect(() => {
+    if (!parcelQuery.data?.found) return;
+    const selectedWorkArea = Number(form.acreage);
+    if (Number.isFinite(selectedWorkArea) && selectedWorkArea > 0) {
+      setAdjustedAcres(normalizeQuoteAcreage(selectedWorkArea));
+      setAdjustedAcresError("");
+    }
+  }, [parcelQuery.data, form.acreage]);
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
@@ -512,14 +519,14 @@ export default function QuotePage() {
       return;
     }
     // Capture the preliminary estimate before submitting so we can show it on the success screen
-    const effectiveAcresForSubmit = adjustedAcres ? parseFloat(adjustedAcres) : (parcelInfo?.deedAcres ?? 0);
+    const effectiveAcresForSubmit = adjustedAcres ? parseFloat(adjustedAcres) : (parseFloat(form.acreage) || 0);
     const trailLfForSubmit = form.service === "trail-cutting" && form.trailLinearFeet ? parseFloat(form.trailLinearFeet) : undefined;
     const preSubmitEstimate = (effectiveAcresForSubmit > 0 || trailLfForSubmit) && form.service ? computeEstimate(effectiveAcresForSubmit, form.service, trailLfForSubmit) : null;
     if (preSubmitEstimate) {
       setSubmittedEstimate({
         range: preSubmitEstimate.range,
         note: preSubmitEstimate.note,
-        adjustedAcres: adjustedAcres ? parseFloat(adjustedAcres) : undefined,
+        adjustedAcres: adjustedAcres ? parseFloat(adjustedAcres) : (parseFloat(form.acreage) || undefined),
       });
     }
     submitQuote.mutate({
@@ -553,7 +560,7 @@ export default function QuotePage() {
       parcelOwner: parcelInfo?.owner ?? undefined,
       parcelId: parcelInfo?.parcelId ?? undefined,
       deedAcres: parcelInfo?.deedAcres ?? undefined,
-      adjustedAcres: adjustedAcres ? parseFloat(adjustedAcres) : undefined,
+      adjustedAcres: adjustedAcres ? parseFloat(adjustedAcres) : (parseFloat(form.acreage) || undefined),
       clientType: form.clientType as "residential" | "commercial" | "government",
       rfpDocumentUrls: rfpDocs.filter(d => !d.uploading && !d.error && d.url.startsWith("http")).map(d => d.url),
       // Site visit helpers
@@ -561,7 +568,7 @@ export default function QuotePage() {
       propertyPinLat: pinLat ?? undefined,
       propertyPinLng: pinLng ?? undefined,
       estimatedRange: (() => {
-        const effectiveAcres = adjustedAcres ? parseFloat(adjustedAcres) : (parcelInfo?.deedAcres ?? 0);
+        const effectiveAcres = adjustedAcres ? parseFloat(adjustedAcres) : (parseFloat(form.acreage) || 0);
         const trailLf = form.service === "trail-cutting" && form.trailLinearFeet ? parseFloat(form.trailLinearFeet) : undefined;
         const est = (effectiveAcres > 0 || trailLf) && form.service ? computeEstimate(effectiveAcres, form.service, trailLf) : null;
         return est?.range ?? "";
@@ -2203,24 +2210,24 @@ export default function QuotePage() {
                       </div>
                     )}
 
-                    {/* Adjusted acreage input — shown when parcel found with deed acreage */}
+                    {/* Adjusted acreage input — mirrors the customer-selected working area after parcel lookup */}
                     {parcelInfo && parcelInfo.found && parcelInfo.deedAcres && parcelInfo.deedAcres > 0 && (
                       <div style={{ marginTop: "0.75rem" }}>
                         <label style={{ ...labelStyle, fontSize: "0.75rem", opacity: 0.7 }}>
                           Adjusted Acreage
-                          <span style={{ color: "rgba(240,237,230,0.4)", fontSize: "0.68rem", letterSpacing: "0.08em", marginLeft: "0.4rem" }}>(if job covers only part of the parcel)</span>
+                          <span style={{ color: "rgba(240,237,230,0.4)", fontSize: "0.68rem", letterSpacing: "0.08em", marginLeft: "0.4rem" }}>(customer-selected work area)</span>
                         </label>
                         <input
                           type="number"
-                          min="0.1"
-                          step="0.1"
-                          placeholder={`Deed: ${parcelInfo.deedAcres?.toFixed(2)} ac — enter a smaller number if applicable`}
+                          min="0.25"
+                          step="0.25"
+                          placeholder={`Selected work area: ${formatQuoteAcreage(form.acreage)}`}
                           value={adjustedAcres}
                           onChange={(e) => {
                             const val = e.target.value;
                             setAdjustedAcres(val);
-                            if (val && parcelInfo.deedAcres && parseFloat(val) > parcelInfo.deedAcres) {
-                              setAdjustedAcresError(`Cannot exceed deed acreage of ${parcelInfo.deedAcres.toFixed(2)} ac`);
+                            if (val && (!Number.isFinite(parseFloat(val)) || parseFloat(val) <= 0)) {
+                              setAdjustedAcresError("Enter an acreage greater than zero.");
                             } else {
                               setAdjustedAcresError("");
                             }
@@ -2235,12 +2242,15 @@ export default function QuotePage() {
                             {adjustedAcresError}
                           </div>
                         )}
+                        <p style={{ margin: "0.38rem 0 0", color: "rgba(240,237,230,0.42)", fontFamily: "'Lato', sans-serif", fontSize: "0.72rem", lineHeight: 1.45 }}>
+                          Full parcel: {parcelInfo.deedAcres.toFixed(2)} acres. Your selected work area is used for the preliminary estimate.
+                        </p>
                       </div>
                     )}
 
                     {/* Preliminary price estimate — shown when parcel found and service selected */}
                     {parcelInfo && parcelInfo.found && form.service && (() => {
-                      const effectiveAcres = adjustedAcres ? parseFloat(adjustedAcres) : (parcelInfo.deedAcres ?? 0);
+                      const effectiveAcres = adjustedAcres ? parseFloat(adjustedAcres) : (parseFloat(form.acreage) || 0);
                       const trailLfVal = form.service === "trail-cutting" && form.trailLinearFeet ? parseFloat(form.trailLinearFeet) : undefined;
                       if (effectiveAcres <= 0 && !trailLfVal) return null;
                       const est = computeEstimate(effectiveAcres, form.service, trailLfVal);
@@ -2255,7 +2265,7 @@ export default function QuotePage() {
                           fontFamily: "'Lato', sans-serif",
                         }}>
                           <div style={{ fontFamily: "'Oswald', sans-serif", fontSize: "0.65rem", letterSpacing: "0.18em", textTransform: "uppercase", color: "rgba(224,123,42,0.7)", marginBottom: "0.35rem" }}>
-                            Preliminary Range {adjustedAcres ? `(${parseFloat(adjustedAcres).toFixed(1)} ac adjusted)` : ""}
+                            Preliminary Range ({formatQuoteAcreage(String(effectiveAcres))} adjusted)
                           </div>
                           <div style={{ fontFamily: "'Oswald', sans-serif", fontWeight: 600, fontSize: "1.4rem", color: "#E07B2A", marginBottom: "0.3rem" }}>
                             {est.range}

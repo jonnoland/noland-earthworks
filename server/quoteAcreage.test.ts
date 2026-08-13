@@ -4,6 +4,7 @@ import { formatQuoteAcreage, normalizeQuoteAcreage } from "../shared/quoteAcreag
 describe("quote acreage slider helpers", () => {
   it("clamps and rounds values to quarter-acre increments", () => {
     expect(normalizeQuoteAcreage(0.1)).toBe("0.25");
+    expect(normalizeQuoteAcreage(2.75)).toBe("2.75");
     expect(normalizeQuoteAcreage(3.13)).toBe("3.25");
     expect(normalizeQuoteAcreage(44)).toBe("40");
   });
