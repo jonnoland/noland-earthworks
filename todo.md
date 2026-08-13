@@ -2954,8 +2954,8 @@
 - [x] Review the Performance Category score inputs and distinguish measured issues from unavailable third-party data
 - [x] Implement validated site-performance or audit-score handling improvements
 - [x] Verify the updated Performance Category score with production-safe checks
-- [ ] Enable the Google PageSpeed Insights API for the existing Google project and rerun a measured mobile audit
+- [x] Enable the Google PageSpeed Insights API for the existing Google project and rerun a measured mobile audit
 - [x] Split non-public application routes so the public homepage does not load unused operations code
 - [x] Improve critical rendering of visible homepage assets based on PageSpeed findings
-- [ ] Re-measure mobile PageSpeed after deployed performance improvements
+- [x] Re-measure mobile PageSpeed after deployed performance improvements
 - [x] Defer the noncritical Google Fonts stylesheet while retaining the existing typography fallback
