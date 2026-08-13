@@ -160,6 +160,12 @@ export async function runSeoAudit(targetUrl: string, googleApiKey?: string): Pro
       status: "fail",
       detail: `Could not fetch ${targetUrl}: ${err instanceof Error ? err.message : String(err)}`,
       recommendation: "Ensure the website is live and accessible.",
+      fixExample: `Reachability checklist:
+
+1. Open the page in a private browser window and confirm it returns a normal page, not a login prompt or error.
+2. Confirm the page does not include a robots noindex directive and is not blocked in robots.txt.
+3. In Google Search Console, use URL Inspection → Test Live URL to check how Google can fetch the page.
+4. If the page is a server error, restore the last working deployment before requesting re-indexing.`,
       priority: "high",
     });
     const score = 0;
@@ -517,7 +523,12 @@ Squarespace: Settings → Advanced → Code Injection → Header → paste the t
 5. Full report: https://pagespeed.web.dev/?url=https://nolandearthworks.com`, priority: "high" });
     }
   } else {
-    checks.push({ id: "pagespeed_unavailable", category: "performance", label: "PageSpeed mobile score", status: "warn", value: "Unavailable", detail: "Could not retrieve PageSpeed score — API may be rate-limited.", priority: "high" });
+    checks.push({ id: "pagespeed_unavailable", category: "performance", label: "PageSpeed mobile score", status: "warn", value: "Unavailable", detail: "Could not retrieve PageSpeed score — API may be rate-limited.", recommendation: "Retry the audit later or run the URL directly through Google PageSpeed Insights before changing site code.", fixExample: `Validation steps:
+
+1. Open https://pagespeed.web.dev/ and test the exact audited URL on mobile.
+2. If it loads there, retry this audit after a few minutes; the API result was temporarily unavailable.
+3. If it does not load there, confirm the page is publicly reachable and does not require login, a CAPTCHA, or an IP allowlist.
+4. Do not make performance changes until a real PageSpeed report identifies the slow resource.`, priority: "high" });
   }
 
   // Check for render-blocking resources

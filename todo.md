@@ -1686,8 +1686,8 @@
 - [x] Add Squarespace location context to every Apply Fix snippet (where exactly to paste it in Squarespace)
 
 ## SEO Detailed Checks — Fix Examples — Jun 2026
-- [ ] Add fixExample field to SeoCheck type and populate it for every failed/warned check in seoAudit.ts
-- [ ] Upgrade CheckRow component to show fix example (code block or plain text) in expanded state, with copy button
+- [x] Add fixExample field to SeoCheck type and populate it for every failed/warned check in seoAudit.ts
+- [x] Upgrade CheckRow component to show fix example (code block or plain text) in expanded state, with copy button
 
 ## SEO Detailed Checks — Expandable Fix Examples
 
