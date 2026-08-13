@@ -2902,3 +2902,8 @@
 - [x] Add a terrain-difficulty dropdown to the public quote calculator
 - [x] Apply terrain difficulty to preliminary ranges and visual breakdown calculations
 - [x] Add a clear-all action that resets the quote calculator inputs
+
+## Dynamic Recommendations & Address Autocomplete — Aug 2026
+- [x] Add terrain- and acreage-based recommended service suggestions to the public quote form
+- [x] Allow recommended services to be added directly to the calculator selection
+- [x] Improve property address autocomplete selection and completion of street, city, state, ZIP, and county fields

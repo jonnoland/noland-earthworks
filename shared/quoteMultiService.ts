@@ -27,6 +27,42 @@ export function quoteTerrainLabel(terrain: QuoteTerrainDifficulty | string | und
   return QUOTE_TERRAIN_OPTIONS.find((option) => option.value === terrain)?.label ?? "Level / Easy Access";
 }
 
+export type QuoteServiceRecommendation = {
+  service: QuoteServiceValue;
+  reason: string;
+};
+
+export function getRecommendedQuoteServices(
+  selectedServices: QuoteServiceValue[],
+  acreage: number,
+  terrain: QuoteTerrainDifficulty | string | undefined,
+): QuoteServiceRecommendation[] {
+  const recommendations: QuoteServiceRecommendation[] = [];
+  const add = (service: QuoteServiceValue, reason: string) => {
+    if (!selectedServices.includes(service) && !recommendations.some((item) => item.service === service)) {
+      recommendations.push({ service, reason });
+    }
+  };
+
+  if (terrain === "rolling" || terrain === "steep") {
+    add("forestry-mulching", "Tracked forestry mulching is a strong fit for uneven ground, slopes, and soft conditions.");
+  }
+  if (terrain === "steep") {
+    add("trail-cutting", "A defined trail can improve access and give the machine a safer route across difficult ground.");
+  }
+  if (acreage >= 5) {
+    add("vegetation-management", "Larger properties often benefit from a follow-up vegetation plan to keep cleared areas usable.");
+  }
+  if (acreage >= 10) {
+    add("right-of-way-clearing", "Larger acreage commonly includes access lanes, fence lines, or corridors that can be cleared in the same visit.");
+  }
+  if (acreage >= 1 && acreage <= 5 && terrain === "level") {
+    add("property-maintenance", "After brush and saplings are addressed, brush hogging may help maintain open ground on a manageable acreage.");
+  }
+
+  return recommendations.slice(0, 3);
+}
+
 export const FEET_PER_MILE = 5280;
 
 export function lengthToFeet(value: number, unit: QuoteLengthUnit): number | null {

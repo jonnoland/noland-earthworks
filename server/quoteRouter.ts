@@ -12,6 +12,7 @@ import { qualifyLead } from "./leadQualifier";
 import { getServiceDisplayName } from "./serviceTaxonomy";
 import { opsLeads } from "../drizzle/schema";
 import { eq } from "drizzle-orm";
+import { parseGooglePlaceAddress } from "./googlePlaceAddress";
 
 // Strip markdown code fences from LLM JSON responses
 function stripCodeFence(raw: string): string {
@@ -1088,11 +1089,49 @@ export const quoteRouter = router({
       const res = await fetch(url);
       if (!res.ok) return { suggestions: [] };
       const data = await res.json() as { predictions?: Array<{ description: string; place_id: string }> };
+      const predictions = data.predictions ?? [];
+      if (predictions.length === 0) {
+        const geocodeUrl = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(input.input)}&components=country:US&key=${apiKey}`;
+        const geocodeResponse = await fetch(geocodeUrl);
+        if (geocodeResponse.ok) {
+          const geocodeData = await geocodeResponse.json() as { results?: Array<{ formatted_address: string; place_id: string }> };
+          const exactMatch = geocodeData.results?.[0];
+          if (exactMatch) {
+            return { suggestions: [{ description: exactMatch.formatted_address, placeId: exactMatch.place_id }] };
+          }
+        }
+      }
       return {
-        suggestions: (data.predictions ?? []).slice(0, 5).map((p) => ({
+        suggestions: predictions.slice(0, 5).map((p) => ({
           description: p.description,
           placeId: p.place_id,
         })),
       };
+    }),
+
+  placeDetails: publicProcedure
+    .input(z.object({ placeId: z.string().min(1).max(200) }))
+    .query(async ({ input }) => {
+      const apiKey = ENV.googlePlacesApiKey;
+      const emptyAddress = { formattedAddress: "", street: "", city: "", state: "", zip: "", county: "" };
+      if (!apiKey) return emptyAddress;
+      try {
+        const url = `https://maps.googleapis.com/maps/api/place/details/json?place_id=${encodeURIComponent(input.placeId)}&fields=formatted_address,address_components&key=${apiKey}`;
+        const res = await fetch(url);
+        if (!res.ok) return emptyAddress;
+        const data = await res.json() as {
+          result?: {
+            formatted_address?: string;
+            address_components?: Array<{ long_name: string; short_name: string; types: string[] }>;
+          };
+        };
+        return {
+          formattedAddress: data.result?.formatted_address ?? "",
+          ...parseGooglePlaceAddress(data.result?.address_components),
+        };
+      } catch (error) {
+        console.warn("[QuoteRouter] Place details lookup failed", error);
+        return emptyAddress;
+      }
     }),
 });

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { combinePreliminaryRanges, FEET_PER_MILE, feetToLength, lengthToFeet, quoteTerrainLabel, quoteTerrainMultiplier, updateQuoteServiceSelection } from "@shared/quoteMultiService";
+import { combinePreliminaryRanges, FEET_PER_MILE, feetToLength, getRecommendedQuoteServices, lengthToFeet, quoteTerrainLabel, quoteTerrainMultiplier, updateQuoteServiceSelection } from "@shared/quoteMultiService";
 
 describe("quote multi-service selection", () => {
   it("allows acreage-based services to be selected together", () => {
@@ -36,5 +36,11 @@ describe("quote multi-service selection", () => {
     expect(quoteTerrainMultiplier("rolling")).toBe(1.1);
     expect(quoteTerrainMultiplier("steep")).toBe(1.25);
     expect(quoteTerrainLabel("steep")).toBe("Steep / Wet / Rocky");
+  });
+
+  it("recommends complementary services from project size and terrain without repeating selected services", () => {
+    const recommendations = getRecommendedQuoteServices(["forestry-mulching"], 12, "steep");
+    expect(recommendations.map((item) => item.service)).toEqual(["trail-cutting", "vegetation-management", "right-of-way-clearing"]);
+    expect(recommendations.some((item) => item.service === "forestry-mulching")).toBe(false);
   });
 });

@@ -12,7 +12,7 @@ import { usePageTitle } from "@/hooks/usePageTitle";
 import { MapView } from "@/components/Map";
 import { formatQuotePhone, validateQuoteContact, validateQuoteContactField, type QuoteContactErrors, type QuoteContactField } from "@shared/quoteContactValidation";
 import { formatQuoteAcreage, normalizeQuoteAcreage, QUOTE_ACREAGE_MAX, QUOTE_ACREAGE_MIN, QUOTE_ACREAGE_STEP } from "@shared/quoteAcreage";
-import { combinePreliminaryRanges, feetToLength, lengthToFeet, QUOTE_SERVICE_OPTIONS, QUOTE_TERRAIN_OPTIONS, quoteServiceLabel, quoteTerrainLabel, quoteTerrainMultiplier, type QuoteLengthUnit, type QuoteServiceValue, type QuoteTerrainDifficulty, updateQuoteServiceSelection } from "@shared/quoteMultiService";
+import { combinePreliminaryRanges, feetToLength, getRecommendedQuoteServices, lengthToFeet, QUOTE_SERVICE_OPTIONS, QUOTE_TERRAIN_OPTIONS, quoteServiceLabel, quoteTerrainLabel, quoteTerrainMultiplier, type QuoteLengthUnit, type QuoteServiceValue, type QuoteTerrainDifficulty, updateQuoteServiceSelection } from "@shared/quoteMultiService";
 
 const inputStyle: React.CSSProperties = {
   width: "100%",
@@ -158,6 +158,7 @@ export default function QuotePage() {
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [autocompleteTerm, setAutocompleteTerm] = useState("");
   const [debouncedAutocompleteTerm, setDebouncedAutocompleteTerm] = useState("");
+  const [selectedPlaceId, setSelectedPlaceId] = useState("");
   const autocompleteDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [parcelInfo, setParcelInfo] = useState<{
     found: boolean;
@@ -229,6 +230,35 @@ export default function QuotePage() {
     { input: debouncedAutocompleteTerm },
     { enabled: debouncedAutocompleteTerm.length >= 3, staleTime: 30_000, retry: false }
   );
+  const placeDetailsQuery = trpc.quote.placeDetails.useQuery(
+    { placeId: selectedPlaceId },
+    { enabled: selectedPlaceId.length > 0, staleTime: 5 * 60 * 1000, retry: false },
+  );
+
+  useEffect(() => {
+    if (!selectedPlaceId || !placeDetailsQuery.data) return;
+    const details = placeDetailsQuery.data;
+    const normalizedCounty = details.county.toLowerCase();
+    const supportedCounties = new Set([
+      "bedford", "benton", "cannon", "carroll", "cheatham", "chester", "davidson", "decatur", "dickson", "gibson", "giles",
+      "hardin", "henderson", "henry", "hickman", "houston", "humphreys", "lawrence", "lewis", "lincoln", "madison", "marshall",
+      "maury", "montgomery", "moore", "perry", "robertson", "rutherford", "stewart", "sumner", "trousdale", "wayne", "weakley", "williamson", "wilson",
+    ]);
+    const formattedAddress = details.formattedAddress || parcelAddress;
+    setParcelAddress(formattedAddress);
+    setForm((current) => ({
+      ...current,
+      street: details.street || current.street,
+      city: details.city || current.city,
+      state: details.state || current.state || "TN",
+      zip: details.zip || current.zip,
+      county: supportedCounties.has(normalizedCounty) ? normalizedCounty : current.county,
+    }));
+    setParcelAutoFilled(false);
+    setParcelInfo(null);
+    setDebouncedParcelAddress(formattedAddress);
+    setSelectedPlaceId("");
+  }, [placeDetailsQuery.data, selectedPlaceId]);
 
   // Auto-fill county and acreage when parcel data arrives
   useEffect(() => {
@@ -467,6 +497,12 @@ export default function QuotePage() {
   const activeServices = selectedServices.length > 0
     ? selectedServices
     : (QUOTE_SERVICE_OPTIONS.some((option) => option.value === form.service) ? [form.service as QuoteServiceValue] : []);
+  const calculatorAcres = adjustedAcres ? Number(adjustedAcres) : Number(form.acreage);
+  const recommendedServices = getRecommendedQuoteServices(
+    activeServices,
+    Number.isFinite(calculatorAcres) && calculatorAcres > 0 ? calculatorAcres : 0,
+    form.terrainDifficulty,
+  );
 
   const linearMeasurements: LinearMeasurements = {
     trailLinearFeet: Number(form.trailLinearFeet) || undefined,
@@ -1788,6 +1824,28 @@ export default function QuotePage() {
                     </p>
                   </div>
 
+                  {recommendedServices.length > 0 && (
+                    <div style={{ padding: "0.9rem", background: "rgba(224,123,42,0.045)", border: "1px solid rgba(224,123,42,0.2)", borderRadius: "4px" }}>
+                      <div style={{ color: "#E07B2A", fontFamily: "'Oswald', sans-serif", fontSize: "0.68rem", letterSpacing: "0.13em", textTransform: "uppercase" }}>Recommended Services</div>
+                      <p style={{ margin: "0.32rem 0 0.7rem", color: "rgba(240,237,230,0.5)", fontFamily: "'Lato', sans-serif", fontSize: "0.72rem", lineHeight: 1.4 }}>
+                        Based on {formatQuoteAcreage(String(calculatorAcres || 1))} and {quoteTerrainLabel(form.terrainDifficulty).toLowerCase()}.
+                      </p>
+                      <div className="flex flex-col gap-2">
+                        {recommendedServices.map((recommendation) => (
+                          <div key={recommendation.service} className="flex items-center justify-between gap-3" style={{ padding: "0.6rem 0.65rem", background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.09)", borderRadius: "3px" }}>
+                            <div style={{ minWidth: 0 }}>
+                              <div style={{ color: "rgba(240,237,230,0.88)", fontFamily: "'Lato', sans-serif", fontSize: "0.79rem", fontWeight: 700 }}>{quoteServiceLabel(recommendation.service)}</div>
+                              <div style={{ marginTop: "0.12rem", color: "rgba(240,237,230,0.46)", fontFamily: "'Lato', sans-serif", fontSize: "0.68rem", lineHeight: 1.35 }}>{recommendation.reason}</div>
+                            </div>
+                            <button type="button" onClick={() => toggleSelectedService(recommendation.service)} style={{ flexShrink: 0, padding: "0.38rem 0.52rem", background: "rgba(224,123,42,0.12)", border: "1px solid rgba(224,123,42,0.42)", borderRadius: "3px", color: "#E07B2A", cursor: "pointer", fontFamily: "'Oswald', sans-serif", fontSize: "0.63rem", letterSpacing: "0.08em", textTransform: "uppercase" }}>
+                              Add
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
                   <div>
                     <div className="flex items-end justify-between gap-4" style={{ marginBottom: "0.5rem" }}>
                       <label htmlFor="quote-acreage-slider" style={{ ...labelStyle, marginBottom: 0 }}>
@@ -2453,6 +2511,7 @@ export default function QuotePage() {
                           const val = e.target.value;
                           setParcelAddress(val);
                           setAutocompleteTerm(val);
+                          setSelectedPlaceId("");
                           setParcelAutoFilled(false);
                           setParcelInfo(null);
                           setShowSuggestions(true);
@@ -2461,8 +2520,8 @@ export default function QuotePage() {
                         onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
                         style={{ ...inputStyle, paddingRight: "2.5rem" }}
                       />
-                      <div style={{ position: "absolute", right: "0.75rem", top: "50%", transform: "translateY(-50%)", color: parcelQuery.isFetching || autocompleteQuery.isFetching ? "#E07B2A" : "rgba(240,237,230,0.35)", pointerEvents: "none", transition: "color 0.2s" }}>
-                        {parcelQuery.isFetching || autocompleteQuery.isFetching
+                      <div style={{ position: "absolute", right: "0.75rem", top: "50%", transform: "translateY(-50%)", color: parcelQuery.isFetching || autocompleteQuery.isFetching || placeDetailsQuery.isFetching ? "#E07B2A" : "rgba(240,237,230,0.35)", pointerEvents: "none", transition: "color 0.2s" }}>
+                        {parcelQuery.isFetching || autocompleteQuery.isFetching || placeDetailsQuery.isFetching
                           ? <Loader2 size={15} className="animate-spin" />
                           : <Search size={15} />}
                       </div>
@@ -2481,11 +2540,12 @@ export default function QuotePage() {
                                 setParcelAddress(s.description);
                                 setAutocompleteTerm("");
                                 setDebouncedAutocompleteTerm("");
+                                setSelectedPlaceId(s.placeId);
                                 setShowSuggestions(false);
                                 setParcelAutoFilled(false);
                                 setParcelInfo(null);
-                                // Trigger parcel lookup immediately
-                                setTimeout(() => setDebouncedParcelAddress(s.description), 50);
+                                // Trigger parcel lookup while Google completes the editable address fields.
+                                setDebouncedParcelAddress(s.description);
                               }}
                               style={{
                                 display: "block", width: "100%", textAlign: "left",
@@ -2650,7 +2710,7 @@ export default function QuotePage() {
 
                   {/* Property Address */}
                   <div>
-                    <label style={labelStyle}>Property / Service Address <span style={{ color: "rgba(240,237,230,0.4)", fontSize: "0.7rem", letterSpacing: "0.08em" }}>(Optional)</span></label>
+                    <label style={labelStyle}>Property / Service Address <span style={{ color: "rgba(240,237,230,0.4)", fontSize: "0.7rem", letterSpacing: "0.08em" }}>(filled from the address selection above; editable)</span></label>
                     <input
                       name="street" type="text"
                       placeholder="Street address"
