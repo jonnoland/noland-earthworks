@@ -36,3 +36,9 @@ No blanket request-indexing action or canonical change will be made. The report 
 | `/blog/cost-of-land-clearing-tennessee` | July 17 | Expected legacy terminology path; confirm it redirects to the current Tennessee land-management cost article rather than serving thin fallback content. |
 | `/services` | June 14 | High-value hub; verify its rendered response, canonical, meaningful body content, and inclusion in the sitemap. |
 | `/privacy` | June 6 | Legal page; verify a normal 200 response and self-canonical. It does not need to compete as an organic landing page. |
+
+## Production Validation
+
+After the August 13 redirect release propagated, all four remediation paths returned a 301 at the custom domain and sent crawlers to their preferred destinations: the legacy cost article, top-level mulch redistribution, top-level selective clearing, and post-clear seeding path. Canonical handling remains unchanged for valid `/services`, `/privacy`, and `/blog` pages.
+
+Search Console's index report still reflects its August 7 crawl snapshot. The right next check is after its next refresh: confirm that the legacy paths leave the crawled-not-indexed set and that no new soft-404 category growth appears.

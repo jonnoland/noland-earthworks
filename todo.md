@@ -2973,4 +2973,4 @@
 - [x] Classify current Search Console exclusions into expected versus remediation candidates
 - [x] Inspect high-value excluded URLs and sitemap coverage
 - [x] Apply only safe indexability or canonical fixes supported by production evidence
-- [ ] Validate production indexability and record the coverage baseline
+- [x] Validate production indexability and record the coverage baseline
