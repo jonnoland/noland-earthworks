@@ -13,7 +13,7 @@ import { MapView } from "@/components/Map";
 import { formatQuotePhone, validateQuoteContact, validateQuoteContactField, type QuoteContactErrors, type QuoteContactField } from "@shared/quoteContactValidation";
 import { formatQuoteAcreage, normalizeQuoteAcreage, QUOTE_ACREAGE_MAX, QUOTE_ACREAGE_MIN, QUOTE_ACREAGE_STEP } from "@shared/quoteAcreage";
 import { combinePreliminaryRanges, feetToLength, getRecommendedQuoteServices, lengthToFeet, QUOTE_SERVICE_OPTIONS, QUOTE_TERRAIN_OPTIONS, quoteServiceLabel, quoteTerrainLabel, quoteTerrainMultiplier, type QuoteLengthUnit, type QuoteServiceValue, type QuoteTerrainDifficulty, updateQuoteServiceSelection } from "@shared/quoteMultiService";
-import { combineMapDrawingMeasurements, estimateProjectTimeline, metersToLinearFeet, squareMetersToAcres, type CombinedMapMeasurements, type PreliminaryProjectTimeline } from "@shared/quoteMapPlanning";
+import { combineMapDrawingMeasurements, estimateProjectTimeline, getMapDrawingColor, metersToLinearFeet, squareMetersToAcres, type CombinedMapMeasurements, type PreliminaryProjectTimeline } from "@shared/quoteMapPlanning";
 
 const inputStyle: React.CSSProperties = {
   width: "100%",
@@ -62,9 +62,10 @@ type MapDrawingMeasurement = CombinedMapMeasurements & { pathTarget?: QuoteServi
 type ManagedMapDrawing = {
   id: number;
   type: "area" | "path";
+  color: string;
   overlay: google.maps.Polygon | google.maps.Polyline;
 };
-type MapDrawingSummary = { id: number; type: "area" | "path"; value: number };
+type MapDrawingSummary = { id: number; type: "area" | "path"; value: number; color: string };
 
 function SelectedPropertyMap({
   location,
@@ -113,14 +114,15 @@ function SelectedPropertyMap({
         (drawing.overlay as google.maps.Polygon).setOptions({
           editable: active,
           draggable: active,
-          strokeColor: active ? "#F9A04B" : "#E07B2A",
+          strokeColor: drawing.color,
+          fillColor: drawing.color,
           fillOpacity: active ? 0.32 : 0.18,
         });
       } else {
         (drawing.overlay as google.maps.Polyline).setOptions({
           editable: active,
           draggable: active,
-          strokeColor: active ? "#F9A04B" : "#E07B2A",
+          strokeColor: drawing.color,
           strokeWeight: active ? 5 : 4,
         });
       }
@@ -138,7 +140,7 @@ function SelectedPropertyMap({
         const value = drawing.type === "area"
           ? squareMetersToAcres(window.google.maps.geometry.spherical.computeArea((drawing.overlay as google.maps.Polygon).getPath()))
           : metersToLinearFeet(window.google.maps.geometry.spherical.computeLength((drawing.overlay as google.maps.Polyline).getPath()));
-        return value === null ? null : { id: drawing.id, type: drawing.type, value };
+        return value === null ? null : { id: drawing.id, type: drawing.type, value, color: drawing.color };
       })
       .filter((drawing): drawing is MapDrawingSummary => drawing !== null);
     setDrawingSummaries(summaries);
@@ -170,9 +172,11 @@ function SelectedPropertyMap({
         drawingManager.setDrawingMode(null);
         setDrawingMode(null);
         const id = nextDrawingIdRef.current++;
+        const color = getMapDrawingColor(id);
         if (event.type === window.google.maps.drawing.OverlayType.POLYGON) {
           const polygon = event.overlay as google.maps.Polygon;
-          drawingsRef.current.push({ id, type: "area", overlay: polygon });
+          polygon.setOptions({ strokeColor: color, fillColor: color });
+          drawingsRef.current.push({ id, type: "area", color, overlay: polygon });
           polygon.getPath().addListener("set_at", refreshDrawings);
           polygon.getPath().addListener("insert_at", refreshDrawings);
           polygon.getPath().addListener("remove_at", refreshDrawings);
@@ -181,7 +185,8 @@ function SelectedPropertyMap({
         }
         if (event.type === window.google.maps.drawing.OverlayType.POLYLINE) {
           const path = event.overlay as google.maps.Polyline;
-          drawingsRef.current.push({ id, type: "path", overlay: path });
+          path.setOptions({ strokeColor: color });
+          drawingsRef.current.push({ id, type: "path", color, overlay: path });
           path.getPath().addListener("set_at", refreshDrawings);
           path.getPath().addListener("insert_at", refreshDrawings);
           path.getPath().addListener("remove_at", refreshDrawings);
@@ -261,17 +266,18 @@ function SelectedPropertyMap({
         <div style={{ padding: "0.55rem 0.7rem", borderTop: "1px solid rgba(224,123,42,0.18)" }}>
           <div style={{ color: "rgba(240,237,230,0.48)", fontFamily: "'Oswald', sans-serif", fontSize: "0.58rem", letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: "0.4rem" }}>Mapped Areas &amp; Paths</div>
           <div className="flex flex-col gap-1">
-            {drawingSummaries.map((drawing, index) => {
+            {drawingSummaries.map((drawing) => {
               const selected = selectedDrawingId === drawing.id;
               const label = drawing.type === "area" ? `Area ${drawingSummaries.filter((item) => item.type === "area").findIndex((item) => item.id === drawing.id) + 1}` : `Path ${drawingSummaries.filter((item) => item.type === "path").findIndex((item) => item.id === drawing.id) + 1}`;
               return (
-                <div key={drawing.id} className="flex items-center justify-between gap-2" style={{ padding: "0.35rem 0.45rem", background: selected ? "rgba(224,123,42,0.12)" : "rgba(255,255,255,0.025)", border: `1px solid ${selected ? "rgba(224,123,42,0.4)" : "rgba(240,237,230,0.08)"}`, borderRadius: "2px" }}>
+                <div key={drawing.id} className="flex items-center justify-between gap-2" style={{ padding: "0.35rem 0.45rem", background: selected ? `${drawing.color}1E` : "rgba(255,255,255,0.025)", border: `1px solid ${selected ? drawing.color : "rgba(240,237,230,0.08)"}`, borderRadius: "2px" }}>
                   <button type="button" onClick={() => selectDrawing(drawing.id)} aria-pressed={selected} style={{ minWidth: 0, border: "none", padding: 0, background: "transparent", color: "rgba(240,237,230,0.82)", cursor: "pointer", textAlign: "left", fontFamily: "'Lato', sans-serif", fontSize: "0.7rem" }}>
-                    <strong style={{ color: selected ? "#F9A04B" : "rgba(240,237,230,0.9)", fontWeight: 600 }}>{label}</strong>
+                    <span aria-hidden="true" style={{ display: "inline-block", width: "0.58rem", height: "0.58rem", marginRight: "0.38rem", borderRadius: "999px", background: drawing.color, boxShadow: `0 0 0 2px ${drawing.color}33`, verticalAlign: "-0.05rem" }} />
+                    <strong style={{ color: drawing.color, fontWeight: 600 }}>{label}</strong>
                     <span style={{ color: "rgba(240,237,230,0.45)" }}> · {drawing.type === "area" ? `${drawing.value.toFixed(2)} ac` : `${Math.round(drawing.value).toLocaleString()} lf`}</span>
                   </button>
                   <div className="flex items-center gap-1" style={{ flexShrink: 0 }}>
-                    <button type="button" onClick={() => selectDrawing(drawing.id)} style={{ border: "1px solid rgba(224,123,42,0.34)", padding: "0.18rem 0.32rem", background: "transparent", color: "#E07B2A", cursor: "pointer", fontFamily: "'Oswald', sans-serif", fontSize: "0.52rem", letterSpacing: "0.08em", textTransform: "uppercase" }}>Edit</button>
+                    <button type="button" onClick={() => selectDrawing(drawing.id)} style={{ border: `1px solid ${drawing.color}8A`, padding: "0.18rem 0.32rem", background: "transparent", color: drawing.color, cursor: "pointer", fontFamily: "'Oswald', sans-serif", fontSize: "0.52rem", letterSpacing: "0.08em", textTransform: "uppercase" }}>Edit</button>
                     <button type="button" onClick={() => removeDrawing(drawing.id)} style={{ border: "1px solid rgba(252,165,165,0.32)", padding: "0.18rem 0.32rem", background: "transparent", color: "#fca5a5", cursor: "pointer", fontFamily: "'Oswald', sans-serif", fontSize: "0.52rem", letterSpacing: "0.08em", textTransform: "uppercase" }}>Remove</button>
                   </div>
                 </div>

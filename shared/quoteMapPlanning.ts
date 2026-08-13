@@ -1,5 +1,11 @@
 export const SQUARE_METERS_PER_ACRE = 4046.8564224;
 export const FEET_PER_METER = 3.280839895;
+export const MAP_DRAWING_COLORS = ["#38BDF8", "#34D399", "#A78BFA", "#FBBF24", "#FB7185", "#22D3EE", "#F97316", "#84CC16"] as const;
+
+export function getMapDrawingColor(drawingId: number): string {
+  const normalizedId = Number.isFinite(drawingId) && drawingId > 0 ? Math.floor(drawingId) : 1;
+  return MAP_DRAWING_COLORS[(normalizedId - 1) % MAP_DRAWING_COLORS.length];
+}
 
 export function squareMetersToAcres(squareMeters: number): number | null {
   if (!Number.isFinite(squareMeters) || squareMeters <= 0) return null;

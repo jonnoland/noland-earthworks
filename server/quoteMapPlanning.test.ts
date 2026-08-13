@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { combineMapDrawingMeasurements, estimateProjectTimeline, metersToLinearFeet, squareMetersToAcres } from "../shared/quoteMapPlanning";
+import { combineMapDrawingMeasurements, estimateProjectTimeline, getMapDrawingColor, MAP_DRAWING_COLORS, metersToLinearFeet, squareMetersToAcres } from "../shared/quoteMapPlanning";
 
 describe("quote map planning", () => {
   it("converts completed map drawings into usable quote measurements", () => {
@@ -28,6 +28,13 @@ describe("quote map planning", () => {
     ];
     expect(combineMapDrawingMeasurements(drawings.filter((drawing) => drawing.id !== 2 && drawing.id !== 3)))
       .toEqual({ totalAcres: 1.5, totalLinearFeet: 800, areaCount: 1, pathCount: 1 });
+  });
+
+  it("assigns stable repeating colors to individual map drawings", () => {
+    expect(getMapDrawingColor(1)).toBe(MAP_DRAWING_COLORS[0]);
+    expect(getMapDrawingColor(2)).toBe(MAP_DRAWING_COLORS[1]);
+    expect(getMapDrawingColor(MAP_DRAWING_COLORS.length + 1)).toBe(MAP_DRAWING_COLORS[0]);
+    expect(getMapDrawingColor(0)).toBe(MAP_DRAWING_COLORS[0]);
   });
 
   it("extends preliminary project time for terrain and linear-footage work", () => {
