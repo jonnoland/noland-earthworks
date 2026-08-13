@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { combinePreliminaryRanges, updateQuoteServiceSelection } from "@shared/quoteMultiService";
+import { combinePreliminaryRanges, FEET_PER_MILE, feetToLength, lengthToFeet, updateQuoteServiceSelection } from "@shared/quoteMultiService";
 
 describe("quote multi-service selection", () => {
   it("allows acreage-based services to be selected together", () => {
@@ -22,5 +22,12 @@ describe("quote multi-service selection", () => {
 
   it("combines currency ranges into one preliminary range", () => {
     expect(combinePreliminaryRanges(["$1,000 – $2,000", "$500 – $900"])).toBe("$1,500 – $2,900");
+  });
+
+  it("converts route length between miles and linear feet without changing the underlying distance", () => {
+    expect(lengthToFeet(1.5, "miles")).toBe(1.5 * FEET_PER_MILE);
+    expect(feetToLength(7920, "miles")).toBe(1.5);
+    expect(lengthToFeet(2640, "feet")).toBe(2640);
+    expect(feetToLength(2640, "feet")).toBe(2640);
   });
 });

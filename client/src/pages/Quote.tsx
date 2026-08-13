@@ -12,7 +12,7 @@ import { usePageTitle } from "@/hooks/usePageTitle";
 import { MapView } from "@/components/Map";
 import { formatQuotePhone, validateQuoteContact, validateQuoteContactField, type QuoteContactErrors, type QuoteContactField } from "@shared/quoteContactValidation";
 import { formatQuoteAcreage, normalizeQuoteAcreage, QUOTE_ACREAGE_MAX, QUOTE_ACREAGE_MIN, QUOTE_ACREAGE_STEP } from "@shared/quoteAcreage";
-import { combinePreliminaryRanges, QUOTE_SERVICE_OPTIONS, quoteServiceLabel, type QuoteServiceValue, updateQuoteServiceSelection } from "@shared/quoteMultiService";
+import { combinePreliminaryRanges, feetToLength, lengthToFeet, QUOTE_SERVICE_OPTIONS, quoteServiceLabel, type QuoteLengthUnit, type QuoteServiceValue, updateQuoteServiceSelection } from "@shared/quoteMultiService";
 
 const inputStyle: React.CSSProperties = {
   width: "100%",
@@ -52,6 +52,7 @@ type PreliminaryServiceEstimate = {
   range: string;
   note: string;
   measurement: string;
+  calculation: string;
 };
 
 function parseCurrencyRange(range: string): { low: number; high: number } | null {
@@ -273,6 +274,7 @@ export default function QuotePage() {
         range: `${fmt(low)} – ${fmt(high)}`,
         note: `Rough range based on ${lf.toLocaleString()} linear feet at $2–$4 per linear foot. Width, terrain, and vegetation density affect final price. $500 minimum applies.`,
         measurement: `${lf.toLocaleString()} linear feet${terrainFactor > 1 ? ` · ${measurements.trailTerrain} terrain` : ""}`,
+        calculation: `${lf.toLocaleString()} linear feet × $2–$4 per linear foot${terrainFactor > 1 ? ` × ${terrainFactor} ${measurements.trailTerrain} terrain factor` : ""}; $500 minimum applied when needed.`,
       };
     }
 
@@ -289,6 +291,7 @@ export default function QuotePage() {
         range: `${fmt(low)} – ${fmt(high)}`,
         note: `Rough range based on ${length.toLocaleString()} linear feet at a ${width}-foot corridor width. Final price depends on access, terrain, vegetation, and obstacles.`,
         measurement: `${length.toLocaleString()} linear feet · ${width}-ft corridor`,
+        calculation: `${length.toLocaleString()} linear feet × ${width} ft ÷ 43,560 = ${effectiveAcres.toFixed(2)} acres × $600–$1,100 per acre; $750 minimum applied when needed.`,
       };
     }
 
@@ -311,6 +314,7 @@ export default function QuotePage() {
       range: `${fmt(low)} – ${fmt(high)}`,
       note: `Rough range based on ${formatQuoteAcreage(String(acres))}. Actual price requires a site visit and may vary based on density, terrain, and access.`,
       measurement: formatQuoteAcreage(String(acres)),
+      calculation: `${formatQuoteAcreage(String(acres))} × $${rates[0].toLocaleString()}–$${rates[1].toLocaleString()} per acre, rounded to a preliminary range.`,
     };
   }
 
@@ -344,12 +348,34 @@ export default function QuotePage() {
         {contributions.map((contribution) => (
           <div key={contribution.service} className="flex items-start justify-between gap-3" style={{ padding: "0.38rem 0", borderTop: "1px solid rgba(240,237,230,0.07)" }}>
             <div style={{ minWidth: 0 }}>
-              <div style={{ color: "rgba(240,237,230,0.88)", fontFamily: "'Lato', sans-serif", fontSize: "0.78rem", lineHeight: 1.3 }}>{quoteServiceLabel(contribution.service)}</div>
+              <div className="estimate-calculation-tooltip" style={{ position: "relative", display: "inline-flex", alignItems: "center", gap: "0.28rem", color: "rgba(240,237,230,0.88)", fontFamily: "'Lato', sans-serif", fontSize: "0.78rem", lineHeight: 1.3 }}>
+                {quoteServiceLabel(contribution.service)}
+                <Info size={12} aria-label={`How ${quoteServiceLabel(contribution.service)} is calculated`} style={{ color: "rgba(224,123,42,0.8)", cursor: "help" }} />
+                <span className="estimate-calculation-tooltip-content" role="tooltip" style={{ position: "absolute", left: 0, bottom: "calc(100% + 0.45rem)", zIndex: 60, width: "min(280px, 72vw)", padding: "0.6rem 0.7rem", background: "#191919", border: "1px solid rgba(224,123,42,0.42)", boxShadow: "0 10px 22px rgba(0,0,0,0.3)", color: "rgba(240,237,230,0.84)", fontFamily: "'Lato', sans-serif", fontSize: "0.7rem", fontWeight: 400, lineHeight: 1.45, opacity: 0, pointerEvents: "none", transform: "translateY(3px)", transition: "opacity 0.16s ease, transform 0.16s ease" }}>
+                  {contribution.calculation}
+                </span>
+              </div>
               <div style={{ color: "rgba(240,237,230,0.42)", fontFamily: "'Lato', sans-serif", fontSize: "0.68rem", lineHeight: 1.35, marginTop: "0.1rem" }}>{contribution.measurement}</div>
             </div>
             <strong style={{ flexShrink: 0, color: "#E07B2A", fontFamily: "'Oswald', sans-serif", fontSize: "0.9rem", fontWeight: 600 }}>{contribution.range}</strong>
           </div>
         ))}
+        <style>{`.estimate-calculation-tooltip:hover .estimate-calculation-tooltip-content, .estimate-calculation-tooltip:focus-within .estimate-calculation-tooltip-content { opacity: 1 !important; transform: translateY(0) !important; }`}</style>
+      </div>
+    );
+  }
+
+  function LengthUnitToggle({ value, onChange, label }: { value: QuoteLengthUnit; onChange: (unit: QuoteLengthUnit) => void; label: string }) {
+    return (
+      <div aria-label={`${label} unit`} className="flex items-center" style={{ border: "1px solid rgba(240,237,230,0.16)", borderRadius: "3px", overflow: "hidden", width: "fit-content" }}>
+        {(["feet", "miles"] as const).map((unit) => {
+          const selected = value === unit;
+          return (
+            <button key={unit} type="button" onClick={() => onChange(unit)} aria-pressed={selected} style={{ border: "none", borderLeft: unit === "miles" ? "1px solid rgba(240,237,230,0.16)" : "none", padding: "0.28rem 0.45rem", background: selected ? "rgba(224,123,42,0.18)" : "rgba(255,255,255,0.03)", color: selected ? "#E07B2A" : "rgba(240,237,230,0.55)", cursor: "pointer", fontFamily: "'Oswald', sans-serif", fontSize: "0.62rem", letterSpacing: "0.08em", textTransform: "uppercase" }}>
+              {unit === "feet" ? "Feet" : "Miles"}
+            </button>
+          );
+        })}
       </div>
     );
   }
@@ -425,6 +451,8 @@ export default function QuotePage() {
       ? [initialForm.service as QuoteServiceValue]
       : [],
   );
+  const [rowLengthUnit, setRowLengthUnit] = useState<QuoteLengthUnit>("feet");
+  const [trailLengthUnit, setTrailLengthUnit] = useState<QuoteLengthUnit>("feet");
 
   const activeServices = selectedServices.length > 0
     ? selectedServices
@@ -435,6 +463,30 @@ export default function QuotePage() {
     trailTerrain: form.trailTerrain || undefined,
     rowLinearFeet: Number(form.rowLinearFeet) || undefined,
     rowCorridorWidthFt: Number(form.rowCorridorWidthFt) || undefined,
+  };
+
+  const lengthInputValue = (linearFeet: string, unit: QuoteLengthUnit) => {
+    const feet = Number(linearFeet);
+    if (!Number.isFinite(feet) || feet <= 0) return "";
+    const converted = feetToLength(feet, unit);
+    if (converted === null) return "";
+    return unit === "miles"
+      ? String(Math.round(converted * 1000) / 1000)
+      : String(Math.round(converted));
+  };
+
+  const updateLengthMeasurement = (
+    field: "rowLinearFeet" | "trailLinearFeet",
+    unit: QuoteLengthUnit,
+    rawValue: string,
+  ) => {
+    if (rawValue === "") {
+      setForm((current) => ({ ...current, [field]: "" }));
+      return;
+    }
+    const feet = lengthToFeet(Number(rawValue), unit);
+    if (feet === null) return;
+    setForm((current) => ({ ...current, [field]: String(Math.round(feet)) }));
   };
 
   const toggleSelectedService = (service: QuoteServiceValue) => {
@@ -1718,8 +1770,9 @@ export default function QuotePage() {
                       <div className="grid grid-cols-2 gap-4" style={{ marginBottom: "0.75rem" }}>
                         <div>
                           {/* Corridor Length label + tooltip */}
-                          <div style={{ display: "flex", alignItems: "center", gap: "0.35rem", marginBottom: "0.375rem" }}>
-                            <span style={labelStyle as React.CSSProperties}>Corridor Length <span style={{ color: "rgba(240,237,230,0.4)", fontSize: "0.7rem", letterSpacing: "0.08em" }}>(linear feet)</span></span>
+                          <div style={{ display: "flex", alignItems: "center", gap: "0.35rem", marginBottom: "0.375rem", flexWrap: "wrap" }}>
+                            <span style={labelStyle as React.CSSProperties}>Corridor Length <span style={{ color: "rgba(240,237,230,0.4)", fontSize: "0.7rem", letterSpacing: "0.08em" }}>({rowLengthUnit === "feet" ? "linear feet" : "miles"})</span></span>
+                            <LengthUnitToggle value={rowLengthUnit} onChange={setRowLengthUnit} label="Right-of-way length" />
                             <div className="row-tip-lf" style={{ position: "relative", display: "inline-flex", cursor: "pointer", flexShrink: 0, marginBottom: "0.375rem" }}>
                               <Info size={13} style={{ color: "rgba(224,123,42,0.7)" }} />
                               <div style={{ position: "absolute", bottom: "calc(100% + 6px)", left: "50%", transform: "translateX(-50%)", width: "240px", background: "rgba(20,20,20,0.97)", border: "1px solid rgba(224,123,42,0.3)", borderRadius: "4px", padding: "0.6rem 0.75rem", fontSize: "0.72rem", color: "rgba(240,237,230,0.85)", lineHeight: 1.5, zIndex: 50, opacity: 0, pointerEvents: "none", transition: "opacity 0.15s" }} className="row-tip-lf-popup">
@@ -1732,12 +1785,12 @@ export default function QuotePage() {
                                   <polygon points="10,47 10,53 4,50" fill="#E07B2A" />
                                   <polygon points="200,47 200,53 206,50" fill="#E07B2A" />
                                   {/* label */}
-                                  <text x="105" y="58" textAnchor="middle" fill="rgba(240,237,230,0.6)" fontSize="8" fontFamily="sans-serif">Corridor Length (LF)</text>
+                                  <text x="105" y="58" textAnchor="middle" fill="rgba(240,237,230,0.6)" fontSize="8" fontFamily="sans-serif">Corridor Length ({rowLengthUnit === "miles" ? "mi" : "LF"})</text>
                                   {/* start/end markers */}
                                   <line x1="10" y1="16" x2="10" y2="44" stroke="rgba(224,123,42,0.4)" strokeWidth="1" strokeDasharray="2,2" />
                                   <line x1="200" y1="16" x2="200" y2="44" stroke="rgba(224,123,42,0.4)" strokeWidth="1" strokeDasharray="2,2" />
                                 </svg>
-                                Measure end-to-end in a straight line. For bends, add each segment. Half mile = 2,640 ft. One mile = 5,280 ft.
+                                Measure end-to-end in a straight line. For bends, add each segment. Half mile = 2,640 ft. One mile = 5,280 ft.{rowLengthUnit === "miles" ? " Miles are converted to linear feet automatically for the preliminary range." : ""}
                                 <div style={{ position: "absolute", top: "100%", left: "50%", transform: "translateX(-50%)", width: 0, height: 0, borderLeft: "5px solid transparent", borderRight: "5px solid transparent", borderTop: "5px solid rgba(224,123,42,0.3)" }} />
                               </div>
                             </div>
@@ -1746,11 +1799,11 @@ export default function QuotePage() {
                           <input
                             type="number"
                             name="rowLinearFeet"
-                            min="1"
-                            step="100"
-                            placeholder="e.g. 2640"
-                            value={form.rowLinearFeet}
-                            onChange={handleChange}
+                            min={rowLengthUnit === "feet" ? "1" : "0.01"}
+                            step={rowLengthUnit === "feet" ? "100" : "0.01"}
+                            placeholder={rowLengthUnit === "feet" ? "e.g. 2640" : "e.g. 0.5"}
+                            value={lengthInputValue(form.rowLinearFeet, rowLengthUnit)}
+                            onChange={(event) => updateLengthMeasurement("rowLinearFeet", rowLengthUnit, event.target.value)}
                             style={inputStyle}
                             onFocus={(e) => (e.target.style.borderColor = "rgba(224,123,42,0.6)")}
                             onBlur={(e) => (e.target.style.borderColor = "rgba(255,255,255,0.12)")}
@@ -1881,15 +1934,18 @@ export default function QuotePage() {
                       {/* Row 1: Length + Width */}
                       <div className="grid grid-cols-2 gap-4" style={{ marginBottom: "1rem" }}>
                         <div>
-                          <label style={labelStyle}>Approximate Length <span style={{ color: "rgba(240,237,230,0.4)", fontSize: "0.7rem", letterSpacing: "0.08em" }}>(linear feet)</span></label>
+                          <div className="flex items-center justify-between gap-2" style={{ marginBottom: "0.375rem" }}>
+                            <label style={{ ...labelStyle, marginBottom: 0 }}>Approximate Length <span style={{ color: "rgba(240,237,230,0.4)", fontSize: "0.7rem", letterSpacing: "0.08em" }}>({trailLengthUnit === "feet" ? "linear feet" : "miles"})</span></label>
+                            <LengthUnitToggle value={trailLengthUnit} onChange={setTrailLengthUnit} label="Trail length" />
+                          </div>
                           <input
                             type="number"
                             name="trailLinearFeet"
-                            min="0"
-                            step="50"
-                            placeholder="e.g. 2000"
-                            value={form.trailLinearFeet}
-                            onChange={handleChange}
+                            min={trailLengthUnit === "feet" ? "1" : "0.01"}
+                            step={trailLengthUnit === "feet" ? "50" : "0.01"}
+                            placeholder={trailLengthUnit === "feet" ? "e.g. 2000" : "e.g. 0.4"}
+                            value={lengthInputValue(form.trailLinearFeet, trailLengthUnit)}
+                            onChange={(event) => updateLengthMeasurement("trailLinearFeet", trailLengthUnit, event.target.value)}
                             style={inputStyle}
                             onFocus={(e) => (e.target.style.borderColor = "rgba(224,123,42,0.6)")}
                             onBlur={(e) => (e.target.style.borderColor = "rgba(255,255,255,0.12)")}

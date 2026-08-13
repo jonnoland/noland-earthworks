@@ -9,6 +9,20 @@ export const QUOTE_SERVICE_OPTIONS = [
 
 export type QuoteServiceValue = (typeof QUOTE_SERVICE_OPTIONS)[number]["value"];
 
+export type QuoteLengthUnit = "feet" | "miles";
+
+export const FEET_PER_MILE = 5280;
+
+export function lengthToFeet(value: number, unit: QuoteLengthUnit): number | null {
+  if (!Number.isFinite(value) || value < 0) return null;
+  return unit === "miles" ? value * FEET_PER_MILE : value;
+}
+
+export function feetToLength(feet: number, unit: QuoteLengthUnit): number | null {
+  if (!Number.isFinite(feet) || feet < 0) return null;
+  return unit === "miles" ? feet / FEET_PER_MILE : feet;
+}
+
 export function updateQuoteServiceSelection(
   current: QuoteServiceValue[],
   toggled: QuoteServiceValue,

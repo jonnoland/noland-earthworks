@@ -2892,3 +2892,8 @@
 - [x] Add linear-footage inputs for selected right-of-way and trail-cutting services
 - [x] Include acreage and linear-footage services in one combined preliminary range
 - [x] Show a visual per-service estimate contribution breakdown in the quote summary
+
+## Measurement Units & Estimate Explanation — Aug 2026
+- [x] Add miles and linear-feet toggles to right-of-way and trail measurements
+- [x] Keep linear-footage estimates synchronized when measurement units change
+- [x] Add hover tooltips explaining each service contribution calculation
