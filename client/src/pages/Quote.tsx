@@ -13,7 +13,7 @@ import { MapView } from "@/components/Map";
 import { formatQuotePhone, validateQuoteContact, validateQuoteContactField, type QuoteContactErrors, type QuoteContactField } from "@shared/quoteContactValidation";
 import { formatQuoteAcreage, normalizeQuoteAcreage, QUOTE_ACREAGE_MAX, QUOTE_ACREAGE_MIN, QUOTE_ACREAGE_STEP } from "@shared/quoteAcreage";
 import { combinePreliminaryRanges, feetToLength, getRecommendedQuoteServices, lengthToFeet, QUOTE_SERVICE_OPTIONS, QUOTE_TERRAIN_OPTIONS, quoteServiceLabel, quoteTerrainLabel, quoteTerrainMultiplier, type QuoteLengthUnit, type QuoteServiceValue, type QuoteTerrainDifficulty, updateQuoteServiceSelection } from "@shared/quoteMultiService";
-import { estimateProjectTimeline, metersToLinearFeet, squareMetersToAcres, type PreliminaryProjectTimeline } from "@shared/quoteMapPlanning";
+import { combineMapDrawingMeasurements, estimateProjectTimeline, metersToLinearFeet, squareMetersToAcres, type CombinedMapMeasurements, type PreliminaryProjectTimeline } from "@shared/quoteMapPlanning";
 
 const inputStyle: React.CSSProperties = {
   width: "100%",
@@ -58,27 +58,24 @@ type PreliminaryServiceEstimate = {
 };
 
 type PropertyMapLocation = { lat: number; lng: number };
-type MapDrawingMeasurement = { type: "area" | "path"; value: number; target: string };
+type MapDrawingMeasurement = CombinedMapMeasurements & { pathTarget?: QuoteServiceValue };
 
 function SelectedPropertyMap({
   location,
   address,
   onLocationChange,
-  onAreaDrawn,
-  onPathDrawn,
-  onDrawingCleared,
+  onMeasurementsChange,
 }: {
   location: PropertyMapLocation;
   address: string;
   onLocationChange: (location: PropertyMapLocation) => void;
-  onAreaDrawn: (acres: number) => void;
-  onPathDrawn: (linearFeet: number) => void;
-  onDrawingCleared: () => void;
+  onMeasurementsChange: (measurements: CombinedMapMeasurements) => void;
 }) {
   const mapRef = useRef<google.maps.Map | null>(null);
   const markerRef = useRef<google.maps.marker.AdvancedMarkerElement | null>(null);
   const drawingManagerRef = useRef<google.maps.drawing.DrawingManager | null>(null);
-  const activeDrawingRef = useRef<google.maps.Polygon | google.maps.Polyline | null>(null);
+  const areaDrawingsRef = useRef<google.maps.Polygon[]>([]);
+  const pathDrawingsRef = useRef<google.maps.Polyline[]>([]);
   const [satelliteView, setSatelliteView] = useState(false);
   const [drawingMode, setDrawingMode] = useState<"area" | "path" | null>(null);
 
@@ -101,6 +98,19 @@ function SelectedPropertyMap({
     markerRef.current = marker;
   };
 
+  const emitCombinedMeasurements = () => {
+    const areas = areaDrawingsRef.current
+      .map((polygon) => squareMetersToAcres(window.google.maps.geometry.spherical.computeArea(polygon.getPath())))
+      .filter((value): value is number => value !== null);
+    const paths = pathDrawingsRef.current
+      .map((path) => metersToLinearFeet(window.google.maps.geometry.spherical.computeLength(path.getPath())))
+      .filter((value): value is number => value !== null);
+    onMeasurementsChange(combineMapDrawingMeasurements([
+      ...areas.map((value) => ({ type: "area" as const, value })),
+      ...paths.map((value) => ({ type: "path" as const, value })),
+    ]));
+  };
+
   const handleMapReady = (map: google.maps.Map) => {
     mapRef.current = map;
     syncMap(map);
@@ -112,35 +122,25 @@ function SelectedPropertyMap({
     });
     drawingManager.setMap(map);
     drawingManager.addListener("overlaycomplete", (event: google.maps.drawing.OverlayCompleteEvent) => {
-      if (activeDrawingRef.current) activeDrawingRef.current.setMap(null);
       drawingManager.setDrawingMode(null);
       setDrawingMode(null);
       if (event.type === window.google.maps.drawing.OverlayType.POLYGON) {
         const polygon = event.overlay as google.maps.Polygon;
-        activeDrawingRef.current = polygon;
-        const refreshArea = () => {
-          const acres = squareMetersToAcres(window.google.maps.geometry.spherical.computeArea(polygon.getPath()));
-          if (acres) onAreaDrawn(acres);
-        };
-        refreshArea();
-        polygon.getPath().addListener("set_at", refreshArea);
-        polygon.getPath().addListener("insert_at", refreshArea);
-        polygon.getPath().addListener("remove_at", refreshArea);
-        polygon.addListener("dragend", refreshArea);
+        areaDrawingsRef.current.push(polygon);
+        polygon.getPath().addListener("set_at", emitCombinedMeasurements);
+        polygon.getPath().addListener("insert_at", emitCombinedMeasurements);
+        polygon.getPath().addListener("remove_at", emitCombinedMeasurements);
+        polygon.addListener("dragend", emitCombinedMeasurements);
       }
       if (event.type === window.google.maps.drawing.OverlayType.POLYLINE) {
         const path = event.overlay as google.maps.Polyline;
-        activeDrawingRef.current = path;
-        const refreshPath = () => {
-          const linearFeet = metersToLinearFeet(window.google.maps.geometry.spherical.computeLength(path.getPath()));
-          if (linearFeet) onPathDrawn(linearFeet);
-        };
-        refreshPath();
-        path.getPath().addListener("set_at", refreshPath);
-        path.getPath().addListener("insert_at", refreshPath);
-        path.getPath().addListener("remove_at", refreshPath);
-        path.addListener("dragend", refreshPath);
+        pathDrawingsRef.current.push(path);
+        path.getPath().addListener("set_at", emitCombinedMeasurements);
+        path.getPath().addListener("insert_at", emitCombinedMeasurements);
+        path.getPath().addListener("remove_at", emitCombinedMeasurements);
+        path.addListener("dragend", emitCombinedMeasurements);
       }
+      emitCombinedMeasurements();
     });
     drawingManagerRef.current = drawingManager;
   };
@@ -155,20 +155,18 @@ function SelectedPropertyMap({
 
   const beginDrawing = (mode: "area" | "path") => {
     if (!drawingManagerRef.current) return;
-    if (activeDrawingRef.current) {
-      activeDrawingRef.current.setMap(null);
-      activeDrawingRef.current = null;
-    }
     setDrawingMode(mode);
     drawingManagerRef.current.setDrawingMode(mode === "area" ? window.google.maps.drawing.OverlayType.POLYGON : window.google.maps.drawing.OverlayType.POLYLINE);
   };
 
   const clearDrawing = () => {
-    if (activeDrawingRef.current) activeDrawingRef.current.setMap(null);
-    activeDrawingRef.current = null;
+    areaDrawingsRef.current.forEach((drawing) => drawing.setMap(null));
+    pathDrawingsRef.current.forEach((drawing) => drawing.setMap(null));
+    areaDrawingsRef.current = [];
+    pathDrawingsRef.current = [];
     drawingManagerRef.current?.setDrawingMode(null);
     setDrawingMode(null);
-    onDrawingCleared();
+    onMeasurementsChange(combineMapDrawingMeasurements([]));
   };
 
   return (
@@ -176,7 +174,7 @@ function SelectedPropertyMap({
       <div className="flex items-center justify-between gap-3" style={{ padding: "0.52rem 0.7rem", borderBottom: "1px solid rgba(224,123,42,0.18)" }}>
         <span style={{ color: "rgba(240,237,230,0.8)", fontFamily: "'Oswald', sans-serif", fontSize: "0.65rem", letterSpacing: "0.12em", textTransform: "uppercase" }}>Selected Property</span>
         <div className="flex items-center gap-2 flex-wrap justify-end">
-          <span style={{ color: "rgba(240,237,230,0.42)", fontFamily: "'Lato', sans-serif", fontSize: "0.66rem" }}>Drag pin or draw a work area</span>
+          <span style={{ color: "rgba(240,237,230,0.42)", fontFamily: "'Lato', sans-serif", fontSize: "0.66rem" }}>Add separate areas or paths; totals update automatically</span>
           <button
             type="button"
             onClick={toggleSatelliteView}
@@ -191,7 +189,7 @@ function SelectedPropertyMap({
             aria-pressed={drawingMode === "area"}
             style={{ border: "1px solid rgba(224,123,42,0.48)", borderRadius: "2px", padding: "0.25rem 0.42rem", background: drawingMode === "area" ? "rgba(224,123,42,0.18)" : "transparent", color: "#E07B2A", cursor: "pointer", fontFamily: "'Oswald', sans-serif", fontSize: "0.58rem", letterSpacing: "0.09em", textTransform: "uppercase" }}
           >
-            Outline Area
+            Add Area
           </button>
           <button
             type="button"
@@ -199,7 +197,7 @@ function SelectedPropertyMap({
             aria-pressed={drawingMode === "path"}
             style={{ border: "1px solid rgba(224,123,42,0.48)", borderRadius: "2px", padding: "0.25rem 0.42rem", background: drawingMode === "path" ? "rgba(224,123,42,0.18)" : "transparent", color: "#E07B2A", cursor: "pointer", fontFamily: "'Oswald', sans-serif", fontSize: "0.58rem", letterSpacing: "0.09em", textTransform: "uppercase" }}
           >
-            Draw Path
+            Add Path
           </button>
           <button
             type="button"
@@ -775,26 +773,38 @@ export default function QuotePage() {
     });
   };
 
-  const applyDrawnArea = (acres: number) => {
-    const normalized = normalizeQuoteAcreage(acres);
-    setForm((current) => ({ ...current, acreage: normalized }));
-    setAdjustedAcres(normalized);
-    setAdjustedAcresError("");
-    setMapDrawingMeasurement({ type: "area", value: acres, target: "Adjusted acreage" });
-  };
+  const applyMapMeasurements = (measurements: CombinedMapMeasurements) => {
+    const hasAreas = measurements.areaCount > 0 && measurements.totalAcres > 0;
+    const hasPaths = measurements.pathCount > 0 && measurements.totalLinearFeet > 0;
+    if (!hasAreas && !hasPaths) {
+      setMapDrawingMeasurement(null);
+      return;
+    }
 
-  const applyDrawnPath = (linearFeet: number) => {
-    const roundedFeet = Math.max(1, Math.round(linearFeet));
-    const target: QuoteServiceValue = activeServices.includes("right-of-way-clearing") && !activeServices.includes("trail-cutting")
-      ? "right-of-way-clearing"
-      : "trail-cutting";
-    setSelectedServices((current) => current.includes(target) ? current : [...current, target]);
-    setForm((current) => ({
-      ...current,
-      service: current.service || target,
-      [target === "right-of-way-clearing" ? "rowLinearFeet" : "trailLinearFeet"]: String(roundedFeet),
-    }));
-    setMapDrawingMeasurement({ type: "path", value: roundedFeet, target: quoteServiceLabel(target) });
+    const pathTarget: QuoteServiceValue | undefined = hasPaths
+      ? (mapDrawingMeasurement?.pathTarget ?? (activeServices.includes("right-of-way-clearing") && !activeServices.includes("trail-cutting")
+        ? "right-of-way-clearing"
+        : "trail-cutting"))
+      : undefined;
+
+    if (hasAreas) {
+      const normalized = normalizeQuoteAcreage(measurements.totalAcres);
+      setForm((current) => ({ ...current, acreage: normalized }));
+      setAdjustedAcres(normalized);
+      setAdjustedAcresError("");
+    }
+
+    if (hasPaths && pathTarget) {
+      const roundedFeet = Math.max(1, Math.round(measurements.totalLinearFeet));
+      setSelectedServices((current) => current.includes(pathTarget) ? current : [...current, pathTarget]);
+      setForm((current) => ({
+        ...current,
+        service: current.service || pathTarget,
+        [pathTarget === "right-of-way-clearing" ? "rowLinearFeet" : "trailLinearFeet"]: String(roundedFeet),
+      }));
+    }
+
+    setMapDrawingMeasurement({ ...measurements, pathTarget });
   };
 
   // Once an address resolves to a parcel, carry the customer's selected work area into Adjusted Acreage.
@@ -1061,8 +1071,8 @@ export default function QuotePage() {
         activeServices.includes("right-of-way-clearing") && form.rowLinearFeet && form.rowCorridorWidthFt
           ? `Effective Acreage: ${((parseFloat(form.rowLinearFeet) * parseFloat(form.rowCorridorWidthFt)) / 43560).toFixed(3)} acres`
           : "",
-        mapDrawingMeasurement?.type === "area" ? `Map-drawn work area: ${mapDrawingMeasurement.value.toFixed(2)} acres (applied to Adjusted Acreage)` : "",
-        mapDrawingMeasurement?.type === "path" ? `Map-drawn path: ${Math.round(mapDrawingMeasurement.value).toLocaleString()} linear feet (applied to ${mapDrawingMeasurement.target})` : "",
+        mapDrawingMeasurement?.areaCount ? `Map-drawn work areas: ${mapDrawingMeasurement.areaCount} outline${mapDrawingMeasurement.areaCount === 1 ? "" : "s"} totaling ${mapDrawingMeasurement.totalAcres.toFixed(2)} acres (applied to Adjusted Acreage)` : "",
+        mapDrawingMeasurement?.pathCount ? `Map-drawn paths: ${mapDrawingMeasurement.pathCount} route${mapDrawingMeasurement.pathCount === 1 ? "" : "s"} totaling ${Math.round(mapDrawingMeasurement.totalLinearFeet).toLocaleString()} linear feet (applied to ${mapDrawingMeasurement.pathTarget ? quoteServiceLabel(mapDrawingMeasurement.pathTarget) : "the selected linear service"})` : "",
         `Preliminary estimated field time: ${projectTimeline.duration}. ${projectTimeline.detail}`,
         preSubmitEstimate ? `Estimated service breakdown: ${preSubmitEstimate.contributions.map((estimate) => `${quoteServiceLabel(estimate.service)} ${estimate.range}`).join("; ")}` : "",
       ].filter(Boolean).join("\n"),
@@ -2787,17 +2797,20 @@ export default function QuotePage() {
                           location={selectedPropertyLocation}
                           address={parcelAddress}
                           onLocationChange={setSelectedPropertyLocation}
-                          onAreaDrawn={applyDrawnArea}
-                          onPathDrawn={applyDrawnPath}
-                          onDrawingCleared={() => setMapDrawingMeasurement(null)}
+                          onMeasurementsChange={applyMapMeasurements}
                         />
                         {mapDrawingMeasurement && (
                           <div style={{ marginTop: "0.5rem", padding: "0.55rem 0.7rem", background: "rgba(224,123,42,0.08)", border: "1px solid rgba(224,123,42,0.23)", borderRadius: "3px", color: "rgba(240,237,230,0.7)", fontFamily: "'Lato', sans-serif", fontSize: "0.7rem", lineHeight: 1.4 }}>
                             <strong style={{ color: "#E07B2A", fontFamily: "'Oswald', sans-serif", letterSpacing: "0.09em", fontSize: "0.62rem", textTransform: "uppercase" }}>Map Measurement Applied</strong>
                             <span style={{ marginLeft: "0.42rem" }}>
-                              {mapDrawingMeasurement.type === "area"
-                                ? `${mapDrawingMeasurement.value.toFixed(2)} acres is now used as the adjusted work area.`
-                                : `${Math.round(mapDrawingMeasurement.value).toLocaleString()} linear feet is now used for ${mapDrawingMeasurement.target}.`}
+                              {[
+                                mapDrawingMeasurement.areaCount
+                                  ? `${mapDrawingMeasurement.areaCount} area outline${mapDrawingMeasurement.areaCount === 1 ? "" : "s"} total ${mapDrawingMeasurement.totalAcres.toFixed(2)} acres for the adjusted work area.`
+                                  : "",
+                                mapDrawingMeasurement.pathCount
+                                  ? `${mapDrawingMeasurement.pathCount} path${mapDrawingMeasurement.pathCount === 1 ? "" : "s"} total ${Math.round(mapDrawingMeasurement.totalLinearFeet).toLocaleString()} linear feet for ${mapDrawingMeasurement.pathTarget ? quoteServiceLabel(mapDrawingMeasurement.pathTarget) : "the selected linear service"}.`
+                                  : "",
+                              ].filter(Boolean).join(" ")}
                             </span>
                           </div>
                         )}

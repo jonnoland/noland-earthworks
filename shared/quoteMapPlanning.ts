@@ -11,6 +11,32 @@ export function metersToLinearFeet(meters: number): number | null {
   return meters * FEET_PER_METER;
 }
 
+export type MapDrawingValue = {
+  type: "area" | "path";
+  value: number;
+};
+
+export type CombinedMapMeasurements = {
+  totalAcres: number;
+  totalLinearFeet: number;
+  areaCount: number;
+  pathCount: number;
+};
+
+export function combineMapDrawingMeasurements(drawings: readonly MapDrawingValue[]): CombinedMapMeasurements {
+  return drawings.reduce<CombinedMapMeasurements>((totals, drawing) => {
+    if (!Number.isFinite(drawing.value) || drawing.value <= 0) return totals;
+    if (drawing.type === "area") {
+      totals.totalAcres += drawing.value;
+      totals.areaCount += 1;
+    } else {
+      totals.totalLinearFeet += drawing.value;
+      totals.pathCount += 1;
+    }
+    return totals;
+  }, { totalAcres: 0, totalLinearFeet: 0, areaCount: 0, pathCount: 0 });
+}
+
 export type PreliminaryProjectTimeline = {
   duration: string;
   detail: string;

@@ -28,3 +28,6 @@
 - The exact-address suggestion was selected successfully; the quote form is now waiting for the selected-property map to load its map drawing controls.
 - The selected-property map now renders the Outline Area, Draw Path, and Clear Drawing controls alongside the satellite toggle. The quote planning helper is covered for square-meter-to-acre, meter-to-foot, and terrain-plus-linear-footage timeline calculations; the complete test suite passed.
 - Live verification: selecting Land Management displayed a $600–$1,000 range with a 1-working-day field-time card; switching to Steep / Wet / Rocky raised the displayed range to $700–$1,300 and updated the timeline detail to cite steep, wet, or rocky terrain. The map drawing controls remained available for applying a measured area or path.
+- Combined drawing verification: the public quote form has been reloaded and the verified Halliburton Road address entered to expose the updated multi-area and multi-path map controls.
+- The exact-address suggestion returned for Halliburton Road, confirming the multi-drawing map can be loaded from the public address-selection flow.
+- After selecting the address, the selected-property map displayed the updated instruction “Add separate areas or paths; totals update automatically,” plus Add Area, Add Path, and Clear Drawing controls.

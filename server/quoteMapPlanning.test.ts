@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { estimateProjectTimeline, metersToLinearFeet, squareMetersToAcres } from "../shared/quoteMapPlanning";
+import { combineMapDrawingMeasurements, estimateProjectTimeline, metersToLinearFeet, squareMetersToAcres } from "../shared/quoteMapPlanning";
 
 describe("quote map planning", () => {
   it("converts completed map drawings into usable quote measurements", () => {
@@ -7,6 +7,16 @@ describe("quote map planning", () => {
     expect(metersToLinearFeet(100)).toBeCloseTo(328.084, 3);
     expect(squareMetersToAcres(0)).toBeNull();
     expect(metersToLinearFeet(Number.NaN)).toBeNull();
+  });
+
+  it("combines separate map areas and paths while ignoring invalid drawing values", () => {
+    expect(combineMapDrawingMeasurements([
+      { type: "area", value: 1.25 },
+      { type: "area", value: 0.75 },
+      { type: "path", value: 840 },
+      { type: "path", value: 1160 },
+      { type: "path", value: 0 },
+    ])).toEqual({ totalAcres: 2, totalLinearFeet: 2000, areaCount: 2, pathCount: 2 });
   });
 
   it("extends preliminary project time for terrain and linear-footage work", () => {

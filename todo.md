@@ -2923,3 +2923,8 @@
 - [x] Calculate acres or linear feet from the completed drawing and apply it to the relevant quote measurement
 - [x] Retain map-derived measurement details in the quote request
 - [x] Add an estimated project timeline based on terrain and selected linear-footage work
+
+## Combined Map Measurements — Aug 2026
+- [x] Allow multiple separate area outlines and path drawings on the selected-property map
+- [x] Sum all drawn areas and paths into combined acreage and linear-footage totals
+- [x] Apply combined map totals to the quote calculator and request details
