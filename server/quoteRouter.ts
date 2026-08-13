@@ -730,8 +730,10 @@ export const quoteRouter = router({
 
     return {
       success: true,
-      ballparkRange: qualification?.ballparkRange ?? "",
-      ballparkNote: qualification?.ballparkNote ?? "",
+      ballparkRange: input.estimatedRange || qualification?.ballparkRange || "",
+      ballparkNote: input.estimatedRange
+        ? "This preliminary range combines the services and measurements you selected. Final pricing is confirmed after an on-site review."
+        : qualification?.ballparkNote ?? "",
     };
   }),
 

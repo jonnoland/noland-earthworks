@@ -169,12 +169,12 @@ describe("quoteRouter — lead capture", () => {
     expect(call.phone).toBe("615-555-0002");
     expect(call.source).toBe("website");
     expect(call.stage).toBe("new");
-    expect(call.jobType).toBe("land_clearing");
+    expect(call.jobType).toBe("Land Management");
     expect(call.address).toContain("Nashville");
     expect(call.notes).toContain("Acreage: 10");
   });
 
-  it("maps Forestry Mulching service to forestry_mulching jobType", async () => {
+  it("preserves Forestry Mulching in the current job-type taxonomy", async () => {
     mockGetOwnerUser.mockResolvedValue(ownerRow);
 
     await quoteCaller.submit({
@@ -186,7 +186,7 @@ describe("quoteRouter — lead capture", () => {
     });
 
     expect(mockUpsertOpsLeadByPhone).toHaveBeenCalledOnce();
-    expect(mockUpsertOpsLeadByPhone.mock.calls[0][0].jobType).toBe("forestry_mulching");
+    expect(mockUpsertOpsLeadByPhone.mock.calls[0][0].jobType).toBe("Forestry Mulching");
   });
 
   it("creates a lead even when owner row is auto-seeded", async () => {

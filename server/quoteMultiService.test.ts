@@ -9,8 +9,15 @@ describe("quote multi-service selection", () => {
     ]);
   });
 
-  it("keeps dimension-based services as a standalone selection", () => {
-    expect(updateQuoteServiceSelection(["forestry-mulching"], "trail-cutting")).toEqual(["trail-cutting"]);
+  it("allows linear-footage services to be selected with acreage-based services", () => {
+    expect(updateQuoteServiceSelection(["forestry-mulching"], "trail-cutting")).toEqual([
+      "forestry-mulching",
+      "trail-cutting",
+    ]);
+    expect(updateQuoteServiceSelection(["trail-cutting"], "right-of-way-clearing")).toEqual([
+      "trail-cutting",
+      "right-of-way-clearing",
+    ]);
   });
 
   it("combines currency ranges into one preliminary range", () => {

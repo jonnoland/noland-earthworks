@@ -2887,3 +2887,8 @@
 
 ## Multi-Service Quote Range — Aug 2026
 - [x] Add multi-select service controls to the public quote form and calculate a combined preliminary range
+
+## Combined Acreage and Linear-Footage Quote Range — Aug 2026
+- [x] Add linear-footage inputs for selected right-of-way and trail-cutting services
+- [x] Include acreage and linear-footage services in one combined preliminary range
+- [x] Show a visual per-service estimate contribution breakdown in the quote summary

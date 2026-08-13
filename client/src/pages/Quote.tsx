@@ -40,6 +40,20 @@ const labelStyle: React.CSSProperties = {
 
 const QUOTE_MESSAGE_MAX_LENGTH = 1200;
 
+type LinearMeasurements = {
+  trailLinearFeet?: number;
+  trailTerrain?: string;
+  rowLinearFeet?: number;
+  rowCorridorWidthFt?: number;
+};
+
+type PreliminaryServiceEstimate = {
+  service: QuoteServiceValue;
+  range: string;
+  note: string;
+  measurement: string;
+};
+
 function parseCurrencyRange(range: string): { low: number; high: number } | null {
   const match = range.match(/^\$([\d,]+)\s+–\s+\$([\d,]+)$/);
   if (!match) return null;
@@ -159,7 +173,12 @@ export default function QuotePage() {
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [adjustedAcres, setAdjustedAcres] = useState<string>("");
   const [adjustedAcresError, setAdjustedAcresError] = useState<string>("");
-  const [submittedEstimate, setSubmittedEstimate] = useState<{ range: string; note: string; adjustedAcres?: number } | null>(null);
+  const [submittedEstimate, setSubmittedEstimate] = useState<{
+    range: string;
+    note: string;
+    adjustedAcres?: number;
+    contributions: PreliminaryServiceEstimate[];
+  } | null>(null);
 
   // ─── Site Visit Helpers: Photo Upload + Map Pin ───────────────────────────────
   const [siteVisitOpen, setSiteVisitOpen] = useState(false);
@@ -235,21 +254,44 @@ export default function QuotePage() {
     }
   }, [parcelQuery.data]);
 
-  // Compute a preliminary price estimate from deed acreage and selected service
-  // For trail cutting, trailLf (linear feet) is used directly when available
-  function computeEstimate(acres: number, service: string, trailLf?: number): { range: string; note: string } | null {
+  // Calculate each selected service independently so the customer can see a transparent combined range.
+  function computeEstimate(
+    acres: number,
+    service: QuoteServiceValue,
+    measurements: LinearMeasurements = {},
+  ): PreliminaryServiceEstimate | null {
     if (service === "trail-cutting") {
-      const lf = trailLf && trailLf > 0 ? trailLf : (acres > 0 ? acres * 43560 / 10 : 0);
+      const lf = measurements.trailLinearFeet ?? 0;
       if (lf <= 0) return null;
-      // $2.00–$4.00/lf — standard trail in Middle TN. $500 minimum.
-      const low  = Math.max(500, Math.round(lf * 2.00 / 50) * 50);
-      const high = Math.max(500, Math.round(lf * 4.00 / 50) * 50);
+      const terrainFactor = measurements.trailTerrain === "sloped" ? 1.2 : measurements.trailTerrain === "rocky" ? 1.4 : 1;
+      // $2.00–$4.00 per linear foot, with a $500 minimum.
+      const low = Math.max(500, Math.round(lf * 2 * terrainFactor));
+      const high = Math.max(500, Math.round(lf * 4 * terrainFactor));
       const fmt = (n: number) => `$${n.toLocaleString()}`;
       return {
+        service,
         range: `${fmt(low)} – ${fmt(high)}`,
-        note: `Rough range based on ${lf.toLocaleString()} linear feet at $2.00–$4.00/lf. Width, terrain, and vegetation density affect final price. $500 minimum applies.`,
+        note: `Rough range based on ${lf.toLocaleString()} linear feet at $2–$4 per linear foot. Width, terrain, and vegetation density affect final price. $500 minimum applies.`,
+        measurement: `${lf.toLocaleString()} linear feet${terrainFactor > 1 ? ` · ${measurements.trailTerrain} terrain` : ""}`,
       };
     }
+
+    if (service === "right-of-way-clearing") {
+      const length = measurements.rowLinearFeet ?? 0;
+      const width = measurements.rowCorridorWidthFt ?? 0;
+      if (length <= 0 || width <= 0) return null;
+      const effectiveAcres = (length * width) / 43560;
+      const low = Math.max(750, Math.round(effectiveAcres * 600));
+      const high = Math.max(750, Math.round(effectiveAcres * 1100));
+      const fmt = (n: number) => `$${n.toLocaleString()}`;
+      return {
+        service,
+        range: `${fmt(low)} – ${fmt(high)}`,
+        note: `Rough range based on ${length.toLocaleString()} linear feet at a ${width}-foot corridor width. Final price depends on access, terrain, vegetation, and obstacles.`,
+        measurement: `${length.toLocaleString()} linear feet · ${width}-ft corridor`,
+      };
+    }
+
     if (acres <= 0) return null;
     // Base rates per acre for Middle Tennessee
     const baseRates: Record<string, [number, number]> = {
@@ -265,23 +307,51 @@ export default function QuotePage() {
     const high = Math.round(acres * rates[1] / 100) * 100;
     const fmt = (n: number) => `$${n.toLocaleString()}`;
     return {
+      service,
       range: `${fmt(low)} – ${fmt(high)}`,
       note: `Rough range based on ${formatQuoteAcreage(String(acres))}. Actual price requires a site visit and may vary based on density, terrain, and access.`,
+      measurement: formatQuoteAcreage(String(acres)),
     };
   }
 
-  function computeSelectedServicesEstimate(acres: number, services: QuoteServiceValue[], trailLf?: number): { range: string; note: string } | null {
+  function computeSelectedServicesEstimate(
+    acres: number,
+    services: QuoteServiceValue[],
+    measurements: LinearMeasurements = {},
+  ): { range: string; note: string; contributions: PreliminaryServiceEstimate[] } | null {
     if (services.length === 0) return null;
-    const estimates = services.map((service) => computeEstimate(acres, service, service === "trail-cutting" ? trailLf : undefined));
+    const estimates = services.map((service) => computeEstimate(acres, service, measurements));
     if (estimates.some((estimate) => !estimate)) return null;
-    const usableEstimates = estimates as { range: string; note: string }[];
-    if (usableEstimates.length === 1) return usableEstimates[0];
+    const usableEstimates = estimates as PreliminaryServiceEstimate[];
+    if (usableEstimates.length === 1) {
+      return { ...usableEstimates[0], contributions: usableEstimates };
+    }
     const range = combinePreliminaryRanges(usableEstimates.map((estimate) => estimate.range));
     if (!range) return null;
     return {
       range,
-      note: `Combined preliminary range for ${services.map(quoteServiceLabel).join(", ")} across ${formatQuoteAcreage(String(acres))}. Final scope and pricing are confirmed after the site visit.`,
+      note: `Combined preliminary range for ${services.map(quoteServiceLabel).join(", ")}. Final scope and pricing are confirmed after the site visit.`,
+      contributions: usableEstimates,
     };
+  }
+
+  function EstimateContributionBreakdown({ contributions }: { contributions: PreliminaryServiceEstimate[] }) {
+    return (
+      <div style={{ marginTop: "0.75rem", borderTop: "1px solid rgba(240,237,230,0.12)", paddingTop: "0.7rem" }}>
+        <div style={{ color: "rgba(240,237,230,0.48)", fontFamily: "'Oswald', sans-serif", fontSize: "0.62rem", letterSpacing: "0.13em", textTransform: "uppercase", marginBottom: "0.45rem" }}>
+          Estimated Service Breakdown
+        </div>
+        {contributions.map((contribution) => (
+          <div key={contribution.service} className="flex items-start justify-between gap-3" style={{ padding: "0.38rem 0", borderTop: "1px solid rgba(240,237,230,0.07)" }}>
+            <div style={{ minWidth: 0 }}>
+              <div style={{ color: "rgba(240,237,230,0.88)", fontFamily: "'Lato', sans-serif", fontSize: "0.78rem", lineHeight: 1.3 }}>{quoteServiceLabel(contribution.service)}</div>
+              <div style={{ color: "rgba(240,237,230,0.42)", fontFamily: "'Lato', sans-serif", fontSize: "0.68rem", lineHeight: 1.35, marginTop: "0.1rem" }}>{contribution.measurement}</div>
+            </div>
+            <strong style={{ flexShrink: 0, color: "#E07B2A", fontFamily: "'Oswald', sans-serif", fontSize: "0.9rem", fontWeight: 600 }}>{contribution.range}</strong>
+          </div>
+        ))}
+      </div>
+    );
   }
 
   const toggleAddOn = (label: string) => {
@@ -359,6 +429,13 @@ export default function QuotePage() {
   const activeServices = selectedServices.length > 0
     ? selectedServices
     : (QUOTE_SERVICE_OPTIONS.some((option) => option.value === form.service) ? [form.service as QuoteServiceValue] : []);
+
+  const linearMeasurements: LinearMeasurements = {
+    trailLinearFeet: Number(form.trailLinearFeet) || undefined,
+    trailTerrain: form.trailTerrain || undefined,
+    rowLinearFeet: Number(form.rowLinearFeet) || undefined,
+    rowCorridorWidthFt: Number(form.rowCorridorWidthFt) || undefined,
+  };
 
   const toggleSelectedService = (service: QuoteServiceValue) => {
     const next = updateQuoteServiceSelection(selectedServices, service);
@@ -597,15 +674,15 @@ export default function QuotePage() {
     }
     // Capture the preliminary estimate before submitting so we can show it on the success screen
     const effectiveAcresForSubmit = adjustedAcres ? parseFloat(adjustedAcres) : (parseFloat(form.acreage) || 0);
-    const trailLfForSubmit = activeServices.includes("trail-cutting") && form.trailLinearFeet ? parseFloat(form.trailLinearFeet) : undefined;
-    const preSubmitEstimate = (effectiveAcresForSubmit > 0 || trailLfForSubmit) && activeServices.length > 0
-      ? computeSelectedServicesEstimate(effectiveAcresForSubmit, activeServices, trailLfForSubmit)
+    const preSubmitEstimate = activeServices.length > 0
+      ? computeSelectedServicesEstimate(effectiveAcresForSubmit, activeServices, linearMeasurements)
       : null;
     if (preSubmitEstimate) {
       setSubmittedEstimate({
         range: preSubmitEstimate.range,
         note: preSubmitEstimate.note,
         adjustedAcres: adjustedAcres ? parseFloat(adjustedAcres) : (parseFloat(form.acreage) || undefined),
+        contributions: preSubmitEstimate.contributions,
       });
     }
     submitQuote.mutate({
@@ -624,17 +701,18 @@ export default function QuotePage() {
       message: [
         form.message,
         activeServices.length > 1 ? `Additional requested services: ${activeServices.slice(1).map(quoteServiceLabel).join(", ")}` : "",
-        form.service === "trail-cutting" && form.trailLinearFeet ? `Trail Length: ${parseFloat(form.trailLinearFeet).toLocaleString()} linear feet` : "",
-        form.service === "trail-cutting" && form.trailWidth && form.trailWidth !== "other" ? `Trail Width: ${form.trailWidth} ft` : "",
-        form.service === "trail-cutting" && form.trailLinearFeet && form.trailWidth && form.trailWidth !== "other"
+        activeServices.includes("trail-cutting") && form.trailLinearFeet ? `Trail Length: ${parseFloat(form.trailLinearFeet).toLocaleString()} linear feet` : "",
+        activeServices.includes("trail-cutting") && form.trailWidth && form.trailWidth !== "other" ? `Trail Width: ${form.trailWidth} ft` : "",
+        activeServices.includes("trail-cutting") && form.trailLinearFeet && form.trailWidth && form.trailWidth !== "other"
           ? `Effective Acreage: ${((parseFloat(form.trailLinearFeet) * parseFloat(form.trailWidth)) / 43560).toFixed(2)} acres`
           : "",
-        form.service === "trail-cutting" && form.trailTerrain ? `Terrain Type: ${form.trailTerrain.charAt(0).toUpperCase() + form.trailTerrain.slice(1)}` : "",
-        form.service === "right-of-way-clearing" && form.rowLinearFeet ? `ROW Length: ${parseFloat(form.rowLinearFeet).toLocaleString()} linear feet` : "",
-        form.service === "right-of-way-clearing" && form.rowCorridorWidthFt ? `Corridor Width: ${form.rowCorridorWidthFt} ft` : "",
-        form.service === "right-of-way-clearing" && form.rowLinearFeet && form.rowCorridorWidthFt
+        activeServices.includes("trail-cutting") && form.trailTerrain ? `Terrain Type: ${form.trailTerrain.charAt(0).toUpperCase() + form.trailTerrain.slice(1)}` : "",
+        activeServices.includes("right-of-way-clearing") && form.rowLinearFeet ? `ROW Length: ${parseFloat(form.rowLinearFeet).toLocaleString()} linear feet` : "",
+        activeServices.includes("right-of-way-clearing") && form.rowCorridorWidthFt ? `Corridor Width: ${form.rowCorridorWidthFt} ft` : "",
+        activeServices.includes("right-of-way-clearing") && form.rowLinearFeet && form.rowCorridorWidthFt
           ? `Effective Acreage: ${((parseFloat(form.rowLinearFeet) * parseFloat(form.rowCorridorWidthFt)) / 43560).toFixed(3)} acres`
           : "",
+        preSubmitEstimate ? `Estimated service breakdown: ${preSubmitEstimate.contributions.map((estimate) => `${quoteServiceLabel(estimate.service)} ${estimate.range}`).join("; ")}` : "",
       ].filter(Boolean).join("\n"),
       addOns: Array.from(new Set([...selectedAddOns, ...activeServices.slice(1).map(quoteServiceLabel)])),
       parcelOwner: parcelInfo?.owner ?? undefined,
@@ -649,9 +727,8 @@ export default function QuotePage() {
       propertyPinLng: pinLng ?? undefined,
       estimatedRange: (() => {
         const effectiveAcres = adjustedAcres ? parseFloat(adjustedAcres) : (parseFloat(form.acreage) || 0);
-        const trailLf = activeServices.includes("trail-cutting") && form.trailLinearFeet ? parseFloat(form.trailLinearFeet) : undefined;
-        const est = (effectiveAcres > 0 || trailLf) && activeServices.length > 0
-          ? computeSelectedServicesEstimate(effectiveAcres, activeServices, trailLf)
+        const est = activeServices.length > 0
+          ? computeSelectedServicesEstimate(effectiveAcres, activeServices, linearMeasurements)
           : null;
         return est?.range ?? "";
       })(),
@@ -1250,6 +1327,7 @@ export default function QuotePage() {
                           {ballparkNote}
                         </p>
                       )}
+                      {submittedEstimate?.contributions.length ? <EstimateContributionBreakdown contributions={submittedEstimate.contributions} /> : null}
                     </div>
                   )}
 
@@ -1276,6 +1354,7 @@ export default function QuotePage() {
                       <p style={{ fontFamily: "'Lato', sans-serif", fontWeight: 300, fontSize: "0.8rem", color: "rgba(240,237,230,0.45)", lineHeight: 1.6, margin: 0 }}>
                         {submittedEstimate.note}
                       </p>
+                      <EstimateContributionBreakdown contributions={submittedEstimate.contributions} />
                     </div>
                   )}
 
@@ -1490,7 +1569,7 @@ export default function QuotePage() {
                                 </button>
                               );
                             })}
-                            <p style={{ margin: "0.5rem 0 0.15rem", color: "rgba(240,237,230,0.4)", fontFamily: "'Lato', sans-serif", fontSize: "0.68rem", lineHeight: 1.35 }}>Trail Cutting and Right-of-Way Clearing use their own measurements and are selected by themselves.</p>
+                            <p style={{ margin: "0.5rem 0 0.15rem", color: "rgba(240,237,230,0.4)", fontFamily: "'Lato', sans-serif", fontSize: "0.68rem", lineHeight: 1.35 }}>Trail Cutting and Right-of-Way Clearing use linear footage. Add their measurements below to include them in the combined preliminary range.</p>
                             <button type="button" onClick={() => setServiceMenuOpen(false)} style={{ marginTop: "0.55rem", width: "100%", padding: "0.42rem", background: "rgba(224,123,42,0.15)", border: "1px solid rgba(224,123,42,0.38)", color: "#E07B2A", cursor: "pointer", fontFamily: "'Oswald', sans-serif", fontSize: "0.72rem", letterSpacing: "0.08em", textTransform: "uppercase" }}>Done</button>
                           </div>
                         )}
@@ -1571,8 +1650,6 @@ export default function QuotePage() {
                     )}
                   </div>
 
-                  {/* Acreage — hidden for ROW (uses linear feet instead) */}
-                  {form.service !== "right-of-way-clearing" && (
                   <div>
                     <div className="flex items-end justify-between gap-4" style={{ marginBottom: "0.5rem" }}>
                       <label htmlFor="quote-acreage-slider" style={{ ...labelStyle, marginBottom: 0 }}>
@@ -1597,10 +1674,23 @@ export default function QuotePage() {
                     <div className="flex justify-between" style={{ marginTop: "0.2rem", color: "rgba(240,237,230,0.42)", fontFamily: "'Lato', sans-serif", fontSize: "0.72rem" }}>
                       <span>0.25 ac</span><span>10 ac</span><span>20 ac</span><span>30 ac</span><span>40 ac</span>
                     </div>
-                    {activeServices.length > 0 && !activeServices.includes("trail-cutting") && (() => {
+                    {activeServices.length > 0 && (() => {
                       const previewAcres = adjustedAcres ? parseFloat(adjustedAcres) : (parseFloat(form.acreage) || 1);
-                      const preview = previewAcres > 0 ? computeSelectedServicesEstimate(previewAcres, activeServices) : null;
-                      if (!preview) return null;
+                      const preview = previewAcres > 0 ? computeSelectedServicesEstimate(previewAcres, activeServices, linearMeasurements) : null;
+                      if (!preview) {
+                        const missingMeasurements = activeServices.filter((service) => (
+                          (service === "trail-cutting" && !linearMeasurements.trailLinearFeet)
+                          || (service === "right-of-way-clearing" && (!linearMeasurements.rowLinearFeet || !linearMeasurements.rowCorridorWidthFt))
+                        ));
+                        if (missingMeasurements.length === 0) return null;
+                        return (
+                          <div aria-live="polite" style={{ marginTop: "0.9rem", padding: "0.8rem 0.95rem", background: "rgba(224,123,42,0.05)", border: "1px solid rgba(224,123,42,0.2)", borderRadius: "3px" }}>
+                            <span style={{ color: "rgba(240,237,230,0.68)", fontFamily: "'Lato', sans-serif", fontSize: "0.76rem", lineHeight: 1.45 }}>
+                              Add the measurement for {missingMeasurements.map(quoteServiceLabel).join(" and ")} to include it in the combined preliminary range.
+                            </span>
+                          </div>
+                        );
+                      }
                       return (
                         <div aria-live="polite" style={{ marginTop: "0.9rem", padding: "0.8rem 0.95rem", background: "rgba(224,123,42,0.07)", border: "1px solid rgba(224,123,42,0.23)", borderRadius: "3px" }}>
                           <div className="flex items-center justify-between gap-3">
@@ -1608,22 +1698,20 @@ export default function QuotePage() {
                             <strong style={{ color: "#E07B2A", fontFamily: "'Oswald', sans-serif", fontSize: "1.1rem", fontWeight: 700 }}><RollingPriceRange range={preview.range} /></strong>
                           </div>
                           <p style={{ margin: "0.35rem 0 0", color: "rgba(240,237,230,0.48)", fontFamily: "'Lato', sans-serif", fontSize: "0.72rem", lineHeight: 1.45 }}>
-                            Based on {formatQuoteAcreage(String(previewAcres))}. Final pricing follows an on-site review of access, terrain, vegetation, and obstacles.
+                            Includes every selected service using its respective acreage or linear-footage measurement. Final pricing follows an on-site review of access, terrain, vegetation, and obstacles.
                           </p>
+                          <EstimateContributionBreakdown contributions={preview.contributions} />
                         </div>
                       );
                     })()}
                   </div>
-                  )}
 
                   {/* ROW-specific fields — linear feet + corridor width */}
-                  {form.service === "right-of-way-clearing" && (() => {
+                  {activeServices.includes("right-of-way-clearing") && (() => {
                     const rowLf = parseFloat(form.rowLinearFeet) || 0;
                     const rowW  = parseFloat(form.rowCorridorWidthFt) || 0;
                     const rowEffAcres = rowLf > 0 && rowW > 0 ? (rowLf * rowW) / 43560 : 0;
-                    // Rough price range: $600–$1,100/acre for ROW, $750 minimum
-                    const rowLow  = rowEffAcres > 0 ? Math.max(750, Math.round(rowEffAcres * 600 / 50) * 50) : 0;
-                    const rowHigh = rowEffAcres > 0 ? Math.max(750, Math.round(rowEffAcres * 1100 / 50) * 50) : 0;
+                    const rowEstimate = computeEstimate(0, "right-of-way-clearing", linearMeasurements);
                     return (
                     <div style={{ padding: "1rem", background: "rgba(224,123,42,0.05)", border: "1px solid rgba(224,123,42,0.2)", borderRadius: "4px" }}>
                       <div style={{ fontFamily: "'Oswald', sans-serif", fontSize: "0.68rem", letterSpacing: "0.14em", textTransform: "uppercase", color: "rgba(224,123,42,0.8)", marginBottom: "0.75rem" }}>Right-of-Way Dimensions</div>
@@ -1671,7 +1759,7 @@ export default function QuotePage() {
                         <div>
                           {/* Corridor Width label + tooltip */}
                           <div style={{ display: "flex", alignItems: "center", gap: "0.35rem", marginBottom: "0.375rem" }}>
-                            <span style={labelStyle as React.CSSProperties}>Corridor Width <span style={{ color: "rgba(240,237,230,0.4)", fontSize: "0.7rem", letterSpacing: "0.08em" }}>(feet, optional)</span></span>
+                            <span style={labelStyle as React.CSSProperties}>Corridor Width <span style={{ color: "rgba(240,237,230,0.4)", fontSize: "0.7rem", letterSpacing: "0.08em" }}>(feet, required for range)</span></span>
                             <div className="row-tip-w" style={{ position: "relative", display: "inline-flex", cursor: "pointer", flexShrink: 0, marginBottom: "0.375rem" }}>
                               <Info size={13} style={{ color: "rgba(224,123,42,0.7)" }} />
                               <div style={{ position: "absolute", bottom: "calc(100% + 6px)", left: "50%", transform: "translateX(-50%)", width: "240px", background: "rgba(20,20,20,0.97)", border: "1px solid rgba(224,123,42,0.3)", borderRadius: "4px", padding: "0.6rem 0.75rem", fontSize: "0.72rem", color: "rgba(240,237,230,0.85)", lineHeight: 1.5, zIndex: 50, opacity: 0, pointerEvents: "none", transition: "opacity 0.15s" }} className="row-tip-w-popup">
@@ -1743,11 +1831,11 @@ export default function QuotePage() {
                         )}
                       </div>
                       {/* Rough price range — shown once both dimensions are entered */}
-                      {rowEffAcres > 0 && (
+                      {rowEstimate && (
                         <div style={{ marginTop: "0.85rem", padding: "0.65rem 0.85rem", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "4px" }}>
-                          <div style={{ fontFamily: "'Oswald', sans-serif", fontSize: "0.65rem", letterSpacing: "0.12em", textTransform: "uppercase", color: "rgba(240,237,230,0.45)", marginBottom: "0.3rem" }}>Rough Ballpark Range</div>
+                          <div style={{ fontFamily: "'Oswald', sans-serif", fontSize: "0.65rem", letterSpacing: "0.12em", textTransform: "uppercase", color: "rgba(240,237,230,0.45)", marginBottom: "0.3rem" }}>Right-of-Way Contribution</div>
                           <div style={{ fontSize: "1.05rem", fontWeight: 700, color: "#E07B2A", letterSpacing: "0.02em" }}>
-                            ${rowLow.toLocaleString()} – ${rowHigh.toLocaleString()}
+                            {rowEstimate.range}
                           </div>
                           <div style={{ fontSize: "0.7rem", color: "rgba(240,237,230,0.4)", marginTop: "0.25rem", lineHeight: 1.4 }}>
                             Rough estimate only. Vegetation density, terrain, slope, and access can significantly affect the final price. A site visit is required for an accurate quote.
@@ -1781,9 +1869,7 @@ export default function QuotePage() {
                   })()}
 
                   {/* Trail-specific fields — only shown when Trail Cutting is selected */}
-                  {form.service === "trail-cutting" && (() => {
-                    // Terrain multipliers: flat = 1.0, sloped = 1.2, rocky = 1.4
-                    const terrainMultiplier = form.trailTerrain === "sloped" ? 1.2 : form.trailTerrain === "rocky" ? 1.4 : 1.0;
+                  {activeServices.includes("trail-cutting") && (() => {
                     const trailAddOns = [
                       { key: "mulch-redistribution", label: "Mulch Redistribution" },
                       { key: "selective-clearing", label: "Selective Clearing & Tree Preservation" },
@@ -2084,31 +2170,25 @@ export default function QuotePage() {
                         </div>
                       </div>
 
-                      {/* Preliminary range — shown when length + width filled */}
-                      {form.trailLinearFeet && form.trailWidth && form.trailWidth !== "other" && (() => {
+                      {/* Preliminary range — linear footage is the required measurement */}
+                      {form.trailLinearFeet && (() => {
                         const lf = parseFloat(form.trailLinearFeet);
-                        const w  = parseFloat(form.trailWidth);
-                        if (!lf || !w) return null;
-                        const acres = (lf * w) / 43560;
-                        const baseLow  = Math.round(acres * 700 * terrainMultiplier / 100) * 100;
-                        const baseHigh = Math.round(acres * 1000 * terrainMultiplier / 100) * 100;
-                        const minFloor = 500;
-                        const low  = Math.max(minFloor, baseLow);
-                        const high = Math.max(minFloor, baseHigh);
+                        const estimate = computeEstimate(0, "trail-cutting", linearMeasurements);
+                        if (!lf || !estimate) return null;
                         return (
                           <div style={{ padding: "0.75rem 1rem", background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "2px", fontFamily: "'Lato', sans-serif" }}>
-                            <div style={{ fontFamily: "'Oswald', sans-serif", fontSize: "0.65rem", letterSpacing: "0.18em", textTransform: "uppercase", color: "rgba(224,123,42,0.7)", marginBottom: "0.25rem" }}>Preliminary Range{form.trailTerrain ? ` — ${form.trailTerrain.charAt(0).toUpperCase() + form.trailTerrain.slice(1)} terrain` : ""}</div>
+                            <div style={{ fontFamily: "'Oswald', sans-serif", fontSize: "0.65rem", letterSpacing: "0.18em", textTransform: "uppercase", color: "rgba(224,123,42,0.7)", marginBottom: "0.25rem" }}>Trail Contribution{form.trailTerrain ? ` — ${form.trailTerrain.charAt(0).toUpperCase() + form.trailTerrain.slice(1)} terrain` : ""}</div>
                             <div style={{ fontFamily: "'Oswald', sans-serif", fontWeight: 600, fontSize: "1.3rem", color: "#E07B2A" }}>
-                              ${low.toLocaleString()} – ${high.toLocaleString()}
+                              {estimate.range}
                             </div>
                             <p style={{ fontSize: "0.72rem", color: "rgba(240,237,230,0.4)", margin: "0.3rem 0 0", lineHeight: 1.5, display: "flex", alignItems: "flex-start", gap: "0.3rem" }}>
                               <span
-                                title={`Effective acreage = length (${lf.toLocaleString()} ft) × width (${w} ft) ÷ 43,560 sq ft per acre = ${acres.toFixed(2)} acres. Rate: $700–$1,000/acre${terrainMultiplier > 1 ? ` × ${terrainMultiplier} terrain factor` : ""}. $500 minimum applies.`}
+                                title={`Based on ${lf.toLocaleString()} linear feet at $2–$4 per linear foot${form.trailTerrain === "sloped" ? " with a 1.2 terrain factor" : form.trailTerrain === "rocky" ? " with a 1.4 terrain factor" : ""}. A $500 minimum applies.`}
                                 style={{ display: "inline-flex", alignItems: "center", gap: "0.2rem", cursor: "help", color: "rgba(224,123,42,0.6)" }}
                               >
                                 <Info size={11} />
                               </span>
-                              {lf.toLocaleString()} ft × {w} ft = {acres.toFixed(2)} effective acres{form.trailTerrain && form.trailTerrain !== "flat" ? ` (${form.trailTerrain} terrain adjustment applied)` : ""}. Actual price requires a site visit.
+                              {estimate.measurement}. Actual price requires a site visit.
                             </p>
                           </div>
                         );
@@ -2392,9 +2472,7 @@ export default function QuotePage() {
                     {/* Preliminary price estimate — shown when parcel found and service selected */}
                     {parcelInfo && parcelInfo.found && activeServices.length > 0 && (() => {
                       const effectiveAcres = adjustedAcres ? parseFloat(adjustedAcres) : (parseFloat(form.acreage) || 0);
-                      const trailLfVal = activeServices.includes("trail-cutting") && form.trailLinearFeet ? parseFloat(form.trailLinearFeet) : undefined;
-                      if (effectiveAcres <= 0 && !trailLfVal) return null;
-                      const est = computeSelectedServicesEstimate(effectiveAcres, activeServices, trailLfVal);
+                      const est = computeSelectedServicesEstimate(effectiveAcres, activeServices, linearMeasurements);
                       if (!est) return null;
                       return (
                         <div style={{
@@ -2414,6 +2492,7 @@ export default function QuotePage() {
                           <p style={{ fontSize: "0.75rem", color: "rgba(240,237,230,0.4)", margin: 0, lineHeight: 1.5 }}>
                             {est.note}
                           </p>
+                          <EstimateContributionBreakdown contributions={est.contributions} />
                         </div>
                       );
                     })()}

@@ -9,18 +9,11 @@ export const QUOTE_SERVICE_OPTIONS = [
 
 export type QuoteServiceValue = (typeof QUOTE_SERVICE_OPTIONS)[number]["value"];
 
-const DIMENSION_BASED_SERVICES: QuoteServiceValue[] = ["right-of-way-clearing", "trail-cutting"];
-
 export function updateQuoteServiceSelection(
   current: QuoteServiceValue[],
   toggled: QuoteServiceValue,
 ): QuoteServiceValue[] {
   if (current.includes(toggled)) return current.filter((service) => service !== toggled);
-
-  if (DIMENSION_BASED_SERVICES.includes(toggled) || current.some((service) => DIMENSION_BASED_SERVICES.includes(service))) {
-    return [toggled];
-  }
-
   return [...current, toggled];
 }
 
