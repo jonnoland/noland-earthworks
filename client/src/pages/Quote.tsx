@@ -1494,6 +1494,22 @@ export default function QuotePage() {
                     <div className="flex justify-between" style={{ marginTop: "0.2rem", color: "rgba(240,237,230,0.42)", fontFamily: "'Lato', sans-serif", fontSize: "0.72rem" }}>
                       <span>0.25 ac</span><span>10 ac</span><span>20 ac</span><span>30 ac</span><span>40 ac</span>
                     </div>
+                    {form.service && form.service !== "trail-cutting" && (() => {
+                      const previewAcres = adjustedAcres ? parseFloat(adjustedAcres) : (parseFloat(form.acreage) || 1);
+                      const preview = previewAcres > 0 ? computeEstimate(previewAcres, form.service) : null;
+                      if (!preview) return null;
+                      return (
+                        <div aria-live="polite" style={{ marginTop: "0.9rem", padding: "0.8rem 0.95rem", background: "rgba(224,123,42,0.07)", border: "1px solid rgba(224,123,42,0.23)", borderRadius: "3px" }}>
+                          <div className="flex items-center justify-between gap-3">
+                            <span style={{ color: "rgba(240,237,230,0.62)", fontFamily: "'Oswald', sans-serif", fontSize: "0.68rem", letterSpacing: "0.12em", textTransform: "uppercase" }}>Live Preliminary Range</span>
+                            <strong style={{ color: "#E07B2A", fontFamily: "'Oswald', sans-serif", fontSize: "1.1rem", fontWeight: 700 }}>{preview.range}</strong>
+                          </div>
+                          <p style={{ margin: "0.35rem 0 0", color: "rgba(240,237,230,0.48)", fontFamily: "'Lato', sans-serif", fontSize: "0.72rem", lineHeight: 1.45 }}>
+                            Based on {formatQuoteAcreage(String(previewAcres))}. Final pricing follows an on-site review of access, terrain, vegetation, and obstacles.
+                          </p>
+                        </div>
+                      );
+                    })()}
                   </div>
                   )}
 
@@ -2213,16 +2229,25 @@ export default function QuotePage() {
                     {/* Adjusted acreage input — mirrors the customer-selected working area after parcel lookup */}
                     {parcelInfo && parcelInfo.found && parcelInfo.deedAcres && parcelInfo.deedAcres > 0 && (
                       <div style={{ marginTop: "0.75rem" }}>
-                        <label style={{ ...labelStyle, fontSize: "0.75rem", opacity: 0.7 }}>
+                        <label htmlFor="quote-adjusted-acreage" style={{ ...labelStyle, fontSize: "0.75rem", opacity: 0.7, display: "flex", alignItems: "center", gap: "0.35rem" }}>
                           Adjusted Acreage
+                          <span
+                            title="This is the part of the property you want cleared or managed. It can be smaller than—or different from—the full parcel size shown by the property records. You can edit it before requesting your quote."
+                            aria-label="Why adjusted acreage can differ from the total parcel size"
+                            style={{ display: "inline-flex", color: "rgba(224,123,42,0.82)", cursor: "help" }}
+                          >
+                            <Info size={14} aria-hidden="true" />
+                          </span>
                           <span style={{ color: "rgba(240,237,230,0.4)", fontSize: "0.68rem", letterSpacing: "0.08em", marginLeft: "0.4rem" }}>(customer-selected work area)</span>
                         </label>
                         <input
+                          id="quote-adjusted-acreage"
                           type="number"
                           min="0.25"
                           step="0.25"
                           placeholder={`Selected work area: ${formatQuoteAcreage(form.acreage)}`}
                           value={adjustedAcres}
+                          aria-describedby="quote-adjusted-acreage-help"
                           onChange={(e) => {
                             const val = e.target.value;
                             setAdjustedAcres(val);
@@ -2242,7 +2267,7 @@ export default function QuotePage() {
                             {adjustedAcresError}
                           </div>
                         )}
-                        <p style={{ margin: "0.38rem 0 0", color: "rgba(240,237,230,0.42)", fontFamily: "'Lato', sans-serif", fontSize: "0.72rem", lineHeight: 1.45 }}>
+                        <p id="quote-adjusted-acreage-help" style={{ margin: "0.38rem 0 0", color: "rgba(240,237,230,0.42)", fontFamily: "'Lato', sans-serif", fontSize: "0.72rem", lineHeight: 1.45 }}>
                           Full parcel: {parcelInfo.deedAcres.toFixed(2)} acres. Your selected work area is used for the preliminary estimate.
                         </p>
                       </div>

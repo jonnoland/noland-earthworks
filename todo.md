@@ -2875,3 +2875,8 @@
 
 ## Parcel-Adjusted Acreage Behavior — Aug 2026
 - [x] Preserve customer-selected approximate acreage and copy it into Adjusted Acreage after parcel lookup
+
+## Acreage Guidance & Dynamic Estimate — Aug 2026
+- [x] Add an Adjusted Acreage tooltip explaining the customer work-area value versus full parcel size
+- [x] Keep Adjusted Acreage manually editable after parcel lookup
+- [x] Add a real-time price preview that updates with selected or adjusted acreage
