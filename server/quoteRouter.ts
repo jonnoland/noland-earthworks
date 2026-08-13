@@ -1113,20 +1113,23 @@ export const quoteRouter = router({
     .input(z.object({ placeId: z.string().min(1).max(200) }))
     .query(async ({ input }) => {
       const apiKey = ENV.googlePlacesApiKey;
-      const emptyAddress = { formattedAddress: "", street: "", city: "", state: "", zip: "", county: "" };
+      const emptyAddress = { formattedAddress: "", street: "", city: "", state: "", zip: "", county: "", lat: null, lng: null };
       if (!apiKey) return emptyAddress;
       try {
-        const url = `https://maps.googleapis.com/maps/api/place/details/json?place_id=${encodeURIComponent(input.placeId)}&fields=formatted_address,address_components&key=${apiKey}`;
+        const url = `https://maps.googleapis.com/maps/api/place/details/json?place_id=${encodeURIComponent(input.placeId)}&fields=formatted_address,address_components,geometry&key=${apiKey}`;
         const res = await fetch(url);
         if (!res.ok) return emptyAddress;
         const data = await res.json() as {
           result?: {
             formatted_address?: string;
             address_components?: Array<{ long_name: string; short_name: string; types: string[] }>;
+            geometry?: { location?: { lat?: number; lng?: number } };
           };
         };
         return {
           formattedAddress: data.result?.formatted_address ?? "",
+          lat: typeof data.result?.geometry?.location?.lat === "number" ? data.result.geometry.location.lat : null,
+          lng: typeof data.result?.geometry?.location?.lng === "number" ? data.result.geometry.location.lng : null,
           ...parseGooglePlaceAddress(data.result?.address_components),
         };
       } catch (error) {

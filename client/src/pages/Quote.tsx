@@ -56,6 +56,44 @@ type PreliminaryServiceEstimate = {
   calculation: string;
 };
 
+type PropertyMapLocation = { lat: number; lng: number };
+
+function SelectedPropertyMap({ location, address }: { location: PropertyMapLocation; address: string }) {
+  const mapRef = useRef<google.maps.Map | null>(null);
+  const markerRef = useRef<google.maps.marker.AdvancedMarkerElement | null>(null);
+
+  const syncMap = (map: google.maps.Map) => {
+    const position = { lat: location.lat, lng: location.lng };
+    map.setCenter(position);
+    map.setZoom(17);
+    if (markerRef.current) markerRef.current.map = null;
+    markerRef.current = new window.google.maps.marker.AdvancedMarkerElement({
+      map,
+      position,
+      title: address || "Selected property",
+    });
+  };
+
+  const handleMapReady = (map: google.maps.Map) => {
+    mapRef.current = map;
+    syncMap(map);
+  };
+
+  useEffect(() => {
+    if (mapRef.current && window.google?.maps?.marker) syncMap(mapRef.current);
+  }, [location.lat, location.lng, address]);
+
+  return (
+    <div style={{ marginTop: "0.75rem", overflow: "hidden", border: "1px solid rgba(224,123,42,0.28)", borderRadius: "4px", background: "#171717" }}>
+      <div className="flex items-center justify-between gap-3" style={{ padding: "0.52rem 0.7rem", borderBottom: "1px solid rgba(224,123,42,0.18)" }}>
+        <span style={{ color: "rgba(240,237,230,0.8)", fontFamily: "'Oswald', sans-serif", fontSize: "0.65rem", letterSpacing: "0.12em", textTransform: "uppercase" }}>Selected Property</span>
+        <span style={{ color: "rgba(240,237,230,0.42)", fontFamily: "'Lato', sans-serif", fontSize: "0.66rem" }}>Drag, zoom, or switch map views</span>
+      </div>
+      <MapView className="w-full h-[220px]" initialCenter={location} initialZoom={17} onMapReady={handleMapReady} />
+    </div>
+  );
+}
+
 function parseCurrencyRange(range: string): { low: number; high: number } | null {
   const match = range.match(/^\$([\d,]+)\s+–\s+\$([\d,]+)$/);
   if (!match) return null;
@@ -159,6 +197,7 @@ export default function QuotePage() {
   const [autocompleteTerm, setAutocompleteTerm] = useState("");
   const [debouncedAutocompleteTerm, setDebouncedAutocompleteTerm] = useState("");
   const [selectedPlaceId, setSelectedPlaceId] = useState("");
+  const [selectedPropertyLocation, setSelectedPropertyLocation] = useState<PropertyMapLocation | null>(null);
   const autocompleteDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [parcelInfo, setParcelInfo] = useState<{
     found: boolean;
@@ -257,6 +296,11 @@ export default function QuotePage() {
     setParcelAutoFilled(false);
     setParcelInfo(null);
     setDebouncedParcelAddress(formattedAddress);
+    if (typeof details.lat === "number" && typeof details.lng === "number") {
+      setSelectedPropertyLocation({ lat: details.lat, lng: details.lng });
+    } else {
+      setSelectedPropertyLocation(null);
+    }
     setSelectedPlaceId("");
   }, [placeDetailsQuery.data, selectedPlaceId]);
 
@@ -547,6 +591,7 @@ export default function QuotePage() {
     setParcelAddress("");
     setDebouncedParcelAddress("");
     setParcelInfo(null);
+    setSelectedPropertyLocation(null);
     setParcelAutoFilled(false);
     setShowSuggestions(false);
     setAutocompleteTerm("");
@@ -2512,6 +2557,7 @@ export default function QuotePage() {
                           setParcelAddress(val);
                           setAutocompleteTerm(val);
                           setSelectedPlaceId("");
+                          setSelectedPropertyLocation(null);
                           setParcelAutoFilled(false);
                           setParcelInfo(null);
                           setShowSuggestions(true);
@@ -2563,6 +2609,10 @@ export default function QuotePage() {
                         </div>
                       )}
                     </div>
+
+                    {selectedPropertyLocation && (
+                      <SelectedPropertyMap location={selectedPropertyLocation} address={parcelAddress} />
+                    )}
 
                     {/* Parcel result card */}
                     {parcelInfo && parcelInfo.found && (

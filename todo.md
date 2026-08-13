@@ -2907,3 +2907,8 @@
 - [x] Add terrain- and acreage-based recommended service suggestions to the public quote form
 - [x] Allow recommended services to be added directly to the calculator selection
 - [x] Improve property address autocomplete selection and completion of street, city, state, ZIP, and county fields
+
+## Selected Property Map — Aug 2026
+- [x] Add a compact interactive map with a property pin after address selection
+- [x] Synchronize the map pin and center with autocomplete address changes
+- [x] Verify the selected-address map interaction on the public quote form
