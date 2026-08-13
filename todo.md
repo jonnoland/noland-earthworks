@@ -2917,3 +2917,9 @@
 - [x] Add a satellite imagery toggle to the selected-property map
 - [x] Enable dragging the property pin to refine rural site placement
 - [x] Retain adjusted pin coordinates with the submitted quote request
+
+## Map Measurements & Project Timeline — Aug 2026
+- [x] Add polygon and path drawing tools to the selected-property map
+- [x] Calculate acres or linear feet from the completed drawing and apply it to the relevant quote measurement
+- [x] Retain map-derived measurement details in the quote request
+- [x] Add an estimated project timeline based on terrain and selected linear-footage work
