@@ -11,6 +11,22 @@ export type QuoteServiceValue = (typeof QUOTE_SERVICE_OPTIONS)[number]["value"];
 
 export type QuoteLengthUnit = "feet" | "miles";
 
+export const QUOTE_TERRAIN_OPTIONS = [
+  { value: "level", label: "Level / Easy Access", multiplier: 1 },
+  { value: "rolling", label: "Rolling / Uneven", multiplier: 1.1 },
+  { value: "steep", label: "Steep / Wet / Rocky", multiplier: 1.25 },
+] as const;
+
+export type QuoteTerrainDifficulty = (typeof QUOTE_TERRAIN_OPTIONS)[number]["value"];
+
+export function quoteTerrainMultiplier(terrain: QuoteTerrainDifficulty | string | undefined): number {
+  return QUOTE_TERRAIN_OPTIONS.find((option) => option.value === terrain)?.multiplier ?? 1;
+}
+
+export function quoteTerrainLabel(terrain: QuoteTerrainDifficulty | string | undefined): string {
+  return QUOTE_TERRAIN_OPTIONS.find((option) => option.value === terrain)?.label ?? "Level / Easy Access";
+}
+
 export const FEET_PER_MILE = 5280;
 
 export function lengthToFeet(value: number, unit: QuoteLengthUnit): number | null {

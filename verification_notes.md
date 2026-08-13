@@ -10,3 +10,6 @@
 - Right-of-way selection reveals a Feet/Miles control next to Corridor Length. Switching to Miles leaves the canonical estimator flow in place while presenting the alternate measurement unit.
 - Entering 0.5 miles and a 30-foot corridor correctly converted to 2,640 linear feet, produced the existing $1,091–$2,000 right-of-way range, and displayed the hover calculation explanation: `2,640 linear feet × 30 ft ÷ 43,560 = 1.82 acres × $600–$1,100 per acre; $750 minimum applied when needed.`
 - Adding Trail Cutting alongside right-of-way exposes its own Feet/Miles selector without changing the existing right-of-way miles input or its calculated contribution.
+- The refreshed quote form exposes Level, Rolling (+10%), and Steep/Wet/Rocky (+25%) terrain choices alongside a Clear All calculator control that explicitly preserves contact and address information.
+- Selecting one acre of Forestry Mulching and Steep/Wet/Rocky terrain updated the live range from $700–$1,200 to $800–$1,500; the contribution breakdown now shows the `1.25` terrain factor and the terrain label.
+- Selecting Clear All returned the calculator to no selected services, the default level terrain, and the 1-acre starting value; the live preliminary range and service breakdown were removed for a fresh calculation.

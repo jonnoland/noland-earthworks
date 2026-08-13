@@ -2897,3 +2897,8 @@
 - [x] Add miles and linear-feet toggles to right-of-way and trail measurements
 - [x] Keep linear-footage estimates synchronized when measurement units change
 - [x] Add hover tooltips explaining each service contribution calculation
+
+## Terrain Adjustment & Quote Reset — Aug 2026
+- [x] Add a terrain-difficulty dropdown to the public quote calculator
+- [x] Apply terrain difficulty to preliminary ranges and visual breakdown calculations
+- [x] Add a clear-all action that resets the quote calculator inputs

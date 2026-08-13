@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { combinePreliminaryRanges, FEET_PER_MILE, feetToLength, lengthToFeet, updateQuoteServiceSelection } from "@shared/quoteMultiService";
+import { combinePreliminaryRanges, FEET_PER_MILE, feetToLength, lengthToFeet, quoteTerrainLabel, quoteTerrainMultiplier, updateQuoteServiceSelection } from "@shared/quoteMultiService";
 
 describe("quote multi-service selection", () => {
   it("allows acreage-based services to be selected together", () => {
@@ -29,5 +29,12 @@ describe("quote multi-service selection", () => {
     expect(feetToLength(7920, "miles")).toBe(1.5);
     expect(lengthToFeet(2640, "feet")).toBe(2640);
     expect(feetToLength(2640, "feet")).toBe(2640);
+  });
+
+  it("uses the correct Middle Tennessee terrain multiplier for each difficulty", () => {
+    expect(quoteTerrainMultiplier("level")).toBe(1);
+    expect(quoteTerrainMultiplier("rolling")).toBe(1.1);
+    expect(quoteTerrainMultiplier("steep")).toBe(1.25);
+    expect(quoteTerrainLabel("steep")).toBe("Steep / Wet / Rocky");
   });
 });

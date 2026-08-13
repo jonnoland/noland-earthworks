@@ -12,7 +12,7 @@ import { usePageTitle } from "@/hooks/usePageTitle";
 import { MapView } from "@/components/Map";
 import { formatQuotePhone, validateQuoteContact, validateQuoteContactField, type QuoteContactErrors, type QuoteContactField } from "@shared/quoteContactValidation";
 import { formatQuoteAcreage, normalizeQuoteAcreage, QUOTE_ACREAGE_MAX, QUOTE_ACREAGE_MIN, QUOTE_ACREAGE_STEP } from "@shared/quoteAcreage";
-import { combinePreliminaryRanges, feetToLength, lengthToFeet, QUOTE_SERVICE_OPTIONS, quoteServiceLabel, type QuoteLengthUnit, type QuoteServiceValue, updateQuoteServiceSelection } from "@shared/quoteMultiService";
+import { combinePreliminaryRanges, feetToLength, lengthToFeet, QUOTE_SERVICE_OPTIONS, QUOTE_TERRAIN_OPTIONS, quoteServiceLabel, quoteTerrainLabel, quoteTerrainMultiplier, type QuoteLengthUnit, type QuoteServiceValue, type QuoteTerrainDifficulty, updateQuoteServiceSelection } from "@shared/quoteMultiService";
 
 const inputStyle: React.CSSProperties = {
   width: "100%",
@@ -45,6 +45,7 @@ type LinearMeasurements = {
   trailTerrain?: string;
   rowLinearFeet?: number;
   rowCorridorWidthFt?: number;
+  terrainDifficulty?: QuoteTerrainDifficulty;
 };
 
 type PreliminaryServiceEstimate = {
@@ -264,7 +265,12 @@ export default function QuotePage() {
     if (service === "trail-cutting") {
       const lf = measurements.trailLinearFeet ?? 0;
       if (lf <= 0) return null;
-      const terrainFactor = measurements.trailTerrain === "sloped" ? 1.2 : measurements.trailTerrain === "rocky" ? 1.4 : 1;
+      const globalTerrainFactor = quoteTerrainMultiplier(measurements.terrainDifficulty);
+      const trailTerrainFactor = measurements.trailTerrain === "sloped" ? 1.2 : measurements.trailTerrain === "rocky" ? 1.4 : 1;
+      const terrainFactor = Math.max(globalTerrainFactor, trailTerrainFactor);
+      const terrainDetail = trailTerrainFactor > globalTerrainFactor
+        ? `${measurements.trailTerrain} trail terrain`
+        : quoteTerrainLabel(measurements.terrainDifficulty);
       // $2.00–$4.00 per linear foot, with a $500 minimum.
       const low = Math.max(500, Math.round(lf * 2 * terrainFactor));
       const high = Math.max(500, Math.round(lf * 4 * terrainFactor));
@@ -272,9 +278,9 @@ export default function QuotePage() {
       return {
         service,
         range: `${fmt(low)} – ${fmt(high)}`,
-        note: `Rough range based on ${lf.toLocaleString()} linear feet at $2–$4 per linear foot. Width, terrain, and vegetation density affect final price. $500 minimum applies.`,
-        measurement: `${lf.toLocaleString()} linear feet${terrainFactor > 1 ? ` · ${measurements.trailTerrain} terrain` : ""}`,
-        calculation: `${lf.toLocaleString()} linear feet × $2–$4 per linear foot${terrainFactor > 1 ? ` × ${terrainFactor} ${measurements.trailTerrain} terrain factor` : ""}; $500 minimum applied when needed.`,
+        note: `Rough range based on ${lf.toLocaleString()} linear feet at $2–$4 per linear foot. ${terrainFactor > 1 ? `${terrainDetail} adjustment is included. ` : ""}Width, terrain, and vegetation density affect final price. $500 minimum applies.`,
+        measurement: `${lf.toLocaleString()} linear feet${terrainFactor > 1 ? ` · ${terrainDetail}` : ""}`,
+        calculation: `${lf.toLocaleString()} linear feet × $2–$4 per linear foot${terrainFactor > 1 ? ` × ${terrainFactor} ${terrainDetail} factor` : ""}; $500 minimum applied when needed.`,
       };
     }
 
@@ -283,15 +289,16 @@ export default function QuotePage() {
       const width = measurements.rowCorridorWidthFt ?? 0;
       if (length <= 0 || width <= 0) return null;
       const effectiveAcres = (length * width) / 43560;
-      const low = Math.max(750, Math.round(effectiveAcres * 600));
-      const high = Math.max(750, Math.round(effectiveAcres * 1100));
+      const terrainFactor = quoteTerrainMultiplier(measurements.terrainDifficulty);
+      const low = Math.max(750, Math.round(effectiveAcres * 600 * terrainFactor));
+      const high = Math.max(750, Math.round(effectiveAcres * 1100 * terrainFactor));
       const fmt = (n: number) => `$${n.toLocaleString()}`;
       return {
         service,
         range: `${fmt(low)} – ${fmt(high)}`,
-        note: `Rough range based on ${length.toLocaleString()} linear feet at a ${width}-foot corridor width. Final price depends on access, terrain, vegetation, and obstacles.`,
-        measurement: `${length.toLocaleString()} linear feet · ${width}-ft corridor`,
-        calculation: `${length.toLocaleString()} linear feet × ${width} ft ÷ 43,560 = ${effectiveAcres.toFixed(2)} acres × $600–$1,100 per acre; $750 minimum applied when needed.`,
+        note: `Rough range based on ${length.toLocaleString()} linear feet at a ${width}-foot corridor width.${terrainFactor > 1 ? ` ${quoteTerrainLabel(measurements.terrainDifficulty)} adjustment is included.` : ""} Final price depends on access, terrain, vegetation, and obstacles.`,
+        measurement: `${length.toLocaleString()} linear feet · ${width}-ft corridor${terrainFactor > 1 ? ` · ${quoteTerrainLabel(measurements.terrainDifficulty)}` : ""}`,
+        calculation: `${length.toLocaleString()} linear feet × ${width} ft ÷ 43,560 = ${effectiveAcres.toFixed(2)} acres × $600–$1,100 per acre${terrainFactor > 1 ? ` × ${terrainFactor} ${quoteTerrainLabel(measurements.terrainDifficulty)} factor` : ""}; $750 minimum applied when needed.`,
       };
     }
 
@@ -306,15 +313,16 @@ export default function QuotePage() {
       "multiple":             [650, 1200],
     };
     const rates = baseRates[service] ?? baseRates["forestry-mulching"];
-    const low  = Math.round(acres * rates[0] / 100) * 100;
-    const high = Math.round(acres * rates[1] / 100) * 100;
+    const terrainFactor = quoteTerrainMultiplier(measurements.terrainDifficulty);
+    const low  = Math.round(acres * rates[0] * terrainFactor / 100) * 100;
+    const high = Math.round(acres * rates[1] * terrainFactor / 100) * 100;
     const fmt = (n: number) => `$${n.toLocaleString()}`;
     return {
       service,
       range: `${fmt(low)} – ${fmt(high)}`,
-      note: `Rough range based on ${formatQuoteAcreage(String(acres))}. Actual price requires a site visit and may vary based on density, terrain, and access.`,
-      measurement: formatQuoteAcreage(String(acres)),
-      calculation: `${formatQuoteAcreage(String(acres))} × $${rates[0].toLocaleString()}–$${rates[1].toLocaleString()} per acre, rounded to a preliminary range.`,
+      note: `Rough range based on ${formatQuoteAcreage(String(acres))}.${terrainFactor > 1 ? ` ${quoteTerrainLabel(measurements.terrainDifficulty)} adjustment is included.` : ""} Actual price requires a site visit and may vary based on density, terrain, and access.`,
+      measurement: `${formatQuoteAcreage(String(acres))}${terrainFactor > 1 ? ` · ${quoteTerrainLabel(measurements.terrainDifficulty)}` : ""}`,
+      calculation: `${formatQuoteAcreage(String(acres))} × $${rates[0].toLocaleString()}–$${rates[1].toLocaleString()} per acre${terrainFactor > 1 ? ` × ${terrainFactor} ${quoteTerrainLabel(measurements.terrainDifficulty)} factor` : ""}, rounded to a preliminary range.`,
     };
   }
 
@@ -393,6 +401,7 @@ export default function QuotePage() {
     const acres   = parseFloat(params.get("acres") || "0");
     const density = params.get("density") || "";
     const terrain = params.get("terrain") || "";
+    const terrainDifficulty: QuoteTerrainDifficulty = terrain === "steep" ? "steep" : terrain === "rolling" ? "rolling" : "level";
     const access  = params.get("access")  || "";
     const county   = params.get("county")  || "";
     const city     = params.get("city")    || "";
@@ -409,6 +418,7 @@ export default function QuotePage() {
       trailTerrain: "",
       rowLinearFeet: "",
       rowCorridorWidthFt: "",
+      terrainDifficulty,
       clientType: (params.get("clientType") as "residential" | "commercial" | "government") || "residential",
     };
   })();
@@ -463,6 +473,7 @@ export default function QuotePage() {
     trailTerrain: form.trailTerrain || undefined,
     rowLinearFeet: Number(form.rowLinearFeet) || undefined,
     rowCorridorWidthFt: Number(form.rowCorridorWidthFt) || undefined,
+    terrainDifficulty: form.terrainDifficulty as QuoteTerrainDifficulty,
   };
 
   const lengthInputValue = (linearFeet: string, unit: QuoteLengthUnit) => {
@@ -487,6 +498,45 @@ export default function QuotePage() {
     const feet = lengthToFeet(Number(rawValue), unit);
     if (feet === null) return;
     setForm((current) => ({ ...current, [field]: String(Math.round(feet)) }));
+  };
+
+  const clearQuoteCalculator = () => {
+    setSelectedServices([]);
+    setSelectedAddOns([]);
+    setAdjustedAcres("");
+    setAdjustedAcresError("");
+    setSubmittedEstimate(null);
+    setBallparkRange("");
+    setBallparkNote("");
+    setParcelAddress("");
+    setDebouncedParcelAddress("");
+    setParcelInfo(null);
+    setParcelAutoFilled(false);
+    setShowSuggestions(false);
+    setAutocompleteTerm("");
+    setDebouncedAutocompleteTerm("");
+    setSubmitError(null);
+    setTrailSegments([{ id: 1, length: "", width: "" }]);
+    nextSegId.current = 2;
+    setCalcOpen(false);
+    setRowLengthUnit("feet");
+    setTrailLengthUnit("feet");
+    setContactErrors((current) => {
+      const next = { ...current };
+      delete next.service;
+      return next;
+    });
+    setForm((current) => ({
+      ...current,
+      service: "",
+      acreage: "1",
+      terrainDifficulty: "level",
+      trailLinearFeet: "",
+      trailWidth: "",
+      trailTerrain: "",
+      rowLinearFeet: "",
+      rowCorridorWidthFt: "",
+    }));
   };
 
   const toggleSelectedService = (service: QuoteServiceValue) => {
@@ -759,6 +809,7 @@ export default function QuotePage() {
           ? `Effective Acreage: ${((parseFloat(form.trailLinearFeet) * parseFloat(form.trailWidth)) / 43560).toFixed(2)} acres`
           : "",
         activeServices.includes("trail-cutting") && form.trailTerrain ? `Terrain Type: ${form.trailTerrain.charAt(0).toUpperCase() + form.trailTerrain.slice(1)}` : "",
+        form.terrainDifficulty && form.terrainDifficulty !== "level" ? `Overall Terrain Difficulty: ${quoteTerrainLabel(form.terrainDifficulty)} (+${Math.round((quoteTerrainMultiplier(form.terrainDifficulty) - 1) * 100)}%)` : "",
         activeServices.includes("right-of-way-clearing") && form.rowLinearFeet ? `ROW Length: ${parseFloat(form.rowLinearFeet).toLocaleString()} linear feet` : "",
         activeServices.includes("right-of-way-clearing") && form.rowCorridorWidthFt ? `Corridor Width: ${form.rowCorridorWidthFt} ft` : "",
         activeServices.includes("right-of-way-clearing") && form.rowLinearFeet && form.rowCorridorWidthFt
@@ -1700,6 +1751,41 @@ export default function QuotePage() {
                         </p>
                       </div>
                     )}
+                  </div>
+
+                  <div style={{ padding: "0.9rem", background: "rgba(255,255,255,0.025)", border: "1px solid rgba(240,237,230,0.1)", borderRadius: "4px" }}>
+                    <div className="flex items-center justify-between gap-3" style={{ marginBottom: "0.45rem" }}>
+                      <label htmlFor="quote-terrain-difficulty" style={{ ...labelStyle, marginBottom: 0 }}>Terrain Difficulty</label>
+                      <button
+                        type="button"
+                        onClick={clearQuoteCalculator}
+                        title="Clear selected services, acreage, terrain, linear measurements, and add-ons. Contact details and address stay in place."
+                        style={{ border: "1px solid rgba(240,237,230,0.18)", borderRadius: "3px", padding: "0.32rem 0.52rem", background: "transparent", color: "rgba(240,237,230,0.68)", cursor: "pointer", fontFamily: "'Oswald', sans-serif", fontSize: "0.62rem", letterSpacing: "0.1em", textTransform: "uppercase" }}
+                      >
+                        Clear All
+                      </button>
+                    </div>
+                    <select
+                      id="quote-terrain-difficulty"
+                      name="terrainDifficulty"
+                      value={form.terrainDifficulty}
+                      onChange={handleChange}
+                      style={{ ...inputStyle, cursor: "pointer" }}
+                      onFocus={(e) => (e.target.style.borderColor = "rgba(224,123,42,0.6)")}
+                      onBlur={(e) => (e.target.style.borderColor = "rgba(255,255,255,0.12)")}
+                    >
+                      {QUOTE_TERRAIN_OPTIONS.map((option) => (
+                        <option key={option.value} value={option.value} style={{ backgroundColor: "#1a1a1a" }}>
+                          {option.label}{option.multiplier > 1 ? ` (+${Math.round((option.multiplier - 1) * 100)}%)` : ""}
+                        </option>
+                      ))}
+                    </select>
+                    <p style={{ margin: "0.4rem 0 0", color: "rgba(240,237,230,0.44)", fontFamily: "'Lato', sans-serif", fontSize: "0.7rem", lineHeight: 1.4 }}>
+                      Applied to every selected service in the preliminary range. Trail-specific conditions use the higher applicable adjustment rather than stacking multipliers.
+                    </p>
+                    <p style={{ margin: "0.25rem 0 0", color: "rgba(240,237,230,0.34)", fontFamily: "'Lato', sans-serif", fontSize: "0.66rem", lineHeight: 1.35 }}>
+                      Clear All resets calculator fields and leaves your contact details and property address in place.
+                    </p>
                   </div>
 
                   <div>
