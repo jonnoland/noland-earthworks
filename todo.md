@@ -2928,3 +2928,8 @@
 - [x] Allow multiple separate area outlines and path drawings on the selected-property map
 - [x] Sum all drawn areas and paths into combined acreage and linear-footage totals
 - [x] Apply combined map totals to the quote calculator and request details
+
+## Individual Map Drawing Controls — Aug 2026
+- [x] Show each drawn area and path as an individually manageable map measurement
+- [x] Allow a customer to edit or delete one selected drawing without clearing the others
+- [x] Recalculate combined acreage and linear-footage totals after individual edits or deletions

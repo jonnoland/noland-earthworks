@@ -59,6 +59,12 @@ type PreliminaryServiceEstimate = {
 
 type PropertyMapLocation = { lat: number; lng: number };
 type MapDrawingMeasurement = CombinedMapMeasurements & { pathTarget?: QuoteServiceValue };
+type ManagedMapDrawing = {
+  id: number;
+  type: "area" | "path";
+  overlay: google.maps.Polygon | google.maps.Polyline;
+};
+type MapDrawingSummary = { id: number; type: "area" | "path"; value: number };
 
 function SelectedPropertyMap({
   location,
@@ -74,10 +80,12 @@ function SelectedPropertyMap({
   const mapRef = useRef<google.maps.Map | null>(null);
   const markerRef = useRef<google.maps.marker.AdvancedMarkerElement | null>(null);
   const drawingManagerRef = useRef<google.maps.drawing.DrawingManager | null>(null);
-  const areaDrawingsRef = useRef<google.maps.Polygon[]>([]);
-  const pathDrawingsRef = useRef<google.maps.Polyline[]>([]);
+  const drawingsRef = useRef<ManagedMapDrawing[]>([]);
+  const nextDrawingIdRef = useRef(1);
   const [satelliteView, setSatelliteView] = useState(false);
   const [drawingMode, setDrawingMode] = useState<"area" | "path" | null>(null);
+  const [drawingSummaries, setDrawingSummaries] = useState<MapDrawingSummary[]>([]);
+  const [selectedDrawingId, setSelectedDrawingId] = useState<number | null>(null);
 
   const syncMap = (map: google.maps.Map) => {
     const position = { lat: location.lat, lng: location.lng };
@@ -98,17 +106,54 @@ function SelectedPropertyMap({
     markerRef.current = marker;
   };
 
-  const emitCombinedMeasurements = () => {
-    const areas = areaDrawingsRef.current
-      .map((polygon) => squareMetersToAcres(window.google.maps.geometry.spherical.computeArea(polygon.getPath())))
-      .filter((value): value is number => value !== null);
-    const paths = pathDrawingsRef.current
-      .map((path) => metersToLinearFeet(window.google.maps.geometry.spherical.computeLength(path.getPath())))
-      .filter((value): value is number => value !== null);
-    onMeasurementsChange(combineMapDrawingMeasurements([
-      ...areas.map((value) => ({ type: "area" as const, value })),
-      ...paths.map((value) => ({ type: "path" as const, value })),
-    ]));
+  const setDrawingEditState = (drawingId: number | null) => {
+    drawingsRef.current.forEach((drawing) => {
+      const active = drawing.id === drawingId;
+      if (drawing.type === "area") {
+        (drawing.overlay as google.maps.Polygon).setOptions({
+          editable: active,
+          draggable: active,
+          strokeColor: active ? "#F9A04B" : "#E07B2A",
+          fillOpacity: active ? 0.32 : 0.18,
+        });
+      } else {
+        (drawing.overlay as google.maps.Polyline).setOptions({
+          editable: active,
+          draggable: active,
+          strokeColor: active ? "#F9A04B" : "#E07B2A",
+          strokeWeight: active ? 5 : 4,
+        });
+      }
+    });
+  };
+
+  const selectDrawing = (drawingId: number) => {
+    setSelectedDrawingId(drawingId);
+    setDrawingEditState(drawingId);
+  };
+
+  const refreshDrawings = () => {
+    const summaries = drawingsRef.current
+      .map<MapDrawingSummary | null>((drawing) => {
+        const value = drawing.type === "area"
+          ? squareMetersToAcres(window.google.maps.geometry.spherical.computeArea((drawing.overlay as google.maps.Polygon).getPath()))
+          : metersToLinearFeet(window.google.maps.geometry.spherical.computeLength((drawing.overlay as google.maps.Polyline).getPath()));
+        return value === null ? null : { id: drawing.id, type: drawing.type, value };
+      })
+      .filter((drawing): drawing is MapDrawingSummary => drawing !== null);
+    setDrawingSummaries(summaries);
+    onMeasurementsChange(combineMapDrawingMeasurements(summaries));
+  };
+
+  const removeDrawing = (drawingId: number) => {
+    const drawing = drawingsRef.current.find((item) => item.id === drawingId);
+    if (!drawing) return;
+    drawing.overlay.setMap(null);
+    drawingsRef.current = drawingsRef.current.filter((item) => item.id !== drawingId);
+    const nextSelectedId = drawingsRef.current[0]?.id ?? null;
+    setSelectedDrawingId(nextSelectedId);
+    setDrawingEditState(nextSelectedId);
+    refreshDrawings();
   };
 
   const handleMapReady = (map: google.maps.Map) => {
@@ -120,28 +165,32 @@ function SelectedPropertyMap({
       polygonOptions: { fillColor: "#E07B2A", fillOpacity: 0.22, strokeColor: "#E07B2A", strokeOpacity: 0.9, strokeWeight: 2, editable: true, draggable: true },
       polylineOptions: { strokeColor: "#E07B2A", strokeOpacity: 0.95, strokeWeight: 4, editable: true, draggable: true },
     });
-    drawingManager.setMap(map);
-    drawingManager.addListener("overlaycomplete", (event: google.maps.drawing.OverlayCompleteEvent) => {
-      drawingManager.setDrawingMode(null);
-      setDrawingMode(null);
-      if (event.type === window.google.maps.drawing.OverlayType.POLYGON) {
-        const polygon = event.overlay as google.maps.Polygon;
-        areaDrawingsRef.current.push(polygon);
-        polygon.getPath().addListener("set_at", emitCombinedMeasurements);
-        polygon.getPath().addListener("insert_at", emitCombinedMeasurements);
-        polygon.getPath().addListener("remove_at", emitCombinedMeasurements);
-        polygon.addListener("dragend", emitCombinedMeasurements);
-      }
-      if (event.type === window.google.maps.drawing.OverlayType.POLYLINE) {
-        const path = event.overlay as google.maps.Polyline;
-        pathDrawingsRef.current.push(path);
-        path.getPath().addListener("set_at", emitCombinedMeasurements);
-        path.getPath().addListener("insert_at", emitCombinedMeasurements);
-        path.getPath().addListener("remove_at", emitCombinedMeasurements);
-        path.addListener("dragend", emitCombinedMeasurements);
-      }
-      emitCombinedMeasurements();
-    });
+      drawingManager.setMap(map);
+      drawingManager.addListener("overlaycomplete", (event: google.maps.drawing.OverlayCompleteEvent) => {
+        drawingManager.setDrawingMode(null);
+        setDrawingMode(null);
+        const id = nextDrawingIdRef.current++;
+        if (event.type === window.google.maps.drawing.OverlayType.POLYGON) {
+          const polygon = event.overlay as google.maps.Polygon;
+          drawingsRef.current.push({ id, type: "area", overlay: polygon });
+          polygon.getPath().addListener("set_at", refreshDrawings);
+          polygon.getPath().addListener("insert_at", refreshDrawings);
+          polygon.getPath().addListener("remove_at", refreshDrawings);
+          polygon.addListener("dragend", refreshDrawings);
+          polygon.addListener("click", () => selectDrawing(id));
+        }
+        if (event.type === window.google.maps.drawing.OverlayType.POLYLINE) {
+          const path = event.overlay as google.maps.Polyline;
+          drawingsRef.current.push({ id, type: "path", overlay: path });
+          path.getPath().addListener("set_at", refreshDrawings);
+          path.getPath().addListener("insert_at", refreshDrawings);
+          path.getPath().addListener("remove_at", refreshDrawings);
+          path.addListener("dragend", refreshDrawings);
+          path.addListener("click", () => selectDrawing(id));
+        }
+        selectDrawing(id);
+        refreshDrawings();
+      });
     drawingManagerRef.current = drawingManager;
   };
 
@@ -160,13 +209,12 @@ function SelectedPropertyMap({
   };
 
   const clearDrawing = () => {
-    areaDrawingsRef.current.forEach((drawing) => drawing.setMap(null));
-    pathDrawingsRef.current.forEach((drawing) => drawing.setMap(null));
-    areaDrawingsRef.current = [];
-    pathDrawingsRef.current = [];
+    drawingsRef.current.forEach((drawing) => drawing.overlay.setMap(null));
+    drawingsRef.current = [];
     drawingManagerRef.current?.setDrawingMode(null);
     setDrawingMode(null);
-    onMeasurementsChange(combineMapDrawingMeasurements([]));
+    setSelectedDrawingId(null);
+    refreshDrawings();
   };
 
   return (
@@ -174,7 +222,7 @@ function SelectedPropertyMap({
       <div className="flex items-center justify-between gap-3" style={{ padding: "0.52rem 0.7rem", borderBottom: "1px solid rgba(224,123,42,0.18)" }}>
         <span style={{ color: "rgba(240,237,230,0.8)", fontFamily: "'Oswald', sans-serif", fontSize: "0.65rem", letterSpacing: "0.12em", textTransform: "uppercase" }}>Selected Property</span>
         <div className="flex items-center gap-2 flex-wrap justify-end">
-          <span style={{ color: "rgba(240,237,230,0.42)", fontFamily: "'Lato', sans-serif", fontSize: "0.66rem" }}>Add separate areas or paths; totals update automatically</span>
+          <span style={{ color: "rgba(240,237,230,0.42)", fontFamily: "'Lato', sans-serif", fontSize: "0.66rem" }}>Select a drawing to edit or remove it; totals update automatically</span>
           <button
             type="button"
             onClick={toggleSatelliteView}
@@ -204,11 +252,34 @@ function SelectedPropertyMap({
             onClick={clearDrawing}
             style={{ border: "1px solid rgba(240,237,230,0.22)", borderRadius: "2px", padding: "0.25rem 0.42rem", background: "transparent", color: "rgba(240,237,230,0.7)", cursor: "pointer", fontFamily: "'Oswald', sans-serif", fontSize: "0.58rem", letterSpacing: "0.09em", textTransform: "uppercase" }}
           >
-            Clear Drawing
+            Clear All
           </button>
         </div>
       </div>
       <MapView className="w-full h-[220px]" initialCenter={location} initialZoom={17} onMapReady={handleMapReady} />
+      {drawingSummaries.length > 0 && (
+        <div style={{ padding: "0.55rem 0.7rem", borderTop: "1px solid rgba(224,123,42,0.18)" }}>
+          <div style={{ color: "rgba(240,237,230,0.48)", fontFamily: "'Oswald', sans-serif", fontSize: "0.58rem", letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: "0.4rem" }}>Mapped Areas &amp; Paths</div>
+          <div className="flex flex-col gap-1">
+            {drawingSummaries.map((drawing, index) => {
+              const selected = selectedDrawingId === drawing.id;
+              const label = drawing.type === "area" ? `Area ${drawingSummaries.filter((item) => item.type === "area").findIndex((item) => item.id === drawing.id) + 1}` : `Path ${drawingSummaries.filter((item) => item.type === "path").findIndex((item) => item.id === drawing.id) + 1}`;
+              return (
+                <div key={drawing.id} className="flex items-center justify-between gap-2" style={{ padding: "0.35rem 0.45rem", background: selected ? "rgba(224,123,42,0.12)" : "rgba(255,255,255,0.025)", border: `1px solid ${selected ? "rgba(224,123,42,0.4)" : "rgba(240,237,230,0.08)"}`, borderRadius: "2px" }}>
+                  <button type="button" onClick={() => selectDrawing(drawing.id)} aria-pressed={selected} style={{ minWidth: 0, border: "none", padding: 0, background: "transparent", color: "rgba(240,237,230,0.82)", cursor: "pointer", textAlign: "left", fontFamily: "'Lato', sans-serif", fontSize: "0.7rem" }}>
+                    <strong style={{ color: selected ? "#F9A04B" : "rgba(240,237,230,0.9)", fontWeight: 600 }}>{label}</strong>
+                    <span style={{ color: "rgba(240,237,230,0.45)" }}> · {drawing.type === "area" ? `${drawing.value.toFixed(2)} ac` : `${Math.round(drawing.value).toLocaleString()} lf`}</span>
+                  </button>
+                  <div className="flex items-center gap-1" style={{ flexShrink: 0 }}>
+                    <button type="button" onClick={() => selectDrawing(drawing.id)} style={{ border: "1px solid rgba(224,123,42,0.34)", padding: "0.18rem 0.32rem", background: "transparent", color: "#E07B2A", cursor: "pointer", fontFamily: "'Oswald', sans-serif", fontSize: "0.52rem", letterSpacing: "0.08em", textTransform: "uppercase" }}>Edit</button>
+                    <button type="button" onClick={() => removeDrawing(drawing.id)} style={{ border: "1px solid rgba(252,165,165,0.32)", padding: "0.18rem 0.32rem", background: "transparent", color: "#fca5a5", cursor: "pointer", fontFamily: "'Oswald', sans-serif", fontSize: "0.52rem", letterSpacing: "0.08em", textTransform: "uppercase" }}>Remove</button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

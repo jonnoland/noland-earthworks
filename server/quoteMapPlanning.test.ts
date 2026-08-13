@@ -19,6 +19,17 @@ describe("quote map planning", () => {
     ])).toEqual({ totalAcres: 2, totalLinearFeet: 2000, areaCount: 2, pathCount: 2 });
   });
 
+  it("recalculates remaining totals after an individual map drawing is removed", () => {
+    const drawings = [
+      { id: 1, type: "area" as const, value: 1.5 },
+      { id: 2, type: "area" as const, value: 0.5 },
+      { id: 3, type: "path" as const, value: 1200 },
+      { id: 4, type: "path" as const, value: 800 },
+    ];
+    expect(combineMapDrawingMeasurements(drawings.filter((drawing) => drawing.id !== 2 && drawing.id !== 3)))
+      .toEqual({ totalAcres: 1.5, totalLinearFeet: 800, areaCount: 1, pathCount: 1 });
+  });
+
   it("extends preliminary project time for terrain and linear-footage work", () => {
     const level = estimateProjectTimeline({ acres: 1, totalLinearFeet: 0, terrain: "level" });
     const steep = estimateProjectTimeline({ acres: 1, totalLinearFeet: 6000, terrain: "steep" });
