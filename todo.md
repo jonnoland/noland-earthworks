@@ -2986,4 +2986,4 @@
 - [x] Measure the current quote-page mobile performance and critical loading path
 - [x] Implement a low-risk quote-page performance improvement that preserves the form flow
 - [x] Add factual county-specific differentiation without expanding generic boilerplate
-- [ ] Validate mobile performance and county-page indexability after publication
+- [x] Validate mobile performance and county-page indexability after publication
