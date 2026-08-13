@@ -2912,3 +2912,8 @@
 - [x] Add a compact interactive map with a property pin after address selection
 - [x] Synchronize the map pin and center with autocomplete address changes
 - [x] Verify the selected-address map interaction on the public quote form
+
+## Satellite View & Adjustable Property Pin — Aug 2026
+- [x] Add a satellite imagery toggle to the selected-property map
+- [x] Enable dragging the property pin to refine rural site placement
+- [x] Retain adjusted pin coordinates with the submitted quote request

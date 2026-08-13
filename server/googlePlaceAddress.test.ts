@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseGooglePlaceAddress } from "./googlePlaceAddress";
+import { parseGooglePlaceAddress, parseGooglePlaceCoordinates } from "./googlePlaceAddress";
 
 describe("parseGooglePlaceAddress", () => {
   it("maps Google address components into editable quote fields", () => {
@@ -18,5 +18,11 @@ describe("parseGooglePlaceAddress", () => {
       zip: "37201-1234",
       county: "Davidson",
     });
+  });
+
+  it("keeps valid geometry coordinates for a draggable property pin", () => {
+    expect(parseGooglePlaceCoordinates({ lat: 36.222, lng: -87.47 })).toEqual({ lat: 36.222, lng: -87.47 });
+    expect(parseGooglePlaceCoordinates({ lat: Number.NaN, lng: -87.47 })).toBeNull();
+    expect(parseGooglePlaceCoordinates(undefined)).toBeNull();
   });
 });

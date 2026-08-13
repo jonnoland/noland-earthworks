@@ -12,7 +12,7 @@ import { qualifyLead } from "./leadQualifier";
 import { getServiceDisplayName } from "./serviceTaxonomy";
 import { opsLeads } from "../drizzle/schema";
 import { eq } from "drizzle-orm";
-import { parseGooglePlaceAddress } from "./googlePlaceAddress";
+import { parseGooglePlaceAddress, parseGooglePlaceCoordinates } from "./googlePlaceAddress";
 
 // Strip markdown code fences from LLM JSON responses
 function stripCodeFence(raw: string): string {
@@ -1126,10 +1126,11 @@ export const quoteRouter = router({
             geometry?: { location?: { lat?: number; lng?: number } };
           };
         };
+        const coordinates = parseGooglePlaceCoordinates(data.result?.geometry?.location);
         return {
           formattedAddress: data.result?.formatted_address ?? "",
-          lat: typeof data.result?.geometry?.location?.lat === "number" ? data.result.geometry.location.lat : null,
-          lng: typeof data.result?.geometry?.location?.lng === "number" ? data.result.geometry.location.lng : null,
+          lat: coordinates?.lat ?? null,
+          lng: coordinates?.lng ?? null,
           ...parseGooglePlaceAddress(data.result?.address_components),
         };
       } catch (error) {

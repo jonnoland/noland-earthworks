@@ -58,20 +58,36 @@ type PreliminaryServiceEstimate = {
 
 type PropertyMapLocation = { lat: number; lng: number };
 
-function SelectedPropertyMap({ location, address }: { location: PropertyMapLocation; address: string }) {
+function SelectedPropertyMap({
+  location,
+  address,
+  onLocationChange,
+}: {
+  location: PropertyMapLocation;
+  address: string;
+  onLocationChange: (location: PropertyMapLocation) => void;
+}) {
   const mapRef = useRef<google.maps.Map | null>(null);
   const markerRef = useRef<google.maps.marker.AdvancedMarkerElement | null>(null);
+  const [satelliteView, setSatelliteView] = useState(false);
 
   const syncMap = (map: google.maps.Map) => {
     const position = { lat: location.lat, lng: location.lng };
     map.setCenter(position);
     map.setZoom(17);
+    map.setMapTypeId(satelliteView ? "satellite" : "roadmap");
     if (markerRef.current) markerRef.current.map = null;
-    markerRef.current = new window.google.maps.marker.AdvancedMarkerElement({
+    const marker = new window.google.maps.marker.AdvancedMarkerElement({
       map,
       position,
       title: address || "Selected property",
+      gmpDraggable: true,
     });
+    marker.addListener("dragend", (event: google.maps.MapMouseEvent) => {
+      if (!event.latLng) return;
+      onLocationChange({ lat: event.latLng.lat(), lng: event.latLng.lng() });
+    });
+    markerRef.current = marker;
   };
 
   const handleMapReady = (map: google.maps.Map) => {
@@ -81,13 +97,27 @@ function SelectedPropertyMap({ location, address }: { location: PropertyMapLocat
 
   useEffect(() => {
     if (mapRef.current && window.google?.maps?.marker) syncMap(mapRef.current);
-  }, [location.lat, location.lng, address]);
+  }, [location.lat, location.lng, address, satelliteView]);
+
+  const toggleSatelliteView = () => {
+    setSatelliteView((current) => !current);
+  };
 
   return (
     <div style={{ marginTop: "0.75rem", overflow: "hidden", border: "1px solid rgba(224,123,42,0.28)", borderRadius: "4px", background: "#171717" }}>
       <div className="flex items-center justify-between gap-3" style={{ padding: "0.52rem 0.7rem", borderBottom: "1px solid rgba(224,123,42,0.18)" }}>
         <span style={{ color: "rgba(240,237,230,0.8)", fontFamily: "'Oswald', sans-serif", fontSize: "0.65rem", letterSpacing: "0.12em", textTransform: "uppercase" }}>Selected Property</span>
-        <span style={{ color: "rgba(240,237,230,0.42)", fontFamily: "'Lato', sans-serif", fontSize: "0.66rem" }}>Drag, zoom, or switch map views</span>
+        <div className="flex items-center gap-2">
+          <span style={{ color: "rgba(240,237,230,0.42)", fontFamily: "'Lato', sans-serif", fontSize: "0.66rem" }}>Drag pin to refine location</span>
+          <button
+            type="button"
+            onClick={toggleSatelliteView}
+            aria-pressed={satelliteView}
+            style={{ border: "1px solid rgba(224,123,42,0.48)", borderRadius: "2px", padding: "0.25rem 0.42rem", background: satelliteView ? "rgba(224,123,42,0.18)" : "transparent", color: "#E07B2A", cursor: "pointer", fontFamily: "'Oswald', sans-serif", fontSize: "0.58rem", letterSpacing: "0.09em", textTransform: "uppercase" }}
+          >
+            {satelliteView ? "Street View" : "Satellite View"}
+          </button>
+        </div>
       </div>
       <MapView className="w-full h-[220px]" initialCenter={location} initialZoom={17} onMapReady={handleMapReady} />
     </div>
@@ -907,8 +937,8 @@ export default function QuotePage() {
       rfpDocumentUrls: rfpDocs.filter(d => !d.uploading && !d.error && d.url.startsWith("http")).map(d => d.url),
       // Site visit helpers
       propertyPhotoUrls: uploadedPhotos.filter(p => !p.uploading && !p.error && p.url.startsWith("http")).map(p => p.url),
-      propertyPinLat: pinLat ?? undefined,
-      propertyPinLng: pinLng ?? undefined,
+      propertyPinLat: selectedPropertyLocation?.lat ?? pinLat ?? undefined,
+      propertyPinLng: selectedPropertyLocation?.lng ?? pinLng ?? undefined,
       estimatedRange: (() => {
         const effectiveAcres = adjustedAcres ? parseFloat(adjustedAcres) : (parseFloat(form.acreage) || 0);
         const est = activeServices.length > 0
@@ -2611,7 +2641,7 @@ export default function QuotePage() {
                     </div>
 
                     {selectedPropertyLocation && (
-                      <SelectedPropertyMap location={selectedPropertyLocation} address={parcelAddress} />
+                      <SelectedPropertyMap location={selectedPropertyLocation} address={parcelAddress} onLocationChange={setSelectedPropertyLocation} />
                     )}
 
                     {/* Parcel result card */}

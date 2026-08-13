@@ -12,6 +12,14 @@ export type ParsedGooglePlaceAddress = {
   county: string;
 };
 
+export type GooglePlaceCoordinates = { lat: number; lng: number };
+
+export function parseGooglePlaceCoordinates(location: { lat?: number; lng?: number } | undefined): GooglePlaceCoordinates | null {
+  if (typeof location?.lat !== "number" || typeof location.lng !== "number") return null;
+  if (!Number.isFinite(location.lat) || !Number.isFinite(location.lng)) return null;
+  return { lat: location.lat, lng: location.lng };
+}
+
 export function parseGooglePlaceAddress(components: GooglePlaceAddressComponent[] | undefined): ParsedGooglePlaceAddress {
   const find = (type: string) => components?.find((component) => component.types.includes(type));
   const streetNumber = find("street_number")?.long_name ?? "";
