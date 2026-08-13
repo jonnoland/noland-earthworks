@@ -25,6 +25,7 @@ export interface ServicePageProps {
   title: string;
   tagline: string;
   heroImage: string;
+  heroImageMobile?: string;
   overviewTitle: string;
   overviewBody: string[];
   benefits: string[];
@@ -110,7 +111,7 @@ function FaqAccordion({ faqs }: { faqs: FaqItem[] }) {
 
 export default function ServicePageLayout(props: ServicePageProps) {
   const {
-    slug, title, tagline, heroImage, overviewTitle, overviewBody,
+    slug, title, tagline, heroImage, heroImageMobile, overviewTitle, overviewBody,
     benefits, faqs, relatedServices,
   } = props;
 
@@ -221,11 +222,23 @@ export default function ServicePageLayout(props: ServicePageProps) {
         className="relative flex items-end"
         style={{
           minHeight: "52vh",
-          backgroundImage: `url(${heroImage})`,
-          backgroundSize: "cover",
-          backgroundPosition: "center 30%",
+          overflow: "hidden",
+          backgroundColor: "#121212",
         }}
       >
+        <picture className="absolute inset-0" aria-hidden="true">
+          {heroImageMobile && (
+            <source media="(max-width: 768px)" srcSet={heroImageMobile} />
+          )}
+          <img
+            src={heroImage}
+            alt=""
+            fetchPriority="high"
+            decoding="async"
+            className="h-full w-full object-cover"
+            style={{ objectPosition: "center 30%" }}
+          />
+        </picture>
         <div
           className="absolute inset-0"
           style={{

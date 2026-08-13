@@ -31,4 +31,19 @@ describe("homepage performance safeguards", () => {
     expect(source).toContain('media="print" onload="this.media=\'all\'"');
     expect(source).toContain("<noscript><link");
   });
+
+  it("loads the forestry-mulching hero as a high-priority responsive image", () => {
+    const layout = readFileSync(
+      resolve(projectRoot, "client/src/components/ServicePageLayout.tsx"),
+      "utf8"
+    );
+    const forestryPage = readFileSync(
+      resolve(projectRoot, "client/src/pages/ForestryMulching.tsx"),
+      "utf8"
+    );
+
+    expect(layout).toContain('fetchPriority="high"');
+    expect(layout).toContain('media="(max-width: 768px)"');
+    expect(forestryPage).toContain("forestry-mulching-mobile_47442aea.webp");
+  });
 });

@@ -6,6 +6,7 @@ import { usePageTitle } from "@/hooks/usePageTitle";
 import { useEffect } from "react";
 
 const HERO = "https://d2xsxph8kpxj0f.cloudfront.net/310519663484957999/PymCzDCnSJzPjdkfwA7Jn6/forestry-mulching-HhrtysAJXn8CTRW2xzcGCC.webp";
+const MOBILE_HERO = "/manus-storage/forestry-mulching-mobile_47442aea.webp";
 const LAND_HERO = "https://d2xsxph8kpxj0f.cloudfront.net/310519663484957999/PymCzDCnSJzPjdkfwA7Jn6/land-management-iPC6VzRdyjJa4bVNXaWy5n.webp";
 const VEGETATION_HERO = "https://d2xsxph8kpxj0f.cloudfront.net/310519663484957999/PymCzDCnSJzPjdkfwA7Jn6/vegetation-management-hnEnCRefahdbJy4xpn6UnC.webp";
 const MAINTENANCE_HERO = "https://d2xsxph8kpxj0f.cloudfront.net/310519663484957999/PymCzDCnSJzPjdkfwA7Jn6/property-maintenance-3gu7BTR6P2RKi4ZuYCNLoN.webp";
@@ -15,6 +16,7 @@ const data: ServicePageProps = {
   title: "Forestry Mulching in Tennessee",
   tagline: "The most efficient way to clear land — one pass, no hauling, no burning. Just clean, mulched ground ready for use.",
   heroImage: HERO,
+  heroImageMobile: MOBILE_HERO,
   overviewTitle: "What Is Forestry Mulching?",
   overviewBody: [
     "Forestry mulching is a single-step land management process that uses a specialized machine with a rotating drum of carbide teeth to grind trees, brush, stumps, and vegetation directly into mulch — all in one pass.",
