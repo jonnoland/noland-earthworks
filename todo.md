@@ -2943,3 +2943,9 @@
 - [x] Show each drawn area and path as an individually manageable map measurement
 - [x] Allow a customer to edit or delete one selected drawing without clearing the others
 - [x] Recalculate combined acreage and linear-footage totals after individual edits or deletions
+
+## SEO & AI Visibility Improvement — Aug 2026
+- [x] Audit public technical SEO, local entity signals, structured data, and indexing readiness
+- [x] Review and recalibrate the AI Visibility score methodology around forestry mulching queries
+- [x] Implement the highest-impact validated SEO and AI discoverability improvements
+- [ ] Complete a production SEO regression check for bot rendering, canonical tags, robots, sitemap, and structured-data integrity

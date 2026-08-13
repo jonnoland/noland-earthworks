@@ -85,6 +85,13 @@ interface FixResult {
   content: string;
 }
 
+function categoryMentionRate(results: PromptResult[], category: string) {
+  const categoryResults = results.filter((result) => result.category === category);
+  if (categoryResults.length === 0) return { mentioned: 0, total: 0, rate: 0 };
+  const mentioned = categoryResults.filter((result) => result.mentioned).length;
+  return { mentioned, total: categoryResults.length, rate: Math.round((mentioned / categoryResults.length) * 100) };
+}
+
 // ─── Score Gauge ──────────────────────────────────────────────────────────────
 
 function ScoreGauge({ score, delta }: { score: number; delta: number | null }) {
@@ -470,7 +477,7 @@ export default function AiVisibility() {
           <div>
             <h2 className="text-lg font-semibold text-white">AI Visibility Score</h2>
             <p className="text-sm text-gray-400">
-              How often Noland Earthworks appears when AI assistants answer land management questions
+              Controlled forestry-mulching prompt diagnostic — not a search ranking or an external citation report
             </p>
           </div>
         </div>
@@ -504,7 +511,7 @@ export default function AiVisibility() {
         <div className="bg-amber-950/30 border border-amber-800/40 rounded-lg p-4 text-sm text-amber-300">
           {refreshingAfterFix
             ? "Re-running audit to reflect your changes. This takes 30–60 seconds..."
-            : "Querying AI with 10 Noland Earthworks-specific prompts. This takes 30–60 seconds..."}
+            : "Querying AI with 15 forestry-mulching prompts. This takes 30–60 seconds..."}
         </div>
       )}
 
@@ -543,10 +550,10 @@ export default function AiVisibility() {
                 <CardContent className="pt-4 pb-3 px-4">
                   <div className="flex items-center gap-2 mb-1">
                     <TrendingUp className="w-4 h-4 text-green-400" />
-                    <span className="text-xs text-gray-400">Share of Voice</span>
+                    <span className="text-xs text-gray-400">Prompt Coverage</span>
                   </div>
                   <div className="text-2xl font-bold text-white">{displayData.shareOfVoice}%</div>
-                  <div className="text-xs text-gray-500 mt-0.5">vs competitors</div>
+                  <div className="text-xs text-gray-500 mt-0.5">vs comparison prompts</div>
                 </CardContent>
               </Card>
 
@@ -565,20 +572,48 @@ export default function AiVisibility() {
                 <CardContent className="pt-4 pb-3 px-4">
                   <div className="flex items-center gap-2 mb-1">
                     <AlertCircle className="w-4 h-4 text-amber-400" />
-                    <span className="text-xs text-gray-400">Domain Cited</span>
+                    <span className="text-xs text-gray-400">Model Links</span>
                   </div>
                   <div className="text-2xl font-bold text-amber-400">{displayData.mentionStats.citedCount}</div>
-                  <div className="text-xs text-gray-500 mt-0.5">times</div>
+                  <div className="text-xs text-gray-500 mt-0.5">detected in answers</div>
                 </CardContent>
               </Card>
             </div>
           </div>
 
+          <div className="rounded-lg border border-blue-900/70 bg-blue-950/20 px-4 py-3 text-xs leading-5 text-blue-200">
+            This is a repeatable answer diagnostic focused on forestry mulching. It shows whether a model mentions the business for selected prompts; it does not measure Google rank, traffic, or actual AI citations. Use Bing Webmaster Tools AI Performance for cited URLs and grounding queries, and Search Console for organic search performance.
+          </div>
+
+          {(() => {
+            const local = categoryMentionRate(displayData.promptResults, "local_service");
+            const useCase = categoryMentionRate(displayData.promptResults, "use_case");
+            const branded = categoryMentionRate(displayData.promptResults, "branded");
+            return (
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                {[
+                  { label: "Local Discovery", detail: "Non-branded Middle & West Tennessee queries", value: local, color: "text-amber-300" },
+                  { label: "Use-Case Fit", detail: "Pasture, cedar, and site-prep queries", value: useCase, color: "text-sky-300" },
+                  { label: "Brand Recognition", detail: "Direct business-name queries", value: branded, color: "text-emerald-300" },
+                ].map((metric) => (
+                  <Card key={metric.label} className="bg-gray-900 border-gray-800">
+                    <CardContent className="pt-4 pb-3 px-4">
+                      <div className="text-xs text-gray-400">{metric.label}</div>
+                      <div className={`mt-1 text-2xl font-bold ${metric.color}`}>{metric.value.rate}%</div>
+                      <div className="mt-1 text-xs text-gray-500">{metric.value.mentioned}/{metric.value.total} prompts · {metric.detail}</div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            );
+          })()}
+
           {/* History Chart */}
           {historyChartData.length > 1 && (
             <Card className="bg-gray-900 border-gray-800">
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-gray-300">Score History</CardTitle>
+                <CardTitle className="text-sm font-medium text-gray-300">Diagnostic History</CardTitle>
+                <p className="text-xs text-gray-500">Prompt coverage methodology was recalibrated for non-branded forestry-mulching discovery in August 2026. Compare new runs with new runs.</p>
               </CardHeader>
               <CardContent>
                 <ResponsiveContainer width="100%" height={160}>
@@ -625,7 +660,7 @@ export default function AiVisibility() {
             <CardHeader className="pb-3">
               <div className="flex items-center gap-2">
                 <Lightbulb className="w-4 h-4 text-amber-400" />
-                <CardTitle className="text-sm font-medium text-gray-300">AEO Recommendations</CardTitle>
+                <CardTitle className="text-sm font-medium text-gray-300">Discovery Recommendations</CardTitle>
                 <span className="text-xs text-gray-500 font-normal ml-1">
                   — Green buttons auto-apply; blue buttons provide step-by-step instructions
                 </span>

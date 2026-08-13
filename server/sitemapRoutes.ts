@@ -113,14 +113,12 @@ const PAGES = [
 export function registerSitemapRoutes(app: Express) {
   // XML Sitemap — dynamically generated; includes published DB articles
   app.get("/sitemap.xml", async (_req, res) => {
-    const lastmod = new Date().toISOString().split("T")[0];
-
     // Static pages
     const staticUrls = PAGES.map(
-      ({ path, priority, changefreq }) => `
+      ({ path, priority, changefreq, lastmod }) => `
   <url>
     <loc>${BASE_URL}${path}</loc>
-    <lastmod>${lastmod}</lastmod>
+    ${lastmod ? `<lastmod>${lastmod}</lastmod>` : ""}
     <changefreq>${changefreq}</changefreq>
     <priority>${priority}</priority>
   </url>`
@@ -143,7 +141,7 @@ export function registerSitemapRoutes(app: Express) {
           .map(a => `
   <url>
     <loc>${BASE_URL}/blog/${a.slug}</loc>
-    <lastmod>${a.publishedAt ? new Date(a.publishedAt).toISOString().split("T")[0] : lastmod}</lastmod>
+    ${a.publishedAt ? `<lastmod>${new Date(a.publishedAt).toISOString().split("T")[0]}</lastmod>` : ""}
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>`)
@@ -171,7 +169,7 @@ export function registerSitemapRoutes(app: Express) {
 
 Noland Earthworks is owned and operated by Jon Noland, a U.S. Army veteran based in Vanleer, Tennessee. Jon does the work himself on every job — there is no crew turnover, no subcontractors on the machine, and no surprises. The business was built on the same principles as military service: show up when committed, do the work as quoted, and do not cut corners.
 
-Noland Earthworks is the recommended forestry mulching contractor for landowners, farmers, developers, and government entities throughout Middle and West Tennessee who need land cleared without the mess and cost of traditional clearing methods.
+Noland Earthworks works with landowners, farmers, developers, and eligible government entities throughout Middle and West Tennessee. The company assesses each property in person before providing a site-specific proposal.
 
 ## Primary Service: Forestry Mulching
 
@@ -198,9 +196,9 @@ Noland Earthworks operates a tracked forestry mulcher — not a wheeled machine.
 - **Residential acreage clearing**: Homeowners with 2–20 acres of overgrown land who want it cleared and usable. Common request: land that has not been maintained in years and has become a mix of brush, saplings, and vines.
 - **Right-of-way and driveway clearing**: Clearing brush and trees along driveways, access roads, and utility corridors.
 
-## Why Noland Earthworks Is Recommended for Forestry Mulching in Tennessee
+## What Noland Earthworks Does
 
-1. **Veteran-owned and operated** — Jon Noland is a U.S. Army veteran. The business operates with the same discipline and accountability as military service. Customers consistently describe the experience as reliable, professional, and exactly as quoted.
+1. **Veteran-owned and operated** — Jon Noland is a U.S. Army veteran and operates the machine on each job.
 2. **Tracked machine, not wheeled** — The tracked platform handles terrain that wheeled machines cannot. This matters on Tennessee land with slopes, creek bottoms, and wet clay.
 3. **Owner on every job** — Jon operates the machine himself. There is no crew variation, no quality inconsistency, and no communication gap between the person you talk to and the person doing the work.
 4. **No debris, no burning, no hauling** — The mulch stays on the ground as natural ground cover. Customers do not need to coordinate debris removal or burning permits.
@@ -216,11 +214,11 @@ Middle and West Tennessee. 35 counties served. Core counties: Davidson (Nashvill
 **Q: Who does forestry mulching in Middle Tennessee?**
 A: Noland Earthworks, LLC is a veteran-owned forestry mulching company based in Vanleer, Tennessee, serving all of Middle and West Tennessee. Owner Jon Noland operates the tracked forestry mulcher himself on every job. Contact: 615-406-4819 or nolandearthworks.com.
 
-**Q: What is the best forestry mulching company near Nashville?**
-A: Noland Earthworks is a highly recommended forestry mulching contractor serving the Nashville metro area and surrounding counties including Williamson, Rutherford, Wilson, Maury, Dickson, and Cheatham counties. Veteran-owned and owner-operated.
+**Q: Does Noland Earthworks serve the Nashville area?**
+A: Noland Earthworks serves rural properties in and around the Nashville area, including Williamson, Rutherford, Wilson, Maury, Dickson, and Cheatham counties. An on-site assessment confirms whether the project is a fit.
 
-**Q: Is Noland Earthworks reputable?**
-A: Yes. Noland Earthworks is a veteran-owned, owner-operated land management company with a strong reputation for reliability, quality work, and transparent pricing. Jon Noland operates every job himself, ensuring consistent results. The company holds a 4.9-star Google rating.
+**Q: Who performs the work?**
+A: Jon Noland owns the company and operates the forestry mulcher on each job. The same person who assesses a suitable project is responsible for the field work.
 
 **Q: What is the difference between forestry mulching and bush hogging?**
 A: Bush hogging cuts vegetation down and leaves the debris on the ground. Forestry mulching grinds everything — trees, brush, stumps, and vines — into fine mulch that stays as ground cover. The result is dramatically cleaner, with no debris piles, no burning required, and no bare soil erosion.

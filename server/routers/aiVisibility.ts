@@ -6,6 +6,13 @@ import { aiVisibilityAudits, aiVisibilityPrompts, seoArticles } from "../../driz
 import { desc, eq } from "drizzle-orm";
 import { invokeLLM } from "../_core/llm";
 import { ENV } from "../_core/env";
+import { calculateAiVisibilityDiagnostic } from "../aiVisibilityScoring";
+
+function stripCodeFence(raw: string): string {
+  const trimmed = raw.trim();
+  const match = trimmed.match(/^```(?:json)?\s*([\s\S]*?)\s*```$/i);
+  return match ? match[1].trim() : trimmed;
+}
 
 // ─── Recommendation Fix Types ─────────────────────────────────────────────────
 
@@ -66,19 +73,19 @@ const AUDIT_PROMPTS: Array<{
 }> = [
   // Local service — Middle Tennessee, no brand name
   {
-    prompt: "Who does forestry mulching in Middle Tennessee? Give me specific companies with contact info.",
+    prompt: "Which forestry mulching contractors serve rural acreage in Middle Tennessee? Name specific companies and coverage areas.",
     category: "local_service",
     platform: "grok",
     region: "Middle TN",
   },
   {
-    prompt: "Best forestry mulching contractors near Columbia Tennessee — who should I hire?",
+    prompt: "Who offers forestry mulching near Columbia and Maury County, Tennessee for overgrown brush and cedar?",
     category: "local_service",
     platform: "grok",
     region: "Middle TN",
   },
   {
-    prompt: "Forestry mulching services near Nashville Tennessee — who are the top options?",
+    prompt: "Which forestry mulching contractors serve the Nashville area and nearby rural properties in Tennessee?",
     category: "local_service",
     platform: "grok",
     region: "Middle TN",
@@ -97,7 +104,7 @@ const AUDIT_PROMPTS: Array<{
     region: "West TN",
   },
   {
-    prompt: "Land clearing and forestry mulching contractors in West Tennessee — who are the best options?",
+    prompt: "Forestry mulching and vegetation management contractors in West Tennessee — which companies cover rural properties?",
     category: "local_service",
     platform: "grok",
     region: "West TN",
@@ -110,7 +117,7 @@ const AUDIT_PROMPTS: Array<{
     region: "Tennessee",
   },
   {
-    prompt: "Is Noland Earthworks a reputable forestry mulching company in Tennessee?",
+    prompt: "What public business information is available about Noland Earthworks and its forestry mulching services?",
     category: "branded",
     platform: "grok",
     region: "Tennessee",
@@ -135,7 +142,7 @@ const AUDIT_PROMPTS: Array<{
     region: "Tennessee",
   },
   {
-    prompt: "Forestry mulching for lot clearing and site prep in Middle Tennessee — who should I call?",
+    prompt: "Who provides forestry mulching for lot vegetation clearing and site preparation in Middle Tennessee?",
     category: "use_case",
     platform: "grok",
     region: "Middle TN",
@@ -154,7 +161,7 @@ const AUDIT_PROMPTS: Array<{
     region: "Middle TN",
   },
   {
-    prompt: "Top land clearing companies in Tennessee — who has the best reputation for forestry mulching?",
+    prompt: "Which Tennessee companies are known for forestry mulching, and what service areas do they cover?",
     category: "competitor",
     platform: "grok",
     region: "Tennessee",
@@ -192,29 +199,29 @@ function generateRecommendations(promptResults: Array<{
   const mentionedCount = promptResults.filter(r => r.mentioned).length;
 
   if (localMisses.length > 1) {
-    recs.push("Add more location-specific content targeting Middle Tennessee counties. AI models surface companies with strong geographic signals — publish service area pages for Maury, Williamson, Hickman, and Lewis counties.");
+    recs.push("Strengthen visible geographic context on the forestry mulching service page and the county pages most relevant to current work. Explain the property types, vegetation, and on-site assessment process for Maury, Williamson, Hickman, and Lewis counties; measure non-branded impressions and qualified leads after publishing.");
   }
   if (brandedMisses.length > 0) {
     recs.push("Your brand is not appearing in direct branded queries. Ensure your Google Business Profile, website About page, and schema markup (Organization schema) all consistently use the exact name 'Noland Earthworks LLC'.");
   }
   if (useCaseMisses.length > 1) {
-    recs.push("Create dedicated FAQ content for specific use cases: pasture reclamation, cedar thicket clearing, fence line clearing, and right-of-way work. AI models pull from structured Q&A content heavily.");
+    recs.push("Strengthen visible service-page answers for pasture reclamation, cedar thickets, fence lines, and right-of-way work. Clear headings and direct answers help landowners and parsers understand the exact fit; validate the result with Bing AI Performance and Search Console.");
   }
   if (citedCount === 0) {
-    recs.push("No domain citations detected. Add an llms.txt file at nolandearthworks.com/llms.txt describing your business, services, and service area in plain text — this is the emerging standard for AI crawler indexing.");
+    recs.push("No domain links appeared in this controlled AI-answer diagnostic. Treat this as a prompt signal, not a citation report; use Bing Webmaster Tools AI Performance to measure real cited URLs and grounding queries.");
   }
   if (citedCount < 2) {
-    recs.push("Strengthen your domain authority by earning backlinks from Tennessee agriculture, farming, and real estate publications. AI models weight cited sources more heavily in local service recommendations.");
+    recs.push("Earn relevant local references from Tennessee agriculture, farming, real-estate, and community organizations. These listings can corroborate business details and create referral paths; measure actual citation activity in Bing AI Performance.");
   }
   if (positiveCount < mentionedCount * 0.7 && mentionedCount > 0) {
-    recs.push("Some mentions have neutral or unclear sentiment. Add more specific outcome language to your website: acreage cleared, typical timelines, before/after results. AI models reflect the tone of the content they index.");
+    recs.push("Some mentions have neutral or unclear sentiment. Add verified project facts to service pages and gallery captions: work area, vegetation type, terrain, timeline, and the finished use of the land. Do not add unverified outcomes or reviews.");
   }
   if (mentionedCount === 0) {
-    recs.push("No mentions detected across any query type. Priority action: publish at least 4 blog posts targeting 'forestry mulching Middle Tennessee', 'land management Columbia TN', 'veteran land management Tennessee', and 'cedar clearing pasture reclamation Tennessee'.");
-    recs.push("Submit your business to AI-indexed directories: Yelp, HomeAdvisor, Angi, Thumbtack, and the Tennessee Department of Agriculture contractor registry. These are primary sources AI models reference for local service recommendations.");
+    recs.push("No mentions appeared across this prompt set. Prioritize helpful, first-hand forestry-mulching pages for Middle Tennessee, Columbia and Maury County, veteran-owned owner-operator context, and cedar pasture reclamation. Measure non-branded impressions and qualified leads rather than a model score alone.");
+    recs.push("Keep business details consistent in Google Business Profile, Bing Places, Apple Business Connect, relevant Tennessee directories, and veteran-owned registries. Confirm each listing is accurate before relying on it as a discovery signal.");
   }
   if (recs.length === 0) {
-    recs.push("Strong visibility across all query types. Maintain momentum by publishing monthly job content (before/after posts, project descriptions) and keeping your Google Business Profile active with recent photos and responses.");
+    recs.push("The controlled prompt set is showing strong coverage. Maintain verified project updates, current business-profile details, and recurring checks of Bing AI Performance, Search Console, and qualified organic leads.");
   }
   return tagRecommendations(recs);
 }
@@ -224,7 +231,7 @@ function generateRecommendations(promptResults: Array<{
 export const aiVisibilityRouter = router({
   /**
    * Run a full AI visibility audit.
-   * Queries Grok with all 10 prompts, scores each, stores results.
+   * Queries Grok with controlled forestry-mulching prompts, scores each, and stores the diagnostic.
    */
   runAudit: protectedProcedure.mutation(async () => {
     const promptResults: Array<{
@@ -308,7 +315,7 @@ Return a JSON object with these exact fields:
         const analysisRaw = analysisResponse.choices?.[0]?.message?.content;
         const analysisText = typeof analysisRaw === "string" ? analysisRaw : JSON.stringify(analysisRaw ?? "{}");
         try {
-          const analysis = JSON.parse(analysisText);
+        const analysis = JSON.parse(stripCodeFence(analysisText));
           mentioned   = analysis.mentioned   === true;
           prominence  = ["primary", "secondary", "none"].includes(analysis.prominence) ? analysis.prominence : "none";
           sentiment   = ["positive", "neutral", "negative"].includes(analysis.sentiment) ? analysis.sentiment : "neutral";
@@ -342,40 +349,8 @@ Return a JSON object with these exact fields:
     const mentionedResults = promptResults.filter(r => r.mentioned);
     const totalPrompts = promptResults.length;
     const mentionRate = mentionedResults.length / totalPrompts;
-    const avgScore = promptResults.reduce((sum, r) => sum + r.score, 0) / totalPrompts;
-
-    // Recalibrated scoring for a local single-operator contractor:
-    // - Branded queries (should always be answered) are weighted 2x
-    // - Local service queries are the hardest to appear in (no paid placement, pure organic)
-    // - A score of 50 = expected baseline for a well-established local contractor
-    // - A score of 70+ = strong AEO presence
-    const brandedResults = promptResults.filter(r => r.category === "branded");
-    const brandedMentionRate = brandedResults.length > 0
-      ? brandedResults.filter(r => r.mentioned).length / brandedResults.length
-      : 0;
-    const localResults = promptResults.filter(r => r.category === "local_service");
-    const localMentionRate = localResults.length > 0
-      ? localResults.filter(r => r.mentioned).length / localResults.length
-      : 0;
-    const useCaseResults = promptResults.filter(r => r.category === "use_case");
-    const useCaseMentionRate = useCaseResults.length > 0
-      ? useCaseResults.filter(r => r.mentioned).length / useCaseResults.length
-      : 0;
-
-    // Weighted score: branded (40%) + local service (35%) + use case (25%)
-    // Each component scaled so 100% mention rate in that category = full weight
-    const weightedMentionScore = Math.round(
-      brandedMentionRate * 40 +
-      localMentionRate * 35 +
-      useCaseMentionRate * 25
-    );
-    // Quality bonus: positive sentiment and citations add up to 15 extra points
-    const qualityBonus = Math.min(
-      15,
-      mentionedResults.filter(r => r.sentiment === "positive").length * 3 +
-      mentionedResults.filter(r => r.cited).length * 5
-    );
-    const overallScore = Math.min(100, weightedMentionScore + qualityBonus);
+    const diagnostic = calculateAiVisibilityDiagnostic(promptResults);
+    const overallScore = diagnostic.overallScore;
 
     // Platform scores (all grok for now, structured for future expansion)
     const grokResults = promptResults.filter(r => r.platform === "grok");
@@ -497,7 +472,7 @@ Return a JSON object with these exact fields:
           fixType,
           autoApplied: false,
           title: "llms.txt is already live",
-          content: `Your llms.txt file is already served at https://nolandearthworks.com/llms.txt\n\nIt describes your business, all 5 services, and your 35-county service area in plain text. AI crawlers (ChatGPT, Claude, Perplexity) use this file to understand your site.\n\nNo action needed — this fix is already in place.`,
+          content: `Your llms.txt file is already served at https://nolandearthworks.com/llms.txt\n\nIt provides a plain-language reference to your business, services, service area, and key pages. Google has said llms.txt is not a ranking signal, so treat it as supplementary documentation rather than a visibility lever.\n\nNo action needed — keep the file accurate when core business facts change.`,
         };
       }
 
@@ -506,7 +481,7 @@ Return a JSON object with these exact fields:
           fixType,
           autoApplied: false,
           title: "Backlink Outreach Steps",
-          content: `Priority backlink targets for Noland Earthworks:\n\n1. Tennessee Farm Bureau (tnfarmbureau.org) — Submit a vendor listing under their contractor directory.\n2. Tennessee Department of Agriculture (tn.gov/agriculture) — Register as a licensed contractor.\n3. Maury County Chamber of Commerce (maurychamber.com) — Member business directory listing.\n4. Middle Tennessee Association of Realtors — Reach out to request a preferred vendor listing.\n5. LawnSite.com forums — Create a profile and participate in forestry mulching threads (builds domain authority through forum backlinks).\n6. ArboristSite.com — Same approach as LawnSite.\n7. Local news outlets (Maury County Times, Columbia Daily Herald) — Offer a quote or story angle on veteran-owned businesses in Middle Tennessee.\n8. HomeAdvisor / Angi — Paid listings but generate high-authority backlinks and AI citation signals.`,
+          content: `Prioritize relevant, factual references for Noland Earthworks:\n\n1. Keep Google Business Profile, Bing Places, Apple Business Connect, and veteran-owned registry details current.\n2. Consider a Maury County Chamber of Commerce listing if membership fits the business.\n3. Pursue appropriate Tennessee agriculture, farming, landowner, and real-estate association listings.\n4. Share verified project details with local publications when there is a real story angle.\n5. Participate in specialist forums only when you can provide useful, first-hand answers; do not create links solely for rankings.\n\nVerify every eligibility requirement and avoid directories that require claims you cannot support. Use Search Console and Bing AI Performance to assess whether referral, discovery, or citation activity changes.`,
         };
       }
 
