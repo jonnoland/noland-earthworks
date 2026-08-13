@@ -2949,3 +2949,8 @@
 - [x] Review and recalibrate the AI Visibility score methodology around forestry mulching queries
 - [x] Implement the highest-impact validated SEO and AI discoverability improvements
 - [x] Complete a production SEO regression check for bot rendering, canonical tags, robots, sitemap, and structured-data integrity
+
+## Performance Category Score — Aug 2026
+- [x] Review the Performance Category score inputs and distinguish measured issues from unavailable third-party data
+- [x] Implement validated site-performance or audit-score handling improvements
+- [x] Verify the updated Performance Category score with production-safe checks

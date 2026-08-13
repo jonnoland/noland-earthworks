@@ -53,8 +53,17 @@ function scoreToGrade(score: number): string {
   return "F";
 }
 
-function categoryScore(checks: SeoCheck[], category: SeoCheck["category"]): number {
-  const cats = checks.filter((c) => c.category === category);
+/**
+ * A transient third-party measurement outage is useful to surface, but it is not
+ * evidence that the audited page performs poorly. Keep that diagnostic visible
+ * without allowing it to lower a category score.
+ */
+export function isScoreExcludedCheck(check: Pick<SeoCheck, "id">): boolean {
+  return check.id === "pagespeed_unavailable";
+}
+
+export function categoryScore(checks: SeoCheck[], category: SeoCheck["category"]): number {
+  const cats = checks.filter((c) => c.category === category && !isScoreExcludedCheck(c));
   if (cats.length === 0) return 100;
   const weights = { pass: 1, warn: 0.5, fail: 0 };
   const total = cats.reduce((acc, c) => {
@@ -66,6 +75,22 @@ function categoryScore(checks: SeoCheck[], category: SeoCheck["category"]): numb
     return acc + w * weights[c.status];
   }, 0);
   return Math.round((earned / total) * 100);
+}
+
+/** Module scripts are deferred by default. Only classic external scripts without
+ * async/defer are candidates for parser-blocking behavior. */
+export function isParserBlockingExternalScript(attributes: {
+  src?: string;
+  async?: string;
+  defer?: string;
+  type?: string;
+}): boolean {
+  const type = attributes.type?.trim().toLowerCase();
+  return Boolean(attributes.src)
+    && attributes.async === undefined
+    && attributes.defer === undefined
+    && type !== "module"
+    && type !== "application/ld+json";
 }
 
 async function fetchWithPuppeteer(url: string): Promise<{ html: string; loadTimeMs: number; finalUrl: string }> {
@@ -523,7 +548,7 @@ Squarespace: Settings → Advanced → Code Injection → Header → paste the t
 5. Full report: https://pagespeed.web.dev/?url=https://nolandearthworks.com`, priority: "high" });
     }
   } else {
-    checks.push({ id: "pagespeed_unavailable", category: "performance", label: "PageSpeed mobile score", status: "warn", value: "Unavailable", detail: "Could not retrieve PageSpeed score — API may be rate-limited.", recommendation: "Retry the audit later or run the URL directly through Google PageSpeed Insights before changing site code.", fixExample: `Validation steps:
+    checks.push({ id: "pagespeed_unavailable", category: "performance", label: "PageSpeed mobile score", status: "warn", value: "Unavailable", detail: "Could not retrieve a PageSpeed result — the API may be rate-limited. This unavailable measurement is not included in the Performance Category score.", recommendation: "Retry the audit later or run the URL directly through Google PageSpeed Insights before changing site code.", fixExample: `Validation steps:
 
 1. Open https://pagespeed.web.dev/ and test the exact audited URL on mobile.
 2. If it loads there, retry this audit after a few minutes; the API result was temporarily unavailable.
@@ -532,7 +557,15 @@ Squarespace: Settings → Advanced → Code Injection → Header → paste the t
   }
 
   // Check for render-blocking resources
-  const renderBlockingScripts = $('head script:not([async]):not([defer]):not([type="application/ld+json"])').length;
+  const renderBlockingScripts = $("head script").filter((_, element) => {
+    const attributes = $(element).attr() ?? {};
+    return isParserBlockingExternalScript({
+      src: attributes.src,
+      async: attributes.async,
+      defer: attributes.defer,
+      type: attributes.type,
+    });
+  }).length;
   if (renderBlockingScripts > 0) {
     checks.push({ id: "render_blocking", category: "performance", label: "Render-blocking scripts", status: "warn", value: `${renderBlockingScripts} found`, detail: `${renderBlockingScripts} render-blocking script(s) in <head>.`, recommendation: "Add async or defer attributes to non-critical scripts.", fixExample: `<!-- Add async or defer to non-critical scripts in <head> -->
 <!-- Before (render-blocking): -->
