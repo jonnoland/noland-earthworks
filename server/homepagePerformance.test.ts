@@ -32,6 +32,16 @@ describe("homepage performance safeguards", () => {
     expect(source).toContain("<noscript><link");
   });
 
+  it("defers Google Analytics until interaction or idle time", () => {
+    const source = readFileSync(resolve(projectRoot, "client/index.html"), "utf8");
+
+    expect(source).not.toContain('<script async src="https://www.googletagmanager.com/gtag/js');
+    expect(source).toContain("function deferAnalytics()");
+    expect(source).toContain("document.createElement('script')");
+    expect(source).toContain("['pointerdown', 'keydown', 'touchstart']");
+    expect(source).toContain("requestIdleCallback");
+  });
+
   it("loads the forestry-mulching hero as a high-priority responsive image", () => {
     const layout = readFileSync(
       resolve(projectRoot, "client/src/components/ServicePageLayout.tsx"),

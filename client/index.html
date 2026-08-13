@@ -43,8 +43,7 @@
     <meta name="twitter:description" content="Veteran-owned land management and forestry mulching in Middle &amp; West Tennessee. Free quotes. Licensed &amp; insured." />
     <meta name="twitter:image" content="https://d2xsxph8kpxj0f.cloudfront.net/310519663484957999/PymCzDCnSJzPjdkfwA7Jn6/hero-forestry-golden_b098141c.webp" />
     <!-- Google Analytics GA4 -->
-    <script async src="https://www.googletagmanager.com/gtag/js?id=G-JG160VB05E"></script>
-    <script defer>
+    <script>
       window.dataLayer = window.dataLayer || [];
       function gtag(){dataLayer.push(arguments);}
       gtag('js', new Date());
@@ -52,6 +51,26 @@
         page_path: window.location.pathname,
         send_page_view: true
       });
+
+      (function deferAnalytics() {
+        let loaded = false;
+        const loadAnalytics = function () {
+          if (loaded) return;
+          loaded = true;
+          const script = document.createElement('script');
+          script.async = true;
+          script.src = 'https://www.googletagmanager.com/gtag/js?id=G-JG160VB05E';
+          document.head.appendChild(script);
+        };
+        ['pointerdown', 'keydown', 'touchstart'].forEach(function (eventName) {
+          window.addEventListener(eventName, loadAnalytics, { once: true, passive: true });
+        });
+        if ('requestIdleCallback' in window) {
+          window.requestIdleCallback(loadAnalytics, { timeout: 5000 });
+        } else {
+          window.setTimeout(loadAnalytics, 5000);
+        }
+      })();
     </script>
     <!-- Oswald + Lato from Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />

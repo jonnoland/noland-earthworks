@@ -422,6 +422,9 @@ export default function CountyPageLayout({
                     }}
                   >
                     {s.title}
+                    <span style={{ color: "rgba(240,237,230,0.68)", fontWeight: 400, textTransform: "none" }}>
+                      {" "}in {county}
+                    </span>
                   </h3>
                   <p
                     style={{

@@ -2981,3 +2981,9 @@
 - [x] Apply only validated local-content or canonical changes
 - [x] Verify the resulting pages remain indexable in production
 - [x] Consolidate duplicate county blog URLs into their matching canonical service-area pages
+
+## Quote Performance & County Differentiation — Aug 2026
+- [x] Measure the current quote-page mobile performance and critical loading path
+- [x] Implement a low-risk quote-page performance improvement that preserves the form flow
+- [x] Add factual county-specific differentiation without expanding generic boilerplate
+- [ ] Validate mobile performance and county-page indexability after publication
