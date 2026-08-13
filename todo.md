@@ -2974,3 +2974,10 @@
 - [x] Inspect high-value excluded URLs and sitemap coverage
 - [x] Apply only safe indexability or canonical fixes supported by production evidence
 - [x] Validate production indexability and record the coverage baseline
+
+## Local Content & Indexing Review — Aug 2026
+- [x] Inventory county and service-area landing pages for local uniqueness and duplication risk
+- [x] Prioritize high-value local content and internal-link improvements
+- [x] Apply only validated local-content or canonical changes
+- [ ] Verify the resulting pages remain indexable in production
+- [x] Consolidate duplicate county blog URLs into their matching canonical service-area pages

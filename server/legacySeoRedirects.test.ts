@@ -14,6 +14,16 @@ describe("legacy SEO redirect map", () => {
     );
   });
 
+  it("consolidates duplicate county blog URLs into matching service-area pages", () => {
+    expect(getLegacySeoRedirect("/blog/land-management-cheatham-county")).toBe(
+      "/service-areas/cheatham-county"
+    );
+    expect(getLegacySeoRedirect("/blog/land-management-williamson-county")).toBe(
+      "/service-areas/williamson-county"
+    );
+    expect(getLegacySeoRedirect("/blog/land-management-developers-farmers-middle-tennessee")).toBeUndefined();
+  });
+
   it("uses only internal preferred destinations", () => {
     expect(Object.values(LEGACY_SEO_REDIRECTS).every((path) => path.startsWith("/"))).toBe(true);
   });
