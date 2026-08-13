@@ -3,7 +3,7 @@
  * Hero banner → two-column layout: contact info left, full form right
  */
 import { useState, useEffect, useRef } from "react";
-import { Phone, Mail, MapPin, Send, ArrowLeft, CheckCircle, Loader2, Search, ExternalLink, AlertCircle, Info, Camera, X, ChevronDown, ChevronUp } from "lucide-react";
+import { Phone, Mail, MapPin, Send, ArrowLeft, CheckCircle, Loader2, Search, ExternalLink, AlertCircle, Info, Camera, X, ChevronDown, ChevronUp, RotateCcw } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import MobileCTABar from "@/components/MobileCTABar";
@@ -38,6 +38,45 @@ const labelStyle: React.CSSProperties = {
 };
 
 const QUOTE_MESSAGE_MAX_LENGTH = 1200;
+
+function parseCurrencyRange(range: string): { low: number; high: number } | null {
+  const match = range.match(/^\$([\d,]+)\s+–\s+\$([\d,]+)$/);
+  if (!match) return null;
+  const low = Number(match[1].replace(/,/g, ""));
+  const high = Number(match[2].replace(/,/g, ""));
+  return Number.isFinite(low) && Number.isFinite(high) ? { low, high } : null;
+}
+
+function RollingPriceRange({ range }: { range: string }) {
+  const parsed = parseCurrencyRange(range);
+  const [shown, setShown] = useState(parsed);
+  const previous = useRef(parsed);
+
+  useEffect(() => {
+    if (!parsed) return;
+    const from = previous.current ?? parsed;
+    const target = parsed;
+    const startedAt = performance.now();
+    let frame = 0;
+
+    const roll = (now: number) => {
+      const progress = Math.min((now - startedAt) / 340, 1);
+      const eased = 1 - Math.pow(1 - progress, 3);
+      setShown({
+        low: Math.round(from.low + (target.low - from.low) * eased),
+        high: Math.round(from.high + (target.high - from.high) * eased),
+      });
+      if (progress < 1) frame = requestAnimationFrame(roll);
+      else previous.current = target;
+    };
+
+    frame = requestAnimationFrame(roll);
+    return () => cancelAnimationFrame(frame);
+  }, [parsed?.low, parsed?.high]);
+
+  if (!parsed || !shown) return <>{range}</>;
+  return <span style={{ fontVariantNumeric: "tabular-nums" }}>${shown.low.toLocaleString()} – ${shown.high.toLocaleString()}</span>;
+}
 
 function InlineFieldError({ id, message }: { id: string; message: string }) {
   return (
@@ -1502,7 +1541,7 @@ export default function QuotePage() {
                         <div aria-live="polite" style={{ marginTop: "0.9rem", padding: "0.8rem 0.95rem", background: "rgba(224,123,42,0.07)", border: "1px solid rgba(224,123,42,0.23)", borderRadius: "3px" }}>
                           <div className="flex items-center justify-between gap-3">
                             <span style={{ color: "rgba(240,237,230,0.62)", fontFamily: "'Oswald', sans-serif", fontSize: "0.68rem", letterSpacing: "0.12em", textTransform: "uppercase" }}>Live Preliminary Range</span>
-                            <strong style={{ color: "#E07B2A", fontFamily: "'Oswald', sans-serif", fontSize: "1.1rem", fontWeight: 700 }}>{preview.range}</strong>
+                            <strong style={{ color: "#E07B2A", fontFamily: "'Oswald', sans-serif", fontSize: "1.1rem", fontWeight: 700 }}><RollingPriceRange range={preview.range} /></strong>
                           </div>
                           <p style={{ margin: "0.35rem 0 0", color: "rgba(240,237,230,0.48)", fontFamily: "'Lato', sans-serif", fontSize: "0.72rem", lineHeight: 1.45 }}>
                             Based on {formatQuoteAcreage(String(previewAcres))}. Final pricing follows an on-site review of access, terrain, vegetation, and obstacles.
@@ -2240,6 +2279,19 @@ export default function QuotePage() {
                           </span>
                           <span style={{ color: "rgba(240,237,230,0.4)", fontSize: "0.68rem", letterSpacing: "0.08em", marginLeft: "0.4rem" }}>(customer-selected work area)</span>
                         </label>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const fullParcelAcres = parcelInfo.deedAcres ?? 0;
+                            setAdjustedAcres(String(Math.round(fullParcelAcres * 100) / 100));
+                            setAdjustedAcresError("");
+                          }}
+                          title="Use the full parcel size found in property records"
+                          className="inline-flex items-center gap-1"
+                          style={{ margin: "-0.05rem 0 0.45rem", color: "rgba(224,123,42,0.88)", background: "transparent", border: "none", padding: 0, cursor: "pointer", fontFamily: "'Lato', sans-serif", fontSize: "0.72rem" }}
+                        >
+                          <RotateCcw size={12} aria-hidden="true" /> Use full parcel ({parcelInfo.deedAcres.toFixed(2)} ac)
+                        </button>
                         <input
                           id="quote-adjusted-acreage"
                           type="number"

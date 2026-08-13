@@ -2880,3 +2880,7 @@
 - [x] Add an Adjusted Acreage tooltip explaining the customer work-area value versus full parcel size
 - [x] Keep Adjusted Acreage manually editable after parcel lookup
 - [x] Add a real-time price preview that updates with selected or adjusted acreage
+
+## Animated Quote Range & Parcel Reset — Aug 2026
+- [x] Add a smooth rolling animation to live preliminary price changes
+- [x] Add an Adjusted Acreage reset control that restores the detected full parcel size
