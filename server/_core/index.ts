@@ -18,6 +18,7 @@ import { registerInstagramTokenRefreshRoute } from "../instagramTokenRefresh";
 import { registerStripeWebhookRoutes } from "../stripeWebhookRoutes";
 import { registerScheduledAdsPublisherRoute } from "../scheduledAdsPublisher";
 import { registerStorageProxy } from "./storageProxy";
+import { registerLegacySeoRedirects } from "../legacySeoRedirects";
 import { startGoogleTokenRefreshScheduler } from "../googleRoutes";
 import cron from "node-cron";
 import {
@@ -145,6 +146,10 @@ async function startServer() {
 
   // Sitemap + robots.txt
   registerSitemapRoutes(app);
+
+  // Permanent redirects for legacy or duplicate paths reported by Search Console.
+  // Keep these ahead of crawler rendering and the SPA fallback so bots receive a real 301.
+  registerLegacySeoRedirects(app);
 
   // Public shared Fix Report endpoint — no auth required
   app.get("/api/field-fix/shared/:token", async (req, res) => {

@@ -225,6 +225,7 @@ function Router() {
       {/* Blog / Resources */}
       <Route path="/blog" component={BlogPage} />
       <Route path="/blog/cost-of-land-management-tennessee" component={CostOfLandClearing} />
+      <Route path="/blog/cost-of-land-clearing-tennessee" component={() => { window.location.replace("/blog/cost-of-land-management-tennessee"); return null; }} />
       <Route path="/blog/cost-of-land-management-tennessee" component={() => { window.location.replace("/blog/cost-of-land-management-tennessee"); return null; }} />
       <Route path="/blog/forestry-mulching-vs-bulldozing" component={ForestryMulchingVsBulldozing} />
       <Route path="/blog/signs-you-need-vegetation-management" component={SignsVegetationManagement} />
@@ -284,6 +285,8 @@ function Router() {
       <Route path="/services/trail-cutting" component={TrailCuttingPage} />
       <Route path="/services/site-preparation" component={SitePreparationPage} />
       {/* Add-On service pages */}
+      <Route path="/services/mulch-redistribution" component={() => { window.location.replace("/services/add-ons/mulch-redistribution"); return null; }} />
+      <Route path="/services/selective-clearing" component={() => { window.location.replace("/services/add-ons/selective-clearing"); return null; }} />
       <Route path="/services/add-ons/post-clear-seeding" component={() => { window.location.replace("/services/forestry-mulching"); return null; }} />
       <Route path="/services/add-ons/fence-line-clearing" component={FenceLineClearingPage} />
       <Route path="/services/add-ons/mulch-redistribution" component={MulchRedistributionPage} />

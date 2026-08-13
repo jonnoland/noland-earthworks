@@ -2968,3 +2968,9 @@
 - [x] Review Google Search Console indexing and ranking trends for post-change regressions
 - [x] Test Perplexity and ChatGPT discovery visibility for priority forestry-mulching queries
 - [x] Document verified findings and apply only evidence-based fixes
+
+## Search Console Index Coverage — Aug 2026
+- [x] Classify current Search Console exclusions into expected versus remediation candidates
+- [x] Inspect high-value excluded URLs and sitemap coverage
+- [x] Apply only safe indexability or canonical fixes supported by production evidence
+- [ ] Validate production indexability and record the coverage baseline
