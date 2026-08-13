@@ -2948,4 +2948,4 @@
 - [x] Audit public technical SEO, local entity signals, structured data, and indexing readiness
 - [x] Review and recalibrate the AI Visibility score methodology around forestry mulching queries
 - [x] Implement the highest-impact validated SEO and AI discoverability improvements
-- [ ] Complete a production SEO regression check for bot rendering, canonical tags, robots, sitemap, and structured-data integrity
+- [x] Complete a production SEO regression check for bot rendering, canonical tags, robots, sitemap, and structured-data integrity
