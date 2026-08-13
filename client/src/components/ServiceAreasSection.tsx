@@ -77,6 +77,8 @@ interface AutocompleteSuggestion {
 export default function ServiceAreasSection() {
   const ref = useRef<HTMLDivElement>(null);
   const [visible, setVisible] = useState(false);
+  const [mapRequested, setMapRequested] = useState(false);
+  const [mapReady, setMapReady] = useState(false);
   const polygonsRef = useRef<google.maps.Polygon[]>([]);
   const geojsonRef = useRef<GeoJSON.FeatureCollection | null>(null);
   const markerRef = useRef<google.maps.Marker | null>(null);
@@ -85,6 +87,7 @@ export default function ServiceAreasSection() {
   const autocompleteServiceRef = useRef<google.maps.places.AutocompleteService | null>(null);
   const autocompleteDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const pendingSearchRef = useRef(false);
 
   // Search state
   const [searchQuery, setSearchQuery] = useState("");
@@ -117,6 +120,7 @@ export default function ServiceAreasSection() {
 
   const handleMapReady = useCallback((map: google.maps.Map) => {
     mapRef.current = map;
+    setMapReady(true);
 
     // Initialize autocomplete service once map (and Google Maps SDK) is ready
     autocompleteServiceRef.current = new google.maps.places.AutocompleteService();
@@ -338,11 +342,12 @@ export default function ServiceAreasSection() {
 
   const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
+    setMapRequested(true);
     setSearchQuery(val);
     setSearchStatus("idle");
     setSearchResult(null);
-    fetchSuggestions(val);
-  }, [fetchSuggestions]);
+    if (mapReady) fetchSuggestions(val);
+  }, [fetchSuggestions, mapReady]);
 
   const handleSuggestionClick = useCallback((suggestion: AutocompleteSuggestion) => {
     setSearchQuery(suggestion.description);
@@ -354,8 +359,24 @@ export default function ServiceAreasSection() {
   const handleSearch = useCallback(() => {
     const query = searchQuery.trim();
     if (!query) return;
+    if (!mapReady) {
+      pendingSearchRef.current = true;
+      setMapRequested(true);
+      setSearchStatus("searching");
+      return;
+    }
     geocodeAndCheck(query);
-  }, [searchQuery, geocodeAndCheck]);
+  }, [searchQuery, geocodeAndCheck, mapReady]);
+
+  useEffect(() => {
+    if (!mapReady) return;
+    if (pendingSearchRef.current) {
+      pendingSearchRef.current = false;
+      geocodeAndCheck(searchQuery.trim());
+      return;
+    }
+    if (searchQuery.trim().length >= 3) fetchSuggestions(searchQuery);
+  }, [mapReady, searchQuery, fetchSuggestions, geocodeAndCheck]);
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter") {
@@ -440,7 +461,10 @@ export default function ServiceAreasSection() {
                 value={searchQuery}
                 onChange={handleInputChange}
                 onKeyDown={handleKeyDown}
-                onFocus={() => { if (suggestions.length > 0) setShowSuggestions(true); }}
+                onFocus={() => {
+                  setMapRequested(true);
+                  if (suggestions.length > 0) setShowSuggestions(true);
+                }}
                 placeholder="Enter your address (e.g. 123 Main St, Franklin, TN)"
                 autoComplete="off"
                 style={{
@@ -636,12 +660,34 @@ export default function ServiceAreasSection() {
             height: "420px",
           }}
         >
-          <MapView
-            className="w-full h-full"
-            initialCenter={MAP_CENTER}
-            initialZoom={MAP_ZOOM}
-            onMapReady={handleMapReady}
-          />
+          {mapRequested ? (
+            <MapView
+              className="w-full h-full"
+              initialCenter={MAP_CENTER}
+              initialZoom={MAP_ZOOM}
+              onMapReady={handleMapReady}
+            />
+          ) : (
+            <div
+              className="w-full h-full flex flex-col items-center justify-center text-center"
+              style={{ background: "linear-gradient(135deg, #162016 0%, #0e160e 100%)", padding: "2rem" }}
+            >
+              <MapPin size={28} style={{ color: "#E07B2A", marginBottom: "0.75rem" }} />
+              <p style={{ fontFamily: "'Oswald', sans-serif", fontWeight: 600, letterSpacing: "0.05em", textTransform: "uppercase", color: "#F0EDE6", margin: 0 }}>
+                View interactive coverage map
+              </p>
+              <p style={{ fontFamily: "'Lato', sans-serif", fontSize: "0.875rem", color: "rgba(240,237,230,0.65)", margin: "0.45rem 0 1rem", maxWidth: "380px" }}>
+                Load the county map only when you want to browse coverage or check an address.
+              </p>
+              <button
+                type="button"
+                onClick={() => setMapRequested(true)}
+                style={{ backgroundColor: "#E07B2A", border: "none", color: "#fff", cursor: "pointer", fontFamily: "'Oswald', sans-serif", fontSize: "0.8125rem", fontWeight: 600, letterSpacing: "0.08em", padding: "0.7rem 1rem", textTransform: "uppercase" }}
+              >
+                Load coverage map
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </section>
