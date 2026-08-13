@@ -2959,3 +2959,11 @@
 - [x] Improve critical rendering of visible homepage assets based on PageSpeed findings
 - [x] Re-measure mobile PageSpeed after deployed performance improvements
 - [x] Defer the noncritical Google Fonts stylesheet while retaining the existing typography fallback
+- [ ] Analyze and reduce the remaining mobile LCP bottleneck using the live PageSpeed breakdown
+- [x] Retain the current homepage experience rather than defer additional below-the-fold content after the measured tradeoff review
+
+## Live Search & AI Visibility Verification — Aug 2026
+- [x] Run live mobile performance and technical SEO checks for priority landing pages
+- [x] Review Google Search Console indexing and ranking trends for post-change regressions
+- [x] Test Perplexity and ChatGPT discovery visibility for priority forestry-mulching queries
+- [x] Document verified findings and apply only evidence-based fixes
