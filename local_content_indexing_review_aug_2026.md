@@ -22,4 +22,4 @@ The standardized right-of-way paragraph appears on 34 county pages. It should no
 
 ## Validation Plan
 
-The redirect pattern has unit coverage and will be checked at the custom domain after deployment. Google Search Console will require a later refresh before it shows legacy county blog URLs leaving the indexed or excluded reports. Keep the service-area URLs in the sitemap and avoid submitting both URL families for indexing.
+The redirect pattern has unit coverage and was verified after deployment at both the project and custom domains. For example, `/blog/land-management-cheatham-county` now returns a 301 to `/service-areas/cheatham-county`. Google Search Console will require a later refresh before it shows legacy county blog URLs leaving the indexed or excluded reports. Keep the service-area URLs in the sitemap and avoid submitting both URL families for indexing.

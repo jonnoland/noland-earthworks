@@ -2979,5 +2979,5 @@
 - [x] Inventory county and service-area landing pages for local uniqueness and duplication risk
 - [x] Prioritize high-value local content and internal-link improvements
 - [x] Apply only validated local-content or canonical changes
-- [ ] Verify the resulting pages remain indexable in production
+- [x] Verify the resulting pages remain indexable in production
 - [x] Consolidate duplicate county blog URLs into their matching canonical service-area pages
