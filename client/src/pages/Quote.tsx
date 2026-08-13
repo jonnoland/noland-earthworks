@@ -12,6 +12,7 @@ import { usePageTitle } from "@/hooks/usePageTitle";
 import { MapView } from "@/components/Map";
 import { formatQuotePhone, validateQuoteContact, validateQuoteContactField, type QuoteContactErrors, type QuoteContactField } from "@shared/quoteContactValidation";
 import { formatQuoteAcreage, normalizeQuoteAcreage, QUOTE_ACREAGE_MAX, QUOTE_ACREAGE_MIN, QUOTE_ACREAGE_STEP } from "@shared/quoteAcreage";
+import { combinePreliminaryRanges, QUOTE_SERVICE_OPTIONS, quoteServiceLabel, type QuoteServiceValue, updateQuoteServiceSelection } from "@shared/quoteMultiService";
 
 const inputStyle: React.CSSProperties = {
   width: "100%",
@@ -265,7 +266,21 @@ export default function QuotePage() {
     const fmt = (n: number) => `$${n.toLocaleString()}`;
     return {
       range: `${fmt(low)} – ${fmt(high)}`,
-      note: `Rough range based on ${acres.toFixed(1)} deed acres. Actual price requires a site visit and may vary based on density, terrain, and access.`,
+      note: `Rough range based on ${formatQuoteAcreage(String(acres))}. Actual price requires a site visit and may vary based on density, terrain, and access.`,
+    };
+  }
+
+  function computeSelectedServicesEstimate(acres: number, services: QuoteServiceValue[], trailLf?: number): { range: string; note: string } | null {
+    if (services.length === 0) return null;
+    const estimates = services.map((service) => computeEstimate(acres, service, service === "trail-cutting" ? trailLf : undefined));
+    if (estimates.some((estimate) => !estimate)) return null;
+    const usableEstimates = estimates as { range: string; note: string }[];
+    if (usableEstimates.length === 1) return usableEstimates[0];
+    const range = combinePreliminaryRanges(usableEstimates.map((estimate) => estimate.range));
+    if (!range) return null;
+    return {
+      range,
+      note: `Combined preliminary range for ${services.map(quoteServiceLabel).join(", ")} across ${formatQuoteAcreage(String(acres))}. Final scope and pricing are confirmed after the site visit.`,
     };
   }
 
@@ -334,6 +349,29 @@ export default function QuotePage() {
 
   const [form, setForm] = useState(initialForm);
   const [contactErrors, setContactErrors] = useState<QuoteContactErrors>({});
+  const [serviceMenuOpen, setServiceMenuOpen] = useState(false);
+  const [selectedServices, setSelectedServices] = useState<QuoteServiceValue[]>(() =>
+    QUOTE_SERVICE_OPTIONS.some((option) => option.value === initialForm.service)
+      ? [initialForm.service as QuoteServiceValue]
+      : [],
+  );
+
+  const activeServices = selectedServices.length > 0
+    ? selectedServices
+    : (QUOTE_SERVICE_OPTIONS.some((option) => option.value === form.service) ? [form.service as QuoteServiceValue] : []);
+
+  const toggleSelectedService = (service: QuoteServiceValue) => {
+    const next = updateQuoteServiceSelection(selectedServices, service);
+    setSelectedServices(next);
+    setForm((current) => ({ ...current, service: next[0] ?? "" }));
+    setContactErrors((current) => {
+      const updated = { ...current };
+      const error = validateQuoteContactField("service", next[0] ?? "");
+      if (error) updated.service = error;
+      else delete updated.service;
+      return updated;
+    });
+  };
 
   // Once an address resolves to a parcel, carry the customer's selected work area into Adjusted Acreage.
   // The parcel size remains informational and never replaces the requested scope.
@@ -559,8 +597,10 @@ export default function QuotePage() {
     }
     // Capture the preliminary estimate before submitting so we can show it on the success screen
     const effectiveAcresForSubmit = adjustedAcres ? parseFloat(adjustedAcres) : (parseFloat(form.acreage) || 0);
-    const trailLfForSubmit = form.service === "trail-cutting" && form.trailLinearFeet ? parseFloat(form.trailLinearFeet) : undefined;
-    const preSubmitEstimate = (effectiveAcresForSubmit > 0 || trailLfForSubmit) && form.service ? computeEstimate(effectiveAcresForSubmit, form.service, trailLfForSubmit) : null;
+    const trailLfForSubmit = activeServices.includes("trail-cutting") && form.trailLinearFeet ? parseFloat(form.trailLinearFeet) : undefined;
+    const preSubmitEstimate = (effectiveAcresForSubmit > 0 || trailLfForSubmit) && activeServices.length > 0
+      ? computeSelectedServicesEstimate(effectiveAcresForSubmit, activeServices, trailLfForSubmit)
+      : null;
     if (preSubmitEstimate) {
       setSubmittedEstimate({
         range: preSubmitEstimate.range,
@@ -572,17 +612,18 @@ export default function QuotePage() {
       name: form.name,
       phone: form.phone,
       email: form.email,
-      service: form.service,
+      service: activeServices[0] ?? form.service,
       county: form.county || "(not specified)",
       acreage: form.acreage,
       street: form.street,
       city: form.city,
       state: form.state || "TN",
       zip: form.zip,
-      rowLinearFeet: form.service === "right-of-way-clearing" && form.rowLinearFeet ? parseInt(form.rowLinearFeet, 10) : undefined,
-      rowCorridorWidthFt: form.service === "right-of-way-clearing" && form.rowCorridorWidthFt ? parseInt(form.rowCorridorWidthFt, 10) : undefined,
+      rowLinearFeet: activeServices.includes("right-of-way-clearing") && form.rowLinearFeet ? parseInt(form.rowLinearFeet, 10) : undefined,
+      rowCorridorWidthFt: activeServices.includes("right-of-way-clearing") && form.rowCorridorWidthFt ? parseInt(form.rowCorridorWidthFt, 10) : undefined,
       message: [
         form.message,
+        activeServices.length > 1 ? `Additional requested services: ${activeServices.slice(1).map(quoteServiceLabel).join(", ")}` : "",
         form.service === "trail-cutting" && form.trailLinearFeet ? `Trail Length: ${parseFloat(form.trailLinearFeet).toLocaleString()} linear feet` : "",
         form.service === "trail-cutting" && form.trailWidth && form.trailWidth !== "other" ? `Trail Width: ${form.trailWidth} ft` : "",
         form.service === "trail-cutting" && form.trailLinearFeet && form.trailWidth && form.trailWidth !== "other"
@@ -595,7 +636,7 @@ export default function QuotePage() {
           ? `Effective Acreage: ${((parseFloat(form.rowLinearFeet) * parseFloat(form.rowCorridorWidthFt)) / 43560).toFixed(3)} acres`
           : "",
       ].filter(Boolean).join("\n"),
-      addOns: selectedAddOns,
+      addOns: Array.from(new Set([...selectedAddOns, ...activeServices.slice(1).map(quoteServiceLabel)])),
       parcelOwner: parcelInfo?.owner ?? undefined,
       parcelId: parcelInfo?.parcelId ?? undefined,
       deedAcres: parcelInfo?.deedAcres ?? undefined,
@@ -608,8 +649,10 @@ export default function QuotePage() {
       propertyPinLng: pinLng ?? undefined,
       estimatedRange: (() => {
         const effectiveAcres = adjustedAcres ? parseFloat(adjustedAcres) : (parseFloat(form.acreage) || 0);
-        const trailLf = form.service === "trail-cutting" && form.trailLinearFeet ? parseFloat(form.trailLinearFeet) : undefined;
-        const est = (effectiveAcres > 0 || trailLf) && form.service ? computeEstimate(effectiveAcres, form.service, trailLf) : null;
+        const trailLf = activeServices.includes("trail-cutting") && form.trailLinearFeet ? parseFloat(form.trailLinearFeet) : undefined;
+        const est = (effectiveAcres > 0 || trailLf) && activeServices.length > 0
+          ? computeSelectedServicesEstimate(effectiveAcres, activeServices, trailLf)
+          : null;
         return est?.range ?? "";
       })(),
     });
@@ -1079,7 +1122,9 @@ export default function QuotePage() {
                     const countyDisplay = form.county
                       ? form.county.charAt(0).toUpperCase() + form.county.slice(1) + " County"
                       : "";
-                    const serviceDisplay = serviceLabels[form.service] || form.service;
+                    const serviceDisplay = activeServices.length > 0
+                      ? activeServices.map(quoteServiceLabel).join(", ")
+                      : (serviceLabels[form.service] || form.service);
                     const acreageDisplay = formatQuoteAcreage(form.acreage);
                     const streetDisplay = form.street
                       ? form.street.split(" ").map((w: string) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(" ")
@@ -1409,28 +1454,47 @@ export default function QuotePage() {
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                     <div>
                       <label htmlFor="quote-service-input" style={labelStyle}>Service Needed *</label>
-                      <select
-                        id="quote-service-input" name="service" required
-                        value={form.service} onChange={handleChange}
+                      <div style={{ position: "relative" }}>
+                        <button
+                        id="quote-service-input" name="service" type="button"
+                        onClick={() => setServiceMenuOpen((open) => !open)}
+                        aria-expanded={serviceMenuOpen}
+                        aria-haspopup="listbox"
                         aria-invalid={Boolean(contactErrors.service)}
                         aria-describedby={contactErrors.service ? "quote-service-error" : undefined}
-                        style={{ ...inputStyle, cursor: "pointer", borderColor: contactErrors.service ? "#f87171" : inputStyle.borderColor }}
-                        onFocus={(e) => (e.target.style.borderColor = "rgba(224,123,42,0.6)")}
-                        onBlur={(e) => {
-                          const error = validateQuoteContactField("service", e.target.value);
-                          validateContactFieldOnBlur("service", e.target.value);
-                          e.target.style.borderColor = error ? "#f87171" : "rgba(255,255,255,0.12)";
-                        }}
-                      >
-                        <option value="" style={{ backgroundColor: "#1a1a1a" }}>Select a service...</option>
-                        <option value="land-management" style={{ backgroundColor: "#1a1a1a" }}>Land Management</option>
-                        <option value="forestry-mulching" style={{ backgroundColor: "#1a1a1a" }}>Forestry Mulching</option>
-                        <option value="vegetation-management" style={{ backgroundColor: "#1a1a1a" }}>Vegetation Management</option>
-                        <option value="right-of-way-clearing" style={{ backgroundColor: "#1a1a1a" }}>Right-of-Way Clearing</option>
-                        <option value="property-maintenance" style={{ backgroundColor: "#1a1a1a" }}>Brush Hogging</option>
-                        <option value="trail-cutting" style={{ backgroundColor: "#1a1a1a" }}>Trail Cutting</option>
-                        <option value="multiple" style={{ backgroundColor: "#1a1a1a" }}>Multiple Services</option>
-                      </select>
+                        className="flex w-full items-center justify-between gap-3 text-left"
+                        style={{ ...inputStyle, minHeight: "46px", cursor: "pointer", borderColor: contactErrors.service ? "#f87171" : serviceMenuOpen ? "rgba(224,123,42,0.6)" : inputStyle.borderColor }}
+                        >
+                          <span style={{ color: activeServices.length ? "#F0EDE6" : "rgba(240,237,230,0.45)" }}>
+                            {activeServices.length ? activeServices.map(quoteServiceLabel).join(", ") : "Select one or more services..."}
+                          </span>
+                          <ChevronDown size={17} style={{ color: "#E07B2A", flexShrink: 0, transform: serviceMenuOpen ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 0.18s ease" }} />
+                        </button>
+                        {serviceMenuOpen && (
+                          <div role="listbox" aria-label="Select requested services" style={{ position: "absolute", top: "calc(100% + 0.35rem)", zIndex: 30, width: "100%", padding: "0.55rem", background: "#1a1a1a", border: "1px solid rgba(224,123,42,0.42)", boxShadow: "0 16px 34px rgba(0,0,0,0.35)" }}>
+                            <p style={{ margin: "0.2rem 0 0.45rem", color: "rgba(240,237,230,0.52)", fontFamily: "'Lato', sans-serif", fontSize: "0.72rem", lineHeight: 1.4 }}>Choose every service you want included in the preliminary range.</p>
+                            {QUOTE_SERVICE_OPTIONS.map((option) => {
+                              const selected = activeServices.includes(option.value);
+                              return (
+                                <button
+                                  key={option.value}
+                                  type="button"
+                                  role="option"
+                                  aria-selected={selected}
+                                  onClick={() => toggleSelectedService(option.value)}
+                                  className="flex w-full items-center gap-2 text-left"
+                                  style={{ padding: "0.48rem 0.55rem", background: selected ? "rgba(224,123,42,0.16)" : "transparent", color: selected ? "#F0EDE6" : "rgba(240,237,230,0.72)", border: "none", cursor: "pointer", fontFamily: "'Lato', sans-serif", fontSize: "0.84rem" }}
+                                >
+                                  <span aria-hidden="true" style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: "16px", height: "16px", border: `1px solid ${selected ? "#E07B2A" : "rgba(240,237,230,0.36)"}`, background: selected ? "#E07B2A" : "transparent", color: "#121212", fontSize: "0.68rem", fontWeight: 900 }}>{selected ? "✓" : ""}</span>
+                                  {option.label}
+                                </button>
+                              );
+                            })}
+                            <p style={{ margin: "0.5rem 0 0.15rem", color: "rgba(240,237,230,0.4)", fontFamily: "'Lato', sans-serif", fontSize: "0.68rem", lineHeight: 1.35 }}>Trail Cutting and Right-of-Way Clearing use their own measurements and are selected by themselves.</p>
+                            <button type="button" onClick={() => setServiceMenuOpen(false)} style={{ marginTop: "0.55rem", width: "100%", padding: "0.42rem", background: "rgba(224,123,42,0.15)", border: "1px solid rgba(224,123,42,0.38)", color: "#E07B2A", cursor: "pointer", fontFamily: "'Oswald', sans-serif", fontSize: "0.72rem", letterSpacing: "0.08em", textTransform: "uppercase" }}>Done</button>
+                          </div>
+                        )}
+                      </div>
                       {contactErrors.service && <InlineFieldError id="quote-service-error" message={contactErrors.service} />}
                     </div>
                     <div>
@@ -1533,9 +1597,9 @@ export default function QuotePage() {
                     <div className="flex justify-between" style={{ marginTop: "0.2rem", color: "rgba(240,237,230,0.42)", fontFamily: "'Lato', sans-serif", fontSize: "0.72rem" }}>
                       <span>0.25 ac</span><span>10 ac</span><span>20 ac</span><span>30 ac</span><span>40 ac</span>
                     </div>
-                    {form.service && form.service !== "trail-cutting" && (() => {
+                    {activeServices.length > 0 && !activeServices.includes("trail-cutting") && (() => {
                       const previewAcres = adjustedAcres ? parseFloat(adjustedAcres) : (parseFloat(form.acreage) || 1);
-                      const preview = previewAcres > 0 ? computeEstimate(previewAcres, form.service) : null;
+                      const preview = previewAcres > 0 ? computeSelectedServicesEstimate(previewAcres, activeServices) : null;
                       if (!preview) return null;
                       return (
                         <div aria-live="polite" style={{ marginTop: "0.9rem", padding: "0.8rem 0.95rem", background: "rgba(224,123,42,0.07)", border: "1px solid rgba(224,123,42,0.23)", borderRadius: "3px" }}>
@@ -2326,11 +2390,11 @@ export default function QuotePage() {
                     )}
 
                     {/* Preliminary price estimate — shown when parcel found and service selected */}
-                    {parcelInfo && parcelInfo.found && form.service && (() => {
+                    {parcelInfo && parcelInfo.found && activeServices.length > 0 && (() => {
                       const effectiveAcres = adjustedAcres ? parseFloat(adjustedAcres) : (parseFloat(form.acreage) || 0);
-                      const trailLfVal = form.service === "trail-cutting" && form.trailLinearFeet ? parseFloat(form.trailLinearFeet) : undefined;
+                      const trailLfVal = activeServices.includes("trail-cutting") && form.trailLinearFeet ? parseFloat(form.trailLinearFeet) : undefined;
                       if (effectiveAcres <= 0 && !trailLfVal) return null;
-                      const est = computeEstimate(effectiveAcres, form.service, trailLfVal);
+                      const est = computeSelectedServicesEstimate(effectiveAcres, activeServices, trailLfVal);
                       if (!est) return null;
                       return (
                         <div style={{

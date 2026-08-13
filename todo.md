@@ -2884,3 +2884,6 @@
 ## Animated Quote Range & Parcel Reset — Aug 2026
 - [x] Add a smooth rolling animation to live preliminary price changes
 - [x] Add an Adjusted Acreage reset control that restores the detected full parcel size
+
+## Multi-Service Quote Range — Aug 2026
+- [x] Add multi-select service controls to the public quote form and calculate a combined preliminary range
