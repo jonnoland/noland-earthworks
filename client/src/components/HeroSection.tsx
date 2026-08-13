@@ -5,6 +5,7 @@
 import { ArrowRight, ChevronDown, FileText, MapPin, Star } from "lucide-react";
 
 const HERO_IMAGE = "https://d2xsxph8kpxj0f.cloudfront.net/310519663484957999/PymCzDCnSJzPjdkfwA7Jn6/hero-forestry-golden_b098141c.webp";
+const HERO_IMAGE_MOBILE = "/manus-storage/hero-forestry-mobile_4299c692.webp";
 
 export default function HeroSection() {
   const scrollTo = (href: string) => {
@@ -17,17 +18,18 @@ export default function HeroSection() {
       className="relative min-h-screen flex flex-col justify-center overflow-hidden"
       style={{ backgroundColor: "#0a0a0a" }}
     >
-      {/* Background image */}
-      <div
-        className="absolute inset-0 w-full h-full"
-        style={{
-          backgroundImage: `url(${HERO_IMAGE})`,
-          backgroundSize: "cover",
-          backgroundPosition: "center center",
-          backgroundRepeat: "no-repeat",
-        }}
-        aria-hidden="true"
-      />
+      {/* Explicit responsive image lets mobile browsers prioritize the LCP asset. */}
+      <picture className="absolute inset-0 w-full h-full" aria-hidden="true">
+        <source media="(max-width: 768px)" srcSet={HERO_IMAGE_MOBILE} />
+        <img
+          src={HERO_IMAGE}
+          alt=""
+          fetchPriority="high"
+          decoding="async"
+          className="w-full h-full"
+          style={{ objectFit: "cover", objectPosition: "center center" }}
+        />
+      </picture>
 
       {/* Gradient overlays */}
       <div

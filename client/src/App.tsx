@@ -6,10 +6,11 @@ import { trpc } from "@/lib/trpc";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import ScrollToTop from "./components/ScrollToTop";
-import AIChatWidget from "./components/AIChatWidget";
 import OwnerRoute from "./components/OwnerRoute";
-import SmsToastNotifier from "./components/SmsToastNotifier";
 import { lazy, Suspense } from "react";
+
+const AIChatWidget = lazy(() => import("./components/AIChatWidget"));
+const SmsToastNotifier = lazy(() => import("./components/SmsToastNotifier"));
 
 // ── Ops dashboard (lazy-loaded — never sent to public visitors) ──────────────
 const OpsDashboard       = lazy(() => import("./pages/ops/Dashboard"));
@@ -64,72 +65,74 @@ const PaymentCancel  = lazy(() => import("./pages/portal/PaymentCancel"));
 const QuotePortal         = lazy(() => import("./pages/QuotePortal"));
 const NativeQuotePortal   = lazy(() => import("./pages/NativeQuotePortal"));
 
-// ── Public pages (eagerly loaded — fast first paint for visitors) ─────────────
+// ── Public pages ──────────────────────────────────────────────────────────────
+// Home stays eager for first paint. Route-specific pages remain separate chunks
+// so quote tools, galleries, guides, and blog content do not delay the homepage.
 import Home from "./pages/Home";
-import LandClearingPage from "./pages/LandClearing";
-import ForestryMulchingPage from "./pages/ForestryMulching";
-import VegetationManagementPage from "./pages/VegetationManagement";
-import PropertyMaintenancePage from "./pages/PropertyMaintenance";
-import RightOfWayClearingPage from "./pages/RightOfWayClearing";
-import FenceLineClearingPage from "./pages/FenceLineClearing";
-import MulchRedistributionPage from "./pages/MulchRedistribution";
-import SelectiveClearingPage from "./pages/SelectiveClearing";
-import TrailCuttingPage from "./pages/TrailCutting";
-import SitePreparationPage from "./pages/SitePreparation";
-import QuotePage from "./pages/Quote";
-import AboutPage from "./pages/About";
-import PricingPage from "./pages/Pricing";
-import FaqPage from "./pages/Faq";
-import TermsOfServicePage from "./pages/TermsOfService";
-import PrivacyPolicyPage from "./pages/PrivacyPolicy";
-import ReviewsPage from "./pages/Reviews";
-import BlogPage from "./pages/Blog";
-import CostOfLandClearing from "./pages/blog/CostOfLandClearing";
-import ForestryMulchingVsBulldozing from "./pages/blog/ForestryMulchingVsBulldozing";
-import SignsVegetationManagement from "./pages/blog/SignsVegetationManagement";
-import BestTimeToClearLand from "./pages/blog/BestTimeToClearLand";
-import SitePreparationBeforeBuilding from "./pages/blog/SitePreparationBeforeBuilding";
-import LandManagementWilliamsonCounty from "./pages/blog/LandManagementWilliamsonCounty";
-import LandManagementDevelopersFarmers from "./pages/blog/LandManagementDevelopersFarmers";
-import LandManagementDavidsonCounty from "./pages/blog/LandManagementDavidsonCounty";
-import LandManagementRutherfordCounty from "./pages/blog/LandManagementRutherfordCounty";
-import LandManagementMauryCounty from "./pages/blog/LandManagementMauryCounty";
-import LandManagementMarshallCounty from "./pages/blog/LandManagementMarshallCounty";
-import ForestryMulchingVsBushHogging from "./pages/blog/ForestryMulchingVsBushHogging";
-import HowToPrepareForLandClearing from "./pages/blog/HowToPrepareForLandClearing";
-import PastureReclamationTennessee from "./pages/blog/PastureReclamationTennessee";
-import LandManagementLincolnCounty from "./pages/blog/LandManagementLincolnCounty";
-import LandManagementWilsonCounty from "./pages/blog/LandManagementWilsonCounty";
-import LandManagementMontgomeryCounty from "./pages/blog/LandManagementMontgomeryCounty";
-import LandManagementGilesCounty from "./pages/blog/LandManagementGilesCounty";
-import LandManagementSumnerCounty from "./pages/blog/LandManagementSumnerCounty";
-import LandManagementBedfordCounty from "./pages/blog/LandManagementBedfordCounty";
-import LandManagementCheathamCounty from "./pages/blog/LandManagementCheathamCounty";
-import LandManagementLawrenceCounty from "./pages/blog/LandManagementLawrenceCounty";
-import LandManagementDicksonCounty from "./pages/blog/LandManagementDicksonCounty";
-import LandManagementHickmanCounty from "./pages/blog/LandManagementHickmanCounty";
-import LandManagementRobertsonCounty from "./pages/blog/LandManagementRobertsonCounty";
-import LandManagementTrousdaleCounty from "./pages/blog/LandManagementTrousdaleCounty";
-import LandManagementBentonCounty from "./pages/blog/LandManagementBentonCounty";
-import LandManagementCannonCounty from "./pages/blog/LandManagementCannonCounty";
-import LandManagementCarrollCounty from "./pages/blog/LandManagementCarrollCounty";
-import LandManagementChesterCounty from "./pages/blog/LandManagementChesterCounty";
-import LandManagementDecaturCounty from "./pages/blog/LandManagementDecaturCounty";
-import LandManagementGibsonCounty from "./pages/blog/LandManagementGibsonCounty";
-import LandManagementHardinCounty from "./pages/blog/LandManagementHardinCounty";
-import LandManagementHendersonCounty from "./pages/blog/LandManagementHendersonCounty";
-import LandManagementHenryCounty from "./pages/blog/LandManagementHenryCounty";
-import LandManagementHoustonCounty from "./pages/blog/LandManagementHoustonCounty";
-import LandManagementHumphreysCounty from "./pages/blog/LandManagementHumphreysCounty";
-import LandManagementLewisCounty from "./pages/blog/LandManagementLewisCounty";
-import LandManagementMadisonCounty from "./pages/blog/LandManagementMadisonCounty";
-import LandManagementMooreCounty from "./pages/blog/LandManagementMooreCounty";
-import LandManagementPerryCounty from "./pages/blog/LandManagementPerryCounty";
-import LandManagementStewartCounty from "./pages/blog/LandManagementStewartCounty";
-import LandManagementWayneCounty from "./pages/blog/LandManagementWayneCounty";
-import LandManagementWeakleyCounty from "./pages/blog/LandManagementWeakleyCounty";
-import DynamicBlogPost from "./pages/DynamicBlogPost";
-import GalleryPage from "./pages/Gallery";
+const LandClearingPage = lazy(() => import("./pages/LandClearing"));
+const ForestryMulchingPage = lazy(() => import("./pages/ForestryMulching"));
+const VegetationManagementPage = lazy(() => import("./pages/VegetationManagement"));
+const PropertyMaintenancePage = lazy(() => import("./pages/PropertyMaintenance"));
+const RightOfWayClearingPage = lazy(() => import("./pages/RightOfWayClearing"));
+const FenceLineClearingPage = lazy(() => import("./pages/FenceLineClearing"));
+const MulchRedistributionPage = lazy(() => import("./pages/MulchRedistribution"));
+const SelectiveClearingPage = lazy(() => import("./pages/SelectiveClearing"));
+const TrailCuttingPage = lazy(() => import("./pages/TrailCutting"));
+const SitePreparationPage = lazy(() => import("./pages/SitePreparation"));
+const QuotePage = lazy(() => import("./pages/Quote"));
+const AboutPage = lazy(() => import("./pages/About"));
+const PricingPage = lazy(() => import("./pages/Pricing"));
+const FaqPage = lazy(() => import("./pages/Faq"));
+const TermsOfServicePage = lazy(() => import("./pages/TermsOfService"));
+const PrivacyPolicyPage = lazy(() => import("./pages/PrivacyPolicy"));
+const ReviewsPage = lazy(() => import("./pages/Reviews"));
+const BlogPage = lazy(() => import("./pages/Blog"));
+const CostOfLandClearing = lazy(() => import("./pages/blog/CostOfLandClearing"));
+const ForestryMulchingVsBulldozing = lazy(() => import("./pages/blog/ForestryMulchingVsBulldozing"));
+const SignsVegetationManagement = lazy(() => import("./pages/blog/SignsVegetationManagement"));
+const BestTimeToClearLand = lazy(() => import("./pages/blog/BestTimeToClearLand"));
+const SitePreparationBeforeBuilding = lazy(() => import("./pages/blog/SitePreparationBeforeBuilding"));
+const LandManagementWilliamsonCounty = lazy(() => import("./pages/blog/LandManagementWilliamsonCounty"));
+const LandManagementDevelopersFarmers = lazy(() => import("./pages/blog/LandManagementDevelopersFarmers"));
+const LandManagementDavidsonCounty = lazy(() => import("./pages/blog/LandManagementDavidsonCounty"));
+const LandManagementRutherfordCounty = lazy(() => import("./pages/blog/LandManagementRutherfordCounty"));
+const LandManagementMauryCounty = lazy(() => import("./pages/blog/LandManagementMauryCounty"));
+const LandManagementMarshallCounty = lazy(() => import("./pages/blog/LandManagementMarshallCounty"));
+const ForestryMulchingVsBushHogging = lazy(() => import("./pages/blog/ForestryMulchingVsBushHogging"));
+const HowToPrepareForLandClearing = lazy(() => import("./pages/blog/HowToPrepareForLandClearing"));
+const PastureReclamationTennessee = lazy(() => import("./pages/blog/PastureReclamationTennessee"));
+const LandManagementLincolnCounty = lazy(() => import("./pages/blog/LandManagementLincolnCounty"));
+const LandManagementWilsonCounty = lazy(() => import("./pages/blog/LandManagementWilsonCounty"));
+const LandManagementMontgomeryCounty = lazy(() => import("./pages/blog/LandManagementMontgomeryCounty"));
+const LandManagementGilesCounty = lazy(() => import("./pages/blog/LandManagementGilesCounty"));
+const LandManagementSumnerCounty = lazy(() => import("./pages/blog/LandManagementSumnerCounty"));
+const LandManagementBedfordCounty = lazy(() => import("./pages/blog/LandManagementBedfordCounty"));
+const LandManagementCheathamCounty = lazy(() => import("./pages/blog/LandManagementCheathamCounty"));
+const LandManagementLawrenceCounty = lazy(() => import("./pages/blog/LandManagementLawrenceCounty"));
+const LandManagementDicksonCounty = lazy(() => import("./pages/blog/LandManagementDicksonCounty"));
+const LandManagementHickmanCounty = lazy(() => import("./pages/blog/LandManagementHickmanCounty"));
+const LandManagementRobertsonCounty = lazy(() => import("./pages/blog/LandManagementRobertsonCounty"));
+const LandManagementTrousdaleCounty = lazy(() => import("./pages/blog/LandManagementTrousdaleCounty"));
+const LandManagementBentonCounty = lazy(() => import("./pages/blog/LandManagementBentonCounty"));
+const LandManagementCannonCounty = lazy(() => import("./pages/blog/LandManagementCannonCounty"));
+const LandManagementCarrollCounty = lazy(() => import("./pages/blog/LandManagementCarrollCounty"));
+const LandManagementChesterCounty = lazy(() => import("./pages/blog/LandManagementChesterCounty"));
+const LandManagementDecaturCounty = lazy(() => import("./pages/blog/LandManagementDecaturCounty"));
+const LandManagementGibsonCounty = lazy(() => import("./pages/blog/LandManagementGibsonCounty"));
+const LandManagementHardinCounty = lazy(() => import("./pages/blog/LandManagementHardinCounty"));
+const LandManagementHendersonCounty = lazy(() => import("./pages/blog/LandManagementHendersonCounty"));
+const LandManagementHenryCounty = lazy(() => import("./pages/blog/LandManagementHenryCounty"));
+const LandManagementHoustonCounty = lazy(() => import("./pages/blog/LandManagementHoustonCounty"));
+const LandManagementHumphreysCounty = lazy(() => import("./pages/blog/LandManagementHumphreysCounty"));
+const LandManagementLewisCounty = lazy(() => import("./pages/blog/LandManagementLewisCounty"));
+const LandManagementMadisonCounty = lazy(() => import("./pages/blog/LandManagementMadisonCounty"));
+const LandManagementMooreCounty = lazy(() => import("./pages/blog/LandManagementMooreCounty"));
+const LandManagementPerryCounty = lazy(() => import("./pages/blog/LandManagementPerryCounty"));
+const LandManagementStewartCounty = lazy(() => import("./pages/blog/LandManagementStewartCounty"));
+const LandManagementWayneCounty = lazy(() => import("./pages/blog/LandManagementWayneCounty"));
+const LandManagementWeakleyCounty = lazy(() => import("./pages/blog/LandManagementWeakleyCounty"));
+const DynamicBlogPost = lazy(() => import("./pages/DynamicBlogPost"));
+const GalleryPage = lazy(() => import("./pages/Gallery"));
 import {
   DavidsonCountyPage,
   WilliamsonCountyPage,
@@ -202,6 +205,7 @@ function OpsLoading() {
 
 function Router() {
   return (
+    <Suspense fallback={<OpsLoading />}>
     <Switch>
       {/* Main pages */}
       <Route path="/" component={Home} />
@@ -483,6 +487,7 @@ function Router() {
       <Route path="/404" component={NotFound} />
       <Route component={NotFound} />
     </Switch>
+    </Suspense>
   );
 }
 
@@ -494,8 +499,10 @@ function App() {
           <Toaster />
           <Router />
           <ScrollToTop />
-          <AIChatWidget />
-          <SmsToastNotifier />
+          <Suspense fallback={null}>
+            <AIChatWidget />
+            <SmsToastNotifier />
+          </Suspense>
         </TooltipProvider>
       </ThemeProvider>
     </ErrorBoundary>
