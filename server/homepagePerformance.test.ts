@@ -23,4 +23,12 @@ describe("homepage performance safeguards", () => {
     expect(source).toContain("hero-forestry-mobile_4299c692.webp");
     expect(source).toContain("hero-forestry-golden_b098141c.webp");
   });
+
+  it("does not keep the Google Fonts stylesheet render-blocking", () => {
+    const source = readFileSync(resolve(projectRoot, "client/index.html"), "utf8");
+
+    expect(source).toContain('rel="preload" as="style"');
+    expect(source).toContain('media="print" onload="this.media=\'all\'"');
+    expect(source).toContain("<noscript><link");
+  });
 });

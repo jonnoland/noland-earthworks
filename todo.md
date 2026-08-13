@@ -2958,3 +2958,4 @@
 - [x] Split non-public application routes so the public homepage does not load unused operations code
 - [x] Improve critical rendering of visible homepage assets based on PageSpeed findings
 - [ ] Re-measure mobile PageSpeed after deployed performance improvements
+- [x] Defer the noncritical Google Fonts stylesheet while retaining the existing typography fallback
