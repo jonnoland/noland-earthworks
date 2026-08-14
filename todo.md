@@ -2987,3 +2987,9 @@
 - [x] Implement a low-risk quote-page performance improvement that preserves the form flow
 - [x] Add factual county-specific differentiation without expanding generic boilerplate
 - [x] Validate mobile performance and county-page indexability after publication
+
+## Perplexity, Service LCP & Google Ads — Aug 2026
+- [x] Run authenticated Perplexity visibility checks for priority forestry-mulching queries
+- [x] Identify the remaining service-page LCP tradeoff and retain GA4 tracking coverage by user decision
+- [x] Review Google Ads account and in-app integration readiness without changing live campaigns
+- [x] Document verified results and required follow-up access
