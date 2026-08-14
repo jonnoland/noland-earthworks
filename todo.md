@@ -2982,6 +2982,16 @@
 - [x] Verify the resulting pages remain indexable in production
 - [x] Consolidate duplicate county blog URLs into their matching canonical service-area pages
 
+## County Differentiation Strategy Review — Aug 2026
+- [x] Audit current local signals, repeated content, and conversion paths across county pages
+- [x] Define differentiated county-content modules and evidence standards
+- [x] Deliver a prioritized implementation recommendation without generic filler
+
+## Primary H1 & Heading Structure — Aug 2026
+- [ ] Add the requested Middle and West Tennessee primary H1 to the homepage
+- [ ] Audit public routes for one clear primary H1 per page
+- [ ] Correct verified H1 conflicts without changing valid service, county, or blog page intent
+
 ## Quote Performance & County Differentiation — Aug 2026
 - [x] Measure the current quote-page mobile performance and critical loading path
 - [x] Implement a low-risk quote-page performance improvement that preserves the form flow
