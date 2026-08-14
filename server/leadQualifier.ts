@@ -22,7 +22,7 @@ export interface LeadQualification {
   ballparkNote: string;   // One-sentence caveat explaining why it's a rough range
 }
 
-const SYSTEM_PROMPT = `You are an AI assistant for Noland Earthworks, LLC — a veteran-owned land management and forestry mulching company in Middle Tennessee. Your job is to qualify incoming quote requests and score them for the owner, Jon Noland.
+export const SYSTEM_PROMPT = `You are an AI assistant for Noland Earthworks, LLC — a veteran-owned land management and forestry mulching company in Middle Tennessee. Your job is to qualify incoming quote requests and score them for the owner, Jon Noland.
 
 SCORING CRITERIA:
 
@@ -104,6 +104,13 @@ BALLPARK RANGE RULES:
 - If the lead is too vague to estimate, set ballparkRange to "" (empty string)
 - ballparkNote must be one sentence, plain language, explaining that this is a rough range pending a site visit — never promise a price
 
+MULTI-SERVICE WEB QUOTE RULES:
+- The request may include a primary service plus one or more additional services. Read every bullet under "Structured preliminary service estimates"; each bullet is a requested scope item, not optional background information.
+- When structured estimates are present, treat their service names, measurements, and low/high ranges as authoritative. Do not drop, rename, or merge a service into the primary request.
+- The ballparkRange must reflect the combined project range across every structured service item. Never calculate it from only the primary service.
+- For two or more requested services, your summary and draftResponse must name every requested service in plain language. Example: "Forestry mulching plus trail cutting in Dickson County."
+- Do not invent a new service, measurement, rate, or discount. If a line needs site verification, retain it and state that site conditions will confirm the final scope.
+
 DRAFT RESPONSE VOICE:
 Write in Jon's voice — direct, professional, warm. Sound like a real person who does this work. No corporate language. No emojis. No "we strive to" or "industry-leading." Keep it to 2–3 sentences. Reference the specific service and county when possible.`;
 
@@ -115,7 +122,7 @@ export async function qualifyLead(input: QuoteInput): Promise<LeadQualification>
     input.acreage ? `Acreage: ${input.acreage}` : "Acreage: Not specified",
     input.street || input.city ? `Address: ${[input.street, input.city, input.state, input.zip].filter(Boolean).join(", ")}` : "",
     input.addOns && input.addOns.length > 0 ? `Add-ons requested: ${input.addOns.join(", ")}` : "",
-    input.serviceBreakdown.length > 0 ? `Structured preliminary service estimates (keep every service in your reasoning):\n${input.serviceBreakdown.map((item) => `- ${item.label}: $${Math.round(item.lowCents / 100).toLocaleString()} – $${Math.round(item.highCents / 100).toLocaleString()}${item.measurement ? ` (${item.measurement})` : ""}`).join("\n")}` : "",
+    input.serviceBreakdown.length > 0 ? `Structured preliminary service estimates (every bullet below is a requested scope item and must remain in the combined AI estimate):\n${input.serviceBreakdown.map((item) => `- ${item.label}: $${Math.round(item.lowCents / 100).toLocaleString()} – $${Math.round(item.highCents / 100).toLocaleString()}${item.measurement ? ` (${item.measurement})` : ""}${item.calculation ? ` | Basis: ${item.calculation}` : ""}`).join("\n")}` : "",
     input.message ? `Customer message: "${input.message}"` : "Customer message: None provided",
   ].filter(Boolean).join("\n");
 

@@ -2997,6 +2997,7 @@
 - [x] Carry each service’s preliminary contribution into AI estimate inputs and editable quote drafts
 - [x] Display itemized service costs in the quote workflow without losing the combined total
 - [x] Verify a forestry-mulching plus trail-cutting web quote end to end
+- [x] Document the AI prompt and structured payload pattern for all requested web-quote services
 
 ## Quote Performance & County Differentiation — Aug 2026
 - [x] Measure the current quote-page mobile performance and critical loading path
