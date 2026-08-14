@@ -67,12 +67,28 @@ export default function HeroSection() {
               marginBottom: "1.5rem",
             }}
           >
-            Your Land Has
+            Land Management &amp;
             <br />
-            Been Waiting.
+            <span style={{ color: "#E07B2A" }}>Forestry Mulching</span>
             <br />
-            <span style={{ color: "#E07B2A" }}>Let's Bring It Back.</span>
+            in Middle &amp; West Tennessee
           </h1>
+
+          <p
+            style={{
+              fontFamily: "'Oswald', sans-serif",
+              fontWeight: 600,
+              fontSize: "clamp(1.15rem, 2.5vw, 1.65rem)",
+              lineHeight: 1.15,
+              letterSpacing: "0.04em",
+              textTransform: "uppercase",
+              color: "rgba(240,237,230,0.84)",
+              marginTop: "-0.75rem",
+              marginBottom: "1.5rem",
+            }}
+          >
+            Your Land Has Been Waiting. Let&apos;s Bring It Back.
+          </p>
 
           {/* Body copy */}
           <p

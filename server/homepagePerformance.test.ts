@@ -56,4 +56,16 @@ describe("homepage performance safeguards", () => {
     expect(layout).toContain('media="(max-width: 768px)"');
     expect(forestryPage).toContain("forestry-mulching-mobile_47442aea.webp");
   });
+
+  it("keeps one keyword-focused primary homepage H1 and preserves the brand line as supporting copy", () => {
+    const hero = readFileSync(
+      resolve(projectRoot, "client/src/components/HeroSection.tsx"),
+      "utf8"
+    );
+
+    expect(hero).toContain("Land Management &amp;");
+    expect(hero).toContain("Forestry Mulching");
+    expect(hero).toContain("in Middle &amp; West Tennessee");
+    expect(hero).toContain("Your Land Has Been Waiting. Let&apos;s Bring It Back.");
+  });
 });
