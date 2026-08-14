@@ -3009,6 +3009,12 @@
 - [x] Add a Quotes sorting control for AI range-confidence score
 - [x] Verify quote intake and confidence sorting with automated regression coverage
 
+## Comprehensive AI, Website & Operations Audit — Aug 2026
+- [x] Inventory every active AI, automation, conversion, CRM, SEO/AEO, and Stripe workflow
+- [x] Inspect the live public site, technical search visibility, and current external best-practice evidence
+- [x] Review read-only operational funnel data, agent health, and handoff gaps
+- [x] Deliver an evidence-based audit with prioritized 0–30, 30–90, and 90+ day recommendations
+
 ## Quote Performance & County Differentiation — Aug 2026
 - [x] Measure the current quote-page mobile performance and critical loading path
 - [x] Implement a low-risk quote-page performance improvement that preserves the form flow
