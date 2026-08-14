@@ -3023,8 +3023,9 @@
 - [x] Replace the long public quote intake with a mobile-first Site Visit Request flow and capture source, fit, next action, visit, proposal, deposit, and payment status
 - [x] Build Today’s Next Actions for new leads, visits, proposals, deposits, weather, invoices, and review-eligible jobs
 - [x] Update privacy policy and public collection disclosures as a draft requiring legal review before reliance
-- [ ] Improve mobile LCP on priority service and quote pages and document excluded-URL review requirements
-- [ ] Prepare verified Google Business Profile, Bing Places/Bing Webmaster AI Performance, Search Console, and monthly-review measurement setup
+- [x] Improve mobile LCP on priority service and quote pages and document excluded-URL review requirements
+- [x] Prepare verified Google Business Profile, Bing Places/Bing Webmaster AI Performance, Search Console, and monthly-review measurement setup
+- [ ] Resolve or report the incorrect duplicate Google Maps listing before relying on local-review or local-visibility counts
 
 ## Quote Performance & County Differentiation — Aug 2026
 - [x] Measure the current quote-page mobile performance and critical loading path

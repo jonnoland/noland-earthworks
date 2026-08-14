@@ -7,7 +7,7 @@ import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import ScrollToTop from "./components/ScrollToTop";
 import OwnerRoute from "./components/OwnerRoute";
-import { lazy, Suspense } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 
 const AIChatWidget = lazy(() => import("./components/AIChatWidget"));
 const SmsToastNotifier = lazy(() => import("./components/SmsToastNotifier"));
@@ -200,6 +200,41 @@ function OpsLoading() {
       </div>
     </div>
   );
+}
+
+function DeferredPublicAIChat() {
+  const [ready, setReady] = useState(false);
+
+  useEffect(() => {
+    if (window.location.pathname.startsWith("/ops") || window.location.pathname.startsWith("/portal")) return;
+
+    let settled = false;
+    const enable = () => {
+      if (!settled) {
+        settled = true;
+        setReady(true);
+      }
+    };
+    const events: Array<keyof WindowEventMap> = ["pointerdown", "keydown", "touchstart"];
+    events.forEach((eventName) => window.addEventListener(eventName, enable, { once: true, passive: true }));
+    let idleHandle: number | null = null;
+    let timeoutHandle: ReturnType<typeof globalThis.setTimeout> | null = null;
+    if (typeof window.requestIdleCallback === "function") {
+      idleHandle = window.requestIdleCallback(enable, { timeout: 5000 });
+    } else {
+      timeoutHandle = globalThis.setTimeout(enable, 5000);
+    }
+
+    return () => {
+      events.forEach((eventName) => window.removeEventListener(eventName, enable));
+      if (idleHandle !== null && typeof window.cancelIdleCallback === "function") {
+        window.cancelIdleCallback(idleHandle);
+      }
+      if (timeoutHandle !== null) globalThis.clearTimeout(timeoutHandle);
+    };
+  }, []);
+
+  return ready ? <AIChatWidget /> : null;
 }
 
 function Router() {
@@ -496,7 +531,7 @@ function App() {
           <Router />
           <ScrollToTop />
           <Suspense fallback={null}>
-            <AIChatWidget />
+            <DeferredPublicAIChat />
             <SmsToastNotifier />
           </Suspense>
         </TooltipProvider>

@@ -136,7 +136,7 @@ export default function HeroSection() {
             </button>
           </div>
 
-          {/* Pricing teaser */}
+          {/* Site-visit planning link */}
           <div className="flex items-center mb-6" style={{ marginTop: "-1.5rem" }}>
             <a
               href="/pricing"
@@ -161,7 +161,7 @@ export default function HeroSection() {
                 (e.currentTarget as HTMLAnchorElement).style.borderBottomColor = "rgba(224,123,42,0.4)";
               }}
             >
-              Get a rough number in 30 seconds
+              Plan a site visit
               <svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <path d="M2.5 6h7M6.5 3l3 3-3 3" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
               </svg>

@@ -16,12 +16,11 @@ describe("homepage performance safeguards", () => {
     expect(source).toContain("Load coverage map");
   });
 
-  it("preloads the smaller mobile hero asset without replacing the desktop hero", () => {
+  it("does not preload homepage hero imagery on every route", () => {
     const source = readFileSync(resolve(projectRoot, "client/index.html"), "utf8");
 
-    expect(source).toContain('media="(max-width: 768px)"');
-    expect(source).toContain("hero-forestry-mobile_4299c692.webp");
-    expect(source).toContain("hero-forestry-golden_b098141c.webp");
+    expect(source).not.toContain('rel="preload"\n      as="image"');
+    expect(source).toContain('loading="lazy"');
   });
 
   it("does not keep the Google Fonts stylesheet render-blocking", () => {
@@ -67,5 +66,14 @@ describe("homepage performance safeguards", () => {
     expect(hero).toContain("Forestry Mulching");
     expect(hero).toContain("in Middle &amp; West Tennessee");
     expect(hero).toContain("Your Land Has Been Waiting. Let&apos;s Bring It Back.");
+  });
+
+  it("defers the optional public AI chat bundle until visitor interaction or idle time", () => {
+    const app = readFileSync(resolve(projectRoot, "client/src/App.tsx"), "utf8");
+
+    expect(app).toContain("function DeferredPublicAIChat()");
+    expect(app).toContain("requestIdleCallback");
+    expect(app).toContain('<DeferredPublicAIChat />');
+    expect(app).not.toContain('\n            <AIChatWidget />');
   });
 });
