@@ -275,6 +275,11 @@ export const quoteSubmissions = mysqlTable("quote_submissions", {
   aiSummary: text("aiSummary"),
   aiFlags: text("aiFlags"),        // JSON array of flag strings
   aiDraftResponse: text("aiDraftResponse"),
+  /** AI assessment of how much the submitted measurements support the preliminary range */
+  aiRangeConfidence: varchar("aiRangeConfidence", { length: 16 }),
+  aiRangeConfidenceScore: int("aiRangeConfidenceScore"),
+  aiRangeConfidenceReason: text("aiRangeConfidenceReason"),
+  aiRangeRiskFactors: text("aiRangeRiskFactors"), // JSON array of site or scope risks
   /** FK to native_quotes — set when the auto-created native quote is inserted on submission */
   nativeQuoteId: int("nativeQuoteId"),
   /** Jobber sync outcome */

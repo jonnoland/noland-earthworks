@@ -32,6 +32,7 @@ import {
 } from "lucide-react";
 import { MapView } from "@/components/Map";
 import FieldQuotesSection from "@/pages/ops/FieldQuotesSection";
+import { parseStoredRangeRiskFactors, parseStoredServiceBreakdown } from "@shared/quoteServiceItemization";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface LineItem {
@@ -1648,6 +1649,10 @@ function InlineWebRequestsPanel({
     aiScore?: string | null;
     aiSummary?: string | null;
     aiFlags?: string | null;
+    aiRangeConfidence?: "high" | "moderate" | "low" | null;
+    aiRangeConfidenceScore?: number | null;
+    aiRangeConfidenceReason?: string | null;
+    aiRangeRiskFactors?: string | null;
     estimatedRange?: string | null;
     serviceBreakdown?: string | null;
     nativeQuoteId?: number | null;
@@ -1737,6 +1742,12 @@ function InlineWebRequestsPanel({
             const hasMap = hasPin || !!addressStr;
             const isMapOpen = expandedMapId === req.id;
             const isEditingEstimate = editingEstimateId === req.id;
+            const confidenceStyle = req.aiRangeConfidence === "high"
+              ? { label: "High", className: "text-emerald-300 bg-emerald-500/10 border-emerald-500/25", Icon: CheckCircle }
+              : req.aiRangeConfidence === "moderate"
+                ? { label: "Moderate", className: "text-amber-300 bg-amber-500/10 border-amber-500/25", Icon: AlertTriangle }
+                : { label: "Low", className: "text-red-300 bg-red-500/10 border-red-500/25", Icon: AlertTriangle };
+            const riskFactors = parseStoredRangeRiskFactors(req.aiRangeRiskFactors);
             return (
               <div key={req.id} className="rounded-md border border-border bg-card/50 p-3 space-y-2">
                 {/* Row 1: Name + AI score badge + map toggle */}
@@ -1788,6 +1799,24 @@ function InlineWebRequestsPanel({
                   </p>
                 )}
 
+                {(req.aiRangeConfidence || req.aiRangeConfidenceReason) && (
+                  <div className="rounded border border-border/80 bg-background/35 px-2.5 py-2 space-y-1.5">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">AI range assessment</p>
+                      <span className={`inline-flex items-center gap-1 rounded border px-1.5 py-0.5 text-[10px] font-semibold ${confidenceStyle.className}`}>
+                        <confidenceStyle.Icon className="h-3 w-3" />
+                        {confidenceStyle.label} confidence{typeof req.aiRangeConfidenceScore === "number" ? ` · ${req.aiRangeConfidenceScore}/100` : ""}
+                      </span>
+                    </div>
+                    {req.aiRangeConfidenceReason && <p className="text-[11px] leading-relaxed text-muted-foreground">{req.aiRangeConfidenceReason}</p>}
+                    {riskFactors.length > 0 && (
+                      <p className="text-[10px] leading-relaxed text-amber-200/80">
+                        <span className="font-semibold text-amber-300">Confirm on site:</span> {riskFactors.join(" · ")}
+                      </p>
+                    )}
+                  </div>
+                )}
+
                 {/* Expandable interactive map */}
                 {isMapOpen && hasMap && (
                   <WebReqInteractiveMap
@@ -1801,21 +1830,24 @@ function InlineWebRequestsPanel({
                   <p className="text-xs text-muted-foreground line-clamp-2">{req.message}</p>
                 )}
                 {(() => {
-                  try {
-                    const breakdown = JSON.parse(req.serviceBreakdown ?? "[]") as { label: string; lowCents: number; highCents: number; measurement?: string }[];
+                  {
+                    const breakdown = parseStoredServiceBreakdown(req.serviceBreakdown);
                     if (breakdown.length === 0) return null;
                     return (
                       <div className="rounded border border-amber-500/20 bg-amber-500/5 px-2.5 py-2 space-y-1">
-                        <p className="text-[10px] font-semibold uppercase tracking-wide text-amber-400">Itemized preliminary estimate</p>
+                        <p className="text-[10px] font-semibold uppercase tracking-wide text-amber-400">Itemized estimate & calculation basis</p>
                         {breakdown.map((item) => (
-                          <div key={`${item.label}-${item.measurement ?? ""}`} className="flex items-start justify-between gap-2 text-[11px]">
-                            <span className="text-muted-foreground">{item.label}{item.measurement ? ` · ${item.measurement}` : ""}</span>
-                            <span className="shrink-0 font-medium text-amber-300">${Math.round(item.lowCents / 100).toLocaleString()} – ${Math.round(item.highCents / 100).toLocaleString()}</span>
+                          <div key={`${item.label}-${item.measurement ?? ""}`} className="border-t border-amber-500/10 pt-1.5 first:border-t-0 first:pt-0">
+                            <div className="flex items-start justify-between gap-2 text-[11px]">
+                              <span className="text-muted-foreground">{item.label}{item.measurement ? ` · ${item.measurement}` : ""}</span>
+                              <span className="shrink-0 font-medium text-amber-300">${Math.round(item.lowCents / 100).toLocaleString()} – ${Math.round(item.highCents / 100).toLocaleString()}</span>
+                            </div>
+                            {item.calculation && <p className="mt-0.5 flex gap-1 text-[10px] leading-relaxed text-muted-foreground/85"><Info className="mt-0.5 h-3 w-3 shrink-0 text-amber-400/80" />{item.calculation}</p>}
                           </div>
                         ))}
                       </div>
                     );
-                  } catch { return null; }
+                  }
                 })()}
 
                 {/* Inline estimate editor */}

@@ -12,6 +12,7 @@ import { invokeLLM } from "./_core/llm";
 import type { QuoteInput } from "./quoteRouter";
 
 export type LeadScore = "strong" | "marginal" | "weak";
+export type RangeConfidence = "high" | "moderate" | "low";
 
 export interface LeadQualification {
   score: LeadScore;
@@ -20,6 +21,10 @@ export interface LeadQualification {
   draftResponse: string;  // Draft initial response in Jon's voice
   ballparkRange: string;  // Customer-facing rough range, e.g. "$2,000 – $4,500"
   ballparkNote: string;   // One-sentence caveat explaining why it's a rough range
+  rangeConfidence: RangeConfidence; // Confidence in the preliminary range based on submitted scope data
+  rangeConfidenceScore: number; // 0–100; an explanation aid, not a price guarantee
+  rangeConfidenceReason: string; // One concise plain-English basis for the confidence assessment
+  rangeRiskFactors: string[]; // Specific conditions requiring site verification
 }
 
 export const SYSTEM_PROMPT = `You are an AI assistant for Noland Earthworks, LLC — a veteran-owned land management and forestry mulching company in Middle Tennessee. Your job is to qualify incoming quote requests and score them for the owner, Jon Noland.
@@ -111,6 +116,12 @@ MULTI-SERVICE WEB QUOTE RULES:
 - For two or more requested services, your summary and draftResponse must name every requested service in plain language. Example: "Forestry mulching plus trail cutting in Dickson County."
 - Do not invent a new service, measurement, rate, or discount. If a line needs site verification, retain it and state that site conditions will confirm the final scope.
 
+RANGE CONFIDENCE & RISK:
+- Assess the preliminary range only from the detail supplied in the request, especially each structured service estimate, its measurement, and its calculation basis. This is an explanation of estimate reliability, never a price guarantee.
+- Return rangeConfidence as "high", "moderate", or "low", plus a rangeConfidenceScore from 0 to 100. Use high only when every requested service has a clear measurement and calculation basis with no material uncertainty described. Use moderate for a reasonable estimate with one or more site conditions still unverified. Use low when scope, measurements, terrain, vegetation, access, utilities, or the requested service mix are materially unclear.
+- rangeConfidenceReason must be one plain-English sentence that explains what supports or limits the preliminary range. It must refer to the available measurements or calculation basis when present.
+- rangeRiskFactors must be a concise list of specific factors to confirm during the site visit, such as dense vegetation, slope, access, rocks, utilities, corridor width, or an unclear work boundary. Use an empty array only when none are evident from the request.
+
 DRAFT RESPONSE VOICE:
 Write in Jon's voice — direct, professional, warm. Sound like a real person who does this work. No corporate language. No emojis. No "we strive to" or "industry-leading." Keep it to 2–3 sentences. Reference the specific service and county when possible.`;
 
@@ -169,8 +180,28 @@ export async function qualifyLead(input: QuoteInput): Promise<LeadQualification>
                 type: "string",
                 description: "One-sentence plain-language caveat explaining this is a rough range pending a site visit. Empty string if ballparkRange is empty.",
               },
+              rangeConfidence: {
+                type: "string",
+                enum: ["high", "moderate", "low"],
+                description: "Confidence category for the preliminary range based only on the submitted measurements and calculation basis",
+              },
+              rangeConfidenceScore: {
+                type: "integer",
+                minimum: 0,
+                maximum: 100,
+                description: "0-100 confidence score for estimate reliability; this is not a price guarantee",
+              },
+              rangeConfidenceReason: {
+                type: "string",
+                description: "One plain-English sentence explaining what supports or limits the preliminary range",
+              },
+              rangeRiskFactors: {
+                type: "array",
+                items: { type: "string" },
+                description: "Specific site or scope factors that need confirmation during the site visit",
+              },
             },
-            required: ["score", "summary", "flags", "draftResponse", "ballparkRange", "ballparkNote"],
+            required: ["score", "summary", "flags", "draftResponse", "ballparkRange", "ballparkNote", "rangeConfidence", "rangeConfidenceScore", "rangeConfidenceReason", "rangeRiskFactors"],
             additionalProperties: false,
           },
         },
@@ -180,7 +211,11 @@ export async function qualifyLead(input: QuoteInput): Promise<LeadQualification>
     const content = result?.choices?.[0]?.message?.content;
     if (!content) throw new Error("Empty LLM response");
 
-    const parsed = JSON.parse(typeof content === "string" ? content : JSON.stringify(content));
+    const parsed = JSON.parse(stripCodeFence(typeof content === "string" ? content : JSON.stringify(content)));
+    const confidence = parsed.rangeConfidence === "high" || parsed.rangeConfidence === "moderate" || parsed.rangeConfidence === "low"
+      ? parsed.rangeConfidence as RangeConfidence
+      : "low";
+    const confidenceScore = Number(parsed.rangeConfidenceScore);
 
     return {
       score: parsed.score as LeadScore,
@@ -189,6 +224,10 @@ export async function qualifyLead(input: QuoteInput): Promise<LeadQualification>
       draftResponse: parsed.draftResponse as string,
       ballparkRange: (parsed.ballparkRange as string) ?? "",
       ballparkNote: (parsed.ballparkNote as string) ?? "",
+      rangeConfidence: confidence,
+      rangeConfidenceScore: Number.isFinite(confidenceScore) ? Math.max(0, Math.min(100, Math.round(confidenceScore))) : 0,
+      rangeConfidenceReason: (parsed.rangeConfidenceReason as string) ?? "A site visit is needed to confirm the work area and conditions.",
+      rangeRiskFactors: Array.isArray(parsed.rangeRiskFactors) ? parsed.rangeRiskFactors.filter((factor: unknown): factor is string => typeof factor === "string") : [],
     };
   } catch (err) {
     console.error("[LeadQualifier] Failed to qualify lead:", err);
@@ -200,6 +239,14 @@ export async function qualifyLead(input: QuoteInput): Promise<LeadQualification>
       draftResponse: `Hi ${input.name.split(" ")[0]}, thanks for reaching out to Noland Earthworks. I'll take a look at your project details and be in touch shortly to discuss next steps.`,
       ballparkRange: "",
       ballparkNote: "",
+      rangeConfidence: "low",
+      rangeConfidenceScore: 0,
+      rangeConfidenceReason: "AI qualification was unavailable, so the preliminary range needs a site visit before it can be relied on.",
+      rangeRiskFactors: ["Site conditions and the full work boundary need to be confirmed."],
     };
   }
+}
+
+function stripCodeFence(raw: string): string {
+  return raw.trim().replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "").trim();
 }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildItemizedQuoteLines, parsePreliminaryRangeToCents, totalItemizedCents, type ServiceEstimateBreakdown } from "@shared/quoteServiceItemization";
+import { buildItemizedQuoteLines, parsePreliminaryRangeToCents, parseStoredRangeRiskFactors, parseStoredServiceBreakdown, totalItemizedCents, type ServiceEstimateBreakdown } from "@shared/quoteServiceItemization";
 
 describe("quote service itemization", () => {
   const forestry: ServiceEstimateBreakdown = {
@@ -33,5 +33,16 @@ describe("quote service itemization", () => {
 
   it("totals itemized midpoints without collapsing services", () => {
     expect(totalItemizedCents([forestry, trail])).toBe(1717000);
+  });
+
+  it("retains a stored calculation basis for every service displayed in the quote card", () => {
+    const stored = parseStoredServiceBreakdown(JSON.stringify([forestry, trail]));
+    expect(stored).toHaveLength(2);
+    expect(stored[1]?.calculation).toBe("2,640 linear feet × preliminary rate");
+  });
+
+  it("parses only valid persisted AI range risks for display", () => {
+    expect(parseStoredRangeRiskFactors(JSON.stringify(["Confirm access", 42, "Confirm vegetation density"])))
+      .toEqual(["Confirm access", "Confirm vegetation density"]);
   });
 });

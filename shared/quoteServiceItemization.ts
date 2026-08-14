@@ -14,6 +14,46 @@ export type ItemizedQuoteLine = {
   totalCents: number;
 };
 
+export function parseStoredServiceBreakdown(raw: string | null | undefined): ServiceEstimateBreakdown[] {
+  if (!raw) return [];
+  try {
+    const parsed = JSON.parse(raw) as unknown;
+    if (!Array.isArray(parsed)) return [];
+    return parsed.flatMap((item) => {
+      if (!item || typeof item !== "object") return [];
+      const candidate = item as Partial<ServiceEstimateBreakdown>;
+      if (
+        typeof candidate.service !== "string" ||
+        typeof candidate.label !== "string" ||
+        typeof candidate.lowCents !== "number" ||
+        typeof candidate.highCents !== "number"
+      ) return [];
+      return [{
+        service: candidate.service,
+        label: candidate.label,
+        lowCents: candidate.lowCents,
+        highCents: candidate.highCents,
+        measurement: typeof candidate.measurement === "string" ? candidate.measurement : "",
+        calculation: typeof candidate.calculation === "string" ? candidate.calculation : "",
+      }];
+    });
+  } catch {
+    return [];
+  }
+}
+
+export function parseStoredRangeRiskFactors(raw: string | null | undefined): string[] {
+  if (!raw) return [];
+  try {
+    const parsed = JSON.parse(raw) as unknown;
+    return Array.isArray(parsed)
+      ? parsed.filter((factor): factor is string => typeof factor === "string")
+      : [];
+  } catch {
+    return [];
+  }
+}
+
 export function parsePreliminaryRangeToCents(range: string): Pick<ServiceEstimateBreakdown, "lowCents" | "highCents"> | null {
   const values = range.replace(/[$,]/g, "").match(/\d+(?:\.\d+)?/g);
   if (!values || values.length < 2) return null;

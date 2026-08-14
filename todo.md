@@ -2999,6 +2999,11 @@
 - [x] Verify a forestry-mulching plus trail-cutting web quote end to end
 - [x] Document the AI prompt and structured payload pattern for all requested web-quote services
 
+## Quote Explanation & AI Range Confidence — Aug 2026
+- [x] Display each requested service, measurement, preliminary range, and calculation basis beside the AI summary
+- [x] Add AI-generated ballpark confidence and risk-factor guidance based on the submitted calculation basis
+- [x] Cover the quote explanation and risk calculation with automated tests
+
 ## Quote Performance & County Differentiation — Aug 2026
 - [x] Measure the current quote-page mobile performance and critical loading path
 - [x] Implement a low-risk quote-page performance improvement that preserves the form flow

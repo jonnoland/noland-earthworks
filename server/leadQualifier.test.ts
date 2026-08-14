@@ -11,4 +11,10 @@ describe("multi-service AI qualification prompt", () => {
   it("requires multi-service summaries to name each requested service", () => {
     expect(SYSTEM_PROMPT).toContain("summary and draftResponse must name every requested service");
   });
+
+  it("requires a measurement-based confidence assessment and site-verification risks", () => {
+    expect(SYSTEM_PROMPT).toContain("RANGE CONFIDENCE & RISK");
+    expect(SYSTEM_PROMPT).toContain("rangeConfidenceScore from 0 to 100");
+    expect(SYSTEM_PROMPT).toContain("rangeRiskFactors");
+  });
 });

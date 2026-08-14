@@ -590,6 +590,10 @@ export const quoteRouter = router({
           aiSummary: qualification?.summary ?? null,
           aiFlags: qualification?.flags && qualification.flags.length > 0 ? JSON.stringify(qualification.flags) : null,
           aiDraftResponse: qualification?.draftResponse ?? null,
+          aiRangeConfidence: qualification?.rangeConfidence ?? null,
+          aiRangeConfidenceScore: qualification?.rangeConfidenceScore ?? null,
+          aiRangeConfidenceReason: qualification?.rangeConfidenceReason ?? null,
+          aiRangeRiskFactors: qualification?.rangeRiskFactors.length ? JSON.stringify(qualification.rangeRiskFactors) : null,
         });
         submissionId = (submissionResult as any).insertId ?? null;
         console.log(`[Quote] Submission logged for ${input.name} (id=${submissionId})`);
@@ -703,6 +707,9 @@ export const quoteRouter = router({
           qualification?.score ? `AI Score: ${qualification.score.toUpperCase()}` : "",
           qualification?.summary ? `AI Summary: ${qualification.summary}` : "",
           qualification?.flags?.length ? `AI Flags: ${qualification.flags.join(" | ")}` : "",
+          qualification?.rangeConfidence ? `AI Range Confidence: ${qualification.rangeConfidence.toUpperCase()} (${qualification.rangeConfidenceScore}/100)` : "",
+          qualification?.rangeConfidenceReason ? `AI Range Basis: ${qualification.rangeConfidenceReason}` : "",
+          qualification?.rangeRiskFactors.length ? `AI Range Risks: ${qualification.rangeRiskFactors.join(" | ")}` : "",
           input.acreage ? `Acreage: ${input.acreage}` : "",
           input.serviceBreakdown.length > 0 ? `Itemized Preliminary Estimate:\n${input.serviceBreakdown.map((item) => `- ${item.label}: $${Math.round(item.lowCents / 100).toLocaleString()} – $${Math.round(item.highCents / 100).toLocaleString()}${item.measurement ? ` (${item.measurement})` : ""}`).join("\n")}` : "",
           input.message ? `Client Message: ${input.message}` : "",
@@ -752,6 +759,10 @@ export const quoteRouter = router({
       ballparkNote: input.estimatedRange
         ? "This preliminary range combines the services and measurements you selected. Final pricing is confirmed after an on-site review."
         : qualification?.ballparkNote ?? "",
+      rangeConfidence: qualification?.rangeConfidence ?? "low",
+      rangeConfidenceScore: qualification?.rangeConfidenceScore ?? 0,
+      rangeConfidenceReason: qualification?.rangeConfidenceReason ?? "A site visit is needed to confirm the work area and conditions.",
+      rangeRiskFactors: qualification?.rangeRiskFactors ?? [],
     };
   }),
 
