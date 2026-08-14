@@ -722,6 +722,8 @@ export const quoteRouter = router({
           title,
           serviceType: serviceLabel,
           acreage: input.acreage || null,
+          aiRangeConfidence: qualification?.rangeConfidence ?? null,
+          aiRangeConfidenceScore: qualification?.rangeConfidenceScore ?? null,
           clientMessage: input.message || null,
           internalNotes: notes,
           lineItems: aiLineItems,

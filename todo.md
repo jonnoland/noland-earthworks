@@ -3004,6 +3004,11 @@
 - [x] Add AI-generated ballpark confidence and risk-factor guidance based on the submitted calculation basis
 - [x] Cover the quote explanation and risk calculation with automated tests
 
+## Website Request Visibility & Confidence Sorting — Aug 2026
+- [x] Refresh Website Requests automatically when a new web quote is submitted
+- [x] Add a Quotes sorting control for AI range-confidence score
+- [x] Verify quote intake and confidence sorting with automated regression coverage
+
 ## Quote Performance & County Differentiation — Aug 2026
 - [x] Measure the current quote-page mobile performance and critical loading path
 - [x] Implement a low-risk quote-page performance improvement that preserves the form flow

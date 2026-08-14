@@ -1847,6 +1847,9 @@ export const nativeQuotes = mysqlTable("native_quotes", {
   estimatedDuration: varchar("estimatedDuration", { length: 100 }),
   acreage: varchar("acreage", { length: 50 }),
   serviceType: varchar("serviceType", { length: 100 }),
+  /** AI estimate reliability carried from a website quote request for sorting and triage */
+  aiRangeConfidence: varchar("aiRangeConfidence", { length: 16 }),
+  aiRangeConfidenceScore: int("aiRangeConfidenceScore"),
   /** draft | sent | viewed | approved | declined | invoiced | cancelled */
   status: varchar("status", { length: 30 }).notNull().default("draft"),
   portalToken: varchar("portalToken", { length: 64 }),

@@ -33,6 +33,7 @@ import {
 import { MapView } from "@/components/Map";
 import FieldQuotesSection from "@/pages/ops/FieldQuotesSection";
 import { parseStoredRangeRiskFactors, parseStoredServiceBreakdown } from "@shared/quoteServiceItemization";
+import { compareQuotesByConfidence, sortWebsiteRequests, WEBSITE_REQUESTS_REFRESH_INTERVAL_MS } from "@shared/quoteRequestSorting";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface LineItem {
@@ -56,6 +57,8 @@ interface NativeQuote {
   estimatedDuration: string | null;
   acreage: string | null;
   serviceType: string | null;
+  aiRangeConfidence: string | null;
+  aiRangeConfidenceScore: number | null;
   status: string;
   portalToken: string | null;
   portalSentAt: Date | null;
@@ -1627,7 +1630,12 @@ function InlineWebRequestsPanel({
 }) {
   const { data, isLoading, refetch, isFetching } = trpc.ops.quotes.list.useQuery(
     { limit: 50 },
-    { retry: false }
+    {
+      retry: false,
+      refetchOnMount: true,
+      refetchOnWindowFocus: true,
+      refetchInterval: WEBSITE_REQUESTS_REFRESH_INTERVAL_MS,
+    }
   );
   const deleteReq = trpc.ops.quotes.delete.useMutation({
     onSuccess: () => { toast.success("Request deleted."); refetch(); },
@@ -1661,6 +1669,8 @@ function InlineWebRequestsPanel({
     createdAt: Date | string;
   };
   const list = (data ?? []) as WebReq[];
+  const [requestSort, setRequestSort] = useState<"newest" | "confidence">("newest");
+  const sortedRequests = useMemo(() => sortWebsiteRequests(list, requestSort), [list, requestSort]);
   const utils = trpc.useUtils();
   const [expandedMapId, setExpandedMapId] = useState<number | null>(null);
   // Inline estimate edit state
@@ -1715,14 +1725,29 @@ function InlineWebRequestsPanel({
             <span className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-primary/15 text-primary text-[10px] font-semibold">{list.length}</span>
           )}
         </div>
-        <button
-          onClick={() => refetch()}
-          disabled={isFetching}
-          className="text-muted-foreground hover:text-foreground transition-colors"
-          aria-label="Refresh"
-        >
-          <RefreshCw className={`w-3.5 h-3.5 ${isFetching ? "animate-spin" : ""}`} />
-        </button>
+        <div className="flex items-center gap-1">
+          <button
+            onClick={() => setRequestSort("newest")}
+            className={`h-6 rounded-l border px-1.5 text-[10px] transition-colors ${requestSort === "newest" ? "border-primary bg-primary text-primary-foreground" : "border-border bg-secondary/30 text-muted-foreground hover:bg-secondary/60"}`}
+          >
+            Newest
+          </button>
+          <button
+            onClick={() => setRequestSort("confidence")}
+            className={`h-6 rounded-r border border-l-0 px-1.5 text-[10px] transition-colors ${requestSort === "confidence" ? "border-primary bg-primary text-primary-foreground" : "border-border bg-secondary/30 text-muted-foreground hover:bg-secondary/60"}`}
+            title="Sort by highest AI range-confidence score"
+          >
+            AI Confidence
+          </button>
+          <button
+            onClick={() => refetch()}
+            disabled={isFetching}
+            className="ml-1 text-muted-foreground hover:text-foreground transition-colors"
+            aria-label="Refresh"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${isFetching ? "animate-spin" : ""}`} />
+          </button>
+        </div>
       </div>
 
       {isLoading ? (
@@ -1736,7 +1761,7 @@ function InlineWebRequestsPanel({
         </div>
       ) : (
         <div className="space-y-2 max-h-[600px] overflow-y-auto pr-1">
-          {list.map((req) => {
+          {sortedRequests.map((req) => {
             const hasPin = !!req.propertyPinLat && !!req.propertyPinLng;
             const addressStr = [req.street, req.city, req.state].filter(Boolean).join(", ");
             const hasMap = hasPin || !!addressStr;
@@ -1970,7 +1995,7 @@ export function NativeAllQuotesSection() {
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
   // Sort control
-  const [sortBy, setSortBy] = useState<"newest" | "highest">("newest");
+  const [sortBy, setSortBy] = useState<"newest" | "highest" | "confidence">("newest");
   const [showCreate, setShowCreate] = useState(false);
   const [createPrefill, setCreatePrefill] = useState<{
     clientName?: string;
@@ -2158,7 +2183,9 @@ export function NativeAllQuotesSection() {
     // Apply sort to each stage
     const sortFn = sortBy === "highest"
       ? (a: NativeQuote, b: NativeQuote) => (b.totalCents ?? 0) - (a.totalCents ?? 0)
-      : (a: NativeQuote, b: NativeQuote) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+      : sortBy === "confidence"
+        ? compareQuotesByConfidence
+        : (a: NativeQuote, b: NativeQuote) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
     Object.keys(groups).forEach(key => { groups[key].sort(sortFn); });
     return groups;
   }, [quotes, minCents, maxCents, dateFromMs, dateToMs, sortBy]);
@@ -2313,6 +2340,17 @@ export function NativeAllQuotesSection() {
                     }`}
                   >
                     Highest $
+                  </button>
+                  <button
+                    onClick={() => setSortBy("confidence")}
+                    className={`h-7 rounded-r px-2.5 text-xs border border-l-0 border-border transition-colors ${
+                      sortBy === "confidence"
+                        ? "bg-primary text-primary-foreground border-primary"
+                        : "bg-secondary/30 text-muted-foreground hover:bg-secondary/60"
+                    }`}
+                    title="Sort by highest AI range-confidence score. Quotes without an AI score appear last."
+                  >
+                    AI Confidence
                   </button>
                 </div>
 
