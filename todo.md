@@ -3025,7 +3025,7 @@
 - [x] Update privacy policy and public collection disclosures as a draft requiring legal review before reliance
 - [x] Improve mobile LCP on priority service and quote pages and document excluded-URL review requirements
 - [x] Prepare verified Google Business Profile, Bing Places/Bing Webmaster AI Performance, Search Console, and monthly-review measurement setup
-- [ ] Resolve or report the incorrect duplicate Google Maps listing before relying on local-review or local-visibility counts
+- [x] Resolve or report the incorrect duplicate Google Maps listing before relying on local-review or local-visibility counts
 
 ## Quote Performance & County Differentiation — Aug 2026
 - [x] Measure the current quote-page mobile performance and critical loading path
