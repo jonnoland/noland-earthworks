@@ -56,7 +56,6 @@ const OpsResources       = lazy(() => import("./pages/ops/Resources"));
 const OpsRentals         = lazy(() => import("./pages/ops/Rentals"));
 const OpsGovContracts    = lazy(() => import("./pages/ops/GovContracts"));
 const OpsRoutePlanner    = lazy(() => import("./pages/ops/WeighStationPlanner"));
-const OpsViewer          = lazy(() => import("./pages/OpsViewer"));
 
 // ── Customer payment portal (lazy-loaded) ────────────────────────────────────
 const PaymentPortal  = lazy(() => import("./pages/portal/PaymentPortal"));
@@ -463,12 +462,6 @@ function Router() {
       </Route>
       <Route path="/ops/route-planner">
         <Suspense fallback={<OpsLoading />}><OwnerRoute><OpsRoutePlanner /></OwnerRoute></Suspense>
-      </Route>
-
-      {/* Client quote portal — token-authenticated, no login required */}
-      {/* Read-only ops viewer — key-gated, no login required */}
-      <Route path="/ops-view">
-        <Suspense fallback={<OpsLoading />}><OpsViewer /></Suspense>
       </Route>
 
       {/* Client quote portal — token-authenticated, no login required */}

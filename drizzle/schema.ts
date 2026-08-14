@@ -1850,6 +1850,17 @@ export const nativeQuotes = mysqlTable("native_quotes", {
   /** AI estimate reliability carried from a website quote request for sorting and triage */
   aiRangeConfidence: varchar("aiRangeConfidence", { length: 16 }),
   aiRangeConfidenceScore: int("aiRangeConfidenceScore"),
+  /** Native system-of-record workflow fields — every quote starts with an explicit operating state */
+  sourceDetail: varchar("sourceDetail", { length: 100 }).notNull().default("manual"),
+  fitDecision: varchar("fitDecision", { length: 30 }).notNull().default("unreviewed"),
+  nextActionType: varchar("nextActionType", { length: 100 }).notNull().default("review_request"),
+  nextActionDueAt: timestamp("nextActionDueAt"),
+  lastContactAt: timestamp("lastContactAt"),
+  visitStatus: varchar("visitStatus", { length: 30 }).notNull().default("not_requested"),
+  visitCompletedAt: timestamp("visitCompletedAt"),
+  proposalStatus: varchar("proposalStatus", { length: 30 }).notNull().default("not_started"),
+  depositStatus: varchar("depositStatus", { length: 30 }).notNull().default("not_requested"),
+  finalPaymentStatus: varchar("finalPaymentStatus", { length: 30 }).notNull().default("not_due"),
   /** draft | sent | viewed | approved | declined | invoiced | cancelled */
   status: varchar("status", { length: 30 }).notNull().default("draft"),
   portalToken: varchar("portalToken", { length: 64 }),

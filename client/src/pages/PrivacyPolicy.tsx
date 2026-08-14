@@ -27,8 +27,8 @@ export default function PrivacyPolicy() {
           Privacy Policy
         </h1>
         <p style={{ fontFamily: "'Lato', sans-serif", color: "rgba(240,237,230,0.55)", fontSize: "0.9rem" }}>
-          <strong style={{ color: "rgba(240,237,230,0.7)" }}>Effective Date:</strong> 04/01/2026 &nbsp;|&nbsp;{" "}
-          <strong style={{ color: "rgba(240,237,230,0.7)" }}>Last Updated:</strong> 04/01/2026
+          <strong style={{ color: "rgba(240,237,230,0.7)" }}>Effective Date:</strong> 08/14/2026 &nbsp;|&nbsp;{" "}
+          <strong style={{ color: "rgba(240,237,230,0.7)" }}>Last Updated:</strong> 08/14/2026
         </p>
       </div>
 
@@ -36,10 +36,7 @@ export default function PrivacyPolicy() {
       <div className="container py-16 max-w-3xl mx-auto" style={{ fontFamily: "'Lato', sans-serif" }}>
         {/* Intro */}
         <p style={{ color: "rgba(240,237,230,0.8)", lineHeight: 1.8, marginBottom: "2.5rem" }}>
-          Noland Earthworks, LLC ("Noland Earthworks," "we," "our," or "us") is committed to protecting your privacy
-          and ensuring full compliance with SMS industry regulations, including A2P 10DLC, TCPA, and CTIA guidelines.
-          This Privacy Policy explains how we collect, use, and protect your personal information, including phone
-          numbers collected for communication regarding quotes, scheduling, and project updates.
+          Noland Earthworks, LLC ("Noland Earthworks," "we," "our," or "us") explains here how we collect and use information submitted through our website and during a project. This notice is based on the current website and operations workflow and is undergoing final legal review. Please contact us with questions before sharing information that is not needed for your service request.
         </p>
 
         <Section number="1" title="Information We Collect">
@@ -48,11 +45,12 @@ export default function PrivacyPolicy() {
           </p>
           <ul style={{ color: "rgba(240,237,230,0.8)", lineHeight: 2, paddingLeft: "1.5rem" }}>
             <li><strong style={{ color: "#E07B2A" }}>Contact Information:</strong> Name, phone number, email address, and property address</li>
-            <li><strong style={{ color: "#E07B2A" }}>Service Details:</strong> Property size, acreage, terrain, vegetation type, and related job requirements</li>
-            <li><strong style={{ color: "#E07B2A" }}>Communication Records:</strong> Emails, messages, phone call history, and SMS interactions</li>
+            <li><strong style={{ color: "#E07B2A" }}>Service Details:</strong> Property address or county, approximate size, requested work, timing, project description, and information voluntarily supplied for a site visit</li>
+            <li><strong style={{ color: "#E07B2A" }}>Communications and Project Materials:</strong> Emails, messages, phone or SMS interactions, and photos or documents voluntarily supplied for the project</li>
+            <li><strong style={{ color: "#E07B2A" }}>Payment and Website Information:</strong> Invoice and payment-status information, plus limited cookie or analytics information about website use. Payment-card details are processed by Stripe and are not intended to be stored in our operations system.</li>
           </ul>
           <p style={{ color: "rgba(240,237,230,0.8)", lineHeight: 1.8, marginTop: "1rem" }}>
-            We do not collect sensitive personal data unless it is directly required to provide services and you have given explicit consent.
+            Please do not submit sensitive personal information that is not needed to request, schedule, or complete the work.
           </p>
         </Section>
 
@@ -61,20 +59,21 @@ export default function PrivacyPolicy() {
             Your information is used exclusively to:
           </p>
           <ul style={{ color: "rgba(240,237,230,0.8)", lineHeight: 2, paddingLeft: "1.5rem" }}>
-            <li>Provide quotes and estimates</li>
-            <li>Schedule and complete services</li>
+            <li>Review site-visit requests, determine project fit, and prepare a written scope after an on-site review</li>
+            <li>Schedule and complete services, then invoice and collect payment</li>
             <li>Send service-related updates, appointment reminders, and follow-ups via SMS, email, or phone</li>
             <li>Respond to customer inquiries and provide support</li>
-            <li>Create and manage your client record in our field service management system (Jobber)</li>
+            <li>Create and manage a client, request, quote, job, invoice, deposit, and payment record in our native operations system</li>
+            <li>Use AI-assisted tools to organize inquiry details and draft operational materials; the owner reviews output before making a customer commitment</li>
           </ul>
           <p style={{ color: "rgba(240,237,230,0.8)", lineHeight: 1.8, marginTop: "1rem" }}>
-            We do not sell, rent, or share your information with third parties for marketing purposes. Your information is used only to fulfill services you have requested.
+            We do not sell or rent personal information. We share information with service providers only as needed to operate the website, communicate, process payment, or provide the requested service.
           </p>
         </Section>
 
         <Section number="3" title="SMS Communication & Consent (A2P Compliance)">
           <p style={{ color: "rgba(240,237,230,0.8)", lineHeight: 1.8, marginBottom: "1rem" }}>
-            By submitting your phone number through our website, quote form, or scheduling system, you explicitly consent to receive SMS messages related to your service, including:
+            If you provide a phone number in connection with a project, we may use the requested contact method for service-related communications, including:
           </p>
           <ul style={{ color: "rgba(240,237,230,0.8)", lineHeight: 2, paddingLeft: "1.5rem" }}>
             <li>Appointment confirmations and reminders</li>
@@ -93,13 +92,13 @@ export default function PrivacyPolicy() {
             <strong style={{ color: "#E07B2A" }}>HELP</strong> for assistance.
           </p>
           <p style={{ color: "rgba(240,237,230,0.8)", lineHeight: 1.8, marginTop: "0.5rem" }}>
-            Opting out of SMS does not affect your ability to receive services, but it may impact our ability to provide real-time updates.
+            Choosing to opt out of SMS does not prevent you from requesting service. You may contact us by phone or email instead.
           </p>
         </Section>
 
         <Section number="4" title="Data Protection & Storage">
           <p style={{ color: "rgba(240,237,230,0.8)", lineHeight: 1.8 }}>
-            We use industry-standard administrative, technical, and physical security measures to protect your information. Data is stored securely and accessed only by authorized team members strictly for operational purposes.
+            We use reasonable technical and organizational measures intended to protect information and limit access to people and providers who need it for operations. No internet transmission or storage system can be guaranteed completely secure.
           </p>
         </Section>
 
@@ -119,7 +118,7 @@ export default function PrivacyPolicy() {
 
         <Section number="6" title="Cookies & Website Tracking">
           <p style={{ color: "rgba(240,237,230,0.8)", lineHeight: 1.8 }}>
-            We may use cookies or analytics tools to improve website performance. These do not collect personally identifiable information unless voluntarily submitted.
+            We use cookies or analytics tools to understand website performance and usage. Information that identifies you is collected when you voluntarily submit it through a form, chat, payment, or other direct interaction.
           </p>
         </Section>
 
@@ -128,12 +127,16 @@ export default function PrivacyPolicy() {
             We use the following third-party platforms to operate our business:
           </p>
           <ul style={{ color: "rgba(240,237,230,0.8)", lineHeight: 2, paddingLeft: "1.5rem" }}>
-            <li><strong style={{ color: "#E07B2A" }}>Jobber</strong> — field service management and scheduling</li>
+            <li><strong style={{ color: "#E07B2A" }}>Manus-hosted infrastructure and storage</strong> — website, operations application, and file storage</li>
             <li><strong style={{ color: "#E07B2A" }}>Resend</strong> — transactional email delivery</li>
+            <li><strong style={{ color: "#E07B2A" }}>Twilio</strong> — SMS and telephone communication services</li>
+            <li><strong style={{ color: "#E07B2A" }}>Stripe</strong> — payment processing</li>
             <li><strong style={{ color: "#E07B2A" }}>Google Maps</strong> — property location and service area display</li>
+            <li><strong style={{ color: "#E07B2A" }}>Google Analytics</strong> — website measurement</li>
+            <li><strong style={{ color: "#E07B2A" }}>AI service infrastructure</strong> — AI-assisted internal drafting and request organization</li>
           </ul>
           <p style={{ color: "rgba(240,237,230,0.8)", lineHeight: 1.8, marginTop: "1rem" }}>
-            These providers may have their own privacy policies. We do not authorize these providers to use your data for any purpose beyond fulfilling your service.
+            These providers may have their own privacy policies and process information under their applicable terms. We use them only for the functions described above.
           </p>
         </Section>
 

@@ -13,7 +13,6 @@ import { getServiceDisplayName } from "./serviceTaxonomy";
 import { opsLeads } from "../drizzle/schema";
 import { eq } from "drizzle-orm";
 import { parseGooglePlaceAddress, parseGooglePlaceCoordinates } from "./googlePlaceAddress";
-import { buildItemizedQuoteLines, totalItemizedCents, type ServiceEstimateBreakdown } from "@shared/quoteServiceItemization";
 
 // Strip markdown code fences from LLM JSON responses
 function stripCodeFence(raw: string): string {
@@ -677,41 +676,12 @@ export const quoteRouter = router({
         const title = `${serviceLabel} \u2014 ${input.name}${input.county ? ` (${input.county} Co.)` : ""}`;
         const { randomBytes } = await import("crypto");
         const portalToken = randomBytes(32).toString("hex");
-        // Parse ballparkRange (e.g. "$2,000 \u2013 $4,500") into a midpoint totalCents for the AI estimate
-        const aiRange = qualification?.ballparkRange ?? "";
-        let aiTotalCents = 0;
-        let aiLineItems = "[]";
-        if (input.serviceBreakdown.length > 0) {
-          aiTotalCents = totalItemizedCents(input.serviceBreakdown as ServiceEstimateBreakdown[]);
-          aiLineItems = JSON.stringify(buildItemizedQuoteLines(input.serviceBreakdown as ServiceEstimateBreakdown[]));
-        } else if (aiRange) {
-          const nums = aiRange.replace(/[$,]/g, "").match(/\d+(?:\.\d+)?/g);
-          if (nums && nums.length >= 2) {
-            const lo = parseFloat(nums[0]);
-            const hi = parseFloat(nums[1]);
-            const mid = Math.round((lo + hi) / 2);
-            aiTotalCents = mid * 100;
-            const acreageLabel = input.acreage ? ` (${input.acreage.replace(/-/g, "\u2013")} ac)` : "";
-            aiLineItems = JSON.stringify([{
-              description: `${serviceLabel}${acreageLabel} \u2014 AI estimate pending site visit`,
-              qty: 1,
-              unitPriceCents: aiTotalCents,
-              totalCents: aiTotalCents,
-            }]);
-          }
-        }
         const notes = [
           `[Web Request]`,
-          aiRange ? `AI Estimate: ${aiRange}` : "",
-          qualification?.ballparkNote ? `Note: ${qualification.ballparkNote}` : "",
           qualification?.score ? `AI Score: ${qualification.score.toUpperCase()}` : "",
           qualification?.summary ? `AI Summary: ${qualification.summary}` : "",
           qualification?.flags?.length ? `AI Flags: ${qualification.flags.join(" | ")}` : "",
-          qualification?.rangeConfidence ? `AI Range Confidence: ${qualification.rangeConfidence.toUpperCase()} (${qualification.rangeConfidenceScore}/100)` : "",
-          qualification?.rangeConfidenceReason ? `AI Range Basis: ${qualification.rangeConfidenceReason}` : "",
-          qualification?.rangeRiskFactors.length ? `AI Range Risks: ${qualification.rangeRiskFactors.join(" | ")}` : "",
           input.acreage ? `Acreage: ${input.acreage}` : "",
-          input.serviceBreakdown.length > 0 ? `Itemized Preliminary Estimate:\n${input.serviceBreakdown.map((item) => `- ${item.label}: $${Math.round(item.lowCents / 100).toLocaleString()} – $${Math.round(item.highCents / 100).toLocaleString()}${item.measurement ? ` (${item.measurement})` : ""}`).join("\n")}` : "",
           input.message ? `Client Message: ${input.message}` : "",
         ].filter(Boolean).join("\n");
         const [nativeResult] = await db2.insert(nativeQuotes).values({
@@ -722,12 +692,20 @@ export const quoteRouter = router({
           title,
           serviceType: serviceLabel,
           acreage: input.acreage || null,
-          aiRangeConfidence: qualification?.rangeConfidence ?? null,
-          aiRangeConfidenceScore: qualification?.rangeConfidenceScore ?? null,
+          aiRangeConfidence: null,
+          aiRangeConfidenceScore: null,
+          sourceDetail: "website_site_visit_request",
+          fitDecision: "unreviewed",
+          nextActionType: "review_and_contact",
+          nextActionDueAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
+          visitStatus: "requested",
+          proposalStatus: "not_started",
+          depositStatus: "not_requested",
+          finalPaymentStatus: "not_due",
           clientMessage: input.message || null,
           internalNotes: notes,
-          lineItems: aiLineItems,
-          totalCents: aiTotalCents,
+          lineItems: "[]",
+          totalCents: 0,
           status: "web_request",
           portalToken,
         });
@@ -757,14 +735,12 @@ export const quoteRouter = router({
 
     return {
       success: true,
-      ballparkRange: input.estimatedRange || qualification?.ballparkRange || "",
-      ballparkNote: input.estimatedRange
-        ? "This preliminary range combines the services and measurements you selected. Final pricing is confirmed after an on-site review."
-        : qualification?.ballparkNote ?? "",
-      rangeConfidence: qualification?.rangeConfidence ?? "low",
-      rangeConfidenceScore: qualification?.rangeConfidenceScore ?? 0,
-      rangeConfidenceReason: qualification?.rangeConfidenceReason ?? "A site visit is needed to confirm the work area and conditions.",
-      rangeRiskFactors: qualification?.rangeRiskFactors ?? [],
+      ballparkRange: "",
+      ballparkNote: "",
+      rangeConfidence: "low" as const,
+      rangeConfidenceScore: 0,
+      rangeConfidenceReason: "A site visit is required before pricing is prepared.",
+      rangeRiskFactors: [],
     };
   }),
 

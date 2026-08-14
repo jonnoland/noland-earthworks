@@ -3015,6 +3015,17 @@
 - [x] Review read-only operational funnel data, agent health, and handoff gaps
 - [x] Deliver an evidence-based audit with prioritized 0–30, 30–90, and 90+ day recommendations
 
+## Urgent Audit Remediation Program — Aug 2026
+- [x] Remove public prices, preliminary ranges, terrain multipliers, and rough-number calculators from public pricing and pre-visit quote routes
+- [x] Remove public operations navigation, harden unauthenticated ops routes and data calls, and revoke/restrict the read-only viewer link
+- [x] Define the existing native operations records as the source of truth and document Jobber synchronization decision criteria
+- [x] Use the lean native operations stack as the authoritative record; retain Jobber only for a documented operational necessity
+- [x] Replace the long public quote intake with a mobile-first Site Visit Request flow and capture source, fit, next action, visit, proposal, deposit, and payment status
+- [x] Build Today’s Next Actions for new leads, visits, proposals, deposits, weather, invoices, and review-eligible jobs
+- [x] Update privacy policy and public collection disclosures as a draft requiring legal review before reliance
+- [ ] Improve mobile LCP on priority service and quote pages and document excluded-URL review requirements
+- [ ] Prepare verified Google Business Profile, Bing Places/Bing Webmaster AI Performance, Search Console, and monthly-review measurement setup
+
 ## Quote Performance & County Differentiation — Aug 2026
 - [x] Measure the current quote-page mobile performance and critical loading path
 - [x] Implement a low-risk quote-page performance improvement that preserves the form flow

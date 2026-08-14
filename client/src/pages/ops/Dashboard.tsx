@@ -359,8 +359,12 @@ export default function Dashboard() {
       actions.push({ id: `lead-${lead.id}`, title: `Respond to ${lead.name}`, detail: ageHours >= 24 ? `${ageHours}h old — outside the 24-hour response target` : `${ageHours}h since inquiry`, href: "/ops/leads", tone: ageHours >= 24 ? "red" : "amber" });
       });
 
-    nativeQuotesList.filter((quote: any) => quote.status === "draft").slice(0, 3).forEach((quote: any) => {
-      actions.push({ id: `draft-${quote.id}`, title: `Review and send Quote #${quote.id}`, detail: `${quote.clientName} · $${Math.round((quote.totalCents ?? 0) / 100).toLocaleString()}`, href: `/ops/quotes?quote=${quote.id}`, tone: "amber" });
+    nativeQuotesList.filter((quote: any) => quote.visitStatus === "requested" || quote.visitStatus === "confirmed").slice(0, 2).forEach((quote: any) => {
+      actions.push({ id: `visit-${quote.id}`, title: `${quote.visitStatus === "confirmed" ? "Confirm" : "Schedule"} site visit for ${quote.clientName}`, detail: `${quote.serviceType ?? "Site visit request"} · ${quote.nextActionType ?? "confirm property details"}`, href: `/ops/quotes?quote=${quote.id}`, tone: "amber" });
+    });
+
+    nativeQuotesList.filter((quote: any) => quote.proposalStatus === "draft" || quote.status === "draft").slice(0, 2).forEach((quote: any) => {
+      actions.push({ id: `proposal-${quote.id}`, title: `Finish proposal for ${quote.clientName}`, detail: `${quote.serviceType ?? "Quote"} · ${quote.nextActionType ?? "review scope and send"}`, href: `/ops/quotes?quote=${quote.id}`, tone: "amber" });
     });
 
     nativeQuotesList.filter((quote: any) => quote.portalSentAt && !quote.portalViewedAt && now - new Date(quote.portalSentAt).getTime() >= 2 * dayMs).slice(0, 3).forEach((quote: any) => {
@@ -372,8 +376,28 @@ export default function Dashboard() {
       actions.push({ id: `invoice-${job.id}`, title: `Send final invoice for ${job.clientName}`, detail: `${job.serviceType ?? "Completed job"} · final balance is ready`, href: "/ops/jobs", tone: "green" });
     });
 
-    return actions.slice(0, 8);
-  }, [leads, nativeQuotesList, nativeJobsList]);
+    nativeQuotesList.filter((quote: any) => quote.depositStatus === "requested" && !quote.depositPaidAt).slice(0, 2).forEach((quote: any) => {
+      actions.push({ id: `deposit-${quote.id}`, title: `Follow up on deposit for ${quote.clientName}`, detail: `${quote.serviceType ?? "Approved quote"} · payment decision is still open`, href: `/ops/quotes?quote=${quote.id}`, tone: "blue" });
+    });
+
+    nativeJobsList.filter((job: any) => {
+      if (!job.scheduledDate || !["scheduled", "in_progress"].includes(job.status)) return false;
+      const daysAway = Math.floor((new Date(job.scheduledDate).getTime() - now) / dayMs);
+      return daysAway <= 1 && daysAway >= -1;
+    }).slice(0, 1).forEach((job: any) => {
+      actions.push({ id: `weather-${job.id}`, title: `Check weather and ground conditions for ${job.clientName}`, detail: `${formatScheduledDate(job.scheduledDate)} · confirm safe access before loading out`, href: "/ops/schedule", tone: "blue" });
+    });
+
+    nativeInvoicesList.filter((invoice: any) => ["unpaid", "sent"].includes(invoice.status)).slice(0, 2).forEach((invoice: any) => {
+      actions.push({ id: `payment-${invoice.id}`, title: `Follow up on invoice for ${invoice.clientName}`, detail: invoice.dueDate && new Date(invoice.dueDate).getTime() < now ? "Past due — confirm payment status" : "Payment is still outstanding", href: "/ops/invoices", tone: "red" });
+    });
+
+    nativeJobsList.filter((job: any) => job.status === "completed" && !(job as any).reviewRequestSentAt).slice(0, 1).forEach((job: any) => {
+      actions.push({ id: `review-${job.id}`, title: `Decide on a review request for ${job.clientName}`, detail: "Completed job · send only after confirming the customer is satisfied", href: "/ops/reviews", tone: "green" });
+    });
+
+    return actions.slice(0, 10);
+  }, [leads, nativeQuotesList, nativeJobsList, nativeInvoicesList]);
   useEffect(() => {
     if (prevLeadCount.current !== null && leads.length > prevLeadCount.current) {
       const diff = leads.length - prevLeadCount.current;
@@ -1368,7 +1392,7 @@ export default function Dashboard() {
               <div className="h-9 w-9 rounded-lg bg-primary/10 text-primary flex items-center justify-center"><ListTodo className="h-4 w-4" /></div>
               <div>
                 <h3 className="text-sm font-semibold text-foreground" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>Today’s Next Actions</h3>
-                <p className="text-xs text-muted-foreground">Revenue and customer follow-through that needs a decision today.</p>
+                <p className="text-xs text-muted-foreground">15-minute routine: leads, visits, proposals, deposits, weather, invoices, and review decisions.</p>
               </div>
             </div>
             <Link href="/ops/leads" className="text-xs text-primary hover:underline">Open pipeline</Link>

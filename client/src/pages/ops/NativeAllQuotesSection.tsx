@@ -59,6 +59,14 @@ interface NativeQuote {
   serviceType: string | null;
   aiRangeConfidence: string | null;
   aiRangeConfidenceScore: number | null;
+  sourceDetail: string;
+  fitDecision: string;
+  nextActionType: string;
+  nextActionDueAt: Date | null;
+  visitStatus: string;
+  proposalStatus: string;
+  depositStatus: string;
+  finalPaymentStatus: string;
   status: string;
   portalToken: string | null;
   portalSentAt: Date | null;
@@ -166,6 +174,21 @@ interface QuoteFormData {
   clientMessage: string;
   internalNotes: string;
   lineItems: LineItem[];
+  sourceDetail: string;
+  fitDecision: "unreviewed" | "pursue" | "pass" | "refer_out";
+  nextActionType: string;
+  nextActionDueAt: string;
+  visitStatus: "not_requested" | "requested" | "confirmed" | "completed" | "not_needed";
+  proposalStatus: "not_started" | "draft" | "sent" | "approved" | "declined";
+  depositStatus: "not_requested" | "requested" | "paid" | "not_required";
+  finalPaymentStatus: "not_due" | "invoiced" | "paid" | "overdue";
+}
+
+function toLocalDateTime(value: Date | string | null | undefined) {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  return new Date(date.getTime() - date.getTimezoneOffset() * 60_000).toISOString().slice(0, 16);
 }
 
 function QuoteFormModal({
@@ -229,6 +252,14 @@ function QuoteFormModal({
     clientMessage: prefill?.clientMessage ?? "",
     internalNotes: "",
     lineItems: DEFAULT_LINE_ITEMS.map(li => ({ ...li })),
+    sourceDetail: "manual",
+    fitDecision: "unreviewed",
+    nextActionType: "review_request",
+    nextActionDueAt: "",
+    visitStatus: "not_requested",
+    proposalStatus: "not_started",
+    depositStatus: "not_requested",
+    finalPaymentStatus: "not_due",
   });
 
   const [form, setForm] = useState<QuoteFormData>(() => {
@@ -247,6 +278,14 @@ function QuoteFormModal({
         clientMessage: editQuote.clientMessage ?? "",
         internalNotes: editQuote.internalNotes ?? "",
         lineItems: items.length > 0 ? items : DEFAULT_LINE_ITEMS.map(li => ({ ...li })),
+        sourceDetail: editQuote.sourceDetail ?? "manual",
+        fitDecision: (editQuote.fitDecision ?? "unreviewed") as QuoteFormData["fitDecision"],
+        nextActionType: editQuote.nextActionType ?? "review_request",
+        nextActionDueAt: toLocalDateTime(editQuote.nextActionDueAt),
+        visitStatus: (editQuote.visitStatus ?? "not_requested") as QuoteFormData["visitStatus"],
+        proposalStatus: (editQuote.proposalStatus ?? "not_started") as QuoteFormData["proposalStatus"],
+        depositStatus: (editQuote.depositStatus ?? "not_requested") as QuoteFormData["depositStatus"],
+        finalPaymentStatus: (editQuote.finalPaymentStatus ?? "not_due") as QuoteFormData["finalPaymentStatus"],
       };
     }
     return blankForm();
@@ -389,6 +428,14 @@ function QuoteFormModal({
       internalNotes: form.internalNotes || undefined,
       lineItems: form.lineItems,
       totalCents,
+      sourceDetail: form.sourceDetail || "manual",
+      fitDecision: form.fitDecision,
+      nextActionType: form.nextActionType || "review_request",
+      nextActionDueAt: form.nextActionDueAt ? new Date(form.nextActionDueAt) : null,
+      visitStatus: form.visitStatus,
+      proposalStatus: form.proposalStatus,
+      depositStatus: form.depositStatus,
+      finalPaymentStatus: form.finalPaymentStatus,
     };
     if (editQuote) {
       updateMutation.mutate({ id: editQuote.id, ...payload });
@@ -815,6 +862,39 @@ function QuoteFormModal({
               <Textarea value={form.internalNotes} onChange={e => setForm(p => ({ ...p, internalNotes: e.target.value }))}
                 className="bg-zinc-800 border-zinc-700 text-sm" rows={3}
                 placeholder="Steep slope on north side, gate code 1234..." />
+            </div>
+          </div>
+
+          <div className="rounded-md border border-amber-500/20 bg-amber-500/[0.04] p-3">
+            <div className="mb-3 flex items-center justify-between gap-3">
+              <Label className="text-amber-300 text-xs font-semibold uppercase tracking-wide">Native pipeline record</Label>
+              <span className="text-[10px] text-zinc-500">Used by Today’s Next Actions</span>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              <label className="text-[10px] uppercase tracking-wide text-zinc-500">Source
+                <Input value={form.sourceDetail} onChange={e => setForm(p => ({ ...p, sourceDetail: e.target.value }))} className="mt-1 h-8 bg-zinc-800 border-zinc-700 text-xs" />
+              </label>
+              <label className="text-[10px] uppercase tracking-wide text-zinc-500">Fit decision
+                <select value={form.fitDecision} onChange={e => setForm(p => ({ ...p, fitDecision: e.target.value as QuoteFormData["fitDecision"] }))} className="mt-1 h-8 w-full rounded-md border border-zinc-700 bg-zinc-800 px-2 text-xs text-zinc-100"><option value="unreviewed">Unreviewed</option><option value="pursue">Pursue</option><option value="pass">Pass</option><option value="refer_out">Refer out</option></select>
+              </label>
+              <label className="text-[10px] uppercase tracking-wide text-zinc-500">Next action
+                <Input value={form.nextActionType} onChange={e => setForm(p => ({ ...p, nextActionType: e.target.value }))} className="mt-1 h-8 bg-zinc-800 border-zinc-700 text-xs" placeholder="Review and contact" />
+              </label>
+              <label className="text-[10px] uppercase tracking-wide text-zinc-500">Next action due
+                <Input type="datetime-local" value={form.nextActionDueAt} onChange={e => setForm(p => ({ ...p, nextActionDueAt: e.target.value }))} className="mt-1 h-8 bg-zinc-800 border-zinc-700 text-xs" />
+              </label>
+              <label className="text-[10px] uppercase tracking-wide text-zinc-500">Visit
+                <select value={form.visitStatus} onChange={e => setForm(p => ({ ...p, visitStatus: e.target.value as QuoteFormData["visitStatus"] }))} className="mt-1 h-8 w-full rounded-md border border-zinc-700 bg-zinc-800 px-2 text-xs text-zinc-100"><option value="not_requested">Not requested</option><option value="requested">Requested</option><option value="confirmed">Confirmed</option><option value="completed">Completed</option><option value="not_needed">Not needed</option></select>
+              </label>
+              <label className="text-[10px] uppercase tracking-wide text-zinc-500">Proposal
+                <select value={form.proposalStatus} onChange={e => setForm(p => ({ ...p, proposalStatus: e.target.value as QuoteFormData["proposalStatus"] }))} className="mt-1 h-8 w-full rounded-md border border-zinc-700 bg-zinc-800 px-2 text-xs text-zinc-100"><option value="not_started">Not started</option><option value="draft">Draft</option><option value="sent">Sent</option><option value="approved">Approved</option><option value="declined">Declined</option></select>
+              </label>
+              <label className="text-[10px] uppercase tracking-wide text-zinc-500">Deposit
+                <select value={form.depositStatus} onChange={e => setForm(p => ({ ...p, depositStatus: e.target.value as QuoteFormData["depositStatus"] }))} className="mt-1 h-8 w-full rounded-md border border-zinc-700 bg-zinc-800 px-2 text-xs text-zinc-100"><option value="not_requested">Not requested</option><option value="requested">Requested</option><option value="paid">Paid</option><option value="not_required">Not required</option></select>
+              </label>
+              <label className="text-[10px] uppercase tracking-wide text-zinc-500">Final payment
+                <select value={form.finalPaymentStatus} onChange={e => setForm(p => ({ ...p, finalPaymentStatus: e.target.value as QuoteFormData["finalPaymentStatus"] }))} className="mt-1 h-8 w-full rounded-md border border-zinc-700 bg-zinc-800 px-2 text-xs text-zinc-100"><option value="not_due">Not due</option><option value="invoiced">Invoiced</option><option value="paid">Paid</option><option value="overdue">Overdue</option></select>
+              </label>
             </div>
           </div>
         </div>

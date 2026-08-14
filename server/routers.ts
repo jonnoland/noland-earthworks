@@ -24,10 +24,9 @@ import { nativeQuotesRouter } from "./nativeQuotesRouter";
 import { nativeJobsRouter } from "./nativeJobsRouter";
 import { nativeClientsRouter } from "./nativeClientsRouter";
 import { getDb } from "./db";
-import { businessSettings, emailSubscribers, serviceFaqs, seoArticles, opsLeads, nativeQuotes, nativeJobs, nativeInvoices, nativeClients } from "../drizzle/schema";
+import { businessSettings, emailSubscribers, serviceFaqs, seoArticles } from "../drizzle/schema";
 import { desc, eq, sql } from "drizzle-orm";
 import { z } from "zod";
-import { ENV } from "./_core/env";
 
 export const appRouter = router({
     // if you need to use socket.io, read and register route in server/_core/index.ts, all api should start with '/api/' so that the gateway can route correctly
@@ -177,108 +176,6 @@ export const appRouter = router({
     }),
   }),
 
-  /**
-   * Read-only ops viewer — key-gated, no login required.
-   * Share URL: /ops-view?key=OPS_VIEWER_KEY
-   * Used to give external AIs a read-only view of the business dashboard.
-   */
-  opsViewer: router({
-    getData: publicProcedure
-      .input(z.object({ key: z.string() }))
-      .query(async ({ input }) => {
-        const validKey = ENV.opsViewerKey;
-        if (!validKey || input.key !== validKey) {
-          throw new Error("Invalid viewer key");
-        }
-        const db = await getDb();
-        if (!db) return null;
-
-        const [leads, quotes, jobs, invoices, clients] = await Promise.all([
-          db.select({
-            id: opsLeads.id,
-            name: opsLeads.name,
-            phone: opsLeads.phone,
-            email: opsLeads.email,
-            jobType: opsLeads.jobType,
-            stage: opsLeads.stage,
-            aiScore: opsLeads.aiScore,
-            aiSummary: opsLeads.aiSummary,
-            estimatedValue: opsLeads.estimatedValue,
-            createdAt: opsLeads.createdAt,
-            nativeQuoteId: opsLeads.nativeQuoteId,
-          }).from(opsLeads).orderBy(desc(opsLeads.createdAt)).limit(50),
-
-          db.select({
-            id: nativeQuotes.id,
-            title: nativeQuotes.title,
-            clientName: nativeQuotes.clientName,
-            status: nativeQuotes.status,
-            totalCents: nativeQuotes.totalCents,
-            serviceType: nativeQuotes.serviceType,
-            acreage: nativeQuotes.acreage,
-            createdAt: nativeQuotes.createdAt,
-          }).from(nativeQuotes).orderBy(desc(nativeQuotes.createdAt)).limit(50),
-
-          db.select({
-            id: nativeJobs.id,
-            clientName: nativeJobs.clientName,
-            status: nativeJobs.status,
-            scheduledDate: nativeJobs.scheduledDate,
-            serviceType: nativeJobs.serviceType,
-            totalCents: nativeJobs.totalCents,
-            createdAt: nativeJobs.createdAt,
-          }).from(nativeJobs).orderBy(desc(nativeJobs.createdAt)).limit(50),
-
-          db.select({
-            id: nativeInvoices.id,
-            clientName: nativeInvoices.clientName,
-            status: nativeInvoices.status,
-            totalCents: nativeInvoices.totalCents,
-            paidAt: nativeInvoices.paidAt,
-            createdAt: nativeInvoices.createdAt,
-          }).from(nativeInvoices).orderBy(desc(nativeInvoices.createdAt)).limit(50),
-
-          db.select({
-            id: nativeClients.id,
-            name: nativeClients.name,
-            email: nativeClients.email,
-            phone: nativeClients.phone,
-            address: nativeClients.address,
-            jobCount: nativeClients.jobCount,
-            totalSpentCents: nativeClients.totalSpentCents,
-            createdAt: nativeClients.createdAt,
-          }).from(nativeClients).orderBy(desc(nativeClients.createdAt)).limit(100),
-        ]);
-
-        // Aggregate KPIs
-        const totalRevenue = invoices
-          .filter(i => i.status === "paid")
-          .reduce((sum, i) => sum + (i.totalCents ?? 0), 0);
-        const openQuotesValue = quotes
-          .filter(q => ["draft", "sent", "viewed"].includes(q.status ?? ""))
-          .reduce((sum, q) => sum + (q.totalCents ?? 0), 0);
-        const activeJobs = jobs.filter(j => j.status === "in_progress" || j.status === "scheduled").length;
-
-        return {
-          generatedAt: new Date().toISOString(),
-          kpis: {
-            totalLeads: leads.length,
-            totalClients: clients.length,
-            totalQuotes: quotes.length,
-            totalJobs: jobs.length,
-            totalInvoices: invoices.length,
-            totalRevenueCents: totalRevenue,
-            openQuotesValueCents: openQuotesValue,
-            activeJobs,
-          },
-          leads,
-          quotes,
-          jobs,
-          invoices,
-          clients,
-        };
-      }),
-  }),
 });
 
 export type AppRouter = typeof appRouter;
