@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { appRouter } from "./routers";
 import type { TrpcContext } from "./_core/context";
+import { quoteSchema } from "./quoteRouter";
 
 function createPublicContext(): TrpcContext {
   return {
@@ -72,6 +73,24 @@ describe("quote.submit", () => {
         message: "Test project",
       })
     ).rejects.toThrow();
+  });
+
+  it("accepts itemized forestry mulching and trail cutting estimates", () => {
+    const parsed = quoteSchema.parse({
+      name: "Test User",
+      phone: "615-555-0100",
+      email: "test@example.com",
+      service: "forestry-mulching",
+      county: "dickson",
+      acreage: "1",
+      message: "Forestry mulching with a new access trail.",
+      serviceBreakdown: [
+        { service: "forestry-mulching", label: "Forestry Mulching", lowCents: 650000, highCents: 1200000, measurement: "1.00 acre", calculation: "1 acre × rate" },
+        { service: "trail-cutting", label: "Trail Cutting", lowCents: 528000, highCents: 1056000, measurement: "2,640 linear feet", calculation: "2,640 linear feet × rate" },
+      ],
+    });
+    expect(parsed.serviceBreakdown).toHaveLength(2);
+    expect(parsed.serviceBreakdown[1].label).toBe("Trail Cutting");
   });
 
   it("RESEND_API_KEY env var is configured", () => {

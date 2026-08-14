@@ -115,6 +115,7 @@ export async function qualifyLead(input: QuoteInput): Promise<LeadQualification>
     input.acreage ? `Acreage: ${input.acreage}` : "Acreage: Not specified",
     input.street || input.city ? `Address: ${[input.street, input.city, input.state, input.zip].filter(Boolean).join(", ")}` : "",
     input.addOns && input.addOns.length > 0 ? `Add-ons requested: ${input.addOns.join(", ")}` : "",
+    input.serviceBreakdown.length > 0 ? `Structured preliminary service estimates (keep every service in your reasoning):\n${input.serviceBreakdown.map((item) => `- ${item.label}: $${Math.round(item.lowCents / 100).toLocaleString()} – $${Math.round(item.highCents / 100).toLocaleString()}${item.measurement ? ` (${item.measurement})` : ""}`).join("\n")}` : "",
     input.message ? `Customer message: "${input.message}"` : "Customer message: None provided",
   ].filter(Boolean).join("\n");
 

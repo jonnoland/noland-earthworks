@@ -14,6 +14,7 @@ import { formatQuotePhone, validateQuoteContact, validateQuoteContactField, type
 import { formatQuoteAcreage, normalizeQuoteAcreage, QUOTE_ACREAGE_MAX, QUOTE_ACREAGE_MIN, QUOTE_ACREAGE_STEP } from "@shared/quoteAcreage";
 import { combinePreliminaryRanges, feetToLength, getRecommendedQuoteServices, lengthToFeet, QUOTE_SERVICE_OPTIONS, QUOTE_TERRAIN_OPTIONS, quoteServiceLabel, quoteTerrainLabel, quoteTerrainMultiplier, type QuoteLengthUnit, type QuoteServiceValue, type QuoteTerrainDifficulty, updateQuoteServiceSelection } from "@shared/quoteMultiService";
 import { combineMapDrawingMeasurements, estimateProjectTimeline, getMapDrawingColor, metersToLinearFeet, squareMetersToAcres, type CombinedMapMeasurements, type PreliminaryProjectTimeline } from "@shared/quoteMapPlanning";
+import { parsePreliminaryRangeToCents, type ServiceEstimateBreakdown } from "@shared/quoteServiceItemization";
 
 const inputStyle: React.CSSProperties = {
   width: "100%",
@@ -1111,6 +1112,16 @@ export default function QuotePage() {
     const preSubmitEstimate = activeServices.length > 0
       ? computeSelectedServicesEstimate(effectiveAcresForSubmit, activeServices, linearMeasurements)
       : null;
+    const serviceBreakdown: ServiceEstimateBreakdown[] = preSubmitEstimate?.contributions.flatMap((contribution) => {
+      const cents = parsePreliminaryRangeToCents(contribution.range);
+      return cents ? [{
+        service: contribution.service,
+        label: quoteServiceLabel(contribution.service),
+        ...cents,
+        measurement: contribution.measurement,
+        calculation: contribution.calculation,
+      }] : [];
+    }) ?? [];
     if (preSubmitEstimate) {
       setSubmittedEstimate({
         range: preSubmitEstimate.range,
@@ -1171,6 +1182,7 @@ export default function QuotePage() {
           : null;
         return est?.range ?? "";
       })(),
+      serviceBreakdown,
     });
   };
 

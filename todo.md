@@ -2992,6 +2992,12 @@
 - [x] Audit public routes for one clear primary H1 per page
 - [x] Correct verified H1 conflicts without changing valid service, county, or blog page intent
 
+## Multi-Service AI Quote Itemization — Aug 2026
+- [x] Preserve every requested web-quote service and measurement in the server-side quote record
+- [x] Carry each service’s preliminary contribution into AI estimate inputs and editable quote drafts
+- [x] Display itemized service costs in the quote workflow without losing the combined total
+- [x] Verify a forestry-mulching plus trail-cutting web quote end to end
+
 ## Quote Performance & County Differentiation — Aug 2026
 - [x] Measure the current quote-page mobile performance and critical loading path
 - [x] Implement a low-risk quote-page performance improvement that preserves the form flow

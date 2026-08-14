@@ -1649,6 +1649,7 @@ function InlineWebRequestsPanel({
     aiSummary?: string | null;
     aiFlags?: string | null;
     estimatedRange?: string | null;
+    serviceBreakdown?: string | null;
     nativeQuoteId?: number | null;
     propertyPinLat?: string | null;
     propertyPinLng?: string | null;
@@ -1673,11 +1674,29 @@ function InlineWebRequestsPanel({
     if (!req.nativeQuoteId) return;
     const cents = Math.round(parseFloat(editPrice.replace(/[$,]/g, "")) * 100);
     if (isNaN(cents) || cents < 0) { toast.error("Enter a valid price."); return; }
-    const desc = editDesc.trim() || req.service || "Forestry Mulching";
+    let existingItemizedLines: { description: string; qty: number; unitPriceCents: number; totalCents: number }[] = [];
+    try {
+      const breakdown = JSON.parse(req.serviceBreakdown ?? "[]") as { label: string; lowCents: number; highCents: number; measurement?: string }[];
+      existingItemizedLines = breakdown.map((item) => {
+        const midpoint = Math.round((item.lowCents + item.highCents) / 2);
+        return {
+          description: `${item.label}${item.measurement ? ` — ${item.measurement}` : ""} — preliminary estimate pending site visit`,
+          qty: 1,
+          unitPriceCents: midpoint,
+          totalCents: midpoint,
+        };
+      });
+    } catch { /* fall back to a single line when older requests have no breakdown */ }
+    const itemizedTotal = existingItemizedLines.reduce((sum, item) => sum + item.totalCents, 0);
+    const adjustment = cents - itemizedTotal;
+    const desc = editDesc.trim() || "Project-level estimate adjustment";
+    const lineItems = existingItemizedLines.length > 0
+      ? (adjustment === 0 ? existingItemizedLines : [...existingItemizedLines, { description: desc, qty: 1, unitPriceCents: adjustment, totalCents: adjustment }])
+      : [{ description: editDesc.trim() || req.service || "Forestry Mulching", qty: 1, unitPriceCents: cents, totalCents: cents }];
     updateQuoteMutation.mutate({
       id: req.nativeQuoteId,
       totalCents: cents,
-      lineItems: [{ description: desc, qty: 1, unitPriceCents: cents, totalCents: cents }],
+      lineItems,
     });
   };
 
@@ -1781,6 +1800,23 @@ function InlineWebRequestsPanel({
                 {req.message && (
                   <p className="text-xs text-muted-foreground line-clamp-2">{req.message}</p>
                 )}
+                {(() => {
+                  try {
+                    const breakdown = JSON.parse(req.serviceBreakdown ?? "[]") as { label: string; lowCents: number; highCents: number; measurement?: string }[];
+                    if (breakdown.length === 0) return null;
+                    return (
+                      <div className="rounded border border-amber-500/20 bg-amber-500/5 px-2.5 py-2 space-y-1">
+                        <p className="text-[10px] font-semibold uppercase tracking-wide text-amber-400">Itemized preliminary estimate</p>
+                        {breakdown.map((item) => (
+                          <div key={`${item.label}-${item.measurement ?? ""}`} className="flex items-start justify-between gap-2 text-[11px]">
+                            <span className="text-muted-foreground">{item.label}{item.measurement ? ` · ${item.measurement}` : ""}</span>
+                            <span className="shrink-0 font-medium text-amber-300">${Math.round(item.lowCents / 100).toLocaleString()} – ${Math.round(item.highCents / 100).toLocaleString()}</span>
+                          </div>
+                        ))}
+                      </div>
+                    );
+                  } catch { return null; }
+                })()}
 
                 {/* Inline estimate editor */}
                 {isEditingEstimate && req.nativeQuoteId && (

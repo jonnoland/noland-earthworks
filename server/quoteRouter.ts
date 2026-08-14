@@ -13,6 +13,7 @@ import { getServiceDisplayName } from "./serviceTaxonomy";
 import { opsLeads } from "../drizzle/schema";
 import { eq } from "drizzle-orm";
 import { parseGooglePlaceAddress, parseGooglePlaceCoordinates } from "./googlePlaceAddress";
+import { buildItemizedQuoteLines, totalItemizedCents, type ServiceEstimateBreakdown } from "@shared/quoteServiceItemization";
 
 // Strip markdown code fences from LLM JSON responses
 function stripCodeFence(raw: string): string {
@@ -22,7 +23,7 @@ function stripCodeFence(raw: string): string {
 }
 
 
-const quoteSchema = z.object({
+export const quoteSchema = z.object({
   name: z.string().min(1, "Name is required").max(100),
   phone: z.string().min(1, "Phone is required").max(30).regex(/[0-9]/, "Phone must contain at least one digit"),
   email: z.string().email("Valid email is required").max(320),
@@ -46,6 +47,14 @@ const quoteSchema = z.object({
   /** ROW Clearing — corridor width in feet. Defaults to 30 ft when not provided. */
   rowCorridorWidthFt: z.number().int().min(4).max(500).optional(),
   estimatedRange: z.string().max(100).optional().default(""),
+  serviceBreakdown: z.array(z.object({
+    service: z.string().min(1).max(100),
+    label: z.string().min(1).max(100),
+    lowCents: z.number().int().min(0),
+    highCents: z.number().int().min(0),
+    measurement: z.string().max(300).default(""),
+    calculation: z.string().max(600).default(""),
+  }).refine((item) => item.highCents >= item.lowCents, "High estimate must not be below low estimate")).max(10).optional().default([]),
   /** Property photos — array of S3 CDN URLs uploaded before form submission */
   propertyPhotoUrls: z.array(z.string().url()).max(10).optional().default([]),
   /** Map pin latitude dropped by the user */
@@ -174,7 +183,8 @@ function buildEmailHtml(data: QuoteInput): string {
               ${(data.service === 'right-of-way-clearing' || data.service === 'Right-of-Way Clearing') && data.rowCorridorWidthFt ? row("Corridor Width", `${data.rowCorridorWidthFt} ft`) : ""}
               ${(data.service === 'right-of-way-clearing' || data.service === 'Right-of-Way Clearing') && data.rowLinearFeet && data.rowCorridorWidthFt ? row("Effective Acres", `${((data.rowLinearFeet * data.rowCorridorWidthFt) / 43560).toFixed(3)} acres`) : ""}
               ${addressLines.length ? row("Property Address", addressLines.map(escapeHtml).join("<br />")) : ""}
-              ${data.addOns && data.addOns.length > 0 ? row("Add-On Services", data.addOns.map(escapeHtml).join("<br />")) : ""}
+              ${data.addOns && data.addOns.length > 0 ? row("Additional Services", data.addOns.map(escapeHtml).join("<br />")) : ""}
+              ${data.serviceBreakdown.length > 0 ? row("Itemized Preliminary Estimate", data.serviceBreakdown.map((item) => `${escapeHtml(item.label)}${item.measurement ? ` (${escapeHtml(item.measurement)})` : ""}: <strong>$${Math.round(item.lowCents / 100).toLocaleString()} – $${Math.round(item.highCents / 100).toLocaleString()}</strong>`).join("<br />")) : ""}
             </table>
           </td>
         </tr>
@@ -373,7 +383,8 @@ function buildConfirmationEmailHtml(data: QuoteInput): string {
                 : (data.acreage ? row("Acreage", escapeHtml(data.acreage)) : "")}
               ${(data.service === 'right-of-way-clearing' || data.service === 'Right-of-Way Clearing') && data.rowCorridorWidthFt ? row("Corridor Width", `${data.rowCorridorWidthFt} ft`) : ""}
               ${addressLines.length ? row("Property Address", addressLines.map(escapeHtml).join("<br />")) : ""}
-              ${data.addOns && data.addOns.length > 0 ? row("Add-On Services", data.addOns.map(escapeHtml).join("<br />")) : ""}
+              ${data.addOns && data.addOns.length > 0 ? row("Additional Services", data.addOns.map(escapeHtml).join("<br />")) : ""}
+              ${data.serviceBreakdown.length > 0 ? row("Itemized Preliminary Estimate", data.serviceBreakdown.map((item) => `${escapeHtml(item.label)}${item.measurement ? ` (${escapeHtml(item.measurement)})` : ""}: $${Math.round(item.lowCents / 100).toLocaleString()} – $${Math.round(item.highCents / 100).toLocaleString()}`).join("<br />")) : ""}
             </table>
           </td>
         </tr>
@@ -569,6 +580,7 @@ export const quoteRouter = router({
           deedAcres: input.deedAcres != null ? String(input.deedAcres) : null,
           adjustedAcres: input.adjustedAcres != null ? String(input.adjustedAcres) : null,
           estimatedRange: input.estimatedRange || null,
+          serviceBreakdown: input.serviceBreakdown.length > 0 ? JSON.stringify(input.serviceBreakdown) : null,
           propertyPhotoUrls: input.propertyPhotoUrls && input.propertyPhotoUrls.length > 0 ? JSON.stringify(input.propertyPhotoUrls) : null,
           propertyPinLat: input.propertyPinLat != null ? String(input.propertyPinLat) : null,
           propertyPinLng: input.propertyPinLng != null ? String(input.propertyPinLng) : null,
@@ -608,6 +620,7 @@ export const quoteRouter = router({
             return input.acreage ? `Acreage: ${input.acreage}` : "";
           })(),
           address ? `Address: ${address}` : "",
+          input.serviceBreakdown.length > 0 ? `Itemized Preliminary Estimate:\n${input.serviceBreakdown.map((item) => `- ${item.label}: $${Math.round(item.lowCents / 100).toLocaleString()} – $${Math.round(item.highCents / 100).toLocaleString()}${item.measurement ? ` (${item.measurement})` : ""}`).join("\n")}` : "",
           input.message ? `\nProject Details:\n${input.message}` : "",
         ]
           .filter(Boolean)
@@ -664,7 +677,10 @@ export const quoteRouter = router({
         const aiRange = qualification?.ballparkRange ?? "";
         let aiTotalCents = 0;
         let aiLineItems = "[]";
-        if (aiRange) {
+        if (input.serviceBreakdown.length > 0) {
+          aiTotalCents = totalItemizedCents(input.serviceBreakdown as ServiceEstimateBreakdown[]);
+          aiLineItems = JSON.stringify(buildItemizedQuoteLines(input.serviceBreakdown as ServiceEstimateBreakdown[]));
+        } else if (aiRange) {
           const nums = aiRange.replace(/[$,]/g, "").match(/\d+(?:\.\d+)?/g);
           if (nums && nums.length >= 2) {
             const lo = parseFloat(nums[0]);
@@ -688,6 +704,7 @@ export const quoteRouter = router({
           qualification?.summary ? `AI Summary: ${qualification.summary}` : "",
           qualification?.flags?.length ? `AI Flags: ${qualification.flags.join(" | ")}` : "",
           input.acreage ? `Acreage: ${input.acreage}` : "",
+          input.serviceBreakdown.length > 0 ? `Itemized Preliminary Estimate:\n${input.serviceBreakdown.map((item) => `- ${item.label}: $${Math.round(item.lowCents / 100).toLocaleString()} – $${Math.round(item.highCents / 100).toLocaleString()}${item.measurement ? ` (${item.measurement})` : ""}`).join("\n")}` : "",
           input.message ? `Client Message: ${input.message}` : "",
         ].filter(Boolean).join("\n");
         const [nativeResult] = await db2.insert(nativeQuotes).values({

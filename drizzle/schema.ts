@@ -266,6 +266,8 @@ export const quoteSubmissions = mysqlTable("quote_submissions", {
   rfpDocumentUrls: text("rfpDocumentUrls"),
   /** Preliminary price range shown on form (e.g. "$3,200 – $4,500") */
   estimatedRange: varchar("estimatedRange", { length: 100 }),
+  /** Structured preliminary contribution for each selected service, stored as JSON */
+  serviceBreakdown: text("serviceBreakdown"),
   /** Client type: residential | commercial | government */
   clientType: varchar("clientType", { length: 50 }).default("residential"),
   /** AI lead qualification */
