@@ -2993,3 +2993,9 @@
 - [x] Identify the remaining service-page LCP tradeoff and retain GA4 tracking coverage by user decision
 - [x] Review Google Ads account and in-app integration readiness without changing live campaigns
 - [x] Document verified results and required follow-up access
+
+## Direct Google Ads Publishing Safeguards — Aug 2026
+- [ ] Gather Google Ads API access details and account identifiers securely
+- [ ] Add draft-only campaign creation with an explicit review stage
+- [ ] Preserve scheduling, spend tracking, and approval before any live publication
+- [ ] Complete Google Ads API Center setup from the user’s local browser because the connected browser injects an ad blocker
