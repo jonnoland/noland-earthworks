@@ -13,6 +13,8 @@ describe("area-expansion waitlist", () => {
     expect(schema).toContain("notifyOnExpansion");
     expect(router).toContain('"out_of_service_waitlist"');
     expect(router).toContain("notifyOnExpansion: true");
+    expect(router).toContain("sendAreaExpansionWaitlistConfirmation");
+    expect(router).toContain("getWaitlistByCounty: protectedProcedure");
   });
 
   it("adds a smooth public out-of-service transition and FAQ guidance", () => {
@@ -20,5 +22,12 @@ describe("area-expansion waitlist", () => {
     const quote = source("client/src/pages/Quote.tsx");
     expect(quote).toContain("Read service-area FAQs");
     expect(quote).toContain("Join area waitlist");
+    expect(quote).toContain("waitlist-success-pop");
+  });
+
+  it("groups waitlist demand by county on the operations dashboard", () => {
+    const dashboard = source("client/src/pages/ops/Dashboard.tsx");
+    expect(dashboard).toContain("trpc.emailSubscribe.getWaitlistByCounty.useQuery");
+    expect(dashboard).toContain("Expansion Waitlist by County");
   });
 });

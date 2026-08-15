@@ -315,6 +315,9 @@ export default function Dashboard() {
     refetchInterval: 5 * 60 * 1000,
     staleTime: 60 * 1000,
   });
+  const { data: waitlistByCounty = [], isLoading: waitlistLoading } = trpc.emailSubscribe.getWaitlistByCounty.useQuery(undefined, {
+    refetchInterval: 60_000,
+  });
 
   const [todayActionFilter, setTodayActionFilter] = useState<"all" | "urgent" | "leads" | "visits" | "proposals" | "money" | "weather" | "reviews">("all");
   const [todayActionSort, setTodayActionSort] = useState<"urgency" | "status">("urgency");
@@ -1453,6 +1456,27 @@ export default function Dashboard() {
                 : "Daily snapshot activates after the tracker’s first scheduled run."}
             </p>
           </div>
+        </div>
+      </div>
+
+      <div className="mt-6 rounded-xl border border-border bg-card overflow-hidden">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-border bg-secondary/10">
+          <div className="flex items-center gap-3">
+            <div className="h-9 w-9 rounded-lg bg-primary/10 text-primary flex items-center justify-center"><MapPin className="h-4 w-4" /></div>
+            <div>
+              <h3 className="text-sm font-semibold text-foreground" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>Expansion Waitlist by County</h3>
+              <p className="text-xs text-muted-foreground">Out-of-service visitors who asked to be notified if coverage expands.</p>
+            </div>
+          </div>
+          <span className="text-xs text-muted-foreground">{waitlistByCounty.reduce((total, county) => total + county.signups, 0)} signups</span>
+        </div>
+        <div className="divide-y divide-border">
+          {waitlistLoading ? <div className="p-5"><Skeleton className="h-8 w-full" /></div> : waitlistByCounty.length > 0 ? waitlistByCounty.map((county) => (
+            <div key={county.county} className="flex items-center justify-between gap-4 px-5 py-3.5">
+              <span className="min-w-0"><span className="block text-sm font-medium text-foreground">{county.county}</span><span className="block text-xs text-muted-foreground">Latest: {county.latestSignupAt ? new Date(county.latestSignupAt).toLocaleDateString() : "—"}</span></span>
+              <span className="rounded-full bg-primary/10 px-2.5 py-1 text-xs font-semibold text-primary">{county.signups} {county.signups === 1 ? "signup" : "signups"}</span>
+            </div>
+          )) : <div className="px-5 py-8 text-center"><MapPin className="h-5 w-5 text-muted-foreground mx-auto mb-2" /><p className="text-sm font-medium text-foreground">No expansion waitlist signups yet.</p><p className="text-xs text-muted-foreground mt-1">Out-of-area address checks will appear here after a visitor joins the waitlist.</p></div>}
         </div>
       </div>
 

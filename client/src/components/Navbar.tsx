@@ -173,7 +173,7 @@ export default function Navbar() {
                 {l.label}
               </button>
             ))}
-            <a href="/pricing" className="nav-link" style={{ textDecoration: "none" }}>Pricing</a>
+            <a href="/pricing" className="nav-link" style={{ textDecoration: "none" }}>Plan a Visit</a>
             <a href="/about" className="nav-link" style={{ textDecoration: "none" }}>About Us</a>
             <a href="/gallery" className="nav-link" style={{ textDecoration: "none" }}>Gallery</a>
             <a href="/reviews" className="nav-link" style={{ textDecoration: "none" }}>Reviews</a>
@@ -204,7 +204,7 @@ export default function Navbar() {
               className="btn-amber"
               style={{ padding: "0.5rem 1.25rem", textDecoration: "none" }}
             >
-              Get a Quote
+              Request a Site Visit
             </a>
           </div>
 
@@ -272,7 +272,7 @@ export default function Navbar() {
                 {l.label}
               </button>
             ))}
-            <a href="/pricing" className="text-left py-3 px-2 nav-link block" style={{ borderBottom: "1px solid rgba(255,255,255,0.06)", textDecoration: "none" }}>Pricing</a>
+            <a href="/pricing" className="text-left py-3 px-2 nav-link block" style={{ borderBottom: "1px solid rgba(255,255,255,0.06)", textDecoration: "none" }}>Plan a Visit</a>
             <a href="/about" className="text-left py-3 px-2 nav-link block" style={{ borderBottom: "1px solid rgba(255,255,255,0.06)", textDecoration: "none" }}>About Us</a>
             <a href="/gallery" className="text-left py-3 px-2 nav-link block" style={{ borderBottom: "1px solid rgba(255,255,255,0.06)", textDecoration: "none" }}>Gallery</a>
             <a href="/reviews" className="text-left py-3 px-2 nav-link block" style={{ borderBottom: "1px solid rgba(255,255,255,0.06)", textDecoration: "none" }}>Reviews</a>
@@ -298,7 +298,7 @@ export default function Navbar() {
                 className="btn-amber w-full justify-center"
                 style={{ textDecoration: "none" }}
               >
-                Get a Free Quote
+                Request a Site Visit
               </a>
             </div>
           </div>

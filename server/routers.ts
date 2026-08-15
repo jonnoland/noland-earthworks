@@ -1,7 +1,7 @@
 import { COOKIE_NAME } from "@shared/const";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
-import { publicProcedure, router } from "./_core/trpc";
+import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
 import { quoteRouter } from "./quoteRouter";
 import { contactRouter } from "./contactRouter";
 import { opsRouter } from "./opsRouter";
@@ -27,6 +27,26 @@ import { getDb } from "./db";
 import { businessSettings, emailSubscribers, serviceFaqs, seoArticles } from "../drizzle/schema";
 import { desc, eq, sql } from "drizzle-orm";
 import { z } from "zod";
+import { ENV } from "./_core/env";
+import { Resend } from "resend";
+
+async function sendAreaExpansionWaitlistConfirmation(email: string, areaInterest?: string) {
+  if (!ENV.resendApiKey) return;
+  try {
+    const resend = new Resend(ENV.resendApiKey);
+    const area = areaInterest?.trim() || "your area";
+    const { error } = await resend.emails.send({
+      from: "Noland Earthworks <noreply@nolandearthworks.com>",
+      to: [email],
+      replyTo: "quotes@nolandearthworks.com",
+      subject: `You’re on the ${area} expansion waitlist — Noland Earthworks`,
+      html: `<div style="font-family:Arial,sans-serif;max-width:600px;margin:auto;color:#1a1a1a"><h1 style="color:#b85e15">You’re on the expansion waitlist</h1><p>Thank you for your interest in Noland Earthworks.</p><p>We recorded your request for <strong>${area}</strong>. If coverage expands there, we’ll email you with the next steps.</p><p>Our standard work area is based on practical travel and site-visit capacity. You can review common service-area questions at <a href="https://www.nolandearthworks.com/faq">nolandearthworks.com/faq</a>.</p><p>For a custom project discussion, contact us at <a href="mailto:quotes@nolandearthworks.com">quotes@nolandearthworks.com</a> or (615) 406-4819.</p><p>— Noland Earthworks</p></div>`,
+    });
+    if (error) console.error("[emailSubscribe] Area waitlist confirmation error:", error);
+  } catch (error) {
+    console.error("[emailSubscribe] Area waitlist confirmation failed:", error);
+  }
+}
 
 export const appRouter = router({
     // if you need to use socket.io, read and register route in server/_core/index.ts, all api should start with '/api/' so that the gateway can route correctly
@@ -85,27 +105,49 @@ export const appRouter = router({
             .from(emailSubscribers)
             .where(eq(emailSubscribers.email, input.email.toLowerCase().trim()))
             .limit(1);
+          let message: "subscribed" | "already_subscribed" = "subscribed";
           if (existing.length > 0) {
             if (input.notifyOnExpansion) {
               await db.update(emailSubscribers)
                 .set({ source: input.source, areaInterest: input.areaInterest?.trim() || null, notifyOnExpansion: true })
                 .where(eq(emailSubscribers.id, existing[0].id));
             }
-            return { success: true, message: "already_subscribed" };
+            message = "already_subscribed";
+          } else {
+            await db.insert(emailSubscribers).values({
+              email: input.email.toLowerCase().trim(),
+              name: input.name?.trim() || null,
+              source: input.source,
+              areaInterest: input.areaInterest?.trim() || null,
+              notifyOnExpansion: input.notifyOnExpansion,
+            });
           }
-          await db.insert(emailSubscribers).values({
-            email: input.email.toLowerCase().trim(),
-            name: input.name?.trim() || null,
-            source: input.source,
-            areaInterest: input.areaInterest?.trim() || null,
-            notifyOnExpansion: input.notifyOnExpansion,
-          });
-          return { success: true, message: "subscribed" };
+          if (input.notifyOnExpansion) await sendAreaExpansionWaitlistConfirmation(input.email.toLowerCase().trim(), input.areaInterest);
+          return { success: true, message };
         } catch (err) {
           console.error("[emailSubscribe] error:", err);
           return { success: false, message: "error" };
         }
       }),
+    getWaitlistByCounty: protectedProcedure.query(async () => {
+      const db = await getDb();
+      if (!db) return [];
+      const records = await db
+        .select({
+          county: emailSubscribers.areaInterest,
+          signups: sql<number>`count(*)`,
+          latestSignupAt: sql<Date | null>`max(${emailSubscribers.createdAt})`,
+        })
+        .from(emailSubscribers)
+        .where(eq(emailSubscribers.notifyOnExpansion, true))
+        .groupBy(emailSubscribers.areaInterest)
+        .orderBy(sql`count(*) desc`);
+      return records.map((record) => ({
+        county: record.county || "Outside current service area",
+        signups: Number(record.signups),
+        latestSignupAt: record.latestSignupAt,
+      }));
+    }),
   }),
 
   /**

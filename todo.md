@@ -3081,6 +3081,13 @@
 - [x] Link the out-of-service message to the FAQ page for service-boundary questions
 - [x] Add regression coverage for waitlist capture, transition, and FAQ guidance
 
+## Site Visit Navigation & Expansion Waitlist Operations — Aug 2026
+- [x] Replace public Pricing navigation and quote language with site-visit planning language
+- [x] Add success feedback and checkmark animation after waitlist email submission
+- [x] Add an operations dashboard view that groups expansion-waitlist signups by county
+- [x] Send an immediate expansion-waitlist confirmation email after successful signup
+- [x] Add regression coverage for navigation, waitlist feedback, dashboard grouping, and email confirmation
+
 ## Quote Performance & County Differentiation — Aug 2026
 - [x] Measure the current quote-page mobile performance and critical loading path
 - [x] Implement a low-risk quote-page performance improvement that preserves the form flow

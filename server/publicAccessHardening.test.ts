@@ -45,4 +45,12 @@ describe("public pricing and operations access hardening", () => {
     expect(footer).toContain("Accept analytics");
     expect(footer).toContain('href="/privacy-policy"');
   });
+
+  it("uses site-visit planning language instead of public pricing in the navigation", () => {
+    const navbar = projectFile("client/src/components/Navbar.tsx");
+    expect(navbar).toContain("Plan a Visit");
+    expect(navbar).toContain("Request a Site Visit");
+    expect(navbar).not.toContain(">Pricing<");
+    expect(navbar).not.toContain("Get a Free Quote");
+  });
 });
