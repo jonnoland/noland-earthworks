@@ -30,12 +30,12 @@ describe("Noland Field dark brand theme", () => {
     }
   });
 
-  it("keeps the current installed APK release at v0.4.1 until a new build is explicitly requested", () => {
+  it("publishes the approved dark-theme APK as Noland Field v0.4.2", () => {
     const packageJson = source("noland-earthworks-mobile/package.json");
     const androidBuild = source("noland-earthworks-mobile/android/app/build.gradle");
 
-    expect(packageJson).toContain('"version": "0.4.1"');
-    expect(androidBuild).toContain('versionName "0.4.1"');
-    expect(androidBuild).toContain("versionCode 3");
+    expect(packageJson).toContain('"version": "0.4.2"');
+    expect(androidBuild).toContain('versionName "0.4.2"');
+    expect(androidBuild).toContain("versionCode 4");
   });
 });
