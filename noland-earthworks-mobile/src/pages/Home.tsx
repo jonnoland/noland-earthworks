@@ -2,6 +2,7 @@ import { useNavigate } from "react-router-dom";
 import { PlusCircle, FileText, TrendingUp } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { formatRelative } from "@/lib/utils";
+import BrandLogo from "@/components/BrandLogo";
 
 export default function Home() {
   const navigate = useNavigate();
@@ -40,16 +41,19 @@ export default function Home() {
           </div>
           <div
             style={{
-              width: 40,
-              height: 40,
-              borderRadius: 20,
-              backgroundColor: "oklch(0.65 0.18 50)",
+              width: 96,
+              height: 62,
+              borderRadius: 12,
+              backgroundColor: "oklch(0.93 0.02 80)",
+              border: "1px solid oklch(0.65 0.18 50 / 0.75)",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
+              padding: 5,
+              flexShrink: 0,
             }}
           >
-            <span style={{ color: "#000", fontWeight: 700, fontSize: 16 }}>N</span>
+            <BrandLogo />
           </div>
         </div>
       </div>

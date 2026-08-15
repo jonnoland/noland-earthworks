@@ -5,6 +5,7 @@ import PageHeader from "@/components/PageHeader";
 import { useAuth } from "@/hooks/useAuth";
 import { useBiometric } from "@/hooks/useBiometric";
 import { trpc } from "@/lib/trpc";
+import BrandLogo from "@/components/BrandLogo";
 
 // Version is injected at build time from package.json via vite.config.ts define
 // This ensures the installed build always reports its true version
@@ -100,17 +101,19 @@ export default function Profile() {
         >
           <div
             style={{
-              width: 56,
-              height: 56,
-              borderRadius: 28,
-              backgroundColor: "oklch(0.65 0.18 50)",
+              width: 86,
+              height: 64,
+              borderRadius: 12,
+              backgroundColor: "oklch(0.93 0.02 80)",
+              border: "1px solid oklch(0.65 0.18 50 / 0.75)",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
+              padding: 5,
               flexShrink: 0,
             }}
           >
-            <span style={{ color: "#000", fontWeight: 700, fontSize: 22 }}>J</span>
+            <BrandLogo />
           </div>
           <div>
             <p style={{ color: "oklch(0.94 0.01 80)", fontWeight: 700, fontSize: 17, margin: "0 0 2px" }}>

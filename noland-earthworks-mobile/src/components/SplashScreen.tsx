@@ -4,6 +4,7 @@
  * smooth pulse animation and a progress indicator.
  */
 import { useEffect, useState } from "react";
+import BrandLogo from "@/components/BrandLogo";
 
 export default function SplashScreen() {
   const [opacity, setOpacity] = useState(0);
@@ -39,35 +40,24 @@ export default function SplashScreen() {
         gap: 0,
       }}
     >
-      {/* Logo mark */}
+      {/* Official Noland Earthworks mark */}
       <div
         style={{
-          width: 80,
-          height: 80,
-          borderRadius: 22,
-          backgroundColor: "oklch(0.65 0.18 50)",
+          width: 216,
+          height: 158,
+          borderRadius: 18,
+          backgroundColor: "oklch(0.93 0.02 80)",
+          border: "1px solid oklch(0.65 0.18 50 / 0.75)",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          marginBottom: 20,
+          padding: 10,
+          marginBottom: 18,
           boxShadow: "0 0 40px oklch(0.65 0.18 50 / 0.35)",
           animation: "pulse-glow 2s ease-in-out infinite",
         }}
       >
-        {/* House/field icon */}
-        <svg
-          width="40"
-          height="40"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="oklch(0.12 0 0)"
-          strokeWidth="2.2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        >
-          <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
-          <polyline points="9 22 9 12 15 12 15 22" />
-        </svg>
+        <BrandLogo />
       </div>
 
       {/* App name */}

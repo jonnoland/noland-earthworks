@@ -2,6 +2,7 @@ import { useCallback, useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/hooks/useAuth";
 import { useBiometric } from "@/hooks/useBiometric";
+import BrandLogo from "@/components/BrandLogo";
 
 const KEYS = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "", "0", "⌫"];
 
@@ -173,20 +174,19 @@ export default function PinLogin() {
       <div style={{ marginBottom: 40, textAlign: "center" }}>
         <div
           style={{
-            width: 64,
-            height: 64,
-            borderRadius: 18,
-            backgroundColor: "oklch(0.65 0.18 50)",
+            width: 180,
+            height: 132,
+            borderRadius: 16,
+            backgroundColor: "oklch(0.93 0.02 80)",
+            border: "1px solid oklch(0.65 0.18 50 / 0.75)",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
+            padding: 9,
             margin: "0 auto 16px",
           }}
         >
-          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="oklch(0.13 0 0)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
-            <polyline points="9 22 9 12 15 12 15 22" />
-          </svg>
+          <BrandLogo />
         </div>
         <p style={{ color: "oklch(0.94 0.01 80)", fontSize: 22, fontWeight: 700, margin: 0 }}>Noland Field</p>
         <p style={{ color: "oklch(0.55 0.01 80)", fontSize: 14, margin: "6px 0 0" }}>{subtitle}</p>

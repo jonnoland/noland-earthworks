@@ -3117,6 +3117,11 @@
 - [x] Build, sign, verify, and publish the first replacement APK for the owner’s phone
 - [x] Document one-time replacement installation and subsequent in-app update use
 
+## Companion App Brand Logo Update — Aug 2026
+- [x] Replace launcher and splash branding with the official Noland Earthworks logo
+- [x] Align visible companion app header and profile branding with the official logo
+- [x] Build, sign, and publish the required branded APK update
+
 ## Quote Performance & County Differentiation — Aug 2026
 - [x] Measure the current quote-page mobile performance and critical loading path
 - [x] Implement a low-risk quote-page performance improvement that preserves the form flow
