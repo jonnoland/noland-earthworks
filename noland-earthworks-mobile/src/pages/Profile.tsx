@@ -159,10 +159,10 @@ export default function Profile() {
                 )}
                 <div style={{ textAlign: "left" }}>
                   <p style={{ color: "oklch(0.94 0.01 80)", fontSize: 15, fontWeight: 600, margin: 0 }}>
-                    {downloading ? "Starting download..." : "Update Available"}
+                    {downloading ? "Starting download..." : "Install Update"}
                   </p>
                   <p style={{ color: "oklch(0.65 0.18 50)", fontSize: 12, margin: "2px 0 0" }}>
-                    v{APP_VERSION} → v{versionData!.version}{downloading ? " · Opening download manager" : " · Tap to download"}
+                    v{APP_VERSION} → v{versionData!.version}{downloading ? " · Opening download manager" : " · Download and install the signed APK"}
                   </p>
                 </div>
               </div>

@@ -3106,6 +3106,17 @@
 - [x] Write a step-by-step signed APK and GitHub release walkthrough without publishing a release
 - [x] Validate companion source changes without building or releasing a new APK
 
+## Companion Install Action & Signed APK Release — Aug 2026
+- [x] Add a direct Install Update button to the Profile tab when a newer release exists
+- [x] Build and sign the approved companion Android APK
+- [x] Verify the signed APK and publish it as the current `mobile-v` GitHub release
+- [ ] Confirm the companion update endpoint exposes the published release to the installed app
+
+## Personal-Use Android Release Identity — Aug 2026
+- [x] Create the Android Capacitor project and a new personal-use Noland Field signing identity
+- [x] Build, sign, verify, and publish the first replacement APK for the owner’s phone
+- [ ] Document one-time replacement installation and subsequent in-app update use
+
 ## Quote Performance & County Differentiation — Aug 2026
 - [x] Measure the current quote-page mobile performance and critical loading path
 - [x] Implement a low-risk quote-page performance improvement that preserves the form flow

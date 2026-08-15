@@ -11,7 +11,8 @@ describe("companion release, map, and offline workflow", () => {
     const profile = source("noland-earthworks-mobile/src/pages/Profile.tsx");
     expect(router).toContain('tag_name.startsWith("mobile-v")');
     expect(router).toContain("browser_download_url");
-    expect(profile).toContain("Update Available");
+    expect(router).toContain("const MOBILE_RELEASE_CACHE_MS = 60_000");
+    expect(profile).toContain("Install Update");
   });
 
   it("renders a visual supported-area map in the companion location screen", () => {

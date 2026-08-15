@@ -587,7 +587,7 @@ export const fieldQuoteRouter = router({
    * Returns the latest published version of the Noland Field mobile app.
    * Fetches live data from GitHub Releases API so the version and APK download
    * URL are always current — no manual bumping required.
-   * Cached in-memory for 10 minutes to avoid hammering the GitHub API.
+   * Cached in-memory for one minute so new signed releases appear promptly.
    * Public — no auth required.
    */
   latestVersion: publicProcedure
@@ -595,8 +595,9 @@ export const fieldQuoteRouter = router({
       const GITHUB_REPO = "jonnoland/noland-earthworks";
       const RELEASES_PAGE = `https://github.com/${GITHUB_REPO}/releases`;
       const FALLBACK = { version: "0.3.0", downloadUrl: RELEASES_PAGE, releaseNotesUrl: RELEASES_PAGE };
+      const MOBILE_RELEASE_CACHE_MS = 60_000;
 
-      // Simple in-memory cache — avoids hitting GitHub on every app launch
+      // Short cache keeps a newly published personal-use release visible promptly.
       const cache = (globalThis as any).__mobileVersionCache as
         | { data: typeof FALLBACK; expiresAt: number }
         | undefined;
@@ -639,8 +640,7 @@ export const fieldQuoteRouter = router({
           releaseNotesUrl: latest.html_url,
         };
 
-        // Cache for 10 minutes
-        (globalThis as any).__mobileVersionCache = { data: result, expiresAt: Date.now() + 10 * 60 * 1000 };
+        (globalThis as any).__mobileVersionCache = { data: result, expiresAt: Date.now() + MOBILE_RELEASE_CACHE_MS };
         return result;
       } catch {
         return FALLBACK;

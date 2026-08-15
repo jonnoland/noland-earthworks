@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Noland Field</string>
+    <string name="title_activity_main">Noland Field</string>
+    <string name="package_name">com.nolandearthworks.field</string>
+    <string name="custom_url_scheme">com.nolandearthworks.field</string>
+</resources>
