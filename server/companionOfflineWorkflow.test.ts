@@ -34,4 +34,15 @@ describe("companion release, map, and offline workflow", () => {
     expect(quote).toContain('source: "field_app_offline"');
     expect(app).toContain("useOfflineFieldQuoteSync()");
   });
+
+  it("shows a visible upload confirmation and launch-time update badge", () => {
+    const sync = source("noland-earthworks-mobile/src/hooks/useOfflineFieldQuoteSync.ts");
+    const banner = source("noland-earthworks-mobile/src/components/NetworkBanner.tsx");
+    const nav = source("noland-earthworks-mobile/src/components/BottomNav.tsx");
+    const app = source("noland-earthworks-mobile/src/App.tsx");
+    expect(sync).toContain('status: "synced"');
+    expect(banner).toContain("uploaded to Ops");
+    expect(nav).toContain("updateAvailable");
+    expect(app).toContain("updateState.updateAvailable");
+  });
 });

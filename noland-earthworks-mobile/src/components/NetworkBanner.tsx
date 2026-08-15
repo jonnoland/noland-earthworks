@@ -9,10 +9,11 @@ import { useEffect, useState } from "react";
 import { WifiOff, Wifi } from "lucide-react";
 import { useNetwork } from "@/hooks/useNetwork";
 
-export default function NetworkBanner() {
+export default function NetworkBanner({ syncState }: { syncState?: { status: "idle" | "syncing" | "synced"; syncedCount: number; completedAt: number | null } }) {
   const { isOnline } = useNetwork();
   const [visible, setVisible] = useState(false);
   const [showRestored, setShowRestored] = useState(false);
+  const [showSyncComplete, setShowSyncComplete] = useState(false);
   const [prevOnline, setPrevOnline] = useState<boolean | null>(null);
 
   useEffect(() => {
@@ -37,13 +38,21 @@ export default function NetworkBanner() {
     setPrevOnline(isOnline);
   }, [isOnline]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  useEffect(() => {
+    if (!syncState?.completedAt || syncState.syncedCount < 1) return;
+    setShowSyncComplete(true);
+    setVisible(true);
+    const timer = setTimeout(() => setShowSyncComplete(false), 3_500);
+    return () => clearTimeout(timer);
+  }, [syncState?.completedAt, syncState?.syncedCount]);
+
   if (!visible) return null;
 
-  const bgColor = showRestored
+  const bgColor = showSyncComplete || showRestored
     ? "oklch(0.35 0.12 145)"   // green tint for restored
     : "oklch(0.30 0.08 25)";   // red-brown tint for offline
 
-  const textColor = showRestored
+  const textColor = showSyncComplete || showRestored
     ? "oklch(0.85 0.15 145)"
     : "oklch(0.90 0.08 25)";
 
@@ -59,7 +68,7 @@ export default function NetworkBanner() {
         animation: "slide-down 0.25s ease",
       }}
     >
-      {showRestored ? (
+      {showSyncComplete || showRestored ? (
         <Wifi size={14} color={textColor} />
       ) : (
         <WifiOff size={14} color={textColor} />
@@ -71,7 +80,9 @@ export default function NetworkBanner() {
           fontWeight: 500,
         }}
       >
-        {showRestored
+        {showSyncComplete
+          ? `${syncState?.syncedCount} saved field request${syncState?.syncedCount === 1 ? "" : "s"} uploaded to Ops`
+          : showRestored
           ? "Connection restored"
           : "No internet connection — working offline"}
       </span>

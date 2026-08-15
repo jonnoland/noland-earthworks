@@ -25,7 +25,7 @@ function isNewerVersion(remote: string, local: string): boolean {
 export function useUpdateCheck() {
   const toastShown = useRef(false);
 
-  const { data: versionData } = trpc.fieldQuote.latestVersion.useQuery(
+  const { data: versionData, isLoading, refetch } = trpc.fieldQuote.latestVersion.useQuery(
     undefined,
     {
       staleTime: 10 * 60 * 1000, // cache 10 min — matches server cache
@@ -61,4 +61,11 @@ export function useUpdateCheck() {
       },
     });
   }, [versionData]);
+
+  return {
+    updateAvailable: Boolean(versionData && isNewerVersion(versionData.version, APP_VERSION)),
+    latestVersion: versionData?.version ?? null,
+    isChecking: isLoading,
+    checkNow: refetch,
+  };
 }

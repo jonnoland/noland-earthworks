@@ -23,7 +23,8 @@ function AppShell() {
     location.pathname.startsWith("/quotes/");
 
   // Fire update toast once per session if a newer version is available
-  useUpdateCheck();
+  const updateState = useUpdateCheck();
+  const syncState = useOfflineFieldQuoteSync();
   useOfflineFieldQuoteSync();
 
   return (
@@ -53,7 +54,7 @@ function AppShell() {
       />
 
       {/* Network status banner — slides in when offline */}
-      <NetworkBanner />
+      <NetworkBanner syncState={syncState} />
 
       {/* Main content area */}
       <div style={{ flex: 1, overflow: "hidden", position: "relative" }}>
@@ -67,7 +68,7 @@ function AppShell() {
       </div>
 
       {/* Bottom navigation — hidden on detail/form pages */}
-      {!hideNav && <BottomNav />}
+      {!hideNav && <BottomNav updateAvailable={updateState.updateAvailable} />}
     </div>
   );
 }

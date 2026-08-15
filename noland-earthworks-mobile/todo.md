@@ -26,3 +26,9 @@
 - [x] Add a visual map of the supported service area to the location screen
 - [x] Store field requests offline and synchronize them when connectivity returns
 - [ ] Build and distribute a signed update APK only when explicitly requested
+
+## Companion Sync Feedback & Update Badge — Aug 2026
+- [x] Show a visible confirmation after queued offline field requests upload to Ops
+- [x] Show a Profile update badge when the app-launch check finds a newer mobile release
+- [x] Document the signed APK and GitHub release procedure without publishing a release
+- [ ] Build and distribute a signed update APK only when explicitly requested

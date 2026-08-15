@@ -3100,6 +3100,12 @@
 - [x] Store out-of-area companion requests offline and synchronize them when connectivity returns
 - [x] Validate the companion source and document the required signed-APK release step without rebuilding the APK
 
+## Companion Sync Feedback & Update Badge — Aug 2026
+- [x] Show an in-app visual status when queued offline requests finish synchronizing
+- [x] Show an app-launch update-available badge when a newer mobile release exists
+- [x] Write a step-by-step signed APK and GitHub release walkthrough without publishing a release
+- [x] Validate companion source changes without building or releasing a new APK
+
 ## Quote Performance & County Differentiation — Aug 2026
 - [x] Measure the current quote-page mobile performance and critical loading path
 - [x] Implement a low-risk quote-page performance improvement that preserves the form flow

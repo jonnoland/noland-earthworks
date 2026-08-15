@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import { useState } from "react";
 import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
 import { removeOfflineFieldQuote, readOfflineFieldQuoteQueue } from "@/lib/offlineFieldQuoteQueue";
@@ -9,6 +10,7 @@ export function useOfflineFieldQuoteSync() {
   const { isOnline } = useNetwork();
   const utils = trpc.useUtils();
   const syncingRef = useRef(false);
+  const [syncState, setSyncState] = useState<{ status: "idle" | "syncing" | "synced"; syncedCount: number; completedAt: number | null }>({ status: "idle", syncedCount: 0, completedAt: null });
 
   useEffect(() => {
     if (!isOnline || syncingRef.current) return;
@@ -16,6 +18,7 @@ export function useOfflineFieldQuoteSync() {
     const sync = async () => {
       syncingRef.current = true;
       let synced = 0;
+      setSyncState((current) => ({ ...current, status: "syncing" }));
       try {
         const queue = await readOfflineFieldQuoteQueue();
         for (const item of queue) {
@@ -29,7 +32,12 @@ export function useOfflineFieldQuoteSync() {
             break;
           }
         }
-        if (synced > 0 && !cancelled) toast.success(`${synced} saved field request${synced === 1 ? "" : "s"} synchronized.`);
+        if (synced > 0 && !cancelled) {
+          setSyncState({ status: "synced", syncedCount: synced, completedAt: Date.now() });
+          toast.success(`${synced} saved field request${synced === 1 ? "" : "s"} synchronized.`);
+        } else if (!cancelled) {
+          setSyncState((current) => ({ ...current, status: "idle" }));
+        }
       } finally {
         syncingRef.current = false;
       }
@@ -37,4 +45,6 @@ export function useOfflineFieldQuoteSync() {
     void sync();
     return () => { cancelled = true; };
   }, [isOnline, utils]);
+
+  return syncState;
 }
