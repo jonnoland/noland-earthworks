@@ -376,6 +376,21 @@
   to   { transform: rotate(360deg); }
 }
 
+@keyframes out-of-service-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.out-of-service-fade-in {
+  animation: out-of-service-fade-in 260ms ease-out both;
+}
+
 /* ─── Quote Portal Print / PDF Styles ──────────────────────────────────────── */
 
 @media print {

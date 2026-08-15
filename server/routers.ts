@@ -65,14 +65,16 @@ export const appRouter = router({
   nativeClients: nativeClientsRouter,
 
   /**
-   * Email subscribe — public opt-in for seasonal tips and updates.
+   * Email subscribe — public opt-in for seasonal updates or area-expansion waitlist notices.
    */
   emailSubscribe: router({
     subscribe: publicProcedure
       .input(z.object({
         email: z.string().email(),
         name: z.string().optional(),
-        source: z.enum(["homepage", "pricing", "footer"]).default("homepage"),
+        source: z.enum(["homepage", "pricing", "footer", "out_of_service_waitlist"]).default("homepage"),
+        areaInterest: z.string().max(255).optional(),
+        notifyOnExpansion: z.boolean().optional().default(false),
       }))
       .mutation(async ({ input }) => {
         const db = await getDb();
@@ -84,12 +86,19 @@ export const appRouter = router({
             .where(eq(emailSubscribers.email, input.email.toLowerCase().trim()))
             .limit(1);
           if (existing.length > 0) {
+            if (input.notifyOnExpansion) {
+              await db.update(emailSubscribers)
+                .set({ source: input.source, areaInterest: input.areaInterest?.trim() || null, notifyOnExpansion: true })
+                .where(eq(emailSubscribers.id, existing[0].id));
+            }
             return { success: true, message: "already_subscribed" };
           }
           await db.insert(emailSubscribers).values({
             email: input.email.toLowerCase().trim(),
             name: input.name?.trim() || null,
             source: input.source,
+            areaInterest: input.areaInterest?.trim() || null,
+            notifyOnExpansion: input.notifyOnExpansion,
           });
           return { success: true, message: "subscribed" };
         } catch (err) {

@@ -1996,15 +1996,17 @@ export type InsertNativeClient = typeof nativeClients.$inferInsert;
 
 // ─── Email Subscribers ────────────────────────────────────────────────────────
 /**
- * Email subscribers — captured from homepage and pricing page opt-in forms.
- * Used for seasonal clearing tips and off-season outreach.
+ * Email subscribers and area-expansion waitlist records captured from public opt-in forms.
  */
 export const emailSubscribers = mysqlTable("email_subscribers", {
   id: int("id").primaryKey().autoincrement(),
   email: varchar("email", { length: 255 }).notNull().unique(),
   name: varchar("name", { length: 255 }),
-  /** Source page: homepage | pricing | footer */
+  /** Source page: homepage | pricing | footer | out_of_service_waitlist */
   source: varchar("source", { length: 50 }).notNull().default("homepage"),
+  /** County or area a visitor asked to be notified about if coverage expands */
+  areaInterest: varchar("areaInterest", { length: 255 }),
+  notifyOnExpansion: boolean("notifyOnExpansion").notNull().default(false),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 export type EmailSubscriber = typeof emailSubscribers.$inferSelect;

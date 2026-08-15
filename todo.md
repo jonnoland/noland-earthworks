@@ -3075,6 +3075,12 @@
 - [x] Display an active loading indicator while reverse geocoding is in progress
 - [x] Add regression coverage for permission fallback, out-of-area guidance, and loading feedback
 
+## Out-of-Service Waitlist & FAQ Guidance — Aug 2026
+- [x] Add an email capture path for out-of-service waitlist notifications
+- [x] Add a smooth fade-in transition for the out-of-service message
+- [x] Link the out-of-service message to the FAQ page for service-boundary questions
+- [x] Add regression coverage for waitlist capture, transition, and FAQ guidance
+
 ## Quote Performance & County Differentiation — Aug 2026
 - [x] Measure the current quote-page mobile performance and critical loading path
 - [x] Implement a low-risk quote-page performance improvement that preserves the form flow
