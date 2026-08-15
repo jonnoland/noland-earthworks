@@ -17,4 +17,10 @@ describe("evidence-backed local content template", () => {
     expect(source("client/src/components/CountyPageLayout.tsx")).toContain("<EvidenceContentSection");
     expect(source("client/src/components/ServicePageLayout.tsx")).toContain("<EvidenceContentSection");
   });
+
+  it("keeps the service-area visual reference separate from review and project proof", () => {
+    const map = source("client/src/components/ServiceAreaMiniMap.tsx");
+    expect(map).toContain("tn-served-counties-35-v2");
+    expect(map).toContain("35 approved Middle & West Tennessee counties");
+  });
 });

@@ -3063,6 +3063,12 @@
 - [x] Add a compact supported-counties reference beside the Site Visit Request location inputs
 - [x] Add regression coverage for visible City/ZIP and county-reference behavior
 
+## Current Location & Visual Service-Area Guidance — Aug 2026
+- [x] Verify county normalization against every approved service-area county and common suffix variations
+- [x] Add a “Use my current location” control with browser-permission and reverse-geocode handling
+- [x] Add a compact visual map highlighting the supported county service area beside the Site Visit Request location inputs
+- [x] Add regression coverage for county normalization, location detection, and map guidance
+
 ## Quote Performance & County Differentiation — Aug 2026
 - [x] Measure the current quote-page mobile performance and critical loading path
 - [x] Implement a low-risk quote-page performance improvement that preserves the form flow

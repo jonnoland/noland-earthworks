@@ -3,6 +3,7 @@ import { AlertCircle, CheckCircle2, ClipboardCheck, Loader2, MapPin, Phone } fro
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import MobileCTABar from "@/components/MobileCTABar";
+import ServiceAreaMiniMap from "@/components/ServiceAreaMiniMap";
 import { trpc } from "@/lib/trpc";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { formatUsPhoneInput, validateSiteVisitRequest } from "@shared/siteVisitValidation";
@@ -56,6 +57,8 @@ export default function QuotePage() {
   const [selectedPlaceId, setSelectedPlaceId] = useState("");
   const [appliedPlaceId, setAppliedPlaceId] = useState("");
   const [addressAreaNote, setAddressAreaNote] = useState("");
+  const [currentCoordinates, setCurrentCoordinates] = useState<{ lat: number; lng: number } | null>(null);
+  const [locationError, setLocationError] = useState("");
   const addressInput = form.street.trim();
   const addressSuggestions = trpc.quote.placesAutocomplete.useQuery(
     { input: addressInput || "x" },
@@ -65,25 +68,45 @@ export default function QuotePage() {
     { placeId: selectedPlaceId || "x" },
     { enabled: Boolean(selectedPlaceId), staleTime: 5 * 60_000 }
   );
+  const currentLocationAddress = trpc.quote.reverseGeocode.useQuery(
+    { lat: currentCoordinates?.lat ?? 0, lng: currentCoordinates?.lng ?? 0 },
+    { enabled: Boolean(currentCoordinates), staleTime: 0 }
+  );
+
+  const applyResolvedAddress = (place: { formattedAddress: string; street: string; city: string; state: string; zip: string; county: string }) => {
+    const normalizedPlaceCounty = normalizeCountyName(place.county);
+    const countyIsServed = isServedCounty(place.county);
+    setForm((current) => ({ ...current, street: place.street || place.formattedAddress, city: place.city || current.city, state: place.state || "TN", zip: place.zip || current.zip, county: countyIsServed ? normalizedPlaceCounty : current.county }));
+    setAddressAreaNote(place.county && !countyIsServed ? `This address appears to be in ${normalizedPlaceCounty}, which is outside the current listed service area.` : "");
+    if (countyIsServed) setErrors((current) => ({ ...current, county: "" }));
+  };
 
   useEffect(() => {
     if (!selectedPlaceId || appliedPlaceId === selectedPlaceId || !selectedAddress.data?.formattedAddress) return;
-    const place = selectedAddress.data;
-    const normalizedPlaceCounty = normalizeCountyName(place.county);
-    const countyIsServed = isServedCounty(place.county);
-    setForm((current) => ({
-      ...current,
-      street: place.street || place.formattedAddress,
-      city: place.city || current.city,
-      state: place.state || "TN",
-      zip: place.zip || current.zip,
-      county: countyIsServed ? normalizedPlaceCounty : current.county,
-    }));
-    setAddressAreaNote(place.county && !countyIsServed ? `This address appears to be in ${normalizedPlaceCounty}, which is outside the current listed service area.` : "");
+    applyResolvedAddress(selectedAddress.data);
     setAddressFocused(false);
     setAppliedPlaceId(selectedPlaceId);
-    if (countyIsServed) setErrors((current) => ({ ...current, county: "" }));
   }, [appliedPlaceId, selectedAddress.data, selectedPlaceId]);
+
+  useEffect(() => {
+    if (!currentCoordinates || !currentLocationAddress.data?.formattedAddress) return;
+    applyResolvedAddress(currentLocationAddress.data);
+    setCurrentCoordinates(null);
+  }, [currentCoordinates, currentLocationAddress.data]);
+
+  const useCurrentLocation = () => {
+    setLocationError("");
+    setAddressAreaNote("");
+    if (!navigator.geolocation) {
+      setLocationError("This browser cannot provide location. Type or select the property address instead.");
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(
+      (position) => setCurrentCoordinates({ lat: position.coords.latitude, lng: position.coords.longitude }),
+      () => setLocationError("Location permission was not granted. You can still type and select the property address."),
+      { enableHighAccuracy: false, timeout: 10_000, maximumAge: 300_000 }
+    );
+  };
 
   const submitRequest = trpc.quote.submit.useMutation({
     onSuccess: () => {
@@ -174,8 +197,8 @@ export default function QuotePage() {
                   <label className="font-['Oswald'] text-xs uppercase tracking-[0.12em] text-white/65">County *<select name="county" value={form.county} onChange={(e) => { update("county", e.target.value); setAddressAreaNote(""); }} onBlur={() => validateField("county")} aria-invalid={Boolean(errors.county)} className={fieldClassName(Boolean(errors.county))}><option value="" className="bg-[#191919]">Select a service-area county</option>{SERVICE_AREA_COUNTIES.map((county) => <option key={county} value={county} className="bg-[#191919]">{county}</option>)}</select>{errors.county ? <span className="mt-1 block font-['Lato'] normal-case tracking-normal text-red-300">{errors.county}</span> : <span className="mt-1 block font-['Lato'] normal-case tracking-normal text-white/40">Required. We currently schedule site visits in the listed Middle and West Tennessee counties.</span>}</label>
                 </div>
                 <div className="mt-5 grid gap-5 sm:grid-cols-[1.5fr_0.5fr]">
-                  <div className="relative"><label className="font-['Oswald'] text-xs uppercase tracking-[0.12em] text-white/65">Property address <span className="text-white/40">(optional)</span><input name="street" autoComplete="street-address" value={form.street} onFocus={() => setAddressFocused(true)} onBlur={() => window.setTimeout(() => setAddressFocused(false), 160)} onChange={(e) => { update("street", e.target.value); setSelectedPlaceId(""); setAppliedPlaceId(""); setAddressAreaNote(""); }} className={fieldClassName()} placeholder="Start typing the property address" /><span className="mt-1 block font-['Lato'] normal-case tracking-normal text-white/40">Choose a suggested address to fill County, City, and ZIP when available.</span></label>{addressFocused && addressInput.length >= 3 && (addressSuggestions.isFetching || (addressSuggestions.data?.suggestions.length ?? 0) > 0) && <div className="absolute z-20 mt-1 max-h-56 w-full overflow-y-auto border border-white/20 bg-[#171717] shadow-xl">{addressSuggestions.isFetching ? <p className="px-3 py-3 font-['Lato'] text-sm text-white/55">Finding addresses…</p> : addressSuggestions.data?.suggestions.map((suggestion) => <button key={suggestion.placeId} type="button" onMouseDown={(event) => event.preventDefault()} onClick={() => setSelectedPlaceId(suggestion.placeId)} className="flex w-full items-start gap-2 border-b border-white/10 px-3 py-3 text-left font-['Lato'] text-sm text-white/80 transition hover:bg-white/10"><MapPin className="mt-0.5 h-4 w-4 shrink-0 text-[#E07B2A]" />{suggestion.description}</button>)}</div>}{addressAreaNote && <p className="mt-2 font-['Lato'] text-xs leading-5 text-red-300">{addressAreaNote}</p>}</div>
-                  <aside className="border border-[#E07B2A]/25 bg-[#E07B2A]/5 p-3 font-['Lato'] text-xs leading-5 text-white/65"><p className="font-['Oswald'] text-xs font-semibold uppercase tracking-[0.12em] text-[#E07B2A]">Service area</p><p className="mt-1">We schedule on-site visits in 35 listed Middle and West Tennessee counties.</p><details className="mt-2"><summary className="cursor-pointer font-semibold text-white/85">View supported counties</summary><ul className="mt-2 columns-2 gap-3 text-[11px] leading-5 text-white/55">{SERVICE_AREA_COUNTIES.map((county) => <li key={`reference-${county}`}>{county.replace(" County", "")}</li>)}</ul></details></aside>
+                  <div className="relative"><div className="flex items-end justify-between gap-3"><label className="min-w-0 flex-1 font-['Oswald'] text-xs uppercase tracking-[0.12em] text-white/65">Property address <span className="text-white/40">(optional)</span><input name="street" autoComplete="street-address" value={form.street} onFocus={() => setAddressFocused(true)} onBlur={() => window.setTimeout(() => setAddressFocused(false), 160)} onChange={(e) => { update("street", e.target.value); setSelectedPlaceId(""); setAppliedPlaceId(""); setAddressAreaNote(""); }} className={fieldClassName()} placeholder="Start typing the property address" /><span className="mt-1 block font-['Lato'] normal-case tracking-normal text-white/40">Choose a suggested address to fill County, City, and ZIP when available.</span></label><button type="button" onClick={useCurrentLocation} disabled={Boolean(currentCoordinates) || currentLocationAddress.isFetching} className="mb-0.5 min-h-11 shrink-0 border border-[#E07B2A]/60 px-3 font-['Oswald'] text-[11px] font-semibold uppercase tracking-[0.08em] text-[#f0ede6] transition hover:bg-[#E07B2A]/15 disabled:opacity-60">{currentCoordinates || currentLocationAddress.isFetching ? "Finding…" : "Use my location"}</button></div>{addressFocused && addressInput.length >= 3 && (addressSuggestions.isFetching || (addressSuggestions.data?.suggestions.length ?? 0) > 0) && <div className="absolute z-20 mt-1 max-h-56 w-full overflow-y-auto border border-white/20 bg-[#171717] shadow-xl">{addressSuggestions.isFetching ? <p className="px-3 py-3 font-['Lato'] text-sm text-white/55">Finding addresses…</p> : addressSuggestions.data?.suggestions.map((suggestion) => <button key={suggestion.placeId} type="button" onMouseDown={(event) => event.preventDefault()} onClick={() => setSelectedPlaceId(suggestion.placeId)} className="flex w-full items-start gap-2 border-b border-white/10 px-3 py-3 text-left font-['Lato'] text-sm text-white/80 transition hover:bg-white/10"><MapPin className="mt-0.5 h-4 w-4 shrink-0 text-[#E07B2A]" />{suggestion.description}</button>)}</div>}{locationError && <p className="mt-2 font-['Lato'] text-xs leading-5 text-red-300">{locationError}</p>}{addressAreaNote && <p className="mt-2 font-['Lato'] text-xs leading-5 text-red-300">{addressAreaNote}</p>}</div>
+                  <aside className="border border-[#E07B2A]/25 bg-[#E07B2A]/5 p-3 font-['Lato'] text-xs leading-5 text-white/65"><p className="font-['Oswald'] text-xs font-semibold uppercase tracking-[0.12em] text-[#E07B2A]">Service area</p><p className="mt-1">We schedule on-site visits in 35 listed Middle and West Tennessee counties.</p><div className="mt-3"><ServiceAreaMiniMap /></div><details className="mt-2"><summary className="cursor-pointer font-semibold text-white/85">View supported counties</summary><ul className="mt-2 columns-2 gap-3 text-[11px] leading-5 text-white/55">{SERVICE_AREA_COUNTIES.map((county) => <li key={`reference-${county}`}>{county.replace(" County", "")}</li>)}</ul></details></aside>
                 </div>
                 <div className="mt-5 grid gap-5 sm:grid-cols-[1fr_0.55fr_0.45fr]">
                   <label className="font-['Oswald'] text-xs uppercase tracking-[0.12em] text-white/65">City <span className="text-white/40">(from address)</span><input name="city" autoComplete="address-level2" value={form.city} onChange={(e) => update("city", e.target.value)} className={fieldClassName()} placeholder="City" /></label>

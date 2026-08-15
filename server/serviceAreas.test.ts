@@ -10,10 +10,12 @@ describe("approved Site Visit Request service area", () => {
   });
 
   it("accepts approved counties and rejects counties outside the current service area", () => {
-    expect(isServedCounty("Dickson County")).toBe(true);
-    expect(isServedCounty("dickson")).toBe(true);
-    expect(isServedCounty("Houston")).toBe(true);
-    expect(normalizeCountyName("Houston")).toBe("Houston County");
+    for (const county of SERVICE_AREA_COUNTIES) {
+      const shortCounty = county.replace(" County", "");
+      expect(isServedCounty(county)).toBe(true);
+      expect(isServedCounty(shortCounty)).toBe(true);
+      expect(normalizeCountyName(shortCounty)).toBe(county);
+    }
     expect(isServedCounty("Knox County")).toBe(false);
   });
 });

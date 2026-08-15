@@ -1149,4 +1149,23 @@ export const quoteRouter = router({
         return emptyAddress;
       }
     }),
+
+  reverseGeocode: publicProcedure
+    .input(z.object({ lat: z.number().min(-90).max(90), lng: z.number().min(-180).max(180) }))
+    .query(async ({ input }) => {
+      const apiKey = ENV.googlePlacesApiKey;
+      const emptyAddress = { formattedAddress: "", street: "", city: "", state: "", zip: "", county: "" };
+      if (!apiKey) return emptyAddress;
+      try {
+        const url = `https://maps.googleapis.com/maps/api/geocode/json?latlng=${input.lat},${input.lng}&key=${apiKey}`;
+        const response = await fetch(url);
+        if (!response.ok) return emptyAddress;
+        const data = await response.json() as { results?: Array<{ formatted_address?: string; address_components?: Array<{ long_name: string; short_name: string; types: string[] }> }> };
+        const result = data.results?.[0];
+        return { formattedAddress: result?.formatted_address ?? "", ...parseGooglePlaceAddress(result?.address_components) };
+      } catch (error) {
+        console.warn("[QuoteRouter] Reverse geocode lookup failed", error);
+        return emptyAddress;
+      }
+    }),
 });
