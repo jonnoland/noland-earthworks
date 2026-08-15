@@ -244,6 +244,8 @@ export default function Footer() {
               <img
                 src="https://d2xsxph8kpxj0f.cloudfront.net/310519663484957999/PymCzDCnSJzPjdkfwA7Jn6/noland-logo-transparent_783e5c7b.png"
                 alt="Noland Earthworks"
+                loading="lazy"
+                decoding="async"
                 style={{ height: "90px", width: "auto", objectFit: "contain" }}
               />
             </div>

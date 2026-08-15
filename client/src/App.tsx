@@ -78,7 +78,8 @@ const MulchRedistributionPage = lazy(() => import("./pages/MulchRedistribution")
 const SelectiveClearingPage = lazy(() => import("./pages/SelectiveClearing"));
 const TrailCuttingPage = lazy(() => import("./pages/TrailCutting"));
 const SitePreparationPage = lazy(() => import("./pages/SitePreparation"));
-const QuotePage = lazy(() => import("./pages/Quote"));
+const importQuotePage = () => import("./pages/Quote");
+const QuotePage = lazy(importQuotePage);
 const AboutPage = lazy(() => import("./pages/About"));
 const PricingPage = lazy(() => import("./pages/Pricing"));
 const FaqPage = lazy(() => import("./pages/Faq"));
@@ -235,6 +236,15 @@ function DeferredPublicAIChat() {
   }, []);
 
   return ready ? <AIChatWidget /> : null;
+}
+
+function QuoteRoutePrefetch() {
+  useEffect(() => {
+    const preloadQuote = () => { void importQuotePage(); };
+    const timeout = window.setTimeout(preloadQuote, 1200);
+    return () => window.clearTimeout(timeout);
+  }, []);
+  return null;
 }
 
 function Router() {
@@ -530,6 +540,7 @@ function App() {
           <Toaster />
           <Router />
           <ScrollToTop />
+          <QuoteRoutePrefetch />
           <Suspense fallback={null}>
             <DeferredPublicAIChat />
             <SmsToastNotifier />

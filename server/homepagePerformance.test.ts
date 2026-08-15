@@ -21,6 +21,8 @@ describe("homepage performance safeguards", () => {
 
     expect(source).not.toContain('rel="preload"\n      as="image"');
     expect(source).toContain('loading="lazy"');
+    expect(source).toContain("window.location.pathname === '/services/forestry-mulching'");
+    expect(source).toContain("forestry-mulching-mobile_47442aea.webp");
   });
 
   it("does not keep the Google Fonts stylesheet render-blocking", () => {
@@ -76,5 +78,13 @@ describe("homepage performance safeguards", () => {
     expect(app).toContain("requestIdleCallback");
     expect(app).toContain('<DeferredPublicAIChat />');
     expect(app).not.toContain('\n            <AIChatWidget />');
+  });
+
+  it("warms the compact Site Visit Request chunk after initial public-page work", () => {
+    const app = readFileSync(resolve(projectRoot, "client/src/App.tsx"), "utf8");
+
+    expect(app).toContain("const importQuotePage");
+    expect(app).toContain("function QuoteRoutePrefetch()");
+    expect(app).toContain("<QuoteRoutePrefetch />");
   });
 });

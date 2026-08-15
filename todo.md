@@ -3036,6 +3036,12 @@
 - [x] Re-verify that public header navigation, unauthenticated operations data calls, pricing routes, and the pre-visit form do not expose sensitive operations or price outputs
 - [x] Add an accessible dismissible cookie-consent banner in the footer with a direct Privacy Policy link
 - [x] Add regression coverage for the footer consent behavior and public hardening checks
+- [x] Remove the residual retired ops-viewer copy control and hard-coded viewer key from the protected dashboard
+
+## Native Site Visit Workflow & Priority LCP Verification — Aug 2026
+- [x] Verify and complete Site Visit Request capture for source, fit decision, next action, visit status, proposal status, deposit status, and final payment status
+- [x] Verify and complete Today’s Next Actions coverage for new leads, visits, proposals, deposits, weather, invoices, and review-eligible jobs
+- [x] Measure current mobile LCP for Forestry Mulching and Site Visit Request, apply targeted improvements, and validate the release
 
 ## Quote Performance & County Differentiation — Aug 2026
 - [x] Measure the current quote-page mobile performance and critical loading path

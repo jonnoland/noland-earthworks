@@ -23,8 +23,12 @@ describe("public pricing and operations access hardening", () => {
   it("removes the unauthenticated viewer API and route", () => {
     const routers = projectFile("server/routers.ts");
     const app = projectFile("client/src/App.tsx");
+    const dashboard = projectFile("client/src/pages/ops/Dashboard.tsx");
     expect(routers).not.toContain("opsViewer");
     expect(app).not.toContain('path="/ops-view"');
+    expect(dashboard).not.toContain("Read-Only Ops Viewer");
+    expect(dashboard).not.toContain("VITE_OPS_VIEWER_KEY");
+    expect(dashboard).not.toContain("/ops-view?key=");
   });
 
   it("uses a site-visit request confirmation instead of a public preliminary price", () => {
