@@ -21,6 +21,7 @@ import { Geolocation } from "@capacitor/geolocation";
 import { trpc } from "@/lib/trpc";
 import PageHeader from "@/components/PageHeader";
 import AddressAutocomplete from "@/components/AddressAutocomplete";
+import { isServedCounty, normalizeCountyName } from "@/lib/serviceAreas";
 
 // ─── SiteMapPreview ──────────────────────────────────────────────────────────
 
@@ -144,6 +145,9 @@ interface FormState {
   phone: string;
   // Site
   address: string;
+  city: string;
+  county: string;
+  zip: string;
   lat: number | null;
   lng: number | null;
   // Job details — core
@@ -229,6 +233,9 @@ export default function NewQuote() {
     email: "",
     phone: "",
     address: "",
+    city: "",
+    county: "",
+    zip: "",
     lat: null,
     lng: null,
     serviceType: "Forestry Mulching",
@@ -256,6 +263,17 @@ export default function NewQuote() {
     onSuccess: (data) => setEstimate(data as EstimateResult),
     onError: (err) => setEstimateError(err.message || "AI estimate failed."),
   });
+
+  const applyAddressDetails = (details: { address?: string | null; street?: string; city?: string; zip?: string; county?: string }) => {
+    const normalizedCounty = normalizeCountyName(details.county);
+    setForm((current) => ({
+      ...current,
+      address: details.address || details.street || current.address,
+      city: details.city || current.city,
+      zip: details.zip || current.zip,
+      county: normalizedCounty || current.county,
+    }));
+  };
 
   // Voice-to-Bid
   const [voiceListening, setVoiceListening] = useState(false);
@@ -362,7 +380,7 @@ export default function NewQuote() {
         const geo = await trpcUtils.client.fieldQuote.reverseGeocode.query({ lat: latitude, lng: longitude });
         if (geo?.address) {
           skipForwardGeocode.current = true;
-          setForm((f) => ({ ...f, address: geo.address as string }));
+          applyAddressDetails(geo);
         } else {
           setForm((f) => ({ ...f, address: `${latitude.toFixed(6)}, ${longitude.toFixed(6)}` }));
         }
@@ -499,7 +517,7 @@ export default function NewQuote() {
             setPhotos([]);
             setEstimate(null);
             setForm({
-              name: "", email: "", phone: "", address: "", lat: null, lng: null,
+              name: "", email: "", phone: "", address: "", city: "", county: "", zip: "", lat: null, lng: null,
               serviceType: "Forestry Mulching", acreage: "", linearFeet: "",
               terrain: "flat", vegetationDensity: "moderate", accessDifficulty: "easy",
               mobilizationMiles: "0", hasStumps: false, stumpCount: "", trailWidth: "",
@@ -705,6 +723,7 @@ export default function NewQuote() {
                 skipForwardGeocode.current = true;
                 setForm((f) => ({ ...f, lat, lng }));
               }}
+              onAddressDetails={(details) => applyAddressDetails(details)}
               inputStyle={inputStyle}
               placeholder="Street address or description"
               rightSlot={
@@ -721,6 +740,14 @@ export default function NewQuote() {
                 </button>
               }
             />
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 0.75fr", gap: 8, marginTop: 10 }}>
+              <input value={form.city} onChange={set("city")} placeholder="City" style={{ ...inputStyle, marginTop: 0, padding: "10px 11px" }} />
+              <input value={form.county} onChange={set("county")} placeholder="County" style={{ ...inputStyle, marginTop: 0, padding: "10px 11px" }} />
+              <input value={form.zip} onChange={set("zip")} placeholder="ZIP" style={{ ...inputStyle, marginTop: 0, padding: "10px 11px" }} />
+            </div>
+            {form.county && <p style={{ color: isServedCounty(form.county) ? "oklch(0.70 0.18 145)" : "oklch(0.75 0.16 75)", fontSize: 11, margin: "7px 0 0", lineHeight: 1.45 }}>
+              {isServedCounty(form.county) ? `${normalizeCountyName(form.county)} is in the standard service area.` : `${normalizeCountyName(form.county)} is outside the standard service area. Confirm custom travel with the owner or add the contact to the expansion waitlist in Ops.`}
+            </p>}
             {form.lat && (
               <p style={{ color: "oklch(0.65 0.18 50)", fontSize: 11, margin: "4px 0 0" }}>
                 GPS: {form.lat.toFixed(5)}, {form.lng?.toFixed(5)}
@@ -737,7 +764,7 @@ export default function NewQuote() {
                     const geo = await trpcUtils.client.fieldQuote.reverseGeocode.query({ lat, lng });
                     if (geo?.address) {
                       skipForwardGeocode.current = true;
-                      setForm((f) => ({ ...f, address: geo.address as string }));
+                      applyAddressDetails(geo);
                     }
                   } catch {
                     // silently ignore — lat/lng already updated

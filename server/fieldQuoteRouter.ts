@@ -77,6 +77,21 @@ const requireAppToken = publicProcedure.use(async ({ ctx, next }) => {
   return next({ ctx });
 });
 
+type GoogleAddressComponent = { long_name: string; short_name: string; types: string[] };
+
+function parseAddressComponents(components?: GoogleAddressComponent[]) {
+  const find = (type: string, short = false) => components?.find((component) => component.types.includes(type))?.[short ? "short_name" : "long_name"] ?? "";
+  const streetNumber = find("street_number");
+  const route = find("route");
+  return {
+    street: [streetNumber, route].filter(Boolean).join(" "),
+    city: find("locality") || find("sublocality") || find("postal_town"),
+    state: find("administrative_area_level_1", true),
+    zip: find("postal_code"),
+    county: find("administrative_area_level_2"),
+  };
+}
+
 // ─── AI Qualifier ─────────────────────────────────────────────────────────────
 
 const FIELD_QUALIFIER_PROMPT = `You are an AI assistant for Noland Earthworks, LLC — a veteran-owned land management and forestry mulching company in Middle Tennessee. Your job is to qualify incoming field quote requests and score them for the owner, Jon Noland.
@@ -961,19 +976,20 @@ Return JSON matching the schema exactly.`;
     .query(async ({ input }) => {
       try {
         const result = await makeRequest<{
-          results: Array<{ formatted_address: string }>;
+          results: Array<{ formatted_address: string; address_components?: GoogleAddressComponent[] }>;
           status: string;
         }>(`/maps/api/geocode/json`, {
           latlng: `${input.lat},${input.lng}`,
         });
 
         if (result.status === "OK" && result.results.length > 0) {
-          return { address: result.results[0].formatted_address };
+          const first = result.results[0];
+          return { address: first.formatted_address, ...parseAddressComponents(first.address_components) };
         }
-        return { address: null };
+        return { address: null, street: "", city: "", state: "", zip: "", county: "" };
       } catch (err) {
         console.error("[FieldQuoteRouter] Reverse geocode failed:", err);
-        return { address: null };
+        return { address: null, street: "", city: "", state: "", zip: "", county: "" };
       }
     }),
 
@@ -1026,13 +1042,14 @@ Return JSON matching the schema exactly.`;
         const url = new URL(`${baseUrl}/v1/maps/proxy/maps/api/place/details/json`);
         url.searchParams.set("key", apiKey);
         url.searchParams.set("place_id", input.placeId);
-        url.searchParams.set("fields", "geometry,formatted_address");
+        url.searchParams.set("fields", "geometry,formatted_address,address_component");
         if (input.sessiontoken) url.searchParams.set("sessiontoken", input.sessiontoken);
         const res = await fetch(url.toString());
         const data = await res.json() as {
           result?: {
             geometry?: { location?: { lat: number; lng: number } };
             formatted_address?: string;
+            address_components?: GoogleAddressComponent[];
           };
           status?: string;
         };
@@ -1041,10 +1058,11 @@ Return JSON matching the schema exactly.`;
           lat: loc?.lat ?? null,
           lng: loc?.lng ?? null,
           formattedAddress: data.result?.formatted_address ?? null,
+          ...parseAddressComponents(data.result?.address_components),
         };
       } catch (err) {
         console.error("[FieldQuoteRouter] placeDetails failed:", err);
-        return { lat: null, lng: null, formattedAddress: null };
+        return { lat: null, lng: null, formattedAddress: null, street: "", city: "", state: "", zip: "", county: "" };
       }
     }),
 

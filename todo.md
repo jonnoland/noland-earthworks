@@ -3088,6 +3088,12 @@
 - [x] Send an immediate expansion-waitlist confirmation email after successful signup
 - [x] Add regression coverage for navigation, waitlist feedback, dashboard grouping, and email confirmation
 
+## Companion App Site Visit Workflow Alignment — Aug 2026
+- [x] Align companion-app site-location and service-area handling with the updated website workflow
+- [x] Add companion-app current-location feedback, manual fallback, and outside-service-area guidance
+- [x] Add an in-app update action for current companion-app releases
+- [x] Validate updated companion-app source without rebuilding the APK
+
 ## Quote Performance & County Differentiation — Aug 2026
 - [x] Measure the current quote-page mobile performance and critical loading path
 - [x] Implement a low-risk quote-page performance improvement that preserves the form flow

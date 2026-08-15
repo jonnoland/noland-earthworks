@@ -28,6 +28,8 @@ interface Props {
   onChange: (address: string) => void;
   /** Called with lat/lng when a Places prediction is selected and geocoded */
   onCoordinates?: (lat: number, lng: number) => void;
+  /** Called with structured details after a Google address selection. */
+  onAddressDetails?: (details: { address: string; street: string; city: string; state: string; zip: string; county: string }) => void;
   /** Optional element rendered on the right side of the input (e.g. GPS button) */
   rightSlot?: React.ReactNode;
   inputStyle?: React.CSSProperties;
@@ -48,6 +50,7 @@ export default function AddressAutocomplete({
   value,
   onChange,
   onCoordinates,
+  onAddressDetails,
   rightSlot,
   inputStyle,
   placeholder = "Street address or description",
@@ -109,6 +112,7 @@ export default function AddressAutocomplete({
             if (res.lat !== null && res.lng !== null) {
               onCoordinates(res.lat, res.lng);
             }
+            onAddressDetails?.({ address: res.formattedAddress ?? addr, street: res.street, city: res.city, state: res.state, zip: res.zip, county: res.county });
           })
           .catch(() => { /* non-critical */ });
       }
