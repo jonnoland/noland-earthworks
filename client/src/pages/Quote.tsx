@@ -6,7 +6,7 @@ import MobileCTABar from "@/components/MobileCTABar";
 import { trpc } from "@/lib/trpc";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { formatUsPhoneInput, validateSiteVisitRequest } from "@shared/siteVisitValidation";
-import { SERVICE_AREA_COUNTIES } from "@shared/serviceAreas";
+import { isServedCounty, normalizeCountyName, SERVICE_AREA_COUNTIES } from "@shared/serviceAreas";
 
 const services = [
   "Forestry Mulching",
@@ -69,16 +69,17 @@ export default function QuotePage() {
   useEffect(() => {
     if (!selectedPlaceId || appliedPlaceId === selectedPlaceId || !selectedAddress.data?.formattedAddress) return;
     const place = selectedAddress.data;
-    const countyIsServed = SERVICE_AREA_COUNTIES.includes(place.county as typeof SERVICE_AREA_COUNTIES[number]);
+    const normalizedPlaceCounty = normalizeCountyName(place.county);
+    const countyIsServed = isServedCounty(place.county);
     setForm((current) => ({
       ...current,
       street: place.street || place.formattedAddress,
       city: place.city || current.city,
       state: place.state || "TN",
       zip: place.zip || current.zip,
-      county: countyIsServed ? place.county : current.county,
+      county: countyIsServed ? normalizedPlaceCounty : current.county,
     }));
-    setAddressAreaNote(place.county && !countyIsServed ? `This address appears to be in ${place.county}, which is outside the current listed service area.` : "");
+    setAddressAreaNote(place.county && !countyIsServed ? `This address appears to be in ${normalizedPlaceCounty}, which is outside the current listed service area.` : "");
     setAddressFocused(false);
     setAppliedPlaceId(selectedPlaceId);
     if (countyIsServed) setErrors((current) => ({ ...current, county: "" }));

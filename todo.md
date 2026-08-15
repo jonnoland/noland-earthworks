@@ -3054,6 +3054,10 @@
 - [x] Add property-address autocomplete and carry the selected address into the native request record
 - [x] Add regression coverage for service-area eligibility and selected-address handling
 
+## Address County Normalization Fix — Aug 2026
+- [x] Normalize Google address county values before comparing them to the approved service-area list
+- [x] Verify Houston County and other approved counties returned without the “County” suffix remain in service area
+
 ## Quote Performance & County Differentiation — Aug 2026
 - [x] Measure the current quote-page mobile performance and critical loading path
 - [x] Implement a low-risk quote-page performance improvement that preserves the form flow

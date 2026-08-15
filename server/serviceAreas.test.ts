@@ -4,6 +4,7 @@ import { isServedCounty, normalizeCountyName, SERVICE_AREA_COUNTIES } from "@sha
 describe("approved Site Visit Request service area", () => {
   it("contains the published service-area counties and normalizes common county input", () => {
     expect(SERVICE_AREA_COUNTIES).toContain("Dickson County");
+    expect(SERVICE_AREA_COUNTIES).toContain("Houston County");
     expect(SERVICE_AREA_COUNTIES).toContain("Madison County");
     expect(normalizeCountyName("Dickson")).toBe("Dickson County");
   });
@@ -11,6 +12,8 @@ describe("approved Site Visit Request service area", () => {
   it("accepts approved counties and rejects counties outside the current service area", () => {
     expect(isServedCounty("Dickson County")).toBe(true);
     expect(isServedCounty("dickson")).toBe(true);
+    expect(isServedCounty("Houston")).toBe(true);
+    expect(normalizeCountyName("Houston")).toBe("Houston County");
     expect(isServedCounty("Knox County")).toBe(false);
   });
 });

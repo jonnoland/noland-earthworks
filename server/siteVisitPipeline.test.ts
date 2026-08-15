@@ -33,6 +33,8 @@ describe("native Site Visit Request workflow", () => {
     const router = readProjectFile("server/quoteRouter.ts");
 
     expect(quote).toContain("SERVICE_AREA_COUNTIES.map");
+    expect(quote).toContain("const normalizedPlaceCounty = normalizeCountyName(place.county)");
+    expect(quote).toContain("const countyIsServed = isServedCounty(place.county)");
     expect(quote).toContain("trpc.quote.placesAutocomplete.useQuery");
     expect(quote).toContain("trpc.quote.placeDetails.useQuery");
     expect(quote).toContain("city: form.city.trim()");
