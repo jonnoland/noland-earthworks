@@ -3049,6 +3049,11 @@
 - [x] Create a reusable county/service template for factual local proof, verified reviews, and real project galleries
 - [x] Add regression coverage for validation, action prioritization, and review/gallery evidence safeguards
 
+## Site Visit Service-Area County & Address Entry — Aug 2026
+- [x] Require an approved Middle or West Tennessee county selection before submitting a Site Visit Request
+- [x] Add property-address autocomplete and carry the selected address into the native request record
+- [x] Add regression coverage for service-area eligibility and selected-address handling
+
 ## Quote Performance & County Differentiation — Aug 2026
 - [x] Measure the current quote-page mobile performance and critical loading path
 - [x] Implement a low-risk quote-page performance improvement that preserves the form flow

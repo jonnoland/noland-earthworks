@@ -28,4 +28,10 @@ describe("Site Visit Request contact validation", () => {
     expect(validateSiteVisitRequest({ ...validRequest, preferredContact: "text", smsConsent: false }).smsConsent).toContain("acknowledge");
     expect(validateSiteVisitRequest({ ...validRequest, preferredContact: "text", smsConsent: true })).toEqual({});
   });
+
+  it("requires a selected county from the approved service area", () => {
+    expect(validateSiteVisitRequest({ ...validRequest, county: "" }).county).toContain("service area");
+    expect(validateSiteVisitRequest({ ...validRequest, county: "Knox County" }).county).toContain("service area");
+    expect(validateSiteVisitRequest({ ...validRequest, county: "Humphreys County" })).toEqual({});
+  });
 });

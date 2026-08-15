@@ -32,9 +32,10 @@ export function validateSiteVisitRequest(form: SiteVisitRequestFields): Record<s
     errors.email = "Please enter an email address in the format name@example.com.";
   }
   if (!form.service) errors.service = "Please select the type of work you need.";
-  if (form.county.trim().length < 2) errors.county = "Please enter the Tennessee county where the property is located.";
+  if (!isServedCounty(form.county)) errors.county = "Please select a county in Noland Earthworks’ Middle or West Tennessee service area.";
   if (form.preferredContact === "text" && !form.smsConsent) {
     errors.smsConsent = "Please acknowledge the project-text terms or choose call or email instead.";
   }
   return errors;
 }
+import { isServedCounty } from "./serviceAreas";

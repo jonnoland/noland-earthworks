@@ -1,11 +1,12 @@
-import { useState } from "react";
-import { AlertCircle, CheckCircle2, ClipboardCheck, Loader2, Phone } from "lucide-react";
+import { useEffect, useState } from "react";
+import { AlertCircle, CheckCircle2, ClipboardCheck, Loader2, MapPin, Phone } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import MobileCTABar from "@/components/MobileCTABar";
 import { trpc } from "@/lib/trpc";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { formatUsPhoneInput, validateSiteVisitRequest } from "@shared/siteVisitValidation";
+import { SERVICE_AREA_COUNTIES } from "@shared/serviceAreas";
 
 const services = [
   "Forestry Mulching",
@@ -25,6 +26,9 @@ const initialForm = {
   email: "",
   service: "",
   street: "",
+  city: "",
+  state: "TN",
+  zip: "",
   county: "",
   acreage: "",
   message: "",
@@ -48,6 +52,37 @@ export default function QuotePage() {
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState("");
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [addressFocused, setAddressFocused] = useState(false);
+  const [selectedPlaceId, setSelectedPlaceId] = useState("");
+  const [appliedPlaceId, setAppliedPlaceId] = useState("");
+  const [addressAreaNote, setAddressAreaNote] = useState("");
+  const addressInput = form.street.trim();
+  const addressSuggestions = trpc.quote.placesAutocomplete.useQuery(
+    { input: addressInput || "x" },
+    { enabled: addressFocused && addressInput.length >= 3, staleTime: 60_000 }
+  );
+  const selectedAddress = trpc.quote.placeDetails.useQuery(
+    { placeId: selectedPlaceId || "x" },
+    { enabled: Boolean(selectedPlaceId), staleTime: 5 * 60_000 }
+  );
+
+  useEffect(() => {
+    if (!selectedPlaceId || appliedPlaceId === selectedPlaceId || !selectedAddress.data?.formattedAddress) return;
+    const place = selectedAddress.data;
+    const countyIsServed = SERVICE_AREA_COUNTIES.includes(place.county as typeof SERVICE_AREA_COUNTIES[number]);
+    setForm((current) => ({
+      ...current,
+      street: place.street || place.formattedAddress,
+      city: place.city || current.city,
+      state: place.state || "TN",
+      zip: place.zip || current.zip,
+      county: countyIsServed ? place.county : current.county,
+    }));
+    setAddressAreaNote(place.county && !countyIsServed ? `This address appears to be in ${place.county}, which is outside the current listed service area.` : "");
+    setAddressFocused(false);
+    setAppliedPlaceId(selectedPlaceId);
+    if (countyIsServed) setErrors((current) => ({ ...current, county: "" }));
+  }, [appliedPlaceId, selectedAddress.data, selectedPlaceId]);
 
   const submitRequest = trpc.quote.submit.useMutation({
     onSuccess: () => {
@@ -83,7 +118,9 @@ export default function QuotePage() {
       county: form.county.trim(),
       acreage: form.acreage.trim(),
       street: form.street.trim(),
-      state: "TN",
+      city: form.city.trim(),
+      state: form.state,
+      zip: form.zip.trim(),
       message: [
         form.message.trim(),
         `Preferred contact: ${form.preferredContact}.`,
@@ -133,9 +170,9 @@ export default function QuotePage() {
                 <label className="mt-5 block font-['Oswald'] text-xs uppercase tracking-[0.12em] text-white/65">Email *<input type="email" name="email" autoComplete="email" inputMode="email" value={form.email} onChange={(e) => update("email", e.target.value)} onBlur={() => validateField("email")} aria-invalid={Boolean(errors.email)} aria-describedby={errors.email ? "site-visit-email-error" : undefined} className={fieldClassName(Boolean(errors.email))} placeholder="name@example.com" />{errors.email ? <span id="site-visit-email-error" className="mt-1 block font-['Lato'] normal-case tracking-normal text-red-300">{errors.email}</span> : <span className="mt-1 block font-['Lato'] normal-case tracking-normal text-white/40">Your written scope and quote are sent here after the visit.</span>}</label>
                 <div className="mt-5 grid gap-5 sm:grid-cols-2">
                   <label className="font-['Oswald'] text-xs uppercase tracking-[0.12em] text-white/65">Type of work *<select name="service" value={form.service} onChange={(e) => update("service", e.target.value)} className={fieldClassName(Boolean(errors.service))}><option value="" className="bg-[#191919]">Select a service</option>{services.map((service) => <option key={service} value={service} className="bg-[#191919]">{service}</option>)}</select>{errors.service && <span className="mt-1 block font-['Lato'] normal-case tracking-normal text-red-300">{errors.service}</span>}</label>
-                  <label className="font-['Oswald'] text-xs uppercase tracking-[0.12em] text-white/65">County *<input name="county" value={form.county} onChange={(e) => update("county", e.target.value)} className={fieldClassName(Boolean(errors.county))} placeholder="Example: Dickson County" />{errors.county && <span className="mt-1 block font-['Lato'] normal-case tracking-normal text-red-300">{errors.county}</span>}</label>
+                  <label className="font-['Oswald'] text-xs uppercase tracking-[0.12em] text-white/65">County *<select name="county" value={form.county} onChange={(e) => { update("county", e.target.value); setAddressAreaNote(""); }} onBlur={() => validateField("county")} aria-invalid={Boolean(errors.county)} className={fieldClassName(Boolean(errors.county))}><option value="" className="bg-[#191919]">Select a service-area county</option>{SERVICE_AREA_COUNTIES.map((county) => <option key={county} value={county} className="bg-[#191919]">{county}</option>)}</select>{errors.county ? <span className="mt-1 block font-['Lato'] normal-case tracking-normal text-red-300">{errors.county}</span> : <span className="mt-1 block font-['Lato'] normal-case tracking-normal text-white/40">Required. We currently schedule site visits in the listed Middle and West Tennessee counties.</span>}</label>
                 </div>
-                <div className="mt-5 grid gap-5 sm:grid-cols-[1.5fr_0.5fr]"><label className="font-['Oswald'] text-xs uppercase tracking-[0.12em] text-white/65">Property address <span className="text-white/40">(optional)</span><input name="street" autoComplete="street-address" value={form.street} onChange={(e) => update("street", e.target.value)} className={fieldClassName()} placeholder="Street address or road name" /></label><label className="font-['Oswald'] text-xs uppercase tracking-[0.12em] text-white/65">Approx. size <span className="text-white/40">(optional)</span><input name="acreage" inputMode="decimal" value={form.acreage} onChange={(e) => update("acreage", e.target.value)} className={fieldClassName()} placeholder="Acres" /></label></div>
+                <div className="mt-5 grid gap-5 sm:grid-cols-[1.5fr_0.5fr]"><div className="relative"><label className="font-['Oswald'] text-xs uppercase tracking-[0.12em] text-white/65">Property address <span className="text-white/40">(optional)</span><input name="street" autoComplete="street-address" value={form.street} onFocus={() => setAddressFocused(true)} onBlur={() => window.setTimeout(() => setAddressFocused(false), 160)} onChange={(e) => { update("street", e.target.value); setSelectedPlaceId(""); setAppliedPlaceId(""); setAddressAreaNote(""); }} className={fieldClassName()} placeholder="Start typing the property address" /><span className="mt-1 block font-['Lato'] normal-case tracking-normal text-white/40">Choose a suggested address to fill the county when available.</span></label>{addressFocused && addressInput.length >= 3 && (addressSuggestions.isFetching || (addressSuggestions.data?.suggestions.length ?? 0) > 0) && <div className="absolute z-20 mt-1 max-h-56 w-full overflow-y-auto border border-white/20 bg-[#171717] shadow-xl">{addressSuggestions.isFetching ? <p className="px-3 py-3 font-['Lato'] text-sm text-white/55">Finding addresses…</p> : addressSuggestions.data?.suggestions.map((suggestion) => <button key={suggestion.placeId} type="button" onMouseDown={(event) => event.preventDefault()} onClick={() => setSelectedPlaceId(suggestion.placeId)} className="flex w-full items-start gap-2 border-b border-white/10 px-3 py-3 text-left font-['Lato'] text-sm text-white/80 transition hover:bg-white/10"><MapPin className="mt-0.5 h-4 w-4 shrink-0 text-[#E07B2A]" />{suggestion.description}</button>)}</div>}{addressAreaNote && <p className="mt-2 font-['Lato'] text-xs leading-5 text-red-300">{addressAreaNote}</p>}</div><label className="font-['Oswald'] text-xs uppercase tracking-[0.12em] text-white/65">Approx. size <span className="text-white/40">(optional)</span><input name="acreage" inputMode="decimal" value={form.acreage} onChange={(e) => update("acreage", e.target.value)} className={fieldClassName()} placeholder="Acres" /></label></div>
                 <div className="mt-5 grid gap-5 sm:grid-cols-2"><label className="font-['Oswald'] text-xs uppercase tracking-[0.12em] text-white/65">Best way to reach you<select value={form.preferredContact} onChange={(e) => update("preferredContact", e.target.value)} className={fieldClassName()}><option value="call" className="bg-[#191919]">Call</option><option value="text" className="bg-[#191919]">Text</option><option value="email" className="bg-[#191919]">Email</option></select></label><label className="font-['Oswald'] text-xs uppercase tracking-[0.12em] text-white/65">Preferred timing <span className="text-white/40">(optional)</span><input value={form.timing} onChange={(e) => update("timing", e.target.value)} className={fieldClassName()} placeholder="Example: This month" /></label></div>
                 <label className="mt-5 block font-['Oswald'] text-xs uppercase tracking-[0.12em] text-white/65">What would you like to accomplish?<textarea name="message" value={form.message} onChange={(e) => update("message", e.target.value.slice(0, 1200))} className={`${fieldClassName()} min-h-32 resize-y`} placeholder="Describe the work area, vegetation, access, goals, concerns, or anything Jon should know before the visit." /><span className="mt-1 block text-right font-['Lato'] normal-case tracking-normal text-white/40">{form.message.length}/1200</span></label>
                 {form.preferredContact === "text" && <label className="mt-5 flex cursor-pointer items-start gap-3 border border-white/10 bg-white/[0.03] p-4 font-['Lato'] text-xs leading-5 text-white/65"><input type="checkbox" checked={form.smsConsent} onChange={(e) => update("smsConsent", e.target.checked)} className="mt-0.5 h-4 w-4 accent-[#E07B2A]" /><span>I agree to receive project-related text messages at the number provided, including site-visit, scheduling, weather, service, proposal, invoice, and payment updates. Consent is not required to request service. Message frequency varies. Message and data rates may apply. Reply STOP to opt out or HELP for help.</span></label>}

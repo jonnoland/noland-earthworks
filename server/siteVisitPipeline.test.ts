@@ -27,4 +27,16 @@ describe("native Site Visit Request workflow", () => {
     }
     expect(dashboard).toContain("15-minute routine: leads, visits, proposals, deposits, weather, invoices, and review decisions.");
   });
+
+  it("uses approved county selection and selected Places address details in the public request", () => {
+    const quote = readProjectFile("client/src/pages/Quote.tsx");
+    const router = readProjectFile("server/quoteRouter.ts");
+
+    expect(quote).toContain("SERVICE_AREA_COUNTIES.map");
+    expect(quote).toContain("trpc.quote.placesAutocomplete.useQuery");
+    expect(quote).toContain("trpc.quote.placeDetails.useQuery");
+    expect(quote).toContain("city: form.city.trim()");
+    expect(quote).toContain("zip: form.zip.trim()");
+    expect(router).toContain("Please select a county in Noland Earthworks’ service area.");
+  });
 });

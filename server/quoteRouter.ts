@@ -13,6 +13,7 @@ import { getServiceDisplayName } from "./serviceTaxonomy";
 import { opsLeads } from "../drizzle/schema";
 import { eq } from "drizzle-orm";
 import { parseGooglePlaceAddress, parseGooglePlaceCoordinates } from "./googlePlaceAddress";
+import { isServedCounty } from "../shared/serviceAreas";
 
 // Strip markdown code fences from LLM JSON responses
 function stripCodeFence(raw: string): string {
@@ -28,7 +29,7 @@ export const quoteSchema = z.object({
   email: z.string().email("Valid email is required").max(320),
   smsConsent: z.boolean().optional().default(false),
   service: z.string().min(1, "Service is required").max(100),
-  county: z.string().min(1, "County is required").max(100),
+  county: z.string().min(1, "County is required").max(100).refine(isServedCounty, "Please select a county in Noland Earthworks’ service area."),
   acreage: z.string().max(50).optional().default(""),
   // Property / service address
   street: z.string().max(200).optional().default(""),
