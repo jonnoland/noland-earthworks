@@ -12,6 +12,7 @@ import PinLogin from "@/pages/PinLogin";
 import { useAuth } from "@/hooks/useAuth";
 import { useUpdateCheck } from "@/hooks/useUpdateCheck";
 import { useOfflineFieldQuoteSync } from "@/hooks/useOfflineFieldQuoteSync";
+import { useThemePreference } from "@/hooks/useThemePreference";
 
 // Routes where BottomNav should be hidden (they have their own PageHeader back button)
 const HIDE_BOTTOM_NAV = ["/new-quote"];
@@ -26,9 +27,11 @@ function AppShell() {
   const updateState = useUpdateCheck();
   const syncState = useOfflineFieldQuoteSync();
   useOfflineFieldQuoteSync();
+  const { isTransitioning } = useThemePreference();
 
   return (
     <div
+      className={isTransitioning ? "app-shell appearance-fade" : "app-shell"}
       style={{
         height: "100dvh",
         display: "flex",

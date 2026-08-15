@@ -5,6 +5,7 @@ import { httpBatchLink } from "@trpc/client";
 import superjson from "superjson";
 import { trpc, API_BASE_URL } from "./lib/trpc";
 import { getStoredToken, AuthProvider } from "./hooks/useAuth";
+import { ThemePreferenceProvider } from "./hooks/useThemePreference";
 import App from "./App";
 import "./index.css";
 
@@ -45,9 +46,11 @@ createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     <trpc.Provider client={trpcClient} queryClient={queryClient}>
       <QueryClientProvider client={queryClient}>
-        <AuthProvider>
-          <App />
-        </AuthProvider>
+        <ThemePreferenceProvider>
+          <AuthProvider>
+            <App />
+          </AuthProvider>
+        </ThemePreferenceProvider>
       </QueryClientProvider>
     </trpc.Provider>
   </React.StrictMode>

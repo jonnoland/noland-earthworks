@@ -1,11 +1,12 @@
 import { useState } from "react";
-import { ExternalLink, Info, LogOut, Fingerprint, ScanFace, Download, CheckCircle, RefreshCw } from "lucide-react";
+import { ExternalLink, Info, LogOut, Fingerprint, ScanFace, Download, CheckCircle, RefreshCw, Moon, Sun, Monitor } from "lucide-react";
 import { Capacitor } from "@capacitor/core";
 import PageHeader from "@/components/PageHeader";
 import { useAuth } from "@/hooks/useAuth";
 import { useBiometric } from "@/hooks/useBiometric";
 import { trpc } from "@/lib/trpc";
 import BrandLogo from "@/components/BrandLogo";
+import { useThemePreference } from "@/hooks/useThemePreference";
 
 // Version is injected at build time from package.json via vite.config.ts define
 // This ensures the installed build always reports its true version
@@ -26,6 +27,7 @@ export default function Profile() {
   const { logout } = useAuth();
   const [confirming, setConfirming] = useState(false);
   const [downloading, setDownloading] = useState(false);
+  const { preference, resolvedTheme, setPreference } = useThemePreference();
 
   // Biometric hook — no auto-prompt on Profile page (pass no-op onSuccess)
   const {
@@ -125,6 +127,45 @@ export default function Profile() {
             <p style={{ color: "oklch(0.65 0.18 50)", fontSize: 12, margin: "4px 0 0" }}>
               Veteran-Owned · Middle Tennessee
             </p>
+          </div>
+        </div>
+
+        {/* Appearance section */}
+        <p style={{ color: "var(--ne-subtle)", fontSize: 12, fontWeight: 600, letterSpacing: "0.06em", textTransform: "uppercase", margin: "0 0 8px 4px" }}>
+          Appearance
+        </p>
+        <div style={{ background: "var(--ne-soil)", border: "1px solid var(--ne-border)", borderRadius: 12, padding: "8px 16px", marginBottom: 20 }}>
+          <button
+            onClick={() => setPreference(preference === "system" ? resolvedTheme : "system")}
+            role="switch"
+            aria-checked={preference === "system"}
+            style={{ width: "100%", background: "none", border: "none", padding: "10px 0", display: "flex", alignItems: "center", justifyContent: "space-between", cursor: "pointer", color: "inherit" }}
+          >
+            <span style={{ display: "flex", alignItems: "center", gap: 12, textAlign: "left" }}>
+              <Monitor size={20} color="var(--ne-amber)" />
+              <span>
+                <span style={{ display: "block", color: "var(--ne-cream)", fontSize: 15 }}>Use device setting</span>
+                <span style={{ display: "block", color: "var(--ne-muted)", fontSize: 12, marginTop: 2 }}>Automatically follows {resolvedTheme === "dark" ? "Dark" : "Light"} mode</span>
+              </span>
+            </span>
+            <span aria-hidden="true" className={preference === "system" ? "theme-switch is-on" : "theme-switch"}><span /></span>
+          </button>
+          <div style={{ height: 1, background: "var(--ne-border)", margin: "2px 0" }} />
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, padding: "10px 0 2px" }}>
+            <button
+              onClick={() => setPreference("light")}
+              aria-pressed={preference === "light"}
+              className={preference === "light" ? "appearance-choice active" : "appearance-choice"}
+            >
+              <Sun size={16} /> Light
+            </button>
+            <button
+              onClick={() => setPreference("dark")}
+              aria-pressed={preference === "dark"}
+              className={preference === "dark" ? "appearance-choice active" : "appearance-choice"}
+            >
+              <Moon size={16} /> Dark
+            </button>
           </div>
         </div>
 

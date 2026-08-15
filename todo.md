@@ -3129,6 +3129,13 @@
 - [x] Build, sign, and publish the dark-theme companion app update after explicit release approval
 - [x] Prepare, verify, and publish the approved Noland Field v0.4.2 dark-theme APK
 
+## Companion App Appearance Controls — Aug 2026
+- [x] Add a persistent Profile setting for Light, Dark, and System appearance modes
+- [x] Respond to device light/dark preference changes while System mode is selected
+- [x] Add a motion-safe smooth fade transition for appearance changes
+- [x] Validate the appearance controls and regression coverage without rebuilding the APK
+- [ ] Build, sign, and publish the appearance-controls APK update after explicit release approval
+
 ## Quote Performance & County Differentiation — Aug 2026
 - [x] Measure the current quote-page mobile performance and critical loading path
 - [x] Implement a low-risk quote-page performance improvement that preserves the form flow
