@@ -3032,6 +3032,11 @@
 - [x] Publish the refined policy and form notice as a legal-review draft
 - [x] Add regression coverage for the revised public disclosures
 
+## Footer Cookie Consent & Public Hardening Verification — Aug 2026
+- [x] Re-verify that public header navigation, unauthenticated operations data calls, pricing routes, and the pre-visit form do not expose sensitive operations or price outputs
+- [x] Add an accessible dismissible cookie-consent banner in the footer with a direct Privacy Policy link
+- [x] Add regression coverage for the footer consent behavior and public hardening checks
+
 ## Quote Performance & County Differentiation — Aug 2026
 - [x] Measure the current quote-page mobile performance and critical loading path
 - [x] Implement a low-risk quote-page performance improvement that preserves the form flow

@@ -32,13 +32,8 @@
     <script>
       window.dataLayer = window.dataLayer || [];
       function gtag(){dataLayer.push(arguments);}
-      gtag('js', new Date());
-      gtag('config', 'G-JG160VB05E', {
-        page_path: window.location.pathname,
-        send_page_view: true
-      });
 
-      (function deferAnalytics() {
+      (function consentGatedAnalytics() {
         let loaded = false;
         const loadAnalytics = function () {
           if (loaded) return;
@@ -46,16 +41,27 @@
           const script = document.createElement('script');
           script.async = true;
           script.src = 'https://www.googletagmanager.com/gtag/js?id=G-JG160VB05E';
+          script.onload = function () {
+            gtag('js', new Date());
+            gtag('config', 'G-JG160VB05E', {
+              page_path: window.location.pathname,
+              send_page_view: true
+            });
+          };
           document.head.appendChild(script);
         };
-        ['pointerdown', 'keydown', 'touchstart'].forEach(function (eventName) {
-          window.addEventListener(eventName, loadAnalytics, { once: true, passive: true });
+        const scheduleAnalytics = function () {
+          if ('requestIdleCallback' in window) window.requestIdleCallback(loadAnalytics, { timeout: 5000 });
+          else window.setTimeout(loadAnalytics, 5000);
+        };
+        const hasAnalyticsConsent = function () {
+          try { return window.localStorage.getItem('noland_cookie_consent_v1') === 'analytics'; }
+          catch { return false; }
+        };
+        if (hasAnalyticsConsent()) scheduleAnalytics();
+        window.addEventListener('noland:cookie-consent', function (event) {
+          if (event.detail === 'analytics') scheduleAnalytics();
         });
-        if ('requestIdleCallback' in window) {
-          window.requestIdleCallback(loadAnalytics, { timeout: 5000 });
-        } else {
-          window.setTimeout(loadAnalytics, 5000);
-        }
       })();
     </script>
     <!-- Oswald + Lato from Google Fonts -->
@@ -409,9 +415,27 @@
     </div>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
-    <script
-      defer
-      src="%VITE_ANALYTICS_ENDPOINT%/umami"
-      data-website-id="%VITE_ANALYTICS_WEBSITE_ID%"></script>
+    <script>
+      (function consentGatedUmami() {
+        let loaded = false;
+        const loadUmami = function () {
+          if (loaded) return;
+          loaded = true;
+          const script = document.createElement('script');
+          script.defer = true;
+          script.src = '%VITE_ANALYTICS_ENDPOINT%/umami';
+          script.dataset.websiteId = '%VITE_ANALYTICS_WEBSITE_ID%';
+          document.head.appendChild(script);
+        };
+        const hasAnalyticsConsent = function () {
+          try { return window.localStorage.getItem('noland_cookie_consent_v1') === 'analytics'; }
+          catch { return false; }
+        };
+        if (hasAnalyticsConsent()) loadUmami();
+        window.addEventListener('noland:cookie-consent', function (event) {
+          if (event.detail === 'analytics') loadUmami();
+        });
+      })();
+    </script>
   </body>
 </html>

@@ -32,4 +32,13 @@ describe("public pricing and operations access hardening", () => {
     expect(quotePage).toContain("Site Visit Request");
     expect(quotePage).not.toContain("Live Preliminary Range");
   });
+
+  it("provides a dismissible analytics-consent choice linked to the privacy policy", () => {
+    const footer = projectFile("client/src/components/Footer.tsx");
+
+    expect(footer).toContain("noland_cookie_consent_v1");
+    expect(footer).toContain("Essential only");
+    expect(footer).toContain("Accept analytics");
+    expect(footer).toContain('href="/privacy-policy"');
+  });
 });

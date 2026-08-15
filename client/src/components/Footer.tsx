@@ -3,8 +3,59 @@
  * Company info, contact, social links, legal
  */
 import { Phone, Mail, Facebook, Instagram, Youtube } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { trpc } from "@/lib/trpc";
+
+const COOKIE_CONSENT_KEY = "noland_cookie_consent_v1";
+type CookieChoice = "essential" | "analytics";
+
+function CookieConsentBanner() {
+  const [visible, setVisible] = useState(false);
+
+  useEffect(() => {
+    try {
+      setVisible(!window.localStorage.getItem(COOKIE_CONSENT_KEY));
+    } catch {
+      setVisible(true);
+    }
+  }, []);
+
+  const choose = (choice: CookieChoice) => {
+    try {
+      window.localStorage.setItem(COOKIE_CONSENT_KEY, choice);
+    } catch {
+      // The banner can still be dismissed when a browser blocks local storage.
+    }
+    window.dispatchEvent(new CustomEvent("noland:cookie-consent", { detail: choice }));
+    setVisible(false);
+  };
+
+  if (!visible) return null;
+
+  return (
+    <aside
+      role="dialog"
+      aria-label="Cookie preferences"
+      aria-live="polite"
+      className="fixed inset-x-3 bottom-3 z-[90] mx-auto max-w-3xl border border-[#E07B2A]/45 bg-[#111111] p-4 shadow-2xl sm:bottom-5 sm:p-5"
+    >
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <p className="font-['Lato'] text-sm leading-6 text-white/75">
+          We use essential browser storage to remember this choice. With your permission, we also use analytics to understand site performance and improve service requests. Read our{" "}
+          <a href="/privacy-policy" className="font-semibold text-[#E07B2A] underline underline-offset-2">Privacy Policy</a>.
+        </p>
+        <div className="flex shrink-0 flex-col gap-2 sm:flex-row">
+          <button type="button" onClick={() => choose("essential")} className="min-h-10 border border-white/20 px-4 font-['Oswald'] text-xs font-semibold uppercase tracking-[0.1em] text-white/85 transition hover:border-white/45">
+            Essential only
+          </button>
+          <button type="button" onClick={() => choose("analytics")} className="min-h-10 bg-[#E07B2A] px-4 font-['Oswald'] text-xs font-semibold uppercase tracking-[0.1em] text-white transition hover:bg-[#f28c35]">
+            Accept analytics
+          </button>
+        </div>
+      </div>
+    </aside>
+  );
+}
 
 function EmailCaptureStrip() {
   const [email, setEmail] = useState("");
@@ -177,12 +228,13 @@ export default function Footer() {
   };
 
   return (
-    <footer
-      style={{
-        backgroundColor: "#0a0a0a",
-        borderTop: "1px solid rgba(224,123,42,0.25)",
-      }}
-    >
+    <>
+      <footer
+        style={{
+          backgroundColor: "#0a0a0a",
+          borderTop: "1px solid rgba(224,123,42,0.25)",
+        }}
+      >
       {/* Main footer content */}
       <div className="container py-12">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-10">
@@ -447,6 +499,8 @@ export default function Footer() {
           </div>
         </div>
       </div>
-    </footer>
+      </footer>
+      <CookieConsentBanner />
+    </>
   );
 }

@@ -31,13 +31,14 @@ describe("homepage performance safeguards", () => {
     expect(source).toContain("<noscript><link");
   });
 
-  it("defers Google Analytics until interaction or idle time", () => {
+  it("loads Google Analytics only after saved or newly granted analytics consent", () => {
     const source = readFileSync(resolve(projectRoot, "client/index.html"), "utf8");
 
     expect(source).not.toContain('<script async src="https://www.googletagmanager.com/gtag/js');
-    expect(source).toContain("function deferAnalytics()");
+    expect(source).toContain("function consentGatedAnalytics()");
     expect(source).toContain("document.createElement('script')");
-    expect(source).toContain("['pointerdown', 'keydown', 'touchstart']");
+    expect(source).toContain("noland_cookie_consent_v1");
+    expect(source).toContain("noland:cookie-consent");
     expect(source).toContain("requestIdleCallback");
   });
 
