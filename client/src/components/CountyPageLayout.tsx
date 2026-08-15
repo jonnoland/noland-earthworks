@@ -6,6 +6,7 @@ import { ArrowRight, MapPin, Phone, Star, FileText, Shield } from "lucide-react"
 import { useEffect, useRef, useState, lazy, Suspense } from "react";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import ShareButtons from "@/components/ShareButtons";
+import EvidenceContentSection from "@/components/EvidenceContentSection";
 const CountyMap = lazy(() => import("@/components/CountyMap"));
 
 export interface CountyPageProps {
@@ -646,6 +647,8 @@ export default function CountyPageLayout({
           </div>
         </section>
       )}
+
+      <EvidenceContentSection pageLabel={`${county}, ${state}`} county={county} />
 
       {/* Bottom CTA */}
       <section

@@ -316,8 +316,11 @@ export default function Dashboard() {
     staleTime: 60 * 1000,
   });
 
+  const [todayActionFilter, setTodayActionFilter] = useState<"all" | "urgent" | "leads" | "visits" | "proposals" | "money" | "weather" | "reviews">("all");
+  const [todayActionSort, setTodayActionSort] = useState<"urgency" | "status">("urgency");
+
   const todaysNextActions = useMemo(() => {
-    const actions: Array<{ id: string; title: string; detail: string; href: string; tone: "red" | "amber" | "blue" | "green" }> = [];
+    const actions: Array<{ id: string; title: string; detail: string; href: string; tone: "red" | "amber" | "blue" | "green"; category: "leads" | "visits" | "proposals" | "money" | "weather" | "reviews" }> = [];
     const now = Date.now();
     const dayMs = 24 * 60 * 60 * 1000;
 
@@ -327,28 +330,28 @@ export default function Dashboard() {
       .slice(0, 3)
       .forEach((lead: any) => {
       const ageHours = Math.max(0, Math.floor((now - new Date(lead.createdAt).getTime()) / (60 * 60 * 1000)));
-      actions.push({ id: `lead-${lead.id}`, title: `Respond to ${lead.name}`, detail: ageHours >= 24 ? `${ageHours}h old — outside the 24-hour response target` : `${ageHours}h since inquiry`, href: "/ops/leads", tone: ageHours >= 24 ? "red" : "amber" });
+      actions.push({ id: `lead-${lead.id}`, title: `Respond to ${lead.name}`, detail: ageHours >= 24 ? `${ageHours}h old — outside the 24-hour response target` : `${ageHours}h since inquiry`, href: "/ops/leads", tone: ageHours >= 24 ? "red" : "amber", category: "leads" });
       });
 
     nativeQuotesList.filter((quote: any) => quote.visitStatus === "requested" || quote.visitStatus === "confirmed").slice(0, 2).forEach((quote: any) => {
-      actions.push({ id: `visit-${quote.id}`, title: `${quote.visitStatus === "confirmed" ? "Confirm" : "Schedule"} site visit for ${quote.clientName}`, detail: `${quote.serviceType ?? "Site visit request"} · ${quote.nextActionType ?? "confirm property details"}`, href: `/ops/quotes?quote=${quote.id}`, tone: "amber" });
+      actions.push({ id: `visit-${quote.id}`, title: `${quote.visitStatus === "confirmed" ? "Confirm" : "Schedule"} site visit for ${quote.clientName}`, detail: `${quote.serviceType ?? "Site visit request"} · ${quote.nextActionType ?? "confirm property details"}`, href: `/ops/quotes?quote=${quote.id}`, tone: "amber", category: "visits" });
     });
 
     nativeQuotesList.filter((quote: any) => quote.proposalStatus === "draft" || quote.status === "draft").slice(0, 2).forEach((quote: any) => {
-      actions.push({ id: `proposal-${quote.id}`, title: `Finish proposal for ${quote.clientName}`, detail: `${quote.serviceType ?? "Quote"} · ${quote.nextActionType ?? "review scope and send"}`, href: `/ops/quotes?quote=${quote.id}`, tone: "amber" });
+      actions.push({ id: `proposal-${quote.id}`, title: `Finish proposal for ${quote.clientName}`, detail: `${quote.serviceType ?? "Quote"} · ${quote.nextActionType ?? "review scope and send"}`, href: `/ops/quotes?quote=${quote.id}`, tone: "amber", category: "proposals" });
     });
 
     nativeQuotesList.filter((quote: any) => quote.portalSentAt && !quote.portalViewedAt && now - new Date(quote.portalSentAt).getTime() >= 2 * dayMs).slice(0, 3).forEach((quote: any) => {
       const days = Math.floor((now - new Date(quote.portalSentAt).getTime()) / dayMs);
-      actions.push({ id: `unviewed-${quote.id}`, title: `Follow up on Quote #${quote.id}`, detail: `${quote.clientName} · sent ${days} day${days === 1 ? "" : "s"} ago and not yet viewed`, href: `/ops/quotes?quote=${quote.id}`, tone: "blue" });
+      actions.push({ id: `unviewed-${quote.id}`, title: `Follow up on Quote #${quote.id}`, detail: `${quote.clientName} · sent ${days} day${days === 1 ? "" : "s"} ago and not yet viewed`, href: `/ops/quotes?quote=${quote.id}`, tone: "blue", category: "proposals" });
     });
 
     nativeJobsList.filter((job: any) => job.status === "completed" && !job.invoicedAt).slice(0, 2).forEach((job: any) => {
-      actions.push({ id: `invoice-${job.id}`, title: `Send final invoice for ${job.clientName}`, detail: `${job.serviceType ?? "Completed job"} · final balance is ready`, href: "/ops/jobs", tone: "green" });
+      actions.push({ id: `invoice-${job.id}`, title: `Send final invoice for ${job.clientName}`, detail: `${job.serviceType ?? "Completed job"} · final balance is ready`, href: "/ops/jobs", tone: "green", category: "money" });
     });
 
     nativeQuotesList.filter((quote: any) => quote.depositStatus === "requested" && !quote.depositPaidAt).slice(0, 2).forEach((quote: any) => {
-      actions.push({ id: `deposit-${quote.id}`, title: `Follow up on deposit for ${quote.clientName}`, detail: `${quote.serviceType ?? "Approved quote"} · payment decision is still open`, href: `/ops/quotes?quote=${quote.id}`, tone: "blue" });
+      actions.push({ id: `deposit-${quote.id}`, title: `Follow up on deposit for ${quote.clientName}`, detail: `${quote.serviceType ?? "Approved quote"} · payment decision is still open`, href: `/ops/quotes?quote=${quote.id}`, tone: "blue", category: "money" });
     });
 
     nativeJobsList.filter((job: any) => {
@@ -356,19 +359,27 @@ export default function Dashboard() {
       const daysAway = Math.floor((new Date(job.scheduledDate).getTime() - now) / dayMs);
       return daysAway <= 1 && daysAway >= -1;
     }).slice(0, 1).forEach((job: any) => {
-      actions.push({ id: `weather-${job.id}`, title: `Check weather and ground conditions for ${job.clientName}`, detail: `${formatScheduledDate(job.scheduledDate)} · confirm safe access before loading out`, href: "/ops/schedule", tone: "blue" });
+      actions.push({ id: `weather-${job.id}`, title: `Check weather and ground conditions for ${job.clientName}`, detail: `${formatScheduledDate(job.scheduledDate)} · confirm safe access before loading out`, href: "/ops/schedule", tone: "blue", category: "weather" });
     });
 
     nativeInvoicesList.filter((invoice: any) => ["unpaid", "sent"].includes(invoice.status)).slice(0, 2).forEach((invoice: any) => {
-      actions.push({ id: `payment-${invoice.id}`, title: `Follow up on invoice for ${invoice.clientName}`, detail: invoice.dueDate && new Date(invoice.dueDate).getTime() < now ? "Past due — confirm payment status" : "Payment is still outstanding", href: "/ops/invoices", tone: "red" });
+      actions.push({ id: `payment-${invoice.id}`, title: `Follow up on invoice for ${invoice.clientName}`, detail: invoice.dueDate && new Date(invoice.dueDate).getTime() < now ? "Past due — confirm payment status" : "Payment is still outstanding", href: "/ops/invoices", tone: "red", category: "money" });
     });
 
     nativeJobsList.filter((job: any) => job.status === "completed" && !(job as any).reviewRequestSentAt).slice(0, 1).forEach((job: any) => {
-      actions.push({ id: `review-${job.id}`, title: `Decide on a review request for ${job.clientName}`, detail: "Completed job · send only after confirming the customer is satisfied", href: "/ops/reviews", tone: "green" });
+      actions.push({ id: `review-${job.id}`, title: `Decide on a review request for ${job.clientName}`, detail: "Completed job · send only after confirming the customer is satisfied", href: "/ops/reviews", tone: "green", category: "reviews" });
     });
 
     return actions.slice(0, 10);
   }, [leads, nativeQuotesList, nativeJobsList, nativeInvoicesList]);
+
+  const visibleTodayActions = useMemo(() => {
+    const priority = { red: 0, amber: 1, blue: 2, green: 3 };
+    const filtered = todaysNextActions.filter((action) => todayActionFilter === "all" || (todayActionFilter === "urgent" ? ["red", "amber"].includes(action.tone) : action.category === todayActionFilter));
+    return [...filtered].sort((a, b) => todayActionSort === "urgency"
+      ? priority[a.tone] - priority[b.tone] || a.category.localeCompare(b.category)
+      : a.category.localeCompare(b.category) || priority[a.tone] - priority[b.tone]);
+  }, [todaysNextActions, todayActionFilter, todayActionSort]);
   useEffect(() => {
     if (prevLeadCount.current !== null && leads.length > prevLeadCount.current) {
       const diff = leads.length - prevLeadCount.current;
@@ -1368,8 +1379,21 @@ export default function Dashboard() {
             </div>
             <Link href="/ops/leads" className="text-xs text-primary hover:underline">Open pipeline</Link>
           </div>
+          <div className="flex flex-col gap-2 border-b border-border bg-background/25 px-5 py-3 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-[11px] text-muted-foreground">{visibleTodayActions.length} of {todaysNextActions.length} actions shown</p>
+            <div className="flex flex-wrap gap-2">
+              <label className="sr-only" htmlFor="today-action-filter">Filter Today’s Next Actions</label>
+              <select id="today-action-filter" value={todayActionFilter} onChange={(event) => setTodayActionFilter(event.target.value as typeof todayActionFilter)} className="h-8 rounded border border-border bg-card px-2 text-xs text-foreground">
+                <option value="all">All statuses</option><option value="urgent">Urgent first</option><option value="leads">New leads</option><option value="visits">Visits</option><option value="proposals">Proposals</option><option value="money">Deposits & invoices</option><option value="weather">Weather</option><option value="reviews">Reviews</option>
+              </select>
+              <label className="sr-only" htmlFor="today-action-sort">Sort Today’s Next Actions</label>
+              <select id="today-action-sort" value={todayActionSort} onChange={(event) => setTodayActionSort(event.target.value as typeof todayActionSort)} className="h-8 rounded border border-border bg-card px-2 text-xs text-foreground">
+                <option value="urgency">Sort: urgency</option><option value="status">Sort: status</option>
+              </select>
+            </div>
+          </div>
           <div className="divide-y divide-border">
-            {todaysNextActions.length > 0 ? todaysNextActions.map((action) => {
+            {visibleTodayActions.length > 0 ? visibleTodayActions.map((action) => {
               const tone = action.tone === "red" ? "bg-red-500/10 text-red-400" : action.tone === "amber" ? "bg-amber-500/10 text-amber-400" : action.tone === "blue" ? "bg-blue-500/10 text-blue-400" : "bg-emerald-500/10 text-emerald-400";
               const Icon = action.tone === "green" ? Receipt : action.tone === "blue" ? Eye : action.tone === "red" ? Clock : Send;
               return (
@@ -1377,7 +1401,7 @@ export default function Dashboard() {
                   <span className={`h-8 w-8 rounded-md flex items-center justify-center shrink-0 ${tone}`}><Icon className="h-4 w-4" /></span>
                   <span className="min-w-0 flex-1">
                     <span className="block text-sm font-medium text-foreground truncate">{action.title}</span>
-                    <span className="block text-xs text-muted-foreground truncate">{action.detail}</span>
+                    <span className="block text-xs text-muted-foreground truncate"><span className="mr-1 font-medium uppercase tracking-wide text-muted-foreground/80">{action.category}</span>{action.detail}</span>
                   </span>
                   <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
                 </Link>

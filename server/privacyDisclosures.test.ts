@@ -20,7 +20,8 @@ describe("public privacy and form disclosures", () => {
     const quote = readFileSync(resolve(projectRoot, "client/src/pages/Quote.tsx"), "utf8");
     const router = readFileSync(resolve(projectRoot, "server/quoteRouter.ts"), "utf8");
 
-    expect(quote).toContain('form.preferredContact === "text" && !form.smsConsent');
+    expect(quote).toContain("validateSiteVisitRequest(form)");
+    expect(quote).toContain('form.preferredContact === "text"');
     expect(quote).toContain("Reply STOP to opt out or HELP for help");
     expect(router).toContain("smsConsentAt");
   });

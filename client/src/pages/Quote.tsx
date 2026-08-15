@@ -5,6 +5,7 @@ import Footer from "@/components/Footer";
 import MobileCTABar from "@/components/MobileCTABar";
 import { trpc } from "@/lib/trpc";
 import { usePageTitle } from "@/hooks/usePageTitle";
+import { formatUsPhoneInput, validateSiteVisitRequest } from "@shared/siteVisitValidation";
 
 const services = [
   "Forestry Mulching",
@@ -57,19 +58,19 @@ export default function QuotePage() {
   });
 
   const update = (field: keyof typeof initialForm, value: string | boolean) => {
-    setForm((current) => ({ ...current, [field]: value }));
+    const normalizedValue = field === "phone" && typeof value === "string" ? formatUsPhoneInput(value) : value;
+    setForm((current) => ({ ...current, [field]: normalizedValue }));
     if (errors[field]) setErrors((current) => ({ ...current, [field]: "" }));
+  };
+
+  const validateField = (field: keyof typeof initialForm) => {
+    const fieldErrors = validateSiteVisitRequest(form);
+    setErrors((current) => ({ ...current, [field]: fieldErrors[field] ?? "" }));
   };
 
   const submit = (event: React.FormEvent) => {
     event.preventDefault();
-    const nextErrors: Record<string, string> = {};
-    if (!form.name.trim()) nextErrors.name = "Please enter your name.";
-    if (!/[0-9]{7,}/.test(form.phone.replace(/\D/g, ""))) nextErrors.phone = "Please enter a phone number we can use.";
-    if (!/^\S+@\S+\.\S+$/.test(form.email.trim())) nextErrors.email = "Please enter a valid email address.";
-    if (!form.service) nextErrors.service = "Please select the type of work you need.";
-    if (!form.county.trim()) nextErrors.county = "Please tell us the county where the property is located.";
-    if (form.preferredContact === "text" && !form.smsConsent) nextErrors.smsConsent = "Please acknowledge the project-text message terms to select text as your contact method.";
+    const nextErrors = validateSiteVisitRequest(form);
     setErrors(nextErrors);
     if (Object.keys(nextErrors).length) return;
 
@@ -126,10 +127,10 @@ export default function QuotePage() {
                 <div className="mb-7"><p className="font-['Oswald'] text-xs font-semibold uppercase tracking-[0.18em] text-[#E07B2A]">Site Visit Request</p><h2 className="mt-2 font-['Oswald'] text-3xl font-bold uppercase">A few details to get started</h2><p className="mt-3 font-['Lato'] text-sm leading-6 text-white/60">Required fields are marked with an asterisk.</p></div>
                 {error && <p role="alert" className="mb-5 flex gap-2 border border-red-400/35 bg-red-400/10 p-3 font-['Lato'] text-sm text-red-200"><AlertCircle className="h-5 w-5 shrink-0" />{error}</p>}
                 <div className="grid gap-5 sm:grid-cols-2">
-                  <label className="font-['Oswald'] text-xs uppercase tracking-[0.12em] text-white/65">Name *<input name="name" autoComplete="name" value={form.name} onChange={(e) => update("name", e.target.value)} className={fieldClassName(Boolean(errors.name))} />{errors.name && <span className="mt-1 block font-['Lato'] normal-case tracking-normal text-red-300">{errors.name}</span>}</label>
-                  <label className="font-['Oswald'] text-xs uppercase tracking-[0.12em] text-white/65">Phone *<input name="phone" autoComplete="tel" inputMode="tel" value={form.phone} onChange={(e) => update("phone", e.target.value)} className={fieldClassName(Boolean(errors.phone))} />{errors.phone && <span className="mt-1 block font-['Lato'] normal-case tracking-normal text-red-300">{errors.phone}</span>}</label>
+                  <label className="font-['Oswald'] text-xs uppercase tracking-[0.12em] text-white/65">Name *<input name="name" autoComplete="name" value={form.name} onChange={(e) => update("name", e.target.value)} onBlur={() => validateField("name")} aria-invalid={Boolean(errors.name)} aria-describedby={errors.name ? "site-visit-name-error" : undefined} className={fieldClassName(Boolean(errors.name))} placeholder="Your name" />{errors.name ? <span id="site-visit-name-error" className="mt-1 block font-['Lato'] normal-case tracking-normal text-red-300">{errors.name}</span> : <span className="mt-1 block font-['Lato'] normal-case tracking-normal text-white/40">This is how Jon will address you.</span>}</label>
+                  <label className="font-['Oswald'] text-xs uppercase tracking-[0.12em] text-white/65">Phone *<input name="phone" autoComplete="tel" inputMode="tel" value={form.phone} onChange={(e) => update("phone", e.target.value)} onBlur={() => validateField("phone")} aria-invalid={Boolean(errors.phone)} aria-describedby={errors.phone ? "site-visit-phone-error" : undefined} className={fieldClassName(Boolean(errors.phone))} placeholder="(615) 406-4819" />{errors.phone ? <span id="site-visit-phone-error" className="mt-1 block font-['Lato'] normal-case tracking-normal text-red-300">{errors.phone}</span> : <span className="mt-1 block font-['Lato'] normal-case tracking-normal text-white/40">A 10-digit number for the visit follow-up.</span>}</label>
                 </div>
-                <label className="mt-5 block font-['Oswald'] text-xs uppercase tracking-[0.12em] text-white/65">Email *<input name="email" autoComplete="email" inputMode="email" value={form.email} onChange={(e) => update("email", e.target.value)} className={fieldClassName(Boolean(errors.email))} />{errors.email && <span className="mt-1 block font-['Lato'] normal-case tracking-normal text-red-300">{errors.email}</span>}</label>
+                <label className="mt-5 block font-['Oswald'] text-xs uppercase tracking-[0.12em] text-white/65">Email *<input type="email" name="email" autoComplete="email" inputMode="email" value={form.email} onChange={(e) => update("email", e.target.value)} onBlur={() => validateField("email")} aria-invalid={Boolean(errors.email)} aria-describedby={errors.email ? "site-visit-email-error" : undefined} className={fieldClassName(Boolean(errors.email))} placeholder="name@example.com" />{errors.email ? <span id="site-visit-email-error" className="mt-1 block font-['Lato'] normal-case tracking-normal text-red-300">{errors.email}</span> : <span className="mt-1 block font-['Lato'] normal-case tracking-normal text-white/40">Your written scope and quote are sent here after the visit.</span>}</label>
                 <div className="mt-5 grid gap-5 sm:grid-cols-2">
                   <label className="font-['Oswald'] text-xs uppercase tracking-[0.12em] text-white/65">Type of work *<select name="service" value={form.service} onChange={(e) => update("service", e.target.value)} className={fieldClassName(Boolean(errors.service))}><option value="" className="bg-[#191919]">Select a service</option>{services.map((service) => <option key={service} value={service} className="bg-[#191919]">{service}</option>)}</select>{errors.service && <span className="mt-1 block font-['Lato'] normal-case tracking-normal text-red-300">{errors.service}</span>}</label>
                   <label className="font-['Oswald'] text-xs uppercase tracking-[0.12em] text-white/65">County *<input name="county" value={form.county} onChange={(e) => update("county", e.target.value)} className={fieldClassName(Boolean(errors.county))} placeholder="Example: Dickson County" />{errors.county && <span className="mt-1 block font-['Lato'] normal-case tracking-normal text-red-300">{errors.county}</span>}</label>

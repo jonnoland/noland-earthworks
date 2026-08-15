@@ -5,6 +5,7 @@
 import { useState, useEffect, useRef, useMemo } from "react";
 import { ArrowLeft, ChevronDown, ChevronUp, ArrowRight, Check } from "lucide-react";
 import ShareButtons from "@/components/ShareButtons";
+import EvidenceContentSection from "@/components/EvidenceContentSection";
 import { trpc } from "@/lib/trpc";
 // Using plain <a> tags to avoid nested anchor issues (wouter Link renders as <a>)
 
@@ -422,6 +423,8 @@ export default function ServicePageLayout(props: ServicePageProps) {
           </div>
         </div>
       </section>
+
+      <EvidenceContentSection pageLabel={title} serviceType={slug} />
 
       {/* ── RELATED SERVICES ── */}
       <section

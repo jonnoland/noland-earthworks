@@ -3043,6 +3043,12 @@
 - [x] Verify and complete Today’s Next Actions coverage for new leads, visits, proposals, deposits, weather, invoices, and review-eligible jobs
 - [x] Measure current mobile LCP for Forestry Mulching and Site Visit Request, apply targeted improvements, and validate the release
 
+## Site Visit Validation, Action Prioritization & Evidence Content Template — Aug 2026
+- [x] Add clear inline validation and contact-detail guidance to the Site Visit Request form
+- [x] Add urgency/status filtering and sorting controls to Today’s Next Actions
+- [x] Create a reusable county/service template for factual local proof, verified reviews, and real project galleries
+- [x] Add regression coverage for validation, action prioritization, and review/gallery evidence safeguards
+
 ## Quote Performance & County Differentiation — Aug 2026
 - [x] Measure the current quote-page mobile performance and critical loading path
 - [x] Implement a low-risk quote-page performance improvement that preserves the form flow
