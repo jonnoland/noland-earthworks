@@ -3136,6 +3136,11 @@
 - [x] Validate the appearance controls and regression coverage without rebuilding the APK
 - [ ] Build, sign, and publish the appearance-controls APK update after explicit release approval
 
+## Companion Update Download Recovery — Aug 2026
+- [x] Diagnose why the published companion APK update download stalls before completion
+- [x] Add a reliable installation handoff and clear fallback guidance in the companion app
+- [x] Validate the corrected update-download path against the published release asset
+
 ## Quote Performance & County Differentiation — Aug 2026
 - [x] Measure the current quote-page mobile performance and critical loading path
 - [x] Implement a low-risk quote-page performance improvement that preserves the form flow

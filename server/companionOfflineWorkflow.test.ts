@@ -12,7 +12,7 @@ describe("companion release, map, and offline workflow", () => {
     expect(router).toContain('tag_name.startsWith("mobile-v")');
     expect(router).toContain("browser_download_url");
     expect(router).toContain("const MOBILE_RELEASE_CACHE_MS = 60_000");
-    expect(profile).toContain("Install Update");
+    expect(profile).toContain("Download Update");
   });
 
   it("renders a visual supported-area map in the companion location screen", () => {

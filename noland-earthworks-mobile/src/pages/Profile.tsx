@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { ExternalLink, Info, LogOut, Fingerprint, ScanFace, Download, CheckCircle, RefreshCw, Moon, Sun, Monitor } from "lucide-react";
 import { Capacitor } from "@capacitor/core";
+import { Browser } from "@capacitor/browser";
 import PageHeader from "@/components/PageHeader";
 import { useAuth } from "@/hooks/useAuth";
 import { useBiometric } from "@/hooks/useBiometric";
@@ -52,17 +53,30 @@ export default function Profile() {
     ? isNewerVersion(versionData.version, APP_VERSION)
     : false;
 
-  function handleDownloadUpdate() {
+  async function openUpdateLink(url: string) {
+    if (Capacitor.isNativePlatform()) {
+      try {
+        await Browser.open({ url });
+        return;
+      } catch {
+        window.open(url, "_system");
+        return;
+      }
+    }
+    window.open(url, "_blank", "noopener,noreferrer");
+  }
+
+  async function handleDownloadUpdate() {
     if (!versionData?.downloadUrl || downloading) return;
     setDownloading(true);
-    // Brief spinner window so the user sees feedback before the OS takes over
-    setTimeout(() => setDownloading(false), 3000);
-    // On native Android, _system hands the URL to the OS browser/download manager
-    if (Capacitor.isNativePlatform()) {
-      window.open(versionData.downloadUrl, "_system");
-    } else {
-      window.open(versionData.downloadUrl, "_blank");
-    }
+    await openUpdateLink(versionData.downloadUrl);
+    // The operating system owns the download; clear the handoff state after the browser opens.
+    window.setTimeout(() => setDownloading(false), 1200);
+  }
+
+  async function handleOpenReleasePage() {
+    if (!versionData) return;
+    await openUpdateLink(versionData.releaseNotesUrl || versionData.downloadUrl);
   }
 
   function handleLogoutPress() {
@@ -175,43 +189,35 @@ export default function Profile() {
         </p>
         <div style={{ marginBottom: 20 }}>
           {updateAvailable ? (
-            /* Update available — prominent orange card */
-            <button
-              onClick={handleDownloadUpdate}
-              disabled={downloading}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                backgroundColor: downloading ? "oklch(0.16 0.03 50)" : "oklch(0.20 0.05 50)",
-                border: "1px solid oklch(0.65 0.18 50)",
-                borderRadius: 12,
-                padding: "16px",
-                textDecoration: "none",
-                gap: 12,
-                width: "100%",
-                cursor: downloading ? "not-allowed" : "pointer",
-                opacity: downloading ? 0.75 : 1,
-                transition: "opacity 0.2s, background-color 0.2s",
-              }}
-            >
-              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                {downloading ? (
-                  <RefreshCw size={20} color="oklch(0.65 0.18 50)" style={{ animation: "spin 0.8s linear infinite" }} />
-                ) : (
-                  <Download size={20} color="oklch(0.65 0.18 50)" />
-                )}
-                <div style={{ textAlign: "left" }}>
-                  <p style={{ color: "oklch(0.94 0.01 80)", fontSize: 15, fontWeight: 600, margin: 0 }}>
-                    {downloading ? "Starting download..." : "Install Update"}
-                  </p>
-                  <p style={{ color: "oklch(0.65 0.18 50)", fontSize: 12, margin: "2px 0 0" }}>
-                    v{APP_VERSION} → v{versionData!.version}{downloading ? " · Opening download manager" : " · Download and install the signed APK"}
-                  </p>
+            <div>
+              {/* Update available — native browser download with a release-page fallback */}
+              <button
+                onClick={handleDownloadUpdate}
+                disabled={downloading}
+                style={{
+                  display: "flex", alignItems: "center", justifyContent: "space-between",
+                  backgroundColor: downloading ? "oklch(0.16 0.03 50)" : "oklch(0.20 0.05 50)",
+                  border: "1px solid oklch(0.65 0.18 50)", borderRadius: 12, padding: "16px",
+                  textDecoration: "none", gap: 12, width: "100%", cursor: downloading ? "not-allowed" : "pointer",
+                  opacity: downloading ? 0.75 : 1, transition: "opacity 0.2s, background-color 0.2s",
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                  {downloading ? <RefreshCw size={20} color="oklch(0.65 0.18 50)" style={{ animation: "spin 0.8s linear infinite" }} /> : <Download size={20} color="oklch(0.65 0.18 50)" />}
+                  <div style={{ textAlign: "left" }}>
+                    <p style={{ color: "oklch(0.94 0.01 80)", fontSize: 15, fontWeight: 600, margin: 0 }}>{downloading ? "Opening secure download..." : "Download Update"}</p>
+                    <p style={{ color: "oklch(0.65 0.18 50)", fontSize: 12, margin: "2px 0 0" }}>v{APP_VERSION} → v{versionData!.version} · Opens in your browser</p>
+                  </div>
                 </div>
-              </div>
-              {!downloading && <ExternalLink size={16} color="oklch(0.65 0.18 50)" />}
-            </button>
+                {!downloading && <ExternalLink size={16} color="oklch(0.65 0.18 50)" />}
+              </button>
+              <p style={{ color: "var(--ne-muted)", fontSize: 12, lineHeight: 1.45, margin: "10px 4px 0" }}>
+                When the download finishes, tap the APK in your browser’s downloads. If it stalls, open the release page and start the download there.
+              </p>
+              <button onClick={handleOpenReleasePage} style={{ margin: "6px 4px 0", padding: 0, border: "none", background: "none", color: "var(--ne-amber)", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
+                Open release page instead
+              </button>
+            </div>
           ) : (
             /* Up to date or loading */
             <div

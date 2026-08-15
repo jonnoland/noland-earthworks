@@ -14,6 +14,9 @@ importers:
       '@capacitor/android':
         specifier: ^8.3.4
         version: 8.3.4(@capacitor/core@8.3.4)
+      '@capacitor/browser':
+        specifier: ^8.0.4
+        version: 8.0.4(@capacitor/core@8.3.4)
       '@capacitor/camera':
         specifier: ^8.2.0
         version: 8.2.0(@capacitor/core@8.3.4)
@@ -210,6 +213,11 @@ packages:
 
   '@capacitor/app@8.1.0':
     resolution: {integrity: sha512-MlmttTOWHDedr/G4SrhNRxsXMqY+R75S4MM4eIgzsgCzOYhb/MpCkA5Q3nuOCfL1oHm26xjUzqZ5aupbOwdfYg==}
+    peerDependencies:
+      '@capacitor/core': '>=8.0.0'
+
+  '@capacitor/browser@8.0.4':
+    resolution: {integrity: sha512-ORZ4u/y+7aMuu6yVuk6SP529fUZyqcbnuHB1q5McpA3o2SYfVoi28iB8rsQjI2ad1qlKJd29ZUuGtspXLBDlWg==}
     peerDependencies:
       '@capacitor/core': '>=8.0.0'
 
@@ -746,6 +754,7 @@ packages:
   '@xmldom/xmldom@0.9.10':
     resolution: {integrity: sha512-A9gOqLdi6cV4ibazAjcQufGj0B1y/vDqYrcuP6d/6x8P27gRS8643Dj9o1dEKtB6O7fwxb2FgBmJS2mX7gpvdw==}
     engines: {node: '>=14.6'}
+    deprecated: this version has critical issues, please update to the latest version
 
   acorn-jsx@5.3.2:
     resolution: {integrity: sha512-rq9s+JNhf0IChjtDXxllJ7g41oZk5SlXtp0LHwyA5cejwn7vKmKp4pPri6YEePv2PU65sAsegbXtIinmDFDXgQ==}
@@ -1701,6 +1710,10 @@ snapshots:
       '@capacitor/core': 8.3.4
 
   '@capacitor/app@8.1.0(@capacitor/core@8.3.4)':
+    dependencies:
+      '@capacitor/core': 8.3.4
+
+  '@capacitor/browser@8.0.4(@capacitor/core@8.3.4)':
     dependencies:
       '@capacitor/core': 8.3.4
 
