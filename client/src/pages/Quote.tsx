@@ -28,6 +28,7 @@ const initialForm = {
   acreage: "",
   message: "",
   preferredContact: "call",
+  smsConsent: false,
   timing: "",
 };
 
@@ -55,7 +56,7 @@ export default function QuotePage() {
     onError: (mutationError) => setError(mutationError.message || "Something went wrong. Please call 615-406-4819 and we will help.")
   });
 
-  const update = (field: keyof typeof initialForm, value: string) => {
+  const update = (field: keyof typeof initialForm, value: string | boolean) => {
     setForm((current) => ({ ...current, [field]: value }));
     if (errors[field]) setErrors((current) => ({ ...current, [field]: "" }));
   };
@@ -68,6 +69,7 @@ export default function QuotePage() {
     if (!/^\S+@\S+\.\S+$/.test(form.email.trim())) nextErrors.email = "Please enter a valid email address.";
     if (!form.service) nextErrors.service = "Please select the type of work you need.";
     if (!form.county.trim()) nextErrors.county = "Please tell us the county where the property is located.";
+    if (form.preferredContact === "text" && !form.smsConsent) nextErrors.smsConsent = "Please acknowledge the project-text message terms to select text as your contact method.";
     setErrors(nextErrors);
     if (Object.keys(nextErrors).length) return;
 
@@ -75,6 +77,7 @@ export default function QuotePage() {
       name: form.name.trim(),
       phone: form.phone.trim(),
       email: form.email.trim(),
+      smsConsent: form.smsConsent,
       service: form.service,
       county: form.county.trim(),
       acreage: form.acreage.trim(),
@@ -134,7 +137,9 @@ export default function QuotePage() {
                 <div className="mt-5 grid gap-5 sm:grid-cols-[1.5fr_0.5fr]"><label className="font-['Oswald'] text-xs uppercase tracking-[0.12em] text-white/65">Property address <span className="text-white/40">(optional)</span><input name="street" autoComplete="street-address" value={form.street} onChange={(e) => update("street", e.target.value)} className={fieldClassName()} placeholder="Street address or road name" /></label><label className="font-['Oswald'] text-xs uppercase tracking-[0.12em] text-white/65">Approx. size <span className="text-white/40">(optional)</span><input name="acreage" inputMode="decimal" value={form.acreage} onChange={(e) => update("acreage", e.target.value)} className={fieldClassName()} placeholder="Acres" /></label></div>
                 <div className="mt-5 grid gap-5 sm:grid-cols-2"><label className="font-['Oswald'] text-xs uppercase tracking-[0.12em] text-white/65">Best way to reach you<select value={form.preferredContact} onChange={(e) => update("preferredContact", e.target.value)} className={fieldClassName()}><option value="call" className="bg-[#191919]">Call</option><option value="text" className="bg-[#191919]">Text</option><option value="email" className="bg-[#191919]">Email</option></select></label><label className="font-['Oswald'] text-xs uppercase tracking-[0.12em] text-white/65">Preferred timing <span className="text-white/40">(optional)</span><input value={form.timing} onChange={(e) => update("timing", e.target.value)} className={fieldClassName()} placeholder="Example: This month" /></label></div>
                 <label className="mt-5 block font-['Oswald'] text-xs uppercase tracking-[0.12em] text-white/65">What would you like to accomplish?<textarea name="message" value={form.message} onChange={(e) => update("message", e.target.value.slice(0, 1200))} className={`${fieldClassName()} min-h-32 resize-y`} placeholder="Describe the work area, vegetation, access, goals, concerns, or anything Jon should know before the visit." /><span className="mt-1 block text-right font-['Lato'] normal-case tracking-normal text-white/40">{form.message.length}/1200</span></label>
-                <p className="mt-6 font-['Lato'] text-xs leading-5 text-white/45">By submitting, you ask Noland Earthworks to review this site-visit request and contact you about the project. Your details may be stored in the native operations system and used with service providers for email, SMS/phone, mapping, AI-assisted internal drafting, hosting/storage, and payment if work is approved. See the <a className="text-[#E07B2A] underline" href="/privacy-policy">Privacy Policy</a>.</p>
+                {form.preferredContact === "text" && <label className="mt-5 flex cursor-pointer items-start gap-3 border border-white/10 bg-white/[0.03] p-4 font-['Lato'] text-xs leading-5 text-white/65"><input type="checkbox" checked={form.smsConsent} onChange={(e) => update("smsConsent", e.target.checked)} className="mt-0.5 h-4 w-4 accent-[#E07B2A]" /><span>I agree to receive project-related text messages at the number provided, including site-visit, scheduling, weather, service, proposal, invoice, and payment updates. Consent is not required to request service. Message frequency varies. Message and data rates may apply. Reply STOP to opt out or HELP for help.</span></label>}
+                {errors.smsConsent && <p className="mt-2 font-['Lato'] text-xs text-red-300">{errors.smsConsent}</p>}
+                <p className="mt-6 font-['Lato'] text-xs leading-5 text-white/45">By submitting, you ask Noland Earthworks to review this Site Visit Request and contact you about the project. We create a native request and client record, and use service providers for email, phone/SMS, hosting and storage, analytics, and AI-assisted internal request organization. If work is approved, payment details are handled by Stripe; Noland Earthworks does not intend to store your payment-card number. Do not include sensitive information that is not needed for your request. See the <a className="text-[#E07B2A] underline" href="/privacy-policy">Privacy Policy</a>.</p>
                 <button type="submit" disabled={submitRequest.isPending} className="mt-6 inline-flex min-h-12 w-full items-center justify-center gap-2 bg-[#E07B2A] px-6 font-['Oswald'] text-sm font-semibold uppercase tracking-[0.12em] text-white transition hover:bg-[#f28c35] disabled:cursor-not-allowed disabled:opacity-60">{submitRequest.isPending ? <><Loader2 className="h-5 w-5 animate-spin" /> Sending request</> : "Request a Site Visit"}</button>
               </form>
             )}

@@ -3027,6 +3027,11 @@
 - [x] Prepare verified Google Business Profile, Bing Places/Bing Webmaster AI Performance, Search Console, and monthly-review measurement setup
 - [x] Resolve or report the incorrect duplicate Google Maps listing before relying on local-review or local-visibility counts
 
+## Privacy & Form Disclosure Alignment — Aug 2026
+- [x] Verify the public policy and Site Visit Request disclosures match all current collection, AI, mapping, storage, payment, email, and SMS workflows
+- [x] Publish the refined policy and form notice as a legal-review draft
+- [x] Add regression coverage for the revised public disclosures
+
 ## Quote Performance & County Differentiation — Aug 2026
 - [x] Measure the current quote-page mobile performance and critical loading path
 - [x] Implement a low-risk quote-page performance improvement that preserves the form flow

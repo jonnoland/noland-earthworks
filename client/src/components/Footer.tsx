@@ -153,6 +153,18 @@ function EmailCaptureStrip() {
             )}
           </form>
         )}
+        <p
+          style={{
+            fontFamily: "'Lato', sans-serif",
+            fontSize: "0.72rem",
+            lineHeight: 1.5,
+            color: "rgba(240,237,230,0.42)",
+            margin: "0.25rem 0 0",
+            maxWidth: "460px",
+          }}
+        >
+          By subscribing, you agree to receive occasional clearing tips and schedule updates by email. Unsubscribe at any time. We use your email to maintain this subscriber record; see our <a href="/privacy-policy" style={{ color: "#E07B2A" }}>Privacy Policy</a>.
+        </p>
       </div>
     </div>
   );

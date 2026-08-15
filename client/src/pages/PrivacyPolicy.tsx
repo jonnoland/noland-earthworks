@@ -2,185 +2,83 @@ import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { usePageTitle } from "@/hooks/usePageTitle";
 
+const copy = { color: "rgba(240,237,230,0.8)", lineHeight: 1.8 };
+const list = { ...copy, lineHeight: 2, paddingLeft: "1.5rem" };
+
 export default function PrivacyPolicy() {
-  usePageTitle("Privacy Policy", "Noland Earthworks, LLC privacy policy — how we collect, use, and protect your information.", "/privacy-policy");
+  usePageTitle("Privacy Policy", "Noland Earthworks, LLC privacy policy — how we collect, use, and protect service-request information.", "/privacy-policy");
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: "#121212", color: "#F0EDE6" }}>
       <Navbar />
-
-      {/* Hero */}
-      <div
-        className="py-20 text-center"
-        style={{ backgroundColor: "#1A1A1A", borderBottom: "1px solid rgba(224,123,42,0.2)" }}
-      >
-        <h1
-          style={{
-            fontFamily: "'Oswald', sans-serif",
-            fontWeight: 700,
-            fontSize: "clamp(2.5rem, 6vw, 4rem)",
-            color: "#F0EDE6",
-            letterSpacing: "0.02em",
-            marginBottom: "0.75rem",
-          }}
-        >
-          Privacy Policy
-        </h1>
-        <p style={{ fontFamily: "'Lato', sans-serif", color: "rgba(240,237,230,0.55)", fontSize: "0.9rem" }}>
-          <strong style={{ color: "rgba(240,237,230,0.7)" }}>Effective Date:</strong> 08/14/2026 &nbsp;|&nbsp;{" "}
-          <strong style={{ color: "rgba(240,237,230,0.7)" }}>Last Updated:</strong> 08/14/2026
-        </p>
+      <div className="py-20 text-center" style={{ backgroundColor: "#1A1A1A", borderBottom: "1px solid rgba(224,123,42,0.2)" }}>
+        <h1 style={{ fontFamily: "'Oswald', sans-serif", fontWeight: 700, fontSize: "clamp(2.5rem, 6vw, 4rem)", letterSpacing: "0.02em", marginBottom: "0.75rem" }}>Privacy Policy</h1>
+        <p style={{ fontFamily: "'Lato', sans-serif", color: "rgba(240,237,230,0.55)", fontSize: "0.9rem" }}><strong style={{ color: "rgba(240,237,230,0.7)" }}>Effective:</strong> August 14, 2026 &nbsp;|&nbsp; <strong style={{ color: "rgba(240,237,230,0.7)" }}>Status:</strong> Legal-review draft</p>
       </div>
 
-      {/* Content */}
       <div className="container py-16 max-w-3xl mx-auto" style={{ fontFamily: "'Lato', sans-serif" }}>
-        {/* Intro */}
-        <p style={{ color: "rgba(240,237,230,0.8)", lineHeight: 1.8, marginBottom: "2.5rem" }}>
-          Noland Earthworks, LLC ("Noland Earthworks," "we," "our," or "us") explains here how we collect and use information submitted through our website and during a project. This notice is based on the current website and operations workflow and is undergoing final legal review. Please contact us with questions before sharing information that is not needed for your service request.
-        </p>
+        <div className="mb-10 border border-[#E07B2A]/35 bg-[#E07B2A]/10 p-5" role="note">
+          <p style={{ ...copy, margin: 0 }}><strong style={{ color: "#F0EDE6" }}>Important:</strong> This notice reflects the website and operations practices currently implemented for Noland Earthworks, LLC. It is a working legal-review draft, not legal advice, and should be reviewed by Tennessee-appropriate counsel before reliance.</p>
+        </div>
 
         <Section number="1" title="Information We Collect">
-          <p style={{ color: "rgba(240,237,230,0.8)", lineHeight: 1.8, marginBottom: "1rem" }}>
-            We only collect information necessary to provide services you have requested, including:
-          </p>
-          <ul style={{ color: "rgba(240,237,230,0.8)", lineHeight: 2, paddingLeft: "1.5rem" }}>
-            <li><strong style={{ color: "#E07B2A" }}>Contact Information:</strong> Name, phone number, email address, and property address</li>
-            <li><strong style={{ color: "#E07B2A" }}>Service Details:</strong> Property address or county, approximate size, requested work, timing, project description, and information voluntarily supplied for a site visit</li>
-            <li><strong style={{ color: "#E07B2A" }}>Communications and Project Materials:</strong> Emails, messages, phone or SMS interactions, and photos or documents voluntarily supplied for the project</li>
-            <li><strong style={{ color: "#E07B2A" }}>Payment and Website Information:</strong> Invoice and payment-status information, plus limited cookie or analytics information about website use. Payment-card details are processed by Stripe and are not intended to be stored in our operations system.</li>
+          <p style={copy}>We collect information that you provide when you request a site visit, send a message, use the website chat, subscribe to updates, pay an approved invoice or deposit, or otherwise contact us. Depending on the interaction, that may include:</p>
+          <ul style={list}>
+            <li><strong style={{ color: "#E07B2A" }}>Contact details:</strong> name, phone number, email address, and preferred contact method.</li>
+            <li><strong style={{ color: "#E07B2A" }}>Property and project details:</strong> county, address or road name, approximate size, requested work, timing, messages, and information volunteered for a site visit.</li>
+            <li><strong style={{ color: "#E07B2A" }}>Communications and submitted materials:</strong> emails, messages, chat conversations, call or SMS interactions, and photos or documents you choose to provide.</li>
+            <li><strong style={{ color: "#E07B2A" }}>Business and payment records:</strong> client, request, quote, job, invoice, deposit, and payment-status information. Payment-card details are processed by Stripe and are not intended to be stored in the Noland Earthworks operations system.</li>
+            <li><strong style={{ color: "#E07B2A" }}>Website-use data:</strong> limited analytics, cookie, device, and page-use information used to understand site performance and service-request sources.</li>
           </ul>
-          <p style={{ color: "rgba(240,237,230,0.8)", lineHeight: 1.8, marginTop: "1rem" }}>
-            Please do not submit sensitive personal information that is not needed to request, schedule, or complete the work.
-          </p>
+          <p style={copy}>Please do not submit medical, financial-account, government-identification, or other sensitive information that is not needed to request, schedule, or complete the work.</p>
         </Section>
 
-        <Section number="2" title="How We Use Your Information">
-          <p style={{ color: "rgba(240,237,230,0.8)", lineHeight: 1.8, marginBottom: "1rem" }}>
-            Your information is used exclusively to:
-          </p>
-          <ul style={{ color: "rgba(240,237,230,0.8)", lineHeight: 2, paddingLeft: "1.5rem" }}>
-            <li>Review site-visit requests, determine project fit, and prepare a written scope after an on-site review</li>
-            <li>Schedule and complete services, then invoice and collect payment</li>
-            <li>Send service-related updates, appointment reminders, and follow-ups via SMS, email, or phone</li>
-            <li>Respond to customer inquiries and provide support</li>
-            <li>Create and manage a client, request, quote, job, invoice, deposit, and payment record in our native operations system</li>
-            <li>Use AI-assisted tools to organize inquiry details and draft operational materials; the owner reviews output before making a customer commitment</li>
+        <Section number="2" title="How We Use Information">
+          <ul style={list}>
+            <li>Review requests, determine project fit, arrange and document a site visit, prepare a written scope, and manage project communications.</li>
+            <li>Create and maintain native records for clients, leads, quotes, jobs, invoices, deposits, and payment status.</li>
+            <li>Schedule and complete work, provide weather or service updates, invoice for approved work, and support customers.</li>
+            <li>Measure website performance, protect the website and operations system, and improve the service-request process.</li>
           </ul>
-          <p style={{ color: "rgba(240,237,230,0.8)", lineHeight: 1.8, marginTop: "1rem" }}>
-            We do not sell or rent personal information. We share information with service providers only as needed to operate the website, communicate, process payment, or provide the requested service.
-          </p>
+          <p style={copy}>We do not sell or rent personal information. We share information with service providers only as needed to operate the website, communicate about a request or project, process approved payments, or provide requested services.</p>
         </Section>
 
-        <Section number="3" title="SMS Communication & Consent (A2P Compliance)">
-          <p style={{ color: "rgba(240,237,230,0.8)", lineHeight: 1.8, marginBottom: "1rem" }}>
-            If you provide a phone number in connection with a project, we may use the requested contact method for service-related communications, including:
-          </p>
-          <ul style={{ color: "rgba(240,237,230,0.8)", lineHeight: 2, paddingLeft: "1.5rem" }}>
-            <li>Appointment confirmations and reminders</li>
-            <li>Estimate follow-ups</li>
-            <li>Weather or scheduling updates</li>
-            <li>Service updates and customer support messages</li>
-          </ul>
-          <p style={{ color: "rgba(240,237,230,0.8)", lineHeight: 1.8, marginTop: "1rem" }}>
-            <strong style={{ color: "#F0EDE6" }}>Message Frequency:</strong> Varies based on your project status
-          </p>
-          <p style={{ color: "rgba(240,237,230,0.8)", lineHeight: 1.8 }}>
-            <strong style={{ color: "#F0EDE6" }}>Message &amp; Data Rates May Apply</strong>
-          </p>
-          <p style={{ color: "rgba(240,237,230,0.8)", lineHeight: 1.8, marginTop: "1rem" }}>
-            Opt-Out Instructions: Reply <strong style={{ color: "#E07B2A" }}>STOP</strong> at any time to unsubscribe. Reply{" "}
-            <strong style={{ color: "#E07B2A" }}>HELP</strong> for assistance.
-          </p>
-          <p style={{ color: "rgba(240,237,230,0.8)", lineHeight: 1.8, marginTop: "0.5rem" }}>
-            Choosing to opt out of SMS does not prevent you from requesting service. You may contact us by phone or email instead.
-          </p>
+        <Section number="3" title="AI-Assisted Workflows">
+          <p style={copy}>Noland Earthworks uses AI-assisted tools to organize inquiry details, summarize requests, draft internal materials and proposed customer communications, support operational planning, and help route work. Request details and chat text may be processed by AI service infrastructure for those functions. The owner reviews output before making a customer commitment.</p>
+          <p style={copy}>AI does not independently set a final price, confirm a scope, schedule work, approve a discount, decide whether to accept a customer, or replace the required property review. Final scope and pricing are confirmed by the owner after an appropriate site review.</p>
         </Section>
 
-        <Section number="4" title="Data Protection & Storage">
-          <p style={{ color: "rgba(240,237,230,0.8)", lineHeight: 1.8 }}>
-            We use reasonable technical and organizational measures intended to protect information and limit access to people and providers who need it for operations. No internet transmission or storage system can be guaranteed completely secure.
-          </p>
+        <Section number="4" title="Email, SMS, and Phone Communications">
+          <p style={copy}>We use the contact method you provide to respond to an inquiry and to communicate about a site visit, proposal, scheduling, weather, service, invoice, deposit, payment, or customer support. If you select text as your preferred contact method on the Site Visit Request, we record the acknowledgement shown on that form for project-related text messages. Message frequency varies, and message and data rates may apply.</p>
+          <p style={copy}>For project-related SMS, reply <strong style={{ color: "#E07B2A" }}>STOP</strong> to opt out or <strong style={{ color: "#E07B2A" }}>HELP</strong> for help. Choosing not to receive texts does not prevent you from requesting service; phone and email remain available. Separate email subscriptions for seasonal clearing tips and schedule updates may be unsubscribed through the message or by contacting us.</p>
         </Section>
 
-        <Section number="5" title="Your Rights">
-          <p style={{ color: "rgba(240,237,230,0.8)", lineHeight: 1.8, marginBottom: "1rem" }}>
-            You have the right to:
-          </p>
-          <ul style={{ color: "rgba(240,237,230,0.8)", lineHeight: 2, paddingLeft: "1.5rem" }}>
-            <li>Request access to your information</li>
-            <li>Request corrections or updates</li>
-            <li>Request deletion where legally permissible</li>
-          </ul>
-          <p style={{ color: "rgba(240,237,230,0.8)", lineHeight: 1.8, marginTop: "1rem" }}>
-            To exercise your rights, contact us using the information in Section 9.
-          </p>
+        <Section number="5" title="Storage and Service Providers">
+          <p style={copy}>Our current operations stack uses native Noland Earthworks records as the working source of truth for clients, leads, quotes, jobs, invoices, deposits, and payment status. We use providers for hosting and file storage, transactional email, SMS/telephone communication, payment processing, mapping, analytics, and AI-assisted internal work. These functions may involve Manus-hosted infrastructure and storage, Resend, Twilio, Stripe, Google Maps, Google Analytics, website analytics services, and AI service infrastructure made available through the application.</p>
+          <p style={copy}>Providers may process information under their own terms and privacy practices. We disclose or provide information only as needed for the applicable function. Jobber is not the default system of record and is used only if the owner adopts it for a specific operational need.</p>
         </Section>
 
-        <Section number="6" title="Cookies & Website Tracking">
-          <p style={{ color: "rgba(240,237,230,0.8)", lineHeight: 1.8 }}>
-            We use cookies or analytics tools to understand website performance and usage. Information that identifies you is collected when you voluntarily submit it through a form, chat, payment, or other direct interaction.
-          </p>
+        <Section number="6" title="Retention, Access, and Requests">
+          <p style={copy}>We retain request, project, communication, and payment-status records for as long as reasonably needed to operate the business, resolve disputes, meet recordkeeping obligations, and enforce agreements. You may request access to, correction of, or deletion of applicable information by contacting us. Requests are subject to identity verification, legal requirements, and records we are required or reasonably need to retain.</p>
         </Section>
 
-        <Section number="7" title="Third-Party Services">
-          <p style={{ color: "rgba(240,237,230,0.8)", lineHeight: 1.8, marginBottom: "1rem" }}>
-            We use the following third-party platforms to operate our business:
-          </p>
-          <ul style={{ color: "rgba(240,237,230,0.8)", lineHeight: 2, paddingLeft: "1.5rem" }}>
-            <li><strong style={{ color: "#E07B2A" }}>Manus-hosted infrastructure and storage</strong> — website, operations application, and file storage</li>
-            <li><strong style={{ color: "#E07B2A" }}>Resend</strong> — transactional email delivery</li>
-            <li><strong style={{ color: "#E07B2A" }}>Twilio</strong> — SMS and telephone communication services</li>
-            <li><strong style={{ color: "#E07B2A" }}>Stripe</strong> — payment processing</li>
-            <li><strong style={{ color: "#E07B2A" }}>Google Maps</strong> — property location and service area display</li>
-            <li><strong style={{ color: "#E07B2A" }}>Google Analytics</strong> — website measurement</li>
-            <li><strong style={{ color: "#E07B2A" }}>AI service infrastructure</strong> — AI-assisted internal drafting and request organization</li>
-          </ul>
-          <p style={{ color: "rgba(240,237,230,0.8)", lineHeight: 1.8, marginTop: "1rem" }}>
-            These providers may have their own privacy policies and process information under their applicable terms. We use them only for the functions described above.
-          </p>
+        <Section number="7" title="Security">
+          <p style={copy}>We use reasonable technical and organizational measures intended to protect information and limit access to people and providers who need it for business operations. No internet transmission or storage system can be guaranteed completely secure.</p>
         </Section>
 
         <Section number="8" title="Changes to This Policy">
-          <p style={{ color: "rgba(240,237,230,0.8)", lineHeight: 1.8 }}>
-            We may update this Privacy Policy periodically. All updates will be posted on this page with the revised effective date.
-          </p>
+          <p style={copy}>We may update this policy as our website, communications, payment, or operations practices change. The revised version will be posted here with an updated effective date. Material legal language should be reviewed before reliance.</p>
         </Section>
 
         <Section number="9" title="Contact Us">
-          <p style={{ color: "rgba(240,237,230,0.8)", lineHeight: 2 }}>
-            Noland Earthworks, LLC<br />
-            <strong style={{ color: "#F0EDE6" }}>Website:</strong>{" "}
-            <a href="https://www.nolandearthworks.com" style={{ color: "#E07B2A" }}>https://www.nolandearthworks.com</a><br />
-            <strong style={{ color: "#F0EDE6" }}>Email:</strong>{" "}
-            <a href="mailto:quotes@nolandearthworks.com" style={{ color: "#E07B2A" }}>quotes@nolandearthworks.com</a><br />
-            <strong style={{ color: "#F0EDE6" }}>Phone:</strong>{" "}
-            <a href="tel:+16154064819" style={{ color: "#E07B2A" }}>(615) 406-4819</a>
-          </p>
+          <p style={{ ...copy, lineHeight: 2 }}>Noland Earthworks, LLC<br /><strong style={{ color: "#F0EDE6" }}>Website:</strong> <a href="https://www.nolandearthworks.com" style={{ color: "#E07B2A" }}>nolandearthworks.com</a><br /><strong style={{ color: "#F0EDE6" }}>Email:</strong> <a href="mailto:quotes@nolandearthworks.com" style={{ color: "#E07B2A" }}>quotes@nolandearthworks.com</a><br /><strong style={{ color: "#F0EDE6" }}>Phone:</strong> <a href="tel:+16154064819" style={{ color: "#E07B2A" }}>(615) 406-4819</a></p>
         </Section>
       </div>
-
       <Footer />
     </div>
   );
 }
 
 function Section({ number, title, children }: { number: string; title: string; children: React.ReactNode }) {
-  return (
-    <div style={{ marginBottom: "2.5rem" }}>
-      <h2
-        style={{
-          fontFamily: "'Oswald', sans-serif",
-          fontWeight: 700,
-          fontSize: "1.6rem",
-          color: "#F0EDE6",
-          marginBottom: "1rem",
-          paddingBottom: "0.5rem",
-          borderBottom: "2px solid rgba(224,123,42,0.3)",
-        }}
-      >
-        {number}. {title}
-      </h2>
-      {children}
-    </div>
-  );
+  return <section style={{ marginBottom: "2.5rem" }}><h2 style={{ fontFamily: "'Oswald', sans-serif", fontWeight: 700, fontSize: "1.6rem", color: "#F0EDE6", marginBottom: "1rem", paddingBottom: "0.5rem", borderBottom: "2px solid rgba(224,123,42,0.3)" }}>{number}. {title}</h2>{children}</section>;
 }

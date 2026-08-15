@@ -1233,6 +1233,18 @@ export default function AboutPage() {
                     </div>
                   )}
 
+                  <p
+                    style={{
+                      fontFamily: "'Lato', sans-serif",
+                      fontSize: "0.78rem",
+                      lineHeight: 1.55,
+                      color: "rgba(240,237,230,0.42)",
+                      margin: 0,
+                    }}
+                  >
+                    We use the details in this form to respond to your message and may create an inquiry or client record in our native operations system. Do not include sensitive information that is not needed for your request. See the <a href="/privacy-policy" style={{ color: "#E07B2A" }}>Privacy Policy</a>.
+                  </p>
+
                   <button
                     type="submit"
                     disabled={submitContact.isPending}

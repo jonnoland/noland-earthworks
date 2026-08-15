@@ -236,6 +236,9 @@ export const quoteSubmissions = mysqlTable("quote_submissions", {
   name: varchar("name", { length: 255 }).notNull(),
   phone: varchar("phone", { length: 50 }).notNull(),
   email: varchar("email", { length: 320 }).notNull(),
+  /** Requester acknowledgement for project-related SMS when text is selected as the contact method */
+  smsConsent: boolean("smsConsent").notNull().default(false),
+  smsConsentAt: timestamp("smsConsentAt"),
   /** Project details */
   service: varchar("service", { length: 100 }).notNull(),
   county: varchar("county", { length: 100 }).notNull(),
