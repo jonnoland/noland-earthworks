@@ -33,8 +33,8 @@ function AppShell() {
         height: "100dvh",
         display: "flex",
         flexDirection: "column",
-        backgroundColor: "oklch(0.13 0 0)",
-        color: "oklch(0.94 0.01 80)",
+        backgroundColor: "var(--ne-ground)",
+        color: "var(--ne-cream)",
         fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
         overflow: "hidden",
       }}
@@ -44,9 +44,10 @@ function AppShell() {
         position="top-center"
         toastOptions={{
           style: {
-            background: "oklch(0.18 0 0)",
-            border: "1px solid oklch(0.28 0 0)",
-            color: "oklch(0.94 0.01 80)",
+            background: "var(--ne-clay)",
+            border: "1px solid var(--ne-border)",
+            color: "var(--ne-cream)",
+            boxShadow: "var(--ne-shadow)",
             fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
             fontSize: 14,
           },

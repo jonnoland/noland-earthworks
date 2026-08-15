@@ -1,17 +1,39 @@
 @import "tailwindcss";
 
+:root {
+  color-scheme: dark;
+  --ne-ground: oklch(0.14 0.015 70);
+  --ne-soil: oklch(0.18 0.02 70);
+  --ne-clay: oklch(0.23 0.025 65);
+  --ne-raised: oklch(0.27 0.03 62);
+  --ne-border: oklch(0.35 0.035 62);
+  --ne-border-strong: oklch(0.48 0.07 60);
+  --ne-amber: oklch(0.72 0.16 67);
+  --ne-amber-strong: oklch(0.80 0.16 72);
+  --ne-amber-deep: oklch(0.58 0.13 57);
+  --ne-amber-ink: oklch(0.18 0.025 62);
+  --ne-cream: oklch(0.95 0.015 82);
+  --ne-muted: oklch(0.72 0.02 80);
+  --ne-subtle: oklch(0.57 0.02 75);
+  --ne-brand-panel: oklch(0.92 0.025 82);
+  --ne-success: oklch(0.73 0.15 150);
+  --ne-warning: oklch(0.82 0.15 82);
+  --ne-danger: oklch(0.68 0.18 30);
+  --ne-shadow: 0 14px 36px oklch(0.08 0.015 70 / 0.42);
+}
+
 @theme {
-  --color-brand: oklch(0.65 0.18 50);
-  --color-brand-dark: oklch(0.50 0.18 50);
-  --color-surface: oklch(0.12 0 0);
-  --color-surface-2: oklch(0.16 0 0);
-  --color-surface-3: oklch(0.20 0 0);
-  --color-border: oklch(0.25 0 0);
-  --color-text: oklch(0.94 0.01 80);
-  --color-muted: oklch(0.60 0.01 80);
-  --color-success: oklch(0.70 0.18 145);
-  --color-warning: oklch(0.80 0.18 75);
-  --color-danger: oklch(0.65 0.20 25);
+  --color-brand: var(--ne-amber);
+  --color-brand-dark: var(--ne-amber-deep);
+  --color-surface: var(--ne-ground);
+  --color-surface-2: var(--ne-soil);
+  --color-surface-3: var(--ne-clay);
+  --color-border: var(--ne-border);
+  --color-text: var(--ne-cream);
+  --color-muted: var(--ne-muted);
+  --color-success: var(--ne-success);
+  --color-warning: var(--ne-warning);
+  --color-danger: var(--ne-danger);
   --font-sans: "Inter", system-ui, -apple-system, sans-serif;
 }
 
@@ -24,8 +46,11 @@ html, body, #root {
   height: 100%;
   width: 100%;
   overflow: hidden;
-  background-color: oklch(0.12 0 0);
-  color: oklch(0.94 0.01 80);
+  background:
+    radial-gradient(circle at 100% 0%, oklch(0.38 0.11 62 / 0.22), transparent 34%),
+    linear-gradient(180deg, var(--ne-ground) 0%, oklch(0.11 0.012 68) 100%);
+  background-color: var(--ne-ground);
+  color: var(--ne-cream);
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
 }
@@ -44,10 +69,32 @@ html, body, #root {
 /* Native-feel inputs — prevents iOS zoom on focus */
 input, textarea, select {
   font-size: 16px;
+  color-scheme: dark;
+}
+
+input::placeholder, textarea::placeholder {
+  color: var(--ne-subtle);
+  opacity: 1;
+}
+
+button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible {
+  outline: 2px solid var(--ne-amber-strong);
+  outline-offset: 2px;
 }
 
 /* Prevent text selection on tap */
 .no-select {
   -webkit-user-select: none;
   user-select: none;
+}
+
+.ne-surface {
+  background: linear-gradient(145deg, var(--ne-clay), var(--ne-soil));
+  border: 1px solid var(--ne-border);
+  box-shadow: var(--ne-shadow);
+}
+
+.ne-brand-action {
+  background: linear-gradient(135deg, var(--ne-amber-strong), var(--ne-amber));
+  color: var(--ne-amber-ink);
 }

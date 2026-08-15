@@ -14,8 +14,9 @@ export default function PageHeader({ title, showBack = false, right }: PageHeade
     <header
       className="safe-top no-select"
       style={{
-        backgroundColor: "oklch(0.16 0 0)",
-        borderBottom: "1px solid oklch(0.25 0 0)",
+        background: "linear-gradient(135deg, var(--ne-clay), var(--ne-soil))",
+        borderBottom: "1px solid var(--ne-border)",
+        boxShadow: "0 8px 20px oklch(0.08 0.015 70 / 0.24)",
         display: "flex",
         alignItems: "center",
         padding: "12px 16px",
@@ -29,7 +30,7 @@ export default function PageHeader({ title, showBack = false, right }: PageHeade
           style={{
             display: "flex",
             alignItems: "center",
-            color: "oklch(0.65 0.18 50)",
+            color: "var(--ne-amber)",
             background: "none",
             border: "none",
             padding: "4px 0",
@@ -45,7 +46,7 @@ export default function PageHeader({ title, showBack = false, right }: PageHeade
           flex: 1,
           fontSize: 18,
           fontWeight: 600,
-          color: "oklch(0.94 0.01 80)",
+          color: "var(--ne-cream)",
           margin: 0,
         }}
       >

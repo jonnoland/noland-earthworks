@@ -25,17 +25,17 @@ export default function Home() {
       <div
         className="safe-top"
         style={{
-          background: "linear-gradient(135deg, oklch(0.16 0 0) 0%, oklch(0.18 0.03 50) 100%)",
+          background: "linear-gradient(135deg, var(--ne-clay) 0%, var(--ne-soil) 62%, oklch(0.30 0.07 62) 160%)",
           padding: "20px 20px 24px",
-          borderBottom: "1px solid oklch(0.25 0 0)",
+          borderBottom: "1px solid var(--ne-border)",
         }}
       >
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <div>
-            <p style={{ color: "oklch(0.60 0.01 80)", fontSize: 13, margin: 0 }}>
+            <p style={{ color: "var(--ne-muted)", fontSize: 13, margin: 0 }}>
               {greeting()}, Jon
             </p>
-            <h1 style={{ color: "oklch(0.94 0.01 80)", fontSize: 22, fontWeight: 700, margin: "4px 0 0" }}>
+            <h1 style={{ color: "var(--ne-cream)", fontSize: 22, fontWeight: 700, margin: "4px 0 0" }}>
               Noland Field
             </h1>
           </div>
@@ -44,8 +44,8 @@ export default function Home() {
               width: 96,
               height: 62,
               borderRadius: 12,
-              backgroundColor: "oklch(0.93 0.02 80)",
-              border: "1px solid oklch(0.65 0.18 50 / 0.75)",
+              backgroundColor: "var(--ne-brand-panel)",
+              border: "1px solid var(--ne-amber)",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
@@ -64,7 +64,7 @@ export default function Home() {
           <button
             onClick={() => navigate("/new-quote")}
             style={{
-              background: "oklch(0.65 0.18 50)",
+              background: "linear-gradient(135deg, var(--ne-amber-strong), var(--ne-amber))",
               border: "none",
               borderRadius: 14,
               padding: "20px 16px",
@@ -75,16 +75,16 @@ export default function Home() {
               gap: 8,
             }}
           >
-            <PlusCircle size={24} color="#000" />
-            <span style={{ color: "#000", fontWeight: 700, fontSize: 15 }}>New Quote</span>
-            <span style={{ color: "rgba(0,0,0,0.6)", fontSize: 12 }}>Capture site details</span>
+            <PlusCircle size={24} color="var(--ne-amber-ink)" />
+            <span style={{ color: "var(--ne-amber-ink)", fontWeight: 700, fontSize: 15 }}>New Quote</span>
+            <span style={{ color: "oklch(0.31 0.035 62)", fontSize: 12 }}>Capture site details</span>
           </button>
 
           <button
             onClick={() => navigate("/quotes")}
             style={{
-              background: "oklch(0.20 0 0)",
-              border: "1px solid oklch(0.25 0 0)",
+              background: "var(--ne-clay)",
+              border: "1px solid var(--ne-border)",
               borderRadius: 14,
               padding: "20px 16px",
               cursor: "pointer",
@@ -94,9 +94,9 @@ export default function Home() {
               gap: 8,
             }}
           >
-            <FileText size={24} color="oklch(0.65 0.18 50)" />
-            <span style={{ color: "oklch(0.94 0.01 80)", fontWeight: 700, fontSize: 15 }}>My Quotes</span>
-            <span style={{ color: "oklch(0.60 0.01 80)", fontSize: 12 }}>View submissions</span>
+            <FileText size={24} color="var(--ne-amber)" />
+            <span style={{ color: "var(--ne-cream)", fontWeight: 700, fontSize: 15 }}>My Quotes</span>
+            <span style={{ color: "var(--ne-muted)", fontSize: 12 }}>View submissions</span>
           </button>
         </div>
 

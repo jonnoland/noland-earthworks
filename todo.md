@@ -3122,6 +3122,12 @@
 - [x] Align visible companion app header and profile branding with the official logo
 - [x] Build, sign, and publish the required branded APK update
 
+## Companion App Dark Brand Theme — Aug 2026
+- [x] Define a dark Noland Earthworks design token palette with outdoor-readable contrast
+- [x] Apply the branded dark theme consistently to the companion app’s primary screens and controls
+- [x] Validate the dark-theme companion app source and regression coverage without rebuilding the APK
+- [ ] Build, sign, and publish the dark-theme companion app update after explicit release approval
+
 ## Quote Performance & County Differentiation — Aug 2026
 - [x] Measure the current quote-page mobile performance and critical loading path
 - [x] Implement a low-risk quote-page performance improvement that preserves the form flow

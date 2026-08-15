@@ -569,33 +569,33 @@ export default function NewQuote() {
 
   const inputStyle: React.CSSProperties = {
     width: "100%",
-    backgroundColor: "oklch(0.20 0 0)",
-    border: "1px solid oklch(0.25 0 0)",
+    backgroundColor: "var(--ne-raised)",
+    border: "1px solid var(--ne-border)",
     borderRadius: 10,
     padding: "12px 14px",
-    color: "oklch(0.94 0.01 80)",
+    color: "var(--ne-cream)",
     fontSize: 15,
     outline: "none",
     marginTop: 6,
   };
 
   const labelStyle: React.CSSProperties = {
-    color: "oklch(0.70 0.01 80)",
+    color: "var(--ne-muted)",
     fontSize: 13,
     fontWeight: 500,
     display: "block",
   };
 
   const sectionStyle: React.CSSProperties = {
-    backgroundColor: "oklch(0.18 0 0)",
-    border: "1px solid oklch(0.25 0 0)",
+    background: "linear-gradient(145deg, var(--ne-clay), var(--ne-soil))",
+    border: "1px solid var(--ne-border)",
     borderRadius: 14,
     padding: "16px",
     marginBottom: 16,
   };
 
   const sectionTitle: React.CSSProperties = {
-    color: "oklch(0.65 0.18 50)",
+    color: "var(--ne-amber)",
     fontSize: 12,
     fontWeight: 700,
     textTransform: "uppercase",
@@ -616,8 +616,8 @@ export default function NewQuote() {
             onClick={handleSubmit}
             disabled={submitState === "submitting"}
             style={{
-              backgroundColor: submitState === "submitting" ? "oklch(0.40 0 0)" : "oklch(0.65 0.18 50)",
-              border: "none", borderRadius: 8, padding: "8px 16px", color: "#000",
+              background: submitState === "submitting" ? "var(--ne-raised)" : "linear-gradient(135deg, var(--ne-amber-strong), var(--ne-amber))",
+              border: "none", borderRadius: 8, padding: "8px 16px", color: "var(--ne-amber-ink)",
               fontWeight: 700, fontSize: 14, cursor: submitState === "submitting" ? "not-allowed" : "pointer",
               display: "flex", alignItems: "center", gap: 6,
             }}

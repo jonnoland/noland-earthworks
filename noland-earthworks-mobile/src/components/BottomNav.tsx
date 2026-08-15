@@ -18,8 +18,9 @@ export default function BottomNav({ updateAvailable = false }: { updateAvailable
         bottom: 0,
         left: 0,
         right: 0,
-        backgroundColor: "oklch(0.16 0 0)",
-        borderTop: "1px solid oklch(0.25 0 0)",
+        background: "linear-gradient(180deg, var(--ne-clay), var(--ne-soil))",
+        borderTop: "1px solid var(--ne-border)",
+        boxShadow: "0 -10px 28px oklch(0.08 0.015 70 / 0.3)",
         display: "flex",
         zIndex: 50,
       }}
@@ -37,9 +38,9 @@ export default function BottomNav({ updateAvailable = false }: { updateAvailable
                 "flex flex-col items-center justify-center gap-0.5 py-2 transition-colors",
                 isActive ? "text-brand" : "text-muted"
               )}
-              style={{ color: isActive ? "oklch(0.65 0.18 50)" : "oklch(0.60 0.01 80)" }}
+              style={{ color: isActive ? "var(--ne-amber)" : "var(--ne-muted)" }}
             >
-              <span style={{ position: "relative", display: "inline-flex" }}><Icon size={22} strokeWidth={isActive ? 2.2 : 1.8} />{to === "/profile" && updateAvailable && <span aria-label="Update available" style={{ position: "absolute", top: -3, right: -5, width: 8, height: 8, borderRadius: "50%", backgroundColor: "oklch(0.65 0.18 50)", border: "1px solid oklch(0.16 0 0)" }} />}</span>
+              <span style={{ position: "relative", display: "inline-flex" }}><Icon size={22} strokeWidth={isActive ? 2.2 : 1.8} />{to === "/profile" && updateAvailable && <span aria-label="Update available" style={{ position: "absolute", top: -3, right: -5, width: 8, height: 8, borderRadius: "50%", backgroundColor: "var(--ne-amber-strong)", border: "1px solid var(--ne-soil)" }} />}</span>
               <span style={{ fontSize: "10px", fontWeight: isActive ? 600 : 400 }}>
                 {label}
               </span>

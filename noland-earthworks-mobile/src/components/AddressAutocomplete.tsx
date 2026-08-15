@@ -175,7 +175,7 @@ export default function AddressAutocomplete({
           {loading && (
             <Loader2
               size={15}
-              color="oklch(0.65 0.18 50)"
+              color="var(--ne-amber)"
               style={{ animation: "spin 1s linear infinite", flexShrink: 0 }}
             />
           )}
@@ -193,7 +193,7 @@ export default function AddressAutocomplete({
               }}
               title="Clear address"
             >
-              <X size={14} color="oklch(0.50 0.01 80)" />
+              <X size={14} color="var(--ne-subtle)" />
             </button>
           )}
           {rightSlot}
@@ -209,10 +209,10 @@ export default function AddressAutocomplete({
             left: 0,
             right: 0,
             zIndex: 999,
-            background: "oklch(0.18 0.01 80)",
-            border: "1px solid oklch(0.28 0.01 80)",
-            borderRadius: 8,
-            boxShadow: "0 8px 24px rgba(0,0,0,0.5)",
+            background: "var(--ne-clay)",
+            border: "1px solid var(--ne-border-strong)",
+            borderRadius: 10,
+            boxShadow: "var(--ne-shadow)",
             overflow: "hidden",
           }}
         >
@@ -232,7 +232,7 @@ export default function AddressAutocomplete({
                 padding: "10px 14px",
                 borderBottom:
                   i < predictions.length - 1
-                    ? "1px solid oklch(0.25 0.01 80)"
+                    ? "1px solid var(--ne-border)"
                     : "none",
                 display: "flex",
                 alignItems: "flex-start",
@@ -240,7 +240,7 @@ export default function AddressAutocomplete({
               }}
               onMouseEnter={(e) =>
                 ((e.currentTarget as HTMLButtonElement).style.background =
-                  "oklch(0.23 0.01 80)")
+                  "var(--ne-raised)")
               }
               onMouseLeave={(e) =>
                 ((e.currentTarget as HTMLButtonElement).style.background =
@@ -249,7 +249,7 @@ export default function AddressAutocomplete({
             >
               <MapPin
                 size={14}
-                color="oklch(0.65 0.18 50)"
+                color="var(--ne-amber)"
                 style={{ marginTop: 2, flexShrink: 0 }}
               />
               <div>
@@ -258,7 +258,7 @@ export default function AddressAutocomplete({
                     <div
                       style={{
                         fontSize: 13,
-                        color: "oklch(0.92 0.01 80)",
+                        color: "var(--ne-cream)",
                         fontWeight: 500,
                         lineHeight: 1.3,
                       }}
@@ -268,7 +268,7 @@ export default function AddressAutocomplete({
                     <div
                       style={{
                         fontSize: 11,
-                        color: "oklch(0.55 0.01 80)",
+                        color: "var(--ne-muted)",
                         marginTop: 1,
                       }}
                     >
@@ -279,7 +279,7 @@ export default function AddressAutocomplete({
                   <div
                     style={{
                       fontSize: 13,
-                      color: "oklch(0.92 0.01 80)",
+                      color: "var(--ne-cream)",
                       lineHeight: 1.4,
                     }}
                   >
@@ -293,7 +293,7 @@ export default function AddressAutocomplete({
             style={{
               padding: "6px 14px",
               fontSize: 10,
-              color: "oklch(0.40 0.01 80)",
+              color: "var(--ne-subtle)",
               textAlign: "right",
             }}
           >
