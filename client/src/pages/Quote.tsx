@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { AlertCircle, CheckCircle2, ClipboardCheck, Loader2, MapPin, Phone } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
@@ -59,6 +59,8 @@ export default function QuotePage() {
   const [addressAreaNote, setAddressAreaNote] = useState("");
   const [currentCoordinates, setCurrentCoordinates] = useState<{ lat: number; lng: number } | null>(null);
   const [locationError, setLocationError] = useState("");
+  const [locationStatus, setLocationStatus] = useState<"idle" | "requesting" | "resolving">("idle");
+  const addressFieldRef = useRef<HTMLInputElement>(null);
   const addressInput = form.street.trim();
   const addressSuggestions = trpc.quote.placesAutocomplete.useQuery(
     { input: addressInput || "x" },
@@ -92,21 +94,38 @@ export default function QuotePage() {
     if (!currentCoordinates || !currentLocationAddress.data?.formattedAddress) return;
     applyResolvedAddress(currentLocationAddress.data);
     setCurrentCoordinates(null);
+    setLocationStatus("idle");
   }, [currentCoordinates, currentLocationAddress.data]);
+
+  useEffect(() => {
+    if (!currentCoordinates || currentLocationAddress.isFetching || !currentLocationAddress.data || currentLocationAddress.data.formattedAddress) return;
+    setLocationError("We could not turn your current location into an address. You can still type or select the property address manually.");
+    setCurrentCoordinates(null);
+    setLocationStatus("idle");
+  }, [currentCoordinates, currentLocationAddress.data, currentLocationAddress.isFetching]);
 
   const useCurrentLocation = () => {
     setLocationError("");
     setAddressAreaNote("");
     if (!navigator.geolocation) {
-      setLocationError("This browser cannot provide location. Type or select the property address instead.");
+      setLocationError("This browser cannot provide location. You can still type or select the property address manually.");
       return;
     }
+    setLocationStatus("requesting");
     navigator.geolocation.getCurrentPosition(
-      (position) => setCurrentCoordinates({ lat: position.coords.latitude, lng: position.coords.longitude }),
-      () => setLocationError("Location permission was not granted. You can still type and select the property address."),
+      (position) => {
+        setCurrentCoordinates({ lat: position.coords.latitude, lng: position.coords.longitude });
+        setLocationStatus("resolving");
+      },
+      () => {
+        setLocationStatus("idle");
+        setLocationError("Your location was not shared. You can still type or select the property address manually below.");
+      },
       { enableHighAccuracy: false, timeout: 10_000, maximumAge: 300_000 }
     );
   };
+
+  const isResolvingLocation = locationStatus !== "idle" || currentLocationAddress.isFetching;
 
   const submitRequest = trpc.quote.submit.useMutation({
     onSuccess: () => {
@@ -197,7 +216,7 @@ export default function QuotePage() {
                   <label className="font-['Oswald'] text-xs uppercase tracking-[0.12em] text-white/65">County *<select name="county" value={form.county} onChange={(e) => { update("county", e.target.value); setAddressAreaNote(""); }} onBlur={() => validateField("county")} aria-invalid={Boolean(errors.county)} className={fieldClassName(Boolean(errors.county))}><option value="" className="bg-[#191919]">Select a service-area county</option>{SERVICE_AREA_COUNTIES.map((county) => <option key={county} value={county} className="bg-[#191919]">{county}</option>)}</select>{errors.county ? <span className="mt-1 block font-['Lato'] normal-case tracking-normal text-red-300">{errors.county}</span> : <span className="mt-1 block font-['Lato'] normal-case tracking-normal text-white/40">Required. We currently schedule site visits in the listed Middle and West Tennessee counties.</span>}</label>
                 </div>
                 <div className="mt-5 grid gap-5 sm:grid-cols-[1.5fr_0.5fr]">
-                  <div className="relative"><div className="flex items-end justify-between gap-3"><label className="min-w-0 flex-1 font-['Oswald'] text-xs uppercase tracking-[0.12em] text-white/65">Property address <span className="text-white/40">(optional)</span><input name="street" autoComplete="street-address" value={form.street} onFocus={() => setAddressFocused(true)} onBlur={() => window.setTimeout(() => setAddressFocused(false), 160)} onChange={(e) => { update("street", e.target.value); setSelectedPlaceId(""); setAppliedPlaceId(""); setAddressAreaNote(""); }} className={fieldClassName()} placeholder="Start typing the property address" /><span className="mt-1 block font-['Lato'] normal-case tracking-normal text-white/40">Choose a suggested address to fill County, City, and ZIP when available.</span></label><button type="button" onClick={useCurrentLocation} disabled={Boolean(currentCoordinates) || currentLocationAddress.isFetching} className="mb-0.5 min-h-11 shrink-0 border border-[#E07B2A]/60 px-3 font-['Oswald'] text-[11px] font-semibold uppercase tracking-[0.08em] text-[#f0ede6] transition hover:bg-[#E07B2A]/15 disabled:opacity-60">{currentCoordinates || currentLocationAddress.isFetching ? "Finding…" : "Use my location"}</button></div>{addressFocused && addressInput.length >= 3 && (addressSuggestions.isFetching || (addressSuggestions.data?.suggestions.length ?? 0) > 0) && <div className="absolute z-20 mt-1 max-h-56 w-full overflow-y-auto border border-white/20 bg-[#171717] shadow-xl">{addressSuggestions.isFetching ? <p className="px-3 py-3 font-['Lato'] text-sm text-white/55">Finding addresses…</p> : addressSuggestions.data?.suggestions.map((suggestion) => <button key={suggestion.placeId} type="button" onMouseDown={(event) => event.preventDefault()} onClick={() => setSelectedPlaceId(suggestion.placeId)} className="flex w-full items-start gap-2 border-b border-white/10 px-3 py-3 text-left font-['Lato'] text-sm text-white/80 transition hover:bg-white/10"><MapPin className="mt-0.5 h-4 w-4 shrink-0 text-[#E07B2A]" />{suggestion.description}</button>)}</div>}{locationError && <p className="mt-2 font-['Lato'] text-xs leading-5 text-red-300">{locationError}</p>}{addressAreaNote && <p className="mt-2 font-['Lato'] text-xs leading-5 text-red-300">{addressAreaNote}</p>}</div>
+                  <div className="relative"><div className="flex items-end justify-between gap-3"><label className="min-w-0 flex-1 font-['Oswald'] text-xs uppercase tracking-[0.12em] text-white/65">Property address <span className="text-white/40">(optional)</span><input ref={addressFieldRef} name="street" autoComplete="street-address" value={form.street} onFocus={() => setAddressFocused(true)} onBlur={() => window.setTimeout(() => setAddressFocused(false), 160)} onChange={(e) => { update("street", e.target.value); setSelectedPlaceId(""); setAppliedPlaceId(""); setAddressAreaNote(""); }} className={fieldClassName()} placeholder="Start typing the property address" /><span className="mt-1 block font-['Lato'] normal-case tracking-normal text-white/40">Choose a suggested address to fill County, City, and ZIP when available.</span></label><button type="button" onClick={useCurrentLocation} disabled={isResolvingLocation} aria-busy={isResolvingLocation} className="mb-0.5 inline-flex min-h-11 shrink-0 items-center gap-2 border border-[#E07B2A]/60 px-3 font-['Oswald'] text-[11px] font-semibold uppercase tracking-[0.08em] text-[#f0ede6] transition hover:bg-[#E07B2A]/15 disabled:opacity-60">{isResolvingLocation ? <><Loader2 className="h-3.5 w-3.5 animate-spin" />Finding address…</> : "Use my location"}</button></div>{addressFocused && addressInput.length >= 3 && (addressSuggestions.isFetching || (addressSuggestions.data?.suggestions.length ?? 0) > 0) && <div className="absolute z-20 mt-1 max-h-56 w-full overflow-y-auto border border-white/20 bg-[#171717] shadow-xl">{addressSuggestions.isFetching ? <p className="px-3 py-3 font-['Lato'] text-sm text-white/55">Finding addresses…</p> : addressSuggestions.data?.suggestions.map((suggestion) => <button key={suggestion.placeId} type="button" onMouseDown={(event) => event.preventDefault()} onClick={() => setSelectedPlaceId(suggestion.placeId)} className="flex w-full items-start gap-2 border-b border-white/10 px-3 py-3 text-left font-['Lato'] text-sm text-white/80 transition hover:bg-white/10"><MapPin className="mt-0.5 h-4 w-4 shrink-0 text-[#E07B2A]" />{suggestion.description}</button>)}</div>}{locationError && <div role="status" className="mt-2 border border-amber-400/35 bg-amber-400/10 p-3 font-['Lato'] text-xs leading-5 text-amber-100"><p>{locationError}</p><button type="button" onClick={() => addressFieldRef.current?.focus()} className="mt-2 font-semibold text-[#f6ad68] underline underline-offset-2">Enter the property address manually</button></div>}{addressAreaNote && <div role="status" className="mt-2 border border-amber-400/35 bg-amber-400/10 p-3 font-['Lato'] text-xs leading-5 text-amber-100"><p className="font-semibold">This property appears to be outside our standard service area.</p><p className="mt-1">{addressAreaNote} Jon may still be able to discuss a custom quote or add the property to a future-service waitlist.</p><div className="mt-2 flex flex-wrap gap-x-4 gap-y-1"><a href="tel:6154064819" className="font-semibold text-[#f6ad68] underline underline-offset-2">Call about a custom quote</a><a href="mailto:quotes@nolandearthworks.com?subject=Custom%20quote%20or%20waitlist%20request" className="font-semibold text-[#f6ad68] underline underline-offset-2">Request custom quote / waitlist</a></div></div>}</div>
                   <aside className="border border-[#E07B2A]/25 bg-[#E07B2A]/5 p-3 font-['Lato'] text-xs leading-5 text-white/65"><p className="font-['Oswald'] text-xs font-semibold uppercase tracking-[0.12em] text-[#E07B2A]">Service area</p><p className="mt-1">We schedule on-site visits in 35 listed Middle and West Tennessee counties.</p><div className="mt-3"><ServiceAreaMiniMap /></div><details className="mt-2"><summary className="cursor-pointer font-semibold text-white/85">View supported counties</summary><ul className="mt-2 columns-2 gap-3 text-[11px] leading-5 text-white/55">{SERVICE_AREA_COUNTIES.map((county) => <li key={`reference-${county}`}>{county.replace(" County", "")}</li>)}</ul></details></aside>
                 </div>
                 <div className="mt-5 grid gap-5 sm:grid-cols-[1fr_0.55fr_0.45fr]">

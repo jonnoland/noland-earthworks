@@ -40,6 +40,11 @@ describe("native Site Visit Request workflow", () => {
     expect(quote).toContain("trpc.quote.reverseGeocode.useQuery");
     expect(quote).toContain("navigator.geolocation.getCurrentPosition");
     expect(quote).toContain("Use my location");
+    expect(quote).toContain("Your location was not shared");
+    expect(quote).toContain("Enter the property address manually");
+    expect(quote).toContain("Request custom quote / waitlist");
+    expect(quote).toContain("aria-busy={isResolvingLocation}");
+    expect(quote).toContain("Finding address…");
     expect(quote).toContain("ServiceAreaMiniMap");
     expect(quote).toContain("city: form.city.trim()");
     expect(quote).toContain("zip: form.zip.trim()");

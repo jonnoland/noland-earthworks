@@ -3069,6 +3069,12 @@
 - [x] Add a compact visual map highlighting the supported county service area beside the Site Visit Request location inputs
 - [x] Add regression coverage for county normalization, location detection, and map guidance
 
+## Current Location Fallback & Out-of-Area Assistance — Aug 2026
+- [x] Explain denied location permission and offer a clear manual address-entry fallback
+- [x] Offer custom-quote or waitlist next steps when a detected address falls outside the approved counties
+- [x] Display an active loading indicator while reverse geocoding is in progress
+- [x] Add regression coverage for permission fallback, out-of-area guidance, and loading feedback
+
 ## Quote Performance & County Differentiation — Aug 2026
 - [x] Measure the current quote-page mobile performance and critical loading path
 - [x] Implement a low-risk quote-page performance improvement that preserves the form flow
