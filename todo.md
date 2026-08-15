@@ -3110,12 +3110,12 @@
 - [x] Add a direct Install Update button to the Profile tab when a newer release exists
 - [x] Build and sign the approved companion Android APK
 - [x] Verify the signed APK and publish it as the current `mobile-v` GitHub release
-- [ ] Confirm the companion update endpoint exposes the published release to the installed app
+- [x] Confirm the companion update endpoint exposes the published release to the installed app
 
 ## Personal-Use Android Release Identity — Aug 2026
 - [x] Create the Android Capacitor project and a new personal-use Noland Field signing identity
 - [x] Build, sign, verify, and publish the first replacement APK for the owner’s phone
-- [ ] Document one-time replacement installation and subsequent in-app update use
+- [x] Document one-time replacement installation and subsequent in-app update use
 
 ## Quote Performance & County Differentiation — Aug 2026
 - [x] Measure the current quote-page mobile performance and critical loading path

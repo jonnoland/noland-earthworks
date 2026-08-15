@@ -93,6 +93,19 @@ Open Noland Field on the phone while connected to the internet. On app launch, a
 
 Android will prompt the user to allow installation from the download source if needed. After installation, reopen the app and confirm the installed version matches the release version.
 
+## One-time replacement install for this new signing identity
+
+This first `v0.4.0` APK uses a new personal-use signing identity. Android will not install it over the older companion app if that older app was signed with a different key.
+
+1. On the phone, confirm that any important draft work in the existing companion app has reached Ops.
+2. Uninstall the currently installed Noland Field app.
+3. Open the APK download from the `mobile-v0.4.0-build1` GitHub release on the phone.
+4. If Android asks, allow the browser or file manager to install unknown apps for this one installation.
+5. Install the new Noland Field APK and sign in using the field PIN.
+6. Verify a location lookup and a test field request. The app uses the same backend and Ops dashboard.
+
+After this one-time replacement, future releases signed with the same `noland-field-release.jks` identity can be installed through the Profile tab’s **Install Update** action without uninstalling the app first.
+
 ## 6. If no APK is needed
 
 Website/backend changes, service-area rules, live map data, quote routing, and other server-driven behavior can update without an APK when the installed app reads the new data from the backend. A signed APK is only required when the installed native app or its bundled web code changes.
