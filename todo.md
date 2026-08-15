@@ -3094,6 +3094,12 @@
 - [x] Add an in-app update action for current companion-app releases
 - [x] Validate updated companion-app source without rebuilding the APK
 
+## Companion Release Channel, Map & Offline Sync — Aug 2026
+- [x] Configure version metadata and a downloadable companion-app release channel for the in-app update action
+- [x] Add a visual supported-service-area map to the companion app location screen
+- [x] Store out-of-area companion requests offline and synchronize them when connectivity returns
+- [x] Validate the companion source and document the required signed-APK release step without rebuilding the APK
+
 ## Quote Performance & County Differentiation — Aug 2026
 - [x] Measure the current quote-page mobile performance and critical loading path
 - [x] Implement a low-risk quote-page performance improvement that preserves the form flow

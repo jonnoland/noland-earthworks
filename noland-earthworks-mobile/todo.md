@@ -20,3 +20,9 @@
 - [x] Show normalized standard service-area status for all supported counties without blocking an internal field quote
 - [x] Confirm the existing Profile update card and session update check provide an in-app update action
 - [ ] Build and distribute an updated APK only when explicitly requested
+
+## Companion Release Channel, Map & Offline Sync — Aug 2026
+- [x] Configure published mobile-release metadata for the in-app update action
+- [x] Add a visual map of the supported service area to the location screen
+- [x] Store field requests offline and synchronize them when connectivity returns
+- [ ] Build and distribute a signed update APK only when explicitly requested

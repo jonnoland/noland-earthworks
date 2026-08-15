@@ -11,6 +11,7 @@ import Profile from "@/pages/Profile";
 import PinLogin from "@/pages/PinLogin";
 import { useAuth } from "@/hooks/useAuth";
 import { useUpdateCheck } from "@/hooks/useUpdateCheck";
+import { useOfflineFieldQuoteSync } from "@/hooks/useOfflineFieldQuoteSync";
 
 // Routes where BottomNav should be hidden (they have their own PageHeader back button)
 const HIDE_BOTTOM_NAV = ["/new-quote"];
@@ -23,6 +24,7 @@ function AppShell() {
 
   // Fire update toast once per session if a newer version is available
   useUpdateCheck();
+  useOfflineFieldQuoteSync();
 
   return (
     <div

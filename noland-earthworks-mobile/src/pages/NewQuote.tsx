@@ -22,6 +22,8 @@ import { trpc } from "@/lib/trpc";
 import PageHeader from "@/components/PageHeader";
 import AddressAutocomplete from "@/components/AddressAutocomplete";
 import { isServedCounty, normalizeCountyName } from "@/lib/serviceAreas";
+import { enqueueOfflineFieldQuote } from "@/lib/offlineFieldQuoteQueue";
+import { useNetwork } from "@/hooks/useNetwork";
 
 // ─── SiteMapPreview ──────────────────────────────────────────────────────────
 
@@ -130,6 +132,13 @@ function InteractiveMapPreview({
   );
 }
 
+function ServiceAreaMapPreview() {
+  const SERVER_BASE = "https://nolandearth-pymczdcn.manus.space";
+  const COUNTY_GEOJSON_URL = "https://d2xsxph8kpxj0f.cloudfront.net/310519663484957999/PymCzDCnSJzPjdkfwA7Jn6/tn-served-counties-35-v2_c7cfca3b.json";
+  const srcdoc = `<!DOCTYPE html><html style="margin:0;padding:0;height:100%"><head><meta name="viewport" content="width=device-width,initial-scale=1"><style>html,body,#map{margin:0;padding:0;width:100%;height:100%;}</style></head><body><div id="map"></div><script>(async function(){const script=document.createElement('script');script.src='${SERVER_BASE}/api/maps/js?v=weekly&loading=async';script.async=true;document.head.appendChild(script);await new Promise(r=>script.onload=r);let attempts=0;while(typeof google==='undefined'||!google.maps||!google.maps.Map){if(++attempts>100)return;await new Promise(r=>setTimeout(r,50));}const map=new google.maps.Map(document.getElementById('map'),{center:{lat:35.85,lng:-87.5},zoom:7,disableDefaultUI:true,zoomControl:true,gestureHandling:'cooperative',styles:[{featureType:'all',elementType:'labels',stylers:[{visibility:'off'}]}]});try{const geo=await fetch('${COUNTY_GEOJSON_URL}').then(r=>r.json());map.data.addGeoJson(geo);map.data.setStyle({fillColor:'#E87722',fillOpacity:.25,strokeColor:'#E87722',strokeOpacity:.9,strokeWeight:1.25});const bounds=new google.maps.LatLngBounds();map.data.forEach(f=>f.getGeometry().forEachLatLng(p=>bounds.extend(p)));map.fitBounds(bounds,12);}catch(e){}})();<\/script></body></html>`;
+  return <div style={{ marginTop: 10 }}><div style={{ borderRadius: 10, overflow: "hidden", border: "1px solid oklch(0.65 0.18 50 / 0.45)", height: 150, position: "relative" }}><iframe srcDoc={srcdoc} style={{ width: "100%", height: "100%", border: "none", display: "block" }} title="Supported Middle and West Tennessee service area" sandbox="allow-scripts allow-same-origin" /></div><p style={{ color: "oklch(0.60 0.01 80)", fontSize: 11, margin: "6px 0 0" }}>Orange counties are the standard 35-county service area.</p></div>;
+}
+
 // ─── Types ──────────────────────────────────────────────────────────────────
 
 interface PhotoEntry {
@@ -225,6 +234,7 @@ export default function NewQuote() {
   const [gpsError, setGpsError] = useState<string | null>(null);
   const [submitState, setSubmitState] = useState<"idle" | "submitting" | "success" | "error">("idle");
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [queuedOffline, setQueuedOffline] = useState(false);
   const [estimate, setEstimate] = useState<EstimateResult | null>(null);
   const [estimateError, setEstimateError] = useState<string | null>(null);
 
@@ -257,6 +267,7 @@ export default function NewQuote() {
   });
 
   const trpcUtils = trpc.useUtils();
+  const { isOnline } = useNetwork();
   const uploadPhoto = trpc.fieldQuote.uploadPhoto.useMutation();
   const submitQuote = trpc.fieldQuote.submit.useMutation();
   const getEstimate = trpc.fieldQuote.estimate.useMutation({
@@ -457,6 +468,40 @@ export default function NewQuote() {
     setSubmitState("submitting");
     setSubmitError(null);
 
+    const acreage = parseFloat(form.acreage);
+    const submission = {
+      name: form.name,
+      email: form.email || undefined,
+      phone: form.phone || undefined,
+      address: form.address || undefined,
+      lat: form.lat ?? undefined,
+      lng: form.lng ?? undefined,
+      serviceType: form.serviceType,
+      acreage: isNaN(acreage) ? undefined : acreage,
+      terrainType: form.terrain,
+      vegetationDensity: form.vegetationDensity,
+      vegetationTypes: form.vegetationTypes || undefined,
+      slopeCondition: undefined,
+      accessCondition: form.accessDifficulty,
+      obstacles: form.obstacles || undefined,
+      proximityToStructures: form.proximityToStructures || undefined,
+      message: form.message || undefined,
+      photoUrls: [] as string[],
+      source: "field_app",
+    };
+
+    if (!isOnline) {
+      try {
+        await enqueueOfflineFieldQuote({ ...submission, source: "field_app_offline" });
+        setQueuedOffline(true);
+        setSubmitState("success");
+      } catch {
+        setSubmitState("error");
+        setSubmitError("This request could not be saved on the device. Reconnect and try again.");
+      }
+      return;
+    }
+
     try {
       const photoUrls: string[] = [];
       for (const photo of photos) {
@@ -464,26 +509,9 @@ export default function NewQuote() {
         photoUrls.push(result.url);
       }
 
-      const acreage = parseFloat(form.acreage);
       await submitQuote.mutateAsync({
-        name: form.name,
-        email: form.email || undefined,
-        phone: form.phone || undefined,
-        address: form.address || undefined,
-        lat: form.lat ?? undefined,
-        lng: form.lng ?? undefined,
-        serviceType: form.serviceType,
-        acreage: isNaN(acreage) ? undefined : acreage,
-        terrainType: form.terrain,
-        vegetationDensity: form.vegetationDensity,
-        vegetationTypes: form.vegetationTypes || undefined,
-        slopeCondition: undefined,
-        accessCondition: form.accessDifficulty,
-        obstacles: form.obstacles || undefined,
-        proximityToStructures: form.proximityToStructures || undefined,
-        message: form.message || undefined,
+        ...submission,
         photoUrls,
-        source: "field_app",
       });
 
       setSubmitState("success");
@@ -503,7 +531,7 @@ export default function NewQuote() {
           Quote Submitted
         </h2>
         <p style={{ color: "oklch(0.60 0.01 80)", fontSize: 15, textAlign: "center", margin: "0 0 32px" }}>
-          The quote is now in the ops dashboard and will be AI-scored automatically.
+          {queuedOffline ? "This field request is stored on the device and will synchronize to Ops when the app reconnects. Photos are not included in offline requests; add them after reconnecting if needed." : "The quote is now in the ops dashboard and will be AI-scored automatically."}
         </p>
         <button
           onClick={() => navigate("/")}
@@ -512,8 +540,9 @@ export default function NewQuote() {
           Back to Home
         </button>
         <button
-          onClick={() => {
-            setSubmitState("idle");
+              onClick={() => {
+                setSubmitState("idle");
+                setQueuedOffline(false);
             setPhotos([]);
             setEstimate(null);
             setForm({
@@ -748,6 +777,7 @@ export default function NewQuote() {
             {form.county && <p style={{ color: isServedCounty(form.county) ? "oklch(0.70 0.18 145)" : "oklch(0.75 0.16 75)", fontSize: 11, margin: "7px 0 0", lineHeight: 1.45 }}>
               {isServedCounty(form.county) ? `${normalizeCountyName(form.county)} is in the standard service area.` : `${normalizeCountyName(form.county)} is outside the standard service area. Confirm custom travel with the owner or add the contact to the expansion waitlist in Ops.`}
             </p>}
+            <ServiceAreaMapPreview />
             {form.lat && (
               <p style={{ color: "oklch(0.65 0.18 50)", fontSize: 11, margin: "4px 0 0" }}>
                 GPS: {form.lat.toFixed(5)}, {form.lng?.toFixed(5)}
