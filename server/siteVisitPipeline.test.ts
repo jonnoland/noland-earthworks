@@ -39,6 +39,9 @@ describe("native Site Visit Request workflow", () => {
     expect(quote).toContain("trpc.quote.placeDetails.useQuery");
     expect(quote).toContain("city: form.city.trim()");
     expect(quote).toContain("zip: form.zip.trim()");
+    expect(quote).toContain('name="city"');
+    expect(quote).toContain('name="zip"');
+    expect(quote).toContain("View supported counties");
     expect(router).toContain("Please select a county in Noland Earthworks’ service area.");
   });
 });

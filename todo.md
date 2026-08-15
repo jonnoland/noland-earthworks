@@ -3058,6 +3058,11 @@
 - [x] Normalize Google address county values before comparing them to the approved service-area list
 - [x] Verify Houston County and other approved counties returned without the “County” suffix remain in service area
 
+## Site Visit Location Details & County Reference — Aug 2026
+- [x] Display City and ZIP fields that are populated by selected property-address autocomplete details
+- [x] Add a compact supported-counties reference beside the Site Visit Request location inputs
+- [x] Add regression coverage for visible City/ZIP and county-reference behavior
+
 ## Quote Performance & County Differentiation — Aug 2026
 - [x] Measure the current quote-page mobile performance and critical loading path
 - [x] Implement a low-risk quote-page performance improvement that preserves the form flow
