@@ -3193,6 +3193,15 @@
 - [x] Validate public pages, metadata, and Operations labels for prohibited terminology
 - [x] Increment the web application version for the published terminology correction
 
+## Land Management Service Experience — Aug 2026
+- [x] Refresh Land Management imagery to show broader property stewardship and management outcomes
+- [x] Route on-site searches for the retired service term to the Land Management service
+- [x] Add a concise Land Management category explanation to the Services page
+- [x] Add regression coverage and validate the updated service experience
+- [x] Keep Forestry Mulching as the first homepage service and Land Management second
+- [x] Replace visible Schedule a Free Quote calls to action with Request a Site Visit
+- [x] Increment the public app version for the published Land Management service-experience update
+
 ## Quote Performance & County Differentiation — Aug 2026
 - [x] Measure the current quote-page mobile performance and critical loading path
 - [x] Implement a low-risk quote-page performance improvement that preserves the form flow

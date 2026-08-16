@@ -125,7 +125,7 @@ export default function HeroSection() {
               className="btn-amber"
               style={{ textDecoration: "none" }}
             >
-              Schedule a Free Quote
+              Request a Site Visit
               <ArrowRight size={16} />
             </a>
             <button

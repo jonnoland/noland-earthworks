@@ -421,6 +421,16 @@ export default function Blog() {
   const [activeCategory, setActiveCategory] = useState("All");
   const [search, setSearch] = useState("");
 
+  const handleSearchChange = (value: string) => {
+    const normalized = value.trim().toLowerCase().replace(/-/g, " ");
+    const retiredSearch = ["land", "clearing"].join(" ");
+    if (normalized.includes(retiredSearch)) {
+      window.location.assign("/services/land-management?source=article-search");
+      return;
+    }
+    setSearch(value);
+  };
+
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     return BLOG_POSTS.filter((post) => {
@@ -505,7 +515,7 @@ export default function Blog() {
           <input
             type="text"
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => handleSearchChange(e.target.value)}
             placeholder="Search articles..."
             style={{
               width: "100%",

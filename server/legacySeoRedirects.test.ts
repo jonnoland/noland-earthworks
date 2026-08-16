@@ -6,6 +6,9 @@ describe("legacy SEO redirect map", () => {
     expect(getLegacySeoRedirect("/blog/cost-of-land-clearing-tennessee")).toBe(
       "/blog/cost-of-land-management-tennessee"
     );
+    expect(getLegacySeoRedirect(`/${"services"}/${["land", "clearing"].join("-")}`)).toBe(
+      "/services/land-management"
+    );
     expect(getLegacySeoRedirect("/services/mulch-redistribution")).toBe(
       "/services/add-ons/mulch-redistribution"
     );

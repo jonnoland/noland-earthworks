@@ -321,7 +321,6 @@ function Router() {
       <Route path="/blog/:slug" component={DynamicBlogPost} />
       {/* Service pages */}
       <Route path="/services/land-management" component={LandManagementPage} />
-      <Route path="/services/land-management" component={() => { window.location.replace("/services/land-management"); return null; }} />
       <Route path="/services/forestry-mulching" component={ForestryMulchingPage} />
       <Route path="/services/vegetation-management" component={VegetationManagementPage} />
       <Route path="/services/property-maintenance" component={PropertyMaintenancePage} />

@@ -11,7 +11,7 @@
 import { ArrowRight, CheckCircle2 } from "lucide-react";
 import { useRef, useEffect, useState } from "react";
 
-const LAND_CLEARING = "https://d2xsxph8kpxj0f.cloudfront.net/310519663484957999/PymCzDCnSJzPjdkfwA7Jn6/land-management-iPC6VzRdyjJa4bVNXaWy5n.webp";
+const LAND_MANAGEMENT = "https://d2xsxph8kpxj0f.cloudfront.net/310519663484957999/PymCzDCnSJzPjdkfwA7Jn6/gallery-brush-hogging-after-1-cTEAPGT74a2ZfDzWuJQR8X.webp";
 const FORESTRY_MULCHING = "https://d2xsxph8kpxj0f.cloudfront.net/310519663484957999/PymCzDCnSJzPjdkfwA7Jn6/forestry-mulching-HhrtysAJXn8CTRW2xzcGCC.webp";
 const VEGETATION_MGMT = "https://d2xsxph8kpxj0f.cloudfront.net/310519663484957999/PymCzDCnSJzPjdkfwA7Jn6/vegetation-management-hnEnCRefahdbJy4xpn6UnC.webp";
 const PROPERTY_MAINT = "https://d2xsxph8kpxj0f.cloudfront.net/310519663484957999/PymCzDCnSJzPjdkfwA7Jn6/property-maintenance-3gu7BTR6P2RKi4ZuYCNLoN.webp";
@@ -21,7 +21,7 @@ const PRIMARY_BENEFITS = [
   "Single machine — one operator, one pass",
   "Mulch stays on-site as natural ground cover",
   "Works on slopes and wet ground",
-  "Faster and cleaner than traditional clearing",
+  "A clean, site-specific vegetation-management finish",
 ];
 
 const services = [
@@ -36,8 +36,8 @@ const services = [
     title: "Land Management",
     href: "/services/land-management",
     description:
-      "Professional land management services for residential and commercial properties. We clear brush, trees, and overgrowth to prepare your land for development, agriculture, or recreational use.",
-    image: LAND_CLEARING,
+      "A site-specific category for forestry mulching, pasture reclamation, fence-line access, vegetation management, and ongoing property upkeep.",
+    image: LAND_MANAGEMENT,
   },
   {
     title: "Vegetation Management",
@@ -444,9 +444,7 @@ export default function ServicesSection() {
                 maxWidth: "480px",
               }}
             >
-              Whether you need land management, forestry mulching, or vegetation
-              management, Noland Earthworks has the expertise and equipment to
-              handle your project efficiently and professionally.
+              We evaluate the vegetation work your property actually needs, then put the agreed scope, exclusions, and next steps in writing before work begins.
             </p>
           </div>
         </div>
@@ -456,6 +454,13 @@ export default function ServicesSection() {
           {services.map((s, i) => (
             <ServiceCard key={s.title} {...s} index={i} isPrimary={s.title === "Forestry Mulching"} />
           ))}
+        </div>
+
+        <div className="mt-6 border border-[#E07B2A]/25 bg-[#E07B2A]/5 p-5 sm:p-6">
+          <div className="font-['Oswald'] text-sm font-semibold uppercase tracking-[0.14em] text-[#E07B2A]">What Land Management Includes</div>
+          <p className="mt-2 max-w-4xl font-['Lato'] text-sm leading-6 text-white/70">
+            Land Management is the broader category for suitable vegetation work: forestry mulching, pasture reclamation, fence-line access, invasive-vegetation control, trail work, and ongoing property upkeep. The exact work is confirmed through a site visit and written proposal. Grading, excavation, hauling, and construction preparation are not included.
+          </p>
         </div>
 
         {/* Add-On Services */}

@@ -9,13 +9,31 @@ const FORESTRY_HERO = "https://d2xsxph8kpxj0f.cloudfront.net/310519663484957999/
 const VEGETATION_HERO = "https://d2xsxph8kpxj0f.cloudfront.net/310519663484957999/PymCzDCnSJzPjdkfwA7Jn6/vegetation-management-hnEnCRefahdbJy4xpn6UnC.webp";
 const MAINTENANCE_HERO = "https://d2xsxph8kpxj0f.cloudfront.net/310519663484957999/PymCzDCnSJzPjdkfwA7Jn6/property-maintenance-3gu7BTR6P2RKi4ZuYCNLoN.webp";
 
-const HERO = "https://d2xsxph8kpxj0f.cloudfront.net/310519663484957999/PymCzDCnSJzPjdkfwA7Jn6/land-management-iPC6VzRdyjJa4bVNXaWy5n.webp";
+const PASTURE_HERO = "https://d2xsxph8kpxj0f.cloudfront.net/310519663484957999/PymCzDCnSJzPjdkfwA7Jn6/gallery-brush-hogging-after-1-cTEAPGT74a2ZfDzWuJQR8X.webp";
+
+const LAND_MANAGEMENT_OUTCOMES = [
+  {
+    image: "https://d2xsxph8kpxj0f.cloudfront.net/310519663484957999/PymCzDCnSJzPjdkfwA7Jn6/gallery-forestry-after-1-irHqRa8sGttYKR7PSVZaM8.webp",
+    title: "Pasture Reclamation",
+    description: "Dense cedar and brush can be evaluated for a written forestry-mulching scope that restores usable ground cover and access.",
+  },
+  {
+    image: PASTURE_HERO,
+    title: "Ongoing Property Care",
+    description: "Open pasture and lighter vegetation can be maintained through Brush Hogging when that is the right fit for the property.",
+  },
+  {
+    image: "https://d2xsxph8kpxj0f.cloudfront.net/310519663484957999/PymCzDCnSJzPjdkfwA7Jn6/gallery-vegetation-after-1-ai26shCK8Ws9iasuK2BzWu.webp",
+    title: "Fence-Line Access",
+    description: "Vegetation management can reopen buried boundaries and improve access while leaving mulch on suitable forestry-mulching projects.",
+  },
+];
 
 const data: ServicePageProps = {
   slug: "land-management",
   title: "Land Management in Tennessee",
   tagline: "Site-specific vegetation work for residential, agricultural, and commercial properties across Middle & West Tennessee.",
-  heroImage: HERO,
+  heroImage: PASTURE_HERO,
   overviewTitle: "Land Management Built Around What Your Property Needs",
   overviewBody: [
     "Land Management can include reclaiming pasture overtaken by cedar and brush, opening fence lines, addressing invasive vegetation, and restoring access through suitable overgrowth. The written scope varies by property and goal.",
@@ -237,6 +255,35 @@ function ForestryMulchingFaqSection() {
   );
 }
 
+function LandManagementOutcomes() {
+  return (
+    <section style={{ backgroundColor: "#111d16", padding: "5rem 0", borderTop: "1px solid rgba(224,123,42,0.18)" }}>
+      <div className="container">
+        <div className="max-w-3xl">
+          <div className="section-label mb-4">Property Stewardship</div>
+          <h2 className="font-['Oswald'] text-3xl font-bold uppercase tracking-[0.04em] text-[#F0EDE6] sm:text-4xl">
+            Land Management Is More Than One Type of Work
+          </h2>
+          <p className="mt-4 font-['Lato'] leading-7 text-white/70">
+            Each property has a different goal. Land Management brings together the vegetation work that fits that goal—forestry mulching, pasture reclamation, fence-line access, and ongoing upkeep—under a site-specific written scope.
+          </p>
+        </div>
+        <div className="mt-10 grid gap-5 md:grid-cols-3">
+          {LAND_MANAGEMENT_OUTCOMES.map((outcome) => (
+            <figure key={outcome.title} className="overflow-hidden border border-white/10 bg-black/20">
+              <img src={outcome.image} alt={outcome.title} loading="lazy" className="aspect-[4/3] w-full object-cover" />
+              <figcaption className="p-5">
+                <h3 className="font-['Oswald'] text-xl font-semibold uppercase tracking-[0.04em] text-[#F0EDE6]">{outcome.title}</h3>
+                <p className="mt-2 font-['Lato'] text-sm leading-6 text-white/65">{outcome.description}</p>
+              </figcaption>
+            </figure>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
 export default function LandManagementPage() {
   usePageTitle(
     "Land Management in Tennessee | Noland Earthworks",
@@ -247,6 +294,7 @@ export default function LandManagementPage() {
     <>
       <Navbar />
       <ServicePageLayout {...data} />
+      <LandManagementOutcomes />
       <ForestryMulchingFaqSection />
       <MobileCTABar />
       <Footer />
