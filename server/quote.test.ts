@@ -83,6 +83,9 @@ describe("quote.submit", () => {
       service: "forestry-mulching",
       county: "dickson",
       acreage: "1",
+      street: "93 Halliburton Road",
+      city: "Vanleer",
+      zip: "37181",
       message: "Forestry mulching with a new access trail.",
       serviceBreakdown: [
         { service: "forestry-mulching", label: "Forestry Mulching", lowCents: 650000, highCents: 1200000, measurement: "1.00 acre", calculation: "1 acre × rate" },

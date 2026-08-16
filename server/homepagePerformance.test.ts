@@ -65,8 +65,8 @@ describe("homepage performance safeguards", () => {
       "utf8"
     );
 
-    expect(hero).toContain("Land Management &amp;");
-    expect(hero).toContain("Forestry Mulching");
+    expect(hero).toContain("Forestry Mulching &amp;");
+    expect(hero).toContain("Land Management");
     expect(hero).toContain("in Middle &amp; West Tennessee");
     expect(hero).toContain("Your Land Has Been Waiting. Let&apos;s Bring It Back.");
   });

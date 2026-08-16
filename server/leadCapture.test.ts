@@ -183,6 +183,10 @@ describe("quoteRouter — lead capture", () => {
       email: "alice@example.com",
       service: "Forestry Mulching",
       county: "Williamson",
+      acreage: "3",
+      street: "101 Rural Lane",
+      city: "Franklin",
+      zip: "37064",
     });
 
     expect(mockUpsertOpsLeadByPhone).toHaveBeenCalledOnce();
@@ -198,6 +202,10 @@ describe("quoteRouter — lead capture", () => {
       email: "noowner@example.com",
       service: "Brush Removal",
       county: "Wilson",
+      acreage: "2",
+      street: "202 Farm Road",
+      city: "Lebanon",
+      zip: "37087",
     });
 
     expect(mockUpsertOpsLeadByPhone).toHaveBeenCalledOnce();
@@ -214,6 +222,10 @@ describe("quoteRouter — lead capture", () => {
       email: "resilient@example.com",
       service: "Stump Grinding",
       county: "Rutherford",
+      acreage: "1",
+      street: "303 Field Drive",
+      city: "Murfreesboro",
+      zip: "37129",
     });
 
     expect(result.success).toBe(true);

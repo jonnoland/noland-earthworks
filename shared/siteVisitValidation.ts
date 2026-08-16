@@ -4,6 +4,10 @@ export type SiteVisitRequestFields = {
   email: string;
   service: string;
   county: string;
+  acreage: string;
+  street: string;
+  city: string;
+  zip: string;
   preferredContact: string;
   smsConsent: boolean;
 };
@@ -33,6 +37,13 @@ export function validateSiteVisitRequest(form: SiteVisitRequestFields): Record<s
   }
   if (!form.service) errors.service = "Please select the type of work you need.";
   if (!isServedCounty(form.county)) errors.county = "Please select a county in Noland Earthworks’ Middle or West Tennessee service area.";
+  const acreage = Number.parseFloat(form.acreage);
+  if (!form.acreage.trim() || !Number.isFinite(acreage) || acreage <= 0) {
+    errors.acreage = "Please enter the estimated acreage for the area you want managed.";
+  }
+  if (form.street.trim().length < 5) errors.street = "Please enter the full property street address.";
+  if (form.city.trim().length < 2) errors.city = "Please enter the property city.";
+  if (!/^\d{5}(?:-\d{4})?$/.test(form.zip.trim())) errors.zip = "Please enter a valid property ZIP code.";
   if (form.preferredContact === "text" && !form.smsConsent) {
     errors.smsConsent = "Please acknowledge the project-text terms or choose call or email instead.";
   }

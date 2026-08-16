@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { invokeLLM, type Message, type TextContent, type FileContent } from "./_core/llm";
 import { publicProcedure, router } from "./_core/trpc";
+import { TRPCError } from "@trpc/server";
 import { notifyOwner } from "./_core/notification";
 import { ENV } from "./_core/env";
 import { Resend } from "resend";
@@ -30,12 +31,15 @@ export const quoteSchema = z.object({
   smsConsent: z.boolean().optional().default(false),
   service: z.string().min(1, "Service is required").max(100),
   county: z.string().min(1, "County is required").max(100).refine(isServedCounty, "Please select a county in Noland Earthworks’ service area."),
-  acreage: z.string().max(50).optional().default(""),
+  acreage: z.string().trim().min(1, "Estimated acreage is required").max(50).refine((value) => Number.isFinite(Number(value)) && Number(value) > 0, "Estimated acreage must be greater than zero"),
   // Property / service address
-  street: z.string().max(200).optional().default(""),
-  city: z.string().max(100).optional().default(""),
+  street: z.string().trim().min(5, "Property street address is required").max(200),
+  city: z.string().trim().min(2, "Property city is required").max(100),
   state: z.string().max(50).optional().default("TN"),
-  zip: z.string().max(20).optional().default(""),
+  zip: z.string().trim().regex(/^\d{5}(?:-\d{4})?$/, "A valid property ZIP code is required").max(20),
+  locationDecision: z.enum(["confirmed", "owner_review", "out_of_area"]).optional().default("owner_review"),
+  geocodedCounty: z.string().max(100).optional().default(""),
+  locationReviewReason: z.string().max(500).optional().default(""),
   message: z.string().max(2000).optional().default(""),
   addOns: z.array(z.string()).optional().default([]),
   // Parcel data from TN statewide parcel API
@@ -436,6 +440,13 @@ function buildConfirmationEmailHtml(data: QuoteInput): string {
 
 export const quoteRouter = router({
   submit: publicProcedure.input(quoteSchema).mutation(async ({ input }) => {
+    if (input.locationDecision === "out_of_area") {
+      throw new TRPCError({ code: "BAD_REQUEST", message: "This property appears to be outside the current service area. Please use the area-expansion waitlist or call about a custom request." });
+    }
+    const needsLocationReview = input.locationDecision === "owner_review";
+    const locationReviewNote = needsLocationReview
+      ? `LOCATION OWNER REVIEW: ${input.locationReviewReason || "County could not be confirmed from the submitted address."}${input.geocodedCounty ? ` Geocoded county: ${input.geocodedCounty}.` : ""}`
+      : "Location decision: County confirmed from the submitted address.";
     // 0. Run AI lead qualifier (non-blocking — fires in background)
     let qualification: Awaited<ReturnType<typeof qualifyLead>> | null = null;
     try {
@@ -600,6 +611,7 @@ export const quoteRouter = router({
             return input.acreage ? `Acreage: ${input.acreage}` : "";
           })(),
           address ? `Address: ${address}` : "",
+          locationReviewNote,
           input.serviceBreakdown.length > 0 ? `Itemized Preliminary Estimate:\n${input.serviceBreakdown.map((item) => `- ${item.label}: $${Math.round(item.lowCents / 100).toLocaleString()} – $${Math.round(item.highCents / 100).toLocaleString()}${item.measurement ? ` (${item.measurement})` : ""}`).join("\n")}` : "",
           input.message ? `\nProject Details:\n${input.message}` : "",
         ]
@@ -659,6 +671,7 @@ export const quoteRouter = router({
           qualification?.summary ? `AI Summary: ${qualification.summary}` : "",
           qualification?.flags?.length ? `AI Flags: ${qualification.flags.join(" | ")}` : "",
           `Project SMS acknowledgment: ${input.smsConsent ? "provided" : "not provided"}`,
+          locationReviewNote,
           input.acreage ? `Acreage: ${input.acreage}` : "",
           input.message ? `Client Message: ${input.message}` : "",
         ].filter(Boolean).join("\n");
@@ -673,8 +686,8 @@ export const quoteRouter = router({
           aiRangeConfidence: null,
           aiRangeConfidenceScore: null,
           sourceDetail: "website_site_visit_request",
-          fitDecision: "unreviewed",
-          nextActionType: "review_and_contact",
+          fitDecision: needsLocationReview ? "owner_review" : "unreviewed",
+          nextActionType: needsLocationReview ? "verify_property_county" : "review_and_contact",
           nextActionDueAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
           visitStatus: "requested",
           proposalStatus: "not_started",
@@ -724,6 +737,7 @@ export const quoteRouter = router({
               estimateLabel,
               input.acreage ? `Acreage: ${input.acreage}` : "",
               addressPart ? `Address: ${addressPart}` : "",
+              needsLocationReview ? "Location: OWNER REVIEW REQUIRED" : "Location: County confirmed",
               qualification?.summary ? `AI: ${qualification.summary}` : "",
               `Open: https://www.nolandearthworks.com/ops/quotes?quoteId=${newNativeQuoteId}`,
             ].filter(Boolean).join("\n");

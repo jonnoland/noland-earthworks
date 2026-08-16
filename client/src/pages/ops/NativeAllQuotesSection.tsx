@@ -175,7 +175,7 @@ interface QuoteFormData {
   internalNotes: string;
   lineItems: LineItem[];
   sourceDetail: string;
-  fitDecision: "unreviewed" | "pursue" | "pass" | "refer_out";
+  fitDecision: "unreviewed" | "owner_review" | "pursue" | "pass" | "refer_out";
   nextActionType: string;
   nextActionDueAt: string;
   visitStatus: "not_requested" | "requested" | "confirmed" | "completed" | "not_needed";
@@ -875,7 +875,7 @@ function QuoteFormModal({
                 <Input value={form.sourceDetail} onChange={e => setForm(p => ({ ...p, sourceDetail: e.target.value }))} className="mt-1 h-8 bg-zinc-800 border-zinc-700 text-xs" />
               </label>
               <label className="text-[10px] uppercase tracking-wide text-zinc-500">Fit decision
-                <select value={form.fitDecision} onChange={e => setForm(p => ({ ...p, fitDecision: e.target.value as QuoteFormData["fitDecision"] }))} className="mt-1 h-8 w-full rounded-md border border-zinc-700 bg-zinc-800 px-2 text-xs text-zinc-100"><option value="unreviewed">Unreviewed</option><option value="pursue">Pursue</option><option value="pass">Pass</option><option value="refer_out">Refer out</option></select>
+                <select value={form.fitDecision} onChange={e => setForm(p => ({ ...p, fitDecision: e.target.value as QuoteFormData["fitDecision"] }))} className="mt-1 h-8 w-full rounded-md border border-zinc-700 bg-zinc-800 px-2 text-xs text-zinc-100"><option value="unreviewed">Unreviewed</option><option value="owner_review">Owner Review</option><option value="pursue">Pursue</option><option value="pass">Pass</option><option value="refer_out">Refer out</option></select>
               </label>
               <label className="text-[10px] uppercase tracking-wide text-zinc-500">Next action
                 <Input value={form.nextActionType} onChange={e => setForm(p => ({ ...p, nextActionType: e.target.value }))} className="mt-1 h-8 bg-zinc-800 border-zinc-700 text-xs" placeholder="Review and contact" />
@@ -1168,6 +1168,7 @@ function NativeQuoteDetailPanel({
             <FileText className="w-4 h-4 text-primary" />
             <span className="text-sm font-semibold text-foreground truncate max-w-[200px]">{quote.title}</span>
             <StatusBadge quote={quote} />
+            {quote.fitDecision === "owner_review" && <Badge className="bg-amber-600 text-white text-xs">Owner Review</Badge>}
           </div>
           <button onClick={onClose} className="text-muted-foreground hover:text-foreground transition-colors p-1 rounded" aria-label="Close">
             <X className="w-4 h-4" />
@@ -1229,6 +1230,12 @@ function NativeQuoteDetailPanel({
               >
                 <FileText className="w-3.5 h-3.5" />Convert to Quote
               </button>
+            </div>
+          )}
+          {quote.fitDecision === "owner_review" && (
+            <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-xs text-amber-100">
+              <p className="font-semibold">Owner Review — verify property county</p>
+              <p className="mt-1">This request was saved for review because the address county could not be confirmed or did not match the selected service county.</p>
             </div>
           )}
           {/* Client block */}

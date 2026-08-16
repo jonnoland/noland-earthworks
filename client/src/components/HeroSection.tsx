@@ -67,9 +67,9 @@ export default function HeroSection() {
               marginBottom: "1.5rem",
             }}
           >
-            Land Management &amp;
+            Forestry Mulching &amp;
             <br />
-            <span style={{ color: "#E07B2A" }}>Forestry Mulching</span>
+            <span style={{ color: "#E07B2A" }}>Land Management</span>
             <br />
             in Middle &amp; West Tennessee
           </h1>

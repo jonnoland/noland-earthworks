@@ -10,8 +10,8 @@ describe("native Site Visit Request workflow", () => {
     const source = readProjectFile("server/quoteRouter.ts");
 
     expect(source).toContain('sourceDetail: "website_site_visit_request"');
-    expect(source).toContain('fitDecision: "unreviewed"');
-    expect(source).toContain('nextActionType: "review_and_contact"');
+    expect(source).toContain('fitDecision: needsLocationReview ? "owner_review" : "unreviewed"');
+    expect(source).toContain('nextActionType: needsLocationReview ? "verify_property_county" : "review_and_contact"');
     expect(source).toContain('visitStatus: "requested"');
     expect(source).toContain('proposalStatus: "not_started"');
     expect(source).toContain('depositStatus: "not_requested"');

@@ -3207,6 +3207,15 @@
 - [x] Verify no stale quote-portal contact email remains in customer-facing quote workflow copy
 - [x] Increment the app version for the published quote-portal contact correction
 
+## Site Visit Location Validation & Homepage Heading — Aug 2026
+- [x] Warn when the selected service county conflicts with the geocoded property county
+- [x] Require a complete manual address and approved county when address lookup is unavailable
+- [x] Preserve the out-of-area path while routing ambiguous or failed-geocode requests to Owner Review
+- [x] Show the Owner Review location decision in Operations without losing a legitimate lead
+- [x] Change the homepage heading to Forestry Mulching & Land Management
+- [x] Add regression coverage, validate the request flow, and increment the app version
+- [x] Require an estimated acreage amount before a Site Visit Request can be submitted
+
 ## Quote Performance & County Differentiation — Aug 2026
 - [x] Measure the current quote-page mobile performance and critical loading path
 - [x] Implement a low-risk quote-page performance improvement that preserves the form flow

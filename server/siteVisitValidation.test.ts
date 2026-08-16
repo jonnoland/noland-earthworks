@@ -7,6 +7,10 @@ const validRequest = {
   email: "jon@example.com",
   service: "Forestry Mulching",
   county: "Dickson County",
+  acreage: "4.5",
+  street: "93 Halliburton Road",
+  city: "Vanleer",
+  zip: "37181",
   preferredContact: "call",
   smsConsent: false,
 };
@@ -33,5 +37,13 @@ describe("Site Visit Request contact validation", () => {
     expect(validateSiteVisitRequest({ ...validRequest, county: "" }).county).toContain("service area");
     expect(validateSiteVisitRequest({ ...validRequest, county: "Knox County" }).county).toContain("service area");
     expect(validateSiteVisitRequest({ ...validRequest, county: "Humphreys County" })).toEqual({});
+  });
+
+  it("requires estimated acreage and a complete manual property address", () => {
+    const errors = validateSiteVisitRequest({ ...validRequest, acreage: "", street: "", city: "", zip: "" });
+    expect(errors.acreage).toContain("estimated acreage");
+    expect(errors.street).toContain("street address");
+    expect(errors.city).toContain("property city");
+    expect(errors.zip).toContain("ZIP");
   });
 });
