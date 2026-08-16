@@ -4,7 +4,7 @@
  */
 
 import { z } from "zod";
-import { protectedProcedure, router } from "./_core/trpc";
+import { adminProcedure, router } from "./_core/trpc";
 import {
   listAgentConfigs,
   upsertAgentConfig,
@@ -26,8 +26,9 @@ import {
   runPricingUpdateAgent,
 } from "./agents";
 
-// Owner-only guard — mirrors the pattern in opsRouter
-const ownerProcedure = protectedProcedure;
+// Pricing research and approval change internal decision support and must never
+// be available to an ordinary authenticated account.
+const ownerProcedure = adminProcedure;
 
 // In-memory concurrency guard — prevents double-triggering the same agent
 const runningAgents = new Set<string>();

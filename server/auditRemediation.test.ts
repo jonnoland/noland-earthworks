@@ -40,6 +40,7 @@ describe("whole-site audit remediation safeguards", () => {
     const agents = source("server/agents.ts");
     const scheduler = source("server/_core/index.ts");
     const pricing = source("client/src/pages/ops/Pricing.tsx");
+    const router = source("server/agentRouter.ts");
 
     expect(agents).toContain("upsertPricingBenchmarkCandidate");
     expect(agents).not.toContain("await upsertPricingBenchmark({");
@@ -48,5 +49,7 @@ describe("whole-site audit remediation safeguards", () => {
     expect(pricing).toContain("Research awaiting your review");
     expect(pricing).toContain("Review source");
     expect(pricing).toContain("This is a review aid, not a quote verifier");
+    expect(router).toContain("adminProcedure");
+    expect(router).toContain("const ownerProcedure = adminProcedure");
   });
 });
