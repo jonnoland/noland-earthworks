@@ -414,12 +414,18 @@ export const fieldQuoteRouter = router({
       if (newId) {
         await sendOwnerAlertSms([
           "New Field Quote",
-          `${input.name}${input.phone ? ` · ${input.phone}` : ""}`,
-          input.serviceType ? `Service: ${input.serviceType}` : "",
+          `Lead: ${input.name}${input.phone ? ` · ${input.phone}` : ""}`,
+          `Requested service: ${input.serviceType ?? "Not specified"}`,
+          "Estimated value: Site visit required",
           input.acreage ? `Acreage: ${input.acreage}` : "",
           input.address ? `Address: ${input.address}` : "",
           `Open: https://www.nolandearthworks.com/ops/quotes?fieldQuoteId=${newId}`,
-        ].filter(Boolean).join("\n"));
+        ].filter(Boolean).join("\n"), {
+          alertType: "field_quote",
+          leadName: input.name,
+          service: input.serviceType ?? "Field Quote",
+          estimatedValueCents: null,
+        });
       }
 
       // 2. Run AI qualification and create ops lead in the background

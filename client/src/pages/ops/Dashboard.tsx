@@ -277,6 +277,7 @@ export default function Dashboard() {
 
   // ─── Local leads (for pipeline section) ────────────────────────────────────────────
   const { data: leads = [], isLoading: leadsLoading } = trpc.ops.leads.list.useQuery(undefined, { refetchInterval: 15000 });
+  const { data: ownerSmsAlerts = [] } = trpc.ops.smsAlerts.list.useQuery({ limit: 8 }, { refetchInterval: 30_000 });
   const dataLoading = jobsLoading || nativeJobsLoading || invoicesLoading || quotesLoading || leadsLoading;
 
   // ─── Google Business Profile reviews (latest 5 for dashboard widget) ────────────
@@ -658,6 +659,43 @@ export default function Dashboard() {
             )}
           </div>
         )}
+
+        <div className="ops-card p-4">
+          <SectionHeader
+            title="Owner SMS Alerts"
+            badge={ownerSmsAlerts.filter((alert: any) => alert.status === "accepted").length ? "Active" : undefined}
+            sub="Recent internal alerts sent to your phones"
+          />
+          {ownerSmsAlerts.length === 0 ? (
+            <EmptyState message="No owner SMS alerts have been recorded yet." />
+          ) : (
+            <div className="divide-y divide-border/60">
+              {ownerSmsAlerts.map((alert: any) => {
+                const accepted = alert.status === "accepted";
+                const amount = alert.estimatedValueCents != null
+                  ? `$${Math.round(alert.estimatedValueCents / 100).toLocaleString()}`
+                  : "Pending site visit";
+                return (
+                  <div key={alert.id} className="py-3 flex items-start gap-3">
+                    <div className={cn("mt-0.5 p-1.5 rounded-md", accepted ? "bg-green-400/10 text-green-400" : "bg-red-400/10 text-red-400")}>
+                      <MessageSquare className="w-3.5 h-3.5" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center justify-between gap-3">
+                        <p className="text-xs font-semibold text-foreground truncate">{alert.leadName || alert.alertType.replaceAll("_", " ")}</p>
+                        <span className={cn("text-[10px] font-semibold px-1.5 py-0.5 rounded border shrink-0", accepted ? "text-green-400 bg-green-400/10 border-green-400/20" : "text-red-400 bg-red-400/10 border-red-400/20")}>
+                          {accepted ? "Accepted by Twilio" : "Failed"}
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-muted-foreground mt-0.5 truncate">{alert.service || "Internal alert"} · {amount} · {alert.recipient}</p>
+                      <p className="text-[10px] text-muted-foreground/70 mt-0.5">{new Date(alert.createdAt).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}</p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
 
         {/* KPI Cards — row 1: jobs + money */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">

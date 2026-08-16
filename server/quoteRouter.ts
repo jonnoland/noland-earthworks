@@ -711,16 +711,28 @@ export const quoteRouter = router({
         if (newNativeQuoteId) {
           try {
             const addressPart = [input.street, input.city].filter(Boolean).join(", ");
+            const estimateLowCents = input.serviceBreakdown.reduce((total, item) => total + item.lowCents, 0);
+            const estimateHighCents = input.serviceBreakdown.reduce((total, item) => total + item.highCents, 0);
+            const hasEstimate = estimateLowCents > 0 || estimateHighCents > 0;
+            const estimateLabel = hasEstimate
+              ? `Estimated value: $${Math.round(estimateLowCents / 100).toLocaleString()}–$${Math.round(estimateHighCents / 100).toLocaleString()}`
+              : "Estimated value: Site visit required";
             const smsBody = [
               `New Website Request ${scoreLabel}`,
-              `${input.name} · ${input.phone}`,
-              `${serviceLabel} · ${input.county} County`,
+              `Lead: ${input.name} · ${input.phone}`,
+              `Requested service: ${serviceLabel} · ${input.county} County`,
+              estimateLabel,
               input.acreage ? `Acreage: ${input.acreage}` : "",
               addressPart ? `Address: ${addressPart}` : "",
               qualification?.summary ? `AI: ${qualification.summary}` : "",
               `Open: https://www.nolandearthworks.com/ops/quotes?quoteId=${newNativeQuoteId}`,
             ].filter(Boolean).join("\n");
-            await sendOwnerAlertSms(smsBody);
+            await sendOwnerAlertSms(smsBody, {
+              alertType: "website_request",
+              leadName: input.name,
+              service: serviceLabel,
+              estimatedValueCents: hasEstimate ? Math.round((estimateLowCents + estimateHighCents) / 2) : null,
+            });
           } catch (err) {
             console.warn("[Quote] Owner SMS alert failed:", err);
           }

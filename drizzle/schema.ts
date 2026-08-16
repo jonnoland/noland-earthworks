@@ -1154,6 +1154,28 @@ export const xOAuthTokens = mysqlTable("x_oauth_tokens", {
 export type XOAuthToken = typeof xOAuthTokens.$inferSelect;
 export type InsertXOAuthToken = typeof xOAuthTokens.$inferInsert;
 
+// ─── Owner SMS Alert History ──────────────────────────────────────────────────
+/**
+ * Retains one immutable row per owner-recipient alert attempt. A successful row
+ * means Twilio accepted the message for delivery; carrier delivery callbacks are
+ * not assumed without a separate status webhook.
+ */
+export const ownerSmsAlerts = mysqlTable("owner_sms_alerts", {
+  id: int("id").primaryKey().autoincrement(),
+  alertType: varchar("alertType", { length: 64 }).notNull(),
+  recipient: varchar("recipient", { length: 20 }).notNull(),
+  leadName: varchar("leadName", { length: 255 }),
+  service: varchar("service", { length: 255 }),
+  estimatedValueCents: int("estimatedValueCents"),
+  message: text("message").notNull(),
+  twilioSid: varchar("twilioSid", { length: 64 }),
+  status: mysqlEnum("status", ["accepted", "failed"]).notNull(),
+  errorMessage: text("errorMessage"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type OwnerSmsAlert = typeof ownerSmsAlerts.$inferSelect;
+export type InsertOwnerSmsAlert = typeof ownerSmsAlerts.$inferInsert;
+
 // ─── LinkedIn Credentials ─────────────────────────────────────────────────────
 /**
  * Stores the LinkedIn OAuth 2.0 access token and author URN for organic posting.

@@ -226,10 +226,11 @@ function DraggableJobBanner({ job }: { job: ScheduledJob }) {
 }
 
 // ─── Draggable open quote (Capacity Alerts panel) ────────────────────────────
-function DraggableQuote({ quote }: { quote: { id: number; name: string; stage: string; jobType?: string | null } }) {
+function DraggableQuote({ quote }: { quote: { id: number; name: string; stage: string; jobType?: string | null; isScheduled?: boolean; scheduledDate?: Date | string | null } }) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: `quote-${quote.id}`,
   });
+  const isScheduled = quote.isScheduled === true;
   return (
     <div
       ref={setNodeRef}
@@ -238,7 +239,9 @@ function DraggableQuote({ quote }: { quote: { id: number; name: string; stage: s
       style={{ touchAction: "none" }}
       className={cn(
         "flex items-center justify-between text-xs px-2 py-1.5 rounded border cursor-grab active:cursor-grabbing select-none",
-        "bg-sky-400/5 border-sky-400/20 hover:bg-sky-400/10 transition-colors",
+        isScheduled
+          ? "bg-green-400/10 border-green-400/40 hover:bg-green-400/15 transition-colors"
+          : "bg-sky-400/5 border-sky-400/20 hover:bg-sky-400/10 transition-colors",
         isDragging && "opacity-40"
       )}
     >
@@ -249,10 +252,10 @@ function DraggableQuote({ quote }: { quote: { id: number; name: string; stage: s
       </div>
       <span className={cn(
         "text-[10px] px-1.5 py-0.5 rounded border font-medium shrink-0 ml-2",
-        quote.stage === "estimate_sent" ? "bg-primary/10 text-primary border-primary/20" :
+        quote.stage === "estimate_sent" ? "bg-green-400/10 text-green-400 border-green-400/30" :
         quote.stage === "contacted" ? "bg-sky-400/10 text-sky-400 border-sky-400/20" :
         "bg-blue-400/10 text-blue-400 border-blue-400/20"
-      )}>{quote.stage.replace("_", " ")}</span>
+      )}>{isScheduled ? "Scheduled" : quote.stage.replace("_", " ")}</span>
     </div>
   );
 }

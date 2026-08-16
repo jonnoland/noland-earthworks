@@ -3152,6 +3152,13 @@
 - [x] Repair lead drag-and-drop into the Operations Schedule while preserving the original lead record
 - [x] Add regression coverage and validate the complete alert and scheduling workflow
 
+## SMS Alert Context & Delivery History — Aug 2026
+- [x] Add lead name, requested service, and available estimate to relevant owner SMS alerts
+- [x] Persist every owner SMS send attempt and Twilio acceptance or failure outcome for Operations review
+- [x] Add an authenticated SMS alert-history view to the Operations dashboard
+- [x] Visually mark capacity leads as scheduled after a successful calendar drop
+- [x] Add regression coverage and validate the enhanced owner-alert workflow
+
 ## Quote Performance & County Differentiation — Aug 2026
 - [x] Measure the current quote-page mobile performance and critical loading path
 - [x] Implement a low-risk quote-page performance improvement that preserves the form flow

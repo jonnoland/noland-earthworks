@@ -827,6 +827,13 @@
       "when": 1786795112115,
       "tag": "0117_lazy_baron_zemo",
       "breakpoints": true
+    },
+    {
+      "idx": 118,
+      "version": "5",
+      "when": 1786887038928,
+      "tag": "0118_blue_master_chief",
+      "breakpoints": true
     }
   ]
 }

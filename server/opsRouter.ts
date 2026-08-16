@@ -20,7 +20,7 @@ import {
   getOpsLeadById, insertOwnerTask,
   getAllUsers, setUserRole,
   getPricingBenchmarks,
-  getAgentConfig, upsertAgentConfig,
+  getAgentConfig, upsertAgentConfig, getOwnerSmsAlerts,
   getProspectingLeads, updateProspectingLeadStatus, deleteProspectingLead, countNewProspectingLeads,
 } from "./db";
 import { Resend } from "resend";
@@ -6236,6 +6236,12 @@ Always be specific to nolandearthworks.com. Never give generic advice — tie ev
       return { success: true, alreadyScheduled: false };
     }),
 
+  smsAlerts: router({
+    list: ownerProcedure
+      .input(z.object({ limit: z.number().int().min(1).max(100).default(20) }).optional())
+      .query(({ input }) => getOwnerSmsAlerts(input?.limit ?? 20)),
+  }),
+
   // ─── Priority 8: Ad Performance Feedback Loop ─────────────────────────────────
   // (Ad performance notes are stored on the adSpend table via the existing adSpend router)
   // This procedure reads ad spend + social post data and generates AI performance insights
@@ -6286,6 +6292,15 @@ Always be specific to nolandearthworks.com. Never give generic advice — tie ev
       const dateStr = d.toISOString().slice(0, 10);
       if (!busyDays.has(dateStr)) openDays.push(dateStr);
     }
+    const leadScheduleEntries = await db.select({ notes: scheduleEntries.notes, date: scheduleEntries.date })
+      .from(scheduleEntries)
+      .where(eq(scheduleEntries.userId, ctx.user.id));
+    const scheduledLeadDates = new Map<number, Date>();
+    for (const entry of leadScheduleEntries) {
+      const match = entry.notes?.match(/\[Lead #(\d+)\]/);
+      if (match && entry.date) scheduledLeadDates.set(Number(match[1]), entry.date);
+    }
+
     // Get open quotes (new/contacted leads with estimated value)
     const openQuotes = await db.select().from(opsLeads)
       .where(and(
@@ -6294,7 +6309,14 @@ Always be specific to nolandearthworks.com. Never give generic advice — tie ev
       ))
       .orderBy(desc(opsLeads.createdAt))
       .limit(10);
-    return { openDays: openDays.slice(0, 5), openQuotes };
+    return {
+      openDays: openDays.slice(0, 5),
+      openQuotes: openQuotes.map((lead) => ({
+        ...lead,
+        isScheduled: scheduledLeadDates.has(lead.id),
+        scheduledDate: scheduledLeadDates.get(lead.id) ?? null,
+      })),
+    };
   }),
 
   getCrewRecommendation: ownerProcedure
