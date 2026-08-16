@@ -924,16 +924,16 @@ export default function QuotePortal() {
             615-406-4819
           </a>
           <a
-            href="mailto:jon@nolandearthworks.com"
+            href="mailto:quotes@nolandearthworks.com"
             className="flex items-center gap-2 justify-center flex-1 rounded-lg border border-zinc-700 py-3 text-sm text-zinc-300 hover:bg-zinc-800 transition-colors"
           >
             <Mail className="w-4 h-4 text-amber-500" />
-            jon@nolandearthworks.com
+            quotes@nolandearthworks.com
           </a>
         </div>
         {/* Print-only contact */}
         <div className="hidden print-only text-zinc-400 text-sm mt-2">
-          <p>Phone: 615-406-4819 &bull; Email: jon@nolandearthworks.com &bull; nolandearthworks.com</p>
+          <p>Phone: 615-406-4819 &bull; Email: quotes@nolandearthworks.com &bull; nolandearthworks.com</p>
         </div>
       </div>
     </PortalShell>

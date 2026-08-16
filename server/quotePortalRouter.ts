@@ -199,7 +199,7 @@ export const quotePortalRouter = router({
           await resend.emails.send({
             from: "Noland Earthworks <noreply@nolandearthworks.com>",
             to: quote.clientEmail,
-            replyTo: "jon@nolandearthworks.com",
+            replyTo: "quotes@nolandearthworks.com",
             subject: "Change Request Received — Noland Earthworks",
             html: buildChangeRequestEmail(firstName, quote.jobType, input.note),
           });
@@ -286,7 +286,7 @@ export const quotePortalRouter = router({
             await resend.emails.send({
               from: "Noland Earthworks <noreply@nolandearthworks.com>",
               to: quote.clientEmail,
-              replyTo: "jon@nolandearthworks.com",
+              replyTo: "quotes@nolandearthworks.com",
               subject: "Quote Accepted — Noland Earthworks",
               html: buildApprovedEmail(firstName, quote.jobType, quote.jobAddress, fmt(quote.adjustedJobTotalCents)),
             });
@@ -294,7 +294,7 @@ export const quotePortalRouter = router({
             await resend.emails.send({
               from: "Noland Earthworks <noreply@nolandearthworks.com>",
               to: quote.clientEmail,
-              replyTo: "jon@nolandearthworks.com",
+              replyTo: "quotes@nolandearthworks.com",
               subject: "Quote Declined — Noland Earthworks",
               html: buildDeclinedEmail(firstName, quote.jobType),
             });

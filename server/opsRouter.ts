@@ -2919,7 +2919,7 @@ const distanceQuotesRouter = router({
       const { error } = await resend.emails.send({
         from: "Noland Earthworks <noreply@nolandearthworks.com>",
         to: quote.clientEmail,
-        replyTo: "jon@nolandearthworks.com",
+        replyTo: "quotes@nolandearthworks.com",
         subject: `Your Estimate from Noland Earthworks — ${quote.jobType.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase())}`,
         html,
       });
@@ -2976,7 +2976,7 @@ const distanceQuotesRouter = router({
       const { error } = await resend.emails.send({
         from: 'Noland Earthworks <noreply@nolandearthworks.com>',
         to: quote.clientEmail,
-        replyTo: 'jon@nolandearthworks.com',
+        replyTo: 'quotes@nolandearthworks.com',
         subject: `Your Quote from Noland Earthworks — ${jobLabel}`,
         html,
       });

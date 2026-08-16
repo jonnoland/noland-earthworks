@@ -3202,6 +3202,11 @@
 - [x] Replace visible Schedule a Free Quote calls to action with Request a Site Visit
 - [x] Increment the public app version for the published Land Management service-experience update
 
+## Quote Portal Contact Correction — Aug 2026
+- [x] Replace the outdated quote-portal email with quotes@nolandearthworks.com
+- [x] Verify no stale quote-portal contact email remains in customer-facing quote workflow copy
+- [x] Increment the app version for the published quote-portal contact correction
+
 ## Quote Performance & County Differentiation — Aug 2026
 - [x] Measure the current quote-page mobile performance and critical loading path
 - [x] Implement a low-risk quote-page performance improvement that preserves the form flow

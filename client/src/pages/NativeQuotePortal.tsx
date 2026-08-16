@@ -479,8 +479,8 @@ export default function NativeQuotePortal() {
           <a href="tel:6154064819" className="text-amber-500 hover:text-amber-400 text-sm font-medium transition-colors">
             615-406-4819
           </a>
-          <a href="mailto:jon@nolandearthworks.com" className="text-amber-500 hover:text-amber-400 text-sm font-medium transition-colors">
-            jon@nolandearthworks.com
+          <a href="mailto:quotes@nolandearthworks.com" className="text-amber-500 hover:text-amber-400 text-sm font-medium transition-colors">
+            quotes@nolandearthworks.com
           </a>
         </div>
       </div>
