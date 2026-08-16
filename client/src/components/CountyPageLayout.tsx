@@ -7,6 +7,7 @@ import { useEffect, useRef, useState, lazy, Suspense } from "react";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import ShareButtons from "@/components/ShareButtons";
 import EvidenceContentSection from "@/components/EvidenceContentSection";
+import ScopeBoundaryNotice from "@/components/ScopeBoundaryNotice";
 const CountyMap = lazy(() => import("@/components/CountyMap"));
 
 export interface CountyPageProps {
@@ -38,12 +39,12 @@ const SERVICES = [
   {
     title: "Forestry Mulching",
     slug: "forestry-mulching",
-    desc: "Single-pass land management that grinds trees, brush, and stumps into mulch — no hauling, no burning.",
+    desc: "Vegetation management that mulches brush, saplings, and small trees in place, subject to site conditions and written scope.",
   },
   {
     title: "Land Management",
     slug: "land-management",
-    desc: "Full site clearing of trees, stumps, brush, and debris for residential and commercial properties.",
+    desc: "Vegetation clearing for usable acreage, with the exact scope confirmed during a site visit and in writing.",
   },
   {
     title: "Vegetation Management",
@@ -360,6 +361,8 @@ export default function CountyPageLayout({
         </div>
       </section>
 
+      <ScopeBoundaryNotice />
+
       {/* Services */}
       <section style={{ backgroundColor: "#1a1a1a" }} className="py-16 md:py-20">
         <div className="container">
@@ -389,7 +392,7 @@ export default function CountyPageLayout({
                 marginBottom: "2.5rem",
               }}
             >
-              We provide the full range of land services to property owners throughout {county}.
+              We provide vegetation-focused land services to property owners throughout {county}. A site visit confirms the work that fits the property.
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               {SERVICES.map((s) => (

@@ -22,27 +22,27 @@ const FAQ_DATA: FaqCategory[] = [
       {
         question: "What is forestry mulching?",
         answer:
-          "Forestry mulching is a land management method that uses a purpose-built machine equipped with a high-speed drum mulcher to grind trees, brush, saplings, vines, and stumps directly into mulch on the ground. The mulch stays in place as natural ground cover — it does not need to be hauled away, burned, or piled. The result is clean, usable land with no erosion, no debris, and no secondary cleanup required.",
+          "Forestry mulching is a vegetation-management method that uses a tracked machine and drum mulcher to process suitable brush, saplings, vines, and small trees into mulch. Mulch typically remains on site as ground cover. A site visit confirms material size, terrain, access, utilities, boundaries, and the work included in the written proposal.",
       },
       {
         question: "How is forestry mulching different from bush hogging?",
         answer:
-          "Bush hogging cuts vegetation down and leaves the debris on the ground. Forestry mulching grinds everything — trees, brush, stumps, and vines — into fine mulch that stays as natural ground cover. The finish quality is dramatically different. Forestry mulching leaves land that is immediately walkable, drivable, and ready for its next use. Bush hogging leaves debris that still needs to be dealt with.",
+          "Bush hogging cuts lighter vegetation. Forestry mulching processes suitable vegetation into mulch that typically remains as ground cover. The intended finish, access needs, and any follow-on work are confirmed during the site visit and in the written scope.",
       },
       {
         question: "What size trees can a forestry mulcher handle?",
         answer:
-          "The tracked forestry mulcher Noland Earthworks operates handles trees up to 6–8 inches in diameter in a single pass. Larger trees can be processed with multiple passes. For most residential and agricultural clearing jobs in Middle Tennessee — cedar thickets, overgrown brush, saplings, and small hardwoods — the machine handles everything in one pass without stopping.",
+          "Tree size, species, density, terrain, and access determine whether forestry mulching is a fit. Noland Earthworks reviews those conditions on site and states the vegetation work included in the written proposal.",
       },
       {
         question: "Does forestry mulching work on slopes and wet ground?",
         answer:
-          "Yes. Noland Earthworks operates a tracked machine, not a wheeled mulcher. The tracked platform handles steep slopes, creek bottoms, and wet clay ground that wheeled machines cannot safely navigate. This is a significant capability difference on Middle Tennessee terrain, which frequently includes hillsides, creek bottoms, and clay-heavy soil that stays wet after rain.",
+          "Tracked equipment can be appropriate for challenging property conditions, but slope, wet ground, soil, access, and safety must be evaluated at the site. Weather or ground conditions can require a delay or a different plan.",
       },
       {
         question: "What is left on the ground after forestry mulching?",
         answer:
-          "A layer of fine wood chip mulch that covers the ground naturally. The mulch suppresses weed regrowth, prevents erosion, retains moisture, and decomposes over time to improve soil quality. There are no debris piles, no stumps sticking up, and no bare soil. The land is immediately accessible after the work is done.",
+          "Mulch typically remains on the ground as cover. Its depth and appearance vary by vegetation and site conditions. Forestry mulching does not include stump or root extraction below grade, grading, excavation, hauling, road construction, or final building-pad preparation unless a written proposal specifically says otherwise.",
       },
       {
         question: "Does forestry mulching kill the stumps and roots?",
@@ -67,12 +67,12 @@ const FAQ_DATA: FaqCategory[] = [
       {
         question: "Can you clear fence lines with a forestry mulcher?",
         answer:
-          "Yes. Overgrown fence lines with brush, vines, and small trees encroaching on the wire are a common job. The tracked mulcher clears fence lines cleanly without damaging the fence. The operator works close to the wire and controls the machine precisely. After clearing, the fence line is clean and the wire is accessible for inspection and repair.",
+          "Fence-line vegetation management is a common request. Fence condition, access, wire location, and work boundaries are reviewed before work begins; the written proposal identifies the safe working limits and any sections that need separate repair.",
       },
       {
         question: "Is forestry mulching good for lot clearing before construction?",
         answer:
-          "Yes. Forestry mulching is an efficient method for residential and commercial lot clearing before construction. The machine clears trees, brush, and stumps in one pass, leaving the ground ready for grading without debris piles. Builders and developers use it for site prep because it is faster than traditional clearing and does not require debris hauling or burning.",
+          "Forestry mulching may be suitable for vegetation clearing before a separately scoped grading, excavation, or construction contractor. It does not include grading, excavation, stump/root extraction, hauling, road construction, or final building-pad preparation unless a written proposal specifically says otherwise.",
       },
       {
         question: "Can you clear a right-of-way or driveway with a forestry mulcher?",
@@ -87,7 +87,7 @@ const FAQ_DATA: FaqCategory[] = [
       {
         question: "How much does forestry mulching cost in Tennessee?",
         answer:
-          "Forestry mulching pricing in Tennessee depends on acreage, vegetation density, terrain, and site access. Noland Earthworks provides free on-site estimates — accurate quotes require a site visit. Visit nolandearthworks.com/pricing for general rate guidance, or request a quote at nolandearthworks.com/quote. We do not give phone quotes on complex terrain because the price you receive should reflect the actual job.",
+          "A written proposal depends on vegetation density, terrain, access, utilities, work boundaries, and the intended result. Request a site visit at nolandearthworks.com/quote; Noland Earthworks does not publish a final rate or give a final phone quote for complex terrain.",
       },
       {
         question: "Do you give phone quotes or ballpark estimates?",
@@ -132,7 +132,7 @@ const FAQ_DATA: FaqCategory[] = [
       {
         question: "Does clearing include debris hauling?",
         answer:
-          "Forestry mulching does not produce debris to haul — the machine grinds everything into mulch that stays on the ground. For other clearing methods, debris removal is a separate scope and is not included in the base clearing price unless specifically quoted.",
+          "Forestry mulching typically leaves mulch on site as ground cover. Debris hauling is not part of the standard scope. Any nonstandard material handling must be stated in the written proposal.",
       },
       {
         question: "What is the best time of year for forestry mulching in Tennessee?",

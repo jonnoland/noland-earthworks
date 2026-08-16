@@ -16,7 +16,7 @@
 
 import { Resend } from "resend";
 import { and, eq, gte, isNotNull, lte, ne, or } from "drizzle-orm";
-import { getDb, getOwnerUser, insertAgentLog, getAgentConfig, upsertAgentConfig, upsertPricingBenchmark, getPendingNotifications, markNotificationAttempt, deleteNotification } from "./db";
+import { getDb, getOwnerUser, insertAgentLog, getAgentConfig, upsertAgentConfig, upsertPricingBenchmarkCandidate, getPendingNotifications, markNotificationAttempt, deleteNotification } from "./db";
 import { businessSettings, jobs, opsLeads, scheduleEntries, serviceCatalog } from "../drizzle/schema";
 import { ENV } from "./_core/env";
 import { notifyOwner } from "./_core/notification";
@@ -670,9 +670,8 @@ export async function runDailyDigestAgent() {
 
 // ─── Agent 6: Pricing Benchmark Update ───────────────────────────────────────
 /**
- * Runs every Sunday at 6 AM. Uses the LLM to research current market rates
- * for land management, forestry mulching, brush removal, and brush hogging in
- * Middle & West Tennessee. Upserts results into pricing_benchmarks table.
+ * Runs every Sunday at 6 AM. Research suggestions are stored separately from
+ * active benchmarks and require owner approval before any Operations range moves.
  */
 
 // Maps known service types to research-friendly descriptions.
@@ -688,6 +687,22 @@ const SERVICE_DESCRIPTIONS: Record<string, string> = {
   "Mulch Redistribution":   "forestry mulch redistribution and spreading per acre in Middle and West Tennessee",
   "Selective Clearing":     "selective tree and brush clearing (keeping desirable trees) per acre in Middle and West Tennessee",
 };
+
+const SERVICE_UNITS: Record<string, "acre" | "linear_foot" | "hour" | "load" | "stump" | "flat"> = {
+  "Forestry Mulching": "acre",
+  "Land Management": "acre",
+  "Brush/Understory": "acre",
+  "ROW/Trail": "acre",
+  "Trail Cutting": "linear_foot",
+  "Storm Cleanup": "acre",
+  "Fence Line Clearing": "linear_foot",
+  "Mulch Redistribution": "acre",
+  "Selective Clearing": "acre",
+};
+
+function stripCodeFence(content: string): string {
+  return content.trim().replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "").trim();
+}
 
 function getServiceDescription(serviceType: string): string {
   return SERVICE_DESCRIPTIONS[serviceType] ?? `${serviceType.toLowerCase()} services in Middle and West Tennessee`;
@@ -747,17 +762,16 @@ CONTEXT for Middle Tennessee forestry mulching and land clearing:
 - Peak season Oct–Mar supports higher rates; summer heat and wet ground reduce productivity and increase wear
 - Minimum job charges of $1,500–$2,000 are standard in this market
 
-For services priced per stump or per load (not per acre), express the low/mid/high values as the typical unit price (per stump for stump grinding, per load for debris hauling). The field names still use "PerAcre" but treat them as the relevant unit price for that service.
-
 Respond with JSON only:
 {
-  "lowPerAcre": <integer, competitive floor — what the lowest credible Middle TN operator charges for this service type>,
-  "midPerAcre": <integer, typical rate for a standard Middle TN job of this type, moderate density, rolling terrain>,
-  "highPerAcre": <integer, premium rate for heavy density, steep terrain, difficult access, or large timber>,
-  "summary": "<2-3 sentences: cite specific sources or operators referenced, state the unit (per acre/stump/load), and note the key factors driving the range>"
+  "lowAmount": <integer, lowest credible comparable Tennessee figure>,
+  "midAmount": <integer, typical comparable Tennessee figure>,
+  "highAmount": <integer, high-complexity comparable Tennessee figure>,
+  "summary": "<2-3 sentences; clearly distinguish verified facts from gaps>",
+  "sourceUrls": ["<direct public source URL>"]
 }
 
-All values are USD integers. No $ signs or commas in the numbers.`;
+All values are USD integers in the requested unit. No $ signs or commas in the numbers. If you cannot find a direct public Tennessee source, return an empty sourceUrls array and explain that the range requires owner review; do not invent a URL.`;
 
         const response = await invokeLLM({
           messages: [
@@ -772,12 +786,13 @@ All values are USD integers. No $ signs or commas in the numbers.`;
               schema: {
                 type: "object",
                 properties: {
-                  lowPerAcre:  { type: "integer" },
-                  midPerAcre:  { type: "integer" },
-                  highPerAcre: { type: "integer" },
+                  lowAmount:  { type: "integer" },
+                  midAmount:  { type: "integer" },
+                  highAmount: { type: "integer" },
                   summary:     { type: "string" },
+                  sourceUrls:  { type: "array", items: { type: "string" } },
                 },
-                required: ["lowPerAcre", "midPerAcre", "highPerAcre", "summary"],
+                required: ["lowAmount", "midAmount", "highAmount", "summary", "sourceUrls"],
                 additionalProperties: false,
               },
             },
@@ -787,39 +802,43 @@ All values are USD integers. No $ signs or commas in the numbers.`;
         const content = (response as any)?.choices?.[0]?.message?.content;
         if (!content) throw new Error("Empty LLM response");
 
-        const parsed = JSON.parse(content) as {
-          lowPerAcre: number;
-          midPerAcre: number;
-          highPerAcre: number;
+        const parsed = JSON.parse(stripCodeFence(content)) as {
+          lowAmount: number;
+          midAmount: number;
+          highAmount: number;
           summary: string;
+          sourceUrls: string[];
         };
-        const { lowPerAcre, midPerAcre, highPerAcre, summary } = parsed;
+        const { lowAmount, midAmount, highAmount, summary, sourceUrls } = parsed;
+        const unit = SERVICE_UNITS[svc.key] ?? "acre";
 
-        // Sanity check — values must be positive integers in a plausible range
-        // Lower bound is 25 to accommodate per-stump / per-load services
+        // Suggestions must be numeric and ordered. The owner reviews each one;
+        // the research agent is not allowed to update active quote benchmarks.
         if (
-          typeof lowPerAcre  !== "number" || lowPerAcre  < 25 || lowPerAcre  > 10000 ||
-          typeof midPerAcre  !== "number" || midPerAcre  < 25 || midPerAcre  > 10000 ||
-          typeof highPerAcre !== "number" || highPerAcre < 25 || highPerAcre > 10000 ||
-          lowPerAcre > midPerAcre || midPerAcre > highPerAcre
+          typeof lowAmount  !== "number" || lowAmount  < 1 || lowAmount  > 100000 ||
+          typeof midAmount  !== "number" || midAmount  < 1 || midAmount  > 100000 ||
+          typeof highAmount !== "number" || highAmount < 1 || highAmount > 100000 ||
+          lowAmount > midAmount || midAmount > highAmount
         ) {
           throw new Error(
-            `Implausible values for ${svc.key}: low=${lowPerAcre} mid=${midPerAcre} high=${highPerAcre}`
+            `Implausible values for ${svc.key}: low=${lowAmount} mid=${midAmount} high=${highAmount}`
           );
         }
 
-        await upsertPricingBenchmark({
+        await upsertPricingBenchmarkCandidate({
           serviceType: svc.key,
-          lowPerAcre,
-          midPerAcre,
-          highPerAcre,
+          lowAmount,
+          midAmount,
+          highAmount,
+          unit,
           region: "Middle & West Tennessee",
           researchSummary: summary,
+          sourceUrls: Array.isArray(sourceUrls) ? sourceUrls.filter((url) => /^https?:\/\//i.test(url)).slice(0, 5) : [],
         });
 
         updatedCount++;
-        summaryLines.push(`${svc.key}: $${lowPerAcre}–$${midPerAcre}–$${highPerAcre}/ac`);
-        console.log(`[pricing_update] ${svc.key}: $${lowPerAcre}/$${midPerAcre}/$${highPerAcre}/ac`);
+        summaryLines.push(`${svc.key}: research suggestion ready for owner review (${unit})`);
+        console.log(`[pricing_update] ${svc.key}: candidate ready for owner review (${unit})`);
       } catch (svcErr) {
         const msg = (svcErr as Error).message ?? String(svcErr);
         console.error(`[pricing_update] Failed for ${svc.key}:`, msg);
@@ -827,13 +846,13 @@ All values are USD integers. No $ signs or commas in the numbers.`;
       }
     }
 
-    const runSummary = `Updated ${updatedCount}/${pricingServices.length} services. ${summaryLines.join(" | ")}`;
+    const runSummary = `Research completed for ${updatedCount}/${pricingServices.length} services. Active benchmarks were not changed. ${summaryLines.join(" | ")}`;
     await insertAgentLog({ agentId: AGENT_ID, status: "success", summary: runSummary, actionsCount: updatedCount });
 
     if (updatedCount > 0) {
       await notifyOwner({
-        title: "Pricing Benchmarks Updated",
-        content: `Weekly pricing research complete for Middle & West Tennessee.\n\n${summaryLines.join("\n")}`,
+        title: "Pricing research requires review",
+        content: `Middle and West Tennessee pricing research completed. Active benchmarks were not changed. Review each suggestion, its unit, and any source links before approval.\n\n${summaryLines.join("\n")}`,
       });
     }
   } catch (err) {
@@ -946,8 +965,8 @@ export const AGENT_REGISTRY = [
   {
     id: "pricing_update",
     name: "Pricing Benchmark Update",
-    description: "Researches current market rates for land management, forestry mulching, brush removal, and brush hogging in Middle & West Tennessee. Updates the benchmarks on the Pricing page.",
-    schedule: "Daily at 6 AM",
+    description: "Researches Middle and West Tennessee market signals and creates review-only benchmark suggestions. It never changes approved quote benchmarks automatically.",
+    schedule: "Sunday at 6 AM",
   },
   {
     id: "notification_retry",

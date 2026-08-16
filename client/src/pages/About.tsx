@@ -7,6 +7,7 @@ import { ArrowLeft, Shield, Star, Wrench, Clock, Send, CheckCircle, Users, MapPi
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import MobileCTABar from "@/components/MobileCTABar";
+import ScopeBoundaryNotice from "@/components/ScopeBoundaryNotice";
 import { trpc } from "@/lib/trpc";
 import { usePageTitle } from "@/hooks/usePageTitle";
 
@@ -262,6 +263,8 @@ export default function AboutPage() {
         </div>
       </section>
 
+      <ScopeBoundaryNotice />
+
       {/* ── MEET THE MAN ── */}
       <section style={{ paddingTop: "5rem", paddingBottom: "5rem", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
         <div className="container">
@@ -351,8 +354,8 @@ export default function AboutPage() {
                 { text: "Before founding Noland Earthworks, Jon M. Noland spent nine years serving in the United States Army, including two deployments to Afghanistan where he worked as a 25B Information Systems Analyst. In that role, he was responsible for maintaining critical communication networks and solving complex technical problems in high-pressure, often unpredictable environments.", style: "normal" },
                 { text: "After an honorable discharge, Jon transitioned into the civilian world and spent more than 30 years building a successful career in Information Technology. He earned a reputation as the person who could be counted on when systems failed, deadlines loomed, or difficult problems needed clear-headed solutions. That same discipline, attention to detail, and commitment to getting the job done right followed him through every role.", style: "normal" },
                 { text: "Then life took a different turn.", style: "pivot" },
-                { text: "Jon and his family moved to the country in Tennessee. What began as a simple desire for more space and a slower pace quickly evolved into something deeper. He discovered a genuine passion for working the land — the early mornings, the physical challenge, the tangible satisfaction of transforming neglected, overgrown, or unusable property into something functional and valuable for a family. Clearing brush, leveling ground, building access roads, and creating usable spaces reignited a sense of purpose he hadn't felt in years.", style: "normal" },
-                { text: "He invested in a skid steer, equipped it with the right attachments, and in 2025, officially launched Noland Earthworks. What started as a personal project soon became a full-fledged business focused on land management, site preparation, and forestry mulching services for residential and small commercial properties.", style: "normal" },
+                { text: "Jon and his family moved to the country in Tennessee. What began as a simple desire for more space and a slower pace quickly evolved into something deeper. He discovered a genuine satisfaction in reclaiming overgrown ground and helping landowners make better use of their property through vegetation management.", style: "normal" },
+                { text: "He invested in equipment suited to dense vegetation and, in 2025, officially launched Noland Earthworks. What started as a personal project became a business focused on forestry mulching and vegetation-focused land management for residential and small commercial properties.", style: "normal" },
                 { text: "Jon is not a third-generation farmer or a lifelong landscaper. He's a veteran who found a new calling later in life and brought the very best of his previous experience with him. The work ethic, problem-solving skills, and reliability developed in the Army and refined over three decades in IT now serve his clients every single day. He shows up on time, communicates clearly, works safely and efficiently, and always leaves every property better than he found it.", style: "normal" },
                 { text: "That's what \"veteran-owned\" means at Noland Earthworks. It's not just a label on the truck or website. It's a standard of service: disciplined, honest, and results-driven.", style: "closing" },
               ] as { text: string; style: string }[]).map((p, i) => (

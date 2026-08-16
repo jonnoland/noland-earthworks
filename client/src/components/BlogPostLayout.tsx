@@ -11,6 +11,7 @@ import { ArrowLeft, Calendar, RefreshCw } from "lucide-react";
 import RelatedPosts from "@/components/RelatedPosts";
 import AuthorBio from "@/components/AuthorBio";
 import ShareButtons from "@/components/ShareButtons";
+import ScopeBoundaryNotice from "@/components/ScopeBoundaryNotice";
 
 export interface BlogPostProps {
   title: string;
@@ -331,6 +332,10 @@ export default function BlogPostLayout({
       <article className="container py-14" style={{ maxWidth: "820px" }}>
         <div className="blog-content">{children}</div>
 
+        <div style={{ marginTop: "2.5rem" }}>
+          <ScopeBoundaryNotice compact />
+        </div>
+
         {/* Author bio — E-E-A-T signal, links to About page entity */}
         <AuthorBio />
         {/* Social share bar */}
@@ -387,11 +392,10 @@ export default function BlogPostLayout({
               marginBottom: "1.25rem",
             }}
           >
-            Contact Noland Earthworks today for a free, no-obligation on-site estimate anywhere in
-            Middle &amp; West Tennessee.
+            Request a site visit. Jon reviews requests the same day or the next morning, then confirms the property scope before preparing a written quote.
           </p>
           <a href="/quote" className="btn-amber" style={{ textDecoration: "none" }}>
-            Get a Free Quote →
+            Request a Site Visit →
           </a>
         </div>
       </section>

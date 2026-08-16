@@ -834,6 +834,20 @@
       "when": 1786887038928,
       "tag": "0118_blue_master_chief",
       "breakpoints": true
+    },
+    {
+      "idx": 119,
+      "version": "5",
+      "when": 1786902279454,
+      "tag": "0119_tricky_ted_forrester",
+      "breakpoints": true
+    },
+    {
+      "idx": 120,
+      "version": "5",
+      "when": 1786902713598,
+      "tag": "0120_free_supreme_intelligence",
+      "breakpoints": true
     }
   ]
 }

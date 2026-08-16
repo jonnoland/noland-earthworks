@@ -4,7 +4,7 @@ import {
   InsertJob, InsertOpsLead, InsertScheduleEntry, InsertUser,
   jobs, opsLeads, scheduleEntries, users, visitBlackoutDates, InsertVisitBlackoutDate,
   recurringBlackoutDays, agentConfig, agentLog, ownerTasks, InsertOwnerTask,
-  jobNotes, pricingBenchmarks, chatSessions, nativeQuotes, ownerSmsAlerts,
+  jobNotes, pricingBenchmarks, pricingBenchmarkCandidates, chatSessions, nativeQuotes, ownerSmsAlerts,
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
@@ -506,6 +506,10 @@ export async function upsertPricingBenchmark(data: {
   highPerAcre: number;
   region?: string;
   researchSummary?: string;
+  unit?: "acre" | "linear_foot" | "hour" | "load" | "stump" | "flat";
+  sourceUrls?: string[];
+  evidenceStatus?: "legacy_unverified" | "owner_approved";
+  reviewedAt?: Date | null;
 }) {
   const db = await getDb();
   if (!db) throw new Error('DB unavailable');
@@ -517,6 +521,10 @@ export async function upsertPricingBenchmark(data: {
       highPerAcre: data.highPerAcre,
       region: data.region ?? 'Middle & West Tennessee',
       researchSummary: data.researchSummary ?? null,
+      unit: data.unit ?? 'acre',
+      sourceUrls: data.sourceUrls?.length ? JSON.stringify(data.sourceUrls) : null,
+      evidenceStatus: data.evidenceStatus ?? 'legacy_unverified',
+      reviewedAt: data.reviewedAt ?? null,
       lastUpdatedAt: new Date(),
     })
     .onDuplicateKeyUpdate({
@@ -526,6 +534,10 @@ export async function upsertPricingBenchmark(data: {
         highPerAcre: data.highPerAcre,
         region: data.region ?? 'Middle & West Tennessee',
         researchSummary: data.researchSummary ?? null,
+        unit: data.unit ?? 'acre',
+        sourceUrls: data.sourceUrls?.length ? JSON.stringify(data.sourceUrls) : null,
+        evidenceStatus: data.evidenceStatus ?? 'legacy_unverified',
+        reviewedAt: data.reviewedAt ?? null,
         lastUpdatedAt: new Date(),
       },
     });
@@ -680,6 +692,82 @@ export async function insertProspectingLead(data: {
     estimatedAcres: data.estimatedAcres ?? null,
     status: "new",
   });
+}
+
+export async function getPricingBenchmarkCandidates() {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(pricingBenchmarkCandidates).orderBy(pricingBenchmarkCandidates.serviceType);
+}
+
+export async function upsertPricingBenchmarkCandidate(data: {
+  serviceType: string;
+  lowAmount: number;
+  midAmount: number;
+  highAmount: number;
+  unit: "acre" | "linear_foot" | "hour" | "load" | "stump" | "flat";
+  region?: string;
+  researchSummary: string;
+  sourceUrls?: string[];
+}) {
+  const db = await getDb();
+  if (!db) throw new Error('DB unavailable');
+  await db.insert(pricingBenchmarkCandidates).values({
+    serviceType: data.serviceType,
+    lowAmount: data.lowAmount,
+    midAmount: data.midAmount,
+    highAmount: data.highAmount,
+    unit: data.unit,
+    region: data.region ?? 'Middle & West Tennessee',
+    researchSummary: data.researchSummary,
+    sourceUrls: data.sourceUrls?.length ? JSON.stringify(data.sourceUrls) : null,
+    status: 'pending_review',
+    reviewedAt: null,
+  }).onDuplicateKeyUpdate({
+    set: {
+      lowAmount: data.lowAmount,
+      midAmount: data.midAmount,
+      highAmount: data.highAmount,
+      unit: data.unit,
+      region: data.region ?? 'Middle & West Tennessee',
+      researchSummary: data.researchSummary,
+      sourceUrls: data.sourceUrls?.length ? JSON.stringify(data.sourceUrls) : null,
+      status: 'pending_review',
+      reviewedAt: null,
+      updatedAt: new Date(),
+    },
+  });
+}
+
+export async function approvePricingBenchmarkCandidate(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error('DB unavailable');
+  const [candidate] = await db.select().from(pricingBenchmarkCandidates)
+    .where(eq(pricingBenchmarkCandidates.id, id)).limit(1);
+  if (!candidate || candidate.status !== 'pending_review') throw new Error('Pricing research item is not available for review');
+  let sourceUrls: string[] = [];
+  try { sourceUrls = candidate.sourceUrls ? JSON.parse(candidate.sourceUrls) : []; } catch { sourceUrls = []; }
+  await upsertPricingBenchmark({
+    serviceType: candidate.serviceType,
+    lowPerAcre: candidate.lowAmount,
+    midPerAcre: candidate.midAmount,
+    highPerAcre: candidate.highAmount,
+    unit: candidate.unit,
+    region: candidate.region,
+    researchSummary: candidate.researchSummary,
+    sourceUrls,
+    evidenceStatus: 'owner_approved',
+    reviewedAt: new Date(),
+  });
+  await db.update(pricingBenchmarkCandidates).set({ status: 'approved', reviewedAt: new Date() })
+    .where(eq(pricingBenchmarkCandidates.id, id));
+}
+
+export async function rejectPricingBenchmarkCandidate(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error('DB unavailable');
+  await db.update(pricingBenchmarkCandidates).set({ status: 'rejected', reviewedAt: new Date() })
+    .where(eq(pricingBenchmarkCandidates.id, id));
 }
 
 export async function getProspectingLeads(status?: string) {

@@ -12,8 +12,57 @@ import Stripe from "stripe";
 import { getStripe, isStripeConfigured } from "./stripe";
 import { ENV } from "./_core/env";
 import { getDb } from "./db";
-import { payments, nativeQuotes } from "../drizzle/schema";
-import { eq } from "drizzle-orm";
+import { payments, nativeQuotes, stripeWebhookEvents } from "../drizzle/schema";
+import { eq, sql } from "drizzle-orm";
+import { notifyOwner } from "./_core/notification";
+
+async function getRequiredDb() {
+  const db = await getDb();
+  if (!db) throw new Error("Database unavailable while processing signed Stripe webhook");
+  return db;
+}
+
+function sessionIdFromEvent(event: Stripe.Event): string | null {
+  const object = event.data.object as Stripe.Checkout.Session;
+  return typeof object?.id === "string" ? object.id : null;
+}
+
+async function beginWebhookEvent(event: Stripe.Event): Promise<boolean> {
+  const db = await getRequiredDb();
+  const [existing] = await db
+    .select({ status: stripeWebhookEvents.status })
+    .from(stripeWebhookEvents)
+    .where(eq(stripeWebhookEvents.eventId, event.id))
+    .limit(1);
+
+  if (existing?.status === "processed") return false;
+
+  await db.insert(stripeWebhookEvents).values({
+    eventId: event.id,
+    eventType: event.type,
+    stripeSessionId: sessionIdFromEvent(event),
+    status: "received",
+    attempts: 1,
+  }).onDuplicateKeyUpdate({
+    set: {
+      status: "received",
+      attempts: sql`${stripeWebhookEvents.attempts} + 1`,
+      lastError: null,
+    },
+  });
+  return true;
+}
+
+async function markWebhookEvent(eventId: string, status: "processed" | "failed", lastError?: string) {
+  const db = await getRequiredDb();
+  await db.update(stripeWebhookEvents)
+    .set({
+      status,
+      lastError: lastError ?? null,
+      processedAt: status === "processed" ? new Date() : null,
+    })
+    .where(eq(stripeWebhookEvents.eventId, eventId));
+}
 
 export function registerStripeWebhookRoutes(app: Express): void {
   // Raw body parser — must come before express.json() for this route only
@@ -56,6 +105,12 @@ export function registerStripeWebhookRoutes(app: Express): void {
       console.log(`[Stripe Webhook] Received event: ${event.type} (${event.id})`);
 
       try {
+        const shouldProcess = await beginWebhookEvent(event);
+        if (!shouldProcess) {
+          res.json({ received: true, duplicate: true });
+          return;
+        }
+
         if (event.type === "checkout.session.completed") {
           const session = event.data.object as Stripe.Checkout.Session;
           await handleCheckoutCompleted(session);
@@ -63,9 +118,21 @@ export function registerStripeWebhookRoutes(app: Express): void {
           const session = event.data.object as Stripe.Checkout.Session;
           await handleCheckoutExpired(session);
         }
+        await markWebhookEvent(event.id, "processed");
       } catch (err) {
-        console.error("[Stripe Webhook] Handler error:", err);
-        // Return 200 so Stripe doesn't retry — log the error for manual review
+        const message = err instanceof Error ? err.message : String(err);
+        console.error("[Stripe Webhook] Handler error:", message);
+        try {
+          await markWebhookEvent(event.id, "failed", message.slice(0, 4000));
+        } catch (ledgerErr) {
+          console.error("[Stripe Webhook] Failed to record reconciliation exception:", ledgerErr);
+        }
+        await notifyOwner({
+          title: "Stripe payment reconciliation needs attention",
+          content: `Signed Stripe event ${event.type} (${event.id}) was not applied internally. Stripe will retry. Error: ${message}`,
+        }).catch((notifyErr) => console.error("[Stripe Webhook] Owner alert failed:", notifyErr));
+        res.status(500).json({ error: "Internal webhook processing failed; retry requested" });
+        return;
       }
 
       res.json({ received: true });
@@ -76,11 +143,7 @@ export function registerStripeWebhookRoutes(app: Express): void {
 async function handleCheckoutCompleted(session: Stripe.Checkout.Session): Promise<void> {
   if (!session.id) return;
 
-  const db = await getDb();
-  if (!db) {
-    console.error("[Stripe Webhook] DB unavailable — cannot update payment for session", session.id);
-    return;
-  }
+  const db = await getRequiredDb();
 
   const paymentIntentId =
     typeof session.payment_intent === "string"
@@ -123,8 +186,7 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session): Promis
 async function handleCheckoutExpired(session: Stripe.Checkout.Session): Promise<void> {
   if (!session.id) return;
 
-  const db = await getDb();
-  if (!db) return;
+  const db = await getRequiredDb();
 
   await db
     .update(payments)

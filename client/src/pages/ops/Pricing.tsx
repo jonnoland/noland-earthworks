@@ -625,147 +625,63 @@ function EditPricingModal({
   );
 }
 
-// ─── Pricing Benchmarks Card (live from DB) ────────────────────────────────────────────────────────────────────────────────
-
-/**
- * Reads pricing benchmarks from the DB (updated by the weekly pricing agent)
- * and shows the last-run status plus a manual trigger button.
- */
+// ─── Pricing Intelligence (owner-reviewed) ──────────────────────────────────
 function PricingBenchmarksCard() {
   const utils = trpc.useUtils();
-
-  const { data: benchmarks = [], isLoading: benchmarksLoading } =
-    trpc.agents.getPricingBenchmarks.useQuery();
-
+  const { data: benchmarks = [], isLoading: benchmarksLoading } = trpc.agents.getPricingBenchmarks.useQuery();
+  const { data: candidates = [] } = trpc.agents.getPricingBenchmarkCandidates.useQuery();
   const { data: agentList = [] } = trpc.agents.list.useQuery();
-  const pricingAgent = agentList.find((a: any) => a.id === "pricing_update");
+  const pricingAgent = agentList.find((agent: any) => agent.id === "pricing_update");
+  const pendingCandidates = candidates.filter((candidate: any) => candidate.status === "pending_review");
+  const unitLabel = (unit?: string) => unit === "linear_foot" ? "ft" : unit === "hour" ? "hr" : unit === "load" ? "load" : unit === "stump" ? "stump" : unit === "flat" ? "job" : "ac";
 
+  const refresh = () => {
+    utils.agents.getPricingBenchmarks.invalidate();
+    utils.agents.getPricingBenchmarkCandidates.invalidate();
+    utils.agents.list.invalidate();
+  };
   const triggerRun = trpc.agents.triggerRun.useMutation({
     onSuccess: () => {
-      toast.success("Pricing research started — benchmarks will update in a moment.");
-      // Poll for updated benchmarks after a short delay
-      setTimeout(() => utils.agents.getPricingBenchmarks.invalidate(), 8000);
-      setTimeout(() => utils.agents.list.invalidate(), 8000);
+      toast.success("Research started. Suggestions require your review before an approved benchmark changes.");
+      setTimeout(refresh, 8000);
     },
-    onError: (e: any) => toast.error(e.message),
+    onError: (error: any) => toast.error(error.message),
+  });
+  const approveCandidate = trpc.agents.approvePricingBenchmarkCandidate.useMutation({
+    onSuccess: () => { toast.success("Approved benchmark saved. Review private AI Pricing before using it in a quote."); refresh(); },
+    onError: (error: any) => toast.error(error.message),
+  });
+  const rejectCandidate = trpc.agents.rejectPricingBenchmarkCandidate.useMutation({
+    onSuccess: () => { toast.success("Research suggestion rejected."); refresh(); },
+    onError: (error: any) => toast.error(error.message),
   });
 
-  // Static fallback rows shown when DB has no data yet — aligned to service_catalog (10 services)
-  const FALLBACK_ROWS = [
-    { serviceType: "Forestry Mulching",   lowPerAcre: 650,  midPerAcre: 800,  highPerAcre: 1200, researchSummary: "Per acre. Primary service. Dense cedar/hardwood and steep terrain push toward high end. Peak season (Oct\u2013Mar) supports higher rates.", lastUpdatedAt: null },
-    { serviceType: "Land Management",    lowPerAcre: 550,  midPerAcre: 700,  highPerAcre: 1000, researchSummary: "Per acre. Ongoing or multi-phase land management. Rate depends on scope, vegetation type, and frequency.", lastUpdatedAt: null },
-    { serviceType: "Brush/Understory",   lowPerAcre: 350,  midPerAcre: 500,  highPerAcre: 750,  researchSummary: "Per acre. Light-to-moderate brush and understory clearing. Lower density than full forestry mulching.", lastUpdatedAt: null },
-    { serviceType: "ROW/Trail",          lowPerAcre: 600,  midPerAcre: 800,  highPerAcre: 1100, researchSummary: "Per acre for right-of-way corridor clearing. Linear constraint increases passes per unit area vs. open field.", lastUpdatedAt: null },
-    { serviceType: "Trail Cutting",      lowPerAcre: 2,    midPerAcre: 3,    highPerAcre: 4,    researchSummary: "Per linear foot. Width (6\u201316 ft), terrain, and vegetation density are primary variables. $500 minimum applies.", lastUpdatedAt: null },
-    { serviceType: "Storm Cleanup",      lowPerAcre: 400,  midPerAcre: 650,  highPerAcre: 1200, researchSummary: "Per acre. Fallen timber, debris, and downed brush removal after storm events. Highly variable by damage severity.", lastUpdatedAt: null },
-    { serviceType: "Fence Line Clearing",lowPerAcre: 2,    midPerAcre: 4,    highPerAcre: 8,    researchSummary: "Per linear foot. Overgrown fence line brush removal. Density and fence condition affect rate.", lastUpdatedAt: null },
-    { serviceType: "Mulch Redistribution",lowPerAcre: 150, midPerAcre: 250,  highPerAcre: 450,  researchSummary: "Per acre or per hour. Spreading and leveling mulch left by forestry mulcher. Typically an add-on.", lastUpdatedAt: null },
-    { serviceType: "Selective Clearing", lowPerAcre: 400,  midPerAcre: 650,  highPerAcre: 1000, researchSummary: "Per acre. Precision clearing that preserves desirable trees. More time-intensive than full clearing.", lastUpdatedAt: null },
-  ];
-
-  const rows = benchmarks.length > 0 ? benchmarks : FALLBACK_ROWS;
-  const hasLiveData = benchmarks.length > 0;
-
-  // Most recent lastUpdatedAt across all rows
-  const lastUpdated = hasLiveData
-    ? benchmarks.reduce((latest: Date | null, b: any) => {
-        const d = new Date(b.lastUpdatedAt);
-        return !latest || d > latest ? d : latest;
-      }, null as Date | null)
-    : null;
-
+  const lastUpdated = benchmarks.reduce((latest: Date | null, benchmark: any) => {
+    const value = new Date(benchmark.lastUpdatedAt);
+    return !latest || value > latest ? value : latest;
+  }, null as Date | null);
   const lastRunStatus = pricingAgent?.lastRun?.status ?? null;
 
   return (
     <div className="ops-card p-5">
-      {/* Header */}
-      <div className="flex items-start justify-between gap-3 mb-4">
+      <div className="mb-4 flex items-start justify-between gap-3">
         <div>
-          <h3 className="text-sm font-semibold text-foreground">
-            Pricing Benchmarks — Middle &amp; West Tennessee
-          </h3>
-          <p className="text-[11px] text-muted-foreground mt-0.5">
-            {hasLiveData && lastUpdated
-              ? `Last updated ${lastUpdated.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })} by weekly agent`
-              : "Per-acre market rates — updated automatically every Sunday at 6 AM"}
+          <h3 className="text-sm font-semibold text-foreground">Pricing Intelligence — Middle &amp; West Tennessee</h3>
+          <p className="mt-0.5 text-[11px] text-muted-foreground">
+            {lastUpdated ? `Approved benchmark set last changed ${lastUpdated.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}` : "No approved market benchmark set"}
           </p>
         </div>
-        <div className="flex items-center gap-2 shrink-0">
-          {/* Agent last-run status badge */}
-          {lastRunStatus === "success" && (
-            <span className="flex items-center gap-1 text-[10px] text-green-400 bg-green-500/10 border border-green-500/20 rounded-full px-2 py-0.5">
-              <CheckCircle2 className="w-2.5 h-2.5" />
-              Up to date
-            </span>
-          )}
-          {lastRunStatus === "error" && (
-            <span className="flex items-center gap-1 text-[10px] text-red-400 bg-red-500/10 border border-red-500/20 rounded-full px-2 py-0.5">
-              <AlertCircle className="w-2.5 h-2.5" />
-              Last run failed
-            </span>
-          )}
-          {/* Manual trigger */}
-          <button
-            onClick={() => triggerRun.mutate({ agentId: "pricing_update" })}
-            disabled={triggerRun.isPending}
-            className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground border border-border hover:border-primary/40 rounded-md px-3 py-1.5 transition-all disabled:opacity-50"
-            title="Run pricing research now"
-          >
-            {triggerRun.isPending
-              ? <Loader2 className="w-3 h-3 animate-spin" />
-              : <RefreshCw className="w-3 h-3" />}
-            {triggerRun.isPending ? "Running..." : "Update Now"}
-          </button>
+        <div className="flex shrink-0 items-center gap-2">
+          {pendingCandidates.length > 0 ? <span className="flex items-center gap-1 rounded-full border border-amber-500/20 bg-amber-500/10 px-2 py-0.5 text-[10px] text-amber-300"><AlertCircle className="h-2.5 w-2.5" />{pendingCandidates.length} review {pendingCandidates.length === 1 ? "item" : "items"}</span> : lastRunStatus === "error" ? <span className="flex items-center gap-1 rounded-full border border-red-500/20 bg-red-500/10 px-2 py-0.5 text-[10px] text-red-400"><AlertCircle className="h-2.5 w-2.5" />Last run needs attention</span> : <span className="flex items-center gap-1 rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-[10px] text-muted-foreground"><CheckCircle2 className="h-2.5 w-2.5" />Review-only</span>}
+          <button onClick={() => triggerRun.mutate({ agentId: "pricing_update" })} disabled={triggerRun.isPending} title="Run pricing research now" className="flex items-center gap-1.5 rounded-md border border-border px-3 py-1.5 text-xs font-medium text-muted-foreground transition-all hover:border-primary/40 hover:text-foreground disabled:opacity-50">{triggerRun.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}{triggerRun.isPending ? "Running..." : "Refresh"}</button>
         </div>
       </div>
 
-      {/* Table */}
-      {benchmarksLoading ? (
-        <div className="flex items-center justify-center py-8">
-          <Loader2 className="w-4 h-4 animate-spin text-primary" />
-        </div>
-      ) : (
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr className="border-b border-border">
-                <th className="text-left text-[11px] font-semibold text-muted-foreground pb-2 pr-4">Job Type</th>
-                <th className="text-left text-[11px] font-semibold text-muted-foreground pb-2 pr-4">Low</th>
-                <th className="text-left text-[11px] font-semibold text-muted-foreground pb-2 pr-4">Market Rate</th>
-                <th className="text-left text-[11px] font-semibold text-muted-foreground pb-2">Premium</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((row: any, i: number) => (
-                <tr key={i} className="border-b border-border/50 last:border-0 group">
-                  <td className="py-2.5 pr-4 text-xs font-semibold text-foreground">{row.serviceType}</td>
-                  <td className="py-2.5 pr-4 text-xs text-muted-foreground">${row.lowPerAcre.toLocaleString()}/ac</td>
-                  <td className="py-2.5 pr-4 text-xs text-primary font-semibold">${row.midPerAcre.toLocaleString()}/ac</td>
-                  <td className="py-2.5 text-xs text-green-400">${row.highPerAcre.toLocaleString()}/ac</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+      {benchmarksLoading ? <div className="flex justify-center py-8"><Loader2 className="h-4 w-4 animate-spin text-primary" /></div> : benchmarks.length === 0 ? <p className="rounded border border-amber-500/25 bg-amber-500/5 p-3 text-xs leading-5 text-amber-100">No owner-approved benchmark is active. Private AI Pricing settings, job cost, and a site visit remain the pricing controls.</p> : <div className="overflow-x-auto"><table className="w-full"><thead><tr className="border-b border-border"><th className="pb-2 pr-4 text-left text-[11px] font-semibold text-muted-foreground">Job Type</th><th className="pb-2 pr-4 text-left text-[11px] font-semibold text-muted-foreground">Low</th><th className="pb-2 pr-4 text-left text-[11px] font-semibold text-muted-foreground">Reviewed range</th><th className="pb-2 text-left text-[11px] font-semibold text-muted-foreground">High</th></tr></thead><tbody>{benchmarks.map((row: any) => <tr key={row.id} className="border-b border-border/50 last:border-0"><td className="py-2.5 pr-4 text-xs font-semibold text-foreground">{row.serviceType}{row.evidenceStatus !== "owner_approved" && <span className="ml-2 text-[10px] font-normal text-amber-300">Legacy—review</span>}</td><td className="py-2.5 pr-4 text-xs text-muted-foreground">${row.lowPerAcre.toLocaleString()}/{unitLabel(row.unit)}</td><td className="py-2.5 pr-4 text-xs font-semibold text-primary">${row.midPerAcre.toLocaleString()}/{unitLabel(row.unit)}</td><td className="py-2.5 text-xs text-green-400">${row.highPerAcre.toLocaleString()}/{unitLabel(row.unit)}</td></tr>)}</tbody></table></div>}
 
-      {/* Research summaries (shown when live data exists) */}
-      {hasLiveData && benchmarks.some((b: any) => b.researchSummary) && (
-        <div className="mt-4 space-y-2">
-          {benchmarks.filter((b: any) => b.researchSummary).map((b: any, i: number) => (
-            <div key={i} className="text-[10px] text-muted-foreground">
-              <span className="font-semibold text-foreground/70">{b.serviceType}:</span>{" "}
-              {b.researchSummary}
-            </div>
-          ))}
-        </div>
-      )}
+      {pendingCandidates.length > 0 && <div className="mt-5 space-y-3 border-t border-border pt-4"><p className="text-xs font-semibold text-foreground">Research awaiting your review</p>{pendingCandidates.map((candidate: any) => { let sources: string[] = []; try { sources = candidate.sourceUrls ? JSON.parse(candidate.sourceUrls) : []; } catch { sources = []; } return <div key={candidate.id} className="rounded-md border border-amber-500/25 bg-amber-500/5 p-3 text-xs"><div className="flex flex-wrap items-start justify-between gap-3"><div><span className="font-semibold text-foreground">{candidate.serviceType}</span><span className="ml-2 text-muted-foreground">${candidate.lowAmount.toLocaleString()}–${candidate.midAmount.toLocaleString()}–${candidate.highAmount.toLocaleString()}/{unitLabel(candidate.unit)}</span></div><div className="flex gap-2"><button onClick={() => approveCandidate.mutate({ id: candidate.id })} disabled={approveCandidate.isPending} className="rounded border border-green-500/30 px-2 py-1 text-[10px] font-semibold text-green-300 hover:bg-green-500/10 disabled:opacity-50">Approve</button><button onClick={() => rejectCandidate.mutate({ id: candidate.id })} disabled={rejectCandidate.isPending} className="rounded border border-white/15 px-2 py-1 text-[10px] font-semibold text-muted-foreground hover:bg-white/5 disabled:opacity-50">Reject</button></div></div><p className="mt-2 leading-5 text-muted-foreground">{candidate.researchSummary}</p>{sources.length > 0 ? <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1">{sources.map((source) => <a key={source} href={source} target="_blank" rel="noreferrer" className="text-[10px] text-primary underline underline-offset-2">Review source</a>)}</div> : <p className="mt-2 text-[10px] text-amber-200">No direct public source link was supplied. Do not approve until you independently verify the figure.</p>}</div>; })}</div>}
 
-      <p className="text-[10px] text-muted-foreground mt-3">
-        {hasLiveData
-          ? "Rates are researched weekly by the pricing agent using Middle & West Tennessee market data. Actual pricing varies by terrain, density, access, and site conditions. Never quote from benchmarks alone — always conduct a site visit."
-          : "Static fallback rates shown — click \"Update Now\" to run the pricing agent and pull live market data for Middle & West Tennessee."}
-      </p>
+      <p className="mt-4 text-[10px] text-muted-foreground">This is a review aid, not a quote verifier. It never overrides private AI Pricing, actual job cost, or the property-specific site visit. Research runs weekly on Sunday at 6 AM and produce suggestions only.</p>
     </div>
   );
 }

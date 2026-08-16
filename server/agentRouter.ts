@@ -11,6 +11,10 @@ import {
   getAgentLogs,
   getLastAgentRun,
   insertAgentLog,
+  getPricingBenchmarks,
+  getPricingBenchmarkCandidates,
+  approvePricingBenchmarkCandidate,
+  rejectPricingBenchmarkCandidate,
 } from "./db";
 import {
   AGENT_REGISTRY,
@@ -21,7 +25,6 @@ import {
   runDailyDigestAgent,
   runPricingUpdateAgent,
 } from "./agents";
-import { getPricingBenchmarks } from "./db";
 
 // Owner-only guard — mirrors the pattern in opsRouter
 const ownerProcedure = protectedProcedure;
@@ -133,6 +136,25 @@ export const agentRouter = router({
   getPricingBenchmarks: ownerProcedure.query(async () => {
     return getPricingBenchmarks();
   }),
+
+  /** Research suggestions are deliberately separate from approved benchmarks. */
+  getPricingBenchmarkCandidates: ownerProcedure.query(async () => {
+    return getPricingBenchmarkCandidates();
+  }),
+
+  approvePricingBenchmarkCandidate: ownerProcedure
+    .input(z.object({ id: z.number().int().positive() }))
+    .mutation(async ({ input }) => {
+      await approvePricingBenchmarkCandidate(input.id);
+      return { success: true };
+    }),
+
+  rejectPricingBenchmarkCandidate: ownerProcedure
+    .input(z.object({ id: z.number().int().positive() }))
+    .mutation(async ({ input }) => {
+      await rejectPricingBenchmarkCandidate(input.id);
+      return { success: true };
+    }),
 
   /** Return the most recent run log for a specific agent. */
   getLastRun: ownerProcedure

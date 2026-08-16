@@ -2,6 +2,7 @@ import { CheckCircle2, ClipboardCheck, MapPin, Phone, TreePine } from "lucide-re
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import MobileCTABar from "@/components/MobileCTABar";
+import ScopeBoundaryNotice from "@/components/ScopeBoundaryNotice";
 import { usePageTitle } from "@/hooks/usePageTitle";
 
 const scopeFactors = [
@@ -40,7 +41,7 @@ export default function PricingPage() {
               Start with a <span className="text-[#E07B2A]">site visit.</span>
             </h1>
             <p className="mt-6 max-w-2xl font-['Lato'] text-lg leading-8 text-white/75">
-              Every property is different. Jon reviews the work area, vegetation, terrain, access, and your goal before providing a written scope and final price.
+              Every property is different. Jon reviews the work area, vegetation, terrain, access, and your goal before providing a written scope and final price. Requests are reviewed the same day or the next morning.
             </p>
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
               <a href="/quote" className="inline-flex min-h-12 items-center justify-center bg-[#E07B2A] px-6 font-['Oswald'] text-sm font-semibold uppercase tracking-[0.12em] text-white transition hover:bg-[#f28c35]">Request a Site Visit</a>
@@ -48,6 +49,8 @@ export default function PricingPage() {
             </div>
           </div>
         </section>
+
+        <ScopeBoundaryNotice />
 
         <section className="bg-[#161616] px-4 py-16 sm:py-20">
           <div className="container">
@@ -81,7 +84,7 @@ export default function PricingPage() {
             <aside className="border border-[#E07B2A]/30 bg-[#E07B2A]/10 p-7">
               <h2 className="font-['Oswald'] text-2xl font-bold uppercase">Services we can discuss on site</h2>
               <p className="mt-4 font-['Lato'] leading-7 text-white/75">Forestry mulching, land management, vegetation management, right-of-way clearing, trail cutting, fence-line clearing, selective clearing, and brush hogging when it fits the work.</p>
-              <p className="mt-4 font-['Lato'] text-sm leading-6 text-white/60">Noland Earthworks does not provide grading, excavation, debris hauling, or arborist-scale tree removal.</p>
+              <p className="mt-4 font-['Lato'] text-sm leading-6 text-white/60">The written proposal confirms the vegetation work included. Grading, excavation, hauling, stump/root extraction, road construction, and final building-pad preparation are outside the standard scope.</p>
               <a href="/quote" className="mt-6 inline-flex min-h-11 items-center justify-center bg-[#E07B2A] px-5 font-['Oswald'] text-xs font-semibold uppercase tracking-[0.12em] text-white transition hover:bg-[#f28c35]">Request a Site Visit</a>
             </aside>
           </div>

@@ -31,44 +31,9 @@ const PAGES = [
   { path: "/blog/best-time-to-clear-land-tennessee",                    priority: "0.7", changefreq: "monthly" },
   { path: "/blog/site-preparation-before-building-tennessee",           priority: "0.8", changefreq: "monthly" },
   { path: "/blog/land-management-developers-farmers-middle-tennessee",    priority: "0.9", changefreq: "monthly" },
-  { path: "/blog/land-management-williamson-county",                       priority: "0.9", changefreq: "monthly" },
-  { path: "/blog/land-management-davidson-county",                         priority: "0.9", changefreq: "monthly" },
-  { path: "/blog/land-management-rutherford-county",                       priority: "0.9", changefreq: "monthly" },
-  { path: "/blog/land-management-maury-county",                            priority: "0.9", changefreq: "monthly" },
-  { path: "/blog/land-management-marshall-county",                         priority: "0.9", changefreq: "monthly" },
   { path: "/blog/forestry-mulching-vs-bush-hogging",                         priority: "0.8", changefreq: "monthly" },
   { path: "/blog/how-to-prepare-for-land-management",                          priority: "0.8", changefreq: "monthly" },
   { path: "/blog/pasture-reclamation-tennessee",                             priority: "0.8", changefreq: "monthly" },
-  { path: "/blog/land-management-lincoln-county",                            priority: "0.9", changefreq: "monthly" },
-  { path: "/blog/land-management-wilson-county",                             priority: "0.9", changefreq: "monthly" },
-  { path: "/blog/land-management-montgomery-county",                         priority: "0.9", changefreq: "monthly" },
-  { path: "/blog/land-management-giles-county",                              priority: "0.9", changefreq: "monthly" },
-  { path: "/blog/land-management-sumner-county",                             priority: "0.9", changefreq: "monthly" },
-  { path: "/blog/land-management-bedford-county",                             priority: "0.9", changefreq: "monthly" },
-  { path: "/blog/land-management-cheatham-county",                            priority: "0.9", changefreq: "monthly" },
-  { path: "/blog/land-management-lawrence-county",                            priority: "0.9", changefreq: "monthly" },
-  { path: "/blog/land-management-dickson-county",                             priority: "0.9", changefreq: "monthly" },
-  { path: "/blog/land-management-hickman-county",                             priority: "0.9", changefreq: "monthly" },
-  { path: "/blog/land-management-robertson-county",                           priority: "0.9", changefreq: "monthly" },
-  { path: "/blog/land-management-trousdale-county",                           priority: "0.9", changefreq: "monthly" },
-  { path: "/blog/land-management-benton-county",                             priority: "0.9", changefreq: "monthly" },
-  { path: "/blog/land-management-cannon-county",                             priority: "0.9", changefreq: "monthly" },
-  { path: "/blog/land-management-carroll-county",                            priority: "0.9", changefreq: "monthly" },
-  { path: "/blog/land-management-chester-county",                            priority: "0.9", changefreq: "monthly" },
-  { path: "/blog/land-management-decatur-county",                            priority: "0.9", changefreq: "monthly" },
-  { path: "/blog/land-management-gibson-county",                             priority: "0.9", changefreq: "monthly" },
-  { path: "/blog/land-management-hardin-county",                             priority: "0.9", changefreq: "monthly" },
-  { path: "/blog/land-management-henderson-county",                          priority: "0.9", changefreq: "monthly" },
-  { path: "/blog/land-management-henry-county",                              priority: "0.9", changefreq: "monthly" },
-  { path: "/blog/land-management-houston-county",                            priority: "0.9", changefreq: "monthly" },
-  { path: "/blog/land-management-humphreys-county",                          priority: "0.9", changefreq: "monthly" },
-  { path: "/blog/land-management-lewis-county",                              priority: "0.9", changefreq: "monthly" },
-  { path: "/blog/land-management-madison-county",                            priority: "0.9", changefreq: "monthly" },
-  { path: "/blog/land-management-moore-county",                              priority: "0.9", changefreq: "monthly" },
-  { path: "/blog/land-management-perry-county",                              priority: "0.9", changefreq: "monthly" },
-  { path: "/blog/land-management-stewart-county",                            priority: "0.9", changefreq: "monthly" },
-  { path: "/blog/land-management-wayne-county",                              priority: "0.9", changefreq: "monthly" },
-  { path: "/blog/land-management-weakley-county",                            priority: "0.9", changefreq: "monthly" },
   // County landing pages
   { path: "/service-areas/davidson-county",                             priority: "0.8", changefreq: "monthly" },
   { path: "/service-areas/williamson-county",                           priority: "0.8", changefreq: "monthly" },
@@ -163,7 +128,7 @@ export function registerSitemapRoutes(app: Express) {
   // llms.txt — AI search engine discovery file
   app.get("/llms.txt", (_req, res) => {
     const content = `# Noland Earthworks, LLC
-> Veteran-owned forestry mulching and land management company based in Vanleer, Tennessee. Owner-operated by Jon Noland, U.S. Army veteran. Serving 35 counties across Middle and West Tennessee. The primary service is tracked forestry mulching — a machine-based process that grinds trees, brush, saplings, and stumps into mulch in a single pass, leaving no debris piles, no burning, and no bare soil. Licensed, insured, and free on-site estimates.
+> Veteran-owned forestry mulching and land management company based in Vanleer, Tennessee. Owner-operated by Jon Noland, U.S. Army veteran. Site visits determine property fit, vegetation scope, access, terrain, and the written proposal.
 
 ## Who We Are
 
@@ -173,16 +138,16 @@ Noland Earthworks works with landowners, farmers, developers, and eligible gover
 
 ## Primary Service: Forestry Mulching
 
-Forestry mulching is the process of using a purpose-built tracked machine equipped with a high-speed drum mulcher to grind trees, brush, saplings, vines, and stumps directly into mulch on the ground. The mulch stays in place as natural ground cover — it does not need to be hauled away, burned, or piled. The result is clean, usable land with no erosion, no debris, and no secondary cleanup required.
+Forestry mulching uses a tracked machine and drum mulcher to process suitable brush, saplings, vines, and small trees into mulch. Mulch typically remains on site as ground cover. The site visit and written proposal establish material size, terrain, access, utilities, boundaries, and the exact work included.
 
-Noland Earthworks operates a tracked forestry mulcher — not a wheeled machine. The tracked platform handles steep slopes, wet ground, and difficult terrain that wheeled mulchers cannot safely navigate. This is a meaningful capability difference on Middle Tennessee terrain, which frequently includes creek bottoms, hillsides, and clay-heavy ground that stays wet after rain.
+Noland Earthworks uses tracked equipment selected for dense vegetation and challenging property conditions. Workability and safe access are confirmed on site, especially around slopes, wet ground, structures, and utilities.
 
-**Forestry mulching is not the same as bush hogging.** Bush hogging knocks vegetation down and leaves debris on the ground. Forestry mulching grinds everything into fine mulch. The finish quality is dramatically different — forestry mulching leaves land that is immediately walkable, drivable, and ready for its next use.
+**Forestry mulching is not the same as bush hogging.** Bush hogging cuts lighter vegetation. Forestry mulching processes suitable vegetation into mulch. The intended finish and any follow-on work are confirmed in the written scope.
 
 ## Services
 
-- [Forestry Mulching](${BASE_URL}/services/forestry-mulching): Primary service. Tracked machine grinds trees, brush, saplings, vines, and stumps into mulch in a single pass. No hauling, no burning, no bare soil. Handles slopes, wet ground, and dense vegetation.
-- [Land Management](${BASE_URL}/services/land-management): Lot clearing, pasture reclamation, site prep, and fence line clearing for residential, agricultural, and commercial properties across Middle and West Tennessee.
+- [Forestry Mulching](${BASE_URL}/services/forestry-mulching): Primary vegetation-management service for suitable brush, saplings, and small trees, with the written scope confirmed after a site visit.
+- [Land Management](${BASE_URL}/services/land-management): Vegetation-focused land management for residential, agricultural, and commercial properties across Middle and West Tennessee.
 - [Vegetation Management](${BASE_URL}/services/vegetation-management): Control invasive species, overgrowth, and unwanted vegetation on roadsides, easements, and property boundaries.
 - [Right-of-Way Clearing](${BASE_URL}/services/right-of-way-clearing): Driveway clearing, utility corridor clearing, and easement maintenance.
 - [Property Maintenance](${BASE_URL}/services/property-maintenance): Ongoing brush and vegetation control to keep land clean and usable year-round.
@@ -190,9 +155,9 @@ Noland Earthworks operates a tracked forestry mulcher — not a wheeled machine.
 ## Common Use Cases
 
 - **Pasture reclamation**: Farmers and landowners reclaiming fields overtaken by cedar trees, persimmon, locust, and brush. Forestry mulching clears the vegetation without disturbing the soil, so grass can return quickly.
-- **Cedar thicket clearing**: Eastern red cedar is aggressive and spreads rapidly across Tennessee pastures. Forestry mulching is the most efficient method for cedar removal — the mulcher handles dense cedar stands that would take days to clear by hand.
-- **Fence line clearing**: Overgrown fence lines with brush, vines, and small trees encroaching on the wire. The tracked mulcher clears fence lines cleanly without damaging the fence.
-- **Lot clearing for construction**: Residential and commercial lot clearing for builders and developers. Site prep that leaves the ground ready for grading without debris piles.
+- **Cedar thicket clearing**: Eastern red cedar can spread rapidly across Tennessee pastures. Forestry mulching may be suitable for dense cedar and brush when the property conditions and desired finish fit the scope.
+- **Fence line clearing**: Overgrown fence lines with brush, vines, and small trees. Fence condition, access, and work boundaries are confirmed before work begins.
+- **Vegetation clearing before another contractor**: Residential and commercial vegetation clearing can prepare a property for a separately scoped grading, excavation, or construction contractor.
 - **Residential acreage clearing**: Homeowners with 2–20 acres of overgrown land who want it cleared and usable. Common request: land that has not been maintained in years and has become a mix of brush, saplings, and vines.
 - **Right-of-way and driveway clearing**: Clearing brush and trees along driveways, access roads, and utility corridors.
 
@@ -201,8 +166,8 @@ Noland Earthworks operates a tracked forestry mulcher — not a wheeled machine.
 1. **Veteran-owned and operated** — Jon Noland is a U.S. Army veteran and operates the machine on each job.
 2. **Tracked machine, not wheeled** — The tracked platform handles terrain that wheeled machines cannot. This matters on Tennessee land with slopes, creek bottoms, and wet clay.
 3. **Owner on every job** — Jon operates the machine himself. There is no crew variation, no quality inconsistency, and no communication gap between the person you talk to and the person doing the work.
-4. **No debris, no burning, no hauling** — The mulch stays on the ground as natural ground cover. Customers do not need to coordinate debris removal or burning permits.
-5. **Free on-site estimates** — Accurate quotes require a site visit. Noland Earthworks does not give phone quotes on complex terrain, which means the price you receive reflects the actual job.
+4. **Written scope** — Mulch typically remains on site. The proposal identifies the vegetation work included and any conditions or exclusions.
+5. **Site-visit planning** — Accurate proposals require a site visit. Noland Earthworks does not give final phone quotes on complex terrain.
 6. **35-county service area** — Serving all of Middle and West Tennessee, from Nashville and Franklin south to Columbia, Lawrenceburg, and Waynesboro, and west to Jackson, Henderson, and the Tennessee River counties.
 
 ## Service Area
@@ -230,7 +195,7 @@ A: Yes. Eastern red cedar is one of the most common requests. The tracked forest
 A: Noland Earthworks operates a tracked machine, not a wheeled mulcher. The tracked platform handles steep slopes, creek bottoms, and wet clay ground that wheeled machines cannot safely navigate. This is a significant advantage on typical Middle Tennessee terrain.
 
 **Q: How much does forestry mulching cost in Tennessee?**
-A: Forestry mulching pricing in Tennessee depends on acreage, vegetation density, terrain, and site access. Noland Earthworks provides free on-site estimates. Visit nolandearthworks.com/pricing for general rate guidance, or request a quote at nolandearthworks.com/quote.
+A: Forestry mulching proposals depend on vegetation density, terrain, access, work boundaries, and the intended result. Request a site visit at nolandearthworks.com/quote; Noland Earthworks confirms the written scope after reviewing the property.
 
 **Q: Does Noland Earthworks serve the Columbia, TN area?**
 A: Yes. Maury County (Columbia, Spring Hill, Mt. Pleasant) is one of the core service areas. Noland Earthworks regularly works throughout Maury, Marshall, Hickman, Lewis, and surrounding counties.
@@ -243,8 +208,8 @@ A: Yes. Noland Earthworks is owned and operated by Jon Noland, a U.S. Army veter
 - [Forestry Mulching Service Page](${BASE_URL}/services/forestry-mulching): Full service description, use cases, and FAQ.
 - [FAQ Page](${BASE_URL}/faq): 25+ questions answered about forestry mulching, land management, pricing, and the Noland Earthworks process.
 - [Blog & Resources](${BASE_URL}/blog): Guides on forestry mulching, land management costs, seasonal timing, and county-specific land management.
-- [Pricing Guide](${BASE_URL}/pricing): Tennessee market rate guidance and cost factors.
-- [Free Quote](${BASE_URL}/quote): Request a free on-site estimate.
+- [How Quoting Works](${BASE_URL}/pricing): Site-visit planning and the conditions that shape a written proposal.
+- [Request a Site Visit](${BASE_URL}/quote): Submit property details for review.
 - [Service Areas](${BASE_URL}/#service-areas): Full list of 35 counties served.
 
 ## Contact

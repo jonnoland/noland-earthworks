@@ -191,13 +191,13 @@ export default function QuotePage() {
           <section className="lg:sticky lg:top-32">
             <p className="font-['Oswald'] text-xs font-semibold uppercase tracking-[0.2em] text-[#E07B2A]">Start here</p>
             <h1 className="mt-4 font-['Oswald'] text-4xl font-bold uppercase leading-[1.04] sm:text-6xl">Request a <span className="text-[#E07B2A]">site visit.</span></h1>
-            <p className="mt-6 max-w-xl font-['Lato'] text-lg leading-8 text-white/75">Tell Jon what you want to accomplish and where the property is. He will review the request, contact you, and confirm the scope on site before preparing a written quote.</p>
+            <p className="mt-6 max-w-xl font-['Lato'] text-lg leading-8 text-white/75">Tell Jon what you want to accomplish and where the property is. He reviews requests the same day or the next morning, then confirms the scope on site before preparing a written quote.</p>
             <div className="mt-8 border border-[#E07B2A]/30 bg-[#E07B2A]/10 p-5">
               <div className="flex gap-3"><ClipboardCheck className="mt-0.5 h-5 w-5 shrink-0 text-[#E07B2A]" aria-hidden="true" /><p className="font-['Lato'] text-sm leading-6 text-white/80">No online pricing or automated final quote. A property review is required because vegetation, access, terrain, boundaries, and obstacles must be confirmed.</p></div>
             </div>
             <div className="mt-7 border-t border-white/10 pt-6 font-['Lato'] text-sm text-white/65">
               <p className="font-semibold text-white">What happens next</p>
-              <ol className="mt-3 space-y-2 leading-6"><li>1. Jon reviews your request.</li><li>2. He contacts you to confirm the property and visit.</li><li>3. After the visit, you receive a written scope and quote.</li></ol>
+              <ol className="mt-3 space-y-2 leading-6"><li>1. Jon reviews your request the same day or the next morning.</li><li>2. He contacts you to confirm the property and visit.</li><li>3. After the visit, you receive a written scope and quote.</li></ol>
               <a className="mt-5 inline-flex items-center gap-2 text-[#E07B2A] hover:text-[#f28c35]" href="tel:6154064819"><Phone size={16} /> Prefer to call? 615-406-4819</a>
             </div>
           </section>

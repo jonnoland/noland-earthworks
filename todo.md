@@ -3159,6 +3159,34 @@
 - [x] Visually mark capacity leads as scheduled after a successful calendar drop
 - [x] Add regression coverage and validate the enhanced owner-alert workflow
 
+## Owner SMS Alert Test — Aug 2026
+- [x] Send one owner-only SMS test alert to both configured recipients
+- [x] Verify the resulting per-recipient Twilio outcomes in the Operations history
+
+## Owner SMS Handset Delivery Recovery — Aug 2026
+- [x] Retrieve carrier-level status and error details for both accepted Twilio test messages
+- [x] Upload the supplied two-phone START opt-in evidence and submit Twilio toll-free verification for the owner-alert sender
+- [ ] Confirm the verification approval, correct the blocked sender state, and re-test both owner phones
+
+## Pricing Intelligence Dashboard Assessment — Aug 2026
+- [x] Inspect the active Pricing Intelligence calculations, evidence sources, and benchmark freshness
+- [x] Compare the dashboard with the prior Middle and West Tennessee weekly pricing-update criteria
+- [x] Report whether it verifies pricing correctly and identify any required correction
+
+## Whole-Site Audit Remediation — Aug 2026
+- [x] Apply one factual public service-scope statement and remove language that can imply grading, excavation, hauling, stump extraction, road construction, or construction-ready preparation
+- [x] Tighten the public site-visit path, mobile form sequence, and same-day/next-morning response expectation
+- [x] Remove remaining public price anchors from educational content without changing private Operations pricing
+- [x] Make Stripe payment processing idempotent, retriable on transient internal failures, and visible for reconciliation
+- [x] Remove redirected source URLs from the sitemap while preserving redirects and canonical county service pages
+- [x] Add reusable verified-evidence controls for project captions and review content without inventing testimonials or ratings
+- [x] Add a local-profile facts-sheet workflow and evidence-led AI-search measurement guidance
+- [x] Replace unsafe Pricing Intelligence auto-overwrite behavior with source-aware, unit-correct, review-only benchmarks
+- [x] Align the pricing-agent schedule, dashboard freshness status, and partial-run reporting
+- [x] Add owner-only release checks for sensitive Operations procedures and payment webhooks
+- [x] Run regression, build, public-route, sitemap, and authorization validation after remediation
+- [x] Document legal-review and external-account follow-ups that cannot be safely automated
+
 ## Quote Performance & County Differentiation — Aug 2026
 - [x] Measure the current quote-page mobile performance and critical loading path
 - [x] Implement a low-risk quote-page performance improvement that preserves the form flow

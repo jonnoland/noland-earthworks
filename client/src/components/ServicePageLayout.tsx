@@ -6,6 +6,7 @@ import { useState, useEffect, useRef, useMemo } from "react";
 import { ArrowLeft, ChevronDown, ChevronUp, ArrowRight, Check } from "lucide-react";
 import ShareButtons from "@/components/ShareButtons";
 import EvidenceContentSection from "@/components/EvidenceContentSection";
+import ScopeBoundaryNotice from "@/components/ScopeBoundaryNotice";
 import { trpc } from "@/lib/trpc";
 // Using plain <a> tags to avoid nested anchor issues (wouter Link renders as <a>)
 
@@ -385,6 +386,8 @@ export default function ServicePageLayout(props: ServicePageProps) {
         </div>
       </section>
 
+      <ScopeBoundaryNotice />
+
       {/* ── FAQ ── */}
       <section
         style={{
@@ -571,7 +574,7 @@ export default function ServicePageLayout(props: ServicePageProps) {
                 color: "rgba(10,10,10,0.7)",
               }}
             >
-              Contact us today for a free, no-obligation quote on {title.toLowerCase()}.
+              Request a site visit to confirm the property conditions and written scope for {title.toLowerCase()}.
             </p>
           </div>
           <div className="flex flex-wrap gap-3">
@@ -609,7 +612,7 @@ export default function ServicePageLayout(props: ServicePageProps) {
                 display: "inline-block",
               }}
             >
-              Request a Quote
+              Request a Site Visit
             </a>
           </div>
         </div>

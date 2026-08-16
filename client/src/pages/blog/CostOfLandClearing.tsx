@@ -121,9 +121,9 @@ function TableOfContents() {
 export default function CostOfLandClearing() {
   return (
     <BlogPostLayout
-      title="How Much Does Land Clearing Cost in Tennessee? (2026 Guide)"
-      pageTitle="Land Clearing Cost in Tennessee | Noland Earthworks"
-      metaDescription="Land clearing in Tennessee costs $1,500–$4,500 per acre depending on method, vegetation density, terrain, and acreage. Learn what drives pricing and why forestry mulching is the most cost-effective option for most properties."
+      title="What Affects a Land Clearing Proposal in Tennessee? (2026 Guide)"
+      pageTitle="Land Clearing Proposal Factors in Tennessee | Noland Earthworks"
+      metaDescription="Learn what affects a site-specific Tennessee land clearing proposal, including vegetation, terrain, access, acreage, travel, and the work included in writing."
       date="April 2026"
       dateISO="2026-04-01"
       lastUpdated="July 2026"
@@ -144,31 +144,25 @@ export default function CostOfLandClearing() {
         {/* Main article content */}
         <div style={{ flex: 1, minWidth: 0 }}>
           <p>
-            If you own property in Middle or West Tennessee and need it cleared, the first question is almost always the same: <strong>how much is this going to cost?</strong> The honest answer is that land clearing in Tennessee ranges from roughly <strong>$1,500 to $4,500 per acre</strong>, and the spread is that wide because the variables are real. A flat, light-brush field on dry ground costs a fraction of what a steep, cedar-choked hillside with wet soil costs. This guide breaks down what actually drives the price so you can set realistic expectations before you call anyone.
+            If you own property in Middle or West Tennessee and need vegetation cleared, the first question is usually: <strong>what will this project require?</strong> A flat, light-brush field on dry ground is a different job from a steep, cedar-choked hillside with wet soil. This guide explains the site conditions that determine a written proposal so you know what to discuss before a site visit.
           </p>
 
-          <h2 id="two-methods">The Two Main Methods and Their Cost Ranges</h2>
+          <h2 id="two-methods">The Two Main Methods and Their Scope Differences</h2>
           <p>
             The method you choose is the single biggest cost driver. There are two primary approaches for most Tennessee land clearing jobs:
           </p>
 
           <h3>Traditional Clearing (Bulldozing and Hauling)</h3>
           <p>
-            Traditional clearing uses bulldozers, excavators, and dump trucks to knock down trees, dig up stumps, push debris into piles, and either burn it or haul it away. It is the right method when you need the stumps and root systems completely removed — for example, if you are preparing a site for a building foundation or a paved surface. The cost is high because you are paying for multiple machines, multiple operators, burn permits or hauling fees, and the time to manage debris.
-          </p>
-          <p>
-            <strong>Typical cost range: $2,500–$5,000+ per acre.</strong> Costs increase significantly on steep terrain, in areas with large hardwood timber, or when hauling distances are long.
+            Traditional clearing can involve bulldozers, excavators, and hauling equipment to remove trees, stumps, roots, and debris. It may be appropriate when another contractor needs a different construction or excavation scope. Noland Earthworks does not provide that grading, excavation, hauling, or building-pad preparation work.
           </p>
 
           <h3>Forestry Mulching (Single-Machine Method)</h3>
           <p>
-            Forestry mulching uses a single tracked machine equipped with a drum mulcher to cut, grind, and mulch trees, brush, and stumps in one pass. The mulched material stays on the ground as a natural layer of organic matter — no debris piles, no hauling, no burning. The machine grinds trees up to 6–8 inches in diameter and handles stumps at the same time.
+            Forestry mulching uses a tracked machine with a drum mulcher to process brush, saplings, and suitable small trees into mulch. The mulch typically remains on the ground. Material size, density, terrain, utilities, and access are confirmed during a site visit; stump and root extraction below grade is not part of forestry mulching unless a written proposal specifically says otherwise.
           </p>
           <p>
-            Because it requires one machine and one operator and eliminates all secondary costs, forestry mulching is significantly more cost-effective than traditional clearing for most residential, agricultural, and recreational land management projects.
-          </p>
-          <p>
-            <strong>Typical cost range: $1,500–$3,000 per acre</strong> for most Middle Tennessee properties. Dense timber or difficult terrain pushes toward the higher end.
+            Forestry mulching can be a practical vegetation-management approach for suitable residential, agricultural, and recreational properties when leaving mulch on site fits the owner’s goal.
           </p>
 
           <h2 id="six-variables">What Drives the Price: The Six Key Variables</h2>
@@ -186,7 +180,7 @@ export default function CostOfLandClearing() {
 
           <h3>2. Terrain and Slope</h3>
           <p>
-            Flat, accessible ground is the fastest and cheapest to clear. Steep slopes require slower, more careful machine operation to maintain stability and control. Rocky terrain — common on the limestone-underlain uplands of Middle Tennessee — slows the machine and increases wear. Expect a cost premium of 15–30% on properties with significant slope or rocky ground compared to flat, accessible sites.
+            Flat, accessible ground generally allows more efficient work. Steep slopes require slower, more careful machine operation to maintain stability and control. Rocky terrain can slow work and increase wear. These conditions are assessed on site rather than priced from a generic multiplier.
           </p>
 
           <h3>3. Soil Conditions and Ground Wetness</h3>
@@ -206,7 +200,7 @@ export default function CostOfLandClearing() {
 
           <h3>6. Distance from the Contractor's Base</h3>
           <p>
-            Mobilization costs increase with distance. Noland Earthworks is based in Vanleer, Tennessee, and serves 35 counties across Middle and West Tennessee. Jobs within 50 miles carry minimal mobilization cost. Jobs at the outer edges of the service area — 100–150 miles — carry a higher mobilization component. This is standard across all land clearing contractors and should be factored into your comparison shopping.
+            Travel and mobilization planning can differ by property location. Noland Earthworks is based in Vanleer, Tennessee, and serves listed counties across Middle and West Tennessee. The written proposal confirms any location-specific planning after the property review.
           </p>
 
           <h2 id="not-included">What Is Not Included in Land Clearing</h2>
@@ -226,7 +220,7 @@ export default function CostOfLandClearing() {
             The only way to get an accurate quote for a land clearing project is an on-site visit. Phone quotes and online estimates based on acreage alone are not reliable because the variables above — vegetation density, terrain, access, soil conditions — cannot be assessed without seeing the property. Any contractor who gives you a firm price over the phone without visiting the site is either guessing or will find reasons to add costs later.
           </p>
           <p>
-            Noland Earthworks provides free, no-obligation on-site estimates throughout the service area. We walk the property with you, assess the vegetation and terrain, and give you a straightforward quote with no surprises. Contact us to schedule a visit.
+            Noland Earthworks reviews site-visit requests the same day or the next morning. If the project is a fit, Jon will arrange a property review and prepare a written scope and quote based on the conditions observed.
           </p>
 
           <h2 id="best-value">Why Forestry Mulching Delivers the Best Value for Most Tennessee Properties</h2>

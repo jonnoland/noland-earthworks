@@ -135,8 +135,8 @@ async function startServer() {
   cron.schedule("0 6 * * *", async () => {
     if (await getAgentEnabled("daily_digest")) await runDailyDigestAgent();
   }, { timezone: "America/Chicago" });
-  // Pricing Benchmark Update: every day at 6:00 AM CT
-  cron.schedule("0 6 * * *", async () => {
+  // Pricing research review queue: every Sunday at 6:00 AM CT
+  cron.schedule("0 6 * * 0", async () => {
     if (await getAgentEnabled("pricing_update")) await runPricingUpdateAgent();
   }, { timezone: "America/Chicago" });
   // Notification Retry Queue: every 30 minutes
