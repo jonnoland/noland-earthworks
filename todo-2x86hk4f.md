@@ -19,3 +19,8 @@
 - [x] Finish standardizing scope and exclusion wording in the remaining high-visibility shared and machine-readable public content.
 - [x] Add explicit regression coverage for the Stripe webhook idempotency and retry behavior relied on by the audit remediation.
 - [x] Record remaining third-party follow-ups and publish the verified correction set.
+- [x] Verify the deployed Stripe checkout journey without submitting a payment or creating a charge.
+- [x] Check Google Business Profile sync status and update service areas only when the connected account confirms a change.
+- [x] Validate the deployed sitemap and prepare a Search Console-ready canonical URL summary.
+- [x] Deliver the verification results and any safe user action needed for a real controlled payment test.
+- [x] Send the final Stripe, Google Business Profile, and sitemap verification summary with the exact confirmation required for a live payment charge.

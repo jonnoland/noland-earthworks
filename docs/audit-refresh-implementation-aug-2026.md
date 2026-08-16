@@ -22,3 +22,17 @@ The refreshed website audit was followed by code, content, and verification work
 | Medium | Run one controlled Stripe payment test from the deployed domain and verify the payment appears in the operations workflow. | The code has signed-event and retry safeguards, but a live delivery check requires the deployed endpoint and Stripe account. |
 
 No customer data, customer records, reviews, ratings, or payment records were fabricated or changed as part of this remediation.
+
+## Live Verification Note — August 16, 2026
+
+The connected Stripe MCP account is available in **test mode only** (`Manus nolandearth-pymczdcn`). The deployed `/ops/payments` route rendered the public SPA shell rather than the authenticated payment workspace in the browser session, so no invoice, checkout session, or payment was created. A real live-card charge was not attempted.
+
+## Controlled Checkout Test — August 16, 2026
+
+A $1.00 deposit link was created for the dedicated test job and owner account from the deployed payment workspace. The application created a pending local payment record and returned a `cs_live_` Stripe Checkout URL. Because that is a live-mode checkout, the checkout page was **not opened and no card details were entered**. Completing it would create a real $1.00 charge and requires a new explicit confirmation that acknowledges the live charge.
+
+The generated checkout was subsequently opened in view-only mode and rendered a branded Stripe Link authentication screen for the $1.00 deposit. No authentication code, card details, or payment submission was attempted. The reviews workspace loaded, but the browser context then reset before it exposed a Google-sync result, so the status must be checked through the deployed application’s review API or server logs.
+
+## Google Business Profile Check — August 16, 2026
+
+The rate limit has **not** cleared. Current deployment logs show `RATE_LIMIT_EXCEEDED` from `mybusinessaccountmanagement.googleapis.com` while attempting to discover the configured Google Business Profile location. The fallback Places request returned `NOT_FOUND`. Because there is no verified Google Business Profile service-area response, the local service-area list was not changed.
