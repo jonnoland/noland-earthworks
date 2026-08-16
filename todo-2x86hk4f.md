@@ -1,0 +1,21 @@
+# Project TODO
+
+- [x] Re-audit the current live sitemap, public conversion pages, and protected operations procedures before editing.
+- [x] Verify the published sitemap contains canonical public URLs while retaining user-facing redirects.
+- [x] Standardize public service scope, exclusions, and evidence-based wording across shared content templates.
+- [x] Verify public pricing no longer anchors estimates and improve quote-intake expectations.
+- [x] Validate the verified gallery data path and trust presentation without fabricating reviews, ratings, or testimonials.
+- [x] Verify existing Stripe webhook failure handling and idempotent reconciliation safeguards.
+- [x] Add regression coverage for sitemap output, scope controls, operations access, and payment-webhook behavior.
+- [x] Validate key public and operations journeys, record external follow-ups, and publish the completed changes.
+- [x] Tighten the owner-route guard so incomplete or unauthenticated client auth state never renders an internal operations shell.
+- [x] Remove unauthenticated diagnostic endpoints and disable Express framework fingerprinting in public responses.
+- [x] Return a genuine 404 status for unknown public routes while retaining supported SPA and dynamic blog routes.
+- [x] Add native required/pattern validation to the public quote fields and remove the invalid nested waitlist form.
+- [x] Reduce cookie-consent banner overlap with mobile quote conversion controls.
+- [x] Preserve the existing verified gallery data path and validate public image loading without inserting or fabricating gallery entries.
+- [x] Remove orphaned unauthenticated upload endpoints that are not referenced by the current public or operations application.
+- [x] Add and run a sitemap regression test, then verify the generated sitemap contains only canonical public URLs.
+- [x] Finish standardizing scope and exclusion wording in the remaining high-visibility shared and machine-readable public content.
+- [x] Add explicit regression coverage for the Stripe webhook idempotency and retry behavior relied on by the audit remediation.
+- [x] Record remaining third-party follow-ups and publish the verified correction set.

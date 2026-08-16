@@ -32,8 +32,6 @@ import {
   runNotificationRetryAgent,
   getAgentEnabled,
 } from "../agents";
-import multer from "multer";
-import { storagePut } from "../storage";
 import cors from "cors";
 
 function isPortAvailable(port: number): Promise<boolean> {
@@ -58,6 +56,7 @@ async function findAvailablePort(startPort: number = 3000): Promise<number> {
 async function startServer() {
   const app = express();
   const server = createServer(app);
+  app.disable("x-powered-by");
 
   // CORS — allow browser clients and Capacitor mobile app
   const allowedOrigins = [
@@ -184,113 +183,6 @@ async function startServer() {
   });
   // Bot prerendering — must come before Vite/static middleware
   app.use(prerenderMiddleware);
-  // One-time cleanup endpoint — delete test leads by name
-  app.get("/api/diag/cleanup-test-leads", async (_req, res) => {
-    try {
-      const { getDb } = await import("../db");
-      const db = await getDb();
-      if (!db) { res.json({ error: "DB not available" }); return; }
-      const { opsLeads } = await import("../../drizzle/schema");
-      const { inArray } = await import("drizzle-orm");
-      const testNames = ["Test Lead April 6", "Email Test April 8"];
-      const result = await db.delete(opsLeads).where(inArray(opsLeads.name, testNames));
-      res.json({ deleted: true, affectedRows: (result as { affectedRows?: number }).affectedRows ?? "unknown" });
-    } catch (err: unknown) {
-      res.json({ error: String(err) });
-    }
-  });
-
-  // Temporary diagnostic endpoint — remove after leads issue is resolved
-  app.get("/api/diag/leads", async (_req, res) => {
-    try {
-      const { getDb, getOwnerUser, createOpsLead } = await import("../db");
-      const { ENV } = await import("./env");
-      const db = await getDb();
-      if (!db) { res.json({ error: "DB not available", DATABASE_URL: !!process.env.DATABASE_URL }); return; }
-      const { opsLeads, users } = await import("../../drizzle/schema");
-      const allUsers = await db.select().from(users);
-      const allLeads = await db.select().from(opsLeads);
-      // Also test getOwnerUser and a dry-run insert
-      let ownerResult: unknown = null;
-      let insertResult: unknown = null;
-      try {
-        const owner = await getOwnerUser();
-        ownerResult = owner ? { id: owner.id, openId: owner.openId, role: owner.role } : null;
-        if (owner) {
-          await createOpsLead({ name: 'DIAG TEST', userId: owner.id, source: 'other', stage: 'new' });
-          insertResult = { success: true };
-          // Clean up the test lead immediately
-          const { eq } = await import("drizzle-orm");
-          await db.delete(opsLeads).where(eq(opsLeads.name, 'DIAG TEST'));
-        }
-      } catch (e: unknown) {
-        insertResult = { error: String(e) };
-      }
-      res.json({ ownerOpenId: ENV.ownerOpenId, ownerResult, insertResult, resendApiKeySet: !!ENV.resendApiKey, users: allUsers.map(u => ({ id: u.id, openId: u.openId, name: u.name, role: u.role })), leadsCount: allLeads.length, leads: allLeads.map(l => ({ id: l.id, name: l.name, userId: l.userId, stage: l.stage, createdAt: l.createdAt })) });
-    } catch (err: unknown) {
-      res.json({ error: String(err) });
-    }
-  });
-
-  // Photo upload endpoint — accepts up to 3 images, stores to S3, returns CDN URLs
-  const upload = multer({
-    storage: multer.memoryStorage(),
-    limits: { fileSize: 10 * 1024 * 1024, files: 3 },
-    fileFilter: (_req, file, cb) => {
-      const allowed = ["image/jpeg", "image/png", "image/webp", "image/heic"];
-      cb(null, allowed.includes(file.mimetype));
-    },
-  });
-  app.post("/api/upload/photos", upload.array("photos", 3), async (req, res) => {
-    try {
-      const files = req.files as Express.Multer.File[];
-      if (!files || files.length === 0) {
-        res.status(400).json({ error: "No files provided" });
-        return;
-      }
-      const urls: string[] = [];
-      for (const file of files) {
-        const ext = file.originalname.split(".").pop() ?? "jpg";
-        const key = `lead-photos/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
-        const { url } = await storagePut(key, file.buffer, file.mimetype);
-        urls.push(url);
-      }
-      res.json({ urls });
-    } catch (err) {
-      console.error("Photo upload error:", err);
-      res.status(500).json({ error: "Upload failed" });
-    }
-  });
-
-  // Gallery base64 upload endpoint — used by AI Quote Assistant photo uploads
-  // Accepts a single image as base64 data, stores to S3, returns CDN URL
-  app.post("/api/gallery/upload-base64", async (req, res) => {
-    try {
-      const { base64, mimeType, filename } = req.body as { base64?: string; mimeType?: string; filename?: string };
-      if (!base64 || !mimeType) {
-        res.status(400).json({ error: "base64 and mimeType are required" });
-        return;
-      }
-      const allowed = ["image/jpeg", "image/png", "image/webp", "image/heic", "image/gif"];
-      if (!allowed.includes(mimeType)) {
-        res.status(400).json({ error: "Unsupported image type" });
-        return;
-      }
-      const buffer = Buffer.from(base64, "base64");
-      if (buffer.length > 10 * 1024 * 1024) {
-        res.status(400).json({ error: "Image exceeds 10 MB" });
-        return;
-      }
-      const ext = (filename ?? "photo").split(".").pop()?.toLowerCase() ?? "jpg";
-      const safeName = `ai-assist/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
-      const { url } = await storagePut(safeName, buffer, mimeType);
-      res.json({ url });
-    } catch (err) {
-      console.error("Gallery base64 upload error:", err);
-      res.status(500).json({ error: "Upload failed" });
-    }
-  });
-
   // Maps JavaScript API proxy — proxies the Google Maps JS SDK through the server
   // to avoid exposing the API key on the client. Uses GOOGLE_PLACES_API_KEY with
   // the direct Google Maps CDN (the Forge proxy requires a registered origin which

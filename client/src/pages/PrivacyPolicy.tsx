@@ -71,7 +71,7 @@ export default function PrivacyPolicy() {
         </Section>
 
         <Section number="9" title="Contact Us">
-          <p style={{ ...copy, lineHeight: 2 }}>Noland Earthworks, LLC<br /><strong style={{ color: "#F0EDE6" }}>Website:</strong> <a href="https://www.nolandearthworks.com" style={{ color: "#E07B2A" }}>nolandearthworks.com</a><br /><strong style={{ color: "#F0EDE6" }}>Email:</strong> <a href="mailto:quotes@nolandearthworks.com" style={{ color: "#E07B2A" }}>quotes@nolandearthworks.com</a><br /><strong style={{ color: "#F0EDE6" }}>Phone:</strong> <a href="tel:+16154064819" style={{ color: "#E07B2A" }}>(615) 406-4819</a></p>
+          <p style={{ ...copy, lineHeight: 2 }}>Noland Earthworks, LLC<br /><strong style={{ color: "#F0EDE6" }}>Website:</strong> <a href="https://www.nolandearthworks.com" style={{ color: "#E07B2A" }}>nolandearthworks.com</a><br /><strong style={{ color: "#F0EDE6" }}>Email:</strong> <a href="mailto:info@nolandearthworks.com" style={{ color: "#E07B2A" }}>info@nolandearthworks.com</a><br /><strong style={{ color: "#F0EDE6" }}>Phone:</strong> <a href="tel:+16154064819" style={{ color: "#E07B2A" }}>(615) 406-4819</a></p>
         </Section>
       </div>
       <Footer />

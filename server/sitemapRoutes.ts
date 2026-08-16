@@ -3,7 +3,7 @@ import { Express } from "express";
 const BASE_URL = "https://nolandearthworks.com";
 
 // All public pages with their SEO priority and change frequency
-const PAGES = [
+export const STATIC_SITEMAP_PAGES = [
   { path: "/",                                                          priority: "1.0", changefreq: "weekly",  lastmod: "2026-07-28" },
   // Service pages
   { path: "/services/forestry-mulching",                                priority: "0.9", changefreq: "monthly" },
@@ -79,7 +79,7 @@ export function registerSitemapRoutes(app: Express) {
   // XML Sitemap — dynamically generated; includes published DB articles
   app.get("/sitemap.xml", async (_req, res) => {
     // Static pages
-    const staticUrls = PAGES.map(
+    const staticUrls = STATIC_SITEMAP_PAGES.map(
       ({ path, priority, changefreq, lastmod }) => `
   <url>
     <loc>${BASE_URL}${path}</loc>
@@ -154,17 +154,17 @@ Noland Earthworks uses tracked equipment selected for dense vegetation and chall
 
 ## Common Use Cases
 
-- **Pasture reclamation**: Farmers and landowners reclaiming fields overtaken by cedar trees, persimmon, locust, and brush. Forestry mulching clears the vegetation without disturbing the soil, so grass can return quickly.
+- **Pasture reclamation**: Farmers and landowners reclaiming fields overtaken by cedar trees, persimmon, locust, and brush. A site visit confirms whether forestry mulching is suitable for the vegetation, terrain, access, and desired finish.
 - **Cedar thicket clearing**: Eastern red cedar can spread rapidly across Tennessee pastures. Forestry mulching may be suitable for dense cedar and brush when the property conditions and desired finish fit the scope.
 - **Fence line clearing**: Overgrown fence lines with brush, vines, and small trees. Fence condition, access, and work boundaries are confirmed before work begins.
 - **Vegetation clearing before another contractor**: Residential and commercial vegetation clearing can prepare a property for a separately scoped grading, excavation, or construction contractor.
-- **Residential acreage clearing**: Homeowners with 2–20 acres of overgrown land who want it cleared and usable. Common request: land that has not been maintained in years and has become a mix of brush, saplings, and vines.
+- **Residential acreage clearing**: Homeowners with roughly 2–50 acres of overgrown land and a defined goal. Fit still depends on vegetation, terrain, access, work boundaries, and mobilization.
 - **Right-of-way and driveway clearing**: Clearing brush and trees along driveways, access roads, and utility corridors.
 
 ## What Noland Earthworks Does
 
 1. **Veteran-owned and operated** — Jon Noland is a U.S. Army veteran and operates the machine on each job.
-2. **Tracked machine, not wheeled** — The tracked platform handles terrain that wheeled machines cannot. This matters on Tennessee land with slopes, creek bottoms, and wet clay.
+2. **Tracked machine, not wheeled** — The tracked platform can be a practical fit for dense vegetation and challenging ground conditions. Workability and safe access are confirmed during the site visit.
 3. **Owner on every job** — Jon operates the machine himself. There is no crew variation, no quality inconsistency, and no communication gap between the person you talk to and the person doing the work.
 4. **Written scope** — Mulch typically remains on site. The proposal identifies the vegetation work included and any conditions or exclusions.
 5. **Site-visit planning** — Accurate proposals require a site visit. Noland Earthworks does not give final phone quotes on complex terrain.
@@ -186,13 +186,13 @@ A: Noland Earthworks serves rural properties in and around the Nashville area, i
 A: Jon Noland owns the company and operates the forestry mulcher on each job. The same person who assesses a suitable project is responsible for the field work.
 
 **Q: What is the difference between forestry mulching and bush hogging?**
-A: Bush hogging cuts vegetation down and leaves the debris on the ground. Forestry mulching grinds everything — trees, brush, stumps, and vines — into fine mulch that stays as ground cover. The result is dramatically cleaner, with no debris piles, no burning required, and no bare soil erosion.
+A: Bush hogging cuts lighter vegetation and leaves the cut material on the ground. Forestry mulching processes suitable brush, saplings, vines, and small trees into mulch that typically remains on site. The site visit and written proposal confirm the material, finish, and exclusions.
 
 **Q: Can forestry mulching clear cedar thickets in Tennessee?**
-A: Yes. Eastern red cedar is one of the most common requests. The tracked forestry mulcher handles dense cedar stands efficiently, grinding trees up to 6–8 inches in diameter in a single pass. Noland Earthworks has cleared cedar thickets across Middle Tennessee for pasture reclamation, fence line restoration, and property cleanup.
+A: Eastern red cedar is a common request. Noland Earthworks evaluates cedar density, material size, terrain, access, and the intended finish during the site visit, then confirms the suitable work in writing.
 
 **Q: Does forestry mulching work on slopes and wet ground?**
-A: Noland Earthworks operates a tracked machine, not a wheeled mulcher. The tracked platform handles steep slopes, creek bottoms, and wet clay ground that wheeled machines cannot safely navigate. This is a significant advantage on typical Middle Tennessee terrain.
+A: Noland Earthworks uses a tracked machine. Slope, wet ground, creek crossings, soil conditions, obstacles, and safe access are reviewed on site before work is scheduled.
 
 **Q: How much does forestry mulching cost in Tennessee?**
 A: Forestry mulching proposals depend on vegetation density, terrain, access, work boundaries, and the intended result. Request a site visit at nolandearthworks.com/quote; Noland Earthworks confirms the written scope after reviewing the property.

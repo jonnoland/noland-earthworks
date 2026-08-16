@@ -53,4 +53,24 @@ describe("public pricing and operations access hardening", () => {
     expect(navbar).not.toContain(">Pricing<");
     expect(navbar).not.toContain("Get a Free Quote");
   });
+
+  it("keeps the public quote form browser-valid and free of nested forms", () => {
+    const quotePage = projectFile("client/src/pages/Quote.tsx");
+
+    expect(quotePage).toContain('name="name" autoComplete="name" required');
+    expect(quotePage).toContain('name="phone" autoComplete="tel" inputMode="tel" required');
+    expect(quotePage).toContain('name="service" required');
+    expect(quotePage).toContain('name="county" required');
+    expect(quotePage).not.toContain('<form onSubmit={(event) => { event.preventDefault(); const email = waitlistEmail');
+  });
+
+  it("removes temporary public diagnostics and orphaned upload endpoints", () => {
+    const serverEntry = projectFile("server/_core/index.ts");
+
+    expect(serverEntry).toContain('app.disable("x-powered-by")');
+    expect(serverEntry).not.toContain("/api/diag/cleanup-test-leads");
+    expect(serverEntry).not.toContain("/api/diag/leads");
+    expect(serverEntry).not.toContain("/api/upload/photos");
+    expect(serverEntry).not.toContain("/api/gallery/upload-base64");
+  });
 });

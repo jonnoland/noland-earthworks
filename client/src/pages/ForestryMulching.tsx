@@ -14,23 +14,21 @@ const MAINTENANCE_HERO = "https://d2xsxph8kpxj0f.cloudfront.net/3105196634849579
 const data: ServicePageProps = {
   slug: "forestry-mulching",
   title: "Forestry Mulching in Tennessee",
-  tagline: "The most efficient way to clear land — one pass, no hauling, no burning. Just clean, mulched ground ready for use.",
+  tagline: "Forestry mulching for suitable brush, saplings, and small trees — with the work boundary and finish confirmed on site and in writing.",
   heroImage: HERO,
   heroImageMobile: MOBILE_HERO,
   overviewTitle: "What Is Forestry Mulching?",
   overviewBody: [
-    "Forestry mulching is a single-step land management process that uses a specialized machine with a rotating drum of carbide teeth to grind trees, brush, stumps, and vegetation directly into mulch — all in one pass.",
-    "Unlike traditional clearing methods that require separate crews for felling, chipping, hauling, and burning, forestry mulching accomplishes everything simultaneously. The resulting mulch layer stays on-site, protecting the soil from erosion, retaining moisture, and naturally decomposing into organic matter.",
-    "This method is ideal for properties where you want to clear vegetation without disturbing the soil structure — perfect for future pasture, trails, fire breaks, or simply opening up views and access on wooded land.",
+    "Forestry mulching uses a tracked machine and drum mulcher to process suitable brush, saplings, vines, and small trees into mulch.",
+    "Mulch typically remains on site as ground cover. The site visit and written proposal establish material size, terrain, access, utilities, boundaries, and the exact work included.",
+    "It can be a practical approach for projects such as pasture reclamation, trails, fence lines, and improved access when the property conditions and desired finish fit the written scope.",
   ],
   benefits: [
-    "Single-pass operation — faster and more cost-effective than traditional clearing",
-    "No hauling or burning required — mulch stays on-site",
-    "Minimal soil disturbance — preserves topsoil and root systems",
-    "Excellent for erosion control on slopes and creek banks",
-    "Creates natural mulch layer that suppresses future weed growth",
-    "Can selectively clear while preserving desired trees",
-    "Ideal for fire break creation and wildfire risk reduction",
+    "Processes suitable vegetation in place with a tracked mulcher",
+    "Mulch typically remains on site as ground cover",
+    "Site planning considers terrain, access, boundaries, utilities, and desired trees",
+    "Can support selective vegetation work when conditions allow",
+    "Written scope clarifies the desired finish and exclusions",
   ],
   relatedServices: [
     { title: "Land Management", slug: "land-management", description: "Full site clearing of trees, stumps, brush, and debris.", heroImage: LAND_HERO },
@@ -40,7 +38,7 @@ const data: ServicePageProps = {
   faqs: [
     {
       question: "How large of trees can a forestry mulcher handle?",
-      answer: "Our equipment can handle trees up to approximately 8–10 inches in diameter in a single pass. Larger trees can be processed with multiple passes or may require pre-felling. We'll assess your specific site during the free estimate.",
+      answer: "Suitable material size depends on species, density, terrain, access, obstacles, and the desired finish. We assess those conditions during the site visit and identify anything outside the written scope.",
     },
     {
       question: "Will forestry mulching kill invasive species?",
@@ -48,19 +46,19 @@ const data: ServicePageProps = {
     },
     {
       question: "Is the mulch left on my property safe?",
-      answer: "Yes. The mulch layer is a natural, organic material that decomposes over time, enriching the soil. It's not treated with any chemicals. The layer also helps suppress weed regrowth and prevents erosion — it's actually beneficial for most land uses.",
+      answer: "Mulch typically remains on site as ground cover. Its depth, appearance, future maintenance, and suitability for your intended land use are discussed during the site visit and confirmed in the written scope.",
     },
     {
       question: "Can forestry mulching be done near water?",
-      answer: "Yes, and it's often preferred near waterways because it minimizes soil disturbance compared to traditional clearing. However, work within certain distances of streams and wetlands may require permits. We'll identify any regulatory considerations during the site visit.",
+      answer: "Work near streams, wetlands, drainage features, or protected areas requires an on-site review. We confirm access, boundaries, visible conditions, and whether another specialist or permitting authority should be involved before work is scheduled.",
     },
     {
       question: "How does forestry mulching compare to traditional clearing?",
-      answer: "Traditional clearing requires multiple steps: felling, chipping or burning, hauling debris, and sometimes grading. Forestry mulching does it all in one pass, typically in less time and at lower cost. The trade-off is that the mulch stays on-site rather than being removed.",
+      answer: "Forestry mulching processes suitable vegetation into mulch that typically remains on site. It is different from clearing that includes tree removal, hauling, burning, grading, or excavation; those services are not included unless specifically stated in the written scope.",
     },
     {
       question: "What's the minimum acreage for a forestry mulching job?",
-      answer: "Our sweet spot is jobs in the 2–20 acre range — large enough to justify mobilization and equipment transport, but manageable for a single crew in one to a few days. Lots under an acre are generally not cost-effective for the customer given mobilization costs. If you're unsure whether your property qualifies, reach out and we'll give you a straight answer.",
+      answer: "Most suitable projects are between 2 and 50 acres, but fit depends on vegetation, terrain, access, work boundaries, and mobilization. Smaller or unusually complex properties may not justify mobilization; a site visit determines fit.",
     },
   ],
 };
@@ -68,7 +66,7 @@ const data: ServicePageProps = {
 export default function ForestryMulchingPage() {
   usePageTitle(
     "Forestry Mulching in Tennessee | Noland Earthworks",
-    "Professional forestry mulching across 35 counties in Middle & West Tennessee. One pass clears trees, brush, and stumps — no hauling, no burning. Veteran-owned. Free on-site estimates.",
+    "Veteran-owned forestry mulching in Middle and West Tennessee. Site visits confirm vegetation, access, terrain, work boundaries, and the written scope before work is scheduled.",
     "/services/forestry-mulching"
   );
 
@@ -89,7 +87,7 @@ export default function ForestryMulchingPage() {
       "url": "https://nolandearthworks.com",
       "telephone": "+16154064819",
       "email": "info@nolandearthworks.com",
-      "description": "Veteran-owned forestry mulching company serving 35 counties across Middle and West Tennessee. Specializing in tracked forestry mulching — the primary service. One pass clears trees, brush, and stumps with no hauling, no burning, and no bare soil.",
+      "description": "Veteran-owned forestry mulching company serving Middle and West Tennessee. Site visits confirm suitable vegetation, access, terrain, work boundaries, and the written scope before work is scheduled.",
       "hasOfferCatalog": {
         "@type": "OfferCatalog",
         "name": "Forestry Mulching Services",
@@ -99,7 +97,7 @@ export default function ForestryMulchingPage() {
             "itemOffered": {
               "@type": "Service",
               "name": "Forestry Mulching",
-              "description": "Tracked forestry mulching service that grinds trees, brush, and stumps into mulch in a single pass. No hauling, no burning, no bare soil. Handles slopes, wet ground, and difficult terrain.",
+              "description": "Tracked forestry mulching for suitable brush, saplings, vines, and small trees. Site visits confirm terrain, access, work boundaries, and the written scope.",
               "areaServed": "Middle and West Tennessee"
             }
           }

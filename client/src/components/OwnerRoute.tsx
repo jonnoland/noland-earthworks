@@ -13,21 +13,21 @@ interface OwnerRouteProps {
 }
 
 export default function OwnerRoute({ children }: OwnerRouteProps) {
-  const { user, loading, isAuthenticated } = useAuth();
+  const { user, loading } = useAuth();
   const [, navigate] = useLocation();
 
   useEffect(() => {
     if (loading) return;
-    if (!isAuthenticated) {
+    if (!user) {
       // Redirect to Manus login, return to the current path after auth
       window.location.href = getLoginUrl(window.location.pathname);
       return;
     }
     // After auth, check if the user is the owner via role
-    if (user && user.role !== "admin") {
+    if (user.role !== "admin") {
       navigate("/");
     }
-  }, [loading, isAuthenticated, user, navigate]);
+  }, [loading, user, navigate]);
 
   if (loading) {
     return (
@@ -40,8 +40,12 @@ export default function OwnerRoute({ children }: OwnerRouteProps) {
     );
   }
 
-  if (!isAuthenticated || (user && user.role !== "admin")) {
-    return null;
+  if (!user || user.role !== "admin") {
+    return (
+      <div className="min-h-screen bg-background" aria-live="polite" aria-busy="true">
+        <span className="sr-only">Checking secure access…</span>
+      </div>
+    );
   }
 
   return <>{children}</>;

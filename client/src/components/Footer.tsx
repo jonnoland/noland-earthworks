@@ -37,18 +37,18 @@ function CookieConsentBanner() {
       role="dialog"
       aria-label="Cookie preferences"
       aria-live="polite"
-      className="fixed inset-x-3 bottom-3 z-[90] mx-auto max-w-3xl border border-[#E07B2A]/45 bg-[#111111] p-4 shadow-2xl sm:bottom-5 sm:p-5"
+      className="fixed inset-x-2 bottom-[calc(env(safe-area-inset-bottom)+4.5rem)] z-[90] mx-auto max-w-3xl border border-[#E07B2A]/45 bg-[#111111] p-4 shadow-2xl sm:inset-x-3 sm:bottom-5 sm:p-5"
     >
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <p className="font-['Lato'] text-sm leading-6 text-white/75">
-          We use essential browser storage to remember this choice. With your permission, we also use analytics to understand site performance and improve service requests. Read our{" "}
+        <p className="font-['Lato'] text-xs leading-5 text-white/75 sm:text-sm sm:leading-6">
+          We use essential browser storage to remember this choice. With permission, analytics help improve service requests. Read our{" "}
           <a href="/privacy-policy" className="font-semibold text-[#E07B2A] underline underline-offset-2">Privacy Policy</a>.
         </p>
-        <div className="flex shrink-0 flex-col gap-2 sm:flex-row">
-          <button type="button" onClick={() => choose("essential")} className="min-h-10 border border-white/20 px-4 font-['Oswald'] text-xs font-semibold uppercase tracking-[0.1em] text-white/85 transition hover:border-white/45">
+        <div className="grid shrink-0 grid-cols-2 gap-2 sm:flex">
+          <button type="button" onClick={() => choose("essential")} className="min-h-10 border border-white/20 px-3 font-['Oswald'] text-[11px] font-semibold uppercase tracking-[0.08em] text-white/85 transition hover:border-white/45 sm:px-4 sm:text-xs sm:tracking-[0.1em]">
             Essential only
           </button>
-          <button type="button" onClick={() => choose("analytics")} className="min-h-10 bg-[#E07B2A] px-4 font-['Oswald'] text-xs font-semibold uppercase tracking-[0.1em] text-white transition hover:bg-[#f28c35]">
+          <button type="button" onClick={() => choose("analytics")} className="min-h-10 bg-[#E07B2A] px-3 font-['Oswald'] text-[11px] font-semibold uppercase tracking-[0.08em] text-white transition hover:bg-[#f28c35] sm:px-4 sm:text-xs sm:tracking-[0.1em]">
             Accept analytics
           </button>
         </div>

@@ -25,8 +25,8 @@ const scopeFactors = [
 
 export default function PricingPage() {
   usePageTitle(
-    "Request a Site Visit — Noland Earthworks",
-    "Request a free on-site visit for forestry mulching and land management in Middle and West Tennessee. Final scope and pricing are confirmed after a property review.",
+    "How Forestry Mulching Quotes Work in Tennessee",
+    "Learn what Noland Earthworks reviews during a Tennessee site visit before confirming a written forestry-mulching or land-management proposal.",
     "/pricing"
   );
 

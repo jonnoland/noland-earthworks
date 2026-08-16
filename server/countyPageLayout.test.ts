@@ -14,5 +14,8 @@ describe("county page local service context", () => {
     expect(source).toContain("{s.title}");
     expect(source).toContain("in {county}");
     expect(source).toContain('href={`/services/${s.slug}`}');
+    expect(source).toContain('title: "Right-of-Way Clearing"');
+    expect(source).toContain('slug: "right-of-way-clearing"');
+    expect(source).toContain("Request a Site Visit");
   });
 });

@@ -52,6 +52,11 @@ const SERVICES = [
     desc: "Control invasive species, overgrowth, and unwanted vegetation along fences, roadsides, and waterways.",
   },
   {
+    title: "Right-of-Way Clearing",
+    slug: "right-of-way-clearing",
+    desc: "Clear suitable driveway corridors, fence lines, access routes, and easements with conditions confirmed on site.",
+  },
+  {
     title: "Brush Hogging",
     slug: "property-maintenance",
     desc: "Maintain pasture, fields, and lighter vegetation with straightforward brush hogging.",
@@ -137,7 +142,7 @@ export default function CountyPageLayout({
   // Set page title, meta description, and canonical URL for SEO
   usePageTitle(
     `Forestry Mulching & Land Management in ${county}, ${state} | Noland Earthworks`,
-    `Noland Earthworks provides veteran-owned forestry mulching, land management, and vegetation management services throughout ${county}, ${state}. Free on-site estimates. Call 615-406-4819.`,
+    `Noland Earthworks provides veteran-owned forestry mulching and vegetation-focused land management in ${county}, ${state}. A site visit confirms property fit, conditions, and written scope. Call 615-406-4819.`,
     `/service-areas/${slug}`
   );
 
@@ -242,7 +247,7 @@ export default function CountyPageLayout({
               marginBottom: "2rem",
             }}
           >
-            Veteran-owned land services serving {county}, {state}. Free estimates on all projects.
+            Veteran-owned land services serving {county}, {state}. Site visits confirm project fit, scope, access, and conditions before a written proposal.
           </p>
           <div className="flex flex-wrap gap-4">
             <a
@@ -262,7 +267,7 @@ export default function CountyPageLayout({
                 textDecoration: "none",
               }}
             >
-              Get a Free Quote <ArrowRight size={16} />
+              Request a Site Visit <ArrowRight size={16} />
             </a>
             <a
               href="tel:+16154064819"

@@ -5,6 +5,7 @@ import { nanoid } from "nanoid";
 import path from "path";
 import { createServer as createViteServer } from "vite";
 import viteConfig from "../../vite.config";
+import { isKnownSpaRoute, spaNotFoundHtml } from "../publicRoutePolicy";
 
 export async function setupVite(app: Express, server: Server) {
   const serverOptions = {
@@ -20,9 +21,23 @@ export async function setupVite(app: Express, server: Server) {
     appType: "custom",
   });
 
+  app.use((req, res, next) => {
+    const isAssetRequest = path.extname(req.path).length > 0 || req.path.startsWith("/src/") || req.path.startsWith("/@");
+    if (req.method === "GET" && !isAssetRequest && !req.path.startsWith("/api/") && !isKnownSpaRoute(req.path)) {
+      res.status(404).set({ "Content-Type": "text/html; charset=utf-8" }).end(spaNotFoundHtml);
+      return;
+    }
+    next();
+  });
+
   app.use(vite.middlewares);
   app.use("*", async (req, res, next) => {
     const url = req.originalUrl;
+
+    if (!isKnownSpaRoute(req.path)) {
+      res.status(404).set({ "Content-Type": "text/html; charset=utf-8" }).end(spaNotFoundHtml);
+      return;
+    }
 
     try {
       const clientTemplate = path.resolve(
@@ -61,7 +76,11 @@ export function serveStatic(app: Express) {
   app.use(express.static(distPath));
 
   // fall through to index.html if the file doesn't exist
-  app.use("*", (_req, res) => {
+  app.use("*", (req, res) => {
+    if (!isKnownSpaRoute(req.path)) {
+      res.status(404).set({ "Content-Type": "text/html; charset=utf-8" }).end(spaNotFoundHtml);
+      return;
+    }
     res.sendFile(path.resolve(distPath, "index.html"));
   });
 }
