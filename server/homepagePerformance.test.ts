@@ -69,6 +69,8 @@ describe("homepage performance safeguards", () => {
     expect(hero).toContain("Land Management");
     expect(hero).toContain("in Middle &amp; West Tennessee");
     expect(hero).toContain("Your Land Has Been Waiting. Let&apos;s Bring It Back.");
+    expect(hero).toContain("Request a Site Visit");
+    expect(hero).not.toContain("Plan a site visit");
   });
 
   it("defers the optional public AI chat bundle until visitor interaction or idle time", () => {

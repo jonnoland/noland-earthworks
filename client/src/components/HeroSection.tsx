@@ -136,38 +136,6 @@ export default function HeroSection() {
             </button>
           </div>
 
-          {/* Site-visit planning link */}
-          <div className="flex items-center mb-6" style={{ marginTop: "-1.5rem" }}>
-            <a
-              href="/pricing"
-              style={{
-                fontFamily: "'Lato', sans-serif",
-                fontSize: "0.875rem",
-                color: "#E07B2A",
-                textDecoration: "none",
-                display: "inline-flex",
-                alignItems: "center",
-                gap: "0.35rem",
-                borderBottom: "1px solid rgba(224,123,42,0.4)",
-                paddingBottom: "1px",
-                transition: "color 0.2s, border-color 0.2s",
-              }}
-              onMouseEnter={(e) => {
-                (e.currentTarget as HTMLAnchorElement).style.color = "#f59340";
-                (e.currentTarget as HTMLAnchorElement).style.borderBottomColor = "rgba(224,123,42,0.7)";
-              }}
-              onMouseLeave={(e) => {
-                (e.currentTarget as HTMLAnchorElement).style.color = "#E07B2A";
-                (e.currentTarget as HTMLAnchorElement).style.borderBottomColor = "rgba(224,123,42,0.4)";
-              }}
-            >
-              Plan a site visit
-              <svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M2.5 6h7M6.5 3l3 3-3 3" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
-            </a>
-          </div>
-
           {/* Trust badges */}
           <div className="flex flex-wrap gap-6">
             {[

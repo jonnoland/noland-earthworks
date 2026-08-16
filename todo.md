@@ -3216,6 +3216,11 @@
 - [x] Add regression coverage, validate the request flow, and increment the app version
 - [x] Require an estimated acreage amount before a Site Visit Request can be submitted
 
+## Homepage Call-to-Action Cleanup — Aug 2026
+- [x] Remove the redundant Plan a site visit link from the homepage hero
+- [x] Retain the primary Request a Site Visit button and validate the homepage action area
+- [x] Increment the public app version for the homepage call-to-action cleanup
+
 ## Quote Performance & County Differentiation — Aug 2026
 - [x] Measure the current quote-page mobile performance and critical loading path
 - [x] Implement a low-risk quote-page performance improvement that preserves the form flow
