@@ -26,3 +26,6 @@
 - [x] Send the final Stripe, Google Business Profile, and sitemap verification summary with the exact confirmation required for a live payment charge.
 - [x] Retry the Google Business Profile synchronization and record whether the rate limit has cleared.
 - [x] Validate returned Google Business Profile service-area data when available, or confirm no local update is supported while synchronization is blocked.
+- [x] Identify why Google Business Profile is absent from the visible integrations settings and correct the connection guidance or supported settings path.
+- [x] Support a direct operations-settings link to the Integrations tab and reconcile conflicting Google connection messages in the reviews workspace.
+- [x] Move the Google Business Profile card to the top of the Integrations tab for immediate visibility.

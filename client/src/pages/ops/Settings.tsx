@@ -1389,6 +1389,9 @@ function IntegrationsTab() {
   return (
     <div className="space-y-4">
 
+      {/* ── Google Business Profile ── */}
+      <GoogleBusinessProfileCard />
+
       {/* ── Twilio ── */}
       <SettingsSection
         title="Twilio SMS"
@@ -1708,9 +1711,6 @@ function IntegrationsTab() {
           </p>
         </div>
       </SettingsSection>
-
-      {/* ── Google Business Profile ── */}
-      <GoogleBusinessProfileCard />
 
       {/* ── Reviews Integration ── */}
       <SettingsSection
@@ -3236,15 +3236,18 @@ function AIPricingTab() {
 // ─── Main Settings page ─────────────────────────────────────────────────
 export default function Settings() {
   const [activeTab, setActiveTab] = useState(() => {
-    // Auto-navigate to integrations tab when returning from Google OAuth
     const params = new URLSearchParams(window.location.search);
+    const requestedTab = params.get("tab");
+    if (requestedTab && tabs.some((tab) => tab.id === requestedTab)) return requestedTab;
+    // Auto-navigate to integrations tab when returning from Google OAuth
     if (params.has("google")) return "integrations";
     return "general";
   });
 
-  // Clean up the ?google= query param after reading it
+  // Clean up deep-link and Google OAuth query params after reading them.
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
+    const hasTab = params.has("tab");
     if (params.has("google")) {
       const status = params.get("google");
       if (status === "connected") {
@@ -3254,8 +3257,13 @@ export default function Settings() {
         toast.error(`Google connection failed: ${reason}`);
       }
       const url = new URL(window.location.href);
+      url.searchParams.delete("tab");
       url.searchParams.delete("google");
       url.searchParams.delete("reason");
+      window.history.replaceState({}, "", url.toString());
+    } else if (hasTab) {
+      const url = new URL(window.location.href);
+      url.searchParams.delete("tab");
       window.history.replaceState({}, "", url.toString());
     }
   }, []);

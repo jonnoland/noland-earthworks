@@ -92,7 +92,7 @@ function ConfigNotice({ source }: { source: string }) {
       <AlertCircle className="h-3.5 w-3.5 shrink-0" />
       <span>
         {source === "Google"
-          ? "Google Business Profile not connected. Go to Settings → Integrations to connect your account and enable live review fetching and in-app replies."
+          ? <>Google Business Profile is not connected. Open <a href="/ops/settings?tab=integrations" className="underline underline-offset-2 hover:text-amber-200">Settings → Integrations</a> to connect your account and enable live review fetching and in-app replies.</>
           : `${source} credentials not configured. Add them in Settings to enable live reviews.`}
       </span>
     </div>
@@ -345,7 +345,7 @@ export default function Reviews() {
     });
 
   // Google connection status
-  const { data: googleStatus } = trpc.ops.google.connectionStatus.useQuery(undefined, {
+  const { data: googleStatus, isLoading: googleStatusLoading } = trpc.ops.google.connectionStatus.useQuery(undefined, {
     staleTime: 60 * 1000,
   });
 
@@ -475,7 +475,7 @@ export default function Reviews() {
 
       {/* Config notices */}
       <div className="space-y-2 mb-4">
-        {!googleConnected && <ConfigNotice source="Google" />}
+        {!googleStatusLoading && !googleConnected && <ConfigNotice source="Google" />}
         {liveData && !liveData.facebookConfigured && <ConfigNotice source="Facebook" />}
       </div>
 
@@ -560,9 +560,11 @@ export default function Reviews() {
             <div className="p-8 text-center text-white/30 text-sm">Loading reviews...</div>
           ) : filteredLive.length === 0 ? (
             <div className="p-6 text-center text-white/30 text-sm bg-[#111] border border-white/10 rounded-xl">
-              {googleConnected || liveData?.facebookConfigured
+              {googleStatusLoading
+                ? "Checking Google Business Profile connection..."
+                : googleConnected || liveData?.facebookConfigured
                 ? "No reviews found."
-                : "Connect Google Business Profile in Settings to see live reviews."}
+                : <>Connect Google Business Profile in <a href="/ops/settings?tab=integrations" className="underline underline-offset-2 hover:text-white/50">Settings → Integrations</a> to see live reviews.</>}
             </div>
           ) : (
             filteredLive.map((review) => (

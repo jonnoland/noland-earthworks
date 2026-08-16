@@ -42,3 +42,9 @@ The rate limit has **not** cleared. Current deployment logs show `RATE_LIMIT_EXC
 The deployed Reviews workspace reports that Google Business Profile is not connected and shows no fetched reviews. Its enabled **Refresh** control was triggered to retry synchronization. The follow-up result is being checked in the application and deployment logs; no service-area data has been changed.
 
 The retry did not clear the issue. The Reviews workspace still shows no Google reviews, and deployment logs still report `RATE_LIMIT_EXCEEDED` for Google Business Profile account discovery plus a `NOT_FOUND` fallback from Places. The service-area list remains unchanged because no verified Google Business Profile response is available.
+
+## Google Settings Path Check — August 16, 2026
+
+The connection control is not in the Manus project-management Settings panel. It is inside the website’s own operations dashboard at `https://nolandearthworks.com/ops/settings`, then the horizontally scrollable **Integrations** tab. The live card currently reports **Connected**, offers **Reconnect**, and shows a token expiry date of August 16, 2026. This conflicts with the Reviews page’s “not connected” message, which is a product status-display mismatch separate from the Google API rate-limit failure.
+
+The operations settings page now supports the direct route `https://nolandearthworks.com/ops/settings?tab=integrations`, and the Google Business Profile card is the first card in that tab. The Reviews page waits for the connection-status request before rendering a disconnected warning, which prevents an inaccurate notice while the status is still loading.
