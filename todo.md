@@ -3191,6 +3191,7 @@
 - [x] Inventory all remaining Land Clearing references across public copy, Operations, AI, metadata, and structured data
 - [x] Replace all customer-facing Land Clearing terminology with Land Management without breaking stable URLs
 - [x] Validate public pages, metadata, and Operations labels for prohibited terminology
+- [x] Increment the web application version for the published terminology correction
 
 ## Quote Performance & County Differentiation — Aug 2026
 - [x] Measure the current quote-page mobile performance and critical loading path
