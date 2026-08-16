@@ -24,3 +24,5 @@
 - [x] Validate the deployed sitemap and prepare a Search Console-ready canonical URL summary.
 - [x] Deliver the verification results and any safe user action needed for a real controlled payment test.
 - [x] Send the final Stripe, Google Business Profile, and sitemap verification summary with the exact confirmation required for a live payment charge.
+- [x] Retry the Google Business Profile synchronization and record whether the rate limit has cleared.
+- [x] Validate returned Google Business Profile service-area data when available, or confirm no local update is supported while synchronization is blocked.

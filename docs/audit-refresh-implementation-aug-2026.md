@@ -36,3 +36,9 @@ The generated checkout was subsequently opened in view-only mode and rendered a 
 ## Google Business Profile Check — August 16, 2026
 
 The rate limit has **not** cleared. Current deployment logs show `RATE_LIMIT_EXCEEDED` from `mybusinessaccountmanagement.googleapis.com` while attempting to discover the configured Google Business Profile location. The fallback Places request returned `NOT_FOUND`. Because there is no verified Google Business Profile service-area response, the local service-area list was not changed.
+
+## Google Sync Retry — August 16, 2026
+
+The deployed Reviews workspace reports that Google Business Profile is not connected and shows no fetched reviews. Its enabled **Refresh** control was triggered to retry synchronization. The follow-up result is being checked in the application and deployment logs; no service-area data has been changed.
+
+The retry did not clear the issue. The Reviews workspace still shows no Google reviews, and deployment logs still report `RATE_LIMIT_EXCEEDED` for Google Business Profile account discovery plus a `NOT_FOUND` fallback from Places. The service-area list remains unchanged because no verified Google Business Profile response is available.
