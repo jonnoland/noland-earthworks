@@ -54,6 +54,10 @@ vi.mock("./_core/notification", () => ({
   notifyOwner: vi.fn().mockResolvedValue(true),
 }));
 
+vi.mock("./sms", () => ({
+  sendOwnerAlertSms: vi.fn().mockResolvedValue(true),
+}));
+
 vi.mock("./_core/map", () => ({
   makeRequest: vi.fn().mockResolvedValue({
     status: "OK",

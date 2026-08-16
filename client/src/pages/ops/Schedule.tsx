@@ -235,6 +235,7 @@ function DraggableQuote({ quote }: { quote: { id: number; name: string; stage: s
       ref={setNodeRef}
       {...listeners}
       {...attributes}
+      style={{ touchAction: "none" }}
       className={cn(
         "flex items-center justify-between text-xs px-2 py-1.5 rounded border cursor-grab active:cursor-grabbing select-none",
         "bg-sky-400/5 border-sky-400/20 hover:bg-sky-400/10 transition-colors",
@@ -675,10 +676,10 @@ export default function Schedule() {
   });
 
   const scheduleQuote = trpc.ops.scheduleQuoteFromCapacity.useMutation({
-    onSuccess: () => {
+    onSuccess: (result) => {
       utils.ops.schedule.list.invalidate();
       utils.ops.getCapacityAlerts.invalidate();
-      toast.success("Lead scheduled and added to calendar.");
+      toast.success(result.alreadyScheduled ? "Lead is already on the calendar." : "Lead scheduled and added to calendar.");
     },
     onError: (e) => toast.error(e.message || "Failed to schedule lead."),
   });
@@ -1004,6 +1005,31 @@ export default function Schedule() {
               </div>
             </div>
 
+            {capacityData && (capacityData.openDays.length > 0 || capacityData.openQuotes.length > 0) && (
+              <div className="ops-card p-4 border-green-500/30">
+                <div className="flex items-center gap-2 mb-3">
+                  <CheckCircle2 className="w-4 h-4 text-green-400" />
+                  <h3 className="text-sm font-semibold text-foreground" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>Open Capacity</h3>
+                </div>
+                {capacityData.openDays.length > 0 && (
+                  <div className="mb-3">
+                    <p className="text-xs text-muted-foreground mb-1.5">Drop a schedule-ready lead onto an open day or a calendar cell:</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {capacityData.openDays.map((d: string) => <OpenDayDropTarget key={d} date={d} />)}
+                    </div>
+                  </div>
+                )}
+                {capacityData.openQuotes.length > 0 && (
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-1.5">Schedule-ready leads:</p>
+                    <div className="space-y-1">
+                      {capacityData.openQuotes.slice(0, 6).map((q: any) => <DraggableQuote key={q.id} quote={q} />)}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* Drag overlay */}
             <DragOverlay>
               {/* Scheduled job overlay */}
@@ -1061,6 +1087,16 @@ export default function Schedule() {
                       <div className="font-semibold truncate">{job.title || "Untitled Job"}</div>
                       {job.client && <div className="opacity-70 truncate">{job.client}</div>}
                     </div>
+                  </div>
+                );
+              })()}
+              {draggingQuoteId !== null && (() => {
+                const lead = (capacityData?.openQuotes ?? []).find((item: any) => item.id === draggingQuoteId);
+                if (!lead) return null;
+                return (
+                  <div className="rounded-md border border-sky-400/30 bg-sky-400/10 px-2 py-1.5 text-[10px] shadow-xl cursor-grabbing w-36">
+                    <div className="font-semibold truncate">{lead.name}</div>
+                    <div className="opacity-70 truncate">{lead.jobType ?? "Lead"}</div>
                   </div>
                 );
               })()}
@@ -1122,37 +1158,6 @@ export default function Schedule() {
             <p className="text-[11px] text-muted-foreground mt-2">Jobs with &gt;50% precipitation probability in the next 7 days. Consider rescheduling or notifying clients.</p>
           </div>
         )}
-
-        {/* Priority 9: Crew Capacity Alerts */}
-        {capacityData && (capacityData.openDays.length > 0 || capacityData.openQuotes.length > 0) && (
-          <div className="ops-card p-4 border-green-500/30">
-            <div className="flex items-center gap-2 mb-3">
-              <CheckCircle2 className="w-4 h-4 text-green-400" />
-              <h3 className="text-sm font-semibold text-foreground" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>Open Capacity</h3>
-            </div>
-            {capacityData.openDays.length > 0 && (
-              <div className="mb-3">
-                <p className="text-xs text-muted-foreground mb-1.5">Drop a lead onto an open day to schedule it:</p>
-                <div className="flex flex-wrap gap-1.5">
-                  {capacityData.openDays.map((d: string) => (
-                    <OpenDayDropTarget key={d} date={d} />
-                  ))}
-                </div>
-              </div>
-            )}
-            {capacityData.openQuotes.length > 0 && (
-              <div>
-                <p className="text-xs text-muted-foreground mb-1.5">Drag a lead to an open day above:</p>
-                <div className="space-y-1">
-                  {capacityData.openQuotes.slice(0, 6).map((q: any) => (
-                    <DraggableQuote key={q.id} quote={q} />
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-
 
       </div>
 

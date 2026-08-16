@@ -19,6 +19,7 @@ import { registerStripeWebhookRoutes } from "../stripeWebhookRoutes";
 import { registerScheduledAdsPublisherRoute } from "../scheduledAdsPublisher";
 import { registerStorageProxy } from "./storageProxy";
 import { registerLegacySeoRedirects } from "../legacySeoRedirects";
+import { sendOwnerAlertSms } from "../sms";
 import { startGoogleTokenRefreshScheduler } from "../googleRoutes";
 import cron from "node-cron";
 import {
@@ -639,6 +640,14 @@ ${transcript}`;
           status: "new",
         });
         inserted++;
+        await sendOwnerAlertSms([
+          "New Prospect",
+          `${p.source ?? "other"} · ${p.location ?? "Location not listed"}`,
+          p.contactName ? `Contact: ${p.contactName}` : "",
+          p.fitScore != null ? `Fit score: ${p.fitScore}` : "",
+          p.urgencyFlag ? "Priority: urgent" : "",
+          "Open: https://www.nolandearthworks.com/ops/prospecting",
+        ].filter(Boolean).join("\n"));
       }
       console.log(`[Cron] prospect-leads: inserted ${inserted} new prospects`);
       res.json({ ok: true, inserted, total: body.prospects.length });
@@ -720,6 +729,14 @@ ${transcript}`;
           status: "new",
         });
         inserted++;
+        await sendOwnerAlertSms([
+          "New Prospect",
+          `${p.source ?? "other"} · ${p.location ?? "Location not listed"}`,
+          p.contactName ? `Contact: ${p.contactName}` : "",
+          p.fitScore != null ? `Fit score: ${p.fitScore}` : "",
+          p.urgencyFlag ? "Priority: urgent" : "",
+          "Open: https://www.nolandearthworks.com/ops/prospecting",
+        ].filter(Boolean).join("\n"));
       }
       console.log(`[Manual Scan] prospect-leads-manual: inserted ${inserted} new prospects`);
       res.json({ ok: true, inserted, total: body.prospects.length });

@@ -17,6 +17,7 @@ export const ENV = {
   twilioAuthToken: process.env.TWILIO_AUTH_TOKEN ?? "",
   twilioFromNumber: process.env.TWILIO_FROM_NUMBER ?? "",
   ownerPhone: process.env.OWNER_PHONE ?? "",
+  ownerSmsAlertRecipients: process.env.OWNER_SMS_ALERT_RECIPIENTS ?? "",
   // Google Places API — for fetching Google Business reviews (no approval required)
   googlePlacesApiKey: process.env.GOOGLE_PLACES_API_KEY ?? "",
   googlePlaceId: process.env.GOOGLE_PLACE_ID ?? "",

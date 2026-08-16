@@ -20,8 +20,8 @@ import { getDb, createOpsLead, getOwnerUser } from "./db";
 import { fieldQuotes } from "../drizzle/schema";
 import { storagePut } from "./storage";
 import { makeRequest } from "./_core/map";
-import { notifyOwner } from "./_core/notification";
 import { invokeLLM } from "./_core/llm";
+import { sendOwnerAlertSms } from "./sms";
 import { ENV } from "./_core/env";
 import { Resend } from "resend";
 
@@ -411,6 +411,17 @@ export const fieldQuoteRouter = router({
 
       const newId = inserted?.id;
 
+      if (newId) {
+        await sendOwnerAlertSms([
+          "New Field Quote",
+          `${input.name}${input.phone ? ` · ${input.phone}` : ""}`,
+          input.serviceType ? `Service: ${input.serviceType}` : "",
+          input.acreage ? `Acreage: ${input.acreage}` : "",
+          input.address ? `Address: ${input.address}` : "",
+          `Open: https://www.nolandearthworks.com/ops/quotes?fieldQuoteId=${newId}`,
+        ].filter(Boolean).join("\n"));
+      }
+
       // 2. Run AI qualification and create ops lead in the background
       setImmediate(async () => {
         try {
@@ -477,13 +488,7 @@ export const fieldQuoteRouter = router({
             });
           }
 
-          // 4. Notify owner (in-app)
-          await notifyOwner({
-            title: `New Field Quote — ${input.name}`,
-            content: `${input.serviceType || "Land work"} · ${input.acreage ? `${input.acreage} acres` : "acreage TBD"} · AI Score: ${qualification.score.toUpperCase()}\n${input.address || "No address"}\n\n${qualification.summary}`,
-          });
-
-          // 5. Send email notification to owner
+          // 4. Send email notification to owner
           if (ENV.resendApiKey) {
             const resend = new Resend(ENV.resendApiKey);
             const scoreColor = qualification.score === "strong" ? "#16a34a" : qualification.score === "marginal" ? "#d97706" : "#dc2626";

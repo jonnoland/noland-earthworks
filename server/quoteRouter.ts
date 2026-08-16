@@ -7,7 +7,7 @@ import { Resend } from "resend";
 import { createOpsLead, upsertOpsLeadByPhone, getOwnerUser, getDb, upsertNativeClient } from "./db";
 import { storagePut } from "./storage";
 import { quoteSubmissions, nativeQuotes } from "../drizzle/schema";
-import { sendOwnerSms } from "./sms";
+import { sendOwnerAlertSms } from "./sms";
 import { qualifyLead } from "./leadQualifier";
 import { getServiceDisplayName } from "./serviceTaxonomy";
 import { opsLeads } from "../drizzle/schema";
@@ -526,33 +526,6 @@ export const quoteRouter = router({
     }
     } // end disabled block
 
-    // 3b. Send SMS push notification to owner's phone
-    try {
-      const addressPart = [input.street, input.city].filter(Boolean).join(", ");
-      const smsBody = [
-        `New Quote ${scoreLabel} — Noland Earthworks`,
-        `Name: ${input.name}`,
-        `Phone: ${input.phone}`,
-        `Service: ${input.service} | ${input.county} County`,
-        (() => {
-          const isRow = input.service === 'right-of-way-clearing' || input.service === 'Right-of-Way Clearing';
-          if (isRow && input.rowLinearFeet) {
-            const corridorWidth = input.rowCorridorWidthFt ?? 30;
-            const effAcres = ((input.rowLinearFeet * corridorWidth) / 43560).toFixed(2);
-            return `ROW: ${input.rowLinearFeet.toLocaleString()} LF × ${corridorWidth} ft = ${effAcres} ac`;
-          }
-          return input.acreage ? `Acreage: ${input.acreage}` : "";
-        })(),
-        addressPart ? `Address: ${addressPart}` : "",
-        qualification?.summary ? `AI: ${qualification.summary}` : "",
-        `View leads: https://www.nolandearthworks.com/ops/leads`,
-      ]
-        .filter(Boolean)
-        .join("\n");
-      await sendOwnerSms(smsBody);
-    } catch (err) {
-      console.warn("[Quote] SMS notification failed:", err);
-    }
     // Jobber sync removed — quote is stored natively via quoteSubmissions table
 
     // Persist submission to quote_submissions log
@@ -732,6 +705,25 @@ export const quoteRouter = router({
             .set({ nativeQuoteId: newNativeQuoteId, updatedAt: new Date() })
             .where(eq(opsLeads.id, leadId));
           console.log(`[Quote] Linked lead ${leadId} → native quote ${newNativeQuoteId}`);
+        }
+
+        // Send exactly one owner alert only after the native quote record exists and has a stable ID.
+        if (newNativeQuoteId) {
+          try {
+            const addressPart = [input.street, input.city].filter(Boolean).join(", ");
+            const smsBody = [
+              `New Website Request ${scoreLabel}`,
+              `${input.name} · ${input.phone}`,
+              `${serviceLabel} · ${input.county} County`,
+              input.acreage ? `Acreage: ${input.acreage}` : "",
+              addressPart ? `Address: ${addressPart}` : "",
+              qualification?.summary ? `AI: ${qualification.summary}` : "",
+              `Open: https://www.nolandearthworks.com/ops/quotes?quoteId=${newNativeQuoteId}`,
+            ].filter(Boolean).join("\n");
+            await sendOwnerAlertSms(smsBody);
+          } catch (err) {
+            console.warn("[Quote] Owner SMS alert failed:", err);
+          }
         }
       }
     } catch (nativeErr) {

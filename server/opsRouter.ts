@@ -6215,6 +6215,12 @@ Always be specific to nolandearthworks.com. Never give generic advice — tie ev
       // Fetch the lead to get its name/description
       const lead = await getOpsLeadById(input.leadId);
       if (!lead) throw new TRPCError({ code: "NOT_FOUND", message: "Lead not found." });
+      const scheduleMarker = `[Lead #${lead.id}]`;
+      const existingScheduleEntry = (await getScheduleEntries(ctx.user.id))
+        .find((entry) => entry.notes?.includes(scheduleMarker));
+      if (existingScheduleEntry) {
+        return { success: true, alreadyScheduled: true, entryId: existingScheduleEntry.id };
+      }
       // Create a schedule entry for the dropped date
       await createScheduleEntry({
         userId: ctx.user.id,
@@ -6223,11 +6229,11 @@ Always be specific to nolandearthworks.com. Never give generic advice — tie ev
         date: new Date(input.date + "T12:00:00"),
         startHour: 8,
         endHour: 17,
-        notes: `Auto-scheduled from open lead: ${lead.name}${lead.jobType ? ` (${lead.jobType})` : ""}`,
+        notes: `${scheduleMarker} Site visit scheduled from lead: ${lead.name}${lead.jobType ? ` (${lead.jobType})` : ""}`,
       });
       // Update lead stage to "estimate_sent" to indicate it's been moved to schedule
       await updateOpsLead(input.leadId, ctx.user.id, { stage: "estimate_sent" });
-      return { success: true };
+      return { success: true, alreadyScheduled: false };
     }),
 
   // ─── Priority 8: Ad Performance Feedback Loop ─────────────────────────────────

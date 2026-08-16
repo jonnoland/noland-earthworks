@@ -3141,6 +3141,17 @@
 - [x] Add a reliable installation handoff and clear fallback guidance in the companion app
 - [x] Validate the corrected update-download path against the published release asset
 
+## AI Visibility Audit Score Investigation — Aug 2026
+- [x] Compare the 96/100 and 80/100 audit inputs, component scores, and run records
+- [x] Identify whether data availability, scoring logic, or public visibility changes caused the difference
+- [x] Explain the score movement and record any concrete correction or monitoring step
+
+## Owner SMS Alerts & Lead Scheduling — Aug 2026
+- [x] Configure owner-only Twilio SMS alerts to 913-406-2910 and 615-406-4819 for newly saved quotes and prospects
+- [x] Make the alerts duplicate-safe and include the relevant Operations record link
+- [x] Repair lead drag-and-drop into the Operations Schedule while preserving the original lead record
+- [x] Add regression coverage and validate the complete alert and scheduling workflow
+
 ## Quote Performance & County Differentiation — Aug 2026
 - [x] Measure the current quote-page mobile performance and critical loading path
 - [x] Implement a low-risk quote-page performance improvement that preserves the form flow
