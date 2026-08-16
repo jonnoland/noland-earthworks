@@ -58,7 +58,7 @@ const PARTNERS = [
     key: "thumbtack",
     name: "Thumbtack",
     category: "Directory",
-    description: "Local pro listing for land clearing",
+    description: "Local pro listing for land management",
     badge: "TT",
     color: "#009FD4",
     accent: "#fff",

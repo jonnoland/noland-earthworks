@@ -518,7 +518,7 @@ export default function Prospecting() {
       <div className="flex items-start gap-3 rounded-lg border border-zinc-700 bg-zinc-800/50 p-4 text-sm text-zinc-300">
         <Info className="h-4 w-4 mt-0.5 shrink-0 text-orange-400" />
         <span>
-          The AI scans 30 sources daily: Craigslist (Nashville, Memphis, Knoxville, Chattanooga, Clarksville), Facebook Marketplace, and Google — looking for people in Tennessee who need land clearing, forestry mulching, brush removal, cedar thicket removal, or pasture reclaimed.
+          The AI scans 30 sources daily: Craigslist (Nashville, Memphis, Knoxville, Chattanooga, Clarksville), Facebook Marketplace, and Google — looking for people in Tennessee who need Land Management, forestry mulching, brush removal, cedar thicket removal, or pasture reclaimed.
           Each prospect is scored 1-10 for fit. Sort by Fit Score to work the best leads first. Use "Run Scan" to trigger a manual scan on demand.
         </span>
       </div>

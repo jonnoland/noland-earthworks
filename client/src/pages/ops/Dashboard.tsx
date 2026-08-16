@@ -885,7 +885,7 @@ export default function Dashboard() {
                     <div>
                       <p className="text-sm font-semibold text-foreground leading-snug">{job.client}</p>
                       <p className="text-[11px] text-muted-foreground capitalize mt-0.5">
-                        {job.title !== job.client ? job.title : (job.jobType?.replace(/_/g, " ") ?? "Land clearing")}
+                        {job.title !== job.client ? job.title : (job.jobType?.replace(/_/g, " ") ?? "Land Management")}
                         {job.jobberJobNumber ? ` · #${job.jobberJobNumber}` : ""}
                         {job.acres ? ` · ${job.acres} ac` : ""}
                       </p>

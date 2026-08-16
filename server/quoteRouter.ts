@@ -970,7 +970,7 @@ export const quoteRouter = router({
         {
           role: "system",
           content:
-            "You are a government contract analyst. Extract key information from RFP and bid documents for a land clearing and forestry mulching company. Return structured JSON only.",
+            "You are a government contract analyst. Extract key information from RFP and bid documents for a land management and forestry mulching company. Return structured JSON only.",
         },
         {
           role: "user",

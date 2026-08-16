@@ -50,7 +50,7 @@ const data: ServicePageProps = {
     },
     {
       question: "What's the difference between vegetation management and land management?",
-      answer: "Land clearing is a one-time, comprehensive removal of all vegetation from a site. Vegetation management is an ongoing service focused on controlling regrowth and maintaining cleared areas. Many clients start with land management and then transition to a vegetation management program.",
+      answer: "Land Management is a one-time, site-specific vegetation service. Vegetation management is an ongoing service focused on controlling regrowth and maintaining usable areas. Many clients start with Land Management and then transition to a vegetation management program.",
     },
     {
       question: "Can you manage vegetation around my pond or creek?",

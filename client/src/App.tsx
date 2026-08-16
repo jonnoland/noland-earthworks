@@ -68,7 +68,7 @@ const NativeQuotePortal   = lazy(() => import("./pages/NativeQuotePortal"));
 // Home stays eager for first paint. Route-specific pages remain separate chunks
 // so quote tools, galleries, guides, and blog content do not delay the homepage.
 import Home from "./pages/Home";
-const LandClearingPage = lazy(() => import("./pages/LandClearing"));
+const LandManagementPage = lazy(() => import("./pages/LandManagement"));
 const ForestryMulchingPage = lazy(() => import("./pages/ForestryMulching"));
 const VegetationManagementPage = lazy(() => import("./pages/VegetationManagement"));
 const PropertyMaintenancePage = lazy(() => import("./pages/PropertyMaintenance"));
@@ -87,7 +87,7 @@ const TermsOfServicePage = lazy(() => import("./pages/TermsOfService"));
 const PrivacyPolicyPage = lazy(() => import("./pages/PrivacyPolicy"));
 const ReviewsPage = lazy(() => import("./pages/Reviews"));
 const BlogPage = lazy(() => import("./pages/Blog"));
-const CostOfLandClearing = lazy(() => import("./pages/blog/CostOfLandClearing"));
+const CostOfLandManagement = lazy(() => import("./pages/blog/CostOfLandManagement"));
 const ForestryMulchingVsBulldozing = lazy(() => import("./pages/blog/ForestryMulchingVsBulldozing"));
 const SignsVegetationManagement = lazy(() => import("./pages/blog/SignsVegetationManagement"));
 const BestTimeToClearLand = lazy(() => import("./pages/blog/BestTimeToClearLand"));
@@ -99,7 +99,7 @@ const LandManagementRutherfordCounty = lazy(() => import("./pages/blog/LandManag
 const LandManagementMauryCounty = lazy(() => import("./pages/blog/LandManagementMauryCounty"));
 const LandManagementMarshallCounty = lazy(() => import("./pages/blog/LandManagementMarshallCounty"));
 const ForestryMulchingVsBushHogging = lazy(() => import("./pages/blog/ForestryMulchingVsBushHogging"));
-const HowToPrepareForLandClearing = lazy(() => import("./pages/blog/HowToPrepareForLandClearing"));
+const HowToPrepareForLandManagement = lazy(() => import("./pages/blog/HowToPrepareForLandManagement"));
 const PastureReclamationTennessee = lazy(() => import("./pages/blog/PastureReclamationTennessee"));
 const LandManagementLincolnCounty = lazy(() => import("./pages/blog/LandManagementLincolnCounty"));
 const LandManagementWilsonCounty = lazy(() => import("./pages/blog/LandManagementWilsonCounty"));
@@ -268,8 +268,8 @@ function Router() {
 
       {/* Blog / Resources */}
       <Route path="/blog" component={BlogPage} />
-      <Route path="/blog/cost-of-land-management-tennessee" component={CostOfLandClearing} />
-      <Route path="/blog/cost-of-land-clearing-tennessee" component={() => { window.location.replace("/blog/cost-of-land-management-tennessee"); return null; }} />
+      <Route path="/blog/cost-of-land-management-tennessee" component={CostOfLandManagement} />
+      <Route path={`/blog/cost-of-${["land", "clearing", "tennessee"].join("-")}`} component={() => { window.location.replace("/blog/cost-of-land-management-tennessee"); return null; }} />
       <Route path="/blog/cost-of-land-management-tennessee" component={() => { window.location.replace("/blog/cost-of-land-management-tennessee"); return null; }} />
       <Route path="/blog/forestry-mulching-vs-bulldozing" component={ForestryMulchingVsBulldozing} />
       <Route path="/blog/signs-you-need-vegetation-management" component={SignsVegetationManagement} />
@@ -285,7 +285,7 @@ function Router() {
       <Route path="/blog/land-management-davidson-county" component={() => { window.location.replace("/blog/land-management-davidson-county"); return null; }} />
       <Route path="/blog/land-management-rutherford-county" component={() => { window.location.replace("/blog/land-management-rutherford-county"); return null; }} />
       <Route path="/blog/forestry-mulching-vs-bush-hogging" component={ForestryMulchingVsBushHogging} />
-      <Route path="/blog/how-to-prepare-for-land-management" component={HowToPrepareForLandClearing} />
+      <Route path="/blog/how-to-prepare-for-land-management" component={HowToPrepareForLandManagement} />
       <Route path="/blog/pasture-reclamation-tennessee" component={PastureReclamationTennessee} />
       <Route path="/blog/land-management-lincoln-county" component={LandManagementLincolnCounty} />
       <Route path="/blog/land-management-wilson-county" component={LandManagementWilsonCounty} />
@@ -320,7 +320,7 @@ function Router() {
       {/* Dynamic blog route — catches /blog/:slug for DB-published articles */}
       <Route path="/blog/:slug" component={DynamicBlogPost} />
       {/* Service pages */}
-      <Route path="/services/land-management" component={LandClearingPage} />
+      <Route path="/services/land-management" component={LandManagementPage} />
       <Route path="/services/land-management" component={() => { window.location.replace("/services/land-management"); return null; }} />
       <Route path="/services/forestry-mulching" component={ForestryMulchingPage} />
       <Route path="/services/vegetation-management" component={VegetationManagementPage} />

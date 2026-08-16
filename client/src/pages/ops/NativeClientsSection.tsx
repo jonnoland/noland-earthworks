@@ -540,7 +540,7 @@ function ClientDetailPanel({ clientId, onClose }: { clientId: number; onClose: (
                   <div key={job.id} className="bg-zinc-800/60 rounded-lg p-3 border border-zinc-700/50">
                     <div className="flex items-start justify-between gap-2">
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-zinc-200 truncate">{job.serviceType ?? "Land Clearing"}</p>
+                        <p className="text-sm font-medium text-zinc-200 truncate">{job.serviceType ?? "Land Management"}</p>
                         {job.propertyAddress && (
                           <p className="text-xs text-zinc-500 truncate mt-0.5">{job.propertyAddress}</p>
                         )}

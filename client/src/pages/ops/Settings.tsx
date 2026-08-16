@@ -2844,7 +2844,7 @@ function AIPricingTab() {
           <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground mb-3">Industry-Recommended Discounts</p>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-4">
             {([
-              { label: "Referral",           key: "discountReferralPct",       note: "Referring customer, next job",   tip: "Standard in the land clearing industry. A 5% credit on the referrer's next job drives word-of-mouth at low cost. Referrals close faster and require less marketing." },
+              { label: "Referral",           key: "discountReferralPct",       note: "Referring customer, next job",   tip: "Common in the land management field. A 5% credit on the referrer's next job drives word-of-mouth at low cost. Referrals close faster and require less marketing." },
               { label: "Repeat / Loyalty",   key: "discountRepeatCustomerPct", note: "3+ completed jobs",              tip: "Rewarding repeat clients reduces churn and keeps recurring land management contracts in-house. Common in forestry and vegetation management." },
               { label: "Off-Season",         key: "discountOffSeasonPct",      note: "Jul–Sep slow season",            tip: "Incentivizes bookings during slow months (Jul–Sep in TN). Keeps the machine running and cash flowing. Set to 0 to disable — only use when you have open capacity." },
               { label: "Nonprofit / Gov",    key: "discountNonprofitGovPct",   note: "Manual per job",                 tip: "Optional goodwill discount for nonprofits, churches, or small municipalities. Builds community relationships and can lead to recurring contracts. Apply manually — not automatic." },

@@ -154,7 +154,7 @@ function LineItemRow({
 
 // ─── Create / Edit modal ──────────────────────────────────────────────────────
 const SERVICE_TYPES = [
-  "Forestry Mulching", "Land Clearing", "Brush Hogging",
+  "Forestry Mulching", "Land Management", "Brush Hogging",
   "Right-of-Way Clearing", "Trail Cutting", "Lot Clearing", "Pasture Reclamation"
 ];
 
@@ -2470,7 +2470,7 @@ export function NativeAllQuotesSection() {
                         <div className="flex items-start justify-between gap-2">
                           <div>
                             <p className="text-xs font-semibold text-foreground">{q.clientName ?? `Quote #${q.id}`}</p>
-                            <p className="text-[11px] text-muted-foreground">{q.service ?? "Land clearing"} &middot; {q.daysSinceSent} days since sent</p>
+                            <p className="text-[11px] text-muted-foreground">{q.service ?? "Land Management"} &middot; {q.daysSinceSent} days since sent</p>
                           </div>
                           <Button
                             variant="outline"

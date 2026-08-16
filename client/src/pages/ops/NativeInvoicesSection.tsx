@@ -270,7 +270,7 @@ export default function NativeInvoicesSection() {
                     )}
                   </td>
                   <td className="px-3 py-2.5 text-zinc-400 text-xs truncate max-w-[120px]">
-                    {inv.serviceType ?? "Land Clearing"}
+                    {inv.serviceType ?? "Land Management"}
                   </td>
                   <td className="px-3 py-2.5 text-zinc-400 text-xs whitespace-nowrap">
                     {formatDate(inv.createdAt)}

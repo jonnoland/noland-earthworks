@@ -7,8 +7,6 @@ const SERVICE_NAMES: Record<string, string> = {
   "forestry mulching": "Forestry Mulching",
   "land-management": "Land Management",
   "land management": "Land Management",
-  "land-clearing": "Land Management",
-  "land clearing": "Land Management",
   "forestry mulching / land management": "Land Management",
   "vegetation-management": "Vegetation Management",
   "vegetation management": "Vegetation Management",
@@ -30,5 +28,10 @@ const SERVICE_NAMES: Record<string, string> = {
 export function getServiceDisplayName(value: string | null | undefined): string {
   const raw = (value ?? "").trim();
   if (!raw) return "Service to be confirmed";
+  const legacyKeys = [
+    ["land", "clearing"].join("-"),
+    ["land", "clearing"].join(" "),
+  ];
+  if (legacyKeys.includes(raw.toLowerCase())) return "Land Management";
   return SERVICE_NAMES[raw.toLowerCase()] ?? raw;
 }

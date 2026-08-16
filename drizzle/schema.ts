@@ -80,7 +80,7 @@ export type LeadSourceTag = typeof leadSourceTags.$inferSelect;
 export type InsertLeadSourceTag = typeof leadSourceTags.$inferInsert;
 
 /**
- * Jobs table — land clearing job records
+ * Jobs table — land management job records
  */
 export const jobs = mysqlTable("jobs", {
   id: int("id").autoincrement().primaryKey(),
@@ -842,7 +842,7 @@ export const aiPricingSettings = mysqlTable("ai_pricing_settings", {
   id: int("id").primaryKey().autoincrement(),
   /** Base rate per acre for forestry mulching (USD) */
   forestryMulchingBaseRate: int("forestryMulchingBaseRate").notNull().default(1300),
-  /** Base rate per acre for land clearing (USD) */
+  /** Base rate per acre for land management (USD) */
   landClearingBaseRate: int("landClearingBaseRate").notNull().default(1100),
   /** Base rate per acre for brush hogging (USD) */
   brushHoggingBaseRate: int("brushHoggingBaseRate").notNull().default(135),
@@ -912,7 +912,7 @@ export const aiPricingSettings = mysqlTable("ai_pricing_settings", {
   // ── Production rates (acres per day) ────────────────────────────────────────
   /** Acres per day for forestry mulching (tracked mulcher, moderate conditions) */
   apdForestryMulching: varchar("apdForestryMulching", { length: 10 }).notNull().default("1.5"),
-  /** Acres per day for land clearing */
+  /** Acres per day for land management */
   apdLandClearing: varchar("apdLandClearing", { length: 10 }).notNull().default("1.2"),
   /** Acres per day for right-of-way clearing (effective acreage) */
   apdRowClearing: varchar("apdRowClearing", { length: 10 }).notNull().default("1.2"),

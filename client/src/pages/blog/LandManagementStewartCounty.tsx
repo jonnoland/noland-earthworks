@@ -57,7 +57,7 @@ export default function LandManagementStewartCounty() {
 
       <h2>Permit Requirements in Stewart County</h2>
       <p>
-        Land clearing projects in Stewart County may require permits depending on their scope and location. For projects within city limits, such as Dover, you should consult the municipal permit office. For properties outside city limits, contact the Stewart County Zoning and Planning Department. Additionally, any work near waterways like the Cumberland River or Lake Barkley, or within floodplains, may require permits from the Tennessee Department of Environment and Conservation (TDEC) or the U.S. Army Corps of Engineers. It is always best to verify specific requirements before beginning any significant land alteration.
+        Land Management projects in Stewart County may require permits depending on their scope and location. For projects within city limits, such as Dover, you should consult the municipal permit office. For properties outside city limits, contact the Stewart County Zoning and Planning Department. Additionally, any work near waterways like the Cumberland River or Lake Barkley, or within floodplains, may require permits from the Tennessee Department of Environment and Conservation (TDEC) or the U.S. Army Corps of Engineers. Verify specific requirements before beginning any significant land alteration.
       </p>
 
       <h2>Serving All of Stewart County</h2>

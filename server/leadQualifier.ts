@@ -54,7 +54,7 @@ WEAK lead (score: "weak"):
 
 SERVICES OFFERED:
 - Forestry mulching (primary — grinds brush/saplings/small trees into mulch, no debris piles)
-- Land clearing / site prep
+- Land Management / site assessment
 - Right-of-way clearing
 - Trail cutting (linear clearing for hiking, hunting, or equipment access trails)
 - Brush hogging (secondary, lower margin)
@@ -75,7 +75,7 @@ Forestry Mulching (per acre):
   - Heavy timber / dense cedar: $2,500 – $4,500+/acre
   - Minimum job: $1,800
 
-Land Management / Land Management (per acre):
+Land Management (per acre):
   - Light clearing (mostly brush, flat): $1,500 – $3,000/acre
   - Moderate clearing (mixed timber, some slope): $3,000 – $6,000/acre
   - Heavy clearing (dense timber, steep terrain): $6,000 – $12,000+/acre

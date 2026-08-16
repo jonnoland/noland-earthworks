@@ -1777,7 +1777,7 @@ ${addOnPricingContext.length > 0 ? `\nAdd-on rates to use for line items:\n${add
 
 Pricing context for your reference:
 - Forestry mulching in Middle/West TN: $1,200–$4,500/acre depending on density
-- Land clearing: $1,500–$8,000/acre depending on density
+- Land Management: $1,500–$8,000/acre depending on density
 - Right-of-way clearing: $4–$8 per linear foot (NOT per acre) — quote in LF when possible
 - These rates reflect 2025–2026 market conditions in the Nashville/Columbia/West TN corridor
 ${benchmarkContext}
@@ -2083,7 +2083,7 @@ Your job is to read Jon's free-form job description (and any site photos he prov
 
 Pricing reference — Middle & West Tennessee market rates (2025–2026):
 - Forestry mulching base: $${fmBase}/acre (light density)
-- Land clearing base: $${lcBase}/acre (light density)
+- Land Management base: $${lcBase}/acre (light density)
 - Brush hogging base: $${bhBase}/acre
 - Right-of-way clearing: $${rowBase}/linear foot
 - Density moderate multiplier: ${dmMult}x | Heavy: ${dhMult}x
@@ -4211,7 +4211,7 @@ Return only the message text, no preamble.`;
       const postbackUrl = `${baseUrl}/api/scheduled/prospect-leads-manual`;
 
       const prompt = `You are an AI lead prospecting agent for Noland Earthworks, LLC — a veteran-owned forestry mulching and land management company based in Middle Tennessee.
-Your job: Search public sources for people in Tennessee who need land clearing, forestry mulching, brush removal, overgrown property cleared, cedar thicket removal, fence line clearing, or pasture reclaimed. Find real posts from real people — not business listings, not ads.
+Your job: Search public sources for people in Tennessee who need land management, forestry mulching, brush removal, overgrown property cleared, cedar thicket removal, fence line clearing, or pasture reclaimed. Find real posts from real people — not business listings, not ads.
 
 SEARCH THESE SOURCES (check ALL of them — do not skip any):
 
@@ -4238,15 +4238,15 @@ SEARCH THESE SOURCES (check ALL of them — do not skip any):
 20. https://clarksville.craigslist.org/search/sss?query=brush+removal
 
 --- FACEBOOK MARKETPLACE ---
-21. https://www.facebook.com/marketplace/nashville/services — search: land clearing, brush removal, forestry mulching, overgrown property, cedar thicket. Look for people REQUESTING services, not offering them.
+21. https://www.facebook.com/marketplace/nashville/services — search: land management, brush removal, forestry mulching, overgrown property, cedar thicket. Look for people REQUESTING services, not offering them.
 22. https://www.facebook.com/marketplace/memphis/services — same keyword searches.
 23. https://www.facebook.com/marketplace/search?query=land+clearing+tennessee&category_id=233
 24. https://www.facebook.com/marketplace/search?query=brush+removal+tennessee&category_id=233
 25. https://www.facebook.com/marketplace/search?query=forestry+mulching+tennessee&category_id=233
 
 --- GOOGLE SEARCHES ---
-26. site:craigslist.org "land clearing" OR "forestry mulching" Tennessee
-27. "land clearing" OR "brush removal" "Middle Tennessee" OR "West Tennessee" -site:nolandearthworks.com
+26. site:craigslist.org "forestry mulching" OR "vegetation management" Tennessee
+27. "vegetation management" OR "brush removal" "Middle Tennessee" OR "West Tennessee" -site:nolandearthworks.com
 28. "cedar thicket" OR "overgrown pasture" Tennessee clearing help
 29. "fence line clearing" OR "pasture reclamation" Tennessee
 30. "forestry mulching" Tennessee need help
@@ -4278,7 +4278,7 @@ FOR EACH PROSPECT FOUND, collect:
 
 QUALITY FILTER — only include prospects that:
 - Are in Tennessee (Middle or West TN preferred; East TN acceptable if within 150 miles of Vanleer, TN)
-- Need land clearing, forestry mulching, brush removal, pasture reclamation, overgrown lot clearing, fence line clearing, cedar thicket removal, or similar
+- Need land management, forestry mulching, brush removal, pasture reclamation, overgrown lot clearing, fence line clearing, cedar thicket removal, or similar
 - Are from individuals or small businesses (not large contractors already doing the work)
 - Posted within the last 60 days
 - Are NOT asking for grading, excavation, or hauling only
@@ -6012,7 +6012,7 @@ Always be specific to nolandearthworks.com. Never give generic advice — tie ev
       id: q.id,
       clientName: q.clientName,
       phone: q.clientPhone,
-      service: q.serviceType ?? "Land Clearing",
+      service: q.serviceType ?? "Land Management",
       acreage: q.acreage ?? undefined,
       portalSentAt: q.portalSentAt,
       daysSinceSent: Math.floor((Date.now() - (q.portalSentAt?.getTime() ?? Date.now())) / (1000 * 60 * 60 * 24)),
@@ -6847,7 +6847,7 @@ Extract job details from a spoken description and return ONLY valid JSON with th
   "notes": string or null
 }
 Rules:
-- Default service to "Forestry Mulching" if unclear but land clearing is mentioned.
+- Default service to "Forestry Mulching" if unclear but land management is mentioned.
 - Map "medium" vegetation to "moderate", "thick" or "dense" to "heavy", "very thick" to "very_heavy".
 - Map "hilly" or "rolling hills" to "rolling", "flat" to "flat", "steep hillside" or "steep slope" to "steep".
 - Map "hard to get to" or "no road access" to "difficult", "some brush" to "moderate", "open gate" or "easy access" to "easy".

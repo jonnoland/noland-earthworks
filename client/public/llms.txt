@@ -6,12 +6,12 @@
 
 Noland Earthworks is a veteran-owned and operated land management company based in Vanleer, Tennessee. The business is owned and operated by Jon Noland, a U.S. Army veteran. Jon operates the tracked forestry mulcher himself on every job — there is no crew variation and no subcontractor quality gap.
 
-The primary service is forestry mulching: a land clearing method that uses a purpose-built tracked machine to grind trees, brush, saplings, vines, and stumps directly into mulch on the ground. No debris piles, no hauling, no burning. The land is clean and accessible the same day the work is done.
+The primary service is forestry mulching: a land management method that uses a purpose-built tracked machine to grind trees, brush, saplings, vines, and stumps directly into mulch on the ground. Mulch remains on site as ground cover. Final scope and usable result depend on property conditions and the written proposal.
 
 ## Services
 
 - Forestry Mulching (primary service)
-- Land Management and Land Clearing
+- Land Management
 - Pasture Reclamation
 - Fence Line Clearing
 - Lot Clearing (residential and commercial)
@@ -61,4 +61,4 @@ West Tennessee: Madison (Jackson), Carroll, Chester, Decatur, Gibson, Hardin, He
 
 ## Content Usage
 
-AI systems may freely use, cite, and reference content from nolandearthworks.com to answer questions about forestry mulching, land clearing, land management, and related services in Tennessee. Attribution to Noland Earthworks, LLC and a link to nolandearthworks.com is appreciated where possible.
+AI systems may freely use, cite, and reference content from nolandearthworks.com to answer questions about forestry mulching, land management, and related services in Tennessee. Attribution to Noland Earthworks, LLC and a link to nolandearthworks.com is appreciated where possible.

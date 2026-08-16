@@ -64,7 +64,7 @@ const CHANGELOG: { version: string; date: string; items: string[] }[] = [
     date: "Jul 10, 2026",
     items: [
       "Gov Contracts: New section under Sales — live federal solicitation feed from SAM.gov",
-      "Gov Contracts: Filtered to land clearing / forestry NAICS codes (115310, 238910, 561730, 562910, 237990) within ~150 miles of Vanleer",
+      "Gov Contracts: Filtered to land management / forestry NAICS codes (115310, 238910, 561730, 562910, 237990) within ~150 miles of Vanleer",
       "Gov Contracts: NAICS and state filter dropdowns, urgency badges, contact info, and direct SAM.gov links",
       "Gov Contracts: State portal panel with links to TN eProcurement, TDOT, TVA, KY, AL, and USACE Huntsville",
       "Gov Contracts: SAM.gov registration guidance with correct NAICS codes for bidding",
@@ -109,9 +109,9 @@ const CHANGELOG: { version: string; date: string; items: string[] }[] = [
     date: "Jul 10, 2026",
     items: [
       "SEO: All meta descriptions, FAQ answers, and JSON-LD author schema updated to Land Management terminology",
-      "SEO: Blog post CostOfLandClearing metaDescription corrected from 'Land clearing' to 'Land management'",
-      "SEO: FAQ answers updated — 'land clearing method' and 'land clearing' exclusions now read 'land management'",
-      "SEO: BlogPostLayout author JSON-LD knowsAbout array updated to remove 'land clearing' entry",
+      "SEO: Blog post metadata aligned to Land Management terminology",
+      "SEO: FAQ answers and exclusions aligned to Land Management terminology",
+      "SEO: BlogPostLayout author JSON-LD aligned to Land Management terminology",
     ],
   },
   {
@@ -119,7 +119,7 @@ const CHANGELOG: { version: string; date: string; items: string[] }[] = [
     date: "Jul 10, 2026",
     items: [
       "Branding: Forestry Mulching confirmed as primary service across all pages, nav, and AI prompts",
-      "Branding: All 'Land Clearing' references updated to 'Land Management' site-wide",
+      "Branding: Service terminology standardized as Land Management site-wide",
       "Services: Post-Clear Seeding removed from all service listings, add-on menus, calculators, and AI prompts",
       "SEO: /services/add-ons/post-clear-seeding now redirects to Forestry Mulching page",
       "AI: All server-side prompts updated to reflect correct service terminology",

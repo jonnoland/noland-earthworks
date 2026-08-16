@@ -23,7 +23,7 @@ import {
 } from "lucide-react";
 import { Link } from "wouter";
 
-// ─── Seasonal context for TN land clearing ───────────────────────────────────
+// ─── Seasonal context for Tennessee land management ───────────────────────────
 const SEASONAL_CONTEXT: Record<number, { label: string; demand: "peak" | "high" | "moderate" | "slow"; note: string; tip: string }> = {
   1:  { label: "January",   demand: "peak",     note: "Dormant vegetation, firm ground, best cutting conditions. Historically highest inquiry volume.", tip: "Follow up on any December leads that went quiet. Conditions are ideal — mention it." },
   2:  { label: "February",  demand: "peak",     note: "Still peak season. Landowners planning spring projects start calling now.", tip: "Run Google Ads if you have budget. This is your best ROI window." },
@@ -178,7 +178,7 @@ export default function LeadVisibility() {
             <div>
               <p className="text-sm text-amber-300 font-medium">Low volume is expected this time of year</p>
               <p className="text-sm text-muted-foreground mt-1">
-                {seasonal.label} is historically one of the slower months for land clearing inquiries in Tennessee. Heat, humidity, and full vegetation canopy reduce customer urgency. This is not a sign of a visibility problem — it is a seasonal pattern. Volume typically recovers in September and peaks again in October through December.
+                {seasonal.label} is historically one of the slower months for Land Management inquiries in Tennessee. Heat, humidity, and full vegetation canopy reduce customer urgency. This is not a sign of a visibility problem — it is a seasonal pattern. Volume typically recovers in September and peaks again in October through December.
               </p>
             </div>
           </div>

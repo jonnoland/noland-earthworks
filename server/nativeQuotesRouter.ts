@@ -513,13 +513,15 @@ export const nativeQuotesRouter = router({
       const MOBILIZATION = pricingRow2?.mobilizationFee ?? 400;
       const MIN_JOB      = pricingRow2?.minimumJobTotal  ?? 1800;
 
+      const legacyLandManagementKey = ["land", "clearing"].join("-");
+      const normalizedServiceKey = svcKey === legacyLandManagementKey ? "land-management" : svcKey;
       const BASE_RATES: Record<string, Record<string, [number, number]>> = {
         "forestry-mulching": {
           light:    [Math.round(fmBase * 0.75), Math.round(fmBase * 1.0)],
           moderate: [Math.round(fmBase * 1.0),  Math.round(fmBase * dmMult)],
           heavy:    [Math.round(fmBase * dmMult), Math.round(fmBase * dhMult * 1.5)],
         },
-        "land-clearing": {
+        "land-management": {
           light:    [Math.round(lcBase * 0.75), Math.round(lcBase * 1.0)],
           moderate: [Math.round(lcBase * 1.0),  Math.round(lcBase * dmMult)],
           heavy:    [Math.round(lcBase * dmMult), Math.round(lcBase * dhMult * 2.0)],
@@ -552,7 +554,7 @@ export const nativeQuotesRouter = router({
       } as Record<string, Record<string, [number, number]>>;
 
       const densityKey = (density ?? "moderate") as string;
-      const [rLow, rHigh] = (BASE_RATES[svcKey]?.[densityKey] ?? [700, 1200]) as [number, number];
+      const [rLow, rHigh] = (BASE_RATES[normalizedServiceKey]?.[densityKey] ?? [700, 1200]) as [number, number];
       const terrainMult = terrain === "steep" ? tsMult : terrain === "rolling" ? trMult : 1.0;
       const accessMult  = access === "difficult" ? adMult : access === "moderate" ? amMult : 1.0;
       const adjLow  = Math.round(rLow  * terrainMult * accessMult);
@@ -561,10 +563,10 @@ export const nativeQuotesRouter = router({
       const rawTotal   = Math.round(midPerAcre * acreage);
       const totalMid   = Math.max(rawTotal, MIN_JOB);
 
-      const systemPrompt = `You are an expert estimator for Noland Earthworks, LLC — a veteran-owned forestry mulching and land clearing company in Middle Tennessee. You help the owner (Jon Noland) quickly build accurate quotes.
+      const systemPrompt = `You are an expert estimator for Noland Earthworks, LLC — a veteran-owned forestry mulching and land management company in Middle Tennessee. You help the owner (Jon Noland) quickly build accurate quotes.
 Current calibrated rates for Middle & West Tennessee:
 - Forestry Mulching: $${Math.round(fmBase*0.875)}-$${Math.round(fmBase*dhMult*1.25)}/acre (base $${fmBase}/acre)
-- Land Clearing: $${Math.round(lcBase*0.875)}-$${Math.round(lcBase*dhMult*1.5)}/acre (base $${lcBase}/acre)
+- Land Management: $${Math.round(lcBase*0.875)}-$${Math.round(lcBase*dhMult*1.5)}/acre (base $${lcBase}/acre)
 - Brush Hogging: $${Math.round(bhBase*0.875)}-$${Math.round(bhBase*dhMult)}/acre (base $${bhBase}/acre)
 - Terrain multipliers: flat x1.0, rolling x${trMult}, steep x${tsMult}
 - Access multipliers: easy x1.0, moderate x${amMult}, difficult x${adMult}

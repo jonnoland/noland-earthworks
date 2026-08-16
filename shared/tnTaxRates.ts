@@ -4,7 +4,7 @@
  * State rate: 7.00% (flat statewide)
  * Local rate: varies by county (0.20% – 2.75%)
  *
- * NOTE: Forestry mulching, land clearing, and brush hogging are services performed
+ * NOTE: Forestry mulching, land management, and brush hogging are services performed
  * on real property and are generally NOT subject to Tennessee sales tax.
  * This data is provided for reference only — apply only to taxable line items
  * (e.g., materials, equipment rental, or other tangible goods).

@@ -282,12 +282,12 @@ function isInServiceArea(result: SamResult): boolean {
 // Legacy alias
 const isWithin150MilesOfVanleer = isInServiceArea;
 
-// NAICS codes relevant to land clearing / forestry mulching
+// NAICS codes relevant to land management / forestry mulching
 const TARGET_NAICS = new Set(["115310", "561730", "238910", "562910", "237990", "333120"]);
 
 // Keywords that indicate relevant work
 const RELEVANT_KEYWORDS = [
-  "land clearing", "brush clearing", "forestry", "mulching", "vegetation",
+  "land management", "brush clearing", "forestry", "mulching", "vegetation",
   "right-of-way", "right of way", "ROW", "site preparation", "site prep",
   "mowing", "brush removal", "tree removal", "clearing", "grubbing",
   "invasive species", "trail clearing", "fence line", "pasture"
@@ -417,7 +417,7 @@ async function getCompanyInfo() {
 
 export const govContractsRouter = router({
   /**
-   * Search active SAM.gov opportunities relevant to land clearing / forestry mulching.
+   * Search active SAM.gov opportunities relevant to land management / forestry mulching.
    * Fetches multiple keyword queries in parallel and deduplicates by _id.
    */
   search: adminProcedure
@@ -430,7 +430,7 @@ export const govContractsRouter = router({
       try {
         // Run parallel queries for different keyword sets
         const queries = [
-          "land clearing forestry mulching vegetation",
+          "land management forestry mulching vegetation",
           "brush clearing right-of-way mowing",
           "site preparation clearing grubbing",
         ];
@@ -606,7 +606,7 @@ export const govContractsRouter = router({
       const primaryNaics = input.naics[0];
       const naicsLabel = primaryNaics
         ? `${primaryNaics.code} — ${primaryNaics.label}`
-        : "Land Clearing / Forestry Services";
+        : "Land Management / Forestry Services";
 
       const prompt = `You are writing a federal government contract capability statement for a small veteran-owned business.
 
@@ -625,7 +625,7 @@ Set-Aside: ${input.setAside || "None specified"}
 
 Core capabilities:
 - Forestry mulching: tracked mulcher grinds brush, saplings, and small trees into mulch left on site. No debris hauling, no burning.
-- Land clearing and right-of-way clearing on challenging terrain including slopes and wet ground.
+- Land Management and right-of-way clearing on challenging terrain including slopes and wet ground.
 - Site preparation for development, pasture reclamation, fence line clearing, trail cutting.
 - Single-operator company — owner performs all work personally, ensuring consistent quality and accountability.
 - Veteran-owned and operated. Registered in SAM.gov with active CAGE code.
@@ -650,7 +650,7 @@ Keep it under 250 words. Do not use bullet points. Do not use phrases like 'indu
         capabilityStatement = (llmResult?.choices?.[0]?.message?.content as string) ?? "";
       } catch (err) {
         console.error("[GovContracts] LLM capability statement failed:", err);
-        capabilityStatement = `${company.companyName} is a veteran-owned forestry mulching and land clearing company based in ${company.city}, ${company.state}. Owner-operated by ${company.ownerName}, a U.S. Army veteran. We specialize in forestry mulching, right-of-way clearing, and site preparation using a tracked forestry mulcher capable of handling dense vegetation, steep slopes, and wet ground conditions. CAGE Code: ${company.cageCode}. UEI: ${company.uniqueEntityId}.`;
+        capabilityStatement = `${company.companyName} is a veteran-owned forestry mulching and land management company based in ${company.city}, ${company.state}. Owner-operated by ${company.ownerName}, a U.S. Army veteran. We specialize in forestry mulching, right-of-way clearing, and site-specific vegetation work using a tracked forestry mulcher capable of handling dense vegetation, steep slopes, and wet ground conditions. CAGE Code: ${company.cageCode}. UEI: ${company.uniqueEntityId}.`;
       }
 
       // Build cover letter
@@ -695,7 +695,7 @@ Set-Aside: ${input.setAside || "None specified"}
 Deadline: ${input.responseDeadline || "Not specified"}
 
 Pricing context:
-- Federal government contracts for forestry mulching / land clearing in Tennessee and surrounding states typically range from $800 to $2,500 per acre depending on terrain, density, and access.
+- Federal government contracts for forestry mulching / land management in Tennessee and surrounding states require scope-specific pricing based on terrain, density, access, and the solicitation structure.
 - Mobilization for government contracts in this region typically runs $1,500 to $4,500 depending on distance.
 - Site inspection / pre-work assessment is typically $500 to $1,500 as a lump sum.
 - Government contracts often have multiple option years — price conservatively for base year, slightly higher for options.
@@ -737,7 +737,7 @@ Format the output as plain text, suitable for copying into a bid response. Use c
           ``,
           `LINE ITEMS`,
           `────────────────────────────────────────────────────────────`,
-          `CLIN 0001  Forestry Mulching / Land Clearing`,
+          `CLIN 0001  Forestry Mulching / Land Management`,
           `           Unit: Acre   Qty: ___   Unit Price: $1,800   Total: $___`,
           ``,
           `CLIN 0002  Mobilization / Demobilization`,
@@ -774,7 +774,7 @@ Format the output as plain text, suitable for copying into a bid response. Use c
 
   /**
    * Scrape the Tennessee CPO Invitations to Bid (ITB) page and return
-   * bids that match land-clearing / forestry / vegetation keywords.
+   * bids that match land-management / forestry / vegetation keywords.
    * Falls back to returning all active bids if no keyword matches.
    */
   tnStateContracts: adminProcedure.query(async () => {
@@ -784,7 +784,7 @@ Format the output as plain text, suitable for copying into a bid response. Use c
       "https://www.tn.gov/generalservices/procurement/central-procurement-office--cpo-/supplier-information/request-for-proposals--rfp--opportunities1.html";
 
     const KEYWORDS = [
-      "land clearing", "land management", "clearing", "brush",
+      "land management", "clearing", "brush",
       "mowing", "vegetation", "forestry", "mulch", "site prep",
       "right-of-way", "row clearing", "tree", "timber", "grubbing",
       "invasive", "weed control", "aquatic weed", "reelfoot",

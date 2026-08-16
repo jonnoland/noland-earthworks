@@ -58,7 +58,7 @@ export default function LandManagementHendersonCounty() {
 
       <h2>Permit Requirements in Henderson County</h2>
       <p>
-        Land clearing projects in Henderson County may require permits depending on the scope and location of the work. For projects within city limits, such as Lexington, property owners should consult the city\'s building and zoning department. For county-wide regulations, the Henderson County Zoning Office can provide guidance. Additionally, any work near waterways, including the Beech River, may fall under the jurisdiction of the Tennessee Department of Environment and Conservation (TDEC) for stormwater management (NPDES permits) or the U.S. Army Corps of Engineers (USACE) for impacts to wetlands or navigable waters. It is always advisable to check with local and state authorities before beginning any significant land alteration.
+        Land Management projects in Henderson County may require permits depending on the scope and location of the work. For projects within city limits, such as Lexington, property owners should consult the city\'s building and zoning department. For county-wide regulations, the Henderson County Zoning Office can provide guidance. Additionally, any work near waterways, including the Beech River, may fall under the jurisdiction of the Tennessee Department of Environment and Conservation (TDEC) for stormwater management (NPDES permits) or the U.S. Army Corps of Engineers (USACE) for impacts to wetlands or navigable waters. Check with local and state authorities before beginning any significant land alteration.
       </p>
 
       <h2>Serving All of Henderson County</h2>

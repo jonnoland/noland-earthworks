@@ -300,7 +300,7 @@ Squarespace: Edit page → add Text blocks → format each section title as "Hea
   const totalImages = images.length;
   if (totalImages === 0) {
     checks.push({ id: "images_none", category: "onpage", label: "Image alt tags", status: "warn", value: "No images", detail: "No images found on the page.", recommendation: "Add relevant before/after job photos with descriptive alt text.", fixExample: `<!-- Add real job photos with descriptive alt text -->
-<img src="land-management-maury-county.jpg" alt="Land clearing job in Maury County, Tennessee — before and after">
+<img src="land-management-maury-county.jpg" alt="Land Management project in Maury County, Tennessee — before and after">
 
 Squarespace: Edit page → click "+" to add a block → choose "Image" → upload your photo → set Alt Text in Image Settings`, priority: "low" });
   } else if (altMissing > 0) {
@@ -586,10 +586,10 @@ Squarespace: Settings → Advanced → Code Injection → Header → find any <s
   if (totalImages > 3 && lazyImages === 0) {
     checks.push({ id: "lazy_loading", category: "performance", label: "Image lazy loading", status: "warn", value: "None", detail: `${totalImages} images found but none use loading="lazy".`, recommendation: 'Add loading="lazy" to below-fold images to improve page load speed.', fixExample: `<!-- Add loading="lazy" to images not visible on initial page load -->
 <!-- Before: -->
-<img src="job-photo.jpg" alt="Land clearing job">
+<img src="job-photo.jpg" alt="Land Management project">
 
 <!-- After: -->
-<img src="job-photo.jpg" alt="Land clearing job" loading="lazy">
+<img src="job-photo.jpg" alt="Land Management project" loading="lazy">
 
 Squarespace: For standard image blocks, Squarespace handles lazy loading automatically on modern plans.
 For images in custom Code Blocks, add loading="lazy" to each <img> tag manually.`, priority: "medium" });

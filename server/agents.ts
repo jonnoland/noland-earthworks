@@ -743,9 +743,9 @@ REGION: Middle & West Tennessee ONLY. This includes:
 - West TN: Jackson, Dyersburg, Paris, Brownsville, Henderson, Decatur
 
 SOURCE PRIORITY (use in this order):
-1. FIRST: Actual competitor pricing pages from Middle/West Tennessee operators — look for published rate tables or "rough pricing" sections on company websites. Known Middle TN operators with published pricing: Claiborne Services LLC (Franklin, TN — forestry mulching $1,750–$8,000+/ac by density), Clear Ground Land Co. (Murfreesboro), Cumberland Land & Storm (TN), Grounded Land Solutions, Stribling Land Clearing & Dirtwork, Wolf Creek Land Company, Mid State Land Clearing LLC, Middle Tennessee Land Clearing LLC.
-2. SECOND: Tennessee-specific contractor forums and Facebook groups (Middle Tennessee Land Clearing groups, LawnSite TN threads, TractorByNet TN discussions)
-3. THIRD: Regional cost guides that cite Tennessee specifically (ProMatcher TN avg: ~$1,633/ac for land clearing, UT Extension service data)
+1. FIRST: Actual competitor pricing pages from Middle and West Tennessee operators — look for published rate tables or rough-pricing sections on company websites. Preserve the source URL and quoted wording for owner review.
+2. SECOND: Tennessee-specific contractor forums and Facebook groups, including regional contractor discussions and equipment-owner communities.
+3. THIRD: Regional cost guides that cite Tennessee specifically (ProMatcher TN avg: ~$1,633/ac for land management, UT Extension service data)
 4. LAST RESORT ONLY: National aggregators like HomeAdvisor or Angi — these skew low and should only be used to validate a floor, never as the primary source. HomeAdvisor's $400–$1,500/ac national average does NOT reflect Middle TN rates.
 
 QUALITY FILTERS — REJECT these data points:
@@ -754,7 +754,7 @@ QUALITY FILTERS — REJECT these data points:
 - Hourly rates converted to per-acre without specifying realistic productivity (a tracked forestry mulcher in Middle TN cedar does 0.5–2 acres/day depending on density)
 - Rates from companies that use skid steers on small flat residential lots (not comparable to tracked forestry mulcher on rural acreage with slopes)
 
-CONTEXT for Middle Tennessee forestry mulching and land clearing:
+CONTEXT for Middle Tennessee forestry mulching and land management:
 - Terrain: rolling hills, cedar glades, steep hollows, bottomland hardwoods — NOT flat plains
 - Vegetation: heavy cedar, honeysuckle, privet, multiflora rose, mixed hardwood saplings — dense and difficult
 - Jobs typically 2–20 acres, tracked equipment required for slopes and wet ground

@@ -118,12 +118,12 @@ function TableOfContents() {
   );
 }
 
-export default function CostOfLandClearing() {
+export default function CostOfLandManagement() {
   return (
     <BlogPostLayout
-      title="What Affects a Land Clearing Proposal in Tennessee? (2026 Guide)"
-      pageTitle="Land Clearing Proposal Factors in Tennessee | Noland Earthworks"
-      metaDescription="Learn what affects a site-specific Tennessee land clearing proposal, including vegetation, terrain, access, acreage, travel, and the work included in writing."
+      title="What Affects a Land Management Proposal in Tennessee? (2026 Guide)"
+      pageTitle="Land Management Proposal Factors in Tennessee | Noland Earthworks"
+      metaDescription="Learn what affects a site-specific Tennessee Land Management proposal, including vegetation, terrain, access, acreage, travel, and the work included in writing."
       date="April 2026"
       dateISO="2026-04-01"
       lastUpdated="July 2026"
@@ -131,7 +131,7 @@ export default function CostOfLandClearing() {
       slug="cost-of-land-management-tennessee"
       readTime="9 min read"
       category="Pricing & Planning"
-      keywords={["land clearing cost Tennessee", "forestry mulching cost per acre Tennessee", "how much does land clearing cost", "land management pricing Tennessee", "cost to clear land Tennessee 2026"]}
+      keywords={["land management Tennessee", "forestry mulching Tennessee", "forestry mulching proposal factors", "land management pricing Tennessee", "vegetation management Tennessee 2026"]}
     >
       {/* Two-column layout: article + sticky TOC */}
       <div
@@ -149,7 +149,7 @@ export default function CostOfLandClearing() {
 
           <h2 id="two-methods">The Two Main Methods and Their Scope Differences</h2>
           <p>
-            The method you choose is the single biggest cost driver. There are two primary approaches for most Tennessee land clearing jobs:
+            The method you choose is the single biggest cost driver. There are two primary approaches for most Tennessee Land Management projects:
           </p>
 
           <h3>Traditional Clearing (Bulldozing and Hauling)</h3>
@@ -203,9 +203,9 @@ export default function CostOfLandClearing() {
             Travel and mobilization planning can differ by property location. Noland Earthworks is based in Vanleer, Tennessee, and serves listed counties across Middle and West Tennessee. The written proposal confirms any location-specific planning after the property review.
           </p>
 
-          <h2 id="not-included">What Is Not Included in Land Clearing</h2>
+          <h2 id="not-included">What Is Not Included in Land Management</h2>
           <p>
-            This is worth stating clearly because it is a common source of confusion. Land clearing — whether by forestry mulching or traditional methods — removes vegetation. It does not include:
+            This is worth stating clearly because it is a common source of confusion. Land Management — whether by forestry mulching or other vegetation methods — addresses vegetation. It does not include:
           </p>
           <ul>
             <li><strong>Grading or leveling</strong> — Changing the grade of the land requires a separate contractor with grading equipment.</li>
@@ -217,7 +217,7 @@ export default function CostOfLandClearing() {
 
           <h2 id="accurate-quote">Getting an Accurate Quote</h2>
           <p>
-            The only way to get an accurate quote for a land clearing project is an on-site visit. Phone quotes and online estimates based on acreage alone are not reliable because the variables above — vegetation density, terrain, access, soil conditions — cannot be assessed without seeing the property. Any contractor who gives you a firm price over the phone without visiting the site is either guessing or will find reasons to add costs later.
+            The only way to get an accurate quote for a Land Management project is an on-site visit. Phone quotes and online estimates based on acreage alone are not reliable because vegetation density, terrain, access, and site conditions cannot be assessed without seeing the property. A written proposal follows the property review.
           </p>
           <p>
             Noland Earthworks reviews site-visit requests the same day or the next morning. If the project is a fit, Jon will arrange a property review and prepare a written scope and quote based on the conditions observed.
@@ -225,7 +225,7 @@ export default function CostOfLandClearing() {
 
           <h2 id="best-value">Why Forestry Mulching Delivers the Best Value for Most Tennessee Properties</h2>
           <p>
-            For the majority of residential, agricultural, and recreational land clearing projects in Tennessee — pasture reclamation, lot clearing, fence line restoration, trail cutting, acreage cleanup — forestry mulching delivers the best combination of cost, speed, and land health. The single-machine process eliminates the secondary costs of hauling and burning, the mulch layer protects the soil from erosion and returns organic matter as it decomposes, and the tracked platform handles the terrain and soil conditions common across Middle and West Tennessee.
+            For many residential, agricultural, and recreational Land Management projects in Tennessee — pasture reclamation, lot vegetation work, fence line restoration, trail cutting, and acreage cleanup — forestry mulching can be a practical approach. The tracked platform is suited to terrain and soil conditions common across Middle and West Tennessee. Final method and scope are confirmed in writing after a site visit.
           </p>
           <p>
             The cases where traditional clearing makes more sense are specific: building foundations that require complete stump removal, large timber harvests where the wood has commercial value, or sites that need significant grade changes as part of the clearing scope. For everything else, forestry mulching is the right tool.

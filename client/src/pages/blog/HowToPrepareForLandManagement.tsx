@@ -1,6 +1,6 @@
 import BlogPostLayout from "@/components/BlogPostLayout";
 
-export default function HowToPrepareForLandClearing() {
+export default function HowToPrepareForLandManagement() {
   return (
     <BlogPostLayout
       title="How to Prepare for a Land Management Job in Tennessee: Your Essential Checklist"
@@ -42,7 +42,7 @@ export default function HowToPrepareForLandClearing() {
 
       <h3>5. Notify Your Neighbors</h3>
       <p>
-        Land clearing can be noisy and generate dust, especially during the initial phases. It’s a good practice to inform your neighbors about the upcoming work. Let them know the approximate start and end dates, and what kind of activity to expect. This simple courtesy can prevent complaints and maintain good relationships within your community. We always strive to minimize disruption, but a heads-up from you goes a long way.
+        Land Management can be noisy and generate dust, especially during the initial phases. It’s a good practice to inform your neighbors about the upcoming work. Let them know the approximate start and end dates, and what kind of activity to expect. This simple courtesy can prevent complaints and maintain good relationships within your community. A heads-up from you goes a long way.
       </p>
 
       <h3>6. Understand What to Expect on Job Day</h3>

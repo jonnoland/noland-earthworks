@@ -3187,6 +3187,11 @@
 - [x] Run regression, build, public-route, sitemap, and authorization validation after remediation
 - [x] Document legal-review and external-account follow-ups that cannot be safely automated
 
+## Land Management Terminology Correction — Aug 2026
+- [x] Inventory all remaining Land Clearing references across public copy, Operations, AI, metadata, and structured data
+- [x] Replace all customer-facing Land Clearing terminology with Land Management without breaking stable URLs
+- [x] Validate public pages, metadata, and Operations labels for prohibited terminology
+
 ## Quote Performance & County Differentiation — Aug 2026
 - [x] Measure the current quote-page mobile performance and critical loading path
 - [x] Implement a low-risk quote-page performance improvement that preserves the form flow

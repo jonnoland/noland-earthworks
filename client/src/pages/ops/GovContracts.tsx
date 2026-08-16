@@ -1,6 +1,6 @@
 /**
  * GovContracts — Federal contract opportunity feed for Noland Earthworks.
- * Pulls active solicitations from SAM.gov filtered to land clearing / forestry
+ * Pulls active solicitations from SAM.gov filtered to land management / forestry
  * mulching NAICS codes within ~150 miles of Vanleer, TN.
  *
  * Includes a "Prepare Bid" workflow that generates a pre-filled cover letter,
@@ -70,7 +70,7 @@ const STATE_PORTALS = [
   {
     name: "Tennessee eProcurement",
     url: "https://www.tn.gov/generalservices/procurement/central-procurement-office/cpo-solicitations.html",
-    note: "State of TN solicitations — search 'land clearing' or 'forestry'",
+    note: "State of TN solicitations — search 'land management' or 'forestry'",
   },
   {
     name: "TN Dept. of Transportation",
@@ -90,7 +90,7 @@ const STATE_PORTALS = [
   {
     name: "Alabama Procurement",
     url: "https://procurement.alabama.gov/",
-    note: "AL state solicitations — land clearing and site prep",
+    note: "AL state solicitations — land management and vegetation work",
   },
   {
     name: "USACE Nashville District",
@@ -155,7 +155,7 @@ const PRIMARY_NAICS = new Set(["115310", "238910", "561730"]);
 const SECONDARY_NAICS = new Set(["562910", "237990"]);
 const SDVOSB_KEYWORDS = ["sdvosb", "service-disabled", "veteran", "vosb"];
 const GOOD_TITLE_KEYWORDS = [
-  "forestry", "mulch", "land clearing", "brush", "vegetation", "clearing",
+  "forestry", "mulch", "land management", "brush", "vegetation", "clearing",
   "right-of-way", "row clearing", "trail", "mowing", "site prep", "site preparation",
 ];
 const BAD_TITLE_KEYWORDS = [
@@ -811,7 +811,7 @@ export default function GovContracts() {
                   <a href="https://www.tn.gov/generalservices/procurement/central-procurement-office--cpo-/supplier-information/request-for-proposals--rfp--opportunities1.html" target="_blank" rel="noopener noreferrer" className="text-amber-500 hover:underline">
                     RFP
                   </a>
-                  {" "}— filtered to land clearing, forestry, and vegetation keywords.
+                  {" "}— filtered to land management, forestry, and vegetation keywords.
                 </p>
               </div>
               <Button
