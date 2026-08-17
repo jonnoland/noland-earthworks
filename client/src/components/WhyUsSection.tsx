@@ -26,9 +26,9 @@ const features = [
   },
   {
     icon: <FileText size={28} />,
-    title: "Free, Detailed Quotes",
+    title: "Detailed Written Proposals",
     description:
-      "No surprises. We provide clear, itemized quotes so you know exactly what you're getting.",
+      "After a site visit when one is warranted, you receive a clear written proposal with the agreed scope, assumptions, timeline, and payment terms.",
   },
   {
     icon: <Star size={28} />,
@@ -157,7 +157,7 @@ export default function WhyUsSection() {
               color: "#F0EDE6",
             }}
           >
-            Why Choose Noland Earthworks for Land Management in Tennessee
+            Why Choose Noland Earthworks for Forestry Mulching & Land Management in Tennessee
           </h2>
         </div>
 

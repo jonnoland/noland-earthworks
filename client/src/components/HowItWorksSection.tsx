@@ -7,21 +7,21 @@ import { ArrowRight } from "lucide-react";
 const steps = [
   {
     number: "01",
-    title: "Request a Site Visit",
+    title: "Request & Fit Review",
     description:
-      "Complete a Site Visit Request or give us a call. We will review your property details — acreage, brush density, terrain, and access — and schedule a visit when the project is a fit.",
+      "Send your property details through a Site Visit Request. We review acreage, vegetation, terrain, access, location, and the work you want done. If the project is a fit, we respond the same day or next morning with the next step.",
   },
   {
     number: "02",
-    title: "We Show Up & Get to Work",
+    title: "Site Visit & Proposal",
     description:
-      "Our crew arrives on time with the right equipment for your job. Forestry mulchers grind brush, saplings, and overgrowth into mulch that stays on-site to decompose naturally — no burning, no hauling.",
+      "For qualified projects, we walk the property and confirm the scope, conditions, access, and exclusions. You receive a written proposal with the work to be done, assumptions, timeline, and payment terms—typically within 1–2 business days of the visit.",
   },
   {
     number: "03",
-    title: "Enjoy Your Reclaimed Land",
+    title: "Schedule, Work & Follow-Up",
     description:
-      "Most residential jobs are completed in a single day. You walk away with usable, cleared property and the peace of mind that comes from working with a veteran-owned crew that takes pride in every acre.",
+      "Once you approve the proposal, we schedule around weather, site conditions, and the current workload. We complete the agreed written scope, then follow up on the finished work and final invoice. Forestry mulching leaves processed material on site; grading, excavation, and hauling are not included.",
   },
 ];
 
@@ -63,9 +63,9 @@ export default function HowItWorksSection() {
             lineHeight: 1.1,
           }}
         >
-          From Overgrown to Usable
+          From First Request to Finished Work
           <br />
-          <span style={{ color: "#E07B2A" }}>in 3 Simple Steps.</span>
+          <span style={{ color: "#E07B2A" }}>in 3 Clear Stages.</span>
         </h2>
 
         {/* Steps */}
@@ -159,7 +159,7 @@ export default function HowItWorksSection() {
               color: "rgba(240,237,230,0.45)",
             }}
           >
-            Most projects scheduled within 1–2 weeks.
+            We confirm the next step after reviewing your property details.
           </span>
         </div>
       </div>

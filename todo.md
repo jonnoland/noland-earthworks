@@ -3260,3 +3260,12 @@
 - [x] Inventory all customer-facing Free Quote wording, labels, and calls to action
 - [x] Replace visible Free Quote terminology with Request a Site Visit language
 - [x] Validate the cleanup and increment the published app version
+
+## Public Process Workflow Correction — Aug 2026
+- [x] Replace inaccurate Process-section claims with the actual qualification, visit, proposal, scheduling, work, and follow-up sequence
+- [x] Remove fixed completion and scheduling promises from the public workflow
+- [x] Add regression coverage, validate the public section, and increment the published app version
+
+## Our Commitment Service Coverage — Aug 2026
+- [x] Add Forestry Mulching to the public Our Commitment statement
+- [x] Validate the commitment wording alongside the corrected Process workflow
