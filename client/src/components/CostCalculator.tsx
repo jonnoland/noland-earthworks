@@ -1238,7 +1238,7 @@ export default function CostCalculator() {
     },
     {
       key: "selective-clearing",
-      label: "Selective Clearing & Tree Preservation",
+      label: "Selective Mulching & Tree Preservation",
       calcCost: (_acres: number, p: PublicPricing) => {
         const rate = p?.selectiveClearingFlatRate ?? 200;
         return { low: Math.round(rate * 0.85), high: Math.round(rate * 1.15), unit: ` flat` };
@@ -1312,7 +1312,7 @@ export default function CostCalculator() {
     return state.acres;
   }, [isTrailService, isRowService, state.linearFeet, state.trailWidth, state.rowWidth, state.acres]);
 
-  // Filter add-ons: stump grinding service only shows selective clearing; others show all
+  // Filter add-ons: stump grinding service only shows selective mulching; others show all
   const visibleAddOns = isStumpService
     ? ADD_ON_OPTIONS.filter((a) => a.key === "selective-clearing")
     : ADD_ON_OPTIONS;

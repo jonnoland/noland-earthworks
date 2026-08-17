@@ -33,7 +33,7 @@ const data: ServicePageProps = {
   relatedServices: [
     { title: "Fence Line Clearing", slug: "add-ons/fence-line-clearing", description: "Clear overgrown fence lines and reclaim your property boundaries.", heroImage: FENCE_HERO },
     { title: "Mulch Redistribution", slug: "add-ons/mulch-redistribution", description: "Spread and level the mulch layer left after clearing for a cleaner finish.", heroImage: MULCH_HERO },
-    { title: "Selective Clearing", slug: "add-ons/selective-clearing", description: "Remove specific trees or brush while preserving what you want to keep.", heroImage: SELECTIVE_HERO },
+    { title: "Selective Mulching", slug: "add-ons/selective-mulching", description: "Target specific brush and small trees while preserving what you want to keep.", heroImage: SELECTIVE_HERO },
   ],
   faqs: [
     {

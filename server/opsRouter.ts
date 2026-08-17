@@ -1750,7 +1750,7 @@ const quotesRouter = router({
         addOnPricingContext.push(`Mulch redistribution: $${mulchRedistPerAcre} per acre (uniform mulch finish after clearing)`);
       }
       if (addOnsLower.some((a: string) => a.includes("selective"))) {
-        addOnPricingContext.push(`Selective clearing: $${selectiveFlatRate} flat rate (pre-job walkthrough + tree preservation marking)`);
+        addOnPricingContext.push(`Selective mulching: $${selectiveFlatRate} flat rate (pre-job walkthrough + tree preservation marking)`);
       }
 
       const seasonLabel = isPeakSeason ? "peak season (Oct–Mar) — dormant vegetation, firm ground" :
@@ -2092,7 +2092,7 @@ Pricing reference — Middle & West Tennessee market rates (2025–2026):
 - Debris hauling: $${debrisPerLoad}/load
 - Fence line clearing: $${fenceLineClearPerLf}/linear foot
 - Mulch redistribution: $${mulchRedistPerAcre}/acre
-- Selective clearing: $${selectiveFlatRate} flat rate
+- Selective mulching: $${selectiveFlatRate} flat rate
 - Minimum job total: $${MIN_JOB}
 - Season: ${seasonLabel}
 ${benchmarkContext}
@@ -4558,7 +4558,7 @@ function buildPortalEmail(
 const DEFAULT_ADD_ONS = [
   { label: "Fence Line Clearing", description: "Clear overgrown vegetation along fence lines, restoring visibility and access.", estimateCents: 85000, sortOrder: 0 },
   { label: "Mulch Redistribution", description: "Redistribute and level mulch left on site for a cleaner, more uniform finish.", estimateCents: 52500, sortOrder: 1 },
-  { label: "Selective Clearing & Tree Preservation", description: "Carefully remove unwanted brush while preserving desirable trees and vegetation.", estimateCents: 20000, sortOrder: 2 },
+  { label: "Selective Mulching & Tree Preservation", description: "Carefully mulch unwanted brush while preserving desirable trees and vegetation.", estimateCents: 20000, sortOrder: 2 },
 ];
 
 const portalAddOnsRouter = router({

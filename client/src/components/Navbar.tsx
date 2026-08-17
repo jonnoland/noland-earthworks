@@ -17,7 +17,7 @@ const serviceLinks = [
   { label: "Brush Hogging", href: "/services/property-maintenance" },
   { label: "Fence Line Clearing", href: "/services/add-ons/fence-line-clearing", isAddon: true },
   { label: "Mulch Redistribution", href: "/services/add-ons/mulch-redistribution", isAddon: true },
-  { label: "Selective Clearing", href: "/services/add-ons/selective-clearing", isAddon: true },
+  { label: "Selective Mulching", href: "/services/add-ons/selective-mulching", isAddon: true },
 ];
 
 export default function Navbar() {

@@ -884,7 +884,7 @@ export const aiPricingSettings = mysqlTable("ai_pricing_settings", {
   fenceLineClearingPerLf: int("fenceLineClearingPerLf").notNull().default(4),
   /** Mulch redistribution rate per acre (USD). Uniform mulch finish after forestry mulching. Middle & West TN market: $100–$250/acre. */
   mulchRedistributionPerAcre: int("mulchRedistributionPerAcre").notNull().default(175),
-  /** Selective clearing flat rate (USD). Pre-job walkthrough + marking trees for preservation. Middle & West TN market: $150–$300 flat. */
+  /** Selective mulching flat rate (USD). Pre-job walkthrough + marking trees for preservation. Middle & West TN market: $150–$300 flat. */
   selectiveClearingFlatRate: int("selectiveClearingFlatRate").notNull().default(200),
 
   // ── Volume discounts ────────────────────────────────────────────────────────

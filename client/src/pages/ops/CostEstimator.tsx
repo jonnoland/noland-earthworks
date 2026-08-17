@@ -185,12 +185,12 @@ function EstimateLoadingPanel({ service }: { service: string }) {
 // ─── Universal add-on options ─────────────────────────────────────────────────
 const UNIVERSAL_ADDONS = [
   { label: "Mulch Redistribution", hint: "$150–$900/hr" },
-  { label: "Selective Clearing & Tree Preservation", hint: "$150–$500 flat" },
+  { label: "Selective Mulching & Tree Preservation", hint: "$150–$500 flat" },
 ];
 
 const TRAIL_ADDONS = [
   { label: "Mulch Redistribution", hint: "redistribute cut material" },
-  { label: "Selective Clearing & Tree Preservation", hint: "preserve specific trees" },
+  { label: "Selective Mulching & Tree Preservation", hint: "preserve specific trees" },
 ];
 
 // ─── Draw Work Area Panel ─────────────────────────────────────────────────────
@@ -1329,7 +1329,7 @@ export default function CostEstimator() {
                   const terrainAdj = basePrice * (terrainMultiplier - 1);
                   const addOnCosts: Record<string, number> = {
                     "Mulch Redistribution": Math.round(baseAcres * 80),
-                    "Selective Clearing & Tree Preservation": Math.round(baseAcres * 150),
+                    "Selective Mulching & Tree Preservation": Math.round(baseAcres * 150),
                   };
                   const selectedAddOnTotal = trailAddOns.reduce((s, a) => s + (addOnCosts[a] || 0), 0);
                   const totalWithAddOns = basePrice + terrainAdj + selectedAddOnTotal;

@@ -18,7 +18,7 @@ const scopeFactors = [
   },
   {
     title: "Your intended result",
-    detail: "A pasture reclaim, trail, fence line, driveway corridor, selective clearing project, and right-of-way each require a different scope.",
+    detail: "A pasture reclaim, trail, fence line, driveway corridor, selective mulching project, and right-of-way each require a different scope.",
     icon: ClipboardCheck,
   },
 ];
@@ -83,7 +83,7 @@ export default function PricingPage() {
             </div>
             <aside className="border border-[#E07B2A]/30 bg-[#E07B2A]/10 p-7">
               <h2 className="font-['Oswald'] text-2xl font-bold uppercase">Services we can discuss on site</h2>
-              <p className="mt-4 font-['Lato'] leading-7 text-white/75">Forestry mulching, land management, vegetation management, right-of-way clearing, trail cutting, fence-line clearing, selective clearing, and brush hogging when it fits the work.</p>
+              <p className="mt-4 font-['Lato'] leading-7 text-white/75">Forestry mulching, land management, vegetation management, right-of-way clearing, trail cutting, fence-line clearing, selective mulching, and brush hogging when it fits the work.</p>
               <p className="mt-4 font-['Lato'] text-sm leading-6 text-white/60">The written proposal confirms the vegetation work included. Grading, excavation, hauling, stump/root extraction, road construction, and final building-pad preparation are outside the standard scope.</p>
               <a href="/quote" className="mt-6 inline-flex min-h-11 items-center justify-center bg-[#E07B2A] px-5 font-['Oswald'] text-xs font-semibold uppercase tracking-[0.12em] text-white transition hover:bg-[#f28c35]">Request a Site Visit</a>
             </aside>

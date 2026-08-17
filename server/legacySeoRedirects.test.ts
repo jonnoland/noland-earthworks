@@ -13,7 +13,10 @@ describe("legacy SEO redirect map", () => {
       "/services/add-ons/mulch-redistribution"
     );
     expect(getLegacySeoRedirect("/services/selective-clearing")).toBe(
-      "/services/add-ons/selective-clearing"
+      "/services/add-ons/selective-mulching"
+    );
+    expect(getLegacySeoRedirect("/services/add-ons/selective-clearing")).toBe(
+      "/services/add-ons/selective-mulching"
     );
   });
 

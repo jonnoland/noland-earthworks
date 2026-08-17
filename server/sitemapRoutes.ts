@@ -15,7 +15,7 @@ export const STATIC_SITEMAP_PAGES = [
   // Add-On service pages
   { path: "/services/add-ons/fence-line-clearing",                       priority: "0.7", changefreq: "monthly" },
   { path: "/services/add-ons/mulch-redistribution",                      priority: "0.7", changefreq: "monthly" },
-  { path: "/services/add-ons/selective-clearing",                        priority: "0.7", changefreq: "monthly" },
+  { path: "/services/add-ons/selective-mulching",                        priority: "0.7", changefreq: "monthly" },
   // Key pages
   { path: "/quote",                                                     priority: "0.9", changefreq: "monthly" },
   { path: "/pricing",                                                   priority: "0.8", changefreq: "monthly" },

@@ -3221,6 +3221,11 @@
 - [x] Retain the primary Request a Site Visit button and validate the homepage action area
 - [x] Increment the public app version for the homepage call-to-action cleanup
 
+## Selective Mulching Terminology Refinement — Aug 2026
+- [ ] Replace customer-facing Selective Clearing references with Selective Mulching
+- [ ] Review remaining customer-facing clearing references and retain only accurate scope or search-continuity uses
+- [ ] Validate terminology and increment the published app version
+
 ## Quote Performance & County Differentiation — Aug 2026
 - [x] Measure the current quote-page mobile performance and critical loading path
 - [x] Implement a low-risk quote-page performance improvement that preserves the form flow
@@ -3239,3 +3244,8 @@
 - [ ] Preserve scheduling, spend tracking, and approval before any live publication
 - [ ] Complete Google Ads API Center setup from the user’s local browser because the connected browser injects an ad blocker
 - [x] Retain the current manual Google Ads copy-and-paste workflow and defer API publishing by user decision
+
+## Selective Mulching Terminology Refinement — Aug 2026
+- [x] Replace customer-facing Selective Clearing references with Selective Mulching
+- [x] Retain only legacy redirects and invisible internal compatibility keys for the retired term
+- [x] Validate canonical routing and app terminology, then increment the published version

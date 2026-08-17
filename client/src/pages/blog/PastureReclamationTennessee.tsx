@@ -41,7 +41,7 @@ export default function PastureReclamationTennessee() {
         <li><strong>Minimal Soil Disturbance:</strong> Unlike bulldozers, mulchers don't scrape away valuable topsoil. This preserves the soil structure, reduces erosion, and protects the delicate ecosystem of your pasture.</li>
         <li><strong>Nutrient Return:</strong> The mulch layer decomposes over time, returning vital nutrients to the soil. This acts as a natural fertilizer, promoting healthier grass growth once the pasture is reseeded.</li>
         <li><strong>No Debris Piles:</strong> Everything is processed on-site, eliminating the need for hauling, burning, or burying debris. This saves you time, money, and avoids potential air quality issues.</li>
-        <li><strong>Selective Clearing:</strong> Our operators can selectively remove unwanted vegetation while leaving desirable trees or natural features intact, allowing for precise land management.</li>
+        <li><strong>Selective Mulching:</strong> Our operators can target unwanted brush and small trees while leaving desirable trees or natural features intact, allowing for precise land management.</li>
         <li><strong>Erosion Control:</strong> The mulch layer helps to stabilize the soil, preventing erosion, especially on sloped terrain, and retaining moisture, which is beneficial for new grass growth.</li>
       </ul>
 

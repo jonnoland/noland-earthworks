@@ -685,7 +685,7 @@ const SERVICE_DESCRIPTIONS: Record<string, string> = {
   "Storm Cleanup":          "storm debris cleanup and fallen tree removal per acre in Middle and West Tennessee",
   "Fence Line Clearing":    "fence line brush clearing per linear foot in Middle and West Tennessee",
   "Mulch Redistribution":   "forestry mulch redistribution and spreading per acre in Middle and West Tennessee",
-  "Selective Clearing":     "selective tree and brush clearing (keeping desirable trees) per acre in Middle and West Tennessee",
+  "Selective Mulching":     "selective forestry mulching around desirable trees per acre in Middle and West Tennessee",
 };
 
 const SERVICE_UNITS: Record<string, "acre" | "linear_foot" | "hour" | "load" | "stump" | "flat"> = {
@@ -697,7 +697,7 @@ const SERVICE_UNITS: Record<string, "acre" | "linear_foot" | "hour" | "load" | "
   "Storm Cleanup": "acre",
   "Fence Line Clearing": "linear_foot",
   "Mulch Redistribution": "acre",
-  "Selective Clearing": "acre",
+  "Selective Mulching": "acre",
 };
 
 function stripCodeFence(content: string): string {

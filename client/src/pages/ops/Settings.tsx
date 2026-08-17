@@ -2753,7 +2753,7 @@ function AIPricingTab() {
                   { label: "Debris Hauling",          key: "debrisHaulingPerLoad",       unit: "per load",         note: "Market: $350\u2013$550/load" },
                   { label: "Fence Line Clearing",     key: "fenceLineClearingPerLf",    unit: "per linear foot",  note: "Market: $3\u2013$6/LF" },
                   { label: "Mulch Redistribution",    key: "mulchRedistributionPerAcre", unit: "per acre",        note: "Market: $100\u2013$250/acre" },
-                  { label: "Selective Clearing",      key: "selectiveClearingFlatRate", unit: "flat rate",        note: "Market: $150\u2013$300 flat" },
+                  { label: "Selective Mulching",      key: "selectiveClearingFlatRate", unit: "flat rate",        note: "Market: $150\u2013$300 flat" },
                 ] as const).map(({ label, key, unit, note }) => (
                   <div key={key}>
                     <label className="block text-xs font-medium text-foreground mb-0.5">{label}</label>

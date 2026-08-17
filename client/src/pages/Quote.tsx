@@ -16,7 +16,7 @@ const services = [
   "Right-of-Way Clearing",
   "Trail Cutting",
   "Fence Line Clearing",
-  "Selective Clearing",
+  "Selective Mulching",
   "Brush Hogging",
   "Not sure — I need a site visit",
 ];

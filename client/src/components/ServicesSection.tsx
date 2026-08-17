@@ -476,7 +476,7 @@ export default function ServicesSection() {
             {[
               { title: "Fence Line Clearing", desc: "Reclaim overgrown boundaries — priced per linear foot, same mobilization.", href: "/services/fence-line-clearing" },
               { title: "Mulch Redistribution", desc: "Uniform mulch finish after forestry mulching — drainage channels, buffers, bare spots.", href: "/services/mulch-redistribution" },
-              { title: "Selective Clearing", desc: "Pre-job walkthrough to flag trees for preservation and mark clearing boundaries.", href: "/services/selective-clearing" },
+              { title: "Selective Mulching", desc: "Pre-job walkthrough to identify trees and vegetation to keep, then target brush and small trees for mulching.", href: "/services/add-ons/selective-mulching" },
             ].map((addon) => (
               <a
                 key={addon.title}

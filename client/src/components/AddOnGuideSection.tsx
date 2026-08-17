@@ -35,11 +35,11 @@ const addOns = [
   },
   {
     icon: TreePine,
-    title: "Selective Clearing",
+    title: "Selective Mulching",
     subtitle: "Tree Preservation Consultation",
     when: "Before any job where specific trees or boundaries need protection",
     benefit:
-      "Walk the property before work starts, flag the keepers, mark the clearing boundary. Protects valuable hardwoods, prevents scope disputes, and ensures the finished property matches your vision. Consultation fee credited toward the job.",
+      "Walk the property before work starts, flag the keepers, and mark the mulching boundary. Protects valuable hardwoods, prevents scope disputes, and ensures the finished property matches your vision. Consultation fee credited toward the job.",
     cta: "Add to your quote",
     href: "/quote?service=land-management",
     accentColor: "#2E5E4E",

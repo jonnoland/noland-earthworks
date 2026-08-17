@@ -7,7 +7,7 @@ const ADDITIONAL_PUBLIC_PATHS = new Set([
   "/ops/register",
   "/services/trail-cutting",
   "/services/mulch-redistribution",
-  "/services/selective-clearing",
+  "/services/add-ons/selective-mulching",
   "/services/add-ons/post-clear-seeding",
 ]);
 

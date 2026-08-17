@@ -75,7 +75,7 @@ const PropertyMaintenancePage = lazy(() => import("./pages/PropertyMaintenance")
 const RightOfWayClearingPage = lazy(() => import("./pages/RightOfWayClearing"));
 const FenceLineClearingPage = lazy(() => import("./pages/FenceLineClearing"));
 const MulchRedistributionPage = lazy(() => import("./pages/MulchRedistribution"));
-const SelectiveClearingPage = lazy(() => import("./pages/SelectiveClearing"));
+const SelectiveMulchingPage = lazy(() => import("./pages/SelectiveMulching"));
 const TrailCuttingPage = lazy(() => import("./pages/TrailCutting"));
 const SitePreparationPage = lazy(() => import("./pages/SitePreparation"));
 const importQuotePage = () => import("./pages/Quote");
@@ -329,11 +329,11 @@ function Router() {
       <Route path="/services/site-preparation" component={SitePreparationPage} />
       {/* Add-On service pages */}
       <Route path="/services/mulch-redistribution" component={() => { window.location.replace("/services/add-ons/mulch-redistribution"); return null; }} />
-      <Route path="/services/selective-clearing" component={() => { window.location.replace("/services/add-ons/selective-clearing"); return null; }} />
+      <Route path="/services/selective-clearing" component={() => { window.location.replace("/services/add-ons/selective-mulching"); return null; }} />
       <Route path="/services/add-ons/post-clear-seeding" component={() => { window.location.replace("/services/forestry-mulching"); return null; }} />
       <Route path="/services/add-ons/fence-line-clearing" component={FenceLineClearingPage} />
       <Route path="/services/add-ons/mulch-redistribution" component={MulchRedistributionPage} />
-      <Route path="/services/add-ons/selective-clearing" component={SelectiveClearingPage} />
+      <Route path="/services/add-ons/selective-mulching" component={SelectiveMulchingPage} />
 
       {/* County landing pages */}
       <Route path="/service-areas/davidson-county" component={DavidsonCountyPage} />
