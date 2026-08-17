@@ -3285,3 +3285,8 @@
 - [x] Update applicable companion app workflows and customer-facing field labels
 - [x] Validate the companion source and native Android integration
 - [x] Build, sign, publish, and verify the aligned companion APK update
+
+## Google Search Console Canonical Notification Investigation — Aug 2026
+- [x] Identify the URLs and patterns reported as duplicate without a user-selected canonical
+- [x] Audit live canonical tags, redirects, sitemap references, and competing URL variants
+- [x] Apply only evidence-backed canonical or routing corrections and validate the result

@@ -19,6 +19,7 @@ import { registerStripeWebhookRoutes } from "../stripeWebhookRoutes";
 import { registerScheduledAdsPublisherRoute } from "../scheduledAdsPublisher";
 import { registerStorageProxy } from "./storageProxy";
 import { registerLegacySeoRedirects } from "../legacySeoRedirects";
+import { getTrailingSlashCanonicalRedirect } from "../canonicalRouting";
 import { sendOwnerAlertSms } from "../sms";
 import { startGoogleTokenRefreshScheduler } from "../googleRoutes";
 import cron from "node-cron";
@@ -150,6 +151,20 @@ async function startServer() {
   // Permanent redirects for legacy or duplicate paths reported by Search Console.
   // Keep these ahead of crawler rendering and the SPA fallback so bots receive a real 301.
   registerLegacySeoRedirects(app);
+
+  // Public pages have one no-trailing-slash canonical form. Without this redirect,
+  // the prerendered SPA can emit a second self-canonical URL for the slash variant.
+  app.use((req, res, next) => {
+    const canonicalPath = getTrailingSlashCanonicalRedirect(req.path, req.method);
+    if (!canonicalPath) {
+      next();
+      return;
+    }
+
+    const queryStart = req.originalUrl.indexOf("?");
+    const query = queryStart >= 0 ? req.originalUrl.slice(queryStart) : "";
+    res.redirect(301, `${canonicalPath}${query}`);
+  });
 
   // Public shared Fix Report endpoint — no auth required
   app.get("/api/field-fix/shared/:token", async (req, res) => {
