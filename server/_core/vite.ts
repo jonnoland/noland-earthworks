@@ -7,6 +7,8 @@ import { createServer as createViteServer } from "vite";
 import viteConfig from "../../vite.config";
 import { isKnownSpaRoute, spaNotFoundHtml } from "../publicRoutePolicy";
 
+const SPA_HTML_CACHE_CONTROL = "no-cache, no-store, must-revalidate";
+
 export async function setupVite(app: Express, server: Server) {
   const serverOptions = {
     middlewareMode: true,
@@ -54,7 +56,10 @@ export async function setupVite(app: Express, server: Server) {
         `src="/src/main.tsx?v=${nanoid()}"`
       );
       const page = await vite.transformIndexHtml(url, template);
-      res.status(200).set({ "Content-Type": "text/html" }).end(page);
+      res.status(200).set({
+        "Content-Type": "text/html",
+        "Cache-Control": SPA_HTML_CACHE_CONTROL,
+      }).end(page);
     } catch (e) {
       vite.ssrFixStacktrace(e as Error);
       next(e);
@@ -73,7 +78,23 @@ export function serveStatic(app: Express) {
     );
   }
 
-  app.use(express.static(distPath));
+  // HTML route responses must not remain stale at an edge cache after a publish.
+  // Hashed assets still receive the static middleware's normal asset caching.
+  app.use((req, res, next) => {
+    const isAssetRequest = path.extname(req.path).length > 0;
+    if (req.method === "GET" && !isAssetRequest && !req.path.startsWith("/api/") && isKnownSpaRoute(req.path)) {
+      res.setHeader("Cache-Control", SPA_HTML_CACHE_CONTROL);
+    }
+    next();
+  });
+
+  app.use(express.static(distPath, {
+    setHeaders(res, filePath) {
+      if (path.basename(filePath) === "index.html") {
+        res.setHeader("Cache-Control", SPA_HTML_CACHE_CONTROL);
+      }
+    },
+  }));
 
   // fall through to index.html if the file doesn't exist
   app.use("*", (req, res) => {
@@ -81,6 +102,7 @@ export function serveStatic(app: Express) {
       res.status(404).set({ "Content-Type": "text/html; charset=utf-8" }).end(spaNotFoundHtml);
       return;
     }
+    res.setHeader("Cache-Control", SPA_HTML_CACHE_CONTROL);
     res.sendFile(path.resolve(distPath, "index.html"));
   });
 }

@@ -3302,3 +3302,4 @@
 - [x] Crawl public internal links and identify broken or redirect-related destinations
 - [x] Verify every public sitemap page emits the expected self-referencing no-slash canonical tag
 - [x] Correct verified sitemap, link, or canonical defects and validate production behavior
+- [x] Prevent stale production SPA HTML from retaining a prior frontend bundle after publication
