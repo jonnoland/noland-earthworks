@@ -4,6 +4,10 @@ let audioContext: AudioContext | null = null;
 
 export type IdentifiableRequest = { id: number | string };
 
+export function formatNewRequestAlert(count: number, label: string): string {
+  return `${count} new ${label}${count === 1 ? "" : "s"} received.`;
+}
+
 export function getNewRequestIds<T extends IdentifiableRequest>(
   knownIds: ReadonlySet<string>,
   currentItems: readonly T[]

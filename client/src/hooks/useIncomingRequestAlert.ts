@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import { toast } from "sonner";
 import {
+  formatNewRequestAlert,
   getNewRequestIds,
   playOpsNewRequestSound,
   type IdentifiableRequest,
@@ -10,6 +11,7 @@ type IncomingRequestAlertOptions<T extends IdentifiableRequest> = {
   items: readonly T[];
   enabled: boolean;
   label: string;
+  onNewRequests?: (count: number, label: string) => void;
 };
 
 /**
@@ -20,6 +22,7 @@ export function useIncomingRequestAlert<T extends IdentifiableRequest>({
   items,
   enabled,
   label,
+  onNewRequests,
 }: IncomingRequestAlertOptions<T>): void {
   const knownIds = useRef<Set<string> | null>(null);
 
@@ -32,12 +35,13 @@ export function useIncomingRequestAlert<T extends IdentifiableRequest>({
 
     const newIds = getNewRequestIds(knownIds.current, items);
     knownIds.current = currentIds;
-    if (!enabled || newIds.length === 0) return;
+    if (newIds.length === 0) return;
 
-    void playOpsNewRequestSound();
     const count = newIds.length;
-    toast.success(`${count} new ${label}${count === 1 ? "" : "s"} received.`, {
+    onNewRequests?.(count, label);
+    if (enabled) void playOpsNewRequestSound();
+    toast.success(formatNewRequestAlert(count, label), {
       description: "Operations Quotes has been refreshed.",
     });
-  }, [enabled, items, label]);
+  }, [enabled, items, label, onNewRequests]);
 }

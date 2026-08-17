@@ -472,7 +472,13 @@ function FieldQuoteDetailDialog({
 
 // ─── Main section ─────────────────────────────────────────────────────────────
 
-export default function FieldQuotesSection({ soundAlertsEnabled }: { soundAlertsEnabled: boolean }) {
+export default function FieldQuotesSection({
+  soundAlertsEnabled,
+  onNewRequests,
+}: {
+  soundAlertsEnabled: boolean;
+  onNewRequests: (count: number, label: string) => void;
+}) {
   const [search, setSearch] = useState("");
   const [scoreFilter, setScoreFilter] = useState<"all" | "strong" | "marginal" | "weak">("all");
   const [sortKey, setSortKey] = useState<SortKey>("date_desc");
@@ -491,6 +497,7 @@ export default function FieldQuotesSection({ soundAlertsEnabled }: { soundAlerts
     items: quotes as FieldQuote[],
     enabled: soundAlertsEnabled,
     label: "field request",
+    onNewRequests,
   });
 
   const deleteMutation = trpc.fieldQuote.delete.useMutation({

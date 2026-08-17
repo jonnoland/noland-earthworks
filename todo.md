@@ -3308,3 +3308,9 @@
 - [x] Identify the lead and website-quote refresh paths on Operations Quotes
 - [x] Add a user-controlled sound alert for genuinely new incoming requests
 - [x] Add regression coverage and validate the alert behavior
+- [x] Test the Sound control in an authenticated Operations Quotes browser session
+
+## Operations Quotes Visual New-Request Alert — Aug 2026
+- [x] Add a visible, dismissible new-request banner tied to the automatic alert detection
+- [ ] Submit and observe a clearly labeled temporary live intake event with Sound On
+- [ ] Remove the temporary event, add regression coverage, and validate the final behavior

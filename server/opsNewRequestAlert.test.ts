@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { getNewRequestIds } from "../client/src/lib/opsNewRequestAlert";
+import { formatNewRequestAlert, getNewRequestIds } from "../client/src/lib/opsNewRequestAlert";
 
 describe("Operations Quotes new-request alert detection", () => {
   it("returns only records that were absent from the previous refresh", () => {
@@ -13,5 +13,10 @@ describe("Operations Quotes new-request alert detection", () => {
     const knownIds = new Set(["14", "15"]);
 
     expect(getNewRequestIds(knownIds, [{ id: 15 }, { id: 14 }])).toEqual([]);
+  });
+
+  it("formats the shared visual and toast alert wording for one or many requests", () => {
+    expect(formatNewRequestAlert(1, "website request")).toBe("1 new website request received.");
+    expect(formatNewRequestAlert(2, "field request")).toBe("2 new field requests received.");
   });
 });
