@@ -474,9 +474,11 @@ function FieldQuoteDetailDialog({
 
 export default function FieldQuotesSection({
   soundAlertsEnabled,
+  browserNotificationsEnabled,
   onNewRequests,
 }: {
   soundAlertsEnabled: boolean;
+  browserNotificationsEnabled: boolean;
   onNewRequests: (count: number, label: string) => void;
 }) {
   const [search, setSearch] = useState("");
@@ -498,6 +500,7 @@ export default function FieldQuotesSection({
     items: quotes as FieldQuote[],
     isReady: data !== undefined,
     enabled: soundAlertsEnabled,
+    browserNotificationsEnabled,
     label: "field request",
     onNewRequests,
   });

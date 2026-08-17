@@ -4,6 +4,7 @@ import {
   formatNewRequestAlert,
   getNewRequestIds,
   playOpsNewRequestSound,
+  showOpsNewRequestBrowserNotification,
   type IdentifiableRequest,
 } from "@/lib/opsNewRequestAlert";
 
@@ -11,6 +12,7 @@ type IncomingRequestAlertOptions<T extends IdentifiableRequest> = {
   items: readonly T[];
   isReady: boolean;
   enabled: boolean;
+  browserNotificationsEnabled: boolean;
   label: string;
   onNewRequests?: (count: number, label: string) => void;
 };
@@ -23,6 +25,7 @@ export function useIncomingRequestAlert<T extends IdentifiableRequest>({
   items,
   isReady,
   enabled,
+  browserNotificationsEnabled,
   label,
   onNewRequests,
 }: IncomingRequestAlertOptions<T>): void {
@@ -45,8 +48,9 @@ export function useIncomingRequestAlert<T extends IdentifiableRequest>({
     const count = newIds.length;
     onNewRequests?.(count, label);
     if (enabled) void playOpsNewRequestSound();
+    if (browserNotificationsEnabled) showOpsNewRequestBrowserNotification(count, label);
     toast.success(formatNewRequestAlert(count, label), {
       description: "Operations Quotes has been refreshed.",
     });
-  }, [enabled, isReady, items, label, onNewRequests]);
+  }, [browserNotificationsEnabled, enabled, isReady, items, label, onNewRequests]);
 }

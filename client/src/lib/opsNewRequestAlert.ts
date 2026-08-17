@@ -1,4 +1,5 @@
 const SOUND_ALERT_PREFERENCE_KEY = "noland_ops_new_request_sound_enabled";
+const BROWSER_NOTIFICATION_PREFERENCE_KEY = "noland_ops_new_request_browser_notifications_enabled";
 
 let audioContext: AudioContext | null = null;
 
@@ -25,6 +26,59 @@ export function getStoredOpsSoundAlertPreference(): boolean {
 export function setStoredOpsSoundAlertPreference(enabled: boolean): void {
   if (typeof window === "undefined") return;
   window.localStorage.setItem(SOUND_ALERT_PREFERENCE_KEY, String(enabled));
+}
+
+export type OpsBrowserNotificationPermission = NotificationPermission | "unsupported";
+
+export function getOpsBrowserNotificationPermission(): OpsBrowserNotificationPermission {
+  if (typeof window === "undefined" || !("Notification" in window)) return "unsupported";
+  return window.Notification.permission;
+}
+
+export function getStoredOpsBrowserNotificationPreference(): boolean {
+  if (typeof window === "undefined") return false;
+  return window.localStorage.getItem(BROWSER_NOTIFICATION_PREFERENCE_KEY) === "true";
+}
+
+export function setStoredOpsBrowserNotificationPreference(enabled: boolean): void {
+  if (typeof window === "undefined") return;
+  window.localStorage.setItem(BROWSER_NOTIFICATION_PREFERENCE_KEY, String(enabled));
+}
+
+export async function requestOpsBrowserNotificationPermission(): Promise<OpsBrowserNotificationPermission> {
+  const permission = getOpsBrowserNotificationPermission();
+  if (permission === "unsupported" || permission === "denied" || permission === "granted") return permission;
+  return window.Notification.requestPermission();
+}
+
+export function shouldShowOpsBrowserNotification(
+  enabled: boolean,
+  permission: OpsBrowserNotificationPermission,
+  isDocumentHidden: boolean
+): boolean {
+  return enabled && permission === "granted" && isDocumentHidden;
+}
+
+/** Uses the Notification API while Operations Quotes remains open in a background tab. */
+export function showOpsNewRequestBrowserNotification(count: number, label: string): boolean {
+  const permission = getOpsBrowserNotificationPermission();
+  const isDocumentHidden = typeof document !== "undefined" && document.hidden;
+  const enabled = getStoredOpsBrowserNotificationPreference();
+  if (!shouldShowOpsBrowserNotification(enabled, permission, isDocumentHidden)) return false;
+
+  try {
+    const notification = new window.Notification("New Operations request", {
+      body: formatNewRequestAlert(count, label),
+      tag: "noland-ops-new-request",
+    });
+    notification.onclick = () => {
+      window.focus();
+      notification.close();
+    };
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 /**

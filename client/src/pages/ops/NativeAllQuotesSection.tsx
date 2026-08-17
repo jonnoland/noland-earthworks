@@ -28,15 +28,19 @@ import {
   FileText, ExternalLink, Sparkles, Info, AlertTriangle,
   RefreshCw, ChevronRight, MapPin, Phone, Mail, User, Users, X, Globe,
   Loader2, Clock, ChevronDown, ChevronUp, ArchiveRestore, Pencil,
-  ArrowRight, Ban, ArrowUpDown, Volume2, VolumeX, BellRing
+  ArrowRight, Ban, ArrowUpDown, Volume2, VolumeX, BellRing, Bell, BellOff
 } from "lucide-react";
 import { MapView } from "@/components/Map";
 import FieldQuotesSection from "@/pages/ops/FieldQuotesSection";
 import { parseStoredRangeRiskFactors, parseStoredServiceBreakdown } from "@shared/quoteServiceItemization";
 import { compareQuotesByConfidence, sortWebsiteRequests, WEBSITE_REQUESTS_REFRESH_INTERVAL_MS } from "@shared/quoteRequestSorting";
 import {
+  getOpsBrowserNotificationPermission,
+  getStoredOpsBrowserNotificationPreference,
   getStoredOpsSoundAlertPreference,
   playOpsNewRequestSound,
+  requestOpsBrowserNotificationPermission,
+  setStoredOpsBrowserNotificationPreference,
   setStoredOpsSoundAlertPreference,
 } from "@/lib/opsNewRequestAlert";
 import { useIncomingRequestAlert } from "@/hooks/useIncomingRequestAlert";
@@ -1712,6 +1716,7 @@ function WebReqInteractiveMap({
 function InlineWebRequestsPanel({
   onBuildQuote,
   soundAlertsEnabled,
+  browserNotificationsEnabled,
   onNewRequests,
 }: {
   onBuildQuote: (prefill: {
@@ -1723,6 +1728,7 @@ function InlineWebRequestsPanel({
     clientMessage?: string;
   }) => void;
   soundAlertsEnabled: boolean;
+  browserNotificationsEnabled: boolean;
   onNewRequests: (count: number, label: string) => void;
 }) {
   const { data, isLoading, refetch, isFetching } = trpc.ops.quotes.list.useQuery(
@@ -1770,6 +1776,7 @@ function InlineWebRequestsPanel({
     items: list,
     isReady: data !== undefined,
     enabled: soundAlertsEnabled,
+    browserNotificationsEnabled,
     label: "website request",
     onNewRequests,
   });
@@ -2112,6 +2119,10 @@ export function NativeAllQuotesSection() {
   const [editQuote, setEditQuote] = useState<NativeQuote | null>(null);
   const [selectedQuote, setSelectedQuote] = useState<NativeQuote | null>(null);
   const [soundAlertsEnabled, setSoundAlertsEnabled] = useState(() => getStoredOpsSoundAlertPreference());
+  const [browserNotificationPermission, setBrowserNotificationPermission] = useState(() => getOpsBrowserNotificationPermission());
+  const [browserNotificationsEnabled, setBrowserNotificationsEnabled] = useState(
+    () => getStoredOpsBrowserNotificationPreference() && getOpsBrowserNotificationPermission() === "granted"
+  );
   const [newRequestBanner, setNewRequestBanner] = useState<{ count: number; label: string } | null>(null);
 
   const handleNewRequests = useCallback((count: number, label: string) => {
@@ -2130,6 +2141,33 @@ export function NativeAllQuotesSection() {
     } else {
       toast.message("New-request sound alerts muted.");
     }
+  };
+
+  const toggleBrowserNotifications = async () => {
+    if (browserNotificationsEnabled) {
+      setBrowserNotificationsEnabled(false);
+      setStoredOpsBrowserNotificationPreference(false);
+      toast.message("Browser notifications turned off for this browser.");
+      return;
+    }
+
+    const permission = await requestOpsBrowserNotificationPermission();
+    setBrowserNotificationPermission(permission);
+    if (permission === "granted") {
+      setBrowserNotificationsEnabled(true);
+      setStoredOpsBrowserNotificationPreference(true);
+      toast.success("Browser notifications enabled.", {
+        description: "You will receive an alert while Operations Quotes is open in a background tab.",
+      });
+      return;
+    }
+    if (permission === "denied") {
+      toast.error("Browser notifications are blocked.", {
+        description: "Allow notifications for nolandearthworks.com in your browser settings, then try again.",
+      });
+      return;
+    }
+    toast.error("Browser notifications are not supported by this browser.");
   };
   // ── Stale quotes follow-up ──────────────────────────────────────────────────
   const [showStalePanel, setShowStalePanel] = useState(false);
@@ -2383,6 +2421,17 @@ export function NativeAllQuotesSection() {
               >
                 {soundAlertsEnabled ? <Volume2 className="w-3.5 h-3.5" /> : <VolumeX className="w-3.5 h-3.5" />}
                 Sound {soundAlertsEnabled ? "On" : "Muted"}
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className={`h-8 gap-1.5 text-xs ${browserNotificationsEnabled ? "border-sky-500/50 text-sky-300 hover:text-sky-200" : "text-muted-foreground"}`}
+                onClick={() => void toggleBrowserNotifications()}
+                aria-pressed={browserNotificationsEnabled}
+                title={browserNotificationsEnabled ? "Turn off background-tab browser notifications" : browserNotificationPermission === "denied" ? "Browser notifications are blocked; update browser site settings" : "Enable browser notifications while this tab is in the background"}
+              >
+                {browserNotificationsEnabled ? <Bell className="w-3.5 h-3.5" /> : <BellOff className="w-3.5 h-3.5" />}
+                Notify {browserNotificationsEnabled ? "On" : browserNotificationPermission === "denied" ? "Blocked" : "Off"}
               </Button>
               <div className="relative flex-1 sm:w-56">
                 <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
@@ -2789,6 +2838,7 @@ export function NativeAllQuotesSection() {
           <div className="xl:sticky xl:top-4">
             <InlineWebRequestsPanel
               soundAlertsEnabled={soundAlertsEnabled}
+              browserNotificationsEnabled={browserNotificationsEnabled}
               onNewRequests={handleNewRequests}
               onBuildQuote={(prefill) => {
                 setCreatePrefill(prefill);
@@ -2801,7 +2851,11 @@ export function NativeAllQuotesSection() {
 
       {/* ── Field Quotes (companion app submissions) ── */}
       <div className="mt-8 border-t border-zinc-800 pt-8">
-        <FieldQuotesSection soundAlertsEnabled={soundAlertsEnabled} onNewRequests={handleNewRequests} />
+        <FieldQuotesSection
+          soundAlertsEnabled={soundAlertsEnabled}
+          browserNotificationsEnabled={browserNotificationsEnabled}
+          onNewRequests={handleNewRequests}
+        />
       </div>
 
       {/* Detail panel */}

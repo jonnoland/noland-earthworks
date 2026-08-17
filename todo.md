@@ -3312,5 +3312,10 @@
 
 ## Operations Quotes Visual New-Request Alert — Aug 2026
 - [x] Add a visible, dismissible new-request banner tied to the automatic alert detection
-- [ ] Submit and observe a clearly labeled temporary live intake event with Sound On
-- [ ] Remove the temporary event, add regression coverage, and validate the final behavior
+- [x] Submit and observe a clearly labeled temporary live intake event with Sound On
+- [x] Remove the temporary event, add regression coverage, and validate the final behavior
+
+## Operations Quotes Browser Notifications — Aug 2026
+- [x] Choose background-tab notification scope and permission behavior
+- [x] Add browser-notification permission control and automatic delivery for new requests
+- [ ] Validate browser notification behavior and graceful blocked-permission fallback

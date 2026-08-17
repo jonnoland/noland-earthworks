@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { formatNewRequestAlert, getNewRequestIds } from "../client/src/lib/opsNewRequestAlert";
+import {
+  formatNewRequestAlert,
+  getNewRequestIds,
+  shouldShowOpsBrowserNotification,
+} from "../client/src/lib/opsNewRequestAlert";
 
 describe("Operations Quotes new-request alert detection", () => {
   it("returns only records that were absent from the previous refresh", () => {
@@ -26,5 +30,13 @@ describe("Operations Quotes new-request alert detection", () => {
 
     expect(getNewRequestIds(baseline, firstResponse)).toEqual([]);
     expect(getNewRequestIds(baseline, [...firstResponse, { id: 23 }])).toEqual(["23"]);
+  });
+
+  it("shows browser notifications only for an enabled, permitted, background-tab session", () => {
+    expect(shouldShowOpsBrowserNotification(true, "granted", true)).toBe(true);
+    expect(shouldShowOpsBrowserNotification(true, "granted", false)).toBe(false);
+    expect(shouldShowOpsBrowserNotification(false, "granted", true)).toBe(false);
+    expect(shouldShowOpsBrowserNotification(true, "denied", true)).toBe(false);
+    expect(shouldShowOpsBrowserNotification(true, "unsupported", true)).toBe(false);
   });
 });
