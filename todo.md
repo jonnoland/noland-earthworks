@@ -3290,3 +3290,9 @@
 - [x] Identify the URLs and patterns reported as duplicate without a user-selected canonical
 - [x] Audit live canonical tags, redirects, sitemap references, and competing URL variants
 - [x] Apply only evidence-backed canonical or routing corrections and validate the result
+
+## Full-Site Trailing-Slash Canonical Audit — Aug 2026
+- [x] Test every public sitemap URL with its trailing-slash variant in production
+- [x] Review any non-redirecting or incorrect redirect responses for public page URLs
+- [x] Harden global canonical routing only where gaps remain, then add regression coverage
+- [x] Validate complete production redirect coverage and document the result
