@@ -4,16 +4,29 @@ import MobileCTABar from "@/components/MobileCTABar";
 import ServicePageLayout, { ServicePageProps } from "@/components/ServicePageLayout";
 import { usePageTitle } from "@/hooks/usePageTitle";
 
-const HERO = "https://d2xsxph8kpxj0f.cloudfront.net/310519663484957999/PymCzDCnSJzPjdkfwA7Jn6/property-maintenance-3gu7BTR6P2RKi4ZuYCNLoN.webp";
+const MULCHING_EQUIPMENT = "https://d2xsxph8kpxj0f.cloudfront.net/310519663484957999/PymCzDCnSJzPjdkfwA7Jn6/forestry-mulching-HhrtysAJXn8CTRW2xzcGCC.webp";
 const SEEDING_HERO = "https://d2xsxph8kpxj0f.cloudfront.net/310519663484957999/PymCzDCnSJzPjdkfwA7Jn6/forestry-mulching-HhrtysAJXn8CTRW2xzcGCC.webp";
 const FENCE_HERO = "https://d2xsxph8kpxj0f.cloudfront.net/310519663484957999/PymCzDCnSJzPjdkfwA7Jn6/land-management-iPC6VzRdyjJa4bVNXaWy5n.webp";
 const MULCH_HERO = "https://d2xsxph8kpxj0f.cloudfront.net/310519663484957999/PymCzDCnSJzPjdkfwA7Jn6/vegetation-management-hnEnCRefahdbJy4xpn6UnC.webp";
 
+const SELECTIVE_MULCHING_VISUALS = [
+  {
+    image: MULCHING_EQUIPMENT,
+    title: "Mulching Head at Work",
+    description: "The mulching head processes suitable brush and small trees into ground cover where the work is happening.",
+  },
+  {
+    image: "https://d2xsxph8kpxj0f.cloudfront.net/310519663484957999/PymCzDCnSJzPjdkfwA7Jn6/gallery-forestry-after-1-irHqRa8sGttYKR7PSVZaM8.webp",
+    title: "Mulch Left on Site",
+    description: "Processed vegetation remains as a mulch layer instead of becoming a debris pile that requires hauling or burning.",
+  },
+];
+
 const data: ServicePageProps = {
   slug: "add-ons/selective-mulching",
-  title: "Selective Land Management in Tennessee",
+  title: "Selective Mulching in Tennessee",
   tagline: "Not everything needs to go. We remove the trees, brush, and problem vegetation you specify while leaving the mature timber, hardwoods, or landscape trees you want to keep.",
-  heroImage: HERO,
+  heroImage: MULCHING_EQUIPMENT,
   overviewTitle: "What Is Selective Mulching?",
   overviewBody: [
     "Selective mulching removes the brush, saplings, and problem vegetation you identify while preserving the mature timber, hardwoods, or landscape trees you want to keep. It is a precise forestry-mulching approach that starts with a clear walkthrough of what stays and what goes.",
@@ -34,6 +47,14 @@ const data: ServicePageProps = {
     { title: "Mulch Redistribution", slug: "add-ons/mulch-redistribution", description: "Spread and level the mulch layer left after clearing for a cleaner finish.", heroImage: MULCH_HERO },
   ],
   faqs: [
+    {
+      question: "How does selective mulching differ from traditional clearing?",
+      answer: "Selective mulching uses the forestry mulcher to process suitable brush, saplings, and small trees into mulch on the property while protecting the trees and boundaries you identify. Traditional clearing often leaves cut material to pile, haul, or burn and may involve grading or excavation. Noland Earthworks does not provide grading, excavation, or hauling; the written site-visit scope confirms what is appropriate for your property.",
+    },
+    {
+      question: "What are the benefits of mulching instead of pushing vegetation into piles?",
+      answer: "Mulching leaves processed vegetation as ground cover, avoids debris piles on suitable projects, and lets the operator work selectively around the trees you want to keep. It can improve access and reduce understory while retaining the property character that broader removal can take away.",
+    },
     {
       question: "How do you know which trees to keep?",
       answer: "We walk the property with you before the job starts. You identify what stays — whether that's specific trees, a timber stand, or a general type (all hardwoods, all trees over a certain diameter). We mark or flag as needed and confirm the plan before the machine starts.",
@@ -61,6 +82,31 @@ const data: ServicePageProps = {
   ],
 };
 
+function SelectiveMulchingEquipmentSection() {
+  return (
+    <section className="border-t border-[#E07B2A]/20 bg-[#111d16] py-20">
+      <div className="container">
+        <div className="max-w-3xl">
+          <p className="section-label mb-4">The Mulching Method</p>
+          <h2 className="font-['Oswald'] text-3xl font-bold uppercase tracking-[0.04em] text-[#F0EDE6] sm:text-4xl">Target the Vegetation, Keep the Character</h2>
+          <p className="mt-4 font-['Lato'] leading-7 text-white/70">Selective Mulching uses the same tracked forestry-mulching equipment as broader vegetation work, but the site walk and written scope identify what stays, what goes, and where the machine should not travel.</p>
+        </div>
+        <div className="mt-10 grid gap-5 md:grid-cols-2">
+          {SELECTIVE_MULCHING_VISUALS.map((visual) => (
+            <figure key={visual.title} className="overflow-hidden border border-white/10 bg-black/20">
+              <img src={visual.image} alt={visual.title} loading="lazy" className="aspect-[4/3] w-full object-cover" />
+              <figcaption className="p-5">
+                <h3 className="font-['Oswald'] text-xl font-semibold uppercase tracking-[0.04em] text-[#F0EDE6]">{visual.title}</h3>
+                <p className="mt-2 font-['Lato'] text-sm leading-6 text-white/65">{visual.description}</p>
+              </figcaption>
+            </figure>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
 export default function SelectiveMulchingPage() {
   usePageTitle(
     "Selective Mulching in Tennessee | Noland Earthworks",
@@ -71,6 +117,7 @@ export default function SelectiveMulchingPage() {
     <>
       <Navbar />
       <ServicePageLayout {...data} />
+      <SelectiveMulchingEquipmentSection />
       <MobileCTABar />
       <Footer />
     </>

@@ -3249,3 +3249,9 @@
 - [x] Replace customer-facing Selective Clearing references with Selective Mulching
 - [x] Retain only legacy redirects and invisible internal compatibility keys for the retired term
 - [x] Validate canonical routing and app terminology, then increment the published version
+
+## Selective Mulching Education & Request Guidance — Aug 2026
+- [x] Add a concise FAQ explaining Selective Mulching compared with traditional clearing
+- [x] Use authentic equipment-in-action imagery on the Selective Mulching service page
+- [x] Add a Request a Site Visit service tooltip that explains mulching and clearing terminology
+- [x] Add regression coverage, validate the public experience, and increment the app version
