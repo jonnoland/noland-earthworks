@@ -92,6 +92,12 @@ function parseAddressComponents(components?: GoogleAddressComponent[]) {
   };
 }
 
+function stripCodeFence(raw: string): string {
+  const trimmed = raw.trim();
+  const match = trimmed.match(/^```(?:json)?\s*([\s\S]*?)\s*```$/i);
+  return match ? match[1].trim() : trimmed;
+}
+
 // ─── AI Qualifier ─────────────────────────────────────────────────────────────
 
 const FIELD_QUALIFIER_PROMPT = `You are an AI assistant for Noland Earthworks, LLC — a veteran-owned land management and forestry mulching company in Middle Tennessee. Your job is to qualify incoming field quote requests and score them for the owner, Jon Noland.
@@ -119,8 +125,9 @@ WEAK lead (score: "weak"):
 
 SERVICES OFFERED:
 - Forestry mulching (primary)
-- Land management / land management / site prep
-- Right-of-way clearing
+- Land Management and vegetation management
+- Right-of-Way Clearing, trail cutting, and fence line clearing
+- Selective Mulching
 - Brush hogging (secondary)
 
 SERVICES NOT OFFERED (flag these):
@@ -188,7 +195,8 @@ async function qualifyFieldLead(data: {
 
     const content = result?.choices?.[0]?.message?.content;
     if (!content) throw new Error("Empty LLM response");
-    const parsed = JSON.parse(typeof content === "string" ? content : JSON.stringify(content));
+    const rawContent = typeof content === "string" ? content : JSON.stringify(content);
+    const parsed = JSON.parse(stripCodeFence(rawContent));
     return {
       score: parsed.score as "strong" | "marginal" | "weak",
       summary: parsed.summary as string,

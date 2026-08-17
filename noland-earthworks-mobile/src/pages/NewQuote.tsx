@@ -201,8 +201,9 @@ const SERVICE_TYPES = [
   "Vegetation Management",
   "Right-of-Way Clearing",
   "Trail Cutting",
+  "Fence Line Clearing",
+  "Selective Mulching",
   "Brush Hogging",
-  "Stump Grinding",
 ];
 
 const TERRAIN_OPTIONS: { value: FormState["terrain"]; label: string }[] = [
@@ -465,10 +466,33 @@ export default function NewQuote() {
     if (!form.name.trim()) { setSubmitError("Customer name is required."); return; }
     if (!form.serviceType) { setSubmitError("Service type is required."); return; }
 
+    const acreage = parseFloat(form.acreage);
+    const linearFeet = parseFloat(form.linearFeet);
+    const fenceLineFeet = parseFloat(form.fenceLineLF);
+    const needsAcreage = form.serviceType !== "Right-of-Way Clearing" && form.serviceType !== "Fence Line Clearing";
+
+    if (needsAcreage && (!Number.isFinite(acreage) || acreage <= 0)) {
+      setSubmitError("Estimated acreage is required for this field request.");
+      return;
+    }
+    if (form.serviceType === "Right-of-Way Clearing" && (!Number.isFinite(linearFeet) || linearFeet <= 0)) {
+      setSubmitError("Linear feet are required for a right-of-way field request.");
+      return;
+    }
+    if (form.serviceType === "Fence Line Clearing" && (!Number.isFinite(fenceLineFeet) || fenceLineFeet <= 0)) {
+      setSubmitError("Fence line footage is required for a fence line field request.");
+      return;
+    }
+
     setSubmitState("submitting");
     setSubmitError(null);
 
-    const acreage = parseFloat(form.acreage);
+    const fieldScopeNote = [
+      form.message.trim(),
+      form.serviceType === "Right-of-Way Clearing" ? `Right-of-Way measurement: ${linearFeet} linear feet${form.rowWidth ? ` at approximately ${form.rowWidth} feet wide` : ""}.` : "",
+      form.serviceType === "Fence Line Clearing" ? `Fence line measurement: ${fenceLineFeet} linear feet.` : "",
+    ].filter(Boolean).join("\n");
+
     const submission = {
       name: form.name,
       email: form.email || undefined,
@@ -485,7 +509,7 @@ export default function NewQuote() {
       accessCondition: form.accessDifficulty,
       obstacles: form.obstacles || undefined,
       proximityToStructures: form.proximityToStructures || undefined,
-      message: form.message || undefined,
+      message: fieldScopeNote || undefined,
       photoUrls: [] as string[],
       source: "field_app",
     };
@@ -525,13 +549,13 @@ export default function NewQuote() {
 
   if (submitState === "success") {
     return (
-      <div style={{ height: "100%", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 32 }}>
+      <div role="status" aria-live="polite" style={{ height: "100%", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 32 }}>
         <CheckCircle2 size={64} color="oklch(0.70 0.18 145)" style={{ marginBottom: 20 }} />
         <h2 style={{ color: "oklch(0.94 0.01 80)", fontSize: 22, fontWeight: 700, margin: "0 0 10px", textAlign: "center" }}>
-          Quote Submitted
+          Field Request Saved
         </h2>
         <p style={{ color: "oklch(0.60 0.01 80)", fontSize: 15, textAlign: "center", margin: "0 0 32px" }}>
-          {queuedOffline ? "This field request is stored on the device and will synchronize to Ops when the app reconnects. Photos are not included in offline requests; add them after reconnecting if needed." : "The quote is now in the ops dashboard and will be AI-scored automatically."}
+          {queuedOffline ? "This field request is stored on the device and will synchronize to Operations when the app reconnects. Photos are not included in offline requests; add them after reconnecting if needed." : "The field request is now in Operations. Review it there to schedule a site visit or continue quote work."}
         </p>
         <button
           onClick={() => navigate("/")}
@@ -556,7 +580,7 @@ export default function NewQuote() {
           }}
           style={{ marginTop: 12, background: "none", border: "none", color: "oklch(0.65 0.18 50)", fontSize: 15, cursor: "pointer", padding: "8px 0" }}
         >
-          Submit another quote
+          Submit another field request
         </button>
       </div>
     );
@@ -605,6 +629,7 @@ export default function NewQuote() {
 
   const isROW = form.serviceType === "Right-of-Way Clearing";
   const isTrail = form.serviceType === "Trail Cutting";
+  const isFenceLine = form.serviceType === "Fence Line Clearing";
 
   return (
     <div style={{ height: "100%", display: "flex", flexDirection: "column" }}>
@@ -631,7 +656,7 @@ export default function NewQuote() {
 
       <div className="scroll-area" style={{ flex: 1, padding: "16px", paddingBottom: 100 }}>
         {submitError && (
-          <div style={{ backgroundColor: "oklch(0.65 0.20 25 / 0.15)", border: "1px solid oklch(0.65 0.20 25 / 0.4)", borderRadius: 10, padding: "12px 14px", marginBottom: 16, display: "flex", alignItems: "center", gap: 8 }}>
+          <div role="alert" style={{ backgroundColor: "oklch(0.65 0.20 25 / 0.15)", border: "1px solid oklch(0.65 0.20 25 / 0.4)", borderRadius: 10, padding: "12px 14px", marginBottom: 16, display: "flex", alignItems: "center", gap: 8 }}>
             <AlertCircle size={16} color="oklch(0.65 0.20 25)" />
             <p style={{ color: "oklch(0.65 0.20 25)", fontSize: 13, margin: 0 }}>{submitError}</p>
           </div>
@@ -822,9 +847,9 @@ export default function NewQuote() {
             </div>
 
             {/* Acreage — always shown unless ROW with LF */}
-            {!isROW && (
+            {!isROW && !isFenceLine && (
               <div>
-                <label style={labelStyle}>{isTrail ? "Effective Acreage (length × width ÷ 43,560)" : "Estimated Acreage"}</label>
+                <label style={labelStyle}>{isTrail ? "Effective Acreage (length × width ÷ 43,560) *" : "Estimated Acreage *"}</label>
                 <input value={form.acreage} onChange={set("acreage")} placeholder="e.g. 5.5" type="number" inputMode="decimal" style={inputStyle} />
               </div>
             )}
@@ -833,7 +858,7 @@ export default function NewQuote() {
             {isROW && (
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
                 <div>
-                  <label style={labelStyle}>Linear Feet</label>
+                  <label style={labelStyle}>Linear Feet *</label>
                   <input value={form.linearFeet} onChange={set("linearFeet")} placeholder="e.g. 2000" type="number" inputMode="numeric" style={inputStyle} />
                 </div>
                 <div>
@@ -938,7 +963,7 @@ export default function NewQuote() {
 
             {/* Fence line */}
             <div>
-              <label style={labelStyle}>Fence Line Clearing (linear feet, optional)</label>
+              <label style={labelStyle}>Fence Line Clearing {isFenceLine ? "(linear feet) *" : "(linear feet, optional)"}</label>
               <input value={form.fenceLineLF} onChange={set("fenceLineLF")} placeholder="e.g. 500" type="number" inputMode="numeric" style={inputStyle} />
             </div>
 

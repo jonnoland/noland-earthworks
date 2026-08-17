@@ -1,5 +1,5 @@
 import { createTRPCReact } from "@trpc/react-query";
-import type { AppRouter } from "../../../noland-earthworks/server/types";
+import type { AppRouter } from "../../../server/types";
 
 export const trpc = createTRPCReact<AppRouter>();
 

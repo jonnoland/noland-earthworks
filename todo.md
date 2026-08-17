@@ -3279,3 +3279,9 @@
 - [x] Add a subtle accessible loading state while a Site Visit Request is being sent
 - [x] Improve the visible success confirmation after a Site Visit Request is submitted
 - [x] Add regression coverage, validate the form feedback, and increment the app version
+
+## Companion App Website Alignment — Aug 2026
+- [x] Audit Noland Field against current Land Management terminology, service options, location safeguards, acreage, and request feedback
+- [x] Update applicable companion app workflows and customer-facing field labels
+- [x] Validate the companion source and native Android integration
+- [x] Build, sign, publish, and verify the aligned companion APK update
