@@ -13,9 +13,9 @@ const LAND_HERO = "https://d2xsxph8kpxj0f.cloudfront.net/310519663484957999/PymC
 
 const COMMON_FAQS = [
   {
-    question: "Do you offer free estimates?",
+    question: "How does a Site Visit work?",
     answer:
-      "Yes — every project starts with a free, no-obligation on-site estimate. We'll walk the property with you, discuss your goals, and provide a clear written quote.",
+      "Every eligible project starts with a Site Visit. We walk the property, discuss your goals, review access and conditions, and provide a clear written proposal for the agreed scope.",
   },
   {
     question: "Are you licensed and insured?",
@@ -33,6 +33,22 @@ const COMMON_FAQS = [
       "We work on properties ranging from a quarter-acre residential lot to hundreds of acres of commercial or agricultural land. Our equipment scales to fit the job.",
   },
 ];
+
+function normalizeCountyCopy(value: string): string {
+  return value
+    .replace(/free,? no-obligation on-site estimate/gi, "Site Visit")
+    .replace(/free on-site estimates?/gi, "Site Visits")
+    .replace(/free estimates?/gi, "Site Visits")
+    .replace(/free on-site estimate/gi, "Site Visit")
+    .replace(/free estimate/gi, "Site Visit")
+    .replace(/call or submit a quote request online today/gi, "request a Site Visit online today")
+    .replace(/request a quote online today/gi, "request a Site Visit online today")
+    .replace(/call for a Site Visit/gi, "request a Site Visit")
+    .replace(/contact us for a Site Visit/gi, "request a Site Visit")
+    .replace(/we offer Site Visits/gi, "we review eligible projects through Site Visits")
+    .replace(/we provide Site Visits/gi, "we review eligible projects through Site Visits")
+    .replace(/we're typically available within a few weeks/gi, "availability depends on weather and the current workload");
+}
 
 const countyData: Record<string, CountyPageProps> = {
   "davidson-county": {
@@ -1158,12 +1174,20 @@ const countyData: Record<string, CountyPageProps> = {
 // Factory function to create county page components
 function createCountyPage(slug: string, pageTitle: string, metaDesc?: string) {
   return function CountyPage() {
-    usePageTitle(pageTitle, metaDesc, `/service-areas/${slug}`);
+    usePageTitle(pageTitle, metaDesc ? normalizeCountyCopy(metaDesc) : undefined, `/service-areas/${slug}`);
     const data = countyData[slug];
+    const normalizedData: CountyPageProps = {
+      ...data,
+      intro: data.intro.map(normalizeCountyCopy),
+      faqs: data.faqs.map((faq) => ({
+        question: normalizeCountyCopy(faq.question),
+        answer: normalizeCountyCopy(faq.answer),
+      })),
+    };
     return (
       <>
         <Navbar />
-        <CountyPageLayout {...data} />
+        <CountyPageLayout {...normalizedData} />
         <MobileCTABar />
         <Footer />
       </>

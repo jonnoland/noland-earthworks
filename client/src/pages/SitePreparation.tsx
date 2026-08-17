@@ -12,16 +12,16 @@ const LAND_HERO = "https://d2xsxph8kpxj0f.cloudfront.net/310519663484957999/PymC
 
 const data: ServicePageProps = {
   slug: "site-preparation",
-  title: "Site Preparation in Tennessee",
+  title: "Vegetation Work Before Your Next Project in Tennessee",
   tagline:
-    "Clear the land, remove the vegetation, and get your site ready for the next phase — construction, development, or agricultural use — across Middle & West Tennessee.",
+    "Forestry mulching and land management for suitable vegetation work before a separately scoped next phase across Middle & West Tennessee.",
   heroImage: HERO,
-  overviewTitle: "Site Preparation That Sets the Stage for What Comes Next",
+  overviewTitle: "Vegetation Work Before the Next Phase",
   overviewBody: [
-    "Site preparation is the first step in any construction or development project, and it has to be done right before anything else can move forward. That means removing trees, brush, stumps, and ground-level vegetation so the site is clean, accessible, and ready for the contractor, surveyor, or builder who comes in after us.",
-    "Noland Earthworks uses a tracked forestry mulcher as the primary tool for site prep work. The machine grinds trees, brush, and stumps into a fine mulch layer in a single pass — no burn piles, no hauling, no bare soil left exposed to erosion. The tracked platform handles slopes, wet ground, and dense timber that wheeled equipment can't safely navigate, which matters on Middle Tennessee terrain where hillsides, creek bottoms, and clay-heavy soil are the norm.",
-    "Site prep is not grading. We clear and grind the vegetation. Grading, excavation, and earthmoving are separate trades — we'll be clear about what we do and don't do so there are no surprises on your project timeline. If you need grading after clearing, we can point you toward the right contractors in the area.",
-    "Every site prep job starts with a walk of the property. We assess what's there, what needs to come out, and what the finished site needs to look like for the next phase of work. That's how we quote accurately and avoid surprises on the job.",
+    "Some properties need vegetation work before a separately scoped contractor begins the next phase. Noland Earthworks evaluates brush, saplings, small trees, access, terrain, and the written scope through a Site Visit before recommending Forestry Mulching or Land Management.",
+    "A tracked forestry mulcher processes suitable brush, saplings, and small trees into mulch that typically remains on site. The tracked platform is built for dense growth, slopes, and challenging ground conditions common across Middle Tennessee.",
+    "This work is not grading, excavation, earthmoving, hauling, road construction, or final building-pad preparation. Those are separate trades and must be arranged with the appropriate contractor.",
+    "Every project starts with a Site Visit so the written proposal can identify the vegetation work included, property conditions, access needs, and exclusions before scheduling.",
   ],
   benefits: [
     "Tracked forestry mulcher clears trees, brush, and stumps in a single pass",
@@ -30,29 +30,29 @@ const data: ServicePageProps = {
     "Residential lots, development sites, agricultural land, and commercial parcels",
     "Stump grinding available as an add-on — priced separately based on count and size",
     "Fence line and boundary clearing available as an add-on to any job",
-    "Free on-site estimate — we walk the property before quoting",
+    "Site Visit and written proposal before scheduling",
     "10% discount for active military and veterans",
   ],
   faqs: [
     {
-      question: "Does site preparation include grading or excavation?",
+      question: "Does this vegetation work include grading or excavation?",
       answer:
-        "No. Site preparation through Noland Earthworks covers vegetation clearing — trees, brush, stumps, and ground-level growth. Grading, excavation, and earthmoving are separate trades. We'll be upfront about this from the first conversation so your project timeline isn't disrupted.",
+        "No. Noland Earthworks handles suitable vegetation work through Forestry Mulching and Land Management. Grading, excavation, and earthmoving are separate trades. The Site Visit and written proposal identify the work included before scheduling.",
     },
     {
-      question: "What size lots do you handle for site prep?",
+      question: "What size properties fit this vegetation work?",
       answer:
         "We work on lots from about 1 acre up to 50+ acres. Smaller residential lots in the 1–5 acre range are common for new home construction. Larger parcels for subdivision development, agricultural use, or commercial projects are handled the same way — we walk the site, assess what's there, and quote based on actual conditions.",
     },
     {
-      question: "Do you remove stumps during site prep?",
+      question: "Do you remove stumps during Forestry Mulching?",
       answer:
-        "The forestry mulcher grinds stumps down to ground level as part of the clearing pass. This is different from full stump extraction, which pulls the root ball out of the ground. For most site prep applications — construction pads, driveways, agricultural use — grinding to grade is sufficient. If you need complete root removal, that's a separate service we can discuss during the site visit.",
+        "The forestry mulcher processes suitable stumps near grade as part of the vegetation work. This is different from full stump or root extraction, which is outside our standard scope. The Site Visit identifies what is practical for the property and written proposal.",
     },
     {
-      question: "How long does site preparation take?",
+      question: "How long does the vegetation work take?",
       answer:
-        "A 1–3 acre residential lot typically takes one day. Larger commercial or development parcels are quoted with a realistic timeline based on vegetation density, terrain, and access. We don't give phone estimates on complex sites — the site visit is how we give you an accurate number.",
+        "Timing depends on vegetation density, terrain, access, weather, and the agreed written scope. Complex sites require a Site Visit before we can provide a realistic timeline and proposal.",
     },
     {
       question: "Can you work near structures, utilities, or property lines?",
@@ -65,9 +65,9 @@ const data: ServicePageProps = {
         "No. The forestry mulcher grinds everything into a mulch layer that stays on the ground. This is one of the primary advantages of the method — no debris piles, no haul-away cost, and the mulch layer protects the soil from erosion while the next phase of work is being planned. If you need the site completely clear of organic material, that's a different scope and we'll discuss it during the estimate.",
     },
     {
-      question: "What counties do you serve for site preparation?",
+      question: "What counties do you serve for this work?",
       answer:
-        "We serve 35 counties across Middle and West Tennessee, including Davidson, Williamson, Rutherford, Maury, Dickson, Montgomery, Cheatham, Robertson, Sumner, Wilson, and all surrounding counties. Call 615-406-4819 or submit a quote request and we'll confirm your location is in our service area.",
+        "We serve 35 counties across Middle and West Tennessee. Request a Site Visit and we will confirm whether your property is in the approved service area.",
     },
   ],
   relatedServices: [
@@ -94,8 +94,8 @@ const data: ServicePageProps = {
 
 export default function SitePreparationPage() {
   usePageTitle(
-    "Site Preparation Services — Tennessee | Noland Earthworks",
-    "Professional site preparation for residential, commercial, and agricultural properties across Middle & West Tennessee. Veteran-owned. Free on-site estimates.",
+    "Vegetation Work Before Your Next Project — Tennessee | Noland Earthworks",
+    "Forestry mulching and land management for suitable vegetation work across Middle and West Tennessee. A Site Visit confirms scope and exclusions.",
     "/services/site-preparation"
   );
 

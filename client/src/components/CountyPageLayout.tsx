@@ -231,9 +231,9 @@ export default function CountyPageLayout({
               marginBottom: "1rem",
             }}
           >
-            Land Management &amp;
+            Forestry Mulching &amp;
             <br />
-            <span style={{ color: "#E07B2A" }}>Forestry Mulching</span>
+            <span style={{ color: "#E07B2A" }}>Land Management</span>
             <br />
             in {county}
           </h1>
@@ -304,7 +304,7 @@ export default function CountyPageLayout({
           <div className="flex flex-wrap gap-6 justify-center md:justify-start">
             {[
               { icon: <Star size={15} />, label: "Veteran-Owned & Operated" },
-              { icon: <FileText size={15} />, label: "Free Estimates" },
+              { icon: <FileText size={15} />, label: "Written Proposals" },
               { icon: <Shield size={15} />, label: "Fully Insured" },
               { icon: <MapPin size={15} />, label: `Serving ${county}` },
             ].map((b) => (
@@ -579,7 +579,7 @@ export default function CountyPageLayout({
               flexShrink: 0,
             }}
           >
-            Know someone who needs land cleared?
+            Know someone who needs land management?
           </span>
           <ShareButtons
             url={`https://nolandearthworks.com/service-areas/${slug}`}
@@ -678,7 +678,7 @@ export default function CountyPageLayout({
               letterSpacing: "0.03em",
             }}
           >
-            Ready to Clear Your Land in{" "}
+            Ready to Put Your Land to Work in{" "}
             <span style={{ color: "#E07B2A" }}>{county}?</span>
           </h2>
           <p
@@ -692,7 +692,7 @@ export default function CountyPageLayout({
               lineHeight: 1.7,
             }}
           >
-            Contact Noland Earthworks today for a free, no-obligation estimate on your project.
+            Request a Site Visit to review your property, project goals, access, and the written scope that fits.
           </p>
           <div className="flex flex-wrap gap-4 justify-center">
             <a

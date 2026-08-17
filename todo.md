@@ -3269,3 +3269,8 @@
 ## Our Commitment Service Coverage — Aug 2026
 - [x] Add Forestry Mulching to the public Our Commitment statement
 - [x] Validate the commitment wording alongside the corrected Process workflow
+
+## Cross-Site Consistency Audit — Aug 2026
+- [x] Inventory public and Operations terminology, calls to action, scope language, contact details, and metadata
+- [x] Identify and prioritize confirmed inconsistencies
+- [x] Apply safe consistency corrections and validate the active site

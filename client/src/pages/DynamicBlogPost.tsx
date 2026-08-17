@@ -186,17 +186,17 @@ export default function DynamicBlogPost() {
         {/* CTA */}
         <div className="mt-10 p-6 rounded-lg border border-orange-500/30 bg-orange-500/5">
           <h3 className="text-xl font-bold mb-2" style={{ color: "#F0EDE6" }}>
-            Ready to clear your land?
+            Ready to put your land to work?
           </h3>
           <p className="text-zinc-400 mb-4">
-            Get a free on-site estimate. No ballpark quotes — Jon walks the property and gives you a straight number.
+            Request a Site Visit. Jon reviews the property, access, and scope before preparing a written proposal.
           </p>
           <a
             href="/quote"
             className="inline-block px-6 py-3 rounded font-bold text-sm uppercase tracking-wide transition-colors"
             style={{ backgroundColor: "#E07B39", color: "#121212" }}
           >
-            Schedule a Free Estimate
+            Request a Site Visit
           </a>
         </div>
       </article>

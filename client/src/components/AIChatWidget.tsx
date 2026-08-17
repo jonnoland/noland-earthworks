@@ -17,7 +17,7 @@ interface Message {
 const STORAGE_KEY = "ne_chat_session";
 const WELCOME_MESSAGE: Message = {
   role: "assistant",
-  content: "Hey there — thanks for stopping by Noland Earthworks. What can I help you with today? Whether you have questions about land management, forestry mulching, or want to get a quote started, I'm here.",
+  content: "Hey there — thanks for stopping by Noland Earthworks. What can I help you with today? Whether you have questions about land management, forestry mulching, or want to request a Site Visit, I'm here.",
 };
 
 /** Extract phone number from text, returns 10-digit string or null */
@@ -131,7 +131,7 @@ export default function AIChatWidget() {
             ...prev,
             {
               role: "assistant",
-              content: "Sorry, I had trouble connecting. For the fastest response, please fill out the quote form at nolandearthworks.com/quote or call us directly.",
+              content: "Sorry, I had trouble connecting. For the fastest response, request a Site Visit at nolandearthworks.com/quote or call us directly.",
             },
           ]);
         },
