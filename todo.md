@@ -3296,3 +3296,9 @@
 - [x] Review any non-redirecting or incorrect redirect responses for public page URLs
 - [x] Harden global canonical routing only where gaps remain, then add regression coverage
 - [x] Validate complete production redirect coverage and document the result
+
+## Sitemap, Internal Link, and Canonical Validation — Aug 2026
+- [x] Verify every XML sitemap entry uses the canonical HTTPS no-trailing-slash URL form
+- [x] Crawl public internal links and identify broken or redirect-related destinations
+- [x] Verify every public sitemap page emits the expected self-referencing no-slash canonical tag
+- [x] Correct verified sitemap, link, or canonical defects and validate production behavior

@@ -475,7 +475,7 @@ export default function ServicesSection() {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
             {[
               { title: "Fence Line Clearing", desc: "Reclaim overgrown boundaries — priced per linear foot, same mobilization.", href: "/services/fence-line-clearing" },
-              { title: "Mulch Redistribution", desc: "Uniform mulch finish after forestry mulching — drainage channels, buffers, bare spots.", href: "/services/mulch-redistribution" },
+              { title: "Mulch Redistribution", desc: "Uniform mulch finish after forestry mulching — drainage channels, buffers, bare spots.", href: "/services/add-ons/mulch-redistribution" },
               { title: "Selective Mulching", desc: "Pre-job walkthrough to identify trees and vegetation to keep, then target brush and small trees for mulching.", href: "/services/add-ons/selective-mulching" },
             ].map((addon) => (
               <a
