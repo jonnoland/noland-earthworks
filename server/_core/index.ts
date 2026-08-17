@@ -155,13 +155,16 @@ async function startServer() {
   // Public pages have one no-trailing-slash canonical form. Without this redirect,
   // the prerendered SPA can emit a second self-canonical URL for the slash variant.
   app.use((req, res, next) => {
-    const canonicalPath = getTrailingSlashCanonicalRedirect(req.path, req.method);
+    // Read the original request path rather than Express's derived `req.path`.
+    // This preserves a trailing slash through production proxy normalization.
+    const queryStart = req.originalUrl.indexOf("?");
+    const requestPath = queryStart >= 0 ? req.originalUrl.slice(0, queryStart) : req.originalUrl;
+    const canonicalPath = getTrailingSlashCanonicalRedirect(requestPath, req.method);
     if (!canonicalPath) {
       next();
       return;
     }
 
-    const queryStart = req.originalUrl.indexOf("?");
     const query = queryStart >= 0 ? req.originalUrl.slice(queryStart) : "";
     res.redirect(301, `${canonicalPath}${query}`);
   });
