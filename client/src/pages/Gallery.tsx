@@ -359,14 +359,14 @@ export default function Gallery() {
                 marginBottom: "1.75rem",
               }}
             >
-              Free on-site estimate. I serve 35 counties across Middle Tennessee.
+              Request a site visit. I serve 35 counties across Middle Tennessee.
             </p>
             <a
               href="/quote"
               className="btn-amber"
               style={{ textDecoration: "none", display: "inline-flex" }}
             >
-              Get a Free Quote
+              Request a Site Visit
             </a>
           </div>
         </div>

@@ -807,7 +807,7 @@ export default function Blog() {
                 marginBottom: "0.25rem",
               }}
             >
-              Ready to clear your land?
+              Ready to plan your property work?
             </p>
             <p
               style={{
@@ -816,7 +816,7 @@ export default function Blog() {
                 color: "rgba(240,237,230,0.6)",
               }}
             >
-              Get a free, no-obligation estimate from our veteran-owned team.
+              Request a site visit from our veteran-owned team.
             </p>
           </div>
           <a
@@ -824,7 +824,7 @@ export default function Blog() {
             className="btn-amber"
             style={{ textDecoration: "none", whiteSpace: "nowrap" }}
           >
-            Get a Free Quote →
+            Request a Site Visit →
           </a>
         </div>
       </section>

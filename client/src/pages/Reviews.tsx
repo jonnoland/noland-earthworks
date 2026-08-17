@@ -352,7 +352,7 @@ export default function ReviewsPage() {
                 margin: "0 0 0.75rem",
               }}
             >
-              Ready to Get Your Land Cleared?
+              Ready to Plan Your Property Work?
             </h2>
             <p
               style={{
@@ -363,8 +363,8 @@ export default function ReviewsPage() {
                 lineHeight: 1.6,
               }}
             >
-              Free on-site estimates across 35 counties in Middle and West Tennessee.
-              We walk the property before quoting — no phone estimates on complex sites.
+              Request a site visit across 35 counties in Middle and West Tennessee.
+              We walk the property before preparing a written scope — no phone estimates on complex sites.
             </p>
             <a
               href="/quote"
@@ -382,7 +382,7 @@ export default function ReviewsPage() {
                 textDecoration: "none",
               }}
             >
-              Request a Free Quote
+              Request a Site Visit
             </a>
           </div>
         </div>

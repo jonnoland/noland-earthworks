@@ -1,6 +1,6 @@
 /*
  * Sticky bottom CTA bar — visible only on mobile/tablet (hidden lg:hidden)
- * Shows "Call" and "Get Quote" buttons fixed to the bottom of the screen
+ * Shows "Call" and "Request a Site Visit" buttons fixed to the bottom of the screen
  */
 import { Phone } from "lucide-react";
 
@@ -42,7 +42,7 @@ export default function MobileCTABar() {
           Call Now
         </a>
 
-        {/* Get Quote button */}
+        {/* Site Visit button */}
         <a
           href="/quote"
           className="flex-1 flex items-center justify-center gap-2 transition-colors"
@@ -63,7 +63,7 @@ export default function MobileCTABar() {
             e.currentTarget.style.backgroundColor = "#E07B2A";
           }}
         >
-          Get a Free Quote
+          Request a Site Visit
         </a>
       </div>
     </div>

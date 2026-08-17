@@ -3255,3 +3255,8 @@
 - [x] Use authentic equipment-in-action imagery on the Selective Mulching service page
 - [x] Add a Request a Site Visit service tooltip that explains mulching and clearing terminology
 - [x] Add regression coverage, validate the public experience, and increment the app version
+
+## Free Quote Terminology Cleanup — Aug 2026
+- [x] Inventory all customer-facing Free Quote wording, labels, and calls to action
+- [x] Replace visible Free Quote terminology with Request a Site Visit language
+- [x] Validate the cleanup and increment the published app version

@@ -6551,7 +6551,7 @@ Generate a complete monthly ad campaign plan. Return ONLY valid JSON matching th
       "platform": "google",
       "headline": "<search ad headline, max 30 chars>",
       "body": "<description line, max 90 chars>",
-      "callToAction": "Get a Free Quote",
+      "callToAction": "Request a Site Visit",
       "imagePrompt": ""
     }
   ],

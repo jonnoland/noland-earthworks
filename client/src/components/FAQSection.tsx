@@ -18,9 +18,9 @@ const faqs = [
       "No. Forestry mulching leaves the mulched material on-site as ground cover — that is part of what makes it efficient and cost-effective. I do not haul debris, and I do not do grading, leveling, or excavation. If you need grading after clearing, I can point you toward someone who does that work. If you need a clean site for construction, let me know upfront and we can talk through the right approach.",
   },
   {
-    question: "Do you give quotes over the phone?",
+    question: "Do you provide pricing over the phone?",
     answer:
-      "Not for anything beyond a straightforward small lot. Acreage, terrain, slope, vegetation density, access, and site conditions all affect the price — and those things cannot be assessed from a description. I do free on-site estimates. Fill out the form, give me a general idea of what you are working with, and I will come out and take a look. Most site visits take 20–30 minutes.",
+      "Not for anything beyond a straightforward small lot. Acreage, terrain, slope, vegetation density, access, and site conditions all affect the price — and those things cannot be assessed from a description. Request a site visit, give me a general idea of what you are working with, and I will come out and take a look. Most site visits take 20–30 minutes.",
   },
   {
     question: "How long does a typical job take?",
@@ -30,7 +30,7 @@ const faqs = [
   {
     question: "What counties do you serve?",
     answer:
-      "I serve 35 counties across Middle and West Tennessee, with the core service area covering the counties surrounding greater Nashville and Columbia — Williamson, Maury, Rutherford, Hickman, Lewis, Lawrence, and surrounding areas. If you are unsure whether I cover your location, fill out the quote form and include your county. I will let you know.",
+      "I serve 35 counties across Middle and West Tennessee, with the core service area covering the counties surrounding greater Nashville and Columbia — Williamson, Maury, Rutherford, Hickman, Lewis, Lawrence, and surrounding areas. If you are unsure whether I cover your location, complete a Site Visit Request and include your county. I will let you know.",
   },
   {
     question: "When is the best time of year to clear land?",
@@ -43,9 +43,9 @@ const faqs = [
       "Yes. Fully licensed and insured. I carry general liability coverage on every job. If you need proof of insurance for a project, just ask.",
   },
   {
-    question: "What happens after I submit the quote form?",
+    question: "What happens after I submit a Site Visit Request?",
     answer:
-      "You will hear from me within one business day — usually the same day. We will talk briefly about the property, and if it makes sense, I will schedule a free on-site visit. After the visit, I will have a written proposal to you within one to two days. No pressure, no obligation.",
+      "You will hear from me within one business day — usually the same day. We will talk briefly about the property, and if it makes sense, I will schedule a site visit. After the visit, I will have a written proposal to you within one to two days. No pressure, no obligation.",
   },
 ];
 
@@ -204,7 +204,7 @@ export default function FAQSection() {
                 >
                   615-406-4819
                 </a>{" "}
-                or get a free quote online.
+                or request a site visit online.
               </p>
             </div>
             <Link
@@ -212,7 +212,7 @@ export default function FAQSection() {
               className="btn-amber"
               style={{ textDecoration: "none", whiteSpace: "nowrap" }}
             >
-              Get a Free Quote
+              Request a Site Visit
             </Link>
           </div>
         </div>

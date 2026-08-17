@@ -277,7 +277,7 @@ export default function AIChatWidget() {
                 style={{ backgroundColor: "#E07B2A" }}
               >
                 <ExternalLink size={14} />
-                Get a Free Quote
+                Request a Site Visit
               </a>
             </div>
           )}

@@ -274,7 +274,7 @@ export default function CountiesSection() {
               (e.currentTarget as HTMLElement).style.color = "#E07B2A";
             }}
           >
-            Get a Free Quote →
+            Request a Site Visit →
           </a>
         </div>
       </div>

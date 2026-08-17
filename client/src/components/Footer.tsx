@@ -320,7 +320,7 @@ export default function Footer() {
                 { label: "Our Work", href: "/#our-work" },
                 { label: "Service Areas", href: "/#service-areas" },
                 { label: "About Us", href: "/about" },
-                { label: "Get a Quote", href: "/quote" },
+                { label: "Request a Site Visit", href: "/quote" },
               ].map((l) => (
                 <a
                   key={l.href}
@@ -421,7 +421,7 @@ export default function Footer() {
               className="btn-amber mt-6"
               style={{ fontSize: "0.875rem", padding: "0.625rem 1.5rem", textDecoration: "none" }}
             >
-              Get a Free Quote
+              Request a Site Visit
             </a>
 
             <a

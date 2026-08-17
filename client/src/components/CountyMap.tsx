@@ -231,7 +231,7 @@ export default function CountyMap({ slug, county, state, primaryCity }: CountyMa
                   Serving all of ${county}
                 </div>
 <a href="/quote?county=${county.replace(/ County$/, '').toLowerCase()}${primaryCity ? '&city=' + encodeURIComponent(primaryCity) : ''}&state=${state === 'Tennessee' ? 'TN' : state}" style="display:inline-block;background:#E07B2A;color:#fff;font-family:'Oswald',sans-serif;font-size:0.75rem;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;padding:6px 14px;text-decoration:none;">
-                  Get a Free Quote
+                  Request a Site Visit
                 </a>
               </div>
             `,

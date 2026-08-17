@@ -7,9 +7,9 @@ import { ArrowRight } from "lucide-react";
 const steps = [
   {
     number: "01",
-    title: "Request a Free Quote",
+    title: "Request a Site Visit",
     description:
-      "Fill out our quick form or give us a call. We'll review your property details — acreage, brush density, terrain — and get back to you with a clear, upfront quote. No surprises.",
+      "Complete a Site Visit Request or give us a call. We will review your property details — acreage, brush density, terrain, and access — and schedule a visit when the project is a fit.",
   },
   {
     number: "02",
@@ -150,7 +150,7 @@ export default function HowItWorksSection() {
             className="btn-amber"
             style={{ textDecoration: "none", display: "inline-flex" }}
           >
-            Start Step 1 — Get a Free Quote
+            Start Step 1 — Request a Site Visit
           </a>
           <span
             style={{
