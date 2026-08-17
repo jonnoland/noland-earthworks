@@ -19,4 +19,12 @@ describe("Operations Quotes new-request alert detection", () => {
     expect(formatNewRequestAlert(1, "website request")).toBe("1 new website request received.");
     expect(formatNewRequestAlert(2, "field request")).toBe("2 new field requests received.");
   });
+
+  it("keeps the initial response separate from later new-request comparisons", () => {
+    const firstResponse = [{ id: 21 }, { id: 22 }];
+    const baseline = new Set(firstResponse.map(request => String(request.id)));
+
+    expect(getNewRequestIds(baseline, firstResponse)).toEqual([]);
+    expect(getNewRequestIds(baseline, [...firstResponse, { id: 23 }])).toEqual(["23"]);
+  });
 });

@@ -1768,6 +1768,7 @@ function InlineWebRequestsPanel({
   const list = (data ?? []) as WebReq[];
   useIncomingRequestAlert({
     items: list,
+    isReady: data !== undefined,
     enabled: soundAlertsEnabled,
     label: "website request",
     onNewRequests,

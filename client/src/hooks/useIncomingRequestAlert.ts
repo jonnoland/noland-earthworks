@@ -9,6 +9,7 @@ import {
 
 type IncomingRequestAlertOptions<T extends IdentifiableRequest> = {
   items: readonly T[];
+  isReady: boolean;
   enabled: boolean;
   label: string;
   onNewRequests?: (count: number, label: string) => void;
@@ -20,6 +21,7 @@ type IncomingRequestAlertOptions<T extends IdentifiableRequest> = {
  */
 export function useIncomingRequestAlert<T extends IdentifiableRequest>({
   items,
+  isReady,
   enabled,
   label,
   onNewRequests,
@@ -27,6 +29,9 @@ export function useIncomingRequestAlert<T extends IdentifiableRequest>({
   const knownIds = useRef<Set<string> | null>(null);
 
   useEffect(() => {
+    // Query hooks initially expose an empty fallback before their first real
+    // response. Wait for that response before establishing the silent baseline.
+    if (!isReady) return;
     const currentIds = new Set(items.map(item => String(item.id)));
     if (knownIds.current === null) {
       knownIds.current = currentIds;
@@ -43,5 +48,5 @@ export function useIncomingRequestAlert<T extends IdentifiableRequest>({
     toast.success(formatNewRequestAlert(count, label), {
       description: "Operations Quotes has been refreshed.",
     });
-  }, [enabled, items, label, onNewRequests]);
+  }, [enabled, isReady, items, label, onNewRequests]);
 }
