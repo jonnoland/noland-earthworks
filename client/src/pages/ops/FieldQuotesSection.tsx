@@ -40,6 +40,7 @@ import {
 } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useLocation } from "wouter";
+import { useIncomingRequestAlert } from "@/hooks/useIncomingRequestAlert";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -471,7 +472,7 @@ function FieldQuoteDetailDialog({
 
 // ─── Main section ─────────────────────────────────────────────────────────────
 
-export default function FieldQuotesSection() {
+export default function FieldQuotesSection({ soundAlertsEnabled }: { soundAlertsEnabled: boolean }) {
   const [search, setSearch] = useState("");
   const [scoreFilter, setScoreFilter] = useState<"all" | "strong" | "marginal" | "weak">("all");
   const [sortKey, setSortKey] = useState<SortKey>("date_desc");
@@ -486,6 +487,11 @@ export default function FieldQuotesSection() {
       refetchInterval: 30_000, // auto-refresh every 30 s so field app submissions appear without a manual reload
     }
   );
+  useIncomingRequestAlert({
+    items: quotes as FieldQuote[],
+    enabled: soundAlertsEnabled,
+    label: "field request",
+  });
 
   const deleteMutation = trpc.fieldQuote.delete.useMutation({
     onSuccess: () => {

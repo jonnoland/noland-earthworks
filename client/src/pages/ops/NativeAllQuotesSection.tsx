@@ -28,12 +28,18 @@ import {
   FileText, ExternalLink, Sparkles, Info, AlertTriangle,
   RefreshCw, ChevronRight, MapPin, Phone, Mail, User, Users, X, Globe,
   Loader2, Clock, ChevronDown, ChevronUp, ArchiveRestore, Pencil,
-  ArrowRight, Ban, ArrowUpDown
+  ArrowRight, Ban, ArrowUpDown, Volume2, VolumeX
 } from "lucide-react";
 import { MapView } from "@/components/Map";
 import FieldQuotesSection from "@/pages/ops/FieldQuotesSection";
 import { parseStoredRangeRiskFactors, parseStoredServiceBreakdown } from "@shared/quoteServiceItemization";
 import { compareQuotesByConfidence, sortWebsiteRequests, WEBSITE_REQUESTS_REFRESH_INTERVAL_MS } from "@shared/quoteRequestSorting";
+import {
+  getStoredOpsSoundAlertPreference,
+  playOpsNewRequestSound,
+  setStoredOpsSoundAlertPreference,
+} from "@/lib/opsNewRequestAlert";
+import { useIncomingRequestAlert } from "@/hooks/useIncomingRequestAlert";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface LineItem {
@@ -1705,6 +1711,7 @@ function WebReqInteractiveMap({
 // ─── Inline Web Requests Panel ──────────────────────────────────────────────
 function InlineWebRequestsPanel({
   onBuildQuote,
+  soundAlertsEnabled,
 }: {
   onBuildQuote: (prefill: {
     clientName?: string;
@@ -1714,6 +1721,7 @@ function InlineWebRequestsPanel({
     serviceType?: string;
     clientMessage?: string;
   }) => void;
+  soundAlertsEnabled: boolean;
 }) {
   const { data, isLoading, refetch, isFetching } = trpc.ops.quotes.list.useQuery(
     { limit: 50 },
@@ -1756,6 +1764,7 @@ function InlineWebRequestsPanel({
     createdAt: Date | string;
   };
   const list = (data ?? []) as WebReq[];
+  useIncomingRequestAlert({ items: list, enabled: soundAlertsEnabled, label: "website request" });
   const [requestSort, setRequestSort] = useState<"newest" | "confidence">("newest");
   const sortedRequests = useMemo(() => sortWebsiteRequests(list, requestSort), [list, requestSort]);
   const utils = trpc.useUtils();
@@ -2094,6 +2103,21 @@ export function NativeAllQuotesSection() {
   } | undefined>(undefined);
   const [editQuote, setEditQuote] = useState<NativeQuote | null>(null);
   const [selectedQuote, setSelectedQuote] = useState<NativeQuote | null>(null);
+  const [soundAlertsEnabled, setSoundAlertsEnabled] = useState(() => getStoredOpsSoundAlertPreference());
+
+  const toggleSoundAlerts = () => {
+    const next = !soundAlertsEnabled;
+    setSoundAlertsEnabled(next);
+    setStoredOpsSoundAlertPreference(next);
+    if (next) {
+      void playOpsNewRequestSound();
+      toast.success("New-request sound alerts enabled.", {
+        description: "You will hear an alert for new website or field requests while this page is open.",
+      });
+    } else {
+      toast.message("New-request sound alerts muted.");
+    }
+  };
   // ── Stale quotes follow-up ──────────────────────────────────────────────────
   const [showStalePanel, setShowStalePanel] = useState(false);
   const [staleFollowUpDrafts, setStaleFollowUpDrafts] = useState<Record<number, string>>({});
@@ -2309,6 +2333,17 @@ export function NativeAllQuotesSection() {
               )}
             </div>
             <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                className={`h-8 gap-1.5 text-xs ${soundAlertsEnabled ? "border-emerald-500/50 text-emerald-400 hover:text-emerald-300" : "text-muted-foreground"}`}
+                onClick={toggleSoundAlerts}
+                aria-pressed={soundAlertsEnabled}
+                title={soundAlertsEnabled ? "Mute incoming website and field request sounds" : "Enable incoming website and field request sounds"}
+              >
+                {soundAlertsEnabled ? <Volume2 className="w-3.5 h-3.5" /> : <VolumeX className="w-3.5 h-3.5" />}
+                Sound {soundAlertsEnabled ? "On" : "Muted"}
+              </Button>
               <div className="relative flex-1 sm:w-56">
                 <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
                 <Input
@@ -2713,6 +2748,7 @@ export function NativeAllQuotesSection() {
         <div className="xl:col-span-2">
           <div className="xl:sticky xl:top-4">
             <InlineWebRequestsPanel
+              soundAlertsEnabled={soundAlertsEnabled}
               onBuildQuote={(prefill) => {
                 setCreatePrefill(prefill);
                 setShowCreate(true);
@@ -2724,7 +2760,7 @@ export function NativeAllQuotesSection() {
 
       {/* ── Field Quotes (companion app submissions) ── */}
       <div className="mt-8 border-t border-zinc-800 pt-8">
-        <FieldQuotesSection />
+        <FieldQuotesSection soundAlertsEnabled={soundAlertsEnabled} />
       </div>
 
       {/* Detail panel */}

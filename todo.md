@@ -3303,3 +3303,8 @@
 - [x] Verify every public sitemap page emits the expected self-referencing no-slash canonical tag
 - [x] Correct verified sitemap, link, or canonical defects and validate production behavior
 - [x] Prevent stale production SPA HTML from retaining a prior frontend bundle after publication
+
+## Operations Quotes Audible New-Request Alert — Aug 2026
+- [x] Identify the lead and website-quote refresh paths on Operations Quotes
+- [x] Add a user-controlled sound alert for genuinely new incoming requests
+- [x] Add regression coverage and validate the alert behavior
