@@ -3274,3 +3274,8 @@
 - [x] Inventory public and Operations terminology, calls to action, scope language, contact details, and metadata
 - [x] Identify and prioritize confirmed inconsistencies
 - [x] Apply safe consistency corrections and validate the active site
+
+## Site Visit Submission Feedback — Aug 2026
+- [x] Add a subtle accessible loading state while a Site Visit Request is being sent
+- [x] Improve the visible success confirmation after a Site Visit Request is submitted
+- [x] Add regression coverage, validate the form feedback, and increment the app version

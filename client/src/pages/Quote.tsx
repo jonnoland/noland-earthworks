@@ -242,14 +242,21 @@ export default function QuotePage() {
 
           <section className="border border-white/10 bg-[#191919] p-5 sm:p-8">
             {submitted ? (
-              <div className="py-8 text-center" role="status">
-                <CheckCircle2 className="mx-auto h-12 w-12 text-[#E07B2A]" aria-hidden="true" />
-                <h2 className="mt-5 font-['Oswald'] text-3xl font-bold uppercase">Request received.</h2>
-                <p className="mx-auto mt-4 max-w-lg font-['Lato'] leading-7 text-white/70">Thank you. Jon will review the property details and contact you about the next step. Final scope and pricing are confirmed after the site visit.</p>
+              <div className="animate-in fade-in-0 zoom-in-95 py-8 text-center duration-300" role="status" aria-live="polite">
+                <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full border border-[#E07B2A]/45 bg-[#E07B2A]/10 shadow-[0_0_0_10px_rgba(224,123,42,0.06)]">
+                  <CheckCircle2 className="h-10 w-10 text-[#E07B2A]" aria-hidden="true" />
+                </div>
+                <p className="mt-6 font-['Oswald'] text-xs font-semibold uppercase tracking-[0.18em] text-[#E07B2A]">You’re all set</p>
+                <h2 className="mt-2 font-['Oswald'] text-3xl font-bold uppercase">Request received.</h2>
+                <p className="mx-auto mt-4 max-w-lg font-['Lato'] leading-7 text-white/70">Thank you{form.name ? `, ${form.name.split(" ")[0]}` : ""}. Jon will review the property details and contact you about the next step. Final scope and pricing are confirmed after the site visit.</p>
+                <div className="mx-auto mt-6 max-w-lg border border-[#E07B2A]/25 bg-[#E07B2A]/5 p-4 text-left">
+                  <p className="font-['Oswald'] text-xs font-semibold uppercase tracking-[0.12em] text-[#E07B2A]">What happens next</p>
+                  <p className="mt-2 font-['Lato'] text-sm leading-6 text-white/70">Expect a confirmation at <span className="text-white">{form.email}</span>. Jon reviews requests the same day or the next morning, then confirms the property and visit details with you.</p>
+                </div>
                 <div className="mt-7 flex flex-col justify-center gap-3 sm:flex-row"><a href="/" className="inline-flex min-h-11 items-center justify-center border border-white/20 px-5 font-['Oswald'] text-xs font-semibold uppercase tracking-[0.12em] text-white">Back to Home</a><button type="button" onClick={() => { setSubmitted(false); setForm(initialForm); }} className="min-h-11 bg-[#E07B2A] px-5 font-['Oswald'] text-xs font-semibold uppercase tracking-[0.12em] text-white">Submit Another Request</button></div>
               </div>
             ) : (
-              <form onSubmit={submit}>
+              <form onSubmit={submit} aria-busy={submitRequest.isPending}>
                 <div className="mb-7"><p className="font-['Oswald'] text-xs font-semibold uppercase tracking-[0.18em] text-[#E07B2A]">Site Visit Request</p><h2 className="mt-2 font-['Oswald'] text-3xl font-bold uppercase">A few details to get started</h2><p className="mt-3 font-['Lato'] text-sm leading-6 text-white/60">Required fields are marked with an asterisk.</p></div>
                 {error && <p role="alert" className="mb-5 flex gap-2 border border-red-400/35 bg-red-400/10 p-3 font-['Lato'] text-sm text-red-200"><AlertCircle className="h-5 w-5 shrink-0" />{error}</p>}
                 <div className="grid gap-5 sm:grid-cols-2">
@@ -298,7 +305,8 @@ export default function QuotePage() {
                 {form.preferredContact === "text" && <label className="mt-5 flex cursor-pointer items-start gap-3 border border-white/10 bg-white/[0.03] p-4 font-['Lato'] text-xs leading-5 text-white/65"><input type="checkbox" checked={form.smsConsent} onChange={(e) => update("smsConsent", e.target.checked)} className="mt-0.5 h-4 w-4 accent-[#E07B2A]" /><span>I agree to receive project-related text messages at the number provided, including site-visit, scheduling, weather, service, proposal, invoice, and payment updates. Consent is not required to request service. Message frequency varies. Message and data rates may apply. Reply STOP to opt out or HELP for help.</span></label>}
                 {errors.smsConsent && <p className="mt-2 font-['Lato'] text-xs text-red-300">{errors.smsConsent}</p>}
                 <p className="mt-6 font-['Lato'] text-xs leading-5 text-white/45">By submitting, you ask Noland Earthworks to review this Site Visit Request and contact you about the project. We create a native request and client record, and use service providers for email, phone/SMS, hosting and storage, analytics, and AI-assisted internal request organization. If work is approved, payment details are handled by Stripe; Noland Earthworks does not intend to store your payment-card number. Do not include sensitive information that is not needed for your request. See the <a className="text-[#E07B2A] underline" href="/privacy-policy">Privacy Policy</a>.</p>
-                <button type="submit" disabled={submitRequest.isPending} className="mt-6 inline-flex min-h-12 w-full items-center justify-center gap-2 bg-[#E07B2A] px-6 font-['Oswald'] text-sm font-semibold uppercase tracking-[0.12em] text-white transition hover:bg-[#f28c35] disabled:cursor-not-allowed disabled:opacity-60">{submitRequest.isPending ? <><Loader2 className="h-5 w-5 animate-spin" /> Sending request</> : "Request a Site Visit"}</button>
+                <button type="submit" disabled={submitRequest.isPending} className="mt-6 inline-flex min-h-12 w-full items-center justify-center gap-2 bg-[#E07B2A] px-6 font-['Oswald'] text-sm font-semibold uppercase tracking-[0.12em] text-white transition hover:bg-[#f28c35] disabled:cursor-not-allowed disabled:opacity-60">{submitRequest.isPending ? <><Loader2 className="h-5 w-5 animate-spin" /> Sending your request…</> : "Request a Site Visit"}</button>
+                {submitRequest.isPending && <p className="animate-pulse mt-3 text-center font-['Lato'] text-xs text-white/60" role="status" aria-live="polite">Saving your details and preparing the next steps…</p>}
               </form>
             )}
           </section>
