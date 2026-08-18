@@ -3347,3 +3347,7 @@
 - [x] Add secure optional photo and work-area document uploads to the public Site Visit form
 - [x] Store attachment metadata with the request and expose it in Operations review
 - [x] Validate file type, size, quantity, and failed-upload handling
+
+## Site Visit Form Service-Area Layout — Aug 2026
+- [x] Relocate the crowded service-area reference from the address field area
+- [x] Preserve clear county eligibility guidance and validate the responsive form layout

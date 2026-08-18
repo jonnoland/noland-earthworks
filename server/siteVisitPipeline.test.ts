@@ -49,12 +49,12 @@ describe("native Site Visit Request workflow", () => {
     expect(quote).toContain('source: "out_of_service_waitlist"');
     expect(quote).toContain('href="/faq"');
     expect(quote).toContain("out-of-service-fade-in");
-    expect(quote).toContain("ServiceAreaMiniMap");
+    expect(quote).not.toContain("ServiceAreaMiniMap");
     expect(quote).toContain("city: form.city.trim()");
     expect(quote).toContain("zip: form.zip.trim()");
     expect(quote).toContain('name="city"');
     expect(quote).toContain('name="zip"');
-    expect(quote).toContain("View supported counties");
+    expect(quote).toContain("Select a service-area county");
     expect(router).toContain("Please select a county in Noland Earthworks’ service area.");
     expect(router).toContain("reverseGeocode: publicProcedure");
   });
