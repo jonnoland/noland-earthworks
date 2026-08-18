@@ -16,8 +16,24 @@ import { eq } from "drizzle-orm";
 import { parseGooglePlaceAddress, parseGooglePlaceCoordinates } from "./googlePlaceAddress";
 import { isServedCounty } from "../shared/serviceAreas";
 import { normalizeTennesseeParcelId, validateTennesseeParcelId } from "../shared/tennesseeParcelId";
+import { randomUUID } from "node:crypto";
 
 const TN_PARCEL_QUERY_URL = "https://services1.arcgis.com/YuVBSS7Y1of2Qud1/arcgis/rest/services/Tennessee_Property_Boundaries_Public_Use/FeatureServer/0/query";
+const SITE_VISIT_ATTACHMENT_TYPES = new Set([
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "application/pdf",
+  "application/msword",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+]);
+const MAX_SITE_VISIT_ATTACHMENT_BYTES = 8 * 1024 * 1024;
+const siteVisitAttachmentSchema = z.object({
+  url: z.string().url(),
+  filename: z.string().min(1).max(180),
+  mimeType: z.string().min(1).max(120),
+  kind: z.enum(["photo", "document"]),
+});
 
 // Strip markdown code fences from LLM JSON responses
 function stripCodeFence(raw: string): string {
@@ -79,6 +95,8 @@ export const quoteSchema = z.object({
   clientType: z.enum(["residential", "commercial", "government"]).optional().default("residential"),
   /** RFP/bid document CDN URLs — only set for government/municipal leads */
   rfpDocumentUrls: z.array(z.string().url()).max(5).optional().default([]),
+  /** Optional public-request photos and work-area documents uploaded before submit */
+  siteVisitAttachments: z.array(siteVisitAttachmentSchema).max(5).optional().default([]),
 });
 
 export type QuoteInput = z.infer<typeof quoteSchema>;
@@ -286,6 +304,21 @@ function buildEmailHtml(data: QuoteInput): string {
           </td>
         </tr>` : ""}
 
+        ${data.siteVisitAttachments && data.siteVisitAttachments.length > 0 ? `
+        <!-- Section: Customer Attachments -->
+        <tr>
+          <td style="padding:24px 36px 0;">
+            <p style="margin:0 0 10px;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#E07B2A;border-bottom:2px solid #E07B2A;padding-bottom:6px;">Customer Attachments (${data.siteVisitAttachments.length})</p>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:0 36px 16px;">
+            <table width="100%" cellpadding="0" cellspacing="0">
+              ${data.siteVisitAttachments.map((attachment) => `<tr><td style="padding:4px 0;"><a href="${escapeHtml(attachment.url)}" target="_blank" rel="noopener noreferrer" style="color:#E07B2A;font-size:13px;">${escapeHtml(attachment.filename)}</a> <span style="color:#999;font-size:11px;">(${escapeHtml(attachment.kind)})</span></td></tr>`).join("")}
+            </table>
+          </td>
+        </tr>` : ""}
+
         <!-- CTA -->
         <tr>
           <td style="padding:28px 36px;text-align:center;">
@@ -448,6 +481,26 @@ function buildConfirmationEmailHtml(data: QuoteInput): string {
 }
 
 export const quoteRouter = router({
+  /** Accepts a bounded optional photo or work-area document before public request submission. */
+  uploadSiteVisitAttachment: publicProcedure
+    .input(z.object({
+      base64: z.string().min(1).max(12_000_000),
+      filename: z.string().min(1).max(180),
+      mimeType: z.string().min(1).max(120),
+    }))
+    .mutation(async ({ input }) => {
+      if (!SITE_VISIT_ATTACHMENT_TYPES.has(input.mimeType)) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Use a JPG, PNG, WEBP, PDF, DOC, or DOCX file." });
+      }
+      const buffer = Buffer.from(input.base64, "base64");
+      if (!buffer.length || buffer.length > MAX_SITE_VISIT_ATTACHMENT_BYTES) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Each attachment must be 8 MB or smaller." });
+      }
+      const safeFilename = input.filename.replace(/[^A-Za-z0-9._-]/g, "_").slice(-140);
+      const kind = input.mimeType.startsWith("image/") ? "photo" as const : "document" as const;
+      const { url } = await storagePut(`site-visit-attachments/${randomUUID()}-${safeFilename}`, buffer, input.mimeType);
+      return { url, filename: input.filename, mimeType: input.mimeType, kind };
+    }),
   submit: publicProcedure.input(quoteSchema).mutation(async ({ input }) => {
     if (input.locationDecision === "out_of_area") {
       throw new TRPCError({ code: "BAD_REQUEST", message: "This property appears to be outside the current service area. Please use the area-expansion waitlist or call about a custom request." });
@@ -581,6 +634,7 @@ export const quoteRouter = router({
           propertyPinLat: input.propertyPinLat != null ? String(input.propertyPinLat) : null,
           propertyPinLng: input.propertyPinLng != null ? String(input.propertyPinLng) : null,
           rfpDocumentUrls: input.rfpDocumentUrls && input.rfpDocumentUrls.length > 0 ? JSON.stringify(input.rfpDocumentUrls) : null,
+          siteVisitAttachments: input.siteVisitAttachments.length > 0 ? JSON.stringify(input.siteVisitAttachments) : null,
           clientType: input.clientType ?? "residential",
           aiScore: qualification?.score ?? null,
           aiSummary: qualification?.summary ?? null,

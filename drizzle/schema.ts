@@ -267,6 +267,8 @@ export const quoteSubmissions = mysqlTable("quote_submissions", {
   propertyPinLng: decimal("propertyPinLng", { precision: 10, scale: 7 }),
   /** RFP/bid document CDN URLs — JSON array, only set for government/municipal leads */
   rfpDocumentUrls: text("rfpDocumentUrls"),
+  /** Optional customer photos and work-area documents — JSON attachment metadata */
+  siteVisitAttachments: text("siteVisitAttachments"),
   /** Preliminary price range shown on form (e.g. "$3,200 – $4,500") */
   estimatedRange: varchar("estimatedRange", { length: 100 }),
   /** Structured preliminary contribution for each selected service, stored as JSON */

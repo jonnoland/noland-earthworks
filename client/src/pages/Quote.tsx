@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { AlertCircle, CheckCircle2, ClipboardCheck, ExternalLink, Info, Loader2, MapPin, Phone } from "lucide-react";
+import { AlertCircle, CheckCircle2, ClipboardCheck, ExternalLink, FileUp, Info, Loader2, MapPin, Phone, X } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import MobileCTABar from "@/components/MobileCTABar";
@@ -40,6 +40,28 @@ const initialForm = {
   timing: "",
 };
 
+type SiteVisitAttachment = {
+  url: string;
+  filename: string;
+  mimeType: string;
+  kind: "photo" | "document";
+};
+
+const ACCEPTED_SITE_VISIT_ATTACHMENT_TYPES = new Set([
+  "image/jpeg", "image/png", "image/webp", "application/pdf", "application/msword",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+]);
+const MAX_SITE_VISIT_ATTACHMENT_BYTES = 8 * 1024 * 1024;
+
+function readFileAsBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error("The file could not be read."));
+    reader.onload = () => resolve(String(reader.result).split(",")[1] ?? "");
+    reader.readAsDataURL(file);
+  });
+}
+
 function fieldClassName(hasError = false) {
   return `mt-2 w-full border bg-white/[0.04] px-3 py-3 font-['Lato'] text-base text-white outline-none transition placeholder:text-white/35 focus:border-[#E07B2A] ${hasError ? "border-red-400" : "border-white/15"}`;
 }
@@ -76,6 +98,9 @@ export default function QuotePage() {
     address: string | null; deedAcres: number | null; lat: number | null; lng: number | null; propertyViewerUrl: string | null;
   }>>([]);
   const [selectedParcel, setSelectedParcel] = useState<typeof parcelMatches[number] | null>(null);
+  const [attachments, setAttachments] = useState<SiteVisitAttachment[]>([]);
+  const [attachmentError, setAttachmentError] = useState("");
+  const [isUploadingAttachments, setIsUploadingAttachments] = useState(false);
   const addressFieldRef = useRef<HTMLInputElement>(null);
   const addressInput = form.street.trim();
   const addressSuggestions = trpc.quote.placesAutocomplete.useQuery(
@@ -164,6 +189,40 @@ export default function QuotePage() {
   const lookupParcelById = trpc.quote.parcelLookupById.useMutation({
     onError: (mutationError) => setParcelIdError(mutationError.message || "Parcel lookup is unavailable. Enter the property address manually."),
   });
+  const uploadSiteVisitAttachment = trpc.quote.uploadSiteVisitAttachment.useMutation();
+
+  const addAttachments = async (files: FileList | null) => {
+    const candidates = Array.from(files ?? []);
+    if (!candidates.length) return;
+    if (attachments.length + candidates.length > 5) {
+      setAttachmentError("Attach up to five photos or work-area documents per request.");
+      return;
+    }
+    for (const file of candidates) {
+      if (!ACCEPTED_SITE_VISIT_ATTACHMENT_TYPES.has(file.type)) {
+        setAttachmentError("Use JPG, PNG, WEBP, PDF, DOC, or DOCX files only.");
+        return;
+      }
+      if (file.size > MAX_SITE_VISIT_ATTACHMENT_BYTES) {
+        setAttachmentError(`“${file.name}” is larger than the 8 MB attachment limit.`);
+        return;
+      }
+    }
+    setAttachmentError("");
+    setIsUploadingAttachments(true);
+    try {
+      const uploaded: SiteVisitAttachment[] = [];
+      for (const file of candidates) {
+        const base64 = await readFileAsBase64(file);
+        uploaded.push(await uploadSiteVisitAttachment.mutateAsync({ base64, filename: file.name, mimeType: file.type }));
+      }
+      setAttachments((current) => [...current, ...uploaded]);
+    } catch (uploadError) {
+      setAttachmentError(uploadError instanceof Error ? uploadError.message : "The attachment could not be uploaded. Please try again.");
+    } finally {
+      setIsUploadingAttachments(false);
+    }
+  };
 
   const applyPublicParcel = (match: typeof parcelMatches[number]) => {
     setForm((current) => ({
@@ -235,6 +294,10 @@ export default function QuotePage() {
     const nextErrors = validateSiteVisitRequest(form);
     setErrors(nextErrors);
     if (Object.keys(nextErrors).length) return;
+    if (isUploadingAttachments) {
+      setError("Please wait for your attachments to finish uploading before submitting.");
+      return;
+    }
     if (outOfAreaCounty) {
       setError(`This address appears to be in ${outOfAreaCounty}, outside the current service area. Use the expansion waitlist below or call about a custom request.`);
       return;
@@ -271,6 +334,7 @@ export default function QuotePage() {
       parcelId: selectedParcel?.parcelId || parcelId.trim(),
       deedAcres: selectedParcel?.deedAcres ?? undefined,
       adjustedAcres: Number.isFinite(Number(form.acreage)) ? Number(form.acreage) : undefined,
+      siteVisitAttachments: attachments,
     });
   };
 
@@ -366,10 +430,16 @@ export default function QuotePage() {
                 </div>
                   <div className="mt-5 grid gap-5 sm:grid-cols-2"><label className="font-['Oswald'] text-xs uppercase tracking-[0.12em] text-white/65">Best way to reach you<select value={form.preferredContact} onChange={(e) => update("preferredContact", e.target.value)} className={fieldClassName()}><option value="call" className="bg-[#191919]">Call</option><option value="text" className="bg-[#191919]">Text</option><option value="email" className="bg-[#191919]">Email</option></select></label><label className="font-['Oswald'] text-xs uppercase tracking-[0.12em] text-white/65">Preferred timing <span className="text-white/40">(optional)</span><input value={form.timing} onChange={(e) => update("timing", e.target.value)} className={fieldClassName()} placeholder="Example: This month" /></label></div>
                 <label className="mt-5 block font-['Oswald'] text-xs uppercase tracking-[0.12em] text-white/65">What would you like to accomplish?<textarea name="message" value={form.message} onChange={(e) => update("message", e.target.value.slice(0, 1200))} className={`${fieldClassName()} min-h-32 resize-y`} placeholder="Describe the work area, vegetation, access, goals, concerns, or anything Jon should know before the visit." /><span className="mt-1 block text-right font-['Lato'] normal-case tracking-normal text-white/40">{form.message.length}/1200</span></label>
+                <div className="mt-5 border border-white/15 bg-white/[0.03] p-4">
+                  <div className="flex items-start gap-3"><FileUp className="mt-0.5 h-5 w-5 shrink-0 text-[#E07B2A]" /><div><p className="font-['Oswald'] text-xs font-semibold uppercase tracking-[0.12em] text-white/75">Photos or work-area documents <span className="text-white/40">(optional)</span></p><p className="mt-1 font-['Lato'] text-xs leading-5 text-white/55">Attach up to five JPG, PNG, WEBP, PDF, DOC, or DOCX files, up to 8 MB each. Photos of access, vegetation, slopes, or a marked work area can help prepare for the visit. Do not upload IDs, financial records, or other sensitive documents.</p></div></div>
+                  <label className="mt-3 inline-flex min-h-10 cursor-pointer items-center border border-[#E07B2A]/60 px-3 font-['Oswald'] text-[11px] font-semibold uppercase tracking-[0.1em] text-[#f0ede6] transition hover:bg-[#E07B2A]/15"><input type="file" multiple accept="image/jpeg,image/png,image/webp,application/pdf,.doc,.docx" className="sr-only" disabled={isUploadingAttachments} onChange={(event) => { void addAttachments(event.target.files); event.currentTarget.value = ""; }} />{isUploadingAttachments ? <><Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />Uploading…</> : "Add attachments"}</label>
+                  {attachmentError && <p role="alert" className="mt-2 font-['Lato'] text-xs text-red-300">{attachmentError}</p>}
+                  {attachments.length > 0 && <ul className="mt-3 space-y-1.5" aria-live="polite">{attachments.map((attachment) => <li key={attachment.url} className="flex items-center justify-between gap-3 border border-white/10 bg-black/10 px-3 py-2 font-['Lato'] text-xs text-white/75"><span className="min-w-0 truncate">{attachment.filename} <span className="text-white/40">({attachment.kind})</span></span><button type="button" onClick={() => setAttachments((current) => current.filter((item) => item.url !== attachment.url))} className="shrink-0 text-white/55 hover:text-white" aria-label={`Remove ${attachment.filename}`}><X className="h-4 w-4" /></button></li>)}</ul>}
+                </div>
                 {form.preferredContact === "text" && <label className="mt-5 flex cursor-pointer items-start gap-3 border border-white/10 bg-white/[0.03] p-4 font-['Lato'] text-xs leading-5 text-white/65"><input type="checkbox" checked={form.smsConsent} onChange={(e) => update("smsConsent", e.target.checked)} className="mt-0.5 h-4 w-4 accent-[#E07B2A]" /><span>I agree to receive project-related text messages at the number provided, including site-visit, scheduling, weather, service, proposal, invoice, and payment updates. Consent is not required to request service. Message frequency varies. Message and data rates may apply. Reply STOP to opt out or HELP for help.</span></label>}
                 {errors.smsConsent && <p className="mt-2 font-['Lato'] text-xs text-red-300">{errors.smsConsent}</p>}
-                <p className="mt-6 font-['Lato'] text-xs leading-5 text-white/45">By submitting, you ask Noland Earthworks to review this Site Visit Request and contact you about the project. We create a native request and client record, and use service providers for email, phone/SMS, hosting and storage, analytics, mapping, and AI-assisted internal request organization. If you choose the optional Parcel ID lookup, we query official Tennessee property-location records; owner and mailing details are not displayed or copied into this public request. If work is approved, payment details are handled by Stripe; Noland Earthworks does not intend to store your payment-card number. Do not include sensitive information that is not needed for your request. See the <a className="text-[#E07B2A] underline" href="/privacy-policy">Privacy Policy</a>.</p>
-                <button type="submit" disabled={submitRequest.isPending} className="mt-6 inline-flex min-h-12 w-full items-center justify-center gap-2 bg-[#E07B2A] px-6 font-['Oswald'] text-sm font-semibold uppercase tracking-[0.12em] text-white transition hover:bg-[#f28c35] disabled:cursor-not-allowed disabled:opacity-60">{submitRequest.isPending ? <><Loader2 className="h-5 w-5 animate-spin" /> Sending your request…</> : "Request a Site Visit"}</button>
+                <p className="mt-6 font-['Lato'] text-xs leading-5 text-white/45">By submitting, you ask Noland Earthworks to review this Site Visit Request and contact you about the project. We create a native request and client record, and use service providers for email, phone/SMS, hosting and storage, analytics, mapping, and AI-assisted internal request organization. Optional attachments are stored with your request for Jon’s review; do not upload IDs, financial records, or other sensitive documents. If you choose the optional Parcel ID lookup, we query official Tennessee property-location records; owner and mailing details are not displayed or copied into this public request. If work is approved, payment details are handled by Stripe; Noland Earthworks does not intend to store your payment-card number. See the <a className="text-[#E07B2A] underline" href="/privacy-policy">Privacy Policy</a>.</p>
+                <button type="submit" disabled={submitRequest.isPending || isUploadingAttachments} className="mt-6 inline-flex min-h-12 w-full items-center justify-center gap-2 bg-[#E07B2A] px-6 font-['Oswald'] text-sm font-semibold uppercase tracking-[0.12em] text-white transition hover:bg-[#f28c35] disabled:cursor-not-allowed disabled:opacity-60">{submitRequest.isPending ? <><Loader2 className="h-5 w-5 animate-spin" /> Sending your request…</> : isUploadingAttachments ? <><Loader2 className="h-5 w-5 animate-spin" /> Uploading attachments…</> : "Request a Site Visit"}</button>
                 {submitRequest.isPending && <p className="animate-pulse mt-3 text-center font-['Lato'] text-xs text-white/60" role="status" aria-live="polite">Saving your details and preparing the next steps…</p>}
               </form>
             )}

@@ -1927,6 +1927,7 @@ function InlineWebRequestsPanel({
     nativeQuoteId?: number | null;
     propertyPinLat?: string | null;
     propertyPinLng?: string | null;
+    siteVisitAttachments?: string | null;
     createdAt: Date | string;
   };
   const list = (data ?? []) as WebReq[];
@@ -2042,6 +2043,8 @@ function InlineWebRequestsPanel({
                 ? { label: "Moderate", className: "text-amber-300 bg-amber-500/10 border-amber-500/25", Icon: AlertTriangle }
                 : { label: "Low", className: "text-red-300 bg-red-500/10 border-red-500/25", Icon: AlertTriangle };
             const riskFactors = parseStoredRangeRiskFactors(req.aiRangeRiskFactors);
+            let requestAttachments: { url: string; filename: string; kind: "photo" | "document" }[] = [];
+            try { requestAttachments = JSON.parse(req.siteVisitAttachments ?? "[]"); } catch { requestAttachments = []; }
             return (
               <div key={req.id} className="rounded-md border border-border bg-card/50 p-3 space-y-2">
                 {/* Row 1: Name + AI score badge + map toggle */}
@@ -2085,6 +2088,13 @@ function InlineWebRequestsPanel({
                     )}
                   </div>
                 </div>
+
+                {requestAttachments.length > 0 && (
+                  <div className="rounded border border-sky-500/20 bg-sky-500/5 p-2">
+                    <p className="mb-1.5 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wide text-sky-200"><FileText className="h-3.5 w-3.5" /> Customer attachments ({requestAttachments.length})</p>
+                    <div className="flex flex-wrap gap-2">{requestAttachments.map((attachment) => <a key={attachment.url} href={attachment.url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 rounded border border-sky-400/25 px-2 py-1 text-[11px] text-sky-100 hover:bg-sky-500/15"><ExternalLink className="h-3 w-3" />{attachment.filename}</a>)}</div>
+                  </div>
+                )}
 
                 {/* AI Summary — visible on card face */}
                 {req.aiSummary && (

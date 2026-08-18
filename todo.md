@@ -3342,3 +3342,8 @@
 - [x] Review internal cost settings and determine a safe preliminary site-visit cost model
 - [x] Show a clearly labeled internal estimate in Operations Quotes when a Parcel ID supplies acreage
 - [x] Validate the estimate and confirm no customer-facing pricing is introduced
+
+## Site Visit Request Attachments — Aug 2026
+- [x] Add secure optional photo and work-area document uploads to the public Site Visit form
+- [x] Store attachment metadata with the request and expose it in Operations review
+- [x] Validate file type, size, quantity, and failed-upload handling
