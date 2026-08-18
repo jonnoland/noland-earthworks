@@ -3358,3 +3358,9 @@
 - [x] Add image thumbnails and document preview states with removal controls
 - [x] Add regression coverage for wizard steps and attachment preview states
 - [x] Validate the full responsive wizard flow and publish it
+
+## Site Visit Wizard Review and Drag-Drop Uploads — Aug 2026
+- [x] Add a final editable review step summarizing all request information before submission
+- [x] Add accessible multi-file drag-and-drop uploads while preserving file limits and previews
+- [x] Add regression coverage for the review step and drag-and-drop upload path
+- [x] Validate the enhanced wizard flow and publish it
