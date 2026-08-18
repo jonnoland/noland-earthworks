@@ -44,6 +44,7 @@ import {
   setStoredOpsSoundAlertPreference,
 } from "@/lib/opsNewRequestAlert";
 import { useIncomingRequestAlert } from "@/hooks/useIncomingRequestAlert";
+import { SERVICE_AREA_COUNTIES } from "@shared/serviceAreas";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface LineItem {
@@ -300,6 +301,54 @@ function QuoteFormModal({
     }
     return blankForm();
   });
+  const [parcelCounty, setParcelCounty] = useState("");
+  const [parcelId, setParcelId] = useState("");
+  const [parcelMatches, setParcelMatches] = useState<Array<{
+    parcelId: string;
+    county: string;
+    address: string | null;
+    owner: string | null;
+    deedAcreage: number | null;
+    propertyViewerUrl: string | null;
+    assessmentDataUrl: string | null;
+  }>>([]);
+  const parcelLookupMutation = trpc.parcel.lookup.useMutation({
+    onError: (error) => toast.error(error.message),
+  });
+
+  const applyParcelMatch = (match: typeof parcelMatches[number]) => {
+    setForm((current) => ({
+      ...current,
+      propertyAddress: match.address || current.propertyAddress,
+      acreage: current.acreage || (match.deedAcreage ? String(Math.round(match.deedAcreage * 100) / 100) : current.acreage),
+      internalNotes: [
+        current.internalNotes,
+        `TN Property Viewer reference: Parcel ${match.parcelId} · ${match.county}${match.owner ? ` · Owner: ${match.owner}` : ""}`,
+      ].filter(Boolean).join("\n"),
+    }));
+    setParcelMatches([]);
+    toast.success("Parcel details copied into the editable quote fields.");
+  };
+
+  const lookupParcel = () => {
+    if (!parcelCounty.trim()) { toast.error("Enter the property county first."); return; }
+    if (!parcelId.trim()) { toast.error("Enter the Parcel ID first."); return; }
+    parcelLookupMutation.mutate({ county: parcelCounty, parcelId }, {
+      onSuccess: (result) => {
+        if (result.matches.length === 0) {
+          setParcelMatches([]);
+          toast.message("No matching Tennessee parcel was found. Verify the county and Parcel ID, or enter the address manually.");
+          return;
+        }
+        if (result.matches.length === 1) {
+          applyParcelMatch(result.matches[0]);
+          return;
+        }
+        setParcelMatches(result.matches);
+        toast.message(`Found ${result.matches.length} possible parcels. Select the correct property below.`);
+      },
+    });
+  };
 
   const totalCents = useMemo(
     () => form.lineItems.reduce((sum, li) => sum + li.qty * li.unitPriceCents, 0),
@@ -579,6 +628,60 @@ function QuoteFormModal({
               <Label className="text-zinc-400 text-xs mb-1 block">Property Address</Label>
               <Input value={form.propertyAddress} onChange={e => setForm(p => ({ ...p, propertyAddress: e.target.value }))}
                 className="bg-zinc-800 border-zinc-700" placeholder="123 Rural Rd, Vanleer, TN 37181" />
+            </div>
+            <div className="col-span-2 rounded-md border border-sky-500/30 bg-sky-500/5 p-3">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <Label className="text-sky-200 text-xs font-semibold">Tennessee Parcel ID Lookup</Label>
+                  <p className="mt-0.5 text-[11px] text-zinc-400">Find a property by county and Parcel ID. The address and reported acreage remain editable before saving.</p>
+                </div>
+                <MapPin className="h-4 w-4 shrink-0 text-sky-300" aria-hidden="true" />
+              </div>
+              <div className="mt-2 grid gap-2 sm:grid-cols-[minmax(0,1fr)_minmax(0,1.25fr)_auto]">
+                <Input
+                  list="service-area-county-options"
+                  value={parcelCounty}
+                  onChange={(event) => setParcelCounty(event.target.value)}
+                  className="bg-zinc-800 border-zinc-700"
+                  placeholder="County, e.g. Houston"
+                  aria-label="Tennessee parcel county"
+                />
+                <Input
+                  value={parcelId}
+                  onChange={(event) => setParcelId(event.target.value)}
+                  onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); lookupParcel(); } }}
+                  className="bg-zinc-800 border-zinc-700"
+                  placeholder="Parcel ID"
+                  aria-label="Tennessee Parcel ID"
+                />
+                <Button type="button" variant="outline" onClick={lookupParcel} disabled={parcelLookupMutation.isPending} className="border-sky-500/50 text-sky-200 hover:bg-sky-500/10">
+                  {parcelLookupMutation.isPending ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <Search className="mr-1.5 h-3.5 w-3.5" />}
+                  {parcelLookupMutation.isPending ? "Looking up" : "Find Property"}
+                </Button>
+              </div>
+              <datalist id="service-area-county-options">
+                {SERVICE_AREA_COUNTIES.map((county) => <option key={county} value={county.replace(/ County$/, "")} />)}
+              </datalist>
+              {parcelMatches.length > 0 && (
+                <div className="mt-3 space-y-2" aria-live="polite">
+                  {parcelMatches.map((match) => (
+                    <div key={`${match.county}-${match.parcelId}`} className="rounded border border-zinc-700 bg-zinc-900/70 p-2.5 text-xs">
+                      <div className="flex flex-wrap items-start justify-between gap-2">
+                        <div>
+                          <p className="font-semibold text-zinc-100">{match.address || "Address unavailable"}</p>
+                          <p className="mt-0.5 text-zinc-400">Parcel {match.parcelId} · {match.county}{match.deedAcreage ? ` · ${match.deedAcreage.toLocaleString()} acres reported` : ""}</p>
+                          {match.owner && <p className="mt-0.5 text-zinc-500">Owner record: {match.owner}</p>}
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          {match.propertyViewerUrl && <a href={match.propertyViewerUrl} target="_blank" rel="noreferrer" className="rounded p-1.5 text-sky-300 hover:bg-sky-500/15" title="Open in Tennessee Property Viewer"><ExternalLink className="h-3.5 w-3.5" /></a>}
+                          <Button type="button" size="sm" className="h-7 bg-sky-600 text-xs hover:bg-sky-500" onClick={() => applyParcelMatch(match)}>Use Property</Button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <p className="mt-2 text-[10px] text-zinc-500">Tennessee Comptroller parcel data is reference information only and is not a legal survey. If no record appears, use the editable address field.</p>
             </div>
             <div>
               <Label className="text-zinc-400 text-xs mb-1 block">Service Type</Label>
@@ -2164,6 +2267,12 @@ export function NativeAllQuotesSection() {
     if (permission === "denied") {
       toast.error("Browser notifications are blocked.", {
         description: "Allow notifications for nolandearthworks.com in your browser settings, then try again.",
+      });
+      return;
+    }
+    if (permission === "default") {
+      toast.message("Browser notification permission was not granted.", {
+        description: "Click Notify Off again and choose Allow when your browser shows the permission prompt.",
       });
       return;
     }

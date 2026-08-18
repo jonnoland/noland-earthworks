@@ -3319,3 +3319,8 @@
 - [x] Choose background-tab notification scope and permission behavior
 - [x] Add browser-notification permission control and automatic delivery for new requests
 - [ ] Validate browser notification behavior and graceful blocked-permission fallback
+
+## Tennessee Parcel ID Property Lookup — Aug 2026
+- [x] Verify Tennessee Property Viewer lookup access, county coverage, and available parcel fields
+- [x] Add Parcel ID lookup with editable property-detail prefill to Operations Quotes and field workflows
+- [x] Validate Tennessee parcel results and unavailable-data fallback behavior

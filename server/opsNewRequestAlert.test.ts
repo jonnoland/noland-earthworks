@@ -36,6 +36,7 @@ describe("Operations Quotes new-request alert detection", () => {
     expect(shouldShowOpsBrowserNotification(true, "granted", true)).toBe(true);
     expect(shouldShowOpsBrowserNotification(true, "granted", false)).toBe(false);
     expect(shouldShowOpsBrowserNotification(false, "granted", true)).toBe(false);
+    expect(shouldShowOpsBrowserNotification(true, "default", true)).toBe(false);
     expect(shouldShowOpsBrowserNotification(true, "denied", true)).toBe(false);
     expect(shouldShowOpsBrowserNotification(true, "unsupported", true)).toBe(false);
   });
