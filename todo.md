@@ -3337,3 +3337,8 @@
 - [x] Add privacy-conscious official Parcel ID auto-fill to the public Request a Site Visit form
 - [x] Preserve public county, service-area, and owner-data disclosure safeguards
 - [x] Validate both workflows and build the updated Noland Field APK release
+
+## Internal Parcel-Acreage Site Visit Cost Estimate — Aug 2026
+- [x] Review internal cost settings and determine a safe preliminary site-visit cost model
+- [x] Show a clearly labeled internal estimate in Operations Quotes when a Parcel ID supplies acreage
+- [x] Validate the estimate and confirm no customer-facing pricing is introduced

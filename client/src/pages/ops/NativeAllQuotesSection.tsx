@@ -46,6 +46,7 @@ import {
 import { useIncomingRequestAlert } from "@/hooks/useIncomingRequestAlert";
 import { SERVICE_AREA_COUNTIES } from "@shared/serviceAreas";
 import { validateTennesseeParcelId } from "@shared/tennesseeParcelId";
+import { estimateInternalSiteVisitCost } from "@shared/siteVisitCostEstimate";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface LineItem {
@@ -315,6 +316,9 @@ function QuoteFormModal({
     assessmentDataUrl: string | null;
   }>>([]);
   const [selectedParcel, setSelectedParcel] = useState<typeof parcelMatches[number] | null>(null);
+  const siteVisitCostEstimate = selectedParcel?.deedAcreage
+    ? estimateInternalSiteVisitCost(selectedParcel.deedAcreage)
+    : null;
   const parcelLookupMutation = trpc.parcel.lookup.useMutation({
     onError: (error) => toast.error(error.message),
   });
@@ -717,6 +721,19 @@ function QuoteFormModal({
                     </div>
                   </div>
                   {selectedParcel.assessmentDataUrl && <p className="mt-1.5 text-[10px] text-sky-100/65">Use the official assessment record to view the owner mailing address.</p>}
+                </div>
+              )}
+              {siteVisitCostEstimate && (
+                <div className="mt-3 rounded border border-amber-500/35 bg-amber-500/10 p-3" aria-live="polite">
+                  <div className="flex items-start gap-2">
+                    <DollarSign className="mt-0.5 h-4 w-4 shrink-0 text-amber-300" aria-hidden="true" />
+                    <div className="min-w-0">
+                      <p className="text-xs font-semibold text-amber-100">Internal preliminary site-visit cost</p>
+                      <p className="mt-0.5 text-lg font-bold text-amber-200">${siteVisitCostEstimate.internalLaborCost.toLocaleString("en-US", { maximumFractionDigits: 0 })}</p>
+                      <p className="mt-0.5 text-[11px] text-amber-100/85">Based on the retrieved {siteVisitCostEstimate.acreage.toLocaleString()} acres: {siteVisitCostEstimate.basis}.</p>
+                      <p className="mt-1 text-[10px] text-amber-100/65">{siteVisitCostEstimate.warning}</p>
+                    </div>
+                  </div>
                 </div>
               )}
               <p className="mt-2 text-[10px] text-zinc-500">Tennessee Comptroller parcel data is reference information only and is not a legal survey. If no record appears, use the editable address field.</p>
