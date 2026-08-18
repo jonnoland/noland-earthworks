@@ -3351,3 +3351,10 @@
 ## Site Visit Form Service-Area Layout — Aug 2026
 - [x] Relocate the crowded service-area reference from the address field area
 - [x] Preserve clear county eligibility guidance and validate the responsive form layout
+
+## Site Visit Request Wizard and Attachment Previews — Aug 2026
+- [x] Convert the public Site Visit form into a multi-step wizard with visible progress
+- [x] Preserve step-level validation, location safeguards, Parcel ID lookup, and attachments
+- [x] Add image thumbnails and document preview states with removal controls
+- [x] Add regression coverage for wizard steps and attachment preview states
+- [x] Validate the full responsive wizard flow and publish it

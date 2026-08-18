@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { AlertCircle, CheckCircle2, ClipboardCheck, ExternalLink, FileUp, Info, Loader2, MapPin, Phone, X } from "lucide-react";
+import { AlertCircle, CheckCircle2, ClipboardCheck, ExternalLink, FileText, FileUp, Image as ImageIcon, Info, Loader2, MapPin, Phone, X } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import MobileCTABar from "@/components/MobileCTABar";
@@ -44,7 +44,14 @@ type SiteVisitAttachment = {
   filename: string;
   mimeType: string;
   kind: "photo" | "document";
+  previewUrl?: string;
 };
+
+const SITE_VISIT_WIZARD_STEPS = [
+  { number: 1, label: "Contact" },
+  { number: 2, label: "Property" },
+  { number: 3, label: "Project" },
+] as const;
 
 const ACCEPTED_SITE_VISIT_ATTACHMENT_TYPES = new Set([
   "image/jpeg", "image/png", "image/webp", "application/pdf", "application/msword",
@@ -100,6 +107,7 @@ export default function QuotePage() {
   const [attachments, setAttachments] = useState<SiteVisitAttachment[]>([]);
   const [attachmentError, setAttachmentError] = useState("");
   const [isUploadingAttachments, setIsUploadingAttachments] = useState(false);
+  const [currentStep, setCurrentStep] = useState(1);
   const addressFieldRef = useRef<HTMLInputElement>(null);
   const addressInput = form.street.trim();
   const addressSuggestions = trpc.quote.placesAutocomplete.useQuery(
@@ -213,7 +221,11 @@ export default function QuotePage() {
       const uploaded: SiteVisitAttachment[] = [];
       for (const file of candidates) {
         const base64 = await readFileAsBase64(file);
-        uploaded.push(await uploadSiteVisitAttachment.mutateAsync({ base64, filename: file.name, mimeType: file.type }));
+        const uploadedAttachment = await uploadSiteVisitAttachment.mutateAsync({ base64, filename: file.name, mimeType: file.type });
+        uploaded.push({
+          ...uploadedAttachment,
+          previewUrl: file.type.startsWith("image/") ? URL.createObjectURL(file) : undefined,
+        });
       }
       setAttachments((current) => [...current, ...uploaded]);
     } catch (uploadError) {
@@ -273,6 +285,32 @@ export default function QuotePage() {
     setErrors((current) => ({ ...current, [field]: fieldErrors[field] ?? "" }));
   };
 
+  const stepFields: Record<number, (keyof typeof initialForm)[]> = {
+    1: ["name", "phone", "email"],
+    2: ["service", "county", "street", "city", "zip", "acreage"],
+    3: form.preferredContact === "text" ? ["smsConsent"] : [],
+  };
+
+  const validateStep = (step: number) => {
+    const allErrors = validateSiteVisitRequest(form);
+    const relevantErrors = Object.fromEntries(
+      stepFields[step].filter((field) => allErrors[field]).map((field) => [field, allErrors[field]])
+    );
+    setErrors((current) => ({ ...current, ...relevantErrors }));
+    return Object.keys(relevantErrors).length === 0;
+  };
+
+  const nextStep = () => {
+    if (!validateStep(currentStep)) return;
+    setError("");
+    setCurrentStep((step) => Math.min(3, step + 1));
+  };
+
+  const removeAttachment = (attachment: SiteVisitAttachment) => {
+    if (attachment.previewUrl) URL.revokeObjectURL(attachment.previewUrl);
+    setAttachments((current) => current.filter((item) => item.url !== attachment.url));
+  };
+
   const submitWaitlistRequest = () => {
     const email = waitlistEmail.trim() || form.email.trim();
     if (!email) {
@@ -292,7 +330,11 @@ export default function QuotePage() {
     event.preventDefault();
     const nextErrors = validateSiteVisitRequest(form);
     setErrors(nextErrors);
-    if (Object.keys(nextErrors).length) return;
+    if (Object.keys(nextErrors).length) {
+      const firstInvalidStep = [1, 2, 3].find((step) => stepFields[step].some((field) => nextErrors[field]));
+      if (firstInvalidStep) setCurrentStep(firstInvalidStep);
+      return;
+    }
     if (isUploadingAttachments) {
       setError("Please wait for your attachments to finish uploading before submitting.");
       return;
@@ -372,14 +414,21 @@ export default function QuotePage() {
                 <div className="mt-7 flex flex-col justify-center gap-3 sm:flex-row"><a href="/" className="inline-flex min-h-11 items-center justify-center border border-white/20 px-5 font-['Oswald'] text-xs font-semibold uppercase tracking-[0.12em] text-white">Back to Home</a><button type="button" onClick={() => { setSubmitted(false); setForm(initialForm); }} className="min-h-11 bg-[#E07B2A] px-5 font-['Oswald'] text-xs font-semibold uppercase tracking-[0.12em] text-white">Submit Another Request</button></div>
               </div>
             ) : (
-              <form onSubmit={submit} aria-busy={submitRequest.isPending}>
+              <form onSubmit={submit} noValidate aria-busy={submitRequest.isPending}>
                 <div className="mb-7"><p className="font-['Oswald'] text-xs font-semibold uppercase tracking-[0.18em] text-[#E07B2A]">Site Visit Request</p><h2 className="mt-2 font-['Oswald'] text-3xl font-bold uppercase">A few details to get started</h2><p className="mt-3 font-['Lato'] text-sm leading-6 text-white/60">Required fields are marked with an asterisk.</p></div>
+                <div className="mb-7" aria-label={`Step ${currentStep} of ${SITE_VISIT_WIZARD_STEPS.length}`}>
+                  <div className="flex items-center justify-between gap-2">{SITE_VISIT_WIZARD_STEPS.map((step) => <div key={step.number} className="flex min-w-0 flex-1 items-center gap-2"><div className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full border font-['Oswald'] text-xs font-semibold ${step.number <= currentStep ? "border-[#E07B2A] bg-[#E07B2A] text-white" : "border-white/20 text-white/45"}`}>{step.number < currentStep ? <CheckCircle2 className="h-4 w-4" /> : step.number}</div><span className={`hidden font-['Oswald'] text-[11px] uppercase tracking-[0.1em] sm:inline ${step.number <= currentStep ? "text-white" : "text-white/40"}`}>{step.label}</span>{step.number < SITE_VISIT_WIZARD_STEPS.length && <div className={`h-px min-w-2 flex-1 ${step.number < currentStep ? "bg-[#E07B2A]" : "bg-white/15"}`} />}</div>)}</div>
+                  <p className="mt-3 font-['Lato'] text-xs text-white/55">Step {currentStep} of {SITE_VISIT_WIZARD_STEPS.length}: {SITE_VISIT_WIZARD_STEPS[currentStep - 1].label} details</p>
+                </div>
                 {error && <p role="alert" className="mb-5 flex gap-2 border border-red-400/35 bg-red-400/10 p-3 font-['Lato'] text-sm text-red-200"><AlertCircle className="h-5 w-5 shrink-0" />{error}</p>}
+                {currentStep === 1 && <>
                 <div className="grid gap-5 sm:grid-cols-2">
                   <label className="font-['Oswald'] text-xs uppercase tracking-[0.12em] text-white/65">Name *<input name="name" autoComplete="name" required minLength={2} value={form.name} onChange={(e) => update("name", e.target.value)} onBlur={() => validateField("name")} aria-invalid={Boolean(errors.name)} aria-describedby={errors.name ? "site-visit-name-error" : undefined} className={fieldClassName(Boolean(errors.name))} placeholder="Your name" />{errors.name ? <span id="site-visit-name-error" className="mt-1 block font-['Lato'] normal-case tracking-normal text-red-300">{errors.name}</span> : <span className="mt-1 block font-['Lato'] normal-case tracking-normal text-white/40">This is how Jon will address you.</span>}</label>
                   <label className="font-['Oswald'] text-xs uppercase tracking-[0.12em] text-white/65">Phone *<input name="phone" autoComplete="tel" inputMode="tel" required pattern="[0-9() .-]{10,20}" title="Enter a 10-digit phone number" value={form.phone} onChange={(e) => update("phone", e.target.value)} onBlur={() => validateField("phone")} aria-invalid={Boolean(errors.phone)} aria-describedby={errors.phone ? "site-visit-phone-error" : undefined} className={fieldClassName(Boolean(errors.phone))} placeholder="(615) 406-4819" />{errors.phone ? <span id="site-visit-phone-error" className="mt-1 block font-['Lato'] normal-case tracking-normal text-red-300">{errors.phone}</span> : <span className="mt-1 block font-['Lato'] normal-case tracking-normal text-white/40">A 10-digit number for the visit follow-up.</span>}</label>
                 </div>
                 <label className="mt-5 block font-['Oswald'] text-xs uppercase tracking-[0.12em] text-white/65">Email *<input type="email" name="email" autoComplete="email" inputMode="email" required value={form.email} onChange={(e) => update("email", e.target.value)} onBlur={() => validateField("email")} aria-invalid={Boolean(errors.email)} aria-describedby={errors.email ? "site-visit-email-error" : undefined} className={fieldClassName(Boolean(errors.email))} placeholder="name@example.com" />{errors.email ? <span id="site-visit-email-error" className="mt-1 block font-['Lato'] normal-case tracking-normal text-red-300">{errors.email}</span> : <span className="mt-1 block font-['Lato'] normal-case tracking-normal text-white/40">Your written scope and quote are sent here after the visit.</span>}</label>
+                </>}
+                {currentStep === 2 && <>
                 <div className="mt-5 grid gap-5 sm:grid-cols-2">
                   <label className="font-['Oswald'] text-xs uppercase tracking-[0.12em] text-white/65">Type of work * <TooltipProvider delayDuration={150}><Tooltip><TooltipTrigger asChild><button type="button" aria-label="How mulching differs from clearing" className="inline-flex cursor-help align-middle text-[#E07B2A] outline-none focus-visible:ring-2 focus-visible:ring-[#E07B2A]"><Info className="h-3.5 w-3.5" /></button></TooltipTrigger><TooltipContent side="top" className="max-w-xs bg-[#121212] text-xs leading-5 text-white">Forestry mulching processes suitable brush, saplings, and small trees into mulch left on site. “Clearing” describes the property goal, not a separate construction service. We do not provide grading, excavation, or hauling.</TooltipContent></Tooltip></TooltipProvider><select name="service" required value={form.service} onChange={(e) => update("service", e.target.value)} className={fieldClassName(Boolean(errors.service))}><option value="" className="bg-[#191919]">Select a service</option>{services.map((service) => <option key={service} value={service} className="bg-[#191919]">{service}</option>)}</select>{errors.service && <span className="mt-1 block font-['Lato'] normal-case tracking-normal text-red-300">{errors.service}</span>}</label>
                   <label className="font-['Oswald'] text-xs uppercase tracking-[0.12em] text-white/65">County *<select name="county" required value={form.county} onChange={(e) => { const nextCounty = e.target.value; update("county", nextCounty); setAddressAreaNote(""); setSelectedParcel(null); setParcelMatches([]); const mismatch = Boolean(geocodedCounty && normalizeCountyName(nextCounty) !== geocodedCounty); setCountyMismatch(mismatch); setLocationReviewReason(mismatch ? `The address returns ${geocodedCounty}, while the selected county is ${normalizeCountyName(nextCounty)}. Jon will verify the property county before scheduling.` : ""); }} onBlur={() => validateField("county")} aria-invalid={Boolean(errors.county)} className={fieldClassName(Boolean(errors.county))}><option value="" className="bg-[#191919]">Select a service-area county</option>{SERVICE_AREA_COUNTIES.map((county) => <option key={county} value={county} className="bg-[#191919]">{county}</option>)}</select>{errors.county ? <span className="mt-1 block font-['Lato'] normal-case tracking-normal text-red-300">{errors.county}</span> : <span className="mt-1 block font-['Lato'] normal-case tracking-normal text-white/40">Required. We currently schedule site visits in the listed Middle and West Tennessee counties.</span>}</label>
@@ -426,18 +475,21 @@ export default function QuotePage() {
                   <label className="font-['Oswald'] text-xs uppercase tracking-[0.12em] text-white/65">ZIP *<input name="zip" autoComplete="postal-code" required inputMode="numeric" pattern="[0-9]{5}(-[0-9]{4})?" title="Enter a 5-digit ZIP code" value={form.zip} onChange={(e) => update("zip", e.target.value)} onBlur={() => validateField("zip")} aria-invalid={Boolean(errors.zip)} className={fieldClassName(Boolean(errors.zip))} placeholder="ZIP" />{errors.zip && <span className="mt-1 block font-['Lato'] normal-case tracking-normal text-red-300">{errors.zip}</span>}</label>
                   <label className="font-['Oswald'] text-xs uppercase tracking-[0.12em] text-white/65">Estimated acreage *<input name="acreage" required inputMode="decimal" pattern="[0-9]+([.][0-9]+)?" title="Enter acreage as a number" value={form.acreage} onChange={(e) => update("acreage", e.target.value)} onBlur={() => validateField("acreage")} aria-invalid={Boolean(errors.acreage)} className={fieldClassName(Boolean(errors.acreage))} placeholder="Acres" />{errors.acreage && <span className="mt-1 block font-['Lato'] normal-case tracking-normal text-red-300">{errors.acreage}</span>}</label>
                 </div>
+                </>}
+                {currentStep === 3 && <>
                   <div className="mt-5 grid gap-5 sm:grid-cols-2"><label className="font-['Oswald'] text-xs uppercase tracking-[0.12em] text-white/65">Best way to reach you<select value={form.preferredContact} onChange={(e) => update("preferredContact", e.target.value)} className={fieldClassName()}><option value="call" className="bg-[#191919]">Call</option><option value="text" className="bg-[#191919]">Text</option><option value="email" className="bg-[#191919]">Email</option></select></label><label className="font-['Oswald'] text-xs uppercase tracking-[0.12em] text-white/65">Preferred timing <span className="text-white/40">(optional)</span><input value={form.timing} onChange={(e) => update("timing", e.target.value)} className={fieldClassName()} placeholder="Example: This month" /></label></div>
                 <label className="mt-5 block font-['Oswald'] text-xs uppercase tracking-[0.12em] text-white/65">What would you like to accomplish?<textarea name="message" value={form.message} onChange={(e) => update("message", e.target.value.slice(0, 1200))} className={`${fieldClassName()} min-h-32 resize-y`} placeholder="Describe the work area, vegetation, access, goals, concerns, or anything Jon should know before the visit." /><span className="mt-1 block text-right font-['Lato'] normal-case tracking-normal text-white/40">{form.message.length}/1200</span></label>
                 <div className="mt-5 border border-white/15 bg-white/[0.03] p-4">
                   <div className="flex items-start gap-3"><FileUp className="mt-0.5 h-5 w-5 shrink-0 text-[#E07B2A]" /><div><p className="font-['Oswald'] text-xs font-semibold uppercase tracking-[0.12em] text-white/75">Photos or work-area documents <span className="text-white/40">(optional)</span></p><p className="mt-1 font-['Lato'] text-xs leading-5 text-white/55">Attach up to five JPG, PNG, WEBP, PDF, DOC, or DOCX files, up to 8 MB each. Photos of access, vegetation, slopes, or a marked work area can help prepare for the visit. Do not upload IDs, financial records, or other sensitive documents.</p></div></div>
                   <label className="mt-3 inline-flex min-h-10 cursor-pointer items-center border border-[#E07B2A]/60 px-3 font-['Oswald'] text-[11px] font-semibold uppercase tracking-[0.1em] text-[#f0ede6] transition hover:bg-[#E07B2A]/15"><input type="file" multiple accept="image/jpeg,image/png,image/webp,application/pdf,.doc,.docx" className="sr-only" disabled={isUploadingAttachments} onChange={(event) => { void addAttachments(event.target.files); event.currentTarget.value = ""; }} />{isUploadingAttachments ? <><Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />Uploading…</> : "Add attachments"}</label>
                   {attachmentError && <p role="alert" className="mt-2 font-['Lato'] text-xs text-red-300">{attachmentError}</p>}
-                  {attachments.length > 0 && <ul className="mt-3 space-y-1.5" aria-live="polite">{attachments.map((attachment) => <li key={attachment.url} className="flex items-center justify-between gap-3 border border-white/10 bg-black/10 px-3 py-2 font-['Lato'] text-xs text-white/75"><span className="min-w-0 truncate">{attachment.filename} <span className="text-white/40">({attachment.kind})</span></span><button type="button" onClick={() => setAttachments((current) => current.filter((item) => item.url !== attachment.url))} className="shrink-0 text-white/55 hover:text-white" aria-label={`Remove ${attachment.filename}`}><X className="h-4 w-4" /></button></li>)}</ul>}
+                  {attachments.length > 0 && <ul className="mt-3 grid gap-2 sm:grid-cols-2" aria-live="polite">{attachments.map((attachment) => <li key={attachment.url} className="relative overflow-hidden border border-white/10 bg-black/10 font-['Lato'] text-xs text-white/75">{attachment.kind === "photo" && attachment.previewUrl ? <img src={attachment.previewUrl} alt={`Preview of ${attachment.filename}`} className="h-28 w-full object-cover" /> : <div className="flex h-28 items-center justify-center bg-white/[0.03] text-white/45"><FileText className="mr-2 h-7 w-7" /><span className="uppercase tracking-wide">{attachment.mimeType === "application/pdf" ? "PDF document" : "Work-area document"}</span></div>}<div className="flex items-center justify-between gap-3 px-3 py-2"><span className="min-w-0 truncate">{attachment.kind === "photo" && <ImageIcon className="mr-1 inline h-3.5 w-3.5 text-[#E07B2A]" />}{attachment.filename}</span><button type="button" onClick={() => removeAttachment(attachment)} className="shrink-0 text-white/55 hover:text-white" aria-label={`Remove ${attachment.filename}`}><X className="h-4 w-4" /></button></div></li>)}</ul>}
                 </div>
                 {form.preferredContact === "text" && <label className="mt-5 flex cursor-pointer items-start gap-3 border border-white/10 bg-white/[0.03] p-4 font-['Lato'] text-xs leading-5 text-white/65"><input type="checkbox" checked={form.smsConsent} onChange={(e) => update("smsConsent", e.target.checked)} className="mt-0.5 h-4 w-4 accent-[#E07B2A]" /><span>I agree to receive project-related text messages at the number provided, including site-visit, scheduling, weather, service, proposal, invoice, and payment updates. Consent is not required to request service. Message frequency varies. Message and data rates may apply. Reply STOP to opt out or HELP for help.</span></label>}
                 {errors.smsConsent && <p className="mt-2 font-['Lato'] text-xs text-red-300">{errors.smsConsent}</p>}
                 <p className="mt-6 font-['Lato'] text-xs leading-5 text-white/45">By submitting, you ask Noland Earthworks to review this Site Visit Request and contact you about the project. We create a native request and client record, and use service providers for email, phone/SMS, hosting and storage, analytics, mapping, and AI-assisted internal request organization. Optional attachments are stored with your request for Jon’s review; do not upload IDs, financial records, or other sensitive documents. If you choose the optional Parcel ID lookup, we query official Tennessee property-location records; owner and mailing details are not displayed or copied into this public request. If work is approved, payment details are handled by Stripe; Noland Earthworks does not intend to store your payment-card number. See the <a className="text-[#E07B2A] underline" href="/privacy-policy">Privacy Policy</a>.</p>
-                <button type="submit" disabled={submitRequest.isPending || isUploadingAttachments} className="mt-6 inline-flex min-h-12 w-full items-center justify-center gap-2 bg-[#E07B2A] px-6 font-['Oswald'] text-sm font-semibold uppercase tracking-[0.12em] text-white transition hover:bg-[#f28c35] disabled:cursor-not-allowed disabled:opacity-60">{submitRequest.isPending ? <><Loader2 className="h-5 w-5 animate-spin" /> Sending your request…</> : isUploadingAttachments ? <><Loader2 className="h-5 w-5 animate-spin" /> Uploading attachments…</> : "Request a Site Visit"}</button>
+                </>}
+                <div className="mt-7 flex items-center justify-between gap-3 border-t border-white/10 pt-5"><button type="button" onClick={() => setCurrentStep((step) => Math.max(1, step - 1))} disabled={currentStep === 1} className="min-h-11 border border-white/20 px-4 font-['Oswald'] text-xs font-semibold uppercase tracking-[0.1em] text-white disabled:cursor-not-allowed disabled:opacity-30">Back</button>{currentStep < 3 ? <button type="button" onClick={nextStep} className="min-h-11 bg-[#E07B2A] px-5 font-['Oswald'] text-xs font-semibold uppercase tracking-[0.1em] text-white transition hover:bg-[#f28c35]">Continue</button> : <button type="submit" disabled={submitRequest.isPending || isUploadingAttachments} className="inline-flex min-h-11 items-center justify-center gap-2 bg-[#E07B2A] px-5 font-['Oswald'] text-xs font-semibold uppercase tracking-[0.1em] text-white transition hover:bg-[#f28c35] disabled:cursor-not-allowed disabled:opacity-60">{submitRequest.isPending ? <><Loader2 className="h-4 w-4 animate-spin" /> Sending your request…</> : isUploadingAttachments ? <><Loader2 className="h-4 w-4 animate-spin" /> Uploading attachments…</> : "Request a Site Visit"}</button>}</div>
                 {submitRequest.isPending && <p className="animate-pulse mt-3 text-center font-['Lato'] text-xs text-white/60" role="status" aria-live="polite">Saving your details and preparing the next steps…</p>}
               </form>
             )}
