@@ -3324,3 +3324,10 @@
 - [x] Verify Tennessee Property Viewer lookup access, county coverage, and available parcel fields
 - [x] Add Parcel ID lookup with editable property-detail prefill to Operations Quotes and field workflows
 - [x] Validate Tennessee parcel results and unavailable-data fallback behavior
+
+## Tennessee Parcel Lookup Enrichment — Aug 2026
+- [x] Confirm official owner, mailing-address, and Property Viewer map fields and Parcel ID format rules
+- [x] Add owner and available mailing-address prefill to editable quote details
+- [x] Add Property Viewer map access or a small parcel map preview for verified results
+- [x] Add county-aware Parcel ID input validation and regression coverage
+- [x] Retain the official public lookup scope; mailing details remain available through the official TPAD record instead of unsupported server-side retrieval

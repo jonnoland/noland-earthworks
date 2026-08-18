@@ -45,6 +45,7 @@ import {
 } from "@/lib/opsNewRequestAlert";
 import { useIncomingRequestAlert } from "@/hooks/useIncomingRequestAlert";
 import { SERVICE_AREA_COUNTIES } from "@shared/serviceAreas";
+import { validateTennesseeParcelId } from "@shared/tennesseeParcelId";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface LineItem {
@@ -303,6 +304,7 @@ function QuoteFormModal({
   });
   const [parcelCounty, setParcelCounty] = useState("");
   const [parcelId, setParcelId] = useState("");
+  const [parcelIdError, setParcelIdError] = useState<string | null>(null);
   const [parcelMatches, setParcelMatches] = useState<Array<{
     parcelId: string;
     county: string;
@@ -312,6 +314,7 @@ function QuoteFormModal({
     propertyViewerUrl: string | null;
     assessmentDataUrl: string | null;
   }>>([]);
+  const [selectedParcel, setSelectedParcel] = useState<typeof parcelMatches[number] | null>(null);
   const parcelLookupMutation = trpc.parcel.lookup.useMutation({
     onError: (error) => toast.error(error.message),
   });
@@ -319,6 +322,7 @@ function QuoteFormModal({
   const applyParcelMatch = (match: typeof parcelMatches[number]) => {
     setForm((current) => ({
       ...current,
+      clientName: current.clientName.trim() ? current.clientName : (match.owner || current.clientName),
       propertyAddress: match.address || current.propertyAddress,
       acreage: current.acreage || (match.deedAcreage ? String(Math.round(match.deedAcreage * 100) / 100) : current.acreage),
       internalNotes: [
@@ -326,6 +330,7 @@ function QuoteFormModal({
         `TN Property Viewer reference: Parcel ${match.parcelId} · ${match.county}${match.owner ? ` · Owner: ${match.owner}` : ""}`,
       ].filter(Boolean).join("\n"),
     }));
+    setSelectedParcel(match);
     setParcelMatches([]);
     toast.success("Parcel details copied into the editable quote fields.");
   };
@@ -333,6 +338,13 @@ function QuoteFormModal({
   const lookupParcel = () => {
     if (!parcelCounty.trim()) { toast.error("Enter the property county first."); return; }
     if (!parcelId.trim()) { toast.error("Enter the Parcel ID first."); return; }
+    const validation = validateTennesseeParcelId(parcelId);
+    if (!validation.valid) {
+      setParcelIdError(validation.error);
+      return;
+    }
+    setParcelIdError(null);
+    setSelectedParcel(null);
     parcelLookupMutation.mutate({ county: parcelCounty, parcelId }, {
       onSuccess: (result) => {
         if (result.matches.length === 0) {
@@ -648,17 +660,20 @@ function QuoteFormModal({
                 />
                 <Input
                   value={parcelId}
-                  onChange={(event) => setParcelId(event.target.value)}
+                  onChange={(event) => { setParcelId(event.target.value); if (parcelIdError) setParcelIdError(null); }}
                   onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); lookupParcel(); } }}
-                  className="bg-zinc-800 border-zinc-700"
-                  placeholder="Parcel ID"
+                  className={`bg-zinc-800 ${parcelIdError ? "border-red-500" : "border-zinc-700"}`}
+                  placeholder="Parcel ID, map/group/parcel"
                   aria-label="Tennessee Parcel ID"
+                  aria-invalid={Boolean(parcelIdError)}
+                  aria-describedby={parcelIdError ? "parcel-id-format-error" : undefined}
                 />
                 <Button type="button" variant="outline" onClick={lookupParcel} disabled={parcelLookupMutation.isPending} className="border-sky-500/50 text-sky-200 hover:bg-sky-500/10">
                   {parcelLookupMutation.isPending ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <Search className="mr-1.5 h-3.5 w-3.5" />}
                   {parcelLookupMutation.isPending ? "Looking up" : "Find Property"}
                 </Button>
               </div>
+              {parcelIdError && <p id="parcel-id-format-error" role="alert" className="mt-1.5 text-[11px] text-red-300">{parcelIdError}</p>}
               <datalist id="service-area-county-options">
                 {SERVICE_AREA_COUNTIES.map((county) => <option key={county} value={county.replace(/ County$/, "")} />)}
               </datalist>
@@ -679,6 +694,29 @@ function QuoteFormModal({
                       </div>
                     </div>
                   ))}
+                </div>
+              )}
+              {selectedParcel && (
+                <div className="mt-3 rounded border border-sky-500/30 bg-sky-950/20 p-2.5 text-xs" aria-live="polite">
+                  <div className="flex flex-wrap items-start justify-between gap-2">
+                    <div>
+                      <p className="font-semibold text-sky-100">Property lookup applied</p>
+                      <p className="mt-0.5 text-zinc-300">{selectedParcel.owner || "Owner unavailable"}</p>
+                    </div>
+                    <div className="flex flex-wrap gap-1.5">
+                      {selectedParcel.propertyViewerUrl && (
+                        <a href={selectedParcel.propertyViewerUrl} target="_blank" rel="noreferrer" className="inline-flex h-7 items-center rounded border border-sky-500/40 px-2 text-sky-200 hover:bg-sky-500/15">
+                          <MapPin className="mr-1 h-3.5 w-3.5" /> Open TN Property Viewer Map
+                        </a>
+                      )}
+                      {selectedParcel.assessmentDataUrl && (
+                        <a href={selectedParcel.assessmentDataUrl} target="_blank" rel="noreferrer" className="inline-flex h-7 items-center rounded border border-sky-500/40 px-2 text-sky-200 hover:bg-sky-500/15">
+                          <ExternalLink className="mr-1 h-3.5 w-3.5" /> Official Assessment Record
+                        </a>
+                      )}
+                    </div>
+                  </div>
+                  {selectedParcel.assessmentDataUrl && <p className="mt-1.5 text-[10px] text-sky-100/65">Use the official assessment record to view the owner mailing address.</p>}
                 </div>
               )}
               <p className="mt-2 text-[10px] text-zinc-500">Tennessee Comptroller parcel data is reference information only and is not a legal survey. If no record appears, use the editable address field.</p>

@@ -1,6 +1,7 @@
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { protectedProcedure, router } from "./_core/trpc";
+import { normalizeTennesseeParcelId, validateTennesseeParcelId } from "../shared/tennesseeParcelId";
 
 const TN_PARCEL_QUERY_URL = "https://services1.arcgis.com/YuVBSS7Y1of2Qud1/arcgis/rest/services/Tennessee_Property_Boundaries_Public_Use/FeatureServer/0/query";
 
@@ -15,9 +16,7 @@ function cleanText(value: unknown): string | null {
   return cleaned || null;
 }
 
-export function normalizeTennesseeParcelId(value: string): string {
-  return value.toUpperCase().replace(/[^A-Z0-9]/g, "");
-}
+export { normalizeTennesseeParcelId } from "../shared/tennesseeParcelId";
 
 export function buildTennesseeParcelWhere(county: string, parcelId: string): string {
   const cleanCounty = county.replace(/\s+county$/i, "").trim().replace(/'/g, "''");
@@ -44,7 +43,7 @@ function mapFeature(feature: ArcGisParcelFeature) {
     parcelId: cleanText(attributes.PARCELID) ?? "",
     county: cleanText(attributes.COUNTY_NAME) ?? "",
     address: formatPropertyAddress(attributes),
-    owner: cleanText(attributes.OWNER),
+    owner: [cleanText(attributes.OWNER), cleanText(attributes.OWNER2)].filter(Boolean).join(" / ") || null,
     deedAcreage,
     centroid: typeof feature.centroid?.x === "number" && typeof feature.centroid?.y === "number"
       ? { lng: feature.centroid.x, lat: feature.centroid.y }
@@ -70,14 +69,14 @@ export const parcelRouter = router({
         throw new TRPCError({ code: "FORBIDDEN", message: "Operations access required" });
       }
 
-      const normalizedParcelId = normalizeTennesseeParcelId(input.parcelId);
-      if (normalizedParcelId.length < 3) {
-        throw new TRPCError({ code: "BAD_REQUEST", message: "Enter at least three Parcel ID characters." });
+      const parcelValidation = validateTennesseeParcelId(input.parcelId);
+      if (!parcelValidation.valid) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: parcelValidation.error });
       }
 
       const params = new URLSearchParams({
         where: buildTennesseeParcelWhere(input.county, input.parcelId),
-        outFields: "PARCELID,COUNTY_NAME,ADDRESS,CITY,ZIP,OWNER,DEEDAC,LINK_TPAD,LINK_TPV",
+        outFields: "PARCELID,COUNTY_NAME,ADDRESS,CITY,ZIP,OWNER,OWNER2,DEEDAC,LINK_TPAD,LINK_TPV",
         returnGeometry: "false",
         returnCentroid: "true",
         outSR: "4326",
@@ -102,6 +101,7 @@ export const parcelRouter = router({
         const matches = (payload.features ?? []).map(mapFeature);
         return {
           matches,
+          normalizedParcelId: parcelValidation.normalized,
           source: "Tennessee Comptroller Property Boundaries Public Use",
           sourceUpdated: "monthly",
           referenceNotice: "Parcel boundaries and assessment details are reference information only, not a legal survey. Review the official county record before relying on them.",
