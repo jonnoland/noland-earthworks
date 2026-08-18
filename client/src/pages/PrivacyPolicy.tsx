@@ -29,6 +29,7 @@ export default function PrivacyPolicy() {
             <li><strong style={{ color: "#E07B2A" }}>Communications and submitted materials:</strong> emails, messages, chat conversations, call or SMS interactions, and photos or documents you choose to provide.</li>
             <li><strong style={{ color: "#E07B2A" }}>Business and payment records:</strong> client, request, quote, job, invoice, deposit, and payment-status information. Payment-card details are processed by Stripe and are not intended to be stored in the Noland Earthworks operations system.</li>
             <li><strong style={{ color: "#E07B2A" }}>Website-use data:</strong> limited analytics, cookie, device, and page-use information used to understand site performance and service-request sources.</li>
+            <li><strong style={{ color: "#E07B2A" }}>Optional Parcel ID lookup data:</strong> if you choose Parcel ID lookup on a Site Visit Request, the selected county and Parcel ID are sent to the Tennessee Comptroller’s public property-boundary service to retrieve available property-location details, such as address, map reference, and reported acreage. The public request form does not display or copy owner or mailing details from that lookup.</li>
           </ul>
           <p style={copy}>Please do not submit medical, financial-account, government-identification, or other sensitive information that is not needed to request, schedule, or complete the work.</p>
         </Section>
@@ -54,7 +55,7 @@ export default function PrivacyPolicy() {
         </Section>
 
         <Section number="5" title="Storage and Service Providers">
-          <p style={copy}>Our current operations stack uses native Noland Earthworks records as the working source of truth for clients, leads, quotes, jobs, invoices, deposits, and payment status. We use providers for hosting and file storage, transactional email, SMS/telephone communication, payment processing, mapping, analytics, and AI-assisted internal work. These functions may involve Manus-hosted infrastructure and storage, Resend, Twilio, Stripe, Google Maps, Google Analytics, website analytics services, and AI service infrastructure made available through the application.</p>
+          <p style={copy}>Our current operations stack uses native Noland Earthworks records as the working source of truth for clients, leads, quotes, jobs, invoices, deposits, and payment status. We use providers for hosting and file storage, transactional email, SMS/telephone communication, payment processing, mapping, analytics, and AI-assisted internal work. These functions may involve Manus-hosted infrastructure and storage, Resend, Twilio, Stripe, Google Maps, the Tennessee Comptroller’s public property-boundary service when a user elects Parcel ID lookup, Google Analytics, website analytics services, and AI service infrastructure made available through the application.</p>
           <p style={copy}>Providers may process information under their own terms and privacy practices. We disclose or provide information only as needed for the applicable function. Jobber is not the default system of record and is used only if the owner adopts it for a specific operational need.</p>
         </Section>
 

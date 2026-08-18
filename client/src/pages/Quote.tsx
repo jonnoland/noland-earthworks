@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { AlertCircle, CheckCircle2, ClipboardCheck, Info, Loader2, MapPin, Phone } from "lucide-react";
+import { AlertCircle, CheckCircle2, ClipboardCheck, ExternalLink, Info, Loader2, MapPin, Phone } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import MobileCTABar from "@/components/MobileCTABar";
@@ -9,6 +9,7 @@ import { trpc } from "@/lib/trpc";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { formatUsPhoneInput, validateSiteVisitRequest } from "@shared/siteVisitValidation";
 import { isServedCounty, normalizeCountyName, SERVICE_AREA_COUNTIES } from "@shared/serviceAreas";
+import { validateTennesseeParcelId } from "@shared/tennesseeParcelId";
 
 const services = [
   "Forestry Mulching",
@@ -68,6 +69,13 @@ export default function QuotePage() {
   const [hasResolvedAddress, setHasResolvedAddress] = useState(false);
   const [waitlistEmail, setWaitlistEmail] = useState("");
   const [waitlistStatus, setWaitlistStatus] = useState<"idle" | "saved" | "error">("idle");
+  const [parcelId, setParcelId] = useState("");
+  const [parcelIdError, setParcelIdError] = useState("");
+  const [parcelMatches, setParcelMatches] = useState<Array<{
+    parcelId: string; county: string; street: string | null; city: string | null; zip: string | null;
+    address: string | null; deedAcres: number | null; lat: number | null; lng: number | null; propertyViewerUrl: string | null;
+  }>>([]);
+  const [selectedParcel, setSelectedParcel] = useState<typeof parcelMatches[number] | null>(null);
   const addressFieldRef = useRef<HTMLInputElement>(null);
   const addressInput = form.street.trim();
   const addressSuggestions = trpc.quote.placesAutocomplete.useQuery(
@@ -153,6 +161,48 @@ export default function QuotePage() {
     onSuccess: () => setWaitlistStatus("saved"),
     onError: () => setWaitlistStatus("error"),
   });
+  const lookupParcelById = trpc.quote.parcelLookupById.useMutation({
+    onError: (mutationError) => setParcelIdError(mutationError.message || "Parcel lookup is unavailable. Enter the property address manually."),
+  });
+
+  const applyPublicParcel = (match: typeof parcelMatches[number]) => {
+    setForm((current) => ({
+      ...current,
+      street: match.street || current.street,
+      city: match.city || current.city,
+      zip: match.zip || current.zip,
+      county: normalizeCountyName(match.county) || current.county,
+      acreage: current.acreage || (match.deedAcres ? String(Math.round(match.deedAcres * 100) / 100) : current.acreage),
+    }));
+    setSelectedParcel(match);
+    setParcelMatches([]);
+    setCurrentCoordinates(match.lat !== null && match.lng !== null ? { lat: match.lat, lng: match.lng } : null);
+    setGeocodedCounty(normalizeCountyName(match.county));
+    setHasResolvedAddress(Boolean(match.street && match.city && match.zip));
+    setCountyMismatch(false);
+    setLocationReviewReason("");
+    setOutOfAreaCounty("");
+    setAddressAreaNote("");
+    setParcelIdError("");
+  };
+
+  const lookupPublicParcel = () => {
+    if (!form.county) { setParcelIdError("Select a service-area county before using a Parcel ID."); return; }
+    const validation = validateTennesseeParcelId(parcelId);
+    if (!validation.valid) { setParcelIdError(validation.error); return; }
+    setParcelIdError("");
+    setSelectedParcel(null);
+    lookupParcelById.mutate({ county: form.county, parcelId }, {
+      onSuccess: (result) => {
+        if (!result.matches.length) {
+          setParcelMatches([]);
+          setParcelIdError("No matching parcel was found. Verify the county and Parcel ID, or enter the address manually.");
+          return;
+        }
+        setParcelMatches(result.matches);
+      },
+    });
+  };
 
   const update = (field: keyof typeof initialForm, value: string | boolean) => {
     const normalizedValue = field === "phone" && typeof value === "string" ? formatUsPhoneInput(value) : value;
@@ -218,6 +268,9 @@ export default function QuotePage() {
       locationDecision: needsLocationReview ? "owner_review" : "confirmed",
       geocodedCounty,
       locationReviewReason: needsLocationReview ? reviewReason : "",
+      parcelId: selectedParcel?.parcelId || parcelId.trim(),
+      deedAcres: selectedParcel?.deedAcres ?? undefined,
+      adjustedAcres: Number.isFinite(Number(form.acreage)) ? Number(form.acreage) : undefined,
     });
   };
 
@@ -266,7 +319,18 @@ export default function QuotePage() {
                 <label className="mt-5 block font-['Oswald'] text-xs uppercase tracking-[0.12em] text-white/65">Email *<input type="email" name="email" autoComplete="email" inputMode="email" required value={form.email} onChange={(e) => update("email", e.target.value)} onBlur={() => validateField("email")} aria-invalid={Boolean(errors.email)} aria-describedby={errors.email ? "site-visit-email-error" : undefined} className={fieldClassName(Boolean(errors.email))} placeholder="name@example.com" />{errors.email ? <span id="site-visit-email-error" className="mt-1 block font-['Lato'] normal-case tracking-normal text-red-300">{errors.email}</span> : <span className="mt-1 block font-['Lato'] normal-case tracking-normal text-white/40">Your written scope and quote are sent here after the visit.</span>}</label>
                 <div className="mt-5 grid gap-5 sm:grid-cols-2">
                   <label className="font-['Oswald'] text-xs uppercase tracking-[0.12em] text-white/65">Type of work * <TooltipProvider delayDuration={150}><Tooltip><TooltipTrigger asChild><button type="button" aria-label="How mulching differs from clearing" className="inline-flex cursor-help align-middle text-[#E07B2A] outline-none focus-visible:ring-2 focus-visible:ring-[#E07B2A]"><Info className="h-3.5 w-3.5" /></button></TooltipTrigger><TooltipContent side="top" className="max-w-xs bg-[#121212] text-xs leading-5 text-white">Forestry mulching processes suitable brush, saplings, and small trees into mulch left on site. “Clearing” describes the property goal, not a separate construction service. We do not provide grading, excavation, or hauling.</TooltipContent></Tooltip></TooltipProvider><select name="service" required value={form.service} onChange={(e) => update("service", e.target.value)} className={fieldClassName(Boolean(errors.service))}><option value="" className="bg-[#191919]">Select a service</option>{services.map((service) => <option key={service} value={service} className="bg-[#191919]">{service}</option>)}</select>{errors.service && <span className="mt-1 block font-['Lato'] normal-case tracking-normal text-red-300">{errors.service}</span>}</label>
-                  <label className="font-['Oswald'] text-xs uppercase tracking-[0.12em] text-white/65">County *<select name="county" required value={form.county} onChange={(e) => { const nextCounty = e.target.value; update("county", nextCounty); setAddressAreaNote(""); const mismatch = Boolean(geocodedCounty && normalizeCountyName(nextCounty) !== geocodedCounty); setCountyMismatch(mismatch); setLocationReviewReason(mismatch ? `The address returns ${geocodedCounty}, while the selected county is ${normalizeCountyName(nextCounty)}. Jon will verify the property county before scheduling.` : ""); }} onBlur={() => validateField("county")} aria-invalid={Boolean(errors.county)} className={fieldClassName(Boolean(errors.county))}><option value="" className="bg-[#191919]">Select a service-area county</option>{SERVICE_AREA_COUNTIES.map((county) => <option key={county} value={county} className="bg-[#191919]">{county}</option>)}</select>{errors.county ? <span className="mt-1 block font-['Lato'] normal-case tracking-normal text-red-300">{errors.county}</span> : <span className="mt-1 block font-['Lato'] normal-case tracking-normal text-white/40">Required. We currently schedule site visits in the listed Middle and West Tennessee counties.</span>}</label>
+                  <label className="font-['Oswald'] text-xs uppercase tracking-[0.12em] text-white/65">County *<select name="county" required value={form.county} onChange={(e) => { const nextCounty = e.target.value; update("county", nextCounty); setAddressAreaNote(""); setSelectedParcel(null); setParcelMatches([]); const mismatch = Boolean(geocodedCounty && normalizeCountyName(nextCounty) !== geocodedCounty); setCountyMismatch(mismatch); setLocationReviewReason(mismatch ? `The address returns ${geocodedCounty}, while the selected county is ${normalizeCountyName(nextCounty)}. Jon will verify the property county before scheduling.` : ""); }} onBlur={() => validateField("county")} aria-invalid={Boolean(errors.county)} className={fieldClassName(Boolean(errors.county))}><option value="" className="bg-[#191919]">Select a service-area county</option>{SERVICE_AREA_COUNTIES.map((county) => <option key={county} value={county} className="bg-[#191919]">{county}</option>)}</select>{errors.county ? <span className="mt-1 block font-['Lato'] normal-case tracking-normal text-red-300">{errors.county}</span> : <span className="mt-1 block font-['Lato'] normal-case tracking-normal text-white/40">Required. We currently schedule site visits in the listed Middle and West Tennessee counties.</span>}</label>
+                </div>
+                <div className="mt-5 border border-sky-400/30 bg-sky-400/10 p-4">
+                  <p className="font-['Oswald'] text-xs font-semibold uppercase tracking-[0.12em] text-sky-200">Optional: Find property by Parcel ID</p>
+                  <p className="mt-1 font-['Lato'] text-xs leading-5 text-sky-100/80">After selecting your county, you may use a Parcel ID from the Tennessee Property Viewer to fill the property location. We use it only to retrieve property location data; owner and mailing details are not shown or copied into this request.</p>
+                  <div className="mt-3 grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto]">
+                    <input value={parcelId} onChange={(event) => { setParcelId(event.target.value); if (parcelIdError) setParcelIdError(""); }} onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); lookupPublicParcel(); } }} aria-invalid={Boolean(parcelIdError)} aria-describedby={parcelIdError ? "public-parcel-id-error" : undefined} className={fieldClassName(Boolean(parcelIdError))} placeholder="Parcel ID, map/group/parcel" />
+                    <button type="button" onClick={lookupPublicParcel} disabled={lookupParcelById.isPending} className="min-h-11 border border-sky-300/55 px-4 font-['Oswald'] text-xs font-semibold uppercase tracking-[0.1em] text-sky-100 hover:bg-sky-300/10 disabled:opacity-60">{lookupParcelById.isPending ? "Finding…" : "Find property"}</button>
+                  </div>
+                  {parcelIdError && <p id="public-parcel-id-error" role="alert" className="mt-2 font-['Lato'] text-xs text-red-200">{parcelIdError}</p>}
+                  {parcelMatches.length > 0 && <div className="mt-3 space-y-2" aria-live="polite">{parcelMatches.map((match) => <div key={`${match.county}-${match.parcelId}`} className="border border-white/15 bg-[#121212]/70 p-3"><p className="font-['Lato'] text-sm font-semibold text-white">{match.address || "Address unavailable"}</p><p className="mt-1 font-['Lato'] text-xs text-white/60">Parcel {match.parcelId}{match.deedAcres ? ` · ${match.deedAcres} acres reported` : ""}</p><div className="mt-2 flex flex-wrap gap-3"><button type="button" onClick={() => applyPublicParcel(match)} className="font-['Oswald'] text-xs font-semibold uppercase tracking-[0.1em] text-[#f6ad68] underline underline-offset-2">Use this property</button>{match.propertyViewerUrl && <a href={match.propertyViewerUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 font-['Oswald'] text-xs font-semibold uppercase tracking-[0.1em] text-sky-200 underline underline-offset-2">View map <ExternalLink className="h-3 w-3" /></a>}</div></div>)}</div>}
+                  {selectedParcel && <div className="mt-3 border border-sky-300/25 bg-sky-300/5 p-3 font-['Lato'] text-xs leading-5 text-sky-100"><p className="font-semibold">Property location filled from Parcel {selectedParcel.parcelId}.</p><p className="mt-1">Review the address, county, ZIP, and acreage before submitting. Parcel records are reference information, not a legal survey.</p>{selectedParcel.propertyViewerUrl && <a href={selectedParcel.propertyViewerUrl} target="_blank" rel="noreferrer" className="mt-2 inline-flex items-center gap-1 font-semibold text-sky-200 underline underline-offset-2">Open Tennessee Property Viewer <ExternalLink className="h-3 w-3" /></a>}</div>}
                 </div>
                 <div className="mt-5 grid gap-5 sm:grid-cols-[1.5fr_0.5fr]">
                   <div className="relative">
@@ -304,7 +368,7 @@ export default function QuotePage() {
                 <label className="mt-5 block font-['Oswald'] text-xs uppercase tracking-[0.12em] text-white/65">What would you like to accomplish?<textarea name="message" value={form.message} onChange={(e) => update("message", e.target.value.slice(0, 1200))} className={`${fieldClassName()} min-h-32 resize-y`} placeholder="Describe the work area, vegetation, access, goals, concerns, or anything Jon should know before the visit." /><span className="mt-1 block text-right font-['Lato'] normal-case tracking-normal text-white/40">{form.message.length}/1200</span></label>
                 {form.preferredContact === "text" && <label className="mt-5 flex cursor-pointer items-start gap-3 border border-white/10 bg-white/[0.03] p-4 font-['Lato'] text-xs leading-5 text-white/65"><input type="checkbox" checked={form.smsConsent} onChange={(e) => update("smsConsent", e.target.checked)} className="mt-0.5 h-4 w-4 accent-[#E07B2A]" /><span>I agree to receive project-related text messages at the number provided, including site-visit, scheduling, weather, service, proposal, invoice, and payment updates. Consent is not required to request service. Message frequency varies. Message and data rates may apply. Reply STOP to opt out or HELP for help.</span></label>}
                 {errors.smsConsent && <p className="mt-2 font-['Lato'] text-xs text-red-300">{errors.smsConsent}</p>}
-                <p className="mt-6 font-['Lato'] text-xs leading-5 text-white/45">By submitting, you ask Noland Earthworks to review this Site Visit Request and contact you about the project. We create a native request and client record, and use service providers for email, phone/SMS, hosting and storage, analytics, and AI-assisted internal request organization. If work is approved, payment details are handled by Stripe; Noland Earthworks does not intend to store your payment-card number. Do not include sensitive information that is not needed for your request. See the <a className="text-[#E07B2A] underline" href="/privacy-policy">Privacy Policy</a>.</p>
+                <p className="mt-6 font-['Lato'] text-xs leading-5 text-white/45">By submitting, you ask Noland Earthworks to review this Site Visit Request and contact you about the project. We create a native request and client record, and use service providers for email, phone/SMS, hosting and storage, analytics, mapping, and AI-assisted internal request organization. If you choose the optional Parcel ID lookup, we query official Tennessee property-location records; owner and mailing details are not displayed or copied into this public request. If work is approved, payment details are handled by Stripe; Noland Earthworks does not intend to store your payment-card number. Do not include sensitive information that is not needed for your request. See the <a className="text-[#E07B2A] underline" href="/privacy-policy">Privacy Policy</a>.</p>
                 <button type="submit" disabled={submitRequest.isPending} className="mt-6 inline-flex min-h-12 w-full items-center justify-center gap-2 bg-[#E07B2A] px-6 font-['Oswald'] text-sm font-semibold uppercase tracking-[0.12em] text-white transition hover:bg-[#f28c35] disabled:cursor-not-allowed disabled:opacity-60">{submitRequest.isPending ? <><Loader2 className="h-5 w-5 animate-spin" /> Sending your request…</> : "Request a Site Visit"}</button>
                 {submitRequest.isPending && <p className="animate-pulse mt-3 text-center font-['Lato'] text-xs text-white/60" role="status" aria-live="polite">Saving your details and preparing the next steps…</p>}
               </form>

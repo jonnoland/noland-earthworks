@@ -24,6 +24,21 @@ import { invokeLLM } from "./_core/llm";
 import { sendOwnerAlertSms } from "./sms";
 import { ENV } from "./_core/env";
 import { Resend } from "resend";
+import { normalizeTennesseeParcelId, validateTennesseeParcelId } from "../shared/tennesseeParcelId";
+
+const TN_PARCEL_QUERY_URL = "https://services1.arcgis.com/YuVBSS7Y1of2Qud1/arcgis/rest/services/Tennessee_Property_Boundaries_Public_Use/FeatureServer/0/query";
+
+function cleanParcelText(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const cleaned = value.trim();
+  return cleaned || null;
+}
+
+function buildFieldParcelWhere(county: string, parcelId: string): string {
+  const cleanCounty = county.replace(/\s+county$/i, "").trim().replace(/'/g, "''");
+  const pattern = normalizeTennesseeParcelId(parcelId).split("").join("%");
+  return `COUNTY_NAME = '${cleanCounty}' AND PARCELID LIKE '%${pattern}%'`;
+}
 
 // ─── PIN App Token Helpers ─────────────────────────────────────────────────────
 
@@ -217,6 +232,67 @@ async function qualifyFieldLead(data: {
 // ─── Router ───────────────────────────────────────────────────────────────────
 
 export const fieldQuoteRouter = router({
+  /** Lookup a parcel for the signed-in Noland Field app user. */
+  lookupParcel: requireAppToken
+    .input(z.object({
+      county: z.string().trim().min(2).max(40).regex(/^[A-Za-z .'-]+$/, "Enter a Tennessee county name."),
+      parcelId: z.string().trim().min(3).max(50),
+    }))
+    .mutation(async ({ input }) => {
+      const parcelValidation = validateTennesseeParcelId(input.parcelId);
+      if (!parcelValidation.valid) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: parcelValidation.error });
+      }
+
+      try {
+        const params = new URLSearchParams({
+          where: buildFieldParcelWhere(input.county, input.parcelId),
+          outFields: "PARCELID,COUNTY_NAME,ADDRESS,CITY,ZIP,OWNER,OWNER2,DEEDAC,LINK_TPV",
+          returnGeometry: "false",
+          returnCentroid: "true",
+          outSR: "4326",
+          resultRecordCount: "6",
+          f: "json",
+        });
+        const response = await fetch(`${TN_PARCEL_QUERY_URL}?${params.toString()}`, {
+          signal: AbortSignal.timeout(12_000),
+          headers: { Accept: "application/json" },
+        });
+        if (!response.ok) throw new Error(`Tennessee parcel service returned ${response.status}`);
+        const payload = await response.json() as {
+          error?: { message?: string };
+          features?: Array<{ attributes?: Record<string, unknown>; centroid?: { x?: number; y?: number } }>;
+        };
+        if (payload.error) throw new Error(payload.error.message || "Tennessee parcel service could not complete the lookup");
+
+        const matches = (payload.features ?? []).map((feature) => {
+          const attributes = feature.attributes ?? {};
+          const city = cleanParcelText(attributes.CITY);
+          const zip = cleanParcelText(attributes.ZIP);
+          const street = cleanParcelText(attributes.ADDRESS);
+          return {
+            parcelId: cleanParcelText(attributes.PARCELID) ?? "",
+            county: cleanParcelText(attributes.COUNTY_NAME) ?? "",
+            address: [street, [city, "TN", zip].filter(Boolean).join(" ")].filter(Boolean).join(", ") || null,
+            city,
+            zip,
+            owner: [cleanParcelText(attributes.OWNER), cleanParcelText(attributes.OWNER2)].filter(Boolean).join(" / ") || null,
+            deedAcreage: typeof attributes.DEEDAC === "number" && attributes.DEEDAC > 0 ? attributes.DEEDAC : null,
+            lat: typeof feature.centroid?.y === "number" ? feature.centroid.y : null,
+            lng: typeof feature.centroid?.x === "number" ? feature.centroid.x : null,
+            propertyViewerUrl: cleanParcelText(attributes.LINK_TPV),
+          };
+        });
+        return { matches, normalizedParcelId: parcelValidation.normalized };
+      } catch (error) {
+        console.error("[fieldQuote.lookupParcel] Tennessee parcel lookup failed", error);
+        throw new TRPCError({
+          code: "BAD_GATEWAY",
+          message: "Tennessee Property Viewer is unavailable right now. Enter the property address manually or try again shortly.",
+        });
+      }
+    }),
+
   /**
    * Verify the mobile app PIN and return a signed app token.
    * The token is stored on-device and sent as X-Field-App-Token on subsequent requests.

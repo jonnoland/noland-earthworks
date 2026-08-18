@@ -22,6 +22,7 @@ import { trpc } from "@/lib/trpc";
 import PageHeader from "@/components/PageHeader";
 import AddressAutocomplete from "@/components/AddressAutocomplete";
 import { isServedCounty, normalizeCountyName } from "@/lib/serviceAreas";
+import { validateTennesseeParcelId } from "@shared/tennesseeParcelId";
 import { enqueueOfflineFieldQuote } from "@/lib/offlineFieldQuoteQueue";
 import { useNetwork } from "@/hooks/useNetwork";
 
@@ -157,6 +158,7 @@ interface FormState {
   city: string;
   county: string;
   zip: string;
+  parcelId: string;
   lat: number | null;
   lng: number | null;
   // Job details — core
@@ -238,6 +240,8 @@ export default function NewQuote() {
   const [queuedOffline, setQueuedOffline] = useState(false);
   const [estimate, setEstimate] = useState<EstimateResult | null>(null);
   const [estimateError, setEstimateError] = useState<string | null>(null);
+  // Tracks programmatic address updates so forward geocoding is not re-triggered.
+  const skipForwardGeocode = React.useRef(false);
 
   const [form, setForm] = useState<FormState>({
     name: "",
@@ -247,6 +251,7 @@ export default function NewQuote() {
     city: "",
     county: "",
     zip: "",
+    parcelId: "",
     lat: null,
     lng: null,
     serviceType: "Forestry Mulching",
@@ -275,6 +280,48 @@ export default function NewQuote() {
     onSuccess: (data) => setEstimate(data as EstimateResult),
     onError: (err) => setEstimateError(err.message || "AI estimate failed."),
   });
+  const [parcelIdError, setParcelIdError] = useState<string | null>(null);
+  const [parcelMatches, setParcelMatches] = useState<Array<{
+    parcelId: string; county: string; address: string | null; city: string | null; zip: string | null;
+    owner: string | null; deedAcreage: number | null; lat: number | null; lng: number | null; propertyViewerUrl: string | null;
+  }>>([]);
+  const parcelLookup = trpc.fieldQuote.lookupParcel.useMutation({
+    onError: (error) => setParcelIdError(error.message),
+  });
+
+  const applyParcelMatch = (match: typeof parcelMatches[number]) => {
+    skipForwardGeocode.current = true;
+    setForm((current) => ({
+      ...current,
+      parcelId: match.parcelId,
+      address: match.address || current.address,
+      city: match.city || current.city,
+      zip: match.zip || current.zip,
+      county: normalizeCountyName(match.county) || current.county,
+      lat: match.lat ?? current.lat,
+      lng: match.lng ?? current.lng,
+      acreage: current.acreage || (match.deedAcreage ? String(Math.round(match.deedAcreage * 100) / 100) : current.acreage),
+    }));
+    setParcelMatches([]);
+    setParcelIdError(null);
+  };
+
+  const lookupParcel = () => {
+    if (!form.county.trim()) { setParcelIdError("Enter the property county before looking up a Parcel ID."); return; }
+    const validation = validateTennesseeParcelId(form.parcelId);
+    if (!validation.valid) { setParcelIdError(validation.error); return; }
+    setParcelIdError(null);
+    parcelLookup.mutate({ county: form.county, parcelId: form.parcelId }, {
+      onSuccess: (result) => {
+        if (result.matches.length === 0) {
+          setParcelMatches([]);
+          setParcelIdError("No matching parcel was found. Verify the county and Parcel ID, or enter the address manually.");
+          return;
+        }
+        setParcelMatches(result.matches);
+      },
+    });
+  };
 
   const applyAddressDetails = (details: { address?: string | null; street?: string; city?: string; zip?: string; county?: string }) => {
     const normalizedCounty = normalizeCountyName(details.county);
@@ -349,9 +396,6 @@ export default function NewQuote() {
     setVoiceOpen(false); setVoiceResult(null); setVoiceTranscript("");
   };
 
-  // Track whether the address was set programmatically (GPS / autocomplete / pin drag)
-  // so we don't trigger forward-geocode in those cases.
-  const skipForwardGeocode = React.useRef(false);
   const fwdGeoDebounce = React.useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Forward-geocode: when address changes manually, debounce 800 ms then geocode
@@ -491,6 +535,7 @@ export default function NewQuote() {
       form.message.trim(),
       form.serviceType === "Right-of-Way Clearing" ? `Right-of-Way measurement: ${linearFeet} linear feet${form.rowWidth ? ` at approximately ${form.rowWidth} feet wide` : ""}.` : "",
       form.serviceType === "Fence Line Clearing" ? `Fence line measurement: ${fenceLineFeet} linear feet.` : "",
+      form.parcelId ? `TN Property Viewer reference: Parcel ${form.parcelId} · ${normalizeCountyName(form.county) || form.county}.` : "",
     ].filter(Boolean).join("\n");
 
     const submission = {
@@ -570,7 +615,7 @@ export default function NewQuote() {
             setPhotos([]);
             setEstimate(null);
             setForm({
-              name: "", email: "", phone: "", address: "", city: "", county: "", zip: "", lat: null, lng: null,
+              name: "", email: "", phone: "", address: "", city: "", county: "", zip: "", parcelId: "", lat: null, lng: null,
               serviceType: "Forestry Mulching", acreage: "", linearFeet: "",
               terrain: "flat", vegetationDensity: "moderate", accessDifficulty: "easy",
               mobilizationMiles: "0", hasStumps: false, stumpCount: "", trailWidth: "",
@@ -798,6 +843,35 @@ export default function NewQuote() {
               <input value={form.city} onChange={set("city")} placeholder="City" style={{ ...inputStyle, marginTop: 0, padding: "10px 11px" }} />
               <input value={form.county} onChange={set("county")} placeholder="County" style={{ ...inputStyle, marginTop: 0, padding: "10px 11px" }} />
               <input value={form.zip} onChange={set("zip")} placeholder="ZIP" style={{ ...inputStyle, marginTop: 0, padding: "10px 11px" }} />
+            </div>
+            <div style={{ marginTop: 10, border: "1px solid oklch(0.65 0.18 50 / 0.35)", borderRadius: 10, padding: 10, backgroundColor: "oklch(0.65 0.18 50 / 0.06)" }}>
+              <label style={{ ...labelStyle, color: "var(--ne-amber)" }}>Tennessee Parcel ID Lookup</label>
+              <p style={{ color: "var(--ne-muted)", fontSize: 11, margin: "4px 0 8px", lineHeight: 1.4 }}>Enter the county above and the Parcel ID from the Tennessee Property Viewer. Property details remain editable.</p>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: 8 }}>
+                <input
+                  value={form.parcelId}
+                  onChange={(event) => { setForm((current) => ({ ...current, parcelId: event.target.value })); if (parcelIdError) setParcelIdError(null); }}
+                  onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); lookupParcel(); } }}
+                  placeholder="Parcel ID, map/group/parcel"
+                  aria-invalid={Boolean(parcelIdError)}
+                  style={{ ...inputStyle, marginTop: 0, borderColor: parcelIdError ? "oklch(0.65 0.20 25)" : "var(--ne-border)" }}
+                />
+                <button type="button" onClick={lookupParcel} disabled={parcelLookup.isPending} style={{ border: "1px solid var(--ne-amber)", borderRadius: 9, background: parcelLookup.isPending ? "var(--ne-raised)" : "transparent", color: "var(--ne-amber)", padding: "0 11px", fontWeight: 700, fontSize: 12, cursor: parcelLookup.isPending ? "not-allowed" : "pointer" }}>
+                  {parcelLookup.isPending ? "Finding…" : "Find"}
+                </button>
+              </div>
+              {parcelIdError && <p role="alert" style={{ color: "oklch(0.70 0.20 25)", fontSize: 11, margin: "7px 0 0" }}>{parcelIdError}</p>}
+              {parcelMatches.length > 0 && <div style={{ display: "flex", flexDirection: "column", gap: 7, marginTop: 9 }} aria-live="polite">
+                {parcelMatches.map((match) => <div key={`${match.county}-${match.parcelId}`} style={{ border: "1px solid var(--ne-border)", borderRadius: 8, padding: 9, backgroundColor: "var(--ne-raised)" }}>
+                  <p style={{ color: "var(--ne-cream)", fontSize: 12, fontWeight: 700, margin: 0 }}>{match.address || "Address unavailable"}</p>
+                  <p style={{ color: "var(--ne-muted)", fontSize: 11, margin: "3px 0 0" }}>Parcel {match.parcelId} · {match.county}{match.deedAcreage ? ` · ${match.deedAcreage} acres reported` : ""}</p>
+                  {match.owner && <p style={{ color: "var(--ne-muted)", fontSize: 11, margin: "3px 0 0" }}>Owner record: {match.owner}</p>}
+                  <div style={{ display: "flex", gap: 10, marginTop: 7, alignItems: "center" }}>
+                    <button type="button" onClick={() => applyParcelMatch(match)} style={{ border: "none", borderRadius: 7, padding: "6px 9px", backgroundColor: "var(--ne-amber)", color: "var(--ne-amber-ink)", fontWeight: 700, fontSize: 11, cursor: "pointer" }}>Use Property</button>
+                    {match.propertyViewerUrl && <a href={match.propertyViewerUrl} target="_blank" rel="noreferrer" style={{ color: "var(--ne-amber)", fontSize: 11 }}>Open TN Property Viewer</a>}
+                  </div>
+                </div>)}
+              </div>}
             </div>
             {form.county && <p style={{ color: isServedCounty(form.county) ? "oklch(0.70 0.18 145)" : "oklch(0.75 0.16 75)", fontSize: 11, margin: "7px 0 0", lineHeight: 1.45 }}>
               {isServedCounty(form.county) ? `${normalizeCountyName(form.county)} is in the standard service area.` : `${normalizeCountyName(form.county)} is outside the standard service area. Confirm custom travel with the owner or add the contact to the expansion waitlist in Ops.`}

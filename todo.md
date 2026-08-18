@@ -3331,3 +3331,9 @@
 - [x] Add Property Viewer map access or a small parcel map preview for verified results
 - [x] Add county-aware Parcel ID input validation and regression coverage
 - [x] Retain the official public lookup scope; mailing details remain available through the official TPAD record instead of unsupported server-side retrieval
+
+## Parcel ID Lookup Rollout — Aug 2026
+- [x] Add official Parcel ID lookup with editable property prefill to Noland Field
+- [x] Add privacy-conscious official Parcel ID auto-fill to the public Request a Site Visit form
+- [x] Preserve public county, service-area, and owner-data disclosure safeguards
+- [x] Validate both workflows and build the updated Noland Field APK release
