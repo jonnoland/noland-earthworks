@@ -3098,8 +3098,50 @@ function AIPricingTab() {
                 serviceType: svc.serviceType,
                 benchmark: benchmarkMap.get(svc.serviceType) ?? null,
               }));
+              const linearFootServices = new Set(["Fence Line Clearing", "Trail Cutting"]);
+              const perAcreRows = rows.filter(row => !linearFootServices.has(row.serviceType));
+              const linearFootRows = rows.filter(row => linearFootServices.has(row.serviceType));
               const hasAnyData = rows.some(r => r.benchmark && r.benchmark.midPerAcre > 0);
               const hasNotes = rows.some(r => r.benchmark?.researchSummary);
+              const renderBenchmarkTable = (tableRows: typeof rows, unitLabel: string) => (
+                <div className="rounded-md border border-border overflow-hidden">
+                  <table className="w-full text-xs">
+                    <thead>
+                      <tr className="bg-secondary/30 border-b border-border">
+                        <th className="text-left px-3 py-2.5 font-medium text-muted-foreground">Service</th>
+                        <th className="text-right px-3 py-2.5 font-medium text-muted-foreground">Low /{unitLabel}</th>
+                        <th className="text-right px-3 py-2.5 font-medium text-muted-foreground">Mid /{unitLabel}</th>
+                        <th className="text-right px-3 py-2.5 font-medium text-muted-foreground">High /{unitLabel}</th>
+                        <th className="text-right px-3 py-2.5 font-medium text-muted-foreground">Approved</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {tableRows.map(({ serviceType, benchmark }) => {
+                        const hasData = benchmark && benchmark.midPerAcre > 0;
+                        return (
+                          <tr key={serviceType} className="border-b border-border last:border-0">
+                            <td className="px-3 py-2.5 font-medium text-foreground">{serviceType}</td>
+                            {hasData ? (
+                              <>
+                                <td className="px-3 py-2.5 text-right text-muted-foreground">${benchmark.lowPerAcre.toLocaleString()}</td>
+                                <td className="px-3 py-2.5 text-right text-foreground font-semibold">${benchmark.midPerAcre.toLocaleString()}</td>
+                                <td className="px-3 py-2.5 text-right text-muted-foreground">${benchmark.highPerAcre.toLocaleString()}</td>
+                                <td className="px-3 py-2.5 text-right text-[11px] text-muted-foreground">
+                                  {new Date(benchmark.lastUpdatedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                                </td>
+                              </>
+                            ) : (
+                              <td colSpan={4} className="px-3 py-2.5 text-right text-[11px] text-muted-foreground italic">
+                                No approved benchmark yet — run research, then review the suggestion
+                              </td>
+                            )}
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              );
               return (
                 <div className="space-y-4">
                   {!hasAnyData && (
@@ -3108,43 +3150,21 @@ function AIPricingTab() {
                       No benchmark data yet for your catalog services. Click Refresh Now to pull current market rates.
                     </div>
                   )}
-                  <div className="rounded-md border border-border overflow-hidden">
-                    <table className="w-full text-xs">
-                      <thead>
-                        <tr className="bg-secondary/30 border-b border-border">
-                          <th className="text-left px-3 py-2.5 font-medium text-muted-foreground">Service</th>
-                          <th className="text-right px-3 py-2.5 font-medium text-muted-foreground">Low /ac</th>
-                          <th className="text-right px-3 py-2.5 font-medium text-muted-foreground">Mid /ac</th>
-                          <th className="text-right px-3 py-2.5 font-medium text-muted-foreground">High /ac</th>
-                          <th className="text-right px-3 py-2.5 font-medium text-muted-foreground">Approved</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {rows.map(({ serviceType, benchmark }) => {
-                          const hasData = benchmark && benchmark.midPerAcre > 0;
-                          return (
-                            <tr key={serviceType} className="border-b border-border last:border-0">
-                              <td className="px-3 py-2.5 font-medium text-foreground">{serviceType}</td>
-                              {hasData ? (
-                                <>
-                                  <td className="px-3 py-2.5 text-right text-muted-foreground">${benchmark.lowPerAcre.toLocaleString()}</td>
-                                  <td className="px-3 py-2.5 text-right text-foreground font-semibold">${benchmark.midPerAcre.toLocaleString()}</td>
-                                  <td className="px-3 py-2.5 text-right text-muted-foreground">${benchmark.highPerAcre.toLocaleString()}</td>
-                                  <td className="px-3 py-2.5 text-right text-[11px] text-muted-foreground">
-                                    {new Date(benchmark.lastUpdatedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
-                                  </td>
-                                </>
-                              ) : (
-                                <td colSpan={4} className="px-3 py-2.5 text-right text-[11px] text-muted-foreground italic">
-                                  No approved benchmark yet — run research, then review the suggestion
-                                </td>
-                              )}
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
+                  {perAcreRows.length > 0 && (
+                    <section className="space-y-2">
+                      <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Per-Acre Services</p>
+                      {renderBenchmarkTable(perAcreRows, "ac")}
+                    </section>
+                  )}
+                  {linearFootRows.length > 0 && (
+                    <section className="space-y-2">
+                      <div>
+                        <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Linear Foot Services</p>
+                        <p className="mt-0.5 text-[10px] text-muted-foreground/80">Fence line and trail work are measured by the linear foot rather than acreage.</p>
+                      </div>
+                      {renderBenchmarkTable(linearFootRows, "linear ft")}
+                    </section>
+                  )}
                   {hasNotes && (
                     <div className="space-y-2 pt-1">
                       <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">Research Notes</p>

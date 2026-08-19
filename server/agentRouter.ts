@@ -7,6 +7,7 @@ import { z } from "zod";
 import { adminProcedure, router } from "./_core/trpc";
 import {
   listAgentConfigs,
+  getAgentConfig,
   upsertAgentConfig,
   getAgentLogs,
   getLastAgentRun,

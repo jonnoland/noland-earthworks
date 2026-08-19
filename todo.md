@@ -3412,3 +3412,7 @@
 - [x] Add an explicit AI Pricing auto-approve setting for successful research runs
 - [x] Automatically promote validated pricing research into internal approved benchmarks when enabled
 - [x] Enable the setting for Jon, validate the workflow, and publish the update
+
+## Linear-Foot Market Benchmarks — Aug 2026
+- [x] Move Fence Line Clearing and Trail Cutting into a dedicated Linear Foot benchmark section
+- [x] Validate and publish the reorganized AI Pricing Market Benchmarks panel
