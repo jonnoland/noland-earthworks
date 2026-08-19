@@ -3391,4 +3391,4 @@
 - [x] Add a shared practical guide for vegetation density, terrain, and site access classifications
 - [x] Add the classification aid to Operations quoting and Noland Field
 - [x] Validate and publish the Operations classification guide
-- [ ] Bump, build, and publish the companion app classification guide update after Jon authorizes an APK build
+- [x] Bump, build, and publish the authorized Noland Field v0.4.8 classification guide update
