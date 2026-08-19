@@ -102,6 +102,17 @@ export interface UnpavedRoadSegment {
   geometry: Array<{ lat: number; lng: number }>;
 }
 
+export interface RouteRestrictionReference {
+  id: string;
+  osmType: "node" | "way";
+  osmId: number;
+  restrictionType: "height" | "physical_clearance" | "weight" | "gross_weight" | "axle_weight";
+  value: string;
+  name: string;
+  lat: number;
+  lng: number;
+}
+
 async function queryOverpass(
   minLat: number,
   maxLat: number,
@@ -143,6 +154,43 @@ async function queryUnpavedRoads(routePoints: Array<{ lat: number; lng: number }
     `way["highway"]["surface"~"^(unpaved|gravel|fine_gravel|dirt|ground|earth|compacted|sand|grass|pebblestone|rock)$"](around:90,${point.lat},${point.lng});`
   ).join("");
   const query = `[out:json][timeout:25];(${aroundQueries});out tags geom;`;
+
+  for (const endpoint of OVERPASS_ENDPOINTS) {
+    try {
+      const res = await fetch(endpoint, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+          "User-Agent": "NolandEarthworks-RoutePlanner/1.0",
+          Accept: "application/json",
+        },
+        body: `data=${encodeURIComponent(query)}`,
+        signal: AbortSignal.timeout(30_000),
+      });
+      if (!res.ok) continue;
+      const data = (await res.json()) as { elements: OverpassElement[] };
+      return data.elements ?? [];
+    } catch {
+      // Try the next public Overpass endpoint.
+    }
+  }
+  return [];
+}
+
+async function queryRouteRestrictions(routePoints: Array<{ lat: number; lng: number }>): Promise<OverpassElement[]> {
+  const sampleCount = Math.min(40, routePoints.length);
+  if (sampleCount === 0) return [];
+  const step = Math.max(1, Math.floor(routePoints.length / sampleCount));
+  const samples = routePoints.filter((_point, index) => index % step === 0).slice(0, sampleCount);
+  const aroundQueries = samples.map((point) => [
+    `way["highway"]["maxheight"](around:90,${point.lat},${point.lng});`,
+    `way["highway"]["maxheight:physical"](around:90,${point.lat},${point.lng});`,
+    `way["highway"]["maxweight"](around:90,${point.lat},${point.lng});`,
+    `way["highway"]["maxweightrating"](around:90,${point.lat},${point.lng});`,
+    `way["highway"]["maxaxleload"](around:90,${point.lat},${point.lng});`,
+    `node["barrier"="height_restrictor"](around:90,${point.lat},${point.lng});`,
+  ].join("")).join("");
+  const query = `[out:json][timeout:25];(${aroundQueries});out tags geom center;`;
 
   for (const endpoint of OVERPASS_ENDPOINTS) {
     try {
@@ -449,6 +497,50 @@ export async function fetchUnpavedRoadsForRoute(routePoints: Array<{ lat: number
   const routeApproximateMiles = approximateUnpavedRouteMiles(routePoints, roads);
   unpavedRoadCache.set(key, { roads, routeApproximateMiles, fetchedAt: Date.now() });
   return { roads, routeApproximateMiles, source: "OpenStreetMap" };
+}
+
+/**
+ * Returns OSM restriction tags found near the planned driving route. These are
+ * reference alerts only: missing tags never establish that a road is clear.
+ */
+export async function fetchRouteRestrictionsForRoute(routePoints: Array<{ lat: number; lng: number }>) {
+  const elements = await queryRouteRestrictions(routePoints);
+  const seen = new Set<string>();
+  const restrictions: RouteRestrictionReference[] = [];
+
+  for (const element of elements) {
+    if (element.type !== "node" && element.type !== "way") continue;
+    const tags = element.tags ?? {};
+    const geometryPoint = element.geometry?.[0];
+    const lat = element.lat ?? element.center?.lat ?? geometryPoint?.lat;
+    const lng = element.lon ?? element.center?.lon ?? geometryPoint?.lon;
+    if (lat == null || lng == null) continue;
+    const items: Array<[RouteRestrictionReference["restrictionType"], string | undefined]> = [
+      ["height", tags.maxheight],
+      ["physical_clearance", tags["maxheight:physical"]],
+      ["weight", tags.maxweight],
+      ["gross_weight", tags.maxweightrating],
+      ["axle_weight", tags.maxaxleload],
+    ];
+    if (tags.barrier === "height_restrictor" && !tags.maxheight && !tags["maxheight:physical"]) items.push(["physical_clearance", "height restrictor"]);
+    for (const [restrictionType, value] of items) {
+      if (!value || /^(none|default|unsigned|no_sign)$/i.test(value)) continue;
+      const key = `${element.type}-${element.id}-${restrictionType}-${value}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      restrictions.push({
+        id: key,
+        osmType: element.type,
+        osmId: element.id,
+        restrictionType,
+        value,
+        name: tags.name || tags.ref || tags.highway || "Mapped road restriction",
+        lat,
+        lng,
+      });
+    }
+  }
+  return { restrictions, source: "OpenStreetMap" };
 }
 
 /** Filter stations to only those within radiusMiles of the route polyline */

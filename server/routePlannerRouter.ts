@@ -3,7 +3,7 @@ import { adminProcedure, router } from "./_core/trpc";
 import { getDb } from "./db";
 import { routeVehicleProfiles, savedRoutes } from "../drizzle/schema";
 import { eq, desc } from "drizzle-orm";
-import { fetchUnpavedRoadsForRoute, fetchWeighStationsForRoute, haversineDistance } from "./weighStationData";
+import { fetchRouteRestrictionsForRoute, fetchUnpavedRoadsForRoute, fetchWeighStationsForRoute, haversineDistance } from "./weighStationData";
 import { ENV } from "./_core/env";
 
 const DEFAULT_ROUTE_VEHICLE_PROFILE = {
@@ -219,9 +219,10 @@ export const routePlannerRouter = router({
       const directions = await getDirections(input.origin, input.destination, input.stops ?? []);
 
       // Find weigh stations within 1.5 miles of the route polyline (live Overpass API data)
-      const [stations, unpavedRoadReference] = await Promise.all([
+      const [stations, unpavedRoadReference, restrictionReference] = await Promise.all([
         fetchWeighStationsForRoute(directions.polylinePoints, 1.5),
         fetchUnpavedRoadsForRoute(directions.polylinePoints),
+        fetchRouteRestrictionsForRoute(directions.polylinePoints),
       ]);
 
       // Sort stations by approximate route order (by lng for E-W routes, lat for N-S)
@@ -249,6 +250,8 @@ export const routePlannerRouter = router({
         unpavedRoads: unpavedRoadReference.roads,
         unpavedRouteApproximateMiles: unpavedRoadReference.routeApproximateMiles,
         roadSurfaceSource: unpavedRoadReference.source,
+        routeRestrictions: restrictionReference.restrictions,
+        restrictionSource: restrictionReference.source,
       };
     }),
 

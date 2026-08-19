@@ -66,6 +66,17 @@ interface PlannedRoute {
   unpavedRoads: Array<{ id: string; name: string; surface: string; geometry: Array<{ lat: number; lng: number }> }>;
   unpavedRouteApproximateMiles: number;
   roadSurfaceSource: string;
+  routeRestrictions: Array<{
+    id: string;
+    osmType: "node" | "way";
+    osmId: number;
+    restrictionType: "height" | "physical_clearance" | "weight" | "gross_weight" | "axle_weight";
+    value: string;
+    name: string;
+    lat: number;
+    lng: number;
+  }>;
+  restrictionSource: string;
 }
 
 interface SavedRoute {
@@ -117,6 +128,14 @@ const RURAL_ROUTE_CHECKS = [
 
 const EQUIPMENT_PROFILE = "2026 Ram 5500 · 84\" C/A · BigTex 25' Gooseneck · CAT 299D3 loaded";
 
+const restrictionLabel: Record<PlannedRoute["routeRestrictions"][number]["restrictionType"], string> = {
+  height: "Maximum height",
+  physical_clearance: "Physical clearance",
+  weight: "Maximum actual weight",
+  gross_weight: "Maximum gross weight rating",
+  axle_weight: "Maximum axle load",
+};
+
 export default function WeighStationPlanner() {
   const [origin, setOrigin] = useState(DEFAULT_ORIGIN);
   const [destination, setDestination] = useState("");
@@ -135,6 +154,7 @@ export default function WeighStationPlanner() {
   const directionsRendererRef = useRef<google.maps.DirectionsRenderer | null>(null);
   const parcelPolygonRef = useRef<google.maps.Polygon | null>(null);
   const unpavedRoadPolylinesRef = useRef<google.maps.Polyline[]>([]);
+  const restrictionMarkersRef = useRef<google.maps.Marker[]>([]);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const markersRef = useRef<any[]>([]);
   const markerLibRef = useRef<google.maps.MarkerLibrary | null>(null);
@@ -225,6 +245,8 @@ export default function WeighStationPlanner() {
     }
     unpavedRoadPolylinesRef.current.forEach((polyline) => polyline.setMap(null));
     unpavedRoadPolylinesRef.current = [];
+    restrictionMarkersRef.current.forEach((marker) => marker.setMap(null));
+    restrictionMarkersRef.current = [];
   }, []);
 
   // Draw route and weigh station markers on the map
@@ -263,6 +285,25 @@ export default function WeighStationPlanner() {
           infoWindow.open({ map });
         });
         unpavedRoadPolylinesRef.current.push(polyline);
+      });
+
+      route.routeRestrictions.forEach((restriction) => {
+        const marker = new google.maps.Marker({
+          position: { lat: restriction.lat, lng: restriction.lng },
+          map,
+          title: `${restrictionLabel[restriction.restrictionType]}: ${restriction.value} — ${restriction.name}. Verify current signage and official restrictions.`,
+          label: { text: "!", color: "#FFFFFF", fontWeight: "700" },
+          icon: {
+            path: google.maps.SymbolPath.CIRCLE,
+            fillColor: "#DC2626",
+            fillOpacity: 1,
+            strokeColor: "#FFFFFF",
+            strokeWeight: 2,
+            scale: 10,
+          },
+          zIndex: 10,
+        });
+        restrictionMarkersRef.current.push(marker);
       });
 
       directionsService.route(
@@ -790,6 +831,20 @@ export default function WeighStationPlanner() {
                 <p className="mt-1 text-[11px] leading-relaxed text-white/55">Purple map lines show nearby OpenStreetMap ways explicitly tagged with an unpaved surface. The reference is incomplete and may include or miss route-adjacent roads; verify the actual road, weather, and access before travel.</p>
                 {plannedRoute.unpavedRoads.length > 0 && <p className="mt-1 text-[10px] text-purple-200/80">Approx. {plannedRoute.unpavedRouteApproximateMiles.toFixed(1)} route mile{plannedRoute.unpavedRouteApproximateMiles === 1 ? "" : "s"} matched to mapped unpaved surface data.</p>}
               </div>
+
+              {plannedRoute.routeRestrictions.length > 0 && (
+                <div className="rounded-lg border border-red-500/40 bg-red-500/10 p-3">
+                  <div className="flex items-start gap-2"><AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-red-300" /><div><p className="text-sm font-semibold text-red-100">{plannedRoute.routeRestrictions.length} mapped route restriction{plannedRoute.routeRestrictions.length === 1 ? "" : "s"} found</p><p className="mt-1 text-[11px] leading-relaxed text-red-100/70">Red map markers flag nearby OpenStreetMap weight, height, clearance, or axle-load tags. These are reference alerts only. A missing alert does not mean the route is clear; verify current official restrictions and posted signs before hauling.</p></div></div>
+                  <div className="mt-3 space-y-2">
+                    {plannedRoute.routeRestrictions.map((restriction) => (
+                      <div key={restriction.id} className="flex flex-wrap items-center justify-between gap-2 rounded border border-red-400/20 bg-black/10 px-2.5 py-2">
+                        <div><p className="text-xs font-semibold text-white">{restrictionLabel[restriction.restrictionType]}: <span className="text-red-200">{restriction.value}</span></p><p className="text-[10px] text-white/55">{restriction.name}</p></div>
+                        <a href={`https://www.openstreetmap.org/${restriction.osmType}/${restriction.osmId}`} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-[10px] font-semibold text-red-200 underline underline-offset-2">Review map tag <ExternalLink className="h-3 w-3" /></a>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               <div className="flex items-center gap-2 bg-white/5 rounded-lg p-3">
                 <Scale className="w-4 h-4 text-amber-500 flex-shrink-0" />

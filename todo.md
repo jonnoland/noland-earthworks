@@ -3433,3 +3433,8 @@
 - [x] Calculate a transparent towing-adjusted travel-time estimate from the selected profile and route context
 - [x] Add an unpaved-road reference layer with coverage and verification limitations
 - [x] Validate and publish the enhanced Route Planner
+
+## Route Restriction Reference Alerts — Aug 2026
+- [x] Retrieve route-adjacent mapped weight, height, and clearance restriction tags
+- [x] Add map indicators and a clear route review warning panel for mapped restrictions
+- [x] Validate and publish the restriction-aware Route Planner
