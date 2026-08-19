@@ -21,6 +21,7 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
+import { getFieldConditionAdjustment, type FieldConditionSelection } from "@shared/fieldConditionPricing";
 
 // ─── Tab definitions ──────────────────────────────────────────────────────────
 const tabs = [
@@ -2391,6 +2392,27 @@ function AIPricingTab() {
 
   const [form, setForm] = useState<Record<string, string | number>>({});
   const [dirty, setDirty] = useState(false);
+  const [linearFootConditions, setLinearFootConditions] = useState<FieldConditionSelection>({
+    vegetationDensity: "light",
+    terrain: "flat",
+    accessDifficulty: "easy",
+  });
+  const linearFootAdjustment = useMemo(() => getFieldConditionAdjustment(linearFootConditions, {
+    densityModerateMultiplier: String(form.densityModerateMultiplier ?? ""),
+    densityHeavyMultiplier: String(form.densityHeavyMultiplier ?? ""),
+    terrainRollingMultiplier: String(form.terrainRollingMultiplier ?? ""),
+    terrainSteepMultiplier: String(form.terrainSteepMultiplier ?? ""),
+    accessModerateMultiplier: String(form.accessModerateMultiplier ?? ""),
+    accessDifficultMultiplier: String(form.accessDifficultMultiplier ?? ""),
+  }), [
+    linearFootConditions,
+    form.densityModerateMultiplier,
+    form.densityHeavyMultiplier,
+    form.terrainRollingMultiplier,
+    form.terrainSteepMultiplier,
+    form.accessModerateMultiplier,
+    form.accessDifficultMultiplier,
+  ]);
 
   useEffect(() => {
     if (settings) {
@@ -3103,7 +3125,7 @@ function AIPricingTab() {
               const linearFootRows = rows.filter(row => linearFootServices.has(row.serviceType));
               const hasAnyData = rows.some(r => r.benchmark && r.benchmark.midPerAcre > 0);
               const hasNotes = rows.some(r => r.benchmark?.researchSummary);
-              const renderBenchmarkTable = (tableRows: typeof rows, unitLabel: string) => (
+              const renderBenchmarkTable = (tableRows: typeof rows, unitLabel: string, adjustment?: typeof linearFootAdjustment) => (
                 <div className="rounded-md border border-border overflow-hidden">
                   <table className="w-full text-xs">
                     <thead>
@@ -3118,14 +3140,17 @@ function AIPricingTab() {
                     <tbody>
                       {tableRows.map(({ serviceType, benchmark }) => {
                         const hasData = benchmark && benchmark.midPerAcre > 0;
+                        const lowRate = hasData ? Math.round(benchmark.lowPerAcre * (adjustment?.combinedMultiplier ?? 1)) : 0;
+                        const midRate = hasData ? Math.round(benchmark.midPerAcre * (adjustment?.combinedMultiplier ?? 1)) : 0;
+                        const highRate = hasData ? Math.round(benchmark.highPerAcre * (adjustment?.combinedMultiplier ?? 1)) : 0;
                         return (
                           <tr key={serviceType} className="border-b border-border last:border-0">
                             <td className="px-3 py-2.5 font-medium text-foreground">{serviceType}</td>
                             {hasData ? (
                               <>
-                                <td className="px-3 py-2.5 text-right text-muted-foreground">${benchmark.lowPerAcre.toLocaleString()}</td>
-                                <td className="px-3 py-2.5 text-right text-foreground font-semibold">${benchmark.midPerAcre.toLocaleString()}</td>
-                                <td className="px-3 py-2.5 text-right text-muted-foreground">${benchmark.highPerAcre.toLocaleString()}</td>
+                                <td className="px-3 py-2.5 text-right text-muted-foreground">${lowRate.toLocaleString()}</td>
+                                <td className="px-3 py-2.5 text-right text-foreground font-semibold">${midRate.toLocaleString()}</td>
+                                <td className="px-3 py-2.5 text-right text-muted-foreground">${highRate.toLocaleString()}</td>
                                 <td className="px-3 py-2.5 text-right text-[11px] text-muted-foreground">
                                   {new Date(benchmark.lastUpdatedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
                                 </td>
@@ -3159,10 +3184,39 @@ function AIPricingTab() {
                   {linearFootRows.length > 0 && (
                     <section className="space-y-2">
                       <div>
-                        <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Linear Foot Services</p>
-                        <p className="mt-0.5 text-[10px] text-muted-foreground/80">Fence line and trail work are measured by the linear foot rather than acreage.</p>
+                        <p className="flex items-center gap-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                          Linear Foot Services
+                          <span title="Each displayed rate is the approved per-linear-foot base benchmark multiplied by the selected Vegetation, Terrain, and Site Access factors. Rates are internal planning guidance, not customer-facing pricing."><Info className="h-3 w-3 cursor-help text-primary" /></span>
+                        </p>
+                        <p className="mt-0.5 text-[10px] text-muted-foreground/80">Fence line and trail work are measured by the linear foot rather than acreage. Choose field conditions to adjust these internal base benchmarks.</p>
                       </div>
-                      {renderBenchmarkTable(linearFootRows, "linear ft")}
+                      <div className="rounded-md border border-primary/25 bg-primary/5 p-2.5">
+                        <div className="grid gap-2 sm:grid-cols-3">
+                          {([
+                            { key: "vegetationDensity", label: "Vegetation", options: [["light", "Light"], ["moderate", "Moderate"], ["heavy", "Heavy"], ["very_heavy", "Very Heavy"]] },
+                            { key: "terrain", label: "Terrain", options: [["flat", "Flat"], ["rolling", "Rolling"], ["steep", "Steep"], ["very_steep", "Very Steep"]] },
+                            { key: "accessDifficulty", label: "Site Access", options: [["easy", "Easy"], ["moderate", "Moderate"], ["difficult", "Difficult"]] },
+                          ] as const).map(({ key, label, options }) => (
+                            <label key={key} className="block text-[10px] font-medium text-muted-foreground">
+                              {label}
+                              <select
+                                value={linearFootConditions[key]}
+                                onChange={(event) => setLinearFootConditions((current) => ({ ...current, [key]: event.target.value }))}
+                                className="mt-1 w-full rounded border border-border bg-background px-2 py-1.5 text-xs text-foreground outline-none focus:border-primary/60"
+                              >
+                                {options.map(([value, optionLabel]) => <option key={value} value={value}>{optionLabel}</option>)}
+                              </select>
+                            </label>
+                          ))}
+                        </div>
+                        <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-[10px] text-muted-foreground">
+                          <span title="Vegetation multiplier comes from the AI Pricing Vegetation Density settings.">Vegetation ×{linearFootAdjustment.vegetationMultiplier.toFixed(2)}</span>
+                          <span title="Terrain multiplier comes from the AI Pricing Terrain settings.">Terrain ×{linearFootAdjustment.terrainMultiplier.toFixed(2)}</span>
+                          <span title="Access multiplier comes from the AI Pricing Site Access settings.">Access ×{linearFootAdjustment.accessMultiplier.toFixed(2)}</span>
+                          <span title="Displayed Low, Mid, and High rates equal the approved base rate multiplied by all three selected field-condition factors." className="font-semibold text-primary">Combined ×{linearFootAdjustment.combinedMultiplier.toFixed(2)}</span>
+                        </div>
+                      </div>
+                      {renderBenchmarkTable(linearFootRows, "linear ft", linearFootAdjustment)}
                     </section>
                   )}
                   {hasNotes && (

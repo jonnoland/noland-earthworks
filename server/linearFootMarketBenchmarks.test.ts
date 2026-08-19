@@ -11,6 +11,6 @@ describe("Linear-foot Market Benchmarks", () => {
     expect(settings).toContain("const linearFootRows = rows.filter");
     expect(settings).toContain("Per-Acre Services");
     expect(settings).toContain("Linear Foot Services");
-    expect(settings).toContain('renderBenchmarkTable(linearFootRows, "linear ft")');
+    expect(settings).toContain('renderBenchmarkTable(linearFootRows, "linear ft", linearFootAdjustment)');
   });
 });

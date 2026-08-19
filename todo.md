@@ -3416,3 +3416,8 @@
 ## Linear-Foot Market Benchmarks — Aug 2026
 - [x] Move Fence Line Clearing and Trail Cutting into a dedicated Linear Foot benchmark section
 - [x] Validate and publish the reorganized AI Pricing Market Benchmarks panel
+
+## Adjusted Linear-Foot Benchmarks — Aug 2026
+- [x] Apply selected Vegetation, Terrain, and Site Access multipliers to Linear Foot benchmark base rates
+- [x] Add calculation tooltips that explain the linear-foot rate adjustment basis
+- [x] Validate and publish the adjusted Linear Foot benchmark experience
