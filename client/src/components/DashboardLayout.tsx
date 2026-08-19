@@ -82,7 +82,7 @@ const CHANGELOG: { version: string; date: string; items: string[] }[] = [
     date: "Jul 10, 2026",
     items: [
       "Homepage: 'Why Primary?' benefits panel is now tap-to-toggle — stays open until you tap outside or press Close (mobile-friendly)",
-      "Homepage: 'Get a Free Estimate' CTA button now links directly to the quote form with Forestry Mulching pre-selected",
+      "Homepage: 'Request a Site Visit' CTA button now links directly to the quote form with Forestry Mulching pre-selected",
       "Homepage: Stronger ambient amber glow on the Forestry Mulching primary card (28px rest, 48px hover)",
     ],
   },
@@ -91,7 +91,7 @@ const CHANGELOG: { version: string; date: string; items: string[] }[] = [
     date: "Jul 10, 2026",
     items: [
       "Homepage: Forestry Mulching badge now pulses with an amber glow animation to draw attention",
-      "Homepage: 'Get a Free Estimate' CTA button added to Forestry Mulching card on hover",
+      "Homepage: 'Request a Site Visit' CTA button added to Forestry Mulching card on hover",
       "Homepage: 'Why Primary?' expandable button on Forestry Mulching card reveals 5 key benefits",
     ],
   },

@@ -48,3 +48,7 @@ The retry did not clear the issue. The Reviews workspace still shows no Google r
 The connection control is not in the Manus project-management Settings panel. It is inside the website’s own operations dashboard at `https://nolandearthworks.com/ops/settings`, then the horizontally scrollable **Integrations** tab. The live card currently reports **Connected**, offers **Reconnect**, and shows a token expiry date of August 16, 2026. This conflicts with the Reviews page’s “not connected” message, which is a product status-display mismatch separate from the Google API rate-limit failure.
 
 The operations settings page now supports the direct route `https://nolandearthworks.com/ops/settings?tab=integrations`, and the Google Business Profile card is the first card in that tab. The Reviews page waits for the connection-status request before rendering a disconnected warning, which prevents an inaccurate notice while the status is still loading.
+
+## Google Sync Fallback — August 19, 2026
+
+The deployed Reviews workspace was checked again after the current Google token refresh. It still returned **No reviews found** and did not surface the quota or missing-location cause to the owner. The updated application now adds a truthful operational fallback state: it preserves existing records, does not create replacement reviews, and identifies whether the blocker is rate limiting, missing location selection, service availability, or an unsuccessful Places fallback.

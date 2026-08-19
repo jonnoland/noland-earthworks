@@ -62,7 +62,7 @@ export default function LandManagementStewartCounty() {
 
       <h2>Serving All of Stewart County</h2>
       <p>
-        Noland Earthworks is proud to serve landowners throughout Stewart County, including Dover, Cumberland City, Indian Mound, Big Rock, and Bumpus Mills. As a veteran-owned and operated business, we bring a commitment to reliability, integrity, and quality workmanship to every project. We understand the unique land management needs of this region and are equipped to handle jobs of all sizes. Contact us today for a free estimate and let us help you achieve your land management goals.
+        Noland Earthworks is proud to serve landowners throughout Stewart County, including Dover, Cumberland City, Indian Mound, Big Rock, and Bumpus Mills. As a veteran-owned and operated business, we bring a commitment to reliability, integrity, and quality workmanship to every project. We understand the unique land management needs of this region and are equipped to handle jobs of all sizes. Contact us today to request a Site Visit and let us help you achieve your land management goals.
       </p>
 
       <h2>Frequently Asked Questions — Stewart County</h2>

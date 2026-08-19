@@ -77,7 +77,7 @@ export default function LandManagementMooreCounty() {
         Noland Earthworks is proud to serve property owners throughout Moore County, TN, including Lynchburg, Tullahoma, Mulberry, and all surrounding rural areas. As a veteran-owned and operated business, we bring a commitment to reliability, integrity, and quality workmanship to every job.
       </p>
       <p>
-        Whether you're looking to clear land for a new project, maintain existing property, or enhance your land's ecological health, we are here to help. Contact us today for a free estimate and let us put our expertise to work for your Moore County property.
+        Whether you're looking to clear land for a new project, maintain existing property, or enhance your land's ecological health, we are here to help. Contact us today to request a Site Visit and let us put our expertise to work for your Moore County property.
       </p>
 
       <h2>Frequently Asked Questions — Moore County</h2>

@@ -99,7 +99,7 @@ export default function LandManagementLincolnCounty() {
         <li><a href="/blog/land-management-giles-county"><strong>Land Management in Giles County, TN</strong></a> — Serving Pulaski, Elkton, Minor Hill, Lynnville, and surrounding areas.</li>
       </ul>
       <p>
-        Not sure which county your property falls in? <a href="/quote">Request a free estimate</a> and we will confirm your location and service area when we follow up.
+        Not sure which county your property falls in? <a href="/quote">Request a Site Visit</a> and we will confirm your location and service area when we follow up.
       </p>
     </BlogPostLayout>
   );

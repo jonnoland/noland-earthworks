@@ -66,7 +66,7 @@ const data: ServicePageProps = {
 export default function PropertyMaintenancePage() {
   usePageTitle(
     "Brush Hogging in Tennessee | Noland Earthworks",
-    "Brush hogging for Tennessee landowners. Maintain pasture, fields, and lighter vegetation with veteran-owned, on-site service. Free estimates.",
+    "Brush hogging for Tennessee landowners. Maintain pasture, fields, and lighter vegetation with veteran-owned, on-site service. Site Visits.",
     "/services/property-maintenance"
   );
   return (

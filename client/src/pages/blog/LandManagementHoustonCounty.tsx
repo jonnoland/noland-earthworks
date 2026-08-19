@@ -64,7 +64,7 @@ export default function LandManagementHoustonCounty() {
 
       <h2>Serving All of Houston County</h2>
       <p>
-        Noland Earthworks is proud to serve landowners throughout Houston County, including Erin, Tennessee Ridge, and Cumberland City. As a veteran-owned and operated business, we bring a commitment to reliability, integrity, and quality workmanship to every project. We understand the unique land management needs of this region and are dedicated to helping you achieve your property goals. Contact us today for a free estimate and let us put our expertise to work for you.
+        Noland Earthworks is proud to serve landowners throughout Houston County, including Erin, Tennessee Ridge, and Cumberland City. As a veteran-owned and operated business, we bring a commitment to reliability, integrity, and quality workmanship to every project. We understand the unique land management needs of this region and are dedicated to helping you achieve your property goals. Contact us today to request a Site Visit and let us put our expertise to work for you.
       </p>
 
       <h2>Frequently Asked Questions — Houston County</h2>

@@ -101,7 +101,7 @@ export default function HowToPrepareForLandManagement() {
         Proper preparation ensures your land management project is completed safely, efficiently, and to your satisfaction. By taking these steps, you’re setting the stage for a successful transformation of your property. If you have questions about preparing your site or are ready to discuss your land management needs, don’t hesitate to reach out. We’re here to provide expert guidance and reliable service across Middle and West Tennessee.
       </p>
       <p>
-        Visit <a href="https://nolandearthworks.com/quote">nolandearthworks.com/quote</a> today for a free estimate on your land management project.
+        Visit <a href="https://nolandearthworks.com/quote">nolandearthworks.com/quote</a> today to request a Site Visit on your land management project.
       </p>
     </BlogPostLayout>
   );

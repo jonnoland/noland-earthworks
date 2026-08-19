@@ -74,7 +74,7 @@ export default function SitePreparationBeforeBuilding() {
 
       <h2>Ready to Get Started?</h2>
       <p>
-        Noland Earthworks handles land management, forestry mulching, grubbing, and site preparation across 35 counties in Middle and West Tennessee. We work directly with homeowners, builders, and developers to prepare sites efficiently and professionally. <a href="/quote" style={{ color: "#E07B2A" }}>Request a free estimate</a> and we'll walk your property, assess the scope, and give you a clear picture of what your site prep will involve.
+        Noland Earthworks handles land management, forestry mulching, grubbing, and site preparation across 35 counties in Middle and West Tennessee. We work directly with homeowners, builders, and developers to prepare sites efficiently and professionally. <a href="/quote" style={{ color: "#E07B2A" }}>Request a Site Visit</a> and we'll walk your property, assess the scope, and give you a clear picture of what your site prep will involve.
       </p>
     </BlogPostLayout>
   );

@@ -74,7 +74,7 @@ export default function LandManagementSumnerCounty() {
 
       <p>If you own property in Gallatin, Hendersonville, Portland, White House, Westmoreland, Castalian Springs, or anywhere else in Sumner County, and you're looking for professional land management, forestry mulching, or land management services, we're here to help. We invite you to learn more about how we can assist you in achieving your land goals.</p>
 
-      <p>For a free estimate and to discuss your specific project needs, please visit <a href="https://nolandearthworks.com/quote">nolandearthworks.com/quote</a>. Let Noland Earthworks put our experience to work for your Sumner County property.</p>
+      <p>to request a Site Visit and to discuss your specific project needs, please visit <a href="https://nolandearthworks.com/quote">nolandearthworks.com/quote</a>. Let Noland Earthworks put our experience to work for your Sumner County property.</p>
     </BlogPostLayout>
   );
 }

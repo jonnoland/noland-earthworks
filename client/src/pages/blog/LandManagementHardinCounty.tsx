@@ -62,7 +62,7 @@ export default function LandManagementHardinCounty() {
 
       <h2>Serving All of Hardin County</h2>
       <p>
-        Noland Earthworks is proud to serve all communities within Hardin County, including Adamsville, Counce, Crump, Saltillo, Savannah, and Shiloh. As a veteran-owned and operated business, we bring the same principles of integrity, precision, and dedication to every project. We are committed to delivering exceptional land management services that meet the unique needs of Hardin County property owners. Contact us today for a free estimate and let us help you achieve your land management goals.
+        Noland Earthworks is proud to serve all communities within Hardin County, including Adamsville, Counce, Crump, Saltillo, Savannah, and Shiloh. As a veteran-owned and operated business, we bring the same principles of integrity, precision, and dedication to every project. We are committed to delivering exceptional land management services that meet the unique needs of Hardin County property owners. Contact us today to request a Site Visit and let us help you achieve your land management goals.
       </p>
 
       <h2>Frequently Asked Questions — Hardin County</h2>

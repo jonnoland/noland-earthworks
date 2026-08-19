@@ -360,7 +360,11 @@ export default function Reviews() {
   // Sync Google OAuth reviews to local DB
   const syncMutation = trpc.ops.google.syncReviews.useMutation({
     onSuccess: (res) => {
-      toast.success(`Synced ${res.inserted} new, updated ${res.updated} of ${res.total} Google reviews.`);
+      if (res.sync.state === "live") {
+        toast.success(`Synced ${res.inserted} new, updated ${res.updated} of ${res.total} Google reviews.`);
+      } else {
+        toast.warning(res.sync.message);
+      }
       utils.ops.reviews.list.invalidate();
     },
     onError: (err) => toast.error(`Sync failed: ${err.message}`),
@@ -438,6 +442,8 @@ export default function Reviews() {
 
   const isLoading = googleOAuthLoading || liveLoading || manualLoading;
   const googleConnected = googleStatus?.connected ?? false;
+  const googleSync = googleOAuthData?.sync;
+  const googleSyncNeedsAttention = googleSync && googleSync.state !== "live";
 
   return (
     <OpsDashboardLayout title="Reviews" subtitle="Google Business Profile reputation management">
@@ -476,6 +482,12 @@ export default function Reviews() {
       {/* Config notices */}
       <div className="space-y-2 mb-4">
         {!googleStatusLoading && !googleConnected && <ConfigNotice source="Google" />}
+        {googleSyncNeedsAttention && (
+          <div className="rounded-lg border border-amber-400/30 bg-amber-400/10 px-3 py-2 text-sm text-amber-100">
+            <strong>Google review refresh:</strong> {googleSync.message} No review was created, changed, or removed by this fallback.
+            <a href="/ops/settings?tab=integrations" className="ml-2 underline underline-offset-2 hover:text-white">Review connection settings</a>
+          </div>
+        )}
         {liveData && !liveData.facebookConfigured && <ConfigNotice source="Facebook" />}
       </div>
 

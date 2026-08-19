@@ -69,7 +69,7 @@ const data: ServicePageProps = {
 export default function FenceLineClearingPage() {
   usePageTitle(
     "Fence Line Clearing in Tennessee | Noland Earthworks",
-    "Reclaim overgrown fence lines across Middle & West Tennessee. We clear brush, trees, and vines from property boundaries without damaging your fence. Free estimates.",
+    "Reclaim overgrown fence lines across Middle & West Tennessee. We clear brush, trees, and vines from property boundaries without damaging your fence. Site Visits.",
     "/services/add-ons/fence-line-clearing"
   );
   return (

@@ -62,7 +62,7 @@ export default function LandManagementBentonCounty() {
 
       <h2>Serving All of Benton County</h2>
       <p>
-        Noland Earthworks is proud to serve property owners throughout Benton County, including the communities of Camden, Big Sandy, Eva, Holladay, and Henrietta. As a veteran-owned and operated company, we bring a commitment to reliability, integrity, and quality workmanship to every project. We understand the unique land management needs of this region and are equipped to handle everything from dense brush clearing to comprehensive site preparation. Contact us today for a free estimate and discover how we can help you achieve your land management goals.
+        Noland Earthworks is proud to serve property owners throughout Benton County, including the communities of Camden, Big Sandy, Eva, Holladay, and Henrietta. As a veteran-owned and operated company, we bring a commitment to reliability, integrity, and quality workmanship to every project. We understand the unique land management needs of this region and are equipped to handle everything from dense brush clearing to comprehensive site preparation. Contact us today to request a Site Visit and discover how we can help you achieve your land management goals.
       </p>
 
       <h2>Frequently Asked Questions — Benton County</h2>

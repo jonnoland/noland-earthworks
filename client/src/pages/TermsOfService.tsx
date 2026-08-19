@@ -27,19 +27,18 @@ export default function TermsOfService() {
           Terms of Service
         </h1>
         <p style={{ fontFamily: "'Lato', sans-serif", color: "rgba(240,237,230,0.55)", fontSize: "0.9rem" }}>
-          <strong style={{ color: "rgba(240,237,230,0.7)" }}>Effective Date:</strong> 04/01/2026 &nbsp;|&nbsp;{" "}
-          <strong style={{ color: "rgba(240,237,230,0.7)" }}>Last Updated:</strong> 04/01/2026
+          <strong style={{ color: "rgba(240,237,230,0.7)" }}>Working Draft Updated:</strong> August 19, 2026 &nbsp;|&nbsp;{" "}
+          <strong style={{ color: "rgba(240,237,230,0.7)" }}>Status:</strong> Attorney review required
         </p>
       </div>
 
       {/* Content */}
       <div className="container py-16 max-w-3xl mx-auto" style={{ fontFamily: "'Lato', sans-serif" }}>
         <p style={{ color: "rgba(240,237,230,0.8)", lineHeight: 1.8, marginBottom: "2.5rem" }}>
-          This Terms of Service ("Terms") constitutes a legally binding agreement between you ("Customer," "you," or
-          "your") and Noland Earthworks, LLC ("Noland Earthworks," "we," "us," or "our"), governing your access to and
-          use of Noland Earthworks' services, website, communications, and equipment operations. By requesting a quote,
-          scheduling a service, submitting your information, or otherwise engaging Noland Earthworks, you agree to these
-          Terms in full.
+          This working Terms of Service draft describes the proposed rules for access to and use of Noland Earthworks'
+          services, website, communications, and equipment operations. It must be reviewed and approved by
+          Tennessee-appropriate counsel before it is relied upon as a final agreement. Until then, the written proposal
+          and any job-specific agreement provided for a project control that project’s scope, price, schedule, and payment terms.
         </p>
 
         <Section number="1" title="Services Covered">
@@ -57,11 +56,11 @@ export default function TermsOfService() {
 
         <Section number="2" title="Estimates, Quotes & Payment Terms">
           <ul style={{ color: "rgba(240,237,230,0.8)", lineHeight: 2.2, paddingLeft: "1.5rem" }}>
-            <li>All estimates are based on information available at the time of quoting. Final pricing may adjust based on actual site conditions, including brush density, debris, terrain, or accessibility.</li>
+            <li>Site Visit Requests and written proposals are based on information available at the time of review. Final pricing may adjust only as stated in the written proposal or when actual site conditions materially differ from the conditions reviewed.</li>
             <li>Quotes are valid for 30 days unless otherwise stated.</li>
-            <li>Larger jobs may require a deposit to secure scheduling and equipment allocation. Deposit requirements, if any, will be communicated at the time of booking.</li>
-            <li>Deposits are refundable if cancellation occurs 14 or more days before the scheduled start date.</li>
-            <li>Deposits are non-refundable if cancellation occurs within 14 days of the start date.</li>
+            <li>A written proposal may require a deposit to reserve a start date, schedule equipment, or secure other project-specific commitments. Any required deposit amount and payment timing will be stated in writing before payment is requested.</li>
+            <li>If a written proposal requires a deposit, written cancellation received at least 14 calendar days before the scheduled start date is eligible for a refund of that deposit, unless the written proposal identifies a different, separately stated project-specific term approved by counsel.</li>
+            <li>For written cancellation received fewer than 14 calendar days before the scheduled start date, a deposit may be non-refundable to the extent stated in the written proposal and allowed by applicable law. Any approved rescheduling is handled under Section 8.</li>
             <li>Payment in full is due immediately upon completion unless otherwise agreed in writing.</li>
             <li>Failure to pay may result in collections, liens, or legal action.</li>
           </ul>
@@ -131,15 +130,15 @@ export default function TermsOfService() {
         <Section number="7" title="Weather & Scheduling Delays">
           <ul style={{ color: "rgba(240,237,230,0.8)", lineHeight: 2, paddingLeft: "1.5rem" }}>
             <li>Services may be postponed due to weather or equipment conditions.</li>
-            <li>Deposits will not be forfeited if Noland Earthworks initiates rescheduling.</li>
+            <li>If Noland Earthworks initiates rescheduling, an approved deposit will be applied to the rescheduled date or handled as stated in the written proposal.</li>
           </ul>
         </Section>
 
         <Section number="8" title="Cancellations & Rescheduling">
           <ul style={{ color: "rgba(240,237,230,0.8)", lineHeight: 2, paddingLeft: "1.5rem" }}>
-            <li>Cancellations must be submitted in writing to <a href="mailto:quotes@nolandearthworks.com" style={{ color: "#E07B2A" }}>quotes@nolandearthworks.com</a>.</li>
-            <li>Deposits for projects over $5,000 are refundable if canceled 14 or more days prior.</li>
-            <li>Smaller jobs may be rescheduled one time at no cost if done 72 or more hours in advance.</li>
+            <li>Cancellations and rescheduling requests must be submitted in writing to <a href="mailto:quotes@nolandearthworks.com" style={{ color: "#E07B2A" }}>quotes@nolandearthworks.com</a>.</li>
+            <li>The 14-calendar-day deposit rule in Section 2 applies to every project with a written deposit requirement. This draft does not use a separate dollar-value threshold.</li>
+            <li>A request to reschedule is subject to weather, equipment, workload, and the written proposal. Any fee, credit, or revised date must be confirmed in writing.</li>
           </ul>
         </Section>
 

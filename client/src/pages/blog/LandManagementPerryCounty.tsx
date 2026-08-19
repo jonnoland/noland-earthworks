@@ -62,7 +62,7 @@ export default function LandManagementPerryCounty() {
 
       <h2>Serving All of Perry County</h2>
       <p>
-        Noland Earthworks is proud to serve landowners throughout Perry County, including Linden, Lobelville, Flatwoods, Beardstown, and all surrounding rural areas. As a veteran-owned and operated company, we bring a commitment to reliability, integrity, and quality workmanship to every project. We understand the unique land management needs of this region and are equipped to handle everything from small residential clearings to large-scale timberland projects. Contact us today for a free estimate and let us help you transform your Perry County property.
+        Noland Earthworks is proud to serve landowners throughout Perry County, including Linden, Lobelville, Flatwoods, Beardstown, and all surrounding rural areas. As a veteran-owned and operated company, we bring a commitment to reliability, integrity, and quality workmanship to every project. We understand the unique land management needs of this region and are equipped to handle everything from small residential clearings to large-scale timberland projects. Contact us today to request a Site Visit and let us help you transform your Perry County property.
       </p>
 
       <h2>Frequently Asked Questions — Perry County</h2>

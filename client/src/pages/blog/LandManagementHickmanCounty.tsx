@@ -113,7 +113,7 @@ export default function LandManagementHickmanCounty() {
         <li><a href="/blog/land-management-lawrence-county"><strong>Land Management in Lawrence County, TN</strong></a> — Serving Lawrenceburg, Loretto, Ethridge, St. Joseph, and surrounding areas.</li>
       </ul>
       <p>
-        Not sure which county your property falls in? <a href="/quote">Request a free estimate</a> and we will confirm your location and service area when we follow up.
+        Not sure which county your property falls in? <a href="/quote">Request a Site Visit</a> and we will confirm your location and service area when we follow up.
       </p>
     </BlogPostLayout>
   );

@@ -56,7 +56,7 @@ export default function LandManagementWilsonCounty() {
 
       <h2>Ready to Transform Your Wilson County Property?</h2>
       <p>Whether you’re looking to clear a new building site, reclaim overgrown pasture, or simply enhance the natural beauty of your property, effective land management is the key. Don't let dense brush or invasive species diminish your land's potential. Take the first step towards a healthier, more usable property.</p>
-      <p>For a free estimate and to discuss your specific <a href="/service-areas/wilson-county">land management Wilson County TN</a> needs, visit <a href="https://nolandearthworks.com/quote">nolandearthworks.com/quote</a>. We’re here to help you make the most of your land.</p>
+      <p>to request a Site Visit and to discuss your specific <a href="/service-areas/wilson-county">land management Wilson County TN</a> needs, visit <a href="https://nolandearthworks.com/quote">nolandearthworks.com/quote</a>. We’re here to help you make the most of your land.</p>
     </BlogPostLayout>
   );
 }

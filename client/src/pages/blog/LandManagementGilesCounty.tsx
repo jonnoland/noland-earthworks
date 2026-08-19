@@ -75,7 +75,7 @@ export default function LandManagementGilesCounty() {
 
       <p>If you own property in Pulaski, Elkton, Minor Hill, Lynnville, Prospect, or anywhere else in Giles County, and you’re considering forestry mulching or land management, we’re here to help. We provide honest assessments and reliable service, grounded in real-world experience.</p>
 
-      <p>Don't let overgrown land diminish your property's value or usability. Visit <a href="https://nolandearthworks.com/quote">nolandearthworks.com/quote</a> today to request a free estimate. Let's discuss your land management needs and how we can help you achieve your goals for your Giles County property.</p>
+      <p>Don't let overgrown land diminish your property's value or usability. Visit <a href="https://nolandearthworks.com/quote">nolandearthworks.com/quote</a> today to Request a Site Visit. Let's discuss your land management needs and how we can help you achieve your goals for your Giles County property.</p>
     </BlogPostLayout>
   );
 }

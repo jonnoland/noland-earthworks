@@ -38,9 +38,9 @@ function normalizeCountyCopy(value: string): string {
   return value
     .replace(/free,? no-obligation on-site estimate/gi, "Site Visit")
     .replace(/free on-site estimates?/gi, "Site Visits")
-    .replace(/free estimates?/gi, "Site Visits")
+    .replace(/Site Visits?/gi, "Site Visits")
     .replace(/free on-site estimate/gi, "Site Visit")
-    .replace(/free estimate/gi, "Site Visit")
+    .replace(/Site Visit/gi, "Site Visit")
     .replace(/call or submit a quote request online today/gi, "request a Site Visit online today")
     .replace(/request a quote online today/gi, "request a Site Visit online today")
     .replace(/call for a Site Visit/gi, "request a Site Visit")
@@ -98,7 +98,7 @@ const countyData: Record<string, CountyPageProps> = {
       "Noland Earthworks serves Williamson County, Tennessee with professional forestry mulching, land management, and vegetation management services. As one of the fastest-growing counties in the nation, Williamson County sees constant demand for land preparation — from new home construction in Franklin and Brentwood to rural acreage clearing in Fairview and College Grove.",
       "Our veteran-owned team understands the unique landscape of Williamson County — rolling hills, cedar glades, and dense hardwood forests that require experienced operators and the right equipment. We use modern forestry mulching machines that clear efficiently while protecting the topsoil and natural contours of your land.",
       "Right-of-way clearing is in high demand across Williamson County as the road network expands to serve new subdivisions and rural properties. Cedar glade terrain near Leiper's Fork and College Grove frequently requires driveway corridors cut through dense cedar and hardwood, while utility easements along the county's expanding road network need regular maintenance to stay open. Our forestry mulching equipment handles these corridors cleanly and efficiently. Visit our Right-of-Way Clearing service page or call for a free on-site estimate.",
-      "Whether you need a small residential lot cleared or a large agricultural property managed, we provide free estimates and transparent pricing throughout Williamson County.",
+      "Whether you need a small residential lot cleared or a large agricultural property managed, we provide Site Visits and transparent pricing throughout Williamson County.",
     ],
     nearbyAreas: [
       "Franklin", "Brentwood", "Spring Hill", "Nolensville", "Fairview",
@@ -220,7 +220,7 @@ const countyData: Record<string, CountyPageProps> = {
       "Noland Earthworks provides land management and forestry mulching services throughout Sumner County, Tennessee. From Hendersonville's lakeside properties to the rural farmland around Gallatin and Portland, we help property owners clear and manage their land with professional-grade equipment and veteran work ethic.",
       "Sumner County's proximity to Nashville has driven strong residential growth, creating demand for lot clearing, site preparation, and vegetation management. Our team handles everything from small residential lots to large rural acreage, using forestry mulching to clear efficiently with minimal environmental impact.",
       "Right-of-way clearing is a consistent need in Sumner County, where lakeside properties on Old Hickory Lake near Gallatin and Hendersonville require access road clearing through wooded shoreline terrain and agricultural fence lines near Portland and Westmoreland need periodic reclamation from encroaching brush. We also maintain utility easements along US-31E and cut driveway corridors for rural residential builds throughout the county. Visit our Right-of-Way Clearing service page or call for a free on-site estimate.",
-      "Contact us for a free estimate on your Sumner County property — we're typically available within a few weeks.",
+      "Contact us to request a Site Visit on your Sumner County property — we're typically available within a few weeks.",
     ],
     nearbyAreas: [
       "Hendersonville", "Gallatin", "Portland", "Goodlettsville", "White House",
@@ -250,7 +250,7 @@ const countyData: Record<string, CountyPageProps> = {
       "Noland Earthworks serves Robertson County, Tennessee with professional land management, forestry mulching, and vegetation management services. Springfield, White House, and the surrounding rural communities rely on our veteran-owned team for efficient, reliable land services.",
       "Robertson County's agricultural heritage means many of our clients are farmers reclaiming overgrown pasture, clearing fence lines, or managing invasive species on their property. Our forestry mulching equipment handles dense brush and small trees in a single pass, returning land to productive use quickly and cost-effectively.",
       "Right-of-way clearing is a natural fit for Robertson County's agricultural landscape, where fence lines frequently become overgrown with invasive hedge and cedar and utility easements along US-41 need periodic reclamation. We also clear private driveway corridors through wooded land near Adams and Cedar Hill, and access roads on rural farm properties throughout the county. Visit our Right-of-Way Clearing service page or call for a free on-site estimate.",
-      "We offer free estimates throughout Robertson County — call or request a quote online today.",
+      "We offer Site Visits throughout Robertson County — call or request a quote online today.",
     ],
     nearbyAreas: [
       "Springfield", "White House", "Greenbrier", "Cross Plains", "Adams",
@@ -336,7 +336,7 @@ const countyData: Record<string, CountyPageProps> = {
       {
         question: "How soon can you start a project in Dickson County?",
         answer:
-          "Because Dickson County is our home base, we're often able to schedule estimates and start projects faster here than in more distant counties. In most cases, we can have someone out for a free estimate within a few days and begin work within 1–2 weeks, depending on current scheduling.",
+          "Because Dickson County is our home base, we're often able to schedule estimates and start projects faster here than in more distant counties. In most cases, we can have someone out to request a Site Visit within a few days and begin work within 1–2 weeks, depending on current scheduling.",
       },
       ...COMMON_FAQS,
     ],
@@ -420,7 +420,7 @@ const countyData: Record<string, CountyPageProps> = {
       "Noland Earthworks serves Cannon County, Tennessee with professional forestry mulching, land management, and vegetation management services. Woodbury and the surrounding communities benefit from our veteran-owned land services, delivered with precision and reliability.",
       "Cannon County's rural character and mix of hardwood forest and agricultural land make it a strong fit for our forestry mulching services. We help property owners clear overgrown land, reclaim pasture, manage invasive species, and prepare sites for construction or recreational use.",
       "Right-of-way clearing is a steady need in Cannon County, where rural agricultural properties near Woodbury require fence-line reclamation from encroaching cedar and brush and driveway corridors must be cut through wooded hillsides for rural residential builds. Access roads for hunting and recreational properties in Cannon County's forested terrain are another common job for our forestry mulching equipment. Visit our Right-of-Way Clearing service page or call for a free on-site estimate.",
-      "Contact us for a free estimate on your Cannon County property — we serve the entire county.",
+      "Contact us to request a Site Visit on your Cannon County property — we serve the entire county.",
     ],
     nearbyAreas: [
       "Woodbury", "Auburntown", "Bradyville", "Gassaway",
@@ -430,7 +430,7 @@ const countyData: Record<string, CountyPageProps> = {
       {
         question: "Do you serve Woodbury and Cannon County?",
         answer:
-          "Yes — Woodbury and all of Cannon County are in our service area. We provide free estimates and work on projects of all sizes throughout the county.",
+          "Yes — Woodbury and all of Cannon County are in our service area. We provide Site Visits and work on projects of all sizes throughout the county.",
       },
       ...COMMON_FAQS,
     ],
@@ -536,8 +536,8 @@ const countyData: Record<string, CountyPageProps> = {
     intro: [
       "Noland Earthworks serves Perry County, Tennessee with professional forestry mulching, land management, and vegetation management services. Linden and the surrounding rural communities benefit from our veteran-owned land services, delivered with precision and reliability.",
       "Perry County's rugged terrain along the Buffalo River corridor and its heavily wooded hillsides make forestry mulching the most practical and cost-effective land management solution for most properties. Our equipment handles steep slopes and dense hardwood growth that traditional clearing methods struggle with.",
-      "Right-of-way clearing along the Buffalo River corridor and throughout Perry County's rural road network is a specialty we bring to every job here. Private landowners need driveways cut through steep, wooded hillsides; farmers need fence lines reclaimed from multi-year brush encroachment; and rural property owners need easements maintained along creek bottoms and ridge lines. Our mulching equipment handles the tight, sloped corridors common in Perry County without the soil disturbance that traditional dozer work causes on these hillsides. Visit our Right-of-Way Clearing service page or call for a free estimate.",
-      "Contact us for a free estimate on your Perry County property — we serve the entire county.",
+      "Right-of-way clearing along the Buffalo River corridor and throughout Perry County's rural road network is a specialty we bring to every job here. Private landowners need driveways cut through steep, wooded hillsides; farmers need fence lines reclaimed from multi-year brush encroachment; and rural property owners need easements maintained along creek bottoms and ridge lines. Our mulching equipment handles the tight, sloped corridors common in Perry County without the soil disturbance that traditional dozer work causes on these hillsides. Visit our Right-of-Way Clearing service page or call to request a Site Visit.",
+      "Contact us to request a Site Visit on your Perry County property — we serve the entire county.",
     ],
     nearbyAreas: [
       "Linden", "Lobelville", "Decaturville", "Parsons",
@@ -547,7 +547,7 @@ const countyData: Record<string, CountyPageProps> = {
       {
         question: "Do you serve Linden and Perry County?",
         answer:
-          "Yes — Linden and all of Perry County are in our service area. We provide free estimates and work on projects of all sizes throughout the county.",
+          "Yes — Linden and all of Perry County are in our service area. We provide Site Visits and work on projects of all sizes throughout the county.",
       },
       ...COMMON_FAQS,
     ],
@@ -585,7 +585,7 @@ const countyData: Record<string, CountyPageProps> = {
       "Noland Earthworks serves Hickman County, Tennessee with professional land management, forestry mulching, and vegetation management services. Centerville and the surrounding communities benefit from our veteran-owned land services — delivered with the work ethic and integrity you deserve.",
       "Hickman County's rolling hills, cedar glades, and mixed hardwood forests are well-suited to our forestry mulching equipment. We help property owners clear overgrown land, reclaim pasture, manage invasive cedar, and prepare sites for residential or agricultural use.",
       "Right-of-way clearing is a regular need in Hickman County, where cedar glade terrain near Centerville and Lyles generates consistent demand for fence-line reclamation from invasive cedar and driveway corridors cut through wooded hillsides for rural residential builds. We also clear utility easements along TN-48 and open access roads for rural and recreational properties throughout the county. Visit our Right-of-Way Clearing service page or call for a free on-site estimate.",
-      "Contact us for a free estimate on your Hickman County property — we're proud to serve the entire county.",
+      "Contact us to request a Site Visit on your Hickman County property — we're proud to serve the entire county.",
     ],
     nearbyAreas: [
       "Centerville", "Bon Aqua", "Dickson", "Nunnelly",
@@ -619,7 +619,7 @@ const countyData: Record<string, CountyPageProps> = {
       {
         question: "Do you serve Erin and Houston County?",
         answer:
-          "Yes — Erin and all of Houston County are in our service area. We provide free estimates and work on projects of all sizes throughout the county.",
+          "Yes — Erin and all of Houston County are in our service area. We provide Site Visits and work on projects of all sizes throughout the county.",
       },
       ...COMMON_FAQS,
     ],
@@ -632,8 +632,8 @@ const countyData: Record<string, CountyPageProps> = {
     intro: [
       "Noland Earthworks serves Humphreys County, Tennessee with professional forestry mulching, land management, and vegetation management services. Waverly and the surrounding communities benefit from our veteran-owned land services, delivered with precision and reliability.",
       "Humphreys County's mix of river bottomland along the Tennessee River, rolling hills, and agricultural land creates diverse land management needs. Our forestry mulching equipment is well-suited to the dense brush, willow, and hardwood growth common in the area.",
-      "Right-of-way clearing is particularly relevant in Humphreys County, where river bottomland easements, pipeline corridors, and rural access roads frequently become overgrown with willow, cottonwood, and invasive brush. We clear utility easements, private driveway corridors, and fence-line ROWs throughout the county — cutting a clean, defined path without disturbing the surrounding land. Recurring annual maintenance contracts are available to keep your corridor open year after year. Learn more on our Right-of-Way Clearing service page or call for a free estimate.",
-      "Contact us for a free estimate on your Humphreys County property — we serve the entire county.",
+      "Right-of-way clearing is particularly relevant in Humphreys County, where river bottomland easements, pipeline corridors, and rural access roads frequently become overgrown with willow, cottonwood, and invasive brush. We clear utility easements, private driveway corridors, and fence-line ROWs throughout the county — cutting a clean, defined path without disturbing the surrounding land. Recurring annual maintenance contracts are available to keep your corridor open year after year. Learn more on our Right-of-Way Clearing service page or call to request a Site Visit.",
+      "Contact us to request a Site Visit on your Humphreys County property — we serve the entire county.",
     ],
     nearbyAreas: [
       "Waverly", "McEwen", "New Johnsonville", "Waverly",
@@ -691,7 +691,7 @@ const countyData: Record<string, CountyPageProps> = {
       {
         question: "Do you serve Lewisburg and Marshall County?",
         answer:
-          "Yes — Lewisburg and all of Marshall County are in our service area. We provide free estimates and work on projects of all sizes throughout the county.",
+          "Yes — Lewisburg and all of Marshall County are in our service area. We provide Site Visits and work on projects of all sizes throughout the county.",
       },
       ...COMMON_FAQS,
     ],
@@ -705,7 +705,7 @@ const countyData: Record<string, CountyPageProps> = {
       "Noland Earthworks serves Giles County, Tennessee with professional forestry mulching, land management, and vegetation management services. Pulaski and the surrounding communities benefit from our veteran-owned land services, delivered with precision and reliability.",
       "Giles County's diverse landscape — from open farmland to dense hardwood forests — creates a wide range of land management needs. Our modern forestry mulching equipment handles everything from light brush to mature timber in a single efficient pass.",
       "Right-of-way clearing is a steady need in Giles County, where agricultural and equestrian properties near Pulaski, Lynnville, and Minor Hill require fence-line reclamation from encroaching brush, driveway corridors cut through hardwood for rural builds, and utility easements along US-64 maintained. Our forestry mulching equipment handles these corridors cleanly in a single pass without disturbing the surrounding farmland or pasture. Visit our Right-of-Way Clearing service page or call for a free on-site estimate.",
-      "Contact us for a free estimate on your Giles County property — we serve the entire county and surrounding areas.",
+      "Contact us to request a Site Visit on your Giles County property — we serve the entire county and surrounding areas.",
     ],
     nearbyAreas: [
       "Pulaski", "Elkton", "Lynnville", "Minor Hill",
@@ -739,7 +739,7 @@ const countyData: Record<string, CountyPageProps> = {
       {
         question: "Do you serve Fayetteville and Lincoln County?",
         answer:
-          "Yes — Fayetteville and all of Lincoln County are in our service area. We provide free estimates and work on projects of all sizes throughout the county.",
+          "Yes — Fayetteville and all of Lincoln County are in our service area. We provide Site Visits and work on projects of all sizes throughout the county.",
       },
       ...COMMON_FAQS,
     ],
@@ -763,7 +763,7 @@ const countyData: Record<string, CountyPageProps> = {
       {
         question: "Do you serve Lynchburg and Moore County?",
         answer:
-          "Yes — Lynchburg and all of Moore County are in our service area. We provide free estimates and work on land management projects of all sizes throughout the county.",
+          "Yes — Lynchburg and all of Moore County are in our service area. We provide Site Visits and work on land management projects of all sizes throughout the county.",
       },
       ...COMMON_FAQS,
     ],
@@ -777,7 +777,7 @@ const countyData: Record<string, CountyPageProps> = {
       "Noland Earthworks serves Lawrence County, Tennessee with professional forestry mulching, land management, and vegetation management services. Lawrenceburg and the surrounding communities benefit from our veteran-owned land services, delivered with precision and reliability.",
       "Lawrence County's heavily wooded terrain, rolling hills, and agricultural land make it ideal for our forestry mulching services. We work with property owners, farmers, and developers to clear land efficiently while protecting the natural landscape.",
       "Right-of-way clearing is a frequent request in Lawrence County, where heavily wooded hills near Lawrenceburg, Loretto, and Ethridge require remote rural driveway corridors cut through dense hardwood, fence lines reclaimed from multi-year brush encroachment, and utility easements along US-43 maintained. Access roads for hunting properties in Lawrence County's forested terrain are also a common job for our mulching equipment. Visit our Right-of-Way Clearing service page or call for a free on-site estimate.",
-      "Contact us for a free estimate on your Lawrence County property — we serve the entire county and surrounding areas.",
+      "Contact us to request a Site Visit on your Lawrence County property — we serve the entire county and surrounding areas.",
     ],
     nearbyAreas: [
       "Lawrenceburg", "Loretto", "Ethridge", "St. Joseph",
@@ -801,7 +801,7 @@ const countyData: Record<string, CountyPageProps> = {
       "Noland Earthworks serves Carroll County, Tennessee with professional forestry mulching, land management, and vegetation management services. McKenzie and the surrounding communities benefit from our veteran-owned land services, delivered with precision and reliability.",
       "Carroll County's rural landscape, mixed hardwood forests, and agricultural land make it ideal for our forestry mulching services. We work with property owners, farmers, and developers to clear land efficiently while protecting the natural environment.",
       "Right-of-way clearing is a common need in Carroll County, where agricultural properties near McKenzie, Huntingdon, and Hollow Rock require fence-line reclamation from encroaching brush, driveway corridors cut through mixed hardwood for rural residential builds, and utility easements along US-70 maintained. Our forestry mulching equipment handles these corridors efficiently in a single pass without disturbing the surrounding farmland. Visit our Right-of-Way Clearing service page or call for a free on-site estimate.",
-      "Contact us for a free estimate on your Carroll County property — we serve the entire county and surrounding areas.",
+      "Contact us to request a Site Visit on your Carroll County property — we serve the entire county and surrounding areas.",
     ],
     nearbyAreas: [
       "McKenzie", "Huntingdon", "Hollow Rock", "Atwood",
@@ -835,7 +835,7 @@ const countyData: Record<string, CountyPageProps> = {
       {
         question: "Do you serve Henderson and Chester County?",
         answer:
-          "Yes — Henderson and all of Chester County are in our service area. We provide free estimates and work on projects of all sizes throughout the county.",
+          "Yes — Henderson and all of Chester County are in our service area. We provide Site Visits and work on projects of all sizes throughout the county.",
       },
       ...COMMON_FAQS,
     ],
@@ -849,7 +849,7 @@ const countyData: Record<string, CountyPageProps> = {
       "Noland Earthworks serves Decatur County, Tennessee with professional forestry mulching, land management, and vegetation management services. Decaturville and the surrounding communities benefit from our veteran-owned land services, delivered with precision and reliability.",
       "Decatur County's wooded terrain along the Tennessee River, combined with its agricultural land and rural character, creates strong demand for land management services. Our equipment handles everything from light brush to dense woodland in a single pass.",
       "Right-of-way clearing is a regular need in Decatur County, where the Tennessee River corridor near Decaturville and Bath Springs generates demand for easement maintenance along creek bottoms and wooded hillside driveway clearing. Fence-line reclamation on agricultural land and access roads for hunting properties in Decatur County's forested terrain are also common jobs for our forestry mulching equipment. Visit our Right-of-Way Clearing service page or call for a free on-site estimate.",
-      "Contact us for a free estimate on your Decatur County property — we serve the entire county and surrounding areas.",
+      "Contact us to request a Site Visit on your Decatur County property — we serve the entire county and surrounding areas.",
     ],
     nearbyAreas: [
       "Decaturville", "Parsons", "Bath Springs", "Scotts Hill",
@@ -882,7 +882,7 @@ const countyData: Record<string, CountyPageProps> = {
       {
         question: "Do you serve Trenton and Gibson County?",
         answer:
-          "Yes — Trenton and all of Gibson County are in our service area. We provide free estimates and work on projects of all sizes throughout the county.",
+          "Yes — Trenton and all of Gibson County are in our service area. We provide Site Visits and work on projects of all sizes throughout the county.",
       },
       ...COMMON_FAQS,
     ],
@@ -896,7 +896,7 @@ const countyData: Record<string, CountyPageProps> = {
       "Noland Earthworks serves Hardin County, Tennessee with professional forestry mulching, land management, and vegetation management services. Savannah and the surrounding communities benefit from our veteran-owned land services, delivered with precision and reliability.",
       "Hardin County's heavily wooded terrain along the Tennessee River, combined with its agricultural land and rural character, makes it ideal for our forestry mulching services. We work with property owners, farmers, and developers to clear land efficiently.",
       "Right-of-way clearing is a regular need in Hardin County, where the Tennessee River corridor near Savannah and Counce generates demand for easement maintenance along creek bottoms and wooded hillside driveway clearing. Fence-line reclamation on agricultural land near Crump and Adamsville and access roads for hunting properties adjacent to Shiloh National Military Park are also common jobs for our forestry mulching equipment. Visit our Right-of-Way Clearing service page or call for a free on-site estimate.",
-      "Contact us for a free estimate on your Hardin County property — we serve the entire county and surrounding areas.",
+      "Contact us to request a Site Visit on your Hardin County property — we serve the entire county and surrounding areas.",
     ],
     nearbyAreas: [
       "Savannah", "Counce", "Crump", "Saltillo",
@@ -930,7 +930,7 @@ const countyData: Record<string, CountyPageProps> = {
       {
         question: "Do you serve Lexington and Henderson County?",
         answer:
-          "Yes — Lexington and all of Henderson County are in our service area. We provide free estimates and work on projects of all sizes throughout the county.",
+          "Yes — Lexington and all of Henderson County are in our service area. We provide Site Visits and work on projects of all sizes throughout the county.",
       },
       ...COMMON_FAQS,
     ],
@@ -944,7 +944,7 @@ const countyData: Record<string, CountyPageProps> = {
       "Noland Earthworks serves Henry County, Tennessee with professional forestry mulching, land management, and vegetation management services. Paris and the surrounding communities benefit from our veteran-owned land services, delivered with precision and reliability.",
       "Henry County's wooded terrain around Kentucky Lake, combined with its agricultural land and rural character, creates strong demand for land management services. Our equipment handles everything from light brush to dense woodland in a single pass.",
       "Right-of-way clearing is a frequent need in Henry County, where Kentucky Lake shoreline easements near Paris, Springville, and Buchanan require access road clearing through wooded terrain and fence-line reclamation on agricultural land. We also maintain utility corridors along US-79 and cut private driveway corridors for rural residential builds near Puryear and Henry. Visit our Right-of-Way Clearing service page or call for a free on-site estimate.",
-      "Contact us for a free estimate on your Henry County property — we serve the entire county and surrounding areas.",
+      "Contact us to request a Site Visit on your Henry County property — we serve the entire county and surrounding areas.",
     ],
     nearbyAreas: [
       "Paris", "Puryear", "Springville", "Buchanan",
@@ -978,7 +978,7 @@ const countyData: Record<string, CountyPageProps> = {
       {
         question: "Do you serve Jackson and Madison County?",
         answer:
-          "Yes — Jackson and all of Madison County are in our service area. We provide free estimates and work on projects of all sizes throughout the county.",
+          "Yes — Jackson and all of Madison County are in our service area. We provide Site Visits and work on projects of all sizes throughout the county.",
       },
       ...COMMON_FAQS,
     ],
@@ -992,7 +992,7 @@ const countyData: Record<string, CountyPageProps> = {
       "Noland Earthworks serves Weakley County, Tennessee with professional forestry mulching, land management, and vegetation management services. Dresden and the surrounding communities benefit from our veteran-owned land services, delivered with precision and reliability.",
       "Weakley County's flat to rolling farmland, wooded areas, and rural properties make it a strong fit for our forestry mulching and land management services. We help property owners clear overgrown lots, reclaim pasture, and prepare sites for construction.",
       "Right-of-way clearing is a steady need across Weakley County's flat West Tennessee farmland, where row-crop farms near Dresden, Martin, and Greenfield require fence-line reclamation from encroaching brush and utility easements along US-45E maintained. We also cut driveway corridors for rural residential builds near Sharon and Gleason and open access roads on agricultural properties throughout the county. Visit our Right-of-Way Clearing service page or call for a free on-site estimate.",
-      "Contact us for a free estimate on your Weakley County property — we serve the entire county and surrounding areas.",
+      "Contact us to request a Site Visit on your Weakley County property — we serve the entire county and surrounding areas.",
     ],
     nearbyAreas: [
       "Dresden", "Martin", "Greenfield", "Sharon",
@@ -1025,7 +1025,7 @@ const countyData: Record<string, CountyPageProps> = {
       {
         question: "Do you serve Smithville and DeKalb County?",
         answer:
-          "Yes — Smithville and all of DeKalb County are in our service area. We provide free estimates and work on projects of all sizes throughout the county.",
+          "Yes — Smithville and all of DeKalb County are in our service area. We provide Site Visits and work on projects of all sizes throughout the county.",
       },
       ...COMMON_FAQS,
     ],
@@ -1048,7 +1048,7 @@ const countyData: Record<string, CountyPageProps> = {
       {
         question: "Do you serve Carthage and Smith County?",
         answer:
-          "Yes — Carthage and all of Smith County are in our service area. We provide free estimates and work on projects of all sizes throughout the county.",
+          "Yes — Carthage and all of Smith County are in our service area. We provide Site Visits and work on projects of all sizes throughout the county.",
       },
       ...COMMON_FAQS,
     ],
@@ -1062,7 +1062,7 @@ const countyData: Record<string, CountyPageProps> = {
       "Noland Earthworks serves Trousdale County, Tennessee with professional forestry mulching, land management, and vegetation management services. Hartsville and the surrounding communities benefit from our veteran-owned land services, delivered with precision and reliability.",
       "Trousdale County — Tennessee's smallest county by area — features rolling farmland and wooded creek bottoms that benefit from professional land management. Our forestry mulching equipment handles overgrown fields, fence lines, and wooded areas efficiently.",
       "Right-of-way clearing is a steady need in Trousdale County, where rolling farmland near Hartsville and Bethpage requires fence-line reclamation from encroaching brush on agricultural land and utility easements along TN-25 need periodic maintenance. We also cut driveway corridors for rural residential builds near Castalian Springs and Riddleton. Visit our Right-of-Way Clearing service page or call for a free on-site estimate.",
-      "Contact us for a free estimate on your Trousdale County property — we serve the entire county.",
+      "Contact us to request a Site Visit on your Trousdale County property — we serve the entire county.",
     ],
     nearbyAreas: [
       "Hartsville", "Bethpage", "Riddleton", "Castalian Springs",
@@ -1072,7 +1072,7 @@ const countyData: Record<string, CountyPageProps> = {
       {
         question: "Do you serve Hartsville and Trousdale County?",
         answer:
-          "Yes — Hartsville and all of Trousdale County are in our service area. We provide free estimates and work on land management projects of all sizes throughout the county.",
+          "Yes — Hartsville and all of Trousdale County are in our service area. We provide Site Visits and work on land management projects of all sizes throughout the county.",
       },
       ...COMMON_FAQS,
     ],
@@ -1095,7 +1095,7 @@ const countyData: Record<string, CountyPageProps> = {
       {
         question: "Do you serve Lafayette and Macon County?",
         answer:
-          "Yes — Lafayette and all of Macon County are in our service area. We provide free estimates and work on projects of all sizes throughout the county.",
+          "Yes — Lafayette and all of Macon County are in our service area. We provide Site Visits and work on projects of all sizes throughout the county.",
       },
       ...COMMON_FAQS,
     ],
@@ -1118,7 +1118,7 @@ const countyData: Record<string, CountyPageProps> = {
       {
         question: "Do you serve Gainesboro and Jackson County?",
         answer:
-          "Yes — Gainesboro and all of Jackson County are in our service area. We provide free estimates and work on land management projects of all sizes throughout the county.",
+          "Yes — Gainesboro and all of Jackson County are in our service area. We provide Site Visits and work on land management projects of all sizes throughout the county.",
       },
       ...COMMON_FAQS,
     ],
@@ -1131,7 +1131,7 @@ const countyData: Record<string, CountyPageProps> = {
     intro: [
       "Noland Earthworks serves Clay County, Tennessee with professional forestry mulching, land management, and vegetation management services. Celina and the surrounding communities benefit from our veteran-owned land services, delivered with precision and reliability.",
       "Clay County's rugged terrain along Dale Hollow Lake and its heavily forested hills make forestry mulching the most efficient land management method for most properties. We work with recreational landowners, hunters, farmers, and developers throughout the county.",
-      "Contact us for a free estimate on your Clay County property — we serve the entire county and surrounding areas.",
+      "Contact us to request a Site Visit on your Clay County property — we serve the entire county and surrounding areas.",
     ],
     nearbyAreas: [
       "Celina", "Red Boiling Springs", "Moss", "Hermitage Springs",
@@ -1141,7 +1141,7 @@ const countyData: Record<string, CountyPageProps> = {
       {
         question: "Do you serve Celina and Clay County?",
         answer:
-          "Yes — Celina and all of Clay County are in our service area. We provide free estimates and work on land management projects of all sizes throughout the county.",
+          "Yes — Celina and all of Clay County are in our service area. We provide Site Visits and work on land management projects of all sizes throughout the county.",
       },
       ...COMMON_FAQS,
     ],
@@ -1164,7 +1164,7 @@ const countyData: Record<string, CountyPageProps> = {
       {
         question: "Do you serve Cookeville and Putnam County?",
         answer:
-          "Yes — Cookeville and all of Putnam County are in our service area. We provide free estimates and work on projects of all sizes throughout the county.",
+          "Yes — Cookeville and all of Putnam County are in our service area. We provide Site Visits and work on projects of all sizes throughout the county.",
       },
       ...COMMON_FAQS,
     ],
@@ -1198,185 +1198,185 @@ function createCountyPage(slug: string, pageTitle: string, metaDesc?: string) {
 export const DavidsonCountyPage = createCountyPage(
   "davidson-county",
   "Land Management in Davidson County, TN | Noland Earthworks",
-  "Veteran-owned land management and forestry mulching in Davidson County, TN. Serving Nashville and all surrounding areas. Free estimates. Call 615-406-4819."
+  "Veteran-owned land management and forestry mulching in Davidson County, TN. Serving Nashville and all surrounding areas. Site Visits. Call 615-406-4819."
 );
 export const WilliamsonCountyPage = createCountyPage(
   "williamson-county",
   "Land Management in Williamson County, TN | Noland Earthworks",
-  "Professional land management and forestry mulching in Williamson County, TN. Serving Franklin, Brentwood, Spring Hill, and Nolensville. Free estimates."
+  "Professional land management and forestry mulching in Williamson County, TN. Serving Franklin, Brentwood, Spring Hill, and Nolensville. Site Visits."
 );
 export const RutherfordCountyPage = createCountyPage(
   "rutherford-county",
   "Land Management in Rutherford County, TN | Noland Earthworks",
-  "Top-rated land management and forestry mulching in Rutherford County, TN. Serving Murfreesboro, Smyrna, LaVergne, and surrounding areas. Free estimates."
+  "Top-rated land management and forestry mulching in Rutherford County, TN. Serving Murfreesboro, Smyrna, LaVergne, and surrounding areas. Site Visits."
 );
 export const WilsonCountyPage = createCountyPage(
   "wilson-county",
   "Land Management in Wilson County, TN | Noland Earthworks",
-  "Expert forestry mulching and land management in Wilson County, TN. Serving Lebanon, Mt. Juliet, and surrounding areas. Veteran-owned. Free estimates."
+  "Expert forestry mulching and land management in Wilson County, TN. Serving Lebanon, Mt. Juliet, and surrounding areas. Veteran-owned. Site Visits."
 );
 export const SumnerCountyPage = createCountyPage(
   "sumner-county",
   "Land Management in Sumner County, TN | Noland Earthworks",
-  "Professional land management and forestry mulching in Sumner County, TN. Serving Hendersonville, Gallatin, Portland, and surrounding communities. Free estimates."
+  "Professional land management and forestry mulching in Sumner County, TN. Serving Hendersonville, Gallatin, Portland, and surrounding communities. Site Visits."
 );
 export const RobertsonCountyPage = createCountyPage(
   "robertson-county",
   "Land Management in Robertson County, TN | Noland Earthworks",
-  "Veteran-owned land management and forestry mulching in Robertson County, TN. Serving Springfield, White House, Greenbrier, and surrounding areas. Free estimates."
+  "Veteran-owned land management and forestry mulching in Robertson County, TN. Serving Springfield, White House, Greenbrier, and surrounding areas. Site Visits."
 );
 export const CheathamCountyPage = createCountyPage(
   "cheatham-county",
   "Land Management in Cheatham County, TN | Noland Earthworks",
-  "Professional forestry mulching and land management in Cheatham County, TN. Serving Ashland City, Kingston Springs, and surrounding areas. Free estimates."
+  "Professional forestry mulching and land management in Cheatham County, TN. Serving Ashland City, Kingston Springs, and surrounding areas. Site Visits."
 );
 export const DicksonCountyPage = createCountyPage(
   "dickson-county",
   "Land Management in Dickson County, TN | Noland Earthworks",
-  "Trusted forestry mulching and land management in Dickson County, TN. Single-pass mulching near Montgomery Bell State Park and surrounding areas. Free estimates."
+  "Trusted forestry mulching and land management in Dickson County, TN. Single-pass mulching near Montgomery Bell State Park and surrounding areas. Site Visits."
 );
 export const MauryCountyPage = createCountyPage(
   "maury-county",
   "Land Management in Maury County, TN | Noland Earthworks",
-  "Top-rated land management and forestry mulching in Maury County, TN. Serving Columbia, Spring Hill, and surrounding areas. Veteran-owned. Free estimates."
+  "Top-rated land management and forestry mulching in Maury County, TN. Serving Columbia, Spring Hill, and surrounding areas. Veteran-owned. Site Visits."
 );
 export const WayneCountyPage = createCountyPage(
   "wayne-county",
   "Land Management in Wayne County, TN | Noland Earthworks",
-  "Professional land management and forestry mulching in Wayne County, TN. Serving Waynesboro and surrounding communities. Veteran-owned. Free estimates."
+  "Professional land management and forestry mulching in Wayne County, TN. Serving Waynesboro and surrounding communities. Veteran-owned. Site Visits."
 );
 export const CannonCountyPage = createCountyPage(
   "cannon-county",
   "Land Management in Cannon County, TN | Noland Earthworks",
-  "Veteran-owned land management and forestry mulching in Cannon County, TN. Serving Woodbury and surrounding areas. Licensed, insured. Free estimates."
+  "Veteran-owned land management and forestry mulching in Cannon County, TN. Serving Woodbury and surrounding areas. Licensed, insured. Site Visits."
 );
 export const BedfordCountyPage = createCountyPage(
   "bedford-county",
   "Land Management in Bedford County, TN | Noland Earthworks",
-  "Professional land management and forestry mulching in Bedford County, TN. Serving Shelbyville and surrounding communities. Veteran-owned. Free estimates."
+  "Professional land management and forestry mulching in Bedford County, TN. Serving Shelbyville and surrounding communities. Veteran-owned. Site Visits."
 );
 export const MontgomeryCountyPage = createCountyPage(
   "montgomery-county",
   "Land Management in Montgomery County, TN | Noland Earthworks",
-  "Professional forestry mulching and land management in Montgomery County, TN. Serving Clarksville and surrounding areas. Veteran-owned. Free estimates."
+  "Professional forestry mulching and land management in Montgomery County, TN. Serving Clarksville and surrounding areas. Veteran-owned. Site Visits."
 );
 export const LewisCountyPage = createCountyPage(
   "lewis-county",
   "Land Management in Lewis County, TN | Noland Earthworks",
-  "Veteran-owned land management and forestry mulching in Lewis County, TN. Serving Hohenwald and surrounding areas. Licensed, insured. Free estimates."
+  "Veteran-owned land management and forestry mulching in Lewis County, TN. Serving Hohenwald and surrounding areas. Licensed, insured. Site Visits."
 );
 export const PerryCountyPage = createCountyPage(
   "perry-county",
   "Land Management in Perry County, TN | Noland Earthworks",
-  "Professional land management and forestry mulching in Perry County, TN. Serving Linden and surrounding communities. Veteran-owned. Free estimates."
+  "Professional land management and forestry mulching in Perry County, TN. Serving Linden and surrounding communities. Veteran-owned. Site Visits."
 );
 export const BentonCountyPage = createCountyPage(
   "benton-county",
   "Land Management in Benton County, TN | Noland Earthworks",
-  "Veteran-owned land management and forestry mulching in Benton County, TN. Serving Camden and surrounding areas. Licensed, insured. Free estimates."
+  "Veteran-owned land management and forestry mulching in Benton County, TN. Serving Camden and surrounding areas. Licensed, insured. Site Visits."
 );
 export const HickmanCountyPage = createCountyPage(
   "hickman-county",
   "Land Management in Hickman County, TN | Noland Earthworks",
-  "Professional forestry mulching and land management in Hickman County, TN. Serving Centerville and surrounding areas. Veteran-owned. Free estimates."
+  "Professional forestry mulching and land management in Hickman County, TN. Serving Centerville and surrounding areas. Veteran-owned. Site Visits."
 );
 export const HoustonCountyPage = createCountyPage(
   "houston-county",
   "Land Management in Houston County, TN | Noland Earthworks",
-  "Veteran-owned land management and forestry mulching in Houston County, TN. Serving Erin and surrounding communities. Licensed, insured. Free estimates."
+  "Veteran-owned land management and forestry mulching in Houston County, TN. Serving Erin and surrounding communities. Licensed, insured. Site Visits."
 );
 export const HumphreysCountyPage = createCountyPage(
   "humphreys-county",
   "Land Management in Humphreys County, TN | Noland Earthworks",
-  "Professional land management and forestry mulching in Humphreys County, TN. Serving Waverly and surrounding areas. Veteran-owned. Free estimates."
+  "Professional land management and forestry mulching in Humphreys County, TN. Serving Waverly and surrounding areas. Veteran-owned. Site Visits."
 );
 export const StewartCountyPage = createCountyPage(
   "stewart-county",
   "Land Management in Stewart County, TN | Noland Earthworks",
-  "Veteran-owned land management and forestry mulching in Stewart County, TN. Serving Dover and surrounding communities. Licensed, insured. Free estimates."
+  "Veteran-owned land management and forestry mulching in Stewart County, TN. Serving Dover and surrounding communities. Licensed, insured. Site Visits."
 );
 export const MarshallCountyPage = createCountyPage(
   "marshall-county",
   "Land Management in Marshall County, TN | Noland Earthworks",
-  "Professional land management and forestry mulching in Marshall County, TN. Serving Lewisburg and surrounding areas. Veteran-owned. Free estimates."
+  "Professional land management and forestry mulching in Marshall County, TN. Serving Lewisburg and surrounding areas. Veteran-owned. Site Visits."
 );
 export const GilesCountyPage = createCountyPage(
   "giles-county",
   "Land Management in Giles County, TN | Noland Earthworks",
-  "Veteran-owned land management and forestry mulching in Giles County, TN. Serving Pulaski and surrounding communities. Licensed, insured. Free estimates."
+  "Veteran-owned land management and forestry mulching in Giles County, TN. Serving Pulaski and surrounding communities. Licensed, insured. Site Visits."
 );
 export const LincolnCountyPage = createCountyPage(
   "lincoln-county",
   "Land Management in Lincoln County, TN | Noland Earthworks",
-  "Professional land management and forestry mulching in Lincoln County, TN. Serving Fayetteville and surrounding areas. Veteran-owned. Free estimates."
+  "Professional land management and forestry mulching in Lincoln County, TN. Serving Fayetteville and surrounding areas. Veteran-owned. Site Visits."
 );
 export const MooreCountyPage = createCountyPage(
   "moore-county",
   "Land Management in Moore County, TN | Noland Earthworks",
-  "Veteran-owned land management and forestry mulching in Moore County, TN. Serving Lynchburg and surrounding communities. Licensed, insured. Free estimates."
+  "Veteran-owned land management and forestry mulching in Moore County, TN. Serving Lynchburg and surrounding communities. Licensed, insured. Site Visits."
 );
 export const LawrenceCountyPage = createCountyPage(
   "lawrence-county",
   "Land Management in Lawrence County, TN | Noland Earthworks",
-  "Professional land management and forestry mulching in Lawrence County, TN. Serving Lawrenceburg and surrounding areas. Veteran-owned. Free estimates."
+  "Professional land management and forestry mulching in Lawrence County, TN. Serving Lawrenceburg and surrounding areas. Veteran-owned. Site Visits."
 );
 export const DeKalbCountyPage = createCountyPage(
   "dekalb-county",
   "Land Management in DeKalb County, TN | Noland Earthworks",
-  "Veteran-owned land management and forestry mulching in DeKalb County, TN. Serving Smithville and surrounding communities. Licensed, insured. Free estimates."
+  "Veteran-owned land management and forestry mulching in DeKalb County, TN. Serving Smithville and surrounding communities. Licensed, insured. Site Visits."
 );
 export const SmithCountyPage = createCountyPage(
   "smith-county",
   "Land Management in Smith County, TN | Noland Earthworks",
-  "Professional land management and forestry mulching in Smith County, TN. Serving Carthage and surrounding areas. Veteran-owned. Free estimates."
+  "Professional land management and forestry mulching in Smith County, TN. Serving Carthage and surrounding areas. Veteran-owned. Site Visits."
 );
 export const TrousdaleCountyPage = createCountyPage(
   "trousdale-county",
   "Land Management in Trousdale County, TN | Noland Earthworks",
-  "Veteran-owned land management and forestry mulching in Trousdale County, TN. Serving Hartsville and surrounding communities. Licensed, insured. Free estimates."
+  "Veteran-owned land management and forestry mulching in Trousdale County, TN. Serving Hartsville and surrounding communities. Licensed, insured. Site Visits."
 );
 export const CarrollCountyPage = createCountyPage(
   "carroll-county",
   "Land Management in Carroll County, TN | Noland Earthworks",
-  "Professional land management and forestry mulching in Carroll County, TN. Serving Huntingdon and surrounding areas. Veteran-owned. Free estimates."
+  "Professional land management and forestry mulching in Carroll County, TN. Serving Huntingdon and surrounding areas. Veteran-owned. Site Visits."
 );
 export const ChesterCountyPage = createCountyPage(
   "chester-county",
   "Land Management in Chester County, TN | Noland Earthworks",
-  "Veteran-owned land management and forestry mulching in Chester County, TN. Serving Henderson and surrounding communities. Licensed, insured. Free estimates."
+  "Veteran-owned land management and forestry mulching in Chester County, TN. Serving Henderson and surrounding communities. Licensed, insured. Site Visits."
 );
 export const DecaturCountyPage = createCountyPage(
   "decatur-county",
   "Land Management in Decatur County, TN | Noland Earthworks",
-  "Professional land management and forestry mulching in Decatur County, TN. Serving Decaturville and surrounding areas. Veteran-owned. Free estimates."
+  "Professional land management and forestry mulching in Decatur County, TN. Serving Decaturville and surrounding areas. Veteran-owned. Site Visits."
 );
 export const GibsonCountyPage = createCountyPage(
   "gibson-county",
   "Land Management in Gibson County, TN | Noland Earthworks",
-  "Veteran-owned land management and forestry mulching in Gibson County, TN. Serving Trenton and surrounding communities. Licensed, insured. Free estimates."
+  "Veteran-owned land management and forestry mulching in Gibson County, TN. Serving Trenton and surrounding communities. Licensed, insured. Site Visits."
 );
 export const HardinCountyPage = createCountyPage(
   "hardin-county",
   "Land Management in Hardin County, TN | Noland Earthworks",
-  "Professional land management and forestry mulching in Hardin County, TN. Serving Savannah and surrounding areas. Veteran-owned. Free estimates."
+  "Professional land management and forestry mulching in Hardin County, TN. Serving Savannah and surrounding areas. Veteran-owned. Site Visits."
 );
 export const HendersonCountyPage = createCountyPage(
   "henderson-county",
   "Land Management in Henderson County, TN | Noland Earthworks",
-  "Veteran-owned land management and forestry mulching in Henderson County, TN. Serving Lexington and surrounding communities. Licensed, insured. Free estimates."
+  "Veteran-owned land management and forestry mulching in Henderson County, TN. Serving Lexington and surrounding communities. Licensed, insured. Site Visits."
 );
 export const HenryCountyPage = createCountyPage(
   "henry-county",
   "Land Management in Henry County, TN | Noland Earthworks",
-  "Professional land management and forestry mulching in Henry County, TN. Serving Paris and surrounding areas. Veteran-owned. Free estimates."
+  "Professional land management and forestry mulching in Henry County, TN. Serving Paris and surrounding areas. Veteran-owned. Site Visits."
 );
 export const MadisonCountyPage = createCountyPage(
   "madison-county",
   "Land Management in Madison County, TN | Noland Earthworks",
-  "Veteran-owned land management and forestry mulching in Madison County, TN. Serving Jackson and surrounding communities. Licensed, insured. Free estimates."
+  "Veteran-owned land management and forestry mulching in Madison County, TN. Serving Jackson and surrounding communities. Licensed, insured. Site Visits."
 );
 export const WeakleyCountyPage = createCountyPage(
   "weakley-county",
   "Land Management in Weakley County, TN | Noland Earthworks",
-  "Professional land management and forestry mulching in Weakley County, TN. Serving Dresden and surrounding areas. Veteran-owned. Free estimates."
+  "Professional land management and forestry mulching in Weakley County, TN. Serving Dresden and surrounding areas. Veteran-owned. Site Visits."
 );

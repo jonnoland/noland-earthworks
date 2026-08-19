@@ -62,7 +62,7 @@ export default function LandManagementDecaturCounty() {
 
       <h2>Serving All of Decatur County</h2>
       <p>
-        Noland Earthworks is proud to serve landowners throughout Decatur County, including Decaturville, Parsons, Scotts Hill, Bath Springs, and all surrounding communities. As a veteran-owned and operated company, we bring a commitment to reliability, integrity, and quality workmanship to every job. We understand the unique land management challenges and opportunities in this region and are equipped to handle projects of all sizes. Contact us today for a free estimate and discover how we can help you achieve your land management goals.
+        Noland Earthworks is proud to serve landowners throughout Decatur County, including Decaturville, Parsons, Scotts Hill, Bath Springs, and all surrounding communities. As a veteran-owned and operated company, we bring a commitment to reliability, integrity, and quality workmanship to every job. We understand the unique land management challenges and opportunities in this region and are equipped to handle projects of all sizes. Contact us today to request a Site Visit and discover how we can help you achieve your land management goals.
       </p>
 
       <h2>Frequently Asked Questions - Decatur County</h2>

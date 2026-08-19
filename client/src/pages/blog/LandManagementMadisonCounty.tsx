@@ -48,7 +48,7 @@ export default function LandManagementMadisonCounty() {
 
       <h2>Serving All of Madison County</h2>
 
-      <p>Noland Earthworks is proud to serve property owners throughout Madison County, including Jackson, Medina, Humboldt, Denmark, Mercer, and Medon. As a veteran-owned and operated company, we bring a commitment to reliability, integrity, and quality workmanship to every project. We understand the unique land management needs of West Tennessee and are equipped to handle jobs of all sizes. Contact us today for a free estimate and let us help you achieve your land management goals.</p>
+      <p>Noland Earthworks is proud to serve property owners throughout Madison County, including Jackson, Medina, Humboldt, Denmark, Mercer, and Medon. As a veteran-owned and operated company, we bring a commitment to reliability, integrity, and quality workmanship to every project. We understand the unique land management needs of West Tennessee and are equipped to handle jobs of all sizes. Contact us today to request a Site Visit and let us help you achieve your land management goals.</p>
 
       <h2>Frequently Asked Questions — Madison County</h2>
 

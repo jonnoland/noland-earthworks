@@ -63,7 +63,7 @@ export default function LandManagementGibsonCounty() {
 
       <h2>Serving All of Gibson County</h2>
       <p>
-        Noland Earthworks is proud to serve property owners throughout Gibson County, including the communities of Trenton, Milan, Humboldt, Dyer, Bradford, Kenton, Gibson, and Medina. As a veteran-owned and operated company, we bring a commitment to reliability, integrity, and quality workmanship to every project. Contact us today for a free estimate and let us help you achieve your land management goals.
+        Noland Earthworks is proud to serve property owners throughout Gibson County, including the communities of Trenton, Milan, Humboldt, Dyer, Bradford, Kenton, Gibson, and Medina. As a veteran-owned and operated company, we bring a commitment to reliability, integrity, and quality workmanship to every project. Contact us today to request a Site Visit and let us help you achieve your land management goals.
       </p>
 
       <h2>Frequently Asked Questions — Gibson County</h2>

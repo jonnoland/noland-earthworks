@@ -24,6 +24,33 @@ describe("cross-site consistency controls", () => {
     expect(article).not.toContain("Schedule a Free Estimate");
   });
 
+  it("removes legacy free-estimate language from public client source", () => {
+    const publicClientRoot = path.join(root, "client");
+    const legacyPhrase = /free estimate/i;
+    const pending = [publicClientRoot];
+    const publicSource = [] as string[];
+
+    while (pending.length > 0) {
+      const current = pending.pop()!;
+      for (const entry of fs.readdirSync(current, { withFileTypes: true })) {
+        const fullPath = path.join(current, entry.name);
+        if (entry.isDirectory()) pending.push(fullPath);
+        else if (/\.(tsx|html)$/.test(entry.name)) publicSource.push(fs.readFileSync(fullPath, "utf8"));
+      }
+    }
+
+    expect(publicSource.join("\n")).not.toMatch(legacyPhrase);
+    expect(read("client/src/pages/Faq.tsx")).toContain("Request a Site Visit");
+  });
+
+  it("keeps one consistent deposit-cancellation rule in the attorney-review terms draft", () => {
+    const terms = read("client/src/pages/TermsOfService.tsx");
+
+    expect(terms).toContain("14-calendar-day deposit rule");
+    expect(terms).toContain("Attorney review required");
+    expect(terms).not.toContain("projects over $5,000");
+  });
+
   it("keeps the legacy Site Preparation route within the truthful vegetation-work scope", () => {
     const source = read("client/src/pages/SitePreparation.tsx");
     expect(source).toContain("This work is not grading, excavation, earthmoving, hauling, road construction, or final building-pad preparation.");

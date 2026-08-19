@@ -1,7 +1,7 @@
 /*
  * DESIGN: Heavy Equipment Grit — full-width dark amber-accented stats band
  * Counters display final values immediately; animate only when scrolled into view.
- * Stats: Free Estimates | 35+ Projects | 35 Counties Served | 24hr Quote Turnaround
+ * Stats: Site Visits | 35+ Projects | 35 Counties Served | 24hr Quote Turnaround
  */
 import { useEffect, useRef, useState } from "react";
 

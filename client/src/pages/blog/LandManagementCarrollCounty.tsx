@@ -63,7 +63,7 @@ export default function LandManagementCarrollCounty() {
 
       <h2>Serving All of Carroll County</h2>
       <p>
-        Noland Earthworks is proud to serve landowners throughout Carroll County, Tennessee, including the communities of McKenzie, Huntingdon, Hollow Rock, Atwood, Clarksburg, and Trezevant. As a veteran-owned and operated company, we bring a commitment to reliability, integrity, and quality workmanship to every project. Whether you're preparing a new building site, reclaiming agricultural land, or enhancing your timber property, we're here to help you achieve your land management goals. Contact us today for a free estimate and let us put our expertise to work for you.
+        Noland Earthworks is proud to serve landowners throughout Carroll County, Tennessee, including the communities of McKenzie, Huntingdon, Hollow Rock, Atwood, Clarksburg, and Trezevant. As a veteran-owned and operated company, we bring a commitment to reliability, integrity, and quality workmanship to every project. Whether you're preparing a new building site, reclaiming agricultural land, or enhancing your timber property, we're here to help you achieve your land management goals. Contact us today to request a Site Visit and let us put our expertise to work for you.
       </p>
 
       <h2>Frequently Asked Questions — Carroll County</h2>

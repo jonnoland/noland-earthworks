@@ -38,7 +38,7 @@ const data: ServicePageProps = {
   faqs: [
     {
       question: "How wide of a corridor can you clear for a driveway or access road?",
-      answer: "We typically clear 12–20 feet wide for a standard single-lane driveway, and up to 30 feet or more for a two-lane access road. The exact width depends on your needs and the terrain. We'll discuss the target width during the free estimate and can stake it out on-site.",
+      answer: "We typically clear 12–20 feet wide for a standard single-lane driveway, and up to 30 feet or more for a two-lane access road. The exact width depends on your needs and the terrain. We'll discuss the target width during the Site Visit and can stake it out on-site.",
     },
     {
       question: "Do I need a permit to clear a right-of-way on my own property in Tennessee?",
@@ -50,7 +50,7 @@ const data: ServicePageProps = {
     },
     {
       question: "How long does it take to clear a driveway right-of-way?",
-      answer: "A typical residential driveway cut (200–500 feet through wooded land) can usually be completed in a single day. Longer corridors or those with heavy timber may take 2–3 days. We'll give you a realistic timeline during the free estimate.",
+      answer: "A typical residential driveway cut (200–500 feet through wooded land) can usually be completed in a single day. Longer corridors or those with heavy timber may take 2–3 days. We'll give you a realistic timeline during the Site Visit.",
     },
     {
       question: "What happens to the trees and brush you clear?",
@@ -66,7 +66,7 @@ const data: ServicePageProps = {
 export default function RightOfWayClearingPage() {
   usePageTitle(
     "Right-of-Way Clearing in Tennessee | Noland Earthworks",
-    "Right-of-way clearing for driveways, utility easements, and access roads in Middle & West Tennessee. Forestry mulching cuts a clean corridor in one pass. Free estimates.",
+    "Right-of-way clearing for driveways, utility easements, and access roads in Middle & West Tennessee. Forestry mulching cuts a clean corridor in one pass. Site Visits.",
     "/services/right-of-way-clearing"
   );
   return (

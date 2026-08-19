@@ -371,7 +371,7 @@ function ServiceCard({ title, description, image, href, index, isPrimary }: {
                 (e.currentTarget as HTMLAnchorElement).style.transform = "translateY(0)";
               }}
             >
-              Get a Free Estimate <ArrowRight size={12} />
+              Request a Site Visit <ArrowRight size={12} />
             </a>
           ) : (
             <div

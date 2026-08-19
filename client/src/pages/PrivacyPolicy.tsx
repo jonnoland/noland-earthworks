@@ -13,12 +13,12 @@ export default function PrivacyPolicy() {
       <Navbar />
       <div className="py-20 text-center" style={{ backgroundColor: "#1A1A1A", borderBottom: "1px solid rgba(224,123,42,0.2)" }}>
         <h1 style={{ fontFamily: "'Oswald', sans-serif", fontWeight: 700, fontSize: "clamp(2.5rem, 6vw, 4rem)", letterSpacing: "0.02em", marginBottom: "0.75rem" }}>Privacy Policy</h1>
-        <p style={{ fontFamily: "'Lato', sans-serif", color: "rgba(240,237,230,0.55)", fontSize: "0.9rem" }}><strong style={{ color: "rgba(240,237,230,0.7)" }}>Effective:</strong> August 14, 2026 &nbsp;|&nbsp; <strong style={{ color: "rgba(240,237,230,0.7)" }}>Status:</strong> Legal-review draft</p>
+        <p style={{ fontFamily: "'Lato', sans-serif", color: "rgba(240,237,230,0.55)", fontSize: "0.9rem" }}><strong style={{ color: "rgba(240,237,230,0.7)" }}>Working Draft Updated:</strong> August 19, 2026 &nbsp;|&nbsp; <strong style={{ color: "rgba(240,237,230,0.7)" }}>Status:</strong> Attorney review required</p>
       </div>
 
       <div className="container py-16 max-w-3xl mx-auto" style={{ fontFamily: "'Lato', sans-serif" }}>
         <div className="mb-10 border border-[#E07B2A]/35 bg-[#E07B2A]/10 p-5" role="note">
-          <p style={{ ...copy, margin: 0 }}><strong style={{ color: "#F0EDE6" }}>Important:</strong> This notice reflects the website and operations practices currently implemented for Noland Earthworks, LLC. It is a working legal-review draft, not legal advice, and should be reviewed by Tennessee-appropriate counsel before reliance.</p>
+          <p style={{ ...copy, margin: 0 }}><strong style={{ color: "#F0EDE6" }}>Important:</strong> This working draft is intended to describe the website and operations practices currently used by Noland Earthworks, LLC in plain language. Tennessee-appropriate counsel must approve it before it is relied upon as a final privacy notice.</p>
         </div>
 
         <Section number="1" title="Information We Collect">
@@ -56,7 +56,7 @@ export default function PrivacyPolicy() {
 
         <Section number="5" title="Storage and Service Providers">
           <p style={copy}>Our current operations stack uses native Noland Earthworks records as the working source of truth for clients, leads, quotes, jobs, invoices, deposits, and payment status. We use providers for hosting and file storage, transactional email, SMS/telephone communication, payment processing, mapping, analytics, and AI-assisted internal work. These functions may involve Manus-hosted infrastructure and storage, Resend, Twilio, Stripe, Google Maps, the Tennessee Comptroller’s public property-boundary service when a user elects Parcel ID lookup, Google Analytics, website analytics services, and AI service infrastructure made available through the application.</p>
-          <p style={copy}>Providers may process information under their own terms and privacy practices. We disclose or provide information only as needed for the applicable function. Jobber is not the default system of record and is used only if the owner adopts it for a specific operational need.</p>
+          <p style={copy}>Providers may process information under their own terms and privacy practices. We disclose or provide information only as needed for the applicable function. Jobber is not the default system of record and is used only if the owner adopts it for a specific operational need. This notice does not govern third-party websites, platforms, or payment pages that have their own privacy notices.</p>
         </Section>
 
         <Section number="6" title="Retention, Access, and Requests">
@@ -68,7 +68,7 @@ export default function PrivacyPolicy() {
         </Section>
 
         <Section number="8" title="Changes to This Policy">
-          <p style={copy}>We may update this policy as our website, communications, payment, or operations practices change. The revised version will be posted here with an updated effective date. Material legal language should be reviewed before reliance.</p>
+          <p style={copy}>We may update this policy as our website, communications, payment, or operations practices change. After attorney approval, the revised version will be posted here with an updated effective date and will apply from that effective date forward.</p>
         </Section>
 
         <Section number="9" title="Contact Us">

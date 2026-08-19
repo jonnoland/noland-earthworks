@@ -284,7 +284,7 @@ export default function Faq() {
             href="/quote"
             className="inline-block bg-amber-500 hover:bg-amber-400 text-black font-bold px-8 py-3 rounded-lg transition-colors"
           >
-            Request a Free Estimate
+            Request a Site Visit
           </Link>
         </div>
       </section>

@@ -31,3 +31,8 @@
 - [x] Move the Google Business Profile card to the top of the Integrations tab for immediate visibility.
 - [x] Audit the newly synced public site, conversion workflows, technical SEO, content consistency, and operations controls.
 - [x] Document confirmed findings and prioritize practical remediation work from the refreshed audit.
+- [x] Replace legacy “Free Estimate” calls to action with the current Request a Site Visit workflow across public content.
+- [x] Reconcile public deposit-cancellation wording into one clear draft policy for attorney review.
+- [x] Update the Privacy Policy working draft with standard operational disclosures while retaining its attorney-review status.
+- [x] Recheck Google Business Profile synchronization and implement a truthful fallback when Google quota or location discovery prevents review retrieval.
+- [x] Add regression coverage and validate the updated public CTA, legal-draft, and Google review states.

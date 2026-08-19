@@ -74,7 +74,7 @@ const data: ServicePageProps = {
 export default function VegetationManagementPage() {
   usePageTitle(
     "Vegetation Management in Tennessee | Noland Earthworks",
-    "Professional vegetation management and brush control across Middle & West Tennessee. Recurring maintenance or one-time clearing. Veteran-owned. Free estimates.",
+    "Professional vegetation management and brush control across Middle & West Tennessee. Recurring maintenance or one-time clearing. Veteran-owned. Site Visits.",
     "/services/vegetation-management"
   );
   return (

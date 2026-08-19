@@ -56,7 +56,7 @@ const data: ServicePageProps = {
     {
       question: "How wide can you cut a trail?",
       answer:
-        "We cut trails from 6 feet wide (a narrow foot path or ATV track) up to 16 feet wide (a full equipment access corridor). Standard hunting and recreational trails typically run 8–10 feet. We'll confirm the target width during the free estimate and can adjust based on your intended use.",
+        "We cut trails from 6 feet wide (a narrow foot path or ATV track) up to 16 feet wide (a full equipment access corridor). Standard hunting and recreational trails typically run 8–10 feet. We'll confirm the target width during the Site Visit and can adjust based on your intended use.",
     },
     {
       question: "What happens to the trees and brush you cut?",
@@ -81,7 +81,7 @@ const data: ServicePageProps = {
     {
       question: "How long does it take to cut a trail?",
       answer:
-        "It depends on the length, width, and vegetation density. A typical 1,000–2,000 foot hunting trail through moderate brush can usually be completed in a single day. Longer corridors or heavy timber may take 2–3 days. We'll give you a realistic timeline during the free estimate.",
+        "It depends on the length, width, and vegetation density. A typical 1,000–2,000 foot hunting trail through moderate brush can usually be completed in a single day. Longer corridors or heavy timber may take 2–3 days. We'll give you a realistic timeline during the Site Visit.",
     },
     {
       question: "Can you cut multiple trails or a trail network in one visit?",
@@ -99,7 +99,7 @@ const data: ServicePageProps = {
 export default function TrailCuttingPage() {
   usePageTitle(
     "Trail Cutting in Tennessee | Noland Earthworks",
-    "Hunting trails, ATV paths, and property access routes cut through wooded land in Middle & West Tennessee. Tracked forestry mulcher — one pass, no debris, no hauling. Free estimates.",
+    "Hunting trails, ATV paths, and property access routes cut through wooded land in Middle & West Tennessee. Tracked forestry mulcher — one pass, no debris, no hauling. Site Visits.",
     "/services/trail-cutting"
   );
   return (

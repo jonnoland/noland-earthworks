@@ -110,7 +110,7 @@ export default function LandManagementTrousdaleCounty() {
         <li><a href="/service-areas/smith-county"><strong>Land Management in Smith County, TN</strong></a> — Serving Carthage, Gordonsville, and surrounding areas.</li>
       </ul>
       <p>
-        Not sure which county your property falls in? <a href="/quote">Request a free estimate</a> and we will confirm your location and service area when we follow up.
+        Not sure which county your property falls in? <a href="/quote">Request a Site Visit</a> and we will confirm your location and service area when we follow up.
       </p>
     </BlogPostLayout>
   );

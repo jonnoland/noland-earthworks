@@ -32,6 +32,7 @@ import { portalAddOnOptions } from "../drizzle/schema";
 import { autoPatchSeoCheck, AUTO_PATCHABLE_CHECKS, SQUARESPACE_MANUAL_CHECKS, CODE_FIXED_CHECKS, INFRA_CHECKS } from "./seoAutoPatcher";
 import { notifyOwner } from "./_core/notification";
 import { calculateLeadGenerationMetrics, evaluateMilestones } from "./leadGenerationMetrics";
+import { emptyGoogleReviewFetch, googleReviewSync, type GoogleReviewFetchResult, type GoogleReviewSync } from "./googleReviewFallback";
 
 function getResend() {
   return ENV.resendApiKey ? new Resend(ENV.resendApiKey) : null;
@@ -3581,28 +3582,18 @@ const STAR_MAP: Record<string, number> = { ONE: 1, TWO: 2, THREE: 3, FOUR: 4, FI
  * Uses the My Business Reviews API (v4.9) which requires OAuth (not Places API key).
  * Returns up to 50 most recent reviews sorted by newest first.
  */
-async function fetchGoogleBusinessReviews(): Promise<{
-  reviews: Array<{
-    reviewId: string;
-    reviewerName: string;
-    reviewerPhotoUrl?: string;
-    starRating: number;
-    comment?: string;
-    createTime: string;
-    updateTime: string;
-    reviewReply?: { comment: string; updateTime: string };
-  }>;
-  averageRating: number | null;
-  totalReviewCount: number | null;
-}> {
+async function fetchGoogleBusinessReviews(): Promise<GoogleReviewFetchResult> {
   const { getValidGoogleAccessToken, getGoogleConnectionInfo } = await import("./googleRoutes");
   const accessToken = await getValidGoogleAccessToken();
   if (!accessToken) {
     console.error("[Google Reviews] No valid access token — Google not connected or token refresh failed");
-    return { reviews: [], averageRating: null, totalReviewCount: null };
+    return emptyGoogleReviewFetch(
+      googleReviewSync("not_connected", "Google Business Profile is not connected or its access token could not be refreshed.", "unavailable")
+    );
   }
   const info = await getGoogleConnectionInfo();
   let locationName = info?.locationName ?? null;
+  let discoverySync: GoogleReviewSync | null = null;
 
   // Fallback: if locationName was not stored during OAuth callback, discover it now at runtime
   if (!locationName) {
@@ -3616,6 +3607,9 @@ async function fetchGoogleBusinessReviews(): Promise<{
       if (!accountsRes.ok) {
         const txt = await accountsRes.text();
         console.error(`[Google Reviews] accounts API error: ${accountsRes.status} ${txt}`);
+        discoverySync = accountsRes.status === 429
+          ? googleReviewSync("rate_limited", "Google review discovery is temporarily rate limited. Previously saved reviews are unchanged while the next refresh is deferred.")
+          : googleReviewSync("service_unavailable", "Google review discovery is temporarily unavailable. Previously saved reviews are unchanged while the next refresh is deferred.");
       } else {
         const accountsData = (await accountsRes.json()) as {
           accounts?: Array<{ name: string; accountName: string; type: string }>;
@@ -3631,6 +3625,9 @@ async function fetchGoogleBusinessReviews(): Promise<{
           if (!locRes.ok) {
             const txt = await locRes.text();
             console.error(`[Google Reviews] locations API error: ${locRes.status} ${txt}`);
+            discoverySync = locRes.status === 429
+              ? googleReviewSync("rate_limited", "Google location discovery is temporarily rate limited. Previously saved reviews are unchanged while the next refresh is deferred.")
+              : googleReviewSync("service_unavailable", "Google location discovery is temporarily unavailable. Previously saved reviews are unchanged while the next refresh is deferred.");
           } else {
             const locData = (await locRes.json()) as {
               locations?: Array<{ name: string; title: string }>;
@@ -3660,7 +3657,9 @@ async function fetchGoogleBusinessReviews(): Promise<{
 
   if (!locationName) {
     console.log("[Google Reviews] Could not determine locationName — falling back to Places API");
-    return fetchPlacesApiReviews();
+    return fetchPlacesApiReviews(
+      discoverySync ?? googleReviewSync("location_required", "Google is connected, but its Business Profile location has not been selected. Reconnect and choose the correct location before the next refresh.")
+    );
   }
 
   console.log(`[Google Reviews] Fetching reviews for location: ${locationName}`);
@@ -3668,7 +3667,11 @@ async function fetchGoogleBusinessReviews(): Promise<{
   const res = await fetch(url, { headers: { Authorization: `Bearer ${accessToken}` } });
   if (!res.ok) {
     console.error(`[Google Reviews] API error: ${res.status} ${await res.text()}`);
-    return { reviews: [], averageRating: null, totalReviewCount: null };
+    return fetchPlacesApiReviews(
+      res.status === 429
+        ? googleReviewSync("rate_limited", "Google review refresh is temporarily rate limited. Previously saved reviews are unchanged while the next refresh is deferred.")
+        : googleReviewSync("service_unavailable", "Google review refresh is temporarily unavailable. Previously saved reviews are unchanged while the next refresh is deferred.")
+    );
   }
   const data = (await res.json()) as {
     reviews?: Array<{
@@ -3701,41 +3704,32 @@ async function fetchGoogleBusinessReviews(): Promise<{
       reviews: reviewList,
       averageRating: data.averageRating ?? null,
       totalReviewCount: data.totalReviewCount ?? null,
+      sync: googleReviewSync("live", "Google Business Profile reviews loaded from the connected location."),
     };
   }
 
   // Fallback: use Google Places API (up to 5 most recent reviews, read-only)
   console.log("[Google Reviews] Business Profile API returned 0 reviews — falling back to Places API");
-  return fetchPlacesApiReviews();
+  return fetchPlacesApiReviews(
+    googleReviewSync("fallback", "Google Business Profile returned no reviews. Checking the configured Places fallback.")
+  );
 }
 
 /** Fallback: fetch up to 5 reviews from Google Places API (no OAuth required). */
-async function fetchPlacesApiReviews(): Promise<{
-  reviews: Array<{
-    reviewId: string;
-    reviewerName: string;
-    reviewerPhotoUrl?: string;
-    starRating: number;
-    comment?: string;
-    createTime: string;
-    updateTime: string;
-    reviewReply?: { comment: string; updateTime: string };
-  }>;
-  averageRating: number | null;
-  totalReviewCount: number | null;
-}> {
+async function fetchPlacesApiReviews(fallbackSync: GoogleReviewSync): Promise<GoogleReviewFetchResult> {
+  const unavailable = (message: string) => emptyGoogleReviewFetch({ ...fallbackSync, source: "unavailable", message });
   const { ENV } = await import("./_core/env");
   const apiKey = ENV.googlePlacesApiKey;
   const placeId = ENV.googlePlaceId;
   if (!apiKey || !placeId) {
     console.error("[Places API] GOOGLE_PLACES_API_KEY or GOOGLE_PLACE_ID not set");
-    return { reviews: [], averageRating: null, totalReviewCount: null };
+    return unavailable(`${fallbackSync.message} The configured Places fallback is not available.`);
   }
   const url = `https://maps.googleapis.com/maps/api/place/details/json?place_id=${encodeURIComponent(placeId)}&fields=name,rating,user_ratings_total,reviews&key=${apiKey}&reviews_sort=newest`;
   const res = await fetch(url);
   if (!res.ok) {
     console.error(`[Places API] HTTP error: ${res.status}`);
-    return { reviews: [], averageRating: null, totalReviewCount: null };
+    return unavailable(`${fallbackSync.message} The configured Places fallback could not be reached.`);
   }
   const data = (await res.json()) as {
     result?: {
@@ -3755,7 +3749,7 @@ async function fetchPlacesApiReviews(): Promise<{
   };
   if (data.status !== "OK" || !data.result) {
     console.error(`[Places API] API status: ${data.status}`);
-    return { reviews: [], averageRating: null, totalReviewCount: null };
+    return unavailable(`${fallbackSync.message} The configured Places fallback did not return a matching business location.`);
   }
   const placesReviews = (data.result.reviews ?? []).map((r, idx) => {
     const ts = r.time ? new Date(r.time * 1000).toISOString() : new Date().toISOString();
@@ -3775,6 +3769,7 @@ async function fetchPlacesApiReviews(): Promise<{
     reviews: placesReviews,
     averageRating: data.result.rating ?? null,
     totalReviewCount: data.result.user_ratings_total ?? null,
+    sync: { ...fallbackSync, source: "places", message: `${fallbackSync.message} Using the configured Places fallback.` },
   };
 }
 
@@ -3841,7 +3836,7 @@ const googleRouter = router({
         updated++;
       }
     }
-    return { inserted, updated, total: result.reviews.length };
+    return { inserted, updated, total: result.reviews.length, sync: result.sync };
   }),
   /**
    * Post a reply to a Google Business Profile review via the API.

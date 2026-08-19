@@ -99,7 +99,7 @@ export default function LandManagementMauryCounty() {
         <li><a href="/blog/land-management-rutherford-county"><strong>Land Management in Rutherford County, TN</strong></a> — Serving Murfreesboro, Smyrna, La Vergne, Eagleville, and surrounding areas.</li>
       </ul>
       <p>
-        Not sure which county your property falls in? <a href="/quote">Request a free estimate</a> and we will confirm your location and service area when we follow up.
+        Not sure which county your property falls in? <a href="/quote">Request a Site Visit</a> and we will confirm your location and service area when we follow up.
       </p>
     </BlogPostLayout>
   );

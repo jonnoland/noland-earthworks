@@ -140,7 +140,7 @@ export default function HeroSection() {
           <div className="flex flex-wrap gap-6">
             {[
               { icon: <Star size={16} />, label: "Veteran-Owned" },
-              { icon: <FileText size={16} />, label: "Free Estimates" },
+              { icon: <FileText size={16} />, label: "Site Visits" },
               { icon: <MapPin size={16} />, label: "Serving Middle & West TN" },
             ].map((b) => (
               <div

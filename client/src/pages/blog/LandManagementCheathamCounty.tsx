@@ -97,7 +97,7 @@ export default function LandManagementCheathamCounty() {
         <li><a href="/blog/land-management-montgomery-county"><strong>Land Management in Montgomery County, TN</strong></a> — Serving Clarksville and surrounding areas.</li>
       </ul>
       <p>
-        Not sure which county your property falls in? <a href="/quote">Request a free estimate</a> and we will confirm your location and service area when we follow up.
+        Not sure which county your property falls in? <a href="/quote">Request a Site Visit</a> and we will confirm your location and service area when we follow up.
       </p>
     </BlogPostLayout>
   );

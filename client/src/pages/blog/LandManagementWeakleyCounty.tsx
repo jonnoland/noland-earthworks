@@ -62,7 +62,7 @@ export default function LandManagementWeakleyCounty() {
 
       <h2>Serving All of Weakley County</h2>
       <p>
-        Noland Earthworks is dedicated to providing top-tier land management services across all of Weakley County, Tennessee. From the bustling university town of Martin to the agricultural heartland around Dresden, Greenfield, Sharon, Gleason, McKenzie, and Palmersville, we bring our veteran-owned commitment to reliability, integrity, and quality workmanship to every project. As a veteran-owned and operated company, we understand the value of hard work and precision. Contact us today for a free estimate and let us help you achieve your land management goals.
+        Noland Earthworks is dedicated to providing top-tier land management services across all of Weakley County, Tennessee. From the bustling university town of Martin to the agricultural heartland around Dresden, Greenfield, Sharon, Gleason, McKenzie, and Palmersville, we bring our veteran-owned commitment to reliability, integrity, and quality workmanship to every project. As a veteran-owned and operated company, we understand the value of hard work and precision. Contact us today to request a Site Visit and let us help you achieve your land management goals.
       </p>
 
       <h2>Frequently Asked Questions — Weakley County</h2>
