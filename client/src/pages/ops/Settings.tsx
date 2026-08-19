@@ -2318,6 +2318,7 @@ function FieldTip({ text }: { text: string }) {
 function AIPricingTab() {
   const { data: settings, isLoading } = trpc.ops.settings.getAIPricingSettings.useQuery();
   const { data: benchmarks, isLoading: benchmarksLoading, refetch: refetchBenchmarks } = trpc.agents.getPricingBenchmarks.useQuery();
+  const { data: benchmarkCandidates = [], isLoading: candidatesLoading } = trpc.agents.getPricingBenchmarkCandidates.useQuery();
   const { data: catalogItems, isLoading: catalogLoading } = trpc.ops.settings.getServiceCatalog.useQuery();
   const { data: lastRun, refetch: refetchLastRun } = trpc.agents.getLastRun.useQuery({ agentId: "pricing_update" });
   const utils = trpc.useUtils();
@@ -2358,6 +2359,27 @@ function AIPricingTab() {
     },
     onError: (e) => toast.error(`Agent run failed: ${e.message}`),
   });
+  const refreshBenchmarkReview = async () => {
+    await Promise.all([
+      refetchBenchmarks(),
+      utils.agents.getPricingBenchmarkCandidates.invalidate(),
+    ]);
+  };
+  const approveBenchmarkCandidate = trpc.agents.approvePricingBenchmarkCandidate.useMutation({
+    onSuccess: async () => {
+      await refreshBenchmarkReview();
+      toast.success("Benchmark approved. The rate and approved date now reflect this decision.");
+    },
+    onError: (e) => toast.error(`Approval failed: ${e.message}`),
+  });
+  const rejectBenchmarkCandidate = trpc.agents.rejectPricingBenchmarkCandidate.useMutation({
+    onSuccess: async () => {
+      await refreshBenchmarkReview();
+      toast.success("Research suggestion rejected. Approved benchmark values were left unchanged.");
+    },
+    onError: (e) => toast.error(`Rejection failed: ${e.message}`),
+  });
+  const pendingBenchmarkCandidates = benchmarkCandidates.filter((candidate: any) => candidate.status === "pending_review");
 
   const [form, setForm] = useState<Record<string, string | number>>({});
   const [dirty, setDirty] = useState(false);
@@ -2993,6 +3015,54 @@ function AIPricingTab() {
                 <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0" />
                 Researching market rates for Middle & West Tennessee. Suggestions will remain separate until you review and approve them.
               </div>
+            )}
+            {!candidatesLoading && pendingBenchmarkCandidates.length > 0 && (
+              <section className="mb-4 rounded-md border border-amber-500/30 bg-amber-500/5 p-3">
+                <div className="flex items-start gap-2">
+                  <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-amber-400" />
+                  <div>
+                    <p className="text-xs font-semibold text-amber-200">{pendingBenchmarkCandidates.length} research suggestion{pendingBenchmarkCandidates.length === 1 ? "" : "s"} awaiting your approval</p>
+                    <p className="mt-0.5 text-[11px] leading-relaxed text-muted-foreground">The approved date will change only when you approve a suggestion below. Approval updates the internal benchmark; it does not publish rates on the public website.</p>
+                  </div>
+                </div>
+                <div className="mt-3 space-y-2">
+                  {pendingBenchmarkCandidates.map((candidate: any) => {
+                    const approved = (benchmarks ?? []).find((benchmark: any) => benchmark.serviceType === candidate.serviceType);
+                    let sources: string[] = [];
+                    try { sources = candidate.sourceUrls ? JSON.parse(candidate.sourceUrls) : []; } catch { sources = []; }
+                    const unit = candidate.unit === "linear_foot" ? "ft" : candidate.unit === "hour" ? "hr" : candidate.unit === "load" ? "load" : candidate.unit === "stump" ? "stump" : candidate.unit === "flat" ? "job" : "ac";
+                    return (
+                      <div key={candidate.id} className="rounded border border-border bg-background/50 p-2.5">
+                        <div className="flex flex-wrap items-start justify-between gap-3">
+                          <div>
+                            <p className="text-xs font-semibold text-foreground">{candidate.serviceType}</p>
+                            <p className="mt-0.5 text-[11px] text-muted-foreground">Suggested: ${candidate.lowAmount.toLocaleString()} – ${candidate.midAmount.toLocaleString()} – ${candidate.highAmount.toLocaleString()} /{unit}</p>
+                            {approved && <p className="text-[10px] text-muted-foreground/80">Currently approved: ${approved.lowPerAcre.toLocaleString()} – ${approved.midPerAcre.toLocaleString()} – ${approved.highPerAcre.toLocaleString()} /{approved.unit === "linear_foot" ? "ft" : approved.unit === "flat" ? "job" : "ac"}</p>}
+                          </div>
+                          <div className="flex shrink-0 gap-2">
+                            <button
+                              type="button"
+                              onClick={() => approveBenchmarkCandidate.mutate({ id: candidate.id })}
+                              disabled={approveBenchmarkCandidate.isPending || rejectBenchmarkCandidate.isPending}
+                              className="rounded border border-green-500/35 bg-green-500/10 px-2.5 py-1 text-[11px] font-semibold text-green-300 hover:bg-green-500/20 disabled:opacity-50"
+                            >
+                              {approveBenchmarkCandidate.isPending ? "Approving..." : "Approve"}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => rejectBenchmarkCandidate.mutate({ id: candidate.id })}
+                              disabled={approveBenchmarkCandidate.isPending || rejectBenchmarkCandidate.isPending}
+                              className="rounded border border-border px-2.5 py-1 text-[11px] font-semibold text-muted-foreground hover:bg-secondary/50 disabled:opacity-50"
+                            >Reject</button>
+                          </div>
+                        </div>
+                        {candidate.researchSummary && <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">{candidate.researchSummary}</p>}
+                        {sources.length > 0 && <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1">{sources.map((source) => <a key={source} href={source} target="_blank" rel="noreferrer" className="text-[10px] text-primary underline underline-offset-2">Review source</a>)}</div>}
+                      </div>
+                    );
+                  })}
+                </div>
+              </section>
             )}
             {(benchmarksLoading || catalogLoading) && (
               <div className="flex items-center gap-2 py-4 text-xs text-muted-foreground">

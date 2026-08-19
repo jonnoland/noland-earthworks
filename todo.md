@@ -3402,3 +3402,8 @@
 ## Market Benchmark Timestamp Consistency — Aug 2026
 - [x] Correct the mismatch between the Market Benchmarks refresh status and individual service update dates
 - [x] Validate and publish the corrected AI Pricing benchmark status display
+
+## Market Benchmark Review and Approval — Aug 2026
+- [x] Expose pending market-research suggestions and owner approval controls in AI Pricing
+- [x] Refresh approved dates and benchmark values immediately after owner approval
+- [x] Validate and publish the improved benchmark review workflow
