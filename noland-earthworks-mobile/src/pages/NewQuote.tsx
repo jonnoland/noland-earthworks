@@ -37,14 +37,16 @@ import { useNetwork } from "@/hooks/useNetwork";
  * postMessage and the parent updates form state.
  */
 function InteractiveMapPreview({
-  lat, lng, onPinMoved,
+  lat, lng, boundaryRings, onPinMoved,
 }: {
   lat: number;
   lng: number;
+  boundaryRings?: Array<Array<{ lat: number; lng: number }>> | null;
   onPinMoved: (lat: number, lng: number) => void;
 }) {
   const iframeRef = React.useRef<HTMLIFrameElement>(null);
   const SERVER_BASE = "https://nolandearth-pymczdcn.manus.space";
+  const boundaryJson = JSON.stringify(boundaryRings ?? []);
 
   // Build the srcdoc for the iframe — loads Maps JS from our proxy, drops a
   // draggable marker at the given coordinates, and does not require a map ID.
@@ -84,6 +86,25 @@ function InteractiveMapPreview({
         draggable: true,
         title: 'Drag to adjust location',
       });
+      const parcelBoundary = ${boundaryJson};
+      if (parcelBoundary.length > 0) {
+        const boundary = new google.maps.Polygon({
+          paths: parcelBoundary,
+          strokeColor: '#E87722',
+          strokeOpacity: 1,
+          strokeWeight: 2,
+          fillColor: '#E87722',
+          fillOpacity: 0.16,
+          clickable: false,
+        });
+        boundary.setMap(map);
+        const bounds = new google.maps.LatLngBounds();
+        parcelBoundary.forEach(function(ring) {
+          ring.forEach(function(point) { bounds.extend(point); });
+        });
+        bounds.extend(center);
+        map.fitBounds(bounds, 28);
+      }
       marker.addListener('dragend', function() {
         const pos = marker.getPosition();
         if (!pos) return;
@@ -286,14 +307,17 @@ export default function NewQuote() {
   const [parcelIdError, setParcelIdError] = useState<string | null>(null);
   const [parcelMatches, setParcelMatches] = useState<Array<{
     parcelId: string; county: string; address: string | null; city: string | null; zip: string | null;
-    owner: string | null; deedAcreage: number | null; lat: number | null; lng: number | null; propertyViewerUrl: string | null;
+    owner: string | null; deedAcreage: number | null; lat: number | null; lng: number | null;
+    boundaryRings: Array<Array<{ lat: number; lng: number }>> | null; propertyViewerUrl: string | null;
   }>>([]);
+  const [selectedParcelBoundary, setSelectedParcelBoundary] = useState<Array<Array<{ lat: number; lng: number }>> | null>(null);
   const parcelLookup = trpc.fieldQuote.lookupParcel.useMutation({
     onError: (error) => setParcelIdError(error.message),
   });
 
   const applyParcelMatch = (match: typeof parcelMatches[number]) => {
     skipForwardGeocode.current = true;
+    setSelectedParcelBoundary(match.boundaryRings);
     setForm((current) => ({
       ...current,
       parcelId: match.parcelId,
@@ -636,8 +660,10 @@ export default function NewQuote() {
 
   // ─── Styles ──────────────────────────────────────────────────────────────
 
-  const set = (key: keyof FormState) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) =>
+  const set = (key: keyof FormState) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+    if (key === "address" || key === "county" || key === "parcelId") setSelectedParcelBoundary(null);
     setForm((f) => ({ ...f, [key]: e.target.value }));
+  };
 
   const inputStyle: React.CSSProperties = {
     width: "100%",
@@ -890,6 +916,7 @@ export default function NewQuote() {
               <InteractiveMapPreview
                 lat={form.lat}
                 lng={form.lng}
+                boundaryRings={selectedParcelBoundary}
                 onPinMoved={async (lat, lng) => {
                   setForm((f) => ({ ...f, lat, lng }));
                   try {
@@ -904,6 +931,7 @@ export default function NewQuote() {
                 }}
               />
             )}
+            {selectedParcelBoundary && <p style={{ color: "oklch(0.65 0.18 50)", fontSize: 11, margin: "6px 0 0" }}>Orange outline shows the official Tennessee Property Viewer parcel boundary.</p>}
           </div>
         </div>
 

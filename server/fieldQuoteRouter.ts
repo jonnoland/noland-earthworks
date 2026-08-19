@@ -40,6 +40,27 @@ function buildFieldParcelWhere(county: string, parcelId: string): string {
   return `COUNTY_NAME = '${cleanCounty}' AND PARCELID LIKE '%${pattern}%'`;
 }
 
+type ParcelBoundaryRing = Array<{ lat: number; lng: number }>;
+
+function toParcelBoundaryRings(geometry: unknown): ParcelBoundaryRing[] | null {
+  if (!geometry || typeof geometry !== "object" || !Array.isArray((geometry as { rings?: unknown }).rings)) return null;
+
+  const rings = (geometry as { rings: unknown[] }).rings
+    .map((ring) => {
+      if (!Array.isArray(ring)) return [];
+      return ring.flatMap((point) => {
+        if (!Array.isArray(point) || point.length < 2) return [];
+        const [lng, lat] = point;
+        return typeof lat === "number" && Number.isFinite(lat) && typeof lng === "number" && Number.isFinite(lng)
+          ? [{ lat, lng }]
+          : [];
+      });
+    })
+    .filter((ring): ring is ParcelBoundaryRing => ring.length >= 3);
+
+  return rings.length > 0 ? rings : null;
+}
+
 // ─── PIN App Token Helpers ─────────────────────────────────────────────────────
 
 const APP_TOKEN_AUDIENCE = "noland-field-app";
@@ -248,7 +269,7 @@ export const fieldQuoteRouter = router({
         const params = new URLSearchParams({
           where: buildFieldParcelWhere(input.county, input.parcelId),
           outFields: "PARCELID,COUNTY_NAME,ADDRESS,CITY,ZIP,OWNER,OWNER2,DEEDAC,LINK_TPV",
-          returnGeometry: "false",
+          returnGeometry: "true",
           returnCentroid: "true",
           outSR: "4326",
           resultRecordCount: "6",
@@ -261,7 +282,11 @@ export const fieldQuoteRouter = router({
         if (!response.ok) throw new Error(`Tennessee parcel service returned ${response.status}`);
         const payload = await response.json() as {
           error?: { message?: string };
-          features?: Array<{ attributes?: Record<string, unknown>; centroid?: { x?: number; y?: number } }>;
+          features?: Array<{
+            attributes?: Record<string, unknown>;
+            centroid?: { x?: number; y?: number };
+            geometry?: { rings?: unknown[] };
+          }>;
         };
         if (payload.error) throw new Error(payload.error.message || "Tennessee parcel service could not complete the lookup");
 
@@ -280,6 +305,7 @@ export const fieldQuoteRouter = router({
             deedAcreage: typeof attributes.DEEDAC === "number" && attributes.DEEDAC > 0 ? attributes.DEEDAC : null,
             lat: typeof feature.centroid?.y === "number" ? feature.centroid.y : null,
             lng: typeof feature.centroid?.x === "number" ? feature.centroid.x : null,
+            boundaryRings: toParcelBoundaryRings(feature.geometry),
             propertyViewerUrl: cleanParcelText(attributes.LINK_TPV),
           };
         });

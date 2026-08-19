@@ -3380,3 +3380,9 @@
 - [x] Fix the Google Maps load error displayed after Parcel ID property lookup in the Android companion app
 - [x] Validate the map fallback with regression coverage and a production web-bundle build
 - [x] Bump, build, and publish the authorized Noland Field v0.4.6 Android companion app release
+
+## Noland Field Parcel Boundary Overlay — Aug 2026
+- [x] Return official Tennessee Property Viewer parcel-boundary geometry after an authenticated Parcel ID lookup
+- [x] Draw the selected parcel boundary around the draggable location pin in the companion app map
+- [x] Validate the official parcel-boundary overlay with regression coverage and a production web-bundle build
+- [ ] Bump, build, and publish the companion app update with the parcel boundary overlay after Jon authorizes an APK build

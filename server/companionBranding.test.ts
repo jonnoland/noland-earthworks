@@ -20,14 +20,14 @@ describe("Noland Field official branding", () => {
     expect(profile).toContain("<BrandLogo />");
   });
 
-  it("ships an official-logo native launcher and splash for the v0.4.5 release", () => {
+  it("ships an official-logo native launcher and splash for the v0.4.6 release", () => {
     const packageJson = source("noland-earthworks-mobile/package.json");
     const androidBuild = source("noland-earthworks-mobile/android/app/build.gradle");
     const launcherBackground = source("noland-earthworks-mobile/android/app/src/main/res/values/ic_launcher_background.xml");
 
-    expect(packageJson).toContain('"version": "0.4.5"');
-    expect(androidBuild).toContain('versionName "0.4.5"');
-    expect(androidBuild).toContain("versionCode 7");
+    expect(packageJson).toContain('"version": "0.4.6"');
+    expect(androidBuild).toContain('versionName "0.4.6"');
+    expect(androidBuild).toContain("versionCode 8");
     expect(launcherBackground).toContain("#15110D");
     expect(existsSync(resolve(root, "noland-earthworks-mobile/android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png"))).toBe(true);
     expect(existsSync(resolve(root, "noland-earthworks-mobile/android/app/src/main/res/drawable-port-xxhdpi/splash.png"))).toBe(true);
