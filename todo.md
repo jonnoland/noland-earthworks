@@ -3364,3 +3364,14 @@
 - [x] Add accessible multi-file drag-and-drop uploads while preserving file limits and previews
 - [x] Add regression coverage for the review step and drag-and-drop upload path
 - [x] Validate the enhanced wizard flow and publish it
+
+## Twilio Toll-Free Verification Resubmission — Aug 2026
+- [ ] Review the rejected verification submission and business or opt-in mismatch details
+- [ ] Correct the business identity, website, opt-in evidence, and alert-only messaging description
+- [ ] Review the corrected submission with Jon and resubmit after approval
+- [ ] Restore a usable Twilio login or verification page after the Console landing page failed to render
+- [ ] Complete Twilio’s required human-verification challenge in Jon’s browser before Console actions can continue
+
+## Operations Dashboard Owner SMS Alerts Layout — Aug 2026
+- [x] Compact the Owner SMS Alerts panel while retaining current status and recent history access
+- [x] Validate the Operations Dashboard layout and publish the change

@@ -660,25 +660,25 @@ export default function Dashboard() {
           </div>
         )}
 
-        <div className="ops-card p-4">
+        <div className="ops-card p-3">
           <SectionHeader
             title="Owner SMS Alerts"
             badge={ownerSmsAlerts.filter((alert: any) => alert.status === "accepted").length ? "Active" : undefined}
-            sub="Recent internal alerts sent to your phones"
+            sub={ownerSmsAlerts.length ? `${Math.min(ownerSmsAlerts.length, 2)} latest internal alert${Math.min(ownerSmsAlerts.length, 2) === 1 ? "" : "s"}` : "Internal alert delivery status"}
           />
           {ownerSmsAlerts.length === 0 ? (
-            <EmptyState message="No owner SMS alerts have been recorded yet." />
+            <p className="py-2 text-xs text-muted-foreground">No owner SMS alerts have been recorded yet.</p>
           ) : (
             <div className="divide-y divide-border/60">
-              {ownerSmsAlerts.map((alert: any) => {
+              {ownerSmsAlerts.slice(0, 2).map((alert: any) => {
                 const accepted = alert.status === "accepted";
                 const amount = alert.estimatedValueCents != null
                   ? `$${Math.round(alert.estimatedValueCents / 100).toLocaleString()}`
                   : "Pending site visit";
                 return (
-                  <div key={alert.id} className="py-3 flex items-start gap-3">
-                    <div className={cn("mt-0.5 p-1.5 rounded-md", accepted ? "bg-green-400/10 text-green-400" : "bg-red-400/10 text-red-400")}>
-                      <MessageSquare className="w-3.5 h-3.5" />
+                  <div key={alert.id} className="py-2 flex items-start gap-2">
+                    <div className={cn("mt-0.5 p-1 rounded-md", accepted ? "bg-green-400/10 text-green-400" : "bg-red-400/10 text-red-400")}>
+                      <MessageSquare className="w-3 h-3" />
                     </div>
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center justify-between gap-3">
@@ -687,12 +687,22 @@ export default function Dashboard() {
                           {accepted ? "Accepted by Twilio" : "Failed"}
                         </span>
                       </div>
-                      <p className="text-[11px] text-muted-foreground mt-0.5 truncate">{alert.service || "Internal alert"} · {amount} · {alert.recipient}</p>
-                      <p className="text-[10px] text-muted-foreground/70 mt-0.5">{new Date(alert.createdAt).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}</p>
+                      <p className="text-[10px] text-muted-foreground mt-0.5 truncate">{alert.service || "Internal alert"} · {amount} · {alert.recipient} · {new Date(alert.createdAt).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}</p>
                     </div>
                   </div>
                 );
               })}
+              {ownerSmsAlerts.length > 2 && (
+                <details className="py-2">
+                  <summary className="cursor-pointer text-[11px] font-medium text-primary hover:text-primary/80">View {ownerSmsAlerts.length - 2} earlier loaded alert{ownerSmsAlerts.length - 2 === 1 ? "" : "s"}</summary>
+                  <div className="mt-2 divide-y divide-border/60 border-t border-border/60">
+                    {ownerSmsAlerts.slice(2).map((alert: any) => {
+                      const accepted = alert.status === "accepted";
+                      return <p key={alert.id} className="py-1.5 text-[10px] text-muted-foreground truncate"><span className={accepted ? "text-green-400" : "text-red-400"}>{accepted ? "Accepted" : "Failed"}</span> · {alert.leadName || alert.alertType.replaceAll("_", " ")} · {alert.recipient} · {new Date(alert.createdAt).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}</p>;
+                    })}
+                  </div>
+                </details>
+              )}
             </div>
           )}
         </div>
