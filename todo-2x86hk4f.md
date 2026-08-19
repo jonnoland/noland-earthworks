@@ -44,5 +44,8 @@
 - [x] Exercise a representative no-save rural route using a Parcel ID-derived stop, an address stop, access notes, and ordered waypoints without altering customer records.
 - [x] Add behavioral route-planner coverage for multi-stop waypoint aggregation and returned route-stop locations.
 - [x] Resolve the verified Parcel ID lookup timeout by preferring an exact county-scoped parcel query before the tolerant fallback search.
-- [ ] Exercise a disposable saved rural route, verify ordered Parcel ID and address-stop persistence plus access-note retention, then delete the validation record without affecting customer data.
-- [ ] Reconcile the concurrently published Route Planner changes with the locally validated exact Parcel ID lookup and multi-stop regression refinements.
+- [x] Exercise a disposable saved rural route, verify ordered Parcel ID and address-stop persistence plus access-note retention, then delete the validation record without affecting customer data.
+- [x] Reconcile the concurrently published Route Planner changes with the locally validated exact Parcel ID lookup and multi-stop regression refinements.
+- [ ] Finalize the Route Planner merge reconciliation, remove all conflict markers, and complete the merge commit.
+- [ ] Run targeted Route Planner tests plus full regression and TypeScript validation after reconciliation.
+- [ ] Save a checkpoint and publish the reconciled Route Planner after successful validation.

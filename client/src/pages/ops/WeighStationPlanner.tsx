@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { MapView } from "@/components/Map";
 import { toast } from "sonner";
+import { SERVICE_AREA_COUNTIES } from "@shared/serviceAreas";
 import {
   MapPin,
   Navigation,
@@ -26,6 +27,9 @@ import {
   Tractor,
   MapPinned,
   ClipboardList,
+  FileSearch,
+  ExternalLink,
+  ShieldAlert,
 } from "lucide-react";
 import { parseRuralRoutePlanNotes, RURAL_HAULING_PROFILE, serializeRuralRoutePlanNotes, type RuralRouteStop } from "@shared/ruralRoutePlan";
 
@@ -59,13 +63,6 @@ interface PlannedRoute {
   routeStops: Array<RuralRouteStop & { latLng: { lat: number; lng: number } }>;
 }
 
-type ParcelRouteMatch = {
-  parcelId: string;
-  county: string;
-  address: string | null;
-  centroid: { lat: number; lng: number } | null;
-};
-
 interface SavedRoute {
   id: number;
   name: string;
@@ -78,6 +75,24 @@ interface SavedRoute {
   createdAt: Date;
 }
 
+interface ParcelDestinationMatch {
+  parcelId: string;
+  county: string;
+  address: string | null;
+  deedAcreage: number | null;
+  centroid: { lat: number; lng: number } | null;
+  propertyViewerUrl: string | null;
+}
+
+const RURAL_ROUTE_CHECKS = [
+  "Posted bridge, weight, and vehicle restrictions reviewed",
+  "Unpaved-road condition, weather, and soft-ground risk reviewed",
+  "Gate clearance, tight turns, and turnaround room confirmed",
+  "Property access route confirmed with the owner or site contact",
+] as const;
+
+const EQUIPMENT_PROFILE = "2026 Ram 5500 · 84\" C/A · BigTex 25' Gooseneck · CAT 299D3 loaded";
+
 export default function WeighStationPlanner() {
   const [origin, setOrigin] = useState(DEFAULT_ORIGIN);
   const [destination, setDestination] = useState("");
@@ -86,6 +101,11 @@ export default function WeighStationPlanner() {
   const [showSaveForm, setShowSaveForm] = useState(false);
   const [expandedStation, setExpandedStation] = useState<string | null>(null);
   const [mapReady, setMapReady] = useState(false);
+  const [parcelCounty, setParcelCounty] = useState("");
+  const [parcelId, setParcelId] = useState("");
+  const [parcelMatches, setParcelMatches] = useState<ParcelDestinationMatch[]>([]);
+  const [selectedParcel, setSelectedParcel] = useState<ParcelDestinationMatch | null>(null);
+  const [routeChecks, setRouteChecks] = useState<Record<string, boolean>>({});
   const mapRef = useRef<google.maps.Map | null>(null);
   const directionsRendererRef = useRef<google.maps.DirectionsRenderer | null>(null);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -96,17 +116,15 @@ export default function WeighStationPlanner() {
   const [stops, setStops] = useState<RuralRouteStop[]>([]);
   const [stopInput, setStopInput] = useState("");
   const [ruralAccessNotes, setRuralAccessNotes] = useState("");
-  const [parcelCounty, setParcelCounty] = useState("");
-  const [parcelId, setParcelId] = useState("");
-  const [parcelMatches, setParcelMatches] = useState<ParcelRouteMatch[]>([]);
 
   const planRoute = trpc.routePlanner.planRoute.useMutation();
+  const lookupParcel = trpc.parcel.lookup.useMutation();
   const saveRoute = trpc.routePlanner.saveRoute.useMutation();
   const deleteRoute = trpc.routePlanner.deleteRoute.useMutation();
   const { data: savedRoutes, refetch: refetchSaved } =
     trpc.routePlanner.getSavedRoutes.useQuery();
   const { data: dieselData } = trpc.routePlanner.dieselPrice.useQuery();
-  const parcelLookup = trpc.parcel.lookup.useMutation();
+  const routeReviewComplete = RURAL_ROUTE_CHECKS.every((check) => routeChecks[check]);
 
   // Clear map markers and directions
   const clearMap = useCallback(() => {
@@ -271,15 +289,19 @@ export default function WeighStationPlanner() {
     setStopInput("");
   };
 
-  const addParcelStop = (match: ParcelRouteMatch, mode: "origin" | "destination" | "stop") => {
+  const addParcelStop = (match: ParcelDestinationMatch, mode: "origin" | "destination" | "stop") => {
     if (!match.centroid) {
       toast.error("This Parcel ID did not return a map point. Use its job-site address instead.");
       return;
     }
     const location = `${match.centroid.lat},${match.centroid.lng}`;
     const label = `Parcel ${match.parcelId} · ${match.county} County`;
-    if (mode === "origin") setOrigin(location);
-    else if (mode === "destination") setDestination(location);
+    if (mode === "origin") {
+      setOrigin(location);
+    } else if (mode === "destination") {
+      setDestination(match.address ?? location);
+      setSelectedParcel(match);
+    }
     else setStops((current) => [...current, { id: `parcel-${crypto.randomUUID()}`, label, location, source: "parcel" }]);
     setParcelMatches([]);
     toast.success(mode === "stop" ? "Parcel added as a route stop" : `Parcel set as ${mode}`);
@@ -291,10 +313,14 @@ export default function WeighStationPlanner() {
       return;
     }
     try {
-      const result = await parcelLookup.mutateAsync({ county: parcelCounty.trim(), parcelId: parcelId.trim() });
-      const matches = result.matches.map((match) => ({ parcelId: match.parcelId, county: match.county, address: match.address, centroid: match.centroid }));
+      const result = await lookupParcel.mutateAsync({ county: parcelCounty.trim(), parcelId: parcelId.trim() });
+      const matches = result.matches as ParcelDestinationMatch[];
       setParcelMatches(matches);
-      if (matches.length === 0) toast.error("No mapped Parcel ID match found. Use the job-site address instead.");
+      if (matches.length === 0) {
+        toast.error("No mapped Parcel ID match found. Use the job-site address instead.");
+      } else {
+        toast.success(`${matches.length} parcel match${matches.length === 1 ? "" : "es"} found.`);
+      }
     } catch (err: any) {
       toast.error(err.message ?? "Parcel lookup failed");
     }
@@ -313,6 +339,7 @@ export default function WeighStationPlanner() {
       });
       setPlannedRoute(result as PlannedRoute);
       setShowSaveForm(false);
+      setRouteChecks({});
       if (mapReady) drawRouteOnMap(result as PlannedRoute);
       toast.success(
         `Route planned — ${result.stationCount} weigh station${result.stationCount !== 1 ? "s" : ""} along the way`
@@ -320,6 +347,18 @@ export default function WeighStationPlanner() {
     } catch (err: any) {
       toast.error(err.message ?? "Failed to plan route");
     }
+  };
+
+  const useParcelDestination = (parcel: ParcelDestinationMatch) => {
+    if (!parcel.address && !parcel.centroid) {
+      toast.error("This parcel does not include a routable address or map point.");
+      return;
+    }
+    const destinationValue = parcel.address ?? `${parcel.centroid!.lat},${parcel.centroid!.lng}`;
+    setDestination(destinationValue);
+    setSelectedParcel(parcel);
+    setPlannedRoute(null);
+    toast.success(`Parcel ${parcel.parcelId} set as the job-route destination.`);
   };
 
   const handleSaveRoute = async () => {
@@ -397,6 +436,16 @@ export default function WeighStationPlanner() {
         <div className="w-full lg:w-96 flex-shrink-0 flex flex-col border-r border-white/10 overflow-y-auto">
           {/* Route inputs */}
           <div className="p-5 space-y-3 border-b border-white/10">
+            <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-3">
+              <div className="flex items-start gap-2">
+                <Truck className="mt-0.5 h-4 w-4 shrink-0 text-amber-400" />
+                <div>
+                  <p className="text-xs font-semibold text-amber-100">Loaded equipment profile</p>
+                  <p className="mt-1 text-[11px] leading-relaxed text-white/65">{EQUIPMENT_PROFILE}</p>
+                  <p className="mt-1 text-[10px] leading-relaxed text-white/40">This keeps your hauling setup visible during planning. It does not calculate legal dimensions, operating weight, bridge clearance, or truck-legal routing.</p>
+                </div>
+              </div>
+            </div>
             <div className="space-y-1">
               <label className="text-xs font-medium text-white/60 uppercase tracking-wide">
                 Origin
@@ -414,8 +463,8 @@ export default function WeighStationPlanner() {
               </label>
               <Input
                 value={destination}
-                onChange={(e) => setDestination(e.target.value)}
-                placeholder="Job site address or city"
+                onChange={(e) => { setDestination(e.target.value); setSelectedParcel(null); }}
+                placeholder="Job site address, rural road, or city"
                 className="bg-white/5 border-white/15 text-white placeholder:text-white/30"
                 onKeyDown={(e) => e.key === "Enter" && handlePlanRoute()}
               />
@@ -436,10 +485,47 @@ export default function WeighStationPlanner() {
             </div>
             <div className="space-y-2 rounded-lg border border-white/10 bg-white/[0.03] p-3">
               <div className="flex items-center gap-2 text-sm font-semibold text-white"><MapPinned className="h-4 w-4 text-blue-300" /> Tennessee Parcel ID destination</div>
-              <div className="grid grid-cols-2 gap-2"><Input value={parcelCounty} onChange={(e) => setParcelCounty(e.target.value)} placeholder="County" className="bg-white/5 border-white/15 text-white placeholder:text-white/30" /><Input value={parcelId} onChange={(e) => setParcelId(e.target.value)} placeholder="Parcel ID" className="bg-white/5 border-white/15 text-white placeholder:text-white/30" /></div>
-              <Button type="button" variant="outline" size="sm" onClick={handleParcelLookup} disabled={parcelLookup.isPending} className="w-full border-white/15 text-white hover:bg-white/10">{parcelLookup.isPending ? "Looking up Parcel ID..." : "Find mapped Parcel ID"}</Button>
-              {parcelMatches.map((match) => <div key={`${match.county}-${match.parcelId}`} className="space-y-2 rounded bg-black/20 p-2 text-xs"><p className="text-white/75"><strong>{match.parcelId}</strong> · {match.county} County{match.address ? ` · ${match.address}` : ""}</p><div className="grid grid-cols-3 gap-1"><Button type="button" variant="outline" size="sm" onClick={() => addParcelStop(match, "origin")} className="border-white/15 px-1 text-[11px] text-white">Origin</Button><Button type="button" variant="outline" size="sm" onClick={() => addParcelStop(match, "stop")} className="border-white/15 px-1 text-[11px] text-white">Stop</Button><Button type="button" variant="outline" size="sm" onClick={() => addParcelStop(match, "destination")} className="border-white/15 px-1 text-[11px] text-white">Destination</Button></div></div>)}
+              <div className="flex items-center gap-2 text-xs font-semibold text-white/75">
+                <FileSearch className="h-4 w-4 text-amber-400" />
+                Use a Tennessee Parcel ID as destination or stop
+              </div>
+              <p className="mt-2 text-[11px] leading-relaxed text-white/45">Look up the official Tennessee Property Viewer parcel record and use its available address or map point as the job destination. It is a planning reference, not a legal survey.</p>
+              <div className="mt-3 grid gap-2">
+                <select
+                  value={parcelCounty}
+                  onChange={(event) => { setParcelCounty(event.target.value); setParcelMatches([]); }}
+                  className="h-9 rounded-md border border-white/15 bg-white/5 px-2 text-xs text-white outline-none focus:border-amber-400"
+                >
+                  <option value="" className="bg-[#121212]">Select county</option>
+                  {SERVICE_AREA_COUNTIES.map((county) => <option key={county} value={county} className="bg-[#121212]">{county}</option>)}
+                </select>
+                <div className="flex gap-2">
+                  <Input
+                    value={parcelId}
+                    onChange={(event) => setParcelId(event.target.value)}
+                    onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); handleParcelLookup(); } }}
+                    placeholder="Parcel ID"
+                    className="h-9 bg-white/5 border-white/15 text-white placeholder:text-white/30 text-xs"
+                  />
+                  <Button type="button" size="sm" variant="outline" onClick={handleParcelLookup} disabled={lookupParcel.isPending} className="h-9 shrink-0 border-amber-500/40 bg-transparent text-amber-200 hover:bg-amber-500/10">
+                    {lookupParcel.isPending ? "Finding..." : "Find"}
+                  </Button>
+                </div>
+                {parcelMatches.map((parcel) => (
+                  <div key={`${parcel.county}-${parcel.parcelId}`} className="rounded border border-white/10 bg-black/20 p-2.5">
+                    <p className="text-xs font-semibold text-white">{parcel.address ?? "Address unavailable"}</p>
+                    <p className="mt-0.5 text-[10px] text-white/45">Parcel {parcel.parcelId} · {parcel.county}{parcel.deedAcreage ? ` · ${parcel.deedAcreage} acres reported` : ""}</p>
+                    <div className="mt-2 flex flex-wrap items-center gap-2">
+                      <Button type="button" variant="outline" size="sm" onClick={() => addParcelStop(parcel, "origin")} className="border-white/15 px-2 text-[10px] text-white">Origin</Button>
+                      <Button type="button" variant="outline" size="sm" onClick={() => addParcelStop(parcel, "stop")} className="border-white/15 px-2 text-[10px] text-white">Stop</Button>
+                      <Button type="button" variant="outline" size="sm" onClick={() => addParcelStop(parcel, "destination")} className="border-white/15 px-2 text-[10px] text-white">Use as destination</Button>
+                      {parcel.propertyViewerUrl && <a href={parcel.propertyViewerUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-[10px] text-sky-300 underline underline-offset-2">Official map <ExternalLink className="h-3 w-3" /></a>}
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
+            {selectedParcel && <p className="text-[11px] text-amber-200">Planning to Parcel {selectedParcel.parcelId}{selectedParcel.address ? ` · ${selectedParcel.address}` : ""}</p>}
             <div className="space-y-1">
               <label className="text-xs font-medium text-white/60 uppercase tracking-wide">Rural access notes</label>
               <textarea value={ruralAccessNotes} onChange={(e) => setRuralAccessNotes(e.target.value)} placeholder="Unpaved drive, gate contact, bridge or culvert concern, narrow turn, soft ground, turnaround plan..." rows={3} className="w-full resize-y rounded-md border border-white/15 bg-white/5 px-3 py-2 text-sm text-white placeholder:text-white/30 outline-none focus:border-amber-500" />
@@ -510,9 +596,23 @@ export default function WeighStationPlanner() {
                 <p className="mt-1 text-white/50">{plannedRoute.routeStops.length} scheduled stop{plannedRoute.routeStops.length === 1 ? "" : "s"} · {ruralAccessNotes.trim() || "No rural access notes added."}</p>
               </div>
 
-              <div className="rounded-lg border border-white/10 bg-white/[0.03] p-3 text-xs text-white/65">
-                <div className="flex items-center gap-2 font-semibold text-white"><ClipboardList className="h-4 w-4 text-amber-400" /> Rural hauling checkpoints</div>
-                <p className="mt-1">Before departure, verify road surface, bridge or culvert limits, gate width, overhead clearance, narrow turns, soft-ground conditions, and a safe turnaround for the truck, trailer, and loaded machine.</p>
+              <div className={routeReviewComplete ? "rounded-lg border border-green-500/25 bg-green-500/10 p-3" : "rounded-lg border border-amber-500/25 bg-amber-500/5 p-3"}>
+                <div className="flex items-start gap-2">
+                  <ShieldAlert className={routeReviewComplete ? "mt-0.5 h-4 w-4 shrink-0 text-green-400" : "mt-0.5 h-4 w-4 shrink-0 text-amber-400"} />
+                  <div>
+                    <p className="text-sm font-semibold text-white">Rural hauling route review</p>
+                    <p className="mt-1 text-[11px] leading-relaxed text-white/55">Google driving directions do not verify road surface, posted weight limits, bridge clearance, gate clearance, turnaround room, or a safe route for this loaded setup. Verify each item before departure.</p>
+                  </div>
+                </div>
+                <div className="mt-3 space-y-2">
+                  {RURAL_ROUTE_CHECKS.map((check) => (
+                    <label key={check} className="flex cursor-pointer items-start gap-2 text-[11px] leading-relaxed text-white/70">
+                      <input type="checkbox" checked={Boolean(routeChecks[check])} onChange={(event) => setRouteChecks((current) => ({ ...current, [check]: event.target.checked }))} className="mt-0.5 h-3.5 w-3.5 accent-amber-500" />
+                      {check}
+                    </label>
+                  ))}
+                </div>
+                <p className={routeReviewComplete ? "mt-3 text-[10px] text-green-300" : "mt-3 text-[10px] text-amber-200"}>{routeReviewComplete ? "Route review checklist complete. Continue to use posted signs and field judgment." : "Complete the route review before using this plan for a loaded rural trip."}</p>
               </div>
 
               {/* Fuel cost estimator */}
@@ -769,9 +869,9 @@ export default function WeighStationPlanner() {
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
               <div className="bg-black/60 backdrop-blur-sm rounded-xl px-6 py-4 text-center border border-white/10">
                 <Scale className="w-8 h-8 text-amber-500 mx-auto mb-2" />
-                <p className="text-white font-medium text-sm">Enter a destination and click Plan Route</p>
+                <p className="text-white font-medium text-sm">Enter a job destination and click Plan Route</p>
                 <p className="text-white/40 text-xs mt-1">
-                  Weigh stations will appear on the map along your route
+                  Use an address or Tennessee Parcel ID; DOT scale stations will appear along your route
                 </p>
               </div>
             </div>

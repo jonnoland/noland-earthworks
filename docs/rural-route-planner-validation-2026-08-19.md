@@ -12,6 +12,10 @@ The improved exact query resolved the Dickson County reference parcel successful
 
 The validation route now contains two ordered stops: (1) the address stop `Dickson, TN 37055` and (2) the public Dickson County reference parcel. The planner request was submitted without using the Save Route control.
 
+The no-save Directions calculation completed successfully. It returned a **52.3-mile**, **75-minute** route from Vanleer to Charlotte through the two ordered stops, placed each stop on the map, preserved the rural access notes in the route summary, and detected zero weigh stations.
+
+For persistence validation, a clearly labeled disposable route named `Validation — Rural Parcel Route (delete)` was saved and then loaded. The loaded route restored the expected 52.3-mile / 75-minute summary, the ordered address stop, the Parcel ID stop, and the rural access notes. The disposable record was deleted immediately after verification. No customer, job, lead, quote, or payment record was accessed or changed.
+
 The no-save Directions calculation completed successfully. It returned a **52.3-mile**, **75-minute** route from Vanleer to Charlotte through the two ordered stops, placed each stop on the map, preserved the rural access notes in the route summary, and detected zero weigh stations. No route, customer, job, quote, or other business record was saved or changed.
 
 For persistence validation, a clearly labeled disposable route named `Validation — Rural Parcel Route (delete)` was saved. The saved-route list retained the Vanleer-to-Charlotte route and the expected 52.3-mile / 75-minute summary. Reloading its addresses restored the same ordered address stop, Parcel ID stop, and rural access notes. The disposable record is now being deleted; no customer, job, lead, quote, or payment record was involved.
