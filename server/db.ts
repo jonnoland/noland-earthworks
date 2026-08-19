@@ -395,8 +395,17 @@ export async function getAgentConfig(agentId: string) {
   const rows = await db.select().from(agentConfig).where(eq(agentConfig.agentId, agentId));
   return rows[0] ?? null;
 }
+function parseAgentConfigOptions(raw: string | null | undefined): Record<string, unknown> {
+  if (!raw) return {};
+  try {
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed as Record<string, unknown> : {};
+  } catch {
+    return {};
+  }
+}
 
-export async function upsertAgentConfig(agentId: string, enabled?: boolean, smsTemplate?: string) {
+export async function upsertAgentConfig(agentId: string, enabled?: boolean, smsTemplate?: string, config?: Record<string, unknown>) {
   const db = await getDb();
   if (!db) return;
   const existing = await db.select().from(agentConfig).where(eq(agentConfig.agentId, agentId));
@@ -405,11 +414,13 @@ export async function upsertAgentConfig(agentId: string, enabled?: boolean, smsT
       agentId,
       enabled: enabled ?? true,
       smsTemplate: smsTemplate ?? null,
+      config: config ? JSON.stringify(config) : null,
     });
   } else {
     const updates: Record<string, unknown> = {};
     if (enabled !== undefined) updates.enabled = enabled;
     if (smsTemplate !== undefined) updates.smsTemplate = smsTemplate;
+    if (config !== undefined) updates.config = JSON.stringify({ ...parseAgentConfigOptions(existing[0]?.config), ...config });
     if (Object.keys(updates).length > 0) {
       await db.update(agentConfig).set(updates).where(eq(agentConfig.agentId, agentId));
     }
@@ -761,6 +772,17 @@ export async function approvePricingBenchmarkCandidate(id: number) {
   });
   await db.update(pricingBenchmarkCandidates).set({ status: 'approved', reviewedAt: new Date() })
     .where(eq(pricingBenchmarkCandidates.id, id));
+}
+
+/** Promote a pending candidate using the owner's saved automatic-approval rule. */
+export async function autoApprovePricingBenchmarkCandidate(serviceType: string) {
+  const db = await getDb();
+  if (!db) throw new Error('DB unavailable');
+  const [candidate] = await db.select().from(pricingBenchmarkCandidates)
+    .where(eq(pricingBenchmarkCandidates.serviceType, serviceType)).limit(1);
+  if (!candidate || candidate.status !== 'pending_review') return false;
+  await approvePricingBenchmarkCandidate(candidate.id);
+  return true;
 }
 
 export async function rejectPricingBenchmarkCandidate(id: number) {

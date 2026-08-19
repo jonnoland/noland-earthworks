@@ -138,6 +138,21 @@ export const agentRouter = router({
     return getPricingBenchmarks();
   }),
 
+  /** Owner-controlled rule for automatically promoting sourced pricing research. */
+  getPricingAutoApproval: ownerProcedure.query(async () => {
+    const config = await getAgentConfig("pricing_update");
+    let autoApprove = false;
+    try { autoApprove = JSON.parse(config?.config ?? "{}").autoApprove === true; } catch { /* keep disabled */ }
+    return { enabled: autoApprove };
+  }),
+
+  setPricingAutoApproval: ownerProcedure
+    .input(z.object({ enabled: z.boolean() }))
+    .mutation(async ({ input }) => {
+      await upsertAgentConfig("pricing_update", undefined, undefined, { autoApprove: input.enabled });
+      return { success: true, enabled: input.enabled };
+    }),
+
   /** Research suggestions are deliberately separate from approved benchmarks. */
   getPricingBenchmarkCandidates: ownerProcedure.query(async () => {
     return getPricingBenchmarkCandidates();

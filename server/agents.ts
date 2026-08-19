@@ -16,7 +16,7 @@
 
 import { Resend } from "resend";
 import { and, eq, gte, isNotNull, lte, ne, or } from "drizzle-orm";
-import { getDb, getOwnerUser, insertAgentLog, getAgentConfig, upsertAgentConfig, upsertPricingBenchmarkCandidate, getPendingNotifications, markNotificationAttempt, deleteNotification } from "./db";
+import { getDb, getOwnerUser, insertAgentLog, getAgentConfig, upsertAgentConfig, upsertPricingBenchmarkCandidate, autoApprovePricingBenchmarkCandidate, getPendingNotifications, markNotificationAttempt, deleteNotification } from "./db";
 import { businessSettings, jobs, opsLeads, scheduleEntries, serviceCatalog } from "../drizzle/schema";
 import { ENV } from "./_core/env";
 import { notifyOwner } from "./_core/notification";
@@ -717,9 +717,13 @@ export async function runPricingUpdateAgent() {
 
   console.log("[pricing_update] Starting pricing research for Middle & West Tennessee...");
   let updatedCount = 0;
+  let autoApprovedCount = 0;
   const summaryLines: string[] = [];
 
   try {
+    const pricingConfig = await getAgentConfig(AGENT_ID);
+    let autoApprove = false;
+    try { autoApprove = JSON.parse(pricingConfig?.config ?? "{}").autoApprove === true; } catch { /* keep disabled */ }
     // Dynamically pull service list from the catalog so any new service is automatically included
     const db = await getDb();
     const catalogServices = db
@@ -812,8 +816,8 @@ All values are USD integers in the requested unit. No $ signs or commas in the n
         const { lowAmount, midAmount, highAmount, summary, sourceUrls } = parsed;
         const unit = SERVICE_UNITS[svc.key] ?? "acre";
 
-        // Suggestions must be numeric and ordered. The owner reviews each one;
-        // the research agent is not allowed to update active quote benchmarks.
+        // Suggestions must be numeric and ordered. Owner-authorized automation may
+        // promote only sourced results; source-less research remains for review.
         if (
           typeof lowAmount  !== "number" || lowAmount  < 1 || lowAmount  > 100000 ||
           typeof midAmount  !== "number" || midAmount  < 1 || midAmount  > 100000 ||
@@ -825,6 +829,7 @@ All values are USD integers in the requested unit. No $ signs or commas in the n
           );
         }
 
+        const vettedSourceUrls = Array.isArray(sourceUrls) ? sourceUrls.filter((url) => /^https?:\/\//i.test(url)).slice(0, 5) : [];
         await upsertPricingBenchmarkCandidate({
           serviceType: svc.key,
           lowAmount,
@@ -833,12 +838,19 @@ All values are USD integers in the requested unit. No $ signs or commas in the n
           unit,
           region: "Middle & West Tennessee",
           researchSummary: summary,
-          sourceUrls: Array.isArray(sourceUrls) ? sourceUrls.filter((url) => /^https?:\/\//i.test(url)).slice(0, 5) : [],
+          sourceUrls: vettedSourceUrls,
         });
 
         updatedCount++;
-        summaryLines.push(`${svc.key}: research suggestion ready for owner review (${unit})`);
-        console.log(`[pricing_update] ${svc.key}: candidate ready for owner review (${unit})`);
+        if (autoApprove && vettedSourceUrls.length > 0 && await autoApprovePricingBenchmarkCandidate(svc.key)) {
+          autoApprovedCount++;
+          summaryLines.push(`${svc.key}: sourced benchmark auto-approved (${unit})`);
+          console.log(`[pricing_update] ${svc.key}: sourced candidate auto-approved (${unit})`);
+        } else {
+          const reason = autoApprove && vettedSourceUrls.length === 0 ? "no public source supplied" : "owner review required";
+          summaryLines.push(`${svc.key}: research suggestion ready for review (${reason}; ${unit})`);
+          console.log(`[pricing_update] ${svc.key}: candidate ready for review (${reason}; ${unit})`);
+        }
       } catch (svcErr) {
         const msg = (svcErr as Error).message ?? String(svcErr);
         console.error(`[pricing_update] Failed for ${svc.key}:`, msg);
@@ -846,13 +858,15 @@ All values are USD integers in the requested unit. No $ signs or commas in the n
       }
     }
 
-    const runSummary = `Research completed for ${updatedCount}/${pricingServices.length} services. Active benchmarks were not changed. ${summaryLines.join(" | ")}`;
+    const runSummary = `Research completed for ${updatedCount}/${pricingServices.length} services. ${autoApprovedCount} sourced benchmark${autoApprovedCount === 1 ? "" : "s"} auto-approved. ${summaryLines.join(" | ")}`;
     await insertAgentLog({ agentId: AGENT_ID, status: "success", summary: runSummary, actionsCount: updatedCount });
 
     if (updatedCount > 0) {
       await notifyOwner({
-        title: "Pricing research requires review",
-        content: `Middle and West Tennessee pricing research completed. Active benchmarks were not changed. Review each suggestion, its unit, and any source links before approval.\n\n${summaryLines.join("\n")}`,
+        title: autoApprove ? "Pricing research completed with auto-approval" : "Pricing research requires review",
+        content: autoApprove
+          ? `Middle and West Tennessee pricing research completed. ${autoApprovedCount} sourced benchmark${autoApprovedCount === 1 ? "" : "s"} was automatically approved under your AI Pricing rule. Suggestions without a public source remain for review.\n\n${summaryLines.join("\n")}`
+          : `Middle and West Tennessee pricing research completed. Active benchmarks were not changed. Review each suggestion, its unit, and any source links before approval.\n\n${summaryLines.join("\n")}`,
       });
     }
   } catch (err) {

@@ -10,7 +10,7 @@ describe("AI Pricing benchmark approval workflow", () => {
     expect(settings).toContain("approvePricingBenchmarkCandidate.useMutation");
     expect(settings).toContain("rejectPricingBenchmarkCandidate.useMutation");
     expect(settings).toContain("awaiting your approval");
-    expect(settings).toContain("The approved date will change only when you approve a suggestion below");
+    expect(settings).toContain("The approved date changes when you approve a suggestion below");
     expect(settings).toContain("Benchmark approved. The rate and approved date now reflect this decision.");
   });
 });

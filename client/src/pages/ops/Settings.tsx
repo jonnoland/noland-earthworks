@@ -2319,6 +2319,7 @@ function AIPricingTab() {
   const { data: settings, isLoading } = trpc.ops.settings.getAIPricingSettings.useQuery();
   const { data: benchmarks, isLoading: benchmarksLoading, refetch: refetchBenchmarks } = trpc.agents.getPricingBenchmarks.useQuery();
   const { data: benchmarkCandidates = [], isLoading: candidatesLoading } = trpc.agents.getPricingBenchmarkCandidates.useQuery();
+  const { data: pricingAutoApproval, isLoading: autoApprovalLoading } = trpc.agents.getPricingAutoApproval.useQuery();
   const { data: catalogItems, isLoading: catalogLoading } = trpc.ops.settings.getServiceCatalog.useQuery();
   const { data: lastRun, refetch: refetchLastRun } = trpc.agents.getLastRun.useQuery({ agentId: "pricing_update" });
   const utils = trpc.useUtils();
@@ -2380,6 +2381,13 @@ function AIPricingTab() {
     onError: (e) => toast.error(`Rejection failed: ${e.message}`),
   });
   const pendingBenchmarkCandidates = benchmarkCandidates.filter((candidate: any) => candidate.status === "pending_review");
+  const setPricingAutoApproval = trpc.agents.setPricingAutoApproval.useMutation({
+    onSuccess: (data) => {
+      utils.agents.getPricingAutoApproval.invalidate();
+      toast.success(data.enabled ? "AI Pricing auto-approval is on for sourced research." : "AI Pricing auto-approval is off. Research will await review.");
+    },
+    onError: (e) => toast.error(`Could not update auto-approval: ${e.message}`),
+  });
 
   const [form, setForm] = useState<Record<string, string | number>>({});
   const [dirty, setDirty] = useState(false);
@@ -2985,6 +2993,16 @@ function AIPricingTab() {
                   Approved directional rates based on regional competitor data, industry forums, and cost guides.
                   A research run creates reviewable suggestions; it does not replace these approved benchmark values automatically.
                 </p>
+                <div className={cn("mt-2 inline-flex items-center gap-2 rounded-md border px-2 py-1 text-[10px]", pricingAutoApproval?.enabled ? "border-amber-500/35 bg-amber-500/10 text-amber-200" : "border-border bg-secondary/20 text-muted-foreground")}>
+                  <Zap className="h-3 w-3" />
+                  <span>{pricingAutoApproval?.enabled ? "Auto-approve sourced research is ON" : "Auto-approve sourced research is OFF"}</span>
+                  <button
+                    type="button"
+                    onClick={() => setPricingAutoApproval.mutate({ enabled: !pricingAutoApproval?.enabled })}
+                    disabled={autoApprovalLoading || setPricingAutoApproval.isPending}
+                    className="ml-1 font-semibold text-primary underline underline-offset-2 disabled:opacity-50"
+                  >{pricingAutoApproval?.enabled ? "Turn off" : "Turn on"}</button>
+                </div>
                 {lastRun && (
                   <p className="text-[11px] text-muted-foreground mt-1">
                     Latest research run:{" "}
@@ -3022,7 +3040,7 @@ function AIPricingTab() {
                   <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-amber-400" />
                   <div>
                     <p className="text-xs font-semibold text-amber-200">{pendingBenchmarkCandidates.length} research suggestion{pendingBenchmarkCandidates.length === 1 ? "" : "s"} awaiting your approval</p>
-                    <p className="mt-0.5 text-[11px] leading-relaxed text-muted-foreground">The approved date will change only when you approve a suggestion below. Approval updates the internal benchmark; it does not publish rates on the public website.</p>
+                    <p className="mt-0.5 text-[11px] leading-relaxed text-muted-foreground">The approved date changes when you approve a suggestion below, or automatically after a sourced research result when auto-approval is enabled. This updates internal benchmarks only; it does not publish rates on the public website.</p>
                   </div>
                 </div>
                 <div className="mt-3 space-y-2">

@@ -3407,3 +3407,8 @@
 - [x] Expose pending market-research suggestions and owner approval controls in AI Pricing
 - [x] Refresh approved dates and benchmark values immediately after owner approval
 - [x] Validate and publish the improved benchmark review workflow
+
+## AI Pricing Auto-Approval — Aug 2026
+- [x] Add an explicit AI Pricing auto-approve setting for successful research runs
+- [x] Automatically promote validated pricing research into internal approved benchmarks when enabled
+- [x] Enable the setting for Jon, validate the workflow, and publish the update
