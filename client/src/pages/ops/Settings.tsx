@@ -2344,7 +2344,7 @@ function AIPricingTab() {
           setIsFetching(false);
           await refetchBenchmarks();
           if (run.status === "success") {
-            toast.success(`Benchmarks updated — ${run.actionsCount} service${run.actionsCount !== 1 ? "s" : ""} refreshed.`);
+            toast.success(`Research complete — ${run.actionsCount} service suggestion${run.actionsCount !== 1 ? "s" : ""} ready for review.`);
           } else {
             toast.error(`Refresh completed with errors. Check the Agents tab for details.`);
           }
@@ -2352,7 +2352,7 @@ function AIPricingTab() {
           clearInterval(poll);
           setIsFetching(false);
           await refetchBenchmarks();
-          toast.success("Benchmark refresh complete. Data updated.");
+          toast.success("Research run complete. Review any new suggestions before approved benchmarks change.");
         }
       }, 5000);
     },
@@ -2960,12 +2960,12 @@ function AIPricingTab() {
               <div>
                 <p className="text-sm font-semibold text-foreground">Middle & West TN Market Benchmarks</p>
                 <p className="text-[11px] text-muted-foreground mt-1 max-w-lg">
-                  AI-researched directional rates based on regional competitor data, industry forums, and cost guides.
-                  Not live-scraped prices — use as a reference to verify your rates are in range.
+                  Approved directional rates based on regional competitor data, industry forums, and cost guides.
+                  A research run creates reviewable suggestions; it does not replace these approved benchmark values automatically.
                 </p>
                 {lastRun && (
                   <p className="text-[11px] text-muted-foreground mt-1">
-                    Last updated:{" "}
+                    Latest research run:{" "}
                     <span className={lastRun.status === "success" ? "text-green-400" : "text-amber-400"}>
                       {new Date(lastRun.ranAt).toLocaleString("en-US", {
                         timeZone: "America/Chicago",
@@ -2974,7 +2974,7 @@ function AIPricingTab() {
                       })}
                     </span>
                     {lastRun.actionsCount > 0 && (
-                      <span className="text-muted-foreground"> — {lastRun.actionsCount} service{lastRun.actionsCount !== 1 ? "s" : ""} updated</span>
+                      <span className="text-muted-foreground"> — {lastRun.actionsCount} service suggestion{lastRun.actionsCount !== 1 ? "s" : ""} created for review</span>
                     )}
                   </p>
                 )}
@@ -2985,13 +2985,13 @@ function AIPricingTab() {
                 className="flex items-center gap-1.5 rounded-md border border-border bg-secondary/30 px-3 py-1.5 text-xs font-medium text-foreground hover:bg-secondary/60 disabled:opacity-50 transition-colors shrink-0"
               >
                 {(runAgent.isPending || isFetching) ? <Loader2 className="w-3 h-3 animate-spin" /> : <RefreshCw className="w-3 h-3" />}
-                {isFetching ? "Fetching..." : "Refresh Now"}
+                {isFetching ? "Researching..." : "Research Now"}
               </button>
             </div>
             {isFetching && (
               <div className="flex items-center gap-2 py-3 px-3 mb-2 rounded-md bg-primary/10 border border-primary/20 text-xs text-primary">
                 <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0" />
-                Researching market rates for Middle & West Tennessee. This takes about 30 seconds...
+                Researching market rates for Middle & West Tennessee. Suggestions will remain separate until you review and approve them.
               </div>
             )}
             {(benchmarksLoading || catalogLoading) && (
@@ -3028,7 +3028,7 @@ function AIPricingTab() {
                           <th className="text-right px-3 py-2.5 font-medium text-muted-foreground">Low /ac</th>
                           <th className="text-right px-3 py-2.5 font-medium text-muted-foreground">Mid /ac</th>
                           <th className="text-right px-3 py-2.5 font-medium text-muted-foreground">High /ac</th>
-                          <th className="text-right px-3 py-2.5 font-medium text-muted-foreground">Updated</th>
+                          <th className="text-right px-3 py-2.5 font-medium text-muted-foreground">Approved</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -3048,7 +3048,7 @@ function AIPricingTab() {
                                 </>
                               ) : (
                                 <td colSpan={4} className="px-3 py-2.5 text-right text-[11px] text-muted-foreground italic">
-                                  No data yet — run Refresh
+                                  No approved benchmark yet — run research, then review the suggestion
                                 </td>
                               )}
                             </tr>

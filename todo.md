@@ -3398,3 +3398,7 @@
 - [x] Show the adjustment basis and revised recommended price in Operations and Noland Field
 - [x] Validate the pricing calculation and publish the Operations update
 - [ ] Bump, build, and publish the companion app price-adjustment update after Jon authorizes an APK build
+
+## Market Benchmark Timestamp Consistency — Aug 2026
+- [x] Correct the mismatch between the Market Benchmarks refresh status and individual service update dates
+- [x] Validate and publish the corrected AI Pricing benchmark status display
