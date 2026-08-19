@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildTennesseeParcelWhere, normalizeTennesseeParcelId } from "./parcelRouter";
+import { buildExactTennesseeParcelWhere, buildTennesseeParcelWhere, normalizeTennesseeParcelId } from "./parcelRouter";
 import { validateTennesseeParcelId } from "../shared/tennesseeParcelId";
 
 describe("Tennessee Parcel ID lookup", () => {
@@ -12,6 +12,12 @@ describe("Tennessee Parcel ID lookup", () => {
 
     expect(where).toContain("COUNTY_NAME = 'Houston'");
     expect(where).toContain("PARCELID LIKE '%0%4%2%0%0%1%0%0%1%0%0%'");
+  });
+
+  it("prefers an exact county-scoped formatted Parcel ID query before using the tolerant fallback", () => {
+    expect(buildExactTennesseeParcelWhere("Dickson County", "022 001    00100 000 2026")).toBe(
+      "COUNTY_NAME = 'Dickson' AND PARCELID = '022 001    00100 000 2026'"
+    );
   });
 
   it("accepts Tennessee county-style map/group/parcel components", () => {

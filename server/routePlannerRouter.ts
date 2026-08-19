@@ -24,6 +24,47 @@ interface DirectionsResult {
     northeast: { lat: number; lng: number };
     southwest: { lat: number; lng: number };
   };
+  routeStops: Array<{
+    id: string;
+    label: string;
+    location: string;
+    source: "address" | "parcel";
+    latLng: { lat: number; lng: number };
+  }>;
+}
+
+export type RequestedRouteStop = {
+  id: string;
+  label: string;
+  location: string;
+  source: "address" | "parcel";
+};
+
+type DirectionsLeg = {
+  distance: { value: number };
+  duration: { value: number };
+  start_location: { lat: number; lng: number };
+  end_location: { lat: number; lng: number };
+};
+
+export function summarizeRouteLegs(legs: DirectionsLeg[]) {
+  const distanceMeters = legs.reduce((total, leg) => total + leg.distance.value, 0);
+  const durationSeconds = legs.reduce((total, leg) => total + leg.duration.value, 0);
+  return {
+    distanceMiles: distanceMeters / 1609.34,
+    durationSeconds,
+    durationText: `${Math.round(durationSeconds / 60)} min`,
+  };
+}
+
+export function buildRouteStopLocations(stops: RequestedRouteStop[], legs: DirectionsLeg[]) {
+  return stops.map((stop, index) => ({
+    ...stop,
+    latLng: {
+      lat: legs[index].end_location.lat,
+      lng: legs[index].end_location.lng,
+    },
+  }));
 }
 
 /**
@@ -66,7 +107,8 @@ function decodePolyline(encoded: string): Array<{ lat: number; lng: number }> {
 
 async function getDirections(
   origin: string,
-  destination: string
+  destination: string,
+  stops: RequestedRouteStop[] = []
 ): Promise<DirectionsResult> {
   const apiKey = ENV.googlePlacesApiKey;
   if (!apiKey) throw new Error("Google Maps API key not configured");
@@ -74,6 +116,9 @@ async function getDirections(
   const url = new URL("https://maps.googleapis.com/maps/api/directions/json");
   url.searchParams.set("origin", origin);
   url.searchParams.set("destination", destination);
+  if (stops.length > 0) {
+    url.searchParams.set("waypoints", stops.map((stop) => stop.location).join("|"));
+  }
   url.searchParams.set("key", apiKey);
   url.searchParams.set("units", "imperial");
 
@@ -86,31 +131,34 @@ async function getDirections(
   }
 
   const route = data.routes[0];
-  const leg = route.legs[0];
+  const legs = route.legs as Array<DirectionsLeg & { steps: any[] }>;
+  const firstLeg = legs[0];
+  const finalLeg = legs[legs.length - 1];
+  const summary = summarizeRouteLegs(legs);
 
   // Decode the overview polyline for weigh station matching
   const polylinePoints = decodePolyline(route.overview_polyline.points);
 
   // Extract step-level highway info
-  const steps = (leg.steps as any[]).map((step: any) => ({
+  const steps = legs.flatMap((leg: any) => (leg.steps as any[]).map((step: any) => ({
     instruction: step.html_instructions?.replace(/<[^>]+>/g, "") ?? "",
     distanceText: step.distance?.text ?? "",
     highway: step.maneuver,
-  }));
+  })));
 
   return {
-    distanceMiles: leg.distance.value / 1609.34,
-    durationText: leg.duration.text,
-    durationSeconds: leg.duration.value,
+    distanceMiles: summary.distanceMiles,
+    durationText: summary.durationText,
+    durationSeconds: summary.durationSeconds,
     polylinePoints,
     steps,
     originLatLng: {
-      lat: leg.start_location.lat,
-      lng: leg.start_location.lng,
+      lat: firstLeg.start_location.lat,
+      lng: firstLeg.start_location.lng,
     },
     destinationLatLng: {
-      lat: leg.end_location.lat,
-      lng: leg.end_location.lng,
+      lat: finalLeg.end_location.lat,
+      lng: finalLeg.end_location.lng,
     },
     bounds: {
       northeast: {
@@ -122,6 +170,7 @@ async function getDirections(
         lng: route.bounds.southwest.lng,
       },
     },
+    routeStops: buildRouteStopLocations(stops, legs),
   };
 }
 
@@ -129,7 +178,7 @@ async function getDirections(
 
 export const routePlannerRouter = router({
   /**
-   * Plan a route: get directions + find weigh stations along the way.
+   * Plan a route with optional ordered stops, then find weigh stations along the full driving route.
    * Does NOT save the route — use saveRoute for that.
    */
   planRoute: adminProcedure
@@ -137,10 +186,16 @@ export const routePlannerRouter = router({
       z.object({
         origin: z.string().min(3, "Origin address required"),
         destination: z.string().min(3, "Destination address required"),
+        stops: z.array(z.object({
+          id: z.string().min(1),
+          label: z.string().trim().min(1).max(120),
+          location: z.string().trim().min(3).max(300),
+          source: z.enum(["address", "parcel"]),
+        })).max(8, "Add no more than 8 route stops").optional(),
       })
     )
     .mutation(async ({ input }) => {
-      const directions = await getDirections(input.origin, input.destination);
+      const directions = await getDirections(input.origin, input.destination, input.stops ?? []);
 
       // Find weigh stations within 1.5 miles of the route polyline (live Overpass API data)
       const stations = await fetchWeighStationsForRoute(directions.polylinePoints, 1.5);
@@ -161,6 +216,7 @@ export const routePlannerRouter = router({
         durationText: directions.durationText,
         originLatLng: directions.originLatLng,
         destinationLatLng: directions.destinationLatLng,
+        routeStops: directions.routeStops,
         bounds: directions.bounds,
         polylineEncoded: "", // client uses Google Maps SDK directly
         weighStations: sortedStations,

@@ -25,6 +25,32 @@ export function buildTennesseeParcelWhere(county: string, parcelId: string): str
   return `COUNTY_NAME = '${cleanCounty}' AND PARCELID LIKE '%${parcelPattern}%'`;
 }
 
+export function buildExactTennesseeParcelWhere(county: string, parcelId: string): string {
+  const cleanCounty = county.replace(/\s+county$/i, "").trim().replace(/'/g, "''");
+  const exactParcelId = parcelId.trim().replace(/'/g, "''");
+  return `COUNTY_NAME = '${cleanCounty}' AND PARCELID = '${exactParcelId}'`;
+}
+
+async function queryTennesseeParcels(where: string, resultRecordCount: number, timeoutMs: number) {
+  const params = new URLSearchParams({
+    where,
+    outFields: "PARCELID,COUNTY_NAME,ADDRESS,CITY,ZIP,OWNER,OWNER2,DEEDAC,LINK_TPAD,LINK_TPV",
+    returnGeometry: "false",
+    returnCentroid: "true",
+    outSR: "4326",
+    resultRecordCount: String(resultRecordCount),
+    f: "json",
+  });
+  const response = await fetch(`${TN_PARCEL_QUERY_URL}?${params.toString()}`, {
+    signal: AbortSignal.timeout(timeoutMs),
+    headers: { Accept: "application/json" },
+  });
+  if (!response.ok) throw new Error(`Tennessee parcel service returned ${response.status}`);
+  const payload = await response.json() as { error?: { message?: string }; features?: ArcGisParcelFeature[] };
+  if (payload.error) throw new Error(payload.error.message || "Tennessee parcel service could not complete the lookup");
+  return payload.features ?? [];
+}
+
 function formatPropertyAddress(attributes: Record<string, unknown>): string | null {
   const street = cleanText(attributes.ADDRESS);
   const city = cleanText(attributes.CITY);
@@ -74,31 +100,20 @@ export const parcelRouter = router({
         throw new TRPCError({ code: "BAD_REQUEST", message: parcelValidation.error });
       }
 
-      const params = new URLSearchParams({
-        where: buildTennesseeParcelWhere(input.county, input.parcelId),
-        outFields: "PARCELID,COUNTY_NAME,ADDRESS,CITY,ZIP,OWNER,OWNER2,DEEDAC,LINK_TPAD,LINK_TPV",
-        returnGeometry: "false",
-        returnCentroid: "true",
-        outSR: "4326",
-        resultRecordCount: "8",
-        f: "json",
-      });
-
       try {
-        const response = await fetch(`${TN_PARCEL_QUERY_URL}?${params.toString()}`, {
-          signal: AbortSignal.timeout(12_000),
-          headers: { Accept: "application/json" },
-        });
-        if (!response.ok) {
-          throw new Error(`Tennessee parcel service returned ${response.status}`);
+        let features = await queryTennesseeParcels(
+          buildExactTennesseeParcelWhere(input.county, input.parcelId),
+          1,
+          12_000
+        );
+        if (features.length === 0) {
+          features = await queryTennesseeParcels(
+            buildTennesseeParcelWhere(input.county, input.parcelId),
+            8,
+            18_000
+          );
         }
-
-        const payload = await response.json() as { error?: { message?: string }; features?: ArcGisParcelFeature[] };
-        if (payload.error) {
-          throw new Error(payload.error.message || "Tennessee parcel service could not complete the lookup");
-        }
-
-        const matches = (payload.features ?? []).map(mapFeature);
+        const matches = features.map(mapFeature);
         return {
           matches,
           normalizedParcelId: parcelValidation.normalized,

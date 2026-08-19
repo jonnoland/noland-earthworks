@@ -36,3 +36,13 @@
 - [x] Update the Privacy Policy working draft with standard operational disclosures while retaining its attorney-review status.
 - [x] Recheck Google Business Profile synchronization and implement a truthful fallback when Google quota or location discovery prevents review retrieval.
 - [x] Add regression coverage and validate the updated public CTA, legal-draft, and Google review states.
+- [x] Audit the current Route Planner and map integrations for rural hauling, Parcel ID destinations, and non-weigh-station stops.
+- [x] Add the 2026 Ram 5500, 25-foot BigTex gooseneck, and loaded CAT 299D3 as the default rural hauling vehicle profile.
+- [x] Support Parcel ID lookup as a route origin, destination, or intermediate stop while retaining address and coordinate alternatives.
+- [x] Support rural multi-stop route planning with access-condition notes and route-warning checkpoints beyond weigh stations.
+- [x] Add test coverage and validate the upgraded Route Planner against representative rural hauling inputs.
+- [x] Exercise a representative no-save rural route using a Parcel ID-derived stop, an address stop, access notes, and ordered waypoints without altering customer records.
+- [x] Add behavioral route-planner coverage for multi-stop waypoint aggregation and returned route-stop locations.
+- [x] Resolve the verified Parcel ID lookup timeout by preferring an exact county-scoped parcel query before the tolerant fallback search.
+- [ ] Exercise a disposable saved rural route, verify ordered Parcel ID and address-stop persistence plus access-note retention, then delete the validation record without affecting customer data.
+- [ ] Reconcile the concurrently published Route Planner changes with the locally validated exact Parcel ID lookup and multi-stop regression refinements.
