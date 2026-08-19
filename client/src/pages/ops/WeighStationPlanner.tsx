@@ -32,6 +32,7 @@ import {
   ShieldAlert,
 } from "lucide-react";
 import { restoreRuralRoutePlan, RURAL_HAULING_PROFILE, serializeRuralRoutePlanNotes, type RuralRouteStop } from "@shared/ruralRoutePlan";
+import { calculateTowingTravelEstimate } from "@shared/routeVehicleProfile";
 
 // Default origin: Vanleer, TN
 const DEFAULT_ORIGIN = "Vanleer, TN 37181";
@@ -39,6 +40,7 @@ const DEFAULT_ORIGIN = "Vanleer, TN 37181";
 interface PlannedRoute {
   distanceMiles: number;
   durationText: string;
+  durationSeconds: number;
   originLatLng: { lat: number; lng: number };
   destinationLatLng: { lat: number; lng: number };
   bounds: {
@@ -61,6 +63,9 @@ interface PlannedRoute {
   }>;
   stationCount: number;
   routeStops: Array<RuralRouteStop & { latLng: { lat: number; lng: number } }>;
+  unpavedRoads: Array<{ id: string; name: string; surface: string; geometry: Array<{ lat: number; lng: number }> }>;
+  unpavedRouteApproximateMiles: number;
+  roadSurfaceSource: string;
 }
 
 interface SavedRoute {
@@ -90,6 +95,19 @@ interface ParcelBoundaryOverlay {
   boundaryRings: Array<Array<{ lat: number; lng: number }>>;
 }
 
+interface RouteVehicleProfile {
+  id: number;
+  name: string;
+  truck: string;
+  trailer: string;
+  loadDescription: string;
+  towingMpg: number;
+  towingTimeMultiplier: number;
+  unpavedAverageMph: number;
+  isDefault: boolean;
+  notes: string | null;
+}
+
 const RURAL_ROUTE_CHECKS = [
   "Posted bridge, weight, and vehicle restrictions reviewed",
   "Unpaved-road condition, weather, and soft-ground risk reviewed",
@@ -116,6 +134,7 @@ export default function WeighStationPlanner() {
   const mapRef = useRef<google.maps.Map | null>(null);
   const directionsRendererRef = useRef<google.maps.DirectionsRenderer | null>(null);
   const parcelPolygonRef = useRef<google.maps.Polygon | null>(null);
+  const unpavedRoadPolylinesRef = useRef<google.maps.Polyline[]>([]);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const markersRef = useRef<any[]>([]);
   const markerLibRef = useRef<google.maps.MarkerLibrary | null>(null);
@@ -124,16 +143,40 @@ export default function WeighStationPlanner() {
   const [stops, setStops] = useState<RuralRouteStop[]>([]);
   const [stopInput, setStopInput] = useState("");
   const [ruralAccessNotes, setRuralAccessNotes] = useState("");
+  const [selectedVehicleProfileId, setSelectedVehicleProfileId] = useState<number | null>(null);
+  const [showVehicleProfileForm, setShowVehicleProfileForm] = useState(false);
+  const [vehicleProfileForm, setVehicleProfileForm] = useState({ name: "", truck: "", trailer: "", loadDescription: "", towingMpg: "9", towingTimeMultiplier: "1.15", unpavedAverageMph: "18", isDefault: false, notes: "" });
 
   const planRoute = trpc.routePlanner.planRoute.useMutation();
   const lookupParcel = trpc.parcel.lookup.useMutation();
   const loadParcelBoundary = trpc.parcel.boundary.useMutation();
   const saveRoute = trpc.routePlanner.saveRoute.useMutation();
   const deleteRoute = trpc.routePlanner.deleteRoute.useMutation();
+  const { data: vehicleProfiles = [], refetch: refetchVehicleProfiles } = trpc.routePlanner.getVehicleProfiles.useQuery();
   const { data: savedRoutes, refetch: refetchSaved } =
     trpc.routePlanner.getSavedRoutes.useQuery();
   const { data: dieselData } = trpc.routePlanner.dieselPrice.useQuery();
   const routeReviewComplete = RURAL_ROUTE_CHECKS.every((check) => routeChecks[check]);
+  const selectedVehicleProfile = (vehicleProfiles as RouteVehicleProfile[]).find((profile) => profile.id === selectedVehicleProfileId)
+    ?? (vehicleProfiles as RouteVehicleProfile[]).find((profile) => profile.isDefault)
+    ?? null;
+  const saveVehicleProfile = trpc.routePlanner.saveVehicleProfile.useMutation({
+    onSuccess: async (profile) => {
+      await refetchVehicleProfiles();
+      setSelectedVehicleProfileId(profile.id);
+      setMpg(profile.towingMpg);
+      setShowVehicleProfileForm(false);
+      toast.success("Vehicle profile saved and selected.");
+    },
+    onError: (error) => toast.error(error.message ?? "Vehicle profile could not be saved."),
+  });
+
+  useEffect(() => {
+    if (!selectedVehicleProfileId && selectedVehicleProfile) {
+      setSelectedVehicleProfileId(selectedVehicleProfile.id);
+      setMpg(selectedVehicleProfile.towingMpg);
+    }
+  }, [selectedVehicleProfileId, selectedVehicleProfile]);
 
   const clearParcelBoundary = useCallback(() => {
     if (parcelPolygonRef.current) {
@@ -180,6 +223,8 @@ export default function WeighStationPlanner() {
       directionsRendererRef.current.setMap(null);
       directionsRendererRef.current = null;
     }
+    unpavedRoadPolylinesRef.current.forEach((polyline) => polyline.setMap(null));
+    unpavedRoadPolylinesRef.current = [];
   }, []);
 
   // Draw route and weigh station markers on the map
@@ -202,6 +247,23 @@ export default function WeighStationPlanner() {
       });
       directionsRenderer.setMap(map);
       directionsRendererRef.current = directionsRenderer;
+
+      route.unpavedRoads.forEach((road) => {
+        const polyline = new google.maps.Polyline({
+          path: road.geometry,
+          map,
+          strokeColor: "#A855F7",
+          strokeOpacity: 0.95,
+          strokeWeight: 5,
+          zIndex: 6,
+        });
+        const infoWindow = new google.maps.InfoWindow({ content: `<div style="font-family:sans-serif;font-size:13px"><strong>${road.name}</strong><br/>OSM surface: ${road.surface}<br/><span style="color:#6B7280;font-size:11px">Reference only — confirm current road conditions.</span></div>` });
+        polyline.addListener("click", (event: google.maps.MapMouseEvent) => {
+          if (event.latLng) infoWindow.setPosition(event.latLng);
+          infoWindow.open({ map });
+        });
+        unpavedRoadPolylinesRef.current.push(polyline);
+      });
 
       directionsService.route(
         {
@@ -474,6 +536,46 @@ export default function WeighStationPlanner() {
     return { gallons: gallons.toFixed(1), cost: cost.toFixed(2) };
   }, [plannedRoute, dieselData, mpg]);
 
+  const towingTravelEstimate = useMemo(() => {
+    if (!plannedRoute || !selectedVehicleProfile) return null;
+    return calculateTowingTravelEstimate({
+      googleDurationSeconds: plannedRoute.durationSeconds,
+      distanceMiles: plannedRoute.distanceMiles,
+      knownUnpavedMiles: plannedRoute.unpavedRouteApproximateMiles,
+      profile: selectedVehicleProfile,
+    });
+  }, [plannedRoute, selectedVehicleProfile]);
+
+  const openNewVehicleProfile = () => {
+    const selected = selectedVehicleProfile;
+    setVehicleProfileForm({
+      name: selected ? `${selected.name} copy` : "",
+      truck: selected?.truck ?? "",
+      trailer: selected?.trailer ?? "",
+      loadDescription: selected?.loadDescription ?? "",
+      towingMpg: String(selected?.towingMpg ?? 9),
+      towingTimeMultiplier: String(selected?.towingTimeMultiplier ?? 1.15),
+      unpavedAverageMph: String(selected?.unpavedAverageMph ?? 18),
+      isDefault: false,
+      notes: selected?.notes ?? "",
+    });
+    setShowVehicleProfileForm(true);
+  };
+
+  const handleSaveVehicleProfile = () => {
+    saveVehicleProfile.mutate({
+      name: vehicleProfileForm.name.trim(),
+      truck: vehicleProfileForm.truck.trim(),
+      trailer: vehicleProfileForm.trailer.trim(),
+      loadDescription: vehicleProfileForm.loadDescription.trim(),
+      towingMpg: Number(vehicleProfileForm.towingMpg),
+      towingTimeMultiplier: Number(vehicleProfileForm.towingTimeMultiplier),
+      unpavedAverageMph: Number(vehicleProfileForm.unpavedAverageMph),
+      isDefault: vehicleProfileForm.isDefault,
+      notes: vehicleProfileForm.notes.trim() || undefined,
+    });
+  };
+
   const directionColor = (dir: string) => {
     if (dir === "NB" || dir === "EB") return "bg-blue-500/20 text-blue-300 border-blue-500/30";
     if (dir === "SB" || dir === "WB") return "bg-orange-500/20 text-orange-300 border-orange-500/30";
@@ -503,8 +605,8 @@ export default function WeighStationPlanner() {
               <div className="flex items-start gap-2">
                 <Truck className="mt-0.5 h-4 w-4 shrink-0 text-amber-400" />
                 <div>
-                  <p className="text-xs font-semibold text-amber-100">Loaded equipment profile</p>
-                  <p className="mt-1 text-[11px] leading-relaxed text-white/65">{EQUIPMENT_PROFILE}</p>
+                  <p className="text-xs font-semibold text-amber-100">Selected hauling profile</p>
+                  <p className="mt-1 text-[11px] leading-relaxed text-white/65">{selectedVehicleProfile ? `${selectedVehicleProfile.truck} · ${selectedVehicleProfile.trailer} · ${selectedVehicleProfile.loadDescription}` : EQUIPMENT_PROFILE}</p>
                   <p className="mt-1 text-[10px] leading-relaxed text-white/40">This keeps your hauling setup visible during planning. It does not calculate legal dimensions, operating weight, bridge clearance, or truck-legal routing.</p>
                 </div>
               </div>
@@ -532,12 +634,43 @@ export default function WeighStationPlanner() {
                 onKeyDown={(e) => e.key === "Enter" && handlePlanRoute()}
               />
             </div>
-            <div className="rounded-lg border border-amber-500/25 bg-amber-500/5 p-3 space-y-1">
-              <div className="flex items-center gap-2 text-sm font-semibold text-amber-200"><Truck className="h-4 w-4" /> {RURAL_HAULING_PROFILE.name}</div>
-              <p className="text-xs text-white/65">{RURAL_HAULING_PROFILE.truck}</p>
-              <p className="text-xs text-white/65">{RURAL_HAULING_PROFILE.trailer} · {RURAL_HAULING_PROFILE.load}</p>
+            <div className="rounded-lg border border-amber-500/25 bg-amber-500/5 p-3 space-y-2">
+              <div className="flex items-center justify-between gap-2 text-sm font-semibold text-amber-200"><span className="flex items-center gap-2"><Truck className="h-4 w-4" /> Vehicle profile</span><button type="button" onClick={openNewVehicleProfile} className="text-[11px] text-amber-200 underline underline-offset-2">Save new</button></div>
+              <select
+                value={selectedVehicleProfile?.id ?? ""}
+                onChange={(event) => {
+                  const profile = (vehicleProfiles as RouteVehicleProfile[]).find((item) => item.id === Number(event.target.value));
+                  setSelectedVehicleProfileId(profile?.id ?? null);
+                  if (profile) setMpg(profile.towingMpg);
+                }}
+                className="h-9 w-full rounded-md border border-white/15 bg-black/20 px-2 text-xs text-white outline-none focus:border-amber-400"
+              >
+                {(vehicleProfiles as RouteVehicleProfile[]).map((profile) => <option key={profile.id} value={profile.id} className="bg-[#121212]">{profile.name}{profile.isDefault ? " · default" : ""}</option>)}
+              </select>
+              {selectedVehicleProfile && <>
+                <p className="text-xs text-white/65">{selectedVehicleProfile.truck}</p>
+                <p className="text-xs text-white/65">{selectedVehicleProfile.trailer} · {selectedVehicleProfile.loadDescription}</p>
+                <p className="text-[10px] text-amber-100/70">Towing pace ×{selectedVehicleProfile.towingTimeMultiplier.toFixed(2)} · unpaved reference speed {selectedVehicleProfile.unpavedAverageMph.toFixed(0)} mph · default MPG {selectedVehicleProfile.towingMpg.toFixed(1)}</p>
+              </>}
               <p className="text-[11px] text-amber-100/70">Directions are planning guidance only. Confirm road surface, bridge limits, turns, gates, overhead clearance, and turnaround room before moving this setup.</p>
             </div>
+            {showVehicleProfileForm && (
+              <div className="space-y-2 rounded-lg border border-white/10 bg-white/[0.03] p-3">
+                <div className="flex items-center justify-between"><p className="text-xs font-semibold text-white">Save vehicle profile</p><button type="button" onClick={() => setShowVehicleProfileForm(false)} className="text-xs text-white/40 hover:text-white">Close</button></div>
+                <Input value={vehicleProfileForm.name} onChange={(event) => setVehicleProfileForm((current) => ({ ...current, name: event.target.value }))} placeholder="Profile name" className="h-8 bg-white/5 border-white/15 text-xs text-white" />
+                <Input value={vehicleProfileForm.truck} onChange={(event) => setVehicleProfileForm((current) => ({ ...current, truck: event.target.value }))} placeholder="Truck" className="h-8 bg-white/5 border-white/15 text-xs text-white" />
+                <Input value={vehicleProfileForm.trailer} onChange={(event) => setVehicleProfileForm((current) => ({ ...current, trailer: event.target.value }))} placeholder="Trailer" className="h-8 bg-white/5 border-white/15 text-xs text-white" />
+                <Input value={vehicleProfileForm.loadDescription} onChange={(event) => setVehicleProfileForm((current) => ({ ...current, loadDescription: event.target.value }))} placeholder="Load or equipment" className="h-8 bg-white/5 border-white/15 text-xs text-white" />
+                <div className="grid grid-cols-3 gap-2">
+                  <Input type="number" min="1" value={vehicleProfileForm.towingMpg} onChange={(event) => setVehicleProfileForm((current) => ({ ...current, towingMpg: event.target.value }))} placeholder="MPG" className="h-8 bg-white/5 border-white/15 text-xs text-white" />
+                  <Input type="number" min="0.5" step="0.05" value={vehicleProfileForm.towingTimeMultiplier} onChange={(event) => setVehicleProfileForm((current) => ({ ...current, towingTimeMultiplier: event.target.value }))} placeholder="Time factor" className="h-8 bg-white/5 border-white/15 text-xs text-white" />
+                  <Input type="number" min="3" value={vehicleProfileForm.unpavedAverageMph} onChange={(event) => setVehicleProfileForm((current) => ({ ...current, unpavedAverageMph: event.target.value }))} placeholder="Unpaved MPH" className="h-8 bg-white/5 border-white/15 text-xs text-white" />
+                </div>
+                <p className="text-[10px] text-white/40">MPG · towing time factor · unpaved reference speed</p>
+                <label className="flex items-center gap-2 text-[11px] text-white/65"><input type="checkbox" checked={vehicleProfileForm.isDefault} onChange={(event) => setVehicleProfileForm((current) => ({ ...current, isDefault: event.target.checked }))} className="accent-amber-500" /> Use as the default profile</label>
+                <Button type="button" size="sm" onClick={handleSaveVehicleProfile} disabled={saveVehicleProfile.isPending} className="w-full bg-amber-600 hover:bg-amber-500">{saveVehicleProfile.isPending ? "Saving..." : "Save profile"}</Button>
+              </div>
+            )}
             <div className="space-y-2">
               <label className="text-xs font-medium text-white/60 uppercase tracking-wide">Working stops</label>
               <div className="flex gap-2">
@@ -640,6 +773,22 @@ export default function WeighStationPlanner() {
                   </div>
                   <div className="text-xs text-white/50">drive time</div>
                 </div>
+              </div>
+
+              {towingTravelEstimate && selectedVehicleProfile && (
+                <div className="rounded-lg border border-blue-400/25 bg-blue-400/5 p-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-2"><Clock className="h-4 w-4 text-blue-300" /><span className="text-sm font-semibold text-blue-100">Loaded towing time</span></div>
+                    <span className="text-base font-bold text-blue-200">{towingTravelEstimate.estimatedDurationText}</span>
+                  </div>
+                  <p className="mt-1 text-[11px] leading-relaxed text-white/55">Google baseline {plannedRoute.durationText} × {selectedVehicleProfile.towingTimeMultiplier.toFixed(2)} for {selectedVehicleProfile.name}. {towingTravelEstimate.knownUnpavedMiles > 0 ? `${towingTravelEstimate.knownUnpavedMiles.toFixed(1)} mapped unpaved mile${towingTravelEstimate.knownUnpavedMiles === 1 ? "" : "s"} is estimated at ${selectedVehicleProfile.unpavedAverageMph.toFixed(0)} mph.` : "No route miles were identified from OSM surface tags."}</p>
+                </div>
+              )}
+
+              <div className="rounded-lg border border-purple-400/25 bg-purple-400/5 p-3">
+                <div className="flex items-center justify-between gap-2"><span className="flex items-center gap-2 text-sm font-semibold text-purple-100"><Route className="h-4 w-4" /> Unpaved-road reference</span><span className="text-xs font-semibold text-purple-200">{plannedRoute.unpavedRoads.length} mapped segment{plannedRoute.unpavedRoads.length === 1 ? "" : "s"}</span></div>
+                <p className="mt-1 text-[11px] leading-relaxed text-white/55">Purple map lines show nearby OpenStreetMap ways explicitly tagged with an unpaved surface. The reference is incomplete and may include or miss route-adjacent roads; verify the actual road, weather, and access before travel.</p>
+                {plannedRoute.unpavedRoads.length > 0 && <p className="mt-1 text-[10px] text-purple-200/80">Approx. {plannedRoute.unpavedRouteApproximateMiles.toFixed(1)} route mile{plannedRoute.unpavedRouteApproximateMiles === 1 ? "" : "s"} matched to mapped unpaved surface data.</p>}
               </div>
 
               <div className="flex items-center gap-2 bg-white/5 rounded-lg p-3">

@@ -3427,3 +3427,9 @@
 - [x] Add the saved Ram 5500, BigTex gooseneck, and loaded CAT 299D3 equipment profile
 - [x] Add rural-road, bridge, turnaround, and unpaved-access route review prompts with a clear verification disclaimer
 - [x] Validate and publish the expanded Route Planner
+
+## Advanced Rural Route Planning — Aug 2026
+- [x] Add saved and selectable custom vehicle profiles for truck, trailer, equipment, and towing conditions
+- [x] Calculate a transparent towing-adjusted travel-time estimate from the selected profile and route context
+- [x] Add an unpaved-road reference layer with coverage and verification limitations
+- [x] Validate and publish the enhanced Route Planner

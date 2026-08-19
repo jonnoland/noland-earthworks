@@ -1,10 +1,31 @@
 import { z } from "zod";
 import { adminProcedure, router } from "./_core/trpc";
 import { getDb } from "./db";
-import { savedRoutes } from "../drizzle/schema";
+import { routeVehicleProfiles, savedRoutes } from "../drizzle/schema";
 import { eq, desc } from "drizzle-orm";
-import { fetchWeighStationsForRoute, haversineDistance } from "./weighStationData";
+import { fetchUnpavedRoadsForRoute, fetchWeighStationsForRoute, haversineDistance } from "./weighStationData";
 import { ENV } from "./_core/env";
+
+const DEFAULT_ROUTE_VEHICLE_PROFILE = {
+  name: "Ram 5500 + BigTex + CAT 299D3",
+  truck: "2026 Ram 5500 · 84 in. cab-to-axle",
+  trailer: "BigTex 25 ft gooseneck",
+  loadDescription: "CAT 299D3 loaded on trailer",
+  towingMpg: "9.00",
+  towingTimeMultiplier: "1.15",
+  unpavedAverageMph: "18.0",
+  isDefault: true,
+  notes: "Initial saved profile for rural hauling planning.",
+} as const;
+
+function serializeVehicleProfile(profile: typeof routeVehicleProfiles.$inferSelect) {
+  return {
+    ...profile,
+    towingMpg: Number(profile.towingMpg),
+    towingTimeMultiplier: Number(profile.towingTimeMultiplier),
+    unpavedAverageMph: Number(profile.unpavedAverageMph),
+  };
+}
 
 // ── Google Maps Directions API helper ────────────────────────────────────────
 
@@ -198,7 +219,10 @@ export const routePlannerRouter = router({
       const directions = await getDirections(input.origin, input.destination, input.stops ?? []);
 
       // Find weigh stations within 1.5 miles of the route polyline (live Overpass API data)
-      const stations = await fetchWeighStationsForRoute(directions.polylinePoints, 1.5);
+      const [stations, unpavedRoadReference] = await Promise.all([
+        fetchWeighStationsForRoute(directions.polylinePoints, 1.5),
+        fetchUnpavedRoadsForRoute(directions.polylinePoints),
+      ]);
 
       // Sort stations by approximate route order (by lng for E-W routes, lat for N-S)
       const latSpan = Math.abs(
@@ -214,6 +238,7 @@ export const routePlannerRouter = router({
       return {
         distanceMiles: Math.round(directions.distanceMiles * 10) / 10,
         durationText: directions.durationText,
+        durationSeconds: directions.durationSeconds,
         originLatLng: directions.originLatLng,
         destinationLatLng: directions.destinationLatLng,
         routeStops: directions.routeStops,
@@ -221,8 +246,68 @@ export const routePlannerRouter = router({
         polylineEncoded: "", // client uses Google Maps SDK directly
         weighStations: sortedStations,
         stationCount: sortedStations.length,
+        unpavedRoads: unpavedRoadReference.roads,
+        unpavedRouteApproximateMiles: unpavedRoadReference.routeApproximateMiles,
+        roadSurfaceSource: unpavedRoadReference.source,
       };
     }),
+
+  /** List saved hauling profiles; seed Jon's current loaded setup on first use. */
+  getVehicleProfiles: adminProcedure.query(async () => {
+    const db = await getDb();
+    if (!db) throw new Error("Database unavailable");
+    let profiles = await db.select().from(routeVehicleProfiles).orderBy(desc(routeVehicleProfiles.isDefault), desc(routeVehicleProfiles.updatedAt));
+    if (profiles.length === 0) {
+      await db.insert(routeVehicleProfiles).values(DEFAULT_ROUTE_VEHICLE_PROFILE);
+      profiles = await db.select().from(routeVehicleProfiles).orderBy(desc(routeVehicleProfiles.isDefault), desc(routeVehicleProfiles.updatedAt));
+    }
+    return profiles.map(serializeVehicleProfile);
+  }),
+
+  saveVehicleProfile: adminProcedure.input(z.object({
+    id: z.number().optional(),
+    name: z.string().trim().min(2).max(120),
+    truck: z.string().trim().min(2).max(500),
+    trailer: z.string().trim().min(2).max(500),
+    loadDescription: z.string().trim().min(2).max(500),
+    towingMpg: z.number().min(1).max(40),
+    towingTimeMultiplier: z.number().min(0.5).max(3),
+    unpavedAverageMph: z.number().min(3).max(50),
+    isDefault: z.boolean().default(false),
+    notes: z.string().trim().max(1000).optional(),
+  })).mutation(async ({ input }) => {
+    const db = await getDb();
+    if (!db) throw new Error("Database unavailable");
+    if (input.isDefault) await db.update(routeVehicleProfiles).set({ isDefault: false });
+    const values = {
+      name: input.name,
+      truck: input.truck,
+      trailer: input.trailer,
+      loadDescription: input.loadDescription,
+      towingMpg: input.towingMpg.toFixed(2),
+      towingTimeMultiplier: input.towingTimeMultiplier.toFixed(2),
+      unpavedAverageMph: input.unpavedAverageMph.toFixed(1),
+      isDefault: input.isDefault,
+      notes: input.notes || null,
+    };
+    if (input.id) {
+      await db.update(routeVehicleProfiles).set(values).where(eq(routeVehicleProfiles.id, input.id));
+      const [profile] = await db.select().from(routeVehicleProfiles).where(eq(routeVehicleProfiles.id, input.id));
+      if (!profile) throw new Error("Vehicle profile was not found");
+      return serializeVehicleProfile(profile);
+    }
+    const [created] = await db.insert(routeVehicleProfiles).values(values);
+    const [profile] = await db.select().from(routeVehicleProfiles).where(eq(routeVehicleProfiles.id, (created as { insertId: number }).insertId));
+    if (!profile) throw new Error("Vehicle profile could not be saved");
+    return serializeVehicleProfile(profile);
+  }),
+
+  deleteVehicleProfile: adminProcedure.input(z.object({ id: z.number() })).mutation(async ({ input }) => {
+    const db = await getDb();
+    if (!db) throw new Error("Database unavailable");
+    await db.delete(routeVehicleProfiles).where(eq(routeVehicleProfiles.id, input.id));
+    return { success: true };
+  }),
 
   /**
    * Save a planned route to the database.

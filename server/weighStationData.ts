@@ -59,8 +59,15 @@ interface CacheEntry {
   fetchedAt: number;
 }
 
+interface UnpavedRoadCacheEntry {
+  roads: UnpavedRoadSegment[];
+  routeApproximateMiles: number;
+  fetchedAt: number;
+}
+
 const CACHE_TTL_MS = 6 * 60 * 60 * 1000; // 6 hours
 const stationCache = new Map<string, CacheEntry>();
+const unpavedRoadCache = new Map<string, UnpavedRoadCacheEntry>();
 
 function bboxKey(
   minLat: number,
@@ -85,6 +92,14 @@ interface OverpassElement {
   lon?: number;
   center?: { lat: number; lon: number };
   tags?: Record<string, string>;
+  geometry?: Array<{ lat: number; lon: number }>;
+}
+
+export interface UnpavedRoadSegment {
+  id: string;
+  name: string;
+  surface: string;
+  geometry: Array<{ lat: number; lng: number }>;
 }
 
 async function queryOverpass(
@@ -116,6 +131,38 @@ async function queryOverpass(
     }
   }
   console.warn("[WeighStation] All Overpass endpoints failed — returning empty list");
+  return [];
+}
+
+async function queryUnpavedRoads(routePoints: Array<{ lat: number; lng: number }>): Promise<OverpassElement[]> {
+  const sampleCount = Math.min(40, routePoints.length);
+  if (sampleCount === 0) return [];
+  const step = Math.max(1, Math.floor(routePoints.length / sampleCount));
+  const samples = routePoints.filter((_point, index) => index % step === 0).slice(0, sampleCount);
+  const aroundQueries = samples.map((point) =>
+    `way["highway"]["surface"~"^(unpaved|gravel|fine_gravel|dirt|ground|earth|compacted|sand|grass|pebblestone|rock)$"](around:90,${point.lat},${point.lng});`
+  ).join("");
+  const query = `[out:json][timeout:25];(${aroundQueries});out tags geom;`;
+
+  for (const endpoint of OVERPASS_ENDPOINTS) {
+    try {
+      const res = await fetch(endpoint, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+          "User-Agent": "NolandEarthworks-RoutePlanner/1.0",
+          Accept: "application/json",
+        },
+        body: `data=${encodeURIComponent(query)}`,
+        signal: AbortSignal.timeout(30_000),
+      });
+      if (!res.ok) continue;
+      const data = (await res.json()) as { elements: OverpassElement[] };
+      return data.elements ?? [];
+    } catch {
+      // Try the next public Overpass endpoint.
+    }
+  }
   return [];
 }
 
@@ -354,6 +401,54 @@ export async function fetchWeighStationsForRoute(
 
   stationCache.set(key, { stations, fetchedAt: Date.now() });
   return filterToRoute(stations, routePoints, radiusMiles);
+}
+
+function routeSurfaceCacheKey(routePoints: Array<{ lat: number; lng: number }>) {
+  const first = routePoints[0];
+  const last = routePoints[routePoints.length - 1];
+  return first && last ? `${first.lat.toFixed(3)},${first.lng.toFixed(3)}:${last.lat.toFixed(3)},${last.lng.toFixed(3)}:${routePoints.length}` : "empty";
+}
+
+function isPointNearRoad(point: { lat: number; lng: number }, roads: UnpavedRoadSegment[]) {
+  return roads.some((road) => road.geometry.some((vertex) => haversineDistance(point.lat, point.lng, vertex.lat, vertex.lng) <= 0.07));
+}
+
+function approximateUnpavedRouteMiles(routePoints: Array<{ lat: number; lng: number }>, roads: UnpavedRoadSegment[]) {
+  let miles = 0;
+  for (let index = 1; index < routePoints.length; index++) {
+    const previous = routePoints[index - 1];
+    const current = routePoints[index];
+    const midpoint = { lat: (previous.lat + current.lat) / 2, lng: (previous.lng + current.lng) / 2 };
+    if (isPointNearRoad(midpoint, roads)) miles += haversineDistance(previous.lat, previous.lng, current.lat, current.lng);
+  }
+  return Math.round(miles * 10) / 10;
+}
+
+/**
+ * Returns OSM ways explicitly tagged as unpaved near the driving route. OSM
+ * surface coverage is incomplete and is never a substitute for field checks.
+ */
+export async function fetchUnpavedRoadsForRoute(routePoints: Array<{ lat: number; lng: number }>) {
+  if (routePoints.length === 0) return { roads: [] as UnpavedRoadSegment[], routeApproximateMiles: 0, source: "OpenStreetMap" };
+  const key = routeSurfaceCacheKey(routePoints);
+  const cached = unpavedRoadCache.get(key);
+  if (cached && Date.now() - cached.fetchedAt < CACHE_TTL_MS) {
+    return { roads: cached.roads, routeApproximateMiles: cached.routeApproximateMiles, source: "OpenStreetMap" };
+  }
+  const elements = await queryUnpavedRoads(routePoints);
+  const roads = elements.flatMap((element) => {
+    const geometry = (element.geometry ?? []).map((point) => ({ lat: point.lat, lng: point.lon }));
+    if (element.type !== "way" || geometry.length < 2) return [];
+    return [{
+      id: `osm-way-${element.id}`,
+      name: element.tags?.name || element.tags?.ref || "Unnamed road",
+      surface: element.tags?.surface || "unpaved",
+      geometry,
+    } satisfies UnpavedRoadSegment];
+  });
+  const routeApproximateMiles = approximateUnpavedRouteMiles(routePoints, roads);
+  unpavedRoadCache.set(key, { roads, routeApproximateMiles, fetchedAt: Date.now() });
+  return { roads, routeApproximateMiles, source: "OpenStreetMap" };
 }
 
 /** Filter stations to only those within radiusMiles of the route polyline */

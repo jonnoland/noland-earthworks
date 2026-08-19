@@ -1847,6 +1847,25 @@ export const savedRoutes = mysqlTable("saved_routes", {
 export type SavedRoute = typeof savedRoutes.$inferSelect;
 export type InsertSavedRoute = typeof savedRoutes.$inferInsert;
 
+/** Saved truck, trailer, and load profiles for rural route planning. */
+export const routeVehicleProfiles = mysqlTable("route_vehicle_profiles", {
+  id: int("id").autoincrement().primaryKey(),
+  name: varchar("name", { length: 120 }).notNull(),
+  truck: text("truck").notNull(),
+  trailer: text("trailer").notNull(),
+  loadDescription: text("loadDescription").notNull(),
+  towingMpg: decimal("towingMpg", { precision: 5, scale: 2 }).notNull().default("9.00"),
+  towingTimeMultiplier: decimal("towingTimeMultiplier", { precision: 5, scale: 2 }).notNull().default("1.15"),
+  unpavedAverageMph: decimal("unpavedAverageMph", { precision: 5, scale: 1 }).notNull().default("18.0"),
+  isDefault: boolean("isDefault").notNull().default(false),
+  notes: text("notes"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type RouteVehicleProfile = typeof routeVehicleProfiles.$inferSelect;
+export type InsertRouteVehicleProfile = typeof routeVehicleProfiles.$inferInsert;
+
 /**
  * Saved custom instruction templates for the AI FB Outreach modal.
  * Allows Jon to save and reuse favorite prompt snippets.
