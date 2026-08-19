@@ -21,6 +21,7 @@ import { Geolocation } from "@capacitor/geolocation";
 import { trpc } from "@/lib/trpc";
 import PageHeader from "@/components/PageHeader";
 import AddressAutocomplete from "@/components/AddressAutocomplete";
+import QuoteClassificationGuide from "@/components/QuoteClassificationGuide";
 import { isServedCounty, normalizeCountyName } from "@/lib/serviceAreas";
 import { validateTennesseeParcelId } from "@shared/tennesseeParcelId";
 import { enqueueOfflineFieldQuote } from "@/lib/offlineFieldQuoteQueue";
@@ -1025,6 +1026,11 @@ export default function NewQuote() {
                 <ChevronDown size={16} style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-25%)", color: "oklch(0.50 0.01 80)", pointerEvents: "none" }} />
               </div>
             </div>
+            <QuoteClassificationGuide
+              vegetationDensity={form.vegetationDensity}
+              terrain={form.terrain}
+              accessDifficulty={form.accessDifficulty}
+            />
 
             {/* Mobilization miles */}
             <div>

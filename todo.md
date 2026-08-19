@@ -3386,3 +3386,9 @@
 - [x] Draw the selected parcel boundary around the draggable location pin in the companion app map
 - [x] Validate the official parcel-boundary overlay with regression coverage and a production web-bundle build
 - [x] Bump, build, and publish the authorized Noland Field v0.4.7 update with the parcel boundary overlay
+
+## Quote Classification Field Guide — Aug 2026
+- [x] Add a shared practical guide for vegetation density, terrain, and site access classifications
+- [x] Add the classification aid to Operations quoting and Noland Field
+- [x] Validate and publish the Operations classification guide
+- [ ] Bump, build, and publish the companion app classification guide update after Jon authorizes an APK build

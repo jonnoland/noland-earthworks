@@ -41,6 +41,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { Switch } from "@/components/ui/switch";
+import QuoteClassificationGuide from "@/components/QuoteClassificationGuide";
 
 type EstimateResult = {
   estimatedHours: number;
@@ -1011,6 +1012,12 @@ export default function CostEstimator() {
                   </SelectContent>
                 </Select>
               </div>
+
+              <QuoteClassificationGuide
+                vegetationDensity={vegetationDensity}
+                terrain={terrain}
+                accessDifficulty={accessDifficulty}
+              />
 
               {/* Mobilization Miles */}
               <div className="space-y-1.5">
