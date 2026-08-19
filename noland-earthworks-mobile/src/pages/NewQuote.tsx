@@ -29,10 +29,12 @@ import { useNetwork } from "@/hooks/useNetwork";
 // ─── SiteMapPreview ──────────────────────────────────────────────────────────
 
 /**
- * InteractiveMapPreview — Google Maps iframe with a draggable orange marker.
+ * InteractiveMapPreview — Google Maps iframe with a draggable location pin.
  * The iframe loads the Maps JS API through the live server proxy so no key is
- * exposed. When the user drags the pin, the iframe posts the new lat/lng back
- * via postMessage and the parent updates form state.
+ * exposed. It deliberately uses the standard Maps marker rather than an
+ * Advanced Marker because Advanced Markers require a configured Google map ID.
+ * When the user drags the pin, the iframe posts the new lat/lng back via
+ * postMessage and the parent updates form state.
  */
 function InteractiveMapPreview({
   lat, lng, onPinMoved,
@@ -45,7 +47,7 @@ function InteractiveMapPreview({
   const SERVER_BASE = "https://nolandearth-pymczdcn.manus.space";
 
   // Build the srcdoc for the iframe — loads Maps JS from our proxy, drops a
-  // draggable AdvancedMarkerElement at the given coordinates.
+  // draggable marker at the given coordinates, and does not require a map ID.
   const srcdoc = `<!DOCTYPE html>
 <html style="margin:0;padding:0;height:100%;">
 <head>
@@ -57,7 +59,7 @@ function InteractiveMapPreview({
   <script>
     (async function() {
       const script = document.createElement('script');
-      script.src = '${SERVER_BASE}/api/maps/js?v=weekly&libraries=marker&loading=async';
+      script.src = '${SERVER_BASE}/api/maps/js?v=weekly&loading=async';
       script.async = true;
       document.head.appendChild(script);
       await new Promise(r => { script.onload = r; });
@@ -76,16 +78,17 @@ function InteractiveMapPreview({
         zoomControl: true,
         gestureHandling: 'greedy',
       });
-      const marker = new google.maps.marker.AdvancedMarkerElement({
+      const marker = new google.maps.Marker({
         map,
         position: center,
-        gmpDraggable: true,
+        draggable: true,
         title: 'Drag to adjust location',
       });
       marker.addListener('dragend', function() {
-        const pos = marker.position;
-        const newLat = typeof pos.lat === 'function' ? pos.lat() : pos.lat;
-        const newLng = typeof pos.lng === 'function' ? pos.lng() : pos.lng;
+        const pos = marker.getPosition();
+        if (!pos) return;
+        const newLat = pos.lat();
+        const newLng = pos.lng();
         window.parent.postMessage({ type: 'pinMoved', lat: newLat, lng: newLng }, '*');
       });
     })();
