@@ -29,3 +29,5 @@
 - [x] Identify why Google Business Profile is absent from the visible integrations settings and correct the connection guidance or supported settings path.
 - [x] Support a direct operations-settings link to the Integrations tab and reconcile conflicting Google connection messages in the reviews workspace.
 - [x] Move the Google Business Profile card to the top of the Integrations tab for immediate visibility.
+- [x] Audit the newly synced public site, conversion workflows, technical SEO, content consistency, and operations controls.
+- [x] Document confirmed findings and prioritize practical remediation work from the refreshed audit.
