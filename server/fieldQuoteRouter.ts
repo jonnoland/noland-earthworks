@@ -17,7 +17,7 @@ import { TRPCError } from "@trpc/server";
 import * as jose from "jose";
 import { router, publicProcedure, protectedProcedure } from "./_core/trpc";
 import { getDb, createOpsLead, getOwnerUser } from "./db";
-import { fieldQuotes } from "../drizzle/schema";
+import { aiPricingSettings, fieldQuotes } from "../drizzle/schema";
 import { storagePut } from "./storage";
 import { makeRequest } from "./_core/map";
 import { invokeLLM } from "./_core/llm";
@@ -25,6 +25,7 @@ import { sendOwnerAlertSms } from "./sms";
 import { ENV } from "./_core/env";
 import { Resend } from "resend";
 import { normalizeTennesseeParcelId, validateTennesseeParcelId } from "../shared/tennesseeParcelId";
+import { applyFieldConditionPriceAdjustment, getFieldConditionAdjustment } from "../shared/fieldConditionPricing";
 
 const TN_PARCEL_QUERY_URL = "https://services1.arcgis.com/YuVBSS7Y1of2Qud1/arcgis/rest/services/Tennessee_Property_Boundaries_Public_Use/FeatureServer/0/query";
 
@@ -887,6 +888,8 @@ MARKET RATES (Middle Tennessee, 2025–2026):
 - Brush hogging: $150–$350/acre
 - Stump grinding: $150–$250/stump
 
+FIELD-CONDITION PRICE RULE: Return customerPriceLow and customerPriceHigh as the base quote before vegetation, terrain, and site-access premiums. Use the selected field conditions for estimated hours, days, internal costs, and warnings, but do not include their price multipliers in the returned customer price range. The server applies the editable Operations multipliers exactly once after your response.
+
 Return JSON matching the schema exactly.`;
 
       const result = await invokeLLM({
@@ -944,7 +947,41 @@ Return JSON matching the schema exactly.`;
 
       const content = result?.choices?.[0]?.message?.content;
       if (!content) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Empty AI response" });
-      return JSON.parse(typeof content === "string" ? content : JSON.stringify(content));
+      const parsed = JSON.parse(stripCodeFence(typeof content === "string" ? content : JSON.stringify(content))) as {
+        customerPriceLow: number;
+        customerPriceHigh: number;
+        totalInternalCost: number;
+        marginPct: number;
+        summary: string;
+        warnings: string[];
+        [key: string]: unknown;
+      };
+      const db = await getDb();
+      const pricingRows = db ? await db.select().from(aiPricingSettings).limit(1) : [];
+      const fieldConditionAdjustment = getFieldConditionAdjustment({
+        vegetationDensity: input.vegetationDensity,
+        terrain: input.terrain,
+        accessDifficulty: input.accessDifficulty,
+      }, pricingRows[0]);
+      const conditionAdjustedPrice = applyFieldConditionPriceAdjustment(
+        parsed.customerPriceLow,
+        parsed.customerPriceHigh,
+        fieldConditionAdjustment,
+      );
+      const adjustedMidpoint = (conditionAdjustedPrice.customerPriceLow + conditionAdjustedPrice.customerPriceHigh) / 2;
+
+      return {
+        ...parsed,
+        customerPriceLow: conditionAdjustedPrice.customerPriceLow,
+        customerPriceHigh: conditionAdjustedPrice.customerPriceHigh,
+        marginPct: adjustedMidpoint > 0 ? Math.round(((adjustedMidpoint - parsed.totalInternalCost) / adjustedMidpoint) * 100) : parsed.marginPct,
+        summary: `${parsed.summary} Recommended pricing reflects the selected vegetation, terrain, and access conditions.`,
+        warnings: Array.from(new Set([
+          ...parsed.warnings,
+          `Field-condition multiplier ×${fieldConditionAdjustment.combinedMultiplier.toFixed(2)} (${fieldConditionAdjustment.labels.vegetation} vegetation, ${fieldConditionAdjustment.labels.terrain} terrain, ${fieldConditionAdjustment.labels.access} access).`,
+        ])),
+        fieldConditionAdjustment: conditionAdjustedPrice.detail,
+      };
     }),
 
   /**

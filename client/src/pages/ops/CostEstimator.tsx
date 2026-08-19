@@ -56,6 +56,15 @@ type EstimateResult = {
   marginPct: number;
   summary: string;
   warnings: string[];
+  fieldConditionAdjustment?: {
+    vegetationMultiplier: number;
+    terrainMultiplier: number;
+    accessMultiplier: number;
+    combinedMultiplier: number;
+    baseCustomerPriceLow: number;
+    baseCustomerPriceHigh: number;
+    labels: { vegetation: string; terrain: string; access: string };
+  };
   breakdown: { label: string; hours?: number; cost: number; note?: string }[];
 };
 
@@ -1233,6 +1242,14 @@ export default function CostEstimator() {
                           <p className="text-zinc-400 text-xs mt-1">
                             Full range: {fmt(result.customerPriceLow)} – {fmt(result.customerPriceHigh)}
                           </p>
+                        )}
+                        {!clientView && result.fieldConditionAdjustment && (
+                          <div className="mt-2 rounded-md border border-orange-500/30 bg-orange-500/5 px-2.5 py-2 text-[11px]">
+                            <p className="font-semibold text-orange-200">Automatic field-condition adjustment ×{result.fieldConditionAdjustment.combinedMultiplier.toFixed(2)}</p>
+                            <p className="mt-0.5 text-zinc-400">
+                              Base range {fmt(result.fieldConditionAdjustment.baseCustomerPriceLow)} – {fmt(result.fieldConditionAdjustment.baseCustomerPriceHigh)} · Vegetation ×{result.fieldConditionAdjustment.vegetationMultiplier.toFixed(2)} · Terrain ×{result.fieldConditionAdjustment.terrainMultiplier.toFixed(2)} · Access ×{result.fieldConditionAdjustment.accessMultiplier.toFixed(2)}
+                            </p>
+                          </div>
                         )}
                         {/* Below-benchmark warning */}
                         {!clientView && (() => {

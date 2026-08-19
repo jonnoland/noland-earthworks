@@ -3392,3 +3392,9 @@
 - [x] Add the classification aid to Operations quoting and Noland Field
 - [x] Validate and publish the Operations classification guide
 - [x] Bump, build, and publish the authorized Noland Field v0.4.8 classification guide update
+
+## Automatic Field-Condition Price Adjustments — Aug 2026
+- [x] Apply selected Vegetation Density, Terrain, and Site Access conditions automatically to internal estimate pricing
+- [x] Show the adjustment basis and revised recommended price in Operations and Noland Field
+- [x] Validate the pricing calculation and publish the Operations update
+- [ ] Bump, build, and publish the companion app price-adjustment update after Jon authorizes an APK build

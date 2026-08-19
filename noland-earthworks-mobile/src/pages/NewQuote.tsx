@@ -217,6 +217,15 @@ interface EstimateResult {
   marginPct: number;
   summary: string;
   warnings: string[];
+  fieldConditionAdjustment?: {
+    vegetationMultiplier: number;
+    terrainMultiplier: number;
+    accessMultiplier: number;
+    combinedMultiplier: number;
+    baseCustomerPriceLow: number;
+    baseCustomerPriceHigh: number;
+    labels: { vegetation: string; terrain: string; access: string };
+  };
   breakdown: { label: string; cost: number; note?: string }[];
 }
 
@@ -1161,6 +1170,15 @@ export default function NewQuote() {
                   </p>
                 </div>
               </div>
+
+              {estimate.fieldConditionAdjustment && (
+                <div style={{ backgroundColor: "oklch(0.65 0.18 50 / 0.08)", border: "1px solid oklch(0.65 0.18 50 / 0.35)", borderRadius: 8, padding: "9px 10px" }}>
+                  <p style={{ color: "oklch(0.78 0.16 60)", fontSize: 12, fontWeight: 700, margin: 0 }}>Automatic field-condition adjustment ×{estimate.fieldConditionAdjustment.combinedMultiplier.toFixed(2)}</p>
+                  <p style={{ color: "oklch(0.60 0.01 80)", fontSize: 10, lineHeight: 1.45, margin: "3px 0 0" }}>
+                    Base ${estimate.fieldConditionAdjustment.baseCustomerPriceLow.toLocaleString()} – ${estimate.fieldConditionAdjustment.baseCustomerPriceHigh.toLocaleString()} · Vegetation ×{estimate.fieldConditionAdjustment.vegetationMultiplier.toFixed(2)} · Terrain ×{estimate.fieldConditionAdjustment.terrainMultiplier.toFixed(2)} · Access ×{estimate.fieldConditionAdjustment.accessMultiplier.toFixed(2)}
+                  </p>
+                </div>
+              )}
 
               {/* Summary */}
               <p style={{ color: "oklch(0.75 0.01 80)", fontSize: 13, lineHeight: 1.5, margin: 0 }}>{estimate.summary}</p>

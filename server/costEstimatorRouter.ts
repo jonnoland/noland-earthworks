@@ -10,8 +10,9 @@ import { z } from "zod";
 import { protectedProcedure, router } from "./_core/trpc";
 import { invokeLLM } from "./_core/llm";
 import { getDb } from "./db";
-import { jobCostEstimates } from "../drizzle/schema";
+import { aiPricingSettings, jobCostEstimates } from "../drizzle/schema";
 import { eq, desc } from "drizzle-orm";
+import { applyFieldConditionPriceAdjustment, getFieldConditionAdjustment, type AppliedFieldConditionAdjustment } from "../shared/fieldConditionPricing";
 
 const estimatorInputSchema = z.object({
   service: z.string().min(1),
@@ -83,6 +84,12 @@ function getTravelSurcharge(miles: number): number {
   return (MOB_TIERS.find(t => miles <= t.maxMiles) ?? MOB_TIERS[MOB_TIERS.length - 1]).surcharge;
 }
 
+function stripCodeFence(raw: string): string {
+  const trimmed = raw.trim();
+  const match = trimmed.match(/^```(?:json)?\s*([\s\S]*?)\s*```$/i);
+  return match ? match[1].trim() : trimmed;
+}
+
 const COST_SYSTEM_PROMPT = `You are a job cost estimator for Noland Earthworks, LLC — a veteran-owned land management and forestry mulching company in Middle Tennessee.
 
 EXACT CURRENT RATES (use these numbers precisely — do not substitute generic values):
@@ -152,6 +159,8 @@ Each breakdown item must include: label (string), cost (number in dollars), hour
 The totalInternalCost field must equal the sum of all breakdown item costs.
 The customerPriceLow and customerPriceHigh must be derived from totalInternalCost ÷ (1 − margin) and reflect realistic Middle Tennessee market rates.
 
+FIELD-CONDITION PRICE RULE: Return customerPriceLow and customerPriceHigh as the base quote before vegetation, terrain, and site-access premiums. Use the selected field conditions for estimated hours, days, internal costs, and warnings, but do not include their price multipliers in the returned customer price range. The server applies the editable Operations multipliers exactly once after your response.
+
 Be realistic and conservative — it is better to slightly overestimate costs than underestimate.`;
 
 export interface CostBreakdown {
@@ -167,6 +176,7 @@ export interface CostBreakdown {
   marginPct: number;
   summary: string;
   warnings: string[];
+  fieldConditionAdjustment?: AppliedFieldConditionAdjustment;
   breakdown: {
     label: string;
     hours?: number;
@@ -286,10 +296,38 @@ export const costEstimatorRouter = router({
       const content = result?.choices?.[0]?.message?.content;
       if (!content) throw new Error("Empty LLM response");
 
-      const parsed: CostBreakdown = JSON.parse(typeof content === "string" ? content : JSON.stringify(content));
+      const parsed: CostBreakdown = JSON.parse(stripCodeFence(typeof content === "string" ? content : JSON.stringify(content)));
 
       // Persist to DB
       const db = await getDb();
+      let pricingSettings: typeof aiPricingSettings.$inferSelect | undefined;
+      if (db) {
+        const pricingRows = await db.select().from(aiPricingSettings).limit(1);
+        pricingSettings = pricingRows[0];
+      }
+      const fieldConditionAdjustment = getFieldConditionAdjustment({
+        vegetationDensity: input.vegetationDensity,
+        terrain: input.terrain,
+        accessDifficulty: input.accessDifficulty,
+      }, pricingSettings);
+      const conditionAdjustedPrice = applyFieldConditionPriceAdjustment(
+        parsed.customerPriceLow,
+        parsed.customerPriceHigh,
+        fieldConditionAdjustment,
+      );
+      parsed.customerPriceLow = conditionAdjustedPrice.customerPriceLow;
+      parsed.customerPriceHigh = conditionAdjustedPrice.customerPriceHigh;
+      const adjustedMidpoint = (parsed.customerPriceLow + parsed.customerPriceHigh) / 2;
+      parsed.marginPct = adjustedMidpoint > 0
+        ? Math.round(((adjustedMidpoint - parsed.totalInternalCost) / adjustedMidpoint) * 100)
+        : parsed.marginPct;
+      parsed.fieldConditionAdjustment = conditionAdjustedPrice.detail;
+      parsed.summary = `${parsed.summary} Recommended pricing reflects the selected vegetation, terrain, and access conditions.`;
+      parsed.warnings = Array.from(new Set([
+        ...parsed.warnings,
+        `Field-condition multiplier ×${fieldConditionAdjustment.combinedMultiplier.toFixed(2)} (${fieldConditionAdjustment.labels.vegetation} vegetation, ${fieldConditionAdjustment.labels.terrain} terrain, ${fieldConditionAdjustment.labels.access} access).`,
+      ]));
+
       if (db) {
         try {
           await db.insert(jobCostEstimates).values({
