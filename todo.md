@@ -3379,4 +3379,4 @@
 ## Noland Field Parcel ID Map Error — Aug 2026
 - [x] Fix the Google Maps load error displayed after Parcel ID property lookup in the Android companion app
 - [x] Validate the map fallback with regression coverage and a production web-bundle build
-- [ ] Bump, build, and publish the corrected Android companion app release after Jon authorizes an APK build
+- [x] Bump, build, and publish the authorized Noland Field v0.4.6 Android companion app release
