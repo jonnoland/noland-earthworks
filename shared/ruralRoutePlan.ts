@@ -20,6 +20,12 @@ export type RuralRoutePlanNotes = {
   vehicleProfile: typeof RURAL_HAULING_PROFILE.name;
 };
 
+export type RestoredRuralRoutePlan = {
+  stops: RuralRouteStop[];
+  ruralAccessNotes: string;
+  clearParcelBoundary: true;
+};
+
 export function serializeRuralRoutePlanNotes(
   stops: RuralRouteStop[],
   ruralAccessNotes: string
@@ -57,4 +63,18 @@ export function parseRuralRoutePlanNotes(notes: string | null | undefined): Rura
   } catch {
     return null;
   }
+}
+
+/**
+ * Saved routes retain their route stops and access notes, but a live Parcel ID
+ * boundary is intentionally not persisted. A restored route must therefore
+ * clear any boundary selected in the previous planning session.
+ */
+export function restoreRuralRoutePlan(notes: string | null | undefined): RestoredRuralRoutePlan {
+  const parsed = parseRuralRoutePlanNotes(notes);
+  return {
+    stops: parsed?.stops ?? [],
+    ruralAccessNotes: parsed?.ruralAccessNotes ?? "",
+    clearParcelBoundary: true,
+  };
 }

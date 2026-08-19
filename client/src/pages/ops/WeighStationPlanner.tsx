@@ -31,7 +31,7 @@ import {
   ExternalLink,
   ShieldAlert,
 } from "lucide-react";
-import { parseRuralRoutePlanNotes, RURAL_HAULING_PROFILE, serializeRuralRoutePlanNotes, type RuralRouteStop } from "@shared/ruralRoutePlan";
+import { restoreRuralRoutePlan, RURAL_HAULING_PROFILE, serializeRuralRoutePlanNotes, type RuralRouteStop } from "@shared/ruralRoutePlan";
 
 // Default origin: Vanleer, TN
 const DEFAULT_ORIGIN = "Vanleer, TN 37181";
@@ -84,6 +84,12 @@ interface ParcelDestinationMatch {
   propertyViewerUrl: string | null;
 }
 
+interface ParcelBoundaryOverlay {
+  parcelId: string;
+  county: string;
+  boundaryRings: Array<Array<{ lat: number; lng: number }>>;
+}
+
 const RURAL_ROUTE_CHECKS = [
   "Posted bridge, weight, and vehicle restrictions reviewed",
   "Unpaved-road condition, weather, and soft-ground risk reviewed",
@@ -105,9 +111,11 @@ export default function WeighStationPlanner() {
   const [parcelId, setParcelId] = useState("");
   const [parcelMatches, setParcelMatches] = useState<ParcelDestinationMatch[]>([]);
   const [selectedParcel, setSelectedParcel] = useState<ParcelDestinationMatch | null>(null);
+  const [selectedParcelBoundary, setSelectedParcelBoundary] = useState<ParcelBoundaryOverlay | null>(null);
   const [routeChecks, setRouteChecks] = useState<Record<string, boolean>>({});
   const mapRef = useRef<google.maps.Map | null>(null);
   const directionsRendererRef = useRef<google.maps.DirectionsRenderer | null>(null);
+  const parcelPolygonRef = useRef<google.maps.Polygon | null>(null);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const markersRef = useRef<any[]>([]);
   const markerLibRef = useRef<google.maps.MarkerLibrary | null>(null);
@@ -119,12 +127,43 @@ export default function WeighStationPlanner() {
 
   const planRoute = trpc.routePlanner.planRoute.useMutation();
   const lookupParcel = trpc.parcel.lookup.useMutation();
+  const loadParcelBoundary = trpc.parcel.boundary.useMutation();
   const saveRoute = trpc.routePlanner.saveRoute.useMutation();
   const deleteRoute = trpc.routePlanner.deleteRoute.useMutation();
   const { data: savedRoutes, refetch: refetchSaved } =
     trpc.routePlanner.getSavedRoutes.useQuery();
   const { data: dieselData } = trpc.routePlanner.dieselPrice.useQuery();
   const routeReviewComplete = RURAL_ROUTE_CHECKS.every((check) => routeChecks[check]);
+
+  const clearParcelBoundary = useCallback(() => {
+    if (parcelPolygonRef.current) {
+      parcelPolygonRef.current.setMap(null);
+      parcelPolygonRef.current = null;
+    }
+  }, []);
+
+  const drawParcelBoundary = useCallback((boundary: ParcelBoundaryOverlay) => {
+    const map = mapRef.current;
+    if (!map || boundary.boundaryRings.length === 0) return;
+
+    clearParcelBoundary();
+    const polygon = new google.maps.Polygon({
+      paths: boundary.boundaryRings,
+      strokeColor: "#F59E0B",
+      strokeOpacity: 0.95,
+      strokeWeight: 3,
+      fillColor: "#F59E0B",
+      fillOpacity: 0.15,
+      clickable: false,
+      zIndex: 4,
+      map,
+    });
+    parcelPolygonRef.current = polygon;
+
+    const bounds = new google.maps.LatLngBounds();
+    boundary.boundaryRings.flat().forEach((point) => bounds.extend(point));
+    if (!bounds.isEmpty()) map.fitBounds(bounds, 80);
+  }, [clearParcelBoundary]);
 
   // Clear map markers and directions
   const clearMap = useCallback(() => {
@@ -282,6 +321,12 @@ export default function WeighStationPlanner() {
     }
   }, [mapReady, plannedRoute, drawRouteOnMap]);
 
+  useEffect(() => {
+    if (mapReady && selectedParcelBoundary) drawParcelBoundary(selectedParcelBoundary);
+  }, [mapReady, selectedParcelBoundary, drawParcelBoundary]);
+
+  useEffect(() => () => clearParcelBoundary(), [clearParcelBoundary]);
+
   const addAddressStop = () => {
     const location = stopInput.trim();
     if (!location) return;
@@ -289,7 +334,18 @@ export default function WeighStationPlanner() {
     setStopInput("");
   };
 
-  const addParcelStop = (match: ParcelDestinationMatch, mode: "origin" | "destination" | "stop") => {
+  const showParcelBoundary = async (match: ParcelDestinationMatch) => {
+    try {
+      const boundary = await loadParcelBoundary.mutateAsync({ county: match.county, parcelId: match.parcelId });
+      const overlay = boundary as ParcelBoundaryOverlay;
+      setSelectedParcelBoundary(overlay);
+      if (mapReady) drawParcelBoundary(overlay);
+    } catch (err: any) {
+      toast.info(err.message ?? "Parcel boundary could not be drawn. The Parcel ID map point is still available for routing.");
+    }
+  };
+
+  const addParcelStop = async (match: ParcelDestinationMatch, mode: "origin" | "destination" | "stop") => {
     if (!match.centroid) {
       toast.error("This Parcel ID did not return a map point. Use its job-site address instead.");
       return;
@@ -299,11 +355,12 @@ export default function WeighStationPlanner() {
     if (mode === "origin") {
       setOrigin(location);
     } else if (mode === "destination") {
-      setDestination(match.address ?? location);
-      setSelectedParcel(match);
+      setDestination(location);
     }
     else setStops((current) => [...current, { id: `parcel-${crypto.randomUUID()}`, label, location, source: "parcel" }]);
+    setSelectedParcel(match);
     setParcelMatches([]);
+    await showParcelBoundary(match);
     toast.success(mode === "stop" ? "Parcel added as a route stop" : `Parcel set as ${mode}`);
   };
 
@@ -354,9 +411,12 @@ export default function WeighStationPlanner() {
       toast.error("This parcel does not include a routable address or map point.");
       return;
     }
-    const destinationValue = parcel.address ?? `${parcel.centroid!.lat},${parcel.centroid!.lng}`;
+    const destinationValue = parcel.centroid
+      ? `${parcel.centroid.lat},${parcel.centroid.lng}`
+      : parcel.address!;
     setDestination(destinationValue);
     setSelectedParcel(parcel);
+    void showParcelBoundary(parcel);
     setPlannedRoute(null);
     toast.success(`Parcel ${parcel.parcelId} set as the job-route destination.`);
   };
@@ -387,9 +447,12 @@ export default function WeighStationPlanner() {
   const handleLoadSaved = (route: SavedRoute) => {
     setOrigin(route.originAddress);
     setDestination(route.destinationAddress);
-    const routeNotes = parseRuralRoutePlanNotes(route.notes);
-    setStops(routeNotes?.stops ?? []);
-    setRuralAccessNotes(routeNotes?.ruralAccessNotes ?? "");
+    const restoredPlan = restoreRuralRoutePlan(route.notes);
+    setSelectedParcel(null);
+    setSelectedParcelBoundary(null);
+    if (restoredPlan.clearParcelBoundary) clearParcelBoundary();
+    setStops(restoredPlan.stops);
+    setRuralAccessNotes(restoredPlan.ruralAccessNotes);
     toast.info("Addresses loaded — click Plan Route to re-run");
   };
 
@@ -463,7 +526,7 @@ export default function WeighStationPlanner() {
               </label>
               <Input
                 value={destination}
-                onChange={(e) => { setDestination(e.target.value); setSelectedParcel(null); }}
+                onChange={(e) => { setDestination(e.target.value); setSelectedParcel(null); setSelectedParcelBoundary(null); clearParcelBoundary(); }}
                 placeholder="Job site address, rural road, or city"
                 className="bg-white/5 border-white/15 text-white placeholder:text-white/30"
                 onKeyDown={(e) => e.key === "Enter" && handlePlanRoute()}
@@ -526,6 +589,7 @@ export default function WeighStationPlanner() {
               </div>
             </div>
             {selectedParcel && <p className="text-[11px] text-amber-200">Planning to Parcel {selectedParcel.parcelId}{selectedParcel.address ? ` · ${selectedParcel.address}` : ""}</p>}
+            {selectedParcelBoundary && <p className="text-[11px] text-amber-100/70">Amber outline shows the selected Parcel ID boundary for route-planning reference only, not a legal survey.</p>}
             <div className="space-y-1">
               <label className="text-xs font-medium text-white/60 uppercase tracking-wide">Rural access notes</label>
               <textarea value={ruralAccessNotes} onChange={(e) => setRuralAccessNotes(e.target.value)} placeholder="Unpaved drive, gate contact, bridge or culvert concern, narrow turn, soft ground, turnaround plan..." rows={3} className="w-full resize-y rounded-md border border-white/15 bg-white/5 px-3 py-2 text-sm text-white placeholder:text-white/30 outline-none focus:border-amber-500" />

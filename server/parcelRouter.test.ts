@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildExactTennesseeParcelWhere, buildTennesseeParcelWhere, normalizeTennesseeParcelId } from "./parcelRouter";
+import { buildExactTennesseeParcelWhere, buildTennesseeParcelWhere, normalizeTennesseeParcelId, toParcelBoundaryRings } from "./parcelRouter";
 import { validateTennesseeParcelId } from "../shared/tennesseeParcelId";
 
 describe("Tennessee Parcel ID lookup", () => {
@@ -34,6 +34,13 @@ describe("Tennessee Parcel ID lookup", () => {
   it("rejects incomplete or unsafe Parcel ID input before it reaches the Tennessee service", () => {
     expect(validateTennesseeParcelId("12").valid).toBe(false);
     expect(validateTennesseeParcelId("042; DROP TABLE").valid).toBe(false);
+  });
+
+  it("converts ArcGIS parcel rings into map-ready latitude and longitude paths", () => {
+    expect(toParcelBoundaryRings({
+      rings: [[[-87.5, 36.2], [-87.4, 36.2], [-87.4, 36.3], [-87.5, 36.2]]],
+    })).toEqual([[{ lat: 36.2, lng: -87.5 }, { lat: 36.2, lng: -87.4 }, { lat: 36.3, lng: -87.4 }, { lat: 36.2, lng: -87.5 }]]);
+    expect(toParcelBoundaryRings({ rings: [[[-87.5, 36.2]]] })).toBeNull();
   });
 
 });

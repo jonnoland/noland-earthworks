@@ -16,6 +16,14 @@ The no-save Directions calculation completed successfully. It returned a **52.3-
 
 For persistence validation, a clearly labeled disposable route named `Validation — Rural Parcel Route (delete)` was saved and then loaded. The loaded route restored the expected 52.3-mile / 75-minute summary, the ordered address stop, the Parcel ID stop, and the rural access notes. The disposable record was deleted immediately after verification. No customer, job, lead, quote, or payment record was accessed or changed.
 
+For Parcel ID boundary validation, the same public Dickson County reference parcel was selected as the destination in the development Route Planner. The planner fetched the parcel geometry separately from the lightweight search, centered the map on the parcel, and displayed the expected amber polygon outline with the on-screen reference-only notice. No route or business record was saved or changed.
+
+The boundary remained visible after the route-planning action was started, confirming that the polygon overlay is independent of the route-direction and marker layer.
+
+The selected parcel now uses its returned centroid for route calculation rather than relying on an incomplete rural-road address, while the planner continues to display the parcel’s readable address and identifier for the operator.
+
+The representative Parcel ID continues to resolve to the expected Dickson County record and exposes its origin, stop, and destination actions after the centroid-routing correction.
+
 The no-save Directions calculation completed successfully. It returned a **52.3-mile**, **75-minute** route from Vanleer to Charlotte through the two ordered stops, placed each stop on the map, preserved the rural access notes in the route summary, and detected zero weigh stations. No route, customer, job, quote, or other business record was saved or changed.
 
 For persistence validation, a clearly labeled disposable route named `Validation — Rural Parcel Route (delete)` was saved. The saved-route list retained the Vanleer-to-Charlotte route and the expected 52.3-mile / 75-minute summary. Reloading its addresses restored the same ordered address stop, Parcel ID stop, and rural access notes. The disposable record is now being deleted; no customer, job, lead, quote, or payment record was involved.

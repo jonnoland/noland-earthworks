@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseRuralRoutePlanNotes, RURAL_HAULING_PROFILE, serializeRuralRoutePlanNotes } from "./ruralRoutePlan";
+import { parseRuralRoutePlanNotes, restoreRuralRoutePlan, RURAL_HAULING_PROFILE, serializeRuralRoutePlanNotes } from "./ruralRoutePlan";
 
 describe("rural route plan notes", () => {
   it("preserves Parcel ID and address stops with rural access notes", () => {
@@ -19,5 +19,17 @@ describe("rural route plan notes", () => {
 
   it("ignores legacy notes that are not a rural route-plan payload", () => {
     expect(parseRuralRoutePlanNotes("Call before arrival")).toBeNull();
+  });
+
+  it("restores saved stops and access notes while explicitly clearing a prior Parcel ID boundary", () => {
+    const notes = serializeRuralRoutePlanNotes([
+      { id: "parcel-1", label: "Parcel 123 · Dickson County", location: "36.123,-87.456", source: "parcel" },
+    ], "Confirm gate, culvert, and turnaround.");
+
+    expect(restoreRuralRoutePlan(notes)).toEqual({
+      stops: [{ id: "parcel-1", label: "Parcel 123 · Dickson County", location: "36.123,-87.456", source: "parcel" }],
+      ruralAccessNotes: "Confirm gate, culvert, and turnaround.",
+      clearParcelBoundary: true,
+    });
   });
 });

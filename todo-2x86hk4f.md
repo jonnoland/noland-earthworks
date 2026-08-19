@@ -51,3 +51,10 @@
 - [x] Save a checkpoint and publish the reconciled Route Planner after successful validation.
 - [x] Save and deliver the checkpoint for the reconciled Route Planner after successful validation.
 - [x] Save a new checkpoint for the reconciled Route Planner changes and deliver the resulting version ID.
+- [x] Retrieve the selected Parcel ID boundary and display it as a cleared map overlay in the Route Planner.
+- [x] Add regression coverage and validate parcel-boundary display without affecting route, stop, or saved-route behavior.
+- [x] Add and run regression coverage proving Parcel ID boundary overlays do not alter saved-route save, load, or delete behavior.
+- [x] Validate the Parcel ID boundary lifecycle with a representative selected parcel and regression-covered saved-route loading that clears the prior overlay.
+- [x] Route a selected Parcel ID destination through its returned centroid so incomplete rural road addresses do not prevent trip planning.
+- [x] Add behavioral coverage for Parcel ID boundary selection followed by saved-route save, load, and delete behavior.
+- [x] Complete an end-to-end boundary lifecycle check that plans a Parcel ID route, saves and loads a disposable route, and confirms the overlay clears on load.

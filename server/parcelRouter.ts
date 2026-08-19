@@ -8,7 +8,29 @@ const TN_PARCEL_QUERY_URL = "https://services1.arcgis.com/YuVBSS7Y1of2Qud1/arcgi
 type ArcGisParcelFeature = {
   attributes?: Record<string, unknown>;
   centroid?: { x?: number; y?: number };
+  geometry?: unknown;
 };
+
+export type ParcelBoundaryRing = Array<{ lat: number; lng: number }>;
+
+export function toParcelBoundaryRings(geometry: unknown): ParcelBoundaryRing[] | null {
+  if (!geometry || typeof geometry !== "object" || !Array.isArray((geometry as { rings?: unknown }).rings)) return null;
+
+  const rings = (geometry as { rings: unknown[] }).rings
+    .map((ring) => {
+      if (!Array.isArray(ring)) return [];
+      return ring.flatMap((point) => {
+        if (!Array.isArray(point) || point.length < 2) return [];
+        const [lng, lat] = point;
+        return typeof lat === "number" && Number.isFinite(lat) && typeof lng === "number" && Number.isFinite(lng)
+          ? [{ lat, lng }]
+          : [];
+      });
+    })
+    .filter((ring): ring is ParcelBoundaryRing => ring.length >= 3);
+
+  return rings.length > 0 ? rings : null;
+}
 
 function cleanText(value: unknown): string | null {
   if (typeof value !== "string") return null;
@@ -31,11 +53,16 @@ export function buildExactTennesseeParcelWhere(county: string, parcelId: string)
   return `COUNTY_NAME = '${cleanCounty}' AND PARCELID = '${exactParcelId}'`;
 }
 
-async function queryTennesseeParcels(where: string, resultRecordCount: number, timeoutMs: number) {
+async function queryTennesseeParcels(
+  where: string,
+  resultRecordCount: number,
+  timeoutMs: number,
+  options: { includeGeometry?: boolean } = {}
+) {
   const params = new URLSearchParams({
     where,
     outFields: "PARCELID,COUNTY_NAME,ADDRESS,CITY,ZIP,OWNER,OWNER2,DEEDAC,LINK_TPAD,LINK_TPV",
-    returnGeometry: "false",
+    returnGeometry: options.includeGeometry ? "true" : "false",
     returnCentroid: "true",
     outSR: "4326",
     resultRecordCount: String(resultRecordCount),
@@ -126,6 +153,64 @@ export const parcelRouter = router({
         throw new TRPCError({
           code: "BAD_GATEWAY",
           message: "Tennessee Property Viewer is unavailable right now. Enter the property address manually or try again shortly.",
+        });
+      }
+    }),
+
+  /** Retrieves the reference boundary for one selected Tennessee Parcel ID. */
+  boundary: protectedProcedure
+    .input(z.object({
+      county: z.string().trim().min(2).max(40).regex(/^[A-Za-z .'-]+$/, "Enter a Tennessee county name."),
+      parcelId: z.string().trim().min(3).max(50),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      if (ctx.user.role !== "admin") {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Operations access required" });
+      }
+
+      const parcelValidation = validateTennesseeParcelId(input.parcelId);
+      if (!parcelValidation.valid) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: parcelValidation.error });
+      }
+
+      try {
+        let features = await queryTennesseeParcels(
+          buildExactTennesseeParcelWhere(input.county, input.parcelId),
+          1,
+          12_000,
+          { includeGeometry: true }
+        );
+        if (features.length === 0) {
+          features = await queryTennesseeParcels(
+            buildTennesseeParcelWhere(input.county, input.parcelId),
+            1,
+            18_000,
+            { includeGeometry: true }
+          );
+        }
+
+        const feature = features[0];
+        if (!feature) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "No mapped Parcel ID boundary was found for this county." });
+        }
+
+        const boundaryRings = toParcelBoundaryRings(feature.geometry);
+        if (!boundaryRings) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "This Parcel ID does not include a usable boundary outline." });
+        }
+
+        return {
+          ...mapFeature(feature),
+          boundaryRings,
+          source: "Tennessee Comptroller Property Boundaries Public Use",
+          referenceNotice: "Parcel boundaries are reference information only, not a legal survey. Verify the official county record before relying on them.",
+        };
+      } catch (error) {
+        if (error instanceof TRPCError) throw error;
+        console.error("[parcel.boundary] Tennessee property boundary lookup failed", error);
+        throw new TRPCError({
+          code: "BAD_GATEWAY",
+          message: "The Parcel ID boundary is unavailable right now. The parcel can still be used as a map point or address destination.",
         });
       }
     }),
