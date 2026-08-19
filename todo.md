@@ -3421,3 +3421,9 @@
 - [x] Apply selected Vegetation, Terrain, and Site Access multipliers to Linear Foot benchmark base rates
 - [x] Add calculation tooltips that explain the linear-foot rate adjustment basis
 - [x] Validate and publish the adjusted Linear Foot benchmark experience
+
+## Equipment-Aware Rural Route Planner — Aug 2026
+- [x] Add job-site address and Tennessee Parcel ID destination planning to the Route Planner
+- [x] Add the saved Ram 5500, BigTex gooseneck, and loaded CAT 299D3 equipment profile
+- [x] Add rural-road, bridge, turnaround, and unpaved-access route review prompts with a clear verification disclaimer
+- [x] Validate and publish the expanded Route Planner
