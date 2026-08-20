@@ -26,6 +26,7 @@ import { isServedCounty, normalizeCountyName } from "@/lib/serviceAreas";
 import { validateTennesseeParcelId } from "@shared/tennesseeParcelId";
 import { enqueueOfflineFieldQuote } from "@/lib/offlineFieldQuoteQueue";
 import { useNetwork } from "@/hooks/useNetwork";
+import { formatQuoteCents } from "@shared/quoteMoney";
 
 // ─── SiteMapPreview ──────────────────────────────────────────────────────────
 
@@ -226,6 +227,14 @@ interface EstimateResult {
     baseCustomerPriceHigh: number;
     labels: { vegetation: string; terrain: string; access: string };
   };
+  eligibleDiscounts: Array<{ code: string; label: string; percent: number; eligibility: string }>;
+  selectedDiscount: { code: string; label: string; percent: number; eligibility: string } | null;
+  discountAdjustment: {
+    baseCustomerPriceLow: number;
+    baseCustomerPriceHigh: number;
+    discountAmountLow: number;
+    discountAmountHigh: number;
+  } | null;
   breakdown: { label: string; cost: number; note?: string }[];
 }
 
@@ -274,6 +283,7 @@ export default function NewQuote() {
   const [queuedOffline, setQueuedOffline] = useState(false);
   const [estimate, setEstimate] = useState<EstimateResult | null>(null);
   const [estimateError, setEstimateError] = useState<string | null>(null);
+  const [selectedDiscountCode, setSelectedDiscountCode] = useState<string | null>(null);
   // Tracks programmatic address updates so forward geocoding is not re-triggered.
   const skipForwardGeocode = React.useRef(false);
 
@@ -512,7 +522,7 @@ export default function NewQuote() {
 
   // ─── AI Estimate ─────────────────────────────────────────────────────────
 
-  const handleGetEstimate = () => {
+  const handleGetEstimate = (discountCode = selectedDiscountCode) => {
     if (!form.serviceType) return;
     setEstimate(null);
     setEstimateError(null);
@@ -538,6 +548,7 @@ export default function NewQuote() {
       trailWidth: isNaN(trailWidth) ? undefined : trailWidth,
       rowWidth: isNaN(rowWidth) ? undefined : rowWidth,
       fenceLineLF: isNaN(fenceLineLF) ? undefined : fenceLineLF,
+      discountCode: discountCode ?? undefined,
     });
   };
 
@@ -573,6 +584,7 @@ export default function NewQuote() {
       form.serviceType === "Right-of-Way Clearing" ? `Right-of-Way measurement: ${linearFeet} linear feet${form.rowWidth ? ` at approximately ${form.rowWidth} feet wide` : ""}.` : "",
       form.serviceType === "Fence Line Clearing" ? `Fence line measurement: ${fenceLineFeet} linear feet.` : "",
       form.parcelId ? `TN Property Viewer reference: Parcel ${form.parcelId} · ${normalizeCountyName(form.county) || form.county}.` : "",
+      estimate?.selectedDiscount ? `Selected quote discount: ${estimate.selectedDiscount.label} (${estimate.selectedDiscount.percent}% — ${estimate.selectedDiscount.eligibility}).` : "",
     ].filter(Boolean).join("\n");
 
     const submission = {
@@ -1150,7 +1162,7 @@ export default function NewQuote() {
                   <DollarSign size={16} color="oklch(0.65 0.18 50)" style={{ margin: "0 auto 4px" }} />
                   <p style={{ color: "oklch(0.50 0.01 80)", fontSize: 10, margin: "0 0 2px" }}>Price Range</p>
                   <p style={{ color: "oklch(0.94 0.01 80)", fontSize: 13, fontWeight: 700, margin: 0 }}>
-                    ${estimate.customerPriceLow.toLocaleString()} – ${estimate.customerPriceHigh.toLocaleString()}
+                    {formatQuoteCents(Math.ceil(estimate.customerPriceLow) * 100)} – {formatQuoteCents(Math.ceil(estimate.customerPriceHigh) * 100)}
                   </p>
                 </div>
                 <div style={{ backgroundColor: "oklch(0.22 0 0)", borderRadius: 10, padding: "12px 10px", textAlign: "center" }}>
@@ -1166,7 +1178,7 @@ export default function NewQuote() {
                     {estimate.marginPct.toFixed(0)}%
                   </p>
                   <p style={{ color: "oklch(0.50 0.01 80)", fontSize: 10, margin: "2px 0 0" }}>
-                    Cost: ${estimate.totalInternalCost.toLocaleString()}
+                    Cost: {formatQuoteCents(Math.ceil(estimate.totalInternalCost) * 100)}
                   </p>
                 </div>
               </div>
@@ -1175,9 +1187,26 @@ export default function NewQuote() {
                 <div style={{ backgroundColor: "oklch(0.65 0.18 50 / 0.08)", border: "1px solid oklch(0.65 0.18 50 / 0.35)", borderRadius: 8, padding: "9px 10px" }}>
                   <p style={{ color: "oklch(0.78 0.16 60)", fontSize: 12, fontWeight: 700, margin: 0 }}>Automatic field-condition adjustment ×{estimate.fieldConditionAdjustment.combinedMultiplier.toFixed(2)}</p>
                   <p style={{ color: "oklch(0.60 0.01 80)", fontSize: 10, lineHeight: 1.45, margin: "3px 0 0" }}>
-                    Base ${estimate.fieldConditionAdjustment.baseCustomerPriceLow.toLocaleString()} – ${estimate.fieldConditionAdjustment.baseCustomerPriceHigh.toLocaleString()} · Vegetation ×{estimate.fieldConditionAdjustment.vegetationMultiplier.toFixed(2)} · Terrain ×{estimate.fieldConditionAdjustment.terrainMultiplier.toFixed(2)} · Access ×{estimate.fieldConditionAdjustment.accessMultiplier.toFixed(2)}
+                    Base {formatQuoteCents(Math.ceil(estimate.fieldConditionAdjustment.baseCustomerPriceLow) * 100)} – {formatQuoteCents(Math.ceil(estimate.fieldConditionAdjustment.baseCustomerPriceHigh) * 100)} · Vegetation ×{estimate.fieldConditionAdjustment.vegetationMultiplier.toFixed(2)} · Terrain ×{estimate.fieldConditionAdjustment.terrainMultiplier.toFixed(2)} · Access ×{estimate.fieldConditionAdjustment.accessMultiplier.toFixed(2)}
                   </p>
                 </div>
+              )}
+
+              {estimate.eligibleDiscounts.length > 0 && (
+                <div style={{ backgroundColor: "oklch(0.70 0.18 145 / 0.08)", border: "1px solid oklch(0.70 0.18 145 / 0.30)", borderRadius: 8, padding: "9px 10px" }}>
+                  <p style={{ color: "oklch(0.75 0.18 145)", fontSize: 12, fontWeight: 700, margin: 0 }}>Optional Operations discount</p>
+                  <p style={{ color: "var(--ne-muted)", fontSize: 10, lineHeight: 1.45, margin: "3px 0 8px" }}>Choose one eligible discount to recalculate this internal estimate. It stays subject to owner review and is not stacked with other discounts.</p>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                    {estimate.eligibleDiscounts.map((discount) => <button key={discount.code} type="button" onClick={() => { setSelectedDiscountCode(discount.code); handleGetEstimate(discount.code); }} disabled={getEstimate.isPending} style={{ border: `1px solid ${estimate.selectedDiscount?.code === discount.code ? "oklch(0.75 0.18 145)" : "var(--ne-border)"}`, borderRadius: 7, backgroundColor: estimate.selectedDiscount?.code === discount.code ? "oklch(0.70 0.18 145 / 0.14)" : "var(--ne-raised)", color: estimate.selectedDiscount?.code === discount.code ? "oklch(0.75 0.18 145)" : "var(--ne-cream)", padding: "6px 8px", fontSize: 10, fontWeight: 700, cursor: getEstimate.isPending ? "not-allowed" : "pointer" }}>{estimate.selectedDiscount?.code === discount.code ? "Applied " : "Apply "}{discount.percent}% {discount.label.replace(" Discount", "")}</button>)}
+                    {estimate.selectedDiscount && <button type="button" onClick={() => { setSelectedDiscountCode(null); handleGetEstimate(null); }} disabled={getEstimate.isPending} style={{ border: "1px solid var(--ne-border)", borderRadius: 7, backgroundColor: "transparent", color: "var(--ne-muted)", padding: "6px 8px", fontSize: 10, cursor: getEstimate.isPending ? "not-allowed" : "pointer" }}>Remove discount</button>}
+                  </div>
+                </div>
+              )}
+
+              {estimate.selectedDiscount && estimate.discountAdjustment && (
+                <p style={{ color: "oklch(0.75 0.18 145)", fontSize: 11, margin: 0 }}>
+                  {estimate.selectedDiscount.label} applied: {formatQuoteCents(Math.ceil(estimate.discountAdjustment.baseCustomerPriceLow) * 100)} – {formatQuoteCents(Math.ceil(estimate.discountAdjustment.baseCustomerPriceHigh) * 100)} before discount; reduced by {formatQuoteCents(Math.ceil(estimate.discountAdjustment.discountAmountLow) * 100)} – {formatQuoteCents(Math.ceil(estimate.discountAdjustment.discountAmountHigh) * 100)}.
+                </p>
               )}
 
               {/* Summary */}
@@ -1205,7 +1234,7 @@ export default function NewQuote() {
                       {item.note && <p style={{ color: "oklch(0.45 0.01 80)", fontSize: 11, margin: "1px 0 0" }}>{item.note}</p>}
                     </div>
                     <p style={{ color: "oklch(0.94 0.01 80)", fontSize: 13, fontWeight: 600, margin: 0, flexShrink: 0, marginLeft: 8 }}>
-                      ${item.cost.toLocaleString()}
+                      {formatQuoteCents(Math.ceil(item.cost) * 100)}
                     </p>
                   </div>
                 ))}

@@ -3450,3 +3450,9 @@
 - [x] Add shared whole-dollar ceiling rounding for quote amounts and persisted quote line items
 - [x] Apply whole-dollar formatting to quote editor, details, and portal displays
 - [x] Validate and publish the quote whole-dollar rounding update
+
+## Noland Field Quote Configuration Parity — Aug 2026
+- [x] Align companion quote calculations with active Operations pricing, condition adjustments, and whole-dollar rounding
+- [x] Align eligible volume and customer discount suggestions with Operations settings
+- [x] Validate the Operations-to-companion pricing and discount configuration parity in source
+- [ ] Bump, build, and publish the Noland Field parity update after Jon authorizes an APK build
