@@ -13,6 +13,7 @@
  *   createDepositSession — Stripe Checkout for deposit
  */
 import { z } from "zod";
+import { roundQuoteCentsUp } from "@shared/quoteMoney";
 import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
 import { TRPCError } from "@trpc/server";
 import { getDb } from "./db";
@@ -75,8 +76,8 @@ function normalizeQuoteLineItems(items: z.infer<typeof lineItemSchema>[]) {
   return items.map((item) => ({
     ...item,
     qty: Math.max(1, item.qty),
-    unitPriceCents: Math.round(item.unitPriceCents),
-    totalCents: Math.round(Math.max(1, item.qty) * item.unitPriceCents),
+    unitPriceCents: roundQuoteCentsUp(item.unitPriceCents),
+    totalCents: roundQuoteCentsUp(Math.max(1, item.qty) * roundQuoteCentsUp(item.unitPriceCents)),
   }));
 }
 

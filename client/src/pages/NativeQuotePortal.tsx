@@ -14,6 +14,7 @@ import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
+import { formatQuoteCents, roundQuoteCentsUp } from "@shared/quoteMoney";
 import {
   CheckCircle, XCircle, CreditCard, MapPin, Briefcase,
   Clock, AlertCircle, Loader2, Download, MessageSquareDiff,
@@ -174,10 +175,9 @@ export default function NativeQuotePortal() {
     );
   }
 
-  const fmt = (cents: number) =>
-    new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(cents / 100);
+  const fmt = (cents: number) => formatQuoteCents(cents);
 
-  const depositCents = Math.round(quote.totalCents * (depositPct / 100));
+  const depositCents = roundQuoteCentsUp(quote.totalCents * (depositPct / 100));
   const balanceCents = quote.totalCents - depositCents;
   const isActioned = !!quote.clientAction;
   const isApproved = quote.clientAction === "approved";

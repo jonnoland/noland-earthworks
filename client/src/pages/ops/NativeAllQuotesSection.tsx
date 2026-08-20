@@ -48,6 +48,7 @@ import { SERVICE_AREA_COUNTIES } from "@shared/serviceAreas";
 import { validateTennesseeParcelId } from "@shared/tennesseeParcelId";
 import { estimateInternalSiteVisitCost } from "@shared/siteVisitCostEstimate";
 import { buildQuoteDiscountLineItem, getCustomerDiscountOptions, getSuggestedVolumeDiscount, type QuoteDiscountOption } from "@shared/quoteDiscounts";
+import { formatQuoteCents, quoteDollarsToCents, roundQuoteCentsUp } from "@shared/quoteMoney";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface LineItem {
@@ -149,14 +150,14 @@ function LineItemRow({
         <Input
           type="number"
           placeholder="Unit price"
-          value={item.unitPriceCents / 100}
-          step={0.01}
-          onChange={e => onChange(index, "unitPriceCents", Math.round((parseFloat(e.target.value) || 0) * 100))}
+          value={roundQuoteCentsUp(item.unitPriceCents) / 100}
+          step={1}
+          onChange={e => onChange(index, "unitPriceCents", quoteDollarsToCents(parseFloat(e.target.value) || 0))}
           className="bg-zinc-800 border-zinc-700 text-sm"
         />
       </div>
       <div className={`col-span-1 text-right text-sm font-medium ${item.kind === "discount" || item.unitPriceCents < 0 ? "text-emerald-400" : "text-amber-400"}`}>
-        ${((item.qty * item.unitPriceCents) / 100).toLocaleString("en-US", { minimumFractionDigits: 0 })}
+        {formatQuoteCents(item.qty * item.unitPriceCents)}
       </div>
       <div className="col-span-1 flex justify-end">
         <Button size="icon" variant="ghost" className="h-7 w-7 text-red-400 hover:text-red-300" onClick={() => onRemove(index)}>
@@ -504,7 +505,8 @@ function QuoteFormModal({
   const handleLineItemChange = (i: number, field: keyof LineItem, val: string | number) => {
     setForm(prev => {
       const items = [...prev.lineItems];
-      items[i] = { ...items[i], [field]: val, totalCents: items[i].qty * items[i].unitPriceCents };
+      const next = { ...items[i], [field]: val };
+      items[i] = { ...next, totalCents: roundQuoteCentsUp(next.qty * next.unitPriceCents) };
       return { ...prev, lineItems: items };
     });
   };
@@ -653,7 +655,7 @@ function QuoteFormModal({
                 {lastQuote && (
                   <div className="mt-1.5 text-zinc-400 truncate">
                     Last: <span className="text-zinc-200">{lastQuote.title}</span>
-                    {lastQuote.totalCents > 0 && <span className="ml-1 text-green-400">${(lastQuote.totalCents / 100).toLocaleString()}</span>}
+                    {lastQuote.totalCents > 0 && <span className="ml-1 text-green-400">{formatQuoteCents(lastQuote.totalCents)}</span>}
                   </div>
                 )}
               </div>
@@ -870,8 +872,8 @@ function QuoteFormModal({
                   <div className="flex items-start gap-2 rounded-md bg-red-500/10 border border-red-500/30 px-3 py-2">
                     <AlertTriangle className="h-4 w-4 text-red-400 mt-0.5 shrink-0" />
                     <p className="text-xs text-red-300">
-                      Suggested total (${(aiSuggestion.totalCents / 100).toLocaleString()}) is below the minimum job total
-                      of ${(aiSuggestion.minimumJobCents / 100).toLocaleString()}. Review line items before applying.
+                      Suggested total ({formatQuoteCents(aiSuggestion.totalCents)}) is below the minimum job total
+                      of {formatQuoteCents(aiSuggestion.minimumJobCents)}. Review line items before applying.
                     </p>
                   </div>
                 )}
@@ -899,8 +901,8 @@ function QuoteFormModal({
                           `Terrain multiplier: x${tMult.toFixed(2)} (${aiTerrain})`,
                           `Access multiplier: x${aMult.toFixed(2)} (${aiAccess})`,
                           `Raw total: $${aiSuggestion.breakdown.rawTotalBeforeMinimum.toLocaleString()}`,
-                          aiSuggestion.breakdown.minimumJobApplied ? `Minimum job applied: Yes — bumped to $${(aiSuggestion.minimumJobCents / 100).toLocaleString()}` : null,
-                          `Suggested total: $${(aiSuggestion.totalCents / 100).toLocaleString()}`,
+                          aiSuggestion.breakdown.minimumJobApplied ? `Minimum job applied: Yes — bumped to ${formatQuoteCents(aiSuggestion.minimumJobCents)}` : null,
+                          `Suggested total: ${formatQuoteCents(aiSuggestion.totalCents)}`,
                         ].filter(Boolean).join('\n');
                         navigator.clipboard.writeText(text).then(() => {
                           setCopyDone(true);
@@ -982,7 +984,7 @@ function QuoteFormModal({
                 <div className="flex items-center justify-between px-1">
                   <span className="text-xs text-zinc-400">Suggested total</span>
                   <span className={`text-lg font-bold ${aiSuggestion.belowMinimum ? "text-red-400" : "text-amber-400"}`}>
-                    ${(aiSuggestion.totalCents / 100).toLocaleString()}
+                    {formatQuoteCents(aiSuggestion.totalCents)}
                   </span>
                 </div>
 
@@ -1043,10 +1045,10 @@ function QuoteFormModal({
             <div className="flex justify-end mt-3 pr-9">
               <span className="text-sm text-zinc-400 mr-2">Total:</span>
               <span className="text-lg font-bold text-amber-400">
-                ${(totalCents / 100).toLocaleString("en-US", { minimumFractionDigits: 0 })}
+                {formatQuoteCents(totalCents)}
               </span>
             </div>
-            {discountCents < 0 && <p className="mt-1 text-right text-[10px] text-emerald-300">Base ${(baseSubtotalCents / 100).toLocaleString("en-US", { maximumFractionDigits: 0 })} · Discount -${Math.abs(discountCents / 100).toLocaleString("en-US", { maximumFractionDigits: 0 })}</p>}
+            {discountCents < 0 && <p className="mt-1 text-right text-[10px] text-emerald-300">Base {formatQuoteCents(baseSubtotalCents)} · Discount {formatQuoteCents(discountCents)}</p>}
           </div>
 
           {/* Messages */}
@@ -1190,8 +1192,8 @@ function DepositDialog({ quote, onClose }: { quote: NativeQuote; onClose: () => 
             ))}
           </div>
           <div className="bg-zinc-800 rounded-lg p-3 space-y-1 text-sm">
-            <div className="flex justify-between"><span className="text-zinc-400">Quote total</span><span>${(quote.totalCents / 100).toLocaleString()}</span></div>
-            <div className="flex justify-between text-amber-400 font-semibold"><span>Deposit ({pct}%)</span><span>${(depositCents / 100).toLocaleString()}</span></div>
+            <div className="flex justify-between"><span className="text-zinc-400">Quote total</span><span>{formatQuoteCents(quote.totalCents)}</span></div>
+            <div className="flex justify-between text-amber-400 font-semibold"><span>Deposit ({pct}%)</span><span>{formatQuoteCents(depositCents)}</span></div>
             <div className="flex justify-between text-zinc-400"><span>Balance due on completion</span><span>${(balanceCents / 100).toLocaleString()}</span></div>
           </div>
         </div>
@@ -1489,7 +1491,7 @@ function NativeQuoteDetailPanel({
               )}
               <div className="flex justify-between text-sm border-t border-border pt-2 mt-1">
                 <span className="font-semibold text-foreground">Total</span>
-                <span className="font-bold text-primary">${(quote.totalCents / 100).toLocaleString("en-US", { minimumFractionDigits: 0 })}</span>
+                <span className="font-bold text-primary">{formatQuoteCents(quote.totalCents)}</span>
               </div>
               {quote.depositPaidAt && quote.depositPaidCents && (
                 <div className="flex justify-between text-xs">
@@ -1521,8 +1523,8 @@ function NativeQuoteDetailPanel({
                           <p className="font-medium text-foreground">{li.description}</p>
                         </td>
                         <td className="px-3 py-2.5 text-right text-muted-foreground">{li.qty}</td>
-                        <td className="px-3 py-2.5 text-right text-muted-foreground">${(li.unitPriceCents / 100).toLocaleString()}</td>
-                        <td className="px-3 py-2.5 text-right font-medium text-foreground">${((li.qty * li.unitPriceCents) / 100).toLocaleString()}</td>
+                        <td className="px-3 py-2.5 text-right text-muted-foreground">{formatQuoteCents(li.unitPriceCents)}</td>
+                        <td className="px-3 py-2.5 text-right font-medium text-foreground">{formatQuoteCents(li.qty * li.unitPriceCents)}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -2961,7 +2963,7 @@ export function NativeAllQuotesSection() {
                               {quote.totalCents > 0 && (
                                 <div className="shrink-0 flex items-center gap-0.5 text-foreground font-medium">
                                   <DollarSign className="w-3 h-3 text-green-500" />
-                                  {(quote.totalCents / 100).toLocaleString("en-US", { minimumFractionDigits: 0 })}
+                                  {formatQuoteCents(quote.totalCents)}
                                 </div>
                               )}
 

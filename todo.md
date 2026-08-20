@@ -3445,3 +3445,8 @@
 - [x] Suggest eligible volume and customer discounts as editable quote line items
 - [x] Apply approved discount items to quote totals and customer-facing quote outputs
 - [x] Validate and publish the quote discount workflow
+
+## Quote Whole-Dollar Ceiling Rounding — Aug 2026
+- [x] Add shared whole-dollar ceiling rounding for quote amounts and persisted quote line items
+- [x] Apply whole-dollar formatting to quote editor, details, and portal displays
+- [x] Validate and publish the quote whole-dollar rounding update

@@ -19,6 +19,7 @@ import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
+import { formatQuoteCents } from "@shared/quoteMoney";
 import {
   CheckCircle,
   XCircle,
@@ -356,8 +357,7 @@ export default function QuotePortal() {
   const grandTotalCents = baseTotalCents + addOnTotalCents;
   const depositCents = Math.round(grandTotalCents * (depositPct / 100));
   const balanceCents = grandTotalCents - depositCents;
-  const fmt = (cents: number) =>
-    new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(cents / 100);
+  const fmt = (cents: number) => formatQuoteCents(cents);
 
   const isActioned = !!quote.clientAction;
   const isApproved = quote.clientAction === "approved";
@@ -456,12 +456,12 @@ export default function QuotePortal() {
                     {savedAddOns.map((ao: any) => (
                       <tr key={ao.key} style={{ borderBottom: "1px solid #f3f4f6" }}>
                         <td style={{ padding: "4px 0", color: "#1a1a1a" }}>{ao.label}</td>
-                        <td style={{ padding: "4px 0", color: "#1a1a1a", textAlign: "right" }}>${(ao.costCents / 100).toLocaleString("en-US", { minimumFractionDigits: 0 })}</td>
+                        <td style={{ padding: "4px 0", color: "#1a1a1a", textAlign: "right" }}>{formatQuoteCents(ao.costCents)}</td>
                       </tr>
                     ))}
                     <tr style={{ borderTop: "2px solid #d1d5db" }}>
                       <td style={{ padding: "6px 0", fontWeight: 700, color: "#1a1a1a" }}>Add-ons Total</td>
-                      <td style={{ padding: "6px 0", fontWeight: 700, color: "#1a1a1a", textAlign: "right" }}>${(savedAddOnTotal / 100).toLocaleString("en-US", { minimumFractionDigits: 0 })}</td>
+                      <td style={{ padding: "6px 0", fontWeight: 700, color: "#1a1a1a", textAlign: "right" }}>{formatQuoteCents(savedAddOnTotal)}</td>
                     </tr>
                   </tbody>
                 </table>
