@@ -1,5 +1,6 @@
 import { useState, useRef } from "react";
 import { trpc } from "@/lib/trpc";
+import { auditServiceErrorMessage } from "@/lib/apiErrorUtils";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -76,6 +77,7 @@ interface AuditResult {
   promptResults: PromptResult[];
   recommendations: TaggedRecommendation[];
   shareOfVoice: number;
+  unavailableCount?: number;
 }
 
 interface FixResult {
@@ -216,13 +218,16 @@ function PromptRow({ result, index }: { result: PromptResult; index: number }) {
               </>
             )}
           </div>
-          {result.response && result.response !== "[Query failed]" && (
+          {result.response && !["[Query failed]", "[Service temporarily unavailable]"].includes(result.response) && (
             <div className="bg-gray-900 rounded p-3 text-xs text-gray-300 max-h-40 overflow-y-auto leading-relaxed whitespace-pre-wrap">
               {result.response}
             </div>
           )}
           {result.response === "[Query failed]" && (
             <div className="text-xs text-red-400">Query failed — AI did not return a response.</div>
+          )}
+          {result.response === "[Service temporarily unavailable]" && (
+            <div className="text-xs text-amber-300">AI service was temporarily unavailable for this prompt. This prompt was not scored; retry the audit later for a complete diagnostic.</div>
           )}
         </div>
       )}
@@ -367,11 +372,15 @@ export default function AiVisibility() {
           toast.warning(`Score shifted by ${delta} points — now ${data.overallScore}/100`);
         }
       } else {
-        toast.success(`Audit complete — Score: ${data.overallScore}/100`);
+        if ((raw.unavailableCount ?? 0) > 0) {
+          toast.warning(`Audit completed with ${raw.unavailableCount} unavailable prompt${raw.unavailableCount === 1 ? "" : "s"}. Retry later for a complete score.`);
+        } else {
+          toast.success(`Audit complete — Score: ${data.overallScore}/100`);
+        }
       }
     },
     onError: (err) => {
-      toast.error(err.message || "Audit failed.");
+      toast.error(auditServiceErrorMessage(err));
     },
   });
 

@@ -334,5 +334,11 @@ export async function invokeLLM(params: InvokeParams): Promise<InvokeResult> {
     );
   }
 
-  return (await response.json()) as InvokeResult;
+  const responseText = await response.text();
+  try {
+    return JSON.parse(responseText) as InvokeResult;
+  } catch {
+    const preview = responseText.trim().replace(/\s+/g, " ").slice(0, 160) || "empty response";
+    throw new Error(`LLM invoke unavailable: upstream returned a non-JSON response (${preview}).`);
+  }
 }

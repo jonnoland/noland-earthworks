@@ -181,6 +181,87 @@ function scorePromptResult(response: string, mentioned: boolean, prominence: str
   return Math.min(score, 100);
 }
 
+type AuditPromptResult = {
+  prompt: string;
+  category: string;
+  platform: string;
+  response: string;
+  mentioned: boolean;
+  prominence: string;
+  sentiment: string;
+  cited: boolean;
+  score: number;
+};
+
+async function mapWithConcurrency<T, R>(items: T[], limit: number, worker: (item: T) => Promise<R>): Promise<R[]> {
+  const results = new Array<R>(items.length);
+  let nextIndex = 0;
+  const runWorker = async () => {
+    while (nextIndex < items.length) {
+      const index = nextIndex++;
+      results[index] = await worker(items[index]);
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, runWorker));
+  return results;
+}
+
+async function auditPrompt(p: (typeof AUDIT_PROMPTS)[number]): Promise<AuditPromptResult> {
+  let response = "";
+  let mentioned = false;
+  let prominence = "none";
+  let sentiment = "neutral";
+  let cited = false;
+  try {
+    const llmResponse = await invokeLLM({
+      messages: [
+        {
+          role: "system",
+          content: `Answer the user's question naturally and thoroughly, then analyze that answer for a specific business. Return JSON only.
+
+Business identifiers: Noland Earthworks, Noland Earthworks LLC, Jon Noland, nolandearthworks.com.
+
+Only set mentioned=true when an identifier is present in the answer. prominence is primary, secondary, or none. sentiment is positive, neutral, or negative. cited is true only when nolandearthworks.com appears in the answer.`,
+        },
+        { role: "user", content: p.prompt },
+      ],
+      response_format: {
+        type: "json_schema",
+        json_schema: {
+          name: "visibility_prompt_result",
+          strict: true,
+          schema: {
+            type: "object",
+            properties: {
+              response: { type: "string" },
+              mentioned: { type: "boolean" },
+              prominence: { type: "string", enum: ["primary", "secondary", "none"] },
+              sentiment: { type: "string", enum: ["positive", "neutral", "negative"] },
+              cited: { type: "boolean" },
+            },
+            required: ["response", "mentioned", "prominence", "sentiment", "cited"],
+            additionalProperties: false,
+          },
+        },
+      },
+    });
+    const rawContent = llmResponse.choices?.[0]?.message?.content;
+    const rawText = typeof rawContent === "string" ? rawContent : JSON.stringify(rawContent ?? "{}");
+    const analysis = JSON.parse(stripCodeFence(rawText));
+    response = typeof analysis.response === "string" ? analysis.response : "";
+    mentioned = analysis.mentioned === true;
+    prominence = ["primary", "secondary", "none"].includes(analysis.prominence) ? analysis.prominence : "none";
+    sentiment = ["positive", "neutral", "negative"].includes(analysis.sentiment) ? analysis.sentiment : "neutral";
+    cited = analysis.cited === true;
+  } catch (error) {
+    const detail = error instanceof Error ? error.message.toLowerCase() : "";
+    response = detail.includes("unavailable") || detail.includes("non-json")
+      ? "[Service temporarily unavailable]"
+      : "[Query failed]";
+  }
+  return { prompt: p.prompt, category: p.category, platform: p.platform, response, mentioned, prominence, sentiment, cited, score: scorePromptResult(response, mentioned, prominence, sentiment, cited) };
+}
+
 function generateRecommendations(promptResults: Array<{
   prompt: string;
   category: string;
@@ -231,121 +312,13 @@ function generateRecommendations(promptResults: Array<{
 export const aiVisibilityRouter = router({
   /**
    * Run a full AI visibility audit.
-   * Queries Grok with controlled forestry-mulching prompts, scores each, and stores the diagnostic.
-   */
+  * Queries Grok with controlled forestry-mulching prompts, scores each, and stores the diagnostic.
+  */
   runAudit: protectedProcedure.mutation(async () => {
-    const promptResults: Array<{
-      prompt: string;
-      category: string;
-      platform: string;
-      response: string;
-      mentioned: boolean;
-      prominence: string;
-      sentiment: string;
-      cited: boolean;
-      score: number;
-    }> = [];
+    const promptResults = await mapWithConcurrency(AUDIT_PROMPTS, 3, auditPrompt);
+    const unavailableCount = promptResults.filter((result) => result.response === "[Service temporarily unavailable]").length;
 
-        for (const p of AUDIT_PROMPTS) {
-      let response = "";
-      let mentioned = false;
-      let prominence = "none";
-      let sentiment = "neutral";
-      let cited = false;
-      try {
-        // Step 1: Get Grok's natural answer to the prompt
-        const llmResponse = await invokeLLM({
-          messages: [
-            {
-              role: "system",
-              content: "You are a helpful assistant. Answer the user's question naturally and thoroughly. If you know specific local companies, name them with any contact details you have.",
-            },
-            { role: "user", content: p.prompt },
-          ],
-        });
-        const rawContent = llmResponse.choices?.[0]?.message?.content;
-        response = typeof rawContent === "string" ? rawContent : JSON.stringify(rawContent ?? "");
-
-        // Step 2: Use structured JSON analysis to accurately detect mention, prominence, and sentiment
-        // This is more accurate than keyword matching because Grok can reason about paraphrasing
-        const analysisResponse = await invokeLLM({
-          messages: [
-            {
-              role: "system",
-              content: `You are analyzing an AI assistant's response to determine whether a specific business was mentioned or recommended. Be precise and literal — only mark mentioned=true if the business name, owner name, or website URL appears in the text.
-
-Business to look for:
-- Company name: Noland Earthworks, Noland Earthworks LLC
-- Owner name: Jon Noland
-- Website: nolandearthworks.com
-
-Return a JSON object with these exact fields:
-- mentioned: boolean (true only if any of the above identifiers appear in the response text)
-- prominence: "primary" | "secondary" | "none" (primary = first or most prominently recommended; secondary = mentioned but not the top pick; none = not mentioned)
-- sentiment: "positive" | "neutral" | "negative" (only relevant if mentioned=true; assess the tone of language used about this business)
-- cited: boolean (true only if the URL nolandearthworks.com appears in the text)
-- reasoning: string (one sentence explaining your determination)`,
-            },
-            {
-              role: "user",
-              content: `Analyze this AI response for mentions of Noland Earthworks:\n\n${response}`,
-            },
-          ],
-          response_format: {
-            type: "json_schema",
-            json_schema: {
-              name: "mention_analysis",
-              strict: true,
-              schema: {
-                type: "object",
-                properties: {
-                  mentioned:   { type: "boolean" },
-                  prominence:  { type: "string", enum: ["primary", "secondary", "none"] },
-                  sentiment:   { type: "string", enum: ["positive", "neutral", "negative"] },
-                  cited:       { type: "boolean" },
-                  reasoning:   { type: "string" },
-                },
-                required: ["mentioned", "prominence", "sentiment", "cited", "reasoning"],
-                additionalProperties: false,
-              },
-            },
-          },
-        });
-
-        const analysisRaw = analysisResponse.choices?.[0]?.message?.content;
-        const analysisText = typeof analysisRaw === "string" ? analysisRaw : JSON.stringify(analysisRaw ?? "{}");
-        try {
-        const analysis = JSON.parse(stripCodeFence(analysisText));
-          mentioned   = analysis.mentioned   === true;
-          prominence  = ["primary", "secondary", "none"].includes(analysis.prominence) ? analysis.prominence : "none";
-          sentiment   = ["positive", "neutral", "negative"].includes(analysis.sentiment) ? analysis.sentiment : "neutral";
-          cited       = analysis.cited === true;
-        } catch {
-          // Fallback to keyword matching if JSON parse fails
-          const lowerResponse = response.toLowerCase();
-          const brandTerms = ["noland earthworks", "nolandearthworks.com", "jon noland"];
-          mentioned = brandTerms.some(t => lowerResponse.includes(t));
-          cited = lowerResponse.includes("nolandearthworks.com");
-        }
-      } catch (err) {
-        response = "[Query failed]";
-      }
-
-      const score = scorePromptResult(response, mentioned, prominence, sentiment, cited);
-      promptResults.push({
-        prompt: p.prompt,
-        category: p.category,
-        platform: p.platform,
-        response,
-        mentioned,
-        prominence,
-        sentiment,
-        cited,
-        score,
-      });
-    }
-
-        // Calculate aggregate scores
+    // Calculate aggregate scores
     const mentionedResults = promptResults.filter(r => r.mentioned);
     const totalPrompts = promptResults.length;
     const mentionRate = mentionedResults.length / totalPrompts;
@@ -416,6 +389,7 @@ Return a JSON object with these exact fields:
       promptResults,
       recommendations,
       shareOfVoice,
+      unavailableCount,
     };
   }),
 

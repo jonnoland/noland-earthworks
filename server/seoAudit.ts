@@ -124,12 +124,9 @@ async function fetchWithPuppeteer(url: string): Promise<{ html: string; loadTime
 }
 
 async function fetchWithFallback(url: string): Promise<{ html: string; loadTimeMs: number; finalUrl: string }> {
-  // Try Puppeteer first for full React SPA rendering.
-  // Falls back to plain fetch if Chrome binary is unavailable (e.g., production server).
+  // Use a fast document fetch first. A full browser is only a fallback because
+  // long Chromium startup/network-idle waits can exceed an interactive tRPC request.
   try {
-    return await fetchWithPuppeteer(url);
-  } catch (puppeteerErr) {
-    console.warn("[SEO Audit] Puppeteer unavailable, falling back to plain fetch:", (puppeteerErr as Error).message?.slice(0, 120));
     const start = Date.now();
     const res = await fetch(url, {
       headers: {
@@ -137,11 +134,16 @@ async function fetchWithFallback(url: string): Promise<{ html: string; loadTimeM
         Accept: "text/html,application/xhtml+xml",
       },
       redirect: "follow",
-      signal: AbortSignal.timeout(15000),
+      signal: AbortSignal.timeout(12000),
     });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const html = await res.text();
+    if (!html.trim()) throw new Error("Empty HTML response");
     const loadTimeMs = Date.now() - start;
     return { html, loadTimeMs, finalUrl: res.url };
+  } catch (fetchErr) {
+    console.warn("[SEO Audit] Fast document fetch unavailable, falling back to browser rendering:", (fetchErr as Error).message?.slice(0, 120));
+    return fetchWithPuppeteer(url);
   }
 }
 
@@ -156,7 +158,13 @@ async function fetchPageSpeedScore(url: string, apiKey?: string): Promise<{ mobi
       : `https://www.googleapis.com/pagespeedonline/v5/runPagespeed?url=${encodeURIComponent(url)}&strategy=mobile`;
     const res = await fetch(endpoint, { signal: AbortSignal.timeout(20000) });
     if (!res.ok) return { mobile: null };
-    const data = await res.json() as any;
+    const responseText = await res.text();
+    let data: any;
+    try {
+      data = JSON.parse(responseText);
+    } catch {
+      return { mobile: null };
+    }
     const score = data?.lighthouseResult?.categories?.performance?.score;
     return { mobile: score != null ? Math.round(score * 100) : null };
   } catch {

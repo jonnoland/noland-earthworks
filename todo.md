@@ -3466,3 +3466,7 @@
 - [x] Create a new personal-use Android signing identity for the authorized one-time replacement install
 - [x] Sign, verify, and publish Noland Field v0.4.9 with the new identity
 - [x] Document the one-time uninstall and replacement-install steps for Jon
+
+## SEO and AI Visibility Audit Response Handling — Aug 2026
+- [x] Fix the Service Unavailable response being parsed as JSON during SEO and AI Visibility audits
+- [x] Validate and publish resilient SEO and AI Visibility audit error handling
