@@ -47,6 +47,7 @@ import { useIncomingRequestAlert } from "@/hooks/useIncomingRequestAlert";
 import { SERVICE_AREA_COUNTIES } from "@shared/serviceAreas";
 import { validateTennesseeParcelId } from "@shared/tennesseeParcelId";
 import { estimateInternalSiteVisitCost } from "@shared/siteVisitCostEstimate";
+import { buildQuoteDiscountLineItem, getCustomerDiscountOptions, getSuggestedVolumeDiscount, type QuoteDiscountOption } from "@shared/quoteDiscounts";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface LineItem {
@@ -54,6 +55,8 @@ interface LineItem {
   qty: number;
   unitPriceCents: number;
   totalCents: number;
+  kind?: "service" | "discount";
+  discountCode?: string;
 }
 
 interface NativeQuote {
@@ -147,13 +150,12 @@ function LineItemRow({
           type="number"
           placeholder="Unit price"
           value={item.unitPriceCents / 100}
-          min={0}
           step={0.01}
           onChange={e => onChange(index, "unitPriceCents", Math.round((parseFloat(e.target.value) || 0) * 100))}
           className="bg-zinc-800 border-zinc-700 text-sm"
         />
       </div>
-      <div className="col-span-1 text-right text-sm text-amber-400 font-medium">
+      <div className={`col-span-1 text-right text-sm font-medium ${item.kind === "discount" || item.unitPriceCents < 0 ? "text-emerald-400" : "text-amber-400"}`}>
         ${((item.qty * item.unitPriceCents) / 100).toLocaleString("en-US", { minimumFractionDigits: 0 })}
       </div>
       <div className="col-span-1 flex justify-end">
@@ -225,6 +227,7 @@ function QuoteFormModal({
   };
 }) {
   const utils = trpc.useUtils();
+  const { data: pricingDiscountSettings } = trpc.ops.settings.getAIPricingSettings.useQuery();
 
   // ── Client autocomplete ─────────────────────────────────────────────────────
   const [clientSearch, setClientSearch] = useState("");
@@ -370,6 +373,25 @@ function QuoteFormModal({
     () => form.lineItems.reduce((sum, li) => sum + li.qty * li.unitPriceCents, 0),
     [form.lineItems]
   );
+  const discountItems = useMemo(() => form.lineItems.filter((item) => item.kind === "discount" || item.unitPriceCents < 0), [form.lineItems]);
+  const baseSubtotalCents = useMemo(() => form.lineItems.filter((item) => item.kind !== "discount" && item.unitPriceCents >= 0).reduce((sum, item) => sum + item.qty * item.unitPriceCents, 0), [form.lineItems]);
+  const discountCents = useMemo(() => discountItems.reduce((sum, item) => sum + item.qty * item.unitPriceCents, 0), [discountItems]);
+  const acreageNumber = parseFloat(form.acreage);
+  const volumeDiscount = useMemo(() => getSuggestedVolumeDiscount(acreageNumber, pricingDiscountSettings ?? {}), [acreageNumber, pricingDiscountSettings]);
+  const customerDiscountOptions = useMemo(() => getCustomerDiscountOptions(pricingDiscountSettings ?? {}), [pricingDiscountSettings]);
+
+  const applyDiscountOption = (option: QuoteDiscountOption) => {
+    if (baseSubtotalCents <= 0) {
+      toast.error("Add at least one priced service line before applying a discount.");
+      return;
+    }
+    const discountLine = buildQuoteDiscountLineItem(baseSubtotalCents, option);
+    setForm((previous) => ({
+      ...previous,
+      lineItems: [...previous.lineItems.filter((item) => item.kind !== "discount"), discountLine],
+    }));
+    toast.success(`${option.label} applied as an editable quote line item.`);
+  };
 
   // ── AI Suggest ────────────────────────────────────────────────────────────
   const [aiPanel, setAiPanel] = useState<"closed" | "open" | "loading" | "result">("closed");
@@ -1009,12 +1031,22 @@ function QuoteFormModal({
                   onRemove={i2 => setForm(p => ({ ...p, lineItems: p.lineItems.filter((_, idx) => idx !== i2) }))} />
               ))}
             </div>
+            <div className="mt-3 rounded-md border border-emerald-500/25 bg-emerald-500/[0.06] p-3">
+              <div className="flex items-start gap-2"><DollarSign className="mt-0.5 h-4 w-4 shrink-0 text-emerald-400" /><div><p className="text-xs font-semibold text-emerald-200">Optional discount line item</p><p className="mt-0.5 text-[11px] leading-relaxed text-zinc-400">Choose one eligible discount. It stays visible as a negative line item, remains editable, and replaces any existing discount instead of stacking.</p></div></div>
+              <div className="mt-3 flex flex-wrap gap-2">
+                {volumeDiscount && <Button type="button" size="sm" variant="outline" onClick={() => applyDiscountOption(volumeDiscount)} className="h-7 border-emerald-500/35 bg-emerald-500/10 text-[11px] text-emerald-200 hover:bg-emerald-500/20">Apply {volumeDiscount.percent}% Volume ({volumeDiscount.eligibility})</Button>}
+                {customerDiscountOptions.map((option) => <Button key={option.code} type="button" size="sm" variant="outline" onClick={() => applyDiscountOption(option)} className="h-7 border-zinc-600 text-[11px] text-zinc-200 hover:bg-zinc-800">Apply {option.percent}% {option.label.replace(" Discount", "")}</Button>)}
+                {!volumeDiscount && customerDiscountOptions.length === 0 && <p className="text-[11px] text-zinc-500">No enabled discount is available for the current quote.</p>}
+              </div>
+              {discountItems.length > 0 && <p className="mt-2 text-[10px] text-emerald-300">One discount line is active: {discountItems[0].description}</p>}
+            </div>
             <div className="flex justify-end mt-3 pr-9">
               <span className="text-sm text-zinc-400 mr-2">Total:</span>
               <span className="text-lg font-bold text-amber-400">
                 ${(totalCents / 100).toLocaleString("en-US", { minimumFractionDigits: 0 })}
               </span>
             </div>
+            {discountCents < 0 && <p className="mt-1 text-right text-[10px] text-emerald-300">Base ${(baseSubtotalCents / 100).toLocaleString("en-US", { maximumFractionDigits: 0 })} · Discount -${Math.abs(discountCents / 100).toLocaleString("en-US", { maximumFractionDigits: 0 })}</p>}
           </div>
 
           {/* Messages */}

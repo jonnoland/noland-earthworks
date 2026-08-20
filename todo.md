@@ -3438,3 +3438,10 @@
 - [x] Retrieve route-adjacent mapped weight, height, and clearance restriction tags
 - [x] Add map indicators and a clear route review warning panel for mapped restrictions
 - [x] Validate and publish the restriction-aware Route Planner
+
+## Quote Discount Line Items — Aug 2026
+- [x] Review existing volume and customer discount settings and quote persistence
+- [x] Define controlled, non-stacking volume and customer discount rules
+- [x] Suggest eligible volume and customer discounts as editable quote line items
+- [x] Apply approved discount items to quote totals and customer-facing quote outputs
+- [x] Validate and publish the quote discount workflow

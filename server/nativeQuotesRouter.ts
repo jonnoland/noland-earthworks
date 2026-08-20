@@ -67,7 +67,18 @@ const lineItemSchema = z.object({
   qty: z.number().default(1),
   unitPriceCents: z.number().int(),
   totalCents: z.number().int(),
+  kind: z.enum(["service", "discount"]).optional(),
+  discountCode: z.string().optional(),
 });
+
+function normalizeQuoteLineItems(items: z.infer<typeof lineItemSchema>[]) {
+  return items.map((item) => ({
+    ...item,
+    qty: Math.max(1, item.qty),
+    unitPriceCents: Math.round(item.unitPriceCents),
+    totalCents: Math.round(Math.max(1, item.qty) * item.unitPriceCents),
+  }));
+}
 
 // ─── Router ───────────────────────────────────────────────────────────────────
 export const nativeQuotesRouter = router({
@@ -147,6 +158,8 @@ export const nativeQuotesRouter = router({
     .mutation(async ({ input }: { input: any }) => {
       const db = await getDb();
       if (!db) throw new Error("DB unavailable");
+      const lineItems = normalizeQuoteLineItems(input.lineItems);
+      const totalCents = lineItems.reduce((sum, item) => sum + item.totalCents, 0);
       const result = await db.insert(nativeQuotes).values({
         clientName: input.clientName,
         clientEmail: input.clientEmail || null,
@@ -155,8 +168,8 @@ export const nativeQuotesRouter = router({
         title: input.title,
         internalNotes: input.internalNotes || null,
         clientMessage: input.clientMessage || null,
-        lineItems: JSON.stringify(input.lineItems),
-        totalCents: input.totalCents,
+        lineItems: JSON.stringify(lineItems),
+        totalCents,
         estimatedDuration: input.estimatedDuration || null,
         acreage: input.acreage || null,
         serviceType: input.serviceType || null,
@@ -250,7 +263,9 @@ export const nativeQuotesRouter = router({
       const { id, lineItems, ...rest } = input;
       const updates: Record<string, unknown> = { ...rest };
       if (lineItems !== undefined) {
-        updates.lineItems = JSON.stringify(lineItems);
+        const normalized = normalizeQuoteLineItems(lineItems);
+        updates.lineItems = JSON.stringify(normalized);
+        updates.totalCents = normalized.reduce((sum, item) => sum + item.totalCents, 0);
       }
       // Remove undefined values
       Object.keys(updates).forEach(k => updates[k] === undefined && delete updates[k]);

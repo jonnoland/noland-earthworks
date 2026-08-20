@@ -184,7 +184,7 @@ export default function NativeQuotePortal() {
   const isDeclined = quote.clientAction === "declined";
   const hasDepositPaid = !!quote.depositPaidAt;
 
-  const lineItems: Array<{ description: string; qty: number; unitPriceCents: number; totalCents: number }> =
+  const lineItems: Array<{ description: string; qty: number; unitPriceCents: number; totalCents: number; kind?: "service" | "discount" }> =
     Array.isArray(quote.lineItems) ? quote.lineItems : [];
 
   return (
@@ -309,14 +309,14 @@ export default function NativeQuotePortal() {
           {lineItems.map((li, i) => (
             <div key={i} className="flex items-start justify-between px-5 py-3 border-b border-zinc-800 last:border-0 gap-4">
               <div className="flex-1">
-                <p className="text-zinc-200 text-sm">{li.description}</p>
+                <p className={li.totalCents < 0 || li.kind === "discount" ? "text-emerald-300 text-sm" : "text-zinc-200 text-sm"}>{li.description}</p>
                 {li.qty !== 1 && (
                   <p className="text-zinc-500 text-xs mt-0.5">
                     {li.qty} &times; {fmt(li.unitPriceCents)}
                   </p>
                 )}
               </div>
-              <span className="text-amber-400 text-sm font-medium shrink-0">{fmt(li.qty * li.unitPriceCents)}</span>
+              <span className={li.totalCents < 0 || li.kind === "discount" ? "text-emerald-300 text-sm font-medium shrink-0" : "text-amber-400 text-sm font-medium shrink-0"}>{fmt(li.qty * li.unitPriceCents)}</span>
             </div>
           ))}
           {/* Total */}
