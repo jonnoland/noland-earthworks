@@ -3455,4 +3455,14 @@
 - [x] Align companion quote calculations with active Operations pricing, condition adjustments, and whole-dollar rounding
 - [x] Align eligible volume and customer discount suggestions with Operations settings
 - [x] Validate the Operations-to-companion pricing and discount configuration parity in source
-- [ ] Bump, build, and publish the Noland Field parity update after Jon authorizes an APK build
+- [x] Bump, build, and publish the authorized Noland Field v0.4.9 parity update
+
+## Noland Field Signing Identity Recovery — Aug 2026
+- [x] Audit Git ignore rules, repository history, and release artifacts for the original Android signing identity
+- [x] Document the required replacement-install path after the original signing identity could not be recovered
+- [x] Sign and publish the authorized Noland Field v0.4.9 parity update
+
+## Noland Field v0.4.9 Replacement Signing — Aug 2026
+- [x] Create a new personal-use Android signing identity for the authorized one-time replacement install
+- [x] Sign, verify, and publish Noland Field v0.4.9 with the new identity
+- [x] Document the one-time uninstall and replacement-install steps for Jon

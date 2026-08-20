@@ -109,3 +109,9 @@ After this one-time replacement, future releases signed with the same `noland-fi
 ## 6. If no APK is needed
 
 Website/backend changes, service-area rules, live map data, quote routing, and other server-driven behavior can update without an APK when the installed app reads the new data from the backend. A signed APK is only required when the installed native app or its bundled web code changes.
+
+## Current replacement signing identity — v0.4.9
+
+The original personal-use signing keystore was unavailable during the v0.4.9 release build. With owner approval, v0.4.9 was signed using a **new personal-use identity**. This requires a one-time uninstall of the prior app before installing v0.4.9, because Android only accepts in-place updates signed by the same identity.
+
+The replacement keystore is intentionally excluded from GitHub. Its private backup and the local `keystore.properties` configuration are stored on the owner’s connected Windows drive in `E:\Noland Earthworks\Website\Noland Field Signing Backup`. Keep that folder private, back it up securely, and never commit or upload the `.jks` file or its passwords. Future Noland Field releases must use this same replacement identity so Android can install them as normal updates over v0.4.9.
