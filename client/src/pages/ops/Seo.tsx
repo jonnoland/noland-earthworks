@@ -8,6 +8,7 @@
  */
 import { useState, useMemo } from "react";
 import { trpc } from "@/lib/trpc";
+import { auditServiceErrorMessage } from "@/lib/apiErrorUtils";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -1119,7 +1120,7 @@ export default function Seo() {
       utils.ops.getSeoAuditHistory.invalidate();
       toast.success("Audit complete — results saved.");
     },
-    onError: (err) => toast.error(err.message || "Audit failed."),
+    onError: (err) => toast.error(auditServiceErrorMessage(err)),
   });
 
   const clearLastAudit = trpc.ops.clearLastSeoAudit.useMutation({

@@ -3472,3 +3472,7 @@
 - [x] Use approved rotating hashtags, exclude #LandClearing, and include #LandManagement when relevant
 - [x] Direct marketing post leads to nolandearthworks.com
 - [ ] Validate and publish the updated marketing post workflow
+
+## SEO and AI Visibility Audit Response Handling — Aug 2026
+- [x] Fix the Service Unavailable response being parsed as JSON during SEO and AI Visibility audits
+- [x] Validate and publish resilient SEO and AI Visibility audit error handling
