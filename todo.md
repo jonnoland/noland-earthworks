@@ -3466,3 +3466,9 @@
 - [x] Create a new personal-use Android signing identity for the authorized one-time replacement install
 - [x] Sign, verify, and publish Noland Field v0.4.9 with the new identity
 - [x] Document the one-time uninstall and replacement-install steps for Jon
+
+## Marketing Post Variation and Lead Routing — Aug 2026
+- [x] Enforce varied post language across Operations marketing drafts
+- [x] Use approved rotating hashtags, exclude #LandClearing, and include #LandManagement when relevant
+- [x] Direct marketing post leads to nolandearthworks.com
+- [ ] Validate and publish the updated marketing post workflow

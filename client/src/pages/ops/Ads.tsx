@@ -70,17 +70,17 @@ interface GeneratedAllAd {
 // ─── Copy helper ────────────────────────────────────────────────────────────
 const DEFAULT_COPY_SETTINGS = {
   siteUrl: "nolandearthworks.com",
-  fbHashtags: "#NolandEarthworks #LandManagement #ForestryMulching #Tennessee",
-  igHashtags: "#NolandEarthworks #LandManagement #ForestryMulching #Tennessee #LandManagement #VeteranOwned #MiddleTennessee",
+  fbHashtags: "#NolandEarthworks #LandManagement #ForestryMulching #MiddleTennessee #VeteranOwned #TennesseeLand",
+  igHashtags: "#NolandEarthworks #LandManagement #ForestryMulching #MiddleTennessee #VeteranOwned #TennesseeLand #LandOwner #PropertyImprovement #BrushManagement #PastureReclamation #FenceLineClearing #RequestASiteVisit",
   xHashtags: "#LandManagement #ForestryMulching #Tennessee",
-  liHashtags: "#NolandEarthworks #LandManagement #ForestryMulching #Tennessee #VeteranOwned",
+  liHashtags: "#NolandEarthworks #LandManagement #ForestryMulching #TennesseeDevelopment #VeteranOwned",
 };
 
 type CopySettingsData = typeof DEFAULT_COPY_SETTINGS;
 
 /**
  * Builds the final clipboard text for a given platform.
- * Appends hashtags (if not already present in the draft) and the site URL.
+ * Appends approved hashtags and a website-directed Request a Site Visit call to action.
  * Google Ads copy is passed through unchanged — no hashtags or URL appended.
  */
 function buildCopyText(
@@ -95,14 +95,17 @@ function buildCopyText(
     x: settings.xHashtags,
     linkedin: settings.liHashtags,
   };
-  const tags = tagMap[platform];
+  const tags = tagMap[platform]
+    .replace(/#landclearing\b/gi, "#LandManagement")
+    .split(/\s+/)
+    .filter(Boolean)
+    .filter((tag, index, all) => all.findIndex((value) => value.toLowerCase() === tag.toLowerCase()) === index)
+    .join(" ");
   const siteUrl = settings.siteUrl;
-  // Detect if draft already has hashtags or the URL
-  const firstHashtag = tags.trim().split(" ")[0];
-  const hasHashtags = firstHashtag ? draft.includes(firstHashtag) : false;
-  const tagLine = (tags && !hasHashtags) ? `\n\n${tags}` : "";
-  const urlLine = (siteUrl && !draft.includes(siteUrl)) ? `\n${siteUrl}` : "";
-  return `${draft}${tagLine}${urlLine}`.trim();
+  const cleanDraft = draft.replace(/#landclearing\b/gi, "#LandManagement");
+  const tagLine = tags ? `\n\n${tags}` : "";
+  const urlLine = siteUrl ? `\nRequest a Site Visit: ${siteUrl}` : "";
+  return `${cleanDraft}${urlLine}${tagLine}`.trim();
 }
 
 // ─── Copy Settings Modal ──────────────────────────────────────────────────────
@@ -151,7 +154,7 @@ function CopySettingsModal({
         </DialogHeader>
         <div className="space-y-4 py-2">
           {field("Default Website URL", "siteUrl", "nolandearthworks.com",
-            "Appended to every copied post (leave blank to disable)")}
+            "Used in every post as a Request a Site Visit lead call to action")}
           <div className="border-t border-border pt-4 space-y-4">
             <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Hashtags by platform</p>
             {field("Facebook", "fbHashtags", "#LandManagement #Tennessee")}

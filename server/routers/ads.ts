@@ -15,6 +15,61 @@ import { storagePut, storageGet } from "../storage";
 import { getDb } from "../db";
 import { and, desc, eq } from "drizzle-orm";
 
+type SocialPlatform = "facebook" | "instagram" | "x" | "linkedin" | "google";
+
+const WEBSITE_CTA = "Request a Site Visit at nolandearthworks.com.";
+const HASHTAG_ROTATIONS: Record<Exclude<SocialPlatform, "google">, string[][]> = {
+  facebook: [
+    ["#NolandEarthworks", "#LandManagement", "#ForestryMulching", "#MiddleTennessee", "#VeteranOwned"],
+    ["#LandManagement", "#ForestryMulching", "#TennesseeLand", "#PropertyImprovement", "#RequestASiteVisit"],
+    ["#NolandEarthworks", "#LandManagement", "#PastureReclamation", "#FenceLineClearing", "#Tennessee"],
+  ],
+  instagram: [
+    ["#NolandEarthworks", "#LandManagement", "#ForestryMulching", "#MiddleTennessee", "#VeteranOwned", "#TennesseeLand", "#LandOwner", "#PropertyImprovement", "#BrushManagement", "#PastureReclamation", "#FenceLineClearing", "#RequestASiteVisit"],
+    ["#LandManagement", "#ForestryMulching", "#Tennessee", "#MiddleTennessee", "#VeteranOwned", "#LandRestoration", "#OvergrownProperty", "#RuralProperty", "#RightOfWayClearing", "#TrailCutting", "#Mulching", "#NolandEarthworks"],
+    ["#NolandEarthworks", "#LandManagement", "#TennesseeLand", "#ForestryMulcher", "#PropertyGoals", "#LandOwner", "#FarmLife", "#PastureManagement", "#FenceLine", "#BrushControl", "#VeteranOwned", "#RequestASiteVisit"],
+  ],
+  x: [["#LandManagement", "#ForestryMulching"], ["#LandManagement", "#TennesseeLand"], ["#LandManagement", "#VeteranOwned"]],
+  linkedin: [
+    ["#LandManagement", "#ForestryMulching", "#SitePreparation", "#TennesseeDevelopment", "#VeteranOwned"],
+    ["#LandManagement", "#RightOfWayClearing", "#PropertyDevelopment", "#MiddleTennessee", "#NolandEarthworks"],
+    ["#LandManagement", "#LandRestoration", "#ProjectPlanning", "#Tennessee", "#ForestryMulching"],
+  ],
+};
+
+function stableIndex(seed: string, length: number) {
+  let hash = 0;
+  for (const character of seed) hash = ((hash << 5) - hash + character.charCodeAt(0)) | 0;
+  return Math.abs(hash) % Math.max(1, length);
+}
+
+/** Final post guardrail: varied approved tags, a website lead CTA, and no retired terminology hashtag. */
+export function normalizeMarketingCopy(copy: string, platform: SocialPlatform, seed = "") {
+  const withoutTags = copy
+    .replace(/#landclearing\b/gi, "#LandManagement")
+    .replace(/(^|\s)#[\p{L}\p{N}_]+/gu, " ")
+    .replace(/\s{2,}/g, " ")
+    .trim()
+    .replace(/(?:Request a Site Visit|Visit|Learn more)(?:\s+(?:at|on))?\s*(?:https?:\/\/)?(?:www\.)?nolandearthworks\.com\.?/gi, "")
+    .trim();
+  if (platform === "google") return `${withoutTags} ${WEBSITE_CTA}`.trim();
+  const tags = HASHTAG_ROTATIONS[platform][stableIndex(`${seed}-${new Date().toISOString().slice(0, 10)}`, HASHTAG_ROTATIONS[platform].length)];
+  const body = platform === "x"
+    ? withoutTags.slice(0, Math.max(0, 280 - WEBSITE_CTA.length - tags.join(" ").length - 4)).trim()
+    : withoutTags;
+  return `${body}\n\n${WEBSITE_CTA}\n\n${tags.join(" ")}`.trim();
+}
+
+async function recentCopyExclusions(userId: number) {
+  const db = await getDb();
+  if (!db) return "";
+  const { socialPosts } = await import("../../drizzle/schema");
+  const recent = await db.select({ draft: socialPosts.draft }).from(socialPosts)
+    .where(eq(socialPosts.userId, userId)).orderBy(desc(socialPosts.createdAt)).limit(8);
+  if (!recent.length) return "";
+  return `Recent post excerpts for exclusion — do not reuse their opening phrase, sentence pattern, CTA wording, or hashtag sequence:\n${recent.map((post, index) => `${index + 1}. ${post.draft.slice(0, 220)}`).join("\n")}`;
+}
+
 /**
  * Curated stock photo pool — real forestry mulching machines in diverse settings.
  * All files are JPEG. URLs are permanent public CDN URLs (no auth required).
@@ -190,7 +245,7 @@ export const socialPostsRouter = router({
       tone: z.enum(["casual", "professional"]).default("casual"),
       generateImage: z.boolean().default(true),
     }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ ctx, input }) => {
       const platformNote = input.platform === "both"
         ? "Write one post that works for both Facebook and Instagram."
         : input.platform === "x"
@@ -229,12 +284,13 @@ export const socialPostsRouter = router({
 - Effective CTA: "Click this ad, fill out the info and we will give you a call for a quote."
 - What works: specific, plain language; before/after contrast; addressing the exact problem the landowner has; low-pressure CTA.
 - What does not work: generic "call us for land management"; stock images; corporate language.`;
+      const exclusionContext = await recentCopyExclusions(ctx.user.id);
 
       const result = await invokeLLM({
         messages: [
           {
             role: "system",
-            content: `You write social media ads for Jon Noland, owner of Noland Earthworks, LLC — a veteran-owned land management and forestry mulching company in Middle Tennessee. ${platformNote} ${toneNote} ${adTypeNote} Rules: No emojis. No hashtag overload (max 3 relevant hashtags, only if appropriate for the platform). No corporate jargon. No banned phrases: "solutions", "industry-leading", "best-in-class", "we are passionate", "dedicated team", "we strive to", "cutting-edge". Sound like a real person who does this work — not a marketing department. End with a direct, low-pressure CTA (call, text, or visit nolandearthworks.com). Keep the post body under 150 words. ${buildImagePromptInstruction(input.jobDescription, input.adTypes)} ${competitorContext} Return JSON: { "draft": "...", "headline": "...", "imagePrompt": "..." }`,
+            content: `You write social media ads for Jon Noland, owner of Noland Earthworks, LLC — a veteran-owned land management and forestry mulching company in Middle Tennessee. ${platformNote} ${toneNote} ${adTypeNote} Rules: No emojis. Use a distinctly different hook, first sentence, sentence rhythm, proof point, and call-to-action wording from recent posts. Never use #LandClearing; use #LandManagement. Do not add hashtags or the final CTA yourself; the system applies rotating approved hashtags and a website lead CTA. No corporate jargon. No banned phrases: "solutions", "industry-leading", "best-in-class", "we are passionate", "dedicated team", "we strive to", "cutting-edge". Sound like a real person who does this work — not a marketing department. Keep the post body under 150 words. ${buildImagePromptInstruction(input.jobDescription, input.adTypes)} ${competitorContext} ${exclusionContext} Return JSON: { "draft": "...", "headline": "...", "imagePrompt": "..." }`,
           },
           { role: "user", content: jobContext },
         ],
@@ -272,7 +328,7 @@ export const socialPostsRouter = router({
       // imageDisplayUrl === imageUrl because all stock photos are now permanent public CDN URLs
       const imageDisplayUrl = imageUrl;
 
-      return { draft: parsed.draft, headline: parsed.headline, imagePrompt: parsed.imagePrompt, imageUrl, imageDisplayUrl };
+      return { draft: normalizeMarketingCopy(parsed.draft, input.platform === "both" ? "facebook" : input.platform, `${input.jobDescription ?? ""}-${parsed.headline}`), headline: parsed.headline, imagePrompt: parsed.imagePrompt, imageUrl, imageDisplayUrl };
     }),
 
   /** Generate separate, platform-optimized ad copy for all five platforms in one call */
@@ -286,7 +342,7 @@ export const socialPostsRouter = router({
       tone: z.enum(["casual", "professional"]).default("casual"),
       generateImage: z.boolean().default(true),
     }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ ctx, input }) => {
       const toneNote = input.tone === "professional"
         ? "Tone: professional and direct, but still genuine and human."
         : "Tone: casual, warm, southern hospitality. Like a neighbor talking to a neighbor. Genuine, not salesy.";
@@ -313,12 +369,13 @@ export const socialPostsRouter = router({
 - Hook style that works: "Are you a property owner in Middle Tennessee with overgrown land you haven't been able to use?"
 - Effective body: "Most people think clearing land means weeks of chainsaw work, burn piles, and hauling debris. Forestry mulching grinds it all down into nutrient-rich mulch right on the spot. No burn piles. No hauling fees. No erosion."
 - What works: specific, plain language; before/after contrast; addressing the exact problem the landowner has; low-pressure CTA.`;
+      const exclusionContext = await recentCopyExclusions(ctx.user.id);
 
       const result = await invokeLLM({
         messages: [
           {
             role: "system",
-            content: `You write social media ads for Jon Noland, owner of Noland Earthworks, LLC — a veteran-owned land management and forestry mulching company in Middle & West Tennessee. ${toneNote} ${adTypeNote} Rules: No emojis. No corporate jargon. No banned phrases: "solutions", "industry-leading", "best-in-class", "we are passionate", "dedicated team", "we strive to", "cutting-edge". Sound like a real person who does this work. ${competitorContext} Return JSON with five separate platform-optimized posts. Facebook: conversational, up to 150 words, 2-3 hashtags max. Instagram: visual-first, shorter (under 100 words), 3-5 relevant hashtags. X: punchy, under 280 characters total including any hashtags, 1-2 hashtags max. LinkedIn: professional tone, up to 200 words, industry-focused, 2-3 relevant hashtags, suitable for a B2B audience of developers, property managers, and municipal contacts. Google: short, direct ad copy for a Google search ad — one headline (max 30 characters), one description (max 90 characters), and a brief extended description (up to 60 words) that could serve as a display ad body. All five must end with a direct CTA (call, text, or visit nolandearthworks.com). ${buildImagePromptInstruction(input.jobDescription, input.adTypes)}`,
+            content: `You write social media ads for Jon Noland, owner of Noland Earthworks, LLC — a veteran-owned land management and forestry mulching company in Middle & West Tennessee. ${toneNote} ${adTypeNote} Rules: No emojis. Every platform post must use a distinct hook and body; do not recycle recent phrasing, sentence rhythm, or CTA wording. Never use #LandClearing; use #LandManagement. Do not add hashtags or final CTAs—the system applies varied platform sets and a website lead CTA. No corporate jargon. No banned phrases: "solutions", "industry-leading", "best-in-class", "we are passionate", "dedicated team", "we strive to", "cutting-edge". Sound like a real person who does this work. ${competitorContext} ${exclusionContext} Return JSON with five separate platform-optimized posts. Facebook: conversational, up to 150 words. Instagram: visual-first, shorter (under 100 words). X: punchy, under 280 characters before the system adds the final lead CTA and tags. LinkedIn: professional tone, up to 200 words, industry-focused for developers, property managers, and municipal contacts. Google: short, direct ad copy for a Google search ad — one headline (max 30 characters), one description (max 90 characters), and a brief extended description (up to 60 words). ${buildImagePromptInstruction(input.jobDescription, input.adTypes)}`,
           },
           { role: "user", content: jobContext },
         ],
@@ -408,11 +465,11 @@ export const socialPostsRouter = router({
       const imageDisplayUrl = imageUrl;
 
       return {
-        facebook: { draft: parsed.facebook.draft, headline: parsed.facebook.headline },
-        instagram: { draft: parsed.instagram.draft, headline: parsed.instagram.headline },
-        x: { draft: parsed.x.draft, headline: parsed.x.headline },
-        linkedin: { draft: parsed.linkedin?.draft ?? "", headline: parsed.linkedin?.headline ?? "" },
-        google: { draft: parsed.google?.draft ?? "", headline: parsed.google?.headline ?? "", description: parsed.google?.description ?? "" },
+        facebook: { draft: normalizeMarketingCopy(parsed.facebook.draft, "facebook", `${input.jobDescription ?? ""}-facebook`), headline: parsed.facebook.headline },
+        instagram: { draft: normalizeMarketingCopy(parsed.instagram.draft, "instagram", `${input.jobDescription ?? ""}-instagram`), headline: parsed.instagram.headline },
+        x: { draft: normalizeMarketingCopy(parsed.x.draft, "x", `${input.jobDescription ?? ""}-x`), headline: parsed.x.headline },
+        linkedin: { draft: normalizeMarketingCopy(parsed.linkedin?.draft ?? "", "linkedin", `${input.jobDescription ?? ""}-linkedin`), headline: parsed.linkedin?.headline ?? "" },
+        google: { draft: normalizeMarketingCopy(parsed.google?.draft ?? "", "google", `${input.jobDescription ?? ""}-google`), headline: parsed.google?.headline ?? "", description: parsed.google?.description ?? "" },
         imagePrompt: parsed.imagePrompt,
         imageUrl,
         imageDisplayUrl,
@@ -505,10 +562,11 @@ export const socialPostsRouter = router({
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
       const { socialPosts } = await import("../../drizzle/schema");
+      const primaryPlatform: SocialPlatform = input.platform === "instagram" ? "instagram" : input.platform === "x" ? "x" : input.platform === "linkedin" ? "linkedin" : input.platform === "google" ? "google" : "facebook";
       const result = await db.insert(socialPosts).values({
         userId: ctx.user.id,
         jobDescription: input.jobDescription,
-        draft: input.draft,
+        draft: normalizeMarketingCopy(input.draft, primaryPlatform, `${input.jobDescription}-${input.platform}`),
         headline: input.headline ?? null,
         platform: input.platform,
         published: input.published,
@@ -516,12 +574,12 @@ export const socialPostsRouter = router({
         imageKey: input.imageKey ?? null,
         scheduledAt: input.scheduledAt ? new Date(input.scheduledAt) : null,
         status: input.status,
-        igDraft: input.igDraft ?? null,
-        xDraft: input.xDraft ?? null,
-        liDraft: input.liDraft ?? null,
+        igDraft: input.igDraft ? normalizeMarketingCopy(input.igDraft, "instagram", `${input.jobDescription}-instagram`) : null,
+        xDraft: input.xDraft ? normalizeMarketingCopy(input.xDraft, "x", `${input.jobDescription}-x`) : null,
+        liDraft: input.liDraft ? normalizeMarketingCopy(input.liDraft, "linkedin", `${input.jobDescription}-linkedin`) : null,
         googleHeadline: input.googleHeadline ?? null,
         googleDescription: input.googleDescription ?? null,
-        googleDraft: input.googleDraft ?? null,
+        googleDraft: input.googleDraft ? normalizeMarketingCopy(input.googleDraft, "google", `${input.jobDescription}-google`) : null,
         createdAt: new Date(),
       });
       const insertId = (result as any)[0]?.insertId ?? null;
@@ -576,16 +634,17 @@ export const socialPostsRouter = router({
       if (!pageId || !accessToken) {
         throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Facebook Page credentials not configured. Add FACEBOOK_PAGE_ID and FACEBOOK_PAGE_ACCESS_TOKEN in project secrets." });
       }
+      const message = normalizeMarketingCopy(input.message, "facebook", `${input.postId}-facebook`);
 
       let fbPostId: string;
       if (input.imageUrl) {
         const { buffer, contentType } = await fetchImageAsBuffer(input.imageUrl);
-        fbPostId = await postPhotoToFacebook(pageId, accessToken, input.message, buffer, contentType);
+        fbPostId = await postPhotoToFacebook(pageId, accessToken, message, buffer, contentType);
       } else {
         const feedRes = await fetch(`https://graph.facebook.com/v20.0/${pageId}/feed`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ message: input.message, access_token: accessToken }),
+          body: JSON.stringify({ message, access_token: accessToken }),
         });
         const feedData = await feedRes.json() as any;
         if (!feedRes.ok || feedData.error) {
@@ -616,6 +675,7 @@ export const socialPostsRouter = router({
       if (!igUserId || !accessToken) {
         throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Instagram credentials not configured. Set INSTAGRAM_ACCESS_TOKEN and INSTAGRAM_USER_ID." });
       }
+      const caption = normalizeMarketingCopy(input.caption, "instagram", `${input.postId}-instagram`);
 
       // Instagram requires a publicly accessible URL — upload image bytes to our storage first
       const { buffer: igBuf, contentType: igCt } = await fetchImageAsBuffer(input.imageUrl);
@@ -625,7 +685,7 @@ export const socialPostsRouter = router({
       const containerRes = await fetch(`https://graph.instagram.com/v21.0/${igUserId}/media`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ image_url: igPublicUrl, caption: input.caption, access_token: accessToken }),
+        body: JSON.stringify({ image_url: igPublicUrl, caption, access_token: accessToken }),
       });
       const containerData = await containerRes.json() as any;
       if (!containerRes.ok || containerData.error) {
@@ -663,6 +723,7 @@ export const socialPostsRouter = router({
       const { getXClient } = await import("../xRoutes");
       const client = getXClient();
       const rwClient = client.readWrite;
+      const text = normalizeMarketingCopy(input.text, "x", `${input.postId}-x`);
 
       let mediaId: string | undefined;
       if (input.imageUrl) {
@@ -681,7 +742,7 @@ export const socialPostsRouter = router({
 
       const tweetParams: Record<string, unknown> = {};
       if (mediaId) tweetParams.media = { media_ids: [mediaId] };
-      const tweet = await rwClient.v2.tweet(input.text, tweetParams);
+      const tweet = await rwClient.v2.tweet(text, tweetParams);
       const xPostId = tweet.data?.id;
 
       const db = await getDb();
@@ -724,13 +785,14 @@ export const socialPostsRouter = router({
           message: "LinkedIn credentials not configured. Open LinkedIn settings on the Ads page to add your access token and author URN.",
         });
       }
+      const text = normalizeMarketingCopy(input.text, "linkedin", `${input.postId}-linkedin`);
 
       const body: Record<string, unknown> = {
         author: cred.authorUrn,
         lifecycleState: "PUBLISHED",
         specificContent: {
           "com.linkedin.ugc.ShareContent": {
-            shareCommentary: { text: input.text },
+            shareCommentary: { text },
             shareMediaCategory: "NONE",
           },
         },
