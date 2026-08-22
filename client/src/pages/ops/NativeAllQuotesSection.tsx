@@ -1068,13 +1068,11 @@ function QuoteFormModal({
               </div>
               {discountItems.length > 0 && <p className="mt-2 text-[10px] text-emerald-300">{discountItems.length} discount line{discountItems.length === 1 ? "" : "s"} applied: {discountItems.map((item) => item.description).join(" · ")}</p>}
             </div>
-            <div className="flex justify-end mt-3 pr-9">
-              <span className="text-sm text-zinc-400 mr-2">Total:</span>
-              <span className="text-lg font-bold text-amber-400">
-                {formatQuoteCents(totalCents)}
-              </span>
+            <div className="mt-3 ml-auto max-w-xs rounded-md border border-zinc-700 bg-zinc-900/60 px-3 py-2 text-sm">
+              <div className="flex justify-between gap-6 text-zinc-400"><span>Original subtotal</span><span>{formatQuoteCents(baseSubtotalCents)}</span></div>
+              {discountCents < 0 && <div className="mt-1 flex justify-between gap-6 text-emerald-300"><span>Total discounts</span><span>{formatQuoteCents(discountCents)}</span></div>}
+              <div className="mt-2 flex justify-between gap-6 border-t border-zinc-700 pt-2"><span className="font-semibold text-zinc-200">Final total</span><span className="text-lg font-bold text-amber-400">{formatQuoteCents(totalCents)}</span></div>
             </div>
-            {discountCents < 0 && <p className="mt-1 text-right text-[10px] text-emerald-300">Base {formatQuoteCents(baseSubtotalCents)} · Discount {formatQuoteCents(discountCents)}</p>}
           </div>
 
           {/* Messages */}

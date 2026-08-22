@@ -15,6 +15,9 @@ describe("quote discount line items", () => {
     expect(editor).toContain("const appliedDiscountCodes");
     expect(editor).toContain("lineItems: [...previous.lineItems, discountLine]");
     expect(editor).toContain("appliedDiscountCodes.has(option.code)");
+    expect(editor).toContain("Original subtotal");
+    expect(editor).toContain("Total discounts");
+    expect(editor).toContain("Final total");
   });
 
   it("recomputes persisted quote totals from each line item, including negative discount rows", () => {
