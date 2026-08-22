@@ -20,9 +20,12 @@ describe("quote discount line items", () => {
     expect(editor).toContain("Final total");
     expect(editor).toContain('h-[100dvh] w-screen max-w-none');
     expect(editor).not.toContain('max-h-[90vh] overflow-y-auto');
-    expect(editor).toContain('max-w-[1500px] flex-1 grid-cols-1');
+    expect(editor).toContain('max-w-[1500px] grid-cols-1');
     expect(editor).toContain('Client message & internal notes');
     expect(editor).toContain('Pipeline & follow-up details');
+    expect(editor).toContain('grid-cols-1 gap-2 rounded-lg');
+    expect(editor).toContain('sm:grid-cols-2');
+    expect(editor).toContain('sm:grid-cols-12');
   });
 
   it("recomputes persisted quote totals from each line item, including negative discount rows", () => {

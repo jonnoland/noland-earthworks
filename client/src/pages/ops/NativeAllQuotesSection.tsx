@@ -127,8 +127,8 @@ function LineItemRow({
   onRemove: (i: number) => void;
 }) {
   return (
-    <div className="grid grid-cols-12 gap-2 items-center">
-      <div className="col-span-5">
+    <div className="grid grid-cols-1 gap-2 rounded-md border border-zinc-800 p-2 sm:grid-cols-12 sm:border-0 sm:p-0">
+      <div className="sm:col-span-5">
         <Input
           placeholder="Description"
           value={item.description}
@@ -136,7 +136,7 @@ function LineItemRow({
           className="bg-zinc-800 border-zinc-700 text-sm"
         />
       </div>
-      <div className="col-span-2">
+      <div className="sm:col-span-2">
         <Input
           type="number"
           placeholder="Qty"
@@ -146,7 +146,7 @@ function LineItemRow({
           className="bg-zinc-800 border-zinc-700 text-sm"
         />
       </div>
-      <div className="col-span-3">
+      <div className="sm:col-span-3">
         <Input
           type="number"
           placeholder="Unit price"
@@ -156,10 +156,10 @@ function LineItemRow({
           className="bg-zinc-800 border-zinc-700 text-sm"
         />
       </div>
-      <div className={`col-span-1 text-right text-sm font-medium ${item.kind === "discount" || item.unitPriceCents < 0 ? "text-emerald-400" : "text-amber-400"}`}>
-        {formatQuoteCents(item.qty * item.unitPriceCents)}
+      <div className={`flex items-center justify-between text-sm font-medium sm:col-span-1 sm:block sm:text-right ${item.kind === "discount" || item.unitPriceCents < 0 ? "text-emerald-400" : "text-amber-400"}`}>
+        <span className="text-xs font-normal text-zinc-500 sm:hidden">Line total</span><span>{formatQuoteCents(item.qty * item.unitPriceCents)}</span>
       </div>
-      <div className="col-span-1 flex justify-end">
+      <div className="flex justify-end sm:col-span-1">
         <Button size="icon" variant="ghost" className="h-7 w-7 text-red-400 hover:text-red-300" onClick={() => onRemove(index)}>
           <XCircle className="h-4 w-4" />
         </Button>
@@ -573,14 +573,14 @@ function QuoteFormModal({
 
   return (
     <Dialog open={open} onOpenChange={v => !v && onClose()}>
-      <DialogContent className="!top-0 !left-0 !flex h-[100dvh] w-screen max-w-none !translate-x-0 !translate-y-0 overflow-hidden rounded-none border-0 bg-zinc-900 p-4 text-zinc-100 sm:p-5">
+      <DialogContent className="!top-0 !left-0 !flex h-[100dvh] w-screen max-w-none !translate-x-0 !translate-y-0 overflow-y-auto rounded-none border-0 bg-zinc-900 p-3 text-zinc-100 sm:p-5 xl:overflow-hidden">
         <DialogHeader>
           <DialogTitle className="text-amber-400">{editQuote ? "Edit Quote" : "New Quote"}</DialogTitle>
         </DialogHeader>
 
-        <div className="mx-auto grid min-h-0 w-full max-w-[1500px] flex-1 grid-cols-1 content-start gap-3 py-2 xl:grid-cols-2">
+        <div className="mx-auto grid min-h-0 w-full max-w-[1500px] grid-cols-1 content-start gap-3 py-2 xl:flex-1 xl:grid-cols-2">
           {/* Client info */}
-          <div className="grid grid-cols-2 gap-2 rounded-lg border border-zinc-800 bg-zinc-950/35 p-3">
+          <div className="grid grid-cols-1 gap-2 rounded-lg border border-zinc-800 bg-zinc-950/35 p-3 sm:grid-cols-2">
             <div className="relative">
               <Label className="text-zinc-400 text-xs mb-1 block">Client Name *</Label>
               <div className="relative">
@@ -689,7 +689,7 @@ function QuoteFormModal({
           })()}
 
           {/* Property + service */}
-          <div className="grid grid-cols-2 gap-2 rounded-lg border border-zinc-800 bg-zinc-950/35 p-3">
+          <div className="grid grid-cols-1 gap-2 rounded-lg border border-zinc-800 bg-zinc-950/35 p-3 sm:grid-cols-2">
             <div className="col-span-2">
               <Label className="text-zinc-400 text-xs mb-1 block">Property Address</Label>
               <Input value={form.propertyAddress} onChange={e => setForm(p => ({ ...p, propertyAddress: e.target.value }))}
@@ -799,7 +799,7 @@ function QuoteFormModal({
                 </SelectContent>
               </Select>
             </div>
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-1 gap-2 min-[420px]:grid-cols-2">
               <div>
                 <Label className="text-zinc-400 text-xs mb-1 block">Acreage</Label>
                 <Input value={form.acreage} onChange={e => setForm(p => ({ ...p, acreage: e.target.value }))}
@@ -1045,7 +1045,7 @@ function QuoteFormModal({
                 <Plus className="h-3 w-3 mr-1" /> Add Line
               </Button>
             </div>
-            <div className="grid grid-cols-12 gap-2 mb-1 text-xs text-zinc-500 px-1">
+            <div className="mb-1 hidden grid-cols-12 gap-2 px-1 text-xs text-zinc-500 sm:grid">
               <div className="col-span-5">Description</div>
               <div className="col-span-2">Qty</div>
               <div className="col-span-3">Unit Price ($)</div>
@@ -1068,7 +1068,7 @@ function QuoteFormModal({
               </div>
               {discountItems.length > 0 && <p className="mt-2 text-[10px] text-emerald-300">{discountItems.length} discount line{discountItems.length === 1 ? "" : "s"} applied: {discountItems.map((item) => item.description).join(" · ")}</p>}
             </div>
-            <div className="mt-3 ml-auto max-w-xs rounded-md border border-zinc-700 bg-zinc-900/60 px-3 py-2 text-sm">
+            <div className="mt-3 w-full rounded-md border border-zinc-700 bg-zinc-900/60 px-3 py-2 text-sm sm:ml-auto sm:max-w-xs">
               <div className="flex justify-between gap-6 text-zinc-400"><span>Original subtotal</span><span>{formatQuoteCents(baseSubtotalCents)}</span></div>
               {discountCents < 0 && <div className="mt-1 flex justify-between gap-6 text-emerald-300"><span>Total discounts</span><span>{formatQuoteCents(discountCents)}</span></div>}
               <div className="mt-2 flex justify-between gap-6 border-t border-zinc-700 pt-2"><span className="font-semibold text-zinc-200">Final total</span><span className="text-lg font-bold text-amber-400">{formatQuoteCents(totalCents)}</span></div>
@@ -1078,7 +1078,7 @@ function QuoteFormModal({
           {/* Messages */}
           <details className="rounded-lg border border-zinc-800 bg-zinc-950/35 p-3">
             <summary className="cursor-pointer text-xs font-semibold text-zinc-300">Client message & internal notes</summary>
-            <div className="mt-3 grid grid-cols-2 gap-3">
+            <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div>
               <Label className="text-zinc-400 text-xs mb-1 block">Client Message (shown on portal)</Label>
               <Textarea value={form.clientMessage} onChange={e => setForm(p => ({ ...p, clientMessage: e.target.value }))}
