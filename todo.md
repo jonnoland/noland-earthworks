@@ -3517,6 +3517,10 @@
 - [x] Make the compact Edit Quote controls and grids stack cleanly on mobile devices
 - [x] Validate responsive desktop and mobile quote editing and publish the update
 
+## Edit Quote Dual-Column Form — Aug 2026
+- [x] Arrange all primary Edit Quote sections into a consistent dual-column desktop form
+- [x] Validate desktop dual-column and mobile stacked quote editing before publishing
+
 ## SEO and AI Visibility Audit Response Handling — Aug 2026
 - [x] Fix the Service Unavailable response being parsed as JSON during SEO and AI Visibility audits
 - [x] Validate and publish resilient SEO and AI Visibility audit error handling

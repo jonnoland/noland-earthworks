@@ -26,6 +26,8 @@ describe("quote discount line items", () => {
     expect(editor).toContain('grid-cols-1 gap-2 rounded-lg');
     expect(editor).toContain('sm:grid-cols-2');
     expect(editor).toContain('sm:grid-cols-12');
+    expect(editor).toContain('lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.25fr)]');
+    expect(editor).toContain('lg:col-span-2');
   });
 
   it("recomputes persisted quote totals from each line item, including negative discount rows", () => {

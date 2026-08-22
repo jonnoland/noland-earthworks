@@ -578,7 +578,7 @@ function QuoteFormModal({
           <DialogTitle className="text-amber-400">{editQuote ? "Edit Quote" : "New Quote"}</DialogTitle>
         </DialogHeader>
 
-        <div className="mx-auto grid min-h-0 w-full max-w-[1500px] grid-cols-1 content-start gap-3 py-2 xl:flex-1 xl:grid-cols-2">
+        <div className="mx-auto grid min-h-0 w-full max-w-[1500px] grid-cols-1 content-start gap-3 py-2 lg:flex-1 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.25fr)]">
           {/* Client info */}
           <div className="grid grid-cols-1 gap-2 rounded-lg border border-zinc-800 bg-zinc-950/35 p-3 sm:grid-cols-2">
             <div className="relative">
@@ -1094,7 +1094,7 @@ function QuoteFormModal({
             </div>
           </details>
 
-          <details className="rounded-md border border-amber-500/20 bg-amber-500/[0.04] p-3 xl:col-span-2">
+          <details className="rounded-md border border-amber-500/20 bg-amber-500/[0.04] p-3 lg:col-span-2">
             <summary className="cursor-pointer text-xs font-semibold uppercase tracking-wide text-amber-300">Pipeline & follow-up details</summary>
             <div className="mt-3">
             <div className="mb-3 flex items-center justify-between gap-3">
