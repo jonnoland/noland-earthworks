@@ -3529,6 +3529,10 @@
 - [x] Substantially widen the New Quote and Edit Quote workspace on desktop
 - [x] Validate and publish the widened quote form layout
 
+## Centered Quote Dialog — Aug 2026
+- [x] Replace the full-screen New Quote and Edit Quote panel with a centered fixed-size two-column dialog
+- [x] Validate and publish centered desktop and responsive mobile quote dialog placement
+
 ## SEO and AI Visibility Audit Response Handling — Aug 2026
 - [x] Fix the Service Unavailable response being parsed as JSON during SEO and AI Visibility audits
 - [x] Validate and publish resilient SEO and AI Visibility audit error handling
