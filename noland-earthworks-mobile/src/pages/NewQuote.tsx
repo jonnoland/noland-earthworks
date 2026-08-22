@@ -522,7 +522,7 @@ export default function NewQuote() {
 
   // ─── AI Estimate ─────────────────────────────────────────────────────────
 
-  const handleGetEstimate = (discountCode = selectedDiscountCode) => {
+  const handleGetEstimate = (discountCode: string | null | undefined = selectedDiscountCode) => {
     if (!form.serviceType) return;
     setEstimate(null);
     setEstimateError(null);
@@ -1124,7 +1124,7 @@ export default function NewQuote() {
           <p style={sectionTitle}>AI Price Estimate</p>
 
           <button
-            onClick={handleGetEstimate}
+            onClick={() => handleGetEstimate()}
             disabled={getEstimate.isPending}
             style={{
               width: "100%",

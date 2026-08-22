@@ -21,5 +21,7 @@ describe("Noland Field quote configuration parity", () => {
     expect(mobile).toContain("selectedDiscountCode");
     expect(mobile).toContain("formatQuoteCents(Math.ceil(estimate.customerPriceLow) * 100)");
     expect(mobile).toContain("Remove discount");
+    expect(mobile).toContain("onClick={() => handleGetEstimate()}");
+    expect(mobile).not.toContain("onClick={handleGetEstimate}");
   });
 });

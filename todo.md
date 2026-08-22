@@ -3222,9 +3222,9 @@
 - [x] Increment the public app version for the homepage call-to-action cleanup
 
 ## Selective Mulching Terminology Refinement — Aug 2026
-- [ ] Replace customer-facing Selective Clearing references with Selective Mulching
-- [ ] Review remaining customer-facing clearing references and retain only accurate scope or search-continuity uses
-- [ ] Validate terminology and increment the published app version
+- [x] Confirm customer-facing Selective Clearing references are already absent; Selective Mulching terminology is in use
+- [x] Review remaining customer-facing clearing references and retain only accurate scope or search-continuity uses
+- [x] Validate terminology; no unnecessary version increment was needed because no customer-facing copy changed
 
 ## Quote Performance & County Differentiation — Aug 2026
 - [x] Measure the current quote-page mobile performance and critical loading path
@@ -3472,6 +3472,11 @@
 - [x] Use approved rotating hashtags, exclude #LandClearing, and include #LandManagement when relevant
 - [x] Direct marketing post leads to nolandearthworks.com
 - [x] Validate and publish the updated marketing post workflow
+
+## Noland Field Estimate Event Serialization — Aug 2026
+- [x] Prevent the Generate AI Estimate button event from being serialized into the estimate request
+- [x] Validate the corrected estimate trigger with full regression coverage and a companion production bundle build
+- [ ] Bump, build, and publish the companion app correction after Jon authorizes an APK build
 
 ## SEO and AI Visibility Audit Response Handling — Aug 2026
 - [x] Fix the Service Unavailable response being parsed as JSON during SEO and AI Visibility audits
