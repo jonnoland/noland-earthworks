@@ -3496,6 +3496,10 @@
 - [x] Trace and correct the non-integer total-cents value submitted while editing a quote
 - [x] Add regression coverage and validate the repaired quote editing workflow
 
+## Multiple Quote Discounts — Aug 2026
+- [x] Allow multiple eligible discount line items on a quote without corrupting quote totals
+- [x] Validate combined discount calculations and publish the Operations quote editor update
+
 ## SEO and AI Visibility Audit Response Handling — Aug 2026
 - [x] Fix the Service Unavailable response being parsed as JSON during SEO and AI Visibility audits
 - [x] Validate and publish resilient SEO and AI Visibility audit error handling

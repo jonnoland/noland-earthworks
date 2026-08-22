@@ -28,4 +28,16 @@ describe("controlled quote discounts", () => {
     expect(options.find((option) => option.code === "off_season")).toBeUndefined();
     expect(buildQuoteDiscountLineItem(10_000, military!)).toMatchObject({ unitPriceCents: -1000, totalCents: -1000, kind: "discount" });
   });
+
+  it("calculates distinct eligible discounts as separate transparent negative line items", () => {
+    const options = getCustomerDiscountOptions(settings);
+    const military = options.find((option) => option.code === "military_veteran");
+    const firstTime = options.find((option) => option.code === "first_time");
+    const volume = getSuggestedVolumeDiscount(4, settings);
+    const baseSubtotalCents = 10_000;
+    const discounts = [military, firstTime, volume].map((option) => buildQuoteDiscountLineItem(baseSubtotalCents, option!));
+
+    expect(discounts.map((item) => item.totalCents)).toEqual([-1000, -1000, -300]);
+    expect(baseSubtotalCents + discounts.reduce((sum, item) => sum + item.totalCents, 0)).toBe(7700);
+  });
 });

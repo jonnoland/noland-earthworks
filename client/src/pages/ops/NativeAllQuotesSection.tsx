@@ -391,6 +391,10 @@ function QuoteFormModal({
     [form.lineItems]
   );
   const discountItems = useMemo(() => form.lineItems.filter((item) => item.kind === "discount" || item.unitPriceCents < 0), [form.lineItems]);
+  const appliedDiscountCodes = useMemo(
+    () => new Set(discountItems.map((item) => item.discountCode).filter((code): code is string => Boolean(code))),
+    [discountItems]
+  );
   const baseSubtotalCents = useMemo(() => form.lineItems.filter((item) => item.kind !== "discount" && item.unitPriceCents >= 0).reduce((sum, item) => sum + item.qty * item.unitPriceCents, 0), [form.lineItems]);
   const discountCents = useMemo(() => discountItems.reduce((sum, item) => sum + item.qty * item.unitPriceCents, 0), [discountItems]);
   const acreageNumber = parseFloat(form.acreage);
@@ -402,12 +406,16 @@ function QuoteFormModal({
       toast.error("Add at least one priced service line before applying a discount.");
       return;
     }
+    if (appliedDiscountCodes.has(option.code)) {
+      toast.message(`${option.label} is already applied to this quote.`);
+      return;
+    }
     const discountLine = buildQuoteDiscountLineItem(baseSubtotalCents, option);
     setForm((previous) => ({
       ...previous,
-      lineItems: [...previous.lineItems.filter((item) => item.kind !== "discount"), discountLine],
+      lineItems: [...previous.lineItems, discountLine],
     }));
-    toast.success(`${option.label} applied as an editable quote line item.`);
+    toast.success(`${option.label} added as an editable quote line item.`);
   };
 
   // ── AI Suggest ────────────────────────────────────────────────────────────
@@ -1052,13 +1060,13 @@ function QuoteFormModal({
               ))}
             </div>
             <div className="mt-3 rounded-md border border-emerald-500/25 bg-emerald-500/[0.06] p-3">
-              <div className="flex items-start gap-2"><DollarSign className="mt-0.5 h-4 w-4 shrink-0 text-emerald-400" /><div><p className="text-xs font-semibold text-emerald-200">Optional discount line item</p><p className="mt-0.5 text-[11px] leading-relaxed text-zinc-400">Choose one eligible discount. It stays visible as a negative line item, remains editable, and replaces any existing discount instead of stacking.</p></div></div>
+              <div className="flex items-start gap-2"><DollarSign className="mt-0.5 h-4 w-4 shrink-0 text-emerald-400" /><div><p className="text-xs font-semibold text-emerald-200">Optional discount line items</p><p className="mt-0.5 text-[11px] leading-relaxed text-zinc-400">Apply each eligible discount once. Every discount stays visible as its own negative line item, remains editable, and is included in the quote total.</p></div></div>
               <div className="mt-3 flex flex-wrap gap-2">
-                {volumeDiscount && <Button type="button" size="sm" variant="outline" onClick={() => applyDiscountOption(volumeDiscount)} className="h-7 border-emerald-500/35 bg-emerald-500/10 text-[11px] text-emerald-200 hover:bg-emerald-500/20">Apply {volumeDiscount.percent}% Volume ({volumeDiscount.eligibility})</Button>}
-                {customerDiscountOptions.map((option) => <Button key={option.code} type="button" size="sm" variant="outline" onClick={() => applyDiscountOption(option)} className="h-7 border-zinc-600 text-[11px] text-zinc-200 hover:bg-zinc-800">Apply {option.percent}% {option.label.replace(" Discount", "")}</Button>)}
+                {volumeDiscount && <Button type="button" size="sm" variant="outline" onClick={() => applyDiscountOption(volumeDiscount)} disabled={appliedDiscountCodes.has(volumeDiscount.code)} className="h-7 border-emerald-500/35 bg-emerald-500/10 text-[11px] text-emerald-200 hover:bg-emerald-500/20">{appliedDiscountCodes.has(volumeDiscount.code) ? `${volumeDiscount.percent}% Volume Applied` : `Apply ${volumeDiscount.percent}% Volume (${volumeDiscount.eligibility})`}</Button>}
+                {customerDiscountOptions.map((option) => <Button key={option.code} type="button" size="sm" variant="outline" onClick={() => applyDiscountOption(option)} disabled={appliedDiscountCodes.has(option.code)} className="h-7 border-zinc-600 text-[11px] text-zinc-200 hover:bg-zinc-800">{appliedDiscountCodes.has(option.code) ? `${option.label.replace(" Discount", "")} Applied` : `Apply ${option.percent}% ${option.label.replace(" Discount", "")}`}</Button>)}
                 {!volumeDiscount && customerDiscountOptions.length === 0 && <p className="text-[11px] text-zinc-500">No enabled discount is available for the current quote.</p>}
               </div>
-              {discountItems.length > 0 && <p className="mt-2 text-[10px] text-emerald-300">One discount line is active: {discountItems[0].description}</p>}
+              {discountItems.length > 0 && <p className="mt-2 text-[10px] text-emerald-300">{discountItems.length} discount line{discountItems.length === 1 ? "" : "s"} applied: {discountItems.map((item) => item.description).join(" · ")}</p>}
             </div>
             <div className="flex justify-end mt-3 pr-9">
               <span className="text-sm text-zinc-400 mr-2">Total:</span>
