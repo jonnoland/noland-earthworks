@@ -22,6 +22,7 @@ vi.mock("./db", async (importOriginal) => {
     getDb: vi.fn(),
     createOpsLead: vi.fn().mockResolvedValue(undefined),
     getOwnerUser: vi.fn().mockResolvedValue({ id: 1, name: "Jon Noland" }),
+    listNativeClientContacts: vi.fn().mockResolvedValue([]),
   };
 });
 
@@ -185,6 +186,26 @@ describe("fieldQuoteRouter", () => {
     const result = await caller.list({ limit: 50 });
 
     expect(result).toEqual([]);
+  });
+
+  it("mobileClients returns only the saved client contact fields to the authenticated field app", async () => {
+    const contacts = [{
+      id: 7,
+      name: "Taylor Morgan",
+      email: "taylor@example.com",
+      phone: "615-555-1212",
+      address: "40 Farm Lane, Vanleer, TN",
+    }];
+    vi.mocked(db.listNativeClientContacts).mockResolvedValue(contacts);
+
+    const caller = fieldQuoteRouter.createCaller(await makeAppCtx());
+    await expect(caller.mobileClients({ search: "Taylor", limit: 25 })).resolves.toEqual(contacts);
+    expect(db.listNativeClientContacts).toHaveBeenCalledWith({ search: "Taylor", limit: 25 });
+  });
+
+  it("mobileClients rejects requests without a valid field app token", async () => {
+    const caller = fieldQuoteRouter.createCaller({ req: { headers: {} }, res: {}, user: null } as any);
+    await expect(caller.mobileClients({})).rejects.toThrow("Field app token required");
   });
 
   it("submit rejects requests without a valid app token", async () => {

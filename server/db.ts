@@ -884,3 +884,51 @@ export async function upsertNativeClient(data: {
     console.warn("[upsertNativeClient] Failed:", err);
   }
 }
+
+/**
+ * Returns the small contact-only client payload required by Noland Field when
+ * starting a new quote. Client notes, job history, and spend information are
+ * deliberately excluded from this lookup.
+ */
+export async function listNativeClientContacts(input: {
+  search?: string;
+  limit?: number;
+} = {}) {
+  const db = await getDb();
+  if (!db) return [];
+
+  const { nativeClients } = await import("../drizzle/schema");
+  const { asc, like, or } = await import("drizzle-orm");
+  const search = input.search?.trim();
+  const limit = Math.min(Math.max(input.limit ?? 100, 1), 200);
+  const contactFields = {
+    id: nativeClients.id,
+    name: nativeClients.name,
+    email: nativeClients.email,
+    phone: nativeClients.phone,
+    address: nativeClients.address,
+  };
+
+  if (search) {
+    const term = `%${search}%`;
+    return db
+      .select(contactFields)
+      .from(nativeClients)
+      .where(
+        or(
+          like(nativeClients.name, term),
+          like(nativeClients.email, term),
+          like(nativeClients.phone, term),
+          like(nativeClients.address, term)
+        )
+      )
+      .orderBy(asc(nativeClients.name))
+      .limit(limit);
+  }
+
+  return db
+    .select(contactFields)
+    .from(nativeClients)
+    .orderBy(asc(nativeClients.name))
+    .limit(limit);
+}

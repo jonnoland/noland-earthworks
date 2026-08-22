@@ -238,6 +238,14 @@ interface EstimateResult {
   breakdown: { label: string; cost: number; note?: string }[];
 }
 
+interface ExistingClientContact {
+  id: number;
+  name: string;
+  email: string | null;
+  phone: string | null;
+  address: string | null;
+}
+
 // ─── Option lists (matching website CostEstimator exactly) ──────────────────
 
 const SERVICE_TYPES = [
@@ -284,6 +292,9 @@ export default function NewQuote() {
   const [estimate, setEstimate] = useState<EstimateResult | null>(null);
   const [estimateError, setEstimateError] = useState<string | null>(null);
   const [selectedDiscountCode, setSelectedDiscountCode] = useState<string | null>(null);
+  const [clientSearch, setClientSearch] = useState("");
+  const [clientPickerOpen, setClientPickerOpen] = useState(false);
+  const [selectedClient, setSelectedClient] = useState<ExistingClientContact | null>(null);
   // Tracks programmatic address updates so forward geocoding is not re-triggered.
   const skipForwardGeocode = React.useRef(false);
 
@@ -318,6 +329,13 @@ export default function NewQuote() {
 
   const trpcUtils = trpc.useUtils();
   const { isOnline } = useNetwork();
+  const clientQueryInput = React.useMemo(() => ({
+    search: clientSearch.trim() || undefined,
+    limit: 100,
+  }), [clientSearch]);
+  const { data: clientOptions = [], isFetching: isLoadingClients, error: clientOptionsError } = trpc.fieldQuote.mobileClients.useQuery(clientQueryInput, {
+    staleTime: 5 * 60 * 1000,
+  });
   const uploadPhoto = trpc.fieldQuote.uploadPhoto.useMutation();
   const submitQuote = trpc.fieldQuote.submit.useMutation();
   const getEstimate = trpc.fieldQuote.estimate.useMutation({
@@ -379,6 +397,39 @@ export default function NewQuote() {
       zip: details.zip || current.zip,
       county: normalizedCounty || current.county,
     }));
+  };
+
+  const selectExistingClient = (client: ExistingClientContact) => {
+    const fieldsToReplace = [
+      [form.name, client.name],
+      [form.phone, client.phone],
+      [form.email, client.email],
+      [form.address, client.address],
+    ];
+    const wouldReplaceEnteredValue = fieldsToReplace.some(([current, saved]) =>
+      Boolean(current?.trim() && saved?.trim() && current.trim() !== saved.trim())
+    );
+
+    if (wouldReplaceEnteredValue && !window.confirm("Replace the entered customer details with this saved client's available contact details?")) {
+      return;
+    }
+
+    setSelectedClient(client);
+    setClientSearch(client.name);
+    setClientPickerOpen(false);
+    setForm((current) => ({
+      ...current,
+      name: client.name,
+      phone: client.phone || current.phone,
+      email: client.email || current.email,
+      address: client.address || current.address,
+    }));
+  };
+
+  const clearExistingClient = () => {
+    setSelectedClient(null);
+    setClientSearch("");
+    setClientPickerOpen(false);
   };
 
   // Voice-to-Bid
@@ -660,9 +711,10 @@ export default function NewQuote() {
         <button
               onClick={() => {
                 setSubmitState("idle");
-                setQueuedOffline(false);
+            setQueuedOffline(false);
             setPhotos([]);
             setEstimate(null);
+            clearExistingClient();
             setForm({
               name: "", email: "", phone: "", address: "", city: "", county: "", zip: "", parcelId: "", lat: null, lng: null,
               serviceType: "Forestry Mulching", acreage: "", linearFeet: "",
@@ -844,6 +896,53 @@ export default function NewQuote() {
         <div style={sectionStyle}>
           <p style={sectionTitle}>Customer Info</p>
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            <div style={{ position: "relative" }}>
+              <label style={labelStyle}>Existing client (optional)</label>
+              <input
+                value={clientSearch}
+                onChange={(event) => { setClientSearch(event.target.value); setClientPickerOpen(true); }}
+                onFocus={() => setClientPickerOpen(true)}
+                placeholder="Search saved clients by name, phone, email, or address"
+                autoComplete="off"
+                style={inputStyle}
+                aria-expanded={clientPickerOpen}
+                aria-controls="saved-client-options"
+              />
+              {selectedClient && (
+                <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 7 }}>
+                  <span style={{ color: "oklch(0.70 0.18 145)", fontSize: 11 }}>Using saved client: {selectedClient.name}. Contact fields remain editable.</span>
+                  <button type="button" onClick={clearExistingClient} style={{ marginLeft: "auto", border: "none", background: "none", color: "var(--ne-amber)", fontSize: 11, padding: 0, cursor: "pointer", textDecoration: "underline" }}>
+                    Clear selection
+                  </button>
+                </div>
+              )}
+              {clientPickerOpen && (
+                <div id="saved-client-options" role="listbox" aria-label="Saved client options" style={{ position: "absolute", zIndex: 20, left: 0, right: 0, top: "100%", marginTop: 5, border: "1px solid var(--ne-border)", borderRadius: 10, backgroundColor: "var(--ne-soil)", boxShadow: "0 12px 28px rgba(0, 0, 0, 0.35)", maxHeight: 240, overflowY: "auto" }}>
+                  {isLoadingClients ? (
+                    <p style={{ color: "var(--ne-muted)", fontSize: 12, margin: 0, padding: "12px 14px" }}>Loading saved clients…</p>
+                  ) : clientOptionsError ? (
+                    <p role="alert" style={{ color: "oklch(0.70 0.20 25)", fontSize: 12, margin: 0, padding: "12px 14px" }}>Saved clients could not be loaded. You can enter the customer details manually.</p>
+                  ) : clientOptions.length === 0 ? (
+                    <p style={{ color: "var(--ne-muted)", fontSize: 12, margin: 0, padding: "12px 14px" }}>No saved clients match this search. Enter a new customer below.</p>
+                  ) : (
+                    clientOptions.map((client) => (
+                      <button
+                        key={client.id}
+                        type="button"
+                        role="option"
+                        aria-selected={selectedClient?.id === client.id}
+                        onMouseDown={(event) => event.preventDefault()}
+                        onClick={() => selectExistingClient(client)}
+                        style={{ width: "100%", display: "block", textAlign: "left", background: selectedClient?.id === client.id ? "oklch(0.65 0.18 50 / 0.12)" : "transparent", border: "none", borderBottom: "1px solid var(--ne-border)", color: "var(--ne-cream)", padding: "10px 13px", cursor: "pointer" }}
+                      >
+                        <span style={{ display: "block", fontSize: 13, fontWeight: 700 }}>{client.name}</span>
+                        {(client.phone || client.email || client.address) && <span style={{ display: "block", color: "var(--ne-muted)", fontSize: 11, marginTop: 3, lineHeight: 1.35 }}>{[client.phone, client.email, client.address].filter(Boolean).join(" · ")}</span>}
+                      </button>
+                    ))
+                  )}
+                </div>
+              )}
+            </div>
             <div>
               <label style={labelStyle}>Name *</label>
               <input value={form.name} onChange={set("name")} placeholder="Customer name" style={inputStyle} />

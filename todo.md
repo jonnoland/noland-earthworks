@@ -3478,6 +3478,12 @@
 - [x] Validate the corrected estimate trigger with full regression coverage and a companion production bundle build
 - [x] Bump, build, and publish the authorized Noland Field v0.4.10 companion app correction
 
+## Noland Field Client Selection — Aug 2026
+- [x] Expose authenticated Operations client records to the Noland Field New Quote workflow
+- [x] Add searchable client selection and contact prefilling to New Field Quote
+- [x] Validate the client-selection source update with focused and full regression coverage plus companion and Operations production bundles
+- [ ] Build and publish the companion client-selection APK after Jon authorizes the release
+
 ## SEO and AI Visibility Audit Response Handling — Aug 2026
 - [x] Fix the Service Unavailable response being parsed as JSON during SEO and AI Visibility audits
 - [x] Validate and publish resilient SEO and AI Visibility audit error handling

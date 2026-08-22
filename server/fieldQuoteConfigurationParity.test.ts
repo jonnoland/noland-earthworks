@@ -24,4 +24,15 @@ describe("Noland Field quote configuration parity", () => {
     expect(mobile).toContain("onClick={() => handleGetEstimate()}");
     expect(mobile).not.toContain("onClick={handleGetEstimate}");
   });
+
+  it("keeps saved-client selection PIN-protected and contact-only in Noland Field", () => {
+    const router = source("server/fieldQuoteRouter.ts");
+    const mobile = source("noland-earthworks-mobile/src/pages/NewQuote.tsx");
+
+    expect(router).toContain("mobileClients: requireAppToken");
+    expect(router).toContain("listNativeClientContacts(input)");
+    expect(mobile).toContain("Existing client (optional)");
+    expect(mobile).toContain("selectExistingClient");
+    expect(mobile).toContain("window.confirm");
+  });
 });

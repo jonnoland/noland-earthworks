@@ -16,7 +16,7 @@ import { eq, desc } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 import * as jose from "jose";
 import { router, publicProcedure, protectedProcedure } from "./_core/trpc";
-import { getDb, createOpsLead, getOwnerUser } from "./db";
+import { getDb, createOpsLead, getOwnerUser, listNativeClientContacts } from "./db";
 import { aiPricingSettings, fieldQuotes } from "../drizzle/schema";
 import { storagePut } from "./storage";
 import { makeRequest } from "./_core/map";
@@ -357,6 +357,18 @@ export const fieldQuoteRouter = router({
       const token = await signAppToken();
       return { token };
     }),
+
+  /**
+   * Returns saved Operations clients for the PIN-authenticated field app.
+   * This is intentionally limited to contact details needed to prefill a new
+   * quote; it does not expose client notes, job history, quotes, or spend.
+   */
+  mobileClients: requireAppToken
+    .input(z.object({
+      search: z.string().trim().max(120).optional(),
+      limit: z.number().min(1).max(200).default(100),
+    }))
+    .query(async ({ input }) => listNativeClientContacts(input)),
 
   /**
    * List field quotes — owner-only (Manus session), newest first.
