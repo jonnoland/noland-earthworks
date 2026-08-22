@@ -573,14 +573,14 @@ function QuoteFormModal({
 
   return (
     <Dialog open={open} onOpenChange={v => !v && onClose()}>
-      <DialogContent className="!top-0 !left-0 h-[100dvh] w-screen max-w-none !translate-x-0 !translate-y-0 overflow-y-auto rounded-none border-0 bg-zinc-900 px-4 py-6 text-zinc-100 sm:px-8">
+      <DialogContent className="!top-0 !left-0 !flex h-[100dvh] w-screen max-w-none !translate-x-0 !translate-y-0 overflow-hidden rounded-none border-0 bg-zinc-900 p-4 text-zinc-100 sm:p-5">
         <DialogHeader>
           <DialogTitle className="text-amber-400">{editQuote ? "Edit Quote" : "New Quote"}</DialogTitle>
         </DialogHeader>
 
-        <div className="mx-auto w-full max-w-6xl space-y-5 py-2">
+        <div className="mx-auto grid min-h-0 w-full max-w-[1500px] flex-1 grid-cols-1 content-start gap-3 py-2 xl:grid-cols-2">
           {/* Client info */}
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 gap-2 rounded-lg border border-zinc-800 bg-zinc-950/35 p-3">
             <div className="relative">
               <Label className="text-zinc-400 text-xs mb-1 block">Client Name *</Label>
               <div className="relative">
@@ -689,7 +689,7 @@ function QuoteFormModal({
           })()}
 
           {/* Property + service */}
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 gap-2 rounded-lg border border-zinc-800 bg-zinc-950/35 p-3">
             <div className="col-span-2">
               <Label className="text-zinc-400 text-xs mb-1 block">Property Address</Label>
               <Input value={form.propertyAddress} onChange={e => setForm(p => ({ ...p, propertyAddress: e.target.value }))}
@@ -1037,7 +1037,7 @@ function QuoteFormModal({
           </div>
 
           {/* Line items */}
-          <div>
+          <div className="rounded-lg border border-zinc-800 bg-zinc-950/35 p-3">
             <div className="flex items-center justify-between mb-2">
               <Label className="text-zinc-400 text-xs">Line Items</Label>
               <Button size="sm" variant="outline" className="h-7 text-xs border-zinc-600"
@@ -1076,7 +1076,9 @@ function QuoteFormModal({
           </div>
 
           {/* Messages */}
-          <div className="grid grid-cols-2 gap-3">
+          <details className="rounded-lg border border-zinc-800 bg-zinc-950/35 p-3">
+            <summary className="cursor-pointer text-xs font-semibold text-zinc-300">Client message & internal notes</summary>
+            <div className="mt-3 grid grid-cols-2 gap-3">
             <div>
               <Label className="text-zinc-400 text-xs mb-1 block">Client Message (shown on portal)</Label>
               <Textarea value={form.clientMessage} onChange={e => setForm(p => ({ ...p, clientMessage: e.target.value }))}
@@ -1089,9 +1091,12 @@ function QuoteFormModal({
                 className="bg-zinc-800 border-zinc-700 text-sm" rows={3}
                 placeholder="Steep slope on north side, gate code 1234..." />
             </div>
-          </div>
+            </div>
+          </details>
 
-          <div className="rounded-md border border-amber-500/20 bg-amber-500/[0.04] p-3">
+          <details className="rounded-md border border-amber-500/20 bg-amber-500/[0.04] p-3 xl:col-span-2">
+            <summary className="cursor-pointer text-xs font-semibold uppercase tracking-wide text-amber-300">Pipeline & follow-up details</summary>
+            <div className="mt-3">
             <div className="mb-3 flex items-center justify-between gap-3">
               <Label className="text-amber-300 text-xs font-semibold uppercase tracking-wide">Native pipeline record</Label>
               <span className="text-[10px] text-zinc-500">Used by Today’s Next Actions</span>
@@ -1122,10 +1127,11 @@ function QuoteFormModal({
                 <select value={form.finalPaymentStatus} onChange={e => setForm(p => ({ ...p, finalPaymentStatus: e.target.value as QuoteFormData["finalPaymentStatus"] }))} className="mt-1 h-8 w-full rounded-md border border-zinc-700 bg-zinc-800 px-2 text-xs text-zinc-100"><option value="not_due">Not due</option><option value="invoiced">Invoiced</option><option value="paid">Paid</option><option value="overdue">Overdue</option></select>
               </label>
             </div>
-          </div>
+            </div>
+          </details>
         </div>
 
-        <DialogFooter>
+        <DialogFooter className="mx-auto mt-3 w-full max-w-[1500px] shrink-0 border-t border-zinc-800 pt-3">
           <Button variant="outline" className="border-zinc-600" onClick={onClose}>Cancel</Button>
           <Button className="bg-amber-500 hover:bg-amber-600 text-black font-semibold" onClick={handleSubmit} disabled={isBusy}>
             {isBusy ? "Saving..." : editQuote ? "Save Changes" : "Create Quote"}

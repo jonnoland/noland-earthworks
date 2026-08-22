@@ -3508,6 +3508,11 @@
 - [x] Remove the Edit Quote dialog’s internal scrolling panel and use a single-page form layout
 - [x] Validate and publish the quote editor layout refinement
 
+## Edit Quote Compact Single-Screen View — Aug 2026
+- [x] Consolidate the primary Edit Quote components into a compact single-screen layout
+- [x] Move secondary quote details behind clearly labeled progressive-disclosure controls
+- [x] Validate and publish the compact Edit Quote view
+
 ## SEO and AI Visibility Audit Response Handling — Aug 2026
 - [x] Fix the Service Unavailable response being parsed as JSON during SEO and AI Visibility audits
 - [x] Validate and publish resilient SEO and AI Visibility audit error handling
