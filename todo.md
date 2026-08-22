@@ -3476,7 +3476,7 @@
 ## Noland Field Estimate Event Serialization — Aug 2026
 - [x] Prevent the Generate AI Estimate button event from being serialized into the estimate request
 - [x] Validate the corrected estimate trigger with full regression coverage and a companion production bundle build
-- [ ] Bump, build, and publish the companion app correction after Jon authorizes an APK build
+- [x] Bump, build, and publish the authorized Noland Field v0.4.10 companion app correction
 
 ## SEO and AI Visibility Audit Response Handling — Aug 2026
 - [x] Fix the Service Unavailable response being parsed as JSON during SEO and AI Visibility audits

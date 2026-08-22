@@ -47,7 +47,7 @@ function stableIndex(seed: string, length: number) {
 export function normalizeMarketingCopy(copy: string, platform: SocialPlatform, seed = "") {
   const withoutTags = copy
     .replace(/#landclearing\b/gi, "#LandManagement")
-    .replace(/(^|\s)#[\p{L}\p{N}_]+/gu, " ")
+    .replace(/(^|\s)#[A-Za-z0-9_]+/g, " ")
     .replace(/\s{2,}/g, " ")
     .trim()
     .replace(/(?:Request a Site Visit|Visit|Learn more)(?:\s+(?:at|on))?\s*(?:https?:\/\/)?(?:www\.)?nolandearthworks\.com\.?/gi, "")
