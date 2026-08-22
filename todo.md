@@ -3537,6 +3537,10 @@
 - [x] Replace the cramped quote dialog with a centered workspace where all sections remain readable and accessible
 - [x] Validate and publish the usable New Quote and Edit Quote workspace
 
+## Desktop-First Quote Workspace — Aug 2026
+- [x] Remove mobile-width constraints from New Quote and Edit Quote and make the desktop workspace wide
+- [x] Validate and publish the desktop-first quote workspace
+
 ## SEO and AI Visibility Audit Response Handling — Aug 2026
 - [x] Fix the Service Unavailable response being parsed as JSON during SEO and AI Visibility audits
 - [x] Validate and publish resilient SEO and AI Visibility audit error handling

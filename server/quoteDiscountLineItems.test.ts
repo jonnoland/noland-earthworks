@@ -20,8 +20,8 @@ describe("quote discount line items", () => {
     expect(editor).toContain("Final total");
     expect(editor).toContain('!top-1/2 !left-1/2');
     expect(editor).toContain('!-translate-x-1/2 !-translate-y-1/2');
-    expect(editor).toContain('!w-[min(98vw,1500px)]');
-    expect(editor).toContain('!h-[calc(100dvh-2rem)]');
+    expect(editor).toContain('!w-[1280px] !max-w-[1280px]');
+    expect(editor).toContain('!h-[900px]');
     expect(editor).toContain('flex-1 grid-cols-1 content-start gap-3 overflow-y-auto');
     expect(editor).not.toContain('max-h-[90vh] overflow-y-auto');
     expect(editor).toContain('max-w-[1500px] flex-1 grid-cols-1');

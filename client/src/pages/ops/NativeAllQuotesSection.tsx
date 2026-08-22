@@ -573,7 +573,7 @@ function QuoteFormModal({
 
   return (
     <Dialog open={open} onOpenChange={v => !v && onClose()}>
-      <DialogContent className="!top-1/2 !left-1/2 !flex !flex-col !h-[calc(100dvh-2rem)] !w-[min(98vw,1500px)] max-w-none !-translate-x-1/2 !-translate-y-1/2 overflow-hidden rounded-xl border border-zinc-700 bg-zinc-900 p-3 text-zinc-100 sm:p-5">
+      <DialogContent className="!top-1/2 !left-1/2 !flex !flex-col !h-[900px] !w-[1280px] !max-w-[1280px] !-translate-x-1/2 !-translate-y-1/2 overflow-hidden rounded-xl border border-zinc-700 bg-zinc-900 p-5 text-zinc-100">
         <DialogHeader className="shrink-0">
           <DialogTitle className="text-amber-400">{editQuote ? "Edit Quote" : "New Quote"}</DialogTitle>
         </DialogHeader>
