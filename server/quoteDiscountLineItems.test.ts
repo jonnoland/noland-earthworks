@@ -18,6 +18,8 @@ describe("quote discount line items", () => {
     expect(editor).toContain("Original subtotal");
     expect(editor).toContain("Total discounts");
     expect(editor).toContain("Final total");
+    expect(editor).toContain('h-[100dvh] w-screen max-w-none');
+    expect(editor).not.toContain('max-h-[90vh] overflow-y-auto');
   });
 
   it("recomputes persisted quote totals from each line item, including negative discount rows", () => {

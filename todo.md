@@ -3504,6 +3504,10 @@
 - [x] Show the original pre-discount subtotal, combined discounts, and final total in quote editing
 - [x] Validate and publish the quote summary update
 
+## Edit Quote Single-Panel Layout — Aug 2026
+- [x] Remove the Edit Quote dialog’s internal scrolling panel and use a single-page form layout
+- [x] Validate and publish the quote editor layout refinement
+
 ## SEO and AI Visibility Audit Response Handling — Aug 2026
 - [x] Fix the Service Unavailable response being parsed as JSON during SEO and AI Visibility audits
 - [x] Validate and publish resilient SEO and AI Visibility audit error handling
