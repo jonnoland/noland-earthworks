@@ -3485,6 +3485,12 @@
 - [x] Build and publish the companion client-selection APK after Jon authorizes the release
 - [x] Bump, sign, verify, and publish Noland Field v0.4.11 using the established replacement signing identity
 
+## Noland Field Voice Quote Microphone Access — Aug 2026
+- [x] Diagnose the Android microphone permission and voice-capture failure
+- [x] Add a clear permission recovery path and resilient voice-capture error handling
+- [x] Validate the corrected voice quote source with 360 regression tests, companion production bundle, and merged Android manifest verification
+- [ ] Build and publish the corrected companion update after Jon authorizes it
+
 ## SEO and AI Visibility Audit Response Handling — Aug 2026
 - [x] Fix the Service Unavailable response being parsed as JSON during SEO and AI Visibility audits
 - [x] Validate and publish resilient SEO and AI Visibility audit error handling

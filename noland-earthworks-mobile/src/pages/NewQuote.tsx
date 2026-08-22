@@ -443,6 +443,8 @@ export default function NewQuote() {
     mobilizationMiles: number | null; notes: string | null;
   } | null>(null);
   const [voiceOpen, setVoiceOpen] = useState(false);
+  const [voicePermissionLoading, setVoicePermissionLoading] = useState(false);
+  const [voiceError, setVoiceError] = useState<string | null>(null);
   const recognitionRef = useRef<any>(null);
 
   const parseVoiceBid = trpc.ops.parseVoiceBid.useMutation({
@@ -450,26 +452,80 @@ export default function NewQuote() {
     onError: () => alert("Voice parse failed. Try again."),
   });
 
-  const startListening = () => {
+  const voiceErrorMessage = (error?: string) => {
+    switch (error) {
+      case "not-allowed":
+      case "service-not-allowed":
+        return "Microphone access is off. Open Android Settings > Apps > Noland Field > Permissions > Microphone, choose Allow, then return here and try again.";
+      case "audio-capture":
+        return "Noland Field could not reach the microphone. Close any other app using the mic, then try again.";
+      case "network":
+        return "Voice recognition needs an internet connection. Check your signal, then try again.";
+      case "no-speech":
+        return "No speech was heard. Tap Voice Bid and try again.";
+      default:
+        return "Voice capture could not start. Check your microphone permission, then try again.";
+    }
+  };
+
+  const requestMicrophoneAccess = async () => {
+    if (!navigator.mediaDevices?.getUserMedia) return true;
+
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      stream.getTracks().forEach((track) => track.stop());
+      return true;
+    } catch (error) {
+      const name = error instanceof DOMException ? error.name : "";
+      setVoiceError(
+        name === "NotAllowedError" || name === "SecurityError"
+          ? voiceErrorMessage("not-allowed")
+          : name === "NotFoundError" || name === "NotReadableError"
+            ? voiceErrorMessage("audio-capture")
+            : voiceErrorMessage()
+      );
+      return false;
+    }
+  };
+
+  const startListening = async () => {
     const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    if (!SR) { alert("Voice input not supported in this browser. Use Chrome or Safari."); return; }
+    setVoiceOpen(true);
+    setVoiceResult(null);
+    setVoiceTranscript("");
+    setVoiceError(null);
+    if (!SR) {
+      setVoiceError("Voice input is not supported on this device. Enter the job details manually instead.");
+      return;
+    }
+
+    setVoicePermissionLoading(true);
+    const microphoneReady = await requestMicrophoneAccess();
+    setVoicePermissionLoading(false);
+    if (!microphoneReady) return;
+
     const recognition = new SR();
     recognition.continuous = false;
     recognition.interimResults = false;
     recognition.lang = "en-US";
     recognition.onstart = () => setVoiceListening(true);
     recognition.onend = () => setVoiceListening(false);
-    recognition.onerror = () => { setVoiceListening(false); alert("Microphone error. Check browser permissions."); };
+    recognition.onerror = (event: { error?: string }) => {
+      setVoiceListening(false);
+      if (event.error !== "aborted") setVoiceError(voiceErrorMessage(event.error));
+    };
     recognition.onresult = (event: any) => {
       const transcript = Array.from(event.results as any).map((r: any) => r[0].transcript).join(" ");
       setVoiceTranscript(transcript);
       parseVoiceBid.mutate({ transcript });
     };
     recognitionRef.current = recognition;
-    recognition.start();
-    setVoiceOpen(true);
-    setVoiceResult(null);
-    setVoiceTranscript("");
+    try {
+      recognition.start();
+    } catch {
+      setVoiceListening(false);
+      setVoiceError(voiceErrorMessage());
+    }
   };
 
   const stopListening = () => { recognitionRef.current?.stop(); setVoiceListening(false); };
@@ -812,18 +868,20 @@ export default function NewQuote() {
 
         {/* ── Voice Bid Button ── */}
         <button
-          onClick={voiceOpen ? stopListening : startListening}
+          onClick={voiceListening || voicePermissionLoading ? stopListening : startListening}
+          disabled={voicePermissionLoading}
           style={{
             width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 10,
             backgroundColor: voiceListening ? "oklch(0.65 0.20 25 / 0.15)" : "oklch(0.65 0.18 50 / 0.12)",
             border: `1.5px solid ${voiceListening ? "oklch(0.65 0.20 25)" : "oklch(0.65 0.18 50)"}`,
             borderRadius: 12, padding: "14px 16px", marginBottom: 16,
             color: voiceListening ? "oklch(0.65 0.20 25)" : "oklch(0.65 0.18 50)",
-            fontWeight: 700, fontSize: 15, cursor: "pointer",
+            fontWeight: 700, fontSize: 15, cursor: voicePermissionLoading ? "wait" : "pointer",
+            opacity: voicePermissionLoading ? 0.7 : 1,
           }}
         >
           {voiceListening ? <MicOff size={20} /> : <Mic size={20} />}
-          {voiceListening ? "Tap to Stop Listening" : "Voice Bid — Speak Job Description"}
+          {voicePermissionLoading ? "Checking Microphone…" : voiceListening ? "Tap to Stop Listening" : "Voice Bid — Speak Job Description"}
         </button>
 
         {/* ── Voice Overlay Panel ── */}
@@ -844,6 +902,12 @@ export default function NewQuote() {
               <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
                 <div style={{ width: 10, height: 10, borderRadius: "50%", backgroundColor: "oklch(0.65 0.20 25)", animation: "pulse 1s infinite" }} />
                 <span style={{ color: "oklch(0.65 0.20 25)", fontSize: 13 }}>Listening... speak the job description</span>
+              </div>
+            )}
+
+            {voiceError && (
+              <div role="alert" style={{ backgroundColor: "oklch(0.65 0.20 25 / 0.12)", border: "1px solid oklch(0.65 0.20 25 / 0.4)", borderRadius: 8, padding: "10px 12px", marginBottom: 12 }}>
+                <p style={{ color: "oklch(0.78 0.16 25)", fontSize: 12, margin: 0, lineHeight: 1.5 }}>{voiceError}</p>
               </div>
             )}
 
@@ -886,7 +950,7 @@ export default function NewQuote() {
               </div>
             )}
 
-            {!voiceListening && !voiceTranscript && !voiceResult && (
+            {!voiceListening && !voiceTranscript && !voiceResult && !voiceError && (
               <p style={{ color: "oklch(0.55 0.01 80)", fontSize: 13, margin: 0 }}>Tap the mic button above and describe the job — service type, acreage, terrain, vegetation, access, and how far out the site is.</p>
             )}
           </div>
