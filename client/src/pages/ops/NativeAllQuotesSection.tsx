@@ -573,12 +573,12 @@ function QuoteFormModal({
 
   return (
     <Dialog open={open} onOpenChange={v => !v && onClose()}>
-      <DialogContent className="!top-1/2 !left-1/2 !flex !flex-col !h-[min(92dvh,860px)] !w-[min(94vw,1280px)] max-w-none !-translate-x-1/2 !-translate-y-1/2 overflow-y-auto rounded-xl border border-zinc-700 bg-zinc-900 p-3 text-zinc-100 sm:p-5 xl:overflow-hidden">
-        <DialogHeader>
+      <DialogContent className="!top-1/2 !left-1/2 !flex !flex-col !h-[calc(100dvh-2rem)] !w-[min(98vw,1500px)] max-w-none !-translate-x-1/2 !-translate-y-1/2 overflow-hidden rounded-xl border border-zinc-700 bg-zinc-900 p-3 text-zinc-100 sm:p-5">
+        <DialogHeader className="shrink-0">
           <DialogTitle className="text-amber-400">{editQuote ? "Edit Quote" : "New Quote"}</DialogTitle>
         </DialogHeader>
 
-        <div className="mx-auto grid min-h-0 w-full max-w-[1500px] grid-cols-1 content-start gap-3 py-2 lg:flex-1 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)]">
+        <div className="mx-auto grid min-h-0 w-full max-w-[1500px] flex-1 grid-cols-1 content-start gap-3 overflow-y-auto py-2 pr-1 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)]">
           {/* Client info */}
           <div className="grid grid-cols-1 gap-2 rounded-lg border border-zinc-800 bg-zinc-950/35 p-3 sm:grid-cols-2">
             <div className="relative">
