@@ -533,7 +533,7 @@ export const fieldQuoteRouter = router({
         })
         .$returningId();
 
-      const newId = Array.isArray(inserted) ? inserted[0]?.id : inserted?.id;
+      const newId = (inserted as Array<{ id: number }>)[0]?.id;
 
       // 2. Run AI qualification and create ops lead in the background
       setImmediate(async () => {

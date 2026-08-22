@@ -1176,11 +1176,7 @@ function LeadDetailPanel({
 
   const sendFollowUp = trpc.ops.leads.sendFollowUp.useMutation({
     onSuccess: (data) => {
-      if (data.channel === "sms") {
-        toast.success("Follow-up email sent.");
-      } else {
-        toast.success("Email sent.");
-      }
+      toast.success("Follow-up email sent.");
       utils.ops.leads.list.invalidate();
     },
     onError: (err) => toast.error(`Send failed: ${err.message}`),

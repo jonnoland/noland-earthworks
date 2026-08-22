@@ -3544,6 +3544,7 @@
 ## Remove Twilio Integrations — Aug 2026
 - [x] Remove Twilio SMS alert code, Operations settings, and UI references throughout the website
 - [x] Validate lead and quote workflows without Twilio and publish the cleanup
+- [x] Resolve TypeScript errors introduced while removing Twilio and revalidate the cleanup
 
 ## SEO and AI Visibility Audit Response Handling — Aug 2026
 - [x] Fix the Service Unavailable response being parsed as JSON during SEO and AI Visibility audits
