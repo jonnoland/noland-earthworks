@@ -3482,7 +3482,8 @@
 - [x] Expose authenticated Operations client records to the Noland Field New Quote workflow
 - [x] Add searchable client selection and contact prefilling to New Field Quote
 - [x] Validate the client-selection source update with focused and full regression coverage plus companion and Operations production bundles
-- [ ] Build and publish the companion client-selection APK after Jon authorizes the release
+- [x] Build and publish the companion client-selection APK after Jon authorizes the release
+- [x] Bump, sign, verify, and publish Noland Field v0.4.11 using the established replacement signing identity
 
 ## SEO and AI Visibility Audit Response Handling — Aug 2026
 - [x] Fix the Service Unavailable response being parsed as JSON during SEO and AI Visibility audits
