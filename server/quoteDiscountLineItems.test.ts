@@ -20,6 +20,7 @@ describe("quote discount line items", () => {
     expect(editor).toContain("Final total");
     expect(editor).toContain('h-[100dvh] w-screen max-w-none');
     expect(editor).toContain('!flex !flex-col h-[100dvh]');
+    expect(editor).toContain('min-[900px]:!w-[min(96vw,1500px)]');
     expect(editor).not.toContain('max-h-[90vh] overflow-y-auto');
     expect(editor).toContain('max-w-[1500px] grid-cols-1');
     expect(editor).toContain('Client message & internal notes');
@@ -27,7 +28,7 @@ describe("quote discount line items", () => {
     expect(editor).toContain('grid-cols-1 gap-2 rounded-lg');
     expect(editor).toContain('sm:grid-cols-2');
     expect(editor).toContain('sm:grid-cols-12');
-    expect(editor).toContain('lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.25fr)]');
+    expect(editor).toContain('lg:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)]');
     expect(editor).toContain('lg:col-span-2');
   });
 
