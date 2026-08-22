@@ -178,6 +178,22 @@ const DEFAULT_LINE_ITEMS: LineItem[] = [
   { description: "Forestry Mulching", qty: 1, unitPriceCents: 0, totalCents: 0 }
 ];
 
+function normalizeQuoteLineItemsForSave(items: LineItem[]): LineItem[] {
+  return items.map((item) => {
+    const quantity = Number(item.qty);
+    const unitPrice = Number(item.unitPriceCents);
+    const qty = Number.isFinite(quantity) ? Math.max(1, quantity) : 1;
+    const unitPriceCents = roundQuoteCentsUp(Number.isFinite(unitPrice) ? unitPrice : 0);
+
+    return {
+      ...item,
+      qty,
+      unitPriceCents,
+      totalCents: roundQuoteCentsUp(qty * unitPriceCents),
+    };
+  });
+}
+
 interface QuoteFormData {
   clientName: string;
   clientEmail: string;
@@ -506,7 +522,7 @@ function QuoteFormModal({
     setForm(prev => {
       const items = [...prev.lineItems];
       const next = { ...items[i], [field]: val };
-      items[i] = { ...next, totalCents: roundQuoteCentsUp(next.qty * next.unitPriceCents) };
+      items[i] = normalizeQuoteLineItemsForSave([next as LineItem])[0];
       return { ...prev, lineItems: items };
     });
   };
@@ -514,6 +530,8 @@ function QuoteFormModal({
   const handleSubmit = () => {
     if (!form.clientName.trim()) { toast.error("Client name required"); return; }
     if (!form.title.trim()) { toast.error("Quote title required"); return; }
+    const lineItems = normalizeQuoteLineItemsForSave(form.lineItems);
+    const normalizedTotalCents = lineItems.reduce((sum, item) => sum + item.totalCents, 0);
     const payload = {
       clientName: form.clientName,
       clientEmail: form.clientEmail || undefined,
@@ -525,8 +543,8 @@ function QuoteFormModal({
       estimatedDuration: form.estimatedDuration || undefined,
       clientMessage: form.clientMessage || undefined,
       internalNotes: form.internalNotes || undefined,
-      lineItems: form.lineItems,
-      totalCents,
+      lineItems,
+      totalCents: normalizedTotalCents,
       sourceDetail: form.sourceDetail || "manual",
       fitDecision: form.fitDecision,
       nextActionType: form.nextActionType || "review_request",

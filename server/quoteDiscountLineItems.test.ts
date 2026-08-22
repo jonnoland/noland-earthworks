@@ -20,4 +20,12 @@ describe("quote discount line items", () => {
     expect(router).toContain("totalCents = lineItems.reduce");
     expect(router).toContain("updates.totalCents = normalized.reduce");
   });
+
+  it("normalizes legacy or edited quote line-item cents before submitting an update", () => {
+    const editor = readFileSync(resolve(import.meta.dirname, "../client/src/pages/ops/NativeAllQuotesSection.tsx"), "utf8");
+
+    expect(editor).toContain("function normalizeQuoteLineItemsForSave");
+    expect(editor).toContain("const lineItems = normalizeQuoteLineItemsForSave(form.lineItems)");
+    expect(editor).toContain("totalCents: normalizedTotalCents");
+  });
 });

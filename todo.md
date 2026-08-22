@@ -3492,6 +3492,10 @@
 - [x] Build and publish the corrected companion update after Jon authorizes it
 - [x] Bump, sign, verify, and publish Noland Field v0.4.12 using the established replacement signing identity
 
+## Quote Editing Total Cents Validation — Aug 2026
+- [x] Trace and correct the non-integer total-cents value submitted while editing a quote
+- [x] Add regression coverage and validate the repaired quote editing workflow
+
 ## SEO and AI Visibility Audit Response Handling — Aug 2026
 - [x] Fix the Service Unavailable response being parsed as JSON during SEO and AI Visibility audits
 - [x] Validate and publish resilient SEO and AI Visibility audit error handling
