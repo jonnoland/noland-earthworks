@@ -4139,7 +4139,6 @@ export default function Leads() {
         <div className="flex items-center gap-4 px-4 pt-3 border-b border-[#1e1e1e] shrink-0">
           <TabsList className="bg-transparent border-0 p-0 h-auto gap-0">
             <TabsTrigger value="leads" className="rounded-none border-b-2 border-transparent data-[state=active]:border-amber-400 data-[state=active]:text-white text-white/50 px-4 pb-2 pt-0 text-sm font-medium bg-transparent hover:text-white/80 transition-colors">Leads</TabsTrigger>
-            <TabsTrigger value="conversations" className="rounded-none border-b-2 border-transparent data-[state=active]:border-amber-400 data-[state=active]:text-white text-white/50 px-4 pb-2 pt-0 text-sm font-medium bg-transparent hover:text-white/80 transition-colors">Conversations</TabsTrigger>
             <ProspectingTabTrigger />
           </TabsList>
         </div>
@@ -4579,10 +4578,6 @@ export default function Leads() {
       {showAddModal && (
         <AddLeadModal onClose={() => setShowAddModal(false)} onCreate={handleCreate} />
       )}
-        </TabsContent>
-
-        <TabsContent value="conversations" className="flex-1 overflow-hidden mt-0 p-4">
-          <ConversationsTab />
         </TabsContent>
 
         <TabsContent value="prospecting" className="flex-1 overflow-y-auto mt-0">
