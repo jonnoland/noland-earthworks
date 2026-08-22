@@ -20,7 +20,7 @@ import {
   getOpsLeadById, insertOwnerTask,
   getAllUsers, setUserRole,
   getPricingBenchmarks,
-  getAgentConfig, upsertAgentConfig, getOwnerSmsAlerts,
+  getAgentConfig, upsertAgentConfig,
   getProspectingLeads, updateProspectingLeadStatus, deleteProspectingLead, countNewProspectingLeads,
 } from "./db";
 import { Resend } from "resend";
@@ -716,10 +716,7 @@ Write the message as if you are Jon sending a text or short email. First-person,
       return { draft };
     }),
 
-  /**
-   * Send the AI-drafted follow-up message to a lead via SMS (Twilio) or email (Resend).
-   * Automatically advances the lead stage to "contacted" on success.
-   */
+  /** Send the AI-drafted follow-up message to a lead by email. */
   sendFollowUp: ownerProcedure
     .input(z.object({
       leadId: z.number().int().positive(),
@@ -736,43 +733,7 @@ Write the message as if you are Jon sending a text or short email. First-person,
       const lead = rows[0];
 
       if (input.channel === "sms") {
-        if (!lead.phone) throw new TRPCError({ code: "BAD_REQUEST", message: "Lead has no phone number" });
-        const digits = lead.phone.replace(/\D/g, "");
-        const e164 = digits.length === 10 ? `+1${digits}` : digits.length === 11 && digits.startsWith("1") ? `+${digits}` : `+${digits}`;
-        if (!ENV.twilioAccountSid || !ENV.twilioAuthToken || !ENV.twilioFromNumber) {
-          throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Twilio not configured" });
-        }
-        const twilioUrl = `https://api.twilio.com/2010-04-01/Accounts/${ENV.twilioAccountSid}/Messages.json`;
-        const params = new URLSearchParams({ To: e164, From: ENV.twilioFromNumber, Body: input.message });
-        const resp = await fetch(twilioUrl, {
-          method: "POST",
-          headers: {
-            Authorization: "Basic " + Buffer.from(`${ENV.twilioAccountSid}:${ENV.twilioAuthToken}`).toString("base64"),
-            "Content-Type": "application/x-www-form-urlencoded",
-          },
-          body: params.toString(),
-        });
-        if (!resp.ok) {
-          const err = await resp.text();
-          throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: `Twilio error: ${err}` });
-        }
-        const twilioResult = await resp.json() as { sid?: string };
-        // Log to conversations
-        const existing = await db.select().from(conversations).where(eq(conversations.contactPhone, e164)).limit(1);
-        let convId: number;
-        if (existing.length > 0) {
-          convId = existing[0].id;
-          await db.update(conversations).set({ lastMessage: input.message, lastMessageAt: new Date(), unread: false }).where(eq(conversations.id, convId));
-        } else {
-          const [ins] = await db.insert(conversations).values({ contactName: lead.name, contactPhone: e164, lastMessage: input.message, lastMessageAt: new Date(), unread: false });
-          convId = (ins as any).insertId;
-        }
-        await db.insert(messages).values({ conversationId: convId, direction: "outbound", body: input.message, twilioSid: twilioResult.sid ?? null, status: "sent", sentAt: new Date() });
-        // Advance stage to contacted if still new
-        if (lead.stage === "new") {
-          await updateOpsLead(input.leadId, ctx.user.id, { stage: "contacted" });
-        }
-        return { ok: true, channel: "sms" as const, sid: twilioResult.sid };
+        throw new TRPCError({ code: "BAD_REQUEST", message: "SMS follow-ups have been removed. Send this follow-up by email instead." });
       }
 
       // email channel
@@ -1007,55 +968,15 @@ Return JSON only: {"suggestedStage": "<stage>", "reason": "<one sentence>"}`;
     }
         return { success: true };
   }),
-  /**
-   * Send an initial outbound SMS to a lead directly from their profile.
-   * Creates or finds an existing conversation, sends the message via Twilio,
-   * and logs it to the CRM.
-   */
+  /** SMS outreach has been removed from this application. */
   sendDirectSms: ownerProcedure
     .input(z.object({
       phone: z.string().min(10),
       message: z.string().min(1).max(1600),
       contactName: z.string().optional(),
     }))
-    .mutation(async ({ input }) => {
-      const db = await getDb();
-      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
-      const digits = input.phone.replace(/\D/g, "");
-      const e164 = digits.length === 10 ? `+1${digits}` : digits.length === 11 && digits.startsWith("1") ? `+${digits}` : `+${digits}`;
-      const twilioSid = process.env.TWILIO_ACCOUNT_SID;
-      const twilioAuth = process.env.TWILIO_AUTH_TOKEN;
-      const fromNumber = process.env.TWILIO_FROM_NUMBER;
-      if (!twilioSid || !twilioAuth || !fromNumber) {
-        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Twilio not configured" });
-      }
-      const twilioUrl = `https://api.twilio.com/2010-04-01/Accounts/${twilioSid}/Messages.json`;
-      const params = new URLSearchParams({ To: e164, From: fromNumber, Body: input.message });
-      const resp = await fetch(twilioUrl, {
-        method: "POST",
-        headers: {
-          Authorization: "Basic " + Buffer.from(`${twilioSid}:${twilioAuth}`).toString("base64"),
-          "Content-Type": "application/x-www-form-urlencoded",
-        },
-        body: params.toString(),
-      });
-      if (!resp.ok) {
-        const err = await resp.text();
-        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: `Twilio error: ${err}` });
-      }
-      const twilioResult = await resp.json() as { sid?: string };
-      // Find or create conversation
-      const existing = await db.select().from(conversations).where(eq(conversations.contactPhone, e164)).limit(1);
-      let convId: number;
-      if (existing.length > 0) {
-        convId = existing[0].id;
-        await db.update(conversations).set({ lastMessage: input.message, lastMessageAt: new Date(), unread: false }).where(eq(conversations.id, convId));
-      } else {
-        const [ins] = await db.insert(conversations).values({ contactName: input.contactName ?? e164, contactPhone: e164, lastMessage: input.message, lastMessageAt: new Date(), unread: false });
-        convId = (ins as any).insertId;
-      }
-      await db.insert(messages).values({ conversationId: convId, direction: "outbound", body: input.message, twilioSid: twilioResult.sid ?? null, status: "sent", sentAt: new Date() });
-      return { ok: true, sid: twilioResult.sid };
+    .mutation(async () => {
+      throw new TRPCError({ code: "BAD_REQUEST", message: "SMS messaging has been removed from this application." });
     }),
 
   sendInitialSms: ownerProcedure
@@ -1088,42 +1009,7 @@ Return JSON only: {"suggestedStage": "<stage>", "reason": "<one sentence>"}`;
         });
         convId = (ins as unknown as { insertId: number }).insertId;
       }
-      // Send via Twilio
-      let twilioSid: string | undefined;
-      if (ENV.twilioAccountSid && ENV.twilioAuthToken && ENV.twilioFromNumber) {
-        try {
-          const twilio = await import("twilio");
-          const client = twilio.default(ENV.twilioAccountSid, ENV.twilioAuthToken);
-          const msg = await client.messages.create({ body: input.body, from: ENV.twilioFromNumber, to: e164 });
-          twilioSid = msg.sid;
-        } catch (err) {
-          console.error("[Twilio] sendInitialSms failed:", err);
-        }
-      }
-      // Log outbound message
-      await db.insert(messages).values({
-        conversationId: convId,
-        direction: "outbound",
-        body: input.body,
-        twilioSid,
-        status: twilioSid ? "sent" : "local",
-        sentAt: new Date(),
-      });
-      await db.update(conversations).set({ lastMessage: input.body, lastMessageAt: new Date() }).where(eq(conversations.id, convId));
-      // Log contact in lead_contact_log
-      await db.insert(leadContactLog).values({
-        leadId: input.leadId,
-        method: "sms",
-        subject: null,
-        body: input.body,
-        sentAt: new Date(),
-        createdAt: new Date(),
-      });
-      // Advance lead stage to "contacted" if still "new"
-      if (lead.stage === "new") {
-        await updateOpsLeadById(input.leadId, { stage: "contacted" });
-      }
-      return { conversationId: convId, twilioSid };
+      throw new TRPCError({ code: "BAD_REQUEST", message: "SMS messaging has been removed from this application." });
     }),
   /** Generate a personalized lead generation action plan based on current pipeline state and season */
   generateLeadActionPlan: ownerProcedure
@@ -1239,7 +1125,6 @@ Return JSON only:
       if (!lead) throw new TRPCError({ code: "NOT_FOUND", message: "Lead not found" });
 
       const ownerPhone = process.env.OWNER_PHONE ||
-        process.env.TWILIO_FROM_NUMBER?.replace(/^\+1/, "") ||
         "615-406-4819";
 
       const toneGuide = {
@@ -2437,27 +2322,7 @@ const conversationsRouter = router({
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
       const [conv] = await db.select().from(conversations).where(eq(conversations.id, input.conversationId)).limit(1);
       if (!conv) throw new TRPCError({ code: "NOT_FOUND", message: "Conversation not found" });
-      let twilioSid: string | undefined;
-      if (ENV.twilioAccountSid && ENV.twilioAuthToken && ENV.twilioFromNumber) {
-        try {
-          const twilio = await import("twilio");
-          const client = twilio.default(ENV.twilioAccountSid, ENV.twilioAuthToken);
-          const msg = await client.messages.create({ body: input.body, from: ENV.twilioFromNumber, to: conv.contactPhone });
-          twilioSid = msg.sid;
-        } catch (err) {
-          console.error("[Twilio] Send failed:", err);
-        }
-      }
-      const [result] = await db.insert(messages).values({
-        conversationId: input.conversationId,
-        direction: "outbound",
-        body: input.body,
-        twilioSid,
-        status: twilioSid ? "sent" : "local",
-      });
-      await db.update(conversations).set({ lastMessage: input.body, lastMessageAt: new Date() })
-        .where(eq(conversations.id, input.conversationId));
-      return { id: (result as unknown as { insertId: number }).insertId, twilioSid };
+      throw new TRPCError({ code: "BAD_REQUEST", message: "SMS messaging has been removed from this application." });
     }),
   create: ownerProcedure
     .input(z.object({ contactName: z.string().min(1).max(255), contactPhone: z.string().min(7).max(30) }))
@@ -3207,12 +3072,10 @@ const settingsRouter = router({
 
   // ─── Integration Status ──────────────────────────────────────────────────────
   getIntegrationStatus: ownerProcedure.query(async () => {
-    const twilioConfigured = !!(ENV.twilioAccountSid && ENV.twilioAuthToken && ENV.twilioFromNumber);
     const resendConfigured = !!ENV.resendApiKey;
     // Google Maps is always available via the Manus proxy — no key needed
     const googleMapsActive = true;
     return {
-      twilio: { configured: twilioConfigured, fromNumber: twilioConfigured ? ENV.twilioFromNumber : null },
       resend: { configured: resendConfigured },
       googleMaps: { active: googleMapsActive },
       facebook: { connected: false },
@@ -4383,8 +4246,7 @@ Do not fabricate prospects. Only include real posts you actually found and visit
       const p = rows[0];
       if (!p) throw new TRPCError({ code: "NOT_FOUND", message: "Prospect not found" });
 
-      // Resolve owner phone — use OWNER_PHONE env, fall back to Twilio from number
-      const ownerPhone = ENV.ownerPhone || ENV.twilioFromNumber || "615-406-4819";
+      const ownerPhone = ENV.ownerPhone || "615-406-4819";
 
       const contextParts: string[] = [];
       if (p.contactName) contextParts.push(`Name: ${p.contactName}`);
@@ -6143,41 +6005,7 @@ Always be specific to nolandearthworks.com. Never give generic advice — tie ev
         .replace("{clientName}", firstName)
         .replace("{jobDescription}", jobDesc)
         .replace("{reviewLink}", googleReviewUrl);
-      let twilioSid: string | undefined;
-      let status = "sent";
-      if (ENV.twilioAccountSid && ENV.twilioAuthToken && ENV.twilioFromNumber) {
-        try {
-          const twilio = await import("twilio");
-          const client = twilio.default(ENV.twilioAccountSid, ENV.twilioAuthToken);
-          const msg = await client.messages.create({
-            body: message,
-            from: ENV.twilioFromNumber,
-            to: input.clientPhone,
-          });
-          twilioSid = msg.sid;
-        } catch (err: any) {
-          status = "failed";
-        }
-      } else {
-        status = "failed";
-      }
-      // Log the review request
-      await db.insert(reviewRequests).values({
-        jobId: input.jobId ?? null,
-        jobberJobId: input.jobberJobId ?? null,
-        clientPhone: input.clientPhone,
-        clientName: input.clientName,
-        jobDescription: input.jobDescription ?? null,
-        twilioSid: twilioSid ?? null,
-        status,
-        sentAt: new Date(),
-      });
-      // If triggered from a local job, stamp reviewRequestSentAt
-      if (input.jobId && status === "sent") {
-        const db2 = await getDb();
-        if (db2) await db2.update(jobs).set({ reviewRequestSentAt: new Date() }).where(eq(jobs.id, input.jobId));
-      }
-      return { status, message };
+      throw new TRPCError({ code: "BAD_REQUEST", message: "SMS review requests have been removed from this application." });
     }),
 
   getReviewRequests: ownerProcedure.query(async () => {
@@ -6230,12 +6058,6 @@ Always be specific to nolandearthworks.com. Never give generic advice — tie ev
       await updateOpsLead(input.leadId, ctx.user.id, { stage: "estimate_sent" });
       return { success: true, alreadyScheduled: false };
     }),
-
-  smsAlerts: router({
-    list: ownerProcedure
-      .input(z.object({ limit: z.number().int().min(1).max(100).default(20) }).optional())
-      .query(({ input }) => getOwnerSmsAlerts(input?.limit ?? 20)),
-  }),
 
   // ─── Priority 8: Ad Performance Feedback Loop ─────────────────────────────────
   // (Ad performance notes are stored on the adSpend table via the existing adSpend router)
@@ -6708,7 +6530,7 @@ Generate a complete monthly ad campaign plan. Return ONLY valid JSON matching th
 
   /**
    * Create a Stripe Checkout Session for a deposit on a quoted job.
-   * Optionally sends the payment link via SMS using Twilio.
+   * Returns a payment link for the owner to share with the customer.
    * Owner-only — called from the CostEstimator Collect Deposit dialog.
    */
   createQuotePayment: ownerProcedure
@@ -6762,24 +6584,7 @@ Generate a complete monthly ad campaign plan. Return ONLY valid JSON matching th
         cancel_url: 'https://nolandearth-pymczdcn.manus.space/ops/cost-estimator?deposit=cancelled',
       });
       if (!session.url) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Stripe did not return a checkout URL.' });
-      let smsSent = false;
-      if (input.sendSms && input.phone && ENV.twilioAccountSid && ENV.twilioAuthToken && ENV.twilioFromNumber) {
-        try {
-          const twilio = await import('twilio');
-          const client = twilio.default(ENV.twilioAccountSid, ENV.twilioAuthToken);
-          const depositFmt = fmtUsd(depositCents);
-          const smsBody = `Hi${input.clientName ? ' ' + input.clientName : ''}! Your deposit of ${depositFmt} for ${input.service} with Noland Earthworks is ready. Pay securely here: ${session.url} — Jon Noland, 615-406-4819`;
-          await client.messages.create({
-            body: smsBody,
-            to: input.phone,
-            from: ENV.twilioFromNumber,
-          });
-          smsSent = true;
-        } catch (err) {
-          console.error('[createQuotePayment] SMS send failed:', err);
-        }
-      }
-      return { checkoutUrl: session.url, sessionId: session.id, smsSent };
+      return { checkoutUrl: session.url, sessionId: session.id, smsSent: false };
     }),
 
   /**

@@ -9,7 +9,6 @@ import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
 import { prerenderMiddleware } from "../prerender";
-import { registerTwilioRoutes } from "../twilioRoutes";
 import { registerFacebookWebhookRoutes } from "../facebookWebhookRoutes";
 import { registerZapierWebhookRoutes } from "../zapierWebhookRoutes";
 import { registerGoogleRoutes } from "../googleRoutes";
@@ -20,7 +19,6 @@ import { registerScheduledAdsPublisherRoute } from "../scheduledAdsPublisher";
 import { registerStorageProxy } from "./storageProxy";
 import { registerLegacySeoRedirects } from "../legacySeoRedirects";
 import { getTrailingSlashCanonicalRedirect } from "../canonicalRouting";
-import { sendOwnerAlertSms } from "../sms";
 import { startGoogleTokenRefreshScheduler } from "../googleRoutes";
 import cron from "node-cron";
 import {
@@ -97,8 +95,6 @@ async function startServer() {
   registerStorageProxy(app);
   // OAuth callback under /api/oauth/callback
   registerOAuthRoutes(app);
-  // Twilio SMS proxy: POST /api/twilio/inbound, POST /api/twilio/owner-reply, GET /api/twilio/status
-  registerTwilioRoutes(app);
   // Facebook Leadgen Webhook: GET /api/webhooks/facebook (verify), POST /api/webhooks/facebook (lead events)
   registerFacebookWebhookRoutes(app);
   // Zapier / Make webhook: POST /api/webhooks/leads
@@ -550,14 +546,6 @@ ${transcript}`;
           status: "new",
         });
         inserted++;
-        await sendOwnerAlertSms([
-          "New Prospect",
-          `${p.source ?? "other"} · ${p.location ?? "Location not listed"}`,
-          p.contactName ? `Contact: ${p.contactName}` : "",
-          p.fitScore != null ? `Fit score: ${p.fitScore}` : "",
-          p.urgencyFlag ? "Priority: urgent" : "",
-          "Open: https://www.nolandearthworks.com/ops/prospecting",
-        ].filter(Boolean).join("\n"));
       }
       console.log(`[Cron] prospect-leads: inserted ${inserted} new prospects`);
       res.json({ ok: true, inserted, total: body.prospects.length });
@@ -639,14 +627,6 @@ ${transcript}`;
           status: "new",
         });
         inserted++;
-        await sendOwnerAlertSms([
-          "New Prospect",
-          `${p.source ?? "other"} · ${p.location ?? "Location not listed"}`,
-          p.contactName ? `Contact: ${p.contactName}` : "",
-          p.fitScore != null ? `Fit score: ${p.fitScore}` : "",
-          p.urgencyFlag ? "Priority: urgent" : "",
-          "Open: https://www.nolandearthworks.com/ops/prospecting",
-        ].filter(Boolean).join("\n"));
       }
       console.log(`[Manual Scan] prospect-leads-manual: inserted ${inserted} new prospects`);
       res.json({ ok: true, inserted, total: body.prospects.length });

@@ -21,7 +21,6 @@ import { aiPricingSettings, fieldQuotes } from "../drizzle/schema";
 import { storagePut } from "./storage";
 import { makeRequest } from "./_core/map";
 import { invokeLLM } from "./_core/llm";
-import { sendOwnerAlertSms } from "./sms";
 import { ENV } from "./_core/env";
 import { Resend } from "resend";
 import { normalizeTennesseeParcelId, validateTennesseeParcelId } from "../shared/tennesseeParcelId";
@@ -509,7 +508,7 @@ export const fieldQuoteRouter = router({
       }
 
       // 2. Insert the field quote record
-      const [inserted] = await db
+      const inserted = await db
         .insert(fieldQuotes)
         .values({
           name: input.name,
@@ -534,24 +533,7 @@ export const fieldQuoteRouter = router({
         })
         .$returningId();
 
-      const newId = inserted?.id;
-
-      if (newId) {
-        await sendOwnerAlertSms([
-          "New Field Quote",
-          `Lead: ${input.name}${input.phone ? ` · ${input.phone}` : ""}`,
-          `Requested service: ${input.serviceType ?? "Not specified"}`,
-          "Estimated value: Site visit required",
-          input.acreage ? `Acreage: ${input.acreage}` : "",
-          input.address ? `Address: ${input.address}` : "",
-          `Open: https://www.nolandearthworks.com/ops/quotes?fieldQuoteId=${newId}`,
-        ].filter(Boolean).join("\n"), {
-          alertType: "field_quote",
-          leadName: input.name,
-          service: input.serviceType ?? "Field Quote",
-          estimatedValueCents: null,
-        });
-      }
+      const newId = Array.isArray(inserted) ? inserted[0]?.id : inserted?.id;
 
       // 2. Run AI qualification and create ops lead in the background
       setImmediate(async () => {
@@ -1061,28 +1043,6 @@ Return JSON matching the schema exactly.`;
           results.push({ channel: "email", success: true });
         } catch (e: any) {
           results.push({ channel: "email", success: false, error: e?.message ?? "Email failed" });
-        }
-      }
-
-      // ── SMS ───────────────────────────────────────────────────────────────
-      if (input.channels.includes("sms") && fq.phone) {
-        try {
-          if (!ENV.twilioAccountSid || !ENV.twilioAuthToken || !ENV.twilioFromNumber) {
-            throw new Error("Twilio not configured");
-          }
-          const twilio = await import("twilio");
-          const client = twilio.default(ENV.twilioAccountSid, ENV.twilioAuthToken);
-          // Normalize phone to E.164
-          const digits = fq.phone.replace(/\D/g, "");
-          const e164 = digits.startsWith("1") ? `+${digits}` : `+1${digits}`;
-          await client.messages.create({
-            body: input.message.slice(0, 1600),
-            from: ENV.twilioFromNumber,
-            to: e164,
-          });
-          results.push({ channel: "sms", success: true });
-        } catch (e: any) {
-          results.push({ channel: "sms", success: false, error: e?.message ?? "SMS failed" });
         }
       }
 

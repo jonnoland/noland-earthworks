@@ -93,7 +93,6 @@ const navGroups = [
     items: [
       { icon: BarChart3,        label: "Reports",       href: "/ops/reports-hub" },
       { icon: Calculator,       label: "Pricing",       href: "/ops/pricing-hub" },
-      { icon: MessageSquare,    label: "Conversations", href: "/ops/conversations" },
       { icon: BotMessageSquare, label: "Chat Sessions", href: "/ops/chat-sessions" },
       { icon: BookOpen,         label: "Resources",     href: "/ops/resources" },
       { icon: Users,            label: "Team",          href: TEAM_HREF },
@@ -143,11 +142,6 @@ export default function OpsDashboardLayout({ children, title, subtitle }: Dashbo
     refetchInterval: 30_000,
   });
 
-  const { data: smsUnread = 0 } = trpc.ops.conversations.unreadCount.useQuery(undefined, {
-    refetchInterval: 30_000,
-    retry: false,
-  });
-
   const { data: teamPendingData } = trpc.team.pendingCount.useQuery(undefined, {
     refetchInterval: 60_000,
     retry: false,
@@ -179,9 +173,8 @@ export default function OpsDashboardLayout({ children, title, subtitle }: Dashbo
     onClose?: () => void;
   }) => {
     const hasChatBadge  = item.href === "/ops/chat-sessions" && chatUnread > 0;
-    const hasSMSBadge   = item.href === "/ops/conversations" && smsUnread > 0;
     const hasTeamBadge  = item.href === TEAM_HREF && teamPending > 0;
-    const showActiveDot = isActive && !hasChatBadge && !hasSMSBadge && !hasTeamBadge;
+    const showActiveDot = isActive && !hasChatBadge && !hasTeamBadge;
 
     return (
       <Link href={item.href}>
@@ -206,11 +199,6 @@ export default function OpsDashboardLayout({ children, title, subtitle }: Dashbo
                   {chatUnread > 99 ? "99+" : chatUnread}
                 </span>
               )}
-              {hasSMSBadge && (
-                <span className="ml-auto flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-green-500 text-white text-[10px] font-bold">
-                  {smsUnread > 99 ? "99+" : smsUnread}
-                </span>
-              )}
               {hasTeamBadge && (
                 <span className="ml-auto flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-red-500 text-white text-[10px] font-bold">
                   {teamPending > 99 ? "99+" : teamPending}
@@ -220,7 +208,7 @@ export default function OpsDashboardLayout({ children, title, subtitle }: Dashbo
             </>
           )}
           {/* Collapsed badge dots */}
-          {collapsed && (hasChatBadge || hasSMSBadge || hasTeamBadge) && (
+          {collapsed && (hasChatBadge || hasTeamBadge) && (
             <span className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-orange-400" />
           )}
         </div>

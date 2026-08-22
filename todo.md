@@ -3541,6 +3541,10 @@
 - [x] Remove mobile-width constraints from New Quote and Edit Quote and make the desktop workspace wide
 - [x] Validate and publish the desktop-first quote workspace
 
+## Remove Twilio Integrations — Aug 2026
+- [x] Remove Twilio SMS alert code, Operations settings, and UI references throughout the website
+- [x] Validate lead and quote workflows without Twilio and publish the cleanup
+
 ## SEO and AI Visibility Audit Response Handling — Aug 2026
 - [x] Fix the Service Unavailable response being parsed as JSON during SEO and AI Visibility audits
 - [x] Validate and publish resilient SEO and AI Visibility audit error handling

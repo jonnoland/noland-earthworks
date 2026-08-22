@@ -10,7 +10,6 @@ import OwnerRoute from "./components/OwnerRoute";
 import { lazy, Suspense, useEffect, useState } from "react";
 
 const AIChatWidget = lazy(() => import("./components/AIChatWidget"));
-const SmsToastNotifier = lazy(() => import("./components/SmsToastNotifier"));
 
 // ── Ops dashboard (lazy-loaded — never sent to public visitors) ──────────────
 const OpsDashboard       = lazy(() => import("./pages/ops/Dashboard"));
@@ -25,7 +24,6 @@ const OpsQuotes          = lazy(() => import("./pages/ops/Quotes"));
 const OpsInvoices        = lazy(() => import("./pages/ops/Invoices"));
 const OpsCrews           = lazy(() => import("./pages/ops/Crews"));
 const CrewPricing        = lazy(() => import("./pages/ops/CrewPricing"));
-const OpsConversations   = lazy(() => import("./pages/ops/Conversations"));
 const OpsProspecting     = lazy(() => import("./pages/ops/Prospecting"));
 const OpsReviews         = lazy(() => import("./pages/ops/Reviews"));
 const OpsTimesheets      = lazy(() => import("./pages/ops/Timesheets"));
@@ -412,9 +410,6 @@ function Router() {
       <Route path="/ops/prospecting">
         <Suspense fallback={<OpsLoading />}><OwnerRoute><OpsProspecting /></OwnerRoute></Suspense>
       </Route>
-      <Route path="/ops/conversations">
-        <Suspense fallback={<OpsLoading />}><OwnerRoute><OpsChatSessions /></OwnerRoute></Suspense>
-      </Route>
       <Route path="/ops/reviews">
         <Suspense fallback={<OpsLoading />}><OwnerRoute><OpsReviews /></OwnerRoute></Suspense>
       </Route>
@@ -542,7 +537,6 @@ function App() {
           <QuoteRoutePrefetch />
           <Suspense fallback={null}>
             <DeferredPublicAIChat />
-            <SmsToastNotifier />
           </Suspense>
         </TooltipProvider>
       </ThemeProvider>

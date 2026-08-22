@@ -402,46 +402,7 @@ export async function runStaleLeadAlertAgent() {
 
     await notifyOwner({ title: `${staleLeads.length} Stale Lead(s) Need Attention`, content });
 
-    // SMS alert to owner phone — uses custom template if set
-    if (ENV.twilioAccountSid && ENV.twilioAuthToken && ENV.twilioFromNumber && ENV.ownerPhone) {
-      try {
-        const cfg = await getAgentConfig(AGENT_ID);
-        const customTemplate = (cfg as any)?.smsTemplate ?? null;
-        const DEFAULT_TEMPLATE = `Noland Earthworks: {name} ({stage}) idle {days}d. Phone: {phone}. Check leads.`;
-        const template = customTemplate || DEFAULT_TEMPLATE;
-
-        const twilio = await import("twilio");
-        const client = twilio.default(ENV.twilioAccountSid, ENV.twilioAuthToken);
-
-        // Send one SMS per stale lead (up to 3) using the template
-        const leadsToAlert = staleLeads.slice(0, 3);
-        for (const lead of leadsToAlert) {
-          const days = Math.floor((Date.now() - new Date(lead.updatedAt).getTime()) / 86_400_000);
-          const smsBody = template
-            .replace(/\{name\}/g, lead.name)
-            .replace(/\{stage\}/g, lead.stage)
-            .replace(/\{days\}/g, String(days))
-            .replace(/\{phone\}/g, lead.phone ?? "N/A");
-          await client.messages.create({
-            body: smsBody,
-            from: ENV.twilioFromNumber,
-            to: ENV.ownerPhone,
-          });
-        }
-        if (staleLeads.length > 3) {
-          await client.messages.create({
-            body: `...and ${staleLeads.length - 3} more stale lead(s). View: nolandearthworks.com/ops/leads`,
-            from: ENV.twilioFromNumber,
-            to: ENV.ownerPhone,
-          });
-        }
-        console.log(`[Agent:${AGENT_ID}] SMS alert(s) sent to owner for ${leadsToAlert.length} lead(s).`);
-      } catch (smsErr) {
-        console.warn(`[Agent:${AGENT_ID}] SMS alert failed:`, smsErr);
-      }
-    }
-
-    const summary = `Alerted owner about ${staleLeads.length} stale lead(s) (notification + SMS).`;
+    const summary = `Alerted owner about ${staleLeads.length} stale lead(s).`;
     await insertAgentLog({ agentId: AGENT_ID, status: "success", summary, actionsCount: staleLeads.length });
     console.log(`[Agent:${AGENT_ID}] ${summary}`);
   } catch (err) {
@@ -627,36 +588,6 @@ export async function runDailyDigestAgent() {
         </div>
       `,
     });
-
-    // ── SMS fallback — short digest to owner phone for field use ───────────────
-    if (ENV.twilioAccountSid && ENV.twilioAuthToken && ENV.twilioFromNumber && ENV.ownerPhone) {
-      try {
-        const visitSummary = pendingVisits.length > 0
-          ? `${pendingVisits.length} pending visit(s).`
-          : "No pending visits.";
-        const invoiceSummary = completedYesterday.length > 0
-          ? `${completedYesterday.length} job(s) ready to invoice.`
-          : "";
-        const smsBody = [
-          `Noland Earthworks Digest — ${new Date().toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })}`,
-          `Jobs today: ${todayEntries.length}`,
-          `Open leads: ${openLeads.length}`,
-          visitSummary,
-          invoiceSummary,
-        ].filter(Boolean).join(" | ");
-
-        const twilio = await import("twilio");
-        const client = twilio.default(ENV.twilioAccountSid, ENV.twilioAuthToken);
-        await client.messages.create({
-          body: smsBody.slice(0, 1600), // Twilio 1600-char limit
-          from: ENV.twilioFromNumber,
-          to: ENV.ownerPhone,
-        });
-        console.log(`[Agent:${AGENT_ID}] SMS digest sent to owner.`);
-      } catch (smsErr) {
-        console.warn(`[Agent:${AGENT_ID}] SMS digest failed (non-fatal):`, smsErr);
-      }
-    }
 
     const summary = `Digest sent. ${todayEntries.length} jobs today, ${openLeads.length} open leads, ${pendingVisits.length} pending visits.`;
     await insertAgentLog({ agentId: AGENT_ID, status: "success", summary, actionsCount: 1 });
@@ -907,16 +838,7 @@ export async function runNotificationRetryAgent() {
             html: notif.body,
           });
         } else if (notif.channel === "sms") {
-          if (!ENV.twilioAccountSid || !ENV.twilioAuthToken || !ENV.twilioFromNumber) {
-            throw new Error("Twilio not configured");
-          }
-          const twilio = await import("twilio");
-          const client = twilio.default(ENV.twilioAccountSid, ENV.twilioAuthToken);
-          await client.messages.create({
-            body: notif.body.slice(0, 1600),
-            from: ENV.twilioFromNumber,
-            to: notif.recipient,
-          });
+          throw new Error("SMS delivery has been removed from this application");
         }
         // Success — remove from queue
         await deleteNotification(notif.id);

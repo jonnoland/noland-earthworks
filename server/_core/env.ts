@@ -13,11 +13,7 @@ export const ENV = {
   // Canonical Jobber OAuth redirect URI — must match exactly what is registered in the Jobber developer app.
   // Defaults to the non-www production URL. Override via JOBBER_REDIRECT_URI secret if needed.
   jobberRedirectUri: process.env.JOBBER_REDIRECT_URI ?? "https://nolandearthworks.com/api/jobber/callback",
-  twilioAccountSid: process.env.TWILIO_ACCOUNT_SID ?? "",
-  twilioAuthToken: process.env.TWILIO_AUTH_TOKEN ?? "",
-  twilioFromNumber: process.env.TWILIO_FROM_NUMBER ?? "",
   ownerPhone: process.env.OWNER_PHONE ?? "",
-  ownerSmsAlertRecipients: process.env.OWNER_SMS_ALERT_RECIPIENTS ?? "",
   // Google Places API — for fetching Google Business reviews (no approval required)
   googlePlacesApiKey: process.env.GOOGLE_PLACES_API_KEY ?? "",
   googlePlaceId: process.env.GOOGLE_PLACE_ID ?? "",

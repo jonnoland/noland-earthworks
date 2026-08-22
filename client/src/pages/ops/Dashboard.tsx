@@ -277,7 +277,6 @@ export default function Dashboard() {
 
   // ─── Local leads (for pipeline section) ────────────────────────────────────────────
   const { data: leads = [], isLoading: leadsLoading } = trpc.ops.leads.list.useQuery(undefined, { refetchInterval: 15000 });
-  const { data: ownerSmsAlerts = [] } = trpc.ops.smsAlerts.list.useQuery({ limit: 8 }, { refetchInterval: 30_000 });
   const dataLoading = jobsLoading || nativeJobsLoading || invoicesLoading || quotesLoading || leadsLoading;
 
   // ─── Google Business Profile reviews (latest 5 for dashboard widget) ────────────
@@ -660,52 +659,6 @@ export default function Dashboard() {
           </div>
         )}
 
-        <div className="ops-card p-3">
-          <SectionHeader
-            title="Owner SMS Alerts"
-            badge={ownerSmsAlerts.filter((alert: any) => alert.status === "accepted").length ? "Active" : undefined}
-            sub={ownerSmsAlerts.length ? `${Math.min(ownerSmsAlerts.length, 2)} latest internal alert${Math.min(ownerSmsAlerts.length, 2) === 1 ? "" : "s"}` : "Internal alert delivery status"}
-          />
-          {ownerSmsAlerts.length === 0 ? (
-            <p className="py-2 text-xs text-muted-foreground">No owner SMS alerts have been recorded yet.</p>
-          ) : (
-            <div className="divide-y divide-border/60">
-              {ownerSmsAlerts.slice(0, 2).map((alert: any) => {
-                const accepted = alert.status === "accepted";
-                const amount = alert.estimatedValueCents != null
-                  ? `$${Math.round(alert.estimatedValueCents / 100).toLocaleString()}`
-                  : "Pending site visit";
-                return (
-                  <div key={alert.id} className="py-2 flex items-start gap-2">
-                    <div className={cn("mt-0.5 p-1 rounded-md", accepted ? "bg-green-400/10 text-green-400" : "bg-red-400/10 text-red-400")}>
-                      <MessageSquare className="w-3 h-3" />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center justify-between gap-3">
-                        <p className="text-xs font-semibold text-foreground truncate">{alert.leadName || alert.alertType.replaceAll("_", " ")}</p>
-                        <span className={cn("text-[10px] font-semibold px-1.5 py-0.5 rounded border shrink-0", accepted ? "text-green-400 bg-green-400/10 border-green-400/20" : "text-red-400 bg-red-400/10 border-red-400/20")}>
-                          {accepted ? "Accepted by Twilio" : "Failed"}
-                        </span>
-                      </div>
-                      <p className="text-[10px] text-muted-foreground mt-0.5 truncate">{alert.service || "Internal alert"} · {amount} · {alert.recipient} · {new Date(alert.createdAt).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}</p>
-                    </div>
-                  </div>
-                );
-              })}
-              {ownerSmsAlerts.length > 2 && (
-                <details className="py-2">
-                  <summary className="cursor-pointer text-[11px] font-medium text-primary hover:text-primary/80">View {ownerSmsAlerts.length - 2} earlier loaded alert{ownerSmsAlerts.length - 2 === 1 ? "" : "s"}</summary>
-                  <div className="mt-2 divide-y divide-border/60 border-t border-border/60">
-                    {ownerSmsAlerts.slice(2).map((alert: any) => {
-                      const accepted = alert.status === "accepted";
-                      return <p key={alert.id} className="py-1.5 text-[10px] text-muted-foreground truncate"><span className={accepted ? "text-green-400" : "text-red-400"}>{accepted ? "Accepted" : "Failed"}</span> · {alert.leadName || alert.alertType.replaceAll("_", " ")} · {alert.recipient} · {new Date(alert.createdAt).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}</p>;
-                    })}
-                  </div>
-                </details>
-              )}
-            </div>
-          )}
-        </div>
 
         {/* KPI Cards — row 1: jobs + money */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">

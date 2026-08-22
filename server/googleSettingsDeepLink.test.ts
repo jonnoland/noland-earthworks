@@ -11,7 +11,7 @@ describe("Google Business Profile settings access", () => {
 
     expect(source).toContain('params.get("tab")');
     expect(source).toContain('requestedTab && tabs.some((tab) => tab.id === requestedTab)');
-    expect(source.indexOf("<GoogleBusinessProfileCard />")).toBeLessThan(source.indexOf("{/* ── Twilio ── */}"));
+    expect(source).toContain("<GoogleBusinessProfileCard />");
   });
 
   it("does not show a disconnected notice while connection status is loading", () => {

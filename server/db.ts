@@ -4,7 +4,7 @@ import {
   InsertJob, InsertOpsLead, InsertScheduleEntry, InsertUser,
   jobs, opsLeads, scheduleEntries, users, visitBlackoutDates, InsertVisitBlackoutDate,
   recurringBlackoutDays, agentConfig, agentLog, ownerTasks, InsertOwnerTask,
-  jobNotes, pricingBenchmarks, pricingBenchmarkCandidates, chatSessions, nativeQuotes, ownerSmsAlerts,
+  jobNotes, pricingBenchmarks, pricingBenchmarkCandidates, chatSessions, nativeQuotes,
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
@@ -320,30 +320,6 @@ export async function deleteScheduleEntry(id: number, userId: number) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   return db.delete(scheduleEntries).where(and(eq(scheduleEntries.id, id), eq(scheduleEntries.userId, userId)));
-}
-
-// ─── Owner SMS alert history ─────────────────────────────────────────────────
-export async function recordOwnerSmsAlert(data: {
-  alertType: string;
-  recipient: string;
-  leadName?: string | null;
-  service?: string | null;
-  estimatedValueCents?: number | null;
-  message: string;
-  twilioSid?: string | null;
-  status: "accepted" | "failed";
-  errorMessage?: string | null;
-}) {
-  const db = await getDb();
-  if (!db) return null;
-  const [result] = await db.insert(ownerSmsAlerts).values(data);
-  return result;
-}
-
-export async function getOwnerSmsAlerts(limit = 50) {
-  const db = await getDb();
-  if (!db) return [];
-  return db.select().from(ownerSmsAlerts).orderBy(desc(ownerSmsAlerts.createdAt)).limit(limit);
 }
 
 // ─── Visit Blackout Dates ─────────────────────────────────────────────────────

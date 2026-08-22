@@ -1393,61 +1393,6 @@ function IntegrationsTab() {
       {/* ── Google Business Profile ── */}
       <GoogleBusinessProfileCard />
 
-      {/* ── Twilio ── */}
-      <SettingsSection
-        title="Twilio SMS"
-        description="Outbound SMS for lead follow-ups, quote notifications, and automated reminders."
-        action={<ConnectedBadge ok={!!status?.twilio.configured} label={status?.twilio.configured ? "Configured" : "Not Configured"} />}
-      >
-        {status?.twilio.configured ? (
-          <div className="flex items-center gap-2 p-3 bg-green-500/10 border border-green-500/20 rounded-lg">
-            <CheckCircle2 className="w-4 h-4 text-green-400 shrink-0" />
-            <div>
-              <p className="text-xs font-semibold text-foreground">Twilio is configured</p>
-              {status.twilio.fromNumber && (
-                <p className="text-[11px] text-muted-foreground mt-0.5">Sending from: <span className="font-mono">{status.twilio.fromNumber}</span></p>
-              )}
-            </div>
-          </div>
-        ) : (
-          <div className="flex items-start gap-2 bg-secondary/40 border border-border rounded-md p-3">
-            <AlertCircle className="w-4 h-4 text-muted-foreground shrink-0 mt-0.5" />
-            <p className="text-xs text-muted-foreground">TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, and TWILIO_FROM_NUMBER are not set. Add them via Settings &gt; Secrets to enable SMS.</p>
-          </div>
-        )}
-      </SettingsSection>
-
-      {/* ── Review Request SMS Template ── */}
-      <SettingsSection
-        title="Review Request SMS Template"
-        description="Customize the message sent to clients after job completion. Supports {clientName}, {jobDescription}, and {reviewLink} tokens."
-      >
-        <div className="space-y-3">
-          <div className="text-[11px] text-muted-foreground bg-secondary/40 border border-border rounded-md px-3 py-2 space-y-0.5">
-            <p><span className="font-mono text-primary">{'{clientName}'}</span> — replaced with the client's first name</p>
-            <p><span className="font-mono text-primary">{'{jobDescription}'}</span> — replaced with " on the [job] job" if provided, or blank</p>
-            <p><span className="font-mono text-primary">{'{reviewLink}'}</span> — replaced with your Google review link</p>
-          </div>
-          <textarea
-            className="w-full text-xs bg-secondary/40 border border-border rounded-md px-3 py-2 text-foreground placeholder:text-muted-foreground resize-none focus:outline-none focus:ring-1 focus:ring-primary/50"
-            rows={4}
-            value={reviewTemplate}
-            onChange={(e) => { setReviewTemplate(e.target.value); setTemplateDirty(true); }}
-            placeholder="Loading template..."
-          />
-          <div className="flex items-center justify-between">
-            <span className="text-[11px] text-muted-foreground">{reviewTemplate.length}/1000 characters</span>
-            <button
-              onClick={() => saveTemplate.mutate({ template: reviewTemplate })}
-              disabled={!templateDirty || saveTemplate.isPending || reviewTemplate.length < 10}
-              className="text-xs px-3 py-1.5 rounded-md bg-primary text-primary-foreground font-medium disabled:opacity-40 hover:bg-primary/90 transition-colors"
-            >
-              {saveTemplate.isPending ? "Saving..." : "Save Template"}
-            </button>
-          </div>
-        </div>
-      </SettingsSection>
-
       {/* ── Resend ── */}
       <SettingsSection
         title="Resend Email"

@@ -12,7 +12,7 @@ describe("public privacy and form disclosures", () => {
     expect(policy).toContain("working source of truth");
     expect(policy).toContain("Stripe");
     expect(policy).toContain("Google Maps");
-    expect(policy).toContain("Twilio");
+    expect(policy).not.toContain("Twilio");
     expect(policy).toContain("Attorney review required");
   });
 

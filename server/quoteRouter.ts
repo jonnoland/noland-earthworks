@@ -8,7 +8,6 @@ import { Resend } from "resend";
 import { createOpsLead, upsertOpsLeadByPhone, getOwnerUser, getDb, upsertNativeClient } from "./db";
 import { storagePut } from "./storage";
 import { quoteSubmissions, nativeQuotes } from "../drizzle/schema";
-import { sendOwnerAlertSms } from "./sms";
 import { qualifyLead } from "./leadQualifier";
 import { getServiceDisplayName } from "./serviceTaxonomy";
 import { opsLeads } from "../drizzle/schema";
@@ -783,37 +782,6 @@ export const quoteRouter = router({
           console.log(`[Quote] Linked lead ${leadId} → native quote ${newNativeQuoteId}`);
         }
 
-        // Send exactly one owner alert only after the native quote record exists and has a stable ID.
-        if (newNativeQuoteId) {
-          try {
-            const addressPart = [input.street, input.city].filter(Boolean).join(", ");
-            const estimateLowCents = input.serviceBreakdown.reduce((total, item) => total + item.lowCents, 0);
-            const estimateHighCents = input.serviceBreakdown.reduce((total, item) => total + item.highCents, 0);
-            const hasEstimate = estimateLowCents > 0 || estimateHighCents > 0;
-            const estimateLabel = hasEstimate
-              ? `Estimated value: $${Math.round(estimateLowCents / 100).toLocaleString()}–$${Math.round(estimateHighCents / 100).toLocaleString()}`
-              : "Estimated value: Site visit required";
-            const smsBody = [
-              `New Website Request ${scoreLabel}`,
-              `Lead: ${input.name} · ${input.phone}`,
-              `Requested service: ${serviceLabel} · ${input.county} County`,
-              estimateLabel,
-              input.acreage ? `Acreage: ${input.acreage}` : "",
-              addressPart ? `Address: ${addressPart}` : "",
-              needsLocationReview ? "Location: OWNER REVIEW REQUIRED" : "Location: County confirmed",
-              qualification?.summary ? `AI: ${qualification.summary}` : "",
-              `Open: https://www.nolandearthworks.com/ops/quotes?quoteId=${newNativeQuoteId}`,
-            ].filter(Boolean).join("\n");
-            await sendOwnerAlertSms(smsBody, {
-              alertType: "website_request",
-              leadName: input.name,
-              service: serviceLabel,
-              estimatedValueCents: hasEstimate ? Math.round((estimateLowCents + estimateHighCents) / 2) : null,
-            });
-          } catch (err) {
-            console.warn("[Quote] Owner SMS alert failed:", err);
-          }
-        }
       }
     } catch (nativeErr) {
       console.warn("[Quote] Failed to create native web_request quote:", nativeErr);
