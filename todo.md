@@ -3489,7 +3489,8 @@
 - [x] Diagnose the Android microphone permission and voice-capture failure
 - [x] Add a clear permission recovery path and resilient voice-capture error handling
 - [x] Validate the corrected voice quote source with 360 regression tests, companion production bundle, and merged Android manifest verification
-- [ ] Build and publish the corrected companion update after Jon authorizes it
+- [x] Build and publish the corrected companion update after Jon authorizes it
+- [x] Bump, sign, verify, and publish Noland Field v0.4.12 using the established replacement signing identity
 
 ## SEO and AI Visibility Audit Response Handling — Aug 2026
 - [x] Fix the Service Unavailable response being parsed as JSON during SEO and AI Visibility audits
