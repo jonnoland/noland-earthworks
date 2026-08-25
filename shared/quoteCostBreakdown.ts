@@ -21,6 +21,12 @@ export interface QuoteCostBreakdown {
   allPhasesTotalCents: number;
 }
 
+export interface QuoteCostDistributionSlice {
+  name: "Approved work" | "Optional future phases";
+  value: number;
+  color: string;
+}
+
 function lineTotal(item: QuoteBreakdownLineItem) {
   return Math.round(Math.max(1, Number(item.qty) || 1) * (Number(item.unitPriceCents) || 0));
 }
@@ -75,4 +81,13 @@ export function buildQuoteCostBreakdown(items: QuoteBreakdownLineItem[]): QuoteC
     amountDueNowCents: approvedWorkCents + approvedDiscountCents,
     allPhasesTotalCents: baseSubtotalCents + discountCents,
   };
+}
+
+export function getQuoteCostDistribution(breakdown: QuoteCostBreakdown): QuoteCostDistributionSlice[] {
+  const approvedWork = Math.max(0, breakdown.amountDueNowCents);
+  const optionalFuturePhases = Math.max(0, breakdown.allPhasesTotalCents - approvedWork);
+  return [
+    { name: "Approved work", value: approvedWork, color: "#f59e0b" },
+    { name: "Optional future phases", value: optionalFuturePhases, color: "#818cf8" },
+  ];
 }

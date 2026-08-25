@@ -49,7 +49,9 @@ import { validateTennesseeParcelId } from "@shared/tennesseeParcelId";
 import { estimateInternalSiteVisitCost } from "@shared/siteVisitCostEstimate";
 import { buildQuoteDiscountLineItem, getCustomerDiscountOptions, getSuggestedVolumeDiscount, type QuoteDiscountOption } from "@shared/quoteDiscounts";
 import { formatQuoteCents, quoteDollarsToCents, roundQuoteCentsUp } from "@shared/quoteMoney";
-import { buildQuoteCostBreakdown } from "@shared/quoteCostBreakdown";
+import { buildQuoteCostBreakdown, getQuoteCostDistribution } from "@shared/quoteCostBreakdown";
+import { getQuoteDraftIdentity } from "@shared/quoteDrafts";
+import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
 import {
   DAY_RATE_TERMS,
   ONE_DAY_TRIAL_TERMS,
@@ -348,6 +350,7 @@ function QuoteFormModal({
     }
     return blankForm();
   });
+  const [draftQuoteId, setDraftQuoteId] = useState<number | null>(() => editQuote?.id ?? null);
   const [parcelCounty, setParcelCounty] = useState("");
   const [parcelId, setParcelId] = useState("");
   const [parcelIdError, setParcelIdError] = useState<string | null>(null);
@@ -412,6 +415,8 @@ function QuoteFormModal({
   };
 
   const costBreakdown = useMemo(() => buildQuoteCostBreakdown(form.lineItems), [form.lineItems]);
+  const costDistribution = useMemo(() => getQuoteCostDistribution(costBreakdown), [costBreakdown]);
+  const hasCostDistribution = costDistribution.some((slice) => slice.value > 0);
   const totalCents = costBreakdown.allPhasesTotalCents;
   const discountItems = useMemo(() => form.lineItems.filter((item) => item.kind === "discount" || item.unitPriceCents < 0), [form.lineItems]);
   const appliedDiscountCodes = useMemo(
@@ -549,6 +554,23 @@ function QuoteFormModal({
     onError: (e) => toast.error("Error: " + e.message),
   });
 
+  const createDraftMutation = trpc.nativeQuotes.create.useMutation({
+    onSuccess: (data) => {
+      setDraftQuoteId(data.id);
+      utils.nativeQuotes.list.invalidate();
+      toast.success("Draft saved. You can continue editing.");
+    },
+    onError: (e) => toast.error("Draft was not saved: " + e.message),
+  });
+
+  const updateDraftMutation = trpc.nativeQuotes.update.useMutation({
+    onSuccess: () => {
+      utils.nativeQuotes.list.invalidate();
+      toast.success("Draft updated. You can continue editing.");
+    },
+    onError: (e) => toast.error("Draft was not saved: " + e.message),
+  });
+
   const handleLineItemChange = (i: number, field: keyof LineItem, val: string | number) => {
     setForm(prev => {
       const items = [...prev.lineItems];
@@ -593,17 +615,15 @@ function QuoteFormModal({
     toast.success("Internal phased quote sample loaded. Replace every placeholder before sending.");
   };
 
-  const handleSubmit = () => {
-    if (!form.clientName.trim()) { toast.error("Client name required"); return; }
-    if (!form.title.trim()) { toast.error("Quote title required"); return; }
+  const buildQuotePayload = (identity = { clientName: form.clientName, title: form.title }) => {
     const lineItems = normalizeQuoteLineItemsForSave(form.lineItems);
     const normalizedTotalCents = lineItems.reduce((sum, item) => sum + item.totalCents, 0);
-    const payload = {
-      clientName: form.clientName,
+    return {
+      clientName: identity.clientName,
       clientEmail: form.clientEmail || undefined,
       clientPhone: form.clientPhone || undefined,
       propertyAddress: form.propertyAddress || undefined,
-      title: form.title,
+      title: identity.title,
       serviceType: form.serviceType || undefined,
       acreage: form.acreage || undefined,
       estimatedDuration: form.estimatedDuration || undefined,
@@ -620,14 +640,34 @@ function QuoteFormModal({
       depositStatus: form.depositStatus,
       finalPaymentStatus: form.finalPaymentStatus,
     };
-    if (editQuote) {
-      updateMutation.mutate({ id: editQuote.id, ...payload });
+  };
+
+  const handleSaveDraft = () => {
+    const identity = getQuoteDraftIdentity(form.clientName, form.title);
+    if (identity.clientName !== form.clientName || identity.title !== form.title) {
+      setForm(prev => ({ ...prev, ...identity }));
+    }
+    const payload = buildQuotePayload(identity);
+    if (draftQuoteId) {
+      updateDraftMutation.mutate({ id: draftQuoteId, ...payload, status: "draft" });
     } else {
-      createMutation.mutate(payload);
+      createDraftMutation.mutate(payload);
     }
   };
 
-  const isBusy = createMutation.isPending || updateMutation.isPending;
+  const handleSubmit = () => {
+    if (!form.clientName.trim()) { toast.error("Client name required"); return; }
+    if (!form.title.trim()) { toast.error("Quote title required"); return; }
+    const payload = buildQuotePayload();
+    if (editQuote) {
+      updateMutation.mutate({ id: editQuote.id, ...payload });
+    } else {
+      if (draftQuoteId) updateMutation.mutate({ id: draftQuoteId, ...payload });
+      else createMutation.mutate(payload);
+    }
+  };
+
+  const isBusy = createMutation.isPending || updateMutation.isPending || createDraftMutation.isPending || updateDraftMutation.isPending;
 
   return (
     <Dialog open={open} onOpenChange={v => !v && onClose()}>
@@ -1133,6 +1173,24 @@ function QuoteFormModal({
             </div>
             <div className="mt-3 w-full rounded-md border border-zinc-700 bg-zinc-900/60 px-3 py-3 text-sm sm:ml-auto sm:max-w-md" aria-live="polite">
               <div className="mb-2 flex items-center justify-between"><span className="text-xs font-semibold uppercase tracking-wide text-zinc-200">Live Cost Breakdown</span><span className="text-[10px] text-zinc-500">Updates as line items change</span></div>
+              <div className="mb-3 grid grid-cols-[132px_minmax(0,1fr)] items-center gap-2 rounded-md border border-zinc-800 bg-zinc-950/50 px-2 py-2" role="img" aria-label="Cost distribution between approved work and optional future phases">
+                <div className="h-[124px]">
+                  {hasCostDistribution ? (
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie data={costDistribution.filter((slice) => slice.value > 0)} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={32} outerRadius={51} paddingAngle={3} stroke="none">
+                          {costDistribution.filter((slice) => slice.value > 0).map((slice) => <Cell key={slice.name} fill={slice.color} />)}
+                        </Pie>
+                        <Tooltip formatter={(value: number) => formatQuoteCents(value)} />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  ) : <div className="flex h-full items-center justify-center text-center text-[10px] leading-relaxed text-zinc-500">Add priced line items to see the cost split.</div>}
+                </div>
+                <div className="space-y-2 text-[11px]">
+                  {costDistribution.map((slice) => <div key={slice.name} className="flex items-center justify-between gap-2"><span className="flex items-center gap-1.5 text-zinc-300"><span className="h-2 w-2 rounded-full" style={{ backgroundColor: slice.color }} />{slice.name}</span><span className="font-medium text-zinc-100">{formatQuoteCents(slice.value)}</span></div>)}
+                  <p className="border-t border-zinc-800 pt-2 text-[10px] leading-relaxed text-zinc-500">Approved work is due now. Optional future phases remain visible but are not due now.</p>
+                </div>
+              </div>
               <div className="space-y-1.5 text-xs">
                 {costBreakdown.standardServiceCents > 0 && <div className="flex justify-between gap-6 text-zinc-400"><span>Standard service work</span><span>{formatQuoteCents(costBreakdown.standardServiceCents)}</span></div>}
                 {costBreakdown.approvedPhaseCents > 0 && <div className="flex justify-between gap-6 text-amber-200"><span>Approved phases</span><span>{formatQuoteCents(costBreakdown.approvedPhaseCents)}</span></div>}
@@ -1215,7 +1273,13 @@ function QuoteFormModal({
         </div>
 
         <DialogFooter className="mx-auto mt-3 w-full max-w-[1500px] shrink-0 border-t border-zinc-800 pt-3">
-          <Button variant="outline" className="border-zinc-600" onClick={onClose}>Cancel</Button>
+          <div className="mr-auto flex items-center gap-2 text-[11px] text-zinc-500">
+            {draftQuoteId ? <><span className="h-2 w-2 rounded-full bg-emerald-400" />Draft saved — continue editing</> : <>Save a draft to return later without losing progress</>}
+          </div>
+          <Button variant="outline" className="border-zinc-600" onClick={onClose} disabled={isBusy}>Cancel</Button>
+          <Button type="button" variant="outline" className="border-sky-500/45 bg-sky-500/10 text-sky-100 hover:bg-sky-500/20" onClick={handleSaveDraft} disabled={isBusy}>
+            {createDraftMutation.isPending || updateDraftMutation.isPending ? "Saving Draft..." : "Save Draft"}
+          </Button>
           <Button className="bg-amber-500 hover:bg-amber-600 text-black font-semibold" onClick={handleSubmit} disabled={isBusy}>
             {isBusy ? "Saving..." : editQuote ? "Save Changes" : "Create Quote"}
           </Button>

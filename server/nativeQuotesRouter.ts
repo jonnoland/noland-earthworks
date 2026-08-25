@@ -26,6 +26,7 @@ import { getStripe, isStripeConfigured } from "./stripe";
 import { notifyOwner } from "./_core/notification";
 import { ENV } from "./_core/env";
 import { invokeLLM } from "./_core/llm";
+import { isDraftPlaceholderClient } from "../shared/quoteDrafts";
 
 // Strip markdown code fences from LLM JSON responses
 function stripCodeFence(raw: string): string {
@@ -195,7 +196,7 @@ export const nativeQuotesRouter = router({
       // Auto-save / update client record
       try {
         const { clientName, clientEmail, clientPhone, propertyAddress } = input;
-        if (clientName?.trim()) {
+        if (clientName?.trim() && !isDraftPlaceholderClient(clientName)) {
           let existing = null;
           if (clientEmail) {
             const [row] = await db.select().from(nativeClients).where(eq(nativeClients.email, clientEmail)).limit(1);

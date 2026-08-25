@@ -3576,3 +3576,8 @@
 - [x] Add a real-time line-item cost breakdown for phases, operating-day work, discounts, and amounts due
 - [x] Distinguish approved-now work from optional future phases without hiding the all-phases total
 - [x] Add regression coverage and validate the live quote breakdown
+
+## Quote Draft Save and Cost Distribution Visual — Aug 2026
+- [x] Add explicit draft-save controls that preserve in-progress quotes without closing the builder
+- [x] Add a visual chart comparing approved work and optional future-phase costs
+- [x] Add regression coverage and validate the enhanced quote workflow
