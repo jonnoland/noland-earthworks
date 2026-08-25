@@ -9,5 +9,8 @@ describe("customer portal phase item display", () => {
     expect(portal).toContain("optionalFuturePhaseSections.map");
     expect(portal).toContain("section.lineItems.filter");
     expect(portal).not.toContain("optionalFutureLineItems.map");
+    expect(portal).toContain("Phase subtotal");
+    expect(portal).toContain("Phase 2 and later — Optional future work");
+    expect(portal).toContain("Optional future phase separator");
   });
 });

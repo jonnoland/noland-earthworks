@@ -30,5 +30,7 @@ describe("customer portal phased quote summary", () => {
     expect(summary.approvedPhaseSections[0].lineItems.map((item) => item.description)).toEqual(["Phase 1", "Phase 1 mobilization"]);
     expect(summary.optionalFuturePhaseSections).toHaveLength(1);
     expect(summary.optionalFuturePhaseSections[0].lineItems.map((item) => item.description)).toEqual(["Phase 2", "Phase 2 mobilization", "Phase 2 volume discount"]);
+    expect(summary.phaseOneTotalCents).toBe(675000);
+    expect(summary.optionalFutureTotalCents).toBe(1920600);
   });
 });

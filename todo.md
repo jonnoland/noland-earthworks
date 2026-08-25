@@ -3634,3 +3634,8 @@
 ## Customer Portal Phase Item Grouping — Aug 2026
 - [x] Preserve each line item’s assigned phase when rendering customer portal phase sections
 - [x] Validate phase-specific mobilization, service, discount, subtotal, and total display
+
+## Customer Portal Phase Subtotals and Deposit Scope — Aug 2026
+- [x] Add a clear subtotal row at the bottom of every customer portal phase section
+- [x] Add stronger visual separation and headers between current and optional future phases
+- [x] Verify and regress-test that Phase 1 deposits exclude work assigned to Phase 2

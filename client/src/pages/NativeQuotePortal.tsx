@@ -334,6 +334,11 @@ export default function NativeQuotePortal() {
                   <span className={li.totalCents < 0 || li.kind === "discount" ? "text-emerald-300 text-sm font-medium shrink-0" : "text-amber-400 text-sm font-medium shrink-0"}>{fmt(li.qty * li.unitPriceCents)}</span>
                 </div>
               ))}
+              <div className="border-t border-amber-500/25 bg-amber-500/[0.07] px-5 py-3">
+                <div className="flex items-center justify-between text-xs text-zinc-300"><span>Phase subtotal</span><span>{fmt(section.subtotalCents)}</span></div>
+                {section.discountCents < 0 && <div className="mt-1 flex items-center justify-between text-xs text-emerald-300"><span>Phase discounts</span><span>{fmt(section.discountCents)}</span></div>}
+                <div className="mt-2 flex items-center justify-between text-sm font-semibold text-white"><span>Phase total</span><span className="text-amber-300">{fmt(section.totalCents)}</span></div>
+              </div>
             </div>
           ))}
           {unassignedApprovedLineItems.map((li, i) => (
@@ -351,9 +356,15 @@ export default function NativeQuotePortal() {
 
       {/* Optional future phases */}
       {phaseSummary.hasOptionalFuturePhases && (
-        <div className="rounded-xl border border-indigo-500/30 bg-indigo-500/[0.07] overflow-hidden mb-6">
+        <>
+          <div className="my-8 flex items-center gap-3" aria-label="Optional future phase separator">
+            <div className="h-px flex-1 bg-indigo-500/45" />
+            <p className="text-center text-[11px] font-bold uppercase tracking-widest text-indigo-200">Phase 2 and later — Optional future work</p>
+            <div className="h-px flex-1 bg-indigo-500/45" />
+          </div>
+          <div className="rounded-xl border-2 border-indigo-500/45 bg-indigo-500/[0.07] overflow-hidden mb-6">
           <div className="px-5 py-4 border-b border-indigo-500/20">
-            <p className="text-indigo-200 text-xs font-semibold uppercase tracking-widest">Optional Future Phases</p>
+            <p className="text-indigo-100 text-sm font-bold">Optional Future Phases</p>
             <p className="mt-2 text-indigo-100/80 text-sm leading-relaxed">These phases are shown for planning only. They are not included in today’s approval, deposit, or schedule. A separate authorization will be provided before any future phase begins.</p>
           </div>
           {optionalFuturePhaseSections.map((section, sectionIndex) => (
@@ -374,13 +385,19 @@ export default function NativeQuotePortal() {
                   <span className={li.totalCents < 0 || li.kind === "discount" ? "text-emerald-300 text-sm font-medium shrink-0" : "text-indigo-200 text-sm font-medium shrink-0"}>{fmt(li.qty * li.unitPriceCents)}</span>
                 </div>
               ))}
+              <div className="border-t border-indigo-500/30 bg-indigo-950/35 px-5 py-3">
+                <div className="flex items-center justify-between text-xs text-indigo-100"><span>Phase subtotal</span><span>{fmt(section.subtotalCents)}</span></div>
+                {section.discountCents < 0 && <div className="mt-1 flex items-center justify-between text-xs text-emerald-300"><span>Phase discounts</span><span>{fmt(section.discountCents)}</span></div>}
+                <div className="mt-2 flex items-center justify-between text-sm font-semibold text-indigo-50"><span>Phase total</span><span>{fmt(section.totalCents)}</span></div>
+              </div>
             </div>
           ))}
           <div className="px-5 py-3 bg-indigo-950/30">
             <div className="flex items-center justify-between text-sm text-indigo-100"><span>Optional future work</span><span className="font-semibold">{fmt(phaseSummary.optionalFutureTotalCents)}</span></div>
             <div className="mt-2 flex items-center justify-between text-xs text-indigo-200/70"><span>Potential full project total</span><span>{fmt(phaseSummary.allPhasesTotalCents)}</span></div>
           </div>
-        </div>
+          </div>
+        </>
       )}
 
       {/* Deposit section */}
