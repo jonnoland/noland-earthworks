@@ -3132,6 +3132,7 @@ export function NativeAllQuotesSection() {
                                   <span className="font-medium text-foreground truncate">{quote.title || "Untitled Quote"}</span>
                                   <span className="text-muted-foreground/40">#</span>
                                   <span className="text-muted-foreground/60 text-[11px]">{quote.id}</span>
+                                  <StatusBadge quote={quote} />
                                 </div>
                                 <div className="text-[11px] text-muted-foreground truncate">
                                   {quote.clientName}

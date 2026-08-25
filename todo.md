@@ -3581,3 +3581,7 @@
 - [x] Add explicit draft-save controls that preserve in-progress quotes without closing the builder
 - [x] Add a visual chart comparing approved work and optional future-phase costs
 - [x] Add regression coverage and validate the enhanced quote workflow
+
+## Quote List Status Badges — Aug 2026
+- [x] Add clear visual Draft, Sent, and Approved badges to native Operations quote list rows
+- [x] Add regression coverage and validate the quote-list status treatment
