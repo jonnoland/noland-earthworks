@@ -144,36 +144,12 @@ function NumberInput({ value, onChange, min = 0, step = 1 }: {
   );
 }
 
-// ─── Jobber status badge ──────────────────────────────────────────────────────
-function JobberBadge({ status }: { status: "synced" | "failed" | "skipped" }) {
-  if (status === "synced") {
-    return (
-      <span className="inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full bg-green-500/15 text-green-400 border border-green-500/30">
-        <CheckCircle2 className="w-3 h-3" />Synced to Jobber
-      </span>
-    );
-  }
-  if (status === "failed") {
-    return (
-      <span className="inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full bg-red-500/15 text-red-400 border border-red-500/30">
-        <XCircle className="w-3 h-3" />Jobber Sync Failed
-      </span>
-    );
-  }
-  return (
-    <span className="inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full bg-secondary text-muted-foreground border border-border">
-      <Clock className="w-3 h-3" />Not Synced
-    </span>
-  );
-}
-
 // ─── Single quote row ─────────────────────────────────────────────────────────
 function QuoteRow({ q, onDelete }: {
   q: {
     id: number; name: string; phone: string; email: string; service: string; county: string;
     acreage: string | null; street: string | null; city: string | null; state: string | null;
-    zip: string | null; message: string | null; jobberStatus: "synced" | "failed" | "skipped";
-    jobberRequestId: string | null; jobberRequestUrl: string | null; jobberError: string | null;
+    zip: string | null; message: string | null;
     createdAt: Date;
   };
   onDelete: (id: number) => void;
@@ -191,15 +167,10 @@ function QuoteRow({ q, onDelete }: {
         onClick={() => setExpanded(e => !e)}
         className="w-full flex items-start gap-3 p-4 text-left hover:bg-secondary/30 transition-colors"
       >
-        <div className={cn(
-          "mt-0.5 w-2 h-2 rounded-full shrink-0",
-          q.jobberStatus === "synced" ? "bg-green-400" :
-          q.jobberStatus === "failed" ? "bg-red-400" : "bg-muted-foreground/40"
-        )} />
+        <div className="mt-0.5 w-2 h-2 rounded-full shrink-0 bg-primary/70" />
         <div className="flex-1 min-w-0">
           <div className="flex flex-wrap items-center gap-2 mb-1">
             <span className="text-sm font-semibold text-foreground">{q.name}</span>
-            <JobberBadge status={q.jobberStatus} />
           </div>
           <div className="flex flex-wrap gap-x-4 gap-y-0.5 text-xs text-muted-foreground">
             <span className="flex items-center gap-1"><Wrench className="w-3 h-3" />{q.service}</span>
@@ -242,18 +213,6 @@ function QuoteRow({ q, onDelete }: {
               <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">Message</p>
               <p className="text-xs text-foreground bg-secondary/40 rounded p-2">{q.message}</p>
             </div>
-          )}
-          {q.jobberError && (
-            <div className="flex items-start gap-2 bg-red-500/10 border border-red-500/20 rounded p-2">
-              <AlertCircle className="w-3.5 h-3.5 text-red-400 shrink-0 mt-0.5" />
-              <p className="text-xs text-red-400">{q.jobberError}</p>
-            </div>
-          )}
-          {q.jobberRequestUrl && (
-            <a href="https://secure.getjobber.com/home" target="_blank" rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 text-xs text-primary hover:underline">
-              <ExternalLink className="w-3 h-3" />View in Jobber
-            </a>
           )}
           <div className="pt-1">
             <button

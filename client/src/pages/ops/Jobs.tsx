@@ -1,7 +1,7 @@
 /**
  * Jobs Page — Noland Earthworks
  * Wrapper around NativeJobsSection — the canonical job management UI.
- * Data source: native_jobs table (no Jobber dependency).
+ * Data source: native_jobs table.
  */
 import DashboardLayout from "@/components/DashboardLayout";
 import NativeJobsSection from "./NativeJobsSection";

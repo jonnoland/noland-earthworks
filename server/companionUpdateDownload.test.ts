@@ -12,8 +12,9 @@ describe("Noland Field update download recovery", () => {
 
     expect(packageJson).toContain('"@capacitor/browser"');
     expect(profile).toContain('import { Browser } from "@capacitor/browser"');
-    expect(profile).toContain("await Browser.open({ url })");
-    expect(profile).toContain('window.open(url, "_system")');
+    expect(profile).toContain("new URL(url, UPDATE_SITE_ORIGIN)");
+    expect(profile).toContain("await Browser.open({ url: absoluteUrl })");
+    expect(profile).toContain('window.open(absoluteUrl, "_system")');
   });
 
   it("provides an explicit release-page fallback and clear APK installation guidance", () => {

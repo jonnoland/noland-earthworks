@@ -623,7 +623,7 @@ export const quoteRouter = router({
     }
     } // end disabled block
 
-    // Jobber sync removed — quote is stored natively via quoteSubmissions table
+    // Quote is stored natively via the quoteSubmissions table.
 
     // Persist submission to quote_submissions log
     let submissionId: number | null = null;

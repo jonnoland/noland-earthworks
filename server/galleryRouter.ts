@@ -201,29 +201,6 @@ export const galleryRouter = router({
     }),
 
   /**
-   * Get photos linked to a Jobber job string ID.
-   * Looks up the local job row by jobberJobId, then returns gallery photos for that local job.
-   */
-  getByJobberJobId: adminProcedure
-    .input(z.object({ jobberJobId: z.string() }))
-    .query(async ({ input }) => {
-      const db = await getDb();
-      if (!db) return [];
-      // Find the local job row that corresponds to this Jobber job
-      const [localJob] = await db
-        .select({ id: jobs.id })
-        .from(jobs)
-        .where(eq(jobs.jobberJobId, input.jobberJobId))
-        .limit(1);
-      if (!localJob) return [];
-      return db
-        .select()
-        .from(galleryPhotos)
-        .where(eq(galleryPhotos.jobId, localJob.id))
-        .orderBy(asc(galleryPhotos.sortOrder), desc(galleryPhotos.createdAt));
-    }),
-
-  /**
    * Bulk reorder — accepts an ordered array of photo IDs.
    */
   reorder: adminProcedure

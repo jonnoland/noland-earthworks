@@ -1,8 +1,8 @@
 /**
- * NativeJobsSection — Jobs tab in Ops Quotes page
+ * NativeJobsSection — Jobs tab in Operations.
  *
- * Replaces Jobber's Jobs tab. Shows all native jobs (created from converted quotes)
- * with a Jobber-style two-column layout: table on left, slide-out detail on right.
+ * Shows all native jobs created from converted quotes in a two-column layout:
+ * table on the left and a slide-out detail panel on the right.
  *
  * Actions:
  *   - Filter by status (All / Scheduled / In Progress / Completed / Cancelled)

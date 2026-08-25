@@ -1,7 +1,7 @@
 /**
  * Invoices Page — Noland Earthworks
  * Wrapper around NativeInvoicesSection — the canonical invoice management UI.
- * Data source: native_invoices table (no Jobber dependency).
+ * Data source: native_invoices table.
  */
 import DashboardLayout from "@/components/DashboardLayout";
 import NativeInvoicesSection from "./NativeInvoicesSection";

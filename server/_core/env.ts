@@ -8,11 +8,6 @@ export const ENV = {
   forgeApiUrl: process.env.BUILT_IN_FORGE_API_URL ?? "",
   forgeApiKey: process.env.BUILT_IN_FORGE_API_KEY ?? "",
   resendApiKey: process.env.RESEND_API_KEY ?? "",
-  jobberClientId: process.env.JOBBER_CLIENT_ID ?? "",
-  jobberClientSecret: process.env.JOBBER_CLIENT_SECRET ?? "",
-  // Canonical Jobber OAuth redirect URI — must match exactly what is registered in the Jobber developer app.
-  // Defaults to the non-www production URL. Override via JOBBER_REDIRECT_URI secret if needed.
-  jobberRedirectUri: process.env.JOBBER_REDIRECT_URI ?? "https://nolandearthworks.com/api/jobber/callback",
   ownerPhone: process.env.OWNER_PHONE ?? "",
   // Google Places API — for fetching Google Business reviews (no approval required)
   googlePlacesApiKey: process.env.GOOGLE_PLACES_API_KEY ?? "",

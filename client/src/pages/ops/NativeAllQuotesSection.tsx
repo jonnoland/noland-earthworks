@@ -1,9 +1,9 @@
 /**
- * NativeAllQuotesSection — replaces the Jobber Quotes tab.
+ * NativeAllQuotesSection — the Operations quote workspace.
  *
  * Features:
  *   - Paginated list with search + status filter
- *   - Create Quote modal (Jobber-style form with line items)
+ *   - Create Quote modal with line items
  *   - Edit quote inline
  *   - Duplicate quote
  *   - Delete quote
@@ -1369,11 +1369,14 @@ function NativeQuoteDetailPanel({
     { nativeQuoteId: quote.id },
     { retry: false, staleTime: 1000 * 60 * 5 }
   );
-  const { data: unlinkedLeads = [] } = trpc.ops.getUnlinkedLeads.useQuery(
+  const { data: leadList = [] } = trpc.ops.leads.list.useQuery(
     undefined,
     { enabled: showLinkLeadPicker, retry: false }
   );
-  const filteredLeads = (unlinkedLeads as any[]).filter((l: any) => {
+  const availableLeads = (leadList as any[]).filter((lead: any) =>
+    !lead.nativeQuoteId && !["won", "lost"].includes(lead.stage)
+  );
+  const filteredLeads = availableLeads.filter((l: any) => {
     if (!leadPickerSearch) return true;
     const q = leadPickerSearch.toLowerCase();
     return (l.name ?? "").toLowerCase().includes(q) || (l.address ?? "").toLowerCase().includes(q);

@@ -200,8 +200,6 @@ interface Lead {
   aiFlags?: string | null;
   aiDraftResponse?: string | null;
   chatSessionId?: number | null;
-  jobberQuoteId?: string | null;
-  jobberQuoteNumber?: number | null;
   nativeQuoteId?: number | null;
   estimateAmount?: string | null;
   clientType?: string | null;
@@ -1042,7 +1040,6 @@ function LeadDetailPanel({
   const [showProposal, setShowProposal] = useState(false);
     const [showContactModal, setShowContactModal] = useState(false);
   const [showQuotePreview, setShowQuotePreview] = useState(false);
-  const [confirmUnlink, setConfirmUnlink] = useState(false);
   const [showSmsModal, setShowSmsModal] = useState(false);
   const [smsBody, setSmsBody] = useState("");
   const [showTemplates, setShowTemplates] = useState(false);
@@ -1114,15 +1111,6 @@ function LeadDetailPanel({
   });
   const smsTemplates = allTemplates.filter((t) => t.channel === "sms" && t.body);
   const utils = trpc.useUtils();
-  const unlinkQuote = trpc.ops.unlinkQuoteFromLead.useMutation({
-    onSuccess: () => {
-      toast.success("Quote unlinked.");
-      setShowQuotePreview(false);
-      setConfirmUnlink(false);
-      utils.ops.leads.list.invalidate();
-    },
-    onError: (e) => toast.error(e.message || "Failed to unlink quote."),
-  });
   const { data: notes = [], isLoading: notesLoading } = trpc.ops.leads.listNotes.useQuery({ leadId: lead.id });
   const { data: contactLog = [], isLoading: contactLogLoading } = trpc.ops.leads.getContactLog.useQuery({ leadId: lead.id });
 
@@ -1427,7 +1415,7 @@ nolandearthworks.com`;
             </button>
           </div>
           {/* Linked native quote badge — clickable with live status */}
-          {(lead.nativeQuoteId || lead.jobberQuoteId) && (() => {
+          {lead.nativeQuoteId && (() => {
             const status = linkedQuote?.quoteStatus ?? null;
             const statusColor =
               status === "APPROVED" ? "text-green-400 border-green-500/30 bg-green-500/10" :
@@ -1540,48 +1528,20 @@ nolandearthworks.com`;
                         )}
                       </div>
                       {/* Footer */}
-                      <div className="px-4 py-3 border-t border-[#2a2a2a] space-y-2">
-                        {confirmUnlink ? (
-                          <div className="flex items-center gap-2">
-                            <span className="text-[11px] text-red-400 flex-1">Remove this quote from the lead?</span>
-                            <button
-                              onClick={() => unlinkQuote.mutate({ leadId: lead.id })}
-                              disabled={unlinkQuote.isPending}
-                              className="px-3 py-1.5 bg-red-600/20 hover:bg-red-600/30 border border-red-500/30 text-red-400 text-[11px] font-semibold rounded-md transition-colors disabled:opacity-50"
-                            >
-                              {unlinkQuote.isPending ? "Removing..." : "Yes, remove"}
-                            </button>
-                            <button
-                              onClick={() => setConfirmUnlink(false)}
-                              className="px-3 py-1.5 bg-[#1e1e1e] hover:bg-[#252525] border border-[#2a2a2a] text-[#666] text-[11px] font-semibold rounded-md transition-colors"
-                            >
-                              Cancel
-                            </button>
-                          </div>
-                        ) : (
-                          <div className="flex gap-2">
-                            <a
-                              href={`/ops/quotes?quote=${lead.nativeQuoteId}`}
-                              className="flex-1 flex items-center justify-center gap-1.5 bg-[#1e1e1e] hover:bg-[#252525] border border-[#2a2a2a] text-[#aaa] text-[11px] font-semibold py-2 rounded-md transition-colors"
-                            >
-                              <FileText className="w-3 h-3" />
-                              View Quote
-                            </a>
-                            <button
-                              onClick={() => setConfirmUnlink(true)}
-                              className="px-3 py-2 bg-[#1e1e1e] hover:bg-red-600/10 border border-[#2a2a2a] hover:border-red-500/30 text-[#555] hover:text-red-400 text-[11px] font-semibold rounded-md transition-colors"
-                              title="Unlink quote from this lead"
-                            >
-                              <Unlink className="w-3.5 h-3.5" />
-                            </button>
-                            <button
-                              onClick={() => setShowQuotePreview(false)}
-                              className="px-4 bg-[#1e1e1e] hover:bg-[#252525] border border-[#2a2a2a] text-[#666] text-[11px] font-semibold py-2 rounded-md transition-colors"
-                            >
-                              Close
-                            </button>
-                          </div>
-                        )}
+                      <div className="px-4 py-3 border-t border-[#2a2a2a] flex gap-2">
+                        <a
+                          href={`/ops/quotes?quote=${lead.nativeQuoteId}`}
+                          className="flex-1 flex items-center justify-center gap-1.5 bg-[#1e1e1e] hover:bg-[#252525] border border-[#2a2a2a] text-[#aaa] text-[11px] font-semibold py-2 rounded-md transition-colors"
+                        >
+                          <FileText className="w-3 h-3" />
+                          View Quote
+                        </a>
+                        <button
+                          onClick={() => setShowQuotePreview(false)}
+                          className="px-4 bg-[#1e1e1e] hover:bg-[#252525] border border-[#2a2a2a] text-[#666] text-[11px] font-semibold py-2 rounded-md transition-colors"
+                        >
+                          Close
+                        </button>
                       </div>
                     </div>
                   </div>

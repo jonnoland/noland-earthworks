@@ -44,14 +44,7 @@ vi.mock("./_core/env", () => ({
     builtInForgeApiUrl: "https://forge.manus.im",
     builtInForgeApiKey: "test-key",
     ownerName: "Test Owner",
-    jobberClientId: undefined,
-    jobberClientSecret: undefined,
   },
-}));
-
-vi.mock("./jobber", () => ({
-  isJobberConnected: vi.fn().mockResolvedValue(false),
-  createJobberRequest: vi.fn().mockResolvedValue({}),
 }));
 
 vi.mock("resend", () => ({

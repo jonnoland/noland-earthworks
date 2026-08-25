@@ -14,6 +14,7 @@
 
 - `/api/jobber/status` returns the public SPA HTML instead of JSON. The Jobber route module still exists, but the recovered server bootstrap does not import or call `registerJobberRoutes`, so Jobber connect, callback, introspection, status, and token-refresh behavior are unavailable.
 - The public live-review query returns no Google rating, count, or reviews even though the Google OAuth status is connected. This indicates the Google Business OAuth connection alone is not supplying usable public-review data; the Google Places/Place ID review path needs diagnosis.
+- The active Google Maps listing resolves to `Noland Earthworks, LLC` at `https://www.google.com/maps/place/Noland+Earthworks,+LLC/@35.827158,-88.2971235,8z/data=!3m1!4b1!4m6!3m5!1s0x496884a085ceac47:0x2702b51b033025c8!8m2!3d35.8343674!4d-86.977835!16s%2Fg%2F11z0vrckv6` and exposes Place ID `ChIJR6zOhaCEaEkRyCUwAxu1Aic` in the Maps document.
 - Seven Operations agents are registered with in-process `node-cron`. Those schedules disappear whenever an autoscaled instance is stopped or restarted, so they are not durable after a recovery or deployment. Platform-managed schedules should own recurring production work instead.
 
 ## Items Requiring Authenticated or Database-Level Verification

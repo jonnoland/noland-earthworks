@@ -24,7 +24,6 @@
  */
 import type { Application, Request, Response } from "express";
 import { createOpsLead, getOwnerUser, getDb } from "./db";
-import { createJobberClientFromLead } from "./jobber";
 import { notifyOwner } from "./_core/notification";
 import { businessSettings } from "../drizzle/schema";
 import { Resend } from "resend";
@@ -135,13 +134,6 @@ export function registerZapierWebhookRoutes(app: Application): void {
       });
 
       console.log(`[Zapier Webhook] Lead created: ${name} (test=${isTest})`);
-
-      // Add to Jobber (fire-and-forget, skip for test leads)
-      if (!isTest) {
-        createJobberClientFromLead({ name, email, phone, address }).catch(err =>
-          console.warn("[Zapier Webhook] Jobber client creation failed:", err)
-        );
-      }
 
       // Owner notification
       const notifLines = [

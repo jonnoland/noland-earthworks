@@ -254,8 +254,8 @@ async function startServer() {
     }
   });
 
-  // ─── Chat-to-Lead Jobber Creation ─────────────────────────────────────────
-  // Scheduled job: monitors chat sessions and auto-creates leads in Jobber
+  // ─── Chat-to-Lead Qualification ───────────────────────────────────────────
+  // Scheduled job: monitors chat sessions and extracts qualified Operations leads.
   app.post("/api/scheduled/chat-to-lead", async (req, res) => {
     try {
       const { sdk } = await import("./sdk");

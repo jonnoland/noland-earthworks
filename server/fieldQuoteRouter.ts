@@ -27,6 +27,7 @@ import { normalizeTennesseeParcelId, validateTennesseeParcelId } from "../shared
 import { applyFieldConditionPriceAdjustment, getFieldConditionAdjustment } from "../shared/fieldConditionPricing";
 import { getCustomerDiscountOptions, getSuggestedVolumeDiscount } from "../shared/quoteDiscounts";
 import { roundQuoteCentsUp } from "../shared/quoteMoney";
+import { getNolandFieldRelease } from "./mobileRelease";
 
 const TN_PARCEL_QUERY_URL = "https://services1.arcgis.com/YuVBSS7Y1of2Qud1/arcgis/rest/services/Tennessee_Property_Boundaries_Public_Use/FeatureServer/0/query";
 
@@ -790,69 +791,9 @@ export const fieldQuoteRouter = router({
       return { success: true };
     }),
 
-  /**
-   * Returns the latest published version of the Noland Field mobile app.
-   * Fetches live data from GitHub Releases API so the version and APK download
-   * URL are always current — no manual bumping required.
-   * Cached in-memory for one minute so new signed releases appear promptly.
-   * Public — no auth required.
-   */
+  /** Returns the current signed Noland Field release from managed website storage. */
   latestVersion: publicProcedure
-    .query(async () => {
-      const GITHUB_REPO = "jonnoland/noland-earthworks";
-      const RELEASES_PAGE = `https://github.com/${GITHUB_REPO}/releases`;
-      const FALLBACK = { version: "0.3.0", downloadUrl: RELEASES_PAGE, releaseNotesUrl: RELEASES_PAGE };
-      const MOBILE_RELEASE_CACHE_MS = 60_000;
-
-      // Short cache keeps a newly published personal-use release visible promptly.
-      const cache = (globalThis as any).__mobileVersionCache as
-        | { data: typeof FALLBACK; expiresAt: number }
-        | undefined;
-      if (cache && Date.now() < cache.expiresAt) return cache.data;
-
-      try {
-        // Fetch all releases and find the latest one tagged mobile-v*
-        const res = await fetch(
-          `https://api.github.com/repos/${GITHUB_REPO}/releases?per_page=20`,
-          { headers: { Accept: "application/vnd.github+json", "X-GitHub-Api-Version": "2022-11-28" } }
-        );
-        if (!res.ok) return FALLBACK;
-
-        const releases: Array<{
-          tag_name: string;
-          html_url: string;
-          assets: Array<{ name: string; browser_download_url: string }>;
-          draft: boolean;
-          prerelease: boolean;
-        }> = await res.json();
-
-        // Find the latest non-draft, non-prerelease mobile build
-        const latest = releases.find(
-          (r) => !r.draft && !r.prerelease && r.tag_name.startsWith("mobile-v")
-        );
-        if (!latest) return FALLBACK;
-
-        // Extract semver from tag like "mobile-v0.4.0-build42" → "0.4.0"
-        const versionMatch = latest.tag_name.match(/mobile-v(\d+\.\d+\.\d+)/);
-        const version = versionMatch ? versionMatch[1] : FALLBACK.version;
-
-        // Find the APK asset — prefer the named APK, fall back to any .apk
-        const apkAsset =
-          latest.assets.find((a) => a.name.startsWith("noland-field-v") && a.name.endsWith(".apk")) ??
-          latest.assets.find((a) => a.name.endsWith(".apk"));
-
-        const result = {
-          version,
-          downloadUrl: apkAsset?.browser_download_url ?? latest.html_url,
-          releaseNotesUrl: latest.html_url,
-        };
-
-        (globalThis as any).__mobileVersionCache = { data: result, expiresAt: Date.now() + MOBILE_RELEASE_CACHE_MS };
-        return result;
-      } catch {
-        return FALLBACK;
-      }
-    }),
+    .query(() => getNolandFieldRelease()),
 
   /**
    * AI cost estimate from the mobile app — requires app token.

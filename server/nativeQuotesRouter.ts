@@ -1,7 +1,7 @@
 /**
  * nativeQuotesRouter — full lifecycle quote management
  *
- * Replaces the Jobber Quotes tab. Covers:
+ * Covers the native quote lifecycle:
  *   list        — paginated list with search/filter
  *   getById     — single quote with all fields
  *   create      — new quote (draft)

@@ -1,7 +1,7 @@
 /**
  * Clients Page — Noland Earthworks
  * Wrapper around NativeClientsSection — the canonical client directory.
- * Data source: native_clients table (no Jobber dependency).
+ * Data source: native_clients table.
  */
 import DashboardLayout from "@/components/DashboardLayout";
 import NativeClientsSection from "./NativeClientsSection";

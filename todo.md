@@ -3558,3 +3558,10 @@
 - [x] Audit recovered website routes, integrations, schedules, and cloud-dependent features for missing or degraded behavior
 - [x] Verify critical public, Operations, and companion-app support paths after the environment move
 - [x] Document and prioritize recovery fixes with verified evidence
+
+## Integration Recovery Repairs — Aug 2026
+- [x] Replace the retired Google Place ID and restore verified live reviews
+- [x] Repair Noland Field update delivery for the private GitHub repository
+- [x] Remove Jobber code, routes, settings, tests, and references throughout the project
+- [x] Verify Send Portal to Client email generation and delivery behavior
+- [x] Validate and publish the integration recovery update

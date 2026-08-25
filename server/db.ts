@@ -197,8 +197,6 @@ export async function getOpsLeads(userId: number) {
       aiFlags: opsLeads.aiFlags,
       aiDraftResponse: opsLeads.aiDraftResponse,
       chatSessionId: opsLeads.chatSessionId,
-      jobberQuoteId: opsLeads.jobberQuoteId,
-      jobberQuoteNumber: opsLeads.jobberQuoteNumber,
       nativeQuoteId: opsLeads.nativeQuoteId,
       estimateAmount: opsLeads.estimateAmount,
       clientType: opsLeads.clientType,

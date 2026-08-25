@@ -8,11 +8,14 @@ const source = (path: string) => readFileSync(resolve(root, path), "utf8");
 describe("companion release, map, and offline workflow", () => {
   it("keeps the in-app updater connected to the latest published mobile APK release", () => {
     const router = source("server/fieldQuoteRouter.ts");
+    const release = source("server/mobileRelease.ts");
     const profile = source("noland-earthworks-mobile/src/pages/Profile.tsx");
-    expect(router).toContain('tag_name.startsWith("mobile-v")');
-    expect(router).toContain("browser_download_url");
-    expect(router).toContain("const MOBILE_RELEASE_CACHE_MS = 60_000");
+    expect(router).toContain("getNolandFieldRelease");
+    expect(router).not.toContain("api.github.com/repos");
+    expect(release).toContain('version: "0.4.12"');
+    expect(release).toContain("/manus-storage/noland-field-v0.4.12_aa16c9a2.apk");
     expect(profile).toContain("Download Update");
+    expect(profile).toContain("new URL(url, UPDATE_SITE_ORIGIN)");
   });
 
   it("renders a visual supported-area map in the companion location screen", () => {

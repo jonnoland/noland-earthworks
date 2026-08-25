@@ -24,18 +24,6 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { Link } from "wouter";
 
-// ─── Jobber status → local status mapping ────────────────────────────────────
-function mapJobberStatus(jobStatus: string): string {
-  switch (jobStatus?.toLowerCase()) {
-    case "active":                return "in_progress";
-    case "requires_invoicing":    return "invoiced";
-    case "completed":             return "completed";
-    case "late":                  return "in_progress";
-    case "archived":              return "cancelled";
-    default:                      return "scheduled";
-  }
-}
-
 const statusConfig: Record<string, { label: string; color: string }> = {
   estimate:    { label: "Estimate",   color: "text-blue-400 bg-blue-400/10 border-blue-400/20" },
   scheduled:   { label: "Scheduled",  color: "text-amber-400 bg-amber-400/10 border-amber-400/20" },
@@ -240,8 +228,7 @@ interface NormalizedJob {
   totalPrice?: number | null;
   acres?: number | null;
   crewDays?: number | null;
-  source: "jobber" | "local";
-  jobberJobNumber?: number;
+  source: "local";
   isHighPriority?: boolean;
   rescheduledAt?: Date | null;
 }
@@ -263,12 +250,7 @@ export default function Dashboard() {
   const { data: leadActionPlan, isFetching: leadPlanLoading, refetch: refetchLeadPlan } =
     trpc.ops.leads.generateLeadActionPlan.useQuery(undefined, { enabled: false, retry: false });
 
-  // ─── Native data sources (Jobber removed) ───────────────────────────────
-  const jobberJobsError = false;
-  const jobberJobsRaw: undefined = undefined;
-  const jobberInvoicesRaw: undefined = undefined;
-  const jobberQuotesRaw: undefined = undefined;
-  const jobberRequestsRaw: undefined = undefined;
+  // ─── Native Operations data sources ─────────────────────────────────────
   const { data: localJobs = [], isLoading: jobsLoading } = trpc.ops.jobs.list.useQuery(undefined, { refetchInterval: 30000 });
   const { data: nativeJobsList = [], isLoading: nativeJobsLoading } = trpc.nativeJobs.list.useQuery({}, { refetchInterval: 30000 });
   const { data: nativeInvoicesList = [], isLoading: invoicesLoading } = trpc.nativeJobs.listInvoices.useQuery({}, { refetchInterval: 60000 });
@@ -391,14 +373,7 @@ export default function Dashboard() {
     prevLeadCount.current = leads.length;
   }, [leads.length]);
 
-  const jobberConnected = false;
-  const jobberTokenStatus: null = null;
-  const jobberExpiresAt: null = null;
-  const jobberAuthUrl: undefined = undefined;
-
-  // ─── Normalize Jobber jobs ────────────────────────────────────────────────
-  // Native jobs normalization
-  const jobberJobs: NormalizedJob[] = [];
+  // ─── Normalize native jobs ───────────────────────────────────────────────
   const normalizedNativeJobs = useMemo<NormalizedJob[]>(() => {
     return nativeJobsList.map((j: any) => ({
       id: `native-${j.id}`,
@@ -438,8 +413,7 @@ export default function Dashboard() {
     return normalizedLocalJobs;
   }, [normalizedNativeJobs, normalizedLocalJobs]);
 
-  // ─── Jobber invoices ──────────────────────────────────────────────────────
-  // Native invoices
+  // ─── Native invoices ──────────────────────────────────────────────────────
   const openInvoices = useMemo(() =>
     nativeInvoicesList.filter((inv: any) => inv.status !== "paid" && inv.status !== "void"),
     [nativeInvoicesList]
@@ -457,15 +431,13 @@ export default function Dashboard() {
       .reduce((s: number, inv: any) => s + Number(inv.totalCents ?? 0) / 100, 0);
   }, [nativeInvoicesList]);
 
-  // ─── Jobber quotes ────────────────────────────────────────────────────────
-  // Native quotes
+  // ─── Native quotes ────────────────────────────────────────────────────────
   const openQuotes = useMemo(() =>
     nativeQuotesList.filter((q: any) => !["archived", "converted", "declined"].includes(q.status ?? "")),
     [nativeQuotesList]
   );
 
-  // ─── Jobber requests ──────────────────────────────────────────────────────
-  // Open leads pipeline
+  // ─── Open leads pipeline ──────────────────────────────────────────────────
   const openRequests = useMemo(() =>
     leads.filter(l => !["won", "lost", "converted"].includes(l.stage)),
     [leads]
@@ -517,7 +489,7 @@ export default function Dashboard() {
       outstandingBalance,
       openQuotes: openQuotes.length,
     };
-  }, [allJobs, normalizedLocalJobs, leads, openRequests, paidThisMonthTotal, outstandingBalance, openQuotes, jobberConnected]);
+  }, [allJobs, normalizedLocalJobs, leads, openRequests, paidThisMonthTotal, outstandingBalance, openQuotes]);
 
   // ─── Status filter for scheduled jobs section ─────────────────────────────
   const [schedFilter, setSchedFilter] = useState<"all" | "scheduled" | "in_progress" | "invoiced">("all");
@@ -849,7 +821,6 @@ export default function Dashboard() {
                       <p className="text-sm font-semibold text-foreground leading-snug">{job.client}</p>
                       <p className="text-[11px] text-muted-foreground capitalize mt-0.5">
                         {job.title !== job.client ? job.title : (job.jobType?.replace(/_/g, " ") ?? "Land Management")}
-                        {job.jobberJobNumber ? ` · #${job.jobberJobNumber}` : ""}
                         {job.acres ? ` · ${job.acres} ac` : ""}
                       </p>
                     </div>
@@ -1072,7 +1043,6 @@ export default function Dashboard() {
               badge={undefined}
               sub="Latest job activity"
               href={"/ops/quotes"}
-              external={jobberConnected}
             />
             {recentJobs.length === 0 ? (
               <EmptyState
@@ -1117,9 +1087,6 @@ export default function Dashboard() {
                         <div className="text-xs font-semibold text-foreground ops-metric-value">
                           {job.totalPrice != null && job.totalPrice > 0 ? `$${Number(job.totalPrice).toLocaleString()}` : "—"}
                         </div>
-                        {job.jobberJobNumber && (
-                          <div className="text-[10px] text-muted-foreground">#{job.jobberJobNumber}</div>
-                        )}
                       </div>
                     </div>
                   );
@@ -1140,7 +1107,7 @@ export default function Dashboard() {
         </div>
 
         {/* Monthly Revenue Trend */}
-        {jobberConnected && (() => {
+        {(() => {
           const now = new Date();
           const months: { month: string; revenue: number }[] = [];
           for (let i = 5; i >= 0; i--) {
@@ -1241,9 +1208,7 @@ export default function Dashboard() {
                   Performance Metrics
                 </h3>
                 <p className="text-xs text-muted-foreground">
-                  {jobberConnected
-                    ? "Revenue from invoices · Crew days and win rate from local records"
-                    : "Calculated from your job and lead records"}
+                  Calculated from your native job, invoice, and lead records.
                 </p>
               </div>
               <Activity className="w-4 h-4 text-muted-foreground" />

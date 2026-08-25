@@ -55,8 +55,6 @@ vi.mock("./_core/env", () => ({
     builtInForgeApiKey: "test-key",
     resendApiKey: undefined,
     ownerName: "Test Owner",
-    jobberClientId: undefined,
-    jobberClientSecret: undefined,
   },
 }));
 

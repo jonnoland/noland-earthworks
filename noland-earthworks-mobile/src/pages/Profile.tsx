@@ -13,6 +13,7 @@ import { useThemePreference } from "@/hooks/useThemePreference";
 // This ensures the installed build always reports its true version
 declare const __APP_VERSION__: string;
 const APP_VERSION: string = typeof __APP_VERSION__ !== "undefined" ? __APP_VERSION__ : "0.3.0";
+const UPDATE_SITE_ORIGIN = "https://nolandearthworks.com";
 
 /** Simple semver comparison: returns true if remote > local */
 function isNewerVersion(remote: string, local: string): boolean {
@@ -54,16 +55,17 @@ export default function Profile() {
     : false;
 
   async function openUpdateLink(url: string) {
+    const absoluteUrl = new URL(url, UPDATE_SITE_ORIGIN).toString();
     if (Capacitor.isNativePlatform()) {
       try {
-        await Browser.open({ url });
+        await Browser.open({ url: absoluteUrl });
         return;
       } catch {
-        window.open(url, "_system");
+        window.open(absoluteUrl, "_system");
         return;
       }
     }
-    window.open(url, "_blank", "noopener,noreferrer");
+    window.open(absoluteUrl, "_blank", "noopener,noreferrer");
   }
 
   async function handleDownloadUpdate() {

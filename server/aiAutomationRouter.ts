@@ -38,7 +38,7 @@ export const aiAutomationRouter = router({
 
   // ─── AI #4: Invoice Risk Flagging ─────────────────────────────────────────
   flagInvoiceRisks: ownerProcedure
-    .input(z.object({ jobberInvoices: z.array(z.object({
+    .input(z.object({ invoices: z.array(z.object({
       id: z.string(),
       invoiceNumber: z.string().optional(),
       clientName: z.string(),
@@ -49,9 +49,9 @@ export const aiAutomationRouter = router({
       status: z.string(),
     })) }))
     .mutation(async ({ input }) => {
-      if (!input.jobberInvoices.length) return { risks: [] };
+      if (!input.invoices.length) return { risks: [] };
       const now = new Date();
-      const invoiceContext = input.jobberInvoices.map((inv) => {
+      const invoiceContext = input.invoices.map((inv) => {
         const daysOut = inv.issuedDate
           ? Math.floor((now.getTime() - new Date(inv.issuedDate).getTime()) / 86400000)
           : null;
@@ -80,7 +80,6 @@ Return JSON only: {"risks": [{"id": "<invoice id>", "riskLevel": "high"|"medium"
   analyzeJobProfitability: ownerProcedure
     .input(z.object({
       jobId: z.number().int().positive().optional(),
-      jobberJobId: z.string().optional(),
       jobTitle: z.string().optional(),
       jobClient: z.string().optional(),
       jobType: z.string().optional(),
@@ -332,7 +331,6 @@ Return JSON only: {"forecast": [{"month": "YYYY-MM", "leadVolume": "low"|"medium
   draftSocialFromJob: ownerProcedure
     .input(z.object({
       jobId: z.number().int().positive().optional(),
-      jobberJobId: z.string().optional(),
       jobTitle: z.string().optional(),
       jobClient: z.string().optional(),
       jobType: z.string().optional(),
@@ -489,7 +487,6 @@ Return JSON only: {"predictions": [{"serviceType": "<type>", "hoursUntilDue": <n
   autoGenerateTasks: ownerProcedure
     .input(z.object({
       jobId: z.number().int().positive().optional(),
-      jobberJobId: z.string().optional(),
       jobTitle: z.string().optional(),
       jobClient: z.string().optional(),
     }))

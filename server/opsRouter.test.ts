@@ -47,8 +47,6 @@ vi.mock("./_core/env", () => ({
     builtInForgeApiKey: "test-key",
     resendApiKey: undefined,
     ownerName: "Test Owner",
-    jobberClientId: undefined,
-    jobberClientSecret: undefined,
   },
 }));
 
@@ -123,26 +121,4 @@ describe("opsRouter — owner-only guard", () => {
     await expect(caller.schedule.list()).rejects.toThrow(TRPCError);
   });
 
-  it("allows the owner to call getLeadByQuoteId (returns null when DB unavailable)", async () => {
-    const caller = createCaller(makeCtx(ownerUser));
-    // getDb returns null in test env, so the procedure returns null gracefully
-    const result = await caller.getLeadByQuoteId({ jobberQuoteId: "test-quote-id" });
-    expect(result).toBeNull();
-  });
-
-  it("blocks a non-owner from calling getLeadByQuoteId", async () => {
-    const caller = createCaller(makeCtx(nonOwnerUser));
-    await expect(caller.getLeadByQuoteId({ jobberQuoteId: "test-quote-id" })).rejects.toThrow(TRPCError);
-  });
-
-  it("allows the owner to call getUnlinkedLeads (returns empty array when DB unavailable)", async () => {
-    const caller = createCaller(makeCtx(ownerUser));
-    const result = await caller.getUnlinkedLeads();
-    expect(Array.isArray(result)).toBe(true);
-  });
-
-  it("blocks a non-owner from calling getUnlinkedLeads", async () => {
-    const caller = createCaller(makeCtx(nonOwnerUser));
-    await expect(caller.getUnlinkedLeads()).rejects.toThrow(TRPCError);
-  });
 });

@@ -1357,7 +1357,7 @@ const quotesRouter = router({
    * - Estimated price range (low / high)
    * - Estimated days to complete
    * - Risk flags or site notes Jon should verify
-   * - A ready-to-send message for the Jobber quote
+   * - A ready-to-send message for the native quote
    *
    * Uses the same pricing model as the public CostCalculator.
    */
@@ -1645,7 +1645,7 @@ const quotesRouter = router({
 
       const systemPrompt = `You are an expert estimator for Noland Earthworks, LLC — a veteran-owned forestry mulching and land management company in Middle and West Tennessee. Jon Noland is the owner and sole operator. He uses a tracked forestry mulcher.
 
-Your job is to analyze an inbound quote request and return a structured JSON object that Jon can use to quickly build an accurate Jobber quote.
+Your job is to analyze an inbound quote request and return a structured JSON object that Jon can use to quickly build an accurate native quote.
 
 Pricing reference — Middle & West Tennessee market rates (2025–2026):
 - Service: ${input.service}
@@ -1965,7 +1965,7 @@ ${input.customPrompt ? `\nADJUSTMENT INSTRUCTION: ${input.customPrompt}\nApply t
       // ─── Build LLM messages ───────────────────────────────────────────────────
       const systemPrompt = `You are an expert estimator for Noland Earthworks, LLC — a veteran-owned forestry mulching and land management company in Middle and West Tennessee. Jon Noland is the owner and sole operator. He uses a tracked forestry mulcher.
 
-Your job is to read Jon's free-form job description (and any site photos he provides), infer all relevant job parameters, and return a structured JSON quote draft he can immediately use to build a Jobber quote.
+Your job is to read Jon's free-form job description (and any site photos he provides), infer all relevant job parameters, and return a structured JSON quote draft he can immediately use to build a native quote.
 
 Pricing reference — Middle & West Tennessee market rates (2025–2026):
 - Forestry mulching base: $${fmBase}/acre (light density)
@@ -2099,7 +2099,7 @@ Return ONLY valid JSON with this exact structure:
   /**
    * Create a manual quote submission so Jon can enter a potential client
    * directly in the ops dashboard and use all AI tools on them.
-   * Marked with jobberStatus="skipped" so it never tries to auto-sync.
+   * Stored directly in the native Operations pipeline.
    */
   createManual: ownerProcedure
     .input(z.object({
@@ -2130,7 +2130,6 @@ Return ONLY valid JSON with this exact structure:
         state: input.state ?? "TN",
         zip: input.zip ?? null,
         message: input.message ?? null,
-        jobberStatus: "skipped",
       });
       return { id: (inserted as any).insertId as number };
     }),
@@ -2827,7 +2826,7 @@ const distanceQuotesRouter = router({
           .where(eq(distanceQuotes.id, input.id));
       }
 
-      const PORTAL_BASE_URL = 'https://nolandearth-pymczdcn.manus.space';
+      const PORTAL_BASE_URL = 'https://nolandearthworks.com';
       const portalUrl = `${PORTAL_BASE_URL}/quote/${token}`;
       const fmt = (cents: number) =>
         new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(cents / 100);
@@ -5986,7 +5985,6 @@ Always be specific to nolandearthworks.com. Never give generic advice — tie ev
   sendReviewRequest: ownerProcedure
     .input(z.object({
       jobId: z.number().optional(),
-      jobberJobId: z.string().optional(),
       clientPhone: z.string().min(7),
       clientName: z.string(),
       jobDescription: z.string().optional(),
@@ -5994,7 +5992,7 @@ Always be specific to nolandearthworks.com. Never give generic advice — tie ev
     .mutation(async ({ input }) => {
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable." });
-      const googleReviewUrl = "https://g.page/r/CcglMAMbtQInEAI/review";
+      const googleReviewUrl = "https://g.page/r/CcglMAMbtQInEBM/review";
       // Read saved SMS template from agentConfig, fall back to default
       const DEFAULT_REVIEW_TEMPLATE = "Hey {clientName}, this is Jon with Noland Earthworks. I really appreciate your business{jobDescription}. If you have a moment, a Google review would mean a lot — it helps other landowners find us. Here's the link: {reviewLink}";
       const savedConfig = await getAgentConfig("review_request");
@@ -6444,90 +6442,6 @@ Generate a complete monthly ad campaign plan. Return ONLY valid JSON matching th
         .where(eq(adCampaigns.id, input.id)).limit(1);
       return row;
     }),
-  /**
-   * Called after a quote is created from a lead.
-   * Updates the lead stage to estimate_sent and stores the quote ID/number.
-   */
-  linkQuoteToLead: protectedProcedure
-    .input(z.object({
-      leadId: z.number().int().positive(),
-      jobberQuoteId: z.string(),
-      jobberQuoteNumber: z.number().int().optional(),
-      estimateAmount: z.number().optional(),
-    }))
-    .mutation(async ({ ctx, input }) => {
-      const estimateAmount = input.estimateAmount;
-      await updateOpsLead(input.leadId, ctx.user.id, {
-        stage: "estimate_sent",
-        jobberQuoteId: input.jobberQuoteId,
-        jobberQuoteNumber: input.jobberQuoteNumber ?? undefined,
-        ...(estimateAmount != null ? { estimateAmount: String(estimateAmount) } : {}),
-      });
-      return { ok: true };
-    }),
-  /**
-   * Returns the lead (if any) that is linked to the given Jobber quote ID.
-   * Used by the Quotes page to show the linked lead badge and prevent double-linking.
-   */
-  getLeadByQuoteId: ownerProcedure
-    .input(z.object({ jobberQuoteId: z.string() }))
-    .query(async ({ ctx, input }) => {
-      const db = await getDb();
-      if (!db) return null;
-      const rows = await db
-        .select()
-        .from(opsLeads)
-        .where(and(eq(opsLeads.userId, ctx.user.id), eq(opsLeads.jobberQuoteId, input.jobberQuoteId)))
-        .limit(1);
-      return rows[0] ?? null;
-    }),
-  /**
-   * Returns all leads that do NOT yet have a Jobber quote linked and are not won/lost.
-   * Used by the Quotes page "Link to Lead" picker.
-   */
-  getUnlinkedLeads: ownerProcedure
-    .query(async ({ ctx }) => {
-      const db = await getDb();
-      if (!db) return [];
-      const rows = await db
-        .select()
-        .from(opsLeads)
-        .where(and(
-          eq(opsLeads.userId, ctx.user.id),
-          sql`${opsLeads.jobberQuoteId} IS NULL`,
-          sql`${opsLeads.stage} NOT IN ('won', 'lost')`,
-        ))
-        .orderBy(desc(opsLeads.createdAt))
-        .limit(100);
-      return rows;
-    }),
-  /**
-   * Removes the Jobber quote link from a lead, clearing jobberQuoteId,
-   * jobberQuoteNumber, and estimateAmount. Stage is reverted to "new" if
-   * it was "estimate_sent" (i.e. only advanced because of the link).
-   */
-  unlinkQuoteFromLead: protectedProcedure
-    .input(z.object({ leadId: z.number().int().positive() }))
-    .mutation(async ({ ctx, input }) => {
-      const db = await getDb();
-      if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'DB unavailable' });
-      const rows = await db
-        .select()
-        .from(opsLeads)
-        .where(and(eq(opsLeads.id, input.leadId), eq(opsLeads.userId, ctx.user.id)))
-        .limit(1);
-      const lead = rows[0];
-      if (!lead) throw new TRPCError({ code: 'NOT_FOUND', message: 'Lead not found' });
-      const revertStage = lead.stage === 'estimate_sent' ? 'new' : undefined;
-      await updateOpsLead(input.leadId, ctx.user.id, {
-        jobberQuoteId: null,
-        jobberQuoteNumber: null,
-        estimateAmount: null,
-        ...(revertStage ? { stage: revertStage } : {}),
-      });
-      return { ok: true };
-    }),
-
   /**
    * Create a Stripe Checkout Session for a deposit on a quoted job.
    * Returns a payment link for the owner to share with the customer.
