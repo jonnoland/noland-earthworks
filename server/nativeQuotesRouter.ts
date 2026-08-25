@@ -716,8 +716,8 @@ Rules:
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Service unavailable" });
       const [quote] = await db.select().from(nativeQuotes).where(eq(nativeQuotes.portalToken, input.token)).limit(1);
       if (!quote) throw new TRPCError({ code: "NOT_FOUND", message: "Quote not found" });
-      if (quote.clientAction !== "approved") {
-        throw new TRPCError({ code: "BAD_REQUEST", message: "Approve the current phase before paying its deposit." });
+      if (quote.clientAction !== "approved" || !quote.signedAt || quote.signatureMode !== "typed" || quote.phaseOneAcceptanceScope !== "phase_1" || !quote.phaseOneSignatureConsentAt) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Accept and sign Phase 1 before paying its deposit." });
       }
       const phaseSummary = getQuotePortalPhaseSummary(parsePortalLineItems(quote.lineItems));
       const phaseOneTotalCents = quote.phaseOneApprovedCents ?? phaseSummary.phaseOneTotalCents;
@@ -805,12 +805,16 @@ Rules:
         clientActionAt: quote.clientActionAt,
         phaseOneApprovedCents: quote.phaseOneApprovedCents,
         phaseOneApprovedAt: quote.phaseOneApprovedAt,
+        phaseOneSignatureConsentAt: quote.phaseOneSignatureConsentAt,
+        phaseOneAcceptanceScope: quote.phaseOneAcceptanceScope,
         depositPaidCents: quote.depositPaidCents,
         depositPaidAt: quote.depositPaidAt,
         convertedToJobAt: quote.convertedToJobAt,
         portalViewedAt: quote.portalViewedAt,
         portalSentAt: quote.portalSentAt,
         signedAt: quote.signedAt,
+        signatureTypedText: quote.signatureTypedText,
+        signatureMode: quote.signatureMode,
         createdAt: quote.createdAt,
       };
     }),
@@ -857,5 +861,40 @@ Rules:
         content: `${quote.clientName} ${input.action === "approved" ? "approved" : input.action === "declined" ? "declined" : "requested changes on"} the quote "${quote.title}".${input.note ? " Note: " + input.note : ""}`,
       }).catch(() => {/* non-critical */});
       return { success: true };
+    }),
+
+  /** Signed acceptance for Phase 1 only. Future optional phases remain outside this authorization. */
+  acceptPhaseOne: publicProcedure
+    .input(z.object({
+      token: z.string().min(16),
+      typedSignature: z.string().trim().min(2).max(255),
+      consent: z.literal(true),
+    }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Service unavailable" });
+      const [quote] = await db.select().from(nativeQuotes).where(eq(nativeQuotes.portalToken, input.token)).limit(1);
+      if (!quote) throw new TRPCError({ code: "NOT_FOUND", message: "Quote not found or link has expired." });
+      if (quote.clientAction === "declined") throw new TRPCError({ code: "BAD_REQUEST", message: "This quote was declined and cannot be accepted." });
+      const phaseSummary = getQuotePortalPhaseSummary(parsePortalLineItems(quote.lineItems));
+      if (phaseSummary.phaseOneTotalCents <= 0) throw new TRPCError({ code: "BAD_REQUEST", message: "Phase 1 must have a positive total before acceptance." });
+      const acceptedAt = new Date();
+      await db.update(nativeQuotes).set({
+        clientAction: "approved",
+        clientActionAt: acceptedAt,
+        status: "approved",
+        phaseOneApprovedCents: phaseSummary.phaseOneTotalCents,
+        phaseOneApprovedAt: acceptedAt,
+        signatureTypedText: input.typedSignature,
+        signatureMode: "typed",
+        signedAt: acceptedAt,
+        phaseOneSignatureConsentAt: acceptedAt,
+        phaseOneAcceptanceScope: "phase_1",
+      }).where(eq(nativeQuotes.id, quote.id));
+      await notifyOwner({
+        title: `Phase 1 Accepted — ${quote.clientName}`,
+        content: `${input.typedSignature} signed and accepted Phase 1 of "${quote.title}". Future phases remain optional and are not authorized.`,
+      }).catch(() => {/* non-critical */});
+      return { success: true, phaseOneApprovedCents: phaseSummary.phaseOneTotalCents, acceptedAt };
     }),
 });

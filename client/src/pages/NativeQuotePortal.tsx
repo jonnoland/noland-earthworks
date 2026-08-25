@@ -92,6 +92,9 @@ export default function NativeQuotePortal() {
   const [showChangesForm, setShowChangesForm] = useState(false);
   const [changesNote, setChangesNote] = useState("");
   const [pendingAction, setPendingAction] = useState<string | null>(null);
+  const [showAcceptanceForm, setShowAcceptanceForm] = useState(false);
+  const [typedSignature, setTypedSignature] = useState("");
+  const [signatureConsent, setSignatureConsent] = useState(false);
 
   // URL feedback (deposit=success|cancelled)
   const [urlFeedback, setUrlFeedback] = useState<"success" | "cancelled" | null>(null);
@@ -136,9 +139,24 @@ export default function NativeQuotePortal() {
     onError: (err) => toast.error(err.message),
   });
 
-  function handleApprove() {
-    setPendingAction("approved");
-    actionMut.mutate({ token, action: "approved" });
+  const acceptPhaseOneMut = trpc.nativeQuotes.acceptPhaseOne.useMutation({
+    onSuccess: () => {
+      toast.success("Phase 1 accepted and signed. You may now pay the Phase 1 deposit.");
+      window.location.reload();
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
+  function handleAcceptPhaseOne() {
+    if (typedSignature.trim().length < 2) {
+      toast.error("Enter your full name as your signature.");
+      return;
+    }
+    if (!signatureConsent) {
+      toast.error("Confirm your electronic signature consent before accepting Phase 1.");
+      return;
+    }
+    acceptPhaseOneMut.mutate({ token, typedSignature: typedSignature.trim(), consent: true });
   }
 
   function handleDecline() {
@@ -187,9 +205,14 @@ export default function NativeQuotePortal() {
   const phaseOneTotalCents = quote.phaseOneApprovedCents ?? phaseSummary.phaseOneTotalCents;
   const depositCents = roundQuoteCentsUp(phaseOneTotalCents * (depositPct / 100));
   const balanceCents = phaseOneTotalCents - depositCents;
-  const isActioned = !!quote.clientAction;
   const isApproved = quote.clientAction === "approved";
   const isDeclined = quote.clientAction === "declined";
+  const hasSignedPhaseOneAcceptance = isApproved
+    && quote.signatureMode === "typed"
+    && !!quote.signatureTypedText
+    && !!quote.signedAt
+    && !!quote.phaseOneSignatureConsentAt
+    && quote.phaseOneAcceptanceScope === "phase_1";
   const hasDepositPaid = !!quote.depositPaidAt;
 
   const approvedPhaseSections = phaseSummary.approvedPhaseSections;
@@ -244,17 +267,24 @@ export default function NativeQuotePortal() {
       </div>
 
       {/* Approved / Declined banner */}
-      {isApproved && (
+      {hasSignedPhaseOneAcceptance && (
         <div className="mb-6 rounded-lg bg-emerald-900/40 border border-emerald-700 p-4 flex items-start gap-3">
           <CheckCircle className="w-5 h-5 text-emerald-400 shrink-0 mt-0.5" />
           <div>
-            <p className="text-emerald-300 font-semibold text-sm">Phase 1 approved.</p>
-            {quote.clientActionAt && (
+            <p className="text-emerald-300 font-semibold text-sm">Phase 1 accepted and signed.</p>
+            {quote.signatureTypedText && <p className="text-emerald-400/80 text-xs mt-0.5">Signed by {quote.signatureTypedText}</p>}
+            {quote.signedAt && (
               <p className="text-emerald-400/80 text-xs mt-0.5">
-                Approved on {new Date(quote.clientActionAt).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}
+                Accepted on {new Date(quote.signedAt).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}
               </p>
             )}
           </div>
+        </div>
+      )}
+      {isApproved && !hasSignedPhaseOneAcceptance && (
+        <div className="mb-6 rounded-lg bg-amber-900/30 border border-amber-700 p-4 flex items-start gap-3">
+          <AlertCircle className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
+          <p className="text-amber-200 text-sm">A typed Phase 1 signature is required before a deposit can be paid.</p>
         </div>
       )}
       {isDeclined && (
@@ -401,7 +431,7 @@ export default function NativeQuotePortal() {
       )}
 
       {/* Deposit section */}
-      {isApproved && !hasDepositPaid && (
+      {hasSignedPhaseOneAcceptance && !hasDepositPaid && (
         <div className="rounded-xl bg-zinc-900 border border-zinc-800 p-5 mb-6">
           <p className="text-zinc-400 text-xs font-semibold uppercase tracking-widest mb-4">Secure Phase 1 — Pay Deposit</p>
           <div className="flex gap-2 mb-4">
@@ -453,22 +483,61 @@ export default function NativeQuotePortal() {
       )}
 
       {/* Action buttons */}
-      {!isActioned && (
+      {!hasSignedPhaseOneAcceptance && !isDeclined && (
         <div className="space-y-3 mb-6">
-          {/* Approve */}
-          {!showDeclineNote && !showChangesForm && (
+          {/* Signed Phase 1 acceptance */}
+          {!showDeclineNote && !showChangesForm && !showAcceptanceForm && (
             <Button
               className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold h-12"
-              onClick={handleApprove}
-              disabled={actionMut.isPending}
+              onClick={() => setShowAcceptanceForm(true)}
             >
               <CheckCircle className="w-4 h-4 mr-2" />
-              {actionMut.isPending && pendingAction === "approved" ? "Approving..." : "Approve Phase 1"}
+              Accept Quote & Sign Phase 1
             </Button>
           )}
 
+          {showAcceptanceForm && (
+            <div className="rounded-xl border border-emerald-700 bg-emerald-950/30 p-4 space-y-4">
+              <div>
+                <p className="text-emerald-200 font-semibold text-sm">Accept Phase 1 Quote</p>
+                <p className="mt-1 text-zinc-300 text-xs leading-relaxed">Your signature approves only the Phase 1 work and total shown above. Optional future phases are not approved, scheduled, or included in this acceptance.</p>
+              </div>
+              <div>
+                <label htmlFor="phase-one-signature" className="block text-zinc-300 text-xs font-medium mb-1.5">Type your full legal name</label>
+                <input
+                  id="phase-one-signature"
+                  value={typedSignature}
+                  onChange={(event) => setTypedSignature(event.target.value)}
+                  placeholder="Full name"
+                  maxLength={255}
+                  className="w-full rounded-md border border-zinc-600 bg-zinc-900 px-3 py-2.5 text-sm text-white outline-none transition-colors focus:border-emerald-500"
+                />
+              </div>
+              <label className="flex items-start gap-2.5 text-xs leading-relaxed text-zinc-300 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={signatureConsent}
+                  onChange={(event) => setSignatureConsent(event.target.checked)}
+                  className="mt-0.5 h-4 w-4 rounded border-zinc-600 bg-zinc-900 text-emerald-500 focus:ring-emerald-500"
+                />
+                <span>I agree that typing my name is my electronic signature. I accept the Phase 1 scope and total only, and understand that optional future phases require separate authorization.</span>
+              </label>
+              <div className="flex gap-2">
+                <Button
+                  className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold"
+                  onClick={handleAcceptPhaseOne}
+                  disabled={acceptPhaseOneMut.isPending}
+                >
+                  <CheckCircle className="w-4 h-4 mr-2" />
+                  {acceptPhaseOneMut.isPending ? "Recording acceptance..." : "Sign & Accept Phase 1"}
+                </Button>
+                <Button variant="outline" className="border-zinc-600 text-zinc-300" onClick={() => setShowAcceptanceForm(false)} disabled={acceptPhaseOneMut.isPending}>Cancel</Button>
+              </div>
+            </div>
+          )}
+
           {/* Request Changes */}
-          {!showDeclineNote && (
+          {!showDeclineNote && !showAcceptanceForm && (
             <>
               {!showChangesForm ? (
                 <Button
@@ -506,7 +575,7 @@ export default function NativeQuotePortal() {
           )}
 
           {/* Decline */}
-          {!showChangesForm && (
+          {!showChangesForm && !showAcceptanceForm && (
             <>
               {!showDeclineNote ? (
                 <Button

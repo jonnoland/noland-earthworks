@@ -13,11 +13,11 @@ describe("customer portal Phase 1 workflow", () => {
     expect(router).toContain("phaseOneApprovedCents");
     expect(router).toContain('approval_scope: "phase_1"');
     expect(router).toContain("Phase 1 Deposit");
-    expect(router).toContain("Approve the current phase before paying its deposit.");
+    expect(router).toContain("Accept and sign Phase 1 before paying its deposit.");
     expect(portal).toContain("Phase 1 — Current Approval");
     expect(portal).toContain("Optional Future Phases");
     expect(portal).toContain("not included in today’s approval, deposit, or schedule");
-    expect(portal).toContain("Approve Phase 1");
+    expect(portal).toContain("Accept Quote & Sign Phase 1");
     expect(portal).toContain("Pay ${fmt(depositCents)} Phase 1 Deposit");
   });
 });

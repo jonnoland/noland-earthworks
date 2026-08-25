@@ -1970,6 +1970,9 @@ export const nativeQuotes = mysqlTable("native_quotes", {
   signatureTypedText: varchar("signatureTypedText", { length: 255 }),
   signatureMode: varchar("signatureMode", { length: 10 }),
   signedAt: timestamp("signedAt"),
+  /** Consent timestamp for the typed Phase 1 signature and acceptance scope. */
+  phaseOneSignatureConsentAt: timestamp("phaseOneSignatureConsentAt"),
+  phaseOneAcceptanceScope: varchar("phaseOneAcceptanceScope", { length: 30 }),
   changeRequestNote: text("changeRequestNote"),
   changeRequestAt: timestamp("changeRequestAt"),
   declineNote: text("declineNote"),

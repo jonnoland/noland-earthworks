@@ -3639,3 +3639,9 @@
 - [x] Add a clear subtotal row at the bottom of every customer portal phase section
 - [x] Add stronger visual separation and headers between current and optional future phases
 - [x] Verify and regress-test that Phase 1 deposits exclude work assigned to Phase 2
+
+## Phase 1 Signed Quote Acceptance — Aug 2026
+- [x] Add a Phase 1 Accept Quote action with typed client signature and clear consent confirmation
+- [x] Record signature, consent time, and acceptance scope for an auditable Phase 1 approval
+- [x] Enable the Phase 1 deposit handoff only after signed acceptance
+- [x] Add regression coverage and validate the signed acceptance workflow
