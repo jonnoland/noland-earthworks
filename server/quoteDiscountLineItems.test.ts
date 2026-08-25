@@ -21,18 +21,18 @@ describe("quote discount line items", () => {
     expect(editor).toContain("All-phases total");
     expect(editor).toContain('!top-1/2 !left-1/2');
     expect(editor).toContain('!-translate-x-1/2 !-translate-y-1/2');
-    expect(editor).toContain('!w-[1280px] !max-w-[1280px]');
-    expect(editor).toContain('!h-[900px]');
-    expect(editor).toContain('flex-1 grid-cols-1 content-start gap-3 overflow-y-auto');
+    expect(editor).toContain('style={{ width: workspaceSize.width, height: workspaceSize.height }}');
+    expect(editor).toContain('Resize quote workspace');
+    expect(editor).toContain('flex-1 content-start gap-3 overflow-y-auto');
     expect(editor).not.toContain('max-h-[90vh] overflow-y-auto');
-    expect(editor).toContain('max-w-[1500px] flex-1 grid-cols-1');
+    expect(editor).toContain('max-w-[1500px] flex-1 content-start gap-3 overflow-y-auto');
     expect(editor).toContain('Client message, terms & internal notes');
     expect(editor).toContain('Pipeline & follow-up details');
     expect(editor).toContain('grid-cols-1 gap-2 rounded-lg');
     expect(editor).toContain('sm:grid-cols-2');
     expect(editor).toContain('sm:grid-cols-12');
-    expect(editor).toContain('lg:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)]');
-    expect(editor).toContain('lg:col-span-2');
+    expect(editor).toContain('grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)]');
+    expect(editor).toContain('isCompactWorkspace ? "" : "col-span-2"');
   });
 
   it("recomputes persisted quote totals from each line item, including negative discount rows", () => {

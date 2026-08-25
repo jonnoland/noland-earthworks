@@ -12,7 +12,7 @@
  *   - Convert to Job
  *   - Portal status badges (sent / viewed / approved / declined / deposit paid)
  */
-import React, { useCallback, useState, useMemo, useRef } from "react";
+import React, { useCallback, useEffect, useState, useMemo, useRef } from "react";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -133,16 +133,17 @@ function StatusBadge({ quote }: { quote: NativeQuote }) {
 
 // ─── Line item row editor ─────────────────────────────────────────────────────
 function LineItemRow({
-  item, index, onChange, onRemove
+  item, index, onChange, onRemove, compact
 }: {
   item: LineItem;
   index: number;
   onChange: (i: number, field: keyof LineItem, val: string | number) => void;
   onRemove: (i: number) => void;
+  compact: boolean;
 }) {
   return (
-    <div className="grid grid-cols-1 gap-2 rounded-md border border-zinc-800 p-2 sm:grid-cols-12 sm:border-0 sm:p-0">
-      <div className="sm:col-span-5">
+    <div className={`grid grid-cols-1 gap-2 rounded-md border border-zinc-800 p-2 ${compact ? "" : "sm:grid-cols-12 sm:border-0 sm:p-0"}`}>
+      <div className={compact ? "" : "sm:col-span-5"}>
         <Input
           placeholder="Description"
           value={item.description}
@@ -163,7 +164,7 @@ function LineItemRow({
           </label>
         )}
       </div>
-      <div className="sm:col-span-2">
+      <div className={compact ? "" : "sm:col-span-2"}>
         <Input
           type="number"
           placeholder="Qty"
@@ -173,7 +174,7 @@ function LineItemRow({
           className="bg-zinc-800 border-zinc-700 text-sm"
         />
       </div>
-      <div className="sm:col-span-3">
+      <div className={compact ? "" : "sm:col-span-3"}>
         <Input
           type="number"
           placeholder="Unit price"
@@ -183,10 +184,10 @@ function LineItemRow({
           className="bg-zinc-800 border-zinc-700 text-sm"
         />
       </div>
-      <div className={`flex items-center justify-between text-sm font-medium sm:col-span-1 sm:block sm:text-right ${item.kind === "discount" || item.unitPriceCents < 0 ? "text-emerald-400" : "text-amber-400"}`}>
-        <span className="text-xs font-normal text-zinc-500 sm:hidden">Line total</span><span>{formatQuoteCents(item.qty * item.unitPriceCents)}</span>
+      <div className={`flex items-center justify-between text-sm font-medium ${compact ? "" : "sm:col-span-1 sm:block sm:text-right"} ${item.kind === "discount" || item.unitPriceCents < 0 ? "text-emerald-400" : "text-amber-400"}`}>
+        <span className={`text-xs font-normal text-zinc-500 ${compact ? "" : "sm:hidden"}`}>Line total</span><span>{formatQuoteCents(item.qty * item.unitPriceCents)}</span>
       </div>
-      <div className="flex justify-end sm:col-span-1">
+      <div className={`flex justify-end ${compact ? "" : "sm:col-span-1"}`}>
         <Button size="icon" variant="ghost" className="h-7 w-7 text-red-400 hover:text-red-300" onClick={() => onRemove(index)}>
           <XCircle className="h-4 w-4" />
         </Button>
@@ -351,6 +352,17 @@ function QuoteFormModal({
     return blankForm();
   });
   const [draftQuoteId, setDraftQuoteId] = useState<number | null>(() => editQuote?.id ?? null);
+  const [workspaceSize, setWorkspaceSize] = useState(() => {
+    const availableWidth = typeof window === "undefined" ? 1280 : window.innerWidth - 32;
+    const availableHeight = typeof window === "undefined" ? 900 : window.innerHeight - 32;
+    return {
+      width: Math.max(Math.min(1280, availableWidth), Math.min(760, availableWidth)),
+      height: Math.max(Math.min(900, availableHeight), Math.min(620, availableHeight)),
+    };
+  });
+  const resizeCleanupRef = useRef<(() => void) | null>(null);
+  const isCompactWorkspace = workspaceSize.width < 1040;
+  useEffect(() => () => resizeCleanupRef.current?.(), []);
   const [parcelCounty, setParcelCounty] = useState("");
   const [parcelId, setParcelId] = useState("");
   const [parcelIdError, setParcelIdError] = useState<string | null>(null);
@@ -669,16 +681,46 @@ function QuoteFormModal({
 
   const isBusy = createMutation.isPending || updateMutation.isPending || createDraftMutation.isPending || updateDraftMutation.isPending;
 
+  const startWorkspaceResize = (event: React.PointerEvent<HTMLButtonElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+    resizeCleanupRef.current?.();
+    const startX = event.clientX;
+    const startY = event.clientY;
+    const startSize = workspaceSize;
+    const minWidth = Math.min(760, window.innerWidth - 24);
+    const minHeight = Math.min(620, window.innerHeight - 24);
+    const maxWidth = Math.max(minWidth, window.innerWidth - 24);
+    const maxHeight = Math.max(minHeight, window.innerHeight - 24);
+    const onMove = (moveEvent: PointerEvent) => {
+      setWorkspaceSize({
+        width: Math.min(maxWidth, Math.max(minWidth, startSize.width + moveEvent.clientX - startX)),
+        height: Math.min(maxHeight, Math.max(minHeight, startSize.height + moveEvent.clientY - startY)),
+      });
+    };
+    const onUp = () => {
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+      resizeCleanupRef.current = null;
+    };
+    resizeCleanupRef.current = onUp;
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+  };
+
   return (
     <Dialog open={open} onOpenChange={v => !v && onClose()}>
-      <DialogContent className="!top-1/2 !left-1/2 !flex !flex-col !h-[900px] !w-[1280px] !max-w-[1280px] !-translate-x-1/2 !-translate-y-1/2 overflow-hidden rounded-xl border border-zinc-700 bg-zinc-900 p-5 text-zinc-100">
+      <DialogContent
+        className="!top-1/2 !left-1/2 !flex !flex-col !max-w-none !-translate-x-1/2 !-translate-y-1/2 overflow-hidden rounded-xl border border-zinc-700 bg-zinc-900 p-5 text-zinc-100"
+        style={{ width: workspaceSize.width, height: workspaceSize.height }}
+      >
         <DialogHeader className="shrink-0">
           <DialogTitle className="text-amber-400">{editQuote ? "Edit Quote" : "New Quote"}</DialogTitle>
         </DialogHeader>
 
-        <div className="mx-auto grid min-h-0 w-full max-w-[1500px] flex-1 grid-cols-1 content-start gap-3 overflow-y-auto py-2 pr-1 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)]">
+        <div className={`mx-auto grid min-h-0 w-full max-w-[1500px] flex-1 content-start gap-3 overflow-y-auto py-2 pr-1 ${isCompactWorkspace ? "grid-cols-1" : "grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)]"}`}>
           {/* Client info */}
-          <div className="grid grid-cols-1 gap-2 rounded-lg border border-zinc-800 bg-zinc-950/35 p-3 sm:grid-cols-2">
+          <div className={`grid grid-cols-1 gap-2 rounded-lg border border-zinc-800 bg-zinc-950/35 p-3 ${isCompactWorkspace ? "" : "sm:grid-cols-2"}`}>
             <div className="relative">
               <Label className="text-zinc-400 text-xs mb-1 block">Client Name *</Label>
               <div className="relative">
@@ -1148,7 +1190,7 @@ function QuoteFormModal({
               </div>
             </div>
             {!editQuote && <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-md border border-indigo-500/25 bg-indigo-500/[0.06] px-3 py-2"><p className="text-[11px] text-indigo-100">Need a starting point? Load a non-customer phased forestry mulching example with zero-dollar placeholders.</p><Button type="button" size="sm" variant="outline" className="h-7 border-indigo-400/40 text-[11px] text-indigo-100 hover:bg-indigo-500/15" onClick={loadSamplePhasedQuote}>Load Internal Sample</Button></div>}
-            <div className="mb-1 hidden grid-cols-12 gap-2 px-1 text-xs text-zinc-500 sm:grid">
+            <div className={`mb-1 grid-cols-12 gap-2 px-1 text-xs text-zinc-500 ${isCompactWorkspace ? "hidden" : "grid"}`}>
               <div className="col-span-5">Description</div>
               <div className="col-span-2">Qty</div>
               <div className="col-span-3">Unit Price ($)</div>
@@ -1159,6 +1201,7 @@ function QuoteFormModal({
               {form.lineItems.map((li, i) => (
                 <LineItemRow key={i} item={li} index={i}
                   onChange={handleLineItemChange}
+                  compact={isCompactWorkspace}
                   onRemove={i2 => setForm(p => ({ ...p, lineItems: p.lineItems.filter((_, idx) => idx !== i2) }))} />
               ))}
             </div>
@@ -1171,7 +1214,7 @@ function QuoteFormModal({
               </div>
               {discountItems.length > 0 && <p className="mt-2 text-[10px] text-emerald-300">{discountItems.length} discount line{discountItems.length === 1 ? "" : "s"} applied: {discountItems.map((item) => item.description).join(" · ")}</p>}
             </div>
-            <div className="mt-3 w-full rounded-md border border-zinc-700 bg-zinc-900/60 px-3 py-3 text-sm sm:ml-auto sm:max-w-md" aria-live="polite">
+            <div className={`mt-3 w-full rounded-md border border-zinc-700 bg-zinc-900/60 px-3 py-3 text-sm ${isCompactWorkspace ? "" : "sm:ml-auto sm:max-w-md"}`} aria-live="polite">
               <div className="mb-2 flex items-center justify-between"><span className="text-xs font-semibold uppercase tracking-wide text-zinc-200">Live Cost Breakdown</span><span className="text-[10px] text-zinc-500">Updates as line items change</span></div>
               <div className="mb-3 grid grid-cols-[132px_minmax(0,1fr)] items-center gap-2 rounded-md border border-zinc-800 bg-zinc-950/50 px-2 py-2" role="img" aria-label="Cost distribution between approved work and optional future phases">
                 <div className="h-[124px]">
@@ -1212,7 +1255,7 @@ function QuoteFormModal({
           {/* Messages */}
           <details className="rounded-lg border border-zinc-800 bg-zinc-950/35 p-3">
             <summary className="cursor-pointer text-xs font-semibold text-zinc-300">Client message, terms & internal notes</summary>
-            <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div className={`mt-3 grid grid-cols-1 gap-3 ${isCompactWorkspace ? "" : "sm:grid-cols-2"}`}>
             <div>
               <div className="mb-1 flex flex-wrap items-center justify-between gap-1">
                 <Label className="text-zinc-400 text-xs">Client Message (shown on portal)</Label>
@@ -1235,14 +1278,14 @@ function QuoteFormModal({
             </div>
           </details>
 
-          <details className="rounded-md border border-amber-500/20 bg-amber-500/[0.04] p-3 lg:col-span-2">
+          <details className={`rounded-md border border-amber-500/20 bg-amber-500/[0.04] p-3 ${isCompactWorkspace ? "" : "col-span-2"}`}>
             <summary className="cursor-pointer text-xs font-semibold uppercase tracking-wide text-amber-300">Pipeline & follow-up details</summary>
             <div className="mt-3">
             <div className="mb-3 flex items-center justify-between gap-3">
               <Label className="text-amber-300 text-xs font-semibold uppercase tracking-wide">Native pipeline record</Label>
               <span className="text-[10px] text-zinc-500">Used by Today’s Next Actions</span>
             </div>
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            <div className={`grid gap-3 ${isCompactWorkspace ? "grid-cols-1" : "sm:grid-cols-2 lg:grid-cols-3"}`}>
               <label className="text-[10px] uppercase tracking-wide text-zinc-500">Source
                 <Input value={form.sourceDetail} onChange={e => setForm(p => ({ ...p, sourceDetail: e.target.value }))} className="mt-1 h-8 bg-zinc-800 border-zinc-700 text-xs" />
               </label>
@@ -1272,18 +1315,27 @@ function QuoteFormModal({
           </details>
         </div>
 
-        <DialogFooter className="mx-auto mt-3 w-full max-w-[1500px] shrink-0 border-t border-zinc-800 pt-3">
-          <div className="mr-auto flex items-center gap-2 text-[11px] text-zinc-500">
+        <DialogFooter className={`mx-auto mt-3 w-full max-w-[1500px] shrink-0 border-t border-zinc-800 pt-3 ${isCompactWorkspace ? "flex-col items-stretch gap-2" : ""}`}>
+          <div className={`flex items-center gap-2 text-[11px] text-zinc-500 ${isCompactWorkspace ? "" : "mr-auto"}`}>
             {draftQuoteId ? <><span className="h-2 w-2 rounded-full bg-emerald-400" />Draft saved — continue editing</> : <>Save a draft to return later without losing progress</>}
           </div>
-          <Button variant="outline" className="border-zinc-600" onClick={onClose} disabled={isBusy}>Cancel</Button>
-          <Button type="button" variant="outline" className="border-sky-500/45 bg-sky-500/10 text-sky-100 hover:bg-sky-500/20" onClick={handleSaveDraft} disabled={isBusy}>
+          <Button variant="outline" className={`border-zinc-600 ${isCompactWorkspace ? "w-full" : ""}`} onClick={onClose} disabled={isBusy}>Cancel</Button>
+          <Button type="button" variant="outline" className={`border-sky-500/45 bg-sky-500/10 text-sky-100 hover:bg-sky-500/20 ${isCompactWorkspace ? "w-full" : ""}`} onClick={handleSaveDraft} disabled={isBusy}>
             {createDraftMutation.isPending || updateDraftMutation.isPending ? "Saving Draft..." : "Save Draft"}
           </Button>
-          <Button className="bg-amber-500 hover:bg-amber-600 text-black font-semibold" onClick={handleSubmit} disabled={isBusy}>
+          <Button className={`bg-amber-500 hover:bg-amber-600 text-black font-semibold ${isCompactWorkspace ? "w-full" : ""}`} onClick={handleSubmit} disabled={isBusy}>
             {isBusy ? "Saving..." : editQuote ? "Save Changes" : "Create Quote"}
           </Button>
         </DialogFooter>
+        <button
+          type="button"
+          onPointerDown={startWorkspaceResize}
+          aria-label="Resize quote workspace"
+          title="Drag to resize quote workspace"
+          className="absolute bottom-0 right-0 z-30 flex h-9 w-9 cursor-se-resize touch-none items-end justify-end p-2 text-zinc-500 transition-colors hover:text-amber-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+        >
+          <span className="h-3 w-3 border-b-2 border-r-2 border-current" aria-hidden="true" />
+        </button>
       </DialogContent>
     </Dialog>
   );

@@ -3585,3 +3585,8 @@
 ## Quote List Status Badges — Aug 2026
 - [x] Add clear visual Draft, Sent, and Approved badges to native Operations quote list rows
 - [x] Add regression coverage and validate the quote-list status treatment
+
+## Resizable Quote Workspace — Aug 2026
+- [x] Add bottom-right corner drag resizing to New Quote and Edit Quote windows
+- [x] Make quote columns, line items, breakdown, and footer controls adapt to the resized workspace
+- [x] Add regression coverage and validate the resizable quote workspace
