@@ -3617,3 +3617,7 @@
 - [x] Scope services, mobilization, and discount line items to their selected phase
 - [x] Calculate and present phase subtotals, discounts, totals, and portal phase details accurately
 - [x] Add regression coverage and validate the phase-section workflow
+
+## Overall Quote Estimated Duration — Aug 2026
+- [x] Make the overall estimated-duration field clearly accessible in New Quote and Edit Quote
+- [x] Add regression coverage and validate the overall quote duration control

@@ -1063,11 +1063,12 @@ function QuoteFormModal({
                 <Input value={form.acreage} onChange={e => setForm(p => ({ ...p, acreage: e.target.value }))}
                   className="bg-zinc-800 border-zinc-700" placeholder="5.2" />
               </div>
-              <div>
-                <Label className="text-zinc-400 text-xs mb-1 block">Est. Duration</Label>
-                <Input value={form.estimatedDuration} onChange={e => setForm(p => ({ ...p, estimatedDuration: e.target.value }))}
-                  className="bg-zinc-800 border-zinc-700" placeholder="1–2 days" />
-              </div>
+            </div>
+            <div className="mt-3 rounded-md border border-amber-500/35 bg-amber-500/[0.06] p-3">
+              <div className="mb-2 flex items-center gap-2"><Clock className="h-4 w-4 text-amber-300" /><Label className="text-amber-100 text-xs font-semibold">Overall Estimated Duration</Label></div>
+              <Input value={form.estimatedDuration} onChange={e => setForm(p => ({ ...p, estimatedDuration: e.target.value }))}
+                className="border-amber-500/35 bg-zinc-900 text-zinc-100" placeholder="e.g. 1–2 working days" aria-label="Overall estimated duration" />
+              <p className="mt-1.5 text-[10px] leading-relaxed text-amber-100/70">Enter the expected duration for the complete quote. Phase sections below can also carry their own individual estimated durations.</p>
             </div>
           </div>
 
