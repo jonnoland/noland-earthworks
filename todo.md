@@ -3553,3 +3553,8 @@
 ## Quote Email Template Enhancement — Aug 2026
 - [x] Improve public and field quote email notifications with professional formatting and complete request details
 - [x] Add regression coverage and validate all updated quote email delivery templates
+
+## Post-Recovery Website and Cloud Service Audit — Aug 2026
+- [x] Audit recovered website routes, integrations, schedules, and cloud-dependent features for missing or degraded behavior
+- [x] Verify critical public, Operations, and companion-app support paths after the environment move
+- [x] Document and prioritize recovery fixes with verified evidence
