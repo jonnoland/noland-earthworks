@@ -3630,3 +3630,7 @@
 ## Phase Control Readability — Aug 2026
 - [x] Enlarge and reflow phase Authorization and Estimated Duration controls so labels and values are not clipped
 - [x] Add regression coverage and validate the refined phase control layout
+
+## Customer Portal Phase Item Grouping — Aug 2026
+- [x] Preserve each line item’s assigned phase when rendering customer portal phase sections
+- [x] Validate phase-specific mobilization, service, discount, subtotal, and total display

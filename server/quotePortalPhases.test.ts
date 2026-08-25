@@ -16,4 +16,19 @@ describe("customer portal phased quote summary", () => {
     expect(summary.approvedDiscountCents).toBe(-100000);
     expect(summary.optionalDiscountCents).toBe(-60000);
   });
+
+  it("keeps phase-assigned mobilization and discounts with the correct portal phase", () => {
+    const summary = getQuotePortalPhaseSummary([
+      { description: "Phase 1", qty: 1, unitPriceCents: 630000, kind: "phase", phaseId: "phase-1", phaseAuthorization: "approved_now" },
+      { description: "Phase 1 mobilization", qty: 1, unitPriceCents: 45000, kind: "mobilization", phaseId: "phase-1" },
+      { description: "Phase 2", qty: 1, unitPriceCents: 1935000, kind: "phase", phaseId: "phase-2", phaseAuthorization: "optional_future" },
+      { description: "Phase 2 mobilization", qty: 1, unitPriceCents: 45000, kind: "mobilization", phaseId: "phase-2" },
+      { description: "Phase 2 volume discount", qty: 1, unitPriceCents: -59400, kind: "discount", phaseId: "phase-2" },
+    ]);
+
+    expect(summary.approvedPhaseSections).toHaveLength(1);
+    expect(summary.approvedPhaseSections[0].lineItems.map((item) => item.description)).toEqual(["Phase 1", "Phase 1 mobilization"]);
+    expect(summary.optionalFuturePhaseSections).toHaveLength(1);
+    expect(summary.optionalFuturePhaseSections[0].lineItems.map((item) => item.description)).toEqual(["Phase 2", "Phase 2 mobilization", "Phase 2 volume discount"]);
+  });
 });

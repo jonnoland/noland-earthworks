@@ -14,6 +14,6 @@ describe("per-phase estimated durations", () => {
     expect(editor).toContain('onChange(index, "estimatedDuration", e.target.value)');
     expect(editor).toContain("Estimated duration");
     expect(router).toContain("estimatedDuration: z.string().max(100).optional()");
-    expect(portal).toContain("Estimated duration: {li.estimatedDuration}");
+    expect(portal).toContain("Estimated duration: {section.phase.estimatedDuration}");
   });
 });

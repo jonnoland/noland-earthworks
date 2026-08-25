@@ -192,8 +192,9 @@ export default function NativeQuotePortal() {
   const isDeclined = quote.clientAction === "declined";
   const hasDepositPaid = !!quote.depositPaidAt;
 
-  const lineItems = phaseSummary.approvedLineItems;
-  const optionalFutureLineItems = phaseSummary.optionalFutureLineItems;
+  const approvedPhaseSections = phaseSummary.approvedPhaseSections;
+  const optionalFuturePhaseSections = phaseSummary.optionalFuturePhaseSections;
+  const unassignedApprovedLineItems = phaseSummary.unassignedApprovedLineItems;
 
   return (
     <PortalShell>
@@ -309,32 +310,38 @@ export default function NativeQuotePortal() {
       )}
 
       {/* Phase 1 — current approval */}
-      {lineItems.length > 0 && (
+      {(approvedPhaseSections.length > 0 || unassignedApprovedLineItems.length > 0) && (
         <div className="rounded-xl bg-zinc-900 border border-zinc-800 overflow-hidden mb-6">
           <div className="px-5 py-3 border-b border-zinc-800">
             <p className="text-amber-400 text-xs font-semibold uppercase tracking-widest">Phase 1 — Current Approval</p>
             <p className="mt-1 text-zinc-500 text-xs">This is the work you are approving today.</p>
           </div>
-          {lineItems.map((li, i) => (
-            <div key={i} className="flex items-start justify-between px-5 py-3 border-b border-zinc-800 last:border-0 gap-4">
-              <div className="flex-1">
-                <p className={li.totalCents < 0 || li.kind === "discount" ? "text-emerald-300 text-sm" : "text-zinc-200 text-sm"}>{li.description}</p>
-                {li.qty !== 1 && (
-                  <p className="text-zinc-500 text-xs mt-0.5">
-                    {li.qty} &times; {fmt(li.unitPriceCents)}
-                  </p>
-                )}
-                {li.estimatedDuration && <p className="text-zinc-500 text-xs mt-0.5">Estimated duration: {li.estimatedDuration}</p>}
+          {approvedPhaseSections.map((section, sectionIndex) => (
+            <div key={section.phase.phaseId ?? sectionIndex} className="border-b border-zinc-800 last:border-0">
+              <div className="flex items-start justify-between gap-4 bg-zinc-800/35 px-5 py-3">
+                <div>
+                  <p className="text-zinc-100 text-sm font-semibold">{section.phase.description}</p>
+                  {section.phase.estimatedDuration && <p className="mt-0.5 text-zinc-400 text-xs">Estimated duration: {section.phase.estimatedDuration} working day{section.phase.estimatedDuration === "1" ? "" : "s"}</p>}
+                </div>
+                <span className="text-amber-300 text-sm font-semibold shrink-0">{fmt(section.totalCents)}</span>
               </div>
-              <span className={li.totalCents < 0 || li.kind === "discount" ? "text-emerald-300 text-sm font-medium shrink-0" : "text-amber-400 text-sm font-medium shrink-0"}>{fmt(li.qty * li.unitPriceCents)}</span>
+              {section.lineItems.filter((item) => item !== section.phase).map((li, i) => (
+                <div key={`${section.phase.phaseId}-${i}`} className="flex items-start justify-between px-5 py-3 border-t border-zinc-800 gap-4">
+                  <div className="flex-1">
+                    <p className={li.totalCents < 0 || li.kind === "discount" ? "text-emerald-300 text-sm" : "text-zinc-200 text-sm"}>{li.description}</p>
+                    {li.qty !== 1 && <p className="text-zinc-500 text-xs mt-0.5">{li.qty} &times; {fmt(li.unitPriceCents)}</p>}
+                  </div>
+                  <span className={li.totalCents < 0 || li.kind === "discount" ? "text-emerald-300 text-sm font-medium shrink-0" : "text-amber-400 text-sm font-medium shrink-0"}>{fmt(li.qty * li.unitPriceCents)}</span>
+                </div>
+              ))}
             </div>
           ))}
-          {phaseSummary.approvedDiscountCents < 0 && (
-            <div className="flex items-start justify-between px-5 py-3 border-b border-zinc-800 gap-4">
-              <p className="text-emerald-300 text-sm">Discount applied to Phase 1</p>
-              <span className="text-emerald-300 text-sm font-medium shrink-0">{fmt(phaseSummary.approvedDiscountCents)}</span>
+          {unassignedApprovedLineItems.map((li, i) => (
+            <div key={`unassigned-${i}`} className="flex items-start justify-between px-5 py-3 border-b border-zinc-800 last:border-0 gap-4">
+              <p className="text-zinc-200 text-sm">{li.description}</p>
+              <span className="text-amber-400 text-sm font-medium shrink-0">{fmt(li.qty * li.unitPriceCents)}</span>
             </div>
-          )}
+          ))}
           <div className="flex items-center justify-between px-5 py-4 bg-zinc-800/60">
             <span className="text-white font-bold text-sm">Phase 1 total</span>
             <span className="text-amber-400 font-bold text-lg">{fmt(phaseSummary.phaseOneTotalCents)}</span>
@@ -349,22 +356,26 @@ export default function NativeQuotePortal() {
             <p className="text-indigo-200 text-xs font-semibold uppercase tracking-widest">Optional Future Phases</p>
             <p className="mt-2 text-indigo-100/80 text-sm leading-relaxed">These phases are shown for planning only. They are not included in today’s approval, deposit, or schedule. A separate authorization will be provided before any future phase begins.</p>
           </div>
-          {optionalFutureLineItems.map((li, i) => (
-            <div key={i} className="flex items-start justify-between px-5 py-3 border-b border-indigo-500/15 last:border-0 gap-4">
-              <div className="flex-1">
-                <p className="text-indigo-50 text-sm">{li.description}</p>
-                {li.qty !== 1 && <p className="text-indigo-200/60 text-xs mt-0.5">{li.qty} &times; {fmt(li.unitPriceCents)}</p>}
-                {li.estimatedDuration && <p className="text-indigo-200/60 text-xs mt-0.5">Estimated duration: {li.estimatedDuration}</p>}
+          {optionalFuturePhaseSections.map((section, sectionIndex) => (
+            <div key={section.phase.phaseId ?? sectionIndex} className="border-b border-indigo-500/15 last:border-0">
+              <div className="flex items-start justify-between gap-4 bg-indigo-950/25 px-5 py-3">
+                <div>
+                  <p className="text-indigo-50 text-sm font-semibold">{section.phase.description}</p>
+                  {section.phase.estimatedDuration && <p className="mt-0.5 text-indigo-200/60 text-xs">Estimated duration: {section.phase.estimatedDuration} working day{section.phase.estimatedDuration === "1" ? "" : "s"}</p>}
+                </div>
+                <span className="text-indigo-200 text-sm font-semibold shrink-0">{fmt(section.totalCents)}</span>
               </div>
-              <span className="text-indigo-200 text-sm font-medium shrink-0">{fmt(li.qty * li.unitPriceCents)}</span>
+              {section.lineItems.filter((item) => item !== section.phase).map((li, i) => (
+                <div key={`${section.phase.phaseId}-${i}`} className="flex items-start justify-between px-5 py-3 border-t border-indigo-500/15 gap-4">
+                  <div className="flex-1">
+                    <p className={li.totalCents < 0 || li.kind === "discount" ? "text-emerald-300 text-sm" : "text-indigo-50 text-sm"}>{li.description}</p>
+                    {li.qty !== 1 && <p className="text-indigo-200/60 text-xs mt-0.5">{li.qty} &times; {fmt(li.unitPriceCents)}</p>}
+                  </div>
+                  <span className={li.totalCents < 0 || li.kind === "discount" ? "text-emerald-300 text-sm font-medium shrink-0" : "text-indigo-200 text-sm font-medium shrink-0"}>{fmt(li.qty * li.unitPriceCents)}</span>
+                </div>
+              ))}
             </div>
           ))}
-          {phaseSummary.optionalDiscountCents < 0 && (
-            <div className="flex items-start justify-between px-5 py-3 border-b border-indigo-500/15 gap-4">
-              <p className="text-emerald-300 text-sm">Discount allocated to future phases</p>
-              <span className="text-emerald-300 text-sm font-medium shrink-0">{fmt(phaseSummary.optionalDiscountCents)}</span>
-            </div>
-          )}
           <div className="px-5 py-3 bg-indigo-950/30">
             <div className="flex items-center justify-between text-sm text-indigo-100"><span>Optional future work</span><span className="font-semibold">{fmt(phaseSummary.optionalFutureTotalCents)}</span></div>
             <div className="mt-2 flex items-center justify-between text-xs text-indigo-200/70"><span>Potential full project total</span><span>{fmt(phaseSummary.allPhasesTotalCents)}</span></div>

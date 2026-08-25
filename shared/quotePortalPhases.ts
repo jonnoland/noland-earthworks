@@ -1,4 +1,5 @@
 import { buildQuoteCostBreakdown, type QuoteBreakdownLineItem } from "./quoteCostBreakdown";
+import { ensureQuotePhaseIds, getQuotePhaseSections, type QuotePhaseSection } from "./quotePhaseSections";
 
 export interface QuotePortalLineItem extends QuoteBreakdownLineItem {
   description: string;
@@ -8,13 +9,32 @@ export interface QuotePortalLineItem extends QuoteBreakdownLineItem {
   discountCode?: string;
 }
 
+export interface QuotePortalPhaseSection extends QuotePhaseSection<QuotePortalLineItem> {
+  lineItems: QuotePortalLineItem[];
+}
+
 export function getQuotePortalPhaseSummary(items: QuotePortalLineItem[]) {
-  const breakdown = buildQuoteCostBreakdown(items);
+  const normalizedItems = ensureQuotePhaseIds(items);
+  const breakdown = buildQuoteCostBreakdown(normalizedItems);
   const isDiscount = (item: QuotePortalLineItem) => item.kind === "discount" || item.unitPriceCents < 0;
-  const approvedLineItems = items.filter((item) => !isDiscount(item) && !(item.kind === "phase" && item.phaseAuthorization === "optional_future"));
-  const optionalFutureLineItems = items.filter((item) => item.kind === "phase" && item.phaseAuthorization === "optional_future");
+  const phaseSections = getQuotePhaseSections(normalizedItems).map((section) => ({
+    ...section,
+    lineItems: section.itemIndices.map((index) => normalizedItems[index]),
+  }));
+  const approvedPhaseSections = phaseSections.filter((section) => section.phase.phaseAuthorization !== "optional_future");
+  const optionalFuturePhaseSections = phaseSections.filter((section) => section.phase.phaseAuthorization === "optional_future");
+  const assignedPhaseIds = new Set(phaseSections.map((section) => section.phase.phaseId));
+  const unassignedApprovedLineItems = normalizedItems.filter((item) => !item.phaseId || !assignedPhaseIds.has(item.phaseId));
+  const approvedLineItems = [
+    ...approvedPhaseSections.flatMap((section) => section.lineItems),
+    ...unassignedApprovedLineItems,
+  ].filter((item) => !isDiscount(item));
+  const optionalFutureLineItems = optionalFuturePhaseSections.flatMap((section) => section.lineItems);
 
   return {
+    approvedPhaseSections,
+    optionalFuturePhaseSections,
+    unassignedApprovedLineItems,
     approvedLineItems,
     optionalFutureLineItems,
     approvedDiscountCents: breakdown.approvedDiscountCents,
