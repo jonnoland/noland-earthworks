@@ -25,7 +25,7 @@ describe("quote discount line items", () => {
     expect(editor).toContain('flex-1 grid-cols-1 content-start gap-3 overflow-y-auto');
     expect(editor).not.toContain('max-h-[90vh] overflow-y-auto');
     expect(editor).toContain('max-w-[1500px] flex-1 grid-cols-1');
-    expect(editor).toContain('Client message & internal notes');
+    expect(editor).toContain('Client message, terms & internal notes');
     expect(editor).toContain('Pipeline & follow-up details');
     expect(editor).toContain('grid-cols-1 gap-2 rounded-lg');
     expect(editor).toContain('sm:grid-cols-2');

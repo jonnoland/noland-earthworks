@@ -3565,3 +3565,9 @@
 - [x] Remove Jobber code, routes, settings, tests, and references throughout the project
 - [x] Verify Send Portal to Client email generation and delivery behavior
 - [x] Validate and publish the integration recovery update
+
+## Phased Work and Day-Rate Quote Controls — Aug 2026
+- [x] Add Phase, Full Operating Day, and Half Operating Day line-item types to native Operations quotes
+- [x] Add reusable draft day-rate and one-day trial-phase terms to contract templates
+- [x] Add a clearly labeled internal sample phased forestry mulching quote in Operations
+- [x] Add regression coverage and validate the enhanced quote workflow

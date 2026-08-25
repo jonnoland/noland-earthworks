@@ -49,6 +49,15 @@ import { validateTennesseeParcelId } from "@shared/tennesseeParcelId";
 import { estimateInternalSiteVisitCost } from "@shared/siteVisitCostEstimate";
 import { buildQuoteDiscountLineItem, getCustomerDiscountOptions, getSuggestedVolumeDiscount, type QuoteDiscountOption } from "@shared/quoteDiscounts";
 import { formatQuoteCents, quoteDollarsToCents, roundQuoteCentsUp } from "@shared/quoteMoney";
+import {
+  DAY_RATE_TERMS,
+  ONE_DAY_TRIAL_TERMS,
+  PHASED_WORK_TERMS,
+  SAMPLE_PHASED_QUOTE_CLIENT_MESSAGE,
+  createQuoteWorkLineItem,
+  type QuoteLineItemKind,
+  type QuoteWorkPreset,
+} from "@shared/quoteWorkTypes";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface LineItem {
@@ -56,7 +65,7 @@ interface LineItem {
   qty: number;
   unitPriceCents: number;
   totalCents: number;
-  kind?: "service" | "discount";
+  kind?: QuoteLineItemKind;
   discountCode?: string;
 }
 
@@ -533,6 +542,41 @@ function QuoteFormModal({
       items[i] = normalizeQuoteLineItemsForSave([next as LineItem])[0];
       return { ...prev, lineItems: items };
     });
+  };
+
+  const addControlledLineItem = (kind: QuoteWorkPreset) => {
+    setForm(prev => ({
+      ...prev,
+      lineItems: [...prev.lineItems, createQuoteWorkLineItem(kind)],
+    }));
+  };
+
+  const appendClientTerms = (terms: string) => {
+    setForm(prev => ({
+      ...prev,
+      clientMessage: prev.clientMessage.includes(terms)
+        ? prev.clientMessage
+        : [prev.clientMessage.trim(), terms].filter(Boolean).join("\n\n"),
+    }));
+  };
+
+  const loadSamplePhasedQuote = () => {
+    setForm(prev => ({
+      ...prev,
+      clientName: prev.clientName || "Sample Template — Replace Before Sending",
+      title: "Sample Phased Forestry Mulching Quote — Replace Before Sending",
+      serviceType: "Forestry Mulching",
+      acreage: "Multiple defined areas",
+      estimatedDuration: "Schedule each approved phase separately",
+      clientMessage: SAMPLE_PHASED_QUOTE_CLIENT_MESSAGE,
+      internalNotes: "INTERNAL SAMPLE ONLY — Replace client details, defined work areas, pricing, and approval status before saving or sending.",
+      lineItems: [
+        { ...createQuoteWorkLineItem("phase"), description: "Phase 1 — Access route and primary homesite area (approved now)" },
+        { ...createQuoteWorkLineItem("phase"), description: "Phase 2 — Defined pasture-edge and transition area (optional future phase)" },
+        { ...createQuoteWorkLineItem("phase"), description: "Phase 3 — Marked boundary and secondary use area (optional future phase)" },
+      ],
+    }));
+    toast.success("Internal phased quote sample loaded. Replace every placeholder before sending.");
   };
 
   const handleSubmit = () => {
@@ -1038,13 +1082,18 @@ function QuoteFormModal({
 
           {/* Line items */}
           <div className="rounded-lg border border-zinc-800 bg-zinc-950/35 p-3">
-            <div className="flex items-center justify-between mb-2">
+            <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
               <Label className="text-zinc-400 text-xs">Line Items</Label>
-              <Button size="sm" variant="outline" className="h-7 text-xs border-zinc-600"
-                onClick={() => setForm(p => ({ ...p, lineItems: [...p.lineItems, { description: "", qty: 1, unitPriceCents: 0, totalCents: 0 }] }))}>
-                <Plus className="h-3 w-3 mr-1" /> Add Line
-              </Button>
+              <div className="flex flex-wrap gap-1.5">
+                <Button type="button" size="sm" variant="outline" className="h-7 text-xs border-amber-500/40 text-amber-200 hover:bg-amber-500/10" onClick={() => addControlledLineItem("phase")}>+ Phase</Button>
+                <Button type="button" size="sm" variant="outline" className="h-7 text-xs border-sky-500/40 text-sky-200 hover:bg-sky-500/10" onClick={() => addControlledLineItem("full_operating_day")}>+ Full Day</Button>
+                <Button type="button" size="sm" variant="outline" className="h-7 text-xs border-sky-500/40 text-sky-200 hover:bg-sky-500/10" onClick={() => addControlledLineItem("half_operating_day")}>+ Half Day</Button>
+                <Button type="button" size="sm" variant="outline" className="h-7 text-xs border-zinc-600" onClick={() => setForm(p => ({ ...p, lineItems: [...p.lineItems, { description: "", qty: 1, unitPriceCents: 0, totalCents: 0, kind: "service" }] }))}>
+                  <Plus className="h-3 w-3 mr-1" /> Add Line
+                </Button>
+              </div>
             </div>
+            {!editQuote && <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-md border border-indigo-500/25 bg-indigo-500/[0.06] px-3 py-2"><p className="text-[11px] text-indigo-100">Need a starting point? Load a non-customer phased forestry mulching example with zero-dollar placeholders.</p><Button type="button" size="sm" variant="outline" className="h-7 border-indigo-400/40 text-[11px] text-indigo-100 hover:bg-indigo-500/15" onClick={loadSamplePhasedQuote}>Load Internal Sample</Button></div>}
             <div className="mb-1 hidden grid-cols-12 gap-2 px-1 text-xs text-zinc-500 sm:grid">
               <div className="col-span-5">Description</div>
               <div className="col-span-2">Qty</div>
@@ -1077,12 +1126,19 @@ function QuoteFormModal({
 
           {/* Messages */}
           <details className="rounded-lg border border-zinc-800 bg-zinc-950/35 p-3">
-            <summary className="cursor-pointer text-xs font-semibold text-zinc-300">Client message & internal notes</summary>
+            <summary className="cursor-pointer text-xs font-semibold text-zinc-300">Client message, terms & internal notes</summary>
             <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div>
-              <Label className="text-zinc-400 text-xs mb-1 block">Client Message (shown on portal)</Label>
+              <div className="mb-1 flex flex-wrap items-center justify-between gap-1">
+                <Label className="text-zinc-400 text-xs">Client Message (shown on portal)</Label>
+                <div className="flex flex-wrap gap-1">
+                  <Button type="button" size="sm" variant="ghost" className="h-6 px-2 text-[10px] text-amber-200 hover:bg-amber-500/10" onClick={() => appendClientTerms(PHASED_WORK_TERMS)}>Insert Phased Terms</Button>
+                  <Button type="button" size="sm" variant="ghost" className="h-6 px-2 text-[10px] text-sky-200 hover:bg-sky-500/10" onClick={() => appendClientTerms(DAY_RATE_TERMS)}>Insert Day-Rate Terms</Button>
+                  <Button type="button" size="sm" variant="ghost" className="h-6 px-2 text-[10px] text-sky-200 hover:bg-sky-500/10" onClick={() => appendClientTerms(ONE_DAY_TRIAL_TERMS)}>Insert Trial Terms</Button>
+                </div>
+              </div>
               <Textarea value={form.clientMessage} onChange={e => setForm(p => ({ ...p, clientMessage: e.target.value }))}
-                className="bg-zinc-800 border-zinc-700 text-sm" rows={3}
+                className="bg-zinc-800 border-zinc-700 text-sm" rows={9}
                 placeholder="Thank you for the opportunity. Here is the quote for your property..." />
             </div>
             <div>
