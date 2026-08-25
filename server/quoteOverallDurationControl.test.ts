@@ -8,6 +8,6 @@ describe("overall quote estimated duration control", () => {
     expect(editor).toContain("Overall Estimated Duration");
     expect(editor).toContain('aria-label="Overall estimated duration"');
     expect(editor).toContain('onChange={e => setForm(p => ({ ...p, estimatedDuration: e.target.value }))}');
-    expect(editor).toContain("Phase sections below can also carry their own individual estimated durations.");
+    expect(editor).toContain("Enter a positive number of working days for the complete quote.");
   });
 });

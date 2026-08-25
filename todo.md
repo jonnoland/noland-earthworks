@@ -3621,3 +3621,8 @@
 ## Overall Quote Estimated Duration — Aug 2026
 - [x] Make the overall estimated-duration field clearly accessible in New Quote and Edit Quote
 - [x] Add regression coverage and validate the overall quote duration control
+
+## Customer Portal Timeline and Duration Validation — Aug 2026
+- [x] Display the overall estimated duration in the customer quote portal
+- [x] Validate overall and phase duration entries as positive numeric timing values with clear errors
+- [x] Add regression coverage and validate the portal timeline and duration controls

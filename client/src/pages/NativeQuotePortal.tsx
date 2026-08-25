@@ -22,6 +22,12 @@ import {
 
 type DepositPct = 25 | 33 | 50;
 
+function formatWorkingDays(value: string | null | undefined) {
+  const numericValue = Number(value);
+  if (!Number.isFinite(numericValue) || numericValue <= 0) return value;
+  return `${numericValue} working day${numericValue === 1 ? "" : "s"}`;
+}
+
 // ─── Shell ─────────────────────────────────────────────────────────────────────
 function PortalShell({ children }: { children: React.ReactNode }) {
   return (
@@ -287,9 +293,9 @@ export default function NativeQuotePortal() {
           <div className="flex items-center justify-between px-5 py-3 gap-4">
             <div className="flex items-center gap-2 text-zinc-400 text-sm shrink-0">
               <Clock className="w-4 h-4 text-zinc-600" />
-              Est. Duration
+              Expected timeline
             </div>
-            <span className="text-zinc-200 text-sm text-right">{quote.estimatedDuration}</span>
+            <span className="text-zinc-200 text-sm text-right">{formatWorkingDays(quote.estimatedDuration)}</span>
           </div>
         )}
       </div>

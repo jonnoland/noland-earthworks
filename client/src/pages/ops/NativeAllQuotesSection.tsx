@@ -147,6 +147,7 @@ function LineItemRow({
   compact: boolean;
   phaseOptions?: Array<{ id: string; label: string }>;
 }) {
+  const durationError = item.kind === "phase" ? positiveDurationError(item.estimatedDuration) : null;
   return (
     <div
       className={`grid grid-cols-1 gap-2 rounded-md border border-zinc-800 p-2 transition-colors hover:border-zinc-700 ${compact ? "" : "sm:grid-cols-[auto_minmax(0,5fr)_minmax(0,2fr)_minmax(0,3fr)_minmax(0,1fr)_auto] sm:border-0 sm:p-0"}`}
@@ -216,12 +217,17 @@ function LineItemRow({
             <label className="flex items-center gap-1.5 text-[10px] text-zinc-400">
               Est. duration
               <input
+                type="number"
+                min="0.1"
+                step="0.1"
                 value={item.estimatedDuration ?? ""}
                 onChange={e => onChange(index, "estimatedDuration", e.target.value)}
-                placeholder="e.g. 1–2 days"
-                className="h-6 min-w-0 flex-1 rounded border border-zinc-700 bg-zinc-900 px-1.5 text-[10px] text-zinc-200 placeholder:text-zinc-600"
+                placeholder="e.g. 1.5"
+                aria-invalid={Boolean(durationError)}
+                className={`h-6 min-w-0 flex-1 rounded bg-zinc-900 px-1.5 text-[10px] text-zinc-200 placeholder:text-zinc-600 ${durationError ? "border-red-500" : "border-zinc-700"}`}
               />
             </label>
+            {durationError && <p className="sm:col-span-2 text-[10px] text-red-300">{durationError}</p>}
           </div>
         )}
         {item.kind !== "phase" && phaseOptions.length > 0 && (
@@ -282,6 +288,14 @@ const DEFAULT_LINE_ITEMS: LineItem[] = [
 
 function createQuotePhaseId() {
   return `phase-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+function positiveDurationError(value: string | undefined) {
+  if (!value?.trim()) return null;
+  const numericValue = Number(value);
+  return Number.isFinite(numericValue) && numericValue > 0
+    ? null
+    : "Enter a positive number of working days.";
 }
 
 function normalizeQuoteLineItemsForSave(items: LineItem[]): LineItem[] {
@@ -772,7 +786,22 @@ function QuoteFormModal({
     };
   };
 
+  const validateDurationInputs = () => {
+    const overallError = positiveDurationError(form.estimatedDuration);
+    if (overallError) {
+      toast.error(`Overall estimated duration: ${overallError}`);
+      return false;
+    }
+    const invalidPhase = form.lineItems.find((item) => item.kind === "phase" && positiveDurationError(item.estimatedDuration));
+    if (invalidPhase) {
+      toast.error(`${invalidPhase.description || "Phase"}: ${positiveDurationError(invalidPhase.estimatedDuration)}`);
+      return false;
+    }
+    return true;
+  };
+
   const handleSaveDraft = () => {
+    if (!validateDurationInputs()) return;
     const identity = getQuoteDraftIdentity(form.clientName, form.title);
     if (identity.clientName !== form.clientName || identity.title !== form.title) {
       setForm(prev => ({ ...prev, ...identity }));
@@ -788,6 +817,7 @@ function QuoteFormModal({
   const handleSubmit = () => {
     if (!form.clientName.trim()) { toast.error("Client name required"); return; }
     if (!form.title.trim()) { toast.error("Quote title required"); return; }
+    if (!validateDurationInputs()) return;
     const payload = buildQuotePayload();
     if (editQuote) {
       updateMutation.mutate({ id: editQuote.id, ...payload });
@@ -1066,9 +1096,10 @@ function QuoteFormModal({
             </div>
             <div className="mt-3 rounded-md border border-amber-500/35 bg-amber-500/[0.06] p-3">
               <div className="mb-2 flex items-center gap-2"><Clock className="h-4 w-4 text-amber-300" /><Label className="text-amber-100 text-xs font-semibold">Overall Estimated Duration</Label></div>
-              <Input value={form.estimatedDuration} onChange={e => setForm(p => ({ ...p, estimatedDuration: e.target.value }))}
-                className="border-amber-500/35 bg-zinc-900 text-zinc-100" placeholder="e.g. 1–2 working days" aria-label="Overall estimated duration" />
-              <p className="mt-1.5 text-[10px] leading-relaxed text-amber-100/70">Enter the expected duration for the complete quote. Phase sections below can also carry their own individual estimated durations.</p>
+              <Input type="number" min="0.1" step="0.1" value={form.estimatedDuration} onChange={e => setForm(p => ({ ...p, estimatedDuration: e.target.value }))}
+                aria-invalid={Boolean(positiveDurationError(form.estimatedDuration))}
+                className={`bg-zinc-900 text-zinc-100 ${positiveDurationError(form.estimatedDuration) ? "border-red-500" : "border-amber-500/35"}`} placeholder="e.g. 2.5" aria-label="Overall estimated duration" />
+              {positiveDurationError(form.estimatedDuration) ? <p className="mt-1.5 text-[10px] text-red-300">{positiveDurationError(form.estimatedDuration)}</p> : <p className="mt-1.5 text-[10px] leading-relaxed text-amber-100/70">Enter a positive number of working days for the complete quote. Phase sections below can carry their own individual duration estimates.</p>}
             </div>
           </div>
 
