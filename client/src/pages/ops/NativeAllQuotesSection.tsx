@@ -202,20 +202,21 @@ function LineItemRow({
           className="bg-zinc-800 border-zinc-700 text-sm"
         />
         {item.kind === "phase" && (
-          <div className="mt-1 grid gap-1 sm:grid-cols-2">
-            <label className="flex items-center gap-1.5 text-[10px] text-zinc-400">
-              Authorization
+          <div className="mt-2 grid gap-2 rounded-md border border-zinc-700/80 bg-zinc-950/45 p-2.5 sm:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
+            <label className="flex min-w-0 flex-col gap-1 text-[11px] font-medium text-zinc-300">
+              <span>Authorization</span>
               <select
                 value={item.phaseAuthorization ?? "approved_now"}
                 onChange={e => onChange(index, "phaseAuthorization", e.target.value as QuotePhaseAuthorization)}
-                className="h-6 min-w-0 flex-1 rounded border border-zinc-700 bg-zinc-900 px-1.5 text-[10px] text-zinc-200"
+                aria-label="Phase authorization"
+                className="h-9 w-full rounded border border-zinc-600 bg-zinc-900 px-2.5 text-xs text-zinc-100"
               >
                 <option value="approved_now">Approved now</option>
                 <option value="optional_future">Optional future phase</option>
               </select>
             </label>
-            <label className="flex items-center gap-1.5 text-[10px] text-zinc-400">
-              Est. duration
+            <label className="flex min-w-0 flex-col gap-1 text-[11px] font-medium text-zinc-300">
+              <span>Estimated duration</span>
               <input
                 type="number"
                 min="0.1"
@@ -224,10 +225,11 @@ function LineItemRow({
                 onChange={e => onChange(index, "estimatedDuration", e.target.value)}
                 placeholder="e.g. 1.5"
                 aria-invalid={Boolean(durationError)}
-                className={`h-6 min-w-0 flex-1 rounded bg-zinc-900 px-1.5 text-[10px] text-zinc-200 placeholder:text-zinc-600 ${durationError ? "border-red-500" : "border-zinc-700"}`}
+                aria-label="Phase estimated duration in working days"
+                className={`h-9 w-full rounded bg-zinc-900 px-2.5 text-xs text-zinc-100 placeholder:text-zinc-600 ${durationError ? "border-red-500" : "border-zinc-600"}`}
               />
             </label>
-            {durationError && <p className="sm:col-span-2 text-[10px] text-red-300">{durationError}</p>}
+            {durationError && <p className="sm:col-span-2 text-[11px] text-red-300">{durationError}</p>}
           </div>
         )}
         {item.kind !== "phase" && phaseOptions.length > 0 && (

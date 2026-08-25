@@ -3626,3 +3626,7 @@
 - [x] Display the overall estimated duration in the customer quote portal
 - [x] Validate overall and phase duration entries as positive numeric timing values with clear errors
 - [x] Add regression coverage and validate the portal timeline and duration controls
+
+## Phase Control Readability — Aug 2026
+- [x] Enlarge and reflow phase Authorization and Estimated Duration controls so labels and values are not clipped
+- [x] Add regression coverage and validate the refined phase control layout
