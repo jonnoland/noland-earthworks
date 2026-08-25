@@ -28,7 +28,7 @@ import {
   FileText, ExternalLink, Sparkles, Info, AlertTriangle,
   RefreshCw, ChevronRight, MapPin, Phone, Mail, User, Users, X, Globe,
   Loader2, Clock, ChevronDown, ChevronUp, ArchiveRestore, Pencil,
-  ArrowRight, Ban, ArrowUpDown, Volume2, VolumeX, BellRing, Bell, BellOff
+  ArrowRight, Ban, ArrowUpDown, Volume2, VolumeX, BellRing, Bell, BellOff, GripVertical
 } from "lucide-react";
 import { MapView } from "@/components/Map";
 import FieldQuotesSection from "@/pages/ops/FieldQuotesSection";
@@ -51,6 +51,7 @@ import { buildQuoteDiscountLineItem, getCustomerDiscountOptions, getSuggestedVol
 import { formatQuoteCents, quoteDollarsToCents, roundQuoteCentsUp } from "@shared/quoteMoney";
 import { buildQuoteCostBreakdown, getQuoteCostDistribution } from "@shared/quoteCostBreakdown";
 import { getQuoteDraftIdentity } from "@shared/quoteDrafts";
+import { moveQuoteLineItem } from "@shared/quoteLineItemOrder";
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
 import {
   DAY_RATE_TERMS,
@@ -133,16 +134,61 @@ function StatusBadge({ quote }: { quote: NativeQuote }) {
 
 // ─── Line item row editor ─────────────────────────────────────────────────────
 function LineItemRow({
-  item, index, onChange, onRemove, compact
+  item, index, onChange, onRemove, onMove, compact
 }: {
   item: LineItem;
   index: number;
   onChange: (i: number, field: keyof LineItem, val: string | number) => void;
   onRemove: (i: number) => void;
+  onMove: (fromIndex: number, toIndex: number) => void;
   compact: boolean;
 }) {
   return (
-    <div className={`grid grid-cols-1 gap-2 rounded-md border border-zinc-800 p-2 ${compact ? "" : "sm:grid-cols-12 sm:border-0 sm:p-0"}`}>
+    <div
+      className={`grid grid-cols-1 gap-2 rounded-md border border-zinc-800 p-2 transition-colors hover:border-zinc-700 ${compact ? "" : "sm:grid-cols-[auto_minmax(0,5fr)_minmax(0,2fr)_minmax(0,3fr)_minmax(0,1fr)_auto] sm:border-0 sm:p-0"}`}
+      onDragOver={(event) => event.preventDefault()}
+      onDrop={(event) => {
+        event.preventDefault();
+        const fromIndex = Number(event.dataTransfer.getData("application/x-noland-quote-line-item"));
+        if (Number.isInteger(fromIndex)) onMove(fromIndex, index);
+      }}
+    >
+      <div className="flex items-center gap-1">
+        <button
+          type="button"
+          draggable
+          onDragStart={(event) => {
+            event.dataTransfer.effectAllowed = "move";
+            event.dataTransfer.setData("application/x-noland-quote-line-item", String(index));
+          }}
+          aria-label={`Drag ${item.description || `line item ${index + 1}`} to reorder`}
+          title="Drag to reorder"
+          className="cursor-grab touch-none rounded p-1 text-zinc-500 hover:bg-zinc-800 hover:text-amber-300 active:cursor-grabbing focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+        >
+          <GripVertical className="h-4 w-4" aria-hidden="true" />
+        </button>
+        <div className="flex flex-col gap-0.5">
+          <button
+            type="button"
+            onClick={() => onMove(index, index - 1)}
+            disabled={index === 0}
+            aria-label={`Move ${item.description || `line item ${index + 1}`} up`}
+            title="Move up"
+            className="rounded p-0.5 text-zinc-500 hover:text-amber-300 disabled:cursor-not-allowed disabled:opacity-30"
+          >
+            <ChevronUp className="h-3 w-3" aria-hidden="true" />
+          </button>
+          <button
+            type="button"
+            onClick={() => onMove(index, index + 1)}
+            aria-label={`Move ${item.description || `line item ${index + 1}`} down`}
+            title="Move down"
+            className="rounded p-0.5 text-zinc-500 hover:text-amber-300"
+          >
+            <ChevronDown className="h-3 w-3" aria-hidden="true" />
+          </button>
+        </div>
+      </div>
       <div className={compact ? "" : "sm:col-span-5"}>
         <Input
           placeholder="Description"
@@ -590,6 +636,13 @@ function QuoteFormModal({
       items[i] = normalizeQuoteLineItemsForSave([next as LineItem])[0];
       return { ...prev, lineItems: items };
     });
+  };
+
+  const handleMoveLineItem = (fromIndex: number, toIndex: number) => {
+    setForm((current) => ({
+      ...current,
+      lineItems: moveQuoteLineItem(current.lineItems, fromIndex, toIndex),
+    }));
   };
 
   const addControlledLineItem = (kind: QuoteWorkPreset) => {
@@ -1201,6 +1254,7 @@ function QuoteFormModal({
               {form.lineItems.map((li, i) => (
                 <LineItemRow key={i} item={li} index={i}
                   onChange={handleLineItemChange}
+                  onMove={handleMoveLineItem}
                   compact={isCompactWorkspace}
                   onRemove={i2 => setForm(p => ({ ...p, lineItems: p.lineItems.filter((_, idx) => idx !== i2) }))} />
               ))}

@@ -3590,3 +3590,8 @@
 - [x] Add bottom-right corner drag resizing to New Quote and Edit Quote windows
 - [x] Make quote columns, line items, breakdown, and footer controls adapt to the resized workspace
 - [x] Add regression coverage and validate the resizable quote workspace
+
+## Quote Line-Item Reordering — Aug 2026
+- [x] Add drag-and-drop line-item ordering controls to New Quote and Edit Quote
+- [x] Add keyboard-accessible move-up and move-down controls for line items
+- [x] Preserve the chosen line-item order in saved drafts and quotes, with regression coverage

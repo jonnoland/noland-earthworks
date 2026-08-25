@@ -30,7 +30,7 @@ describe("quote discount line items", () => {
     expect(editor).toContain('Pipeline & follow-up details');
     expect(editor).toContain('grid-cols-1 gap-2 rounded-lg');
     expect(editor).toContain('sm:grid-cols-2');
-    expect(editor).toContain('sm:grid-cols-12');
+    expect(editor).toContain('sm:grid-cols-[auto_minmax(0,5fr)_minmax(0,2fr)_minmax(0,3fr)_minmax(0,1fr)_auto]');
     expect(editor).toContain('grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)]');
     expect(editor).toContain('isCompactWorkspace ? "" : "col-span-2"');
   });
