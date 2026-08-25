@@ -4367,7 +4367,16 @@ Return only the message text, no preamble or explanation.`;
 });
 
 // ─── Portal Email Template ────────────────────────────────────────────────────
-function buildPortalEmail(
+function escapeEmailValue(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+export function buildPortalEmail(
   firstName: string,
   jobLabel: string,
   address: string,
@@ -4375,40 +4384,31 @@ function buildPortalEmail(
   portalUrl: string,
   note?: string,
 ): string {
-  return `<!DOCTYPE html><html><head><meta charset="UTF-8"><style>
-    body{margin:0;padding:0;background:#f4f4f4;font-family:Arial,sans-serif;}
-    .wrapper{max-width:600px;margin:0 auto;background:#fff;}
-    .header{background:#1a1a1a;padding:24px 32px;}
-    .header h1{color:#f0a500;margin:0;font-size:20px;letter-spacing:.5px;}
-    .header p{color:#888;margin:4px 0 0;font-size:12px;}
-    .body{padding:32px;}
-    .greeting{font-size:16px;font-weight:700;color:#1a1a1a;margin-bottom:16px;}
-    .section-title{font-size:11px;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:.8px;margin:24px 0 8px;border-bottom:1px solid #eee;padding-bottom:6px;}
-    .row{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #f0f0f0;font-size:13px;color:#444;}
-    .label{color:#888;}
-    .value{font-weight:600;color:#1a1a1a;}
-    .total-row{display:flex;justify-content:space-between;padding:10px 0;font-size:15px;font-weight:700;color:#1a1a1a;border-top:2px solid #1a1a1a;margin-top:4px;}
-    .cta{text-align:center;margin:32px 0;}
-    .cta a{background:#f0a500;color:#1a1a1a;font-weight:700;font-size:15px;padding:14px 36px;border-radius:4px;text-decoration:none;letter-spacing:.3px;display:inline-block;}
-    .disclaimer{font-size:11px;color:#aaa;line-height:1.6;margin-top:24px;}
-    .footer{background:#f4f4f4;padding:16px 32px;font-size:11px;color:#999;text-align:center;}
-    a{color:#f0a500;}
-  </style></head><body><div class="wrapper">
-    <div class="header"><h1>Noland Earthworks, LLC</h1><p>Veteran-Owned &amp; Operated &bull; Middle &amp; West Tennessee</p></div>
-    <div class="body">
-      <p class="greeting">Hi ${firstName},</p>
-      <p style="font-size:14px;line-height:1.7;color:#333;">Thank you for reaching out. I put together an estimate for your project based on the details you provided. You can review the full quote, ask questions, and approve or decline it using the link below &mdash; no account required.</p>
-      <div class="section-title">Project Summary</div>
-      <div class="row"><span class="label">Service</span><span class="value">${jobLabel}</span></div>
-      <div class="row"><span class="label">Job Site</span><span class="value">${address}</span></div>
-      <div class="total-row"><span>Estimated Total</span><span class="value">${total}</span></div>
-      ${note ? `<div class="section-title">Note from Jon</div><p style="font-size:13px;color:#555;line-height:1.6;">${note}</p>` : ''}
-      <p class="disclaimer">This is a preliminary estimate based on the information available. A site visit is required to confirm the final scope and price. Pricing may vary based on terrain, vegetation density, access, and site conditions.</p>
-      <div class="cta"><a href="${portalUrl}">View &amp; Respond to Your Quote</a></div>
-      <p style="text-align:center;font-size:12px;color:#888;">Or call Jon directly: <strong>615-406-4819</strong></p>
-    </div>
-    <div class="footer">Noland Earthworks, LLC &bull; Vanleer, TN &bull; <a href="https://www.nolandearthworks.com">nolandearthworks.com</a><br/>Veteran-owned and operated. Licensed and insured.</div>
-  </div></body></html>`;
+  const safeFirstName = escapeEmailValue(firstName);
+  const safeJobLabel = escapeEmailValue(jobLabel);
+  const safeAddress = escapeEmailValue(address || "Address to be confirmed");
+  const safeTotal = escapeEmailValue(total);
+  const safePortalUrl = escapeEmailValue(portalUrl);
+  const safeNote = note ? escapeEmailValue(note).replace(/\n/g, "<br />") : "";
+  const logoUrl = "https://d2xsxph8kpxj0f.cloudfront.net/310519663484957999/PymCzDCnSJzPjdkfwA7Jn6/noland-logo-transparent_d2051edf.png";
+
+  return `<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" /><title>Your Quote — Noland Earthworks</title></head>
+<body style="margin:0;padding:0;background:#f3f0ea;font-family:Arial,Helvetica,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="background:#f3f0ea;padding:28px 14px;"><tr><td align="center">
+    <table width="620" cellpadding="0" cellspacing="0" role="presentation" style="max-width:620px;width:100%;background:#fff;border-radius:10px;overflow:hidden;box-shadow:0 3px 18px rgba(38,31,24,.12);">
+      <tr><td style="height:5px;background:#c9671c;font-size:0;line-height:0;">&nbsp;</td></tr>
+      <tr><td style="background:#211f1d;padding:25px 32px;"><table width="100%" cellpadding="0" cellspacing="0" role="presentation"><tr><td><img src="${logoUrl}" height="48" alt="Noland Earthworks" style="display:block;border:0;" /></td><td align="right"><span style="display:inline-block;background:#c9671c;color:#fff;font-size:11px;font-weight:700;letter-spacing:.9px;text-transform:uppercase;padding:7px 11px;border-radius:3px;">Your Quote</span></td></tr></table></td></tr>
+      <tr><td style="padding:28px 32px 0;"><h1 style="margin:0 0 11px;font-size:23px;line-height:1.25;color:#292522;">Hi ${safeFirstName},</h1><p style="margin:0;color:#443e39;font-size:15px;line-height:1.6;">Your quote is ready to review. The secure link below lets you see the full scope, ask a question, and approve or decline the quote. No account is required.</p></td></tr>
+      <tr><td style="padding:24px 32px 0;"><p style="margin:0 0 9px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.9px;color:#c9671c;border-bottom:2px solid #c9671c;padding-bottom:6px;">Quote Summary</p><table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="border:1px solid #eee7dc;border-radius:6px;overflow:hidden;"><tr><td style="padding:10px 14px;width:37%;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:#796f62;border-bottom:1px solid #eee7dc;">Service</td><td style="padding:10px 14px;font-size:14px;font-weight:700;color:#292522;border-bottom:1px solid #eee7dc;">${safeJobLabel}</td></tr><tr><td style="padding:10px 14px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:#796f62;border-bottom:1px solid #eee7dc;vertical-align:top;">Property</td><td style="padding:10px 14px;font-size:14px;color:#292522;border-bottom:1px solid #eee7dc;">${safeAddress}</td></tr><tr><td style="padding:13px 14px;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:#292522;background:#faf4eb;">Quote Total</td><td style="padding:13px 14px;font-size:18px;font-weight:700;color:#b65112;background:#faf4eb;">${safeTotal}</td></tr></table></td></tr>
+      ${safeNote ? `<tr><td style="padding:22px 32px 0;"><p style="margin:0 0 9px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.9px;color:#c9671c;border-bottom:2px solid #c9671c;padding-bottom:6px;">Note from Jon</p><div style="padding:13px 15px;background:#f8f6f1;border:1px solid #eee7dc;border-radius:6px;font-size:14px;line-height:1.55;color:#423b35;">${safeNote}</div></td></tr>` : ""}
+      <tr><td style="padding:22px 32px 0;"><table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="background:#f8f6f1;border:1px solid #eee7dc;border-radius:6px;"><tr><td style="padding:15px 17px;"><p style="margin:0 0 5px;color:#292522;font-size:14px;font-weight:700;">Before you approve</p><p style="margin:0;color:#5b534c;font-size:13px;line-height:1.55;">Review the full scope and any listed assumptions. Final scope, access, terrain, vegetation, and site conditions are confirmed during the site visit before work is scheduled.</p></td></tr></table></td></tr>
+      <tr><td style="padding:28px 32px;text-align:center;"><a href="${safePortalUrl}" style="display:inline-block;background:#c9671c;color:#fff;padding:14px 28px;border-radius:5px;text-decoration:none;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;">Review Your Quote &rarr;</a><p style="margin:12px 0 0;color:#7b736a;font-size:12px;">Questions before you decide? Reply to this email or call <a href="tel:6154064819" style="color:#b65112;text-decoration:none;font-weight:700;">(615) 406-4819</a>.</p></td></tr>
+      <tr><td style="background:#211f1d;padding:17px 32px;text-align:center;"><p style="margin:0;color:#a69b8e;font-size:11px;"><strong style="color:#c9671c;">Noland Earthworks, LLC</strong> &nbsp;&bull;&nbsp; Veteran-Owned &amp; Operated &nbsp;&bull;&nbsp; Middle &amp; West Tennessee</p><p style="margin:5px 0 0;color:#82796f;font-size:11px;"><a href="https://nolandearthworks.com" style="color:#c9671c;text-decoration:none;">nolandearthworks.com</a> &nbsp;&bull;&nbsp; quotes@nolandearthworks.com</p></td></tr>
+    </table>
+  </td></tr></table>
+</body></html>`;
 }
 
 // ─── Portal Add-ons Router ────────────────────────────────────────────────────

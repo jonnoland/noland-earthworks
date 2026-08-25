@@ -136,6 +136,128 @@ function stripCodeFence(raw: string): string {
   return match ? match[1].trim() : trimmed;
 }
 
+function escapeEmailHtml(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+type FieldQuoteEmailInput = {
+  name: string;
+  email?: string;
+  phone?: string;
+  address?: string;
+  lat?: number;
+  lng?: number;
+  serviceType?: string;
+  acreage?: number;
+  terrainType?: string;
+  vegetationDensity?: string;
+  vegetationTypes?: string;
+  slopeCondition?: string;
+  accessCondition?: string;
+  obstacles?: string;
+  proximityToStructures?: string;
+  message?: string;
+  photoUrls: string[];
+  source: string;
+};
+
+type FieldQuoteQualification = {
+  score: "strong" | "marginal" | "weak";
+  summary: string;
+  flags: string[];
+  draftResponse: string;
+};
+
+export function buildFieldQuoteOwnerEmail(
+  input: FieldQuoteEmailInput,
+  qualification: FieldQuoteQualification,
+  mapSnapshotUrl: string | null,
+): string {
+  const logoUrl = "https://d2xsxph8kpxj0f.cloudfront.net/310519663484957999/PymCzDCnSJzPjdkfwA7Jn6/noland-logo-transparent_d2051edf.png";
+  const submittedAt = new Date().toLocaleString("en-US", {
+    timeZone: "America/Chicago",
+    weekday: "long",
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    timeZoneName: "short",
+  });
+  const scoreStyles = {
+    strong: { label: "Strong fit", color: "#2f6d41", background: "#edf7ef" },
+    marginal: { label: "Review conditions", color: "#9a5b13", background: "#fdf6e9" },
+    weak: { label: "Review before scheduling", color: "#a1332b", background: "#fbeeed" },
+  } as const;
+  const score = scoreStyles[qualification.score];
+  const row = (label: string, value?: string) => value ? `
+    <tr>
+      <td style="padding:10px 14px;border-bottom:1px solid #eee7dc;width:36%;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:#796f62;vertical-align:top;">${label}</td>
+      <td style="padding:10px 14px;border-bottom:1px solid #eee7dc;font-size:14px;line-height:1.45;color:#292522;">${value}</td>
+    </tr>` : "";
+  const contactRows = [
+    row("Phone", input.phone ? `<a href="tel:${escapeEmailHtml(input.phone)}" style="color:#c9671c;text-decoration:none;font-weight:700;">${escapeEmailHtml(input.phone)}</a>` : ""),
+    row("Email", input.email ? `<a href="mailto:${escapeEmailHtml(input.email)}" style="color:#c9671c;text-decoration:none;">${escapeEmailHtml(input.email)}</a>` : ""),
+  ].join("");
+  const mapUrl = input.lat != null && input.lng != null ? `https://www.google.com/maps?q=${input.lat},${input.lng}` : null;
+  const photoLinks = input.photoUrls.map((url, index) => `<a href="${escapeEmailHtml(url)}" style="color:#c9671c;text-decoration:none;">Photo ${index + 1}</a>`).join(" &nbsp;|&nbsp; ");
+
+  return `<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" /><title>New Field Quote — Noland Earthworks</title></head>
+<body style="margin:0;padding:0;background:#f3f0ea;font-family:Arial,Helvetica,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="background:#f3f0ea;padding:28px 14px;">
+    <tr><td align="center">
+      <table width="640" cellpadding="0" cellspacing="0" role="presentation" style="max-width:640px;width:100%;background:#fff;border-radius:10px;overflow:hidden;box-shadow:0 3px 18px rgba(38,31,24,.12);">
+        <tr><td style="height:5px;background:#c9671c;font-size:0;line-height:0;">&nbsp;</td></tr>
+        <tr><td style="background:#211f1d;padding:25px 32px;">
+          <table width="100%" cellpadding="0" cellspacing="0" role="presentation"><tr>
+            <td><img src="${logoUrl}" height="48" alt="Noland Earthworks" style="display:block;border:0;" /></td>
+            <td align="right"><span style="display:inline-block;background:#c9671c;color:#fff;font-size:11px;font-weight:700;letter-spacing:.9px;text-transform:uppercase;padding:7px 11px;border-radius:3px;">Field Quote</span></td>
+          </tr></table>
+        </td></tr>
+        <tr><td style="padding:22px 32px 0;">
+          <p style="margin:0 0 4px;font-size:20px;font-weight:700;color:#292522;">New field quote from ${escapeEmailHtml(input.name)}</p>
+          <p style="margin:0;font-size:13px;line-height:1.5;color:#6d655c;">Submitted from Noland Field on ${submittedAt}.</p>
+        </td></tr>
+        <tr><td style="padding:18px 32px 0;">
+          <table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="background:${score.background};border:1px solid ${score.color};border-radius:6px;"><tr>
+            <td style="padding:13px 16px;"><strong style="color:${score.color};font-size:13px;">AI fit: ${score.label}</strong><br /><span style="display:block;margin-top:4px;color:#423b35;font-size:13px;line-height:1.45;">${escapeEmailHtml(qualification.summary)}</span></td>
+          </tr></table>
+        </td></tr>
+        ${contactRows ? `<tr><td style="padding:22px 32px 0;"><p style="margin:0 0 9px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.9px;color:#c9671c;border-bottom:2px solid #c9671c;padding-bottom:6px;">Contact</p><table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="border:1px solid #eee7dc;border-radius:6px;overflow:hidden;">${contactRows}</table></td></tr>` : ""}
+        <tr><td style="padding:22px 32px 0;"><p style="margin:0 0 9px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.9px;color:#c9671c;border-bottom:2px solid #c9671c;padding-bottom:6px;">Property & Work Details</p>
+          <table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="border:1px solid #eee7dc;border-radius:6px;overflow:hidden;">
+            ${row("Service", input.serviceType ? `<strong>${escapeEmailHtml(input.serviceType)}</strong>` : "Field quote")}
+            ${row("Acreage", input.acreage != null ? `${input.acreage.toLocaleString()} acres` : "")}
+            ${row("Property Address", input.address ? escapeEmailHtml(input.address) : "")}
+            ${row("Map Location", mapUrl ? `<a href="${mapUrl}" style="color:#c9671c;text-decoration:none;font-weight:700;">Open in Google Maps &rarr;</a>` : "")}
+            ${row("Terrain", input.terrainType ? escapeEmailHtml(input.terrainType) : "")}
+            ${row("Vegetation Density", input.vegetationDensity ? escapeEmailHtml(input.vegetationDensity) : "")}
+            ${row("Vegetation Types", input.vegetationTypes ? escapeEmailHtml(input.vegetationTypes) : "")}
+            ${row("Slope", input.slopeCondition ? escapeEmailHtml(input.slopeCondition) : "")}
+            ${row("Site Access", input.accessCondition ? escapeEmailHtml(input.accessCondition) : "")}
+            ${row("Obstacles", input.obstacles ? escapeEmailHtml(input.obstacles) : "")}
+            ${row("Near Structures", input.proximityToStructures ? escapeEmailHtml(input.proximityToStructures) : "")}
+            ${row("Photos", photoLinks)}
+          </table>
+        </td></tr>
+        ${mapSnapshotUrl ? `<tr><td style="padding:16px 32px 0;"><a href="${mapUrl ?? escapeEmailHtml(mapSnapshotUrl)}" style="text-decoration:none;"><img src="${escapeEmailHtml(mapSnapshotUrl)}" alt="Satellite map of field quote property" width="576" style="display:block;max-width:100%;width:100%;height:auto;border:1px solid #eee7dc;border-radius:6px;" /></a></td></tr>` : ""}
+        ${input.message ? `<tr><td style="padding:22px 32px 0;"><p style="margin:0 0 9px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.9px;color:#c9671c;border-bottom:2px solid #c9671c;padding-bottom:6px;">Field Notes</p><div style="background:#f8f6f1;border:1px solid #eee7dc;border-radius:6px;padding:13px 15px;color:#423b35;font-size:14px;line-height:1.55;white-space:pre-wrap;">${escapeEmailHtml(input.message)}</div></td></tr>` : ""}
+        ${qualification.flags.length ? `<tr><td style="padding:22px 32px 0;"><p style="margin:0 0 9px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.9px;color:#c9671c;border-bottom:2px solid #c9671c;padding-bottom:6px;">Items to Review</p><ul style="margin:0;padding:0 0 0 20px;color:#423b35;font-size:14px;line-height:1.55;">${qualification.flags.map((flag) => `<li style="margin:0 0 5px;">${escapeEmailHtml(flag)}</li>`).join("")}</ul></td></tr>` : ""}
+        <tr><td style="padding:28px 32px;text-align:center;"><a href="https://nolandearthworks.com/ops/quotes" style="display:inline-block;background:#c9671c;color:#fff;padding:13px 25px;border-radius:5px;text-decoration:none;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;">Open All Quotes &rarr;</a><p style="margin:11px 0 0;color:#7b736a;font-size:12px;">Review property fit, conditions, and next action before scheduling.</p></td></tr>
+        <tr><td style="background:#211f1d;padding:17px 32px;text-align:center;"><p style="margin:0;color:#a69b8e;font-size:11px;"><strong style="color:#c9671c;">Noland Earthworks, LLC</strong> &nbsp;&bull;&nbsp; Veteran-Owned &amp; Operated &nbsp;&bull;&nbsp; Middle &amp; West Tennessee</p></td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body></html>`;
+}
+
 // ─── AI Qualifier ─────────────────────────────────────────────────────────────
 
 const FIELD_QUALIFIER_PROMPT = `You are an AI assistant for Noland Earthworks, LLC — a veteran-owned land management and forestry mulching company in Middle Tennessee. Your job is to qualify incoming field quote requests and score them for the owner, Jon Noland.
@@ -604,44 +726,11 @@ export const fieldQuoteRouter = router({
           // 4. Send email notification to owner
           if (ENV.resendApiKey) {
             const resend = new Resend(ENV.resendApiKey);
-            const scoreColor = qualification.score === "strong" ? "#16a34a" : qualification.score === "marginal" ? "#d97706" : "#dc2626";
-            const scoreLabel = qualification.score.charAt(0).toUpperCase() + qualification.score.slice(1);
             await resend.emails.send({
               from: "Noland Earthworks <noreply@nolandearthworks.com>",
               to: ["quotes@nolandearthworks.com"],
               subject: `New Field Quote: ${input.name}${input.serviceType ? ` — ${input.serviceType}` : ""}${input.acreage ? ` (${input.acreage} acres)` : ""}`,
-              html: `
-                <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;background:#fff;">
-                  <div style="background:#1a1a1a;padding:24px 32px;">
-                    <h1 style="color:#d97706;margin:0;font-size:22px;letter-spacing:1px;">NOLAND EARTHWORKS</h1>
-                    <p style="color:#888;margin:4px 0 0;font-size:13px;">New Field Quote — Noland Field App</p>
-                  </div>
-                  <div style="padding:32px;">
-                    <div style="display:inline-block;background:${scoreColor};color:#fff;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:1px;padding:4px 12px;border-radius:4px;margin-bottom:20px;">AI Score: ${scoreLabel}</div>
-                    <h2 style="color:#1a1a1a;margin-top:0;">${input.name}</h2>
-                    <table style="width:100%;border-collapse:collapse;margin-bottom:24px;">
-                      ${input.phone ? `<tr><td style="padding:8px 0;color:#888;width:160px;">Phone</td><td style="padding:8px 0;color:#1a1a1a;font-weight:600;"><a href="tel:${input.phone}" style="color:#d97706;">${input.phone}</a></td></tr>` : ""}
-                      ${input.email ? `<tr><td style="padding:8px 0;color:#888;">Email</td><td style="padding:8px 0;color:#1a1a1a;">${input.email}</td></tr>` : ""}
-                      ${input.serviceType ? `<tr><td style="padding:8px 0;color:#888;">Service</td><td style="padding:8px 0;color:#1a1a1a;">${input.serviceType}</td></tr>` : ""}
-                      ${input.acreage ? `<tr><td style="padding:8px 0;color:#888;">Acreage</td><td style="padding:8px 0;color:#1a1a1a;">${input.acreage} acres</td></tr>` : ""}
-                      ${input.address ? `<tr><td style="padding:8px 0;color:#888;">Address</td><td style="padding:8px 0;color:#1a1a1a;">${input.address}</td></tr>` : ""}
-                      ${input.terrainType ? `<tr><td style="padding:8px 0;color:#888;">Terrain</td><td style="padding:8px 0;color:#1a1a1a;">${input.terrainType}</td></tr>` : ""}
-                      ${input.vegetationDensity ? `<tr><td style="padding:8px 0;color:#888;">Vegetation</td><td style="padding:8px 0;color:#1a1a1a;">${input.vegetationDensity}</td></tr>` : ""}
-                      ${input.slopeCondition ? `<tr><td style="padding:8px 0;color:#888;">Slope</td><td style="padding:8px 0;color:#1a1a1a;">${input.slopeCondition}</td></tr>` : ""}
-                      ${input.accessCondition ? `<tr><td style="padding:8px 0;color:#888;">Access</td><td style="padding:8px 0;color:#1a1a1a;">${input.accessCondition}</td></tr>` : ""}
-                      ${input.obstacles ? `<tr><td style="padding:8px 0;color:#888;">Obstacles</td><td style="padding:8px 0;color:#1a1a1a;">${input.obstacles}</td></tr>` : ""}
-                      ${input.photoUrls.length > 0 ? `<tr><td style="padding:8px 0;color:#888;">Photos</td><td style="padding:8px 0;color:#1a1a1a;">${input.photoUrls.length} attached</td></tr>` : ""}
-                    </table>
-                    <div style="background:#f5f5f5;border-left:4px solid #d97706;padding:16px 20px;margin-bottom:24px;">
-                      <p style="margin:0 0 8px;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#888;">AI Summary</p>
-                      <p style="margin:0;color:#1a1a1a;line-height:1.6;">${qualification.summary}</p>
-                    </div>
-                    ${qualification.flags.length > 0 ? `<div style="background:#fff8f0;border-left:4px solid #f97316;padding:16px 20px;margin-bottom:24px;"><p style="margin:0 0 8px;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#888;">Flags</p><ul style="margin:0;padding-left:20px;color:#1a1a1a;">${qualification.flags.map((f: string) => `<li style="margin-bottom:4px;">${f}</li>`).join("")}</ul></div>` : ""}
-                    ${input.message ? `<div style="margin-bottom:24px;"><p style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#888;margin-bottom:8px;">Notes from Field</p><p style="color:#1a1a1a;line-height:1.6;margin:0;">${input.message}</p></div>` : ""}
-                    <a href="https://www.nolandearthworks.com/ops/quotes" style="display:inline-block;background:#d97706;color:#fff;font-size:14px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;padding:14px 32px;border-radius:6px;text-decoration:none;">View in Ops Dashboard</a>
-                  </div>
-                </div>
-              `,
+              html: buildFieldQuoteOwnerEmail(input, qualification, mapSnapshotUrl),
             }).catch((e: unknown) => console.error("[FieldQuoteRouter] Owner email failed:", e));
           }
         } catch (err) {

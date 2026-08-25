@@ -109,7 +109,27 @@ function escapeHtml(str: string): string {
     .replace(/'/g, "&#39;");
 }
 
-function buildEmailHtml(data: QuoteInput): string {
+function formatCounty(county: string): string {
+  return /\bcounty\b/i.test(county) ? county : `${county} County`;
+}
+
+function formatServiceBreakdown(
+  items: QuoteInput["serviceBreakdown"],
+  includePricing: boolean,
+): string {
+  return items.map((item) => {
+    const detail = [item.measurement, item.calculation]
+      .filter(Boolean)
+      .map((value) => `<br /><span style="font-size:12px;color:#777;line-height:1.45;">${escapeHtml(value!)}</span>`)
+      .join("");
+    const amount = includePricing
+      ? `: <strong>$${Math.round(item.lowCents / 100).toLocaleString()} – $${Math.round(item.highCents / 100).toLocaleString()}</strong>`
+      : "";
+    return `<strong>${escapeHtml(item.label)}</strong>${amount}${detail}`;
+  }).join("<br /><br />");
+}
+
+export function buildEmailHtml(data: QuoteInput): string {
   const logoUrl = "https://d2xsxph8kpxj0f.cloudfront.net/310519663484957999/PymCzDCnSJzPjdkfwA7Jn6/noland-logo-transparent_d2051edf.png";
   const submittedAt = new Date().toLocaleString("en-US", {
     timeZone: "America/Chicago",
@@ -175,7 +195,7 @@ function buildEmailHtml(data: QuoteInput): string {
         <tr>
           <td style="background:#fdf6ee;border-bottom:1px solid #f0e4cc;padding:14px 36px;">
             <p style="margin:0;font-size:13px;color:#7a4f1a;">
-              &#128276;&nbsp; A new quote request was submitted on <strong>${submittedAt}</strong>.
+              A new site visit request was submitted on <strong>${submittedAt}</strong>. Review the project details, confirm the property fit, and schedule a site visit when warranted.
             </p>
           </td>
         </tr>
@@ -206,16 +226,20 @@ function buildEmailHtml(data: QuoteInput): string {
           <td style="padding:0 36px;">
             <table width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #f0ede6;border-radius:6px;overflow:hidden;">
               ${row("Client Type", `<strong style="text-transform:capitalize;">${escapeHtml(data.clientType ?? "residential")}</strong>${data.clientType === "government" ? " &nbsp;<span style=\"display:inline-block;background:#1a4f8a;color:#fff;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.6px;padding:2px 7px;border-radius:3px;\">GOV</span>" : ""}`)} 
-              ${row("Service Requested", `<strong>${escapeHtml(data.service)}</strong>`)}
-              ${row("County", escapeHtml(data.county) + " County")}
+              ${row("Service Requested", `<strong>${escapeHtml(getServiceDisplayName(data.service))}</strong>`)}
+              ${row("County", escapeHtml(formatCounty(data.county)))}
               ${(data.service === 'right-of-way-clearing' || data.service === 'Right-of-Way Clearing')
                 ? (data.rowLinearFeet ? row("Corridor Length", `${data.rowLinearFeet.toLocaleString()} linear feet`) : (data.acreage ? row("Acreage (provided)", escapeHtml(data.acreage)) : ""))
                 : (data.acreage ? row("Acreage", escapeHtml(data.acreage)) : "")}
               ${(data.service === 'right-of-way-clearing' || data.service === 'Right-of-Way Clearing') && data.rowCorridorWidthFt ? row("Corridor Width", `${data.rowCorridorWidthFt} ft`) : ""}
               ${(data.service === 'right-of-way-clearing' || data.service === 'Right-of-Way Clearing') && data.rowLinearFeet && data.rowCorridorWidthFt ? row("Effective Acres", `${((data.rowLinearFeet * data.rowCorridorWidthFt) / 43560).toFixed(3)} acres`) : ""}
               ${addressLines.length ? row("Property Address", addressLines.map(escapeHtml).join("<br />")) : ""}
+              ${data.parcelOwner ? row("Parcel Owner", escapeHtml(data.parcelOwner)) : ""}
+              ${data.parcelId ? row("Parcel ID", escapeHtml(data.parcelId)) : ""}
+              ${data.adjustedAcres != null ? row("Adjusted Work Area", `${data.adjustedAcres.toLocaleString()} acres`) : ""}
+              ${data.locationDecision === "owner_review" ? row("Location Review", `<strong style="color:#9a5b13;">Review needed</strong>${data.locationReviewReason ? `<br /><span style="font-size:12px;color:#777;">${escapeHtml(data.locationReviewReason)}</span>` : ""}`) : ""}
               ${data.addOns && data.addOns.length > 0 ? row("Additional Services", data.addOns.map(escapeHtml).join("<br />")) : ""}
-              ${data.serviceBreakdown.length > 0 ? row("Itemized Preliminary Estimate", data.serviceBreakdown.map((item) => `${escapeHtml(item.label)}${item.measurement ? ` (${escapeHtml(item.measurement)})` : ""}: <strong>$${Math.round(item.lowCents / 100).toLocaleString()} – $${Math.round(item.highCents / 100).toLocaleString()}</strong>`).join("<br />")) : ""}
+              ${data.serviceBreakdown.length > 0 ? row("Requested Services & Estimate Basis", formatServiceBreakdown(data.serviceBreakdown, true)) : ""}
             </table>
           </td>
         </tr>
@@ -350,7 +374,7 @@ function buildEmailHtml(data: QuoteInput): string {
 </html>`.trim();
 }
 
-function buildConfirmationEmailHtml(data: QuoteInput): string {
+export function buildConfirmationEmailHtml(data: QuoteInput): string {
   const logoUrl = "https://d2xsxph8kpxj0f.cloudfront.net/310519663484957999/PymCzDCnSJzPjdkfwA7Jn6/noland-logo-transparent_d2051edf.png";
   const firstName = escapeHtml(data.name.split(" ")[0]);
 
@@ -406,7 +430,7 @@ function buildConfirmationEmailHtml(data: QuoteInput): string {
         <tr>
           <td style="padding:28px 36px 0;">
             <h2 style="margin:0 0 10px;font-size:22px;color:#1a1a1a;">Thanks, ${firstName}!</h2>
-            <p style="margin:0;font-size:15px;color:#444;line-height:1.6;">We've received your quote request and will be in touch shortly. A member of our team typically responds within <strong>1 business day</strong>.</p>
+            <p style="margin:0;font-size:15px;color:#444;line-height:1.6;">Your request is in. I will review the property details and follow up by the next business morning whenever possible. If the work is a fit, the next step is a site visit to confirm the scope, access, and conditions before a final proposal is issued.</p>
           </td>
         </tr>
 
@@ -422,15 +446,16 @@ function buildConfirmationEmailHtml(data: QuoteInput): string {
         <tr>
           <td style="padding:0 36px;">
             <table width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #f0ede6;border-radius:6px;overflow:hidden;">
-              ${row("Service", `<strong>${escapeHtml(data.service)}</strong>`)}
-              ${row("County", escapeHtml(data.county) + " County")}
+              ${row("Service", `<strong>${escapeHtml(getServiceDisplayName(data.service))}</strong>`)}
+              ${row("County", escapeHtml(formatCounty(data.county)))}
               ${(data.service === 'right-of-way-clearing' || data.service === 'Right-of-Way Clearing')
                 ? (data.rowLinearFeet ? row("Corridor Length", `${data.rowLinearFeet.toLocaleString()} linear feet`) : (data.acreage ? row("Acreage (provided)", escapeHtml(data.acreage)) : ""))
                 : (data.acreage ? row("Acreage", escapeHtml(data.acreage)) : "")}
               ${(data.service === 'right-of-way-clearing' || data.service === 'Right-of-Way Clearing') && data.rowCorridorWidthFt ? row("Corridor Width", `${data.rowCorridorWidthFt} ft`) : ""}
               ${addressLines.length ? row("Property Address", addressLines.map(escapeHtml).join("<br />")) : ""}
+              ${data.parcelId ? row("Parcel ID", escapeHtml(data.parcelId)) : ""}
               ${data.addOns && data.addOns.length > 0 ? row("Additional Services", data.addOns.map(escapeHtml).join("<br />")) : ""}
-              ${data.serviceBreakdown.length > 0 ? row("Itemized Preliminary Estimate", data.serviceBreakdown.map((item) => `${escapeHtml(item.label)}${item.measurement ? ` (${escapeHtml(item.measurement)})` : ""}: $${Math.round(item.lowCents / 100).toLocaleString()} – $${Math.round(item.highCents / 100).toLocaleString()}`).join("<br />")) : ""}
+              ${data.serviceBreakdown.length > 0 ? row("Requested Service Details", formatServiceBreakdown(data.serviceBreakdown, false)) : ""}
             </table>
           </td>
         </tr>
@@ -442,7 +467,7 @@ function buildConfirmationEmailHtml(data: QuoteInput): string {
               <tr>
                 <td style="padding:18px 20px;">
                   <p style="margin:0 0 6px;font-size:14px;font-weight:700;color:#7a4f1a;">Have questions in the meantime?</p>
-                  <p style="margin:0;font-size:13px;color:#7a4f1a;line-height:1.5;">Call or text us at <a href="tel:6154064819" style="color:#E07B2A;font-weight:600;text-decoration:none;">(615) 406-4819</a> or reply directly to this email.</p>
+                  <p style="margin:0;font-size:13px;color:#7a4f1a;line-height:1.5;">Call <a href="tel:6154064819" style="color:#E07B2A;font-weight:600;text-decoration:none;">(615) 406-4819</a> or reply directly to this email. Please note that final pricing is confirmed after an on-site review of the work area.</p>
                 </td>
               </tr>
             </table>
