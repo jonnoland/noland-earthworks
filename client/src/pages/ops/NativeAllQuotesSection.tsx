@@ -189,7 +189,7 @@ function LineItemRow({
           </button>
         </div>
       </div>
-      <div className={compact ? "" : "sm:col-span-5"}>
+      <div>
         <Input
           placeholder="Description"
           value={item.description}
@@ -210,7 +210,7 @@ function LineItemRow({
           </label>
         )}
       </div>
-      <div className={compact ? "" : "sm:col-span-2"}>
+      <div>
         <Input
           type="number"
           placeholder="Qty"
@@ -220,7 +220,7 @@ function LineItemRow({
           className="bg-zinc-800 border-zinc-700 text-sm"
         />
       </div>
-      <div className={compact ? "" : "sm:col-span-3"}>
+      <div>
         <Input
           type="number"
           placeholder="Unit price"
@@ -230,10 +230,10 @@ function LineItemRow({
           className="bg-zinc-800 border-zinc-700 text-sm"
         />
       </div>
-      <div className={`flex items-center justify-between text-sm font-medium ${compact ? "" : "sm:col-span-1 sm:block sm:text-right"} ${item.kind === "discount" || item.unitPriceCents < 0 ? "text-emerald-400" : "text-amber-400"}`}>
+      <div className={`flex items-center justify-between text-sm font-medium ${compact ? "" : "sm:block sm:text-right"} ${item.kind === "discount" || item.unitPriceCents < 0 ? "text-emerald-400" : "text-amber-400"}`}>
         <span className={`text-xs font-normal text-zinc-500 ${compact ? "" : "sm:hidden"}`}>Line total</span><span>{formatQuoteCents(item.qty * item.unitPriceCents)}</span>
       </div>
-      <div className={`flex justify-end ${compact ? "" : "sm:col-span-1"}`}>
+      <div className="flex justify-end">
         <Button size="icon" variant="ghost" className="h-7 w-7 text-red-400 hover:text-red-300" onClick={() => onRemove(index)}>
           <XCircle className="h-4 w-4" />
         </Button>
