@@ -7,11 +7,11 @@ describe("quote discount line items", () => {
   it("allows multiple distinct volume and customer discount line items in the quote editor", () => {
     const editor = readFileSync(resolve(import.meta.dirname, "../client/src/pages/ops/NativeAllQuotesSection.tsx"), "utf8");
 
-    expect(editor).toContain("Optional discount line item");
+    expect(editor).toContain("Each phase is its own work section");
     expect(editor).toContain("getSuggestedVolumeDiscount");
     expect(editor).toContain("getCustomerDiscountOptions");
-    expect(editor).toContain("Apply each eligible discount once");
-    expect(editor).toContain("buildQuoteDiscountLineItem(baseSubtotalCents, option)");
+    expect(editor).toContain("applyDiscountOption(option, phaseId)");
+    expect(editor).toContain("buildQuoteDiscountLineItem(eligibleSubtotalCents, option)");
     expect(editor).toContain("const appliedDiscountCodes");
     expect(editor).toContain("lineItems: [...previous.lineItems, discountLine]");
     expect(editor).toContain("appliedDiscountCodes.has(option.code)");

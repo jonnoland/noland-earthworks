@@ -3,6 +3,7 @@ import { buildQuoteCostBreakdown, type QuoteBreakdownLineItem } from "./quoteCos
 export interface QuotePortalLineItem extends QuoteBreakdownLineItem {
   description: string;
   totalCents: number;
+  phaseId?: string;
   estimatedDuration?: string;
   discountCode?: string;
 }

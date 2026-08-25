@@ -2,6 +2,7 @@ export type QuoteLineItemKind =
   | "service"
   | "discount"
   | "phase"
+  | "mobilization"
   | "full_operating_day"
   | "half_operating_day";
 
@@ -12,6 +13,10 @@ export const QUOTE_WORK_PRESETS: Record<QuoteWorkPreset, { label: string; descri
   phase: {
     label: "Phase",
     description: "Phase — Define work area and outcome",
+  },
+  mobilization: {
+    label: "Mobilization",
+    description: "Mobilization",
   },
   full_operating_day: {
     label: "Full Operating Day",

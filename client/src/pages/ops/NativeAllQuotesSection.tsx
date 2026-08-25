@@ -52,6 +52,7 @@ import { formatQuoteCents, quoteDollarsToCents, roundQuoteCentsUp } from "@share
 import { buildQuoteCostBreakdown, getQuoteCostDistribution } from "@shared/quoteCostBreakdown";
 import { getQuoteDraftIdentity } from "@shared/quoteDrafts";
 import { moveQuoteLineItem } from "@shared/quoteLineItemOrder";
+import { ensureQuotePhaseIds, getQuotePhaseSections } from "@shared/quotePhaseSections";
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
 import {
   DAY_RATE_TERMS,
@@ -71,6 +72,7 @@ interface LineItem {
   unitPriceCents: number;
   totalCents: number;
   kind?: QuoteLineItemKind;
+  phaseId?: string;
   phaseAuthorization?: QuotePhaseAuthorization;
   estimatedDuration?: string;
   discountCode?: string;
@@ -135,7 +137,7 @@ function StatusBadge({ quote }: { quote: NativeQuote }) {
 
 // ─── Line item row editor ─────────────────────────────────────────────────────
 function LineItemRow({
-  item, index, onChange, onRemove, onMove, compact
+  item, index, onChange, onRemove, onMove, compact, phaseOptions = []
 }: {
   item: LineItem;
   index: number;
@@ -143,6 +145,7 @@ function LineItemRow({
   onRemove: (i: number) => void;
   onMove: (fromIndex: number, toIndex: number) => void;
   compact: boolean;
+  phaseOptions?: Array<{ id: string; label: string }>;
 }) {
   return (
     <div
@@ -221,6 +224,19 @@ function LineItemRow({
             </label>
           </div>
         )}
+        {item.kind !== "phase" && phaseOptions.length > 0 && (
+          <label className="mt-1 flex items-center gap-1.5 text-[10px] text-zinc-400">
+            Phase
+            <select
+              value={item.phaseId ?? "unassigned"}
+              onChange={e => onChange(index, "phaseId", e.target.value === "unassigned" ? "" : e.target.value)}
+              className="h-6 min-w-0 flex-1 rounded border border-zinc-700 bg-zinc-900 px-1.5 text-[10px] text-zinc-200"
+            >
+              <option value="unassigned">Unassigned</option>
+              {phaseOptions.map((phase) => <option key={phase.id} value={phase.id}>{phase.label}</option>)}
+            </select>
+          </label>
+        )}
       </div>
       <div>
         <Input
@@ -263,6 +279,10 @@ const SERVICE_TYPES = [
 const DEFAULT_LINE_ITEMS: LineItem[] = [
   { description: "Forestry Mulching", qty: 1, unitPriceCents: 0, totalCents: 0 }
 ];
+
+function createQuotePhaseId() {
+  return `phase-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+}
 
 function normalizeQuoteLineItemsForSave(items: LineItem[]): LineItem[] {
   return items.map((item) => {
@@ -396,7 +416,7 @@ function QuoteFormModal({
         estimatedDuration: editQuote.estimatedDuration ?? "",
         clientMessage: editQuote.clientMessage ?? "",
         internalNotes: editQuote.internalNotes ?? "",
-        lineItems: items.length > 0 ? items : DEFAULT_LINE_ITEMS.map(li => ({ ...li })),
+        lineItems: items.length > 0 ? ensureQuotePhaseIds(items) : DEFAULT_LINE_ITEMS.map(li => ({ ...li })),
         sourceDetail: editQuote.sourceDetail ?? "manual",
         fitDecision: (editQuote.fitDecision ?? "unreviewed") as QuoteFormData["fitDecision"],
         nextActionType: editQuote.nextActionType ?? "review_request",
@@ -485,6 +505,15 @@ function QuoteFormModal({
   };
 
   const costBreakdown = useMemo(() => buildQuoteCostBreakdown(form.lineItems), [form.lineItems]);
+  const phaseSections = useMemo(() => getQuotePhaseSections(form.lineItems), [form.lineItems]);
+  const phaseOptions = useMemo(
+    () => phaseSections.map((section, index) => ({ id: section.phase.phaseId!, label: section.phase.description || `Phase ${index + 1}` })),
+    [phaseSections],
+  );
+  const unassignedLineItemIndices = useMemo(
+    () => form.lineItems.map((item, index) => ({ item, index })).filter(({ item }) => item.kind !== "phase" && !item.phaseId).map(({ index }) => index),
+    [form.lineItems],
+  );
   const costDistribution = useMemo(() => getQuoteCostDistribution(costBreakdown), [costBreakdown]);
   const hasCostDistribution = costDistribution.some((slice) => slice.value > 0);
   const totalCents = costBreakdown.allPhasesTotalCents;
@@ -499,21 +528,24 @@ function QuoteFormModal({
   const volumeDiscount = useMemo(() => getSuggestedVolumeDiscount(acreageNumber, pricingDiscountSettings ?? {}), [acreageNumber, pricingDiscountSettings]);
   const customerDiscountOptions = useMemo(() => getCustomerDiscountOptions(pricingDiscountSettings ?? {}), [pricingDiscountSettings]);
 
-  const applyDiscountOption = (option: QuoteDiscountOption) => {
-    if (baseSubtotalCents <= 0) {
+  const applyDiscountOption = (option: QuoteDiscountOption, phaseId?: string) => {
+    const phaseSection = phaseId ? phaseSections.find((section) => section.phase.phaseId === phaseId) : undefined;
+    const eligibleSubtotalCents = phaseSection ? phaseSection.subtotalCents : baseSubtotalCents;
+    if (eligibleSubtotalCents <= 0) {
       toast.error("Add at least one priced service line before applying a discount.");
       return;
     }
-    if (appliedDiscountCodes.has(option.code)) {
-      toast.message(`${option.label} is already applied to this quote.`);
+    const alreadyAppliedToScope = discountItems.some((item) => item.discountCode === option.code && item.phaseId === phaseId);
+    if (alreadyAppliedToScope) {
+      toast.message(`${option.label} is already applied to ${phaseSection ? "this phase" : "the unassigned quote items"}.`);
       return;
     }
-    const discountLine = buildQuoteDiscountLineItem(baseSubtotalCents, option);
+    const discountLine = { ...buildQuoteDiscountLineItem(eligibleSubtotalCents, option), ...(phaseId ? { phaseId } : {}) };
     setForm((previous) => ({
       ...previous,
       lineItems: [...previous.lineItems, discountLine],
     }));
-    toast.success(`${option.label} added as an editable quote line item.`);
+    toast.success(`${option.label} added to ${phaseSection ? phaseSection.phase.description || "this phase" : "the quote"}.`);
   };
 
   // ── AI Suggest ────────────────────────────────────────────────────────────
@@ -658,9 +690,26 @@ function QuoteFormModal({
   };
 
   const addControlledLineItem = (kind: QuoteWorkPreset) => {
+    const nextItem = createQuoteWorkLineItem(kind);
     setForm(prev => ({
       ...prev,
-      lineItems: [...prev.lineItems, createQuoteWorkLineItem(kind)],
+      lineItems: [...prev.lineItems, ...(kind === "phase" ? [{ ...nextItem, phaseId: createQuotePhaseId() }] : [nextItem])],
+    }));
+  };
+
+  const addLineItemToPhase = (phaseId: string, item: LineItem) => {
+    setForm((previous) => ({
+      ...previous,
+      lineItems: [...previous.lineItems, { ...item, phaseId }],
+    }));
+  };
+
+  const removePhaseSection = (phaseId: string) => {
+    setForm((previous) => ({
+      ...previous,
+      lineItems: previous.lineItems
+        .filter((item) => !(item.kind === "phase" && item.phaseId === phaseId))
+        .map((item) => item.phaseId === phaseId ? { ...item, phaseId: undefined } : item),
     }));
   };
 
@@ -684,9 +733,13 @@ function QuoteFormModal({
       clientMessage: SAMPLE_PHASED_QUOTE_CLIENT_MESSAGE,
       internalNotes: "INTERNAL SAMPLE ONLY — Replace client details, defined work areas, pricing, and approval status before saving or sending.",
       lineItems: [
-        { ...createQuoteWorkLineItem("phase"), description: "Phase 1 — Access route and primary homesite area (approved now)", estimatedDuration: "1–2 days" },
-        { ...createQuoteWorkLineItem("phase"), description: "Phase 2 — Defined pasture-edge and transition area (optional future phase)", phaseAuthorization: "optional_future", estimatedDuration: "2–3 days" },
-        { ...createQuoteWorkLineItem("phase"), description: "Phase 3 — Marked boundary and secondary use area (optional future phase)", phaseAuthorization: "optional_future", estimatedDuration: "1 day" },
+        { ...createQuoteWorkLineItem("phase"), phaseId: "sample-phase-1", description: "Phase 1 — Access route and primary homesite area (approved now)", estimatedDuration: "1–2 days" },
+        { description: "Forestry mulching scope", qty: 1, unitPriceCents: 0, totalCents: 0, kind: "service", phaseId: "sample-phase-1" },
+        { description: "Mobilization", qty: 1, unitPriceCents: 0, totalCents: 0, kind: "mobilization", phaseId: "sample-phase-1" },
+        { ...createQuoteWorkLineItem("phase"), phaseId: "sample-phase-2", description: "Phase 2 — Defined pasture-edge and transition area (optional future phase)", phaseAuthorization: "optional_future", estimatedDuration: "2–3 days" },
+        { description: "Forestry mulching scope", qty: 1, unitPriceCents: 0, totalCents: 0, kind: "service", phaseId: "sample-phase-2" },
+        { ...createQuoteWorkLineItem("phase"), phaseId: "sample-phase-3", description: "Phase 3 — Marked boundary and secondary use area (optional future phase)", phaseAuthorization: "optional_future", estimatedDuration: "1 day" },
+        { description: "Forestry mulching scope", qty: 1, unitPriceCents: 0, totalCents: 0, kind: "service", phaseId: "sample-phase-3" },
       ],
     }));
     toast.success("Internal phased quote sample loaded. Replace every placeholder before sending.");
@@ -1247,38 +1300,44 @@ function QuoteFormModal({
               <Label className="text-zinc-400 text-xs">Line Items</Label>
               <div className="flex flex-wrap gap-1.5">
                 <Button type="button" size="sm" variant="outline" className="h-7 text-xs border-amber-500/40 text-amber-200 hover:bg-amber-500/10" onClick={() => addControlledLineItem("phase")}>+ Phase</Button>
-                <Button type="button" size="sm" variant="outline" className="h-7 text-xs border-sky-500/40 text-sky-200 hover:bg-sky-500/10" onClick={() => addControlledLineItem("full_operating_day")}>+ Full Day</Button>
-                <Button type="button" size="sm" variant="outline" className="h-7 text-xs border-sky-500/40 text-sky-200 hover:bg-sky-500/10" onClick={() => addControlledLineItem("half_operating_day")}>+ Half Day</Button>
+                {phaseSections.length === 0 && <Button type="button" size="sm" variant="outline" className="h-7 text-xs border-sky-500/40 text-sky-200 hover:bg-sky-500/10" onClick={() => addControlledLineItem("full_operating_day")}>+ Full Day</Button>}
+                {phaseSections.length === 0 && <Button type="button" size="sm" variant="outline" className="h-7 text-xs border-sky-500/40 text-sky-200 hover:bg-sky-500/10" onClick={() => addControlledLineItem("half_operating_day")}>+ Half Day</Button>}
                 <Button type="button" size="sm" variant="outline" className="h-7 text-xs border-zinc-600" onClick={() => setForm(p => ({ ...p, lineItems: [...p.lineItems, { description: "", qty: 1, unitPriceCents: 0, totalCents: 0, kind: "service" }] }))}>
-                  <Plus className="h-3 w-3 mr-1" /> Add Line
+                  <Plus className="h-3 w-3 mr-1" /> {phaseSections.length > 0 ? "Unassigned Line" : "Add Line"}
                 </Button>
               </div>
             </div>
             {!editQuote && <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-md border border-indigo-500/25 bg-indigo-500/[0.06] px-3 py-2"><p className="text-[11px] text-indigo-100">Need a starting point? Load a non-customer phased forestry mulching example with zero-dollar placeholders.</p><Button type="button" size="sm" variant="outline" className="h-7 border-indigo-400/40 text-[11px] text-indigo-100 hover:bg-indigo-500/15" onClick={loadSamplePhasedQuote}>Load Internal Sample</Button></div>}
-            <div className={`mb-1 grid-cols-12 gap-2 px-1 text-xs text-zinc-500 ${isCompactWorkspace ? "hidden" : "grid"}`}>
-              <div className="col-span-5">Description</div>
-              <div className="col-span-2">Qty</div>
-              <div className="col-span-3">Unit Price ($)</div>
-              <div className="col-span-1 text-right">Total</div>
-              <div className="col-span-1" />
-            </div>
-            <div className="space-y-2">
-              {form.lineItems.map((li, i) => (
-                <LineItemRow key={i} item={li} index={i}
-                  onChange={handleLineItemChange}
-                  onMove={handleMoveLineItem}
-                  compact={isCompactWorkspace}
-                  onRemove={i2 => setForm(p => ({ ...p, lineItems: p.lineItems.filter((_, idx) => idx !== i2) }))} />
-              ))}
-            </div>
-            <div className="mt-3 rounded-md border border-emerald-500/25 bg-emerald-500/[0.06] p-3">
-              <div className="flex items-start gap-2"><DollarSign className="mt-0.5 h-4 w-4 shrink-0 text-emerald-400" /><div><p className="text-xs font-semibold text-emerald-200">Optional discount line items</p><p className="mt-0.5 text-[11px] leading-relaxed text-zinc-400">Apply each eligible discount once. Every discount stays visible as its own negative line item, remains editable, and is included in the quote total.</p></div></div>
-              <div className="mt-3 flex flex-wrap gap-2">
-                {volumeDiscount && <Button type="button" size="sm" variant="outline" onClick={() => applyDiscountOption(volumeDiscount)} disabled={appliedDiscountCodes.has(volumeDiscount.code)} className="h-7 border-emerald-500/35 bg-emerald-500/10 text-[11px] text-emerald-200 hover:bg-emerald-500/20">{appliedDiscountCodes.has(volumeDiscount.code) ? `${volumeDiscount.percent}% Volume Applied` : `Apply ${volumeDiscount.percent}% Volume (${volumeDiscount.eligibility})`}</Button>}
-                {customerDiscountOptions.map((option) => <Button key={option.code} type="button" size="sm" variant="outline" onClick={() => applyDiscountOption(option)} disabled={appliedDiscountCodes.has(option.code)} className="h-7 border-zinc-600 text-[11px] text-zinc-200 hover:bg-zinc-800">{appliedDiscountCodes.has(option.code) ? `${option.label.replace(" Discount", "")} Applied` : `Apply ${option.percent}% ${option.label.replace(" Discount", "")}`}</Button>)}
-                {!volumeDiscount && customerDiscountOptions.length === 0 && <p className="text-[11px] text-zinc-500">No enabled discount is available for the current quote.</p>}
-              </div>
-              {discountItems.length > 0 && <p className="mt-2 text-[10px] text-emerald-300">{discountItems.length} discount line{discountItems.length === 1 ? "" : "s"} applied: {discountItems.map((item) => item.description).join(" · ")}</p>}
+            {phaseSections.length > 0 && <p className="mb-3 text-[11px] leading-relaxed text-zinc-400">Each phase is its own work section. Add services, mobilization, and eligible discounts inside the intended phase so its subtotal and customer portal amount remain accurate.</p>}
+            <div className="space-y-3">
+              {phaseSections.map((section, sectionIndex) => {
+                const phaseId = section.phase.phaseId!;
+                const phaseIndex = form.lineItems.findIndex((item) => item.kind === "phase" && item.phaseId === phaseId);
+                const scopedIndices = section.itemIndices.filter((index) => index !== phaseIndex);
+                const scopedCodes = new Set(scopedIndices.map((index) => form.lineItems[index].discountCode).filter((code): code is string => Boolean(code)));
+                return <div key={phaseId} className={`rounded-lg border p-3 ${section.phase.phaseAuthorization === "optional_future" ? "border-indigo-500/35 bg-indigo-500/[0.05]" : "border-amber-500/35 bg-amber-500/[0.05]"}`}>
+                  <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                    <div><p className={`text-xs font-semibold ${section.phase.phaseAuthorization === "optional_future" ? "text-indigo-200" : "text-amber-200"}`}>Phase {sectionIndex + 1} Section</p><p className="mt-0.5 text-[10px] text-zinc-500">Phase header is no-charge. Price the scoped work below.</p></div>
+                    <Button type="button" size="sm" variant="ghost" className="h-7 text-xs text-red-300 hover:bg-red-500/10 hover:text-red-200" onClick={() => removePhaseSection(phaseId)}>Remove phase section</Button>
+                  </div>
+                  <LineItemRow item={section.phase} index={phaseIndex} onChange={handleLineItemChange} onMove={handleMoveLineItem} compact={isCompactWorkspace} phaseOptions={[]} onRemove={() => removePhaseSection(phaseId)} />
+                  <div className="mt-2 space-y-2 border-t border-zinc-800 pt-2">
+                    {scopedIndices.map((index) => <LineItemRow key={index} item={form.lineItems[index]} index={index} onChange={handleLineItemChange} onMove={handleMoveLineItem} compact={isCompactWorkspace} phaseOptions={phaseOptions} onRemove={i2 => setForm(p => ({ ...p, lineItems: p.lineItems.filter((_, itemIndex) => itemIndex !== i2) }))} />)}
+                    {scopedIndices.length === 0 && <p className="rounded border border-dashed border-zinc-700 px-3 py-2 text-[11px] text-zinc-500">Add the services and charges that belong to this phase.</p>}
+                  </div>
+                  <div className="mt-3 flex flex-wrap gap-1.5 border-t border-zinc-800 pt-3">
+                    <Button type="button" size="sm" variant="outline" className="h-7 border-zinc-600 text-[11px] text-zinc-200 hover:bg-zinc-800" onClick={() => addLineItemToPhase(phaseId, { description: "", qty: 1, unitPriceCents: 0, totalCents: 0, kind: "service" })}><Plus className="mr-1 h-3 w-3" />Service</Button>
+                    <Button type="button" size="sm" variant="outline" className="h-7 border-sky-500/40 text-[11px] text-sky-200 hover:bg-sky-500/10" onClick={() => addLineItemToPhase(phaseId, { description: "Mobilization", qty: 1, unitPriceCents: 0, totalCents: 0, kind: "mobilization" })}>+ Mobilization</Button>
+                    <Button type="button" size="sm" variant="outline" className="h-7 border-sky-500/40 text-[11px] text-sky-200 hover:bg-sky-500/10" onClick={() => addLineItemToPhase(phaseId, { ...createQuoteWorkLineItem("full_operating_day") })}>+ Full Day</Button>
+                    <Button type="button" size="sm" variant="outline" className="h-7 border-sky-500/40 text-[11px] text-sky-200 hover:bg-sky-500/10" onClick={() => addLineItemToPhase(phaseId, { ...createQuoteWorkLineItem("half_operating_day") })}>+ Half Day</Button>
+                    {volumeDiscount && <Button type="button" size="sm" variant="outline" onClick={() => applyDiscountOption(volumeDiscount, phaseId)} disabled={scopedCodes.has(volumeDiscount.code)} className="h-7 border-emerald-500/35 text-[11px] text-emerald-200 hover:bg-emerald-500/10">{scopedCodes.has(volumeDiscount.code) ? `${volumeDiscount.percent}% Volume Applied` : `${volumeDiscount.percent}% Volume`}</Button>}
+                    {customerDiscountOptions.map((option) => <Button key={option.code} type="button" size="sm" variant="outline" onClick={() => applyDiscountOption(option, phaseId)} disabled={scopedCodes.has(option.code)} className="h-7 border-emerald-500/35 text-[11px] text-emerald-200 hover:bg-emerald-500/10">{scopedCodes.has(option.code) ? `${option.label.replace(" Discount", "")} Applied` : `${option.percent}% ${option.label.replace(" Discount", "")}`}</Button>)}
+                  </div>
+                  <div className="mt-3 flex flex-wrap items-center justify-between gap-x-5 gap-y-1 border-t border-zinc-800 pt-3 text-xs"><span className="text-zinc-400">Phase subtotal <strong className="ml-1 text-zinc-100">{formatQuoteCents(section.subtotalCents)}</strong></span>{section.discountCents < 0 && <span className="text-emerald-300">Phase discounts {formatQuoteCents(section.discountCents)}</span>}<span className="font-semibold text-amber-300">Phase total {formatQuoteCents(section.totalCents)}</span></div>
+                </div>;
+              })}
+              {unassignedLineItemIndices.length > 0 && <div className="rounded-lg border border-zinc-700 bg-zinc-900/45 p-3"><p className="mb-2 text-xs font-semibold text-zinc-300">Unassigned quote items</p><p className="mb-3 text-[11px] text-zinc-500">Assign these items to a phase using the Phase selector, or keep them outside phased work.</p><div className="space-y-2">{unassignedLineItemIndices.map((index) => <LineItemRow key={index} item={form.lineItems[index]} index={index} onChange={handleLineItemChange} onMove={handleMoveLineItem} compact={isCompactWorkspace} phaseOptions={phaseOptions} onRemove={i2 => setForm(p => ({ ...p, lineItems: p.lineItems.filter((_, itemIndex) => itemIndex !== i2) }))} />)}</div></div>}
+              {phaseSections.length === 0 && <div className="rounded-md border border-emerald-500/25 bg-emerald-500/[0.06] p-3"><div className="flex items-start gap-2"><DollarSign className="mt-0.5 h-4 w-4 shrink-0 text-emerald-400" /><div><p className="text-xs font-semibold text-emerald-200">Quote-wide discount line items</p><p className="mt-0.5 text-[11px] leading-relaxed text-zinc-400">Add a Phase to place discounts and mobilization within that phase. Until then, discounts apply across unassigned work.</p></div></div><div className="mt-3 flex flex-wrap gap-2">{volumeDiscount && <Button type="button" size="sm" variant="outline" onClick={() => applyDiscountOption(volumeDiscount)} disabled={appliedDiscountCodes.has(volumeDiscount.code)} className="h-7 border-emerald-500/35 text-[11px] text-emerald-200 hover:bg-emerald-500/10">{volumeDiscount.percent}% Volume</Button>}{customerDiscountOptions.map((option) => <Button key={option.code} type="button" size="sm" variant="outline" onClick={() => applyDiscountOption(option)} disabled={appliedDiscountCodes.has(option.code)} className="h-7 border-zinc-600 text-[11px] text-zinc-200 hover:bg-zinc-800">{option.percent}% {option.label.replace(" Discount", "")}</Button>)}</div></div>}
             </div>
             <div className={`mt-3 w-full rounded-md border border-zinc-700 bg-zinc-900/60 px-3 py-3 text-sm ${isCompactWorkspace ? "" : "sm:ml-auto sm:max-w-md"}`} aria-live="polite">
               <div className="mb-2 flex items-center justify-between"><span className="text-xs font-semibold uppercase tracking-wide text-zinc-200">Live Cost Breakdown</span><span className="text-[10px] text-zinc-500">Updates as line items change</span></div>

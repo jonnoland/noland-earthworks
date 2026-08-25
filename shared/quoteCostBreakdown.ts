@@ -5,6 +5,7 @@ export interface QuoteBreakdownLineItem {
   unitPriceCents: number;
   kind?: QuoteLineItemKind;
   phaseAuthorization?: QuotePhaseAuthorization;
+  phaseId?: string;
 }
 
 export interface QuoteCostBreakdown {
@@ -38,16 +39,36 @@ export function buildQuoteCostBreakdown(items: QuoteBreakdownLineItem[]): QuoteC
   let fullOperatingDayCents = 0;
   let halfOperatingDayCents = 0;
   let discountCents = 0;
+  let scopedApprovedDiscountCents = 0;
+  let scopedOptionalDiscountCents = 0;
+  const phaseAuthorizationById = new Map<string, QuotePhaseAuthorization>();
+
+  for (const item of items) {
+    if (item.kind === "phase" && item.phaseId) {
+      phaseAuthorizationById.set(item.phaseId, item.phaseAuthorization ?? "approved_now");
+    }
+  }
 
   for (const item of items) {
     const total = lineTotal(item);
+    const scopedPhaseAuthorization = item.phaseId ? phaseAuthorizationById.get(item.phaseId) : undefined;
     if (item.kind === "discount" || total < 0) {
-      discountCents += total;
+      if (scopedPhaseAuthorization === "optional_future") scopedOptionalDiscountCents += total;
+      else if (scopedPhaseAuthorization === "approved_now") scopedApprovedDiscountCents += total;
+      else discountCents += total;
       continue;
     }
     if (item.kind === "phase") {
       if (item.phaseAuthorization === "optional_future") optionalFuturePhaseCents += total;
       else approvedPhaseCents += total;
+      continue;
+    }
+    if (scopedPhaseAuthorization === "optional_future") {
+      optionalFuturePhaseCents += total;
+      continue;
+    }
+    if (scopedPhaseAuthorization === "approved_now") {
+      approvedPhaseCents += total;
       continue;
     }
     if (item.kind === "full_operating_day") {
@@ -63,10 +84,12 @@ export function buildQuoteCostBreakdown(items: QuoteBreakdownLineItem[]): QuoteC
 
   const baseSubtotalCents = standardServiceCents + approvedPhaseCents + optionalFuturePhaseCents + fullOperatingDayCents + halfOperatingDayCents;
   const approvedWorkCents = standardServiceCents + approvedPhaseCents + fullOperatingDayCents + halfOperatingDayCents;
-  const approvedDiscountCents = baseSubtotalCents > 0
+  const allocatedApprovedDiscountCents = baseSubtotalCents > 0
     ? Math.round(discountCents * (approvedWorkCents / baseSubtotalCents))
     : 0;
-  const optionalDiscountCents = discountCents - approvedDiscountCents;
+  const allocatedOptionalDiscountCents = discountCents - allocatedApprovedDiscountCents;
+  const approvedDiscountCents = scopedApprovedDiscountCents + allocatedApprovedDiscountCents;
+  const optionalDiscountCents = scopedOptionalDiscountCents + allocatedOptionalDiscountCents;
 
   return {
     standardServiceCents,
@@ -75,11 +98,11 @@ export function buildQuoteCostBreakdown(items: QuoteBreakdownLineItem[]): QuoteC
     fullOperatingDayCents,
     halfOperatingDayCents,
     baseSubtotalCents,
-    discountCents,
+    discountCents: discountCents + scopedApprovedDiscountCents + scopedOptionalDiscountCents,
     approvedDiscountCents,
     optionalDiscountCents,
     amountDueNowCents: approvedWorkCents + approvedDiscountCents,
-    allPhasesTotalCents: baseSubtotalCents + discountCents,
+    allPhasesTotalCents: baseSubtotalCents + discountCents + scopedApprovedDiscountCents + scopedOptionalDiscountCents,
   };
 }
 

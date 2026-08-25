@@ -3611,3 +3611,9 @@
 - [x] Add an estimated-duration field to each phase line item in New Quote and Edit Quote
 - [x] Persist and display per-phase durations in Phase 1 and optional future-phase customer portal sections
 - [x] Add regression coverage and validate per-phase duration behavior
+
+## Phase-Scoped Quote Sections — Aug 2026
+- [x] Group quote line items into individual editable phase sections in New Quote and Edit Quote
+- [x] Scope services, mobilization, and discount line items to their selected phase
+- [x] Calculate and present phase subtotals, discounts, totals, and portal phase details accurately
+- [x] Add regression coverage and validate the phase-section workflow
