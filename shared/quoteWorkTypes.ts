@@ -41,6 +41,6 @@ export function createQuoteWorkLineItem(kind: QuoteWorkPreset) {
     unitPriceCents: 0,
     totalCents: 0,
     kind,
-    ...(kind === "phase" ? { phaseAuthorization: "approved_now" as const } : {}),
+    ...(kind === "phase" ? { phaseAuthorization: "approved_now" as const, estimatedDuration: "" } : {}),
   };
 }

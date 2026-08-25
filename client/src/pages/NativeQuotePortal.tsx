@@ -318,6 +318,7 @@ export default function NativeQuotePortal() {
                     {li.qty} &times; {fmt(li.unitPriceCents)}
                   </p>
                 )}
+                {li.estimatedDuration && <p className="text-zinc-500 text-xs mt-0.5">Estimated duration: {li.estimatedDuration}</p>}
               </div>
               <span className={li.totalCents < 0 || li.kind === "discount" ? "text-emerald-300 text-sm font-medium shrink-0" : "text-amber-400 text-sm font-medium shrink-0"}>{fmt(li.qty * li.unitPriceCents)}</span>
             </div>
@@ -347,6 +348,7 @@ export default function NativeQuotePortal() {
               <div className="flex-1">
                 <p className="text-indigo-50 text-sm">{li.description}</p>
                 {li.qty !== 1 && <p className="text-indigo-200/60 text-xs mt-0.5">{li.qty} &times; {fmt(li.unitPriceCents)}</p>}
+                {li.estimatedDuration && <p className="text-indigo-200/60 text-xs mt-0.5">Estimated duration: {li.estimatedDuration}</p>}
               </div>
               <span className="text-indigo-200 text-sm font-medium shrink-0">{fmt(li.qty * li.unitPriceCents)}</span>
             </div>

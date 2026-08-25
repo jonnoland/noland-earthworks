@@ -3606,3 +3606,8 @@
 - [x] Separate Phase 1 approval and deposit calculations from optional future phases in the customer portal
 - [x] Add customer-facing optional future-phase explanation text and visual separation
 - [x] Add regression coverage and validate the phased portal workflow
+
+## Per-Phase Estimated Duration — Aug 2026
+- [x] Add an estimated-duration field to each phase line item in New Quote and Edit Quote
+- [x] Persist and display per-phase durations in Phase 1 and optional future-phase customer portal sections
+- [x] Add regression coverage and validate per-phase duration behavior

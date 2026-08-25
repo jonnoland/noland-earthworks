@@ -72,6 +72,7 @@ interface LineItem {
   totalCents: number;
   kind?: QuoteLineItemKind;
   phaseAuthorization?: QuotePhaseAuthorization;
+  estimatedDuration?: string;
   discountCode?: string;
 }
 
@@ -197,17 +198,28 @@ function LineItemRow({
           className="bg-zinc-800 border-zinc-700 text-sm"
         />
         {item.kind === "phase" && (
-          <label className="mt-1 flex items-center gap-2 text-[10px] text-zinc-400">
-            Authorization
-            <select
-              value={item.phaseAuthorization ?? "approved_now"}
-              onChange={e => onChange(index, "phaseAuthorization", e.target.value as QuotePhaseAuthorization)}
-              className="h-6 rounded border border-zinc-700 bg-zinc-900 px-1.5 text-[10px] text-zinc-200"
-            >
-              <option value="approved_now">Approved now</option>
-              <option value="optional_future">Optional future phase</option>
-            </select>
-          </label>
+          <div className="mt-1 grid gap-1 sm:grid-cols-2">
+            <label className="flex items-center gap-1.5 text-[10px] text-zinc-400">
+              Authorization
+              <select
+                value={item.phaseAuthorization ?? "approved_now"}
+                onChange={e => onChange(index, "phaseAuthorization", e.target.value as QuotePhaseAuthorization)}
+                className="h-6 min-w-0 flex-1 rounded border border-zinc-700 bg-zinc-900 px-1.5 text-[10px] text-zinc-200"
+              >
+                <option value="approved_now">Approved now</option>
+                <option value="optional_future">Optional future phase</option>
+              </select>
+            </label>
+            <label className="flex items-center gap-1.5 text-[10px] text-zinc-400">
+              Est. duration
+              <input
+                value={item.estimatedDuration ?? ""}
+                onChange={e => onChange(index, "estimatedDuration", e.target.value)}
+                placeholder="e.g. 1–2 days"
+                className="h-6 min-w-0 flex-1 rounded border border-zinc-700 bg-zinc-900 px-1.5 text-[10px] text-zinc-200 placeholder:text-zinc-600"
+              />
+            </label>
+          </div>
         )}
       </div>
       <div>
@@ -672,9 +684,9 @@ function QuoteFormModal({
       clientMessage: SAMPLE_PHASED_QUOTE_CLIENT_MESSAGE,
       internalNotes: "INTERNAL SAMPLE ONLY — Replace client details, defined work areas, pricing, and approval status before saving or sending.",
       lineItems: [
-        { ...createQuoteWorkLineItem("phase"), description: "Phase 1 — Access route and primary homesite area (approved now)" },
-        { ...createQuoteWorkLineItem("phase"), description: "Phase 2 — Defined pasture-edge and transition area (optional future phase)", phaseAuthorization: "optional_future" },
-        { ...createQuoteWorkLineItem("phase"), description: "Phase 3 — Marked boundary and secondary use area (optional future phase)", phaseAuthorization: "optional_future" },
+        { ...createQuoteWorkLineItem("phase"), description: "Phase 1 — Access route and primary homesite area (approved now)", estimatedDuration: "1–2 days" },
+        { ...createQuoteWorkLineItem("phase"), description: "Phase 2 — Defined pasture-edge and transition area (optional future phase)", phaseAuthorization: "optional_future", estimatedDuration: "2–3 days" },
+        { ...createQuoteWorkLineItem("phase"), description: "Phase 3 — Marked boundary and secondary use area (optional future phase)", phaseAuthorization: "optional_future", estimatedDuration: "1 day" },
       ],
     }));
     toast.success("Internal phased quote sample loaded. Replace every placeholder before sending.");
