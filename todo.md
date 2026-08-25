@@ -3645,3 +3645,7 @@
 - [x] Record signature, consent time, and acceptance scope for an auditable Phase 1 approval
 - [x] Enable the Phase 1 deposit handoff only after signed acceptance
 - [x] Add regression coverage and validate the signed acceptance workflow
+
+## Customer Portal PDF Cleanup — Aug 2026
+- [x] Exclude the chat availability widget and non-document portal controls from PDF downloads
+- [x] Add regression coverage and validate the printable portal output

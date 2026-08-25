@@ -171,7 +171,7 @@ export default function AIChatWidget() {
   })();
 
   return (
-    <>
+    <div className="ne-chat-widget">
       {/* Chat window */}
       {isOpen && (
         <div
@@ -322,6 +322,6 @@ export default function AIChatWidget() {
           )}
         </button>
       </div>
-    </>
+    </div>
   );
 }

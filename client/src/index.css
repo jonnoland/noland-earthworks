@@ -404,6 +404,11 @@
 /* ─── Quote Portal Print / PDF Styles ──────────────────────────────────────── */
 
 @media print {
+  /* Floating chat and the “We're available” indicator are website UI, not quote content. */
+  .ne-chat-widget {
+    display: none !important;
+  }
+
   /* Force white background and black text for readability on paper */
   .portal-print-root {
     background: #ffffff !important;
