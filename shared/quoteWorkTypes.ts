@@ -6,6 +6,7 @@ export type QuoteLineItemKind =
   | "half_operating_day";
 
 export type QuoteWorkPreset = Exclude<QuoteLineItemKind, "service" | "discount">;
+export type QuotePhaseAuthorization = "approved_now" | "optional_future";
 
 export const QUOTE_WORK_PRESETS: Record<QuoteWorkPreset, { label: string; description: string }> = {
   phase: {
@@ -40,5 +41,6 @@ export function createQuoteWorkLineItem(kind: QuoteWorkPreset) {
     unitPriceCents: 0,
     totalCents: 0,
     kind,
+    ...(kind === "phase" ? { phaseAuthorization: "approved_now" as const } : {}),
   };
 }

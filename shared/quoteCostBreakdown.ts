@@ -1,0 +1,78 @@
+import type { QuoteLineItemKind, QuotePhaseAuthorization } from "./quoteWorkTypes";
+
+export interface QuoteBreakdownLineItem {
+  qty: number;
+  unitPriceCents: number;
+  kind?: QuoteLineItemKind;
+  phaseAuthorization?: QuotePhaseAuthorization;
+}
+
+export interface QuoteCostBreakdown {
+  standardServiceCents: number;
+  approvedPhaseCents: number;
+  optionalFuturePhaseCents: number;
+  fullOperatingDayCents: number;
+  halfOperatingDayCents: number;
+  baseSubtotalCents: number;
+  discountCents: number;
+  approvedDiscountCents: number;
+  optionalDiscountCents: number;
+  amountDueNowCents: number;
+  allPhasesTotalCents: number;
+}
+
+function lineTotal(item: QuoteBreakdownLineItem) {
+  return Math.round(Math.max(1, Number(item.qty) || 1) * (Number(item.unitPriceCents) || 0));
+}
+
+export function buildQuoteCostBreakdown(items: QuoteBreakdownLineItem[]): QuoteCostBreakdown {
+  let standardServiceCents = 0;
+  let approvedPhaseCents = 0;
+  let optionalFuturePhaseCents = 0;
+  let fullOperatingDayCents = 0;
+  let halfOperatingDayCents = 0;
+  let discountCents = 0;
+
+  for (const item of items) {
+    const total = lineTotal(item);
+    if (item.kind === "discount" || total < 0) {
+      discountCents += total;
+      continue;
+    }
+    if (item.kind === "phase") {
+      if (item.phaseAuthorization === "optional_future") optionalFuturePhaseCents += total;
+      else approvedPhaseCents += total;
+      continue;
+    }
+    if (item.kind === "full_operating_day") {
+      fullOperatingDayCents += total;
+      continue;
+    }
+    if (item.kind === "half_operating_day") {
+      halfOperatingDayCents += total;
+      continue;
+    }
+    standardServiceCents += total;
+  }
+
+  const baseSubtotalCents = standardServiceCents + approvedPhaseCents + optionalFuturePhaseCents + fullOperatingDayCents + halfOperatingDayCents;
+  const approvedWorkCents = standardServiceCents + approvedPhaseCents + fullOperatingDayCents + halfOperatingDayCents;
+  const approvedDiscountCents = baseSubtotalCents > 0
+    ? Math.round(discountCents * (approvedWorkCents / baseSubtotalCents))
+    : 0;
+  const optionalDiscountCents = discountCents - approvedDiscountCents;
+
+  return {
+    standardServiceCents,
+    approvedPhaseCents,
+    optionalFuturePhaseCents,
+    fullOperatingDayCents,
+    halfOperatingDayCents,
+    baseSubtotalCents,
+    discountCents,
+    approvedDiscountCents,
+    optionalDiscountCents,
+    amountDueNowCents: approvedWorkCents + approvedDiscountCents,
+    allPhasesTotalCents: baseSubtotalCents + discountCents,
+  };
+}

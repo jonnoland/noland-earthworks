@@ -15,9 +15,10 @@ describe("quote discount line items", () => {
     expect(editor).toContain("const appliedDiscountCodes");
     expect(editor).toContain("lineItems: [...previous.lineItems, discountLine]");
     expect(editor).toContain("appliedDiscountCodes.has(option.code)");
-    expect(editor).toContain("Original subtotal");
-    expect(editor).toContain("Total discounts");
-    expect(editor).toContain("Final total");
+    expect(editor).toContain("Live Cost Breakdown");
+    expect(editor).toContain("Discounts on approved work");
+    expect(editor).toContain("Amount due for approved work");
+    expect(editor).toContain("All-phases total");
     expect(editor).toContain('!top-1/2 !left-1/2');
     expect(editor).toContain('!-translate-x-1/2 !-translate-y-1/2');
     expect(editor).toContain('!w-[1280px] !max-w-[1280px]');

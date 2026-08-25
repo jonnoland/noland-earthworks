@@ -49,6 +49,7 @@ import { validateTennesseeParcelId } from "@shared/tennesseeParcelId";
 import { estimateInternalSiteVisitCost } from "@shared/siteVisitCostEstimate";
 import { buildQuoteDiscountLineItem, getCustomerDiscountOptions, getSuggestedVolumeDiscount, type QuoteDiscountOption } from "@shared/quoteDiscounts";
 import { formatQuoteCents, quoteDollarsToCents, roundQuoteCentsUp } from "@shared/quoteMoney";
+import { buildQuoteCostBreakdown } from "@shared/quoteCostBreakdown";
 import {
   DAY_RATE_TERMS,
   ONE_DAY_TRIAL_TERMS,
@@ -56,6 +57,7 @@ import {
   SAMPLE_PHASED_QUOTE_CLIENT_MESSAGE,
   createQuoteWorkLineItem,
   type QuoteLineItemKind,
+  type QuotePhaseAuthorization,
   type QuoteWorkPreset,
 } from "@shared/quoteWorkTypes";
 
@@ -66,6 +68,7 @@ interface LineItem {
   unitPriceCents: number;
   totalCents: number;
   kind?: QuoteLineItemKind;
+  phaseAuthorization?: QuotePhaseAuthorization;
   discountCode?: string;
 }
 
@@ -144,6 +147,19 @@ function LineItemRow({
           onChange={e => onChange(index, "description", e.target.value)}
           className="bg-zinc-800 border-zinc-700 text-sm"
         />
+        {item.kind === "phase" && (
+          <label className="mt-1 flex items-center gap-2 text-[10px] text-zinc-400">
+            Authorization
+            <select
+              value={item.phaseAuthorization ?? "approved_now"}
+              onChange={e => onChange(index, "phaseAuthorization", e.target.value as QuotePhaseAuthorization)}
+              className="h-6 rounded border border-zinc-700 bg-zinc-900 px-1.5 text-[10px] text-zinc-200"
+            >
+              <option value="approved_now">Approved now</option>
+              <option value="optional_future">Optional future phase</option>
+            </select>
+          </label>
+        )}
       </div>
       <div className="sm:col-span-2">
         <Input
@@ -395,17 +411,15 @@ function QuoteFormModal({
     });
   };
 
-  const totalCents = useMemo(
-    () => form.lineItems.reduce((sum, li) => sum + li.qty * li.unitPriceCents, 0),
-    [form.lineItems]
-  );
+  const costBreakdown = useMemo(() => buildQuoteCostBreakdown(form.lineItems), [form.lineItems]);
+  const totalCents = costBreakdown.allPhasesTotalCents;
   const discountItems = useMemo(() => form.lineItems.filter((item) => item.kind === "discount" || item.unitPriceCents < 0), [form.lineItems]);
   const appliedDiscountCodes = useMemo(
     () => new Set(discountItems.map((item) => item.discountCode).filter((code): code is string => Boolean(code))),
     [discountItems]
   );
-  const baseSubtotalCents = useMemo(() => form.lineItems.filter((item) => item.kind !== "discount" && item.unitPriceCents >= 0).reduce((sum, item) => sum + item.qty * item.unitPriceCents, 0), [form.lineItems]);
-  const discountCents = useMemo(() => discountItems.reduce((sum, item) => sum + item.qty * item.unitPriceCents, 0), [discountItems]);
+  const baseSubtotalCents = costBreakdown.baseSubtotalCents;
+  const discountCents = costBreakdown.discountCents;
   const acreageNumber = parseFloat(form.acreage);
   const volumeDiscount = useMemo(() => getSuggestedVolumeDiscount(acreageNumber, pricingDiscountSettings ?? {}), [acreageNumber, pricingDiscountSettings]);
   const customerDiscountOptions = useMemo(() => getCustomerDiscountOptions(pricingDiscountSettings ?? {}), [pricingDiscountSettings]);
@@ -572,8 +586,8 @@ function QuoteFormModal({
       internalNotes: "INTERNAL SAMPLE ONLY — Replace client details, defined work areas, pricing, and approval status before saving or sending.",
       lineItems: [
         { ...createQuoteWorkLineItem("phase"), description: "Phase 1 — Access route and primary homesite area (approved now)" },
-        { ...createQuoteWorkLineItem("phase"), description: "Phase 2 — Defined pasture-edge and transition area (optional future phase)" },
-        { ...createQuoteWorkLineItem("phase"), description: "Phase 3 — Marked boundary and secondary use area (optional future phase)" },
+        { ...createQuoteWorkLineItem("phase"), description: "Phase 2 — Defined pasture-edge and transition area (optional future phase)", phaseAuthorization: "optional_future" },
+        { ...createQuoteWorkLineItem("phase"), description: "Phase 3 — Marked boundary and secondary use area (optional future phase)", phaseAuthorization: "optional_future" },
       ],
     }));
     toast.success("Internal phased quote sample loaded. Replace every placeholder before sending.");
@@ -1117,10 +1131,23 @@ function QuoteFormModal({
               </div>
               {discountItems.length > 0 && <p className="mt-2 text-[10px] text-emerald-300">{discountItems.length} discount line{discountItems.length === 1 ? "" : "s"} applied: {discountItems.map((item) => item.description).join(" · ")}</p>}
             </div>
-            <div className="mt-3 w-full rounded-md border border-zinc-700 bg-zinc-900/60 px-3 py-2 text-sm sm:ml-auto sm:max-w-xs">
-              <div className="flex justify-between gap-6 text-zinc-400"><span>Original subtotal</span><span>{formatQuoteCents(baseSubtotalCents)}</span></div>
-              {discountCents < 0 && <div className="mt-1 flex justify-between gap-6 text-emerald-300"><span>Total discounts</span><span>{formatQuoteCents(discountCents)}</span></div>}
-              <div className="mt-2 flex justify-between gap-6 border-t border-zinc-700 pt-2"><span className="font-semibold text-zinc-200">Final total</span><span className="text-lg font-bold text-amber-400">{formatQuoteCents(totalCents)}</span></div>
+            <div className="mt-3 w-full rounded-md border border-zinc-700 bg-zinc-900/60 px-3 py-3 text-sm sm:ml-auto sm:max-w-md" aria-live="polite">
+              <div className="mb-2 flex items-center justify-between"><span className="text-xs font-semibold uppercase tracking-wide text-zinc-200">Live Cost Breakdown</span><span className="text-[10px] text-zinc-500">Updates as line items change</span></div>
+              <div className="space-y-1.5 text-xs">
+                {costBreakdown.standardServiceCents > 0 && <div className="flex justify-between gap-6 text-zinc-400"><span>Standard service work</span><span>{formatQuoteCents(costBreakdown.standardServiceCents)}</span></div>}
+                {costBreakdown.approvedPhaseCents > 0 && <div className="flex justify-between gap-6 text-amber-200"><span>Approved phases</span><span>{formatQuoteCents(costBreakdown.approvedPhaseCents)}</span></div>}
+                {costBreakdown.fullOperatingDayCents > 0 && <div className="flex justify-between gap-6 text-sky-200"><span>Full operating days</span><span>{formatQuoteCents(costBreakdown.fullOperatingDayCents)}</span></div>}
+                {costBreakdown.halfOperatingDayCents > 0 && <div className="flex justify-between gap-6 text-sky-200"><span>Half operating days</span><span>{formatQuoteCents(costBreakdown.halfOperatingDayCents)}</span></div>}
+                {costBreakdown.approvedDiscountCents < 0 && <div className="flex justify-between gap-6 text-emerald-300"><span>Discounts on approved work</span><span>{formatQuoteCents(costBreakdown.approvedDiscountCents)}</span></div>}
+                <div className="mt-2 flex justify-between gap-6 border-t border-amber-500/30 pt-2"><span className="font-semibold text-amber-100">Amount due for approved work</span><span className="text-base font-bold text-amber-400">{formatQuoteCents(costBreakdown.amountDueNowCents)}</span></div>
+                {costBreakdown.optionalFuturePhaseCents > 0 && <>
+                  <div className="mt-2 flex justify-between gap-6 border-t border-zinc-700 pt-2 text-indigo-200"><span>Optional future phases</span><span>{formatQuoteCents(costBreakdown.optionalFuturePhaseCents)}</span></div>
+                  {costBreakdown.optionalDiscountCents < 0 && <div className="flex justify-between gap-6 text-emerald-300"><span>Discounts allocated to future phases</span><span>{formatQuoteCents(costBreakdown.optionalDiscountCents)}</span></div>}
+                  <div className="flex justify-between gap-6 font-semibold text-zinc-200"><span>All-phases total</span><span>{formatQuoteCents(costBreakdown.allPhasesTotalCents)}</span></div>
+                </>}
+                {costBreakdown.optionalFuturePhaseCents === 0 && <div className="flex justify-between gap-6 font-semibold text-zinc-200"><span>Quote total</span><span>{formatQuoteCents(costBreakdown.allPhasesTotalCents)}</span></div>}
+              </div>
+              {costBreakdown.optionalFuturePhaseCents > 0 && <p className="mt-2 text-[10px] leading-relaxed text-zinc-500">Optional future phases are visible here but excluded from the approved-work amount due now.</p>}
             </div>
           </div>
 

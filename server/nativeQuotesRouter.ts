@@ -69,6 +69,7 @@ const lineItemSchema = z.object({
   unitPriceCents: z.number().int(),
   totalCents: z.number().int(),
   kind: z.enum(["service", "discount", "phase", "full_operating_day", "half_operating_day"]).optional(),
+  phaseAuthorization: z.enum(["approved_now", "optional_future"]).optional(),
   discountCode: z.string().optional(),
 });
 

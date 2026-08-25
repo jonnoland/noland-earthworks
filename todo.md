@@ -3571,3 +3571,8 @@
 - [x] Add reusable draft day-rate and one-day trial-phase terms to contract templates
 - [x] Add a clearly labeled internal sample phased forestry mulching quote in Operations
 - [x] Add regression coverage and validate the enhanced quote workflow
+
+## Live Phase and Day-Rate Quote Breakdown — Aug 2026
+- [x] Add a real-time line-item cost breakdown for phases, operating-day work, discounts, and amounts due
+- [x] Distinguish approved-now work from optional future phases without hiding the all-phases total
+- [x] Add regression coverage and validate the live quote breakdown
