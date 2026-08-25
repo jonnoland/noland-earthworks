@@ -177,15 +177,17 @@ export default function NativeQuotePortal() {
 
   const fmt = (cents: number) => formatQuoteCents(cents);
 
-  const depositCents = roundQuoteCentsUp(quote.totalCents * (depositPct / 100));
-  const balanceCents = quote.totalCents - depositCents;
+  const phaseSummary = quote.phaseSummary;
+  const phaseOneTotalCents = quote.phaseOneApprovedCents ?? phaseSummary.phaseOneTotalCents;
+  const depositCents = roundQuoteCentsUp(phaseOneTotalCents * (depositPct / 100));
+  const balanceCents = phaseOneTotalCents - depositCents;
   const isActioned = !!quote.clientAction;
   const isApproved = quote.clientAction === "approved";
   const isDeclined = quote.clientAction === "declined";
   const hasDepositPaid = !!quote.depositPaidAt;
 
-  const lineItems: Array<{ description: string; qty: number; unitPriceCents: number; totalCents: number; kind?: "service" | "discount" }> =
-    Array.isArray(quote.lineItems) ? quote.lineItems : [];
+  const lineItems = phaseSummary.approvedLineItems;
+  const optionalFutureLineItems = phaseSummary.optionalFutureLineItems;
 
   return (
     <PortalShell>
@@ -239,7 +241,7 @@ export default function NativeQuotePortal() {
         <div className="mb-6 rounded-lg bg-emerald-900/40 border border-emerald-700 p-4 flex items-start gap-3">
           <CheckCircle className="w-5 h-5 text-emerald-400 shrink-0 mt-0.5" />
           <div>
-            <p className="text-emerald-300 font-semibold text-sm">Quote approved.</p>
+            <p className="text-emerald-300 font-semibold text-sm">Phase 1 approved.</p>
             {quote.clientActionAt && (
               <p className="text-emerald-400/80 text-xs mt-0.5">
                 Approved on {new Date(quote.clientActionAt).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}
@@ -300,11 +302,12 @@ export default function NativeQuotePortal() {
         </div>
       )}
 
-      {/* Line items */}
+      {/* Phase 1 — current approval */}
       {lineItems.length > 0 && (
         <div className="rounded-xl bg-zinc-900 border border-zinc-800 overflow-hidden mb-6">
           <div className="px-5 py-3 border-b border-zinc-800">
-            <p className="text-zinc-400 text-xs font-semibold uppercase tracking-widest">Scope of Work</p>
+            <p className="text-amber-400 text-xs font-semibold uppercase tracking-widest">Phase 1 — Current Approval</p>
+            <p className="mt-1 text-zinc-500 text-xs">This is the work you are approving today.</p>
           </div>
           {lineItems.map((li, i) => (
             <div key={i} className="flex items-start justify-between px-5 py-3 border-b border-zinc-800 last:border-0 gap-4">
@@ -319,10 +322,44 @@ export default function NativeQuotePortal() {
               <span className={li.totalCents < 0 || li.kind === "discount" ? "text-emerald-300 text-sm font-medium shrink-0" : "text-amber-400 text-sm font-medium shrink-0"}>{fmt(li.qty * li.unitPriceCents)}</span>
             </div>
           ))}
-          {/* Total */}
+          {phaseSummary.approvedDiscountCents < 0 && (
+            <div className="flex items-start justify-between px-5 py-3 border-b border-zinc-800 gap-4">
+              <p className="text-emerald-300 text-sm">Discount applied to Phase 1</p>
+              <span className="text-emerald-300 text-sm font-medium shrink-0">{fmt(phaseSummary.approvedDiscountCents)}</span>
+            </div>
+          )}
           <div className="flex items-center justify-between px-5 py-4 bg-zinc-800/60">
-            <span className="text-white font-bold text-sm">Total</span>
-            <span className="text-amber-400 font-bold text-lg">{quote.totalFormatted}</span>
+            <span className="text-white font-bold text-sm">Phase 1 total</span>
+            <span className="text-amber-400 font-bold text-lg">{fmt(phaseSummary.phaseOneTotalCents)}</span>
+          </div>
+        </div>
+      )}
+
+      {/* Optional future phases */}
+      {phaseSummary.hasOptionalFuturePhases && (
+        <div className="rounded-xl border border-indigo-500/30 bg-indigo-500/[0.07] overflow-hidden mb-6">
+          <div className="px-5 py-4 border-b border-indigo-500/20">
+            <p className="text-indigo-200 text-xs font-semibold uppercase tracking-widest">Optional Future Phases</p>
+            <p className="mt-2 text-indigo-100/80 text-sm leading-relaxed">These phases are shown for planning only. They are not included in today’s approval, deposit, or schedule. A separate authorization will be provided before any future phase begins.</p>
+          </div>
+          {optionalFutureLineItems.map((li, i) => (
+            <div key={i} className="flex items-start justify-between px-5 py-3 border-b border-indigo-500/15 last:border-0 gap-4">
+              <div className="flex-1">
+                <p className="text-indigo-50 text-sm">{li.description}</p>
+                {li.qty !== 1 && <p className="text-indigo-200/60 text-xs mt-0.5">{li.qty} &times; {fmt(li.unitPriceCents)}</p>}
+              </div>
+              <span className="text-indigo-200 text-sm font-medium shrink-0">{fmt(li.qty * li.unitPriceCents)}</span>
+            </div>
+          ))}
+          {phaseSummary.optionalDiscountCents < 0 && (
+            <div className="flex items-start justify-between px-5 py-3 border-b border-indigo-500/15 gap-4">
+              <p className="text-emerald-300 text-sm">Discount allocated to future phases</p>
+              <span className="text-emerald-300 text-sm font-medium shrink-0">{fmt(phaseSummary.optionalDiscountCents)}</span>
+            </div>
+          )}
+          <div className="px-5 py-3 bg-indigo-950/30">
+            <div className="flex items-center justify-between text-sm text-indigo-100"><span>Optional future work</span><span className="font-semibold">{fmt(phaseSummary.optionalFutureTotalCents)}</span></div>
+            <div className="mt-2 flex items-center justify-between text-xs text-indigo-200/70"><span>Potential full project total</span><span>{fmt(phaseSummary.allPhasesTotalCents)}</span></div>
           </div>
         </div>
       )}
@@ -330,7 +367,7 @@ export default function NativeQuotePortal() {
       {/* Deposit section */}
       {isApproved && !hasDepositPaid && (
         <div className="rounded-xl bg-zinc-900 border border-zinc-800 p-5 mb-6">
-          <p className="text-zinc-400 text-xs font-semibold uppercase tracking-widest mb-4">Secure Your Spot — Pay Deposit</p>
+          <p className="text-zinc-400 text-xs font-semibold uppercase tracking-widest mb-4">Secure Phase 1 — Pay Deposit</p>
           <div className="flex gap-2 mb-4">
             {([25, 33, 50] as DepositPct[]).map(pct => (
               <button
@@ -351,7 +388,7 @@ export default function NativeQuotePortal() {
             <span className="text-white font-medium">{fmt(depositCents)}</span>
           </div>
           <div className="flex items-center justify-between text-sm mb-4">
-            <span className="text-zinc-400">Balance due at completion</span>
+            <span className="text-zinc-400">Phase 1 balance due at completion</span>
             <span className="text-zinc-300">{fmt(balanceCents)}</span>
           </div>
           <Button
@@ -360,7 +397,7 @@ export default function NativeQuotePortal() {
             disabled={depositMut.isPending}
           >
             <CreditCard className="w-4 h-4 mr-2" />
-            {depositMut.isPending ? "Redirecting..." : `Pay ${fmt(depositCents)} Deposit`}
+            {depositMut.isPending ? "Redirecting..." : `Pay ${fmt(depositCents)} Phase 1 Deposit`}
           </Button>
         </div>
       )}
@@ -390,7 +427,7 @@ export default function NativeQuotePortal() {
               disabled={actionMut.isPending}
             >
               <CheckCircle className="w-4 h-4 mr-2" />
-              {actionMut.isPending && pendingAction === "approved" ? "Approving..." : "Approve This Quote"}
+              {actionMut.isPending && pendingAction === "approved" ? "Approving..." : "Approve Phase 1"}
             </Button>
           )}
 

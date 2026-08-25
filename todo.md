@@ -3595,3 +3595,14 @@
 - [x] Add drag-and-drop line-item ordering controls to New Quote and Edit Quote
 - [x] Add keyboard-accessible move-up and move-down controls for line items
 - [x] Preserve the chosen line-item order in saved drafts and quotes, with regression coverage
+
+## Portal Email Delivery Test — Aug 2026
+- [x] Send the portal for Phased Mulching Quote #660001 to jonnoland@gmail.com and verify provider processing
+
+## Phased Customer Portal Workflow — Aug 2026
+- [x] Review and define customer-facing handling of approved-now and optional future phases in the quote portal
+
+## Phase 1 Customer Portal Approval — Aug 2026
+- [x] Separate Phase 1 approval and deposit calculations from optional future phases in the customer portal
+- [x] Add customer-facing optional future-phase explanation text and visual separation
+- [x] Add regression coverage and validate the phased portal workflow

@@ -1963,6 +1963,9 @@ export const nativeQuotes = mysqlTable("native_quotes", {
   portalViewedAt: timestamp("portalViewedAt"),
   clientAction: varchar("clientAction", { length: 20 }),
   clientActionAt: timestamp("clientActionAt"),
+  /** Snapshot of the currently approved work when a phased portal is accepted. */
+  phaseOneApprovedCents: int("phaseOneApprovedCents"),
+  phaseOneApprovedAt: timestamp("phaseOneApprovedAt"),
   signatureDataUrl: text("signatureDataUrl"),
   signatureTypedText: varchar("signatureTypedText", { length: 255 }),
   signatureMode: varchar("signatureMode", { length: 10 }),

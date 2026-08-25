@@ -27,6 +27,7 @@ import { notifyOwner } from "./_core/notification";
 import { ENV } from "./_core/env";
 import { invokeLLM } from "./_core/llm";
 import { isDraftPlaceholderClient } from "../shared/quoteDrafts";
+import { getQuotePortalPhaseSummary, type QuotePortalLineItem } from "../shared/quotePortalPhases";
 
 // Strip markdown code fences from LLM JSON responses
 function stripCodeFence(raw: string): string {
@@ -61,6 +62,15 @@ async function sendEmail(to: string, subject: string, html: string) {
       html,
     }),
   });
+}
+
+function parsePortalLineItems(raw: string | null): QuotePortalLineItem[] {
+  try {
+    const parsed = JSON.parse(raw ?? "[]");
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
 }
 
 // ─── Line item schema ─────────────────────────────────────────────────────────
@@ -704,7 +714,15 @@ Rules:
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Service unavailable" });
       const [quote] = await db.select().from(nativeQuotes).where(eq(nativeQuotes.portalToken, input.token)).limit(1);
       if (!quote) throw new TRPCError({ code: "NOT_FOUND", message: "Quote not found" });
-      const depositCents = Math.round(quote.totalCents * input.depositPct / 100);
+      if (quote.clientAction !== "approved") {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Approve the current phase before paying its deposit." });
+      }
+      const phaseSummary = getQuotePortalPhaseSummary(parsePortalLineItems(quote.lineItems));
+      const phaseOneTotalCents = quote.phaseOneApprovedCents ?? phaseSummary.phaseOneTotalCents;
+      if (phaseOneTotalCents <= 0) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "The approved Phase 1 total must be greater than zero before payment." });
+      }
+      const depositCents = Math.round(phaseOneTotalCents * input.depositPct / 100);
       const stripe = getStripe();
       const origin = input.origin ?? "https://nolandearth-pymczdcn.manus.space";
       const session = await stripe.checkout.sessions.create({
@@ -714,8 +732,8 @@ Rules:
           price_data: {
             currency: "usd",
             product_data: {
-              name: `Deposit — ${quote.title}`,
-              description: `${input.depositPct}% deposit for ${quote.clientName}. Balance due on completion.`,
+              name: `Phase 1 Deposit — ${quote.title}`,
+              description: `${input.depositPct}% deposit for the approved Phase 1 work. Balance due on Phase 1 completion.`,
             },
             unit_amount: depositCents,
           },
@@ -727,7 +745,8 @@ Rules:
           native_quote_id: quote.id.toString(),
           client_name: quote.clientName,
           deposit_pct: input.depositPct.toString(),
-          total_cents: quote.totalCents.toString(),
+          approval_scope: "phase_1",
+          phase_one_total_cents: phaseOneTotalCents.toString(),
         },
         allow_promotion_codes: true,
         success_url: `${origin}/quote/${input.token}?deposit=success`,
@@ -763,10 +782,8 @@ Rules:
           content: `${quote.clientName} just opened their quote portal link for "${quote.title}".`,
         }).catch(() => {/* non-critical */});
       }
-      const lineItems = (() => {
-        try { return JSON.parse(quote.lineItems ?? "[]"); }
-        catch { return []; }
-      })();
+      const lineItems = parsePortalLineItems(quote.lineItems);
+      const phaseSummary = getQuotePortalPhaseSummary(lineItems);
       return {
         type: "native" as const,
         id: quote.id,
@@ -778,11 +795,14 @@ Rules:
         estimatedDuration: quote.estimatedDuration,
         clientMessage: quote.clientMessage,
         lineItems,
+        phaseSummary,
         totalCents: quote.totalCents,
         totalFormatted: new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(quote.totalCents / 100),
         status: quote.status,
         clientAction: quote.clientAction,
         clientActionAt: quote.clientActionAt,
+        phaseOneApprovedCents: quote.phaseOneApprovedCents,
+        phaseOneApprovedAt: quote.phaseOneApprovedAt,
         depositPaidCents: quote.depositPaidCents,
         depositPaidAt: quote.depositPaidAt,
         convertedToJobAt: quote.convertedToJobAt,
@@ -811,6 +831,7 @@ Rules:
         .where(eq(nativeQuotes.portalToken, input.token))
         .limit(1);
       if (!quote) throw new TRPCError({ code: "NOT_FOUND", message: "Quote not found or link has expired." });
+      const phaseSummary = getQuotePortalPhaseSummary(parsePortalLineItems(quote.lineItems));
       // Sync status column so pipeline stage classifier stays consistent
       const statusSync = input.action === "approved" ? "approved"
         : input.action === "declined" ? "declined"
@@ -821,6 +842,10 @@ Rules:
           clientAction: input.action,
           clientActionAt: new Date(),
           status: statusSync,
+          ...(input.action === "approved" ? {
+            phaseOneApprovedCents: phaseSummary.phaseOneTotalCents,
+            phaseOneApprovedAt: new Date(),
+          } : {}),
           ...(input.action === "changes_requested" ? { changeRequestNote: input.note ?? null, changeRequestAt: new Date() } : {}),
           ...(input.action === "declined" ? { declineNote: input.note ?? null } : {}),
         })
