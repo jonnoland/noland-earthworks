@@ -366,23 +366,17 @@ export default function OpsDashboardLayout({ children, title, subtitle }: Dashbo
         >
           {collapsed ? (
             <img
-              src="https://d2xsxph8kpxj0f.cloudfront.net/310519663484957999/S4PPJthPzHXph6Nqq4scSB/noland-earthworks-logo_3844d4ef.jpg"
+              src="/manus-storage/ops-brand-logo_c03a1088.png"
               alt="Noland Earthworks"
-              className="h-8 w-8 object-contain rounded-sm"
+              className="h-8 w-11 max-w-full object-contain"
             />
           ) : (
-            <div className="flex items-center gap-2.5 min-w-0">
+            <div className="flex items-center justify-center min-w-0 w-full">
               <img
-                src="https://d2xsxph8kpxj0f.cloudfront.net/310519663484957999/S4PPJthPzHXph6Nqq4scSB/noland-earthworks-logo_3844d4ef.jpg"
+                src="/manus-storage/ops-brand-logo_c03a1088.png"
                 alt="Noland Earthworks"
-                className="h-9 w-9 object-contain shrink-0 rounded-sm"
+                className="h-10 w-full max-w-[172px] object-contain"
               />
-              <div className="flex flex-col min-w-0">
-                <span className="text-sm font-bold leading-tight text-foreground truncate" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
-                  <span className="text-primary">Noland</span> Earthworks
-                </span>
-                <span className="text-[10px] text-muted-foreground leading-tight">LLC</span>
-              </div>
             </div>
           )}
         </div>
@@ -401,18 +395,12 @@ export default function OpsDashboardLayout({ children, title, subtitle }: Dashbo
       >
         {/* Mobile logo + close */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-sidebar-border">
-          <div className="flex items-center gap-2.5 min-w-0">
+          <div className="flex items-center min-w-0">
             <img
-              src="https://d2xsxph8kpxj0f.cloudfront.net/310519663484957999/S4PPJthPzHXph6Nqq4scSB/noland-earthworks-logo_3844d4ef.jpg"
+              src="/manus-storage/ops-brand-logo_c03a1088.png"
               alt="Noland Earthworks"
-              className="h-9 w-9 object-contain shrink-0 rounded-sm"
+              className="h-9 w-[124px] object-contain"
             />
-            <div className="flex flex-col min-w-0">
-              <span className="text-sm font-bold leading-tight text-foreground truncate" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
-                <span className="text-primary">Noland</span> Earthworks
-              </span>
-              <span className="text-[10px] text-muted-foreground leading-tight">LLC</span>
-            </div>
           </div>
           <button
             className="text-muted-foreground hover:text-foreground shrink-0"

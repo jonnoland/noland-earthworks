@@ -3674,3 +3674,8 @@
 - [x] Link a newly created quote to its originating Website Request when it is built from that request
 - [x] Refresh the linked Website Request map automatically after a Parcel ID is saved on a new or existing quote
 - [x] Add regression coverage and validate automatic Parcel ID propagation
+
+## Operations Logo-Only Branding — Aug 2026
+- [x] Replace the shared `/ops` top-left brand area with the provided Noland Earthworks logo only
+- [x] Use the managed website asset consistently across Operations layouts
+- [x] Add regression coverage and validate the Operations branding update

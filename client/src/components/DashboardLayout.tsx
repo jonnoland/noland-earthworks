@@ -442,17 +442,17 @@ export default function DashboardLayout({ children, title, subtitle }: Dashboard
           {collapsed ? (
             <Link href="/">
               <img
-                src="https://d2xsxph8kpxj0f.cloudfront.net/310519663484957999/PymCzDCnSJzPjdkfwA7Jn6/noland_earthworks_logo_3091ee09.png"
+                src="/manus-storage/ops-brand-logo_c03a1088.png"
                 alt="Noland Earthworks"
-                className="w-10 h-10 object-contain cursor-pointer"
+                className="w-11 h-8 object-contain cursor-pointer"
               />
             </Link>
           ) : (
             <Link href="/">
               <img
-                src="https://d2xsxph8kpxj0f.cloudfront.net/310519663484957999/PymCzDCnSJzPjdkfwA7Jn6/noland_earthworks_logo_3091ee09.png"
+                src="/manus-storage/ops-brand-logo_c03a1088.png"
                 alt="Noland Earthworks"
-                className="h-16 w-auto object-contain cursor-pointer px-2"
+                className="h-10 w-[172px] max-w-full object-contain cursor-pointer"
               />
             </Link>
           )}
@@ -497,9 +497,9 @@ export default function DashboardLayout({ children, title, subtitle }: Dashboard
             <div className="h-14 flex items-center justify-between px-4 border-b border-[#1e1e1e]">
               <div className="flex items-center">
                 <img
-                  src="https://d2xsxph8kpxj0f.cloudfront.net/310519663484957999/PymCzDCnSJzPjdkfwA7Jn6/noland_earthworks_logo_3091ee09.png"
+                  src="/manus-storage/ops-brand-logo_c03a1088.png"
                   alt="Noland Earthworks"
-                  className="h-9 w-auto object-contain"
+                  className="h-9 w-[124px] object-contain"
                 />
               </div>
               <button onClick={() => setMobileOpen(false)} className="text-muted-foreground hover:text-white">
