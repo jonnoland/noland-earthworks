@@ -3649,3 +3649,8 @@
 ## Customer Portal PDF Cleanup — Aug 2026
 - [x] Exclude the chat availability widget and non-document portal controls from PDF downloads
 - [x] Add regression coverage and validate the printable portal output
+
+## Signed PDF Evidence and Web Request Quote Linking — Aug 2026
+- [x] Display the Phase 1 typed signature, signature consent, and acceptance timestamp prominently in downloaded customer PDFs
+- [x] Add a Web Requests control to link an existing native quote to the appropriate client record
+- [x] Add regression coverage and validate signed PDF evidence and quote-client linking

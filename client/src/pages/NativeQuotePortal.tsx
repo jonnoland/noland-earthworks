@@ -31,7 +31,7 @@ function formatWorkingDays(value: string | null | undefined) {
 // ─── Shell ─────────────────────────────────────────────────────────────────────
 function PortalShell({ children }: { children: React.ReactNode }) {
   return (
-    <div className="min-h-screen bg-zinc-950 text-white">
+    <div className="portal-print-root min-h-screen bg-zinc-950 text-white">
       <header className="bg-zinc-900 border-b border-zinc-800 px-4 py-4">
         <div className="max-w-xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -278,6 +278,17 @@ export default function NativeQuotePortal() {
                 Accepted on {new Date(quote.signedAt).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}
               </p>
             )}
+          </div>
+        </div>
+      )}
+      {hasSignedPhaseOneAcceptance && (
+        <div className="hidden print-only rounded-lg border border-emerald-700 bg-emerald-50 p-5 mb-6 text-zinc-900">
+          <p className="text-sm font-bold uppercase tracking-widest text-emerald-800">Phase 1 Acceptance Record</p>
+          <div className="mt-3 grid grid-cols-1 gap-2 text-sm sm:grid-cols-2">
+            <p><span className="font-semibold">Electronically signed by:</span> {quote.signatureTypedText}</p>
+            <p><span className="font-semibold">Acceptance timestamp:</span> {quote.signedAt ? new Date(quote.signedAt).toLocaleString("en-US", { dateStyle: "long", timeStyle: "short" }) : "Recorded"}</p>
+            <p><span className="font-semibold">Consent:</span> Electronic signature consent confirmed</p>
+            <p><span className="font-semibold">Accepted scope:</span> Phase 1 — Current Approval only</p>
           </div>
         </div>
       )}

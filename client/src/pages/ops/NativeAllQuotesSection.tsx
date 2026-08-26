@@ -2372,6 +2372,23 @@ function InlineWebRequestsPanel({
   const [editingEstimateId, setEditingEstimateId] = useState<number | null>(null);
   const [editPrice, setEditPrice] = useState("");
   const [editDesc, setEditDesc] = useState("");
+  const [linkingRequestId, setLinkingRequestId] = useState<number | null>(null);
+  const [selectedExistingQuoteId, setSelectedExistingQuoteId] = useState("");
+  const { data: linkableQuotesData } = trpc.nativeQuotes.list.useQuery(
+    { limit: 100, offset: 0 },
+    { retry: false, staleTime: 1000 * 60 }
+  );
+  const linkableQuotes = (linkableQuotesData?.quotes ?? []) as NativeQuote[];
+  const linkNativeQuoteMutation = trpc.ops.quotes.linkNativeQuote.useMutation({
+    onSuccess: (result) => {
+      toast.success(`Linked Quote #${result.nativeQuoteId} to ${result.clientName}.`);
+      setLinkingRequestId(null);
+      setSelectedExistingQuoteId("");
+      void refetch();
+      utils.nativeQuotes.list.invalidate();
+    },
+    onError: (error) => toast.error(`Could not link quote: ${error.message}`),
+  });
   const updateQuoteMutation = trpc.nativeQuotes.update.useMutation({
     onSuccess: () => {
       toast.success("Estimate updated.");
@@ -2631,6 +2648,11 @@ function InlineWebRequestsPanel({
                     {new Date(req.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
                   </p>
                   <div className="flex items-center gap-1.5">
+                    {req.nativeQuoteId && (
+                      <span className="rounded border border-sky-500/30 bg-sky-500/10 px-1.5 py-0.5 text-[10px] font-semibold text-sky-200">
+                        Quote #{req.nativeQuoteId}
+                      </span>
+                    )}
                     {/* Edit estimate button — only shown when a native quote exists */}
                     {req.nativeQuoteId && (
                       <button
@@ -2668,6 +2690,16 @@ function InlineWebRequestsPanel({
                     </Button>
                     <button
                       onClick={() => {
+                        setLinkingRequestId(linkingRequestId === req.id ? null : req.id);
+                        setSelectedExistingQuoteId(req.nativeQuoteId ? String(req.nativeQuoteId) : "");
+                      }}
+                      className="h-6 rounded border border-sky-500/30 px-2 text-[10px] font-semibold text-sky-200 transition-colors hover:bg-sky-500/10"
+                      title="Link an existing native quote to this website request"
+                    >
+                      {req.nativeQuoteId ? "Change Quote" : "Link Quote"}
+                    </button>
+                    <button
+                      onClick={() => {
                         if (confirm(`Delete request from ${req.name}?`)) {
                           deleteReq.mutate({ id: req.id });
                         }
@@ -2680,6 +2712,32 @@ function InlineWebRequestsPanel({
                     </button>
                   </div>
                 </div>
+                {linkingRequestId === req.id && (
+                  <div className="rounded border border-sky-500/30 bg-sky-500/5 p-2.5 space-y-2">
+                    <p className="text-[11px] font-semibold text-sky-100">Link an existing quote to {req.name}</p>
+                    <Select value={selectedExistingQuoteId} onValueChange={setSelectedExistingQuoteId}>
+                      <SelectTrigger className="h-8 bg-zinc-900 text-xs"><SelectValue placeholder="Choose a quote" /></SelectTrigger>
+                      <SelectContent>
+                        {linkableQuotes.map((quote) => (
+                          <SelectItem key={quote.id} value={String(quote.id)}>
+                            #{quote.id} · {quote.clientName} · {quote.title}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <div className="flex justify-end gap-1.5">
+                      <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => setLinkingRequestId(null)}>Cancel</Button>
+                      <Button
+                        size="sm"
+                        className="h-7 text-xs"
+                        disabled={!selectedExistingQuoteId || linkNativeQuoteMutation.isPending}
+                        onClick={() => linkNativeQuoteMutation.mutate({ requestId: req.id, nativeQuoteId: Number(selectedExistingQuoteId) })}
+                      >
+                        {linkNativeQuoteMutation.isPending ? "Linking..." : "Link Quote"}
+                      </Button>
+                    </div>
+                  </div>
+                )}
               </div>
             );
           })}

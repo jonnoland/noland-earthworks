@@ -1289,6 +1289,27 @@ const quotesRouter = router({
       await db.delete(quoteSubmissions).where(eq(quoteSubmissions.id, input.id));
       return { success: true };
     }),
+  linkNativeQuote: ownerProcedure
+    .input(z.object({
+      requestId: z.number().int().positive(),
+      nativeQuoteId: z.number().int().positive(),
+    }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+
+      const quote = await db.select({ id: nativeQuotes.id, clientName: nativeQuotes.clientName })
+        .from(nativeQuotes)
+        .where(eq(nativeQuotes.id, input.nativeQuoteId))
+        .limit(1);
+      if (!quote[0]) throw new TRPCError({ code: "NOT_FOUND", message: "Native quote not found" });
+
+      await db.update(quoteSubmissions)
+        .set({ nativeQuoteId: input.nativeQuoteId })
+        .where(eq(quoteSubmissions.id, input.requestId));
+
+      return { ok: true, nativeQuoteId: input.nativeQuoteId, clientName: quote[0].clientName };
+    }),
 
   /**
    * Satellite imagery for a property address.
