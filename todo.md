@@ -3654,3 +3654,7 @@
 - [x] Display the Phase 1 typed signature, signature consent, and acceptance timestamp prominently in downloaded customer PDFs
 - [x] Add a Web Requests control to link an existing native quote to the appropriate client record
 - [x] Add regression coverage and validate signed PDF evidence and quote-client linking
+
+## Lead Estimate Display Refinement — Aug 2026
+- [x] Hide the redundant no-estimate indicator when a lead has an attached native quote
+- [x] Add regression coverage and validate the lead estimate display

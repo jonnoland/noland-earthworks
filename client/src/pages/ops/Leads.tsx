@@ -262,6 +262,7 @@ function LeadCard({ lead, onClick, onDragStart }: { lead: Lead; onClick: () => v
     return Math.floor((Date.now() - new Date(lastUpdate).getTime()) / (1000 * 60 * 60 * 24));
   })();
   const isStale = staleDays >= 3;
+  const showEstimateLabel = !!lead.estimatedValue || !lead.nativeQuoteId;
 
   return (
     <div
@@ -279,10 +280,14 @@ function LeadCard({ lead, onClick, onDragStart }: { lead: Lead; onClick: () => v
         <div className="flex-1 min-w-0">
           <p className="text-sm font-semibold text-white truncate">{lead.name}</p>
           <div className="flex items-center gap-1.5 mt-0.5">
-            <span className="text-[11px] text-[#666]">
-              {lead.estimatedValue ? `$${Number(lead.estimatedValue).toLocaleString()}` : "No estimate"}
-            </span>
-            <span className="text-[#444]">·</span>
+            {showEstimateLabel && (
+              <>
+                <span className="text-[11px] text-[#666]">
+                  {lead.estimatedValue ? `$${Number(lead.estimatedValue).toLocaleString()}` : "No estimate"}
+                </span>
+                <span className="text-[#444]">·</span>
+              </>
+            )}
             <span className="text-[11px] text-[#666]">{formatDate(lead.createdAt)}</span>
           </div>
         </div>
