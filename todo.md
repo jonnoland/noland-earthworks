@@ -3658,3 +3658,9 @@
 ## Lead Estimate Display Refinement — Aug 2026
 - [x] Hide the redundant no-estimate indicator when a lead has an attached native quote
 - [x] Add regression coverage and validate the lead estimate display
+
+## Site Visit to Job Workflow Audit — Aug 2026
+- [x] Audit the Request a Site Visit journey from submission through linked quote, deposit, scheduling, job conversion, and follow-up
+- [x] Automatically move the linked lead to Won when the client signs Phase 1 digitally
+- [x] Produce a prioritized process-improvement plan with operational measurement points
+- [x] Add regression coverage and validate the signed-quote lead status automation

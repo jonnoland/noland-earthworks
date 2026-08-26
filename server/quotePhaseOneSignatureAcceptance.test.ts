@@ -18,4 +18,12 @@ describe("Phase 1 signed quote acceptance", () => {
     expect(schema).toContain("phaseOneSignatureConsentAt");
     expect(schema).toContain("phaseOneAcceptanceScope");
   });
+
+  it("marks any lead linked to the accepted native quote as won", () => {
+    const router = fs.readFileSync(path.resolve(import.meta.dirname, "nativeQuotesRouter.ts"), "utf8");
+
+    expect(router).toContain("where(eq(opsLeads.nativeQuoteId, quote.id))");
+    expect(router).toContain('set({ stage: "won", updatedAt: acceptedAt })');
+    expect(router).toContain("linkedLeadWon: linkedLeads.length > 0");
+  });
 });

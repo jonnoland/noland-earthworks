@@ -891,10 +891,18 @@ Rules:
         phaseOneSignatureConsentAt: acceptedAt,
         phaseOneAcceptanceScope: "phase_1",
       }).where(eq(nativeQuotes.id, quote.id));
+      const linkedLeads = await db.select({ id: opsLeads.id })
+        .from(opsLeads)
+        .where(eq(opsLeads.nativeQuoteId, quote.id));
+      if (linkedLeads.length > 0) {
+        await db.update(opsLeads)
+          .set({ stage: "won", updatedAt: acceptedAt })
+          .where(eq(opsLeads.nativeQuoteId, quote.id));
+      }
       await notifyOwner({
         title: `Phase 1 Accepted — ${quote.clientName}`,
-        content: `${input.typedSignature} signed and accepted Phase 1 of "${quote.title}". Future phases remain optional and are not authorized.`,
+        content: `${input.typedSignature} signed and accepted Phase 1 of "${quote.title}". Future phases remain optional and are not authorized.${linkedLeads.length > 0 ? " The linked lead is now marked Won." : ""}`,
       }).catch(() => {/* non-critical */});
-      return { success: true, phaseOneApprovedCents: phaseSummary.phaseOneTotalCents, acceptedAt };
+      return { success: true, phaseOneApprovedCents: phaseSummary.phaseOneTotalCents, acceptedAt, linkedLeadWon: linkedLeads.length > 0 };
     }),
 });
