@@ -3679,3 +3679,9 @@
 - [x] Replace the shared `/ops` top-left brand area with the provided Noland Earthworks logo only
 - [x] Use the managed website asset consistently across Operations layouts
 - [x] Add regression coverage and validate the Operations branding update
+
+## Website Request Address-to-Parcel Association — Aug 2026
+- [x] Resolve Website Request addresses to county-validated Parcel IDs when a reliable parcel match is available
+- [x] Persist parcel association data for the Website Request map and linked quote workflow
+- [x] Preserve manual Parcel ID lookup and clear review fallback when address matching is inconclusive
+- [x] Add regression coverage and validate address-to-parcel association

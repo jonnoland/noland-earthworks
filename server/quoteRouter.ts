@@ -15,6 +15,7 @@ import { eq } from "drizzle-orm";
 import { parseGooglePlaceAddress, parseGooglePlaceCoordinates } from "./googlePlaceAddress";
 import { isServedCounty } from "../shared/serviceAreas";
 import { normalizeTennesseeParcelId, validateTennesseeParcelId } from "../shared/tennesseeParcelId";
+import { isExactAddressParcelMatch } from "../shared/addressParcelMatch";
 import { randomUUID } from "node:crypto";
 
 const TN_PARCEL_QUERY_URL = "https://services1.arcgis.com/YuVBSS7Y1of2Qud1/arcgis/rest/services/Tennessee_Property_Boundaries_Public_Use/FeatureServer/0/query";
@@ -47,6 +48,100 @@ function buildPublicParcelWhere(county: string, parcelId: string): string {
   return `COUNTY_NAME = '${cleanCounty}' AND PARCELID LIKE '%${pattern}%'`;
 }
 
+type AutoMatchedParcel = {
+  parcelId: string;
+  county: string;
+  deedAcres: number | null;
+  lat: number;
+  lng: number;
+};
+
+/**
+ * A request address is associated automatically only when one feature at the
+ * geocoded point matches both the submitted street and selected county.
+ * Ambiguous rural-address results intentionally remain available for manual
+ * Parcel ID review in Operations instead of assigning the wrong property.
+ */
+export async function resolveUniqueParcelForWebsiteRequest(input: {
+  street: string;
+  city: string;
+  state: string;
+  zip: string;
+  county: string;
+}): Promise<AutoMatchedParcel | null> {
+  if (!ENV.googlePlacesApiKey || !input.street || !input.county) return null;
+
+  try {
+    const address = [input.street, input.city, input.state || "TN", input.zip]
+      .filter(Boolean)
+      .join(", ");
+    const geoResponse = await fetch(
+      `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(address)}&key=${ENV.googlePlacesApiKey}`,
+      { signal: AbortSignal.timeout(10_000) },
+    );
+    if (!geoResponse.ok) return null;
+    const geoData = await geoResponse.json() as {
+      status?: string;
+      results?: Array<{ geometry?: { location?: { lat?: number; lng?: number } } }>;
+    };
+    const point = geoData.results?.[0]?.geometry?.location;
+    if (geoData.status !== "OK" || typeof point?.lat !== "number" || typeof point?.lng !== "number") return null;
+    const latitude = point.lat;
+    const longitude = point.lng;
+
+    const x = longitude * 20037508.34 / 180;
+    const sinLat = Math.sin(latitude * Math.PI / 180);
+    const y = Math.log((1 + sinLat) / (1 - sinLat)) / 2 * 20037508.34 / Math.PI;
+    const bufferMetres = 30;
+    const geometry = JSON.stringify({
+      xmin: Math.round(x - bufferMetres), ymin: Math.round(y - bufferMetres),
+      xmax: Math.round(x + bufferMetres), ymax: Math.round(y + bufferMetres),
+      spatialReference: { wkid: 102100 },
+    });
+    const params = new URLSearchParams({
+      geometry,
+      geometryType: "esriGeometryEnvelope",
+      spatialRel: "esriSpatialRelIntersects",
+      outFields: "PARCELID,ADDRESS,COUNTY_NAME,DEEDAC",
+      f: "json",
+    });
+    const parcelResponse = await fetch(TN_PARCEL_QUERY_URL, {
+      method: "POST",
+      body: params,
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      signal: AbortSignal.timeout(12_000),
+    });
+    if (!parcelResponse.ok) return null;
+    const parcelData = await parcelResponse.json() as {
+      features?: Array<{ attributes?: Record<string, unknown> }>;
+    };
+
+    const exactMatches = (parcelData.features ?? []).flatMap((feature) => {
+      const attributes = feature.attributes ?? {};
+      const parcelId = typeof attributes.PARCELID === "string" ? attributes.PARCELID.trim() : "";
+      const parcelCounty = typeof attributes.COUNTY_NAME === "string" ? attributes.COUNTY_NAME.trim() : "";
+      const parcelStreet = typeof attributes.ADDRESS === "string" ? attributes.ADDRESS.trim() : "";
+      if (!parcelId || !isExactAddressParcelMatch({
+        submittedStreet: input.street,
+        submittedCounty: input.county,
+        parcelStreet,
+        parcelCounty,
+      })) return [];
+      return [{
+        parcelId,
+        county: parcelCounty,
+        deedAcres: typeof attributes.DEEDAC === "number" && attributes.DEEDAC > 0 ? attributes.DEEDAC : null,
+        lat: latitude,
+        lng: longitude,
+      }];
+    });
+
+    return exactMatches.length === 1 ? exactMatches[0] : null;
+  } catch (error) {
+    console.warn("[Quote] Address-to-parcel association skipped:", error);
+    return null;
+  }
+}
 
 export const quoteSchema = z.object({
   name: z.string().min(1, "Name is required").max(100),
@@ -628,6 +723,13 @@ export const quoteRouter = router({
     // Persist submission to quote_submissions log
     let submissionId: number | null = null;
     let leadId: number | null = null;
+    const autoMatchedParcel = input.parcelId
+      ? null
+      : await resolveUniqueParcelForWebsiteRequest(input);
+    const effectiveParcelId = input.parcelId || autoMatchedParcel?.parcelId || null;
+    const effectiveDeedAcres = input.deedAcres ?? autoMatchedParcel?.deedAcres ?? null;
+    const effectivePinLat = input.propertyPinLat ?? autoMatchedParcel?.lat ?? null;
+    const effectivePinLng = input.propertyPinLng ?? autoMatchedParcel?.lng ?? null;
     try {
       const db = await getDb();
       if (db) {
@@ -649,14 +751,14 @@ export const quoteRouter = router({
           message: input.message || null,
           addOns: input.addOns && input.addOns.length > 0 ? JSON.stringify(input.addOns) : null,
           parcelOwner: input.parcelOwner || null,
-          parcelId: input.parcelId || null,
-          deedAcres: input.deedAcres != null ? String(input.deedAcres) : null,
+          parcelId: effectiveParcelId,
+          deedAcres: effectiveDeedAcres != null ? String(effectiveDeedAcres) : null,
           adjustedAcres: input.adjustedAcres != null ? String(input.adjustedAcres) : null,
           estimatedRange: input.estimatedRange || null,
           serviceBreakdown: input.serviceBreakdown.length > 0 ? JSON.stringify(input.serviceBreakdown) : null,
           propertyPhotoUrls: input.propertyPhotoUrls && input.propertyPhotoUrls.length > 0 ? JSON.stringify(input.propertyPhotoUrls) : null,
-          propertyPinLat: input.propertyPinLat != null ? String(input.propertyPinLat) : null,
-          propertyPinLng: input.propertyPinLng != null ? String(input.propertyPinLng) : null,
+          propertyPinLat: effectivePinLat != null ? String(effectivePinLat) : null,
+          propertyPinLng: effectivePinLng != null ? String(effectivePinLng) : null,
           rfpDocumentUrls: input.rfpDocumentUrls && input.rfpDocumentUrls.length > 0 ? JSON.stringify(input.rfpDocumentUrls) : null,
           siteVisitAttachments: input.siteVisitAttachments.length > 0 ? JSON.stringify(input.siteVisitAttachments) : null,
           clientType: input.clientType ?? "residential",
@@ -770,6 +872,10 @@ export const quoteRouter = router({
           title,
           serviceType: serviceLabel,
           acreage: input.acreage || null,
+          parcelId: effectiveParcelId,
+          parcelCounty: effectiveParcelId
+            ? (autoMatchedParcel?.county || input.county || null)
+            : null,
           aiRangeConfidence: null,
           aiRangeConfidenceScore: null,
           sourceDetail: "website_site_visit_request",
