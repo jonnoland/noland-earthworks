@@ -17,7 +17,7 @@ import { roundQuoteCentsUp } from "@shared/quoteMoney";
 import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
 import { TRPCError } from "@trpc/server";
 import { getDb } from "./db";
-import { nativeQuotes, nativeJobs, aiPricingSettings, nativeClients, opsLeads } from "../drizzle/schema";
+import { nativeQuotes, nativeJobs, aiPricingSettings, nativeClients, opsLeads, quoteSubmissions } from "../drizzle/schema";
 import { getPricingBenchmarks } from "./db";
 import { eq, desc, like, or, and, asc } from "drizzle-orm";
 import { randomBytes } from "crypto";
@@ -171,6 +171,7 @@ export const nativeQuotesRouter = router({
       leadId: z.number().int().optional(),
       fieldQuoteId: z.number().int().optional(),
       distanceQuoteId: z.number().int().optional(),
+      websiteRequestId: z.number().int().optional(),
     }))
     .mutation(async ({ input }: { input: any }) => {
       const db = await getDb();
@@ -209,6 +210,12 @@ export const nativeQuotesRouter = router({
       });
       const id = (result as any).insertId ?? (result as any)[0]?.insertId;
 
+      if (input.websiteRequestId) {
+        await db.update(quoteSubmissions)
+          .set({ nativeQuoteId: Number(id) })
+          .where(eq(quoteSubmissions.id, input.websiteRequestId));
+      }
+
       // Auto-save / update client record
       try {
         const { clientName, clientEmail, clientPhone, propertyAddress } = input;
@@ -246,7 +253,7 @@ export const nativeQuotesRouter = router({
         }
       } catch (_) { /* non-fatal — quote was already saved */ }
 
-      return { id: Number(id) };
+      return { id: Number(id), websiteRequestId: input.websiteRequestId ?? null };
     }),
 
   update: ownerProcedure

@@ -367,6 +367,7 @@ function QuoteFormModal({
     propertyAddress?: string;
     serviceType?: string;
     clientMessage?: string;
+    websiteRequestId?: number;
   };
 }) {
   const utils = trpc.useUtils();
@@ -669,6 +670,7 @@ function QuoteFormModal({
   const createMutation = trpc.nativeQuotes.create.useMutation({
     onSuccess: () => {
       utils.nativeQuotes.list.invalidate();
+      utils.ops.quotes.list.invalidate();
       toast.success("Quote created");
       onSaved();
     },
@@ -678,6 +680,7 @@ function QuoteFormModal({
   const updateMutation = trpc.nativeQuotes.update.useMutation({
     onSuccess: () => {
       utils.nativeQuotes.list.invalidate();
+      utils.ops.quotes.list.invalidate();
       toast.success("Quote updated");
       onSaved();
     },
@@ -688,6 +691,7 @@ function QuoteFormModal({
     onSuccess: (data) => {
       setDraftQuoteId(data.id);
       utils.nativeQuotes.list.invalidate();
+      utils.ops.quotes.list.invalidate();
       toast.success("Draft saved. You can continue editing.");
     },
     onError: (e) => toast.error("Draft was not saved: " + e.message),
@@ -696,6 +700,7 @@ function QuoteFormModal({
   const updateDraftMutation = trpc.nativeQuotes.update.useMutation({
     onSuccess: () => {
       utils.nativeQuotes.list.invalidate();
+      utils.ops.quotes.list.invalidate();
       toast.success("Draft updated. You can continue editing.");
     },
     onError: (e) => toast.error("Draft was not saved: " + e.message),
@@ -799,6 +804,7 @@ function QuoteFormModal({
       proposalStatus: form.proposalStatus,
       depositStatus: form.depositStatus,
       finalPaymentStatus: form.finalPaymentStatus,
+      websiteRequestId: !editQuote && !draftQuoteId ? prefill?.websiteRequestId : undefined,
     };
   };
 
@@ -2378,6 +2384,7 @@ function InlineWebRequestsPanel({
     propertyAddress?: string;
     serviceType?: string;
     clientMessage?: string;
+    websiteRequestId?: number;
   }) => void;
   soundAlertsEnabled: boolean;
   browserNotificationsEnabled: boolean;
@@ -2757,6 +2764,7 @@ function InlineWebRequestsPanel({
                         propertyAddress: [req.street, req.city].filter(Boolean).join(", ") || undefined,
                         serviceType: req.service ?? undefined,
                         clientMessage: req.message ?? undefined,
+                        websiteRequestId: req.id,
                       })}
                     >
                       <Plus className="w-3 h-3" />

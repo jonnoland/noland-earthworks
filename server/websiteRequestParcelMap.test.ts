@@ -33,4 +33,14 @@ describe("Website Requests parcel-aware map", () => {
     expect(panel).toContain("Parcel {parcelId} could not load; showing the request location instead.");
     expect(panel).toContain("address={!hasPin ? addressStr : undefined}");
   });
+
+  it("links request-originated quotes and refreshes the request map after parcel saves", () => {
+    const router = source("server/nativeQuotesRouter.ts");
+    const panel = source("client/src/pages/ops/NativeAllQuotesSection.tsx");
+
+    expect(router).toContain("websiteRequestId: z.number().int().optional()");
+    expect(router).toContain(".set({ nativeQuoteId: Number(id) })");
+    expect(panel).toContain("websiteRequestId: req.id");
+    expect(panel).toContain("utils.ops.quotes.list.invalidate()");
+  });
 });

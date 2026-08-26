@@ -3669,3 +3669,8 @@
 - [x] Display a linked quote’s Parcel ID location and parcel boundary in the Website Requests map
 - [x] Preserve the existing request-address map fallback when no parcel lookup is available
 - [x] Add regression coverage and validate parcel-aware Website Requests mapping
+
+## Automatic Parcel ID Propagation to Website Requests — Aug 2026
+- [x] Link a newly created quote to its originating Website Request when it is built from that request
+- [x] Refresh the linked Website Request map automatically after a Parcel ID is saved on a new or existing quote
+- [x] Add regression coverage and validate automatic Parcel ID propagation
