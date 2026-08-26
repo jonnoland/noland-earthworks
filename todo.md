@@ -3685,3 +3685,13 @@
 - [x] Persist parcel association data for the Website Request map and linked quote workflow
 - [x] Preserve manual Parcel ID lookup and clear review fallback when address matching is inconclusive
 - [x] Add regression coverage and validate address-to-parcel association
+
+## Operations Dashboard Format Review — Aug 2026
+- [x] Inspect the existing /ops dashboard hierarchy, metrics, and day-to-day workflow fit
+- [x] Recommend a simpler owner-operator dashboard format and prioritized improvements
+
+## Field Command Center Dashboard — Aug 2026
+- [x] Reorganize /ops into a Field Command Center with prioritized daily work, schedule, cash, and pipeline blocks
+- [x] Move lower-priority reporting and growth widgets into a collapsible Business Pulse section
+- [x] Correct scheduled-job and invoice dashboard links to their proper Operations pages
+- [x] Add dashboard navigation regression coverage and fully validate the update
