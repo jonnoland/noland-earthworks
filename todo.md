@@ -3664,3 +3664,8 @@
 - [x] Automatically move the linked lead to Won when the client signs Phase 1 digitally
 - [x] Produce a prioritized process-improvement plan with operational measurement points
 - [x] Add regression coverage and validate the signed-quote lead status automation
+
+## Parcel-Aware Website Requests Map — Aug 2026
+- [x] Display a linked quote’s Parcel ID location and parcel boundary in the Website Requests map
+- [x] Preserve the existing request-address map fallback when no parcel lookup is available
+- [x] Add regression coverage and validate parcel-aware Website Requests mapping

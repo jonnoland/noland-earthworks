@@ -1942,6 +1942,9 @@ export const nativeQuotes = mysqlTable("native_quotes", {
   estimatedDuration: varchar("estimatedDuration", { length: 100 }),
   acreage: varchar("acreage", { length: 50 }),
   serviceType: varchar("serviceType", { length: 100 }),
+  /** Tennessee parcel reference selected while preparing this quote. */
+  parcelId: varchar("parcelId", { length: 100 }),
+  parcelCounty: varchar("parcelCounty", { length: 100 }),
   /** AI estimate reliability carried from a website quote request for sorting and triage */
   aiRangeConfidence: varchar("aiRangeConfidence", { length: 16 }),
   aiRangeConfidenceScore: int("aiRangeConfidenceScore"),

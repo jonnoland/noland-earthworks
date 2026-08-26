@@ -27,7 +27,7 @@ import { Resend } from "resend";
 import { jobs, opsLeads, quoteSubmissions, crews, crewMembers, conversations, messages, reviews, timeEntries, distanceQuotes, businessSettings, automationSettings, serviceCatalog, pricingBenchmarks, messageTemplates, reminderRules, leadNotes, visitBlackoutDates, recurringBlackoutDays, aiPricingSettings, quoteDrafts, socialPosts, adSpend, equipment, serviceLogs, serviceIntervals, fieldDiagnostics, ownerTasks, jobNotes, morningBriefs, reviewRequests, chatSessions,
 	 scheduleEntries, agentConfig, adCampaigns, prospectingLeads, outreachTemplates, leadContactLog, nativeQuotes, serviceFaqs, leadGenerationTrackingSettings, leadGenerationDailySnapshots } from "../drizzle/schema";
 
-import { and, asc, desc, eq, gte, inArray, lt, lte, like, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, getTableColumns, gte, inArray, lt, lte, like, or, sql } from "drizzle-orm";
 import { portalAddOnOptions } from "../drizzle/schema";
 import { autoPatchSeoCheck, AUTO_PATCHABLE_CHECKS, SQUARESPACE_MANUAL_CHECKS, CODE_FIXED_CHECKS, INFRA_CHECKS } from "./seoAutoPatcher";
 import { notifyOwner } from "./_core/notification";
@@ -1279,7 +1279,15 @@ const quotesRouter = router({
     .query(async ({ input }) => {
       const db = await getDb();
       if (!db) return [];
-      return db.select().from(quoteSubmissions).orderBy(desc(quoteSubmissions.createdAt)).limit(input.limit);
+      return db.select({
+        ...getTableColumns(quoteSubmissions),
+        linkedQuoteParcelId: nativeQuotes.parcelId,
+        linkedQuoteParcelCounty: nativeQuotes.parcelCounty,
+      })
+        .from(quoteSubmissions)
+        .leftJoin(nativeQuotes, eq(quoteSubmissions.nativeQuoteId, nativeQuotes.id))
+        .orderBy(desc(quoteSubmissions.createdAt))
+        .limit(input.limit);
     }),
   delete: ownerProcedure
     .input(z.object({ id: z.number().int().positive() }))
