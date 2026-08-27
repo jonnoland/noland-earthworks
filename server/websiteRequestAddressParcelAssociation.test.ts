@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("./_core/env", () => ({
@@ -5,6 +7,8 @@ vi.mock("./_core/env", () => ({
 }));
 
 import { resolveUniqueParcelForWebsiteRequest } from "./quoteRouter";
+
+const projectRoot = resolve(import.meta.dirname, "..");
 
 describe("Website Request address-to-parcel association", () => {
   afterEach(() => {
@@ -112,5 +116,12 @@ describe("Website Request address-to-parcel association", () => {
     vi.stubGlobal("fetch", fetchMock);
 
     await expect(resolveUniqueParcelForWebsiteRequest(davidsonRequestAddress)).resolves.toBeNull();
+  });
+
+  it("keeps Nashville property acreage available for the editable quote calculation field", () => {
+    const source = readFileSync(resolve(projectRoot, "client/src/pages/ops/NativeAllQuotesSection.tsx"), "utf8");
+    expect(source).toContain("Parcel details and reported acreage copied into the editable quote fields.");
+    expect(source).toContain("reported acreage:");
+    expect(source).toContain("acreage: current.acreage || reportedAcreage || current.acreage");
   });
 });

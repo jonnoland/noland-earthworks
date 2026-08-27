@@ -3776,3 +3776,12 @@
 ## Noland Field v0.4.13 GitHub Release Asset — Aug 2026
 - [x] Create or update the Noland Field v0.4.13 GitHub release and upload the verified replacement-signed APK as its release asset
 - [x] Verify the GitHub release asset checksum, version details, and installation note for the replacement signature
+
+## Nashville Parcel Acreage Auto-Fill — Aug 2026
+- [x] Auto-populate editable quote acreage from a selected Nashville Parcel Viewer property result
+- [x] Preserve existing entered acreage when the Nashville parcel record lacks acreage and label source data as reference information
+- [x] Confirm quote calculators receive the populated acreage and add regression coverage
+
+## Field Quote and Web Quote Pricing Comparison — Aug 2026
+- [ ] Compare field and web quote inputs, rate sources, condition adjustments, discounts, rounding, and saved pricing configuration
+- [ ] Identify the exact causes of any divergent totals and recommend the required unified pricing behavior

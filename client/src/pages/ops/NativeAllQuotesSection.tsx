@@ -609,23 +609,27 @@ function QuoteFormModal({
     const parcelSourceLabel = isNashvilleParcelViewerUrl(match.propertyViewerUrl)
       ? "Nashville Parcel Viewer"
       : "TN Property Viewer";
+    const reportedAcreage = match.deedAcreage
+      ? String(Math.round(match.deedAcreage * 100) / 100)
+      : null;
     setForm((current) => ({
       ...current,
       clientName: current.clientName.trim() ? current.clientName : (match.owner || current.clientName),
       propertyAddress: match.address || current.propertyAddress,
-      acreage: current.acreage || (match.deedAcreage ? String(Math.round(match.deedAcreage * 100) / 100) : current.acreage),
+      acreage: current.acreage || reportedAcreage || current.acreage,
       parcelId: match.parcelId,
       parcelCounty: match.county,
       internalNotes: [
         current.internalNotes,
         `${parcelSourceLabel} reference: Parcel ${match.parcelId} · ${match.county}${match.owner ? ` · Owner: ${match.owner}` : ""}`,
+        reportedAcreage && !current.acreage ? `${parcelSourceLabel} reported acreage: ${reportedAcreage} acres (reference only; editable and verify on site).` : "",
       ].filter(Boolean).join("\n"),
     }));
     setParcelId(match.parcelId);
     setParcelCounty(match.county);
     setSelectedParcel(match);
     setParcelMatches([]);
-    toast.success("Parcel details copied into the editable quote fields.");
+    toast.success(reportedAcreage ? "Parcel details and reported acreage copied into the editable quote fields." : "Parcel details copied into the editable quote fields.");
   };
 
   const lookupParcel = () => {
@@ -1303,7 +1307,7 @@ function QuoteFormModal({
                   </div>
                 </div>
               )}
-              <p className="mt-2 text-[10px] text-zinc-500">Tennessee Comptroller parcel data is reference information only and is not a legal survey. If no record appears, use the editable address field.</p>
+              <p className="mt-2 text-[10px] text-zinc-500">{isNashvilleParcelViewerUrl(selectedParcel?.propertyViewerUrl) ? "Nashville Parcel Viewer" : "Tennessee Comptroller parcel"} data is reference information only and is not a legal survey. If no record appears, use the editable address field.</p>
             </div>
             <div>
               <Label className="text-zinc-400 text-xs mb-1 block">Service Type</Label>

@@ -40,4 +40,14 @@ describe("Nashville Parcel Viewer adapter", () => {
       propertyViewerUrl: "https://maps.nashville.gov/ParcelViewer/?parcelID=00300000500",
     });
   });
+
+  it("falls back to reported acreage when deeded acreage is absent or zero", () => {
+    expect(mapNashvilleParcelFeature({
+      attributes: {
+        APN: "00300000501",
+        DeededAcreage: 0,
+        Acres: 4.75,
+      },
+    }).deedAcreage).toBe(4.75);
+  });
 });

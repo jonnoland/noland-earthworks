@@ -77,8 +77,13 @@ export function mapNashvilleParcelFeature(feature: NashvilleParcelFeature) {
   const street = cleanText(attributes.PropAddr);
   const city = cleanText(attributes.PropCity);
   const zip = cleanText(attributes.PropZip);
-  const acreageValue = attributes.DeededAcreage ?? attributes.Acres;
-  const deedAcreage = typeof acreageValue === "number" && acreageValue > 0 ? acreageValue : null;
+  const deededAcreage = typeof attributes.DeededAcreage === "number" && attributes.DeededAcreage > 0
+    ? attributes.DeededAcreage
+    : null;
+  const reportedAcreage = typeof attributes.Acres === "number" && attributes.Acres > 0
+    ? attributes.Acres
+    : null;
+  const deedAcreage = deededAcreage ?? reportedAcreage;
 
   return {
     parcelId,
