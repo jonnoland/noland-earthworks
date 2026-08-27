@@ -267,8 +267,8 @@ const NAV_GROUPS = [
       { label: "Jobs",          href: "/ops/jobs",          icon: Briefcase },
       { label: "Schedule",      href: "/ops/schedule",      icon: CalendarDays },
       { label: "Tasks",         href: "/ops/tasks",         icon: ClipboardList },
-      { label: "Crews",         href: "/ops/crews",         icon: HardHat },
-      { label: "Equipment",     href: "/ops/equipment",     icon: Settings },
+      { label: "Crews",         href: "/ops/crews-hub",     icon: HardHat },
+      { label: "Equipment",     href: "/ops/equipment-hub", icon: Settings },
       { label: "Field Fix",     href: "/ops/field-fix",     icon: Wrench },
       { label: "Rentals",       href: "/ops/rentals",       icon: Truck },
       { label: "Route Planner", href: "/ops/route-planner", icon: Route },
@@ -296,8 +296,8 @@ const NAV_GROUPS = [
   {
     label: "Business",
     items: [
-      { label: "Reports",       href: "/ops/reports",       icon: TrendingUp },
-      { label: "Pricing",       href: "/ops/pricing",       icon: Calculator },
+      { label: "Reports",       href: "/ops/reports-hub",   icon: TrendingUp },
+      { label: "Pricing",       href: "/ops/pricing-hub",   icon: Calculator },
       { label: "Chat Sessions", href: "/ops/chat-sessions", icon: BotMessageSquare },
       { label: "Resources",     href: "/ops/resources",     icon: BookOpen },
       { label: "Team",          href: "/ops/team",          icon: UserPlus },
@@ -442,17 +442,17 @@ export default function DashboardLayout({ children, title, subtitle }: Dashboard
           {collapsed ? (
             <Link href="/">
               <img
-                src="/manus-storage/ops-brand-logo_c03a1088.png"
+                src="https://d2xsxph8kpxj0f.cloudfront.net/310519663484957999/PymCzDCnSJzPjdkfwA7Jn6/noland_earthworks_logo_3091ee09.png"
                 alt="Noland Earthworks"
-                className="w-11 h-8 object-contain cursor-pointer"
+                className="w-10 h-10 object-contain cursor-pointer"
               />
             </Link>
           ) : (
             <Link href="/">
               <img
-                src="/manus-storage/ops-brand-logo_c03a1088.png"
+                src="https://d2xsxph8kpxj0f.cloudfront.net/310519663484957999/PymCzDCnSJzPjdkfwA7Jn6/noland_earthworks_logo_3091ee09.png"
                 alt="Noland Earthworks"
-                className="h-10 w-[172px] max-w-full object-contain cursor-pointer"
+                className="h-16 w-auto object-contain cursor-pointer px-2"
               />
             </Link>
           )}
@@ -497,9 +497,9 @@ export default function DashboardLayout({ children, title, subtitle }: Dashboard
             <div className="h-14 flex items-center justify-between px-4 border-b border-[#1e1e1e]">
               <div className="flex items-center">
                 <img
-                  src="/manus-storage/ops-brand-logo_c03a1088.png"
+                  src="https://d2xsxph8kpxj0f.cloudfront.net/310519663484957999/PymCzDCnSJzPjdkfwA7Jn6/noland_earthworks_logo_3091ee09.png"
                   alt="Noland Earthworks"
-                  className="h-9 w-[124px] object-contain"
+                  className="h-9 w-auto object-contain"
                 />
               </div>
               <button onClick={() => setMobileOpen(false)} className="text-muted-foreground hover:text-white">
@@ -578,7 +578,7 @@ export default function DashboardLayout({ children, title, subtitle }: Dashboard
                 <div className="absolute right-0 top-full mt-2 w-48 bg-[#111] border border-[#222] rounded-lg shadow-2xl z-50 py-1">
                   <div className="px-3 py-2 border-b border-[#222]">
                     <p className="text-xs font-semibold text-white">{user?.name ?? "Jon Noland"}</p>
-                    <p className="text-[10px] text-muted-foreground">{user?.email ?? "quotes@nolandearthworks.com"}</p>
+                    <p className="text-[10px] text-muted-foreground">{user?.email ?? "jonnoland@nolandearthworks.com"}</p>
                   </div>
                   <Link href="/ops/settings">
                     <button

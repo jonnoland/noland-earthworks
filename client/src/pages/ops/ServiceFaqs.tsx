@@ -5,8 +5,7 @@
  */
 import { useState } from "react";
 import { trpc } from "@/lib/trpc";
-import DashboardLayout from "@/components/DashboardLayout";
-const OpsDashboardLayout = DashboardLayout;
+import OpsDashboardLayout from "@/components/OpsDashboardLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";

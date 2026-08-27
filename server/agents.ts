@@ -445,7 +445,7 @@ export async function runDailyDigestAgent() {
 
     // Get owner email from businessSettings (most reliable)
     const bizRows = await db.select().from(businessSettings).limit(1);
-    const ownerEmail = bizRows[0]?.email ?? owner.email ?? "quotes@nolandearthworks.com";
+    const ownerEmail = bizRows[0]?.email ?? owner.email ?? "jonnoland@nolandearthworks.com";
     const googleReviewUrl = bizRows[0]?.googleReviewUrl ?? "https://g.page/r/CcglMAMbtQInEBM/review";
 
     const todayStart = startOfDay(new Date());

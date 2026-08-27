@@ -114,6 +114,17 @@ function nativeJobToScheduledJob(j: any): ScheduledJob {
   };
 }
 
+// ─── Local job shape ─────────────────────────────────────────────────────────
+interface LocalJob {
+  id: number;
+  title: string | null;
+  client: string | null;
+  status: string | null;
+  scheduledDate: Date | null;
+  crewId: number | null;
+  isHighPriority: boolean | null;
+}
+
 // ─── Draggable schedule entry card ────────────────────────────────────────────
 function DraggableEntryCard({
   entry, crewColor, onDelete,
@@ -149,6 +160,32 @@ function DraggableEntryCard({
       >
         <X className="w-2.5 h-2.5" />
       </button>
+    </div>
+  );
+}
+
+// ─── Draggable local job card ──────────────────────────────────────────────────
+function DraggableLocalJobCard({ job, crewColor }: { job: LocalJob; crewColor: string }) {
+  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
+    id: `localjob-${job.id}`,
+  });
+  return (
+    <div
+      ref={setNodeRef}
+      {...listeners}
+      {...attributes}
+      className={cn(
+        "rounded-md border px-2 py-1.5 text-[10px] cursor-grab active:cursor-grabbing select-none flex items-start gap-1",
+        crewColor || "border-amber-500/40 bg-amber-500/15 text-amber-300",
+        isDragging && "opacity-40"
+      )}
+    >
+      <GripVertical className="w-2.5 h-2.5 opacity-40 mt-0.5 shrink-0" />
+      <div className="min-w-0 flex-1">
+        <div className="font-semibold truncate">{job.title || "Untitled Job"}</div>
+        {job.client && <div className="opacity-70 truncate">{job.client}</div>}
+        {job.isHighPriority && <Flag className="w-2.5 h-2.5 text-red-400 mt-0.5" />}
+      </div>
     </div>
   );
 }
@@ -464,6 +501,7 @@ export default function Schedule() {
   const [form, setForm] = useState<EntryFormData>(emptyForm);
   const [draggingJobId, setDraggingJobId] = useState<string | null>(null);
   const [draggingEntryId, setDraggingEntryId] = useState<number | null>(null);
+  const [draggingLocalJobId, setDraggingLocalJobId] = useState<number | null>(null);
   const [draggingQuoteId, setDraggingQuoteId] = useState<number | null>(null);
 
   // Priority 6: Weather-Aware Scheduling
@@ -482,6 +520,13 @@ export default function Schedule() {
   // ── Crews from DB (matches Crews page) ──
   const { data: crewList = [] } = trpc.ops.crews.list.useQuery();
 
+  // ── Local jobs (from jobs table — show on calendar if they have a scheduledDate) ──
+  const { data: rawLocalJobs = [] } = trpc.ops.jobs.list.useQuery();
+  const localJobs = rawLocalJobs as unknown as LocalJob[];
+  const scheduledLocalJobs = useMemo(
+    () => localJobs.filter(j => j.scheduledDate),
+    [localJobs]
+  );
   // ── Native jobs (primary job source) ──
   const {
     data: nativeJobsRaw = [],
@@ -568,6 +613,29 @@ export default function Schedule() {
     return map;
   }, [entries, crewNames, weekDays]);
 
+  // ── Map local jobs to crew+day cells ──
+  const localJobMap = useMemo(() => {
+    // map[crewName][dayKey] = LocalJob[]
+    const map: Record<string, Record<string, LocalJob[]>> = {};
+    for (const crew of crewNames) {
+      map[crew] = {};
+      for (const day of weekDays) map[crew][day.key] = [];
+    }
+    // "Unassigned" bucket for jobs with a date but no crew
+    map["__unassigned__"] = {};
+    for (const day of weekDays) map["__unassigned__"][day.key] = [];
+
+    for (const job of scheduledLocalJobs) {
+      const dateKey = formatDateKey(new Date(job.scheduledDate!));
+      const assignedCrew = crewList.find((c: any) => c.id === job.crewId);
+      const crewName = assignedCrew ? (assignedCrew as any).name as string : "__unassigned__";
+      if (map[crewName]?.[dateKey] !== undefined) {
+        map[crewName][dateKey].push(job);
+      }
+    }
+    return map;
+  }, [scheduledLocalJobs, crewNames, weekDays, crewList]);
+
   const getCrewColor = (crewName: string) =>
     CREW_COLORS[crewNames.indexOf(crewName) % CREW_COLORS.length];
 
@@ -580,6 +648,16 @@ export default function Schedule() {
   const updateEntry = trpc.ops.schedule.update.useMutation({
     onSuccess: () => utils.ops.schedule.list.invalidate(),
     onError: (e) => toast.error(e.message || "Failed to move entry"),
+  });
+
+  const updateLocalJob = trpc.ops.jobs.update.useMutation({
+    onSuccess: () => utils.ops.jobs.list.invalidate(),
+    onError: (e) => toast.error(e.message || "Failed to move job"),
+  });
+
+  const assignCrewToJob = trpc.ops.jobs.assignCrew.useMutation({
+    onSuccess: () => utils.ops.jobs.list.invalidate(),
+    onError: (e) => toast.error(e.message || "Failed to assign crew"),
   });
 
   // ── Mutations ──
@@ -628,6 +706,7 @@ export default function Schedule() {
     const id = String(event.active.id);
     if (id.startsWith("job-")) setDraggingJobId(id.replace("job-", ""));
     else if (id.startsWith("entry-")) setDraggingEntryId(Number(id.replace("entry-", "")));
+    else if (id.startsWith("localjob-")) setDraggingLocalJobId(Number(id.replace("localjob-", "")));
     else if (id.startsWith("quote-")) setDraggingQuoteId(Number(id.replace("quote-", "")));
   };
 
@@ -637,6 +716,7 @@ export default function Schedule() {
 
     setDraggingJobId(null);
     setDraggingEntryId(null);
+    setDraggingLocalJobId(null);
     setDraggingQuoteId(null);
 
     if (!overId) return;
@@ -669,6 +749,34 @@ export default function Schedule() {
         date: new Date(newDay + "T12:00:00"),
       });
       toast.success(`Moved "${entry.title}" to ${newCrew} on ${new Date(newDay).toLocaleDateString("en-US", { month: "short", day: "numeric" })}`);
+      return;
+    }
+
+    if (activeId.startsWith("localjob-") && crewDayMatch) {
+      const jobId = Number(activeId.replace("localjob-", ""));
+      const [, newCrew, newDay] = crewDayMatch;
+      const job = localJobs.find(j => j.id === jobId);
+      if (!job) return;
+
+      const newCrewObj = crewList.find((c: any) => (c as any).name === newCrew);
+      const newCrewId = newCrewObj ? (newCrewObj as any).id as number : null;
+
+      // Update both date and crew in one call
+      updateLocalJob.mutate({
+        id: jobId,
+        scheduledDate: new Date(newDay + "T12:00:00"),
+        crewId: newCrewId,
+      });
+      toast.success(`Job moved to ${newCrew} on ${new Date(newDay).toLocaleDateString("en-US", { month: "short", day: "numeric" })}`);
+      return;
+    }
+
+    if (activeId.startsWith("localjob-") && dayOnlyMatch) {
+      // Dropped on jobs row — just update the date
+      const jobId = Number(activeId.replace("localjob-", ""));
+      const newDay = dayOnlyMatch[1];
+      updateLocalJob.mutate({ id: jobId, scheduledDate: new Date(newDay + "T12:00:00") });
+      toast.success(`Job rescheduled to ${new Date(newDay).toLocaleDateString("en-US", { month: "short", day: "numeric" })}`);
       return;
     }
 
@@ -840,7 +948,8 @@ export default function Schedule() {
                         </td>
                         {weekDays.map(day => {
                           const dayEntries = entryMap[crew]?.[day.key] ?? [];
-                          const hasContent = dayEntries.length > 0;
+                          const dayLocalJobs = localJobMap[crew]?.[day.key] ?? [];
+                          const hasContent = dayEntries.length > 0 || dayLocalJobs.length > 0;
                           return (
                             <DroppableCrewDayCell
                               key={day.key}
@@ -868,6 +977,13 @@ export default function Schedule() {
                                       onDelete={() => {
                                         if (confirm("Remove this entry?")) deleteEntry.mutate({ id: entry.id });
                                       }}
+                                    />
+                                  ))}
+                                  {dayLocalJobs.map(job => (
+                                    <DraggableLocalJobCard
+                                      key={job.id}
+                                      job={job}
+                                      crewColor={getCrewColor(crew)}
                                     />
                                   ))}
                                   {/* Add entry button when cell already has content */}
@@ -954,6 +1070,25 @@ export default function Schedule() {
                     <div className="min-w-0">
                       <div className="font-semibold truncate">{entry.title}</div>
                       <div className="opacity-70">{entry.startHour}:00 – {entry.endHour}:00</div>
+                    </div>
+                  </div>
+                );
+              })()}
+              {/* Local job overlay */}
+              {draggingLocalJobId !== null && (() => {
+                const job = localJobs.find(j => j.id === draggingLocalJobId);
+                if (!job) return null;
+                const assignedCrew = crewList.find((c: any) => c.id === job.crewId);
+                const color = assignedCrew ? getCrewColor((assignedCrew as any).name) : "border-amber-500/40 bg-amber-500/15 text-amber-300";
+                return (
+                  <div className={cn(
+                    "rounded-md border px-2 py-1.5 text-[10px] shadow-xl cursor-grabbing flex items-start gap-1 w-36",
+                    color
+                  )}>
+                    <GripVertical className="w-2.5 h-2.5 opacity-40 mt-0.5 shrink-0" />
+                    <div className="min-w-0">
+                      <div className="font-semibold truncate">{job.title || "Untitled Job"}</div>
+                      {job.client && <div className="opacity-70 truncate">{job.client}</div>}
                     </div>
                   </div>
                 );

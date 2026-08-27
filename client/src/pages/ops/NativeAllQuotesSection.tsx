@@ -92,8 +92,6 @@ interface NativeQuote {
   estimatedDuration: string | null;
   acreage: string | null;
   serviceType: string | null;
-  parcelId: string | null;
-  parcelCounty: string | null;
   aiRangeConfidence: string | null;
   aiRangeConfidenceScore: number | null;
   sourceDetail: string;
@@ -327,8 +325,6 @@ interface QuoteFormData {
   serviceType: string;
   acreage: string;
   estimatedDuration: string;
-  parcelId: string;
-  parcelCounty: string;
   clientMessage: string;
   internalNotes: string;
   lineItems: LineItem[];
@@ -367,7 +363,6 @@ function QuoteFormModal({
     propertyAddress?: string;
     serviceType?: string;
     clientMessage?: string;
-    websiteRequestId?: number;
   };
 }) {
   const utils = trpc.useUtils();
@@ -409,8 +404,6 @@ function QuoteFormModal({
     serviceType: prefill?.serviceType ?? "Forestry Mulching",
     acreage: "",
     estimatedDuration: "",
-    parcelId: "",
-    parcelCounty: "",
     clientMessage: prefill?.clientMessage ?? "",
     internalNotes: "",
     lineItems: DEFAULT_LINE_ITEMS.map(li => ({ ...li })),
@@ -437,8 +430,6 @@ function QuoteFormModal({
         serviceType: editQuote.serviceType ?? "Forestry Mulching",
         acreage: editQuote.acreage ?? "",
         estimatedDuration: editQuote.estimatedDuration ?? "",
-        parcelId: editQuote.parcelId ?? "",
-        parcelCounty: editQuote.parcelCounty ?? "",
         clientMessage: editQuote.clientMessage ?? "",
         internalNotes: editQuote.internalNotes ?? "",
         lineItems: items.length > 0 ? ensureQuotePhaseIds(items) : DEFAULT_LINE_ITEMS.map(li => ({ ...li })),
@@ -466,8 +457,8 @@ function QuoteFormModal({
   const resizeCleanupRef = useRef<(() => void) | null>(null);
   const isCompactWorkspace = workspaceSize.width < 1040;
   useEffect(() => () => resizeCleanupRef.current?.(), []);
-  const [parcelCounty, setParcelCounty] = useState(editQuote?.parcelCounty ?? "");
-  const [parcelId, setParcelId] = useState(editQuote?.parcelId ?? "");
+  const [parcelCounty, setParcelCounty] = useState("");
+  const [parcelId, setParcelId] = useState("");
   const [parcelIdError, setParcelIdError] = useState<string | null>(null);
   const [parcelMatches, setParcelMatches] = useState<Array<{
     parcelId: string;
@@ -492,15 +483,11 @@ function QuoteFormModal({
       clientName: current.clientName.trim() ? current.clientName : (match.owner || current.clientName),
       propertyAddress: match.address || current.propertyAddress,
       acreage: current.acreage || (match.deedAcreage ? String(Math.round(match.deedAcreage * 100) / 100) : current.acreage),
-      parcelId: match.parcelId,
-      parcelCounty: match.county,
       internalNotes: [
         current.internalNotes,
         `TN Property Viewer reference: Parcel ${match.parcelId} · ${match.county}${match.owner ? ` · Owner: ${match.owner}` : ""}`,
       ].filter(Boolean).join("\n"),
     }));
-    setParcelId(match.parcelId);
-    setParcelCounty(match.county);
     setSelectedParcel(match);
     setParcelMatches([]);
     toast.success("Parcel details copied into the editable quote fields.");
@@ -670,7 +657,6 @@ function QuoteFormModal({
   const createMutation = trpc.nativeQuotes.create.useMutation({
     onSuccess: () => {
       utils.nativeQuotes.list.invalidate();
-      utils.ops.quotes.list.invalidate();
       toast.success("Quote created");
       onSaved();
     },
@@ -680,7 +666,6 @@ function QuoteFormModal({
   const updateMutation = trpc.nativeQuotes.update.useMutation({
     onSuccess: () => {
       utils.nativeQuotes.list.invalidate();
-      utils.ops.quotes.list.invalidate();
       toast.success("Quote updated");
       onSaved();
     },
@@ -691,7 +676,6 @@ function QuoteFormModal({
     onSuccess: (data) => {
       setDraftQuoteId(data.id);
       utils.nativeQuotes.list.invalidate();
-      utils.ops.quotes.list.invalidate();
       toast.success("Draft saved. You can continue editing.");
     },
     onError: (e) => toast.error("Draft was not saved: " + e.message),
@@ -700,7 +684,6 @@ function QuoteFormModal({
   const updateDraftMutation = trpc.nativeQuotes.update.useMutation({
     onSuccess: () => {
       utils.nativeQuotes.list.invalidate();
-      utils.ops.quotes.list.invalidate();
       toast.success("Draft updated. You can continue editing.");
     },
     onError: (e) => toast.error("Draft was not saved: " + e.message),
@@ -790,8 +773,6 @@ function QuoteFormModal({
       serviceType: form.serviceType || undefined,
       acreage: form.acreage || undefined,
       estimatedDuration: form.estimatedDuration || undefined,
-      parcelId: form.parcelId || undefined,
-      parcelCounty: form.parcelCounty || undefined,
       clientMessage: form.clientMessage || undefined,
       internalNotes: form.internalNotes || undefined,
       lineItems,
@@ -804,7 +785,6 @@ function QuoteFormModal({
       proposalStatus: form.proposalStatus,
       depositStatus: form.depositStatus,
       finalPaymentStatus: form.finalPaymentStatus,
-      websiteRequestId: !editQuote && !draftQuoteId ? prefill?.websiteRequestId : undefined,
     };
   };
 
@@ -2259,75 +2239,23 @@ function NativeQuoteDetailPanel({
 // ─── Interactive Web Request Map ──────────────────────────────────────────────
 // Replaces the static satellite thumbnail with a zoomable/pannable Google Map.
 function WebReqInteractiveMap({
-  lat, lng, address, parcelId, parcelCounty,
+  lat, lng, address,
 }: {
   lat?: number;
   lng?: number;
   address?: string;
-  parcelId?: string | null;
-  parcelCounty?: string | null;
 }) {
-  const [map, setMap] = useState<google.maps.Map | null>(null);
-  const markerRef = useRef<google.maps.marker.AdvancedMarkerElement | null>(null);
-  const polygonRefs = useRef<google.maps.Polygon[]>([]);
-  const parcelBoundary = trpc.parcel.boundary.useMutation();
-  const hasLinkedParcel = Boolean(parcelId && parcelCounty);
-
-  useEffect(() => {
-    if (!parcelId || !parcelCounty) return;
-    parcelBoundary.mutate({ parcelId, county: parcelCounty });
-  }, [parcelId, parcelCounty]);
-
-  // Keep the existing address lookup available as a fallback if a parcel
-  // boundary cannot be retrieved from the public Tennessee data service.
+  const mapRef = useRef<google.maps.Map | null>(null);
+  // If no explicit pin, geocode the address to get coordinates
   const geocodeQuery = trpc.ops.quotes.satelliteImage.useQuery(
     { address: address! },
     { enabled: lat == null && !!address, retry: false, staleTime: 1000 * 60 * 30 }
   );
 
-  const resolvedLat = parcelBoundary.data?.centroid?.lat ?? lat ?? geocodeQuery.data?.lat ?? null;
-  const resolvedLng = parcelBoundary.data?.centroid?.lng ?? lng ?? geocodeQuery.data?.lng ?? null;
-  const isResolving = hasLinkedParcel
-    ? parcelBoundary.isPending || (!parcelBoundary.data && !parcelBoundary.error && geocodeQuery.isLoading)
-    : lat == null && geocodeQuery.isLoading;
+  const resolvedLat = lat ?? geocodeQuery.data?.lat ?? null;
+  const resolvedLng = lng ?? geocodeQuery.data?.lng ?? null;
 
-  useEffect(() => {
-    if (!map || resolvedLat == null || resolvedLng == null) return;
-
-    markerRef.current?.map && (markerRef.current.map = null);
-    polygonRefs.current.forEach((polygon) => polygon.setMap(null));
-    polygonRefs.current = [];
-
-    const rings = parcelBoundary.data?.boundaryRings;
-    if (rings?.length) {
-      const bounds = new window.google.maps.LatLngBounds();
-      polygonRefs.current = rings.map((ring) => {
-        ring.forEach((point) => bounds.extend(point));
-        return new window.google.maps.Polygon({
-          paths: ring,
-          strokeColor: "#f59e0b",
-          strokeOpacity: 1,
-          strokeWeight: 2,
-          fillColor: "#f59e0b",
-          fillOpacity: 0.14,
-          map,
-        });
-      });
-      map.fitBounds(bounds, 28);
-    } else {
-      markerRef.current = new window.google.maps.marker.AdvancedMarkerElement({
-        map,
-        position: { lat: resolvedLat, lng: resolvedLng },
-        title: parcelId ? `Parcel ${parcelId}` : "Property",
-      });
-    }
-
-    return () => {
-      markerRef.current?.map && (markerRef.current.map = null);
-      polygonRefs.current.forEach((polygon) => polygon.setMap(null));
-      polygonRefs.current = [];
-    };
-  }, [map, parcelBoundary.data, parcelId, resolvedLat, resolvedLng]);
+  const isResolving = lat == null && geocodeQuery.isLoading;
 
   if (isResolving) {
     return (
@@ -2337,7 +2265,7 @@ function WebReqInteractiveMap({
     );
   }
 
-  if (resolvedLat == null || resolvedLng == null) {
+  if (!resolvedLat || !resolvedLng) {
     return (
       <div className="w-full h-52 rounded bg-zinc-800 flex items-center justify-center">
         <p className="text-xs text-muted-foreground">Map unavailable — no coordinates</p>
@@ -2347,23 +2275,20 @@ function WebReqInteractiveMap({
 
   return (
     <div className="w-full rounded overflow-hidden border border-border">
-      {parcelBoundary.data && parcelId && (
-        <div className="border-b border-amber-500/25 bg-amber-500/10 px-2.5 py-1.5 text-[10px] text-amber-100">
-          Parcel boundary: <span className="font-semibold">{parcelId}</span> · {parcelBoundary.data.county}
-        </div>
-      )}
-      {hasLinkedParcel && parcelBoundary.error && (
-        <div className="border-b border-amber-500/25 bg-amber-500/10 px-2.5 py-1.5 text-[10px] text-amber-100">
-          Parcel {parcelId} could not load; showing the request location instead.
-        </div>
-      )}
       <MapView
         className="w-full h-52"
         initialCenter={{ lat: resolvedLat, lng: resolvedLng }}
         initialZoom={17}
-        onMapReady={(readyMap) => {
-          readyMap.setMapTypeId("satellite");
-          setMap(readyMap);
+        onMapReady={(map) => {
+          mapRef.current = map;
+          // Set satellite view
+          map.setMapTypeId("satellite");
+          // Drop a marker at the property pin
+          new window.google.maps.marker.AdvancedMarkerElement({
+            map,
+            position: { lat: resolvedLat, lng: resolvedLng },
+            title: "Property",
+          });
         }}
       />
     </div>
@@ -2384,7 +2309,6 @@ function InlineWebRequestsPanel({
     propertyAddress?: string;
     serviceType?: string;
     clientMessage?: string;
-    websiteRequestId?: number;
   }) => void;
   soundAlertsEnabled: boolean;
   browserNotificationsEnabled: boolean;
@@ -2426,8 +2350,6 @@ function InlineWebRequestsPanel({
     estimatedRange?: string | null;
     serviceBreakdown?: string | null;
     nativeQuoteId?: number | null;
-    linkedQuoteParcelId?: string | null;
-    linkedQuoteParcelCounty?: string | null;
     propertyPinLat?: string | null;
     propertyPinLng?: string | null;
     siteVisitAttachments?: string | null;
@@ -2554,8 +2476,7 @@ function InlineWebRequestsPanel({
           {sortedRequests.map((req) => {
             const hasPin = !!req.propertyPinLat && !!req.propertyPinLng;
             const addressStr = [req.street, req.city, req.state].filter(Boolean).join(", ");
-            const hasLinkedParcel = Boolean(req.linkedQuoteParcelId && req.linkedQuoteParcelCounty);
-            const hasMap = hasLinkedParcel || hasPin || !!addressStr;
+            const hasMap = hasPin || !!addressStr;
             const isMapOpen = expandedMapId === req.id;
             const isEditingEstimate = editingEstimateId === req.id;
             const confidenceStyle = req.aiRangeConfidence === "high"
@@ -2602,7 +2523,7 @@ function InlineWebRequestsPanel({
                         className={`h-5 w-5 flex items-center justify-center rounded transition-colors ${
                           isMapOpen ? "text-primary bg-primary/15" : "text-muted-foreground hover:text-primary hover:bg-primary/10"
                         }`}
-                        title={isMapOpen ? "Hide map" : hasLinkedParcel ? "Show parcel boundary map" : "Show property map"}
+                        title={isMapOpen ? "Hide map" : "Show property map"}
                       >
                         <MapPin className="w-3 h-3" />
                       </button>
@@ -2648,8 +2569,6 @@ function InlineWebRequestsPanel({
                     lat={hasPin ? parseFloat(req.propertyPinLat!) : undefined}
                     lng={hasPin ? parseFloat(req.propertyPinLng!) : undefined}
                     address={!hasPin ? addressStr : undefined}
-                    parcelId={req.linkedQuoteParcelId}
-                    parcelCounty={req.linkedQuoteParcelCounty}
                   />
                 )}
 
@@ -2764,7 +2683,6 @@ function InlineWebRequestsPanel({
                         propertyAddress: [req.street, req.city].filter(Boolean).join(", ") || undefined,
                         serviceType: req.service ?? undefined,
                         clientMessage: req.message ?? undefined,
-                        websiteRequestId: req.id,
                       })}
                     >
                       <Plus className="w-3 h-3" />

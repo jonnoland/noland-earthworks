@@ -4,8 +4,7 @@
  * Monthly performance table and recent wins — derived from live jobs/leads data
  */
 import { useMemo } from "react";
-import DashboardLayout from "@/components/DashboardLayout";
-const OpsDashboardLayout = DashboardLayout;
+import OpsDashboardLayout from "@/components/OpsDashboardLayout";
 import { trpc } from "@/lib/trpc";
 import {
   DollarSign,
@@ -75,22 +74,23 @@ const JOB_TYPE_LABELS: Record<string, string> = {
 };
 
 export default function Scoreboard() {
-  const { data: jobList = [], isLoading: loadingJobs } = trpc.nativeJobs.list.useQuery({});
-  const { data: invoiceList = [] } = trpc.nativeJobs.listInvoices.useQuery({});
-  const { data: quoteResult } = trpc.nativeQuotes.list.useQuery({});
-  const quoteList = quoteResult?.quotes ?? [];
+  const { data: jobList = [], isLoading: loadingJobs } = trpc.ops.jobs.list.useQuery();
   const { data: leadList = [], isLoading: loadingLeads } = trpc.ops.leads.list.useQuery();
 
   const stats = useMemo(() => {
-    const completedJobs = jobList.filter((job) => job.status === "completed");
-    const paidInvoices = invoiceList.filter((invoice) => invoice.status === "paid");
-    const paidInvoiceJobIds = new Set(paidInvoices.map((invoice) => invoice.jobId));
-    const collectedCents = paidInvoices.reduce((sum, invoice) => sum + invoice.totalCents, 0)
-      + jobList.filter((job) => job.paidAt && !paidInvoiceJobIds.has(job.id)).reduce((sum, job) => sum + (job.paidCents ?? job.totalCents), 0)
-      + quoteList.reduce((sum, quote) => sum + (quote.depositPaidCents ?? 0), 0);
-    const totalRevenue = collectedCents / 100;
+    const completedJobs = jobList.filter((j) => j.status === "completed" || j.status === "invoiced" || j.status === "paid");
+    const paidJobs = jobList.filter((j) => j.status === "paid");
+
+    const totalRevenue = paidJobs.reduce((s, j) => {
+      const price = parseFloat(j.totalPrice?.replace(/[^0-9.]/g, "") ?? "0");
+      return s + (isNaN(price) ? 0 : price);
+    }, 0);
+
     const avgJobValue = completedJobs.length > 0
-      ? completedJobs.reduce((sum, job) => sum + job.totalCents, 0) / 100 / completedJobs.length
+      ? completedJobs.reduce((s, j) => {
+          const price = parseFloat(j.totalPrice?.replace(/[^0-9.]/g, "") ?? "0");
+          return s + (isNaN(price) ? 0 : price);
+        }, 0) / completedJobs.length
       : 0;
 
     const wonLeads = leadList.filter((l) => l.stage === "won" || l.stage === "converted").length;
@@ -100,15 +100,14 @@ export default function Scoreboard() {
     // Jobs by type breakdown
     const byType: Record<string, number> = {};
     for (const job of jobList) {
-      const service = job.serviceType || "Unspecified service";
-      byType[service] = (byType[service] ?? 0) + 1;
+      byType[job.jobType] = (byType[job.jobType] ?? 0) + 1;
     }
 
     // Recent completed jobs (last 10)
     const recentWins = [...completedJobs]
       .sort((a, b) => {
-        const da = a.completedAt ? new Date(a.completedAt).getTime() : 0;
-        const db = b.completedAt ? new Date(b.completedAt).getTime() : 0;
+        const da = a.completedDate ? new Date(a.completedDate).getTime() : 0;
+        const db = b.completedDate ? new Date(b.completedDate).getTime() : 0;
         return db - da;
       })
       .slice(0, 8);
@@ -120,7 +119,7 @@ export default function Scoreboard() {
     }
 
     return { totalRevenue, completedJobs: completedJobs.length, avgJobValue, conversionRate, byType, recentWins, byStage, totalLeads, wonLeads };
-  }, [jobList, invoiceList, quoteList, leadList]);
+  }, [jobList, leadList]);
 
   const isLoading = loadingJobs || loadingLeads;
 
@@ -139,9 +138,9 @@ export default function Scoreboard() {
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
             <KpiCard
               icon={DollarSign}
-              label="Cash Collected"
+              label="Total Revenue"
               value={stats.totalRevenue > 0 ? `$${stats.totalRevenue.toLocaleString(undefined, { maximumFractionDigits: 0 })}` : "—"}
-              sub="Paid invoices, job payments, and deposits"
+              sub="Paid jobs only"
               color="bg-green-500/10 text-green-400"
             />
             <KpiCard
@@ -192,14 +191,14 @@ export default function Scoreboard() {
                     {stats.recentWins.map((job) => (
                       <tr key={job.id} className="border-b border-white/5 hover:bg-white/3 transition-colors">
                         <td className="px-5 py-3">
-                          <p className="text-sm text-white font-medium truncate max-w-[180px]">{job.serviceType || "Land Management"}</p>
-                          <p className="text-xs text-white/40 truncate">{job.clientName}</p>
+                          <p className="text-sm text-white font-medium truncate max-w-[180px]">{job.title}</p>
+                          <p className="text-xs text-white/40 truncate">{job.client}</p>
                         </td>
                         <td className="px-5 py-3 hidden sm:table-cell text-xs text-white/50">
-                          {job.serviceType || "Land Management"}
+                          {JOB_TYPE_LABELS[job.jobType] ?? job.jobType}
                         </td>
                         <td className="px-5 py-3 text-sm text-white">
-                          {job.totalCents > 0 ? `$${Math.round(job.totalCents / 100).toLocaleString()}` : "—"}
+                          {job.totalPrice ? `$${job.totalPrice.replace(/[^0-9.]/g, "")}` : "—"}
                         </td>
                         <td className="px-5 py-3">
                           <span className={cn("text-xs px-2 py-0.5 rounded-full font-medium", STATUS_COLORS[job.status])}>

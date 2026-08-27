@@ -97,15 +97,6 @@ const DEFAULT_CONFIG: PricingConfig = {
   acresPerDay: 1,
 };
 
-function readBrowserPricingConfig(): PricingConfig {
-  try {
-    const stored = window.localStorage.getItem("noland_pricing_config");
-    return stored ? JSON.parse(stored) as PricingConfig : DEFAULT_CONFIG;
-  } catch {
-    return DEFAULT_CONFIG;
-  }
-}
-
 // ─── PDF generation ───────────────────────────────────────────────────────────
 
 function generateEstimatePDF(params: {
@@ -215,7 +206,7 @@ function generateEstimatePDF(params: {
   <div class="footer">
     <p><strong>Terms:</strong> 50% deposit required to schedule. Balance due upon completion.</p>
     <p style="margin-top:6px;"><strong>Note:</strong> This estimate is based on ${jobAcres} acres requiring ${crewDaysNeeded} crew-days. Final invoice may vary based on actual site conditions.</p>
-    <p style="margin-top:6px;">Questions? Contact us at <strong>quotes@nolandearthworks.com</strong></p>
+    <p style="margin-top:6px;">Questions? Contact us at <strong>jonnoland@nolandearthworks.com</strong></p>
   </div>
 </div>
 </body>
@@ -698,43 +689,13 @@ function PricingBenchmarksCard() {
 // ─── Main Page ────────────────────────────────────────────────────────────────────────────────
 
 export default function Pricing() {
-  const utils = trpc.useUtils();
-  const [config, setConfig] = useState<PricingConfig>(DEFAULT_CONFIG);
+  const [config, setConfig] = useState<PricingConfig>(() => {
+    try {
+      const saved = localStorage.getItem("noland_pricing_config");
+      return saved ? JSON.parse(saved) : DEFAULT_CONFIG;
+    } catch { return DEFAULT_CONFIG; }
+  });
   const [showModal, setShowModal] = useState(false);
-  const importedBrowserConfig = useRef(false);
-  const { data: sharedPricingConfig, isLoading: pricingConfigLoading } = trpc.ops.settings.getInternalPricingConfig.useQuery(undefined, { staleTime: 60_000, retry: false });
-  const initializePricingConfig = trpc.ops.settings.initializeInternalPricingConfig.useMutation({
-    onSuccess: (result) => {
-      if (result.initialized) toast.success("Existing calculator settings were saved to this Operations account.");
-      utils.ops.settings.getInternalPricingConfig.invalidate();
-    },
-    onError: (error) => toast.error(error.message || "Could not save the shared pricing configuration."),
-  });
-  const savePricingConfig = trpc.ops.settings.updateInternalPricingConfig.useMutation({
-    onSuccess: () => {
-      toast.success("Pricing configuration saved for this Operations account.");
-      utils.ops.settings.getInternalPricingConfig.invalidate();
-    },
-    onError: (error) => toast.error(error.message || "Could not save the shared pricing configuration."),
-  });
-
-  useEffect(() => {
-    if (sharedPricingConfig?.config) {
-      setConfig(sharedPricingConfig.config as PricingConfig);
-      return;
-    }
-    if (!pricingConfigLoading && !importedBrowserConfig.current) {
-      importedBrowserConfig.current = true;
-      const browserConfig = readBrowserPricingConfig();
-      setConfig(browserConfig);
-      initializePricingConfig.mutate({ config: browserConfig });
-    }
-  }, [initializePricingConfig, pricingConfigLoading, sharedPricingConfig]);
-
-  const handleConfigSave = (nextConfig: PricingConfig) => {
-    setConfig(nextConfig);
-    savePricingConfig.mutate({ config: nextConfig });
-  };
   const [jobAcres, setJobAcres] = useState(10);
   const [crewDaysNeeded, setCrewDaysNeeded] = useState(2);
   const [clientName, setClientName] = useState("");
@@ -803,6 +764,10 @@ export default function Pricing() {
   }, [initDistanceMap]);
 
   // calculateDistance is defined after derived values to avoid hoisting issues — see below
+
+  useEffect(() => {
+    localStorage.setItem("noland_pricing_config", JSON.stringify(config));
+  }, [config]);
 
   // Derived values
   const laborCostPerDay = config.hoursPerDay * config.crewMembers * config.wagePerHour * (1 + config.burdenPct / 100);
@@ -893,7 +858,7 @@ export default function Pricing() {
   return (
     <DashboardLayout title="Pricing Calculator" subtitle="Crew-Day Rate & Job Estimator">
       {showModal && (
-        <EditPricingModal config={config} onSave={handleConfigSave} onClose={() => setShowModal(false)} />
+        <EditPricingModal config={config} onSave={setConfig} onClose={() => setShowModal(false)} />
       )}
 
       <div className="p-6 space-y-5">
@@ -907,7 +872,7 @@ export default function Pricing() {
               </div>
               <div>
                 <h3 className="text-sm font-semibold text-foreground">Daily Cost Breakdown</h3>
-                <p className="text-xs text-muted-foreground">{pricingConfigLoading ? "Loading shared pricing configuration..." : sharedPricingConfig?.updatedAt ? `Shared configuration saved ${new Date(sharedPricingConfig.updatedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}` : "Shared configuration will be saved for this Operations account."}</p>
+                <p className="text-xs text-muted-foreground">Calculated from your pricing configuration</p>
               </div>
             </div>
             <button
@@ -961,7 +926,6 @@ export default function Pricing() {
               type="range" min={10} max={60}
               value={config.targetMarginPct}
               onChange={e => setConfig(c => ({ ...c, targetMarginPct: Number(e.target.value) }))}
-              onBlur={() => savePricingConfig.mutate({ config })}
               className="w-full h-1.5 rounded-full appearance-none bg-white/10 accent-primary cursor-pointer"
             />
             <div className="flex justify-between text-[10px] text-muted-foreground mt-1">
