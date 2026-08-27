@@ -12,8 +12,9 @@ describe("companion release, map, and offline workflow", () => {
     const profile = source("noland-earthworks-mobile/src/pages/Profile.tsx");
     expect(router).toContain("getNolandFieldRelease");
     expect(router).not.toContain("api.github.com/repos");
-    expect(release).toContain('version: "0.4.12"');
-    expect(release).toContain("/manus-storage/noland-field-v0.4.12_aa16c9a2.apk");
+    expect(release).toContain('version: "0.4.13"');
+    expect(release).toContain("/manus-storage/noland-field-v0.4.13-replacement_ea279acc.apk");
+    expect(release).toContain("Uninstall the prior Noland Field app");
     expect(profile).toContain("Download Update");
     expect(profile).toContain("new URL(url, UPDATE_SITE_ORIGIN)");
   });

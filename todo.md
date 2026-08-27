@@ -3756,3 +3756,13 @@
 - [x] Add missing service selection, Linear Foot measurement, acreage conversion, quick width selection, and verification warnings to Noland Field quotes
 - [x] Align Noland Field AI Suggest inputs and results with the Operations quote builder where supported
 - [x] Add regression coverage and validate the companion quote workflow without producing a new APK
+
+## Noland Field Android Quote Workflow Test Release — Aug 2026
+- [x] Review Android signing, versioning, update metadata, and release instructions for the companion app
+- [x] Build a signed Android release containing the current Linear Foot and acreage-conversion quote workflow
+- [x] Verify the release package, publish managed update metadata, and provide the installation package
+
+## Noland Field Replacement Signing Key — Aug 2026
+- [x] Create replacement Android signing material and a replacement-signed test package as explicitly authorized
+- [x] Preserve the replacement signing configuration for future Noland Field releases without exposing key material
+- [x] Provide clear uninstall-and-reinstall instructions for the replacement package

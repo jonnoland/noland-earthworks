@@ -1,8 +1,8 @@
 export const NOLAND_FIELD_LATEST_RELEASE = {
-  version: "0.4.12",
-  downloadUrl: "/manus-storage/noland-field-v0.4.12_aa16c9a2.apk",
+  version: "0.4.13",
+  downloadUrl: "/manus-storage/noland-field-v0.4.13-replacement_ea279acc.apk",
   releaseNotesUrl: "https://nolandearthworks.com/field-release-notes",
-  notes: "Voice Bid microphone permission and recovery improvements.",
+  notes: "Replacement-signed test release with Linear Foot quote calculation, acreage conversion, clearing-width quick-select, AI Suggest alignment, and site-verification warnings. Uninstall the prior Noland Field app before installing this replacement build.",
 } as const;
 
 /**
