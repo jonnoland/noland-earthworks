@@ -56,4 +56,25 @@ describe("Noland Field quote configuration parity", () => {
     expect(detail).toContain("Estimated footage — verify on site.");
     expect(offlineQueue).toContain("quantitySource?: \"measured\" | \"acreage_estimate\"");
   });
+
+  it("retains a protected cached Operations pricing fallback with a clear rate source indicator", () => {
+    const router = source("server/fieldQuoteRouter.ts");
+    const mobile = source("noland-earthworks-mobile/src/pages/NewQuote.tsx");
+    const offlinePricing = source("noland-earthworks-mobile/src/lib/offlinePricingCache.ts");
+    const sharedOfflinePricing = source("shared/fieldOfflinePricing.ts");
+
+    expect(router).toContain("pricingSnapshot: requireAppToken.query");
+    expect(router).toContain("type OperationsQuotePricingSettings");
+    expect(router).toContain("trailUnitRateCents");
+    expect(router).toContain("fenceLineUnitRateCents");
+    expect(router).toContain("sourceUpdatedAt");
+    expect(offlinePricing).toContain("noland_field_operations_pricing_v1");
+    expect(offlinePricing).toContain("calculateCachedFieldEstimate");
+    expect(sharedOfflinePricing).toContain("calculateOperationsQuotePricing");
+    expect(mobile).toContain("calculateCachedFieldEstimate");
+    expect(mobile).toContain("Offline — cached Operations rates");
+    expect(mobile).toContain("Live Operations rates");
+    expect(mobile).toContain("Last synced:");
+    expect(mobile).toContain("Verify live rates before sending the quote.");
+  });
 });

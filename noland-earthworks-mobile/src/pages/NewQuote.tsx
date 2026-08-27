@@ -15,6 +15,8 @@ import {
   Mic,
   MicOff,
   CheckCircle,
+  CloudOff,
+  CloudCheck,
 } from "lucide-react";
 import { Camera as CapCamera, CameraResultType, CameraSource } from "@capacitor/camera";
 import { Geolocation } from "@capacitor/geolocation";
@@ -28,6 +30,12 @@ import { enqueueOfflineFieldQuote } from "@/lib/offlineFieldQuoteQueue";
 import { useNetwork } from "@/hooks/useNetwork";
 import { formatQuoteCents } from "@shared/quoteMoney";
 import { calculateLinearFeetFromAcreage, LINEAR_FOOT_CLEARING_WIDTH_OPTIONS } from "../../../shared/quoteLineItemMeasurements";
+import {
+  calculateCachedFieldEstimate,
+  readFieldPricingSnapshot,
+  writeFieldPricingSnapshot,
+  type FieldPricingSnapshot,
+} from "@/lib/offlinePricingCache";
 
 // ─── SiteMapPreview ──────────────────────────────────────────────────────────
 
@@ -214,12 +222,12 @@ interface FormState {
 }
 
 interface EstimateResult {
-  estimatedHours: number;
-  estimatedDays: number;
-  totalInternalCost: number;
+  estimatedHours: number | null;
+  estimatedDays: number | null;
+  totalInternalCost: number | null;
   customerPriceLow: number;
   customerPriceHigh: number;
-  marginPct: number;
+  marginPct: number | null;
   summary: string;
   warnings: string[];
   fieldConditionAdjustment?: {
@@ -245,6 +253,8 @@ interface EstimateResult {
     clearingWidthFeet: number | null;
     requiresSiteVerification: boolean;
   } | null;
+  pricingSource?: "live" | "cached";
+  pricingSyncedAt?: string | null;
   breakdown: { label: string; cost: number; note?: string }[];
 }
 
@@ -303,6 +313,9 @@ export default function NewQuote() {
   const [queuedOffline, setQueuedOffline] = useState(false);
   const [estimate, setEstimate] = useState<EstimateResult | null>(null);
   const [estimateError, setEstimateError] = useState<string | null>(null);
+  const [cachedPricing, setCachedPricing] = useState<FieldPricingSnapshot | null>(null);
+  const [rateStatus, setRateStatus] = useState<"loading" | "live" | "cached" | "unavailable">("loading");
+  const cachedPricingRef = React.useRef<FieldPricingSnapshot | null>(null);
   const [selectedDiscountCode, setSelectedDiscountCode] = useState<string | null>(null);
   const [clientSearch, setClientSearch] = useState("");
   const [clientPickerOpen, setClientPickerOpen] = useState(false);
@@ -353,9 +366,115 @@ export default function NewQuote() {
   });
   const uploadPhoto = trpc.fieldQuote.uploadPhoto.useMutation();
   const submitQuote = trpc.fieldQuote.submit.useMutation();
+  const pricingSnapshotQuery = trpc.fieldQuote.pricingSnapshot.useQuery(undefined, {
+    enabled: isOnline,
+    staleTime: 5 * 60 * 1000,
+    retry: 1,
+  });
+  React.useEffect(() => {
+    void readFieldPricingSnapshot().then((snapshot) => {
+      if (!snapshot) {
+        if (!isOnline) setRateStatus("unavailable");
+        return;
+      }
+      cachedPricingRef.current = snapshot;
+      setCachedPricing(snapshot);
+      if (!isOnline) setRateStatus("cached");
+    });
+  }, [isOnline]);
+
+  React.useEffect(() => {
+    const snapshot = pricingSnapshotQuery.data;
+    if (!snapshot) {
+      if (pricingSnapshotQuery.isError) setRateStatus(cachedPricingRef.current ? "cached" : "unavailable");
+      return;
+    }
+    void writeFieldPricingSnapshot({
+      pricingSettings: snapshot.pricingSettings,
+      trailUnitRateCents: snapshot.trailUnitRateCents,
+      fenceLineUnitRateCents: snapshot.fenceLineUnitRateCents,
+    }).then((cached) => {
+      cachedPricingRef.current = cached;
+      setCachedPricing(cached);
+      setRateStatus("live");
+    }).catch(() => setRateStatus("unavailable"));
+  }, [pricingSnapshotQuery.data, pricingSnapshotQuery.isError]);
+
+  async function useCachedRateFallback(): Promise<boolean> {
+    const snapshot = cachedPricingRef.current ?? cachedPricing ?? await readFieldPricingSnapshot();
+    if (!snapshot) {
+      setRateStatus("unavailable");
+      return false;
+    }
+
+    const sourceAcreage = parseFloat(form.sourceAcreage);
+    const clearingWidthFeet = parseFloat(form.clearingWidthFeet);
+    const linearFeet = parseFloat(form.linearFeet);
+    const acreage = parseFloat(form.acreage);
+    const cachedEstimate = calculateCachedFieldEstimate({
+      service: form.serviceType,
+      acreage: Number.isFinite(acreage) ? acreage : undefined,
+      linearFeet: Number.isFinite(linearFeet) ? linearFeet : undefined,
+      quantitySource: isLinearFootService(form.serviceType) ? form.quantitySource : undefined,
+      sourceAcreage: Number.isFinite(sourceAcreage) ? sourceAcreage : undefined,
+      clearingWidthFeet: Number.isFinite(clearingWidthFeet) ? clearingWidthFeet : undefined,
+      terrain: form.terrain,
+      vegetationDensity: form.vegetationDensity,
+      accessDifficulty: form.accessDifficulty,
+    }, snapshot);
+
+    cachedPricingRef.current = snapshot;
+    setCachedPricing(snapshot);
+    setRateStatus("cached");
+    setEstimate({
+      estimatedHours: null,
+      estimatedDays: null,
+      totalInternalCost: null,
+      customerPriceLow: cachedEstimate.customerPriceLow,
+      customerPriceHigh: cachedEstimate.customerPriceHigh,
+      marginPct: null,
+      summary: "Offline estimate calculated from the last live Operations rates stored on this device. Confirm current site conditions and rate sync before sending a quote.",
+      warnings: [
+        `Offline rate cache in use. Last synced ${new Date(snapshot.lastSyncedAt).toLocaleString()}.`,
+        "Estimated duration, internal cost, and discounts require a live Operations connection.",
+        ...(cachedEstimate.linearFootEstimate ? ["Estimated Linear Footage must be verified on site before finalizing the quote."] : []),
+      ],
+      fieldConditionAdjustment: cachedEstimate.fieldConditionAdjustment,
+      eligibleDiscounts: [],
+      selectedDiscount: null,
+      discountAdjustment: null,
+      linearFootEstimate: cachedEstimate.linearFootEstimate,
+      pricingSource: "cached",
+      pricingSyncedAt: snapshot.lastSyncedAt,
+      breakdown: [
+        { label: "Cached Operations quote total", cost: cachedEstimate.customerPriceLow, note: `Rates last synced ${new Date(snapshot.lastSyncedAt).toLocaleString()}` },
+        ...(cachedEstimate.minimumJobTotal > cachedEstimate.customerPriceLow
+          ? [{ label: "Configured minimum", cost: cachedEstimate.minimumJobTotal, note: "Applied from cached Operations rates" }]
+          : []),
+      ],
+    });
+    return true;
+  }
+
   const getEstimate = trpc.fieldQuote.estimate.useMutation({
-    onSuccess: (data) => setEstimate(data as EstimateResult),
-    onError: (err) => setEstimateError(err.message || "AI estimate failed."),
+    onSuccess: (data) => {
+      const syncedAt = cachedPricingRef.current?.lastSyncedAt ?? null;
+      setRateStatus("live");
+      setEstimate({ ...(data as EstimateResult), pricingSource: "live", pricingSyncedAt: syncedAt });
+    },
+    onError: (err) => {
+      const code = err.data?.code;
+      const availabilityFailure = !isOnline
+        || ["INTERNAL_SERVER_ERROR", "TIMEOUT", "TOO_MANY_REQUESTS", "CLIENT_CLOSED_REQUEST"].includes(code ?? "")
+        || /network|fetch|offline|timed? out|unavailable|connection/i.test(err.message);
+      if (!availabilityFailure) {
+        setEstimateError(err.message || "Unable to calculate the estimate.");
+        return;
+      }
+      void useCachedRateFallback().then((usedCache) => {
+        if (!usedCache) setEstimateError(err.message || "Live Operations pricing is unavailable and no cached rates are stored on this device.");
+      });
+    },
   });
   const [parcelIdError, setParcelIdError] = useState<string | null>(null);
   const [parcelMatches, setParcelMatches] = useState<Array<{
@@ -662,6 +781,12 @@ export default function NewQuote() {
     }
     if (isLinearFootQuote && form.quantitySource === "measured" && (!Number.isFinite(linearFeet) || linearFeet <= 0)) {
       setEstimateError("Enter measured Linear Feet or switch to Calculate from acreage.");
+      return;
+    }
+    if (!isOnline) {
+      void useCachedRateFallback().then((usedCache) => {
+        if (!usedCache) setEstimateError("You are offline and this device has no saved Operations rates yet. Connect once to sync current rates.");
+      });
       return;
     }
     const mobilizationMiles = parseFloat(form.mobilizationMiles) || 0;
@@ -1362,6 +1487,36 @@ export default function NewQuote() {
         <div style={{ ...sectionStyle, border: "1px solid oklch(0.65 0.18 50 / 0.35)" }}>
           <p style={sectionTitle}>AI Price Estimate</p>
 
+          {(() => {
+            const usingCachedRates = estimate?.pricingSource === "cached" || (!estimate && rateStatus === "cached");
+            const usingLiveRates = estimate?.pricingSource === "live" || (!estimate && rateStatus === "live");
+            const lastSyncedAt = estimate?.pricingSyncedAt ?? cachedPricing?.lastSyncedAt ?? null;
+            const sourceLabel = usingCachedRates
+              ? "Offline — cached Operations rates"
+              : usingLiveRates
+                ? "Live Operations rates"
+                : rateStatus === "loading"
+                  ? "Checking Operations rates…"
+                  : "Operations rates unavailable";
+            const sourceColor = usingCachedRates
+              ? "oklch(0.78 0.16 60)"
+              : usingLiveRates
+                ? "oklch(0.75 0.18 145)"
+                : "oklch(0.65 0.20 25)";
+            return (
+              <div style={{ display: "flex", alignItems: "flex-start", gap: 8, padding: "9px 10px", borderRadius: 8, backgroundColor: usingCachedRates ? "oklch(0.75 0.16 60 / 0.10)" : usingLiveRates ? "oklch(0.70 0.18 145 / 0.08)" : "oklch(0.30 0 0)", border: `1px solid ${sourceColor}55`, marginBottom: 12 }}>
+                {usingCachedRates ? <CloudOff size={16} color={sourceColor} style={{ flexShrink: 0, marginTop: 1 }} /> : <CloudCheck size={16} color={sourceColor} style={{ flexShrink: 0, marginTop: 1 }} />}
+                <div>
+                  <p style={{ color: sourceColor, fontSize: 12, fontWeight: 700, margin: 0 }}>{sourceLabel}</p>
+                  <p style={{ color: "oklch(0.60 0.01 80)", fontSize: 10, lineHeight: 1.45, margin: "3px 0 0" }}>
+                    {lastSyncedAt ? `Last synced: ${new Date(lastSyncedAt).toLocaleString()}.` : "Connect to Operations once to save rates for offline estimates."}
+                    {usingCachedRates ? " Verify live rates before sending the quote." : ""}
+                  </p>
+                </div>
+              </div>
+            );
+          })()}
+
           <button
             onClick={() => handleGetEstimate()}
             disabled={getEstimate.isPending}
@@ -1408,16 +1563,16 @@ export default function NewQuote() {
                   <Clock size={16} color="oklch(0.65 0.18 50)" style={{ margin: "0 auto 4px" }} />
                   <p style={{ color: "oklch(0.50 0.01 80)", fontSize: 10, margin: "0 0 2px" }}>Est. Days</p>
                   <p style={{ color: "oklch(0.94 0.01 80)", fontSize: 13, fontWeight: 700, margin: 0 }}>
-                    {estimate.estimatedDays.toFixed(1)}
+                    {estimate.estimatedDays == null ? "Live sync needed" : estimate.estimatedDays.toFixed(1)}
                   </p>
                 </div>
                 <div style={{ backgroundColor: "oklch(0.22 0 0)", borderRadius: 10, padding: "12px 10px", textAlign: "center" }}>
                   <p style={{ color: "oklch(0.50 0.01 80)", fontSize: 10, margin: "0 0 2px" }}>Margin</p>
                   <p style={{ color: "oklch(0.94 0.01 80)", fontSize: 13, fontWeight: 700, margin: 0 }}>
-                    {estimate.marginPct.toFixed(0)}%
+                    {estimate.marginPct == null ? "Review" : `${estimate.marginPct.toFixed(0)}%`}
                   </p>
                   <p style={{ color: "oklch(0.50 0.01 80)", fontSize: 10, margin: "2px 0 0" }}>
-                    Cost: {formatQuoteCents(Math.ceil(estimate.totalInternalCost) * 100)}
+                    {estimate.totalInternalCost == null ? "Cached rate estimate" : `Cost: ${formatQuoteCents(Math.ceil(estimate.totalInternalCost) * 100)}`}
                   </p>
                 </div>
               </div>

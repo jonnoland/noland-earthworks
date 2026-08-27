@@ -23,6 +23,7 @@ vi.mock("./db", async (importOriginal) => {
     createOpsLead: vi.fn().mockResolvedValue(undefined),
     getOwnerUser: vi.fn().mockResolvedValue({ id: 1, name: "Jon Noland" }),
     listNativeClientContacts: vi.fn().mockResolvedValue([]),
+    getPricingBenchmarks: vi.fn().mockResolvedValue([]),
   };
 });
 
@@ -202,6 +203,56 @@ describe("fieldQuoteRouter", () => {
   it("mobileClients rejects requests without a valid field app token", async () => {
     const caller = fieldQuoteRouter.createCaller({ req: { headers: {} }, res: {}, user: null } as any);
     await expect(caller.mobileClients({})).rejects.toThrow("Field app token required");
+  });
+
+  it("returns only required live Operations rate settings to an authenticated field app for offline caching", async () => {
+    const storedSettings = {
+      id: 9,
+      forestryMulchingBaseRate: 2800,
+      landClearingBaseRate: 2800,
+      brushHoggingBaseRate: 135,
+      rowClearingBaseRate: 2400,
+      trailCuttingBaseRate: 2600,
+      fenceLineClearingPerLf: 4,
+      densityModerateMultiplier: "1.25",
+      densityHeavyMultiplier: "1.60",
+      terrainRollingMultiplier: "1.15",
+      terrainSteepMultiplier: "1.40",
+      accessModerateMultiplier: "1.10",
+      accessDifficultMultiplier: "1.25",
+      minimumJobTotal: 1200,
+      discountMilitaryVeteranPct: 10,
+      updatedAt: new Date("2026-08-27T12:00:00.000Z"),
+    };
+    vi.mocked(db.getDb).mockResolvedValue({
+      select: vi.fn().mockReturnValue({
+        from: vi.fn().mockReturnValue({ limit: vi.fn().mockResolvedValue([storedSettings]) }),
+      }),
+    } as any);
+    vi.mocked(db.getPricingBenchmarks).mockResolvedValue([
+      { serviceType: "Trail Cutting", unit: "linear_foot", midPerAcre: 3.5 },
+      { serviceType: "Fence Line Clearing", unit: "linear_foot", midPerAcre: 4.25 },
+    ] as any);
+
+    const result = await fieldQuoteRouter.createCaller(await makeAppCtx()).pricingSnapshot();
+
+    expect(result).toMatchObject({
+      trailUnitRateCents: 350,
+      fenceLineUnitRateCents: 425,
+      sourceUpdatedAt: "2026-08-27T12:00:00.000Z",
+    });
+    expect(Object.keys(result.pricingSettings).sort()).toEqual([
+      "accessDifficultMultiplier", "accessModerateMultiplier", "brushHoggingBaseRate",
+      "densityHeavyMultiplier", "densityModerateMultiplier", "fenceLineClearingPerLf",
+      "forestryMulchingBaseRate", "landClearingBaseRate", "minimumJobTotal",
+      "rowClearingBaseRate", "terrainRollingMultiplier", "terrainSteepMultiplier", "trailCuttingBaseRate",
+    ].sort());
+    expect(result.pricingSettings).not.toHaveProperty("discountMilitaryVeteranPct");
+  });
+
+  it("pricingSnapshot rejects requests without a valid field app token", async () => {
+    const caller = fieldQuoteRouter.createCaller({ req: { headers: {} }, res: {}, user: null } as any);
+    await expect(caller.pricingSnapshot()).rejects.toThrow("Field app token required");
   });
 
   it("submit rejects requests without a valid app token", async () => {

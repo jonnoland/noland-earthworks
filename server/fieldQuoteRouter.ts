@@ -29,7 +29,10 @@ import { getCustomerDiscountOptions, getSuggestedVolumeDiscount } from "../share
 import { formatQuoteCents, roundQuoteCentsUp } from "../shared/quoteMoney";
 import { calculateLinearFeetFromAcreage } from "../shared/quoteLineItemMeasurements";
 import { getNolandFieldRelease } from "./mobileRelease";
-import { calculateOperationsQuotePricing } from "./operationsQuotePricing";
+import {
+  calculateOperationsQuotePricing,
+  type OperationsQuotePricingSettings,
+} from "../shared/operationsQuotePricing";
 
 const TN_PARCEL_QUERY_URL = "https://services1.arcgis.com/YuVBSS7Y1of2Qud1/arcgis/rest/services/Tennessee_Property_Boundaries_Public_Use/FeatureServer/0/query";
 
@@ -499,6 +502,50 @@ export const fieldQuoteRouter = router({
       limit: z.number().min(1).max(200).default(100),
     }))
     .query(async ({ input }) => listNativeClientContacts(input)),
+
+  /** Returns the live Operations rate basis for Noland Field's local offline cache. */
+  pricingSnapshot: requireAppToken.query(async () => {
+    const db = await getDb();
+    const [pricingRows, benchmarkRows] = await Promise.all([
+      db ? db.select().from(aiPricingSettings).limit(1) : Promise.resolve([]),
+      getPricingBenchmarks().catch(() => []),
+    ]);
+    const storedSettings = pricingRows[0];
+    if (!storedSettings) {
+      throw new TRPCError({ code: "SERVICE_UNAVAILABLE", message: "Live Operations pricing is not available to sync." });
+    }
+    const pricingSettings: OperationsQuotePricingSettings = {
+      forestryMulchingBaseRate: storedSettings.forestryMulchingBaseRate,
+      landClearingBaseRate: storedSettings.landClearingBaseRate,
+      brushHoggingBaseRate: storedSettings.brushHoggingBaseRate,
+      rowClearingBaseRate: storedSettings.rowClearingBaseRate,
+      trailCuttingBaseRate: storedSettings.trailCuttingBaseRate,
+      fenceLineClearingPerLf: storedSettings.fenceLineClearingPerLf,
+      densityModerateMultiplier: storedSettings.densityModerateMultiplier,
+      densityHeavyMultiplier: storedSettings.densityHeavyMultiplier,
+      terrainRollingMultiplier: storedSettings.terrainRollingMultiplier,
+      terrainSteepMultiplier: storedSettings.terrainSteepMultiplier,
+      accessModerateMultiplier: storedSettings.accessModerateMultiplier,
+      accessDifficultMultiplier: storedSettings.accessDifficultMultiplier,
+      minimumJobTotal: storedSettings.minimumJobTotal,
+    };
+    const findLinearRate = (serviceType: string) => {
+      const benchmark = benchmarkRows.find((item) =>
+        item.serviceType.toLowerCase() === serviceType && item.unit === "linear_foot"
+      );
+      const rate = benchmark ? Number(benchmark.midPerAcre) : Number.NaN;
+      return Number.isFinite(rate) && rate > 0 ? Math.round(rate * 100) : null;
+    };
+
+    return {
+      pricingSettings,
+      trailUnitRateCents: findLinearRate("trail cutting"),
+      fenceLineUnitRateCents: findLinearRate("fence line clearing"),
+      sourceUpdatedAt: storedSettings.updatedAt instanceof Date
+        ? storedSettings.updatedAt.toISOString()
+        : null,
+    };
+  }),
 
   /**
    * List field quotes — owner-only (Manus session), newest first.

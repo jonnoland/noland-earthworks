@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { calculateOperationsQuotePricing } from "./operationsQuotePricing";
+import { calculateOperationsQuotePricing } from "../shared/operationsQuotePricing";
 
 const currentOperationsSettings = {
   forestryMulchingBaseRate: 2800,

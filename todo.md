@@ -3790,3 +3790,9 @@
 - [x] Replace Noland Field’s hard-coded base-rate and minimum estimate path with the live Operations pricing settings and web quote calculation rules
 - [x] Preserve field-specific Linear Foot, acreage conversion, condition, discount, and site-verification behavior on the shared pricing basis
 - [x] Add regression coverage proving Noland Field and Operations AI Suggest use the same live rates, minimum, and whole-dollar totals
+
+## Noland Field Offline Pricing Fallback — Aug 2026
+- [x] Cache the latest live Operations pricing basis with an explicit sync timestamp in Noland Field
+- [x] Use cached pricing only when a live field estimate cannot be retrieved and label the quote clearly as offline/cached
+- [x] Show a current rate-source status and last-sync time in the Noland Field quote workflow
+- [x] Add regression coverage and validate live, offline, and missing-cache behavior without producing a new APK
