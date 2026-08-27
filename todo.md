@@ -3750,3 +3750,9 @@
 - [x] Add visible quick-select buttons for common clearing widths to the acreage-to-Linear-Foot quote calculator
 - [x] Ensure quick selection immediately recalculates estimated Linear Feet and preserves the verification warning
 - [x] Add regression coverage and validate the updated quote builder
+
+## Companion App Quote Alignment — Aug 2026
+- [x] Compare Noland Field quote creation and editing against current Operations quote service and measurement workflows
+- [x] Add missing service selection, Linear Foot measurement, acreage conversion, quick width selection, and verification warnings to Noland Field quotes
+- [x] Align Noland Field AI Suggest inputs and results with the Operations quote builder where supported
+- [x] Add regression coverage and validate the companion quote workflow without producing a new APK

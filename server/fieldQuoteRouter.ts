@@ -27,6 +27,7 @@ import { normalizeTennesseeParcelId, validateTennesseeParcelId } from "../shared
 import { applyFieldConditionPriceAdjustment, getFieldConditionAdjustment } from "../shared/fieldConditionPricing";
 import { getCustomerDiscountOptions, getSuggestedVolumeDiscount } from "../shared/quoteDiscounts";
 import { roundQuoteCentsUp } from "../shared/quoteMoney";
+import { calculateLinearFeetFromAcreage } from "../shared/quoteLineItemMeasurements";
 import { getNolandFieldRelease } from "./mobileRelease";
 
 const TN_PARCEL_QUERY_URL = "https://services1.arcgis.com/YuVBSS7Y1of2Qud1/arcgis/rest/services/Tennessee_Property_Boundaries_Public_Use/FeatureServer/0/query";
@@ -155,6 +156,10 @@ type FieldQuoteEmailInput = {
   lng?: number;
   serviceType?: string;
   acreage?: number;
+  linearFeet?: number;
+  quantitySource?: "measured" | "acreage_estimate";
+  sourceAcreage?: number;
+  clearingWidthFeet?: number;
   terrainType?: string;
   vegetationDensity?: string;
   vegetationTypes?: string;
@@ -236,6 +241,8 @@ export function buildFieldQuoteOwnerEmail(
           <table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="border:1px solid #eee7dc;border-radius:6px;overflow:hidden;">
             ${row("Service", input.serviceType ? `<strong>${escapeEmailHtml(input.serviceType)}</strong>` : "Field quote")}
             ${row("Acreage", input.acreage != null ? `${input.acreage.toLocaleString()} acres` : "")}
+            ${row("Linear Footage", input.linearFeet != null ? `${input.linearFeet.toLocaleString()} Linear Feet${input.quantitySource === "acreage_estimate" ? " — estimated; verify on site" : ""}` : "")}
+            ${row("Footage Basis", input.quantitySource === "acreage_estimate" && input.sourceAcreage != null && input.clearingWidthFeet != null ? `${input.sourceAcreage} acres × 43,560 ÷ ${input.clearingWidthFeet} ft clearing width` : "")}
             ${row("Property Address", input.address ? escapeEmailHtml(input.address) : "")}
             ${row("Map Location", mapUrl ? `<a href="${mapUrl}" style="color:#c9671c;text-decoration:none;font-weight:700;">Open in Google Maps &rarr;</a>` : "")}
             ${row("Terrain", input.terrainType ? escapeEmailHtml(input.terrainType) : "")}
@@ -593,6 +600,10 @@ export const fieldQuoteRouter = router({
         lng: z.number().optional(),
         serviceType: z.string().optional(),
         acreage: z.number().positive().optional(),
+        linearFeet: z.number().positive().max(50000).optional(),
+        quantitySource: z.enum(["measured", "acreage_estimate"]).optional(),
+        sourceAcreage: z.number().positive().max(500).optional(),
+        clearingWidthFeet: z.number().positive().max(200).optional(),
         terrainType: z.string().optional(),
         vegetationDensity: z.string().optional(),
         vegetationTypes: z.string().optional(),
@@ -642,6 +653,10 @@ export const fieldQuoteRouter = router({
           lng: input.lng !== undefined ? String(input.lng) : null,
           serviceType: input.serviceType ?? null,
           acreage: input.acreage !== undefined ? String(input.acreage) : null,
+          linearFeet: input.linearFeet !== undefined ? String(input.linearFeet) : null,
+          quantitySource: input.quantitySource ?? null,
+          sourceAcreage: input.sourceAcreage !== undefined ? String(input.sourceAcreage) : null,
+          clearingWidthFeet: input.clearingWidthFeet !== undefined ? String(input.clearingWidthFeet) : null,
           terrainType: input.terrainType ?? null,
           vegetationDensity: input.vegetationDensity ?? null,
           vegetationTypes: input.vegetationTypes ?? null,
@@ -805,6 +820,9 @@ export const fieldQuoteRouter = router({
       service: z.string().min(1),
       acreage: z.number().min(0.1).max(500).optional(),
       linearFeet: z.number().min(1).max(50000).optional(),
+      quantitySource: z.enum(["measured", "acreage_estimate"]).optional(),
+      sourceAcreage: z.number().min(0.1).max(500).optional(),
+      clearingWidthFeet: z.number().min(4).max(200).optional(),
       terrain: z.enum(["flat", "rolling", "steep", "very_steep"]),
       vegetationDensity: z.enum(["light", "moderate", "heavy", "very_heavy"]),
       accessDifficulty: z.enum(["easy", "moderate", "difficult"]),
@@ -831,14 +849,24 @@ export const fieldQuoteRouter = router({
       const travelSurcharge = (MOB_TIERS.find(t => input.mobilizationMiles <= t.maxMiles) ?? MOB_TIERS[MOB_TIERS.length - 1]).surcharge;
       const mobTierLabel = (MOB_TIERS.find(t => input.mobilizationMiles <= t.maxMiles) ?? MOB_TIERS[MOB_TIERS.length - 1]).label;
 
+      const isLinearFootService = input.service === "Trail Cutting" || input.service === "Fence Line Clearing";
+      const hasAcreageFootageEstimate = isLinearFootService && input.quantitySource === "acreage_estimate";
+      const estimatedLinearFeet = hasAcreageFootageEstimate
+        ? calculateLinearFeetFromAcreage(input.sourceAcreage ?? input.acreage ?? Number.NaN, input.clearingWidthFeet ?? Number.NaN)
+        : null;
+      if (hasAcreageFootageEstimate && !estimatedLinearFeet) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Source acreage and clearing width are required to estimate Linear Feet." });
+      }
+      const effectiveLinearFeet = estimatedLinearFeet ?? input.linearFeet;
+
       let effectiveAcresNote = "";
       if (input.service === "Right-of-Way Clearing" && input.linearFeet && input.rowWidth) {
         const ea = (input.linearFeet * input.rowWidth) / 43560;
         effectiveAcresNote = `Effective acres (${input.linearFeet} LF × ${input.rowWidth} ft wide ÷ 43,560): ${ea.toFixed(3)} acres`;
       }
-      if (input.service === "Trail Cutting" && input.acreage && input.trailWidth) {
-        const lf = Math.round((input.acreage * 43560) / input.trailWidth);
-        effectiveAcresNote = `Trail geometry: ${input.acreage} effective acres × 43,560 ÷ ${input.trailWidth} ft wide ≈ ${lf.toLocaleString()} linear feet`;
+      if (hasAcreageFootageEstimate && estimatedLinearFeet) {
+        const sourceAcreage = input.sourceAcreage ?? input.acreage;
+        effectiveAcresNote = `Estimated footage: ${sourceAcreage} acres × 43,560 ÷ ${input.clearingWidthFeet} ft wide ≈ ${estimatedLinearFeet.toLocaleString()} linear feet — verify on site`;
       }
 
       const addOnLines: string[] = [];
@@ -849,7 +877,8 @@ export const fieldQuoteRouter = router({
       const jobDescription = [
         `Service: ${input.service}`,
         input.acreage ? `Acreage: ${input.acreage} acres` : "",
-        input.linearFeet ? `Linear feet: ${input.linearFeet} LF` : "",
+        effectiveLinearFeet ? `Linear feet: ${effectiveLinearFeet} LF` : "",
+        hasAcreageFootageEstimate ? "Footage source: estimated from acreage and clearing width; verify on site." : "",
         input.trailWidth ? `Trail width: ${input.trailWidth} ft` : "",
         input.rowWidth ? `ROW width: ${input.rowWidth} ft` : "",
         effectiveAcresNote,
@@ -996,7 +1025,7 @@ Return JSON matching the schema exactly.`;
         fieldConditionAdjustment,
       );
       const pricingSettings = pricingRows[0] ?? {};
-      const suggestedVolumeDiscount = getSuggestedVolumeDiscount(input.acreage ?? 0, pricingSettings);
+      const suggestedVolumeDiscount = getSuggestedVolumeDiscount(input.sourceAcreage ?? input.acreage ?? 0, pricingSettings);
       const eligibleDiscounts = [
         ...(suggestedVolumeDiscount ? [suggestedVolumeDiscount] : []),
         ...getCustomerDiscountOptions(pricingSettings),
@@ -1019,12 +1048,19 @@ Return JSON matching the schema exactly.`;
 
       return {
         ...parsed,
+        linearFootEstimate: hasAcreageFootageEstimate && estimatedLinearFeet ? {
+          linearFeet: estimatedLinearFeet,
+          sourceAcreage: input.sourceAcreage ?? input.acreage ?? null,
+          clearingWidthFeet: input.clearingWidthFeet ?? null,
+          requiresSiteVerification: true,
+        } : null,
         customerPriceLow,
         customerPriceHigh,
         marginPct: adjustedMidpoint > 0 ? Math.round(((adjustedMidpoint - parsed.totalInternalCost) / adjustedMidpoint) * 100) : parsed.marginPct,
         summary: `${parsed.summary} Recommended pricing reflects the selected vegetation, terrain, and access conditions.${selectedDiscount ? ` ${selectedDiscount.label} (${selectedDiscount.percent}%) has been applied.` : ""}`,
         warnings: Array.from(new Set([
           ...parsed.warnings,
+          ...(hasAcreageFootageEstimate && estimatedLinearFeet ? [`Estimated ${estimatedLinearFeet.toLocaleString()} Linear Feet from acreage and clearing width. Verify footage on site before finalizing the quote.`] : []),
           `Field-condition multiplier ×${fieldConditionAdjustment.combinedMultiplier.toFixed(2)} (${fieldConditionAdjustment.labels.vegetation} vegetation, ${fieldConditionAdjustment.labels.terrain} terrain, ${fieldConditionAdjustment.labels.access} access).`,
           ...(selectedDiscount ? [`${selectedDiscount.label} (${selectedDiscount.percent}%) applied. This is an internal estimate adjustment and remains subject to owner review.`] : []),
         ])),

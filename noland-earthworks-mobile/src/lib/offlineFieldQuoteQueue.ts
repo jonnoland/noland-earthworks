@@ -11,6 +11,10 @@ export type OfflineFieldQuotePayload = {
   lng?: number;
   serviceType?: string;
   acreage?: number;
+  linearFeet?: number;
+  quantitySource?: "measured" | "acreage_estimate";
+  sourceAcreage?: number;
+  clearingWidthFeet?: number;
   terrainType?: string;
   vegetationDensity?: string;
   vegetationTypes?: string;

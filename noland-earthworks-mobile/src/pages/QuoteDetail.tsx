@@ -112,6 +112,13 @@ export default function QuoteDetail() {
           </p>
           <DetailRow label="Service Type" value={quote.serviceType} />
           <DetailRow label="Acreage" value={quote.acreage ? `${quote.acreage} acres` : null} />
+          <DetailRow label="Linear Footage" value={quote.linearFeet ? `${Number(quote.linearFeet).toLocaleString()} Linear Feet` : null} />
+          {quote.quantitySource === "acreage_estimate" && (
+            <div role="status" style={{ border: "1px solid oklch(0.75 0.18 60 / 0.45)", borderRadius: 8, background: "oklch(0.75 0.18 60 / 0.08)", padding: "9px 10px", marginBottom: 12 }}>
+              <p style={{ color: "oklch(0.82 0.18 65)", fontSize: 12, fontWeight: 700, margin: 0 }}>Estimated footage — verify on site.</p>
+              <p style={{ color: "oklch(0.76 0.01 80)", fontSize: 11, lineHeight: 1.4, margin: "3px 0 0" }}>Derived from {quote.sourceAcreage} acres at {quote.clearingWidthFeet} ft clearing width.</p>
+            </div>
+          )}
           <DetailRow label="Terrain" value={quote.terrainType} />
           <DetailRow label="Vegetation Density" value={quote.vegetationDensity} />
           <DetailRow label="Vegetation Types" value={quote.vegetationTypes} />

@@ -1141,6 +1141,14 @@ export const fieldQuotes = mysqlTable("field_quotes", {
   /** Job details */
   serviceType: varchar("serviceType", { length: 100 }),
   acreage: decimal("acreage", { precision: 8, scale: 2 }),
+  /** Linear Foot quantity for Trail Cutting and Fence Line Clearing */
+  linearFeet: decimal("linearFeet", { precision: 10, scale: 2 }),
+  /** Whether Linear Foot quantity was measured or estimated from acreage */
+  quantitySource: mysqlEnum("quantitySource", ["measured", "acreage_estimate"]),
+  /** Acreage used when deriving estimated footage */
+  sourceAcreage: decimal("sourceAcreage", { precision: 8, scale: 2 }),
+  /** Corridor width used when deriving estimated footage */
+  clearingWidthFeet: decimal("clearingWidthFeet", { precision: 8, scale: 2 }),
   terrainType: varchar("terrainType", { length: 100 }),
   vegetationDensity: varchar("vegetationDensity", { length: 100 }),
   vegetationTypes: varchar("vegetationTypes", { length: 255 }),

@@ -27,6 +27,7 @@ import { validateTennesseeParcelId } from "@shared/tennesseeParcelId";
 import { enqueueOfflineFieldQuote } from "@/lib/offlineFieldQuoteQueue";
 import { useNetwork } from "@/hooks/useNetwork";
 import { formatQuoteCents } from "@shared/quoteMoney";
+import { calculateLinearFeetFromAcreage, LINEAR_FOOT_CLEARING_WIDTH_OPTIONS } from "../../../shared/quoteLineItemMeasurements";
 
 // ─── SiteMapPreview ──────────────────────────────────────────────────────────
 
@@ -191,6 +192,9 @@ interface FormState {
   serviceType: string;
   acreage: string;
   linearFeet: string;
+  quantitySource: "measured" | "acreage_estimate";
+  sourceAcreage: string;
+  clearingWidthFeet: string;
   // AI pricing inputs (matching website CostEstimator)
   terrain: "flat" | "rolling" | "steep" | "very_steep";
   vegetationDensity: "light" | "moderate" | "heavy" | "very_heavy";
@@ -235,6 +239,12 @@ interface EstimateResult {
     discountAmountLow: number;
     discountAmountHigh: number;
   } | null;
+  linearFootEstimate?: {
+    linearFeet: number;
+    sourceAcreage: number | null;
+    clearingWidthFeet: number | null;
+    requiresSiteVerification: boolean;
+  } | null;
   breakdown: { label: string; cost: number; note?: string }[];
 }
 
@@ -258,6 +268,8 @@ const SERVICE_TYPES = [
   "Selective Mulching",
   "Brush Hogging",
 ];
+
+const isLinearFootService = (service: string) => service === "Trail Cutting" || service === "Fence Line Clearing";
 
 const TERRAIN_OPTIONS: { value: FormState["terrain"]; label: string }[] = [
   { value: "flat",       label: "Flat" },
@@ -312,6 +324,9 @@ export default function NewQuote() {
     serviceType: "Forestry Mulching",
     acreage: "",
     linearFeet: "",
+    quantitySource: "measured",
+    sourceAcreage: "",
+    clearingWidthFeet: "20",
     terrain: "flat",
     vegetationDensity: "moderate",
     accessDifficulty: "easy",
@@ -635,6 +650,20 @@ export default function NewQuote() {
     setEstimateError(null);
     const acreage = parseFloat(form.acreage);
     const linearFeet = parseFloat(form.linearFeet);
+    const sourceAcreage = parseFloat(form.sourceAcreage);
+    const clearingWidthFeet = parseFloat(form.clearingWidthFeet);
+    const isLinearFootQuote = isLinearFootService(form.serviceType);
+    const estimatedLinearFeet = isLinearFootQuote && form.quantitySource === "acreage_estimate"
+      ? calculateLinearFeetFromAcreage(sourceAcreage, clearingWidthFeet)
+      : null;
+    if (isLinearFootQuote && form.quantitySource === "acreage_estimate" && !estimatedLinearFeet) {
+      setEstimateError("Enter source acreage and a clearing width to estimate Linear Feet.");
+      return;
+    }
+    if (isLinearFootQuote && form.quantitySource === "measured" && (!Number.isFinite(linearFeet) || linearFeet <= 0)) {
+      setEstimateError("Enter measured Linear Feet or switch to Calculate from acreage.");
+      return;
+    }
     const mobilizationMiles = parseFloat(form.mobilizationMiles) || 0;
     const stumpCount = parseInt(form.stumpCount) || 0;
     const trailWidth = parseFloat(form.trailWidth);
@@ -644,7 +673,10 @@ export default function NewQuote() {
     getEstimate.mutate({
       service: form.serviceType,
       acreage: isNaN(acreage) ? undefined : acreage,
-      linearFeet: isNaN(linearFeet) ? undefined : linearFeet,
+      linearFeet: estimatedLinearFeet ?? (isNaN(linearFeet) ? undefined : linearFeet),
+      quantitySource: isLinearFootQuote ? form.quantitySource : undefined,
+      sourceAcreage: isLinearFootQuote && form.quantitySource === "acreage_estimate" && Number.isFinite(sourceAcreage) ? sourceAcreage : undefined,
+      clearingWidthFeet: isLinearFootQuote && form.quantitySource === "acreage_estimate" && Number.isFinite(clearingWidthFeet) ? clearingWidthFeet : undefined,
       terrain: form.terrain,
       vegetationDensity: form.vegetationDensity,
       accessDifficulty: form.accessDifficulty,
@@ -667,8 +699,14 @@ export default function NewQuote() {
 
     const acreage = parseFloat(form.acreage);
     const linearFeet = parseFloat(form.linearFeet);
-    const fenceLineFeet = parseFloat(form.fenceLineLF);
-    const needsAcreage = form.serviceType !== "Right-of-Way Clearing" && form.serviceType !== "Fence Line Clearing";
+    const sourceAcreage = parseFloat(form.sourceAcreage);
+    const clearingWidthFeet = parseFloat(form.clearingWidthFeet);
+    const isLinearFootQuote = isLinearFootService(form.serviceType);
+    const estimatedLinearFeet = isLinearFootQuote && form.quantitySource === "acreage_estimate"
+      ? calculateLinearFeetFromAcreage(sourceAcreage, clearingWidthFeet)
+      : null;
+    const effectiveLinearFeet = estimatedLinearFeet ?? linearFeet;
+    const needsAcreage = form.serviceType !== "Right-of-Way Clearing" && !isLinearFootQuote;
 
     if (needsAcreage && (!Number.isFinite(acreage) || acreage <= 0)) {
       setSubmitError("Estimated acreage is required for this field request.");
@@ -678,8 +716,10 @@ export default function NewQuote() {
       setSubmitError("Linear feet are required for a right-of-way field request.");
       return;
     }
-    if (form.serviceType === "Fence Line Clearing" && (!Number.isFinite(fenceLineFeet) || fenceLineFeet <= 0)) {
-      setSubmitError("Fence line footage is required for a fence line field request.");
+    if (isLinearFootQuote && (!Number.isFinite(effectiveLinearFeet) || effectiveLinearFeet <= 0)) {
+      setSubmitError(form.quantitySource === "acreage_estimate"
+        ? "Enter source acreage and clearing width to estimate Linear Feet."
+        : "Measured Linear Feet are required for this field request.");
       return;
     }
 
@@ -689,7 +729,7 @@ export default function NewQuote() {
     const fieldScopeNote = [
       form.message.trim(),
       form.serviceType === "Right-of-Way Clearing" ? `Right-of-Way measurement: ${linearFeet} linear feet${form.rowWidth ? ` at approximately ${form.rowWidth} feet wide` : ""}.` : "",
-      form.serviceType === "Fence Line Clearing" ? `Fence line measurement: ${fenceLineFeet} linear feet.` : "",
+      isLinearFootQuote ? `${form.serviceType} measurement: ${Math.round(effectiveLinearFeet).toLocaleString()} linear feet${form.quantitySource === "acreage_estimate" ? ` estimated from ${sourceAcreage} acres at ${clearingWidthFeet} feet wide — verify on site.` : "."}` : "",
       form.parcelId ? `TN Property Viewer reference: Parcel ${form.parcelId} · ${normalizeCountyName(form.county) || form.county}.` : "",
       estimate?.selectedDiscount ? `Selected quote discount: ${estimate.selectedDiscount.label} (${estimate.selectedDiscount.percent}% — ${estimate.selectedDiscount.eligibility}).` : "",
     ].filter(Boolean).join("\n");
@@ -703,6 +743,10 @@ export default function NewQuote() {
       lng: form.lng ?? undefined,
       serviceType: form.serviceType,
       acreage: isNaN(acreage) ? undefined : acreage,
+      linearFeet: isLinearFootQuote && Number.isFinite(effectiveLinearFeet) ? effectiveLinearFeet : undefined,
+      quantitySource: isLinearFootQuote ? form.quantitySource : undefined,
+      sourceAcreage: isLinearFootQuote && form.quantitySource === "acreage_estimate" && Number.isFinite(sourceAcreage) ? sourceAcreage : undefined,
+      clearingWidthFeet: isLinearFootQuote && form.quantitySource === "acreage_estimate" && Number.isFinite(clearingWidthFeet) ? clearingWidthFeet : undefined,
       terrainType: form.terrain,
       vegetationDensity: form.vegetationDensity,
       vegetationTypes: form.vegetationTypes || undefined,
@@ -773,7 +817,7 @@ export default function NewQuote() {
             clearExistingClient();
             setForm({
               name: "", email: "", phone: "", address: "", city: "", county: "", zip: "", parcelId: "", lat: null, lng: null,
-              serviceType: "Forestry Mulching", acreage: "", linearFeet: "",
+              serviceType: "Forestry Mulching", acreage: "", linearFeet: "", quantitySource: "measured", sourceAcreage: "", clearingWidthFeet: "20",
               terrain: "flat", vegetationDensity: "moderate", accessDifficulty: "easy",
               mobilizationMiles: "0", hasStumps: false, stumpCount: "", trailWidth: "",
               rowWidth: "", fenceLineLF: "", vegetationTypes: "", obstacles: "",
@@ -832,7 +876,6 @@ export default function NewQuote() {
   };
 
   const isROW = form.serviceType === "Right-of-Way Clearing";
-  const isTrail = form.serviceType === "Trail Cutting";
   const isFenceLine = form.serviceType === "Fence Line Clearing";
 
   return (
@@ -1126,20 +1169,20 @@ export default function NewQuote() {
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
 
             {/* Service type */}
-            <div>
-              <label style={labelStyle}>Service Type *</label>
-              <div style={{ position: "relative" }}>
-                <select value={form.serviceType} onChange={set("serviceType")} style={{ ...inputStyle, appearance: "none", paddingRight: 36 }}>
+              <div>
+                <label style={labelStyle}>Service Type *</label>
+                <div style={{ position: "relative" }}>
+                  <select value={form.serviceType} onChange={set("serviceType")} style={{ ...inputStyle, appearance: "none", paddingRight: 36 }}>
                   {SERVICE_TYPES.map((s) => <option key={s}>{s}</option>)}
                 </select>
                 <ChevronDown size={16} style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-25%)", color: "oklch(0.50 0.01 80)", pointerEvents: "none" }} />
               </div>
             </div>
 
-            {/* Acreage — always shown unless ROW with LF */}
-            {!isROW && !isFenceLine && (
+            {/* Acreage services */}
+            {!isROW && !isLinearFootService(form.serviceType) && (
               <div>
-                <label style={labelStyle}>{isTrail ? "Effective Acreage (length × width ÷ 43,560) *" : "Estimated Acreage *"}</label>
+                <label style={labelStyle}>Estimated Acreage *</label>
                 <input value={form.acreage} onChange={set("acreage")} placeholder="e.g. 5.5" type="number" inputMode="decimal" style={inputStyle} />
               </div>
             )}
@@ -1158,11 +1201,44 @@ export default function NewQuote() {
               </div>
             )}
 
-            {/* Trail-specific: trail width */}
-            {isTrail && (
-              <div>
-                <label style={labelStyle}>Trail Width (ft)</label>
-                <input value={form.trailWidth} onChange={set("trailWidth")} placeholder="e.g. 10" type="number" inputMode="numeric" style={inputStyle} />
+            {/* Shared Linear Foot workflow for Trail Cutting and Fence Line Clearing */}
+            {isLinearFootService(form.serviceType) && (
+              <div style={{ border: "1px solid oklch(0.65 0.18 50 / 0.35)", borderRadius: 10, padding: 11, backgroundColor: "oklch(0.65 0.18 50 / 0.06)" }}>
+                <label style={{ ...labelStyle, color: "var(--ne-amber)" }}>Linear Foot Measurement</label>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginTop: 7 }}>
+                  <button type="button" onClick={() => setForm((f) => ({ ...f, quantitySource: "measured" }))} aria-pressed={form.quantitySource === "measured"} style={{ border: `1px solid ${form.quantitySource === "measured" ? "var(--ne-amber)" : "var(--ne-border)"}`, borderRadius: 8, background: form.quantitySource === "measured" ? "oklch(0.65 0.18 50 / 0.15)" : "var(--ne-raised)", color: form.quantitySource === "measured" ? "var(--ne-amber)" : "var(--ne-cream)", padding: "9px 8px", fontWeight: 700, fontSize: 11, cursor: "pointer" }}>Measured footage</button>
+                  <button type="button" onClick={() => setForm((f) => ({ ...f, quantitySource: "acreage_estimate" }))} aria-pressed={form.quantitySource === "acreage_estimate"} style={{ border: `1px solid ${form.quantitySource === "acreage_estimate" ? "var(--ne-amber)" : "var(--ne-border)"}`, borderRadius: 8, background: form.quantitySource === "acreage_estimate" ? "oklch(0.65 0.18 50 / 0.15)" : "var(--ne-raised)", color: form.quantitySource === "acreage_estimate" ? "var(--ne-amber)" : "var(--ne-cream)", padding: "9px 8px", fontWeight: 700, fontSize: 11, cursor: "pointer" }}>Calculate from acreage</button>
+                </div>
+                {form.quantitySource === "measured" ? (
+                  <div style={{ marginTop: 10 }}>
+                    <label style={labelStyle}>Measured Linear Feet *</label>
+                    <input value={form.linearFeet} onChange={set("linearFeet")} placeholder="e.g. 2,000" type="number" inputMode="numeric" style={inputStyle} />
+                  </div>
+                ) : (() => {
+                  const estimatedFeet = calculateLinearFeetFromAcreage(parseFloat(form.sourceAcreage), parseFloat(form.clearingWidthFeet));
+                  return <div style={{ marginTop: 10 }}>
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                      <div>
+                        <label style={labelStyle}>Source acreage *</label>
+                        <input value={form.sourceAcreage} onChange={set("sourceAcreage")} placeholder="e.g. 3" type="number" inputMode="decimal" style={inputStyle} />
+                      </div>
+                      <div>
+                        <label style={labelStyle}>Clearing width (ft) <button type="button" title="Acres × 43,560 ÷ clearing width (ft) = estimated Linear Feet. Use for defined corridors, not a property perimeter. Verify footage on site." aria-label="Acreage to Linear Feet formula" style={{ border: "none", background: "none", color: "var(--ne-amber)", cursor: "help", padding: 0, fontWeight: 700 }}>ⓘ</button></label>
+                        <select value={form.clearingWidthFeet} onChange={set("clearingWidthFeet")} style={{ ...inputStyle, marginTop: 6 }} aria-label="Clearing width in feet">
+                          {LINEAR_FOOT_CLEARING_WIDTH_OPTIONS.map((width) => <option key={width} value={width}>{width} ft</option>)}
+                        </select>
+                        <p style={{ color: "var(--ne-muted)", fontSize: 10, lineHeight: 1.35, margin: "5px 0 0" }}>Acres × 43,560 ÷ width = estimated Linear Feet.</p>
+                      </div>
+                    </div>
+                    <div style={{ marginTop: 8 }}>
+                      <span style={{ color: "var(--ne-muted)", fontSize: 11, fontWeight: 700 }}>Quick select: </span>
+                      {LINEAR_FOOT_CLEARING_WIDTH_OPTIONS.map((width) => <button key={width} type="button" onClick={() => setForm((f) => ({ ...f, clearingWidthFeet: String(width) }))} aria-pressed={Number(form.clearingWidthFeet) === width} style={{ border: `1px solid ${Number(form.clearingWidthFeet) === width ? "var(--ne-amber)" : "var(--ne-border)"}`, borderRadius: 7, background: Number(form.clearingWidthFeet) === width ? "oklch(0.65 0.18 50 / 0.15)" : "var(--ne-raised)", color: Number(form.clearingWidthFeet) === width ? "var(--ne-amber)" : "var(--ne-cream)", padding: "5px 7px", fontSize: 10, fontWeight: 700, cursor: "pointer", marginLeft: 5 }}>{width} ft</button>)}
+                    </div>
+                    <div role="status" style={{ marginTop: 10, borderRadius: 8, border: "1px solid oklch(0.75 0.18 60 / 0.45)", background: "oklch(0.75 0.18 60 / 0.08)", padding: "9px 10px", color: "oklch(0.82 0.18 65)", fontSize: 12, lineHeight: 1.4 }}>
+                      <strong>Estimated footage — verify on site.</strong> {estimatedFeet ? `${estimatedFeet.toLocaleString()} Linear Feet from ${form.sourceAcreage} acres at ${form.clearingWidthFeet} ft wide.` : "Enter acreage to calculate Linear Feet."}
+                    </div>
+                  </div>;
+                })()}
               </div>
             )}
 
@@ -1256,11 +1332,11 @@ export default function NewQuote() {
               )}
             </div>
 
-            {/* Fence line */}
-            <div>
-              <label style={labelStyle}>Fence Line Clearing {isFenceLine ? "(linear feet) *" : "(linear feet, optional)"}</label>
+            {/* Optional fence-line add-on for non-fence-line services */}
+            {!isFenceLine && <div>
+              <label style={labelStyle}>Fence Line Clearing (linear feet, optional)</label>
               <input value={form.fenceLineLF} onChange={set("fenceLineLF")} placeholder="e.g. 500" type="number" inputMode="numeric" style={inputStyle} />
-            </div>
+            </div>}
 
             {/* Vegetation types (legacy intake field) */}
             <div>

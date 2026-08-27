@@ -25,9 +25,10 @@ describe("Noland Field website alignment", () => {
 
     expect(form).toContain("Estimated acreage is required for this field request.");
     expect(form).toContain("Linear feet are required for a right-of-way field request.");
-    expect(form).toContain("Fence line footage is required for a fence line field request.");
+    expect(form).toContain("Measured Linear Feet are required for this field request.");
+    expect(form).toContain("Enter source acreage and clearing width to estimate Linear Feet.");
     expect(form).toContain("Right-of-Way measurement:");
-    expect(form).toContain("Fence line measurement:");
+    expect(form).toContain("measurement: ${Math.round(effectiveLinearFeet).toLocaleString()} linear feet");
   });
 
   it("uses current Operations and Site Visit language in the field workflow", () => {

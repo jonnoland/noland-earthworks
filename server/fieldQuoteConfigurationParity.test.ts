@@ -8,7 +8,7 @@ describe("Noland Field quote configuration parity", () => {
   it("uses live Operations settings for condition adjustments and eligible discount options", () => {
     const router = source("server/fieldQuoteRouter.ts");
 
-    expect(router).toContain("getSuggestedVolumeDiscount(input.acreage ?? 0, pricingSettings)");
+    expect(router).toContain("getSuggestedVolumeDiscount(input.sourceAcreage ?? input.acreage ?? 0, pricingSettings)");
     expect(router).toContain("getCustomerDiscountOptions(pricingSettings)");
     expect(router).toContain("The selected discount is not enabled or eligible");
     expect(router).toContain("roundQuoteCentsUp(conditionAdjustedPrice.customerPriceLow * 100)");
@@ -34,5 +34,22 @@ describe("Noland Field quote configuration parity", () => {
     expect(mobile).toContain("Existing client (optional)");
     expect(mobile).toContain("selectExistingClient");
     expect(mobile).toContain("window.confirm");
+  });
+
+  it("matches Operations Linear Foot measurement and acreage conversion behavior in Noland Field", () => {
+    const router = source("server/fieldQuoteRouter.ts");
+    const mobile = source("noland-earthworks-mobile/src/pages/NewQuote.tsx");
+    const detail = source("noland-earthworks-mobile/src/pages/QuoteDetail.tsx");
+    const offlineQueue = source("noland-earthworks-mobile/src/lib/offlineFieldQuoteQueue.ts");
+
+    expect(router).toContain("calculateLinearFeetFromAcreage");
+    expect(router).toContain("quantitySource: z.enum([\"measured\", \"acreage_estimate\"])" );
+    expect(router).toContain("Verify footage on site before finalizing the quote.");
+    expect(mobile).toContain("Calculate from acreage");
+    expect(mobile).toContain("LINEAR_FOOT_CLEARING_WIDTH_OPTIONS");
+    expect(mobile).toContain("Estimated footage — verify on site.");
+    expect(mobile).toContain("Acres × 43,560 ÷ width = estimated Linear Feet.");
+    expect(detail).toContain("Estimated footage — verify on site.");
+    expect(offlineQueue).toContain("quantitySource?: \"measured\" | \"acreage_estimate\"");
   });
 });
