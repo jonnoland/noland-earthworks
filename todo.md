@@ -3726,3 +3726,7 @@
 - [x] Make AI Suggest accept and validate Linear Foot quantities for Trail Cutting and Fence Line Clearing
 - [x] Generate Linear Foot-aware suggested line items, calculation basis, and cost totals without applying acreage assumptions
 - [x] Preserve acreage-based AI Suggest behavior for acreage services and validate both quote paths
+
+## Duplicate Quote Field Defect — Aug 2026
+- [x] Remove the duplicate service-description control that still renders below the service dropdown for existing quote lines
+- [x] Add regression coverage for service-name matching with legacy display labels and validate the active editor path

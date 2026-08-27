@@ -226,8 +226,8 @@ function LineItemRow({
             </select>
           </label>
         )}
-        {(!isServiceLine || selectedServiceValue === "custom") && <Input
-          placeholder={isServiceLine ? "Custom service or charge" : "Description"}
+        {!isServiceLine && <Input
+          placeholder="Description"
           value={item.description}
           onChange={e => onChange(index, "description", e.target.value)}
           className="bg-zinc-800 border-zinc-700 text-sm"

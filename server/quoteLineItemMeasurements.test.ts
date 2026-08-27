@@ -40,8 +40,9 @@ describe("quote service line measurements", () => {
     expect(editor).toContain("{ ...createQuoteServiceLineItem(), kind: \"service\" }");
     expect(editor).toContain("Rate / linear ft");
     expect(editor).toContain("Calculated as linear feet × rate per linear foot.");
-    expect(editor).toContain('selectedServiceValue === "custom"');
+    expect(editor).toContain("!isServiceLine && <Input");
     expect(editor).not.toContain('placeholder={isServiceLine ? "Service description or scope" : "Description"}');
+    expect(editor).not.toContain('selectedServiceValue === "custom" && <Input');
   });
 
   it("allows Linear Foot metadata through the native quote persistence and portal display paths", () => {
