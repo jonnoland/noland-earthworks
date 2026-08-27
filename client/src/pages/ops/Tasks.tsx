@@ -10,7 +10,8 @@ import {
 } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
-import OpsDashboardLayout from "@/components/OpsDashboardLayout";
+import DashboardLayout from "@/components/DashboardLayout";
+const OpsDashboardLayout = DashboardLayout;
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 

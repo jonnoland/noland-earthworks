@@ -3701,3 +3701,12 @@
 - [x] Audit Operations screens for consistency, accuracy, navigation integrity, and owner-operator flow
 - [x] Verify critical read/write procedures, role protection, and dashboard-to-workspace routing
 - [x] Deliver a prioritized Operations audit with corrective recommendations
+
+## Operations Data and Navigation Consolidation — Aug 2026
+- [x] Replace legacy Operations shell usage with the shared DashboardLayout and eliminate duplicate sidebar route definitions
+- [x] Repair Clients, Invoices, and Payments route behavior so direct URLs render the requested workspace
+- [x] Make native quotes, jobs, invoices, payments, and lifecycle metrics the reporting source of truth without losing legacy records
+- [x] Correct report labels, status filters, and revenue calculations to reflect the underlying native lifecycle event
+- [x] Update the stored business quote email address and default to quotes@nolandearthworks.com
+- [x] Persist internal pricing configuration to owner-protected server data with safe one-time import of the current browser settings
+- [x] Add regression coverage and validate the Operations consolidation end to end

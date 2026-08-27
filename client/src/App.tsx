@@ -44,7 +44,6 @@ const OpsServiceFaqs     = lazy(() => import("./pages/ops/ServiceFaqs"));
 const OpsLeadVisibility  = lazy(() => import("./pages/ops/LeadVisibility"));
 const OpsChatSessions    = lazy(() => import("./pages/ops/ChatSessions"));
 const OpsGallery         = lazy(() => import("./pages/ops/Gallery"));
-const ClientsHub         = lazy(() => import("./pages/ops/ClientsHub"));
 const CrewsHub           = lazy(() => import("./pages/ops/CrewsHub"));
 const ReportsHub         = lazy(() => import("./pages/ops/ReportsHub"));
 const MarketingHub       = lazy(() => import("./pages/ops/MarketingHub"));
@@ -468,12 +467,11 @@ function Router() {
       <Route path="/ops/gallery">
         <Suspense fallback={<OpsLoading />}><OwnerRoute><OpsGallery /></OwnerRoute></Suspense>
       </Route>
-      {/* Hub tab-wrapper routes */}
+      {/* Legacy client-hub URLs retain a direct, canonical destination. */}
+      <Route path="/ops/clients/invoices" component={() => { window.location.replace("/ops/invoices"); return null; }} />
+      <Route path="/ops/clients/payments" component={() => { window.location.replace("/ops/payments"); return null; }} />
       <Route path="/ops/clients">
-        <Suspense fallback={<OpsLoading />}><OwnerRoute><ClientsHub /></OwnerRoute></Suspense>
-      </Route>
-      <Route path="/ops/clients/:tab">
-        <Suspense fallback={<OpsLoading />}><OwnerRoute><ClientsHub /></OwnerRoute></Suspense>
+        <Suspense fallback={<OpsLoading />}><OwnerRoute><OpsClients /></OwnerRoute></Suspense>
       </Route>
       <Route path="/ops/crews-hub">
         <Suspense fallback={<OpsLoading />}><OwnerRoute><CrewsHub /></OwnerRoute></Suspense>

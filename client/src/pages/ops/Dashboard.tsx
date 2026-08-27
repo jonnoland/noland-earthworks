@@ -147,7 +147,6 @@ export default function Dashboard() {
   const [completedLeadSteps, setCompletedLeadSteps] = useState<Set<number>>(new Set());
   const previousLeadCount = useRef<number | null>(null);
 
-  const { data: localJobs = [], isLoading: localJobsLoading } = trpc.ops.jobs.list.useQuery(undefined, { refetchInterval: 30_000 });
   const { data: nativeJobs = [], isLoading: nativeJobsLoading } = trpc.nativeJobs.list.useQuery({}, { refetchInterval: 30_000 });
   const { data: invoices = [], isLoading: invoicesLoading } = trpc.nativeJobs.listInvoices.useQuery({}, { refetchInterval: 60_000 });
   const { data: quotesData, isLoading: quotesLoading } = trpc.nativeQuotes.list.useQuery({ limit: 100 }, { refetchInterval: 60_000 });
@@ -161,7 +160,7 @@ export default function Dashboard() {
     onError: (error: any) => toast.error(error.message || "Morning Brief could not be generated."),
   });
 
-  const isLoading = localJobsLoading || nativeJobsLoading || invoicesLoading || quotesLoading || leadsLoading;
+  const isLoading = nativeJobsLoading || invoicesLoading || quotesLoading || leadsLoading;
   const quotes = quotesData?.quotes ?? [];
 
   useEffect(() => {
@@ -173,8 +172,7 @@ export default function Dashboard() {
   }, [leads.length]);
 
   const jobs = useMemo<CommandJob[]>(() => {
-    const source = nativeJobs.length > 0 ? nativeJobs : localJobs;
-    return source.map((job: any) => ({
+    return nativeJobs.map((job: any) => ({
       id: String(job.id),
       clientName: job.clientName ?? job.client ?? job.customerName ?? "Unknown client",
       serviceType: job.serviceType ?? job.jobType?.replace(/_/g, " ") ?? job.title ?? "Land Management",
@@ -185,7 +183,7 @@ export default function Dashboard() {
       total: job.totalCents != null ? Number(job.totalCents) / 100 : job.totalPrice != null ? Number(job.totalPrice) : null,
       highPriority: Boolean(job.isHighPriority),
     }));
-  }, [localJobs, nativeJobs]);
+  }, [nativeJobs]);
 
   const openInvoices = useMemo(() => invoices.filter((invoice: any) => {
     const status = String(invoice.status ?? invoice.invoiceStatus ?? "").toLowerCase();
@@ -193,9 +191,7 @@ export default function Dashboard() {
   }), [invoices]);
   const paidInvoices = useMemo(() => invoices.filter((invoice: any) => String(invoice.status ?? invoice.invoiceStatus ?? "").toLowerCase() === "paid"), [invoices]);
   const outstandingBalance = useMemo(() => openInvoices.reduce((sum: number, invoice: any) => {
-    const total = Number(invoice.totalCents ?? invoice.amounts?.total ?? 0);
-    const paid = Number(invoice.depositCents ?? invoice.amounts?.paid ?? 0);
-    return sum + Math.max(0, total - paid) / (invoice.totalCents != null ? 100 : 1);
+    return sum + Number(invoice.totalCents ?? 0) / 100;
   }, 0), [openInvoices]);
   const overdueInvoices = useMemo(() => openInvoices.filter((invoice: any) => {
     const status = String(invoice.status ?? invoice.invoiceStatus ?? "").toLowerCase();
@@ -204,13 +200,22 @@ export default function Dashboard() {
   const paidThisMonth = useMemo(() => {
     const now = new Date();
     const start = new Date(now.getFullYear(), now.getMonth(), 1);
-    return paidInvoices.filter((invoice: any) => invoice.paidAt && new Date(invoice.paidAt) >= start)
-      .reduce((sum: number, invoice: any) => sum + Number(invoice.totalCents ?? invoice.amounts?.total ?? 0) / (invoice.totalCents != null ? 100 : 1), 0);
-  }, [paidInvoices]);
+    const paidInvoiceJobIds = new Set(paidInvoices.map((invoice: any) => invoice.jobId));
+    const invoiceCash = paidInvoices.filter((invoice: any) => invoice.paidAt && new Date(invoice.paidAt) >= start)
+      .reduce((sum: number, invoice: any) => sum + Number(invoice.totalCents ?? 0) / 100, 0);
+    const jobCash = nativeJobs.filter((job: any) => job.paidAt && !paidInvoiceJobIds.has(job.id) && new Date(job.paidAt) >= start)
+      .reduce((sum: number, job: any) => sum + Number(job.paidCents ?? job.totalCents ?? 0) / 100, 0);
+    const depositCash = quotes.filter((quote: any) => quote.depositPaidAt && new Date(quote.depositPaidAt) >= start)
+      .reduce((sum: number, quote: any) => sum + Number(quote.depositPaidCents ?? 0) / 100, 0);
+    return invoiceCash + jobCash + depositCash;
+  }, [nativeJobs, paidInvoices, quotes]);
 
   const openLeads = useMemo(() => leads.filter((lead: any) => !["won", "lost", "converted"].includes(lead.stage)), [leads]);
   const draftQuotes = useMemo(() => quotes.filter((quote: any) => quote.status === "draft" || quote.proposalStatus === "draft"), [quotes]);
-  const sentQuotes = useMemo(() => quotes.filter((quote: any) => quote.portalSentAt && !quote.portalAcceptedAt), [quotes]);
+  const sentQuotes = useMemo(() => quotes.filter((quote: any) => {
+    if (!quote.portalSentAt) return false;
+    return !["approved", "declined", "invoiced", "cancelled"].includes(String(quote.status ?? "").toLowerCase());
+  }), [quotes]);
   const pendingVisits = useMemo(() => quotes.filter((quote: any) => ["requested", "confirmed"].includes(quote.visitStatus)), [quotes]);
 
   const nextSevenDays = useMemo(() => {
@@ -289,14 +294,20 @@ export default function Dashboard() {
 
   const revenueChart = useMemo(() => {
     const now = new Date();
+    const paidInvoiceJobIds = new Set(paidInvoices.map((invoice: any) => invoice.jobId));
     return Array.from({ length: 6 }, (_, index) => {
       const month = new Date(now.getFullYear(), now.getMonth() - (5 - index), 1);
       const nextMonth = new Date(month.getFullYear(), month.getMonth() + 1, 1);
-      const revenue = paidInvoices.filter((invoice: any) => invoice.paidAt && new Date(invoice.paidAt) >= month && new Date(invoice.paidAt) < nextMonth)
-        .reduce((sum: number, invoice: any) => sum + Number(invoice.totalCents ?? invoice.amounts?.total ?? 0) / (invoice.totalCents != null ? 100 : 1), 0);
+      const invoiceCash = paidInvoices.filter((invoice: any) => invoice.paidAt && new Date(invoice.paidAt) >= month && new Date(invoice.paidAt) < nextMonth)
+        .reduce((sum: number, invoice: any) => sum + Number(invoice.totalCents ?? 0) / 100, 0);
+      const jobCash = nativeJobs.filter((job: any) => job.paidAt && !paidInvoiceJobIds.has(job.id) && new Date(job.paidAt) >= month && new Date(job.paidAt) < nextMonth)
+        .reduce((sum: number, job: any) => sum + Number(job.paidCents ?? job.totalCents ?? 0) / 100, 0);
+      const depositCash = quotes.filter((quote: any) => quote.depositPaidAt && new Date(quote.depositPaidAt) >= month && new Date(quote.depositPaidAt) < nextMonth)
+        .reduce((sum: number, quote: any) => sum + Number(quote.depositPaidCents ?? 0) / 100, 0);
+      const revenue = invoiceCash + jobCash + depositCash;
       return { month: month.toLocaleDateString("en-US", { month: "short" }), revenue };
     });
-  }, [paidInvoices]);
+  }, [nativeJobs, paidInvoices, quotes]);
 
   const completedReviewRequests = reviewRequests.filter((request: any) => request.sentAt || request.status === "sent").length;
   const waitlistTotal = waitlistByCounty.reduce((sum, county) => sum + county.signups, 0);

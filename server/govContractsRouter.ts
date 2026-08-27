@@ -404,7 +404,7 @@ async function getCompanyInfo() {
     companyName: s?.companyName ?? "Noland Earthworks, LLC",
     ownerName: "Jon M. Noland",
     phone: s?.phone ?? "(615) 406-4819",
-    email: s?.email ?? "jonnoland@nolandearthworks.com",
+    email: s?.email ?? "quotes@nolandearthworks.com",
     address: s?.address ?? "93 Halliburton Road",
     city: s?.city ?? "Vanleer",
     state: s?.state ?? "Tennessee",

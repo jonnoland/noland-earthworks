@@ -514,7 +514,7 @@ export const businessSettings = mysqlTable("business_settings", {
   id: int("id").primaryKey().autoincrement(),
   companyName: varchar("companyName", { length: 200 }).notNull().default("Noland Earthworks, LLC"),
   phone: varchar("phone", { length: 30 }).default("(615) 406-4819"),
-  email: varchar("email", { length: 200 }).default("jonnoland@nolandearthworks.com"),
+  email: varchar("email", { length: 200 }).default("quotes@nolandearthworks.com"),
   address: varchar("address", { length: 300 }).default("93 Halliburton Road"),
   city: varchar("city", { length: 100 }).default("Vanleer"),
   state: varchar("state", { length: 50 }).default("Tennessee"),
@@ -539,6 +539,9 @@ export const businessSettings = mysqlTable("business_settings", {
    * Values: 'cat' | 'kubota' | 'takeuchi' | 'bobcat' | 'deere' | 'other' | null
    */
   preferredMachineBrand: varchar("preferredMachineBrand", { length: 30 }),
+  /** Owner-approved configuration for the internal crew-day pricing calculator. */
+  pricingConfig: text("pricingConfig"),
+  pricingConfigUpdatedAt: timestamp("pricingConfigUpdatedAt"),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
 export type BusinessSettings = typeof businessSettings.$inferSelect;
@@ -1929,6 +1932,8 @@ export type InsertPortalAddOnOption = typeof portalAddOnOptions.$inferInsert;
  */
 export const nativeQuotes = mysqlTable("native_quotes", {
   id: int("id").primaryKey().autoincrement(),
+  /** Source jobs.id for quote-stage records imported from the retired legacy job table. */
+  legacyJobId: int("legacyJobId").unique(),
   clientName: varchar("clientName", { length: 255 }).notNull(),
   clientEmail: varchar("clientEmail", { length: 255 }),
   clientPhone: varchar("clientPhone", { length: 30 }),
@@ -2002,6 +2007,8 @@ export type InsertNativeQuote = typeof nativeQuotes.$inferInsert;
  */
 export const nativeJobs = mysqlTable("native_jobs", {
   id: int("id").primaryKey().autoincrement(),
+  /** Source jobs.id for records imported from the retired legacy job table. */
+  legacyJobId: int("legacyJobId").unique(),
   /** FK to native_quotes — the quote this job was converted from */
   quoteId: int("quoteId"),
   clientName: varchar("clientName", { length: 255 }).notNull(),

@@ -4,7 +4,8 @@
  * Wired to tRPC ops.timesheets procedures
  */
 import { useState, useMemo } from "react";
-import OpsDashboardLayout from "@/components/OpsDashboardLayout";
+import DashboardLayout from "@/components/DashboardLayout";
+const OpsDashboardLayout = DashboardLayout;
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
 import {
