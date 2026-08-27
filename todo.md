@@ -3766,3 +3766,13 @@
 - [x] Create replacement Android signing material and a replacement-signed test package as explicitly authorized
 - [x] Preserve the replacement signing configuration for future Noland Field releases without exposing key material
 - [x] Provide clear uninstall-and-reinstall instructions for the replacement package
+
+## Nashville Parcel Viewer Quote Integration — Aug 2026
+- [x] Verify Nashville Parcel Viewer’s authoritative search and map services and preserve their source attribution
+- [x] Add Nashville-specific parcel lookup and viewer access to the Operations quote workflow without replacing statewide Tennessee lookup
+- [x] Preserve safe address-to-parcel association behavior and add Nashville parcel boundary/map fallback handling
+- [x] Add regression coverage and validate the quote workflow integration
+
+## Noland Field v0.4.13 GitHub Release Asset — Aug 2026
+- [ ] Create or update the Noland Field v0.4.13 GitHub release and upload the verified replacement-signed APK as its release asset
+- [ ] Verify the GitHub release asset checksum, version details, and installation note for the replacement signature

@@ -2,6 +2,14 @@ import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { protectedProcedure, router } from "./_core/trpc";
 import { normalizeTennesseeParcelId, validateTennesseeParcelId } from "../shared/tennesseeParcelId";
+import {
+  buildExactNashvilleParcelWhere,
+  buildNashvilleParcelWhere,
+  isDavidsonCounty,
+  mapNashvilleParcelFeature,
+  NASHVILLE_PARCEL_SOURCE,
+  queryNashvilleParcels,
+} from "./nashvilleParcelViewer";
 
 const TN_PARCEL_QUERY_URL = "https://services1.arcgis.com/YuVBSS7Y1of2Qud1/arcgis/rest/services/Tennessee_Property_Boundaries_Public_Use/FeatureServer/0/query";
 
@@ -128,6 +136,32 @@ export const parcelRouter = router({
       }
 
       try {
+        if (isDavidsonCounty(input.county)) {
+          try {
+            let features = await queryNashvilleParcels({
+              where: buildExactNashvilleParcelWhere(input.parcelId),
+              resultRecordCount: 1,
+              timeoutMs: 12_000,
+            });
+            if (features.length === 0) {
+              features = await queryNashvilleParcels({
+                where: buildNashvilleParcelWhere(input.parcelId),
+                resultRecordCount: 8,
+                timeoutMs: 18_000,
+              });
+            }
+            return {
+              matches: features.map(mapNashvilleParcelFeature),
+              normalizedParcelId: parcelValidation.normalized,
+              source: NASHVILLE_PARCEL_SOURCE,
+              sourceUpdated: "daily",
+              referenceNotice: "Nashville Parcel Viewer data is reference information only, not a legal survey. Review the official Davidson County record before relying on it.",
+            };
+          } catch (error) {
+            console.warn("[parcel.lookup] Nashville parcel lookup failed; trying statewide Tennessee lookup", error);
+          }
+        }
+
         let features = await queryTennesseeParcels(
           buildExactTennesseeParcelWhere(input.county, input.parcelId),
           1,
@@ -174,6 +208,42 @@ export const parcelRouter = router({
       }
 
       try {
+        if (isDavidsonCounty(input.county)) {
+          try {
+            let features = await queryNashvilleParcels({
+              where: buildExactNashvilleParcelWhere(input.parcelId),
+              resultRecordCount: 1,
+              timeoutMs: 12_000,
+              includeGeometry: true,
+            });
+            if (features.length === 0) {
+              features = await queryNashvilleParcels({
+                where: buildNashvilleParcelWhere(input.parcelId),
+                resultRecordCount: 1,
+                timeoutMs: 18_000,
+                includeGeometry: true,
+              });
+            }
+            const feature = features[0];
+            if (!feature) {
+              throw new TRPCError({ code: "NOT_FOUND", message: "No mapped Parcel ID boundary was found for Davidson County." });
+            }
+            const boundaryRings = toParcelBoundaryRings(feature.geometry);
+            if (!boundaryRings) {
+              throw new TRPCError({ code: "NOT_FOUND", message: "This Davidson County Parcel ID does not include a usable boundary outline." });
+            }
+            return {
+              ...mapNashvilleParcelFeature(feature),
+              boundaryRings,
+              source: NASHVILLE_PARCEL_SOURCE,
+              referenceNotice: "Nashville Parcel Viewer boundaries are reference information only, not a legal survey. Verify the official Davidson County record before relying on them.",
+            };
+          } catch (error) {
+            if (error instanceof TRPCError) throw error;
+            console.warn("[parcel.boundary] Nashville boundary lookup failed; trying statewide Tennessee lookup", error);
+          }
+        }
+
         let features = await queryTennesseeParcels(
           buildExactTennesseeParcelWhere(input.county, input.parcelId),
           1,

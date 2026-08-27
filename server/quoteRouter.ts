@@ -16,6 +16,14 @@ import { parseGooglePlaceAddress, parseGooglePlaceCoordinates } from "./googlePl
 import { isServedCounty } from "../shared/serviceAreas";
 import { normalizeTennesseeParcelId, validateTennesseeParcelId } from "../shared/tennesseeParcelId";
 import { isExactAddressParcelMatch } from "../shared/addressParcelMatch";
+import {
+  buildExactNashvilleParcelWhere,
+  buildNashvilleParcelWhere,
+  isDavidsonCounty,
+  mapNashvilleParcelFeature,
+  NASHVILLE_PARCEL_SOURCE,
+  queryNashvilleParcels,
+} from "./nashvilleParcelViewer";
 import { randomUUID } from "node:crypto";
 
 const TN_PARCEL_QUERY_URL = "https://services1.arcgis.com/YuVBSS7Y1of2Qud1/arcgis/rest/services/Tennessee_Property_Boundaries_Public_Use/FeatureServer/0/query";
@@ -98,6 +106,38 @@ export async function resolveUniqueParcelForWebsiteRequest(input: {
       xmax: Math.round(x + bufferMetres), ymax: Math.round(y + bufferMetres),
       spatialReference: { wkid: 102100 },
     });
+
+    if (isDavidsonCounty(input.county)) {
+      try {
+        const nashvilleFeatures = await queryNashvilleParcels({
+          where: "1=1",
+          resultRecordCount: 6,
+          timeoutMs: 12_000,
+          geometry,
+        });
+        const exactMatches = nashvilleFeatures.flatMap((feature) => {
+          const nashvilleParcel = mapNashvilleParcelFeature(feature);
+          const parcelStreet = nashvilleParcel.address?.split(",")[0] ?? "";
+          if (!nashvilleParcel.parcelId || !isExactAddressParcelMatch({
+            submittedStreet: input.street,
+            submittedCounty: input.county,
+            parcelStreet,
+            parcelCounty: nashvilleParcel.county,
+          })) return [];
+          return [{
+            parcelId: nashvilleParcel.parcelId,
+            county: nashvilleParcel.county,
+            deedAcres: nashvilleParcel.deedAcreage,
+            lat: latitude,
+            lng: longitude,
+          }];
+        });
+        return exactMatches.length === 1 ? exactMatches[0] : null;
+      } catch (error) {
+        console.warn("[Quote] Nashville address-to-parcel association skipped; trying statewide source:", error);
+      }
+    }
+
     const params = new URLSearchParams({
       geometry,
       geometryType: "esriGeometryEnvelope",
@@ -1051,6 +1091,46 @@ export const quoteRouter = router({
       }
 
       try {
+        if (isDavidsonCounty(input.county)) {
+          try {
+            let features = await queryNashvilleParcels({
+              where: buildExactNashvilleParcelWhere(input.parcelId),
+              resultRecordCount: 1,
+              timeoutMs: 12_000,
+            });
+            if (features.length === 0) {
+              features = await queryNashvilleParcels({
+                where: buildNashvilleParcelWhere(input.parcelId),
+                resultRecordCount: 6,
+                timeoutMs: 18_000,
+              });
+            }
+            const matches = features.map((feature) => {
+              const parcel = mapNashvilleParcelFeature(feature);
+              return {
+                parcelId: parcel.parcelId,
+                county: parcel.county,
+                street: parcel.street,
+                city: parcel.city,
+                zip: parcel.zip,
+                address: parcel.address,
+                deedAcres: parcel.deedAcreage,
+                lat: parcel.centroid?.lat ?? null,
+                lng: parcel.centroid?.lng ?? null,
+                propertyViewerUrl: parcel.propertyViewerUrl,
+              };
+            });
+            return {
+              matches,
+              normalizedParcelId: parcelValidation.normalized,
+              source: NASHVILLE_PARCEL_SOURCE,
+              referenceNotice: "Property details are reference information from Nashville Parcel Viewer. Confirm the property details before submitting.",
+            };
+          } catch (error) {
+            console.warn("[quote.parcelLookupById] Nashville parcel lookup failed; trying statewide Tennessee lookup", error);
+          }
+        }
+
         const params = new URLSearchParams({
           where: buildPublicParcelWhere(input.county, input.parcelId),
           outFields: "PARCELID,COUNTY_NAME,ADDRESS,CITY,ZIP,DEEDAC,LINK_TPV",

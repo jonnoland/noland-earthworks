@@ -98,6 +98,10 @@ interface LineItem {
   discountCode?: string;
 }
 
+function isNashvilleParcelViewerUrl(url: string | null | undefined): boolean {
+  return Boolean(url?.includes("maps.nashville.gov/ParcelViewer"));
+}
+
 interface NativeQuote {
   id: number;
   clientName: string;
@@ -602,6 +606,9 @@ function QuoteFormModal({
   });
 
   const applyParcelMatch = (match: typeof parcelMatches[number]) => {
+    const parcelSourceLabel = isNashvilleParcelViewerUrl(match.propertyViewerUrl)
+      ? "Nashville Parcel Viewer"
+      : "TN Property Viewer";
     setForm((current) => ({
       ...current,
       clientName: current.clientName.trim() ? current.clientName : (match.owner || current.clientName),
@@ -611,7 +618,7 @@ function QuoteFormModal({
       parcelCounty: match.county,
       internalNotes: [
         current.internalNotes,
-        `TN Property Viewer reference: Parcel ${match.parcelId} · ${match.county}${match.owner ? ` · Owner: ${match.owner}` : ""}`,
+        `${parcelSourceLabel} reference: Parcel ${match.parcelId} · ${match.county}${match.owner ? ` · Owner: ${match.owner}` : ""}`,
       ].filter(Boolean).join("\n"),
     }));
     setParcelId(match.parcelId);
@@ -1207,7 +1214,7 @@ function QuoteFormModal({
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <Label className="text-sky-200 text-xs font-semibold">Tennessee Parcel ID Lookup</Label>
-                  <p className="mt-0.5 text-[11px] text-zinc-400">Find a property by county and Parcel ID. The address and reported acreage remain editable before saving.</p>
+                  <p className="mt-0.5 text-[11px] text-zinc-400">Find a property by county and Parcel ID. Davidson County uses Nashville Parcel Viewer; other counties use Tennessee Property Viewer. Address and acreage remain editable.</p>
                 </div>
                 <MapPin className="h-4 w-4 shrink-0 text-sky-300" aria-hidden="true" />
               </div>
@@ -1225,8 +1232,8 @@ function QuoteFormModal({
                   onChange={(event) => { setParcelId(event.target.value); if (parcelIdError) setParcelIdError(null); }}
                   onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); lookupParcel(); } }}
                   className={`bg-zinc-800 ${parcelIdError ? "border-red-500" : "border-zinc-700"}`}
-                  placeholder="Parcel ID, map/group/parcel"
-                  aria-label="Tennessee Parcel ID"
+                  placeholder="Parcel ID or Davidson APN"
+                  aria-label="Tennessee Parcel ID or Davidson APN"
                   aria-invalid={Boolean(parcelIdError)}
                   aria-describedby={parcelIdError ? "parcel-id-format-error" : undefined}
                 />
@@ -1247,10 +1254,11 @@ function QuoteFormModal({
                         <div>
                           <p className="font-semibold text-zinc-100">{match.address || "Address unavailable"}</p>
                           <p className="mt-0.5 text-zinc-400">Parcel {match.parcelId} · {match.county}{match.deedAcreage ? ` · ${match.deedAcreage.toLocaleString()} acres reported` : ""}</p>
+                          <p className="mt-1 text-[10px] font-medium text-sky-300">{isNashvilleParcelViewerUrl(match.propertyViewerUrl) ? "Source: Nashville Parcel Viewer (Metro Nashville)" : "Source: Tennessee Property Viewer"}</p>
                           {match.owner && <p className="mt-0.5 text-zinc-500">Owner record: {match.owner}</p>}
                         </div>
                         <div className="flex items-center gap-1.5">
-                          {match.propertyViewerUrl && <a href={match.propertyViewerUrl} target="_blank" rel="noreferrer" className="rounded p-1.5 text-sky-300 hover:bg-sky-500/15" title="Open in Tennessee Property Viewer"><ExternalLink className="h-3.5 w-3.5" /></a>}
+                          {match.propertyViewerUrl && <a href={match.propertyViewerUrl} target="_blank" rel="noreferrer" className="rounded p-1.5 text-sky-300 hover:bg-sky-500/15" title={isNashvilleParcelViewerUrl(match.propertyViewerUrl) ? "Open in Nashville Parcel Viewer" : "Open in Tennessee Property Viewer"}><ExternalLink className="h-3.5 w-3.5" /></a>}
                           <Button type="button" size="sm" className="h-7 bg-sky-600 text-xs hover:bg-sky-500" onClick={() => applyParcelMatch(match)}>Use Property</Button>
                         </div>
                       </div>
@@ -1264,11 +1272,12 @@ function QuoteFormModal({
                     <div>
                       <p className="font-semibold text-sky-100">Property lookup applied</p>
                       <p className="mt-0.5 text-zinc-300">{selectedParcel.owner || "Owner unavailable"}</p>
+                      <p className="mt-1 text-[10px] font-medium text-sky-200">{isNashvilleParcelViewerUrl(selectedParcel.propertyViewerUrl) ? "Source: Nashville Parcel Viewer (Metro Nashville)" : "Source: Tennessee Property Viewer"}</p>
                     </div>
                     <div className="flex flex-wrap gap-1.5">
                       {selectedParcel.propertyViewerUrl && (
                         <a href={selectedParcel.propertyViewerUrl} target="_blank" rel="noreferrer" className="inline-flex h-7 items-center rounded border border-sky-500/40 px-2 text-sky-200 hover:bg-sky-500/15">
-                          <MapPin className="mr-1 h-3.5 w-3.5" /> Open TN Property Viewer Map
+                          <MapPin className="mr-1 h-3.5 w-3.5" /> {isNashvilleParcelViewerUrl(selectedParcel.propertyViewerUrl) ? "Open Nashville Parcel Viewer Map" : "Open TN Property Viewer Map"}
                         </a>
                       )}
                       {selectedParcel.assessmentDataUrl && (

@@ -19,6 +19,14 @@ describe("Website Request address-to-parcel association", () => {
     county: "Houston County",
   };
 
+  const davidsonRequestAddress = {
+    street: "0 Tinnin Road",
+    city: "Goodlettsville",
+    state: "TN",
+    zip: "37072",
+    county: "Davidson County",
+  };
+
   it("returns the one exact county-and-street parcel match", async () => {
     const fetchMock = vi.fn()
       .mockResolvedValueOnce(new Response(JSON.stringify({
@@ -60,5 +68,49 @@ describe("Website Request address-to-parcel association", () => {
     vi.stubGlobal("fetch", fetchMock);
 
     await expect(resolveUniqueParcelForWebsiteRequest(requestAddress)).resolves.toBeNull();
+  });
+
+  it("uses Nashville Parcel Viewer for one exact Davidson County address match", async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify({
+        status: "OK",
+        results: [{ geometry: { location: { lat: 36.35, lng: -86.73 } } }],
+      })))
+      .mockResolvedValueOnce(new Response(JSON.stringify({
+        features: [{ attributes: {
+          APN: "00300000500",
+          PropAddr: "0 TINNIN RD",
+          PropCity: "GOODLETTSVILLE",
+          PropZip: "37072",
+          Acres: 3.3,
+        } }],
+      })));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(resolveUniqueParcelForWebsiteRequest(davidsonRequestAddress)).resolves.toEqual({
+      parcelId: "00300000500",
+      county: "Davidson County",
+      deedAcres: 3.3,
+      lat: 36.35,
+      lng: -86.73,
+    });
+    expect(String(fetchMock.mock.calls[1][0])).toContain("maps.nashville.gov/arcgis/rest/services/Cadastral/Parcels/MapServer/0/query");
+  });
+
+  it("does not auto-associate ambiguous Nashville Parcel Viewer matches", async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify({
+        status: "OK",
+        results: [{ geometry: { location: { lat: 36.35, lng: -86.73 } } }],
+      })))
+      .mockResolvedValueOnce(new Response(JSON.stringify({
+        features: [
+          { attributes: { APN: "00300000500", PropAddr: "0 TINNIN RD", Acres: 3.3 } },
+          { attributes: { APN: "00300000501", PropAddr: "0 TINNIN RD", Acres: 1.2 } },
+        ],
+      })));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(resolveUniqueParcelForWebsiteRequest(davidsonRequestAddress)).resolves.toBeNull();
   });
 });
