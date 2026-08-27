@@ -3695,3 +3695,9 @@
 - [x] Move lower-priority reporting and growth widgets into a collapsible Business Pulse section
 - [x] Correct scheduled-job and invoice dashboard links to their proper Operations pages
 - [x] Add dashboard navigation regression coverage and fully validate the update
+
+## Full Operations Workspace Audit — Aug 2026
+- [x] Inventory every /ops route, primary component, and supported workflow
+- [x] Audit Operations screens for consistency, accuracy, navigation integrity, and owner-operator flow
+- [x] Verify critical read/write procedures, role protection, and dashboard-to-workspace routing
+- [x] Deliver a prioritized Operations audit with corrective recommendations
