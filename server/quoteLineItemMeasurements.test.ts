@@ -101,6 +101,8 @@ describe("quote service line measurements", () => {
     expect(editor).toContain("Estimated Linear Footage — verify on site.");
     expect(editor).toContain('aria-label="Acreage to Linear Feet formula"');
     expect(editor).toContain("Acres × 43,560 ÷ clearing width (ft) = estimated Linear Feet.");
+    expect(editor).toContain('aria-label="Common clearing widths"');
+    expect(editor).toContain('onClick={() => onChange(index, "clearingWidthFeet", width)}');
     expect(portal).toContain("EstimatedFootageNotice");
     expect(portal).toContain("Final footage will be verified during the site visit.");
   });

@@ -3745,3 +3745,8 @@
 ## Acreage Calculator Formula Tooltip — Aug 2026
 - [x] Add an accessible tooltip beside the acreage-to-Linear-Foot controls that explains the conversion formula and on-site verification requirement
 - [x] Add regression coverage and validate the updated quote builder
+
+## Clearing Width Quick Select — Aug 2026
+- [x] Add visible quick-select buttons for common clearing widths to the acreage-to-Linear-Foot quote calculator
+- [x] Ensure quick selection immediately recalculates estimated Linear Feet and preserves the verification warning
+- [x] Add regression coverage and validate the updated quote builder

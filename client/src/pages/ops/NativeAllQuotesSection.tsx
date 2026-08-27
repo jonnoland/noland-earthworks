@@ -295,6 +295,21 @@ function LineItemRow({
                     {LINEAR_FOOT_CLEARING_WIDTH_OPTIONS.map((width) => <option key={width} value={width}>{width} ft</option>)}
                   </select>
                 </label>
+                <div className="sm:col-span-2">
+                  <span className="text-[10px] font-medium uppercase tracking-wide text-zinc-500">Quick select</span>
+                  <div className="mt-1 flex flex-wrap gap-1.5" aria-label="Common clearing widths">
+                    {LINEAR_FOOT_CLEARING_WIDTH_OPTIONS.map((width) => {
+                      const isSelected = item.clearingWidthFeet === width;
+                      return <button
+                        key={width}
+                        type="button"
+                        aria-pressed={isSelected}
+                        onClick={() => onChange(index, "clearingWidthFeet", width)}
+                        className={`h-7 rounded border px-2 text-[10px] font-semibold transition-colors ${isSelected ? "border-amber-400 bg-amber-500/15 text-amber-200" : "border-zinc-700 bg-zinc-900 text-zinc-300 hover:border-sky-400/70 hover:text-sky-200"}`}
+                      >{width} ft</button>;
+                    })}
+                  </div>
+                </div>
               </div>
             ) : <p className="text-[10px] text-sky-300">Calculated as measured linear feet × rate per linear foot.</p>}
             {isAcreageFootageEstimate && <div className="flex items-start gap-1 text-[10px] leading-relaxed text-amber-200"><AlertTriangle className="mt-0.5 h-3 w-3 shrink-0" /><span><strong>Estimated footage — verify on site.</strong>{estimateBasis ? ` Derived from ${estimateBasis}.` : ""}</span></div>}
