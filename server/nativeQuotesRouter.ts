@@ -84,6 +84,8 @@ const lineItemSchema = z.object({
   phaseId: z.string().max(100).optional(),
   estimatedDuration: z.string().max(100).optional(),
   discountCode: z.string().optional(),
+  serviceCode: z.string().max(100).optional(),
+  measurementUnit: z.enum(["linear_foot"]).optional(),
 });
 
 function normalizeQuoteLineItems(items: z.infer<typeof lineItemSchema>[]) {

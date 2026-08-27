@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { formatQuoteCents, roundQuoteCentsUp } from "@shared/quoteMoney";
+import { formatQuoteLineQuantity, isLinearFootQuoteLine } from "@shared/quoteLineItemMeasurements";
 import {
   CheckCircle, XCircle, CreditCard, MapPin, Briefcase,
   Clock, AlertCircle, Loader2, Download, MessageSquareDiff,
@@ -26,6 +27,10 @@ function formatWorkingDays(value: string | null | undefined) {
   const numericValue = Number(value);
   if (!Number.isFinite(numericValue) || numericValue <= 0) return value;
   return `${numericValue} working day${numericValue === 1 ? "" : "s"}`;
+}
+
+function lineQuantityText(item: { description: string; qty: number; serviceCode?: string; measurementUnit?: "linear_foot" }) {
+  return formatQuoteLineQuantity(item);
 }
 
 // ─── Shell ─────────────────────────────────────────────────────────────────────
@@ -370,7 +375,7 @@ export default function NativeQuotePortal() {
                 <div key={`${section.phase.phaseId}-${i}`} className="flex items-start justify-between px-5 py-3 border-t border-zinc-800 gap-4">
                   <div className="flex-1">
                     <p className={li.totalCents < 0 || li.kind === "discount" ? "text-emerald-300 text-sm" : "text-zinc-200 text-sm"}>{li.description}</p>
-                    {li.qty !== 1 && <p className="text-zinc-500 text-xs mt-0.5">{li.qty} &times; {fmt(li.unitPriceCents)}</p>}
+                    {(li.qty !== 1 || isLinearFootQuoteLine(li)) && <p className="text-zinc-500 text-xs mt-0.5">{lineQuantityText(li)} &times; {fmt(li.unitPriceCents)}</p>}
                   </div>
                   <span className={li.totalCents < 0 || li.kind === "discount" ? "text-emerald-300 text-sm font-medium shrink-0" : "text-amber-400 text-sm font-medium shrink-0"}>{fmt(li.qty * li.unitPriceCents)}</span>
                 </div>
@@ -384,7 +389,7 @@ export default function NativeQuotePortal() {
           ))}
           {unassignedApprovedLineItems.map((li, i) => (
             <div key={`unassigned-${i}`} className="flex items-start justify-between px-5 py-3 border-b border-zinc-800 last:border-0 gap-4">
-              <p className="text-zinc-200 text-sm">{li.description}</p>
+              <div className="min-w-0"><p className="text-zinc-200 text-sm">{li.description}</p>{(li.qty !== 1 || isLinearFootQuoteLine(li)) && <p className="mt-0.5 text-xs text-zinc-500">{lineQuantityText(li)} &times; {fmt(li.unitPriceCents)}</p>}</div>
               <span className="text-amber-400 text-sm font-medium shrink-0">{fmt(li.qty * li.unitPriceCents)}</span>
             </div>
           ))}
@@ -421,7 +426,7 @@ export default function NativeQuotePortal() {
                 <div key={`${section.phase.phaseId}-${i}`} className="flex items-start justify-between px-5 py-3 border-t border-indigo-500/15 gap-4">
                   <div className="flex-1">
                     <p className={li.totalCents < 0 || li.kind === "discount" ? "text-emerald-300 text-sm" : "text-indigo-50 text-sm"}>{li.description}</p>
-                    {li.qty !== 1 && <p className="text-indigo-200/60 text-xs mt-0.5">{li.qty} &times; {fmt(li.unitPriceCents)}</p>}
+                    {(li.qty !== 1 || isLinearFootQuoteLine(li)) && <p className="text-indigo-200/60 text-xs mt-0.5">{lineQuantityText(li)} &times; {fmt(li.unitPriceCents)}</p>}
                   </div>
                   <span className={li.totalCents < 0 || li.kind === "discount" ? "text-emerald-300 text-sm font-medium shrink-0" : "text-indigo-200 text-sm font-medium shrink-0"}>{fmt(li.qty * li.unitPriceCents)}</span>
                 </div>

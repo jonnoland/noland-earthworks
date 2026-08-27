@@ -7,6 +7,8 @@ export interface QuotePortalLineItem extends QuoteBreakdownLineItem {
   phaseId?: string;
   estimatedDuration?: string;
   discountCode?: string;
+  serviceCode?: string;
+  measurementUnit?: "linear_foot";
 }
 
 export interface QuotePortalPhaseSection extends QuotePhaseSection<QuotePortalLineItem> {

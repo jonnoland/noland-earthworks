@@ -53,6 +53,15 @@ import { buildQuoteCostBreakdown, getQuoteCostDistribution } from "@shared/quote
 import { getQuoteDraftIdentity } from "@shared/quoteDrafts";
 import { moveQuoteLineItem } from "@shared/quoteLineItemOrder";
 import { ensureQuotePhaseIds, getQuotePhaseSections } from "@shared/quotePhaseSections";
+import {
+  createQuoteServiceLineItem,
+  getQuoteLineServiceOption,
+  inferQuoteLineServiceOption,
+  isLinearFootQuoteLine,
+  QUOTE_LINE_SERVICE_OPTIONS,
+  quoteLineQuantityLabel,
+  type QuoteLineMeasurementUnit,
+} from "@shared/quoteLineItemMeasurements";
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
 import {
   DAY_RATE_TERMS,
@@ -71,6 +80,8 @@ interface LineItem {
   qty: number;
   unitPriceCents: number;
   totalCents: number;
+  serviceCode?: string;
+  measurementUnit?: QuoteLineMeasurementUnit;
   kind?: QuoteLineItemKind;
   phaseId?: string;
   phaseAuthorization?: QuotePhaseAuthorization;
@@ -150,6 +161,10 @@ function LineItemRow({
   phaseOptions?: Array<{ id: string; label: string }>;
 }) {
   const durationError = item.kind === "phase" ? positiveDurationError(item.estimatedDuration) : null;
+  const isServiceLine = !item.kind || item.kind === "service";
+  const selectedService = getQuoteLineServiceOption(item.serviceCode) ?? inferQuoteLineServiceOption(item.description);
+  const selectedServiceValue = selectedService?.value ?? "custom";
+  const isLinearFoot = isServiceLine && isLinearFootQuoteLine(item);
   return (
     <div
       className={`grid grid-cols-1 gap-2 rounded-md border border-zinc-800 p-2 transition-colors hover:border-zinc-700 ${compact ? "" : "sm:grid-cols-[auto_minmax(0,5fr)_minmax(0,2fr)_minmax(0,3fr)_minmax(0,1fr)_auto] sm:border-0 sm:p-0"}`}
@@ -197,12 +212,27 @@ function LineItemRow({
         </div>
       </div>
       <div>
+        {isServiceLine && (
+          <label className="mb-1 block text-[10px] font-medium uppercase tracking-wide text-zinc-500">
+            Service
+            <select
+              value={selectedServiceValue}
+              onChange={e => onChange(index, "serviceCode", e.target.value)}
+              aria-label="Quote service"
+              className="mt-1 h-9 w-full rounded-md border border-zinc-700 bg-zinc-800 px-2 text-sm text-zinc-100"
+            >
+              {QUOTE_LINE_SERVICE_OPTIONS.map((service) => <option key={service.value} value={service.value}>{service.label}{service.measurementUnit === "linear_foot" ? " — linear ft" : ""}</option>)}
+              <option value="custom">Custom service / charge</option>
+            </select>
+          </label>
+        )}
         <Input
-          placeholder="Description"
+          placeholder={isServiceLine ? "Service description or scope" : "Description"}
           value={item.description}
           onChange={e => onChange(index, "description", e.target.value)}
           className="bg-zinc-800 border-zinc-700 text-sm"
         />
+        {isLinearFoot && <p className="mt-1 text-[10px] text-sky-300">Calculated as linear feet × rate per linear foot.</p>}
         {item.kind === "phase" && (
           <div className="mt-2 grid gap-2 rounded-md border border-zinc-700/80 bg-zinc-950/45 p-2.5 sm:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
             <label className="flex min-w-0 flex-col gap-1 text-[11px] font-medium text-zinc-300">
@@ -249,19 +279,22 @@ function LineItemRow({
         )}
       </div>
       <div>
+        <Label className="mb-1 block text-[10px] font-medium uppercase tracking-wide text-zinc-500">{isLinearFoot ? quoteLineQuantityLabel(item) : "Quantity"}</Label>
         <Input
           type="number"
-          placeholder="Qty"
+          placeholder={isLinearFoot ? "Linear feet" : "Qty"}
           value={item.qty}
           min={1}
+          step={isLinearFoot ? 1 : "any"}
           onChange={e => onChange(index, "qty", parseFloat(e.target.value) || 1)}
           className="bg-zinc-800 border-zinc-700 text-sm"
         />
       </div>
       <div>
+        <Label className="mb-1 block text-[10px] font-medium uppercase tracking-wide text-zinc-500">{isLinearFoot ? "Rate / linear ft" : "Unit price"}</Label>
         <Input
           type="number"
-          placeholder="Unit price"
+          placeholder={isLinearFoot ? "Rate / linear ft" : "Unit price"}
           value={roundQuoteCentsUp(item.unitPriceCents) / 100}
           step={1}
           onChange={e => onChange(index, "unitPriceCents", quoteDollarsToCents(parseFloat(e.target.value) || 0))}
@@ -283,11 +316,11 @@ function LineItemRow({
 // ─── Create / Edit modal ──────────────────────────────────────────────────────
 const SERVICE_TYPES = [
   "Forestry Mulching", "Land Management", "Brush Hogging",
-  "Right-of-Way Clearing", "Trail Cutting", "Lot Clearing", "Pasture Reclamation"
+  "Right-of-Way Clearing", "Trail Cutting", "Fence Line Clearing", "Lot Clearing", "Pasture Reclamation"
 ];
 
 const DEFAULT_LINE_ITEMS: LineItem[] = [
-  { description: "Forestry Mulching", qty: 1, unitPriceCents: 0, totalCents: 0 }
+  { ...createQuoteServiceLineItem(), kind: "service" }
 ];
 
 function createQuotePhaseId() {
@@ -709,9 +742,26 @@ function QuoteFormModal({
   const handleLineItemChange = (i: number, field: keyof LineItem, val: string | number) => {
     setForm(prev => {
       const items = [...prev.lineItems];
-      const next = { ...items[i], [field]: val };
+      const current = items[i];
+      const selectedService = field === "serviceCode" ? getQuoteLineServiceOption(String(val)) : undefined;
+      const next = field === "serviceCode"
+        ? {
+          ...current,
+          serviceCode: selectedService?.value,
+          measurementUnit: selectedService?.measurementUnit,
+          description: selectedService?.label ?? current.description,
+          qty: 1,
+          unitPriceCents: 0,
+          totalCents: 0,
+        }
+        : { ...current, [field]: val };
       items[i] = normalizeQuoteLineItemsForSave([next as LineItem])[0];
-      return { ...prev, lineItems: items };
+      const firstServiceIndex = items.findIndex((line) => !line.kind || line.kind === "service");
+      return {
+        ...prev,
+        lineItems: items,
+        serviceType: field === "serviceCode" && selectedService && i === firstServiceIndex ? selectedService.label : prev.serviceType,
+      };
     });
   };
 
@@ -1356,7 +1406,7 @@ function QuoteFormModal({
                 <Button type="button" size="sm" variant="outline" className="h-7 text-xs border-amber-500/40 text-amber-200 hover:bg-amber-500/10" onClick={() => addControlledLineItem("phase")}>+ Phase</Button>
                 {phaseSections.length === 0 && <Button type="button" size="sm" variant="outline" className="h-7 text-xs border-sky-500/40 text-sky-200 hover:bg-sky-500/10" onClick={() => addControlledLineItem("full_operating_day")}>+ Full Day</Button>}
                 {phaseSections.length === 0 && <Button type="button" size="sm" variant="outline" className="h-7 text-xs border-sky-500/40 text-sky-200 hover:bg-sky-500/10" onClick={() => addControlledLineItem("half_operating_day")}>+ Half Day</Button>}
-                <Button type="button" size="sm" variant="outline" className="h-7 text-xs border-zinc-600" onClick={() => setForm(p => ({ ...p, lineItems: [...p.lineItems, { description: "", qty: 1, unitPriceCents: 0, totalCents: 0, kind: "service" }] }))}>
+                <Button type="button" size="sm" variant="outline" className="h-7 text-xs border-zinc-600" onClick={() => setForm(p => ({ ...p, lineItems: [...p.lineItems, { ...createQuoteServiceLineItem(), kind: "service" }] }))}>
                   <Plus className="h-3 w-3 mr-1" /> {phaseSections.length > 0 ? "Unassigned Line" : "Add Line"}
                 </Button>
               </div>
@@ -1380,7 +1430,7 @@ function QuoteFormModal({
                     {scopedIndices.length === 0 && <p className="rounded border border-dashed border-zinc-700 px-3 py-2 text-[11px] text-zinc-500">Add the services and charges that belong to this phase.</p>}
                   </div>
                   <div className="mt-3 flex flex-wrap gap-1.5 border-t border-zinc-800 pt-3">
-                    <Button type="button" size="sm" variant="outline" className="h-7 border-zinc-600 text-[11px] text-zinc-200 hover:bg-zinc-800" onClick={() => addLineItemToPhase(phaseId, { description: "", qty: 1, unitPriceCents: 0, totalCents: 0, kind: "service" })}><Plus className="mr-1 h-3 w-3" />Service</Button>
+                    <Button type="button" size="sm" variant="outline" className="h-7 border-zinc-600 text-[11px] text-zinc-200 hover:bg-zinc-800" onClick={() => addLineItemToPhase(phaseId, { ...createQuoteServiceLineItem(), kind: "service" })}><Plus className="mr-1 h-3 w-3" />Service</Button>
                     <Button type="button" size="sm" variant="outline" className="h-7 border-sky-500/40 text-[11px] text-sky-200 hover:bg-sky-500/10" onClick={() => addLineItemToPhase(phaseId, { description: "Mobilization", qty: 1, unitPriceCents: 0, totalCents: 0, kind: "mobilization" })}>+ Mobilization</Button>
                     <Button type="button" size="sm" variant="outline" className="h-7 border-sky-500/40 text-[11px] text-sky-200 hover:bg-sky-500/10" onClick={() => addLineItemToPhase(phaseId, { ...createQuoteWorkLineItem("full_operating_day") })}>+ Full Day</Button>
                     <Button type="button" size="sm" variant="outline" className="h-7 border-sky-500/40 text-[11px] text-sky-200 hover:bg-sky-500/10" onClick={() => addLineItemToPhase(phaseId, { ...createQuoteWorkLineItem("half_operating_day") })}>+ Half Day</Button>

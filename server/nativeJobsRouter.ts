@@ -215,7 +215,7 @@ export const nativeJobsRouter = router({
         depositPaidCents = quote?.depositPaidCents ?? 0;
       }
 
-      const lineItems: Array<{ description: string; qty: number; unitPriceCents: number; totalCents: number }> =
+      const lineItems: Array<{ description: string; qty: number; unitPriceCents: number; totalCents: number; measurementUnit?: "linear_foot" }> =
         JSON.parse(job.lineItems || "[]");
 
       const subtotalCents = lineItems.reduce((sum, li) => sum + li.totalCents, 0) || job.totalCents;
@@ -409,7 +409,7 @@ interface InvoiceParams {
     completedAt?: Date | null;
     scheduledDate?: Date | null;
   };
-  lineItems: Array<{ description: string; qty: number; unitPriceCents: number; totalCents: number }>;
+  lineItems: Array<{ description: string; qty: number; unitPriceCents: number; totalCents: number; measurementUnit?: "linear_foot" }>;
   subtotalCents: number;
   depositPaidCents: number;
   totalCents: number;
@@ -426,7 +426,7 @@ function buildInvoiceHtml(p: InvoiceParams): string {
   const lineItemRows = p.lineItems.map(li => `
     <tr>
       <td style="padding:10px 16px;border-bottom:1px solid #f0ede6;font-size:14px;color:#1a1a1a;">${esc(li.description)}</td>
-      <td style="padding:10px 16px;border-bottom:1px solid #f0ede6;font-size:14px;color:#1a1a1a;text-align:center;">${li.qty}</td>
+      <td style="padding:10px 16px;border-bottom:1px solid #f0ede6;font-size:14px;color:#1a1a1a;text-align:center;">${li.qty}${li.measurementUnit === "linear_foot" ? " linear ft" : ""}</td>
       <td style="padding:10px 16px;border-bottom:1px solid #f0ede6;font-size:14px;color:#1a1a1a;text-align:right;">${fmt(li.unitPriceCents)}</td>
       <td style="padding:10px 16px;border-bottom:1px solid #f0ede6;font-size:14px;color:#1a1a1a;text-align:right;font-weight:600;">${fmt(li.totalCents)}</td>
     </tr>`).join("");

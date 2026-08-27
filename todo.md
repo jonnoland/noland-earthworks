@@ -3710,3 +3710,9 @@
 - [x] Update the stored business quote email address and default to quotes@nolandearthworks.com
 - [x] Persist internal pricing configuration to owner-protected server data with safe one-time import of the current browser settings
 - [x] Add regression coverage and validate the Operations consolidation end to end
+
+## Quote Service Selector and Linear Foot Pricing — Aug 2026
+- [x] Add the service catalog dropdown to the initial and every added quote service line item
+- [x] Support Linear Foot quantity, rate, calculation, and display for applicable quote services
+- [x] Preserve acreage-based calculations for acreage services and existing quote compatibility
+- [x] Add regression coverage and validate the updated new and edit quote workflow
