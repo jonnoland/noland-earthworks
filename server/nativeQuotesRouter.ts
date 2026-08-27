@@ -28,6 +28,7 @@ import { ENV } from "./_core/env";
 import { invokeLLM } from "./_core/llm";
 import { isDraftPlaceholderClient } from "../shared/quoteDrafts";
 import { getQuotePortalPhaseSummary, type QuotePortalLineItem } from "../shared/quotePortalPhases";
+import { calculateLinearFeetFromAcreage } from "../shared/quoteLineItemMeasurements";
 
 // Strip markdown code fences from LLM JSON responses
 function stripCodeFence(raw: string): string {
@@ -86,6 +87,9 @@ const lineItemSchema = z.object({
   discountCode: z.string().optional(),
   serviceCode: z.string().max(100).optional(),
   measurementUnit: z.enum(["linear_foot"]).optional(),
+  quantitySource: z.enum(["measured", "acreage_estimate"]).optional(),
+  sourceAcreage: z.number().positive().max(500).optional(),
+  clearingWidthFeet: z.number().positive().max(200).optional(),
 });
 
 function normalizeQuoteLineItems(items: z.infer<typeof lineItemSchema>[]) {
@@ -523,6 +527,7 @@ export const nativeQuotesRouter = router({
       serviceType: z.string(),
       acreage: z.number().min(0.1).max(500).optional(),
       linearFeet: z.number().min(1).max(528000).optional(),
+      clearingWidthFeet: z.number().min(1).max(200).optional(),
       unitRateCents: z.number().int().min(0).max(100000).optional(),
       terrain: z.string().optional(),
       density: z.string().optional(),
@@ -530,13 +535,14 @@ export const nativeQuotesRouter = router({
       notes: z.string().max(5000).optional(),
     }).superRefine((input, ctx) => {
       if (isLinearFootService(input.serviceType)) {
-        if (!input.linearFeet) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["linearFeet"], message: "Enter the estimated linear footage for this service." });
+        if (!input.linearFeet && !input.acreage) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["linearFeet"], message: "Enter measured Linear Feet or acreage to estimate from." });
+        if (!input.linearFeet && !input.clearingWidthFeet) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["clearingWidthFeet"], message: "Choose a clearing width to estimate Linear Feet from acreage." });
       } else if (!input.acreage) {
         ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["acreage"], message: "Enter acreage for this service." });
       }
     }))
-    .mutation(async ({ input }: { input: { serviceType: string; acreage?: number; linearFeet?: number; unitRateCents?: number; terrain?: string; density?: string; access?: string; notes?: string } }) => {
-      const { serviceType, acreage, linearFeet, unitRateCents, terrain, density, access, notes } = input;
+    .mutation(async ({ input }: { input: { serviceType: string; acreage?: number; linearFeet?: number; clearingWidthFeet?: number; unitRateCents?: number; terrain?: string; density?: string; access?: string; notes?: string } }) => {
+      const { serviceType, acreage, linearFeet, clearingWidthFeet, unitRateCents, terrain, density, access, notes } = input;
 
       // ── Pull DB-driven pricing (same source as Cost Estimator) ──────────────
       const svcKey = quoteServiceKey(serviceType);
@@ -583,7 +589,9 @@ export const nativeQuotesRouter = router({
       const accessMult  = access === "difficult" ? adMult : access === "moderate" ? amMult : 1.0;
 
       if (isLinearFootService(serviceType)) {
-        const footage = Math.max(1, Math.round(linearFeet ?? 0));
+        const acreageDerivedFeet = calculateLinearFeetFromAcreage(acreage ?? 0, clearingWidthFeet ?? 0);
+        const isAcreageEstimate = !linearFeet && acreageDerivedFeet !== null;
+        const footage = Math.max(1, Math.round(linearFeet ?? acreageDerivedFeet ?? 0));
         const benchmarkKey = normalizedServiceKey === "fence-line-clearing" ? "fence line clearing" : "trail cutting";
         const fallbackRate = normalizedServiceKey === "fence-line-clearing"
           ? pricingRow2?.fenceLineClearingPerLf ?? 4
@@ -601,6 +609,8 @@ export const nativeQuotesRouter = router({
             description: serviceType,
             serviceCode: normalizedServiceKey,
             measurementUnit: "linear_foot" as const,
+            quantitySource: isAcreageEstimate ? "acreage_estimate" as const : "measured" as const,
+            ...(isAcreageEstimate ? { sourceAcreage: acreage, clearingWidthFeet } : {}),
             qty: footage,
             unitPriceCents: adjustedRatePerFoot * 100,
             totalCents: rawTotal * 100,
@@ -614,9 +624,11 @@ export const nativeQuotesRouter = router({
           }] : []),
         ];
         return {
-          title: `${serviceType} — ${footage.toLocaleString()} Linear Ft`,
+          title: `${serviceType} — ${isAcreageEstimate ? "Est. " : ""}${footage.toLocaleString()} Linear Ft`,
           estimatedDuration: footage <= 1320 ? "1" : footage <= 5280 ? "2" : "3",
-          clientMessage: `This quote covers approximately ${footage.toLocaleString()} linear feet of ${serviceType.toLowerCase()}. Final scope, site access, vegetation density, and ground conditions will be verified during the site visit.`,
+          clientMessage: isAcreageEstimate
+            ? `This quote uses an estimated ${footage.toLocaleString()} linear feet of ${serviceType.toLowerCase()}, calculated from ${acreage} acres at a ${clearingWidthFeet}-foot clearing width. The footage and final scope will be verified during the site visit.`
+            : `This quote covers approximately ${footage.toLocaleString()} linear feet of ${serviceType.toLowerCase()}. Final scope, site access, vegetation density, and ground conditions will be verified during the site visit.`,
           lineItems,
           totalCents: totalMid * 100,
           belowMinimum: false,
@@ -631,6 +643,9 @@ export const nativeQuotesRouter = router({
             acreage: null,
             linearFeet: footage,
             measurementUnit: "linear_foot" as const,
+            quantitySource: isAcreageEstimate ? "acreage_estimate" as const : "measured" as const,
+            sourceAcreage: isAcreageEstimate ? acreage ?? null : null,
+            clearingWidthFeet: isAcreageEstimate ? clearingWidthFeet ?? null : null,
             rawTotalBeforeMinimum: rawTotal,
             minimumJobApplied: minimumAdjustment > 0,
             mobilizationFee: minimumAdjustment,
@@ -786,6 +801,9 @@ Rules:
           acreage: resolvedAcreage,
           linearFeet: null,
           measurementUnit: "acre" as const,
+          quantitySource: null,
+          sourceAcreage: null,
+          clearingWidthFeet: null,
           rawTotalBeforeMinimum: rawTotal,
           minimumJobApplied: rawTotal < MIN_JOB,
           mobilizationFee: MOBILIZATION,

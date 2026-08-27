@@ -2,9 +2,12 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
+  calculateLinearFeetFromAcreage,
   createQuoteServiceLineItem,
   formatQuoteLineQuantity,
+  isEstimatedLinearFootQuoteLine,
   isLinearFootQuoteLine,
+  linearFootEstimateBasis,
   quoteLineQuantityLabel,
 } from "@shared/quoteLineItemMeasurements";
 
@@ -26,6 +29,25 @@ describe("quote service line measurements", () => {
     expect(formatQuoteLineQuantity(line)).toBe("2,640 linear ft");
   });
 
+  it("calculates Linear Feet from clearing acreage and width while rejecting incomplete geometry", () => {
+    expect(calculateLinearFeetFromAcreage(3, 20)).toBe(6_534);
+    expect(calculateLinearFeetFromAcreage(1, 12)).toBe(3_630);
+    expect(calculateLinearFeetFromAcreage(0, 20)).toBeNull();
+    expect(calculateLinearFeetFromAcreage(3, 0)).toBeNull();
+  });
+
+  it("identifies acreage-derived footage and retains a readable verification basis", () => {
+    const line = {
+      ...createQuoteServiceLineItem("trail-cutting"),
+      qty: 6_534,
+      quantitySource: "acreage_estimate" as const,
+      sourceAcreage: 3,
+      clearingWidthFeet: 20,
+    };
+    expect(isEstimatedLinearFootQuoteLine(line)).toBe(true);
+    expect(linearFootEstimateBasis(line)).toBe("3 acres at 20 ft clearing width");
+  });
+
   it("keeps acreage and day-rate rows as ordinary quantity-based lines", () => {
     const line = createQuoteServiceLineItem("forestry-mulching");
     expect(isLinearFootQuoteLine(line)).toBe(false);
@@ -39,7 +61,8 @@ describe("quote service line measurements", () => {
     expect(editor).toContain("const DEFAULT_LINE_ITEMS: LineItem[] = [");
     expect(editor).toContain("{ ...createQuoteServiceLineItem(), kind: \"service\" }");
     expect(editor).toContain("Rate / linear ft");
-    expect(editor).toContain("Calculated as linear feet × rate per linear foot.");
+    expect(editor).toContain("Calculated as measured linear feet × rate per linear foot.");
+    expect(editor).toContain("Footage source");
     expect(editor).toContain("!isServiceLine && <Input");
     expect(editor).not.toContain('placeholder={isServiceLine ? "Service description or scope" : "Description"}');
     expect(editor).not.toContain('selectedServiceValue === "custom" && <Input');
@@ -64,5 +87,19 @@ describe("quote service line measurements", () => {
     expect(editor).toContain("aiUsesLinearFeet");
     expect(editor).toContain("Enter the Linear Feet on the selected service line first");
     expect(editor).toContain("Build footage-based line items, duration, and client message");
+  });
+
+  it("prompts Linear Foot AI Suggest users for clearing width and carries estimated-footage warnings into the portal", () => {
+    const router = source("server/nativeQuotesRouter.ts");
+    const editor = source("client/src/pages/ops/NativeAllQuotesSection.tsx");
+    const portal = source("client/src/pages/NativeQuotePortal.tsx");
+    expect(router).toContain("clearingWidthFeet: z.number().min(1).max(200).optional()");
+    expect(router).toContain("calculateLinearFeetFromAcreage(acreage ?? 0, clearingWidthFeet ?? 0)");
+    expect(router).toContain('quantitySource: isAcreageEstimate ? "acreage_estimate" as const : "measured" as const');
+    expect(editor).toContain("Calculate from acreage");
+    expect(editor).toContain("Estimated footage — verify on site.");
+    expect(editor).toContain("Estimated Linear Footage — verify on site.");
+    expect(portal).toContain("EstimatedFootageNotice");
+    expect(portal).toContain("Final footage will be verified during the site visit.");
   });
 });

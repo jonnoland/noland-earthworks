@@ -3730,3 +3730,14 @@
 ## Duplicate Quote Field Defect — Aug 2026
 - [x] Remove the duplicate service-description control that still renders below the service dropdown for existing quote lines
 - [x] Add regression coverage for service-name matching with legacy display labels and validate the active editor path
+
+## Acreage-to-Linear-Foot AI Suggest Assessment — Aug 2026
+- [x] Review the current quote inputs and develop a safe acreage-to-linear-foot estimation method for Linear Foot services
+- [x] Recommend AI Suggest behavior that distinguishes estimated footage from measured footage and preserves field verification
+
+## Acreage-to-Linear-Foot Quote Builder — Aug 2026
+- [x] Add a clearing-width selector and acreage-to-Linear-Foot calculator to Linear Foot quote service lines
+- [x] Preserve direct measured-footage entry while storing the estimate method and calculation basis when acreage conversion is used
+- [x] Make AI Suggest request clearing width for acreage-derived Linear Foot suggestions and label the basis clearly
+- [x] Show a visible site-verification warning for estimated Linear Foot quantities in the quote editor and customer-facing quote
+- [x] Add regression coverage and validate all quote calculation paths

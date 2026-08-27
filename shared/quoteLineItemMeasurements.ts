@@ -8,6 +8,9 @@ export type QuoteLineServiceCode =
   | "fence-line-clearing";
 
 export type QuoteLineMeasurementUnit = "linear_foot";
+export type QuoteLineQuantitySource = "measured" | "acreage_estimate";
+
+export const LINEAR_FOOT_CLEARING_WIDTH_OPTIONS = [12, 16, 20, 25, 30] as const;
 
 export interface QuoteLineServiceOption {
   value: QuoteLineServiceCode;
@@ -36,6 +39,9 @@ export interface MeasuredQuoteLineItem {
   totalCents: number;
   serviceCode?: string;
   measurementUnit?: QuoteLineMeasurementUnit;
+  quantitySource?: QuoteLineQuantitySource;
+  sourceAcreage?: number;
+  clearingWidthFeet?: number;
 }
 
 export function getQuoteLineServiceOption(value: string | undefined): QuoteLineServiceOption | undefined {
@@ -59,6 +65,20 @@ export function isLinearFootQuoteLine(item: Pick<MeasuredQuoteLineItem, "service
 
 export function quoteLineQuantityLabel(item: Pick<MeasuredQuoteLineItem, "serviceCode" | "measurementUnit" | "description">): string {
   return isLinearFootQuoteLine(item) ? "Linear feet" : "Quantity";
+}
+
+export function calculateLinearFeetFromAcreage(acreage: number, clearingWidthFeet: number): number | null {
+  if (!Number.isFinite(acreage) || acreage <= 0 || !Number.isFinite(clearingWidthFeet) || clearingWidthFeet <= 0) return null;
+  return Math.max(1, Math.round((acreage * 43_560) / clearingWidthFeet));
+}
+
+export function isEstimatedLinearFootQuoteLine(item: Pick<MeasuredQuoteLineItem, "quantitySource" | "serviceCode" | "measurementUnit" | "description">): boolean {
+  return isLinearFootQuoteLine(item) && item.quantitySource === "acreage_estimate";
+}
+
+export function linearFootEstimateBasis(item: Pick<MeasuredQuoteLineItem, "quantitySource" | "sourceAcreage" | "clearingWidthFeet">): string | null {
+  if (item.quantitySource !== "acreage_estimate" || !item.sourceAcreage || !item.clearingWidthFeet) return null;
+  return `${item.sourceAcreage} acres at ${item.clearingWidthFeet} ft clearing width`;
 }
 
 export function formatQuoteLineQuantity(item: Pick<MeasuredQuoteLineItem, "serviceCode" | "measurementUnit" | "description" | "qty">): string {

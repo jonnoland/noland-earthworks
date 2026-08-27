@@ -9,6 +9,9 @@ export interface QuotePortalLineItem extends QuoteBreakdownLineItem {
   discountCode?: string;
   serviceCode?: string;
   measurementUnit?: "linear_foot";
+  quantitySource?: "measured" | "acreage_estimate";
+  sourceAcreage?: number;
+  clearingWidthFeet?: number;
 }
 
 export interface QuotePortalPhaseSection extends QuotePhaseSection<QuotePortalLineItem> {
