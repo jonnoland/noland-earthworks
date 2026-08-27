@@ -97,6 +97,14 @@ function normalizeQuoteLineItems(items: z.infer<typeof lineItemSchema>[]) {
   }));
 }
 
+function quoteServiceKey(value: string) {
+  return value.trim().toLowerCase().replace(/\s+/g, "-");
+}
+
+function isLinearFootService(value: string) {
+  return ["trail-cutting", "fence-line-clearing"].includes(quoteServiceKey(value));
+}
+
 // ─── Router ───────────────────────────────────────────────────────────────────
 export const nativeQuotesRouter = router({
 
@@ -513,17 +521,25 @@ export const nativeQuotesRouter = router({
   aiSuggest: ownerProcedure
     .input(z.object({
       serviceType: z.string(),
-      acreage: z.number().min(0.1).max(500),
+      acreage: z.number().min(0.1).max(500).optional(),
+      linearFeet: z.number().min(1).max(528000).optional(),
+      unitRateCents: z.number().int().min(0).max(100000).optional(),
       terrain: z.string().optional(),
       density: z.string().optional(),
       access: z.string().optional(),
       notes: z.string().max(5000).optional(),
+    }).superRefine((input, ctx) => {
+      if (isLinearFootService(input.serviceType)) {
+        if (!input.linearFeet) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["linearFeet"], message: "Enter the estimated linear footage for this service." });
+      } else if (!input.acreage) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["acreage"], message: "Enter acreage for this service." });
+      }
     }))
-    .mutation(async ({ input }: { input: { serviceType: string; acreage: number; terrain?: string; density?: string; access?: string; notes?: string } }) => {
-      const { serviceType, acreage, terrain, density, access, notes } = input;
+    .mutation(async ({ input }: { input: { serviceType: string; acreage?: number; linearFeet?: number; unitRateCents?: number; terrain?: string; density?: string; access?: string; notes?: string } }) => {
+      const { serviceType, acreage, linearFeet, unitRateCents, terrain, density, access, notes } = input;
 
       // ── Pull DB-driven pricing (same source as Cost Estimator) ──────────────
-      const svcKey = serviceType.toLowerCase().replace(/\s+/g, "-");
+      const svcKey = quoteServiceKey(serviceType);
       let pricingRow2: typeof aiPricingSettings.$inferSelect | null = null;
       try {
         const db2 = await getDb();
@@ -562,6 +578,67 @@ export const nativeQuotesRouter = router({
 
       const legacyLandManagementKey = ["land", "clearing"].join("-");
       const normalizedServiceKey = svcKey === legacyLandManagementKey ? "land-management" : svcKey;
+      const densityKey = (density ?? "moderate") as string;
+      const terrainMult = terrain === "steep" ? tsMult : terrain === "rolling" ? trMult : 1.0;
+      const accessMult  = access === "difficult" ? adMult : access === "moderate" ? amMult : 1.0;
+
+      if (isLinearFootService(serviceType)) {
+        const footage = Math.max(1, Math.round(linearFeet ?? 0));
+        const benchmarkKey = normalizedServiceKey === "fence-line-clearing" ? "fence line clearing" : "trail cutting";
+        const fallbackRate = normalizedServiceKey === "fence-line-clearing"
+          ? pricingRow2?.fenceLineClearingPerLf ?? 4
+          : Math.max(1, Math.round(((pricingRow2?.trailCuttingBaseRate ?? 2000) * 10) / 43560));
+        const baseRatePerFoot = unitRateCents && unitRateCents > 0
+          ? unitRateCents / 100
+          : benchmarkMids2[benchmarkKey] ?? fallbackRate;
+        const densityMult = densityKey === "heavy" ? dhMult : densityKey === "moderate" ? dmMult : 1.0;
+        const adjustedRatePerFoot = Math.max(1, Math.ceil(baseRatePerFoot * densityMult * terrainMult * accessMult));
+        const rawTotal = Math.ceil(footage * adjustedRatePerFoot);
+        const minimumAdjustment = Math.max(0, MIN_JOB - rawTotal);
+        const totalMid = rawTotal + minimumAdjustment;
+        const lineItems = [
+          {
+            description: serviceType,
+            serviceCode: normalizedServiceKey,
+            measurementUnit: "linear_foot" as const,
+            qty: footage,
+            unitPriceCents: adjustedRatePerFoot * 100,
+            totalCents: rawTotal * 100,
+          },
+          ...(minimumAdjustment > 0 ? [{
+            description: "Minimum project adjustment",
+            qty: 1,
+            unitPriceCents: minimumAdjustment * 100,
+            totalCents: minimumAdjustment * 100,
+            kind: "mobilization" as const,
+          }] : []),
+        ];
+        return {
+          title: `${serviceType} — ${footage.toLocaleString()} Linear Ft`,
+          estimatedDuration: footage <= 1320 ? "1" : footage <= 5280 ? "2" : "3",
+          clientMessage: `This quote covers approximately ${footage.toLocaleString()} linear feet of ${serviceType.toLowerCase()}. Final scope, site access, vegetation density, and ground conditions will be verified during the site visit.`,
+          lineItems,
+          totalCents: totalMid * 100,
+          belowMinimum: false,
+          minimumJobCents: MIN_JOB * 100,
+          breakdown: {
+            baseRatePerAcre: adjustedRatePerFoot,
+            baseRateLow: baseRatePerFoot,
+            baseRateHigh: adjustedRatePerFoot,
+            terrainMultiplier: terrainMult,
+            accessMultiplier: accessMult,
+            densityKey,
+            acreage: null,
+            linearFeet: footage,
+            measurementUnit: "linear_foot" as const,
+            rawTotalBeforeMinimum: rawTotal,
+            minimumJobApplied: minimumAdjustment > 0,
+            mobilizationFee: minimumAdjustment,
+          },
+        };
+      }
+
+      const resolvedAcreage = acreage ?? 0;
       const BASE_RATES: Record<string, Record<string, [number, number]>> = {
         "forestry-mulching": {
           light:    [Math.round(fmBase * 0.75), Math.round(fmBase * 1.0)],
@@ -600,14 +677,11 @@ export const nativeQuotesRouter = router({
         },
       } as Record<string, Record<string, [number, number]>>;
 
-      const densityKey = (density ?? "moderate") as string;
       const [rLow, rHigh] = (BASE_RATES[normalizedServiceKey]?.[densityKey] ?? [700, 1200]) as [number, number];
-      const terrainMult = terrain === "steep" ? tsMult : terrain === "rolling" ? trMult : 1.0;
-      const accessMult  = access === "difficult" ? adMult : access === "moderate" ? amMult : 1.0;
       const adjLow  = Math.round(rLow  * terrainMult * accessMult);
       const adjHigh = Math.round(rHigh * terrainMult * accessMult);
       const midPerAcre = Math.round((adjLow + adjHigh) / 2);
-      const rawTotal   = Math.round(midPerAcre * acreage);
+      const rawTotal   = Math.round(midPerAcre * resolvedAcreage);
       const totalMid   = Math.max(rawTotal, MIN_JOB);
 
       const systemPrompt = `You are an expert estimator for Noland Earthworks, LLC — a veteran-owned forestry mulching and land management company in Middle Tennessee. You help the owner (Jon Noland) quickly build accurate quotes.
@@ -619,7 +693,7 @@ Current calibrated rates for Middle & West Tennessee:
 - Access multipliers: easy x1.0, moderate x${amMult}, difficult x${adMult}
 - Mobilization fee: $${MOBILIZATION} for jobs under 5 acres or distant locations
 - Minimum job: $${MIN_JOB}
-For this job the calculated mid-point estimate is $${totalMid.toLocaleString()} ($${midPerAcre}/acre x ${acreage} acres, ${density ?? "moderate"} density, ${terrain ?? "flat"} terrain, ${access ?? "easy"} access).
+For this job the calculated mid-point estimate is $${totalMid.toLocaleString()} ($${midPerAcre}/acre x ${resolvedAcreage} acres, ${density ?? "moderate"} density, ${terrain ?? "flat"} terrain, ${access ?? "easy"} access).
 Return ONLY valid JSON with no markdown or explanation. Schema:
 {
   "title": string,
@@ -637,7 +711,7 @@ Rules:
 - Duration: 1 acre ~2-4 hours; 5 acres ~1 day; 10 acres ~2 days; 20+ acres ~3-5 days
 - Client message should be professional, plain-spoken, no corporate jargon, no emojis`;
 
-      const userPrompt = `Service: ${serviceType}\nAcreage: ${acreage} acres\nTerrain: ${terrain ?? "flat"}\nVegetation density: ${density ?? "moderate"}\nAccess: ${access ?? "easy"}\nAdditional notes: ${notes ?? "none"}\n\nGenerate the quote suggestion JSON.`;
+      const userPrompt = `Service: ${serviceType}\nAcreage: ${resolvedAcreage} acres\nTerrain: ${terrain ?? "flat"}\nVegetation density: ${density ?? "moderate"}\nAccess: ${access ?? "easy"}\nAdditional notes: ${notes ?? "none"}\n\nGenerate the quote suggestion JSON.`;
 
       const result = await invokeLLM({
         messages: [
@@ -695,7 +769,7 @@ Rules:
       const finalTotalCents = lineItems.reduce((s, li) => s + li.totalCents, 0);
       const belowMinimum = finalTotalCents < MIN_JOB * 100;
       return {
-        title:             parsed.title ?? `${serviceType} - ${acreage} Acres`,
+        title:             parsed.title ?? `${serviceType} - ${resolvedAcreage} Acres`,
         estimatedDuration: parsed.estimatedDuration ?? "",
         clientMessage:     parsed.clientMessage ?? "",
         lineItems,
@@ -709,7 +783,9 @@ Rules:
           terrainMultiplier: terrainMult,
           accessMultiplier:  accessMult,
           densityKey,
-          acreage,
+          acreage: resolvedAcreage,
+          linearFeet: null,
+          measurementUnit: "acre" as const,
           rawTotalBeforeMinimum: rawTotal,
           minimumJobApplied: rawTotal < MIN_JOB,
           mobilizationFee: MOBILIZATION,

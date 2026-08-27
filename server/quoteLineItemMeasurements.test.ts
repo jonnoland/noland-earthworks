@@ -40,6 +40,8 @@ describe("quote service line measurements", () => {
     expect(editor).toContain("{ ...createQuoteServiceLineItem(), kind: \"service\" }");
     expect(editor).toContain("Rate / linear ft");
     expect(editor).toContain("Calculated as linear feet × rate per linear foot.");
+    expect(editor).toContain('selectedServiceValue === "custom"');
+    expect(editor).not.toContain('placeholder={isServiceLine ? "Service description or scope" : "Description"}');
   });
 
   it("allows Linear Foot metadata through the native quote persistence and portal display paths", () => {
@@ -49,5 +51,17 @@ describe("quote service line measurements", () => {
     expect(router).toContain('measurementUnit: z.enum(["linear_foot"]).optional()');
     expect(portal).toContain("formatQuoteLineQuantity");
     expect(invoice).toContain('li.measurementUnit === "linear_foot" ? " linear ft" : ""');
+  });
+
+  it("makes AI Suggest validate Linear Foot quantities and return footage-based quote items", () => {
+    const router = source("server/nativeQuotesRouter.ts");
+    const editor = source("client/src/pages/ops/NativeAllQuotesSection.tsx");
+    expect(router).toContain("linearFeet: z.number().min(1)");
+    expect(router).toContain("isLinearFootService(input.serviceType)");
+    expect(router).toContain('measurementUnit: "linear_foot" as const');
+    expect(router).toContain("Minimum project adjustment");
+    expect(editor).toContain("aiUsesLinearFeet");
+    expect(editor).toContain("Enter the Linear Feet on the selected service line first");
+    expect(editor).toContain("Build footage-based line items, duration, and client message");
   });
 });

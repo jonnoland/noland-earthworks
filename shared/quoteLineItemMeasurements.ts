@@ -45,7 +45,10 @@ export function getQuoteLineServiceOption(value: string | undefined): QuoteLineS
 export function inferQuoteLineServiceOption(description: string | undefined): QuoteLineServiceOption | undefined {
   const normalized = description?.trim().toLocaleLowerCase();
   if (!normalized) return undefined;
-  return QUOTE_LINE_SERVICE_OPTIONS.find((option) => option.label.toLocaleLowerCase() === normalized);
+  return QUOTE_LINE_SERVICE_OPTIONS.find((option) => {
+    const label = option.label.toLocaleLowerCase();
+    return normalized === label || normalized.startsWith(`${label} `) || normalized.startsWith(`${label}—`);
+  });
 }
 
 export function isLinearFootQuoteLine(item: Pick<MeasuredQuoteLineItem, "serviceCode" | "measurementUnit" | "description">): boolean {

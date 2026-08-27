@@ -226,12 +226,12 @@ function LineItemRow({
             </select>
           </label>
         )}
-        <Input
-          placeholder={isServiceLine ? "Service description or scope" : "Description"}
+        {(!isServiceLine || selectedServiceValue === "custom") && <Input
+          placeholder={isServiceLine ? "Custom service or charge" : "Description"}
           value={item.description}
           onChange={e => onChange(index, "description", e.target.value)}
           className="bg-zinc-800 border-zinc-700 text-sm"
-        />
+        />}
         {isLinearFoot && <p className="mt-1 text-[10px] text-sky-300">Calculated as linear feet × rate per linear foot.</p>}
         {item.kind === "phase" && (
           <div className="mt-2 grid gap-2 rounded-md border border-zinc-700/80 bg-zinc-950/45 p-2.5 sm:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
@@ -619,6 +619,13 @@ function QuoteFormModal({
   const [editTerrainMult, setEditTerrainMult] = useState<string>("");
   const [editAccessMult, setEditAccessMult] = useState<string>("");
   const [copyDone, setCopyDone] = useState(false);
+  const aiPrimaryServiceLine = useMemo(
+    () => form.lineItems.find((line) => !line.kind || line.kind === "service"),
+    [form.lineItems],
+  );
+  const aiPrimaryService = getQuoteLineServiceOption(aiPrimaryServiceLine?.serviceCode)
+    ?? inferQuoteLineServiceOption(aiPrimaryServiceLine?.description);
+  const aiUsesLinearFeet = Boolean(aiPrimaryServiceLine && isLinearFootQuoteLine(aiPrimaryServiceLine));
   const [aiSuggestion, setAiSuggestion] = useState<{
     title: string;
     estimatedDuration: string;
@@ -634,7 +641,9 @@ function QuoteFormModal({
       terrainMultiplier: number;
       accessMultiplier: number;
       densityKey: string;
-      acreage: number;
+      acreage: number | null;
+      linearFeet: number | null;
+      measurementUnit: "acre" | "linear_foot";
       rawTotalBeforeMinimum: number;
       minimumJobApplied: boolean;
       mobilizationFee: number;
@@ -687,12 +696,20 @@ function QuoteFormModal({
 
   const handleAiSuggest = () => {
     const acreage = parseFloat(form.acreage);
-    if (!form.serviceType) { toast.error("Select a service type first"); return; }
-    if (!form.acreage || isNaN(acreage) || acreage <= 0) { toast.error("Enter acreage first"); return; }
+    const linearFeet = Number(aiPrimaryServiceLine?.qty);
+    const serviceType = aiPrimaryService?.label ?? form.serviceType;
+    if (!serviceType) { toast.error("Select a service type first"); return; }
+    if (aiUsesLinearFeet && (!Number.isFinite(linearFeet) || linearFeet <= 0)) {
+      toast.error("Enter the Linear Feet on the selected service line first");
+      return;
+    }
+    if (!aiUsesLinearFeet && (!form.acreage || isNaN(acreage) || acreage <= 0)) { toast.error("Enter acreage first"); return; }
     setAiPanel("loading");
     aiSuggestMutation.mutate({
-      serviceType: form.serviceType,
-      acreage,
+      serviceType,
+      ...(aiUsesLinearFeet
+        ? { linearFeet, unitRateCents: aiPrimaryServiceLine?.unitPriceCents || undefined }
+        : { acreage }),
       terrain: aiTerrain,
       density: aiDensity,
       access: aiAccess,
@@ -1181,7 +1198,7 @@ function QuoteFormModal({
               <div className="flex items-center gap-2">
                 <Sparkles className="h-4 w-4 text-amber-400" />
                 <span className="text-sm font-medium text-amber-300">AI Suggest</span>
-                <span className="text-xs text-zinc-500">Auto-fill line items, duration, and client message</span>
+                <span className="text-xs text-zinc-500">{aiUsesLinearFeet ? "Build footage-based line items, duration, and client message" : "Auto-fill line items, duration, and client message"}</span>
               </div>
               <Button
                 size="sm"
@@ -1236,7 +1253,7 @@ function QuoteFormModal({
                     </Select>
                   </div>
                 </div>
-                <p className="text-xs text-zinc-500">Requires service type and acreage to be filled in above.</p>
+                <p className="text-xs text-zinc-500">{aiUsesLinearFeet ? "Uses the selected Linear Foot service line and its footage. The current per-foot rate is used when entered; otherwise, the approved internal rate is used." : "Requires service type and acreage to be filled in above."}</p>
                 <Button
                   className="w-full bg-amber-500 hover:bg-amber-600 text-black font-semibold h-8 text-xs"
                   onClick={handleAiSuggest}
@@ -1282,10 +1299,10 @@ function QuoteFormModal({
                         const aMult = parseFloat(editAccessMult) || aiSuggestion.breakdown.accessMultiplier;
                         const text = [
                           `AI Price Breakdown`,
-                          `Service: ${form.serviceType}`,
-                          `Acreage: ${aiSuggestion.breakdown.acreage} acres`,
-                          `Base rate range: $${aiSuggestion.breakdown.baseRateLow.toLocaleString()} – $${aiSuggestion.breakdown.baseRateHigh.toLocaleString()}/acre`,
-                          `Mid-point rate: $${aiSuggestion.breakdown.baseRatePerAcre.toLocaleString()}/acre`,
+                          `Service: ${aiPrimaryService?.label ?? form.serviceType}`,
+                          aiSuggestion.breakdown.measurementUnit === "linear_foot" ? `Linear feet: ${aiSuggestion.breakdown.linearFeet?.toLocaleString() ?? 0} linear ft` : `Acreage: ${aiSuggestion.breakdown.acreage ?? 0} acres`,
+                          aiSuggestion.breakdown.measurementUnit === "linear_foot" ? `Base rate: $${aiSuggestion.breakdown.baseRateLow.toLocaleString()}/linear ft` : `Base rate range: $${aiSuggestion.breakdown.baseRateLow.toLocaleString()} – $${aiSuggestion.breakdown.baseRateHigh.toLocaleString()}/acre`,
+                          aiSuggestion.breakdown.measurementUnit === "linear_foot" ? `Adjusted rate: $${aiSuggestion.breakdown.baseRatePerAcre.toLocaleString()}/linear ft` : `Mid-point rate: $${aiSuggestion.breakdown.baseRatePerAcre.toLocaleString()}/acre`,
                           `Terrain multiplier: x${tMult.toFixed(2)} (${aiTerrain})`,
                           `Access multiplier: x${aMult.toFixed(2)} (${aiAccess})`,
                           `Raw total: $${aiSuggestion.breakdown.rawTotalBeforeMinimum.toLocaleString()}`,
@@ -1304,10 +1321,10 @@ function QuoteFormModal({
                     </button>
                   </div>
                   <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-xs">
-                    <span className="text-zinc-500">Base rate range</span>
-                    <span className="text-zinc-200">${aiSuggestion.breakdown.baseRateLow.toLocaleString()} – ${aiSuggestion.breakdown.baseRateHigh.toLocaleString()}/acre</span>
-                    <span className="text-zinc-500">Mid-point rate</span>
-                    <span className="text-zinc-200">${aiSuggestion.breakdown.baseRatePerAcre.toLocaleString()}/acre</span>
+                    <span className="text-zinc-500">{aiSuggestion.breakdown.measurementUnit === "linear_foot" ? "Base rate" : "Base rate range"}</span>
+                    <span className="text-zinc-200">{aiSuggestion.breakdown.measurementUnit === "linear_foot" ? `$${aiSuggestion.breakdown.baseRateLow.toLocaleString()}/linear ft` : `$${aiSuggestion.breakdown.baseRateLow.toLocaleString()} – $${aiSuggestion.breakdown.baseRateHigh.toLocaleString()}/acre`}</span>
+                    <span className="text-zinc-500">{aiSuggestion.breakdown.measurementUnit === "linear_foot" ? "Adjusted rate" : "Mid-point rate"}</span>
+                    <span className="text-zinc-200">${aiSuggestion.breakdown.baseRatePerAcre.toLocaleString()}/{aiSuggestion.breakdown.measurementUnit === "linear_foot" ? "linear ft" : "acre"}</span>
 
                     {/* Editable terrain multiplier */}
                     <div className="flex items-center gap-1 text-zinc-500">
@@ -1355,8 +1372,8 @@ function QuoteFormModal({
                       <span className="text-zinc-400">({aiAccess})</span>
                     </div>
 
-                    <span className="text-zinc-500">Acreage</span>
-                    <span className="text-zinc-200">{aiSuggestion.breakdown.acreage} acres</span>
+                    <span className="text-zinc-500">{aiSuggestion.breakdown.measurementUnit === "linear_foot" ? "Linear feet" : "Acreage"}</span>
+                    <span className="text-zinc-200">{aiSuggestion.breakdown.measurementUnit === "linear_foot" ? `${aiSuggestion.breakdown.linearFeet?.toLocaleString() ?? 0} linear ft` : `${aiSuggestion.breakdown.acreage ?? 0} acres`}</span>
                     <span className="text-zinc-500">Raw total</span>
                     <span className="text-zinc-200">${aiSuggestion.breakdown.rawTotalBeforeMinimum.toLocaleString()}</span>
                     {aiSuggestion.breakdown.minimumJobApplied && (

@@ -3716,3 +3716,13 @@
 - [x] Support Linear Foot quantity, rate, calculation, and display for applicable quote services
 - [x] Preserve acreage-based calculations for acreage services and existing quote compatibility
 - [x] Add regression coverage and validate the updated new and edit quote workflow
+
+## Quote Service Field Cleanup — Aug 2026
+- [x] Remove the duplicate description input beneath the selected quote service
+- [x] Preserve Linear Foot quantity and rate calculation controls after the cleanup
+- [x] Validate and publish the streamlined quote line-item editor
+
+## Linear Foot AI Suggest — Aug 2026
+- [x] Make AI Suggest accept and validate Linear Foot quantities for Trail Cutting and Fence Line Clearing
+- [x] Generate Linear Foot-aware suggested line items, calculation basis, and cost totals without applying acreage assumptions
+- [x] Preserve acreage-based AI Suggest behavior for acreage services and validate both quote paths
