@@ -3774,5 +3774,5 @@
 - [x] Add regression coverage and validate the quote workflow integration
 
 ## Noland Field v0.4.13 GitHub Release Asset — Aug 2026
-- [ ] Create or update the Noland Field v0.4.13 GitHub release and upload the verified replacement-signed APK as its release asset
-- [ ] Verify the GitHub release asset checksum, version details, and installation note for the replacement signature
+- [x] Create or update the Noland Field v0.4.13 GitHub release and upload the verified replacement-signed APK as its release asset
+- [x] Verify the GitHub release asset checksum, version details, and installation note for the replacement signature
