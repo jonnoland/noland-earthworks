@@ -99,6 +99,8 @@ describe("quote service line measurements", () => {
     expect(editor).toContain("Calculate from acreage");
     expect(editor).toContain("Estimated footage — verify on site.");
     expect(editor).toContain("Estimated Linear Footage — verify on site.");
+    expect(editor).toContain('aria-label="Acreage to Linear Feet formula"');
+    expect(editor).toContain("Acres × 43,560 ÷ clearing width (ft) = estimated Linear Feet.");
     expect(portal).toContain("EstimatedFootageNotice");
     expect(portal).toContain("Final footage will be verified during the site visit.");
   });

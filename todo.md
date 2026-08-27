@@ -3741,3 +3741,7 @@
 - [x] Make AI Suggest request clearing width for acreage-derived Linear Foot suggestions and label the basis clearly
 - [x] Show a visible site-verification warning for estimated Linear Foot quantities in the quote editor and customer-facing quote
 - [x] Add regression coverage and validate all quote calculation paths
+
+## Acreage Calculator Formula Tooltip — Aug 2026
+- [x] Add an accessible tooltip beside the acreage-to-Linear-Foot controls that explains the conversion formula and on-site verification requirement
+- [x] Add regression coverage and validate the updated quote builder

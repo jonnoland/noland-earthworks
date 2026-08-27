@@ -21,6 +21,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { Tooltip as QuoteFormulaTooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { toast } from "sonner";
 import {
   Plus, Search, Edit2, Trash2, Copy, Send, CreditCard, Briefcase,
@@ -245,7 +246,20 @@ function LineItemRow({
         {isLinearFoot && (
           <div className="mt-1.5 space-y-1.5 rounded border border-sky-500/25 bg-sky-500/[0.05] p-2">
             <label className="block text-[10px] font-medium uppercase tracking-wide text-sky-200">
-              Footage source
+              <span className="flex items-center gap-1">
+                Footage source
+                <QuoteFormulaTooltip>
+                  <TooltipTrigger asChild>
+                    <button type="button" aria-label="Acreage to Linear Feet formula" className="rounded text-sky-300 hover:text-sky-100 focus:outline-none focus:ring-1 focus:ring-sky-300">
+                      <Info className="h-3 w-3" />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="top" sideOffset={6} className="max-w-[280px] border border-sky-500/35 bg-zinc-950 text-zinc-100">
+                    <p className="font-semibold text-sky-200">Acreage-to-Linear-Foot estimate</p>
+                    <p className="mt-1 leading-relaxed">Acres × 43,560 ÷ clearing width (ft) = estimated Linear Feet. Example: 3 acres at 20 ft = 6,534 LF. Use this for defined corridors, not a property perimeter. Verify footage on site.</p>
+                  </TooltipContent>
+                </QuoteFormulaTooltip>
+              </span>
               <select
                 value={item.quantitySource ?? "measured"}
                 onChange={e => onChange(index, "quantitySource", e.target.value)}
