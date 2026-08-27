@@ -8,10 +8,14 @@ describe("Noland Field quote configuration parity", () => {
   it("uses live Operations settings for condition adjustments and eligible discount options", () => {
     const router = source("server/fieldQuoteRouter.ts");
 
+    expect(router).toContain("calculateOperationsQuotePricing");
+    expect(router).toContain("getPricingBenchmarks");
+    expect(router).toContain("Live Operations minimum");
+    expect(router).not.toContain("conditionAdjustedPrice.customerPriceLow");
     expect(router).toContain("getSuggestedVolumeDiscount(input.sourceAcreage ?? input.acreage ?? 0, pricingSettings)");
     expect(router).toContain("getCustomerDiscountOptions(pricingSettings)");
     expect(router).toContain("The selected discount is not enabled or eligible");
-    expect(router).toContain("roundQuoteCentsUp(conditionAdjustedPrice.customerPriceLow * 100)");
+    expect(router).toContain("roundQuoteCentsUp(liveOperationsPricing.customerPriceLow * 100)");
   });
 
   it("shows selected Operations discounts and whole-dollar price ranges in Noland Field", () => {

@@ -584,7 +584,7 @@ export const nativeQuotesRouter = router({
 
       const legacyLandManagementKey = ["land", "clearing"].join("-");
       const normalizedServiceKey = svcKey === legacyLandManagementKey ? "land-management" : svcKey;
-      const densityKey = (density ?? "moderate") as string;
+      const densityKey = density === "very_heavy" ? "heavy" : (density ?? "moderate") as string;
       const terrainMult = terrain === "steep" ? tsMult : terrain === "rolling" ? trMult : 1.0;
       const accessMult  = access === "difficult" ? adMult : access === "moderate" ? amMult : 1.0;
 

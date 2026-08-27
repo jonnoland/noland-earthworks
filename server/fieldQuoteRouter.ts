@@ -16,7 +16,7 @@ import { eq, desc } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 import * as jose from "jose";
 import { router, publicProcedure, protectedProcedure } from "./_core/trpc";
-import { getDb, createOpsLead, getOwnerUser, listNativeClientContacts } from "./db";
+import { getDb, createOpsLead, getOwnerUser, listNativeClientContacts, getPricingBenchmarks } from "./db";
 import { aiPricingSettings, fieldQuotes } from "../drizzle/schema";
 import { storagePut } from "./storage";
 import { makeRequest } from "./_core/map";
@@ -24,11 +24,12 @@ import { invokeLLM } from "./_core/llm";
 import { ENV } from "./_core/env";
 import { Resend } from "resend";
 import { normalizeTennesseeParcelId, validateTennesseeParcelId } from "../shared/tennesseeParcelId";
-import { applyFieldConditionPriceAdjustment, getFieldConditionAdjustment } from "../shared/fieldConditionPricing";
+import { getFieldConditionAdjustment } from "../shared/fieldConditionPricing";
 import { getCustomerDiscountOptions, getSuggestedVolumeDiscount } from "../shared/quoteDiscounts";
-import { roundQuoteCentsUp } from "../shared/quoteMoney";
+import { formatQuoteCents, roundQuoteCentsUp } from "../shared/quoteMoney";
 import { calculateLinearFeetFromAcreage } from "../shared/quoteLineItemMeasurements";
 import { getNolandFieldRelease } from "./mobileRelease";
+import { calculateOperationsQuotePricing } from "./operationsQuotePricing";
 
 const TN_PARCEL_QUERY_URL = "https://services1.arcgis.com/YuVBSS7Y1of2Qud1/arcgis/rest/services/Tennessee_Property_Boundaries_Public_Use/FeatureServer/0/query";
 
@@ -1013,18 +1014,28 @@ Return JSON matching the schema exactly.`;
         [key: string]: unknown;
       };
       const db = await getDb();
-      const pricingRows = db ? await db.select().from(aiPricingSettings).limit(1) : [];
+      const [pricingRows, benchmarkRows] = await Promise.all([
+        db ? db.select().from(aiPricingSettings).limit(1) : Promise.resolve([]),
+        getPricingBenchmarks().catch(() => []),
+      ]);
+      const pricingSettings = pricingRows[0] ?? {};
+      const linearBenchmarkKey = input.service === "Fence Line Clearing" ? "fence line clearing" : "trail cutting";
+      const linearBenchmark = benchmarkRows.find((benchmark) => benchmark.serviceType.toLowerCase() === linearBenchmarkKey && benchmark.unit === "linear_foot");
       const fieldConditionAdjustment = getFieldConditionAdjustment({
         vegetationDensity: input.vegetationDensity,
         terrain: input.terrain,
         accessDifficulty: input.accessDifficulty,
-      }, pricingRows[0]);
-      const conditionAdjustedPrice = applyFieldConditionPriceAdjustment(
-        parsed.customerPriceLow,
-        parsed.customerPriceHigh,
-        fieldConditionAdjustment,
-      );
-      const pricingSettings = pricingRows[0] ?? {};
+      }, pricingSettings);
+      const liveOperationsPricing = calculateOperationsQuotePricing({
+        serviceType: input.service,
+        acreage: hasAcreageFootageEstimate ? input.sourceAcreage ?? input.acreage : input.acreage,
+        linearFeet: hasAcreageFootageEstimate ? undefined : effectiveLinearFeet,
+        clearingWidthFeet: hasAcreageFootageEstimate ? input.clearingWidthFeet : undefined,
+        unitRateCents: linearBenchmark ? linearBenchmark.midPerAcre * 100 : undefined,
+        density: input.vegetationDensity,
+        terrain: input.terrain,
+        access: input.accessDifficulty,
+      }, pricingSettings);
       const suggestedVolumeDiscount = getSuggestedVolumeDiscount(input.sourceAcreage ?? input.acreage ?? 0, pricingSettings);
       const eligibleDiscounts = [
         ...(suggestedVolumeDiscount ? [suggestedVolumeDiscount] : []),
@@ -1036,8 +1047,8 @@ Return JSON matching the schema exactly.`;
       if (input.discountCode && !selectedDiscount) {
         throw new TRPCError({ code: "BAD_REQUEST", message: "The selected discount is not enabled or eligible under current Operations pricing settings." });
       }
-      const beforeDiscountLow = roundQuoteCentsUp(conditionAdjustedPrice.customerPriceLow * 100) / 100;
-      const beforeDiscountHigh = roundQuoteCentsUp(conditionAdjustedPrice.customerPriceHigh * 100) / 100;
+      const beforeDiscountLow = roundQuoteCentsUp(liveOperationsPricing.customerPriceLow * 100) / 100;
+      const beforeDiscountHigh = roundQuoteCentsUp(liveOperationsPricing.customerPriceHigh * 100) / 100;
       const customerPriceLow = selectedDiscount
         ? roundQuoteCentsUp(beforeDiscountLow * (1 - selectedDiscount.percent / 100) * 100) / 100
         : beforeDiscountLow;
@@ -1057,14 +1068,19 @@ Return JSON matching the schema exactly.`;
         customerPriceLow,
         customerPriceHigh,
         marginPct: adjustedMidpoint > 0 ? Math.round(((adjustedMidpoint - parsed.totalInternalCost) / adjustedMidpoint) * 100) : parsed.marginPct,
-        summary: `${parsed.summary} Recommended pricing reflects the selected vegetation, terrain, and access conditions.${selectedDiscount ? ` ${selectedDiscount.label} (${selectedDiscount.percent}%) has been applied.` : ""}`,
+        summary: `${input.service} uses the current Operations base rate and minimum, with the selected vegetation, terrain, and access adjustments applied.${selectedDiscount ? ` ${selectedDiscount.label} (${selectedDiscount.percent}%) has been applied.` : ""}`,
         warnings: Array.from(new Set([
-          ...parsed.warnings,
+          ...parsed.warnings.filter((warning) => !/price|rate|minimum/i.test(warning)),
           ...(hasAcreageFootageEstimate && estimatedLinearFeet ? [`Estimated ${estimatedLinearFeet.toLocaleString()} Linear Feet from acreage and clearing width. Verify footage on site before finalizing the quote.`] : []),
           `Field-condition multiplier ×${fieldConditionAdjustment.combinedMultiplier.toFixed(2)} (${fieldConditionAdjustment.labels.vegetation} vegetation, ${fieldConditionAdjustment.labels.terrain} terrain, ${fieldConditionAdjustment.labels.access} access).`,
+          `Live Operations minimum: ${formatQuoteCents(liveOperationsPricing.minimumJobTotal * 100)}.`,
           ...(selectedDiscount ? [`${selectedDiscount.label} (${selectedDiscount.percent}%) applied. This is an internal estimate adjustment and remains subject to owner review.`] : []),
         ])),
-        fieldConditionAdjustment: conditionAdjustedPrice.detail,
+        fieldConditionAdjustment: {
+          ...fieldConditionAdjustment,
+          baseCustomerPriceLow: liveOperationsPricing.baseQuoteLow,
+          baseCustomerPriceHigh: liveOperationsPricing.baseQuoteHigh,
+        },
         eligibleDiscounts,
         selectedDiscount: selectedDiscount ?? null,
         discountAdjustment: selectedDiscount ? {

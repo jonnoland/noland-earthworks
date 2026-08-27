@@ -3783,5 +3783,10 @@
 - [x] Confirm quote calculators receive the populated acreage and add regression coverage
 
 ## Field Quote and Web Quote Pricing Comparison — Aug 2026
-- [ ] Compare field and web quote inputs, rate sources, condition adjustments, discounts, rounding, and saved pricing configuration
-- [ ] Identify the exact causes of any divergent totals and recommend the required unified pricing behavior
+- [x] Compare field and web quote inputs, rate sources, condition adjustments, discounts, rounding, and saved pricing configuration
+- [x] Identify the exact causes of any divergent totals and recommend the required unified pricing behavior
+
+## Noland Field Live Pricing Alignment — Aug 2026
+- [x] Replace Noland Field’s hard-coded base-rate and minimum estimate path with the live Operations pricing settings and web quote calculation rules
+- [x] Preserve field-specific Linear Foot, acreage conversion, condition, discount, and site-verification behavior on the shared pricing basis
+- [x] Add regression coverage proving Noland Field and Operations AI Suggest use the same live rates, minimum, and whole-dollar totals
