@@ -164,7 +164,7 @@ export function registerZapierWebhookRoutes(app: Application): void {
 
           await resend.emails.send({
             from: "Noland Earthworks <noreply@nolandearthworks.com>",
-            to: "jonnoland@nolandearthworks.com",
+            to: "quotes@nolandearthworks.com",
             subject: `New Lead via Zapier — ${name}`,
             html: `
               <div style="font-family:sans-serif;max-width:560px;margin:0 auto;color:#1a1a1a;line-height:1.7;">

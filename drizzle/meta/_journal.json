@@ -869,6 +869,27 @@
       "when": 1787699836906,
       "tag": "0123_crazy_roxanne_simpson",
       "breakpoints": true
+    },
+    {
+      "idx": 124,
+      "version": "5",
+      "when": 1787780275134,
+      "tag": "0124_worthless_wendigo",
+      "breakpoints": true
+    },
+    {
+      "idx": 125,
+      "version": "5",
+      "when": 1787795109478,
+      "tag": "0125_flashy_hannibal_king",
+      "breakpoints": true
+    },
+    {
+      "idx": 126,
+      "version": "5",
+      "when": 1787795160324,
+      "tag": "0126_lumpy_the_leader",
+      "breakpoints": true
     }
   ]
 }

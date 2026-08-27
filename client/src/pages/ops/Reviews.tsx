@@ -4,7 +4,8 @@
  * KPI cards | Source tabs | Review cards with reply modal
  */
 import { useState } from "react";
-import OpsDashboardLayout from "@/components/OpsDashboardLayout";
+import DashboardLayout from "@/components/DashboardLayout";
+const OpsDashboardLayout = DashboardLayout;
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
 import {

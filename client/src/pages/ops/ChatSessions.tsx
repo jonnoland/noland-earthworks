@@ -4,7 +4,8 @@
  */
 import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
-import OpsDashboardLayout from "@/components/OpsDashboardLayout";
+import DashboardLayout from "@/components/DashboardLayout";
+const OpsDashboardLayout = DashboardLayout;
 import { trpc } from "@/lib/trpc";
 import { BotMessageSquare, User, MessageSquare, Phone, Mail, UserCheck, Clock, ChevronRight, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";

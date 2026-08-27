@@ -22,7 +22,7 @@ const CustomTooltip = ({ active, payload, label }: any) => {
         <p className="text-xs font-semibold text-foreground mb-1">{label}</p>
         {payload.map((p: any, i: number) => (
           <p key={i} className="text-xs" style={{ color: p.color }}>
-            {p.name}: {typeof p.value === "number" && p.name !== "Leads" && p.name !== "Won" ? `$${p.value.toLocaleString()}` : p.value}
+            {p.name}: {typeof p.value === "number" && p.name !== "Leads" && p.name !== "Won" ? new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(p.value) : p.value}
           </p>
         ))}
       </div>
@@ -32,11 +32,15 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 };
 
 export default function Reports() {
-  const { data: jobs = [] } = trpc.ops.jobs.list.useQuery();
+  const { data: jobs = [] } = trpc.nativeJobs.list.useQuery({});
+  const { data: invoices = [] } = trpc.nativeJobs.listInvoices.useQuery({});
+  const { data: quoteResult } = trpc.nativeQuotes.list.useQuery({});
+  const quotes = quoteResult?.quotes ?? [];
   const { data: leads = [] } = trpc.ops.leads.list.useQuery();
 
   const [weeklyInsight, setWeeklyInsight] = useState("");
   const [insightCopied, setInsightCopied] = useState(false);
+  const formatCurrency = (value: number) => new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(value);
   const generateInsightMutation = trpc.ops.generateWeeklyInsight.useMutation({
     onSuccess: (data) => setWeeklyInsight(data.insight as string),
     onError: (err) => toast.error(err.message || "Failed to generate insight."),
@@ -66,21 +70,36 @@ export default function Reports() {
     onError: (err: any) => toast.error(`Summary failed: ${err.message}`),
   });
 
-  // Build monthly revenue from jobs
+  // Cash collection is based on a recorded payment date, never a job edit date.
   const monthlyData = useMemo(() => {
-    const months: Record<string, { revenue: number; count: number }> = {};
-    jobs.forEach(j => {
-      if (!j.totalPrice) return;
-      const d = j.updatedAt ? new Date(j.updatedAt) : new Date();
-      const key = d.toLocaleString("en-US", { month: "short", year: "2-digit" });
-      if (!months[key]) months[key] = { revenue: 0, count: 0 };
-      months[key].revenue += Number(j.totalPrice);
-      months[key].count += 1;
+    const months = Array.from({ length: 6 }, (_, index) => {
+      const date = new Date();
+      date.setDate(1);
+      date.setMonth(date.getMonth() - (5 - index));
+      return {
+        key: `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`,
+        month: date.toLocaleString("en-US", { month: "short", year: "2-digit" }),
+        revenue: 0,
+        payments: 0,
+      };
     });
-    return Object.entries(months)
-      .slice(-7)
-      .map(([month, v]) => ({ month, revenue: v.revenue, jobs: v.count }));
-  }, [jobs]);
+    const monthByKey = new Map(months.map((month) => [month.key, month]));
+    const addCollection = (dateValue: Date | string | null | undefined, amountCents: number) => {
+      if (!dateValue || amountCents <= 0) return;
+      const date = new Date(dateValue);
+      const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+      const month = monthByKey.get(key);
+      if (month) {
+        month.revenue += amountCents / 100;
+        month.payments += 1;
+      }
+    };
+    const paidInvoiceJobIds = new Set(invoices.filter((invoice) => invoice.status === "paid").map((invoice) => invoice.jobId));
+    invoices.filter((invoice) => invoice.status === "paid").forEach((invoice) => addCollection(invoice.paidAt, invoice.totalCents));
+    jobs.filter((job) => job.paidAt && !paidInvoiceJobIds.has(job.id)).forEach((job) => addCollection(job.paidAt, job.paidCents ?? job.totalCents));
+    quotes.forEach((quote) => addCollection(quote.depositPaidAt, quote.depositPaidCents ?? 0));
+    return months;
+  }, [invoices, jobs, quotes]);
 
   // Lead source performance from real leads
   const leadSourceData = useMemo(() => {
@@ -98,13 +117,20 @@ export default function Reports() {
     }));
   }, [leads]);
 
-  const totalRevenue = jobs.reduce((s, j) => s + Number(j.totalPrice ?? 0), 0);
   const completedJobs = jobs.filter(j => j.status === "completed").length;
+  const paidInvoices = invoices.filter((invoice) => invoice.status === "paid");
+  const paidInvoiceJobIds = new Set(paidInvoices.map((invoice) => invoice.jobId));
+  const invoiceCollections = paidInvoices.reduce((sum, invoice) => sum + invoice.totalCents, 0);
+  const jobCollectionsWithoutInvoice = jobs.filter((job) => job.paidAt && !paidInvoiceJobIds.has(job.id)).reduce((sum, job) => sum + (job.paidCents ?? job.totalCents), 0);
+  const depositCollections = quotes.reduce((sum, quote) => sum + (quote.depositPaidCents ?? 0), 0);
+  const totalRevenue = (invoiceCollections + jobCollectionsWithoutInvoice + depositCollections) / 100;
+  const outstandingInvoices = invoices.filter((invoice) => invoice.status === "unpaid" || invoice.status === "sent").reduce((sum, invoice) => sum + invoice.totalCents, 0) / 100;
+  const completedJobValue = jobs.filter((job) => job.status === "completed").reduce((sum, job) => sum + job.totalCents, 0) / 100;
   const wonLeads = leads.filter(l => l.stage === "won").length;
   const openLeads = leads.filter(l => !["won", "lost"].includes(l.stage)).length;
-  const avgJobValue = completedJobs > 0 ? totalRevenue / completedJobs : 0;
+  const avgJobValue = completedJobs > 0 ? completedJobValue / completedJobs : 0;
 
-  const isEmpty = jobs.length === 0 && leads.length === 0;
+  const isEmpty = jobs.length === 0 && invoices.length === 0 && quotes.length === 0 && leads.length === 0;
 
   // Priority 8: Ad Performance Feedback Loop
   const [adPerformanceInsight, setAdPerformanceInsight] = useState<string | null>(null);
@@ -120,10 +146,10 @@ export default function Reports() {
         {/* Summary KPIs */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           {[
-            { label: "Total Revenue", value: totalRevenue > 0 ? `$${totalRevenue.toLocaleString()}` : "—" },
+            { label: "Cash Collected", value: totalRevenue > 0 ? formatCurrency(totalRevenue) : "—" },
+            { label: "Open Invoices", value: outstandingInvoices > 0 ? formatCurrency(outstandingInvoices) : "—" },
             { label: "Jobs Completed", value: completedJobs > 0 ? completedJobs.toString() : "—" },
-            { label: "Leads Won", value: wonLeads > 0 ? wonLeads.toString() : "—" },
-            { label: "Avg Job Value", value: avgJobValue > 0 ? `$${Math.round(avgJobValue).toLocaleString()}` : "—" },
+            { label: "Avg Job Value", value: avgJobValue > 0 ? formatCurrency(avgJobValue) : "—" },
           ].map((stat, i) => (
             <div key={i} className="ops-card p-4">
               <div className="flex items-center justify-between mb-2">
@@ -140,7 +166,7 @@ export default function Reports() {
             <BarChart2 className="w-12 h-12 text-muted-foreground/20 mx-auto mb-4" />
             <p className="text-sm font-semibold text-foreground mb-1">No data yet</p>
             <p className="text-xs text-muted-foreground">
-              Revenue charts and lead source analytics will populate as you add jobs and leads.
+              Cash collection, lifecycle reporting, and lead-source analytics will populate as you work native quotes, jobs, and invoices.
             </p>
           </div>
         ) : (
@@ -151,9 +177,9 @@ export default function Reports() {
                 <div className="flex items-center justify-between mb-4">
                   <div>
                     <h3 className="text-sm font-semibold text-foreground" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
-                      Monthly Revenue
+                      Monthly Cash Collected
                     </h3>
-                    <p className="text-xs text-muted-foreground">From completed & invoiced jobs</p>
+                    <p className="text-xs text-muted-foreground">Paid invoices, recorded job payments, and recorded deposits only</p>
                   </div>
                 </div>
                 <ResponsiveContainer width="100%" height={220}>

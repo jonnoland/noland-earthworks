@@ -10,7 +10,8 @@
  */
 import { useState, useRef, useMemo } from "react";
 import { trpc } from "@/lib/trpc";
-import OpsDashboardLayout from "@/components/OpsDashboardLayout";
+import DashboardLayout from "@/components/DashboardLayout";
+const OpsDashboardLayout = DashboardLayout;
 import { toast } from "sonner";
 import {
   Stethoscope,

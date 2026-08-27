@@ -17,7 +17,7 @@ import { roundQuoteCentsUp } from "@shared/quoteMoney";
 import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
 import { TRPCError } from "@trpc/server";
 import { getDb } from "./db";
-import { nativeQuotes, nativeJobs, aiPricingSettings, nativeClients, opsLeads } from "../drizzle/schema";
+import { nativeQuotes, nativeJobs, aiPricingSettings, nativeClients, opsLeads, quoteSubmissions } from "../drizzle/schema";
 import { getPricingBenchmarks } from "./db";
 import { eq, desc, like, or, and, asc } from "drizzle-orm";
 import { randomBytes } from "crypto";
@@ -56,7 +56,7 @@ async function sendEmail(to: string, subject: string, html: string) {
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      from: "Noland Earthworks <noreply@nolandearthworks.com>",
+      from: "Noland Earthworks <quotes@nolandearthworks.com>",
       to,
       subject,
       html,
@@ -156,6 +156,8 @@ export const nativeQuotesRouter = router({
       estimatedDuration: z.string().optional(),
       acreage: z.string().optional(),
       serviceType: z.string().optional(),
+      parcelId: z.string().trim().max(100).optional(),
+      parcelCounty: z.string().trim().max(100).optional(),
       sourceDetail: z.string().max(100).optional(),
       fitDecision: z.enum(["unreviewed", "owner_review", "pursue", "pass", "refer_out"]).optional(),
       nextActionType: z.string().max(100).optional(),
@@ -169,6 +171,7 @@ export const nativeQuotesRouter = router({
       leadId: z.number().int().optional(),
       fieldQuoteId: z.number().int().optional(),
       distanceQuoteId: z.number().int().optional(),
+      websiteRequestId: z.number().int().optional(),
     }))
     .mutation(async ({ input }: { input: any }) => {
       const db = await getDb();
@@ -188,6 +191,8 @@ export const nativeQuotesRouter = router({
         estimatedDuration: input.estimatedDuration || null,
         acreage: input.acreage || null,
         serviceType: input.serviceType || null,
+        parcelId: input.parcelId || null,
+        parcelCounty: input.parcelCounty || null,
         sourceDetail: input.sourceDetail || "manual",
         fitDecision: input.fitDecision || "unreviewed",
         nextActionType: input.nextActionType || "review_request",
@@ -204,6 +209,12 @@ export const nativeQuotesRouter = router({
         distanceQuoteId: input.distanceQuoteId ?? null,
       });
       const id = (result as any).insertId ?? (result as any)[0]?.insertId;
+
+      if (input.websiteRequestId) {
+        await db.update(quoteSubmissions)
+          .set({ nativeQuoteId: Number(id) })
+          .where(eq(quoteSubmissions.id, input.websiteRequestId));
+      }
 
       // Auto-save / update client record
       try {
@@ -242,7 +253,7 @@ export const nativeQuotesRouter = router({
         }
       } catch (_) { /* non-fatal — quote was already saved */ }
 
-      return { id: Number(id) };
+      return { id: Number(id), websiteRequestId: input.websiteRequestId ?? null };
     }),
 
   update: ownerProcedure
@@ -260,6 +271,8 @@ export const nativeQuotesRouter = router({
       estimatedDuration: z.string().optional(),
       acreage: z.string().optional(),
       serviceType: z.string().optional(),
+      parcelId: z.string().trim().max(100).optional(),
+      parcelCounty: z.string().trim().max(100).optional(),
       status: z.string().optional(),
       sourceDetail: z.string().max(100).optional(),
       fitDecision: z.enum(["unreviewed", "owner_review", "pursue", "pass", "refer_out"]).optional(),
@@ -340,6 +353,8 @@ export const nativeQuotesRouter = router({
         estimatedDuration: src.estimatedDuration,
         acreage: src.acreage,
         serviceType: src.serviceType,
+        parcelId: src.parcelId,
+        parcelCounty: src.parcelCounty,
         status: "draft",
         leadId: src.leadId,
         // Intentionally omitted: portalToken, portalSentAt, portalViewedAt,

@@ -27,7 +27,7 @@ import { Resend } from "resend";
 import { jobs, opsLeads, quoteSubmissions, crews, crewMembers, conversations, messages, reviews, timeEntries, distanceQuotes, businessSettings, automationSettings, serviceCatalog, pricingBenchmarks, messageTemplates, reminderRules, leadNotes, visitBlackoutDates, recurringBlackoutDays, aiPricingSettings, quoteDrafts, socialPosts, adSpend, equipment, serviceLogs, serviceIntervals, fieldDiagnostics, ownerTasks, jobNotes, morningBriefs, reviewRequests, chatSessions,
 	 scheduleEntries, agentConfig, adCampaigns, prospectingLeads, outreachTemplates, leadContactLog, nativeQuotes, serviceFaqs, leadGenerationTrackingSettings, leadGenerationDailySnapshots } from "../drizzle/schema";
 
-import { and, asc, desc, eq, gte, inArray, lt, lte, like, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, getTableColumns, gte, inArray, lt, lte, like, or, sql } from "drizzle-orm";
 import { portalAddOnOptions } from "../drizzle/schema";
 import { autoPatchSeoCheck, AUTO_PATCHABLE_CHECKS, SQUARESPACE_MANUAL_CHECKS, CODE_FIXED_CHECKS, INFRA_CHECKS } from "./seoAutoPatcher";
 import { notifyOwner } from "./_core/notification";
@@ -1279,7 +1279,15 @@ const quotesRouter = router({
     .query(async ({ input }) => {
       const db = await getDb();
       if (!db) return [];
-      return db.select().from(quoteSubmissions).orderBy(desc(quoteSubmissions.createdAt)).limit(input.limit);
+      return db.select({
+        ...getTableColumns(quoteSubmissions),
+        linkedQuoteParcelId: nativeQuotes.parcelId,
+        linkedQuoteParcelCounty: nativeQuotes.parcelCounty,
+      })
+        .from(quoteSubmissions)
+        .leftJoin(nativeQuotes, eq(quoteSubmissions.nativeQuoteId, nativeQuotes.id))
+        .orderBy(desc(quoteSubmissions.createdAt))
+        .limit(input.limit);
     }),
   delete: ownerProcedure
     .input(z.object({ id: z.number().int().positive() }))
@@ -3008,6 +3016,25 @@ const distanceQuotesRouter = router({
 });
 
 // ─── Settings Router ─────────────────────────────────────────────────────────
+const internalPricingConfigSchema = z.object({
+  hoursPerDay: z.number().min(0).max(24),
+  crewMembers: z.number().int().min(1).max(50),
+  wagePerHour: z.number().min(0).max(10000),
+  burdenPct: z.number().min(0).max(1000),
+  equipment: z.array(z.object({ id: z.string().min(1).max(120), name: z.string().max(200), monthlyCost: z.number().min(0).max(1000000) })).max(50),
+  machineBurnRateGPH: z.number().min(0).max(1000),
+  fuelPricePerGallon: z.number().min(0).max(1000),
+  truckFuelPerDay: z.number().min(0).max(1000000),
+  teethCostPerSet: z.number().min(0).max(1000000),
+  daysPerSet: z.number().positive().max(100000),
+  annualMajorWear: z.number().min(0).max(10000000),
+  miscConsumablesPerDay: z.number().min(0).max(1000000),
+  overheadItems: z.array(z.object({ id: z.string().min(1).max(120), name: z.string().max(200), monthlyCost: z.number().min(0).max(1000000) })).max(100),
+  workingDaysPerMonth: z.number().positive().max(31),
+  targetMarginPct: z.number().min(0).max(95),
+  acresPerDay: z.number().positive().max(10000),
+});
+
 const settingsRouter = router({
   getBusinessSettings: ownerProcedure.query(async () => {
     const db = await getDb();
@@ -3052,6 +3079,54 @@ const settingsRouter = router({
         await db.insert(businessSettings).values({ ...input });
       } else {
         await db.update(businessSettings).set({ ...input, updatedAt: new Date() }).where(eq(businessSettings.id, rows[0].id));
+      }
+      return { success: true };
+    }),
+  /** Read the one owner-approved internal pricing configuration, if one has been saved. */
+  getInternalPricingConfig: ownerProcedure.query(async () => {
+    const db = await getDb();
+    if (!db) return null;
+    const rows = await db.select().from(businessSettings).limit(1);
+    const stored = rows[0]?.pricingConfig;
+    if (!stored) return null;
+    try {
+      return {
+        config: internalPricingConfigSchema.parse(JSON.parse(stored)),
+        updatedAt: rows[0]?.pricingConfigUpdatedAt ?? rows[0]?.updatedAt ?? null,
+      };
+    } catch {
+      return null;
+    }
+  }),
+  /** Import a browser-local calculator only when no shared configuration exists. */
+  initializeInternalPricingConfig: ownerProcedure
+    .input(z.object({ config: internalPricingConfigSchema }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+      const rows = await db.select().from(businessSettings).limit(1);
+      const existing = rows[0];
+      if (existing?.pricingConfig) return { initialized: false };
+      const storedConfig = JSON.stringify(input.config);
+      if (existing) {
+        await db.update(businessSettings).set({ pricingConfig: storedConfig, pricingConfigUpdatedAt: new Date(), updatedAt: new Date() }).where(eq(businessSettings.id, existing.id));
+      } else {
+        await db.insert(businessSettings).values({ pricingConfig: storedConfig, pricingConfigUpdatedAt: new Date() });
+      }
+      return { initialized: true };
+    }),
+  /** Save an explicit owner edit to the shared internal pricing configuration. */
+  updateInternalPricingConfig: ownerProcedure
+    .input(z.object({ config: internalPricingConfigSchema }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+      const rows = await db.select().from(businessSettings).limit(1);
+      const storedConfig = JSON.stringify(input.config);
+      if (rows[0]) {
+        await db.update(businessSettings).set({ pricingConfig: storedConfig, pricingConfigUpdatedAt: new Date(), updatedAt: new Date() }).where(eq(businessSettings.id, rows[0].id));
+      } else {
+        await db.insert(businessSettings).values({ pricingConfig: storedConfig, pricingConfigUpdatedAt: new Date() });
       }
       return { success: true };
     }),

@@ -5,7 +5,8 @@
  * PDFs → iframe, JPGs → img, Videos → YouTube embed, PSDs → no-preview message.
  */
 import { useState } from "react";
-import OpsDashboardLayout from "@/components/OpsDashboardLayout";
+import DashboardLayout from "@/components/DashboardLayout";
+const OpsDashboardLayout = DashboardLayout;
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {

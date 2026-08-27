@@ -1,4 +1,4 @@
-import OpsDashboardLayout from "@/components/OpsDashboardLayout";
+import DashboardLayout from "@/components/DashboardLayout";
 import { NativeAllQuotesSection } from "./NativeAllQuotesSection";
 
 /**
@@ -7,11 +7,11 @@ import { NativeAllQuotesSection } from "./NativeAllQuotesSection";
  */
 export default function Quotes() {
   return (
-    <OpsDashboardLayout
+    <DashboardLayout
       title="Quotes"
       subtitle="Create, send, track, and manage customer quotes."
     >
       <NativeAllQuotesSection />
-    </OpsDashboardLayout>
+    </DashboardLayout>
   );
 }
