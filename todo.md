@@ -3800,4 +3800,4 @@
 ## Noland Field Reconnect Rate Sync and Authorized Android Release — Aug 2026
 - [x] Add a reconnect-only Sync Now control that refreshes and timestamps cached Operations rates
 - [x] Add regression coverage and validate the reconnect rate sync behavior
-- [ ] Build, verify, and publish the authorized Android APK release for the updated companion app
+- [x] Build, verify, and publish the authorized Android APK release for the updated companion app
