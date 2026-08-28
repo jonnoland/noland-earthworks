@@ -38,6 +38,16 @@ export default function FieldReleaseNotes() {
                 ) : <p style={{ color: "rgba(240,237,230,0.65)", lineHeight: 1.7 }}>Release highlights are temporarily unavailable. Please refresh this page.</p>}
               </section>
 
+              {release?.history?.length ? <section style={{ marginBottom: "2.5rem" }}>
+                <h2 style={{ color: "#F0EDE6", fontFamily: "'Oswald', sans-serif", fontSize: "1.8rem", borderBottom: "2px solid rgba(224,123,42,0.30)", paddingBottom: "0.55rem", marginBottom: "1rem" }}>Recent releases</h2>
+                <div style={{ display: "grid", gap: "0.8rem" }}>
+                  {release.history.map((entry) => <article key={entry.version} style={{ border: "1px solid rgba(240,237,230,0.16)", borderRadius: 8, padding: "1rem 1.1rem", backgroundColor: "rgba(255,255,255,0.018)" }}>
+                    <h3 style={{ color: "#F0EDE6", fontFamily: "'Oswald', sans-serif", fontSize: "1.2rem", margin: 0 }}>v{entry.version} — {entry.title}</h3>
+                    <p style={{ color: "rgba(240,237,230,0.72)", lineHeight: 1.65, margin: "0.45rem 0 0" }}>{entry.notes}</p>
+                  </article>)}
+                </div>
+              </section> : null}
+
               <section style={{ marginBottom: "2.5rem" }}>
                 <h2 style={{ color: "#F0EDE6", fontFamily: "'Oswald', sans-serif", fontSize: "1.8rem", borderBottom: "2px solid rgba(224,123,42,0.30)", paddingBottom: "0.55rem", marginBottom: "1rem" }}>Install the update</h2>
                 <ol style={{ color: "rgba(240,237,230,0.82)", lineHeight: 1.85, paddingLeft: "1.35rem", margin: 0 }}>

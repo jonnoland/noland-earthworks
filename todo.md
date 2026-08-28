@@ -3810,3 +3810,8 @@
 - [x] Show the current v0.4.14 release notes in the in-app update interface
 - [x] Add accurate APK download progress and status feedback to the in-app updater
 - [x] Add regression coverage and validate the update interface without building another APK
+
+## Noland Field v0.4.15 Updater Feedback Release — Aug 2026
+- [x] Bump the authorized Android and companion app version for the updater feedback release
+- [x] Build and verify the signed Noland Field v0.4.15 APK with measured update progress and installer handoff
+- [ ] Publish the verified v0.4.15 package through the website updater and GitHub release channels
