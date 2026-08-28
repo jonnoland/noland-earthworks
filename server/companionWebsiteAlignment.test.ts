@@ -44,12 +44,12 @@ describe("Noland Field website alignment", () => {
     expect(router).toContain("JSON.parse(stripCodeFence(rawContent))");
   });
 
-  it("keeps the native release metadata aligned with the pending version 0.4.13", () => {
+  it("keeps the native release metadata aligned with the pending version 0.4.14", () => {
     const packageJson = source("noland-earthworks-mobile/package.json");
     const gradle = source("noland-earthworks-mobile/android/app/build.gradle");
 
-    expect(packageJson).toContain('"version": "0.4.13"');
-    expect(gradle).toContain("versionCode 15");
-    expect(gradle).toContain('versionName "0.4.13"');
+    expect(packageJson).toContain('"version": "0.4.14"');
+    expect(gradle).toContain("versionCode 16");
+    expect(gradle).toContain('versionName "0.4.14"');
   });
 });

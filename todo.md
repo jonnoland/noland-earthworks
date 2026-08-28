@@ -3796,3 +3796,8 @@
 - [x] Use cached pricing only when a live field estimate cannot be retrieved and label the quote clearly as offline/cached
 - [x] Show a current rate-source status and last-sync time in the Noland Field quote workflow
 - [x] Add regression coverage and validate live, offline, and missing-cache behavior without producing a new APK
+
+## Noland Field Reconnect Rate Sync and Authorized Android Release — Aug 2026
+- [x] Add a reconnect-only Sync Now control that refreshes and timestamps cached Operations rates
+- [x] Add regression coverage and validate the reconnect rate sync behavior
+- [ ] Build, verify, and publish the authorized Android APK release for the updated companion app

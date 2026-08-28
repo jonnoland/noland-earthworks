@@ -76,5 +76,9 @@ describe("Noland Field quote configuration parity", () => {
     expect(mobile).toContain("Live Operations rates");
     expect(mobile).toContain("Last synced:");
     expect(mobile).toContain("Verify live rates before sending the quote.");
+    expect(mobile).toContain("showRateSyncNow");
+    expect(mobile).toContain("pricingSnapshotQuery.refetch()");
+    expect(mobile).toContain("Sync Now");
+    expect(mobile).toContain("Operations rates synced");
   });
 });

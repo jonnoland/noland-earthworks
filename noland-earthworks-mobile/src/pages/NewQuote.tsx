@@ -315,7 +315,10 @@ export default function NewQuote() {
   const [estimateError, setEstimateError] = useState<string | null>(null);
   const [cachedPricing, setCachedPricing] = useState<FieldPricingSnapshot | null>(null);
   const [rateStatus, setRateStatus] = useState<"loading" | "live" | "cached" | "unavailable">("loading");
+  const [showRateSyncNow, setShowRateSyncNow] = useState(false);
+  const [rateSyncMessage, setRateSyncMessage] = useState<string | null>(null);
   const cachedPricingRef = React.useRef<FieldPricingSnapshot | null>(null);
+  const wasOfflineRef = React.useRef(!navigator.onLine);
   const [selectedDiscountCode, setSelectedDiscountCode] = useState<string | null>(null);
   const [clientSearch, setClientSearch] = useState("");
   const [clientPickerOpen, setClientPickerOpen] = useState(false);
@@ -381,6 +384,18 @@ export default function NewQuote() {
       setCachedPricing(snapshot);
       if (!isOnline) setRateStatus("cached");
     });
+  }, [isOnline]);
+
+  React.useEffect(() => {
+    if (!isOnline) {
+      wasOfflineRef.current = true;
+      return;
+    }
+    if (wasOfflineRef.current) {
+      setShowRateSyncNow(true);
+      setRateSyncMessage(null);
+    }
+    wasOfflineRef.current = false;
   }, [isOnline]);
 
   React.useEffect(() => {
@@ -454,6 +469,31 @@ export default function NewQuote() {
       ],
     });
     return true;
+  }
+
+  async function handleRateSyncNow() {
+    if (!isOnline || pricingSnapshotQuery.isFetching) return;
+    setRateSyncMessage(null);
+    const result = await pricingSnapshotQuery.refetch();
+    if (result.error || !result.data) {
+      setRateStatus(cachedPricingRef.current ? "cached" : "unavailable");
+      setRateSyncMessage("Could not refresh Operations rates. The last saved rates remain in place.");
+      return;
+    }
+    try {
+      const cached = await writeFieldPricingSnapshot({
+        pricingSettings: result.data.pricingSettings,
+        trailUnitRateCents: result.data.trailUnitRateCents,
+        fenceLineUnitRateCents: result.data.fenceLineUnitRateCents,
+      });
+      cachedPricingRef.current = cached;
+      setCachedPricing(cached);
+      setRateStatus("live");
+      setShowRateSyncNow(false);
+      setRateSyncMessage(`Operations rates synced ${new Date(cached.lastSyncedAt).toLocaleTimeString()}.`);
+    } catch {
+      setRateSyncMessage("Operations rates were fetched but could not be saved on this device. Try Sync Now again.");
+    }
   }
 
   const getEstimate = trpc.fieldQuote.estimate.useMutation({
@@ -1506,12 +1546,24 @@ export default function NewQuote() {
             return (
               <div style={{ display: "flex", alignItems: "flex-start", gap: 8, padding: "9px 10px", borderRadius: 8, backgroundColor: usingCachedRates ? "oklch(0.75 0.16 60 / 0.10)" : usingLiveRates ? "oklch(0.70 0.18 145 / 0.08)" : "oklch(0.30 0 0)", border: `1px solid ${sourceColor}55`, marginBottom: 12 }}>
                 {usingCachedRates ? <CloudOff size={16} color={sourceColor} style={{ flexShrink: 0, marginTop: 1 }} /> : <CloudCheck size={16} color={sourceColor} style={{ flexShrink: 0, marginTop: 1 }} />}
-                <div>
+                <div style={{ flex: 1 }}>
                   <p style={{ color: sourceColor, fontSize: 12, fontWeight: 700, margin: 0 }}>{sourceLabel}</p>
                   <p style={{ color: "oklch(0.60 0.01 80)", fontSize: 10, lineHeight: 1.45, margin: "3px 0 0" }}>
                     {lastSyncedAt ? `Last synced: ${new Date(lastSyncedAt).toLocaleString()}.` : "Connect to Operations once to save rates for offline estimates."}
                     {usingCachedRates ? " Verify live rates before sending the quote." : ""}
                   </p>
+                  {showRateSyncNow && isOnline && (
+                    <button
+                      type="button"
+                      onClick={() => void handleRateSyncNow()}
+                      disabled={pricingSnapshotQuery.isFetching}
+                      style={{ marginTop: 8, border: "1px solid oklch(0.75 0.18 145 / 0.60)", borderRadius: 7, background: "oklch(0.70 0.18 145 / 0.12)", color: "oklch(0.75 0.18 145)", padding: "6px 9px", fontSize: 10, fontWeight: 700, cursor: pricingSnapshotQuery.isFetching ? "not-allowed" : "pointer", display: "inline-flex", alignItems: "center", gap: 5 }}
+                    >
+                      {pricingSnapshotQuery.isFetching ? <Loader2 size={12} style={{ animation: "spin 1s linear infinite" }} /> : <CloudCheck size={12} />}
+                      {pricingSnapshotQuery.isFetching ? "Syncing…" : "Sync Now"}
+                    </button>
+                  )}
+                  {rateSyncMessage && <p role="status" style={{ color: rateSyncMessage.startsWith("Could not") || rateSyncMessage.startsWith("Operations rates were") ? "oklch(0.78 0.16 60)" : "oklch(0.75 0.18 145)", fontSize: 10, lineHeight: 1.4, margin: "7px 0 0" }}>{rateSyncMessage}</p>}
                 </div>
               </div>
             );
