@@ -1,6 +1,5 @@
 import { useEffect, useRef } from "react";
 import { toast } from "sonner";
-import { Capacitor } from "@capacitor/core";
 import { trpc } from "@/lib/trpc";
 
 // Injected at build time from package.json via vite.config.ts
@@ -39,19 +38,13 @@ export function useUpdateCheck() {
 
     toastShown.current = true;
 
-    const downloadUrl = versionData.downloadUrl;
-
     toast("Update available", {
-      description: `v${APP_VERSION} → v${versionData.version}  ·  Tap to download`,
+      description: `v${APP_VERSION} → v${versionData.version} · ${versionData.notes}`,
       duration: Infinity, // stays until dismissed or tapped
       action: {
-        label: "Download",
+        label: "View update",
         onClick: () => {
-          if (Capacitor.isNativePlatform()) {
-            window.open(downloadUrl, "_system");
-          } else {
-            window.open(downloadUrl, "_blank");
-          }
+          window.location.assign("/profile");
         },
       },
       style: {

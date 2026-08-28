@@ -82,6 +82,7 @@ const PricingPage = lazy(() => import("./pages/Pricing"));
 const FaqPage = lazy(() => import("./pages/Faq"));
 const TermsOfServicePage = lazy(() => import("./pages/TermsOfService"));
 const PrivacyPolicyPage = lazy(() => import("./pages/PrivacyPolicy"));
+const FieldReleaseNotesPage = lazy(() => import("./pages/FieldReleaseNotes"));
 const ReviewsPage = lazy(() => import("./pages/Reviews"));
 const BlogPage = lazy(() => import("./pages/Blog"));
 const CostOfLandManagement = lazy(() => import("./pages/blog/CostOfLandManagement"));
@@ -256,6 +257,7 @@ function Router() {
       <Route path="/faq" component={FaqPage} />
       <Route path="/terms-of-service" component={TermsOfServicePage} />
       <Route path="/privacy-policy" component={PrivacyPolicyPage} />
+      <Route path="/field-release-notes" component={FieldReleaseNotesPage} />
 
       {/* Gallery */}
       <Route path="/gallery" component={GalleryPage} />

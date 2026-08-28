@@ -2,6 +2,9 @@ import { useState } from "react";
 import { ExternalLink, Info, LogOut, Fingerprint, ScanFace, Download, CheckCircle, RefreshCw, Moon, Sun, Monitor } from "lucide-react";
 import { Capacitor } from "@capacitor/core";
 import { Browser } from "@capacitor/browser";
+import { Directory, Filesystem } from "@capacitor/filesystem";
+import { FileTransfer } from "@capacitor/file-transfer";
+import { FileViewer } from "@capacitor/file-viewer";
 import PageHeader from "@/components/PageHeader";
 import { useAuth } from "@/hooks/useAuth";
 import { useBiometric } from "@/hooks/useBiometric";
@@ -14,6 +17,13 @@ import { useThemePreference } from "@/hooks/useThemePreference";
 declare const __APP_VERSION__: string;
 const APP_VERSION: string = typeof __APP_VERSION__ !== "undefined" ? __APP_VERSION__ : "0.3.0";
 const UPDATE_SITE_ORIGIN = "https://nolandearthworks.com";
+
+type UpdateDownloadState = "idle" | "preparing" | "downloading" | "opening" | "complete" | "failed";
+
+function formatBytes(bytes: number): string {
+  if (!Number.isFinite(bytes) || bytes <= 0) return "0 MB";
+  return `${(bytes / (1024 * 1024)).toFixed(bytes >= 10 * 1024 * 1024 ? 0 : 1)} MB`;
+}
 
 /** Simple semver comparison: returns true if remote > local */
 function isNewerVersion(remote: string, local: string): boolean {
@@ -28,7 +38,10 @@ function isNewerVersion(remote: string, local: string): boolean {
 export default function Profile() {
   const { logout } = useAuth();
   const [confirming, setConfirming] = useState(false);
-  const [downloading, setDownloading] = useState(false);
+  const [downloadState, setDownloadState] = useState<UpdateDownloadState>("idle");
+  const [downloadedBytes, setDownloadedBytes] = useState(0);
+  const [downloadTotalBytes, setDownloadTotalBytes] = useState<number | null>(null);
+  const [downloadStatus, setDownloadStatus] = useState<string | null>(null);
   const { preference, resolvedTheme, setPreference } = useThemePreference();
 
   // Biometric hook — no auto-prompt on Profile page (pass no-op onSuccess)
@@ -53,6 +66,10 @@ export default function Profile() {
   const updateAvailable = versionData
     ? isNewerVersion(versionData.version, APP_VERSION)
     : false;
+  const isDownloading = downloadState === "preparing" || downloadState === "downloading" || downloadState === "opening";
+  const downloadProgress = downloadTotalBytes && downloadTotalBytes > 0
+    ? Math.min(100, Math.round((downloadedBytes / downloadTotalBytes) * 100))
+    : null;
 
   async function openUpdateLink(url: string) {
     const absoluteUrl = new URL(url, UPDATE_SITE_ORIGIN).toString();
@@ -69,11 +86,94 @@ export default function Profile() {
   }
 
   async function handleDownloadUpdate() {
-    if (!versionData?.downloadUrl || downloading) return;
-    setDownloading(true);
-    await openUpdateLink(versionData.downloadUrl);
-    // The operating system owns the download; clear the handoff state after the browser opens.
-    window.setTimeout(() => setDownloading(false), 1200);
+    if (!versionData?.downloadUrl || isDownloading) return;
+
+    const absoluteUrl = new URL(versionData.downloadUrl, UPDATE_SITE_ORIGIN).toString();
+    const filename = `noland-field_v${versionData.version}.apk`;
+    setDownloadState("preparing");
+    setDownloadedBytes(0);
+    setDownloadTotalBytes(null);
+    setDownloadStatus("Preparing the signed update package…");
+
+    try {
+      if (Capacitor.isNativePlatform()) {
+        const target = await Filesystem.getUri({ directory: Directory.Cache, path: filename });
+        let finalBytes = 0;
+        let finalTotalBytes: number | null = null;
+        const listener = await FileTransfer.addListener("progress", (progress) => {
+          if (progress.type !== "download") return;
+          finalBytes = progress.bytes;
+          finalTotalBytes = progress.lengthComputable && progress.contentLength > 0 ? progress.contentLength : null;
+          setDownloadState("downloading");
+          setDownloadedBytes(progress.bytes);
+          setDownloadTotalBytes(finalTotalBytes);
+          setDownloadStatus(progress.lengthComputable && progress.contentLength > 0
+            ? `Downloading signed update: ${formatBytes(progress.bytes)} of ${formatBytes(progress.contentLength)}.`
+            : `Downloading signed update: ${formatBytes(progress.bytes)} received.`);
+        });
+        try {
+          setDownloadState("downloading");
+          setDownloadStatus("Downloading signed update…");
+          await FileTransfer.downloadFile({ url: absoluteUrl, path: target.uri, progress: true });
+        } finally {
+          await listener.remove();
+        }
+        setDownloadedBytes(finalTotalBytes ?? finalBytes);
+        setDownloadTotalBytes(finalTotalBytes);
+        setDownloadState("opening");
+        setDownloadStatus("Download complete. Opening the Android installer…");
+        try {
+          await FileViewer.openDocumentFromLocalPath({ path: target.uri });
+          setDownloadState("complete");
+          setDownloadStatus("Android installer opened. Approve the update to finish installation.");
+        } catch {
+          setDownloadState("complete");
+          setDownloadStatus("Download complete. Open the saved Noland Field APK from your device files to install it.");
+        }
+        return;
+      }
+
+      const response = await fetch(absoluteUrl);
+      if (!response.ok) throw new Error(`Update server returned ${response.status}.`);
+      const total = Number(response.headers.get("content-length")) || null;
+      const reader = response.body?.getReader();
+      if (!reader) throw new Error("Your browser could not read the update file.");
+      const chunks: Uint8Array[] = [];
+      let received = 0;
+      setDownloadState("downloading");
+      setDownloadTotalBytes(total);
+      setDownloadStatus(total ? `Downloading signed update: 0 MB of ${formatBytes(total)}.` : "Downloading signed update…");
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        if (value) {
+          chunks.push(value);
+          received += value.byteLength;
+          setDownloadedBytes(received);
+          setDownloadStatus(total ? `Downloading signed update: ${formatBytes(received)} of ${formatBytes(total)}.` : `Downloading signed update: ${formatBytes(received)} received.`);
+        }
+      }
+      const merged = new Uint8Array(new ArrayBuffer(received));
+      let offset = 0;
+      for (const chunk of chunks) {
+        merged.set(chunk, offset);
+        offset += chunk.byteLength;
+      }
+      const file = new Blob([merged], { type: response.headers.get("content-type") || "application/vnd.android.package-archive" });
+      const browserDownloadUrl = URL.createObjectURL(file);
+      const link = document.createElement("a");
+      link.href = browserDownloadUrl;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.setTimeout(() => URL.revokeObjectURL(browserDownloadUrl), 60_000);
+      setDownloadState("complete");
+      setDownloadStatus("Download complete. Open the Noland Field APK from your browser downloads to install it.");
+    } catch (error) {
+      setDownloadState("failed");
+      setDownloadStatus(error instanceof Error ? `Update download could not finish: ${error.message}` : "Update download could not finish. Try again or open the release notes page.");
+    }
   }
 
   async function handleOpenReleasePage() {
@@ -192,29 +292,43 @@ export default function Profile() {
         <div style={{ marginBottom: 20 }}>
           {updateAvailable ? (
             <div>
-              {/* Update available — native browser download with a release-page fallback */}
+              {/* Update available — transfer progress and a release-notes fallback */}
               <button
                 onClick={handleDownloadUpdate}
-                disabled={downloading}
+                disabled={isDownloading}
                 style={{
                   display: "flex", alignItems: "center", justifyContent: "space-between",
-                  backgroundColor: downloading ? "oklch(0.16 0.03 50)" : "oklch(0.20 0.05 50)",
+                  backgroundColor: isDownloading ? "oklch(0.16 0.03 50)" : "oklch(0.20 0.05 50)",
                   border: "1px solid oklch(0.65 0.18 50)", borderRadius: 12, padding: "16px",
-                  textDecoration: "none", gap: 12, width: "100%", cursor: downloading ? "not-allowed" : "pointer",
-                  opacity: downloading ? 0.75 : 1, transition: "opacity 0.2s, background-color 0.2s",
+                  textDecoration: "none", gap: 12, width: "100%", cursor: isDownloading ? "not-allowed" : "pointer",
+                  opacity: isDownloading ? 0.75 : 1, transition: "opacity 0.2s, background-color 0.2s",
                 }}
               >
                 <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                  {downloading ? <RefreshCw size={20} color="oklch(0.65 0.18 50)" style={{ animation: "spin 0.8s linear infinite" }} /> : <Download size={20} color="oklch(0.65 0.18 50)" />}
+                  {isDownloading ? <RefreshCw size={20} color="oklch(0.65 0.18 50)" style={{ animation: "spin 0.8s linear infinite" }} /> : <Download size={20} color="oklch(0.65 0.18 50)" />}
                   <div style={{ textAlign: "left" }}>
-                    <p style={{ color: "oklch(0.94 0.01 80)", fontSize: 15, fontWeight: 600, margin: 0 }}>{downloading ? "Opening secure download..." : "Download Update"}</p>
-                    <p style={{ color: "oklch(0.65 0.18 50)", fontSize: 12, margin: "2px 0 0" }}>v{APP_VERSION} → v{versionData!.version} · Opens in your browser</p>
+                    <p style={{ color: "oklch(0.94 0.01 80)", fontSize: 15, fontWeight: 600, margin: 0 }}>{isDownloading ? "Downloading update…" : "Download Update"}</p>
+                    <p style={{ color: "oklch(0.65 0.18 50)", fontSize: 12, margin: "2px 0 0" }}>v{APP_VERSION} → v{versionData!.version} · Signed Android package</p>
                   </div>
                 </div>
-                {!downloading && <ExternalLink size={16} color="oklch(0.65 0.18 50)" />}
+                {!isDownloading && <Download size={16} color="oklch(0.65 0.18 50)" />}
               </button>
+              {downloadState !== "idle" && (
+                <div role="status" aria-live="polite" style={{ marginTop: 10, border: `1px solid ${downloadState === "failed" ? "oklch(0.65 0.20 25 / 0.6)" : "oklch(0.65 0.18 50 / 0.35)"}`, borderRadius: 10, padding: "10px 11px", background: downloadState === "failed" ? "oklch(0.65 0.20 25 / 0.08)" : "oklch(0.65 0.18 50 / 0.08)" }}>
+                  <div style={{ height: 6, overflow: "hidden", borderRadius: 99, background: "oklch(0.12 0 0)" }} aria-label={downloadProgress == null ? "Download in progress" : `Download ${downloadProgress}% complete`}>
+                    <div style={{ width: downloadProgress == null ? (isDownloading ? "38%" : downloadState === "complete" ? "100%" : "0%") : `${downloadProgress}%`, height: "100%", borderRadius: 99, background: downloadState === "failed" ? "oklch(0.65 0.20 25)" : "var(--ne-amber)", transition: "width 0.2s ease", animation: downloadProgress == null && isDownloading ? "downloadPulse 1.1s ease-in-out infinite" : "none" }} />
+                  </div>
+                  <p style={{ color: downloadState === "failed" ? "oklch(0.78 0.16 35)" : "var(--ne-cream)", fontSize: 12, lineHeight: 1.45, margin: "8px 0 0" }}>{downloadStatus}</p>
+                  {downloadProgress != null && isDownloading && <p style={{ color: "var(--ne-muted)", fontSize: 11, margin: "3px 0 0" }}>{downloadProgress}% complete</p>}
+                </div>
+              )}
+              <div style={{ marginTop: 10, borderLeft: "3px solid var(--ne-amber)", background: "oklch(0.65 0.18 50 / 0.07)", borderRadius: "0 8px 8px 0", padding: "10px 11px" }}>
+                <p style={{ color: "var(--ne-cream)", fontSize: 12, fontWeight: 700, margin: 0 }}>What’s new in v{versionData!.version}</p>
+                <p style={{ color: "var(--ne-muted)", fontSize: 11, lineHeight: 1.45, margin: "4px 0 0" }}>{versionData!.notes}</p>
+                {versionData!.highlights?.map((highlight) => <p key={highlight} style={{ color: "var(--ne-muted)", fontSize: 11, lineHeight: 1.4, margin: "5px 0 0" }}>• {highlight}</p>)}
+              </div>
               <p style={{ color: "var(--ne-muted)", fontSize: 12, lineHeight: 1.45, margin: "10px 4px 0" }}>
-                When the download finishes, tap the APK in your browser’s downloads. If it stalls, open the release page and start the download there.
+                The progress bar reflects the actual signed package transfer. When it completes, approve the Android installation prompt. If the installer does not open, use the release notes page for the fallback download.
               </p>
               <button onClick={handleOpenReleasePage} style={{ margin: "6px 4px 0", padding: 0, border: "none", background: "none", color: "var(--ne-amber)", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
                 Open release page instead
@@ -444,6 +558,10 @@ export default function Profile() {
         @keyframes spin {
           from { transform: rotate(0deg); }
           to { transform: rotate(360deg); }
+        }
+        @keyframes downloadPulse {
+          0%, 100% { transform: translateX(-40%); opacity: 0.65; }
+          50% { transform: translateX(140%); opacity: 1; }
         }
       `}</style>
     </div>

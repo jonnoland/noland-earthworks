@@ -12,6 +12,7 @@ describe("Noland Field mobile release channel", () => {
       downloadUrl: "/manus-storage/noland-field_v0.4.14_59232714.apk",
       releaseNotesUrl: "https://nolandearthworks.com/field-release-notes",
       notes: expect.stringContaining("reconnect Sync Now"),
+      highlights: expect.arrayContaining([expect.stringContaining("Offline estimates")]),
     });
   });
 

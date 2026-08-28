@@ -17,6 +17,9 @@ describe("companion release, map, and offline workflow", () => {
     expect(release).toContain("reconnect Sync Now");
     expect(profile).toContain("Download Update");
     expect(profile).toContain("new URL(url, UPDATE_SITE_ORIGIN)");
+    expect(profile).toContain("FileTransfer.downloadFile");
+    expect(profile).toContain("Download complete. Opening the Android installer");
+    expect(profile).toContain("What’s new in v");
   });
 
   it("renders a visual supported-area map in the companion location screen", () => {

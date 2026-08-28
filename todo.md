@@ -3805,3 +3805,8 @@
 ## Noland Field v0.4.14 GitHub Release Recovery — Aug 2026
 - [x] Restore GitHub authorization for the Noland Earthworks repository release workflow
 - [x] Create and verify the existing signed Noland Field v0.4.14 GitHub release asset
+
+## Noland Field v0.4.14 Updater Feedback — Aug 2026
+- [x] Show the current v0.4.14 release notes in the in-app update interface
+- [x] Add accurate APK download progress and status feedback to the in-app updater
+- [x] Add regression coverage and validate the update interface without building another APK

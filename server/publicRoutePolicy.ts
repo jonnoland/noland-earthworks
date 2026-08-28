@@ -9,6 +9,7 @@ const ADDITIONAL_PUBLIC_PATHS = new Set([
   "/services/mulch-redistribution",
   "/services/add-ons/selective-mulching",
   "/services/add-ons/post-clear-seeding",
+  "/field-release-notes",
 ]);
 
 export function isKnownSpaRoute(pathname: string): boolean {
