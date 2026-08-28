@@ -3819,3 +3819,6 @@
 ## Tennessee Permit Awareness Procedure — Aug 2026
 - [x] Identify the practical permit, environmental, utility, road-access, and local-jurisdiction checks that can affect forestry mulching and land-management work
 - [x] Create a field-ready pre-job permit screening checklist with authoritative Tennessee and local confirmation sources
+
+## Permit and Owner Responsibility Contract Clause — Aug 2026
+- [x] Draft a plain-language standard clause that assigns permit, approval, access, and owner-documentation responsibilities before mobilization
