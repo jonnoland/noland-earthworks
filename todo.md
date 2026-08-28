@@ -3815,3 +3815,7 @@
 - [x] Bump the authorized Android and companion app version for the updater feedback release
 - [x] Build and verify the signed Noland Field v0.4.15 APK with measured update progress and installer handoff
 - [x] Publish the verified v0.4.15 package through the website updater and GitHub release channels
+
+## Tennessee Permit Awareness Procedure — Aug 2026
+- [x] Identify the practical permit, environmental, utility, road-access, and local-jurisdiction checks that can affect forestry mulching and land-management work
+- [x] Create a field-ready pre-job permit screening checklist with authoritative Tennessee and local confirmation sources
