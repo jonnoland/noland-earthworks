@@ -3822,3 +3822,7 @@
 
 ## Permit and Owner Responsibility Contract Clause — Aug 2026
 - [x] Draft a plain-language standard clause that assigns permit, approval, access, and owner-documentation responsibilities before mobilization
+
+## Linear Foot AI Suggest Width Choices — Aug 2026
+- [x] Expand AI Suggest and matching acreage-to-Linear-Foot controls to 6, 8, 10, 12, 16, 20, 25, and 30-foot widths
+- [x] Add regression coverage and validate the expanded Linear Foot width calculations in Operations and Noland Field

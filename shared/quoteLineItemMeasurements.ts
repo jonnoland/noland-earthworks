@@ -10,7 +10,7 @@ export type QuoteLineServiceCode =
 export type QuoteLineMeasurementUnit = "linear_foot";
 export type QuoteLineQuantitySource = "measured" | "acreage_estimate";
 
-export const LINEAR_FOOT_CLEARING_WIDTH_OPTIONS = [12, 16, 20, 25, 30] as const;
+export const LINEAR_FOOT_CLEARING_WIDTH_OPTIONS = [6, 8, 10, 12, 16, 20, 25, 30] as const;
 
 export interface QuoteLineServiceOption {
   value: QuoteLineServiceCode;

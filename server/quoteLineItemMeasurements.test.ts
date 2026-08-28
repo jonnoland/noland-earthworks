@@ -7,6 +7,7 @@ import {
   formatQuoteLineQuantity,
   isEstimatedLinearFootQuoteLine,
   isLinearFootQuoteLine,
+  LINEAR_FOOT_CLEARING_WIDTH_OPTIONS,
   linearFootEstimateBasis,
   quoteLineQuantityLabel,
 } from "@shared/quoteLineItemMeasurements";
@@ -30,6 +31,10 @@ describe("quote service line measurements", () => {
   });
 
   it("calculates Linear Feet from clearing acreage and width while rejecting incomplete geometry", () => {
+    expect(LINEAR_FOOT_CLEARING_WIDTH_OPTIONS).toEqual([6, 8, 10, 12, 16, 20, 25, 30]);
+    expect(calculateLinearFeetFromAcreage(1, 6)).toBe(7_260);
+    expect(calculateLinearFeetFromAcreage(1, 8)).toBe(5_445);
+    expect(calculateLinearFeetFromAcreage(1, 10)).toBe(4_356);
     expect(calculateLinearFeetFromAcreage(3, 20)).toBe(6_534);
     expect(calculateLinearFeetFromAcreage(1, 12)).toBe(3_630);
     expect(calculateLinearFeetFromAcreage(0, 20)).toBeNull();
