@@ -3903,3 +3903,7 @@
 ## Proof-of-Insurance Document Preview Repair — Aug 2026
 - [x] Repair blank proof-of-insurance document previews with a reliable labeled document page and direct-download fallback
 - [x] Add regression coverage and validate insurance document preview behavior after upload
+
+## Quote Evidence Blank Screen Repair — Aug 2026
+- [x] Repair the photo picker and drag-and-drop interaction so selecting site photos never opens a blank screen
+- [x] Add regression coverage and validate in-panel photo upload behavior with visible status feedback

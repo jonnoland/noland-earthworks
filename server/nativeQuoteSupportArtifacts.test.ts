@@ -166,6 +166,16 @@ describe("native quote rental, evidence, and insurance support artifacts", () =>
     expect(quoteForm).toContain("Open separately");
   });
 
+  it("intercepts quote evidence thumbnail clicks and shows the same in-app attachment preview", () => {
+    const quoteForm = source("client/src/pages/ops/NativeAllQuotesSection.tsx");
+
+    expect(quoteForm).toContain("const interceptEvidenceThumbnail");
+    expect(quoteForm).toContain("document.addEventListener(\"click\", interceptEvidenceThumbnail, true)");
+    expect(quoteForm).toContain("event.preventDefault();");
+    expect(quoteForm).toContain("openInsurancePreview(attachment)");
+    expect(quoteForm).toContain("Attachment preview");
+  });
+
   it("uses explicit attachment limits and validates that documents belong to the quote owner", () => {
     const router = source("server/nativeQuotesRouter.ts");
 

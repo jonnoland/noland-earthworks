@@ -683,6 +683,21 @@ function QuoteFormModal({
     setInsurancePreview(document);
   };
 
+  useEffect(() => {
+    const interceptEvidenceThumbnail = (event: MouseEvent) => {
+      const target = event.target;
+      if (!(target instanceof Element)) return;
+      const image = target.closest("img");
+      const attachment = image ? form.quoteEvidence.find((item) => item.url === image.getAttribute("src")) : undefined;
+      if (!attachment) return;
+      event.preventDefault();
+      event.stopPropagation();
+      openInsurancePreview(attachment);
+    };
+    document.addEventListener("click", interceptEvidenceThumbnail, true);
+    return () => document.removeEventListener("click", interceptEvidenceThumbnail, true);
+  }, [form.quoteEvidence]);
+
   const uploadQuoteFiles = async (kind: "evidence" | "insurance", files: FileList | File[] | null) => {
     if (!files?.length) return;
     const selected = Array.from(files);
@@ -1285,6 +1300,7 @@ function QuoteFormModal({
   };
 
   return (
+    <>
     <Dialog open={open} onOpenChange={v => !v && onClose()}>
       <DialogContent
         className="!top-1/2 !left-1/2 !flex !flex-col !max-w-none !-translate-x-1/2 !-translate-y-1/2 overflow-hidden rounded-xl border border-zinc-700 bg-zinc-900 p-5 text-zinc-100"
@@ -2016,13 +2032,14 @@ function QuoteFormModal({
           <span className="h-3 w-3 border-b-2 border-r-2 border-current" aria-hidden="true" />
         </button>
       </DialogContent>
-      <Dialog open={Boolean(insurancePreview)} onOpenChange={(open) => { if (!open) setInsurancePreview(null); }}>
-        <DialogContent className="max-h-[90vh] max-w-4xl overflow-hidden border-emerald-500/30 bg-zinc-950 p-0 text-zinc-100">
-          <DialogHeader className="border-b border-zinc-800 px-5 py-4"><DialogTitle className="flex items-center gap-2 text-sm text-emerald-100"><ShieldCheck className="h-4 w-4 text-emerald-300" />{insurancePreview?.filename ?? "Proof of insurance"}</DialogTitle></DialogHeader>
-          <div className="space-y-3 px-5 py-4"><p className="text-xs text-zinc-400">Preview is provided for a quick check. If your browser cannot render this document, use Download document below.</p>{insurancePreview?.mimeType.startsWith("image/") ? <img src={insurancePreview.url} alt={insurancePreview.filename} className="max-h-[60vh] w-full rounded border border-zinc-800 object-contain" /> : <object data={insurancePreview?.url} type="application/pdf" className="h-[60vh] w-full rounded border border-zinc-800 bg-zinc-900"><p className="p-4 text-sm text-zinc-300">This browser cannot show the PDF preview. Download the document instead.</p></object>}<div className="flex flex-wrap justify-end gap-2"><a href={insurancePreview?.url} download={insurancePreview?.filename} className="inline-flex h-9 items-center rounded border border-emerald-500/40 px-3 text-xs font-medium text-emerald-100 hover:bg-emerald-500/10"><FileText className="mr-1.5 h-3.5 w-3.5" />Download document</a><a href={insurancePreview?.url} target="_blank" rel="noreferrer" className="inline-flex h-9 items-center rounded border border-zinc-700 px-3 text-xs font-medium text-zinc-200 hover:bg-zinc-800"><ExternalLink className="mr-1.5 h-3.5 w-3.5" />Open separately</a><Button type="button" variant="outline" className="h-9 border-zinc-700 text-xs" onClick={() => setInsurancePreview(null)}>Close</Button></div></div>
-        </DialogContent>
-      </Dialog>
     </Dialog>
+    <Dialog open={Boolean(insurancePreview)} onOpenChange={(isOpen) => { if (!isOpen) setInsurancePreview(null); }}>
+      <DialogContent className="max-h-[90vh] max-w-4xl overflow-hidden border-emerald-500/30 bg-zinc-950 p-0 text-zinc-100">
+        <DialogHeader className="border-b border-zinc-800 px-5 py-4"><DialogTitle className="flex items-center gap-2 text-sm text-emerald-100"><FileText className="h-4 w-4 text-emerald-300" />{insurancePreview?.filename ?? "Attachment preview"}</DialogTitle></DialogHeader>
+        <div className="space-y-3 px-5 py-4"><p className="text-xs text-zinc-400">Preview is provided for a quick check. If your browser cannot render this file, use Download document below.</p>{insurancePreview?.mimeType.startsWith("image/") ? <img src={insurancePreview.url} alt={insurancePreview.filename} className="max-h-[60vh] w-full rounded border border-zinc-800 object-contain" /> : <object data={insurancePreview?.url} type="application/pdf" className="h-[60vh] w-full rounded border border-zinc-800 bg-zinc-900"><p className="p-4 text-sm text-zinc-300">This browser cannot show the PDF preview. Download the document instead.</p></object>}<div className="flex flex-wrap justify-end gap-2"><a href={insurancePreview?.url} download={insurancePreview?.filename} className="inline-flex h-9 items-center rounded border border-emerald-500/40 px-3 text-xs font-medium text-emerald-100 hover:bg-emerald-500/10"><FileText className="mr-1.5 h-3.5 w-3.5" />Download document</a><a href={insurancePreview?.url} target="_blank" rel="noreferrer" className="inline-flex h-9 items-center rounded border border-zinc-700 px-3 text-xs font-medium text-zinc-200 hover:bg-zinc-800"><ExternalLink className="mr-1.5 h-3.5 w-3.5" />Open separately</a><Button type="button" variant="outline" className="h-9 border-zinc-700 text-xs" onClick={() => setInsurancePreview(null)}>Close</Button></div></div>
+      </DialogContent>
+    </Dialog>
+    </>
   );
 }
 
