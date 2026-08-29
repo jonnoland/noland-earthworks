@@ -61,6 +61,11 @@ describe("native quote rental, evidence, and insurance support artifacts", () =>
     expect(quoteForm).toContain('const maximum = kind === "evidence" ? MAX_QUOTE_EVIDENCE_PHOTOS : 12');
     expect(quoteForm).toContain("evidence: Array.isArray(form.quoteEvidence) ? form.quoteEvidence.slice(0, MAX_QUOTE_EVIDENCE_PHOTOS) : []");
     expect(quoteForm).toContain("AI Suggest can review up to 20 saved photos.");
+    expect(quoteForm).toContain("Drop up to 20 site photos here or click to browse");
+    expect(quoteForm).toContain("onDrop={handleEvidenceDrop}");
+    expect(quoteForm).toContain("uploadProgress?.kind === \"evidence\"");
+    expect(quoteForm).toContain("Preparing the visual review for");
+    expect(quoteForm).toContain("Reviewing ${Math.min(form.quoteEvidence.length, MAX_QUOTE_EVIDENCE_PHOTOS)} site photo");
   });
 
   it("keeps rental costs internal and makes evidence available only to protected quote workflows", () => {

@@ -17,6 +17,7 @@ import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
@@ -697,8 +698,10 @@ function QuoteFormModal({
     onError: (error) => toast.error(error.message),
   });
   const [uploadingKind, setUploadingKind] = useState<"evidence" | "insurance" | null>(null);
+  const [uploadProgress, setUploadProgress] = useState<{ kind: "evidence" | "insurance"; completed: number; total: number } | null>(null);
+  const [isEvidenceDragging, setIsEvidenceDragging] = useState(false);
 
-  const uploadQuoteFiles = async (kind: "evidence" | "insurance", files: FileList | null) => {
+  const uploadQuoteFiles = async (kind: "evidence" | "insurance", files: FileList | File[] | null) => {
     if (!files?.length) return;
     const selected = Array.from(files);
     const currentCount = kind === "evidence" ? form.quoteEvidence.length : form.insuranceDocuments.length;
@@ -709,9 +712,11 @@ function QuoteFormModal({
       return;
     }
     setUploadingKind(kind);
+    setUploadProgress({ kind, completed: 0, total: selected.length });
     try {
       const uploaded: Array<QuoteEvidenceAttachment | QuoteInsuranceDocument> = [];
-      for (const file of selected) {
+      for (let index = 0; index < selected.length; index += 1) {
+        const file = selected[index];
         if (file.size > 10 * 1024 * 1024) throw new Error(`${file.name} is larger than the 10 MB attachment limit.`);
         const uploadedFile = await uploadAttachmentMutation.mutateAsync({
           kind,
@@ -720,6 +725,7 @@ function QuoteFormModal({
           filename: file.name,
         });
         uploaded.push(uploadedFile as QuoteEvidenceAttachment | QuoteInsuranceDocument);
+        setUploadProgress({ kind, completed: index + 1, total: selected.length });
       }
       setForm((current) => kind === "evidence"
         ? { ...current, quoteEvidence: [...current.quoteEvidence, ...(uploaded as QuoteEvidenceAttachment[])] }
@@ -730,7 +736,15 @@ function QuoteFormModal({
       toast.error(error instanceof Error ? error.message : "The attachment could not be uploaded.");
     } finally {
       setUploadingKind(null);
+      setUploadProgress(null);
     }
+  };
+
+  const handleEvidenceDrop = (event: React.DragEvent<HTMLLabelElement>) => {
+    event.preventDefault();
+    setIsEvidenceDragging(false);
+    if (uploadingKind !== null) return;
+    void uploadQuoteFiles("evidence", Array.from(event.dataTransfer.files));
   };
 
   const applyParcelMatch = (match: typeof parcelMatches[number]) => {
@@ -1520,7 +1534,8 @@ function QuoteFormModal({
 
               <section className="rounded-md border border-amber-500/20 bg-zinc-950/30 p-3">
                 <div className="flex items-start gap-2"><Camera className="mt-0.5 h-4 w-4 text-amber-300" /><div><p className="text-xs font-semibold text-amber-100">Site photos for AI Suggest</p><p className="mt-0.5 text-[10px] text-zinc-500">JPG, PNG, or WebP; up to 10 MB each. AI Suggest can review up to 20 saved photos. Photos stay internal to this quote.</p></div></div>
-                <label className="mt-2 inline-flex h-7 cursor-pointer items-center rounded border border-amber-500/40 px-2 text-[10px] font-medium text-amber-100 hover:bg-amber-500/10"><Camera className="mr-1 h-3 w-3" />{uploadingKind === "evidence" ? "Uploading…" : "Add site photos"}<input type="file" className="sr-only" accept="image/jpeg,image/png,image/webp" multiple disabled={uploadingKind !== null} onChange={event => { void uploadQuoteFiles("evidence", event.target.files); event.currentTarget.value = ""; }} /></label>
+                <label onDragEnter={event => { event.preventDefault(); if (uploadingKind === null) setIsEvidenceDragging(true); }} onDragOver={event => event.preventDefault()} onDragLeave={event => { event.preventDefault(); setIsEvidenceDragging(false); }} onDrop={handleEvidenceDrop} className={`mt-2 flex min-h-20 cursor-pointer flex-col items-center justify-center rounded-md border border-dashed px-3 py-2 text-center transition-colors ${isEvidenceDragging ? "border-amber-300 bg-amber-500/15" : "border-amber-500/40 hover:bg-amber-500/10"}`}><Camera className="mb-1 h-4 w-4 text-amber-300" /><span className="text-[11px] font-medium text-amber-100">{uploadingKind === "evidence" ? "Uploading site photos…" : "Drop up to 20 site photos here or click to browse"}</span><span className="mt-0.5 text-[10px] text-zinc-400">JPG, PNG, or WebP · 10 MB each · {form.quoteEvidence.length}/{MAX_QUOTE_EVIDENCE_PHOTOS} attached</span><input type="file" className="sr-only" accept="image/jpeg,image/png,image/webp" multiple disabled={uploadingKind !== null} onChange={event => { void uploadQuoteFiles("evidence", event.target.files); event.currentTarget.value = ""; }} /></label>
+                {uploadProgress?.kind === "evidence" && <div className="mt-2" role="status" aria-live="polite"><div className="mb-1 flex justify-between text-[10px] text-amber-100"><span>Uploading site photos</span><span>{uploadProgress.completed} of {uploadProgress.total}</span></div><Progress value={(uploadProgress.completed / uploadProgress.total) * 100} className="h-1.5 bg-zinc-800" /></div>}
                 {form.quoteEvidence.length > 0 && <div className="mt-2 grid grid-cols-4 gap-2">{form.quoteEvidence.map((attachment) => <div key={attachment.key} className="group relative overflow-hidden rounded border border-zinc-700"><a href={attachment.url} target="_blank" rel="noreferrer"><img src={attachment.url} alt={attachment.filename} className="h-14 w-full object-cover" /></a><button type="button" aria-label={`Remove ${attachment.filename}`} className="absolute right-0 top-0 rounded-bl bg-zinc-950/90 p-1 text-zinc-200 hover:text-red-300" onClick={() => setForm(current => ({ ...current, quoteEvidence: current.quoteEvidence.filter(item => item.key !== attachment.key) }))}><X className="h-3 w-3" /></button></div>)}</div>}
                 <div className="mt-3 border-t border-zinc-800 pt-3"><div className="flex items-start gap-2"><Ruler className="mt-0.5 h-4 w-4 text-amber-300" /><div><p className="text-xs font-semibold text-amber-100">Measurements</p><p className="mt-0.5 text-[10px] text-zinc-500">Examples: corridor width, slope, access gate, or work-area acreage.</p></div></div>
                   <div className="mt-2 space-y-1.5">{form.quoteMeasurements.map((measurement, index) => <div key={index} className="grid grid-cols-[1fr_0.7fr_0.55fr_auto] gap-1.5"><Input value={measurement.label} onChange={e => setForm(current => ({ ...current, quoteMeasurements: current.quoteMeasurements.map((item, itemIndex) => itemIndex === index ? { ...item, label: e.target.value } : item) }))} className="h-7 bg-zinc-800 text-[11px]" placeholder="Measurement" /><Input value={measurement.value} onChange={e => setForm(current => ({ ...current, quoteMeasurements: current.quoteMeasurements.map((item, itemIndex) => itemIndex === index ? { ...item, value: e.target.value } : item) }))} className="h-7 bg-zinc-800 text-[11px]" placeholder="Value" /><Input value={measurement.unit} onChange={e => setForm(current => ({ ...current, quoteMeasurements: current.quoteMeasurements.map((item, itemIndex) => itemIndex === index ? { ...item, unit: e.target.value } : item) }))} className="h-7 bg-zinc-800 text-[11px]" placeholder="Unit" /><Button type="button" size="icon" variant="ghost" className="h-7 w-7 text-zinc-400 hover:text-red-300" onClick={() => setForm(current => ({ ...current, quoteMeasurements: current.quoteMeasurements.filter((_, itemIndex) => itemIndex !== index) }))}><X className="h-3.5 w-3.5" /></Button></div>)}</div>
@@ -1644,11 +1659,12 @@ function QuoteFormModal({
                   type="button"
                 >
                   {aiPanel === "loading" ? (
-                    <><span className="animate-spin mr-2">&#9696;</span>Generating suggestion...</>
+                    <><Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />{form.quoteEvidence.length > 0 ? `Reviewing ${Math.min(form.quoteEvidence.length, MAX_QUOTE_EVIDENCE_PHOTOS)} site photo${Math.min(form.quoteEvidence.length, MAX_QUOTE_EVIDENCE_PHOTOS) === 1 ? "" : "s"}…` : "Generating suggestion…"}</>
                   ) : (
                     <><Sparkles className="h-3.5 w-3.5 mr-1.5" />Generate AI Suggestion</>
                   )}
                 </Button>
+                {aiPanel === "loading" && form.quoteEvidence.length >= 6 && <div className="rounded border border-amber-500/25 bg-zinc-950/35 px-2.5 py-2" role="status" aria-live="polite"><div className="flex items-center gap-2 text-[11px] text-amber-100"><Loader2 className="h-3.5 w-3.5 animate-spin" /><span>Preparing the visual review for {Math.min(form.quoteEvidence.length, MAX_QUOTE_EVIDENCE_PHOTOS)} saved photos. Larger evidence sets can take a little longer.</span></div><div className="mt-2 h-1 overflow-hidden rounded-full bg-zinc-800"><div className="h-full w-2/5 animate-pulse rounded-full bg-amber-400" /></div></div>}
               </div>
             )}
 

@@ -3867,3 +3867,8 @@
 - [x] Keep all saved quote photos while passing up to 20 validated images to AI Suggest with clear non-blocking feedback
 - [x] Add regression coverage and validate AI Suggest no longer rejects a quote because it has more than six attached photos
 - [x] Expand the saved quote evidence and Gemini AI Suggest review capacity to up to 20 validated site photos with reliable request-size safeguards
+
+## Quote Evidence Drag-and-Drop and Processing Feedback — Aug 2026
+- [x] Add accessible drag-and-drop upload for up to 20 site photos while preserving file selection as a fallback
+- [x] Add per-batch photo upload progress and large-evidence AI Suggest processing feedback
+- [x] Add regression coverage and full validation for the evidence workflow improvements
