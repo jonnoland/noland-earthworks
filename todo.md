@@ -3872,3 +3872,9 @@
 - [x] Add accessible drag-and-drop upload for up to 20 site photos while preserving file selection as a fallback
 - [x] Add per-batch photo upload progress and large-evidence AI Suggest processing feedback
 - [x] Add regression coverage and full validation for the evidence workflow improvements
+
+## Quote Evidence Management, Compression, and AI Captions — Aug 2026
+- [x] Add in-place accessible photo reordering and removal controls after evidence upload
+- [x] Compress supported site photos in the browser before upload while preserving the originals’ visual evidence value
+- [x] Generate, persist, and display internal AI captions and descriptive site-detail tags for uploaded evidence photos
+- [x] Add regression coverage and full validation for evidence management, compression, and caption behavior

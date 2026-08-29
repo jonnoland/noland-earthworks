@@ -68,6 +68,26 @@ describe("native quote rental, evidence, and insurance support artifacts", () =>
     expect(quoteForm).toContain("Reviewing ${Math.min(form.quoteEvidence.length, MAX_QUOTE_EVIDENCE_PHOTOS)} site photo");
   });
 
+  it("compresses evidence before upload, permits deliberate reordering, and persists internal Gemini captions and tags", () => {
+    const router = source("server/nativeQuotesRouter.ts");
+    const quoteForm = source("client/src/pages/ops/NativeAllQuotesSection.tsx");
+
+    expect(router).toContain("captionEvidence: ownerProcedure");
+    expect(router).toContain('model: "gemini-3-flash-preview"');
+    expect(router).toContain("quoteId: z.number().int().positive().optional()");
+    expect(router).toContain("Database unavailable while saving photo captions.");
+    expect(router).toContain("caption: z.string().trim().min(1).max(240).optional()");
+    expect(router).toContain("tags: z.array(z.string().trim().min(1).max(48)).max(5).optional()");
+    expect(quoteForm).toContain("compressQuoteEvidenceImage");
+    expect(quoteForm).toContain('canvas.toBlob');
+    expect(quoteForm).toContain('"image/webp", 0.82');
+    expect(quoteForm).toContain('stage: "compressing"');
+    expect(quoteForm).toContain("Move ${attachment.filename} earlier");
+    expect(quoteForm).toContain("Move ${attachment.filename} later");
+    expect(quoteForm).toContain("Writing internal photo captions and site-detail tags");
+    expect(quoteForm).toContain("captionEvidenceMutation.mutate({ evidence: form.quoteEvidence");
+  });
+
   it("keeps rental costs internal and makes evidence available only to protected quote workflows", () => {
     const router = source("server/nativeQuotesRouter.ts");
     const quoteForm = source("client/src/pages/ops/NativeAllQuotesSection.tsx");

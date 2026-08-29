@@ -20,6 +20,8 @@ export type QuoteEvidenceAttachment = {
   filename: string;
   mimeType: "image/jpeg" | "image/png" | "image/webp";
   sizeBytes: number;
+  caption?: string;
+  tags?: string[];
 };
 
 export type QuoteInsuranceDocument = {

@@ -120,6 +120,8 @@ const quoteEvidenceSchema = z.object({
   filename: z.string().trim().min(1).max(255),
   mimeType: z.enum(["image/jpeg", "image/png", "image/webp"]),
   sizeBytes: z.number().int().positive().max(10 * 1024 * 1024),
+  caption: z.string().trim().min(1).max(240).optional(),
+  tags: z.array(z.string().trim().min(1).max(48)).max(5).optional(),
 });
 
 const insuranceDocumentSchema = z.object({
@@ -857,6 +859,97 @@ export const nativeQuotesRouter = router({
       const reviewedAt = new Date();
       await db.update(nativeQuotes).set({ aiCostReview: summary, aiCostFlags: JSON.stringify(flags), aiRecommendedRentalMarkupPct: recommendedRentalMarkupPct, aiMarkupRecommendationReason: markupRecommendationReason, aiCostReviewUpdatedAt: reviewedAt }).where(eq(nativeQuotes.id, quote.id));
       return { summary, flags, recommendedRentalMarkupPct, markupRecommendationReason, rentalCostCents, rentalOnlyProfitCents, rentalOnlyMarginPct, reviewedAt };
+    }),
+
+  captionEvidence: ownerProcedure
+    .input(z.object({
+      evidence: z.array(quoteEvidenceSchema).min(1).max(MAX_QUOTE_EVIDENCE_PHOTOS),
+      quoteId: z.number().int().positive().optional(),
+    }))
+    .mutation(async ({ ctx, input }: { ctx: { user: { id: number } }; input: { evidence: QuoteEvidenceAttachment[]; quoteId?: number } }) => {
+      assertOwnedAttachmentKeys(ctx.user.id, input.evidence);
+      const evidenceContent = await buildEvidenceContent(ctx.user.id, input.evidence);
+      if (evidenceContent.length === 0) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Add at least one saved site photo before generating photo captions." });
+      }
+
+      const photoList = input.evidence
+        .map((attachment, index) => `Photo ${index} (index ${index}): ${attachment.filename}`)
+        .join("\n");
+      const result = await invokeLLM({
+        model: "gemini-3-flash-preview",
+        maxTokens: 1800,
+        messages: [
+          {
+            role: "system",
+            content: "You create concise internal site-photo captions for a forestry mulching and land management quote. Return only factual details visible in each image. Do not infer acreage, pricing, boundaries, permits, utility location, or safety conditions not visible in the image. Use an empty tags array if no useful descriptive tags apply.",
+          },
+          {
+            role: "user",
+            content: [{ type: "text", text: `For each photo below, return one concise caption of no more than 160 characters and 0–5 lowercase descriptive tags. Use the exact zero-based photo index.\n\n${photoList}` }, ...evidenceContent] as any,
+          },
+        ],
+        response_format: {
+          type: "json_schema" as const,
+          json_schema: {
+            name: "quote_photo_captions",
+            strict: true,
+            schema: {
+              type: "object",
+              properties: {
+                photoAnnotations: {
+                  type: "array",
+                  items: {
+                    type: "object",
+                    properties: {
+                      index: { type: "integer" },
+                      caption: { type: "string" },
+                      tags: { type: "array", items: { type: "string" } },
+                    },
+                    required: ["index", "caption", "tags"],
+                    additionalProperties: false,
+                  },
+                },
+              },
+              required: ["photoAnnotations"],
+              additionalProperties: false,
+            },
+          },
+        },
+      });
+
+      const rawContent = result.choices?.[0]?.message?.content ?? "{}";
+      const raw = typeof rawContent === "string" ? rawContent : JSON.stringify(rawContent);
+      let parsed: { photoAnnotations?: Array<{ index?: unknown; caption?: unknown; tags?: unknown }> };
+      try {
+        parsed = JSON.parse(stripCodeFence(raw));
+      } catch {
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "AI returned invalid photo caption data." });
+      }
+
+      const photoAnnotations = (Array.isArray(parsed.photoAnnotations) ? parsed.photoAnnotations : [])
+        .flatMap((annotation) => {
+          const index = typeof annotation.index === "number" ? annotation.index : -1;
+          const caption = typeof annotation.caption === "string" ? annotation.caption.trim().slice(0, 240) : "";
+          const tags = Array.isArray(annotation.tags)
+            ? Array.from(new Set(annotation.tags.filter((tag): tag is string => typeof tag === "string").map((tag) => tag.trim().toLowerCase().replace(/[^a-z0-9 -]+/g, "").slice(0, 48)).filter(Boolean))).slice(0, 5)
+            : [];
+          const attachment = Number.isInteger(index) ? input.evidence[index] : undefined;
+          return attachment && caption ? [{ key: attachment.key, caption, tags }] : [];
+        });
+      if (input.quoteId && photoAnnotations.length > 0) {
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable while saving photo captions." });
+        const [quote] = await db.select().from(nativeQuotes).where(eq(nativeQuotes.id, input.quoteId)).limit(1);
+        if (!quote) throw new TRPCError({ code: "NOT_FOUND", message: "Quote not found." });
+        const annotationsByKey = new Map(photoAnnotations.map((annotation) => [annotation.key, annotation]));
+        const savedEvidence = parseQuoteSupportArtifactArray<QuoteEvidenceAttachment>(quote.quoteEvidence).map((attachment) => {
+          const annotation = annotationsByKey.get(attachment.key);
+          return annotation ? { ...attachment, caption: annotation.caption, tags: annotation.tags } : attachment;
+        });
+        await db.update(nativeQuotes).set({ quoteEvidence: JSON.stringify(savedEvidence), updatedAt: new Date() }).where(eq(nativeQuotes.id, quote.id));
+      }
+      return { photoAnnotations };
     }),
 
   // ─── AI Suggest ────────────────────────────────────────────────────────────
