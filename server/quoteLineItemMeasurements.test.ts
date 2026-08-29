@@ -94,6 +94,17 @@ describe("quote service line measurements", () => {
     expect(editor).toContain("Build footage-based line items, duration, and client message");
   });
 
+  it("makes the quote header change its label and controlled quantity input with the selected service unit", () => {
+    const editor = source("client/src/pages/ops/NativeAllQuotesSection.tsx");
+    expect(editor).toContain("quoteHeaderUsesLinearFeet");
+    expect(editor).toContain("Measured Linear Feet");
+    expect(editor).toContain("handleQuoteHeaderServiceChange");
+    expect(editor).toContain("handleQuoteHeaderLinearFeetChange");
+    expect(editor).toContain('measurementUnit: "linear_foot"');
+    expect(editor).toContain("This measured footage drives the selected Linear Foot service calculation.");
+    expect(editor).toContain("Acreage drives the selected service calculation.");
+  });
+
   it("prompts Linear Foot AI Suggest users for clearing width and carries estimated-footage warnings into the portal", () => {
     const router = source("server/nativeQuotesRouter.ts");
     const editor = source("client/src/pages/ops/NativeAllQuotesSection.tsx");

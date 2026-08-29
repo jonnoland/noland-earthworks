@@ -919,6 +919,17 @@ function QuoteFormModal({
   const aiPrimaryService = getQuoteLineServiceOption(aiPrimaryServiceLine?.serviceCode)
     ?? inferQuoteLineServiceOption(aiPrimaryServiceLine?.description);
   const aiUsesLinearFeet = Boolean(aiPrimaryServiceLine && isLinearFootQuoteLine(aiPrimaryServiceLine));
+  const quoteHeaderService = QUOTE_LINE_SERVICE_OPTIONS.find((service) => service.label === form.serviceType)
+    ?? aiPrimaryService;
+  const quoteHeaderUsesLinearFeet = quoteHeaderService?.measurementUnit === "linear_foot";
+  const quoteHeaderLineIndex = quoteHeaderService
+    ? form.lineItems.findIndex((line) => line.serviceCode === quoteHeaderService.value)
+    : -1;
+  const quoteHeaderLinearFeet = quoteHeaderLineIndex >= 0 ? form.lineItems[quoteHeaderLineIndex]?.qty ?? "" : "";
+  const [quoteHeaderLinearFeetInput, setQuoteHeaderLinearFeetInput] = useState(String(quoteHeaderLinearFeet || ""));
+  useEffect(() => {
+    setQuoteHeaderLinearFeetInput(quoteHeaderUsesLinearFeet ? String(quoteHeaderLinearFeet || "") : "");
+  }, [quoteHeaderUsesLinearFeet, quoteHeaderLinearFeet]);
   const [aiSuggestion, setAiSuggestion] = useState<{
     title: string;
     estimatedDuration: string;
@@ -1128,6 +1139,42 @@ function QuoteFormModal({
         lineItems: items,
         serviceType: field === "serviceCode" && selectedService && i === firstServiceIndex ? selectedService.label : prev.serviceType,
       };
+    });
+  };
+
+  const handleQuoteHeaderServiceChange = (serviceLabel: string) => {
+    const selectedService = QUOTE_LINE_SERVICE_OPTIONS.find((service) => service.label === serviceLabel);
+    setForm((previous) => {
+      if (!selectedService) return { ...previous, serviceType: serviceLabel };
+      const items = [...previous.lineItems];
+      const firstServiceIndex = items.findIndex((line) => !line.kind || line.kind === "service");
+      const serviceLine = createQuoteServiceLineItem(selectedService.value) as LineItem;
+      if (firstServiceIndex < 0) items.unshift(serviceLine);
+      else items[firstServiceIndex] = { ...items[firstServiceIndex], ...serviceLine };
+      return { ...previous, serviceType: selectedService.label, lineItems: normalizeQuoteLineItemsForSave(items) };
+    });
+  };
+
+  const handleQuoteHeaderLinearFeetChange = (value: string) => {
+    setQuoteHeaderLinearFeetInput(value);
+    const numericValue = Number(value);
+    if (!quoteHeaderService || !Number.isFinite(numericValue) || numericValue <= 0) return;
+    setForm((previous) => {
+      const items = [...previous.lineItems];
+      const lineIndex = items.findIndex((line) => line.serviceCode === quoteHeaderService.value);
+      const targetIndex = lineIndex >= 0 ? lineIndex : items.findIndex((line) => !line.kind || line.kind === "service");
+      if (targetIndex < 0) return previous;
+      items[targetIndex] = {
+        ...items[targetIndex],
+        description: quoteHeaderService.label,
+        serviceCode: quoteHeaderService.value,
+        measurementUnit: "linear_foot",
+        qty: Math.min(528_000, Math.round(numericValue)),
+        quantitySource: "measured",
+        sourceAcreage: undefined,
+        clearingWidthFeet: undefined,
+      };
+      return { ...previous, lineItems: normalizeQuoteLineItemsForSave(items) };
     });
   };
 
@@ -1526,7 +1573,7 @@ function QuoteFormModal({
             </div>
             <div>
               <Label className="text-zinc-400 text-xs mb-1 block">Service Type</Label>
-              <Select value={form.serviceType} onValueChange={v => setForm(p => ({ ...p, serviceType: v }))}>
+              <Select value={form.serviceType} onValueChange={handleQuoteHeaderServiceChange}>
                 <SelectTrigger className="bg-zinc-800 border-zinc-700">
                   <SelectValue />
                 </SelectTrigger>
@@ -1537,9 +1584,15 @@ function QuoteFormModal({
             </div>
             <div className="grid grid-cols-1 gap-2 min-[420px]:grid-cols-2">
               <div>
-                <Label className="text-zinc-400 text-xs mb-1 block">Acreage</Label>
-                <Input value={form.acreage} onChange={e => setForm(p => ({ ...p, acreage: e.target.value }))}
-                  className="bg-zinc-800 border-zinc-700" placeholder="5.2" />
+                <Label className="text-zinc-400 text-xs mb-1 block">{quoteHeaderUsesLinearFeet ? "Measured Linear Feet" : "Acreage"}</Label>
+                {quoteHeaderUsesLinearFeet ? (
+                  <Input type="number" min="1" step="1" value={quoteHeaderLinearFeetInput} onChange={e => handleQuoteHeaderLinearFeetChange(e.target.value)}
+                    className="bg-zinc-800 border-zinc-700" placeholder="e.g. 1,200" aria-label="Measured Linear Feet" />
+                ) : (
+                  <Input value={form.acreage} onChange={e => setForm(p => ({ ...p, acreage: e.target.value }))}
+                    className="bg-zinc-800 border-zinc-700" placeholder="5.2" aria-label="Acreage" />
+                )}
+                <p className="mt-1 text-[10px] leading-relaxed text-zinc-500">{quoteHeaderUsesLinearFeet ? "This measured footage drives the selected Linear Foot service calculation. Use the line item acreage-to-footage option when estimating a corridor from acreage." : "Acreage drives the selected service calculation."}</p>
               </div>
             </div>
             <div className="mt-3 rounded-md border border-amber-500/35 bg-amber-500/[0.06] p-3">

@@ -3883,3 +3883,8 @@
 - [x] Include selected quote evidence thumbnails and concise descriptive tags in the customer-facing final quote PDF
 - [x] Keep internal rental cost, margin, AI cost review, and non-customer document data out of the customer PDF
 - [x] Add regression coverage and validate the updated quote PDF rendering
+
+## Operations Quote Header Service Unit Alignment — Aug 2026
+- [x] Make the quote header show and use Acres for acreage services and Linear Feet for Fence Line Clearing and Trail Cutting
+- [x] Keep AI Suggest and persisted quote calculation inputs aligned with the selected header service unit
+- [x] Add regression coverage and validate the corrected service-unit header behavior
