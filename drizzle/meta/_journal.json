@@ -904,6 +904,13 @@
       "when": 1788027262472,
       "tag": "0128_exotic_ghost_rider",
       "breakpoints": true
+    },
+    {
+      "idx": 129,
+      "version": "5",
+      "when": 1788028012706,
+      "tag": "0129_gigantic_serpent_society",
+      "breakpoints": true
     }
   ]
 }

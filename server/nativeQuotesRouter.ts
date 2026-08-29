@@ -17,9 +17,9 @@ import { roundQuoteCentsUp } from "@shared/quoteMoney";
 import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
 import { TRPCError } from "@trpc/server";
 import { getDb } from "./db";
-import { nativeQuotes, nativeJobs, aiPricingSettings, nativeClients, opsLeads, quoteSubmissions } from "../drizzle/schema";
+import { nativeQuotes, nativeJobs, aiPricingSettings, nativeClients, opsLeads, quoteSubmissions, quoteInsuranceLibrary } from "../drizzle/schema";
 import { getPricingBenchmarks } from "./db";
-import { eq, desc, like, or, and, asc } from "drizzle-orm";
+import { eq, desc, like, or, and, asc, isNull } from "drizzle-orm";
 import { randomBytes } from "crypto";
 
 import { getStripe, isStripeConfigured } from "./stripe";
@@ -29,7 +29,7 @@ import { invokeLLM } from "./_core/llm";
 import { isDraftPlaceholderClient } from "../shared/quoteDrafts";
 import { getQuotePortalPhaseSummary, type QuotePortalLineItem } from "../shared/quotePortalPhases";
 import { calculateLinearFeetFromAcreage } from "../shared/quoteLineItemMeasurements";
-import { getQuoteRentalCostCents, parseQuoteSupportArtifacts, type QuoteEvidenceAttachment, type QuoteInsuranceDocument, type QuoteMeasurement, type QuoteRentalEquipment } from "../shared/quoteSupportArtifacts";
+import { getQuoteRentalCostCents, getQuoteRentalOnlyMargin, parseQuoteSupportArtifacts, type QuoteEvidenceAttachment, type QuoteInsuranceDocument, type QuoteMeasurement, type QuoteRentalEquipment } from "../shared/quoteSupportArtifacts";
 import { storageGet, storagePut } from "./storage";
 
 // Strip markdown code fences from LLM JSON responses
@@ -123,6 +123,11 @@ const insuranceDocumentSchema = z.object({
   filename: z.string().trim().min(1).max(255),
   mimeType: z.enum(["application/pdf", "image/jpeg", "image/png"]),
   sizeBytes: z.number().int().positive().max(10 * 1024 * 1024),
+});
+
+const insuranceLibraryDocumentSchema = insuranceDocumentSchema.extend({
+  label: z.string().trim().min(1).max(160),
+  expiresAt: z.date().nullable().optional(),
 });
 
 const quoteMeasurementSchema = z.object({
@@ -526,6 +531,55 @@ export const nativeQuotesRouter = router({
       return { key, url, filename: sanitizeFilename(input.filename), mimeType: input.mimeType, sizeBytes: bytes.length };
     }),
 
+  listInsuranceLibrary: ownerProcedure
+    .query(async ({ ctx }) => {
+      const db = await getDb();
+      if (!db) return [];
+      return db.select().from(quoteInsuranceLibrary)
+        .where(and(eq(quoteInsuranceLibrary.ownerId, ctx.user.id), isNull(quoteInsuranceLibrary.archivedAt)))
+        .orderBy(desc(quoteInsuranceLibrary.updatedAt));
+    }),
+
+  saveInsuranceLibraryDocument: ownerProcedure
+    .input(insuranceLibraryDocumentSchema)
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new Error("DB unavailable");
+      assertOwnedAttachmentKeys(ctx.user.id, [input]);
+      const [existing] = await db.select({ id: quoteInsuranceLibrary.id }).from(quoteInsuranceLibrary)
+        .where(and(eq(quoteInsuranceLibrary.ownerId, ctx.user.id), eq(quoteInsuranceLibrary.storageKey, input.key)))
+        .limit(1);
+      if (existing) {
+        await db.update(quoteInsuranceLibrary).set({
+          label: input.label,
+          expiresAt: input.expiresAt ?? null,
+          updatedAt: new Date(),
+        }).where(eq(quoteInsuranceLibrary.id, existing.id));
+        return { id: existing.id, updated: true };
+      }
+      const result = await db.insert(quoteInsuranceLibrary).values({
+        ownerId: ctx.user.id,
+        label: input.label,
+        filename: input.filename,
+        storageKey: input.key,
+        storageUrl: input.url,
+        mimeType: input.mimeType,
+        sizeBytes: input.sizeBytes,
+        expiresAt: input.expiresAt ?? null,
+      });
+      return { id: Number((result as any).insertId ?? (result as any)[0]?.insertId), updated: false };
+    }),
+
+  archiveInsuranceLibraryDocument: ownerProcedure
+    .input(z.object({ id: z.number().int() }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new Error("DB unavailable");
+      await db.update(quoteInsuranceLibrary).set({ archivedAt: new Date() })
+        .where(and(eq(quoteInsuranceLibrary.id, input.id), eq(quoteInsuranceLibrary.ownerId, ctx.user.id)));
+      return { success: true };
+    }),
+
   sendPortal: ownerProcedure
     .input(z.object({
       id: z.number().int(),
@@ -541,9 +595,23 @@ export const nativeQuotesRouter = router({
       const quote = rows[0];
       if (!quote.clientEmail) throw new Error("No client email on this quote");
       const insuranceDocuments = parseQuoteSupportArtifacts<QuoteInsuranceDocument[]>(quote.insuranceDocuments, []);
+      const libraryRows = input.insuranceDocumentKeys?.length
+        ? await db.select().from(quoteInsuranceLibrary)
+          .where(and(eq(quoteInsuranceLibrary.ownerId, ctx.user.id), isNull(quoteInsuranceLibrary.archivedAt)))
+        : [];
+      const availableInsuranceDocuments = Array.from(new Map([
+        ...insuranceDocuments,
+        ...libraryRows.map((document): QuoteInsuranceDocument => ({
+          key: document.storageKey,
+          url: document.storageUrl,
+          filename: document.filename,
+          mimeType: document.mimeType as QuoteInsuranceDocument["mimeType"],
+          sizeBytes: document.sizeBytes,
+        })),
+      ].map((document) => [document.key, document])).values());
       const insuranceAttachments = await buildInsuranceEmailAttachments(
         ctx.user.id,
-        insuranceDocuments,
+        availableInsuranceDocuments,
         input.insuranceDocumentKeys ?? [],
       );
 
@@ -673,6 +741,63 @@ export const nativeQuotesRouter = router({
       });
 
       return { checkoutUrl: session.url };
+    }),
+
+  reviewCost: ownerProcedure
+    .input(z.object({ id: z.number().int() }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new Error("DB unavailable");
+      const [quote] = await db.select().from(nativeQuotes).where(eq(nativeQuotes.id, input.id)).limit(1);
+      if (!quote) throw new TRPCError({ code: "NOT_FOUND", message: "Quote not found." });
+
+      const evidence = parseQuoteSupportArtifacts<QuoteEvidenceAttachment[]>(quote.quoteEvidence, []);
+      const measurements = parseQuoteSupportArtifacts<QuoteMeasurement[]>(quote.quoteMeasurements, []);
+      const rentalEquipment = parseQuoteSupportArtifacts<QuoteRentalEquipment[]>(quote.rentalEquipment, []);
+      if (evidence.length === 0 && measurements.length === 0) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Add at least one site photo or measurement before generating a cost review." });
+      }
+      assertOwnedAttachmentKeys(ctx.user.id, evidence);
+
+      const rentalCostCents = getQuoteRentalCostCents(rentalEquipment);
+      const { rentalOnlyProfitCents, rentalOnlyMarginPct } = getQuoteRentalOnlyMargin(quote.totalCents, rentalCostCents);
+      const measurementContext = measurements.length > 0
+        ? measurements.map((measurement) => `${measurement.label}: ${measurement.value} ${measurement.unit}${measurement.notes ? ` (${measurement.notes})` : ""}`).join("; ")
+        : "No measurements entered.";
+      const visualContent = await buildEvidenceContent(ctx.user.id, evidence);
+      const prompt = `Review this Noland Earthworks quote as internal decision support for the owner. Return a concise, plain-language cost evaluation in no more than 120 words. Identify visible or recorded scope risks, access/terrain/vegetation questions, and whether the current rental-only margin appears thin, reasonable, or needs owner review. Do not recommend a final price, do not invent site conditions, and clearly state that this rental-only margin excludes labor, fuel, machine wear, overhead, taxes, and any other job costs.\n\nQuote total: $${(quote.totalCents / 100).toLocaleString("en-US")}\nInternal Cat rental/transport/tax cost: $${(rentalCostCents / 100).toLocaleString("en-US")}\nRental-only gross contribution: $${(rentalOnlyProfitCents / 100).toLocaleString("en-US")}\nRental-only margin: ${rentalOnlyMarginPct === null ? "not available" : `${rentalOnlyMarginPct}%`}\nService: ${quote.serviceType ?? "not recorded"}\nAcreage: ${quote.acreage ?? "not recorded"}\nSite measurements: ${measurementContext}\nInternal notes: ${quote.internalNotes ?? "none"}`;
+      const result = await invokeLLM({
+        model: "gemini-3-flash-preview",
+        max_tokens: 1000,
+        messages: [
+          { role: "system", content: "You are a careful field-cost reviewer. Use only the supplied facts and visible evidence." },
+          { role: "user", content: [{ type: "text", text: prompt }, ...visualContent] as any },
+        ],
+        response_format: {
+          type: "json_schema" as const,
+          json_schema: {
+            name: "quote_cost_review",
+            strict: true,
+            schema: {
+              type: "object",
+              properties: { summary: { type: "string" } },
+              required: ["summary"],
+              additionalProperties: false,
+            },
+          },
+        },
+      });
+      const rawContent = result.choices?.[0]?.message?.content ?? "{}";
+      const raw = typeof rawContent === "string" ? rawContent : JSON.stringify(rawContent);
+      let summary = "";
+      try {
+        summary = String(JSON.parse(stripCodeFence(raw)).summary ?? "").trim();
+      } catch {
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "AI returned an invalid cost review." });
+      }
+      if (!summary) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "AI did not return a cost review." });
+      await db.update(nativeQuotes).set({ aiCostReview: summary, aiCostReviewUpdatedAt: new Date() }).where(eq(nativeQuotes.id, quote.id));
+      return { summary, rentalCostCents, rentalOnlyProfitCents, rentalOnlyMarginPct, reviewedAt: new Date() };
     }),
 
   // ─── AI Suggest ────────────────────────────────────────────────────────────

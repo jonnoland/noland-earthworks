@@ -1962,6 +1962,9 @@ export const nativeQuotes = mysqlTable("native_quotes", {
   insuranceDocuments: text("insuranceDocuments"),
   /** Saved AI observations from the last evidence-aware suggestion; internal only. */
   aiEvidenceSummary: text("aiEvidenceSummary"),
+  /** Concise internal cost review generated from saved site evidence and cost context. */
+  aiCostReview: text("aiCostReview"),
+  aiCostReviewUpdatedAt: timestamp("aiCostReviewUpdatedAt"),
   estimatedDuration: varchar("estimatedDuration", { length: 100 }),
   acreage: varchar("acreage", { length: 50 }),
   serviceType: varchar("serviceType", { length: 100 }),
@@ -2017,6 +2020,22 @@ export const nativeQuotes = mysqlTable("native_quotes", {
 });
 export type NativeQuote = typeof nativeQuotes.$inferSelect;
 export type InsertNativeQuote = typeof nativeQuotes.$inferInsert;
+
+/** Reusable, owner-scoped proof-of-insurance documents selectable for future quote emails. */
+export const quoteInsuranceLibrary = mysqlTable("quote_insurance_library", {
+  id: int("id").primaryKey().autoincrement(),
+  ownerId: int("ownerId").notNull(),
+  label: varchar("label", { length: 160 }).notNull(),
+  filename: varchar("filename", { length: 255 }).notNull(),
+  storageKey: varchar("storageKey", { length: 500 }).notNull().unique(),
+  storageUrl: varchar("storageUrl", { length: 1200 }).notNull(),
+  mimeType: varchar("mimeType", { length: 100 }).notNull(),
+  sizeBytes: int("sizeBytes").notNull(),
+  expiresAt: timestamp("expiresAt"),
+  archivedAt: timestamp("archivedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
 
 // ─── Native Jobs ──────────────────────────────────────────────────────────────
 /**

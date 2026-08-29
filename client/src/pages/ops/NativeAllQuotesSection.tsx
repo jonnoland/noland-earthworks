@@ -54,7 +54,7 @@ import { buildQuoteCostBreakdown, getQuoteCostDistribution } from "@shared/quote
 import { getQuoteDraftIdentity } from "@shared/quoteDrafts";
 import { moveQuoteLineItem } from "@shared/quoteLineItemOrder";
 import { ensureQuotePhaseIds, getQuotePhaseSections } from "@shared/quotePhaseSections";
-import { getQuoteRentalCostCents, parseQuoteSupportArtifacts, type QuoteEvidenceAttachment, type QuoteInsuranceDocument, type QuoteMeasurement, type QuoteRentalEquipment } from "@shared/quoteSupportArtifacts";
+import { getQuoteRentalCostCents, getQuoteRentalOnlyMargin, parseQuoteSupportArtifacts, type QuoteEvidenceAttachment, type QuoteInsuranceDocument, type QuoteMeasurement, type QuoteRentalEquipment } from "@shared/quoteSupportArtifacts";
 import {
   createQuoteServiceLineItem,
   calculateLinearFeetFromAcreage,
@@ -119,6 +119,8 @@ interface NativeQuote {
   quoteMeasurements: string;
   insuranceDocuments: string;
   aiEvidenceSummary: string | null;
+  aiCostReview: string | null;
+  aiCostReviewUpdatedAt: Date | null;
   estimatedDuration: string | null;
   acreage: string | null;
   serviceType: string | null;
@@ -484,6 +486,7 @@ interface QuoteFormData {
   quoteMeasurements: QuoteMeasurement[];
   insuranceDocuments: QuoteInsuranceDocument[];
   aiEvidenceSummary: string;
+  aiCostReview: string;
   sourceDetail: string;
   fitDecision: "unreviewed" | "owner_review" | "pursue" | "pass" | "refer_out";
   nextActionType: string;
@@ -571,6 +574,7 @@ function QuoteFormModal({
     quoteMeasurements: [],
     insuranceDocuments: [],
     aiEvidenceSummary: "",
+    aiCostReview: "",
     sourceDetail: "manual",
     fitDecision: "unreviewed",
     nextActionType: "review_request",
@@ -604,6 +608,7 @@ function QuoteFormModal({
         quoteMeasurements: parseQuoteSupportArtifacts<QuoteMeasurement[]>(editQuote.quoteMeasurements, []),
         insuranceDocuments: parseQuoteSupportArtifacts<QuoteInsuranceDocument[]>(editQuote.insuranceDocuments, []),
         aiEvidenceSummary: editQuote.aiEvidenceSummary ?? "",
+        aiCostReview: editQuote.aiCostReview ?? "",
         sourceDetail: editQuote.sourceDetail ?? "manual",
         fitDecision: (editQuote.fitDecision ?? "unreviewed") as QuoteFormData["fitDecision"],
         nextActionType: editQuote.nextActionType ?? "review_request",
@@ -648,6 +653,26 @@ function QuoteFormModal({
     onError: (error) => toast.error(error.message),
   });
   const uploadAttachmentMutation = trpc.nativeQuotes.uploadAttachment.useMutation();
+  const { data: insuranceLibrary = [] } = trpc.nativeQuotes.listInsuranceLibrary.useQuery(undefined, { enabled: open });
+  const saveInsuranceLibraryMutation = trpc.nativeQuotes.saveInsuranceLibraryDocument.useMutation({
+    onSuccess: () => {
+      utils.nativeQuotes.listInsuranceLibrary.invalidate();
+      toast.success("Proof of insurance saved to your document library.");
+    },
+    onError: (error) => toast.error(error.message),
+  });
+  const archiveInsuranceLibraryMutation = trpc.nativeQuotes.archiveInsuranceLibraryDocument.useMutation({
+    onSuccess: () => utils.nativeQuotes.listInsuranceLibrary.invalidate(),
+    onError: (error) => toast.error(error.message),
+  });
+  const reviewCostMutation = trpc.nativeQuotes.reviewCost.useMutation({
+    onSuccess: (result) => {
+      setForm((current) => ({ ...current, aiCostReview: result.summary }));
+      utils.nativeQuotes.list.invalidate();
+      toast.success("Internal AI cost review generated.");
+    },
+    onError: (error) => toast.error(error.message),
+  });
   const [uploadingKind, setUploadingKind] = useState<"evidence" | "insurance" | null>(null);
 
   const uploadQuoteFiles = async (kind: "evidence" | "insurance", files: FileList | null) => {
@@ -752,6 +777,7 @@ function QuoteFormModal({
   const hasCostDistribution = costDistribution.some((slice) => slice.value > 0);
   const totalCents = costBreakdown.allPhasesTotalCents;
   const internalRentalCostCents = useMemo(() => getQuoteRentalCostCents(form.rentalEquipment), [form.rentalEquipment]);
+  const { rentalOnlyProfitCents, rentalOnlyMarginPct } = getQuoteRentalOnlyMargin(totalCents, internalRentalCostCents);
   const discountItems = useMemo(() => form.lineItems.filter((item) => item.kind === "discount" || item.unitPriceCents < 0), [form.lineItems]);
   const appliedDiscountCodes = useMemo(
     () => new Set(discountItems.map((item) => item.discountCode).filter((code): code is string => Boolean(code))),
@@ -1465,6 +1491,9 @@ function QuoteFormModal({
               </section>
             </div>
             <section className="mt-3 rounded-md border border-emerald-500/20 bg-emerald-500/[0.035] p-3"><div className="flex items-start gap-2"><ShieldCheck className="mt-0.5 h-4 w-4 text-emerald-300" /><div><p className="text-xs font-semibold text-emerald-100">Proof of insurance for the quote email</p><p className="mt-0.5 text-[10px] text-zinc-500">Add your current certificate here. When you send the quote, choose the file(s) to attach. It is not shown in the portal.</p></div></div><label className="mt-2 inline-flex h-7 cursor-pointer items-center rounded border border-emerald-500/40 px-2 text-[10px] font-medium text-emerald-100 hover:bg-emerald-500/10"><ShieldCheck className="mr-1 h-3 w-3" />{uploadingKind === "insurance" ? "Uploading…" : "Add proof of insurance"}<input type="file" className="sr-only" accept="application/pdf,image/jpeg,image/png" multiple disabled={uploadingKind !== null} onChange={event => { void uploadQuoteFiles("insurance", event.target.files); event.currentTarget.value = ""; }} /></label>{form.insuranceDocuments.length > 0 && <ul className="mt-2 space-y-1">{form.insuranceDocuments.map((document) => <li key={document.key} className="flex items-center justify-between gap-2 rounded bg-zinc-900/70 px-2 py-1.5 text-[11px]"><a href={document.url} target="_blank" rel="noreferrer" className="truncate text-emerald-100 hover:underline">{document.filename}</a><button type="button" className="text-zinc-400 hover:text-red-300" onClick={() => setForm(current => ({ ...current, insuranceDocuments: current.insuranceDocuments.filter(item => item.key !== document.key) }))}><X className="h-3.5 w-3.5" /></button></li>)}</ul>}</section>
+            {insuranceLibrary.length > 0 && <section className="mt-3 rounded-md border border-emerald-500/20 bg-emerald-500/[0.025] p-3"><div className="flex flex-wrap items-start justify-between gap-2"><div><p className="text-xs font-semibold text-emerald-100">Saved proof-of-insurance library</p><p className="mt-0.5 text-[10px] text-zinc-500">Select a saved certificate for this quote without uploading it again.</p></div><span className="text-[10px] text-emerald-100/70">Internal only</span></div><div className="mt-2 grid gap-1.5 md:grid-cols-2">{insuranceLibrary.map((document) => { const added = form.insuranceDocuments.some((item) => item.key === document.storageKey); return <div key={document.id} className="flex items-center gap-2 rounded bg-zinc-900/70 px-2 py-1.5 text-[11px]"><FileText className="h-3.5 w-3.5 shrink-0 text-emerald-300" /><span className="min-w-0 flex-1 truncate text-zinc-200">{document.label}</span><Button type="button" size="sm" variant="ghost" className="h-6 px-1.5 text-[10px] text-emerald-200 hover:bg-emerald-500/10" disabled={added} onClick={() => setForm((current) => ({ ...current, insuranceDocuments: [...current.insuranceDocuments, { key: document.storageKey, url: document.storageUrl, filename: document.filename, mimeType: document.mimeType as QuoteInsuranceDocument["mimeType"], sizeBytes: document.sizeBytes }] }))}>{added ? "Selected" : "Use"}</Button><Button type="button" size="icon" variant="ghost" className="h-6 w-6 text-zinc-500 hover:text-red-300" aria-label={`Archive ${document.label}`} onClick={() => { if (window.confirm(`Archive ${document.label} from the saved insurance library?`)) archiveInsuranceLibraryMutation.mutate({ id: document.id }); }}><Trash2 className="h-3 w-3" /></Button></div>; })}</div></section>}
+            {form.insuranceDocuments.length > 0 && <div className="mt-2 flex flex-wrap gap-2"><Button type="button" size="sm" variant="outline" className="h-7 border-emerald-500/35 text-[10px] text-emerald-100 hover:bg-emerald-500/10" disabled={saveInsuranceLibraryMutation.isPending} onClick={() => { const unsaved = form.insuranceDocuments.find((document) => !insuranceLibrary.some((libraryDocument) => libraryDocument.storageKey === document.key)); if (!unsaved) { toast.message("All attached insurance documents are already saved in your library."); return; } saveInsuranceLibraryMutation.mutate({ ...unsaved, label: unsaved.filename, expiresAt: null }); }}><FileText className="mr-1 h-3 w-3" />{saveInsuranceLibraryMutation.isPending ? "Saving…" : "Save attached document to library"}</Button></div>}
+            <section className="mt-3 rounded-md border border-sky-500/25 bg-sky-500/[0.035] p-3"><div className="flex flex-wrap items-start justify-between gap-3"><div><p className="text-xs font-semibold text-sky-100">Internal rental-only margin</p><p className="mt-0.5 text-[10px] leading-relaxed text-zinc-400">Quote total less Cat rental, transport, and tax. This is not full job profit—it excludes labor, fuel, machine wear, overhead, and all other job costs.</p></div><div className="text-right"><p className="text-base font-bold text-sky-200">{rentalOnlyMarginPct === null ? "—" : `${rentalOnlyMarginPct.toFixed(1)}%`}</p><p className="text-[10px] text-zinc-500">rental-only margin</p></div></div><div className="mt-2 grid gap-2 text-[11px] text-zinc-300 sm:grid-cols-3"><div className="rounded bg-zinc-900/65 px-2 py-1.5"><span className="block text-[9px] uppercase tracking-wide text-zinc-500">Customer quote</span>{formatQuoteCents(totalCents)}</div><div className="rounded bg-zinc-900/65 px-2 py-1.5"><span className="block text-[9px] uppercase tracking-wide text-zinc-500">Cat rental cost</span>{formatQuoteCents(internalRentalCostCents)}</div><div className="rounded bg-zinc-900/65 px-2 py-1.5"><span className="block text-[9px] uppercase tracking-wide text-zinc-500">Rental-only contribution</span>{internalRentalCostCents > 0 ? formatQuoteCents(rentalOnlyProfitCents) : "Add rental cost"}</div></div><div className="mt-3 flex flex-wrap items-center justify-between gap-2"><span className="text-[10px] text-sky-100/70">Gemini 3 Flash uses saved photos and measurements only as internal review context.</span><Button type="button" size="sm" variant="outline" className="h-7 border-sky-500/45 text-[10px] text-sky-100 hover:bg-sky-500/10" disabled={!draftQuoteId || (form.quoteEvidence.length === 0 && form.quoteMeasurements.length === 0) || reviewCostMutation.isPending} onClick={() => { if (!draftQuoteId) { toast.message("Save this quote as a draft before generating an internal cost review."); return; } reviewCostMutation.mutate({ id: draftQuoteId }); }}><Sparkles className="mr-1 h-3 w-3" />{reviewCostMutation.isPending ? "Reviewing…" : "Generate concise cost review"}</Button></div>{!draftQuoteId && <p className="mt-2 text-[10px] text-amber-200">Save as a draft first to generate and retain this review.</p>}{draftQuoteId && form.quoteEvidence.length === 0 && form.quoteMeasurements.length === 0 && <p className="mt-2 text-[10px] text-amber-200">Add a site photo or measurement before generating the review.</p>}{form.aiCostReview && <div className="mt-3 rounded border border-sky-500/20 bg-zinc-950/40 px-3 py-2 text-[11px] leading-relaxed text-sky-100"><span className="font-semibold">Latest internal cost review:</span> {form.aiCostReview}</div>}</section>
             {form.aiEvidenceSummary && <div className="mt-3 rounded border border-amber-500/20 bg-amber-500/[0.06] px-3 py-2 text-[11px] leading-relaxed text-amber-100"><span className="font-semibold">Last AI evidence review:</span> {form.aiEvidenceSummary}</div>}
           </details>
 
@@ -1904,6 +1933,20 @@ function SendPortalDialog({ quote, onClose }: { quote: NativeQuote; onClose: () 
     () => parseQuoteSupportArtifacts<QuoteInsuranceDocument[]>(quote.insuranceDocuments, []),
     [quote.insuranceDocuments],
   );
+  const { data: insuranceLibrary = [] } = trpc.nativeQuotes.listInsuranceLibrary.useQuery();
+  const availableInsuranceDocuments = useMemo(() => {
+    const documents = new Map<string, QuoteInsuranceDocument & { source: string }>();
+    for (const document of insuranceDocuments) documents.set(document.key, { ...document, source: "This quote" });
+    for (const document of insuranceLibrary) documents.set(document.storageKey, {
+      key: document.storageKey,
+      url: document.storageUrl,
+      filename: document.filename,
+      mimeType: document.mimeType as QuoteInsuranceDocument["mimeType"],
+      sizeBytes: document.sizeBytes,
+      source: "Saved library",
+    });
+    return Array.from(documents.values());
+  }, [insuranceDocuments, insuranceLibrary]);
   const [selectedInsuranceKeys, setSelectedInsuranceKeys] = useState<string[]>(() => insuranceDocuments.map((document) => document.key));
 
   const sendMutation = trpc.nativeQuotes.sendPortal.useMutation({
@@ -1934,16 +1977,17 @@ function SendPortalDialog({ quote, onClose }: { quote: NativeQuote; onClose: () 
               className="bg-zinc-800 border-zinc-700 text-sm" rows={3}
               placeholder="Let me know if you have any questions about the scope..." />
           </div>
-          {insuranceDocuments.length > 0 && <div className="rounded-md border border-emerald-500/25 bg-emerald-500/[0.05] p-3">
+          {availableInsuranceDocuments.length > 0 && <div className="rounded-md border border-emerald-500/25 bg-emerald-500/[0.05] p-3">
             <div className="flex items-start gap-2"><ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-emerald-300" /><div><p className="text-xs font-semibold text-emerald-100">Attach proof of insurance</p><p className="mt-0.5 text-[10px] text-emerald-100/70">Selected documents are attached to the email only and are not shown in the customer portal.</p></div></div>
-            <div className="mt-2 space-y-1.5">{insuranceDocuments.map((document) => <label key={document.key} className="flex cursor-pointer items-center gap-2 rounded px-1 py-1 text-xs text-zinc-200 hover:bg-zinc-800/70"><input type="checkbox" checked={selectedInsuranceKeys.includes(document.key)} onChange={() => setSelectedInsuranceKeys((current) => current.includes(document.key) ? current.filter((key) => key !== document.key) : [...current, document.key])} className="accent-emerald-400" /><span className="truncate">{document.filename}</span></label>)}</div>
+            <div className="mt-2 space-y-1.5">{availableInsuranceDocuments.map((document) => <label key={document.key} className="flex cursor-pointer items-center gap-2 rounded px-1 py-1 text-xs text-zinc-200 hover:bg-zinc-800/70"><input type="checkbox" checked={selectedInsuranceKeys.includes(document.key)} onChange={() => setSelectedInsuranceKeys((current) => current.includes(document.key) ? current.filter((key) => key !== document.key) : [...current, document.key])} className="accent-emerald-400" /><span className="min-w-0 flex-1 truncate">{document.filename}</span><span className="text-[9px] text-emerald-100/60">{document.source}</span></label>)}</div>
+            {selectedInsuranceKeys.length > 3 && <p className="mt-2 text-[10px] text-amber-200">Select no more than three files for one email.</p>}
           </div>}
         </div>
         <DialogFooter>
           <Button variant="outline" className="border-zinc-600" onClick={onClose}>Cancel</Button>
           <Button className="bg-amber-500 hover:bg-amber-600 text-black font-semibold"
             onClick={() => sendMutation.mutate({ id: quote.id, personalNote: note, origin: window.location.origin, insuranceDocumentKeys: selectedInsuranceKeys })}
-            disabled={sendMutation.isPending}>
+            disabled={sendMutation.isPending || selectedInsuranceKeys.length > 3}>
             {sendMutation.isPending ? "Sending..." : "Send Portal Link"}
           </Button>
         </DialogFooter>

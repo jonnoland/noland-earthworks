@@ -25,6 +25,12 @@ export type QuoteInsuranceDocument = {
   sizeBytes: number;
 };
 
+export type QuoteInsuranceLibraryDocument = QuoteInsuranceDocument & {
+  id: number;
+  label: string;
+  expiresAt?: string | null;
+};
+
 export type QuoteMeasurement = {
   label: string;
   value: string;
@@ -39,6 +45,21 @@ export function getQuoteRentalCostCents(items: QuoteRentalEquipment[] | null | u
       + Math.max(0, Math.round(item.transportCostCents || 0))
       + Math.max(0, Math.round(item.taxCostCents || 0));
   }, 0);
+}
+
+/**
+ * A conservative internal screening metric only. It excludes labor, fuel,
+ * machine wear, overhead, and every other job cost from actual profit.
+ */
+export function getQuoteRentalOnlyMargin(totalCents: number, rentalCostCents: number): {
+  rentalOnlyProfitCents: number;
+  rentalOnlyMarginPct: number | null;
+} {
+  const rentalOnlyProfitCents = totalCents - rentalCostCents;
+  const rentalOnlyMarginPct = totalCents > 0 && rentalCostCents > 0
+    ? Math.round((rentalOnlyProfitCents / totalCents) * 1000) / 10
+    : null;
+  return { rentalOnlyProfitCents, rentalOnlyMarginPct };
 }
 
 export function parseQuoteSupportArtifacts<T>(raw: string | null | undefined, fallback: T): T {

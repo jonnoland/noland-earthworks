@@ -3839,3 +3839,9 @@
 - [x] Add secure proof-of-insurance document selection and delivery with a sent quote
 - [x] Add database schema, protected API, regression coverage, and full validation for the quote enhancements
 - [x] Implement the approved Cat Rental Store handoff with manually confirmed internal equipment, transport, tax, and rental-duration costs; do not use unverified public rental rates
+
+## Operations Quote Margin, Insurance Library, and AI Cost Review — Aug 2026
+- [x] Calculate and display internal rental-cost margin against the customer quote total without exposing job costs in customer-facing views
+- [x] Add an owner-scoped saved proof-of-insurance library with reuse and selection in the quote workspace
+- [x] Add a concise Gemini 3 Flash cost-review action that uses saved site photos, measurements, rental cost, and quote total as internal context
+- [x] Add schema migration, protected API tests, and full validation for these quote enhancements
