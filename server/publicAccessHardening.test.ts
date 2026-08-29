@@ -20,12 +20,22 @@ describe("public pricing and operations access hardening", () => {
     expect(navbar).not.toContain('href="/ops-view"');
   });
 
-  it("removes the unauthenticated viewer API and route", () => {
+  it("keeps the key-protected briefing separate from public navigation and owner Operations", () => {
     const routers = projectFile("server/routers.ts");
     const app = projectFile("client/src/App.tsx");
     const dashboard = projectFile("client/src/pages/ops/Dashboard.tsx");
-    expect(routers).not.toContain("opsViewer");
-    expect(app).not.toContain('path="/ops-view"');
+    const viewer = projectFile("client/src/pages/OpsViewer.tsx");
+    const viewerRouter = projectFile("server/opsViewerRouter.ts");
+    expect(routers).toContain("opsViewer");
+    expect(app).toContain('path="/ops-view"');
+    expect(viewer).toContain("invalid, expired, or no longer available");
+    expect(viewerRouter).toContain("timingSafeEqual");
+    expect(viewerRouter).not.toContain("clientEmail");
+    expect(viewerRouter).not.toContain("internalNotes");
+    expect(viewerRouter).not.toContain("propertyAddress");
+    const serverEntry = projectFile("server/_core/index.ts");
+    expect(serverEntry).toContain('res.setHeader("Referrer-Policy", "no-referrer")');
+    expect(serverEntry).toContain('res.setHeader("Cache-Control", "private, no-store, max-age=0")');
     expect(dashboard).not.toContain("Read-Only Ops Viewer");
     expect(dashboard).not.toContain("VITE_OPS_VIEWER_KEY");
     expect(dashboard).not.toContain("/ops-view?key=");

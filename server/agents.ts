@@ -6,12 +6,12 @@
  *  2. visit_reminder      — texts/emails visitor the day before a confirmed site visit
  *  3. review_request      — emails completed-job customers asking for a Google review
  *  4. stale_lead_alert    — notifies Jon of leads stuck in a stage for too long
- *  5. daily_digest        — 7 AM summary of today's schedule, open leads, and pending visits
+ *  5. daily_digest        — 6 AM Central summary of today's schedule, open leads, and pending visits
  *
  * Each agent:
  *  - Checks its own enable flag in agent_config (defaults to enabled)
  *  - Logs every run to agent_log
- *  - Never throws — errors are caught, logged, and recorded
+ *  - Returns a delivery outcome so the durable scheduler can retry transient failures
  */
 
 import { Resend } from "resend";
@@ -414,23 +414,31 @@ export async function runStaleLeadAlertAgent() {
 
 // ─── Agent 5: Daily Ops Digest ────────────────────────────────────────────────
 /**
- * Runs every morning at 7 AM. Sends Jon a summary of:
+ * Runs every morning at 6 AM Central. Sends Jon a summary of:
  *  - Today's scheduled jobs
  *  - Open leads count by stage
  *  - Pending site visits (unconfirmed)
  *  - Jobs completed yesterday (ready for invoicing)
  */
-export async function runDailyDigestAgent() {
+export type DailyDigestRunResult = {
+  status: "sent" | "skipped" | "error";
+  summary: string;
+  error?: string;
+};
+
+export async function runDailyDigestAgent(): Promise<DailyDigestRunResult> {
   const AGENT_ID = "daily_digest";
   if (!(await isEnabled(AGENT_ID))) {
-    await insertAgentLog({ agentId: AGENT_ID, status: "skipped", summary: "Agent disabled." });
-    return;
+    const summary = "Daily Ops Digest is disabled.";
+    await insertAgentLog({ agentId: AGENT_ID, status: "skipped", summary });
+    return { status: "skipped", summary };
   }
 
   const resend = getResend();
   if (!resend) {
-    await insertAgentLog({ agentId: AGENT_ID, status: "skipped", summary: "Resend not configured." });
-    return;
+    const summary = "Email delivery is not configured.";
+    await insertAgentLog({ agentId: AGENT_ID, status: "skipped", summary });
+    return { status: "skipped", summary };
   }
 
   try {
@@ -439,8 +447,9 @@ export async function runDailyDigestAgent() {
 
     const owner = await getOwnerUser();
     if (!owner) {
-      await insertAgentLog({ agentId: AGENT_ID, status: "skipped", summary: "Owner not found." });
-      return;
+      const summary = "Owner not found.";
+      await insertAgentLog({ agentId: AGENT_ID, status: "skipped", summary });
+      return { status: "skipped", summary };
     }
 
     // Get owner email from businessSettings (most reliable)
@@ -558,7 +567,7 @@ export async function runDailyDigestAgent() {
       console.warn("[Agent:daily_digest] AI briefing failed (non-fatal):", aiErr);
     }
 
-    await resend.emails.send({
+    const { error: emailError } = await resend.emails.send({
       from: "Noland Earthworks <noreply@nolandearthworks.com>",
       to: ownerEmail,
       subject: `Daily Ops Digest — ${today}`,
@@ -588,14 +597,17 @@ export async function runDailyDigestAgent() {
         </div>
       `,
     });
+    if (emailError) throw new Error(`Resend delivery failed: ${emailError.message}`);
 
     const summary = `Digest sent. ${todayEntries.length} jobs today, ${openLeads.length} open leads, ${pendingVisits.length} pending visits.`;
     await insertAgentLog({ agentId: AGENT_ID, status: "success", summary, actionsCount: 1 });
     console.log(`[Agent:${AGENT_ID}] ${summary}`);
+    return { status: "sent", summary };
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     await insertAgentLog({ agentId: AGENT_ID, status: "error", error: msg });
     console.error(`[Agent:${AGENT_ID}] Error:`, err);
+    return { status: "error", summary: "Daily Ops Digest delivery failed.", error: msg };
   }
 }
 
@@ -896,7 +908,7 @@ export const AGENT_REGISTRY = [
     id: "daily_digest",
     name: "Daily Ops Digest",
     description: "Emails you a morning summary: today's schedule, open leads, pending visits, and jobs ready to invoice.",
-    schedule: "Daily at 7 AM",
+    schedule: "Daily at 6 AM Central",
   },
   {
     id: "pricing_update",

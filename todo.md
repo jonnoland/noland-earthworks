@@ -3826,3 +3826,9 @@
 ## Linear Foot AI Suggest Width Choices — Aug 2026
 - [x] Expand AI Suggest and matching acreage-to-Linear-Foot controls to 6, 8, 10, 12, 16, 20, 25, and 30-foot widths
 - [x] Add regression coverage and validate the expanded Linear Foot width calculations in Operations and Noland Field
+
+## Protected Operations View and Daily Digest Recovery — Aug 2026
+- [ ] Restore the token-protected read-only Operations briefing view and its data endpoint without making quote or revenue data public
+- [ ] Regenerate secure read-only access and verify unauthenticated access remains blocked
+- [ ] Diagnose and repair the Daily Ops Digest schedule and delivery behavior, including the Saturday rule
+- [ ] Add regression coverage and validate the restored view and digest workflow

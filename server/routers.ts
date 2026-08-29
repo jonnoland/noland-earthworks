@@ -24,6 +24,7 @@ import { nativeQuotesRouter } from "./nativeQuotesRouter";
 import { nativeJobsRouter } from "./nativeJobsRouter";
 import { nativeClientsRouter } from "./nativeClientsRouter";
 import { parcelRouter } from "./parcelRouter";
+import { opsViewerRouter } from "./opsViewerRouter";
 import { getDb } from "./db";
 import { businessSettings, emailSubscribers, serviceFaqs, seoArticles } from "../drizzle/schema";
 import { desc, eq, sql } from "drizzle-orm";
@@ -85,6 +86,7 @@ export const appRouter = router({
   nativeJobs: nativeJobsRouter,
   nativeClients: nativeClientsRouter,
   parcel: parcelRouter,
+  opsViewer: opsViewerRouter,
 
   /**
    * Email subscribe — public opt-in for seasonal updates or area-expansion waitlist notices.

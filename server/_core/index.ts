@@ -91,6 +91,16 @@ async function startServer() {
   // Configure body parser with larger size limit for file uploads
   app.use(express.json({ limit: "50mb" }));
   app.use(express.urlencoded({ limit: "50mb", extended: true }));
+  // The external read-only Operations briefing carries a bearer key in its URL.
+  // Prevent browser/proxy caching and downstream referrer leakage of that key.
+  app.use((req, res, next) => {
+    if (req.path === "/ops-view" || req.path.startsWith("/api/trpc/opsViewer")) {
+      res.setHeader("Cache-Control", "private, no-store, max-age=0");
+      res.setHeader("Referrer-Policy", "no-referrer");
+      res.setHeader("X-Robots-Tag", "noindex, nofollow, noarchive, nosnippet");
+    }
+    next();
+  });
   // Storage proxy for /manus-storage/* paths
   registerStorageProxy(app);
   // OAuth callback under /api/oauth/callback
@@ -127,10 +137,6 @@ async function startServer() {
   cron.schedule("30 8 * * 1", async () => {
     if (await getAgentEnabled("stale_lead_alert")) await runStaleLeadAlertAgent();
   }, { timezone: "America/Chicago" });
-  // Daily Digest: every day at 6:00 AM CT
-  cron.schedule("0 6 * * *", async () => {
-    if (await getAgentEnabled("daily_digest")) await runDailyDigestAgent();
-  }, { timezone: "America/Chicago" });
   // Pricing research review queue: every Sunday at 6:00 AM CT
   cron.schedule("0 6 * * 0", async () => {
     if (await getAgentEnabled("pricing_update")) await runPricingUpdateAgent();
@@ -139,7 +145,7 @@ async function startServer() {
   cron.schedule("*/30 * * * *", async () => {
     await runNotificationRetryAgent();
   }, { timezone: "America/Chicago" });
-  console.log("[Agents] 7 scheduled agents registered.");
+  console.log("[Agents] 6 legacy in-process agents registered; Daily Ops Digest uses the durable morning-brief callback.");
 
   // Sitemap + robots.txt
   registerSitemapRoutes(app);
@@ -352,55 +358,26 @@ ${transcript}`;
     }
   });
 
-  // ─── Morning Brief SMS ─────────────────────────────────────────────────────
-  // Scheduled job: daily 6 AM, sends SMS with active jobs, stale leads, pending quotes, weather
+  // ─── Daily Ops Digest ───────────────────────────────────────────────────────
+  // Durable Heartbeat job: daily 6 AM Central. This replaces the legacy
+  // in-process timer so a restart or autoscale cycle cannot silently skip delivery.
   app.post("/api/scheduled/morning-brief", async (req, res) => {
     try {
       const { sdk } = await import("./sdk");
-      const { invokeLLM } = await import("./llm");
-      const { getDb } = await import("../db");
-      const { and, isNull, lt } = await import("drizzle-orm");
-
-      const db = await getDb();
-      const schema = await import("../../drizzle/schema");
-      const quoteFollowUps = (schema as any).quoteFollowUps;
 
       const user = await sdk.authenticateRequest(req);
-      const isCron = (user as any).isCron === true;
-      if (!isCron) {
+      if (!(user as { isCron?: boolean }).isCron) {
         res.status(403).json({ error: "cron-only" });
         return;
       }
 
-      // Gather data for the brief
-      const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
-      const staleQuotes = await (db as any)
-        .select()
-        .from(quoteFollowUps)
-        .where(
-          and(
-            lt(quoteFollowUps.createdAt, sevenDaysAgo),
-            isNull(quoteFollowUps.clearedAt)
-          )
-        )
-        .limit(5);
-
-      // Compose brief
-      const briefItems = [];
-      if (staleQuotes.length > 0) {
-        briefItems.push(`${staleQuotes.length} stale quote(s) need follow-up`);
+      const result = await runDailyDigestAgent();
+      if (result.status === "error") {
+        res.status(500).json({ error: result.error ?? result.summary, timestamp: new Date().toISOString() });
+        return;
       }
-      briefItems.push("Check dashboard for active jobs and weather alerts");
 
-      const briefText = `Good morning, Jon. ${briefItems.join(". ")}. Log in to /ops to review.`;
-
-      console.log(`[Cron] morning-brief: composed brief with ${staleQuotes.length} stale quotes`);
-      res.json({
-        ok: true,
-        briefText,
-        staleQuotesCount: staleQuotes.length,
-        timestamp: new Date().toISOString(),
-      });
+      res.json({ ok: true, status: result.status, summary: result.summary, timestamp: new Date().toISOString() });
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : String(err);
       const stack = err instanceof Error ? err.stack : undefined;

@@ -39,7 +39,7 @@ const agentRunners: Record<string, () => Promise<void>> = {
   visit_reminder: runVisitReminderAgent,
   review_request: runReviewRequestAgent,
   stale_lead_alert: runStaleLeadAlertAgent,
-  daily_digest: runDailyDigestAgent,
+  daily_digest: async () => { await runDailyDigestAgent(); },
   pricing_update: runPricingUpdateAgent,
 };
 
