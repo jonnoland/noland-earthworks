@@ -116,4 +116,14 @@ describe("quote service line measurements", () => {
     expect(editor).toContain("This quote starts as a normal job.");
     expect(editor).not.toContain("Calculate from acreage");
   });
+
+  it("warns and clears acreage before a Linear Foot-only quote can be saved, and converts ordinary work into Phase 1 on demand", () => {
+    const editor = source("client/src/pages/ops/NativeAllQuotesSection.tsx");
+    expect(editor).toContain("uses measured Linear Feet only. Acreage was cleared before save.");
+    expect(editor).toContain("const convertNormalQuoteToPhase");
+    expect(editor).toContain('description: "Phase 1 — Approved work"');
+    expect(editor).toContain('phaseAuthorization: "approved_now"');
+    expect(editor).toContain("Standard quote converted to Phase 1.");
+    expect(editor).toContain("Convert to Phase 1");
+  });
 });

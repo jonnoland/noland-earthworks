@@ -856,6 +856,15 @@ function QuoteFormModal({
   useEffect(() => {
     setQuoteHeaderLinearFeetInput(quoteHeaderUsesLinearFeet ? String(quoteHeaderLinearFeet || "") : "");
   }, [quoteHeaderUsesLinearFeet, quoteHeaderLinearFeet]);
+  const linearAcreageWarningRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!quoteHeaderUsesLinearFeet || !form.acreage.trim()) return;
+    setForm((current) => current.acreage.trim() ? { ...current, acreage: "" } : current);
+    if (linearAcreageWarningRef.current !== form.serviceType) {
+      toast.message(`${form.serviceType} uses measured Linear Feet only. Acreage was cleared before save.`);
+      linearAcreageWarningRef.current = form.serviceType;
+    }
+  }, [form.acreage, form.serviceType, quoteHeaderUsesLinearFeet]);
   const [aiSuggestion, setAiSuggestion] = useState<{
     title: string;
     estimatedDuration: string;
@@ -999,10 +1008,14 @@ function QuoteFormModal({
   });
 
   const handleLineItemChange = (i: number, field: keyof LineItem, val: string | number) => {
+    const selectedService = field === "serviceCode" ? getQuoteLineServiceOption(String(val)) : undefined;
+    const isPrimaryService = i === form.lineItems.findIndex((line) => !line.kind || line.kind === "service");
+    if (selectedService?.measurementUnit === "linear_foot" && isPrimaryService && form.acreage.trim()) {
+      toast.message(`${selectedService.label} uses measured Linear Feet only. Acreage was cleared before save.`);
+    }
     setForm(prev => {
       const items = [...prev.lineItems];
       const current = items[i];
-      const selectedService = field === "serviceCode" ? getQuoteLineServiceOption(String(val)) : undefined;
       const next = field === "serviceCode"
         ? {
           ...current,
@@ -1032,6 +1045,9 @@ function QuoteFormModal({
 
   const handleQuoteHeaderServiceChange = (serviceLabel: string) => {
     const selectedService = QUOTE_LINE_SERVICE_OPTIONS.find((service) => service.label === serviceLabel);
+    if (selectedService?.measurementUnit === "linear_foot" && form.acreage.trim()) {
+      toast.message(`${selectedService.label} uses measured Linear Feet only. Acreage was cleared before save.`);
+    }
     setForm((previous) => {
       if (!selectedService) return { ...previous, serviceType: serviceLabel };
       const items = [...previous.lineItems];
@@ -1084,6 +1100,27 @@ function QuoteFormModal({
       ...prev,
       lineItems: [...prev.lineItems, ...(kind === "phase" ? [{ ...nextItem, phaseId: createQuotePhaseId() }] : [nextItem])],
     }));
+  };
+
+  const convertNormalQuoteToPhase = () => {
+    if (phaseSections.length > 0) {
+      toast.message("This quote already has phase sections.");
+      return;
+    }
+    const phaseId = createQuotePhaseId();
+    setForm((previous) => ({
+      ...previous,
+      lineItems: [
+        {
+          ...createQuoteWorkLineItem("phase"),
+          phaseId,
+          description: "Phase 1 — Approved work",
+          phaseAuthorization: "approved_now",
+        },
+        ...previous.lineItems.map((item) => ({ ...item, phaseId })),
+      ],
+    }));
+    toast.success("Standard quote converted to Phase 1. Add future phases only if needed.");
   };
 
   const addLineItemToPhase = (phaseId: string, item: LineItem) => {
@@ -1809,6 +1846,7 @@ function QuoteFormModal({
             <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
               <Label className="text-zinc-400 text-xs">Line Items</Label>
               <div className="flex flex-wrap gap-1.5">
+                {phaseSections.length === 0 && <Button type="button" size="sm" variant="outline" className="h-7 text-xs border-amber-500/40 text-amber-200 hover:bg-amber-500/10" onClick={convertNormalQuoteToPhase}><ArrowRight className="mr-1 h-3 w-3" />Convert to Phase 1</Button>}
                 <Button type="button" size="sm" variant="outline" className="h-7 text-xs border-amber-500/40 text-amber-200 hover:bg-amber-500/10" onClick={() => addControlledLineItem("phase")}>+ Phase</Button>
                 {phaseSections.length === 0 && <Button type="button" size="sm" variant="outline" className="h-7 text-xs border-sky-500/40 text-sky-200 hover:bg-sky-500/10" onClick={() => addControlledLineItem("full_operating_day")}>+ Full Day</Button>}
                 {phaseSections.length === 0 && <Button type="button" size="sm" variant="outline" className="h-7 text-xs border-sky-500/40 text-sky-200 hover:bg-sky-500/10" onClick={() => addControlledLineItem("half_operating_day")}>+ Half Day</Button>}

@@ -3894,3 +3894,8 @@
 - [x] Enforce Linear Feet-only measurement for Fence Line Clearing, Trail Cutting, and Right-of-Way Clearing across the quote header, lines, and AI Suggest
 - [x] Add a server-side save-time audit that rejects inconsistent header service, linear footage, acreage, and line-item measurement data
 - [x] Add regression coverage and validate normal-job, phased-job, and Linear Feet quote behavior
+
+## Operations Quote Linear Foot Warning and Phase Conversion — Aug 2026
+- [x] Add immediate client-side warning and clearing behavior if acreage is entered for a Linear Foot-only service
+- [x] Add a one-click normal-to-phased quote conversion that groups existing standard work into a first approved phase
+- [x] Add regression coverage and full validation for the measurement warning and phase conversion controls
