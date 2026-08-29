@@ -122,6 +122,7 @@ const quoteEvidenceSchema = z.object({
   sizeBytes: z.number().int().positive().max(10 * 1024 * 1024),
   caption: z.string().trim().min(1).max(240).optional(),
   tags: z.array(z.string().trim().min(1).max(48)).max(5).optional(),
+  includeInCustomerPdf: z.boolean().optional(),
 });
 
 const insuranceDocumentSchema = z.object({
@@ -945,7 +946,7 @@ export const nativeQuotesRouter = router({
         const annotationsByKey = new Map(photoAnnotations.map((annotation) => [annotation.key, annotation]));
         const savedEvidence = parseQuoteSupportArtifactArray<QuoteEvidenceAttachment>(quote.quoteEvidence).map((attachment) => {
           const annotation = annotationsByKey.get(attachment.key);
-          return annotation ? { ...attachment, caption: annotation.caption, tags: annotation.tags } : attachment;
+          return annotation ? { ...attachment, caption: annotation.caption, tags: annotation.tags, includeInCustomerPdf: attachment.includeInCustomerPdf ?? true } : attachment;
         });
         await db.update(nativeQuotes).set({ quoteEvidence: JSON.stringify(savedEvidence), updatedAt: new Date() }).where(eq(nativeQuotes.id, quote.id));
       }
@@ -1348,6 +1349,14 @@ Rules:
       const lineItems = parsePortalLineItems(quote.lineItems);
       const includedRentalCustomerChargeCents = getIncludedRentalCustomerCharge(quote);
       const phaseSummary = getQuotePortalPhaseSummary(lineItems, includedRentalCustomerChargeCents);
+      const sitePhotoReferences = parseQuoteSupportArtifactArray<QuoteEvidenceAttachment>(quote.quoteEvidence)
+        .filter((attachment) => attachment.includeInCustomerPdf !== false && attachment.caption)
+        .map((attachment) => ({
+          url: attachment.url,
+          filename: attachment.filename,
+          caption: attachment.caption as string,
+          tags: attachment.tags ?? [],
+        }));
       return {
         type: "native" as const,
         id: quote.id,
@@ -1358,6 +1367,7 @@ Rules:
         propertyAddress: quote.propertyAddress,
         estimatedDuration: quote.estimatedDuration,
         clientMessage: quote.clientMessage,
+        sitePhotoReferences,
         lineItems,
         phaseSummary,
         includesRequiredEquipmentCosts: includedRentalCustomerChargeCents > 0,

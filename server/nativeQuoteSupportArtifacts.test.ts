@@ -88,6 +88,23 @@ describe("native quote rental, evidence, and insurance support artifacts", () =>
     expect(quoteForm).toContain("captionEvidenceMutation.mutate({ evidence: form.quoteEvidence");
   });
 
+  it("exposes only selected annotated site references to the customer portal and its printable PDF", () => {
+    const artifacts = source("shared/quoteSupportArtifacts.ts");
+    const router = source("server/nativeQuotesRouter.ts");
+    const quoteForm = source("client/src/pages/ops/NativeAllQuotesSection.tsx");
+    const portal = source("client/src/pages/NativeQuotePortal.tsx");
+
+    expect(artifacts).toContain("includeInCustomerPdf?: boolean");
+    expect(router).toContain("includeInCustomerPdf: z.boolean().optional()");
+    expect(router).toContain("attachment.includeInCustomerPdf !== false && attachment.caption");
+    expect(router).toContain("sitePhotoReferences");
+    expect(quoteForm).toContain("Customer quote PDF photo references");
+    expect(quoteForm).toContain("includeInCustomerPdf: event.target.checked");
+    expect(portal).toContain("Site reference photos");
+    expect(portal).toContain("quote.sitePhotoReferences.length > 0");
+    expect(portal).toContain("Final conditions and scope remain subject to site verification.");
+  });
+
   it("keeps rental costs internal and makes evidence available only to protected quote workflows", () => {
     const router = source("server/nativeQuotesRouter.ts");
     const quoteForm = source("client/src/pages/ops/NativeAllQuotesSection.tsx");

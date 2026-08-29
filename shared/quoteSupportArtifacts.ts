@@ -22,6 +22,7 @@ export type QuoteEvidenceAttachment = {
   sizeBytes: number;
   caption?: string;
   tags?: string[];
+  includeInCustomerPdf?: boolean;
 };
 
 export type QuoteInsuranceDocument = {

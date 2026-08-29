@@ -3878,3 +3878,8 @@
 - [x] Compress supported site photos in the browser before upload while preserving the originals’ visual evidence value
 - [x] Generate, persist, and display internal AI captions and descriptive site-detail tags for uploaded evidence photos
 - [x] Add regression coverage and full validation for evidence management, compression, and caption behavior
+
+## Customer Quote PDF Site Photo References — Aug 2026
+- [x] Include selected quote evidence thumbnails and concise descriptive tags in the customer-facing final quote PDF
+- [x] Keep internal rental cost, margin, AI cost review, and non-customer document data out of the customer PDF
+- [x] Add regression coverage and validate the updated quote PDF rendering

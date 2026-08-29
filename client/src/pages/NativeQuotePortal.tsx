@@ -361,6 +361,21 @@ export default function NativeQuotePortal() {
         </div>
       )}
 
+      {quote.sitePhotoReferences.length > 0 && (
+        <section className="mb-6 rounded-xl border border-zinc-800 bg-zinc-900 p-5 print:border-zinc-300 print:bg-white print:text-zinc-900">
+          <p className="text-xs font-semibold uppercase tracking-widest text-amber-400 print:text-amber-800">Site reference photos</p>
+          <p className="mt-1 text-xs leading-relaxed text-zinc-400 print:text-zinc-600">These photos document visible site conditions at the time of review and support the stated scope. Final conditions and scope remain subject to site verification.</p>
+          <div className="mt-4 grid grid-cols-2 gap-3 print:grid-cols-2">
+            {quote.sitePhotoReferences.map((photo) => (
+              <figure key={photo.url} className="break-inside-avoid overflow-hidden rounded-lg border border-zinc-700 bg-zinc-950/30 print:border-zinc-300 print:bg-white">
+                <img src={photo.url} alt={photo.caption} className="h-32 w-full object-cover print:h-36" />
+                <figcaption className="space-y-2 p-2.5"><p className="text-xs leading-relaxed text-zinc-200 print:text-zinc-800">{photo.caption}</p>{photo.tags.length > 0 && <div className="flex flex-wrap gap-1">{photo.tags.map((tag) => <span key={tag} className="rounded bg-amber-500/10 px-1.5 py-0.5 text-[10px] text-amber-100 print:bg-amber-100 print:text-amber-900">{tag}</span>)}</div>}</figcaption>
+              </figure>
+            ))}
+          </div>
+        </section>
+      )}
+
       {/* Phase 1 — current approval */}
       {(approvedPhaseSections.length > 0 || unassignedApprovedLineItems.length > 0) && (
         <div className="rounded-xl bg-zinc-900 border border-zinc-800 overflow-hidden mb-6">
