@@ -3912,3 +3912,8 @@
 - [x] Generate a concise editable client message from completed quote items, selected site photos, property boundaries, measurements, duration, and final quote total
 - [x] Keep internal rental costs, margins, AI cost flags, and private notes out of the client message
 - [x] Add regression coverage and validate protected message generation and quote-send behavior
+
+## Quote AI Evidence Status Freshness — Aug 2026
+- [x] Clear stale AI evidence summaries when site photos or measurements are added, removed, reordered, or edited
+- [x] Show a clear fresh-review prompt rather than an outdated missing-evidence conclusion
+- [x] Add regression coverage and validate the evidence status follows the current quote attachments

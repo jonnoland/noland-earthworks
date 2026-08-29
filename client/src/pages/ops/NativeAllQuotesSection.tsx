@@ -653,9 +653,39 @@ function QuoteFormModal({
     onSuccess: () => utils.nativeQuotes.listInsuranceLibrary.invalidate(),
     onError: (error) => toast.error(error.message),
   });
+  const [isEvidenceReviewStale, setIsEvidenceReviewStale] = useState(false);
+  const evidenceReviewSignature = useMemo(() => JSON.stringify({
+    evidence: form.quoteEvidence.map((attachment) => attachment.key),
+    measurements: form.quoteMeasurements.map((measurement) => [measurement.label, measurement.value, measurement.unit, measurement.notes ?? ""]),
+  }), [form.quoteEvidence, form.quoteMeasurements]);
+  const evidenceReviewSignatureRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    evidenceReviewSignatureRef.current = null;
+    setIsEvidenceReviewStale(false);
+  }, [open, editQuote?.id]);
+
+  useEffect(() => {
+    if (evidenceReviewSignatureRef.current === null) {
+      evidenceReviewSignatureRef.current = evidenceReviewSignature;
+      return;
+    }
+    if (evidenceReviewSignatureRef.current === evidenceReviewSignature) return;
+    evidenceReviewSignatureRef.current = evidenceReviewSignature;
+    setIsEvidenceReviewStale(true);
+    setForm((current) => ({
+      ...current,
+      aiEvidenceSummary: "",
+      aiCostReview: "",
+      aiCostFlags: [],
+      aiRecommendedRentalMarkupPct: null,
+      aiMarkupRecommendationReason: "",
+    }));
+  }, [evidenceReviewSignature]);
   const reviewCostMutation = trpc.nativeQuotes.reviewCost.useMutation({
     onSuccess: (result) => {
       setForm((current) => ({ ...current, aiCostReview: result.summary, aiCostFlags: result.flags, aiRecommendedRentalMarkupPct: result.recommendedRentalMarkupPct, aiMarkupRecommendationReason: result.markupRecommendationReason ?? "" }));
+      setIsEvidenceReviewStale(false);
       utils.nativeQuotes.list.invalidate();
       toast.success("Internal AI cost review generated.");
     },
@@ -918,6 +948,7 @@ function QuoteFormModal({
       setAiSuggestion(data);
       setEditTerrainMult(data.breakdown.terrainMultiplier.toFixed(2));
       setEditAccessMult(data.breakdown.accessMultiplier.toFixed(2));
+      setIsEvidenceReviewStale(false);
       setCopyDone(false);
       setAiPanel("result");
       if (form.quoteEvidence.length > 0) {
@@ -1660,7 +1691,7 @@ function QuoteFormModal({
               {form.aiRecommendedRentalMarkupPct !== null && <div className="mt-2 flex flex-wrap items-center justify-between gap-2 rounded border border-sky-500/25 bg-sky-500/[0.07] px-3 py-2 text-[11px] text-sky-100"><div><span className="font-semibold">Suggested rental markup: {form.aiRecommendedRentalMarkupPct}%</span>{form.aiMarkupRecommendationReason && <span className="ml-1 text-sky-100/80">— {form.aiMarkupRecommendationReason}</span>}<p className="mt-1 text-[10px] text-sky-100/65">Evidence-based internal suggestion only. Review before applying.</p></div><Button type="button" size="sm" variant="outline" className="h-7 border-sky-500/45 text-[10px] text-sky-100 hover:bg-sky-500/10" disabled={form.rentalMarkupPct === form.aiRecommendedRentalMarkupPct} onClick={() => setForm(current => ({ ...current, rentalMarkupPct: current.aiRecommendedRentalMarkupPct ?? current.rentalMarkupPct }))}>{form.rentalMarkupPct === form.aiRecommendedRentalMarkupPct ? "Applied" : `Use ${form.aiRecommendedRentalMarkupPct}%`}</Button></div>}
               {form.aiCostFlags.length > 0 && <div className="mt-2 rounded border border-amber-500/25 bg-amber-500/[0.06] px-3 py-2"><p className="text-[10px] font-semibold uppercase tracking-wide text-amber-100">Cost categories to verify</p><div className="mt-1.5 flex flex-wrap gap-1.5">{form.aiCostFlags.map((flag, index) => <span key={`${flag.category}-${index}`} className="rounded-full border border-amber-500/30 bg-zinc-950/45 px-2 py-1 text-[10px] text-amber-100"><strong className="capitalize">{flag.category.replace("_", " ")}:</strong> {flag.reason}</span>)}</div></div>}
             </section>
-            {form.aiEvidenceSummary && <div className="mt-3 rounded border border-amber-500/20 bg-amber-500/[0.06] px-3 py-2 text-[11px] leading-relaxed text-amber-100"><span className="font-semibold">Last AI evidence review:</span> {form.aiEvidenceSummary}</div>}
+            {isEvidenceReviewStale ? <div className="mt-3 rounded border border-sky-500/30 bg-sky-500/[0.07] px-3 py-2 text-[11px] leading-relaxed text-sky-100" role="status"><span className="font-semibold">Site evidence changed.</span> Run AI Suggest or Generate concise cost review again before relying on an AI evidence conclusion.</div> : form.aiEvidenceSummary && <div className="mt-3 rounded border border-amber-500/20 bg-amber-500/[0.06] px-3 py-2 text-[11px] leading-relaxed text-amber-100"><span className="font-semibold">Last AI evidence review:</span> {form.aiEvidenceSummary}</div>}
           </details>
 
           {/* AI Suggest panel */}

@@ -171,6 +171,19 @@ describe("native quote rental, evidence, and insurance support artifacts", () =>
     expect(quoteForm).toContain("clientMessage: message");
   });
 
+  it("does not display a stale no-evidence conclusion after photos or measurements change", () => {
+    const quoteForm = source("client/src/pages/ops/NativeAllQuotesSection.tsx");
+
+    expect(quoteForm).toContain("const evidenceReviewSignature = useMemo");
+    expect(quoteForm).toContain("evidence: form.quoteEvidence.map((attachment) => attachment.key)");
+    expect(quoteForm).toContain("measurements: form.quoteMeasurements.map");
+    expect(quoteForm).toContain('aiEvidenceSummary: ""');
+    expect(quoteForm).toContain('aiCostReview: ""');
+    expect(quoteForm).toContain("Site evidence changed.");
+    expect(quoteForm).toContain("Run AI Suggest or Generate concise cost review again");
+    expect(quoteForm).toContain("setIsEvidenceReviewStale(false);");
+  });
+
   it("uses an in-app insurance preview with labeled download and separate-tab fallbacks instead of an unlabeled blank tab", () => {
     const quoteForm = source("client/src/pages/ops/NativeAllQuotesSection.tsx");
 
