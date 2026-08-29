@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
-import { getQuoteRentalCostCents, getQuoteRentalOnlyMargin, getQuoteRentalOnlyMarginStatus, getQuoteTotalWithRentalCharge, parseQuoteSupportArtifacts } from "../shared/quoteSupportArtifacts";
+import { getQuoteRentalCostCents, getQuoteRentalOnlyMargin, getQuoteRentalOnlyMarginStatus, getQuoteTotalWithRentalCharge, parseQuoteSupportArtifactArray, parseQuoteSupportArtifacts } from "../shared/quoteSupportArtifacts";
 
 const source = (path: string) => readFileSync(resolve(import.meta.dirname, `../${path}`), "utf8");
 
@@ -46,6 +46,8 @@ describe("native quote rental, evidence, and insurance support artifacts", () =>
 
   it("fails closed to an empty support-artifact collection when a legacy quote has malformed JSON", () => {
     expect(parseQuoteSupportArtifacts("not-json", [])).toEqual([]);
+    expect(parseQuoteSupportArtifactArray("not-json")).toEqual([]);
+    expect(parseQuoteSupportArtifactArray('{"key":"quotes/1/evidence/example"}')).toEqual([{ key: "quotes/1/evidence/example" }]);
   });
 
   it("keeps rental costs internal and makes evidence available only to protected quote workflows", () => {
@@ -67,6 +69,10 @@ describe("native quote rental, evidence, and insurance support artifacts", () =>
     expect(router).toContain("Add at least one site photo or measurement before generating a cost review.");
     expect(router).toContain("Consider potential missing labor, fuel, mobilization, machine-wear, access, and scope costs");
     expect(router).toContain("aiCostFlags: JSON.stringify(flags)");
+    expect(router).toContain("recommendedRentalMarkupPct");
+    expect(router).toContain("markupRecommendationReason");
+    expect(router).toContain("minimum: 10, maximum: 20");
+    expect(router).toContain("This is internal decision support and does not set a final price.");
     expect(router).toContain("assertOwnedAttachmentKeys(ctx.user.id, input.quoteEvidence ?? [])");
     expect(router).toContain("assertOwnedAttachmentKeys(ctx.user.id, evidence)");
     expect(router).toContain("rentalMarkupPct: z.number().int().min(10).max(20).optional()");
@@ -84,6 +90,10 @@ describe("native quote rental, evidence, and insurance support artifacts", () =>
     expect(quoteForm).toContain("RENTAL_MARGIN_TONE_CLASSES");
     expect(quoteForm).toContain("Customer rental markup");
     expect(quoteForm).toContain("Included rental component");
+    expect(quoteForm).toContain("Live customer total preview");
+    expect(quoteForm).toContain("Internal rental cost breakdown");
+    expect(quoteForm).toContain("Suggested rental markup:");
+    expect(quoteForm).toContain("evidence: Array.isArray(form.quoteEvidence) ? form.quoteEvidence.slice(0, 6) : []");
     expect(quoteForm).toContain("Cost categories to verify");
     expect(quoteForm).toContain("Preview");
     expect(quoteForm).toContain("Remove");

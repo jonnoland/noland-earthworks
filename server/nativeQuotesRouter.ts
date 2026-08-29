@@ -29,7 +29,7 @@ import { invokeLLM } from "./_core/llm";
 import { isDraftPlaceholderClient } from "../shared/quoteDrafts";
 import { getQuotePortalPhaseSummary, type QuotePortalLineItem } from "../shared/quotePortalPhases";
 import { calculateLinearFeetFromAcreage } from "../shared/quoteLineItemMeasurements";
-import { getQuoteRentalCostCents, getQuoteRentalOnlyMargin, getQuoteTotalWithRentalCharge, parseQuoteSupportArtifacts, type QuoteCostFlag, type QuoteEvidenceAttachment, type QuoteInsuranceDocument, type QuoteMeasurement, type QuoteRentalEquipment } from "../shared/quoteSupportArtifacts";
+import { getQuoteRentalCostCents, getQuoteRentalOnlyMargin, getQuoteTotalWithRentalCharge, parseQuoteSupportArtifactArray, parseQuoteSupportArtifacts, type QuoteCostFlag, type QuoteEvidenceAttachment, type QuoteInsuranceDocument, type QuoteMeasurement, type QuoteRentalEquipment } from "../shared/quoteSupportArtifacts";
 import { storageGet, storagePut } from "./storage";
 
 // Strip markdown code fences from LLM JSON responses
@@ -81,7 +81,7 @@ function parsePortalLineItems(raw: string | null): QuotePortalLineItem[] {
 }
 
 function getIncludedRentalCustomerCharge(quote: { rentalEquipment: string | null; rentalMarkupPct: number | null }): number {
-  const rentalCostCents = getQuoteRentalCostCents(parseQuoteSupportArtifacts<QuoteRentalEquipment[]>(quote.rentalEquipment, []));
+  const rentalCostCents = getQuoteRentalCostCents(parseQuoteSupportArtifactArray<QuoteRentalEquipment>(quote.rentalEquipment));
   return getQuoteTotalWithRentalCharge(0, rentalCostCents, quote.rentalMarkupPct ?? 15).rentalCustomerChargeCents;
 }
 
@@ -440,7 +440,7 @@ export const nativeQuotesRouter = router({
         const normalized = lineItems !== undefined
           ? normalizeQuoteLineItems(lineItems)
           : parsePortalLineItems(existingQuote.lineItems);
-        const effectiveRentalEquipment = rentalEquipment ?? parseQuoteSupportArtifacts<QuoteRentalEquipment[]>(existingQuote.rentalEquipment, []);
+        const effectiveRentalEquipment = rentalEquipment ?? parseQuoteSupportArtifactArray<QuoteRentalEquipment>(existingQuote.rentalEquipment);
         const effectiveRentalMarkupPct = rentalMarkupPct ?? existingQuote.rentalMarkupPct ?? 15;
         const serviceTotalCents = normalized.reduce((sum, item) => sum + item.totalCents, 0);
         const rentalCostCents = getQuoteRentalCostCents(effectiveRentalEquipment);
@@ -773,9 +773,9 @@ export const nativeQuotesRouter = router({
       const [quote] = await db.select().from(nativeQuotes).where(eq(nativeQuotes.id, input.id)).limit(1);
       if (!quote) throw new TRPCError({ code: "NOT_FOUND", message: "Quote not found." });
 
-      const evidence = parseQuoteSupportArtifacts<QuoteEvidenceAttachment[]>(quote.quoteEvidence, []);
-      const measurements = parseQuoteSupportArtifacts<QuoteMeasurement[]>(quote.quoteMeasurements, []);
-      const rentalEquipment = parseQuoteSupportArtifacts<QuoteRentalEquipment[]>(quote.rentalEquipment, []);
+      const evidence = parseQuoteSupportArtifactArray<QuoteEvidenceAttachment>(quote.quoteEvidence);
+      const measurements = parseQuoteSupportArtifactArray<QuoteMeasurement>(quote.quoteMeasurements);
+      const rentalEquipment = parseQuoteSupportArtifactArray<QuoteRentalEquipment>(quote.rentalEquipment);
       if (evidence.length === 0 && measurements.length === 0) {
         throw new TRPCError({ code: "BAD_REQUEST", message: "Add at least one site photo or measurement before generating a cost review." });
       }
@@ -793,6 +793,7 @@ export const nativeQuotesRouter = router({
         max_tokens: 1000,
         messages: [
           { role: "system", content: "You are a careful field-cost reviewer. Use only the supplied facts and visible evidence." },
+          { role: "system", content: "Return a whole-number recommendedRentalMarkupPct from 10 through 20 and a brief markupRecommendationReason based only on documented or visible job complexity. Use 10 for plainly simple conditions, 15 for normal uncertainty, and use 20 only for specific complexity supported by the evidence. This is internal decision support and does not set a final price." },
           { role: "user", content: [{ type: "text", text: prompt }, ...visualContent] as any },
         ],
         response_format: {
@@ -817,8 +818,10 @@ export const nativeQuotesRouter = router({
                     additionalProperties: false,
                   },
                 },
+                recommendedRentalMarkupPct: { type: "integer", minimum: 10, maximum: 20 },
+                markupRecommendationReason: { type: "string" },
               },
-              required: ["summary", "flags"],
+              required: ["summary", "flags", "recommendedRentalMarkupPct", "markupRecommendationReason"],
               additionalProperties: false,
             },
           },
@@ -828,6 +831,8 @@ export const nativeQuotesRouter = router({
       const raw = typeof rawContent === "string" ? rawContent : JSON.stringify(rawContent);
       let summary = "";
       let flags: QuoteCostFlag[] = [];
+      let recommendedRentalMarkupPct: number | null = null;
+      let markupRecommendationReason: string | null = null;
       try {
         const parsed = JSON.parse(stripCodeFence(raw));
         summary = String(parsed.summary ?? "").trim();
@@ -838,13 +843,20 @@ export const nativeQuotesRouter = router({
             .slice(0, 5)
             .map((flag: QuoteCostFlag) => ({ category: flag.category, reason: flag.reason.trim().slice(0, 240) }))
           : [];
+        const recommendation = Number(parsed.recommendedRentalMarkupPct);
+        recommendedRentalMarkupPct = Number.isInteger(recommendation) && recommendation >= 10 && recommendation <= 20
+          ? recommendation
+          : null;
+        markupRecommendationReason = typeof parsed.markupRecommendationReason === "string"
+          ? parsed.markupRecommendationReason.trim().slice(0, 500) || null
+          : null;
       } catch {
         throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "AI returned an invalid cost review." });
       }
       if (!summary) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "AI did not return a cost review." });
       const reviewedAt = new Date();
-      await db.update(nativeQuotes).set({ aiCostReview: summary, aiCostFlags: JSON.stringify(flags), aiCostReviewUpdatedAt: reviewedAt }).where(eq(nativeQuotes.id, quote.id));
-      return { summary, flags, rentalCostCents, rentalOnlyProfitCents, rentalOnlyMarginPct, reviewedAt };
+      await db.update(nativeQuotes).set({ aiCostReview: summary, aiCostFlags: JSON.stringify(flags), aiRecommendedRentalMarkupPct: recommendedRentalMarkupPct, aiMarkupRecommendationReason: markupRecommendationReason, aiCostReviewUpdatedAt: reviewedAt }).where(eq(nativeQuotes.id, quote.id));
+      return { summary, flags, recommendedRentalMarkupPct, markupRecommendationReason, rentalCostCents, rentalOnlyProfitCents, rentalOnlyMarginPct, reviewedAt };
     }),
 
   // ─── AI Suggest ────────────────────────────────────────────────────────────

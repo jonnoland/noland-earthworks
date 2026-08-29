@@ -54,7 +54,7 @@ import { buildQuoteCostBreakdown, getQuoteCostDistribution } from "@shared/quote
 import { getQuoteDraftIdentity } from "@shared/quoteDrafts";
 import { moveQuoteLineItem } from "@shared/quoteLineItemOrder";
 import { ensureQuotePhaseIds, getQuotePhaseSections } from "@shared/quotePhaseSections";
-import { getQuoteRentalCostCents, getQuoteRentalOnlyMargin, getQuoteRentalOnlyMarginStatus, getQuoteTotalWithRentalCharge, parseQuoteSupportArtifacts, type QuoteCostFlag, type QuoteEvidenceAttachment, type QuoteInsuranceDocument, type QuoteMeasurement, type QuoteRentalEquipment } from "@shared/quoteSupportArtifacts";
+import { getQuoteRentalCostCents, getQuoteRentalOnlyMargin, getQuoteRentalOnlyMarginStatus, getQuoteTotalWithRentalCharge, parseQuoteSupportArtifactArray, parseQuoteSupportArtifacts, type QuoteCostFlag, type QuoteEvidenceAttachment, type QuoteInsuranceDocument, type QuoteMeasurement, type QuoteRentalEquipment } from "@shared/quoteSupportArtifacts";
 import {
   createQuoteServiceLineItem,
   calculateLinearFeetFromAcreage,
@@ -129,6 +129,8 @@ interface NativeQuote {
   aiEvidenceSummary: string | null;
   aiCostReview: string | null;
   aiCostFlags: string | null;
+  aiRecommendedRentalMarkupPct: number | null;
+  aiMarkupRecommendationReason: string | null;
   aiCostReviewUpdatedAt: Date | null;
   estimatedDuration: string | null;
   acreage: string | null;
@@ -498,6 +500,8 @@ interface QuoteFormData {
   aiEvidenceSummary: string;
   aiCostReview: string;
   aiCostFlags: QuoteCostFlag[];
+  aiRecommendedRentalMarkupPct: number | null;
+  aiMarkupRecommendationReason: string;
   sourceDetail: string;
   fitDecision: "unreviewed" | "owner_review" | "pursue" | "pass" | "refer_out";
   nextActionType: string;
@@ -588,6 +592,8 @@ function QuoteFormModal({
     aiEvidenceSummary: "",
     aiCostReview: "",
     aiCostFlags: [],
+    aiRecommendedRentalMarkupPct: null,
+    aiMarkupRecommendationReason: "",
     sourceDetail: "manual",
     fitDecision: "unreviewed",
     nextActionType: "review_request",
@@ -616,14 +622,16 @@ function QuoteFormModal({
         clientMessage: editQuote.clientMessage ?? "",
         internalNotes: editQuote.internalNotes ?? "",
         lineItems: items.length > 0 ? ensureQuotePhaseIds(items) : DEFAULT_LINE_ITEMS.map(li => ({ ...li })),
-        rentalEquipment: parseQuoteSupportArtifacts<QuoteRentalEquipment[]>(editQuote.rentalEquipment, []),
+        rentalEquipment: parseQuoteSupportArtifactArray<QuoteRentalEquipment>(editQuote.rentalEquipment),
         rentalMarkupPct: editQuote.rentalMarkupPct ?? 15,
-        quoteEvidence: parseQuoteSupportArtifacts<QuoteEvidenceAttachment[]>(editQuote.quoteEvidence, []),
-        quoteMeasurements: parseQuoteSupportArtifacts<QuoteMeasurement[]>(editQuote.quoteMeasurements, []),
-        insuranceDocuments: parseQuoteSupportArtifacts<QuoteInsuranceDocument[]>(editQuote.insuranceDocuments, []),
+        quoteEvidence: parseQuoteSupportArtifactArray<QuoteEvidenceAttachment>(editQuote.quoteEvidence),
+        quoteMeasurements: parseQuoteSupportArtifactArray<QuoteMeasurement>(editQuote.quoteMeasurements),
+        insuranceDocuments: parseQuoteSupportArtifactArray<QuoteInsuranceDocument>(editQuote.insuranceDocuments),
         aiEvidenceSummary: editQuote.aiEvidenceSummary ?? "",
         aiCostReview: editQuote.aiCostReview ?? "",
         aiCostFlags: parseQuoteSupportArtifacts<QuoteCostFlag[]>(editQuote.aiCostFlags, []),
+        aiRecommendedRentalMarkupPct: editQuote.aiRecommendedRentalMarkupPct ?? null,
+        aiMarkupRecommendationReason: editQuote.aiMarkupRecommendationReason ?? "",
         sourceDetail: editQuote.sourceDetail ?? "manual",
         fitDecision: (editQuote.fitDecision ?? "unreviewed") as QuoteFormData["fitDecision"],
         nextActionType: editQuote.nextActionType ?? "review_request",
@@ -682,7 +690,7 @@ function QuoteFormModal({
   });
   const reviewCostMutation = trpc.nativeQuotes.reviewCost.useMutation({
     onSuccess: (result) => {
-      setForm((current) => ({ ...current, aiCostReview: result.summary, aiCostFlags: result.flags }));
+      setForm((current) => ({ ...current, aiCostReview: result.summary, aiCostFlags: result.flags, aiRecommendedRentalMarkupPct: result.recommendedRentalMarkupPct, aiMarkupRecommendationReason: result.markupRecommendationReason ?? "" }));
       utils.nativeQuotes.list.invalidate();
       toast.success("Internal AI cost review generated.");
     },
@@ -951,7 +959,7 @@ function QuoteFormModal({
       notes: form.internalNotes || undefined,
       rentalEquipment: form.rentalEquipment,
       measurements: form.quoteMeasurements,
-      evidence: form.quoteEvidence,
+      evidence: Array.isArray(form.quoteEvidence) ? form.quoteEvidence.slice(0, 6) : [],
     });
   };
 
@@ -1501,6 +1509,13 @@ function QuoteFormModal({
                 <div className="mt-2 flex flex-wrap items-end justify-between gap-2"><Button type="button" size="sm" variant="outline" className="h-7 border-sky-500/40 text-xs text-sky-100" onClick={() => setForm(current => ({ ...current, rentalEquipment: [...current.rentalEquipment, emptyRentalEquipment()] }))}><Plus className="mr-1 h-3 w-3" />Add rental equipment</Button><label className="text-[10px] text-zinc-400">Customer rental markup<select value={form.rentalMarkupPct} onChange={event => setForm(current => ({ ...current, rentalMarkupPct: Number(event.target.value) }))} className="mt-1 block h-7 rounded border border-sky-500/40 bg-zinc-800 px-2 text-xs text-sky-100"><option value={10}>10%</option><option value={11}>11%</option><option value={12}>12%</option><option value={13}>13%</option><option value={14}>14%</option><option value={15}>15%</option><option value={16}>16%</option><option value={17}>17%</option><option value={18}>18%</option><option value={19}>19%</option><option value={20}>20%</option></select></label><div className="text-right text-xs"><span className="block font-semibold text-sky-200">Internal rental cost: {formatQuoteCents(internalRentalCostCents)}</span><span className="text-[10px] text-sky-100/70">Included in customer total: {formatQuoteCents(rentalCustomerQuote.rentalCustomerChargeCents)} ({form.rentalMarkupPct}% markup)</span></div></div>
               </section>
 
+              <section className={`rounded-md border p-3 ${RENTAL_MARGIN_TONE_CLASSES[rentalOnlyMarginStatus.tone]}`}>
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div><p className="flex items-center gap-1 text-xs font-semibold">Live customer total preview<QuoteFormulaTooltip><TooltipTrigger asChild><button type="button" aria-label="View internal rental cost breakdown" className="rounded text-current/80 hover:text-current focus:outline-none focus-visible:ring-1 focus-visible:ring-current"><Info className="h-3.5 w-3.5" /></button></TooltipTrigger><TooltipContent side="top" sideOffset={6} className="max-w-[300px] border border-sky-500/35 bg-zinc-950 text-zinc-100"><p className="font-semibold text-sky-200">Internal rental cost breakdown</p><div className="mt-2 space-y-1 text-xs"><p>Base service cost: {formatQuoteCents(serviceTotalCents)}</p><p>Raw rental cost: {formatQuoteCents(internalRentalCostCents)}</p><p>Applied markup: {form.rentalMarkupPct}% / {formatQuoteCents(rentalCustomerQuote.rentalMarkupCents)}</p><p>Marked-up rental component: {formatQuoteCents(rentalCustomerQuote.rentalCustomerChargeCents)}</p><p className="border-t border-zinc-700 pt-1 font-semibold">Final customer total: {formatQuoteCents(totalCents)}</p></div><p className="mt-2 text-[10px] leading-relaxed text-zinc-400">Internal only. Rental-only margin excludes labor, fuel, machine wear, overhead, and other job costs.</p></TooltipContent></QuoteFormulaTooltip></p><p className="mt-0.5 text-[10px] leading-relaxed text-zinc-300">Updates immediately when rental cost or markup changes. This is a rental-cost screening view, not full job profit.</p></div>
+                  <div className="text-right"><p className="text-lg font-bold">{formatQuoteCents(totalCents)}</p><p className="text-[10px]">{rentalOnlyMarginPct === null ? "Add rental cost" : `${rentalOnlyMarginPct.toFixed(1)}% rental-only margin · ${rentalOnlyMarginStatus.label}`}</p></div>
+                </div>
+              </section>
+
               <section className="rounded-md border border-amber-500/20 bg-zinc-950/30 p-3">
                 <div className="flex items-start gap-2"><Camera className="mt-0.5 h-4 w-4 text-amber-300" /><div><p className="text-xs font-semibold text-amber-100">Site photos for AI Suggest</p><p className="mt-0.5 text-[10px] text-zinc-500">JPG, PNG, or WebP; up to 10 MB each. Photos stay internal to this quote.</p></div></div>
                 <label className="mt-2 inline-flex h-7 cursor-pointer items-center rounded border border-amber-500/40 px-2 text-[10px] font-medium text-amber-100 hover:bg-amber-500/10"><Camera className="mr-1 h-3 w-3" />{uploadingKind === "evidence" ? "Uploading…" : "Add site photos"}<input type="file" className="sr-only" accept="image/jpeg,image/png,image/webp" multiple disabled={uploadingKind !== null} onChange={event => { void uploadQuoteFiles("evidence", event.target.files); event.currentTarget.value = ""; }} /></label>
@@ -1527,6 +1542,7 @@ function QuoteFormModal({
               {!draftQuoteId && <p className="mt-2 text-[10px] text-amber-200">Save as a draft first to generate and retain this review.</p>}
               {draftQuoteId && form.quoteEvidence.length === 0 && form.quoteMeasurements.length === 0 && <p className="mt-2 text-[10px] text-amber-200">Add a site photo or measurement before generating the review.</p>}
               {form.aiCostReview && <div className="mt-3 rounded border border-sky-500/20 bg-zinc-950/40 px-3 py-2 text-[11px] leading-relaxed text-sky-100"><span className="font-semibold">Latest internal cost review:</span> {form.aiCostReview}</div>}
+              {form.aiRecommendedRentalMarkupPct !== null && <div className="mt-2 flex flex-wrap items-center justify-between gap-2 rounded border border-sky-500/25 bg-sky-500/[0.07] px-3 py-2 text-[11px] text-sky-100"><div><span className="font-semibold">Suggested rental markup: {form.aiRecommendedRentalMarkupPct}%</span>{form.aiMarkupRecommendationReason && <span className="ml-1 text-sky-100/80">— {form.aiMarkupRecommendationReason}</span>}<p className="mt-1 text-[10px] text-sky-100/65">Evidence-based internal suggestion only. Review before applying.</p></div><Button type="button" size="sm" variant="outline" className="h-7 border-sky-500/45 text-[10px] text-sky-100 hover:bg-sky-500/10" disabled={form.rentalMarkupPct === form.aiRecommendedRentalMarkupPct} onClick={() => setForm(current => ({ ...current, rentalMarkupPct: current.aiRecommendedRentalMarkupPct ?? current.rentalMarkupPct }))}>{form.rentalMarkupPct === form.aiRecommendedRentalMarkupPct ? "Applied" : `Use ${form.aiRecommendedRentalMarkupPct}%`}</Button></div>}
               {form.aiCostFlags.length > 0 && <div className="mt-2 rounded border border-amber-500/25 bg-amber-500/[0.06] px-3 py-2"><p className="text-[10px] font-semibold uppercase tracking-wide text-amber-100">Cost categories to verify</p><div className="mt-1.5 flex flex-wrap gap-1.5">{form.aiCostFlags.map((flag, index) => <span key={`${flag.category}-${index}`} className="rounded-full border border-amber-500/30 bg-zinc-950/45 px-2 py-1 text-[10px] text-amber-100"><strong className="capitalize">{flag.category.replace("_", " ")}:</strong> {flag.reason}</span>)}</div></div>}
             </section>
             {form.aiEvidenceSummary && <div className="mt-3 rounded border border-amber-500/20 bg-amber-500/[0.06] px-3 py-2 text-[11px] leading-relaxed text-amber-100"><span className="font-semibold">Last AI evidence review:</span> {form.aiEvidenceSummary}</div>}

@@ -118,3 +118,14 @@ export function parseQuoteSupportArtifacts<T>(raw: string | null | undefined, fa
     return fallback;
   }
 }
+
+/**
+ * Earlier quote drafts could contain a single serialized attachment object.
+ * Normalize that safe legacy shape to an array so current attachment controls
+ * and AI Suggest always receive the validated collection they expect.
+ */
+export function parseQuoteSupportArtifactArray<T>(raw: string | null | undefined): T[] {
+  const parsed = parseQuoteSupportArtifacts<unknown>(raw, []);
+  if (Array.isArray(parsed)) return parsed as T[];
+  return parsed && typeof parsed === "object" ? [parsed as T] : [];
+}

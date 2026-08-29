@@ -925,6 +925,13 @@
       "when": 1788031316599,
       "tag": "0131_famous_giant_man",
       "breakpoints": true
+    },
+    {
+      "idx": 132,
+      "version": "5",
+      "when": 1788032265297,
+      "tag": "0132_famous_darkhawk",
+      "breakpoints": true
     }
   ]
 }

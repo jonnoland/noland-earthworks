@@ -3856,3 +3856,9 @@
 - [x] Include confirmed internal rental, transport, and tax cost in the customer quote total with a selectable 10–20% markup
 - [x] Preserve an internal cost breakdown that distinguishes the rental component and markup from service-price and full-profit analysis
 - [x] Add regression coverage and full validation for customer totals, portal display, and quote email calculations
+
+## Operations Quote Markup Preview and AI Suggest Repair — Aug 2026
+- [x] Add a real-time internal preview of customer total, marked-up rental component, and rental-only margin status when the selected markup changes
+- [x] Add an internal-only tooltip with base service cost, raw rental cost, markup percentage, markup dollars, and final customer total
+- [x] Repair the AI Suggest evidence response contract and add a bounded 10–20% markup recommendation based only on supplied site evidence and quote context
+- [x] Add regression coverage and full validation for markup previews, cost details, and AI evidence responses

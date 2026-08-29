@@ -1968,6 +1968,10 @@ export const nativeQuotes = mysqlTable("native_quotes", {
   aiCostReview: text("aiCostReview"),
   /** JSON list of evidence-based internal cost categories requiring owner confirmation. */
   aiCostFlags: text("aiCostFlags"),
+  /** Optional internal 10–20% rental markup recommendation from the evidence-aware cost review. */
+  aiRecommendedRentalMarkupPct: int("aiRecommendedRentalMarkupPct"),
+  /** Brief internal rationale for the recommendation; never exposed to customers. */
+  aiMarkupRecommendationReason: text("aiMarkupRecommendationReason"),
   aiCostReviewUpdatedAt: timestamp("aiCostReviewUpdatedAt"),
   estimatedDuration: varchar("estimatedDuration", { length: 100 }),
   acreage: varchar("acreage", { length: 50 }),
