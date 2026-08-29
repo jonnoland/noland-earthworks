@@ -1952,6 +1952,16 @@ export const nativeQuotes = mysqlTable("native_quotes", {
   /** JSON array: [{description, qty, unitPriceCents, totalCents}] */
   lineItems: text("lineItems").notNull().default("[]"),
   totalCents: int("totalCents").notNull().default(0),
+  /** Internal Cat Rental Store equipment estimate; never rendered as a customer quote line item. */
+  rentalEquipment: text("rentalEquipment"),
+  /** Internal site photos saved for owner review and server-side AI estimate context. */
+  quoteEvidence: text("quoteEvidence"),
+  /** Structured field measurements that give the estimate review a traceable basis. */
+  quoteMeasurements: text("quoteMeasurements"),
+  /** Owner-uploaded proof-of-insurance documents that may be attached to the quote email. */
+  insuranceDocuments: text("insuranceDocuments"),
+  /** Saved AI observations from the last evidence-aware suggestion; internal only. */
+  aiEvidenceSummary: text("aiEvidenceSummary"),
   estimatedDuration: varchar("estimatedDuration", { length: 100 }),
   acreage: varchar("acreage", { length: 50 }),
   serviceType: varchar("serviceType", { length: 100 }),

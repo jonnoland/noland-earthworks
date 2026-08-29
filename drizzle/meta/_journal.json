@@ -897,6 +897,13 @@
       "when": 1787867065009,
       "tag": "0127_nostalgic_robin_chapel",
       "breakpoints": true
+    },
+    {
+      "idx": 128,
+      "version": "5",
+      "when": 1788027262472,
+      "tag": "0128_exotic_ghost_rider",
+      "breakpoints": true
     }
   ]
 }

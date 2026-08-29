@@ -29,6 +29,8 @@ import { invokeLLM } from "./_core/llm";
 import { isDraftPlaceholderClient } from "../shared/quoteDrafts";
 import { getQuotePortalPhaseSummary, type QuotePortalLineItem } from "../shared/quotePortalPhases";
 import { calculateLinearFeetFromAcreage } from "../shared/quoteLineItemMeasurements";
+import { getQuoteRentalCostCents, parseQuoteSupportArtifacts, type QuoteEvidenceAttachment, type QuoteInsuranceDocument, type QuoteMeasurement, type QuoteRentalEquipment } from "../shared/quoteSupportArtifacts";
+import { storageGet, storagePut } from "./storage";
 
 // Strip markdown code fences from LLM JSON responses
 function stripCodeFence(raw: string): string {
@@ -48,9 +50,11 @@ const ownerProcedure = protectedProcedure.use(({ ctx, next }) => {
 });
 
 // ─── Resend email helper ──────────────────────────────────────────────────────
-async function sendEmail(to: string, subject: string, html: string) {
-  if (!ENV.resendApiKey) return;
-  await fetch("https://api.resend.com/emails", {
+type EmailAttachment = { filename: string; content: string; content_type: string };
+
+async function sendEmail(to: string, subject: string, html: string, attachments: EmailAttachment[] = []) {
+  if (!ENV.resendApiKey) throw new Error("Email delivery is not configured");
+  const response = await fetch("https://api.resend.com/emails", {
     method: "POST",
     headers: {
       Authorization: `Bearer ${ENV.resendApiKey}`,
@@ -61,8 +65,10 @@ async function sendEmail(to: string, subject: string, html: string) {
       to,
       subject,
       html,
+      ...(attachments.length > 0 ? { attachments } : {}),
     }),
   });
+  if (!response.ok) throw new Error(`Email provider rejected the quote email (${response.status})`);
 }
 
 function parsePortalLineItems(raw: string | null): QuotePortalLineItem[] {
@@ -91,6 +97,95 @@ const lineItemSchema = z.object({
   sourceAcreage: z.number().positive().max(500).optional(),
   clearingWidthFeet: z.number().positive().max(200).optional(),
 });
+
+const rentalEquipmentSchema = z.object({
+  equipmentName: z.string().trim().min(1).max(160),
+  dealerLocation: z.string().trim().max(200).optional(),
+  rentalDays: z.number().positive().max(365).optional(),
+  rentalCostCents: z.number().int().min(0).max(10_000_000),
+  transportCostCents: z.number().int().min(0).max(10_000_000),
+  taxCostCents: z.number().int().min(0).max(10_000_000),
+  quoteReference: z.string().trim().max(160).optional(),
+  notes: z.string().trim().max(1000).optional(),
+});
+
+const quoteEvidenceSchema = z.object({
+  key: z.string().min(1).max(500),
+  url: z.string().max(1200),
+  filename: z.string().trim().min(1).max(255),
+  mimeType: z.enum(["image/jpeg", "image/png", "image/webp"]),
+  sizeBytes: z.number().int().positive().max(10 * 1024 * 1024),
+});
+
+const insuranceDocumentSchema = z.object({
+  key: z.string().min(1).max(500),
+  url: z.string().max(1200),
+  filename: z.string().trim().min(1).max(255),
+  mimeType: z.enum(["application/pdf", "image/jpeg", "image/png"]),
+  sizeBytes: z.number().int().positive().max(10 * 1024 * 1024),
+});
+
+const quoteMeasurementSchema = z.object({
+  label: z.string().trim().min(1).max(100),
+  value: z.string().trim().min(1).max(100),
+  unit: z.string().trim().min(1).max(40),
+  notes: z.string().trim().max(1000).optional(),
+});
+
+function cleanStoredAttachmentKey(key: string, ownerId: number): boolean {
+  return key.startsWith(`quotes/${ownerId}/`);
+}
+
+function assertOwnedAttachmentKeys(ownerId: number, attachments: Array<{ key: string }>): void {
+  if (attachments.some((attachment) => !cleanStoredAttachmentKey(attachment.key, ownerId))) {
+    throw new TRPCError({ code: "FORBIDDEN", message: "Quote attachments must belong to the signed-in Operations account." });
+  }
+}
+
+function sanitizeFilename(filename: string): string {
+  const cleaned = filename.replace(/[^a-zA-Z0-9._-]+/g, "-").replace(/^-+|-+$/g, "");
+  return cleaned || "attachment";
+}
+
+async function buildInsuranceEmailAttachments(ownerId: number, documents: QuoteInsuranceDocument[], selectedKeys: string[]): Promise<EmailAttachment[]> {
+  const selected = documents.filter((document) => selectedKeys.includes(document.key));
+  if (selected.length !== selectedKeys.length) {
+    throw new TRPCError({ code: "BAD_REQUEST", message: "One or more selected insurance documents do not belong to this quote." });
+  }
+  if (selected.length > 3) {
+    throw new TRPCError({ code: "BAD_REQUEST", message: "Attach no more than three proof-of-insurance documents at a time." });
+  }
+  const attachments: EmailAttachment[] = [];
+  let totalBytes = 0;
+  for (const document of selected) {
+    if (!cleanStoredAttachmentKey(document.key, ownerId)) {
+      throw new TRPCError({ code: "FORBIDDEN", message: "Invalid insurance document." });
+    }
+    totalBytes += document.sizeBytes;
+    if (totalBytes > 28 * 1024 * 1024) {
+      throw new TRPCError({ code: "BAD_REQUEST", message: "Selected insurance documents are too large to email together." });
+    }
+    const { url } = await storageGet(document.key);
+    const response = await fetch(url);
+    if (!response.ok) throw new Error(`Unable to load ${document.filename} for email attachment`);
+    attachments.push({
+      filename: document.filename,
+      content: Buffer.from(await response.arrayBuffer()).toString("base64"),
+      content_type: document.mimeType,
+    });
+  }
+  return attachments;
+}
+
+async function buildEvidenceContent(ownerId: number, evidence: QuoteEvidenceAttachment[]): Promise<Array<Record<string, unknown>>> {
+  const content: Array<Record<string, unknown>> = [];
+  for (const attachment of evidence.slice(0, 6)) {
+    if (!cleanStoredAttachmentKey(attachment.key, ownerId)) continue;
+    const { url } = await storageGet(attachment.key);
+    content.push({ type: "image_url", image_url: { url, detail: "low" } });
+  }
+  return content;
+}
 
 function normalizeQuoteLineItems(items: z.infer<typeof lineItemSchema>[]) {
   return items.map((item) => ({
@@ -186,10 +281,17 @@ export const nativeQuotesRouter = router({
       fieldQuoteId: z.number().int().optional(),
       distanceQuoteId: z.number().int().optional(),
       websiteRequestId: z.number().int().optional(),
+      rentalEquipment: z.array(rentalEquipmentSchema).max(12).optional(),
+      quoteEvidence: z.array(quoteEvidenceSchema).max(12).optional(),
+      quoteMeasurements: z.array(quoteMeasurementSchema).max(24).optional(),
+      insuranceDocuments: z.array(insuranceDocumentSchema).max(12).optional(),
+      aiEvidenceSummary: z.string().max(4000).optional(),
     }))
-    .mutation(async ({ input }: { input: any }) => {
+    .mutation(async ({ ctx, input }: { ctx: { user: { id: number } }; input: any }) => {
       const db = await getDb();
       if (!db) throw new Error("DB unavailable");
+      assertOwnedAttachmentKeys(ctx.user.id, input.quoteEvidence ?? []);
+      assertOwnedAttachmentKeys(ctx.user.id, input.insuranceDocuments ?? []);
       const lineItems = normalizeQuoteLineItems(input.lineItems);
       const totalCents = lineItems.reduce((sum, item) => sum + item.totalCents, 0);
       const result = await db.insert(nativeQuotes).values({
@@ -202,6 +304,11 @@ export const nativeQuotesRouter = router({
         clientMessage: input.clientMessage || null,
         lineItems: JSON.stringify(lineItems),
         totalCents,
+        rentalEquipment: JSON.stringify(input.rentalEquipment ?? []),
+        quoteEvidence: JSON.stringify(input.quoteEvidence ?? []),
+        quoteMeasurements: JSON.stringify(input.quoteMeasurements ?? []),
+        insuranceDocuments: JSON.stringify(input.insuranceDocuments ?? []),
+        aiEvidenceSummary: input.aiEvidenceSummary || null,
         estimatedDuration: input.estimatedDuration || null,
         acreage: input.acreage || null,
         serviceType: input.serviceType || null,
@@ -298,17 +405,28 @@ export const nativeQuotesRouter = router({
       proposalStatus: z.enum(["not_started", "draft", "sent", "approved", "declined"]).optional(),
       depositStatus: z.enum(["not_requested", "requested", "paid", "not_required"]).optional(),
       finalPaymentStatus: z.enum(["not_due", "invoiced", "paid", "overdue"]).optional(),
+      rentalEquipment: z.array(rentalEquipmentSchema).max(12).optional(),
+      quoteEvidence: z.array(quoteEvidenceSchema).max(12).optional(),
+      quoteMeasurements: z.array(quoteMeasurementSchema).max(24).optional(),
+      insuranceDocuments: z.array(insuranceDocumentSchema).max(12).optional(),
+      aiEvidenceSummary: z.string().max(4000).nullable().optional(),
     }))
-    .mutation(async ({ input }: { input: any }) => {
+    .mutation(async ({ ctx, input }: { ctx: { user: { id: number } }; input: any }) => {
       const db = await getDb();
       if (!db) throw new Error("DB unavailable");
-      const { id, lineItems, ...rest } = input;
+      const { id, lineItems, rentalEquipment, quoteEvidence, quoteMeasurements, insuranceDocuments, ...rest } = input;
+      if (quoteEvidence !== undefined) assertOwnedAttachmentKeys(ctx.user.id, quoteEvidence);
+      if (insuranceDocuments !== undefined) assertOwnedAttachmentKeys(ctx.user.id, insuranceDocuments);
       const updates: Record<string, unknown> = { ...rest };
       if (lineItems !== undefined) {
         const normalized = normalizeQuoteLineItems(lineItems);
         updates.lineItems = JSON.stringify(normalized);
         updates.totalCents = normalized.reduce((sum, item) => sum + item.totalCents, 0);
       }
+      if (rentalEquipment !== undefined) updates.rentalEquipment = JSON.stringify(rentalEquipment);
+      if (quoteEvidence !== undefined) updates.quoteEvidence = JSON.stringify(quoteEvidence);
+      if (quoteMeasurements !== undefined) updates.quoteMeasurements = JSON.stringify(quoteMeasurements);
+      if (insuranceDocuments !== undefined) updates.insuranceDocuments = JSON.stringify(insuranceDocuments);
       // Remove undefined values
       Object.keys(updates).forEach(k => updates[k] === undefined && delete updates[k]);
       if (Object.keys(updates).length === 0) return { success: true };
@@ -364,6 +482,11 @@ export const nativeQuotesRouter = router({
         clientMessage: src.clientMessage,
         lineItems: src.lineItems,
         totalCents: src.totalCents,
+        rentalEquipment: src.rentalEquipment,
+        quoteEvidence: src.quoteEvidence,
+        quoteMeasurements: src.quoteMeasurements,
+        insuranceDocuments: src.insuranceDocuments,
+        aiEvidenceSummary: src.aiEvidenceSummary,
         estimatedDuration: src.estimatedDuration,
         acreage: src.acreage,
         serviceType: src.serviceType,
@@ -379,19 +502,50 @@ export const nativeQuotesRouter = router({
       return { id: Number(id) };
     }),
 
+  uploadAttachment: ownerProcedure
+    .input(z.object({
+      kind: z.enum(["evidence", "insurance"]),
+      base64: z.string().min(1),
+      mimeType: z.enum(["image/jpeg", "image/png", "image/webp", "application/pdf"]),
+      filename: z.string().trim().min(1).max(255),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const accepted = input.kind === "evidence"
+        ? ["image/jpeg", "image/png", "image/webp"]
+        : ["application/pdf", "image/jpeg", "image/png"];
+      if (!accepted.includes(input.mimeType)) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "That file type is not allowed for this quote attachment." });
+      }
+      const normalizedBase64 = input.base64.replace(/^data:[^;]+;base64,/, "");
+      const bytes = Buffer.from(normalizedBase64, "base64");
+      if (bytes.length === 0 || bytes.length > 10 * 1024 * 1024) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Each quote attachment must be 10 MB or smaller." });
+      }
+      const key = `quotes/${ctx.user.id}/${input.kind}/${Date.now()}-${randomBytes(8).toString("hex")}-${sanitizeFilename(input.filename)}`;
+      const { url } = await storagePut(key, bytes, input.mimeType);
+      return { key, url, filename: sanitizeFilename(input.filename), mimeType: input.mimeType, sizeBytes: bytes.length };
+    }),
+
   sendPortal: ownerProcedure
     .input(z.object({
       id: z.number().int(),
       personalNote: z.string().optional(),
       origin: z.string().optional(),
+      insuranceDocumentKeys: z.array(z.string().min(1).max(500)).max(3).optional(),
     }))
-    .mutation(async ({ input }: { input: { id: number; personalNote?: string; origin?: string } }) => {
+    .mutation(async ({ ctx, input }) => {
       const db = await getDb();
       if (!db) throw new Error("DB unavailable");
       const rows = await db.select().from(nativeQuotes).where(eq(nativeQuotes.id, input.id)).limit(1);
       if (!rows.length) throw new Error("Quote not found");
       const quote = rows[0];
       if (!quote.clientEmail) throw new Error("No client email on this quote");
+      const insuranceDocuments = parseQuoteSupportArtifacts<QuoteInsuranceDocument[]>(quote.insuranceDocuments, []);
+      const insuranceAttachments = await buildInsuranceEmailAttachments(
+        ctx.user.id,
+        insuranceDocuments,
+        input.insuranceDocumentKeys ?? [],
+      );
 
       // Generate or reuse portal token
       const token = quote.portalToken ?? randomBytes(32).toString("hex");
@@ -420,7 +574,7 @@ export const nativeQuotesRouter = router({
           <p style="margin:4px 0 0;color:#444;font-size:12px;">Noland Earthworks, LLC &bull; Vanleer, TN &bull; Veteran-Owned &amp; Operated</p>
         </div>`;
 
-      await sendEmail(quote.clientEmail, `Your Quote from Noland Earthworks — ${quote.title}`, html);
+      await sendEmail(quote.clientEmail, `Your Quote from Noland Earthworks — ${quote.title}`, html, insuranceAttachments);
       // Only record the quote as sent after the customer email provider accepts it.
       await db.update(nativeQuotes).set({
         portalToken: token,
@@ -432,7 +586,7 @@ export const nativeQuotesRouter = router({
         updatedAt: new Date(),
       }).where(eq(opsLeads.nativeQuoteId, input.id));
       await notifyOwner({ title: "Quote Portal Sent", content: `Portal link sent to ${quote.clientName} (${quote.clientEmail}) for "${quote.title}"` });
-      return { success: true, portalUrl };
+      return { success: true, portalUrl, insuranceAttachmentCount: insuranceAttachments.length };
     }),
 
   convertToJob: ownerProcedure
@@ -533,6 +687,9 @@ export const nativeQuotesRouter = router({
       density: z.string().optional(),
       access: z.string().optional(),
       notes: z.string().max(5000).optional(),
+      rentalEquipment: z.array(rentalEquipmentSchema).max(12).optional(),
+      measurements: z.array(quoteMeasurementSchema).max(24).optional(),
+      evidence: z.array(quoteEvidenceSchema).max(6).optional(),
     }).superRefine((input, ctx) => {
       if (isLinearFootService(input.serviceType)) {
         if (!input.linearFeet && !input.acreage) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["linearFeet"], message: "Enter measured Linear Feet or acreage to estimate from." });
@@ -541,8 +698,9 @@ export const nativeQuotesRouter = router({
         ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["acreage"], message: "Enter acreage for this service." });
       }
     }))
-    .mutation(async ({ input }: { input: { serviceType: string; acreage?: number; linearFeet?: number; clearingWidthFeet?: number; unitRateCents?: number; terrain?: string; density?: string; access?: string; notes?: string } }) => {
-      const { serviceType, acreage, linearFeet, clearingWidthFeet, unitRateCents, terrain, density, access, notes } = input;
+    .mutation(async ({ ctx, input }: { ctx: { user: { id: number } }; input: { serviceType: string; acreage?: number; linearFeet?: number; clearingWidthFeet?: number; unitRateCents?: number; terrain?: string; density?: string; access?: string; notes?: string; rentalEquipment?: QuoteRentalEquipment[]; measurements?: QuoteMeasurement[]; evidence?: QuoteEvidenceAttachment[] } }) => {
+      const { serviceType, acreage, linearFeet, clearingWidthFeet, unitRateCents, terrain, density, access, notes, rentalEquipment = [], measurements = [], evidence = [] } = input;
+      assertOwnedAttachmentKeys(ctx.user.id, evidence);
 
       // ── Pull DB-driven pricing (same source as Cost Estimator) ──────────────
       const svcKey = quoteServiceKey(serviceType);
@@ -629,6 +787,9 @@ export const nativeQuotesRouter = router({
           clientMessage: isAcreageEstimate
             ? `This quote uses an estimated ${footage.toLocaleString()} linear feet of ${serviceType.toLowerCase()}, calculated from ${acreage} acres at a ${clearingWidthFeet}-foot clearing width. The footage and final scope will be verified during the site visit.`
             : `This quote covers approximately ${footage.toLocaleString()} linear feet of ${serviceType.toLowerCase()}. Final scope, site access, vegetation density, and ground conditions will be verified during the site visit.`,
+          evidenceSummary: evidence.length > 0 || measurements.length > 0
+            ? "Site photos and measurements are saved for owner review. Linear Foot pricing remains controlled by the recorded footage, saved Operations rates, and on-site verification."
+            : "No site photos or measurements were provided. Linear Foot pricing remains subject to on-site verification.",
           lineItems,
           totalCents: totalMid * 100,
           belowMinimum: false,
@@ -699,6 +860,10 @@ export const nativeQuotesRouter = router({
       const rawTotal   = Math.round(midPerAcre * resolvedAcreage);
       const totalMid   = Math.max(rawTotal, MIN_JOB);
 
+      const internalRentalCostCents = getQuoteRentalCostCents(rentalEquipment);
+      const measurementContext = measurements.length > 0
+        ? measurements.map((measurement) => `${measurement.label}: ${measurement.value} ${measurement.unit}${measurement.notes ? ` (${measurement.notes})` : ""}`).join("; ")
+        : "none";
       const systemPrompt = `You are an expert estimator for Noland Earthworks, LLC — a veteran-owned forestry mulching and land management company in Middle Tennessee. You help the owner (Jon Noland) quickly build accurate quotes.
 Current calibrated rates for Middle & West Tennessee:
 - Forestry Mulching: $${Math.round(fmBase*0.875)}-$${Math.round(fmBase*dhMult*1.25)}/acre (base $${fmBase}/acre)
@@ -714,6 +879,7 @@ Return ONLY valid JSON with no markdown or explanation. Schema:
   "title": string,
   "estimatedDuration": string,
   "clientMessage": string,
+  "evidenceSummary": string,
   "lineItems": [
     { "description": string, "qty": number, "unitPriceCents": number }
   ]
@@ -723,15 +889,18 @@ Rules:
 - Primary line item is the main service (e.g. "Forestry Mulching - 5 acres @ $${midPerAcre}/acre")
 - Add a mobilization fee line item ($${MOBILIZATION}) if acreage < 5
 - Keep line items to 2-4 maximum
+- Never create a separate equipment-rental line item. Any rental information is internal job-cost context only.
+- Evidence summary is internal only: note visible vegetation, terrain, access, site constraints, and uncertainties. Never claim measurements, boundaries, or conditions that are not visible or supplied.
 - Duration: 1 acre ~2-4 hours; 5 acres ~1 day; 10 acres ~2 days; 20+ acres ~3-5 days
 - Client message should be professional, plain-spoken, no corporate jargon, no emojis`;
 
-      const userPrompt = `Service: ${serviceType}\nAcreage: ${resolvedAcreage} acres\nTerrain: ${terrain ?? "flat"}\nVegetation density: ${density ?? "moderate"}\nAccess: ${access ?? "easy"}\nAdditional notes: ${notes ?? "none"}\n\nGenerate the quote suggestion JSON.`;
+      const userPrompt = `Service: ${serviceType}\nAcreage: ${resolvedAcreage} acres\nTerrain: ${terrain ?? "flat"}\nVegetation density: ${density ?? "moderate"}\nAccess: ${access ?? "easy"}\nField measurements: ${measurementContext}\nInternal rental cost context: $${(internalRentalCostCents / 100).toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 })} (do not show it as a customer line item)\nAdditional notes: ${notes ?? "none"}\n\nGenerate the quote suggestion JSON.`;
+      const evidenceContent = await buildEvidenceContent(ctx.user.id, evidence);
 
       const result = await invokeLLM({
         messages: [
           { role: "system", content: systemPrompt },
-          { role: "user",   content: userPrompt },
+          { role: "user", content: [{ type: "text", text: userPrompt }, ...evidenceContent] as any },
         ],
         response_format: {
           type: "json_schema" as const,
@@ -744,6 +913,7 @@ Rules:
                 title:             { type: "string" },
                 estimatedDuration: { type: "string" },
                 clientMessage:     { type: "string" },
+                evidenceSummary:   { type: "string" },
                 lineItems: {
                   type: "array",
                   items: {
@@ -758,7 +928,7 @@ Rules:
                   },
                 },
               },
-              required: ["title", "estimatedDuration", "clientMessage", "lineItems"],
+              required: ["title", "estimatedDuration", "clientMessage", "evidenceSummary", "lineItems"],
               additionalProperties: false,
             },
           },
@@ -767,7 +937,7 @@ Rules:
 
       const rawContent = result.choices?.[0]?.message?.content ?? "{}";
       const raw = typeof rawContent === "string" ? rawContent : JSON.stringify(rawContent);
-      let parsed: { title: string; estimatedDuration: string; clientMessage: string; lineItems: { description: string; qty: number; unitPriceCents: number }[] };
+      let parsed: { title: string; estimatedDuration: string; clientMessage: string; evidenceSummary: string; lineItems: { description: string; qty: number; unitPriceCents: number }[] };
       try {
         parsed = JSON.parse(stripCodeFence(raw));
       } catch {
@@ -787,6 +957,7 @@ Rules:
         title:             parsed.title ?? `${serviceType} - ${resolvedAcreage} Acres`,
         estimatedDuration: parsed.estimatedDuration ?? "",
         clientMessage:     parsed.clientMessage ?? "",
+        evidenceSummary:   parsed.evidenceSummary ?? "",
         lineItems,
         totalCents: finalTotalCents,
         belowMinimum,

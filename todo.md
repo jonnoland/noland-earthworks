@@ -3832,3 +3832,10 @@
 - [ ] Regenerate secure read-only access and verify unauthenticated access remains blocked
 - [ ] Diagnose and repair the Daily Ops Digest schedule and delivery behavior, including the Saturday rule
 - [ ] Add regression coverage and validate the restored view and digest workflow
+
+## Operations Quote Rental, Evidence, and Insurance Attachments — Aug 2026
+- [x] Add a Cat Rental Store equipment workflow that records internal rental costs within the job cost, not as a customer-facing line item
+- [x] Add secure quote-level photo and measurement attachments that are available to the server-side AI estimate review
+- [x] Add secure proof-of-insurance document selection and delivery with a sent quote
+- [x] Add database schema, protected API, regression coverage, and full validation for the quote enhancements
+- [x] Implement the approved Cat Rental Store handoff with manually confirmed internal equipment, transport, tax, and rental-duration costs; do not use unverified public rental rates

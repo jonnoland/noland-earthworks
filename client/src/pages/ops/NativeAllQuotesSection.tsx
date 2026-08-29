@@ -29,7 +29,7 @@ import {
   FileText, ExternalLink, Sparkles, Info, AlertTriangle,
   RefreshCw, ChevronRight, MapPin, Phone, Mail, User, Users, X, Globe,
   Loader2, Clock, ChevronDown, ChevronUp, ArchiveRestore, Pencil,
-  ArrowRight, Ban, ArrowUpDown, Volume2, VolumeX, BellRing, Bell, BellOff, GripVertical
+  ArrowRight, Ban, ArrowUpDown, Volume2, VolumeX, BellRing, Bell, BellOff, GripVertical, Camera, Ruler, ShieldCheck, Tractor
 } from "lucide-react";
 import { MapView } from "@/components/Map";
 import FieldQuotesSection from "@/pages/ops/FieldQuotesSection";
@@ -54,6 +54,7 @@ import { buildQuoteCostBreakdown, getQuoteCostDistribution } from "@shared/quote
 import { getQuoteDraftIdentity } from "@shared/quoteDrafts";
 import { moveQuoteLineItem } from "@shared/quoteLineItemOrder";
 import { ensureQuotePhaseIds, getQuotePhaseSections } from "@shared/quotePhaseSections";
+import { getQuoteRentalCostCents, parseQuoteSupportArtifacts, type QuoteEvidenceAttachment, type QuoteInsuranceDocument, type QuoteMeasurement, type QuoteRentalEquipment } from "@shared/quoteSupportArtifacts";
 import {
   createQuoteServiceLineItem,
   calculateLinearFeetFromAcreage,
@@ -113,6 +114,11 @@ interface NativeQuote {
   clientMessage: string | null;
   lineItems: string;
   totalCents: number;
+  rentalEquipment: string;
+  quoteEvidence: string;
+  quoteMeasurements: string;
+  insuranceDocuments: string;
+  aiEvidenceSummary: string | null;
   estimatedDuration: string | null;
   acreage: string | null;
   serviceType: string | null;
@@ -421,6 +427,28 @@ function positiveDurationError(value: string | undefined) {
     : "Enter a positive number of working days.";
 }
 
+function fileToBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error("Unable to read the selected file."));
+    reader.onload = () => resolve(String(reader.result).split(",")[1] ?? "");
+    reader.readAsDataURL(file);
+  });
+}
+
+function emptyRentalEquipment(): QuoteRentalEquipment {
+  return {
+    equipmentName: "",
+    dealerLocation: "",
+    rentalDays: undefined,
+    rentalCostCents: 0,
+    transportCostCents: 0,
+    taxCostCents: 0,
+    quoteReference: "",
+    notes: "",
+  };
+}
+
 function normalizeQuoteLineItemsForSave(items: LineItem[]): LineItem[] {
   return items.map((item) => {
     const quantity = Number(item.qty);
@@ -451,6 +479,11 @@ interface QuoteFormData {
   clientMessage: string;
   internalNotes: string;
   lineItems: LineItem[];
+  rentalEquipment: QuoteRentalEquipment[];
+  quoteEvidence: QuoteEvidenceAttachment[];
+  quoteMeasurements: QuoteMeasurement[];
+  insuranceDocuments: QuoteInsuranceDocument[];
+  aiEvidenceSummary: string;
   sourceDetail: string;
   fitDecision: "unreviewed" | "owner_review" | "pursue" | "pass" | "refer_out";
   nextActionType: string;
@@ -533,6 +566,11 @@ function QuoteFormModal({
     clientMessage: prefill?.clientMessage ?? "",
     internalNotes: "",
     lineItems: DEFAULT_LINE_ITEMS.map(li => ({ ...li })),
+    rentalEquipment: [],
+    quoteEvidence: [],
+    quoteMeasurements: [],
+    insuranceDocuments: [],
+    aiEvidenceSummary: "",
     sourceDetail: "manual",
     fitDecision: "unreviewed",
     nextActionType: "review_request",
@@ -561,6 +599,11 @@ function QuoteFormModal({
         clientMessage: editQuote.clientMessage ?? "",
         internalNotes: editQuote.internalNotes ?? "",
         lineItems: items.length > 0 ? ensureQuotePhaseIds(items) : DEFAULT_LINE_ITEMS.map(li => ({ ...li })),
+        rentalEquipment: parseQuoteSupportArtifacts<QuoteRentalEquipment[]>(editQuote.rentalEquipment, []),
+        quoteEvidence: parseQuoteSupportArtifacts<QuoteEvidenceAttachment[]>(editQuote.quoteEvidence, []),
+        quoteMeasurements: parseQuoteSupportArtifacts<QuoteMeasurement[]>(editQuote.quoteMeasurements, []),
+        insuranceDocuments: parseQuoteSupportArtifacts<QuoteInsuranceDocument[]>(editQuote.insuranceDocuments, []),
+        aiEvidenceSummary: editQuote.aiEvidenceSummary ?? "",
         sourceDetail: editQuote.sourceDetail ?? "manual",
         fitDecision: (editQuote.fitDecision ?? "unreviewed") as QuoteFormData["fitDecision"],
         nextActionType: editQuote.nextActionType ?? "review_request",
@@ -604,6 +647,42 @@ function QuoteFormModal({
   const parcelLookupMutation = trpc.parcel.lookup.useMutation({
     onError: (error) => toast.error(error.message),
   });
+  const uploadAttachmentMutation = trpc.nativeQuotes.uploadAttachment.useMutation();
+  const [uploadingKind, setUploadingKind] = useState<"evidence" | "insurance" | null>(null);
+
+  const uploadQuoteFiles = async (kind: "evidence" | "insurance", files: FileList | null) => {
+    if (!files?.length) return;
+    const selected = Array.from(files);
+    const currentCount = kind === "evidence" ? form.quoteEvidence.length : form.insuranceDocuments.length;
+    const remaining = 12 - currentCount;
+    if (selected.length > remaining) {
+      toast.error(`You can add ${remaining} more ${kind === "evidence" ? "site photo(s)" : "insurance document(s)"} to this quote.`);
+      return;
+    }
+    setUploadingKind(kind);
+    try {
+      const uploaded: Array<QuoteEvidenceAttachment | QuoteInsuranceDocument> = [];
+      for (const file of selected) {
+        if (file.size > 10 * 1024 * 1024) throw new Error(`${file.name} is larger than the 10 MB attachment limit.`);
+        const uploadedFile = await uploadAttachmentMutation.mutateAsync({
+          kind,
+          base64: await fileToBase64(file),
+          mimeType: file.type as "image/jpeg" | "image/png" | "image/webp" | "application/pdf",
+          filename: file.name,
+        });
+        uploaded.push(uploadedFile as QuoteEvidenceAttachment | QuoteInsuranceDocument);
+      }
+      setForm((current) => kind === "evidence"
+        ? { ...current, quoteEvidence: [...current.quoteEvidence, ...(uploaded as QuoteEvidenceAttachment[])] }
+        : { ...current, insuranceDocuments: [...current.insuranceDocuments, ...(uploaded as QuoteInsuranceDocument[])] },
+      );
+      toast.success(`${uploaded.length} ${kind === "evidence" ? "site photo" : "insurance document"}${uploaded.length === 1 ? "" : "s"} attached to this quote.`);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "The attachment could not be uploaded.");
+    } finally {
+      setUploadingKind(null);
+    }
+  };
 
   const applyParcelMatch = (match: typeof parcelMatches[number]) => {
     const parcelSourceLabel = isNashvilleParcelViewerUrl(match.propertyViewerUrl)
@@ -672,6 +751,7 @@ function QuoteFormModal({
   const costDistribution = useMemo(() => getQuoteCostDistribution(costBreakdown), [costBreakdown]);
   const hasCostDistribution = costDistribution.some((slice) => slice.value > 0);
   const totalCents = costBreakdown.allPhasesTotalCents;
+  const internalRentalCostCents = useMemo(() => getQuoteRentalCostCents(form.rentalEquipment), [form.rentalEquipment]);
   const discountItems = useMemo(() => form.lineItems.filter((item) => item.kind === "discount" || item.unitPriceCents < 0), [form.lineItems]);
   const appliedDiscountCodes = useMemo(
     () => new Set(discountItems.map((item) => item.discountCode).filter((code): code is string => Boolean(code))),
@@ -725,6 +805,7 @@ function QuoteFormModal({
     title: string;
     estimatedDuration: string;
     clientMessage: string;
+    evidenceSummary?: string;
     lineItems: LineItem[];
     totalCents: number;
     belowMinimum: boolean;
@@ -785,6 +866,7 @@ function QuoteFormModal({
       title: prev.title || aiSuggestion.title,
       estimatedDuration: aiSuggestion.estimatedDuration || prev.estimatedDuration,
       clientMessage: aiSuggestion.clientMessage || prev.clientMessage,
+      aiEvidenceSummary: aiSuggestion.evidenceSummary || prev.aiEvidenceSummary,
       lineItems: lineItems.length > 0 ? lineItems : prev.lineItems,
     }));
     setAiPanel("closed");
@@ -823,6 +905,9 @@ function QuoteFormModal({
       density: aiDensity,
       access: aiAccess,
       notes: form.internalNotes || undefined,
+      rentalEquipment: form.rentalEquipment,
+      measurements: form.quoteMeasurements,
+      evidence: form.quoteEvidence,
     });
   };
 
@@ -1004,6 +1089,11 @@ function QuoteFormModal({
       clientMessage: form.clientMessage || undefined,
       internalNotes: form.internalNotes || undefined,
       lineItems,
+      rentalEquipment: form.rentalEquipment,
+      quoteEvidence: form.quoteEvidence,
+      quoteMeasurements: form.quoteMeasurements,
+      insuranceDocuments: form.insuranceDocuments,
+      aiEvidenceSummary: form.aiEvidenceSummary || undefined,
       totalCents: normalizedTotalCents,
       sourceDetail: form.sourceDetail || "manual",
       fitDecision: form.fitDecision,
@@ -1335,6 +1425,48 @@ function QuoteFormModal({
               {positiveDurationError(form.estimatedDuration) ? <p className="mt-1.5 text-[10px] text-red-300">{positiveDurationError(form.estimatedDuration)}</p> : <p className="mt-1.5 text-[10px] leading-relaxed text-amber-100/70">Enter a positive number of working days for the complete quote. Phase sections below can carry their own individual duration estimates.</p>}
             </div>
           </div>
+
+          <details open className={`rounded-lg border border-sky-500/25 bg-sky-500/[0.035] p-3 ${isCompactWorkspace ? "" : "col-span-2"}`}>
+            <summary className="flex cursor-pointer items-center gap-2 text-xs font-semibold uppercase tracking-wide text-sky-200"><Tractor className="h-4 w-4" /> Internal equipment, site evidence & insurance</summary>
+            <p className="mt-2 text-[11px] leading-relaxed text-zinc-400">Keep rental costs inside the job-cost review. They are never added as customer-facing quote lines. Photos and measurements give AI Suggest better project context; all results still require your site verification.</p>
+            <div className={`mt-3 grid gap-3 ${isCompactWorkspace ? "grid-cols-1" : "lg:grid-cols-2"}`}>
+              <section className="rounded-md border border-sky-500/20 bg-zinc-950/30 p-3">
+                <div className="flex flex-wrap items-start justify-between gap-2">
+                  <div><p className="text-xs font-semibold text-sky-100">Cat rental equipment — internal cost</p><p className="mt-0.5 text-[10px] text-zinc-500">Enter a confirmed dealer quote, not estimated public rates.</p></div>
+                  <a href="https://rent.cat.com/en_US" target="_blank" rel="noreferrer" className="inline-flex h-7 items-center rounded border border-sky-500/40 px-2 text-[10px] font-medium text-sky-200 hover:bg-sky-500/10"><ExternalLink className="mr-1 h-3 w-3" />Open Cat Rental Store</a>
+                </div>
+                <div className="mt-2 space-y-2">
+                  {form.rentalEquipment.map((rental, index) => (
+                    <div key={index} className="rounded border border-zinc-700 bg-zinc-900/70 p-2">
+                      <div className="grid gap-2 sm:grid-cols-2">
+                        <Input value={rental.equipmentName} onChange={e => setForm(current => ({ ...current, rentalEquipment: current.rentalEquipment.map((item, itemIndex) => itemIndex === index ? { ...item, equipmentName: e.target.value } : item) }))} className="h-8 bg-zinc-800 text-xs" placeholder="Equipment, e.g. Compact track loader" />
+                        <Input value={rental.dealerLocation ?? ""} onChange={e => setForm(current => ({ ...current, rentalEquipment: current.rentalEquipment.map((item, itemIndex) => itemIndex === index ? { ...item, dealerLocation: e.target.value } : item) }))} className="h-8 bg-zinc-800 text-xs" placeholder="Dealer or location" />
+                        <Input type="number" min="0" step="1" value={rental.rentalDays ?? ""} onChange={e => setForm(current => ({ ...current, rentalEquipment: current.rentalEquipment.map((item, itemIndex) => itemIndex === index ? { ...item, rentalDays: e.target.value ? Number(e.target.value) : undefined } : item) }))} className="h-8 bg-zinc-800 text-xs" placeholder="Rental days" />
+                        <Input value={rental.quoteReference ?? ""} onChange={e => setForm(current => ({ ...current, rentalEquipment: current.rentalEquipment.map((item, itemIndex) => itemIndex === index ? { ...item, quoteReference: e.target.value } : item) }))} className="h-8 bg-zinc-800 text-xs" placeholder="Dealer quote/reference" />
+                        <label className="text-[10px] text-zinc-400">Rental <Input type="number" min="0" step="1" value={rental.rentalCostCents ? rental.rentalCostCents / 100 : ""} onChange={e => setForm(current => ({ ...current, rentalEquipment: current.rentalEquipment.map((item, itemIndex) => itemIndex === index ? { ...item, rentalCostCents: quoteDollarsToCents(Number(e.target.value) || 0) } : item) }))} className="mt-1 h-8 bg-zinc-800 text-xs" placeholder="$0" /></label>
+                        <label className="text-[10px] text-zinc-400">Transport <Input type="number" min="0" step="1" value={rental.transportCostCents ? rental.transportCostCents / 100 : ""} onChange={e => setForm(current => ({ ...current, rentalEquipment: current.rentalEquipment.map((item, itemIndex) => itemIndex === index ? { ...item, transportCostCents: quoteDollarsToCents(Number(e.target.value) || 0) } : item) }))} className="mt-1 h-8 bg-zinc-800 text-xs" placeholder="$0" /></label>
+                        <label className="text-[10px] text-zinc-400">Tax/fees <Input type="number" min="0" step="1" value={rental.taxCostCents ? rental.taxCostCents / 100 : ""} onChange={e => setForm(current => ({ ...current, rentalEquipment: current.rentalEquipment.map((item, itemIndex) => itemIndex === index ? { ...item, taxCostCents: quoteDollarsToCents(Number(e.target.value) || 0) } : item) }))} className="mt-1 h-8 bg-zinc-800 text-xs" placeholder="$0" /></label>
+                        <Button type="button" size="sm" variant="ghost" className="mt-4 h-8 text-xs text-red-300 hover:bg-red-500/10 hover:text-red-200" onClick={() => setForm(current => ({ ...current, rentalEquipment: current.rentalEquipment.filter((_, itemIndex) => itemIndex !== index) }))}>Remove</Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <div className="mt-2 flex flex-wrap items-center justify-between gap-2"><Button type="button" size="sm" variant="outline" className="h-7 border-sky-500/40 text-xs text-sky-100" onClick={() => setForm(current => ({ ...current, rentalEquipment: [...current.rentalEquipment, emptyRentalEquipment()] }))}><Plus className="mr-1 h-3 w-3" />Add rental equipment</Button><span className="text-xs font-semibold text-sky-200">Internal rental cost: {formatQuoteCents(internalRentalCostCents)}</span></div>
+              </section>
+
+              <section className="rounded-md border border-amber-500/20 bg-zinc-950/30 p-3">
+                <div className="flex items-start gap-2"><Camera className="mt-0.5 h-4 w-4 text-amber-300" /><div><p className="text-xs font-semibold text-amber-100">Site photos for AI Suggest</p><p className="mt-0.5 text-[10px] text-zinc-500">JPG, PNG, or WebP; up to 10 MB each. Photos stay internal to this quote.</p></div></div>
+                <label className="mt-2 inline-flex h-7 cursor-pointer items-center rounded border border-amber-500/40 px-2 text-[10px] font-medium text-amber-100 hover:bg-amber-500/10"><Camera className="mr-1 h-3 w-3" />{uploadingKind === "evidence" ? "Uploading…" : "Add site photos"}<input type="file" className="sr-only" accept="image/jpeg,image/png,image/webp" multiple disabled={uploadingKind !== null} onChange={event => { void uploadQuoteFiles("evidence", event.target.files); event.currentTarget.value = ""; }} /></label>
+                {form.quoteEvidence.length > 0 && <div className="mt-2 grid grid-cols-4 gap-2">{form.quoteEvidence.map((attachment) => <div key={attachment.key} className="group relative overflow-hidden rounded border border-zinc-700"><a href={attachment.url} target="_blank" rel="noreferrer"><img src={attachment.url} alt={attachment.filename} className="h-14 w-full object-cover" /></a><button type="button" aria-label={`Remove ${attachment.filename}`} className="absolute right-0 top-0 rounded-bl bg-zinc-950/90 p-1 text-zinc-200 hover:text-red-300" onClick={() => setForm(current => ({ ...current, quoteEvidence: current.quoteEvidence.filter(item => item.key !== attachment.key) }))}><X className="h-3 w-3" /></button></div>)}</div>}
+                <div className="mt-3 border-t border-zinc-800 pt-3"><div className="flex items-start gap-2"><Ruler className="mt-0.5 h-4 w-4 text-amber-300" /><div><p className="text-xs font-semibold text-amber-100">Measurements</p><p className="mt-0.5 text-[10px] text-zinc-500">Examples: corridor width, slope, access gate, or work-area acreage.</p></div></div>
+                  <div className="mt-2 space-y-1.5">{form.quoteMeasurements.map((measurement, index) => <div key={index} className="grid grid-cols-[1fr_0.7fr_0.55fr_auto] gap-1.5"><Input value={measurement.label} onChange={e => setForm(current => ({ ...current, quoteMeasurements: current.quoteMeasurements.map((item, itemIndex) => itemIndex === index ? { ...item, label: e.target.value } : item) }))} className="h-7 bg-zinc-800 text-[11px]" placeholder="Measurement" /><Input value={measurement.value} onChange={e => setForm(current => ({ ...current, quoteMeasurements: current.quoteMeasurements.map((item, itemIndex) => itemIndex === index ? { ...item, value: e.target.value } : item) }))} className="h-7 bg-zinc-800 text-[11px]" placeholder="Value" /><Input value={measurement.unit} onChange={e => setForm(current => ({ ...current, quoteMeasurements: current.quoteMeasurements.map((item, itemIndex) => itemIndex === index ? { ...item, unit: e.target.value } : item) }))} className="h-7 bg-zinc-800 text-[11px]" placeholder="Unit" /><Button type="button" size="icon" variant="ghost" className="h-7 w-7 text-zinc-400 hover:text-red-300" onClick={() => setForm(current => ({ ...current, quoteMeasurements: current.quoteMeasurements.filter((_, itemIndex) => itemIndex !== index) }))}><X className="h-3.5 w-3.5" /></Button></div>)}</div>
+                  <Button type="button" size="sm" variant="ghost" className="mt-1.5 h-7 px-1 text-[10px] text-amber-200 hover:bg-amber-500/10" onClick={() => setForm(current => ({ ...current, quoteMeasurements: [...current.quoteMeasurements, { label: "", value: "", unit: "", notes: "" }] }))}><Plus className="mr-1 h-3 w-3" />Add measurement</Button>
+                </div>
+              </section>
+            </div>
+            <section className="mt-3 rounded-md border border-emerald-500/20 bg-emerald-500/[0.035] p-3"><div className="flex items-start gap-2"><ShieldCheck className="mt-0.5 h-4 w-4 text-emerald-300" /><div><p className="text-xs font-semibold text-emerald-100">Proof of insurance for the quote email</p><p className="mt-0.5 text-[10px] text-zinc-500">Add your current certificate here. When you send the quote, choose the file(s) to attach. It is not shown in the portal.</p></div></div><label className="mt-2 inline-flex h-7 cursor-pointer items-center rounded border border-emerald-500/40 px-2 text-[10px] font-medium text-emerald-100 hover:bg-emerald-500/10"><ShieldCheck className="mr-1 h-3 w-3" />{uploadingKind === "insurance" ? "Uploading…" : "Add proof of insurance"}<input type="file" className="sr-only" accept="application/pdf,image/jpeg,image/png" multiple disabled={uploadingKind !== null} onChange={event => { void uploadQuoteFiles("insurance", event.target.files); event.currentTarget.value = ""; }} /></label>{form.insuranceDocuments.length > 0 && <ul className="mt-2 space-y-1">{form.insuranceDocuments.map((document) => <li key={document.key} className="flex items-center justify-between gap-2 rounded bg-zinc-900/70 px-2 py-1.5 text-[11px]"><a href={document.url} target="_blank" rel="noreferrer" className="truncate text-emerald-100 hover:underline">{document.filename}</a><button type="button" className="text-zinc-400 hover:text-red-300" onClick={() => setForm(current => ({ ...current, insuranceDocuments: current.insuranceDocuments.filter(item => item.key !== document.key) }))}><X className="h-3.5 w-3.5" /></button></li>)}</ul>}</section>
+            {form.aiEvidenceSummary && <div className="mt-3 rounded border border-amber-500/20 bg-amber-500/[0.06] px-3 py-2 text-[11px] leading-relaxed text-amber-100"><span className="font-semibold">Last AI evidence review:</span> {form.aiEvidenceSummary}</div>}
+          </details>
 
           {/* AI Suggest panel */}
           <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-3">
@@ -1768,11 +1900,16 @@ function QuoteFormModal({
 function SendPortalDialog({ quote, onClose }: { quote: NativeQuote; onClose: () => void }) {
   const utils = trpc.useUtils();
   const [note, setNote] = useState("");
+  const insuranceDocuments = useMemo(
+    () => parseQuoteSupportArtifacts<QuoteInsuranceDocument[]>(quote.insuranceDocuments, []),
+    [quote.insuranceDocuments],
+  );
+  const [selectedInsuranceKeys, setSelectedInsuranceKeys] = useState<string[]>(() => insuranceDocuments.map((document) => document.key));
 
   const sendMutation = trpc.nativeQuotes.sendPortal.useMutation({
     onSuccess: (data) => {
       utils.nativeQuotes.list.invalidate();
-      toast.success(`Portal link sent — email sent to ${quote.clientEmail}`);
+      toast.success(`Portal link sent — email sent to ${quote.clientEmail}${data.insuranceAttachmentCount ? ` with ${data.insuranceAttachmentCount} insurance attachment${data.insuranceAttachmentCount === 1 ? "" : "s"}` : ""}`);
       if (data.portalUrl) {
         navigator.clipboard.writeText(data.portalUrl).catch(() => {});
       }
@@ -1797,11 +1934,15 @@ function SendPortalDialog({ quote, onClose }: { quote: NativeQuote; onClose: () 
               className="bg-zinc-800 border-zinc-700 text-sm" rows={3}
               placeholder="Let me know if you have any questions about the scope..." />
           </div>
+          {insuranceDocuments.length > 0 && <div className="rounded-md border border-emerald-500/25 bg-emerald-500/[0.05] p-3">
+            <div className="flex items-start gap-2"><ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-emerald-300" /><div><p className="text-xs font-semibold text-emerald-100">Attach proof of insurance</p><p className="mt-0.5 text-[10px] text-emerald-100/70">Selected documents are attached to the email only and are not shown in the customer portal.</p></div></div>
+            <div className="mt-2 space-y-1.5">{insuranceDocuments.map((document) => <label key={document.key} className="flex cursor-pointer items-center gap-2 rounded px-1 py-1 text-xs text-zinc-200 hover:bg-zinc-800/70"><input type="checkbox" checked={selectedInsuranceKeys.includes(document.key)} onChange={() => setSelectedInsuranceKeys((current) => current.includes(document.key) ? current.filter((key) => key !== document.key) : [...current, document.key])} className="accent-emerald-400" /><span className="truncate">{document.filename}</span></label>)}</div>
+          </div>}
         </div>
         <DialogFooter>
           <Button variant="outline" className="border-zinc-600" onClick={onClose}>Cancel</Button>
           <Button className="bg-amber-500 hover:bg-amber-600 text-black font-semibold"
-            onClick={() => sendMutation.mutate({ id: quote.id, personalNote: note, origin: window.location.origin })}
+            onClick={() => sendMutation.mutate({ id: quote.id, personalNote: note, origin: window.location.origin, insuranceDocumentKeys: selectedInsuranceKeys })}
             disabled={sendMutation.isPending}>
             {sendMutation.isPending ? "Sending..." : "Send Portal Link"}
           </Button>
