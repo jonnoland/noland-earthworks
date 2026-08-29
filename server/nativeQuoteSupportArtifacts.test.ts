@@ -154,6 +154,18 @@ describe("native quote rental, evidence, and insurance support artifacts", () =>
     expect(quoteForm).toContain("Remove");
   });
 
+  it("uses an in-app insurance preview with labeled download and separate-tab fallbacks instead of an unlabeled blank tab", () => {
+    const quoteForm = source("client/src/pages/ops/NativeAllQuotesSection.tsx");
+
+    expect(quoteForm).toContain("const openInsurancePreview");
+    expect(quoteForm).toContain('openInsurancePreview(document)');
+    expect(quoteForm).toContain("Preview is provided for a quick check.");
+    expect(quoteForm).toContain('type="application/pdf"');
+    expect(quoteForm).toContain("This browser cannot show the PDF preview.");
+    expect(quoteForm).toContain("Download document");
+    expect(quoteForm).toContain("Open separately");
+  });
+
   it("uses explicit attachment limits and validates that documents belong to the quote owner", () => {
     const router = source("server/nativeQuotesRouter.ts");
 

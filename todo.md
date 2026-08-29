@@ -3899,3 +3899,7 @@
 - [x] Add immediate client-side warning and clearing behavior if acreage is entered for a Linear Foot-only service
 - [x] Add a one-click normal-to-phased quote conversion that groups existing standard work into a first approved phase
 - [x] Add regression coverage and full validation for the measurement warning and phase conversion controls
+
+## Proof-of-Insurance Document Preview Repair — Aug 2026
+- [x] Repair blank proof-of-insurance document previews with a reliable labeled document page and direct-download fallback
+- [x] Add regression coverage and validate insurance document preview behavior after upload
