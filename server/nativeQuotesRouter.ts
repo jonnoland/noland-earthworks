@@ -28,7 +28,6 @@ import { ENV } from "./_core/env";
 import { invokeLLM } from "./_core/llm";
 import { isDraftPlaceholderClient } from "../shared/quoteDrafts";
 import { getQuotePortalPhaseSummary, type QuotePortalLineItem } from "../shared/quotePortalPhases";
-import { calculateLinearFeetFromAcreage } from "../shared/quoteLineItemMeasurements";
 import { getQuoteRentalCostCents, getQuoteRentalOnlyMargin, getQuoteTotalWithRentalCharge, MAX_QUOTE_EVIDENCE_PHOTOS, parseQuoteSupportArtifactArray, parseQuoteSupportArtifacts, type QuoteCostFlag, type QuoteEvidenceAttachment, type QuoteInsuranceDocument, type QuoteMeasurement, type QuoteRentalEquipment } from "../shared/quoteSupportArtifacts";
 import { storageGet, storagePut } from "./storage";
 
@@ -214,7 +213,37 @@ function quoteServiceKey(value: string) {
 }
 
 function isLinearFootService(value: string) {
-  return ["trail-cutting", "fence-line-clearing"].includes(quoteServiceKey(value));
+  return ["trail-cutting", "fence-line-clearing", "right-of-way-clearing"].includes(quoteServiceKey(value));
+}
+
+function assertQuoteMeasurementConsistency(
+  serviceType: string | undefined,
+  acreage: string | undefined,
+  lineItems: z.infer<typeof lineItemSchema>[],
+): void {
+  const selectedServiceKey = quoteServiceKey(serviceType ?? "");
+  const selectedServiceIsLinear = isLinearFootService(selectedServiceKey);
+  const primaryServiceLine = lineItems.find((item) => !item.kind || item.kind === "service");
+
+  if (selectedServiceIsLinear) {
+    if (acreage?.trim()) {
+      throw new TRPCError({ code: "BAD_REQUEST", message: "Acreage cannot be saved for Fence Line Clearing, Trail Cutting, or Right-of-Way Clearing. Use measured Linear Feet." });
+    }
+    if (!primaryServiceLine || quoteServiceKey(primaryServiceLine.serviceCode ?? primaryServiceLine.description) !== selectedServiceKey) {
+      throw new TRPCError({ code: "BAD_REQUEST", message: "The selected service type must match the primary Linear Foot service line before saving." });
+    }
+  }
+
+  for (const item of lineItems) {
+    const itemIsLinear = item.measurementUnit === "linear_foot" || isLinearFootService(item.serviceCode ?? item.description);
+    if (!itemIsLinear) continue;
+    if (item.measurementUnit !== "linear_foot" || item.quantitySource === "acreage_estimate" || item.sourceAcreage !== undefined || item.clearingWidthFeet !== undefined) {
+      throw new TRPCError({ code: "BAD_REQUEST", message: "Fence Line Clearing, Trail Cutting, and Right-of-Way Clearing must use measured Linear Feet only. Remove acreage-derived footage before saving." });
+    }
+    if (!Number.isFinite(item.qty) || item.qty < 1) {
+      throw new TRPCError({ code: "BAD_REQUEST", message: "Each Linear Foot service line needs measured Linear Feet before saving." });
+    }
+  }
 }
 
 // ─── Router ───────────────────────────────────────────────────────────────────
@@ -307,6 +336,7 @@ export const nativeQuotesRouter = router({
       assertOwnedAttachmentKeys(ctx.user.id, input.quoteEvidence ?? []);
       assertOwnedAttachmentKeys(ctx.user.id, input.insuranceDocuments ?? []);
       const lineItems = normalizeQuoteLineItems(input.lineItems);
+      assertQuoteMeasurementConsistency(input.serviceType, input.acreage, lineItems);
       const serviceTotalCents = lineItems.reduce((sum, item) => sum + item.totalCents, 0);
       const rentalMarkupPct = input.rentalMarkupPct ?? 15;
       const rentalCostCents = getQuoteRentalCostCents(input.rentalEquipment ?? []);
@@ -437,6 +467,16 @@ export const nativeQuotesRouter = router({
       if (quoteEvidence !== undefined) assertOwnedAttachmentKeys(ctx.user.id, quoteEvidence);
       if (insuranceDocuments !== undefined) assertOwnedAttachmentKeys(ctx.user.id, insuranceDocuments);
       const updates: Record<string, unknown> = { ...rest };
+      if (lineItems !== undefined || rest.serviceType !== undefined || Object.prototype.hasOwnProperty.call(rest, "acreage")) {
+        const [existingQuote] = await db.select().from(nativeQuotes).where(eq(nativeQuotes.id, id)).limit(1);
+        if (!existingQuote) throw new TRPCError({ code: "NOT_FOUND", message: "Quote not found." });
+        const effectiveLineItems = lineItems !== undefined ? normalizeQuoteLineItems(lineItems) : parsePortalLineItems(existingQuote.lineItems);
+        assertQuoteMeasurementConsistency(
+          rest.serviceType ?? existingQuote.serviceType ?? undefined,
+          Object.prototype.hasOwnProperty.call(rest, "acreage") ? rest.acreage : existingQuote.acreage ?? undefined,
+          effectiveLineItems,
+        );
+      }
       if (lineItems !== undefined || rentalEquipment !== undefined || rentalMarkupPct !== undefined) {
         const [existingQuote] = await db.select().from(nativeQuotes).where(eq(nativeQuotes.id, id)).limit(1);
         if (!existingQuote) throw new TRPCError({ code: "NOT_FOUND", message: "Quote not found." });
@@ -972,8 +1012,8 @@ export const nativeQuotesRouter = router({
       evidence: z.array(quoteEvidenceSchema).max(MAX_QUOTE_EVIDENCE_PHOTOS).optional(),
     }).superRefine((input, ctx) => {
       if (isLinearFootService(input.serviceType)) {
-        if (!input.linearFeet && !input.acreage) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["linearFeet"], message: "Enter measured Linear Feet or acreage to estimate from." });
-        if (!input.linearFeet && !input.clearingWidthFeet) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["clearingWidthFeet"], message: "Choose a clearing width to estimate Linear Feet from acreage." });
+        if (!input.linearFeet) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["linearFeet"], message: "Enter measured Linear Feet for this service." });
+        if (input.acreage !== undefined || input.clearingWidthFeet !== undefined) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["linearFeet"], message: "This service uses measured Linear Feet only; do not use acreage conversion." });
       } else if (!input.acreage) {
         ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["acreage"], message: "Enter acreage for this service." });
       }
@@ -1027,9 +1067,7 @@ export const nativeQuotesRouter = router({
       const accessMult  = access === "difficult" ? adMult : access === "moderate" ? amMult : 1.0;
 
       if (isLinearFootService(serviceType)) {
-        const acreageDerivedFeet = calculateLinearFeetFromAcreage(acreage ?? 0, clearingWidthFeet ?? 0);
-        const isAcreageEstimate = !linearFeet && acreageDerivedFeet !== null;
-        const footage = Math.max(1, Math.round(linearFeet ?? acreageDerivedFeet ?? 0));
+        const footage = Math.max(1, Math.round(linearFeet ?? 0));
         const benchmarkKey = normalizedServiceKey === "fence-line-clearing" ? "fence line clearing" : "trail cutting";
         const fallbackRate = normalizedServiceKey === "fence-line-clearing"
           ? pricingRow2?.fenceLineClearingPerLf ?? 4
@@ -1047,8 +1085,7 @@ export const nativeQuotesRouter = router({
             description: serviceType,
             serviceCode: normalizedServiceKey,
             measurementUnit: "linear_foot" as const,
-            quantitySource: isAcreageEstimate ? "acreage_estimate" as const : "measured" as const,
-            ...(isAcreageEstimate ? { sourceAcreage: acreage, clearingWidthFeet } : {}),
+            quantitySource: "measured" as const,
             qty: footage,
             unitPriceCents: adjustedRatePerFoot * 100,
             totalCents: rawTotal * 100,
@@ -1062,11 +1099,9 @@ export const nativeQuotesRouter = router({
           }] : []),
         ];
         return {
-          title: `${serviceType} — ${isAcreageEstimate ? "Est. " : ""}${footage.toLocaleString()} Linear Ft`,
+          title: `${serviceType} — ${footage.toLocaleString()} Linear Ft`,
           estimatedDuration: footage <= 1320 ? "1" : footage <= 5280 ? "2" : "3",
-          clientMessage: isAcreageEstimate
-            ? `This quote uses an estimated ${footage.toLocaleString()} linear feet of ${serviceType.toLowerCase()}, calculated from ${acreage} acres at a ${clearingWidthFeet}-foot clearing width. The footage and final scope will be verified during the site visit.`
-            : `This quote covers approximately ${footage.toLocaleString()} linear feet of ${serviceType.toLowerCase()}. Final scope, site access, vegetation density, and ground conditions will be verified during the site visit.`,
+          clientMessage: `This quote covers approximately ${footage.toLocaleString()} linear feet of ${serviceType.toLowerCase()}. Final scope, site access, vegetation density, and ground conditions will be verified during the site visit.`,
           evidenceSummary: evidence.length > 0 || measurements.length > 0
             ? "Site photos and measurements are saved for owner review. Linear Foot pricing remains controlled by the recorded footage, saved Operations rates, and on-site verification."
             : "No site photos or measurements were provided. Linear Foot pricing remains subject to on-site verification.",
@@ -1084,9 +1119,9 @@ export const nativeQuotesRouter = router({
             acreage: null,
             linearFeet: footage,
             measurementUnit: "linear_foot" as const,
-            quantitySource: isAcreageEstimate ? "acreage_estimate" as const : "measured" as const,
-            sourceAcreage: isAcreageEstimate ? acreage ?? null : null,
-            clearingWidthFeet: isAcreageEstimate ? clearingWidthFeet ?? null : null,
+            quantitySource: "measured" as const,
+            sourceAcreage: null,
+            clearingWidthFeet: null,
             rawTotalBeforeMinimum: rawTotal,
             minimumJobApplied: minimumAdjustment > 0,
             mobilizationFee: minimumAdjustment,

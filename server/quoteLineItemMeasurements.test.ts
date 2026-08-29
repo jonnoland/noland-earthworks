@@ -11,6 +11,7 @@ import {
   linearFootEstimateBasis,
   quoteLineQuantityLabel,
 } from "@shared/quoteLineItemMeasurements";
+import { isOperationsLinearFootService } from "@shared/operationsQuotePricing";
 
 const root = resolve(import.meta.dirname, "..");
 const source = (file: string) => readFileSync(resolve(root, file), "utf8");
@@ -41,16 +42,13 @@ describe("quote service line measurements", () => {
     expect(calculateLinearFeetFromAcreage(3, 0)).toBeNull();
   });
 
-  it("identifies acreage-derived footage and retains a readable verification basis", () => {
-    const line = {
-      ...createQuoteServiceLineItem("trail-cutting"),
-      qty: 6_534,
-      quantitySource: "acreage_estimate" as const,
-      sourceAcreage: 3,
-      clearingWidthFeet: 20,
-    };
-    expect(isEstimatedLinearFootQuoteLine(line)).toBe(true);
-    expect(linearFootEstimateBasis(line)).toBe("3 acres at 20 ft clearing width");
+  it("classifies Fence Line, Trail, and Right-of-Way work as measured Linear Foot services", () => {
+    const rightOfWay = createQuoteServiceLineItem("right-of-way-clearing");
+    expect(rightOfWay.measurementUnit).toBe("linear_foot");
+    expect(isLinearFootQuoteLine(rightOfWay)).toBe(true);
+    expect(isOperationsLinearFootService("Fence Line Clearing")).toBe(true);
+    expect(isOperationsLinearFootService("Trail Cutting")).toBe(true);
+    expect(isOperationsLinearFootService("Right-of-Way Clearing")).toBe(true);
   });
 
   it("keeps acreage and day-rate rows as ordinary quantity-based lines", () => {
@@ -66,8 +64,8 @@ describe("quote service line measurements", () => {
     expect(editor).toContain("const DEFAULT_LINE_ITEMS: LineItem[] = [");
     expect(editor).toContain("{ ...createQuoteServiceLineItem(), kind: \"service\" }");
     expect(editor).toContain("Rate / linear ft");
-    expect(editor).toContain("Calculated as measured linear feet × rate per linear foot.");
-    expect(editor).toContain("Footage source");
+    expect(editor).toContain("Calculated as measured Linear Feet × rate per Linear Foot.");
+    expect(editor).toContain("Footage source: Measured Linear Feet");
     expect(editor).toContain("!isServiceLine && <Input");
     expect(editor).not.toContain('placeholder={isServiceLine ? "Service description or scope" : "Description"}');
     expect(editor).not.toContain('selectedServiceValue === "custom" && <Input');
@@ -105,21 +103,17 @@ describe("quote service line measurements", () => {
     expect(editor).toContain("Acreage drives the selected service calculation.");
   });
 
-  it("prompts Linear Foot AI Suggest users for clearing width and carries estimated-footage warnings into the portal", () => {
+  it("requires measured Linear Feet and audits saved quote measurements for every Linear Foot service", () => {
     const router = source("server/nativeQuotesRouter.ts");
     const editor = source("client/src/pages/ops/NativeAllQuotesSection.tsx");
-    const portal = source("client/src/pages/NativeQuotePortal.tsx");
     expect(router).toContain("clearingWidthFeet: z.number().min(1).max(200).optional()");
-    expect(router).toContain("calculateLinearFeetFromAcreage(acreage ?? 0, clearingWidthFeet ?? 0)");
-    expect(router).toContain('quantitySource: isAcreageEstimate ? "acreage_estimate" as const : "measured" as const');
-    expect(editor).toContain("Calculate from acreage");
-    expect(editor).toContain("Estimated footage — verify on site.");
-    expect(editor).toContain("Estimated Linear Footage — verify on site.");
-    expect(editor).toContain('aria-label="Acreage to Linear Feet formula"');
-    expect(editor).toContain("Acres × 43,560 ÷ clearing width (ft) = estimated Linear Feet.");
-    expect(editor).toContain('aria-label="Common clearing widths"');
-    expect(editor).toContain('onClick={() => onChange(index, "clearingWidthFeet", width)}');
-    expect(portal).toContain("EstimatedFootageNotice");
-    expect(portal).toContain("Final footage will be verified during the site visit.");
+    expect(router).toContain("assertQuoteMeasurementConsistency");
+    expect(router).toContain("This service uses measured Linear Feet only; do not use acreage conversion.");
+    expect(router).toContain("Acreage cannot be saved for Fence Line Clearing, Trail Cutting, or Right-of-Way Clearing.");
+    expect(router).toContain("Remove acreage-derived footage before saving.");
+    expect(editor).toContain("Acreage conversion is not available for this service.");
+    expect(editor).toContain("Fence Line Clearing, Trail Cutting, and Right-of-Way Clearing use measured Linear Feet only.");
+    expect(editor).toContain("This quote starts as a normal job.");
+    expect(editor).not.toContain("Calculate from acreage");
   });
 });

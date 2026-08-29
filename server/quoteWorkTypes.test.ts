@@ -27,7 +27,7 @@ describe("phased work and day-rate quote controls", () => {
     const editor = readFileSync(resolve(root, "client/src/pages/ops/NativeAllQuotesSection.tsx"), "utf8");
     expect(router).toContain('"full_operating_day"');
     expect(router).toContain('"half_operating_day"');
-    expect(editor).toContain("Load Internal Sample");
+    expect(editor).toContain("Load Optional Phase Sample");
     expect(editor).toContain("Insert Day-Rate Terms");
   });
 });

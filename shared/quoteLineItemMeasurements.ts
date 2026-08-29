@@ -26,7 +26,7 @@ export const QUOTE_LINE_SERVICE_OPTIONS: QuoteLineServiceOption[] = [
   { value: "forestry-mulching", label: "Forestry Mulching" },
   { value: "land-management", label: "Land Management" },
   { value: "vegetation-management", label: "Vegetation Management" },
-  { value: "right-of-way-clearing", label: "Right-of-Way Clearing" },
+  { value: "right-of-way-clearing", label: "Right-of-Way Clearing", measurementUnit: "linear_foot" },
   { value: "brush-hogging", label: "Brush Hogging" },
   { value: "trail-cutting", label: "Trail Cutting", measurementUnit: "linear_foot" },
   { value: "fence-line-clearing", label: "Fence Line Clearing", measurementUnit: "linear_foot" },

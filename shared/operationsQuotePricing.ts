@@ -69,7 +69,7 @@ export function operationsQuoteServiceKey(serviceType: string): string {
 
 export function isOperationsLinearFootService(serviceType: string): boolean {
   const serviceKey = operationsQuoteServiceKey(serviceType);
-  return serviceKey === "trail-cutting" || serviceKey === "fence-line-clearing";
+  return serviceKey === "trail-cutting" || serviceKey === "fence-line-clearing" || serviceKey === "right-of-way-clearing";
 }
 
 /**

@@ -3888,3 +3888,9 @@
 - [x] Make the quote header show and use Acres for acreage services and Linear Feet for Fence Line Clearing and Trail Cutting
 - [x] Keep AI Suggest and persisted quote calculation inputs aligned with the selected header service unit
 - [x] Add regression coverage and validate the corrected service-unit header behavior
+
+## Operations Quote Optional Phases and Measurement Audit — Aug 2026
+- [x] Make phase setup optional so ordinary jobs stay as standard unphased quotes
+- [x] Enforce Linear Feet-only measurement for Fence Line Clearing, Trail Cutting, and Right-of-Way Clearing across the quote header, lines, and AI Suggest
+- [x] Add a server-side save-time audit that rejects inconsistent header service, linear footage, acreage, and line-item measurement data
+- [x] Add regression coverage and validate normal-job, phased-job, and Linear Feet quote behavior

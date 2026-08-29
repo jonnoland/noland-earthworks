@@ -58,13 +58,9 @@ import { ensureQuotePhaseIds, getQuotePhaseSections } from "@shared/quotePhaseSe
 import { getQuoteRentalCostCents, getQuoteRentalOnlyMargin, getQuoteRentalOnlyMarginStatus, getQuoteTotalWithRentalCharge, MAX_QUOTE_EVIDENCE_PHOTOS, parseQuoteSupportArtifactArray, parseQuoteSupportArtifacts, type QuoteCostFlag, type QuoteEvidenceAttachment, type QuoteInsuranceDocument, type QuoteMeasurement, type QuoteRentalEquipment } from "@shared/quoteSupportArtifacts";
 import {
   createQuoteServiceLineItem,
-  calculateLinearFeetFromAcreage,
   getQuoteLineServiceOption,
   inferQuoteLineServiceOption,
-  isEstimatedLinearFootQuoteLine,
   isLinearFootQuoteLine,
-  LINEAR_FOOT_CLEARING_WIDTH_OPTIONS,
-  linearFootEstimateBasis,
   QUOTE_LINE_SERVICE_OPTIONS,
   quoteLineQuantityLabel,
   type QuoteLineMeasurementUnit,
@@ -198,8 +194,6 @@ function LineItemRow({
   const selectedService = getQuoteLineServiceOption(item.serviceCode) ?? inferQuoteLineServiceOption(item.description);
   const selectedServiceValue = selectedService?.value ?? "custom";
   const isLinearFoot = isServiceLine && isLinearFootQuoteLine(item);
-  const isAcreageFootageEstimate = isLinearFoot && isEstimatedLinearFootQuoteLine(item);
-  const estimateBasis = linearFootEstimateBasis(item);
   return (
     <div
       className={`grid grid-cols-1 gap-2 rounded-md border border-zinc-800 p-2 transition-colors hover:border-zinc-700 ${compact ? "" : "sm:grid-cols-[auto_minmax(0,5fr)_minmax(0,2fr)_minmax(0,3fr)_minmax(0,1fr)_auto] sm:border-0 sm:p-0"}`}
@@ -269,74 +263,8 @@ function LineItemRow({
         />}
         {isLinearFoot && (
           <div className="mt-1.5 space-y-1.5 rounded border border-sky-500/25 bg-sky-500/[0.05] p-2">
-            <label className="block text-[10px] font-medium uppercase tracking-wide text-sky-200">
-              <span className="flex items-center gap-1">
-                Footage source
-                <QuoteFormulaTooltip>
-                  <TooltipTrigger asChild>
-                    <button type="button" aria-label="Acreage to Linear Feet formula" className="rounded text-sky-300 hover:text-sky-100 focus:outline-none focus:ring-1 focus:ring-sky-300">
-                      <Info className="h-3 w-3" />
-                    </button>
-                  </TooltipTrigger>
-                  <TooltipContent side="top" sideOffset={6} className="max-w-[280px] border border-sky-500/35 bg-zinc-950 text-zinc-100">
-                    <p className="font-semibold text-sky-200">Acreage-to-Linear-Foot estimate</p>
-                    <p className="mt-1 leading-relaxed">Acres × 43,560 ÷ clearing width (ft) = estimated Linear Feet. Example: 3 acres at 20 ft = 6,534 LF. Use this for defined corridors, not a property perimeter. Verify footage on site.</p>
-                  </TooltipContent>
-                </QuoteFormulaTooltip>
-              </span>
-              <select
-                value={item.quantitySource ?? "measured"}
-                onChange={e => onChange(index, "quantitySource", e.target.value)}
-                aria-label="Linear Foot quantity source"
-                className="mt-1 h-8 w-full rounded border border-sky-500/35 bg-zinc-900 px-2 text-xs text-zinc-100"
-              >
-                <option value="measured">Measured Linear Feet</option>
-                <option value="acreage_estimate">Calculate from acreage</option>
-              </select>
-            </label>
-            {isAcreageFootageEstimate ? (
-              <div className="grid gap-1.5 sm:grid-cols-2">
-                <label className="text-[10px] text-zinc-300">
-                  Source acreage
-                  <Input
-                    type="number"
-                    min="0.1"
-                    step="0.1"
-                    value={item.sourceAcreage ?? ""}
-                    onChange={e => onChange(index, "sourceAcreage", Number(e.target.value))}
-                    className="mt-1 h-8 border-zinc-700 bg-zinc-900 text-xs"
-                    placeholder="Acres"
-                  />
-                </label>
-                <label className="text-[10px] text-zinc-300">
-                  Clearing width
-                  <select
-                    value={item.clearingWidthFeet ?? 20}
-                    onChange={e => onChange(index, "clearingWidthFeet", Number(e.target.value))}
-                    aria-label="Clearing width in feet"
-                    className="mt-1 h-8 w-full rounded border border-zinc-700 bg-zinc-900 px-2 text-xs text-zinc-100"
-                  >
-                    {LINEAR_FOOT_CLEARING_WIDTH_OPTIONS.map((width) => <option key={width} value={width}>{width} ft</option>)}
-                  </select>
-                </label>
-                <div className="sm:col-span-2">
-                  <span className="text-[10px] font-medium uppercase tracking-wide text-zinc-500">Quick select</span>
-                  <div className="mt-1 flex flex-wrap gap-1.5" aria-label="Common clearing widths">
-                    {LINEAR_FOOT_CLEARING_WIDTH_OPTIONS.map((width) => {
-                      const isSelected = item.clearingWidthFeet === width;
-                      return <button
-                        key={width}
-                        type="button"
-                        aria-pressed={isSelected}
-                        onClick={() => onChange(index, "clearingWidthFeet", width)}
-                        className={`h-7 rounded border px-2 text-[10px] font-semibold transition-colors ${isSelected ? "border-amber-400 bg-amber-500/15 text-amber-200" : "border-zinc-700 bg-zinc-900 text-zinc-300 hover:border-sky-400/70 hover:text-sky-200"}`}
-                      >{width} ft</button>;
-                    })}
-                  </div>
-                </div>
-              </div>
-            ) : <p className="text-[10px] text-sky-300">Calculated as measured linear feet × rate per linear foot.</p>}
-            {isAcreageFootageEstimate && <div className="flex items-start gap-1 text-[10px] leading-relaxed text-amber-200"><AlertTriangle className="mt-0.5 h-3 w-3 shrink-0" /><span><strong>Estimated footage — verify on site.</strong>{estimateBasis ? ` Derived from ${estimateBasis}.` : ""}</span></div>}
+            <p className="text-[10px] font-medium uppercase tracking-wide text-sky-200">Footage source: Measured Linear Feet</p>
+            <p className="text-[10px] text-sky-300">Calculated as measured Linear Feet × rate per Linear Foot. Acreage conversion is not available for this service.</p>
           </div>
         )}
         {item.kind === "phase" && (
@@ -906,8 +834,6 @@ function QuoteFormModal({
   const [aiTerrain, setAiTerrain] = useState("flat");
   const [aiDensity, setAiDensity] = useState("moderate");
   const [aiAccess, setAiAccess] = useState("easy");
-  const [aiLinearFootageMethod, setAiLinearFootageMethod] = useState<QuoteLineQuantitySource>("measured");
-  const [aiClearingWidthFeet, setAiClearingWidthFeet] = useState("20");
   // Editable multipliers — override the server-computed values before applying
   const [editTerrainMult, setEditTerrainMult] = useState<string>("");
   const [editAccessMult, setEditAccessMult] = useState<string>("");
@@ -1009,19 +935,10 @@ function QuoteFormModal({
   const handleAiSuggest = () => {
     const acreage = parseFloat(form.acreage);
     const linearFeet = Number(aiPrimaryServiceLine?.qty);
-    const clearingWidthFeet = Number(aiClearingWidthFeet);
     const serviceType = aiPrimaryService?.label ?? form.serviceType;
     if (!serviceType) { toast.error("Select a service type first"); return; }
-    if (aiUsesLinearFeet && aiLinearFootageMethod === "measured" && (!Number.isFinite(linearFeet) || linearFeet <= 0)) {
+    if (aiUsesLinearFeet && (!Number.isFinite(linearFeet) || linearFeet <= 0)) {
       toast.error("Enter the Linear Feet on the selected service line first");
-      return;
-    }
-    if (aiUsesLinearFeet && aiLinearFootageMethod === "acreage_estimate" && (!Number.isFinite(acreage) || acreage <= 0)) {
-      toast.error("Enter acreage before calculating Linear Feet");
-      return;
-    }
-    if (aiUsesLinearFeet && aiLinearFootageMethod === "acreage_estimate" && (!Number.isFinite(clearingWidthFeet) || clearingWidthFeet <= 0)) {
-      toast.error("Choose a clearing width before calculating Linear Feet");
       return;
     }
     if (!aiUsesLinearFeet && (!form.acreage || isNaN(acreage) || acreage <= 0)) { toast.error("Enter acreage first"); return; }
@@ -1030,9 +947,7 @@ function QuoteFormModal({
     aiSuggestMutation.mutate({
       serviceType,
       ...(aiUsesLinearFeet
-        ? aiLinearFootageMethod === "acreage_estimate"
-          ? { acreage, clearingWidthFeet, unitRateCents: aiPrimaryServiceLine?.unitPriceCents || undefined }
-          : { linearFeet, unitRateCents: aiPrimaryServiceLine?.unitPriceCents || undefined }
+        ? { linearFeet, unitRateCents: aiPrimaryServiceLine?.unitPriceCents || undefined }
         : { acreage }),
       terrain: aiTerrain,
       density: aiDensity,
@@ -1101,43 +1016,16 @@ function QuoteFormModal({
           sourceAcreage: undefined,
           clearingWidthFeet: undefined,
         }
-        : field === "quantitySource" && val === "acreage_estimate"
-          ? (() => {
-            const sourceAcreage = Number(prev.acreage);
-            const clearingWidthFeet = 20;
-            const calculatedFeet = calculateLinearFeetFromAcreage(sourceAcreage, clearingWidthFeet);
-            return {
-              ...current,
-              quantitySource: "acreage_estimate" as const,
-              sourceAcreage: Number.isFinite(sourceAcreage) && sourceAcreage > 0 ? sourceAcreage : undefined,
-              clearingWidthFeet,
-              qty: calculatedFeet ?? current.qty,
-            };
-          })()
-          : field === "quantitySource"
-            ? { ...current, quantitySource: "measured" as const, sourceAcreage: undefined, clearingWidthFeet: undefined }
-            : field === "sourceAcreage" || field === "clearingWidthFeet"
-              ? (() => {
-                const sourceAcreage = field === "sourceAcreage" ? Number(val) : Number(current.sourceAcreage);
-                const clearingWidthFeet = field === "clearingWidthFeet" ? Number(val) : Number(current.clearingWidthFeet);
-                const calculatedFeet = calculateLinearFeetFromAcreage(sourceAcreage, clearingWidthFeet);
-                return {
-                  ...current,
-                  quantitySource: "acreage_estimate" as const,
-                  sourceAcreage: Number.isFinite(sourceAcreage) && sourceAcreage > 0 ? sourceAcreage : undefined,
-                  clearingWidthFeet: Number.isFinite(clearingWidthFeet) && clearingWidthFeet > 0 ? clearingWidthFeet : undefined,
-                  qty: calculatedFeet ?? current.qty,
-                };
-              })()
-              : field === "qty" && isLinearFootQuoteLine(current)
-                ? { ...current, [field]: val, quantitySource: "measured" as const, sourceAcreage: undefined, clearingWidthFeet: undefined }
-                : { ...current, [field]: val };
+        : field === "qty" && isLinearFootQuoteLine(current)
+          ? { ...current, [field]: val, quantitySource: "measured" as const, sourceAcreage: undefined, clearingWidthFeet: undefined }
+          : { ...current, [field]: val };
       items[i] = normalizeQuoteLineItemsForSave([next as LineItem])[0];
       const firstServiceIndex = items.findIndex((line) => !line.kind || line.kind === "service");
       return {
         ...prev,
         lineItems: items,
         serviceType: field === "serviceCode" && selectedService && i === firstServiceIndex ? selectedService.label : prev.serviceType,
+        acreage: field === "serviceCode" && selectedService?.measurementUnit === "linear_foot" && i === firstServiceIndex ? "" : prev.acreage,
       };
     });
   };
@@ -1151,7 +1039,12 @@ function QuoteFormModal({
       const serviceLine = createQuoteServiceLineItem(selectedService.value) as LineItem;
       if (firstServiceIndex < 0) items.unshift(serviceLine);
       else items[firstServiceIndex] = { ...items[firstServiceIndex], ...serviceLine };
-      return { ...previous, serviceType: selectedService.label, lineItems: normalizeQuoteLineItemsForSave(items) };
+      return {
+        ...previous,
+        acreage: selectedService.measurementUnit === "linear_foot" ? "" : previous.acreage,
+        serviceType: selectedService.label,
+        lineItems: normalizeQuoteLineItemsForSave(items),
+      };
     });
   };
 
@@ -1592,7 +1485,7 @@ function QuoteFormModal({
                   <Input value={form.acreage} onChange={e => setForm(p => ({ ...p, acreage: e.target.value }))}
                     className="bg-zinc-800 border-zinc-700" placeholder="5.2" aria-label="Acreage" />
                 )}
-                <p className="mt-1 text-[10px] leading-relaxed text-zinc-500">{quoteHeaderUsesLinearFeet ? "This measured footage drives the selected Linear Foot service calculation. Use the line item acreage-to-footage option when estimating a corridor from acreage." : "Acreage drives the selected service calculation."}</p>
+                <p className="mt-1 text-[10px] leading-relaxed text-zinc-500">{quoteHeaderUsesLinearFeet ? "This measured footage drives the selected Linear Foot service calculation. Acreage conversion is not available for this service." : "Acreage drives the selected service calculation."}</p>
               </div>
             </div>
             <div className="mt-3 rounded-md border border-amber-500/35 bg-amber-500/[0.06] p-3">
@@ -1687,14 +1580,6 @@ function QuoteFormModal({
                 variant="outline"
                 className="h-7 text-xs border-amber-500/50 text-amber-400 hover:bg-amber-500/10"
                 onClick={() => {
-                  if (aiPanel === "closed" && aiUsesLinearFeet) {
-                    setAiLinearFootageMethod(
-                      aiPrimaryServiceLine?.quantitySource === "acreage_estimate" || Number(form.acreage) > 0
-                        ? "acreage_estimate"
-                        : "measured",
-                    );
-                    setAiClearingWidthFeet(String(aiPrimaryServiceLine?.clearingWidthFeet ?? 20));
-                  }
                   setAiPanel(p => p === "closed" ? "open" : "closed");
                 }}
                 type="button"
@@ -1746,20 +1631,8 @@ function QuoteFormModal({
                   </div>
                 </div>
                 {aiUsesLinearFeet ? <div className="space-y-2 rounded border border-sky-500/25 bg-sky-500/[0.04] p-2.5">
-                  <div className="grid gap-2 sm:grid-cols-2">
-                    <label className="text-xs text-zinc-300">Footage basis
-                      <select value={aiLinearFootageMethod} onChange={e => setAiLinearFootageMethod(e.target.value as QuoteLineQuantitySource)} className="mt-1 h-8 w-full rounded border border-zinc-700 bg-zinc-900 px-2 text-xs text-zinc-100">
-                        <option value="measured">Measured Linear Feet</option>
-                        <option value="acreage_estimate">Calculate from acreage</option>
-                      </select>
-                    </label>
-                    {aiLinearFootageMethod === "acreage_estimate" && <label className="text-xs text-zinc-300">Clearing width
-                      <select value={aiClearingWidthFeet} onChange={e => setAiClearingWidthFeet(e.target.value)} className="mt-1 h-8 w-full rounded border border-zinc-700 bg-zinc-900 px-2 text-xs text-zinc-100">
-                        {LINEAR_FOOT_CLEARING_WIDTH_OPTIONS.map((width) => <option key={width} value={width}>{width} ft</option>)}
-                      </select>
-                    </label>}
-                  </div>
-                  {aiLinearFootageMethod === "acreage_estimate" ? <div className="flex items-start gap-1.5 text-xs leading-relaxed text-amber-200"><AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" /><span><strong>Estimated footage — verify on site.</strong> AI Suggest will calculate from {form.acreage || "the entered"} acreage at a {aiClearingWidthFeet}-foot clearing width.</span></div> : <p className="text-xs text-zinc-500">Uses the selected Linear Foot service line and its measured footage. The current per-foot rate is used when entered; otherwise, the approved internal rate is used.</p>}
+                  <p className="text-xs font-medium text-sky-100">Footage basis: Measured Linear Feet</p>
+                  <p className="text-xs text-zinc-500">Fence Line Clearing, Trail Cutting, and Right-of-Way Clearing use measured Linear Feet only. The current per-foot rate is used when entered; otherwise, the approved internal rate is used.</p>
                 </div> : <p className="text-xs text-zinc-500">Requires service type and acreage to be filled in above.</p>}
                 <Button
                   className="w-full bg-amber-500 hover:bg-amber-600 text-black font-semibold h-8 text-xs"
@@ -1944,7 +1817,7 @@ function QuoteFormModal({
                 </Button>
               </div>
             </div>
-            {!editQuote && <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-md border border-indigo-500/25 bg-indigo-500/[0.06] px-3 py-2"><p className="text-[11px] text-indigo-100">Need a starting point? Load a non-customer phased forestry mulching example with zero-dollar placeholders.</p><Button type="button" size="sm" variant="outline" className="h-7 border-indigo-400/40 text-[11px] text-indigo-100 hover:bg-indigo-500/15" onClick={loadSamplePhasedQuote}>Load Internal Sample</Button></div>}
+            {!editQuote && <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-md border border-indigo-500/25 bg-indigo-500/[0.06] px-3 py-2"><p className="text-[11px] text-indigo-100">This quote starts as a normal job. Use <strong>+ Phase</strong> only when the customer needs separately approved work sections.</p><Button type="button" size="sm" variant="outline" className="h-7 border-indigo-400/40 text-[11px] text-indigo-100 hover:bg-indigo-500/15" onClick={loadSamplePhasedQuote}>Load Optional Phase Sample</Button></div>}
             {phaseSections.length > 0 && <p className="mb-3 text-[11px] leading-relaxed text-zinc-400">Each phase is its own work section. Add services, mobilization, and eligible discounts inside the intended phase so its subtotal and customer portal amount remain accurate.</p>}
             <div className="space-y-3">
               {phaseSections.map((section, sectionIndex) => {
@@ -1973,7 +1846,7 @@ function QuoteFormModal({
                   <div className="mt-3 flex flex-wrap items-center justify-between gap-x-5 gap-y-1 border-t border-zinc-800 pt-3 text-xs"><span className="text-zinc-400">Phase subtotal <strong className="ml-1 text-zinc-100">{formatQuoteCents(section.subtotalCents)}</strong></span>{section.discountCents < 0 && <span className="text-emerald-300">Phase discounts {formatQuoteCents(section.discountCents)}</span>}<span className="font-semibold text-amber-300">Phase total {formatQuoteCents(section.totalCents)}</span></div>
                 </div>;
               })}
-              {unassignedLineItemIndices.length > 0 && <div className="rounded-lg border border-zinc-700 bg-zinc-900/45 p-3"><p className="mb-2 text-xs font-semibold text-zinc-300">Unassigned quote items</p><p className="mb-3 text-[11px] text-zinc-500">Assign these items to a phase using the Phase selector, or keep them outside phased work.</p><div className="space-y-2">{unassignedLineItemIndices.map((index) => <LineItemRow key={index} item={form.lineItems[index]} index={index} onChange={handleLineItemChange} onMove={handleMoveLineItem} compact={isCompactWorkspace} phaseOptions={phaseOptions} onRemove={i2 => setForm(p => ({ ...p, lineItems: p.lineItems.filter((_, itemIndex) => itemIndex !== i2) }))} />)}</div></div>}
+              {unassignedLineItemIndices.length > 0 && <div className="rounded-lg border border-zinc-700 bg-zinc-900/45 p-3"><p className="mb-2 text-xs font-semibold text-zinc-300">{phaseSections.length > 0 ? "Unassigned quote items" : "Standard quote items"}</p><p className="mb-3 text-[11px] text-zinc-500">{phaseSections.length > 0 ? "Assign these items to a phase using the Phase selector, or keep them outside phased work." : "This is a normal, unphased job. Add a Phase only when you need separately approved work sections."}</p><div className="space-y-2">{unassignedLineItemIndices.map((index) => <LineItemRow key={index} item={form.lineItems[index]} index={index} onChange={handleLineItemChange} onMove={handleMoveLineItem} compact={isCompactWorkspace} phaseOptions={phaseOptions} onRemove={i2 => setForm(p => ({ ...p, lineItems: p.lineItems.filter((_, itemIndex) => itemIndex !== i2) }))} />)}</div></div>}
               {phaseSections.length === 0 && <div className="rounded-md border border-emerald-500/25 bg-emerald-500/[0.06] p-3"><div className="flex items-start gap-2"><DollarSign className="mt-0.5 h-4 w-4 shrink-0 text-emerald-400" /><div><p className="text-xs font-semibold text-emerald-200">Quote-wide discount line items</p><p className="mt-0.5 text-[11px] leading-relaxed text-zinc-400">Add a Phase to place discounts and mobilization within that phase. Until then, discounts apply across unassigned work.</p></div></div><div className="mt-3 flex flex-wrap gap-2">{volumeDiscount && <Button type="button" size="sm" variant="outline" onClick={() => applyDiscountOption(volumeDiscount)} disabled={appliedDiscountCodes.has(volumeDiscount.code)} className="h-7 border-emerald-500/35 text-[11px] text-emerald-200 hover:bg-emerald-500/10">{volumeDiscount.percent}% Volume</Button>}{customerDiscountOptions.map((option) => <Button key={option.code} type="button" size="sm" variant="outline" onClick={() => applyDiscountOption(option)} disabled={appliedDiscountCodes.has(option.code)} className="h-7 border-zinc-600 text-[11px] text-zinc-200 hover:bg-zinc-800">{option.percent}% {option.label.replace(" Discount", "")}</Button>)}</div></div>}
             </div>
             <div className={`mt-3 w-full rounded-md border border-zinc-700 bg-zinc-900/60 px-3 py-3 text-sm ${isCompactWorkspace ? "" : "sm:ml-auto sm:max-w-md"}`} aria-live="polite">
