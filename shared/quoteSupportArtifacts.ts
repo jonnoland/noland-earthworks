@@ -11,6 +11,9 @@ export type QuoteRentalEquipment = {
   notes?: string;
 };
 
+/** Maximum owner-saved site photos accepted per quote and analyzed by Gemini. */
+export const MAX_QUOTE_EVIDENCE_PHOTOS = 20;
+
 export type QuoteEvidenceAttachment = {
   key: string;
   url: string;

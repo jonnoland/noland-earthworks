@@ -54,7 +54,7 @@ import { buildQuoteCostBreakdown, getQuoteCostDistribution } from "@shared/quote
 import { getQuoteDraftIdentity } from "@shared/quoteDrafts";
 import { moveQuoteLineItem } from "@shared/quoteLineItemOrder";
 import { ensureQuotePhaseIds, getQuotePhaseSections } from "@shared/quotePhaseSections";
-import { getQuoteRentalCostCents, getQuoteRentalOnlyMargin, getQuoteRentalOnlyMarginStatus, getQuoteTotalWithRentalCharge, parseQuoteSupportArtifactArray, parseQuoteSupportArtifacts, type QuoteCostFlag, type QuoteEvidenceAttachment, type QuoteInsuranceDocument, type QuoteMeasurement, type QuoteRentalEquipment } from "@shared/quoteSupportArtifacts";
+import { getQuoteRentalCostCents, getQuoteRentalOnlyMargin, getQuoteRentalOnlyMarginStatus, getQuoteTotalWithRentalCharge, MAX_QUOTE_EVIDENCE_PHOTOS, parseQuoteSupportArtifactArray, parseQuoteSupportArtifacts, type QuoteCostFlag, type QuoteEvidenceAttachment, type QuoteInsuranceDocument, type QuoteMeasurement, type QuoteRentalEquipment } from "@shared/quoteSupportArtifacts";
 import {
   createQuoteServiceLineItem,
   calculateLinearFeetFromAcreage,
@@ -702,7 +702,8 @@ function QuoteFormModal({
     if (!files?.length) return;
     const selected = Array.from(files);
     const currentCount = kind === "evidence" ? form.quoteEvidence.length : form.insuranceDocuments.length;
-    const remaining = 12 - currentCount;
+    const maximum = kind === "evidence" ? MAX_QUOTE_EVIDENCE_PHOTOS : 12;
+    const remaining = maximum - currentCount;
     if (selected.length > remaining) {
       toast.error(`You can add ${remaining} more ${kind === "evidence" ? "site photo(s)" : "insurance document(s)"} to this quote.`);
       return;
@@ -945,6 +946,7 @@ function QuoteFormModal({
       return;
     }
     if (!aiUsesLinearFeet && (!form.acreage || isNaN(acreage) || acreage <= 0)) { toast.error("Enter acreage first"); return; }
+    if (form.quoteEvidence.length > MAX_QUOTE_EVIDENCE_PHOTOS) toast.message(`AI Suggest will use the first ${MAX_QUOTE_EVIDENCE_PHOTOS} of your saved site photos. All photos remain attached to the quote.`);
     setAiPanel("loading");
     aiSuggestMutation.mutate({
       serviceType,
@@ -959,7 +961,7 @@ function QuoteFormModal({
       notes: form.internalNotes || undefined,
       rentalEquipment: form.rentalEquipment,
       measurements: form.quoteMeasurements,
-      evidence: Array.isArray(form.quoteEvidence) ? form.quoteEvidence.slice(0, 6) : [],
+      evidence: Array.isArray(form.quoteEvidence) ? form.quoteEvidence.slice(0, MAX_QUOTE_EVIDENCE_PHOTOS) : [],
     });
   };
 
@@ -1517,7 +1519,7 @@ function QuoteFormModal({
               </section>
 
               <section className="rounded-md border border-amber-500/20 bg-zinc-950/30 p-3">
-                <div className="flex items-start gap-2"><Camera className="mt-0.5 h-4 w-4 text-amber-300" /><div><p className="text-xs font-semibold text-amber-100">Site photos for AI Suggest</p><p className="mt-0.5 text-[10px] text-zinc-500">JPG, PNG, or WebP; up to 10 MB each. Photos stay internal to this quote.</p></div></div>
+                <div className="flex items-start gap-2"><Camera className="mt-0.5 h-4 w-4 text-amber-300" /><div><p className="text-xs font-semibold text-amber-100">Site photos for AI Suggest</p><p className="mt-0.5 text-[10px] text-zinc-500">JPG, PNG, or WebP; up to 10 MB each. AI Suggest can review up to 20 saved photos. Photos stay internal to this quote.</p></div></div>
                 <label className="mt-2 inline-flex h-7 cursor-pointer items-center rounded border border-amber-500/40 px-2 text-[10px] font-medium text-amber-100 hover:bg-amber-500/10"><Camera className="mr-1 h-3 w-3" />{uploadingKind === "evidence" ? "Uploading…" : "Add site photos"}<input type="file" className="sr-only" accept="image/jpeg,image/png,image/webp" multiple disabled={uploadingKind !== null} onChange={event => { void uploadQuoteFiles("evidence", event.target.files); event.currentTarget.value = ""; }} /></label>
                 {form.quoteEvidence.length > 0 && <div className="mt-2 grid grid-cols-4 gap-2">{form.quoteEvidence.map((attachment) => <div key={attachment.key} className="group relative overflow-hidden rounded border border-zinc-700"><a href={attachment.url} target="_blank" rel="noreferrer"><img src={attachment.url} alt={attachment.filename} className="h-14 w-full object-cover" /></a><button type="button" aria-label={`Remove ${attachment.filename}`} className="absolute right-0 top-0 rounded-bl bg-zinc-950/90 p-1 text-zinc-200 hover:text-red-300" onClick={() => setForm(current => ({ ...current, quoteEvidence: current.quoteEvidence.filter(item => item.key !== attachment.key) }))}><X className="h-3 w-3" /></button></div>)}</div>}
                 <div className="mt-3 border-t border-zinc-800 pt-3"><div className="flex items-start gap-2"><Ruler className="mt-0.5 h-4 w-4 text-amber-300" /><div><p className="text-xs font-semibold text-amber-100">Measurements</p><p className="mt-0.5 text-[10px] text-zinc-500">Examples: corridor width, slope, access gate, or work-area acreage.</p></div></div>

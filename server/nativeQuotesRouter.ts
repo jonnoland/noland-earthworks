@@ -29,7 +29,7 @@ import { invokeLLM } from "./_core/llm";
 import { isDraftPlaceholderClient } from "../shared/quoteDrafts";
 import { getQuotePortalPhaseSummary, type QuotePortalLineItem } from "../shared/quotePortalPhases";
 import { calculateLinearFeetFromAcreage } from "../shared/quoteLineItemMeasurements";
-import { getQuoteRentalCostCents, getQuoteRentalOnlyMargin, getQuoteTotalWithRentalCharge, parseQuoteSupportArtifactArray, parseQuoteSupportArtifacts, type QuoteCostFlag, type QuoteEvidenceAttachment, type QuoteInsuranceDocument, type QuoteMeasurement, type QuoteRentalEquipment } from "../shared/quoteSupportArtifacts";
+import { getQuoteRentalCostCents, getQuoteRentalOnlyMargin, getQuoteTotalWithRentalCharge, MAX_QUOTE_EVIDENCE_PHOTOS, parseQuoteSupportArtifactArray, parseQuoteSupportArtifacts, type QuoteCostFlag, type QuoteEvidenceAttachment, type QuoteInsuranceDocument, type QuoteMeasurement, type QuoteRentalEquipment } from "../shared/quoteSupportArtifacts";
 import { storageGet, storagePut } from "./storage";
 
 // Strip markdown code fences from LLM JSON responses
@@ -189,7 +189,7 @@ async function buildInsuranceEmailAttachments(ownerId: number, documents: QuoteI
 
 async function buildEvidenceContent(ownerId: number, evidence: QuoteEvidenceAttachment[]): Promise<Array<Record<string, unknown>>> {
   const content: Array<Record<string, unknown>> = [];
-  for (const attachment of evidence.slice(0, 6)) {
+  for (const attachment of evidence.slice(0, MAX_QUOTE_EVIDENCE_PHOTOS)) {
     if (!cleanStoredAttachmentKey(attachment.key, ownerId)) continue;
     const { url } = await storageGet(attachment.key);
     content.push({ type: "image_url", image_url: { url, detail: "low" } });
@@ -293,7 +293,7 @@ export const nativeQuotesRouter = router({
       websiteRequestId: z.number().int().optional(),
       rentalEquipment: z.array(rentalEquipmentSchema).max(12).optional(),
       rentalMarkupPct: z.number().int().min(10).max(20).optional(),
-      quoteEvidence: z.array(quoteEvidenceSchema).max(12).optional(),
+      quoteEvidence: z.array(quoteEvidenceSchema).max(MAX_QUOTE_EVIDENCE_PHOTOS).optional(),
       quoteMeasurements: z.array(quoteMeasurementSchema).max(24).optional(),
       insuranceDocuments: z.array(insuranceDocumentSchema).max(12).optional(),
       aiEvidenceSummary: z.string().max(4000).optional(),
@@ -422,7 +422,7 @@ export const nativeQuotesRouter = router({
       finalPaymentStatus: z.enum(["not_due", "invoiced", "paid", "overdue"]).optional(),
       rentalEquipment: z.array(rentalEquipmentSchema).max(12).optional(),
       rentalMarkupPct: z.number().int().min(10).max(20).optional(),
-      quoteEvidence: z.array(quoteEvidenceSchema).max(12).optional(),
+      quoteEvidence: z.array(quoteEvidenceSchema).max(MAX_QUOTE_EVIDENCE_PHOTOS).optional(),
       quoteMeasurements: z.array(quoteMeasurementSchema).max(24).optional(),
       insuranceDocuments: z.array(insuranceDocumentSchema).max(12).optional(),
       aiEvidenceSummary: z.string().max(4000).nullable().optional(),
@@ -873,7 +873,9 @@ export const nativeQuotesRouter = router({
       notes: z.string().max(5000).optional(),
       rentalEquipment: z.array(rentalEquipmentSchema).max(12).optional(),
       measurements: z.array(quoteMeasurementSchema).max(24).optional(),
-      evidence: z.array(quoteEvidenceSchema).max(6).optional(),
+      // Keep the quote's full saved evidence set while using the shared
+      // twenty-photo bound for the multimodal request.
+      evidence: z.array(quoteEvidenceSchema).max(MAX_QUOTE_EVIDENCE_PHOTOS).optional(),
     }).superRefine((input, ctx) => {
       if (isLinearFootService(input.serviceType)) {
         if (!input.linearFeet && !input.acreage) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["linearFeet"], message: "Enter measured Linear Feet or acreage to estimate from." });

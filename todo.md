@@ -3862,3 +3862,8 @@
 - [x] Add an internal-only tooltip with base service cost, raw rental cost, markup percentage, markup dollars, and final customer total
 - [x] Repair the AI Suggest evidence response contract and add a bounded 10–20% markup recommendation based only on supplied site evidence and quote context
 - [x] Add regression coverage and full validation for markup previews, cost details, and AI evidence responses
+
+## AI Suggest Excess Photo Handling — Aug 2026
+- [x] Keep all saved quote photos while passing up to 20 validated images to AI Suggest with clear non-blocking feedback
+- [x] Add regression coverage and validate AI Suggest no longer rejects a quote because it has more than six attached photos
+- [x] Expand the saved quote evidence and Gemini AI Suggest review capacity to up to 20 validated site photos with reliable request-size safeguards

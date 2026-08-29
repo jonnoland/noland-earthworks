@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
-import { getQuoteRentalCostCents, getQuoteRentalOnlyMargin, getQuoteRentalOnlyMarginStatus, getQuoteTotalWithRentalCharge, parseQuoteSupportArtifactArray, parseQuoteSupportArtifacts } from "../shared/quoteSupportArtifacts";
+import { getQuoteRentalCostCents, getQuoteRentalOnlyMargin, getQuoteRentalOnlyMarginStatus, getQuoteTotalWithRentalCharge, MAX_QUOTE_EVIDENCE_PHOTOS, parseQuoteSupportArtifactArray, parseQuoteSupportArtifacts } from "../shared/quoteSupportArtifacts";
 
 const source = (path: string) => readFileSync(resolve(import.meta.dirname, `../${path}`), "utf8");
 
@@ -50,6 +50,19 @@ describe("native quote rental, evidence, and insurance support artifacts", () =>
     expect(parseQuoteSupportArtifactArray('{"key":"quotes/1/evidence/example"}')).toEqual([{ key: "quotes/1/evidence/example" }]);
   });
 
+  it("uses one twenty-photo maximum for saved evidence, AI Suggest input, and Gemini visual review", () => {
+    const router = source("server/nativeQuotesRouter.ts");
+    const quoteForm = source("client/src/pages/ops/NativeAllQuotesSection.tsx");
+
+    expect(MAX_QUOTE_EVIDENCE_PHOTOS).toBe(20);
+    expect(router).toContain("evidence.slice(0, MAX_QUOTE_EVIDENCE_PHOTOS)");
+    expect(router).toContain("quoteEvidence: z.array(quoteEvidenceSchema).max(MAX_QUOTE_EVIDENCE_PHOTOS).optional()");
+    expect(router).toContain("evidence: z.array(quoteEvidenceSchema).max(MAX_QUOTE_EVIDENCE_PHOTOS).optional()");
+    expect(quoteForm).toContain('const maximum = kind === "evidence" ? MAX_QUOTE_EVIDENCE_PHOTOS : 12');
+    expect(quoteForm).toContain("evidence: Array.isArray(form.quoteEvidence) ? form.quoteEvidence.slice(0, MAX_QUOTE_EVIDENCE_PHOTOS) : []");
+    expect(quoteForm).toContain("AI Suggest can review up to 20 saved photos.");
+  });
+
   it("keeps rental costs internal and makes evidence available only to protected quote workflows", () => {
     const router = source("server/nativeQuotesRouter.ts");
     const quoteForm = source("client/src/pages/ops/NativeAllQuotesSection.tsx");
@@ -93,7 +106,7 @@ describe("native quote rental, evidence, and insurance support artifacts", () =>
     expect(quoteForm).toContain("Live customer total preview");
     expect(quoteForm).toContain("Internal rental cost breakdown");
     expect(quoteForm).toContain("Suggested rental markup:");
-    expect(quoteForm).toContain("evidence: Array.isArray(form.quoteEvidence) ? form.quoteEvidence.slice(0, 6) : []");
+    expect(quoteForm).toContain("evidence: Array.isArray(form.quoteEvidence) ? form.quoteEvidence.slice(0, MAX_QUOTE_EVIDENCE_PHOTOS) : []");
     expect(quoteForm).toContain("Cost categories to verify");
     expect(quoteForm).toContain("Preview");
     expect(quoteForm).toContain("Remove");
