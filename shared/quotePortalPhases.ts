@@ -18,7 +18,12 @@ export interface QuotePortalPhaseSection extends QuotePhaseSection<QuotePortalLi
   lineItems: QuotePortalLineItem[];
 }
 
-export function getQuotePortalPhaseSummary(items: QuotePortalLineItem[]) {
+/**
+ * `includedApprovedCostCents` is a quote-wide customer charge that must not become
+ * a visible line item (for example, included equipment/project cost). It is due
+ * with Phase 1 so approval and deposit math stays aligned with the saved quote total.
+ */
+export function getQuotePortalPhaseSummary(items: QuotePortalLineItem[], includedApprovedCostCents = 0) {
   const normalizedItems = ensureQuotePhaseIds(items);
   const breakdown = buildQuoteCostBreakdown(normalizedItems);
   const isDiscount = (item: QuotePortalLineItem) => item.kind === "discount" || item.unitPriceCents < 0;
@@ -44,9 +49,9 @@ export function getQuotePortalPhaseSummary(items: QuotePortalLineItem[]) {
     optionalFutureLineItems,
     approvedDiscountCents: breakdown.approvedDiscountCents,
     optionalDiscountCents: breakdown.optionalDiscountCents,
-    phaseOneTotalCents: breakdown.amountDueNowCents,
+    phaseOneTotalCents: breakdown.amountDueNowCents + Math.max(0, includedApprovedCostCents),
     optionalFutureTotalCents: Math.max(0, breakdown.allPhasesTotalCents - breakdown.amountDueNowCents),
-    allPhasesTotalCents: breakdown.allPhasesTotalCents,
+    allPhasesTotalCents: breakdown.allPhasesTotalCents + Math.max(0, includedApprovedCostCents),
     hasOptionalFuturePhases: optionalFutureLineItems.length > 0,
   };
 }

@@ -918,6 +918,13 @@
       "when": 1788029044174,
       "tag": "0130_glorious_juggernaut",
       "breakpoints": true
+    },
+    {
+      "idx": 131,
+      "version": "5",
+      "when": 1788031316599,
+      "tag": "0131_famous_giant_man",
+      "breakpoints": true
     }
   ]
 }

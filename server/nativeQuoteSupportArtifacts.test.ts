@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
-import { getQuoteRentalCostCents, getQuoteRentalOnlyMargin, getQuoteRentalOnlyMarginStatus, parseQuoteSupportArtifacts } from "../shared/quoteSupportArtifacts";
+import { getQuoteRentalCostCents, getQuoteRentalOnlyMargin, getQuoteRentalOnlyMarginStatus, getQuoteTotalWithRentalCharge, parseQuoteSupportArtifacts } from "../shared/quoteSupportArtifacts";
 
 const source = (path: string) => readFileSync(resolve(import.meta.dirname, `../${path}`), "utf8");
 
@@ -31,6 +31,19 @@ describe("native quote rental, evidence, and insurance support artifacts", () =>
     expect(getQuoteRentalOnlyMarginStatus(40)).toEqual({ tone: "green", label: "Healthy rental-only margin" });
   });
 
+  it("includes confirmed rental, transport, and tax in the customer total with the selected markup and whole-dollar ceiling", () => {
+    expect(getQuoteTotalWithRentalCharge(1_000_000, 100_100, 15)).toEqual({
+      rentalCustomerChargeCents: 115_200,
+      rentalMarkupCents: 15_100,
+      totalCents: 1_115_200,
+    });
+    expect(getQuoteTotalWithRentalCharge(1_000_000, 100_000, 10)).toEqual({
+      rentalCustomerChargeCents: 110_000,
+      rentalMarkupCents: 10_000,
+      totalCents: 1_110_000,
+    });
+  });
+
   it("fails closed to an empty support-artifact collection when a legacy quote has malformed JSON", () => {
     expect(parseQuoteSupportArtifacts("not-json", [])).toEqual([]);
   });
@@ -56,6 +69,9 @@ describe("native quote rental, evidence, and insurance support artifacts", () =>
     expect(router).toContain("aiCostFlags: JSON.stringify(flags)");
     expect(router).toContain("assertOwnedAttachmentKeys(ctx.user.id, input.quoteEvidence ?? [])");
     expect(router).toContain("assertOwnedAttachmentKeys(ctx.user.id, evidence)");
+    expect(router).toContain("rentalMarkupPct: z.number().int().min(10).max(20).optional()");
+    expect(router).toContain("getQuoteTotalWithRentalCharge(serviceTotalCents, rentalCostCents, rentalMarkupPct)");
+    expect(router).toContain("getIncludedRentalCustomerCharge(quote)");
     expect(router).not.toContain("rentalEquipment: quote.rentalEquipment");
     expect(router).not.toContain("quoteEvidence: quote.quoteEvidence");
     expect(quoteForm).toContain("Open Cat Rental Store");
@@ -66,6 +82,8 @@ describe("native quote rental, evidence, and insurance support artifacts", () =>
     expect(quoteForm).toContain("Internal rental-only margin");
     expect(quoteForm).toContain("Generate concise cost review");
     expect(quoteForm).toContain("RENTAL_MARGIN_TONE_CLASSES");
+    expect(quoteForm).toContain("Customer rental markup");
+    expect(quoteForm).toContain("Included rental component");
     expect(quoteForm).toContain("Cost categories to verify");
     expect(quoteForm).toContain("Preview");
     expect(quoteForm).toContain("Remove");

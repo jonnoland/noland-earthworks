@@ -33,4 +33,14 @@ describe("customer portal phased quote summary", () => {
     expect(summary.phaseOneTotalCents).toBe(675000);
     expect(summary.optionalFutureTotalCents).toBe(1920600);
   });
+
+  it("adds a quote-wide included project component to current approval and full-project totals without creating a line item", () => {
+    const summary = getQuotePortalPhaseSummary([
+      { description: "Forestry Mulching", qty: 1, unitPriceCents: 500000, totalCents: 500000, kind: "service" },
+    ], 115000);
+
+    expect(summary.phaseOneTotalCents).toBe(615000);
+    expect(summary.allPhasesTotalCents).toBe(615000);
+    expect(summary.approvedLineItems).toHaveLength(1);
+  });
 });

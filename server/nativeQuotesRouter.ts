@@ -29,7 +29,7 @@ import { invokeLLM } from "./_core/llm";
 import { isDraftPlaceholderClient } from "../shared/quoteDrafts";
 import { getQuotePortalPhaseSummary, type QuotePortalLineItem } from "../shared/quotePortalPhases";
 import { calculateLinearFeetFromAcreage } from "../shared/quoteLineItemMeasurements";
-import { getQuoteRentalCostCents, getQuoteRentalOnlyMargin, parseQuoteSupportArtifacts, type QuoteCostFlag, type QuoteEvidenceAttachment, type QuoteInsuranceDocument, type QuoteMeasurement, type QuoteRentalEquipment } from "../shared/quoteSupportArtifacts";
+import { getQuoteRentalCostCents, getQuoteRentalOnlyMargin, getQuoteTotalWithRentalCharge, parseQuoteSupportArtifacts, type QuoteCostFlag, type QuoteEvidenceAttachment, type QuoteInsuranceDocument, type QuoteMeasurement, type QuoteRentalEquipment } from "../shared/quoteSupportArtifacts";
 import { storageGet, storagePut } from "./storage";
 
 // Strip markdown code fences from LLM JSON responses
@@ -78,6 +78,11 @@ function parsePortalLineItems(raw: string | null): QuotePortalLineItem[] {
   } catch {
     return [];
   }
+}
+
+function getIncludedRentalCustomerCharge(quote: { rentalEquipment: string | null; rentalMarkupPct: number | null }): number {
+  const rentalCostCents = getQuoteRentalCostCents(parseQuoteSupportArtifacts<QuoteRentalEquipment[]>(quote.rentalEquipment, []));
+  return getQuoteTotalWithRentalCharge(0, rentalCostCents, quote.rentalMarkupPct ?? 15).rentalCustomerChargeCents;
 }
 
 // ─── Line item schema ─────────────────────────────────────────────────────────
@@ -287,6 +292,7 @@ export const nativeQuotesRouter = router({
       distanceQuoteId: z.number().int().optional(),
       websiteRequestId: z.number().int().optional(),
       rentalEquipment: z.array(rentalEquipmentSchema).max(12).optional(),
+      rentalMarkupPct: z.number().int().min(10).max(20).optional(),
       quoteEvidence: z.array(quoteEvidenceSchema).max(12).optional(),
       quoteMeasurements: z.array(quoteMeasurementSchema).max(24).optional(),
       insuranceDocuments: z.array(insuranceDocumentSchema).max(12).optional(),
@@ -298,7 +304,10 @@ export const nativeQuotesRouter = router({
       assertOwnedAttachmentKeys(ctx.user.id, input.quoteEvidence ?? []);
       assertOwnedAttachmentKeys(ctx.user.id, input.insuranceDocuments ?? []);
       const lineItems = normalizeQuoteLineItems(input.lineItems);
-      const totalCents = lineItems.reduce((sum, item) => sum + item.totalCents, 0);
+      const serviceTotalCents = lineItems.reduce((sum, item) => sum + item.totalCents, 0);
+      const rentalMarkupPct = input.rentalMarkupPct ?? 15;
+      const rentalCostCents = getQuoteRentalCostCents(input.rentalEquipment ?? []);
+      const { totalCents } = getQuoteTotalWithRentalCharge(serviceTotalCents, rentalCostCents, rentalMarkupPct);
       const result = await db.insert(nativeQuotes).values({
         clientName: input.clientName,
         clientEmail: input.clientEmail || null,
@@ -310,6 +319,7 @@ export const nativeQuotesRouter = router({
         lineItems: JSON.stringify(lineItems),
         totalCents,
         rentalEquipment: JSON.stringify(input.rentalEquipment ?? []),
+        rentalMarkupPct,
         quoteEvidence: JSON.stringify(input.quoteEvidence ?? []),
         quoteMeasurements: JSON.stringify(input.quoteMeasurements ?? []),
         insuranceDocuments: JSON.stringify(input.insuranceDocuments ?? []),
@@ -411,6 +421,7 @@ export const nativeQuotesRouter = router({
       depositStatus: z.enum(["not_requested", "requested", "paid", "not_required"]).optional(),
       finalPaymentStatus: z.enum(["not_due", "invoiced", "paid", "overdue"]).optional(),
       rentalEquipment: z.array(rentalEquipmentSchema).max(12).optional(),
+      rentalMarkupPct: z.number().int().min(10).max(20).optional(),
       quoteEvidence: z.array(quoteEvidenceSchema).max(12).optional(),
       quoteMeasurements: z.array(quoteMeasurementSchema).max(24).optional(),
       insuranceDocuments: z.array(insuranceDocumentSchema).max(12).optional(),
@@ -419,14 +430,24 @@ export const nativeQuotesRouter = router({
     .mutation(async ({ ctx, input }: { ctx: { user: { id: number } }; input: any }) => {
       const db = await getDb();
       if (!db) throw new Error("DB unavailable");
-      const { id, lineItems, rentalEquipment, quoteEvidence, quoteMeasurements, insuranceDocuments, ...rest } = input;
+      const { id, lineItems, rentalEquipment, rentalMarkupPct, quoteEvidence, quoteMeasurements, insuranceDocuments, ...rest } = input;
       if (quoteEvidence !== undefined) assertOwnedAttachmentKeys(ctx.user.id, quoteEvidence);
       if (insuranceDocuments !== undefined) assertOwnedAttachmentKeys(ctx.user.id, insuranceDocuments);
       const updates: Record<string, unknown> = { ...rest };
-      if (lineItems !== undefined) {
-        const normalized = normalizeQuoteLineItems(lineItems);
-        updates.lineItems = JSON.stringify(normalized);
-        updates.totalCents = normalized.reduce((sum, item) => sum + item.totalCents, 0);
+      if (lineItems !== undefined || rentalEquipment !== undefined || rentalMarkupPct !== undefined) {
+        const [existingQuote] = await db.select().from(nativeQuotes).where(eq(nativeQuotes.id, id)).limit(1);
+        if (!existingQuote) throw new TRPCError({ code: "NOT_FOUND", message: "Quote not found." });
+        const normalized = lineItems !== undefined
+          ? normalizeQuoteLineItems(lineItems)
+          : parsePortalLineItems(existingQuote.lineItems);
+        const effectiveRentalEquipment = rentalEquipment ?? parseQuoteSupportArtifacts<QuoteRentalEquipment[]>(existingQuote.rentalEquipment, []);
+        const effectiveRentalMarkupPct = rentalMarkupPct ?? existingQuote.rentalMarkupPct ?? 15;
+        const serviceTotalCents = normalized.reduce((sum, item) => sum + item.totalCents, 0);
+        const rentalCostCents = getQuoteRentalCostCents(effectiveRentalEquipment);
+        const total = getQuoteTotalWithRentalCharge(serviceTotalCents, rentalCostCents, effectiveRentalMarkupPct);
+        if (lineItems !== undefined) updates.lineItems = JSON.stringify(normalized);
+        updates.totalCents = total.totalCents;
+        updates.rentalMarkupPct = effectiveRentalMarkupPct;
       }
       if (rentalEquipment !== undefined) updates.rentalEquipment = JSON.stringify(rentalEquipment);
       if (quoteEvidence !== undefined) updates.quoteEvidence = JSON.stringify(quoteEvidence);
@@ -488,6 +509,7 @@ export const nativeQuotesRouter = router({
         lineItems: src.lineItems,
         totalCents: src.totalCents,
         rentalEquipment: src.rentalEquipment,
+        rentalMarkupPct: src.rentalMarkupPct,
         quoteEvidence: src.quoteEvidence,
         quoteMeasurements: src.quoteMeasurements,
         insuranceDocuments: src.insuranceDocuments,
@@ -1151,7 +1173,7 @@ Rules:
       if (quote.clientAction !== "approved" || !quote.signedAt || quote.signatureMode !== "typed" || quote.phaseOneAcceptanceScope !== "phase_1" || !quote.phaseOneSignatureConsentAt) {
         throw new TRPCError({ code: "BAD_REQUEST", message: "Accept and sign Phase 1 before paying its deposit." });
       }
-      const phaseSummary = getQuotePortalPhaseSummary(parsePortalLineItems(quote.lineItems));
+      const phaseSummary = getQuotePortalPhaseSummary(parsePortalLineItems(quote.lineItems), getIncludedRentalCustomerCharge(quote));
       const phaseOneTotalCents = quote.phaseOneApprovedCents ?? phaseSummary.phaseOneTotalCents;
       if (phaseOneTotalCents <= 0) {
         throw new TRPCError({ code: "BAD_REQUEST", message: "The approved Phase 1 total must be greater than zero before payment." });
@@ -1217,7 +1239,8 @@ Rules:
         }).catch(() => {/* non-critical */});
       }
       const lineItems = parsePortalLineItems(quote.lineItems);
-      const phaseSummary = getQuotePortalPhaseSummary(lineItems);
+      const includedRentalCustomerChargeCents = getIncludedRentalCustomerCharge(quote);
+      const phaseSummary = getQuotePortalPhaseSummary(lineItems, includedRentalCustomerChargeCents);
       return {
         type: "native" as const,
         id: quote.id,
@@ -1230,6 +1253,7 @@ Rules:
         clientMessage: quote.clientMessage,
         lineItems,
         phaseSummary,
+        includesRequiredEquipmentCosts: includedRentalCustomerChargeCents > 0,
         totalCents: quote.totalCents,
         totalFormatted: new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(quote.totalCents / 100),
         status: quote.status,
@@ -1269,7 +1293,7 @@ Rules:
         .where(eq(nativeQuotes.portalToken, input.token))
         .limit(1);
       if (!quote) throw new TRPCError({ code: "NOT_FOUND", message: "Quote not found or link has expired." });
-      const phaseSummary = getQuotePortalPhaseSummary(parsePortalLineItems(quote.lineItems));
+      const phaseSummary = getQuotePortalPhaseSummary(parsePortalLineItems(quote.lineItems), getIncludedRentalCustomerCharge(quote));
       // Sync status column so pipeline stage classifier stays consistent
       const statusSync = input.action === "approved" ? "approved"
         : input.action === "declined" ? "declined"
@@ -1308,7 +1332,7 @@ Rules:
       const [quote] = await db.select().from(nativeQuotes).where(eq(nativeQuotes.portalToken, input.token)).limit(1);
       if (!quote) throw new TRPCError({ code: "NOT_FOUND", message: "Quote not found or link has expired." });
       if (quote.clientAction === "declined") throw new TRPCError({ code: "BAD_REQUEST", message: "This quote was declined and cannot be accepted." });
-      const phaseSummary = getQuotePortalPhaseSummary(parsePortalLineItems(quote.lineItems));
+      const phaseSummary = getQuotePortalPhaseSummary(parsePortalLineItems(quote.lineItems), getIncludedRentalCustomerCharge(quote));
       if (phaseSummary.phaseOneTotalCents <= 0) throw new TRPCError({ code: "BAD_REQUEST", message: "Phase 1 must have a positive total before acceptance." });
       const acceptedAt = new Date();
       await db.update(nativeQuotes).set({

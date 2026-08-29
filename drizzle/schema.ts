@@ -1954,6 +1954,8 @@ export const nativeQuotes = mysqlTable("native_quotes", {
   totalCents: int("totalCents").notNull().default(0),
   /** Internal Cat Rental Store equipment estimate; never rendered as a customer quote line item. */
   rentalEquipment: text("rentalEquipment"),
+  /** Customer markup applied to confirmed rental, transport, and tax costs. */
+  rentalMarkupPct: int("rentalMarkupPct"),
   /** Internal site photos saved for owner review and server-side AI estimate context. */
   quoteEvidence: text("quoteEvidence"),
   /** Structured field measurements that give the estimate review a traceable basis. */

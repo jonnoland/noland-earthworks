@@ -1,3 +1,5 @@
+import { roundQuoteCentsUp } from "./quoteMoney";
+
 export type QuoteRentalEquipment = {
   equipmentName: string;
   dealerLocation?: string;
@@ -78,6 +80,34 @@ export function getQuoteRentalOnlyMarginStatus(rentalOnlyMarginPct: number | nul
   if (rentalOnlyMarginPct < 25) return { tone: "red", label: "Thin rental-only margin" };
   if (rentalOnlyMarginPct < 40) return { tone: "amber", label: "Review rental-only margin" };
   return { tone: "green", label: "Healthy rental-only margin" };
+}
+
+/**
+ * Applies the selected customer markup to confirmed rental, transport, and tax,
+ * preserving the Operations whole-dollar ceiling rule.
+ */
+export function getQuoteRentalCustomerChargeCents(rentalCostCents: number, rentalMarkupPct: number): number {
+  if (rentalCostCents <= 0) return 0;
+  const safeMarkupPct = Math.min(20, Math.max(10, Math.round(rentalMarkupPct)));
+  const markedUpCents = Math.ceil((rentalCostCents * (100 + safeMarkupPct)) / 100);
+  return roundQuoteCentsUp(markedUpCents);
+}
+
+export function getQuoteTotalWithRentalCharge(
+  serviceTotalCents: number,
+  rentalCostCents: number,
+  rentalMarkupPct: number,
+): {
+  rentalCustomerChargeCents: number;
+  rentalMarkupCents: number;
+  totalCents: number;
+} {
+  const rentalCustomerChargeCents = getQuoteRentalCustomerChargeCents(rentalCostCents, rentalMarkupPct);
+  return {
+    rentalCustomerChargeCents,
+    rentalMarkupCents: Math.max(0, rentalCustomerChargeCents - Math.max(0, rentalCostCents)),
+    totalCents: roundQuoteCentsUp(Math.max(0, serviceTotalCents) + rentalCustomerChargeCents),
+  };
 }
 
 export function parseQuoteSupportArtifacts<T>(raw: string | null | undefined, fallback: T): T {

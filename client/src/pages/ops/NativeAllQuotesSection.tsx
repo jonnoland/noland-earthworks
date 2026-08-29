@@ -54,7 +54,7 @@ import { buildQuoteCostBreakdown, getQuoteCostDistribution } from "@shared/quote
 import { getQuoteDraftIdentity } from "@shared/quoteDrafts";
 import { moveQuoteLineItem } from "@shared/quoteLineItemOrder";
 import { ensureQuotePhaseIds, getQuotePhaseSections } from "@shared/quotePhaseSections";
-import { getQuoteRentalCostCents, getQuoteRentalOnlyMargin, getQuoteRentalOnlyMarginStatus, parseQuoteSupportArtifacts, type QuoteCostFlag, type QuoteEvidenceAttachment, type QuoteInsuranceDocument, type QuoteMeasurement, type QuoteRentalEquipment } from "@shared/quoteSupportArtifacts";
+import { getQuoteRentalCostCents, getQuoteRentalOnlyMargin, getQuoteRentalOnlyMarginStatus, getQuoteTotalWithRentalCharge, parseQuoteSupportArtifacts, type QuoteCostFlag, type QuoteEvidenceAttachment, type QuoteInsuranceDocument, type QuoteMeasurement, type QuoteRentalEquipment } from "@shared/quoteSupportArtifacts";
 import {
   createQuoteServiceLineItem,
   calculateLinearFeetFromAcreage,
@@ -122,6 +122,7 @@ interface NativeQuote {
   lineItems: string;
   totalCents: number;
   rentalEquipment: string;
+  rentalMarkupPct: number | null;
   quoteEvidence: string;
   quoteMeasurements: string;
   insuranceDocuments: string;
@@ -490,6 +491,7 @@ interface QuoteFormData {
   internalNotes: string;
   lineItems: LineItem[];
   rentalEquipment: QuoteRentalEquipment[];
+  rentalMarkupPct: number;
   quoteEvidence: QuoteEvidenceAttachment[];
   quoteMeasurements: QuoteMeasurement[];
   insuranceDocuments: QuoteInsuranceDocument[];
@@ -579,6 +581,7 @@ function QuoteFormModal({
     internalNotes: "",
     lineItems: DEFAULT_LINE_ITEMS.map(li => ({ ...li })),
     rentalEquipment: [],
+    rentalMarkupPct: 15,
     quoteEvidence: [],
     quoteMeasurements: [],
     insuranceDocuments: [],
@@ -614,6 +617,7 @@ function QuoteFormModal({
         internalNotes: editQuote.internalNotes ?? "",
         lineItems: items.length > 0 ? ensureQuotePhaseIds(items) : DEFAULT_LINE_ITEMS.map(li => ({ ...li })),
         rentalEquipment: parseQuoteSupportArtifacts<QuoteRentalEquipment[]>(editQuote.rentalEquipment, []),
+        rentalMarkupPct: editQuote.rentalMarkupPct ?? 15,
         quoteEvidence: parseQuoteSupportArtifacts<QuoteEvidenceAttachment[]>(editQuote.quoteEvidence, []),
         quoteMeasurements: parseQuoteSupportArtifacts<QuoteMeasurement[]>(editQuote.quoteMeasurements, []),
         insuranceDocuments: parseQuoteSupportArtifacts<QuoteInsuranceDocument[]>(editQuote.insuranceDocuments, []),
@@ -786,8 +790,10 @@ function QuoteFormModal({
   );
   const costDistribution = useMemo(() => getQuoteCostDistribution(costBreakdown), [costBreakdown]);
   const hasCostDistribution = costDistribution.some((slice) => slice.value > 0);
-  const totalCents = costBreakdown.allPhasesTotalCents;
+  const serviceTotalCents = costBreakdown.allPhasesTotalCents;
   const internalRentalCostCents = useMemo(() => getQuoteRentalCostCents(form.rentalEquipment), [form.rentalEquipment]);
+  const rentalCustomerQuote = getQuoteTotalWithRentalCharge(serviceTotalCents, internalRentalCostCents, form.rentalMarkupPct);
+  const totalCents = rentalCustomerQuote.totalCents;
   const { rentalOnlyProfitCents, rentalOnlyMarginPct } = getQuoteRentalOnlyMargin(totalCents, internalRentalCostCents);
   const rentalOnlyMarginStatus = getQuoteRentalOnlyMarginStatus(rentalOnlyMarginPct);
   const discountItems = useMemo(() => form.lineItems.filter((item) => item.kind === "discount" || item.unitPriceCents < 0), [form.lineItems]);
@@ -1112,7 +1118,9 @@ function QuoteFormModal({
 
   const buildQuotePayload = (identity = { clientName: form.clientName, title: form.title }) => {
     const lineItems = normalizeQuoteLineItemsForSave(form.lineItems);
-    const normalizedTotalCents = lineItems.reduce((sum, item) => sum + item.totalCents, 0);
+    const serviceTotalCents = lineItems.reduce((sum, item) => sum + item.totalCents, 0);
+    const rentalCostCents = getQuoteRentalCostCents(form.rentalEquipment);
+    const finalCustomerTotalCents = getQuoteTotalWithRentalCharge(serviceTotalCents, rentalCostCents, form.rentalMarkupPct).totalCents;
     return {
       clientName: identity.clientName,
       clientEmail: form.clientEmail || undefined,
@@ -1128,11 +1136,12 @@ function QuoteFormModal({
       internalNotes: form.internalNotes || undefined,
       lineItems,
       rentalEquipment: form.rentalEquipment,
+      rentalMarkupPct: form.rentalMarkupPct,
       quoteEvidence: form.quoteEvidence,
       quoteMeasurements: form.quoteMeasurements,
       insuranceDocuments: form.insuranceDocuments,
       aiEvidenceSummary: form.aiEvidenceSummary || undefined,
-      totalCents: normalizedTotalCents,
+      totalCents: finalCustomerTotalCents,
       sourceDetail: form.sourceDetail || "manual",
       fitDecision: form.fitDecision,
       nextActionType: form.nextActionType || "review_request",
@@ -1489,7 +1498,7 @@ function QuoteFormModal({
                     </div>
                   ))}
                 </div>
-                <div className="mt-2 flex flex-wrap items-center justify-between gap-2"><Button type="button" size="sm" variant="outline" className="h-7 border-sky-500/40 text-xs text-sky-100" onClick={() => setForm(current => ({ ...current, rentalEquipment: [...current.rentalEquipment, emptyRentalEquipment()] }))}><Plus className="mr-1 h-3 w-3" />Add rental equipment</Button><span className="text-xs font-semibold text-sky-200">Internal rental cost: {formatQuoteCents(internalRentalCostCents)}</span></div>
+                <div className="mt-2 flex flex-wrap items-end justify-between gap-2"><Button type="button" size="sm" variant="outline" className="h-7 border-sky-500/40 text-xs text-sky-100" onClick={() => setForm(current => ({ ...current, rentalEquipment: [...current.rentalEquipment, emptyRentalEquipment()] }))}><Plus className="mr-1 h-3 w-3" />Add rental equipment</Button><label className="text-[10px] text-zinc-400">Customer rental markup<select value={form.rentalMarkupPct} onChange={event => setForm(current => ({ ...current, rentalMarkupPct: Number(event.target.value) }))} className="mt-1 block h-7 rounded border border-sky-500/40 bg-zinc-800 px-2 text-xs text-sky-100"><option value={10}>10%</option><option value={11}>11%</option><option value={12}>12%</option><option value={13}>13%</option><option value={14}>14%</option><option value={15}>15%</option><option value={16}>16%</option><option value={17}>17%</option><option value={18}>18%</option><option value={19}>19%</option><option value={20}>20%</option></select></label><div className="text-right text-xs"><span className="block font-semibold text-sky-200">Internal rental cost: {formatQuoteCents(internalRentalCostCents)}</span><span className="text-[10px] text-sky-100/70">Included in customer total: {formatQuoteCents(rentalCustomerQuote.rentalCustomerChargeCents)} ({form.rentalMarkupPct}% markup)</span></div></div>
               </section>
 
               <section className="rounded-md border border-amber-500/20 bg-zinc-950/30 p-3">
@@ -1850,13 +1859,14 @@ function QuoteFormModal({
                 {costBreakdown.fullOperatingDayCents > 0 && <div className="flex justify-between gap-6 text-sky-200"><span>Full operating days</span><span>{formatQuoteCents(costBreakdown.fullOperatingDayCents)}</span></div>}
                 {costBreakdown.halfOperatingDayCents > 0 && <div className="flex justify-between gap-6 text-sky-200"><span>Half operating days</span><span>{formatQuoteCents(costBreakdown.halfOperatingDayCents)}</span></div>}
                 {costBreakdown.approvedDiscountCents < 0 && <div className="flex justify-between gap-6 text-emerald-300"><span>Discounts on approved work</span><span>{formatQuoteCents(costBreakdown.approvedDiscountCents)}</span></div>}
-                <div className="mt-2 flex justify-between gap-6 border-t border-amber-500/30 pt-2"><span className="font-semibold text-amber-100">Amount due for approved work</span><span className="text-base font-bold text-amber-400">{formatQuoteCents(costBreakdown.amountDueNowCents)}</span></div>
+                {rentalCustomerQuote.rentalCustomerChargeCents > 0 && <div className="flex justify-between gap-6 text-sky-200"><span>Included rental component ({form.rentalMarkupPct}% markup)</span><span>{formatQuoteCents(rentalCustomerQuote.rentalCustomerChargeCents)}</span></div>}
+                <div className="mt-2 flex justify-between gap-6 border-t border-amber-500/30 pt-2"><span className="font-semibold text-amber-100">Amount due for approved work</span><span className="text-base font-bold text-amber-400">{formatQuoteCents(costBreakdown.amountDueNowCents + rentalCustomerQuote.rentalCustomerChargeCents)}</span></div>
                 {costBreakdown.optionalFuturePhaseCents > 0 && <>
                   <div className="mt-2 flex justify-between gap-6 border-t border-zinc-700 pt-2 text-indigo-200"><span>Optional future phases</span><span>{formatQuoteCents(costBreakdown.optionalFuturePhaseCents)}</span></div>
                   {costBreakdown.optionalDiscountCents < 0 && <div className="flex justify-between gap-6 text-emerald-300"><span>Discounts allocated to future phases</span><span>{formatQuoteCents(costBreakdown.optionalDiscountCents)}</span></div>}
-                  <div className="flex justify-between gap-6 font-semibold text-zinc-200"><span>All-phases total</span><span>{formatQuoteCents(costBreakdown.allPhasesTotalCents)}</span></div>
+                  <div className="flex justify-between gap-6 font-semibold text-zinc-200"><span>All-phases total</span><span>{formatQuoteCents(totalCents)}</span></div>
                 </>}
-                {costBreakdown.optionalFuturePhaseCents === 0 && <div className="flex justify-between gap-6 font-semibold text-zinc-200"><span>Quote total</span><span>{formatQuoteCents(costBreakdown.allPhasesTotalCents)}</span></div>}
+                {costBreakdown.optionalFuturePhaseCents === 0 && <div className="flex justify-between gap-6 font-semibold text-zinc-200"><span>Quote total</span><span>{formatQuoteCents(totalCents)}</span></div>}
               </div>
               {costBreakdown.optionalFuturePhaseCents > 0 && <p className="mt-2 text-[10px] leading-relaxed text-zinc-500">Optional future phases are visible here but excluded from the approved-work amount due now.</p>}
             </div>

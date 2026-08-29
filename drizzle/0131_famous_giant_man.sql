@@ -1,0 +1,1 @@
+ALTER TABLE `native_quotes` ADD `rentalMarkupPct` int;

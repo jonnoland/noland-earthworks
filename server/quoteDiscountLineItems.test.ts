@@ -35,12 +35,13 @@ describe("quote discount line items", () => {
     expect(editor).toContain('isCompactWorkspace ? "" : "col-span-2"');
   });
 
-  it("recomputes persisted quote totals from each line item, including negative discount rows", () => {
+  it("recomputes persisted quote totals from line items and the approved marked-up rental component", () => {
     const router = readFileSync(resolve(import.meta.dirname, "nativeQuotesRouter.ts"), "utf8");
 
     expect(router).toContain("normalizeQuoteLineItems");
-    expect(router).toContain("totalCents = lineItems.reduce");
-    expect(router).toContain("updates.totalCents = normalized.reduce");
+    expect(router).toContain("serviceTotalCents = lineItems.reduce");
+    expect(router).toContain("getQuoteTotalWithRentalCharge(serviceTotalCents, rentalCostCents, rentalMarkupPct)");
+    expect(router).toContain("updates.totalCents = total.totalCents");
   });
 
   it("normalizes legacy or edited quote line-item cents before submitting an update", () => {
@@ -48,7 +49,7 @@ describe("quote discount line items", () => {
 
     expect(editor).toContain("function normalizeQuoteLineItemsForSave");
     expect(editor).toContain("const lineItems = normalizeQuoteLineItemsForSave(form.lineItems)");
-    expect(editor).toContain("totalCents: normalizedTotalCents");
+    expect(editor).toContain("totalCents: finalCustomerTotalCents");
   });
 
   it("keeps multiple distinct discounts as separate negative lines in the quote total", () => {

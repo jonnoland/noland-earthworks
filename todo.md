@@ -3851,3 +3851,8 @@
 - [x] Add clearly labeled red, amber, and green rental-only margin cues without representing the metric as full job profitability
 - [x] Add preview and archive/remove controls for owner-scoped saved proof-of-insurance documents
 - [x] Add regression coverage and full validation for the enhanced quote review and document controls
+
+## Operations Quote Rental Cost Markup — Aug 2026
+- [x] Include confirmed internal rental, transport, and tax cost in the customer quote total with a selectable 10–20% markup
+- [x] Preserve an internal cost breakdown that distinguishes the rental component and markup from service-price and full-profit analysis
+- [x] Add regression coverage and full validation for customer totals, portal display, and quote email calculations
